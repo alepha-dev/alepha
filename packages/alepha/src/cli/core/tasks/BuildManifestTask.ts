@@ -108,6 +108,7 @@ export class BuildManifestTask extends BuildTask {
     // means the app doesn't use that resource.
     let hasDatabase = false;
     let hasBucket = false;
+    let hasAnalytics = false;
     let hasKV = false;
     let hasQueue = false;
     let crons: string[] = [];
@@ -143,6 +144,22 @@ export class BuildManifestTask extends BuildTask {
     // exactly as `$storage` would.
     if (!hasBucket && process.env.R2_BUCKET_NAME) {
       hasBucket = true;
+    }
+
+    try {
+      hasAnalytics = ctx.alepha.primitives("$analytics").length > 0;
+    } catch {}
+
+    // Same escape hatch as R2 above, for the same reason: an app can want
+    // the dataset provisioned without a `$analytics` primitive to detect —
+    // typically because `CLOUDFLARE_ANALYTICS_DATASET` is already set by
+    // hand from before this mechanism existed. There is no equivalent to
+    // R2's "inject the provider directly" route here (`WaeAnalyticsProvider`
+    // is only ever selected internally, by `AlephaAnalytics`'s own
+    // `register()`), but honoring an explicit value costs nothing and keeps
+    // a hand-set `.env.production` working exactly as it did before.
+    if (!hasAnalytics && process.env.CLOUDFLARE_ANALYTICS_DATASET) {
+      hasAnalytics = true;
     }
 
     try {
@@ -254,6 +271,7 @@ export class BuildManifestTask extends BuildTask {
       resources: {
         hasDatabase,
         hasBucket,
+        hasAnalytics,
         hasKV,
         hasQueue,
         hasCron: crons.length > 0,

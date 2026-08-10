@@ -24,6 +24,7 @@ import type { FileSystemProvider } from "alepha/system";
 export const EXCLUDED_SECRET_KEYS: ReadonlySet<string> = new Set([
   "DATABASE_URL",
   "R2_BUCKET_NAME",
+  "CLOUDFLARE_ANALYTICS_DATASET",
   "CLOUDFLARE_DOMAIN",
   "CLOUDFLARE_ZONE",
   "CLOUDFLARE_JURISDICTION",

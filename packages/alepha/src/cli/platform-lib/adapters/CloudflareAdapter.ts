@@ -248,6 +248,18 @@ export class CloudflareAdapter extends PlatformAdapter {
       env.R2_BUCKET_NAME = declaredBucket;
     }
 
+    // Same forwarding, same reason, for the analytics escape hatch
+    // (`BuildManifestTask`'s `CLOUDFLARE_ANALYTICS_DATASET` check). Without
+    // this, a value set only in `.env.<env>` on disk would never reach the
+    // spawned `alepha build` below, whose own resource detection reads
+    // `process.env` — not this file.
+    const declaredDataset = (
+      await this.envUtils.parseEnv(ctx.root, [`.env.${ctx.env}`])
+    ).CLOUDFLARE_ANALYTICS_DATASET;
+    if (declaredDataset) {
+      env.CLOUDFLARE_ANALYTICS_DATASET = declaredDataset;
+    }
+
     if (ctx.resources.hasDatabase) {
       if (this.provisionedHyperdriveId) {
         env.HYPERDRIVE_ID = this.provisionedHyperdriveId;
@@ -268,6 +280,18 @@ export class CloudflareAdapter extends PlatformAdapter {
       // An explicit name wins: it may point at a pre-existing bucket whose
       // objects are already keyed under it, and renaming would orphan them.
       env.R2_BUCKET_NAME ??= ctx.naming.r2();
+    }
+
+    if (ctx.resources.hasAnalytics) {
+      // An explicit name wins, same reasoning as R2 above (and already
+      // forwarded above if it came from `.env.<env>`). Unlike every other
+      // resource here, there is no `ensureAnalytics()` step and never will
+      // be: Cloudflare has no API to create an Analytics Engine dataset
+      // ahead of time. It materializes on the first `writeDataPoint()`,
+      // with no id to pair with a name the way D1 and KV need one — so
+      // "provisioning" it is exactly this line, computing the name and
+      // setting the env var, with nothing left to call.
+      env.CLOUDFLARE_ANALYTICS_DATASET ??= ctx.naming.analytics();
     }
 
     if (ctx.resources.hasKV) {

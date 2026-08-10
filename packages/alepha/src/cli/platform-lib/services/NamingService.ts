@@ -126,6 +126,10 @@ export class NamingContext {
     return this.prefix;
   }
 
+  public analytics(): string {
+    return this.prefix;
+  }
+
   public kv(): string {
     return this.prefix;
   }

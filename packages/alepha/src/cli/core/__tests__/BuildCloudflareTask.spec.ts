@@ -503,6 +503,7 @@ describe("BuildCloudflareTask", () => {
           resources: {
             hasDatabase: false,
             hasBucket: false,
+            hasAnalytics: false,
             hasKV: false,
             hasQueue: false,
             hasCron: false,

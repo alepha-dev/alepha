@@ -92,6 +92,12 @@ describe("NamingService", () => {
       expect(ctx.r2()).toBe("acme-portal-production");
     });
 
+    it("should generate correct analytics name", () => {
+      const ctx = createNaming("acme-portal", "production");
+
+      expect(ctx.analytics()).toBe("acme-portal-production");
+    });
+
     it("should generate correct kv name", () => {
       const ctx = createNaming("acme-portal", "production");
 
@@ -116,6 +122,7 @@ describe("NamingService", () => {
       expect(ctx.worker()).toBe("acme-portal-tmp-bug001");
       expect(ctx.d1()).toBe("acme-portal-tmp-bug001");
       expect(ctx.r2()).toBe("acme-portal-tmp-bug001");
+      expect(ctx.analytics()).toBe("acme-portal-tmp-bug001");
       expect(ctx.kv()).toBe("acme-portal-tmp-bug001");
       expect(ctx.queue()).toBe("acme-portal-tmp-bug001");
     });
@@ -138,6 +145,7 @@ describe("NamingService", () => {
       expect(ctx.worker()).toBe("b14-club-production");
       expect(ctx.d1()).toBe("b14-club-production");
       expect(ctx.r2()).toBe("b14-club-production");
+      expect(ctx.analytics()).toBe("b14-club-production");
       expect(ctx.kv()).toBe("b14-club-production");
       expect(ctx.queue()).toBe("b14-club-production");
     });

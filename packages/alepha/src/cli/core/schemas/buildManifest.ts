@@ -106,6 +106,7 @@ export interface BuildManifest {
   resources: {
     hasDatabase: boolean;
     hasBucket: boolean;
+    hasAnalytics: boolean;
     hasKV: boolean;
     hasQueue: boolean;
     hasCron: boolean;

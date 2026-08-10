@@ -94,3 +94,35 @@ describe("platform.detectResources — hasKV decision", () => {
     expect(detectHasKV(alepha)).toBe(false);
   });
 });
+
+/**
+ * Mirrors the inline check at `cli/platform/commands/platform.ts:1015-1022`
+ * (`detectResources`'s `hasAnalytics`) — the live-boot path `alepha platform
+ * up` actually runs, as opposed to `BuildManifestTask`, which only drives
+ * `alepha build` / `--prebuilt` deploys. Both must agree on what a
+ * `$analytics` primitive means, or `up` would build without the dataset
+ * binding while a manifest-driven deploy of the same app carries it.
+ *
+ * Typed against a minimal duck-typed shape rather than a real `Alepha`
+ * instance (unlike `detectHasKV` above): registering a real `$analytics`
+ * primitive lives in `@alepha/analytics`, a separate workspace package that
+ * depends on this one — `packages/alepha` cannot depend back on it without
+ * a cycle. `alepha.primitives()` itself is just a string-keyed lookup, so a
+ * fake is enough to exercise the exact expression this mirrors.
+ */
+const detectHasAnalytics = (alepha: { primitives(name: string): unknown[] }) =>
+  alepha.primitives("$analytics").length > 0;
+
+describe("platform.detectResources — hasAnalytics decision", () => {
+  it("is false when no $analytics primitive is registered", () => {
+    const alepha = Alepha.create();
+    expect(detectHasAnalytics(alepha)).toBe(false);
+  });
+
+  it("is TRUE when a $analytics dataset is declared", () => {
+    const fake = {
+      primitives: (name: string) => (name === "$analytics" ? [{}] : []),
+    };
+    expect(detectHasAnalytics(fake)).toBe(true);
+  });
+});

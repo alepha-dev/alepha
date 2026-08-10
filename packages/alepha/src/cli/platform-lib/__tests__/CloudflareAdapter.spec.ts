@@ -251,6 +251,7 @@ describe("CloudflareAdapter", () => {
     resources: {
       hasDatabase: false,
       hasBucket: false,
+      hasAnalytics: false,
       hasKV: false,
       hasQueue: false,
       hasCron: false,
@@ -325,6 +326,7 @@ describe("CloudflareAdapter", () => {
         resources: {
           hasDatabase: true,
           hasBucket: false,
+          hasAnalytics: false,
           hasKV: false,
           hasQueue: false,
           hasCron: false,
@@ -347,6 +349,7 @@ describe("CloudflareAdapter", () => {
         resources: {
           hasDatabase: true,
           hasBucket: false,
+          hasAnalytics: false,
           hasKV: false,
           hasQueue: false,
           hasCron: false,
@@ -376,6 +379,7 @@ describe("CloudflareAdapter", () => {
         resources: {
           hasDatabase: false,
           hasBucket: true,
+          hasAnalytics: false,
           hasKV: false,
           hasQueue: false,
           hasCron: false,
@@ -398,6 +402,7 @@ describe("CloudflareAdapter", () => {
         resources: {
           hasDatabase: false,
           hasBucket: false,
+          hasAnalytics: false,
           hasKV: true,
           hasQueue: false,
           hasCron: false,
@@ -420,6 +425,7 @@ describe("CloudflareAdapter", () => {
         resources: {
           hasDatabase: false,
           hasBucket: false,
+          hasAnalytics: false,
           hasKV: false,
           hasQueue: true,
           hasCron: false,
@@ -448,6 +454,7 @@ describe("CloudflareAdapter", () => {
         resources: {
           hasDatabase: true,
           hasBucket: false,
+          hasAnalytics: false,
           hasKV: false,
           hasQueue: false,
           hasCron: false,
@@ -459,6 +466,7 @@ describe("CloudflareAdapter", () => {
         resources: {
           hasDatabase: false,
           hasBucket: false,
+          hasAnalytics: false,
           hasKV: true,
           hasQueue: false,
           hasCron: false,
@@ -549,6 +557,90 @@ describe("CloudflareAdapter", () => {
     });
   });
 
+  /**
+   * Unlike D1/R2/KV/Queue, there is no `ensureAnalytics()` step and no id to
+   * resolve — Cloudflare has no API to create an Analytics Engine dataset
+   * ahead of time, it materializes on the first `writeDataPoint()`. So
+   * "provisioning" it is entirely this env-wiring in `build()`.
+   */
+  describe("build — analytics env wiring", () => {
+    const buildCommand = "alepha build -t cloudflare";
+
+    const withAnalytics = (naming: NamingService) =>
+      makeCtx(naming, {
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasAnalytics: true,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
+      });
+
+    test("computes CLOUDFLARE_ANALYTICS_DATASET from naming when hasAnalytics and nothing is set explicitly", async ({
+      expect,
+    }) => {
+      const { adapter, shell, naming } = createTestEnv();
+
+      await adapter.build(withAnalytics(naming), createMockRun());
+
+      const call = shell.calls.find((c) => c.command === buildCommand);
+      expect(call?.options.env?.CLOUDFLARE_ANALYTICS_DATASET).toBe(
+        "acme-portal-production",
+      );
+    });
+
+    test("leaves CLOUDFLARE_ANALYTICS_DATASET unset when the app has no analytics dataset", async ({
+      expect,
+    }) => {
+      const { adapter, shell, naming } = createTestEnv();
+
+      await adapter.build(makeCtx(naming), createMockRun());
+
+      const call = shell.calls.find((c) => c.command === buildCommand);
+      expect(call?.options.env?.CLOUDFLARE_ANALYTICS_DATASET).toBeUndefined();
+    });
+
+    test("an explicit .env.<env> value wins over the naming-computed one", async ({
+      expect,
+    }) => {
+      const { adapter, fs, shell, naming } = createTestEnv();
+
+      await fs.writeFile(
+        "/project/.env.production",
+        "CLOUDFLARE_ANALYTICS_DATASET=sigil_analytics\n",
+      );
+
+      await adapter.build(withAnalytics(naming), createMockRun());
+
+      const call = shell.calls.find((c) => c.command === buildCommand);
+      expect(call?.options.env?.CLOUDFLARE_ANALYTICS_DATASET).toBe(
+        "sigil_analytics",
+      );
+    });
+
+    test("forwards an explicit .env.<env> value even with no $analytics primitive detected (escape hatch)", async ({
+      expect,
+    }) => {
+      const { adapter, fs, shell, naming } = createTestEnv();
+
+      await fs.writeFile(
+        "/project/.env.production",
+        "CLOUDFLARE_ANALYTICS_DATASET=sigil_analytics\n",
+      );
+
+      // hasAnalytics: false — mirrors an app that only ever set the env var
+      // by hand, the historical workaround this feature replaces.
+      await adapter.build(makeCtx(naming), createMockRun());
+
+      const call = shell.calls.find((c) => c.command === buildCommand);
+      expect(call?.options.env?.CLOUDFLARE_ANALYTICS_DATASET).toBe(
+        "sigil_analytics",
+      );
+    });
+  });
+
   describe("secrets", () => {
     test("pushes non-binding env vars via REST putSecret", async ({
       expect,
@@ -559,6 +651,7 @@ describe("CloudflareAdapter", () => {
         resources: {
           hasDatabase: false,
           hasBucket: false,
+          hasAnalytics: false,
           hasKV: false,
           hasQueue: false,
           hasCron: false,
@@ -603,6 +696,7 @@ describe("CloudflareAdapter", () => {
         resources: {
           hasDatabase: false,
           hasBucket: false,
+          hasAnalytics: false,
           hasKV: false,
           hasQueue: false,
           hasCron: false,
@@ -642,6 +736,7 @@ describe("CloudflareAdapter", () => {
         resources: {
           hasDatabase: false,
           hasBucket: false,
+          hasAnalytics: false,
           hasKV: false,
           hasQueue: false,
           hasCron: false,
@@ -686,6 +781,7 @@ describe("CloudflareAdapter", () => {
         resources: {
           hasDatabase: false,
           hasBucket: false,
+          hasAnalytics: false,
           hasKV: false,
           hasQueue: false,
           hasCron: false,
@@ -733,6 +829,7 @@ describe("CloudflareAdapter", () => {
         resources: {
           hasDatabase: false,
           hasBucket: false,
+          hasAnalytics: false,
           hasKV: false,
           hasQueue: false,
           hasCron: false,
@@ -775,6 +872,7 @@ describe("CloudflareAdapter", () => {
         resources: {
           hasDatabase: false,
           hasBucket: false,
+          hasAnalytics: false,
           hasKV: false,
           hasQueue: false,
           hasCron: false,
@@ -870,6 +968,7 @@ describe("CloudflareAdapter", () => {
         resources: {
           hasDatabase: false,
           hasBucket: false,
+          hasAnalytics: false,
           hasKV: false,
           hasQueue: false,
           hasCron: false,
@@ -889,6 +988,7 @@ describe("CloudflareAdapter", () => {
         resources: {
           hasDatabase: false,
           hasBucket: false,
+          hasAnalytics: false,
           hasKV: false,
           hasQueue: false,
           hasCron: false,
@@ -916,6 +1016,7 @@ describe("CloudflareAdapter", () => {
         resources: {
           hasDatabase: false,
           hasBucket: false,
+          hasAnalytics: false,
           hasKV: false,
           hasQueue: false,
           hasCron: false,
@@ -965,6 +1066,7 @@ describe("CloudflareAdapter", () => {
         resources: {
           hasDatabase: false,
           hasBucket: false,
+          hasAnalytics: false,
           hasKV: false,
           hasQueue: false,
           hasCron: false,
@@ -1003,6 +1105,7 @@ describe("CloudflareAdapter", () => {
         resources: {
           hasDatabase: true,
           hasBucket: true,
+          hasAnalytics: false,
           hasKV: false,
           hasQueue: false,
           hasCron: false,
@@ -1047,6 +1150,7 @@ describe("CloudflareAdapter", () => {
         resources: {
           hasDatabase: true,
           hasBucket: true,
+          hasAnalytics: false,
           hasKV: true,
           hasQueue: false,
           hasCron: false,
@@ -1085,6 +1189,7 @@ describe("CloudflareAdapter", () => {
         resources: {
           hasDatabase: true,
           hasBucket: false,
+          hasAnalytics: false,
           hasKV: false,
           hasQueue: false,
           hasCron: false,

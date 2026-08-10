@@ -104,6 +104,10 @@ export class PlatformCommand {
           resources.push({ label: "R2", value: namingCtx.r2() });
         }
 
+        if (app.resources.hasAnalytics) {
+          resources.push({ label: "Analytics", value: namingCtx.analytics() });
+        }
+
         if (app.resources.hasKV) {
           resources.push({ label: "KV", value: namingCtx.kv() });
         }
@@ -826,6 +830,7 @@ export class PlatformCommand {
         resources: {
           hasDatabase: true,
           hasBucket: false,
+          hasAnalytics: false,
           hasKV: false,
           hasQueue: false,
           hasCron: false,
@@ -991,6 +996,7 @@ export class PlatformCommand {
   protected detectResources(alepha: any): DetectedResources {
     let hasDatabase = false;
     let hasBucket = false;
+    let hasAnalytics = false;
     let hasKV = false;
     let hasQueue = false;
     let hasCron = false;
@@ -1003,6 +1009,17 @@ export class PlatformCommand {
     try {
       const storages = alepha.primitives("$storage");
       hasBucket = storages.length > 0;
+    } catch {}
+
+    try {
+      // Same primitive check as `BuildManifestTask`. Note there is no
+      // `CLOUDFLARE_ANALYTICS_DATASET` escape hatch here, deliberately: the
+      // `hasBucket` check just above has never had an `R2_BUCKET_NAME` one
+      // either, even though `BuildManifestTask` does — this live-boot path
+      // only ever sees primitives, matching how R2 detection already works
+      // here today.
+      const datasets = alepha.primitives("$analytics");
+      hasAnalytics = datasets.length > 0;
     } catch {}
 
     try {
@@ -1035,6 +1052,6 @@ export class PlatformCommand {
       hasCron = cron.getCronJobs().length > 0;
     } catch {}
 
-    return { hasDatabase, hasBucket, hasKV, hasQueue, hasCron };
+    return { hasDatabase, hasBucket, hasAnalytics, hasKV, hasQueue, hasCron };
   }
 }

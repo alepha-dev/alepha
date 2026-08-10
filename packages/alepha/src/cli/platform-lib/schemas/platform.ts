@@ -48,6 +48,7 @@ export type PlatformStatusOutput = Infer<typeof platformStatusSchema>;
 export const platformPlanAppResourcesSchema = z.object({
   hasDatabase: z.boolean(),
   hasBucket: z.boolean(),
+  hasAnalytics: z.boolean(),
   hasKV: z.boolean(),
   hasQueue: z.boolean(),
   hasCron: z.boolean(),

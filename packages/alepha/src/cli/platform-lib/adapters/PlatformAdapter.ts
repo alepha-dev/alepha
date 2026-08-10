@@ -27,6 +27,7 @@ export interface ExportDbOptions {
 export interface DetectedResources {
   hasDatabase: boolean;
   hasBucket: boolean;
+  hasAnalytics: boolean;
   hasKV: boolean;
   hasQueue: boolean;
   hasCron: boolean;
