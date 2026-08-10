@@ -1,9 +1,12 @@
 import { $module } from "alepha";
+import { AlephaApiJobs } from "alepha/api/jobs";
+import { AnalyticsRollupJobs } from "./jobs/AnalyticsRollupJobs.ts";
 import { $analytics } from "./primitives/$analytics.ts";
 import { AnalyticsProvider } from "./providers/AnalyticsProvider.ts";
 import { MemoryAnalyticsProvider } from "./providers/MemoryAnalyticsProvider.ts";
 import { OrmAnalyticsProvider } from "./providers/OrmAnalyticsProvider.ts";
 
+export * from "./jobs/AnalyticsRollupJobs.ts";
 export * from "./planner/AnalyticsBuckets.ts";
 export * from "./planner/AnalyticsSlotMap.ts";
 export * from "./primitives/$analytics.ts";
@@ -28,6 +31,9 @@ export * from "./services/AnalyticsEngineSql.ts";
  * Worker, so selecting it under Node would mean every `record()` call throws.
  * `index.workerd.ts` is the entry that selects it, gated on
  * `CLOUDFLARE_ANALYTICS_DATASET`.
+ *
+ * `AnalyticsRollupJobs` is deliberately **not** wired here — see
+ * {@link AlephaAnalyticsRollup} just below for why it is a separate module.
  *
  * @module alepha.analytics
  */
@@ -59,4 +65,38 @@ export const AlephaAnalytics = $module({
       use: alepha.isTest() ? MemoryAnalyticsProvider : OrmAnalyticsProvider,
     });
   },
+});
+
+/**
+ * The hourly retention sweep, as its own module.
+ *
+ * Not folded into {@link AlephaAnalytics} above, even though the plan this
+ * shipped from asked for exactly that. `AnalyticsRollupJobs` uses `$job`,
+ * and `$job` is never test-substituted the way `AnalyticsProvider` is:
+ * `JobProvider` holds a real `$repository(jobExecutionEntity)`, so
+ * `alepha/api/jobs` always needs a working `DatabaseProvider`, in every
+ * environment including tests (see `$job.spec.ts` / `AuditJobs.spec.ts`,
+ * which both explicitly attach `AlephaOrmPostgres` for exactly this reason).
+ *
+ * Folding `imports: [AlephaApiJobs]` and `services: [AnalyticsRollupJobs]`
+ * into `AlephaAnalytics` was tried first, and it broke `analytics.spec.ts`
+ * outright: `$module.register()` wires `imports[]` and auto-injects every
+ * `services[]` entry unconditionally, so merely declaring one `$analytics()`
+ * field anywhere — the one thing this package promises works with no
+ * database at all — started requiring a live Postgres connection to boot.
+ * Nine tests failed with "Postgres URL is not supported for SQLite
+ * provider" before this was caught.
+ *
+ * Splitting it out preserves the invariant `AlephaAnalytics`'s own doc
+ * already states for `AlephaOrm`: nothing here is real infrastructure until
+ * something asks for it. An app that wants the scheduled sweep imports this
+ * module explicitly, alongside `AlephaAnalytics` — the same relationship
+ * `AlephaApiJobsQueue` already has to `AlephaApiJobs`.
+ *
+ * @module alepha.analytics.rollup
+ */
+export const AlephaAnalyticsRollup = $module({
+  name: "alepha.analytics.rollup",
+  imports: [AlephaApiJobs],
+  services: [AnalyticsRollupJobs],
 });

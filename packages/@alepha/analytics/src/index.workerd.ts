@@ -1,10 +1,13 @@
 import { $module } from "alepha";
+import { AlephaApiJobs } from "alepha/api/jobs";
+import { AnalyticsRollupJobs } from "./jobs/AnalyticsRollupJobs.ts";
 import { $analytics } from "./primitives/$analytics.ts";
 import { AnalyticsProvider } from "./providers/AnalyticsProvider.ts";
 import { MemoryAnalyticsProvider } from "./providers/MemoryAnalyticsProvider.ts";
 import { OrmAnalyticsProvider } from "./providers/OrmAnalyticsProvider.ts";
 import { WaeAnalyticsProvider } from "./providers/WaeAnalyticsProvider.ts";
 
+export * from "./jobs/AnalyticsRollupJobs.ts";
 export * from "./planner/AnalyticsBuckets.ts";
 export * from "./planner/AnalyticsSlotMap.ts";
 export * from "./primitives/$analytics.ts";
@@ -35,6 +38,9 @@ export * from "./services/AnalyticsEngineSql.ts";
  * rather than taking it as a constructor argument nothing here could supply.
  * See its class doc for the full design.
  *
+ * `AnalyticsRollupJobs` is deliberately **not** wired here — see
+ * {@link AlephaAnalyticsRollup} just below for why it is a separate module.
+ *
  * @module alepha.analytics
  */
 export const AlephaAnalytics = $module({
@@ -62,4 +68,17 @@ export const AlephaAnalytics = $module({
           : OrmAnalyticsProvider,
     });
   },
+});
+
+/**
+ * The hourly retention sweep, as its own module — see `index.ts` for the
+ * full reasoning (identical here; both entries hit the same DB-cascade
+ * problem when this was folded into `AlephaAnalytics` directly).
+ *
+ * @module alepha.analytics.rollup
+ */
+export const AlephaAnalyticsRollup = $module({
+  name: "alepha.analytics.rollup",
+  imports: [AlephaApiJobs],
+  services: [AnalyticsRollupJobs],
 });
