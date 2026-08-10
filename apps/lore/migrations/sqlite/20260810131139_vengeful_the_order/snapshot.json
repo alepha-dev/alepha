@@ -1,7 +1,7 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "a5b9bc9f-833e-44bf-a2f7-6da64b3ecff2",
+  "id": "09e12d7a-31ef-49de-b7f6-194254e8110c",
   "prevIds": ["94be8a50-2eb6-467e-9909-93e7df027a38"],
   "ddl": [
     {
@@ -4013,6 +4013,50 @@
       "name": "attempts",
       "entityType": "columns",
       "table": "verification"
+    },
+    {
+      "columns": ["sigil_id"],
+      "tableTo": "sigils",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_analytics_sigil_views_raw_sigil_id_sigils_id_fk",
+      "entityType": "fks",
+      "table": "analytics_sigil_views_raw"
+    },
+    {
+      "columns": ["sigil_id"],
+      "tableTo": "sigils",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_analytics_sigil_views_rolled_sigil_id_sigils_id_fk",
+      "entityType": "fks",
+      "table": "analytics_sigil_views_rolled"
+    },
+    {
+      "columns": ["sigil_id"],
+      "tableTo": "sigils",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_analytics_sigil_vitals_raw_sigil_id_sigils_id_fk",
+      "entityType": "fks",
+      "table": "analytics_sigil_vitals_raw"
+    },
+    {
+      "columns": ["sigil_id"],
+      "tableTo": "sigils",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_analytics_sigil_vitals_rolled_sigil_id_sigils_id_fk",
+      "entityType": "fks",
+      "table": "analytics_sigil_vitals_rolled"
     },
     {
       "columns": ["project_id"],

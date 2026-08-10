@@ -1,5 +1,11 @@
+import {
+  type AnalyticsDataset,
+  AnalyticsProvider,
+  type AnalyticsRow,
+  MemoryAnalyticsProvider,
+} from "@alepha/analytics";
 import { SIGIL_INGEST_PATH } from "@alepha/sigil/paths";
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake } from "alepha/fake";
@@ -16,6 +22,21 @@ import { sigilVitalsHourly } from "../src/api/entities/sigilVitalsHourly.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { SigilTokenService } from "../src/api/services/SigilTokenService.ts";
 
+/**
+ * A mirrored-write provider that always fails. Used to prove
+ * `SigilIngestService.mirrorAnalyticsWrite` actually isolates the dual-write:
+ * with this substituted in, ingest must still answer `204` and the legacy
+ * tables must still receive the row.
+ */
+class ThrowingAnalyticsProvider extends MemoryAnalyticsProvider {
+  public override async record(
+    dataset: AnalyticsDataset,
+    rows: AnalyticsRow[],
+  ): Promise<void> {
+    throw new AlephaError("Simulated analytics provider failure");
+  }
+}
+
 class Probe {
   projects = $repository(projects);
   sigils = $repository(sigils);
@@ -27,8 +48,17 @@ class Probe {
  * Boots the real ingest HTTP path, the same way `sigil-ingest.spec.ts` does,
  * so the dual-write assertions below exercise `SigilIngestService.absorb`
  * exactly as production would, not a hand-called method.
+ *
+ * `analyticsProvider`, when given, is substituted for `AnalyticsProvider`
+ * BEFORE any module wires — a substitution is only honoured the first time
+ * it is recorded (`Alepha.with`'s "first call wins, later calls are
+ * no-ops when `optional`" rule), and `AlephaAnalytics`'s own default pick is
+ * exactly that kind of optional call. Recording it here first is what lets a
+ * test force the mirrored write to fail.
  */
-const setup = async () => {
+const setup = async (
+  analyticsProvider?: new (...args: any[]) => AnalyticsProvider,
+) => {
   const alepha = Alepha.create({
     env: {
       LOG_LEVEL: "error",
@@ -38,6 +68,10 @@ const setup = async () => {
       PUBLIC_URL: "https://lore.test",
     },
   });
+
+  if (analyticsProvider) {
+    alepha.with({ provide: AnalyticsProvider, use: analyticsProvider as any });
+  }
 
   alepha.with(AlephaOrm);
   alepha.with(AlephaServer);
@@ -180,5 +214,42 @@ describe("Lore analytics datasets", () => {
       select: { samples: "sum" },
     });
     expect(vitalsResult.rows).toEqual([{ metric: "lcp", samples: 1 }]);
+  });
+
+  /**
+   * `SigilIngestService.mirrorAnalyticsWrite` must isolate a failure on the
+   * new, zero-production-traffic path: ingest still answers `204` (the
+   * legacy write already committed before the mirrored call runs), the
+   * legacy table still received the row, and — because `absorbViews` and
+   * `absorbVitals` are independent — a throw mirroring views must not skip
+   * the legacy vitals write or the `lastSeenAt` stamp either. Without the
+   * try/catch this test pins, a transient error on the dual-write path would
+   * turn a healthy ingest into a `5xx` and silently drop a legacy write that
+   * would otherwise have succeeded.
+   */
+  it("keeps ingest healthy and the legacy writes intact when the mirrored write throws", async () => {
+    const { probe, sigil, post } = await setup(ThrowingAnalyticsProvider);
+
+    const res = await post({
+      views: [{ path: "/home" }],
+      vitals: [{ path: "/home", metric: "lcp", value: 900 }],
+    });
+    expect(res.status).toBe(204);
+
+    const legacyViews = await probe.views.findMany({
+      where: { sigilId: { eq: sigil.id } },
+    });
+    expect(legacyViews).toHaveLength(1);
+    expect(legacyViews[0].count).toBe(1);
+
+    const legacyVitals = await probe.vitals.findMany({
+      where: { sigilId: { eq: sigil.id } },
+    });
+    expect(legacyVitals).toHaveLength(1);
+
+    const after = await probe.sigils.findOne({
+      where: { id: { eq: sigil.id } },
+    });
+    expect(after?.lastSeenAt).toBeTruthy();
   });
 });
