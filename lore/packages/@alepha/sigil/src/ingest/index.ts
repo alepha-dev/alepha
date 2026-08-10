@@ -37,7 +37,6 @@
  * Only the parts that are storage are here.
  */
 
-export * from "./AnalyticsEngineSql.ts";
 export * from "./AnalyticsStore.ts";
 export * from "./createOrmAnalyticsStore.ts";
 export * from "./createSigilAnalyticsEntities.ts";

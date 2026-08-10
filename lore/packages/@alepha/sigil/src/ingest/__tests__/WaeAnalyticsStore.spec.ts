@@ -1,8 +1,7 @@
+import { AnalyticsEngineSql, FakeAnalyticsEngine } from "@alepha/analytics";
 import { describe, expect, it } from "vitest";
-import { AnalyticsEngineSql } from "../AnalyticsEngineSql.ts";
 import { WaeAnalyticsStore } from "../WaeAnalyticsStore.ts";
 import { analyticsStoreConformanceTests } from "./analyticsStoreConformance.ts";
-import { FakeAnalyticsEngine } from "./FakeAnalyticsEngine.ts";
 
 const A = "11111111-1111-4111-8111-111111111111";
 
