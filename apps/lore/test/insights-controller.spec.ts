@@ -1,5 +1,5 @@
 import { VITALS_BUCKETS } from "@alepha/sigil/vitals";
-import { Alepha, z } from "alepha";
+import { $inject, Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
@@ -11,11 +11,10 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import { InsightsController } from "../src/api/controllers/InsightsController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { SigilController } from "../src/api/controllers/SigilController.ts";
+import { LoreAnalytics } from "../src/api/entities/loreAnalytics.ts";
 import { members } from "../src/api/entities/members.ts";
 import { sigilErrorGroups } from "../src/api/entities/sigilErrorGroups.ts";
 import { sigilUniquesDaily } from "../src/api/entities/sigilUniquesDaily.ts";
-import { sigilViewsHourly } from "../src/api/entities/sigilViewsHourly.ts";
-import { sigilVitalsHourly } from "../src/api/entities/sigilVitalsHourly.ts";
 import { LoreApi } from "../src/api/index.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
@@ -26,17 +25,79 @@ const userDataSchema = z.object({
 });
 
 /**
- * Writes the aggregate tables directly.
+ * Feeds fixtures straight into whatever `InsightsController` reads.
+ *
+ * Views and vitals are written into the `sigil_views` / `sigil_vitals`
+ * `$analytics()` datasets — what the controller has read since Task 12.
+ * Unique visitors and error groups stay on the legacy aggregate tables,
+ * because those two questions stayed on `LoreAnalyticsStore` (a distinct
+ * count cannot survive sampling or a rollup, and an error group keeps the
+ * *first* stack sample, which needs a read before every write — see
+ * `LoreAnalytics`'s class doc).
  *
  * Going through the ingest endpoint would only ever produce rows in the current
  * hour, and every assertion here is about a window.
  */
 class Probe {
   members = $repository(members);
-  views = $repository(sigilViewsHourly);
   uniques = $repository(sigilUniquesDaily);
-  vitals = $repository(sigilVitalsHourly);
   errorGroups = $repository(sigilErrorGroups);
+  datasets = $inject(LoreAnalytics);
+
+  views = {
+    /**
+     * One `sigil_views` row: the dimension triple (`sigilId`, `path`,
+     * `country`) plus the `count` measure, stamped at `hour` rather than the
+     * clock — every fixture in this file backdates into a specific window.
+     */
+    create: async (sample: {
+      sigilId: string;
+      hour: string;
+      path: string;
+      country: string;
+      count: number;
+    }): Promise<void> => {
+      await this.datasets.views.record(sample);
+    },
+  };
+
+  vitals = {
+    /**
+     * One `sigil_vitals` histogram, from the same `b0`..`b6` bucket-count
+     * shorthand the old `sigil_vitals_hourly` columns used — one dataset row
+     * per bucket actually passed, `bucket` taken from the column name.
+     */
+    create: async (sample: {
+      sigilId: string;
+      hour: string;
+      metric: string;
+      path: string;
+      b0?: number;
+      b1?: number;
+      b2?: number;
+      b3?: number;
+      b4?: number;
+      b5?: number;
+      b6?: number;
+    }): Promise<void> => {
+      const { sigilId, hour, metric, path, ...buckets } = sample;
+      const rows = Object.entries(buckets)
+        .filter(
+          (entry): entry is [string, number] => typeof entry[1] === "number",
+        )
+        .map(([column, samples]) => ({
+          sigilId,
+          hour,
+          metric,
+          path,
+          bucket: Number(column.slice(1)),
+          samples,
+        }));
+      if (rows.length > 0) {
+        await this.datasets.vitals.recordMany(rows);
+      }
+    },
+  };
 }
 
 interface TestContext {
@@ -864,5 +925,28 @@ describe("InsightsController", () => {
         { user: stranger },
       ),
     ).rejects.toThrow();
+  });
+
+  describe("insights sampling disclosure", () => {
+    /*
+      `estimated` / `sampleInterval` exist so a UI can label a number as a
+      sample rather than a measurement. The relational backend this suite
+      runs against never samples, so `false` is the only value it can ever
+      pin — but the field has to reach the wire before Task 13's UI can read
+      it at all, and a field absent from `schema.response` is silently
+      dropped no matter what the handler returns.
+    */
+    it("reports whether the numbers are estimated", async ({ expect }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      await createSigil(ctx, projectId, "lore-prod", owner);
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { projectId }, query: { range: "30d" } },
+        { user: owner },
+      );
+
+      expect(res.data.estimated).toBe(false);
+    });
   });
 });
