@@ -280,7 +280,11 @@ describe("WaeAnalyticsProvider", () => {
         result.rows.map((row) => [row.path, row.count]),
       );
       expect(byPath).toEqual({ "/x": 5, "/y": 9 });
-      expect(engine.lastQuery).toContain("GROUP BY blob4");
+      // The ALIAS, not `blob4`. Analytics Engine rejects an expression in
+      // GROUP BY, and grouping by the projected name is what it accepts —
+      // this assertion pinned the pre-2026-08-11 form, which the real
+      // endpoint answers with a 422.
+      expect(engine.lastQuery).toContain("GROUP BY path");
     } finally {
       await alepha.stop();
     }

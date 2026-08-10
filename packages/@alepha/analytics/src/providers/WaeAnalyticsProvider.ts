@@ -502,7 +502,19 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
             ? `blob${AnalyticsSlotMap.HOUR_SLOT}`
             : `blob${map.blobSlot(name)}`;
       projections.push(`${expression} AS ${name}`);
-      grouping.push(expression);
+      // ⚠️ The ALIAS, not the expression — `GROUP BY substring(blob2, 1, 10)`
+      // is a 422 here ("in the GROUP BY clause you may only provide column
+      // names"), while every relational backend accepts it. Only the `day`
+      // pseudo-dimension is affected in practice, since it is the one
+      // grouping key that is not already a bare `blobN`, but grouping by the
+      // alias is correct for all of them and keeps the two clauses from
+      // drifting apart.
+      //
+      // No new injection surface: `name` is either the `day`/`hour` literal
+      // or a dimension `map.blobSlot(name)` has already accepted, and it is
+      // spliced into the projection as `AS ${name}` on the line above
+      // regardless.
+      grouping.push(name);
     }
 
     for (const [measure, aggregate] of Object.entries(query.select)) {

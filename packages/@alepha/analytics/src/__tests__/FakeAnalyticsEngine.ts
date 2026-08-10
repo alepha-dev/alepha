@@ -123,6 +123,22 @@ export class FakeAnalyticsEngine implements AnalyticsEngineDataset {
         "Analytics Engine SQL failed (422): Input was invalid: COUNT() function must have 0 arguments: 1",
       );
     }
+
+    // GROUP BY takes column names — or a SELECT alias — and nothing else. An
+    // expression there is a 422, which is how `GROUP BY substring(blob2, 1,
+    // 10)` (the `day` pseudo-dimension) reached production and broke every
+    // grouped read. Found only after the `count()` fix above unblocked the
+    // query far enough for the parser to reach this clause: these two shipped
+    // one deploy apart for no reason other than that the first error masked
+    // the second.
+    const groupBy = /GROUP BY\s+([\s\S]+?)(?:\s+HAVING|$)/i.exec(sql)?.[1];
+    for (const term of this.splitTopLevel(groupBy ?? "", ", ")) {
+      if (term.trim() && !/^\w+$/.test(term.trim())) {
+        throw new AlephaError(
+          `Analytics Engine SQL failed (422): Input was invalid: in the GROUP BY clause you may only provide column names: ${term.trim()}`,
+        );
+      }
+    }
   }
 
   protected execute(sql: string): AnalyticsEngineRow[] {
@@ -139,8 +155,26 @@ export class FakeAnalyticsEngine implements AnalyticsEngineDataset {
     );
 
     const projections = this.splitTopLevel(select, ", ").map((p) => p.trim());
+
+    // GROUP BY names SELECT aliases (the dialect allows nothing else — see
+    // `assertDialect`), so each term has to be resolved back to the
+    // expression it aliases before it can be evaluated against a point.
+    const aliased = new Map<string, string>();
+    for (const projection of projections) {
+      const match = /^(.*)\s+AS\s+(\w+)$/i.exec(projection);
+      if (match) aliased.set(match[2], match[1].trim());
+    }
     const groupExpressions = groupBy
-      ? this.splitTopLevel(groupBy, ", ").map((e) => e.trim())
+      ? this.splitTopLevel(groupBy, ", ").map((term) => {
+          const name = term.trim();
+          const expression = aliased.get(name);
+          if (!expression) {
+            throw new AlephaError(
+              `FakeAnalyticsEngine: GROUP BY '${name}' names no SELECT alias.`,
+            );
+          }
+          return expression;
+        })
       : [];
 
     const groups = new Map<string, Point[]>();
