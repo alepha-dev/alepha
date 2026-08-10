@@ -21,13 +21,13 @@ export * from "./services/AnalyticsEngineSql.ts";
  * Portable analytics datasets.
  *
  * Binds the relational provider under Node, and the memory provider under
- * test. `WaeAnalyticsProvider` is exported here too — it has no
- * platform-specific import and its read path is plain HTTP, so a Node script
- * can construct one to query a real Analytics Engine account — but it is
- * never auto-wired by this module's `register()`; only `index.workerd.ts`'s
- * docstring covers why (it needs a write binding that only exists inside a
- * Worker, and its constructor shape cannot be `alepha.with({ use })`'d
- * generically either way).
+ * test. `WaeAnalyticsProvider` is exported here too, and — unlike its first
+ * design — it is now DI-constructible like any other provider (see its class
+ * doc). It is still never auto-wired by *this* module's `register()`, though:
+ * its write path reads a `cloudflare.env` binding that only exists inside a
+ * Worker, so selecting it under Node would mean every `record()` call throws.
+ * `index.workerd.ts` is the entry that selects it, gated on
+ * `CLOUDFLARE_ANALYTICS_DATASET`.
  *
  * @module alepha.analytics
  */

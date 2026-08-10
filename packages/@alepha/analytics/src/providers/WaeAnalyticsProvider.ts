@@ -1,4 +1,5 @@
-import { AlephaError } from "alepha";
+import { $env, $hook, $inject, Alepha, AlephaError, z } from "alepha";
+import { $logger } from "alepha/logger";
 import { AnalyticsBuckets } from "../planner/AnalyticsBuckets.ts";
 import { AnalyticsSlotMap } from "../planner/AnalyticsSlotMap.ts";
 import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
@@ -9,6 +10,7 @@ import type {
 } from "../schemas/analyticsQuerySchema.ts";
 import { AnalyticsEngineSql } from "../services/AnalyticsEngineSql.ts";
 import { AnalyticsProvider, type AnalyticsRow } from "./AnalyticsProvider.ts";
+import { OrmAnalyticsProvider } from "./OrmAnalyticsProvider.ts";
 
 /**
  * The write half of a Workers Analytics Engine dataset binding.
@@ -26,29 +28,69 @@ export interface AnalyticsEngineDataset {
   }): void;
 }
 
-export interface WaeAnalyticsProviderOptions {
-  dataset: AnalyticsEngineDataset;
-  datasetName: string;
-  sql: AnalyticsEngineSql;
-  /**
-   * Where rolled data lives. **Not optional** — see the class docstring.
-   */
-  cold: AnalyticsProvider;
-}
+/**
+ * `CLOUDFLARE_ANALYTICS_DATASET` does double duty, mirroring
+ * `R2FileStorageProvider`'s `R2_BUCKET_NAME`: it is both the property key
+ * this provider looks up on `cloudflareEnv` for the write binding, and the
+ * table name spliced into `FROM` for reads — i.e. `alepha build` is expected
+ * to emit a `wrangler.toml` entry whose `binding` and `dataset` are the same
+ * string. All three variables are `.optional()` so the provider can be
+ * registered (and constructed) in non-Workers contexts — Node `yarn start`,
+ * build-time introspection, under `alepha.isTest()` where it is never
+ * selected — without forcing every dev to set them.
+ */
+const envSchema = z.object({
+  CLOUDFLARE_ANALYTICS_DATASET: z
+    .text({
+      description:
+        "Analytics Engine dataset name — used both as the wrangler.toml binding key (env.<name>) for writes and as the SQL FROM table for reads. Unset means this provider is never selected; see index.workerd.ts.",
+    })
+    .optional(),
+  CLOUDFLARE_ACCOUNT_ID: z
+    .text({
+      description:
+        "Cloudflare account id, for the Analytics Engine SQL read API (there is no read binding — see AnalyticsEngineSql).",
+    })
+    .optional(),
+  CLOUDFLARE_API_TOKEN: z
+    .text({
+      description:
+        "API token scoped Account · Account Analytics · Read, for the Analytics Engine SQL read API.",
+    })
+    .optional(),
+});
 
 /**
  * Hot rows on Workers Analytics Engine, rolled rows in a durable store.
  *
- * A plain class, not a DI service: it takes its dependencies as a
- * constructor options object rather than `$inject`/`$env` fields, on
- * purpose. Its `dataset` binding and `sql` credentials only exist inside a
- * deployed Worker, `vitest` cannot bind a real dataset, and `wrangler dev`
- * treats `writeDataPoint` as a no-op — so nothing about this class can be
- * exercised generically the way `OrmAnalyticsProvider` is. An app's own
- * Cloudflare bootstrap is expected to read the real binding and credentials
- * (the same way `R2FileStorageProvider` reads `cloudflare.env` at `start`)
- * and construct this class explicitly; `index.workerd.ts` exports it for
- * that purpose but does not auto-wire it — see that module's docstring.
+ * A DI-injectable provider, not a plain constructor-options class — this is
+ * the second design of this class. The first took `dataset` / `sql` / `cold`
+ * as constructor options, which made it easy to unit test but impossible for
+ * `index.workerd.ts` to select automatically: `alepha.with({ provide, use })`
+ * constructs `use` via `alepha.inject(use)`, which needs a class DI can build
+ * on its own. Follows `CloudflareEmailProvider` closely — the closest
+ * existing analogue, combining a **write-only Workers binding** with an
+ * **account-scoped REST API** gated by `CLOUDFLARE_ACCOUNT_ID` /
+ * `CLOUDFLARE_API_TOKEN`:
+ *
+ * - `$inject(Alepha)` + `$hook({ on: "start" })` reads
+ *   `this.alepha.get("cloudflare.env")` and stores the binding in a
+ *   `protected` field, exactly like `R2FileStorageProvider` and
+ *   `CloudflareEmailProvider`.
+ * - `cold = $inject(OrmAnalyticsProvider)` is the **concrete** class, not
+ *   `$inject(AnalyticsProvider)`. Injecting the abstract seam here would be
+ *   circular the moment `index.workerd.ts`'s `register()` substitutes this
+ *   very class in for that seam — this provider would try to inject itself.
+ * - `AnalyticsEngineSql` is still a plain constructor-options class (nothing
+ *   about it needs DI), just built internally by {@link sql} rather than
+ *   passed in — the same relationship `CloudflareEmailProvider.sendViaRest`
+ *   has with `fetch`.
+ *
+ * Testability does not regress: `alepha.set("cloudflare.env", { NAME: fake })`
+ * before `start()` substitutes the write binding, the same pattern
+ * `CloudflareEmailProvider.spec.ts` uses; a test subclass overriding
+ * {@link httpFetch} substitutes the read transport, the same pattern
+ * `CloudflareEmailRest.spec.ts` uses for `httpPost`.
  *
  * ## Every number read back is an estimate
  *
@@ -67,15 +109,14 @@ export interface WaeAnalyticsProviderOptions {
  * hot window — the same compromise unique visitors already forced on
  * `WaeAnalyticsStore` in `@alepha/sigil`.
  *
- * `rollup`/`prune` therefore delegate to a composed `cold` provider — but
- * `record()` never writes to `cold`, only to Analytics Engine. Nothing in
- * this class moves a row from hot to cold; that migration (read the folded
- * aggregate off Analytics Engine via `sql.query`, write it into `cold` as an
- * *exact* row even though it started as an *estimate*) is a real, currently
- * unaddressed gap, deliberately left for a dedicated scheduled job rather
- * than invented here without a spec for how an estimate becomes a permanent
- * exact number. Delegating still buys two things today: a `cold` composed
- * from several datasets gets driven on the same schedule as everything else,
+ * `rollup`/`prune` delegate to `cold` — but `record()` never writes to `cold`,
+ * only to Analytics Engine. Nothing in this class moves a row from hot to
+ * cold; that migration (read the folded aggregate off Analytics Engine via
+ * `sql().query`, write it into `cold` as an *exact* row even though it
+ * started as an *estimate*) is a real, currently unaddressed gap, left for a
+ * dedicated scheduled job rather than invented here without a spec for how an
+ * estimate becomes a permanent exact number. Delegating still buys two things
+ * today: `cold` gets driven on the same schedule as everything else it holds,
  * and both calls stay safe and idempotent no matter when the migration job
  * lands.
  *
@@ -91,12 +132,60 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    */
   public static readonly MAX_HOT_DAYS = 90;
 
-  protected readonly options: WaeAnalyticsProviderOptions;
+  protected readonly alepha = $inject(Alepha);
+  protected readonly env = $env(envSchema);
+  protected readonly log = $logger();
 
-  constructor(options: WaeAnalyticsProviderOptions) {
-    super();
-    this.options = options;
-  }
+  /**
+   * The durable store for `rollup`/`prune`. The concrete class — see the
+   * class doc for why the abstract `AnalyticsProvider` seam would be
+   * circular here.
+   */
+  protected readonly cold = $inject(OrmAnalyticsProvider);
+
+  protected binding?: AnalyticsEngineDataset;
+  protected sqlClient?: AnalyticsEngineSql;
+
+  /**
+   * Tolerates booting off-Workers, the same as `CloudflareEmailProvider`'s
+   * `onStart`: the provider has to be constructible (and startable) under
+   * Node — `yarn start`, build-time introspection — without a binding
+   * present, so this warns rather than throws. `record()`/`query()` throw
+   * their own clear errors if actually called with no binding wired.
+   */
+  protected readonly onStart = $hook({
+    on: "start",
+    handler: () => {
+      const cloudflareEnv = this.alepha.get("cloudflare.env") as
+        | Record<string, unknown>
+        | undefined;
+      if (!cloudflareEnv) {
+        this.log.warn(
+          "Analytics Engine inert: 'cloudflare.env' not set (not running on Workers).",
+        );
+        return;
+      }
+
+      const name = this.env.CLOUDFLARE_ANALYTICS_DATASET;
+      if (!name) {
+        this.log.warn(
+          "Analytics Engine inert: CLOUDFLARE_ANALYTICS_DATASET is not set.",
+        );
+        return;
+      }
+
+      const binding = cloudflareEnv[name] as AnalyticsEngineDataset | undefined;
+      if (!binding) {
+        this.log.warn(
+          `Analytics Engine inert: binding '${name}' not found in Workers environment.`,
+        );
+        return;
+      }
+
+      this.binding = binding;
+      this.log.info(`Analytics Engine ready (dataset: ${name})`);
+    },
+  });
 
   /**
    * The hot tier has nothing to declare — Analytics Engine has no schema to
@@ -108,12 +197,11 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    *   dataset declares, so a longer window has to fail loud at declaration
    *   time, not once a report quietly comes up short months later.
    * - `cold` is registered, so its own tables exist before `alepha.start()`
-   *   — the same eager-registration rule `OrmAnalyticsProvider` follows,
-   *   inherited here because `cold` typically *is* an `OrmAnalyticsProvider`.
+   *   — the same eager-registration rule `OrmAnalyticsProvider` follows.
    */
   public register(dataset: AnalyticsDataset): void {
     this.assertRetention(dataset);
-    this.options.cold.register(dataset);
+    this.cold.register(dataset);
   }
 
   /**
@@ -138,6 +226,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     dataset: AnalyticsDataset,
     rows: AnalyticsRow[],
   ): Promise<void> {
+    const binding = this.requireBinding();
     const map = AnalyticsSlotMap.forDataset(dataset);
 
     for (const row of rows) {
@@ -153,7 +242,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
         doubles[map.doubleSlot(name) - 1] = Number(row[name] ?? 0);
       }
 
-      this.options.dataset.writeDataPoint({
+      binding.writeDataPoint({
         indexes: [String(row[dataset.index] ?? "")],
         blobs: blobs.map((value) => value ?? null),
         doubles: doubles.map((value) => value ?? 0),
@@ -227,9 +316,9 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
 
     projections.push("max(_sample_interval) AS _si");
 
-    const rows = await this.options.sql.query(`
+    const rows = await this.sql().query(`
       SELECT ${projections.join(", ")}
-      FROM ${this.options.datasetName}
+      FROM ${this.requireDatasetName()}
       WHERE ${conditions.join(" AND ")}
       ${grouping.length ? `GROUP BY ${grouping.join(", ")}` : ""}
       HAVING COUNT(*) > 0
@@ -280,11 +369,11 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    * what this does and does not achieve.
    */
   public rollup(dataset: AnalyticsDataset, before: string): Promise<void> {
-    return this.options.cold.rollup(dataset, before);
+    return this.cold.rollup(dataset, before);
   }
 
   public prune(dataset: AnalyticsDataset, before: string): Promise<void> {
-    return this.options.cold.prune(dataset, before);
+    return this.cold.prune(dataset, before);
   }
 
   /**
@@ -302,5 +391,71 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     if (aggregate === "count") return "sum(_sample_interval)";
     if (aggregate === "sum") return `sum(${slot} * _sample_interval)`;
     throw new AlephaError(`Received an unknown aggregate '${aggregate}'.`);
+  }
+
+  /**
+   * The write binding, or a clear error naming exactly what is missing.
+   * There is no REST fallback for writes the way `CloudflareEmailProvider`
+   * has one for sending — Analytics Engine's SQL API is read-only.
+   */
+  protected requireBinding(): AnalyticsEngineDataset {
+    if (this.binding) return this.binding;
+    const name = this.env.CLOUDFLARE_ANALYTICS_DATASET;
+    throw new AlephaError(
+      !name
+        ? "Cannot write to Analytics Engine: CLOUDFLARE_ANALYTICS_DATASET is not set."
+        : `Cannot write to Analytics Engine: binding '${name}' was not found in the Workers environment at start(). Is this running on Workers with a matching wrangler.toml entry?`,
+    );
+  }
+
+  protected requireDatasetName(): string {
+    const name = this.env.CLOUDFLARE_ANALYTICS_DATASET;
+    if (!name) {
+      throw new AlephaError(
+        "Cannot query Analytics Engine: CLOUDFLARE_ANALYTICS_DATASET is not set.",
+      );
+    }
+    return name;
+  }
+
+  /**
+   * Lazily builds (and caches) the read-side client from
+   * `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN` — the same "construct on
+   * first real use, from env, with a clear error if the credentials are
+   * missing" shape as `CloudflareEmailProvider.sendViaRest`'s account
+   * id/token check.
+   */
+  protected sql(): AnalyticsEngineSql {
+    if (this.sqlClient) return this.sqlClient;
+    const accountId = this.env.CLOUDFLARE_ACCOUNT_ID;
+    const token = this.env.CLOUDFLARE_API_TOKEN;
+    if (!accountId || !token) {
+      throw new AlephaError(
+        "Cannot query Analytics Engine: CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN must both be set.",
+      );
+    }
+    this.sqlClient = new AnalyticsEngineSql({
+      accountId,
+      token,
+      // Cast needed because `AnalyticsEngineSqlOptions.fetch` is typed as
+      // `typeof globalThis.fetch` — the whole global function object,
+      // `preconnect` static and all — while a bound instance method can only
+      // ever satisfy the call signature. `httpFetch` itself keeps the plain,
+      // overridable call signature, which is what test subclasses replace.
+      fetch: ((input, init) => this.httpFetch(input, init)) as typeof fetch,
+    });
+    return this.sqlClient;
+  }
+
+  /**
+   * The single HTTP seam for reads, isolated so tests can substitute it
+   * without patching global fetch — the same shape as
+   * `CloudflareEmailProvider.httpPost`.
+   */
+  protected async httpFetch(
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ): Promise<Response> {
+    return fetch(input, init);
   }
 }

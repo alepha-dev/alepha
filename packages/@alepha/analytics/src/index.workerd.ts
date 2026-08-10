@@ -3,6 +3,7 @@ import { $analytics } from "./primitives/$analytics.ts";
 import { AnalyticsProvider } from "./providers/AnalyticsProvider.ts";
 import { MemoryAnalyticsProvider } from "./providers/MemoryAnalyticsProvider.ts";
 import { OrmAnalyticsProvider } from "./providers/OrmAnalyticsProvider.ts";
+import { WaeAnalyticsProvider } from "./providers/WaeAnalyticsProvider.ts";
 
 export * from "./planner/AnalyticsBuckets.ts";
 export * from "./planner/AnalyticsSlotMap.ts";
@@ -20,25 +21,19 @@ export * from "./services/AnalyticsEngineSql.ts";
 /**
  * Portable analytics datasets, on Cloudflare.
  *
- * Auto-wires the same default as the Node entry (`index.ts`): the relational
- * provider outside test mode, the memory provider under it. A Worker with D1
- * but no Analytics Engine binding is a valid deployment, and it should keep
- * exact numbers rather than fail to boot — which rules out treating
- * `WaeAnalyticsProvider` as this module's default the way `AlephaBucket`
- * defaults to R2 under its own `index.workerd.ts`.
+ * Binds the Analytics Engine provider when `CLOUDFLARE_ANALYTICS_DATASET` is
+ * set, and the relational provider otherwise — a Worker with D1 but no
+ * dataset binding is a valid deployment, and it should keep exact numbers
+ * rather than fail to boot. The memory provider still wins under
+ * `alepha.isTest()`, ahead of both.
  *
- * That is also a structural requirement, not just a safe default:
- * `WaeAnalyticsProvider` takes its Analytics Engine binding and SQL
- * credentials as constructor options rather than `$inject`/`$env` fields
- * (see its class doc), so nothing here can construct one generically the way
- * `alepha.with({ provide, use: SomeInjectableClass })` constructs
- * `OrmAnalyticsProvider`. This module exports it — unlike `index.ts`, which
- * does not — so an app's own Cloudflare bootstrap can read the real
- * `analytics_engine_datasets` binding (the same way `R2FileStorageProvider`
- * reads `cloudflare.env` at `start`), construct `WaeAnalyticsProvider`
- * explicitly with a `cold` fallback, and substitute it in with
- * `alepha.with({ provide: AnalyticsProvider, use: () => waeInstance })` —
- * or an equivalent injectable wrapper — itself.
+ * `WaeAnalyticsProvider` can be selected here — unlike the first draft of
+ * this module — because it is now DI-constructible the same way
+ * `OrmAnalyticsProvider` is: `$inject`/`$env`/`$hook` fields read the real
+ * `analytics_engine_datasets` binding out of `cloudflare.env` at `start()`
+ * (the same mechanism `R2FileStorageProvider` uses for its bucket binding),
+ * rather than taking it as a constructor argument nothing here could supply.
+ * See its class doc for the full design.
  *
  * @module alepha.analytics
  */
@@ -49,18 +44,22 @@ export const AlephaAnalytics = $module({
   // concrete implementations are `variants` (module-tagged, not
   // auto-injected) so only the one `register()` selects below is ever
   // instantiated — see `index.ts` for why `OrmAnalyticsProvider` is never
-  // eagerly imported here either. `WaeAnalyticsProvider` is deliberately
-  // absent from this list: unlike the other two, it has no DI-constructible
-  // shape for `register()` to select, so listing it here would be no more
-  // than a stale hint that it can be `.with({ use: ... })`'d the same way —
-  // it cannot.
+  // eagerly imported here either.
   services: [AnalyticsProvider],
-  variants: [MemoryAnalyticsProvider, OrmAnalyticsProvider],
+  variants: [
+    MemoryAnalyticsProvider,
+    OrmAnalyticsProvider,
+    WaeAnalyticsProvider,
+  ],
   register: (alepha) => {
     alepha.with({
       optional: true,
       provide: AnalyticsProvider,
-      use: alepha.isTest() ? MemoryAnalyticsProvider : OrmAnalyticsProvider,
+      use: alepha.isTest()
+        ? MemoryAnalyticsProvider
+        : alepha.env.CLOUDFLARE_ANALYTICS_DATASET
+          ? WaeAnalyticsProvider
+          : OrmAnalyticsProvider,
     });
   },
 });

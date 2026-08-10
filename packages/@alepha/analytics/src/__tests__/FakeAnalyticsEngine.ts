@@ -54,7 +54,9 @@ interface Point {
 export class FakeAnalyticsEngine implements AnalyticsEngineDataset {
   readonly points: Point[] = [];
 
-  /** The most recent SQL statement executed — asserted on directly. */
+  /**
+   * The most recent SQL statement executed — asserted on directly.
+   */
   lastQuery: string | undefined;
 
   protected queued: AnalyticsEngineRow[] | undefined;
