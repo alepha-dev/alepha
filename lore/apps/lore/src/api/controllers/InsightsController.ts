@@ -1,5 +1,5 @@
-import { summariseVitals } from "@alepha/sigil/ingest";
 import type { AnalyticsVitalHistograms } from "@alepha/sigil/ingest";
+import { summariseVitals } from "@alepha/sigil/ingest";
 import type { VitalMetric } from "@alepha/sigil/vitals";
 import { $inject, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
