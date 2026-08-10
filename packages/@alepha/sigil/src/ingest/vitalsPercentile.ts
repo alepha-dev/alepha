@@ -2,7 +2,19 @@ import {
   VITALS_BUCKETS,
   type VitalMetric,
 } from "../shared/schemas/sigilVitalsBuckets.ts";
-import type { AnalyticsVitalHistograms } from "./AnalyticsStore.ts";
+
+/**
+ * Bucket index → how many samples, per metric. Absent metrics saw none.
+ *
+ * Used to live on the now-deleted `AnalyticsStore` interface, which every
+ * storage backend implemented `vitalHistograms()` against. Storage moved to
+ * `@alepha/analytics`'s `$analytics()` datasets, but the shape a histogram
+ * walk consumes did not change, so it is declared here instead — the one
+ * place both {@link vitalsP75} and its callers need it.
+ */
+export type AnalyticsVitalHistograms = Partial<
+  Record<VitalMetric, Map<number, number>>
+>;
 
 /**
  * Walk a bucket histogram to the 75th percentile.
@@ -13,10 +25,11 @@ import type { AnalyticsVitalHistograms } from "./AnalyticsStore.ts";
  * "at least this bad", never "exactly this".
  *
  * Lives in the package rather than in whichever app happens to render the
- * chart, because every {@link AnalyticsStore} implementation returns histograms
- * and none of them should be re-deriving this. Merging has to happen at the
- * bucket level anyway — the p75 of two distributions is not the mean of their
- * p75s — so a store that returns per-app percentiles could not be merged at all.
+ * chart, because every backend that produces an {@link AnalyticsVitalHistograms}
+ * shares the same walk and none of them should be re-deriving it. Merging has
+ * to happen at the bucket level anyway — the p75 of two distributions is not
+ * the mean of their p75s — so a backend that returned per-app percentiles
+ * could not be merged at all.
  */
 export const vitalsP75 = (
   histogram: Map<number, number> | undefined,

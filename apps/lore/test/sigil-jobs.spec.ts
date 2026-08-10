@@ -14,7 +14,6 @@ import {
   sigilUniquesDaily,
   UNIQUES_COLLAPSED_HASH,
 } from "../src/api/entities/sigilUniquesDaily.ts";
-import { sigilViewsHourly } from "../src/api/entities/sigilViewsHourly.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { SigilJobs } from "../src/api/jobs/SigilJobs.ts";
 import { LoreAnalyticsStore } from "../src/api/services/LoreAnalyticsStore.ts";
@@ -27,7 +26,6 @@ const userDataSchema = z.object({
 });
 
 class Probe {
-  views = $repository(sigilViewsHourly);
   uniques = $repository(sigilUniquesDaily);
 }
 
@@ -41,11 +39,9 @@ interface TestContext {
   user: { id: string; roles: string[] };
   insights: InsightsController;
   /**
-   * The legacy store `collapseAnalytics` actually sweeps. Only `views` and
-   * `vitals` still have anything here worth reading directly —
-   * `uniqueVisitors` stays reachable through `insights` too, since Insights
-   * still answers it from this same table (see "what Insights reads
-   * afterwards" below).
+   * `LoreAnalyticsStore` — uniques only. `uniqueVisitors` stays reachable
+   * through `insights` too, since Insights still answers it from this same
+   * table (see "what Insights reads afterwards" below).
    */
   analytics: LoreAnalyticsStore;
   probe: Probe;
@@ -119,12 +115,15 @@ const dayUtc = (ctx: TestContext, daysAgo: number): string => {
   return day.toISOString().slice(0, 10);
 };
 
-const hourUtc = (ctx: TestContext, daysAgo: number, hour: number): string =>
-  `${dayUtc(ctx, daysAgo)}T${String(hour).padStart(2, "0")}`;
-
 /**
- * `SigilJobs` — the sweep that stops the three analytics tables growing
- * without bound.
+ * `SigilJobs` — the sweep that stops `sigil_uniques_daily` growing without
+ * bound.
+ *
+ * Views used to be swept here too (`collapseViews`); that half was deleted
+ * once `sigil_views_hourly` stopped being written or read at all, and
+ * retention for its `$analytics()` replacement moved onto
+ * `AnalyticsRollupJobs` in `@alepha/analytics`, exercised by that package's
+ * own suite rather than this one.
  *
  * Driven through `DateTimeProvider.travel()` rather than by seeding
  * already-old rows: the sweep's whole contract is "what happens when a bucket
@@ -263,120 +262,15 @@ describe("SigilJobs", () => {
     });
   });
 
-  describe("views hourly-to-daily collapse", () => {
-    it("keeps the 30-day window hourly and folds what is past it", async ({
-      expect,
-    }) => {
-      await ctx.probe.views.createMany([
-        // Inside the window — two distinct hours must survive as two rows.
-        { sigilId: ctx.sigilA, hour: hourUtc(ctx, 1, 9), path: "/", count: 4 },
-        { sigilId: ctx.sigilA, hour: hourUtc(ctx, 1, 14), path: "/", count: 6 },
-        // Past it — same day, same path, three hours to fold into one.
-        { sigilId: ctx.sigilA, hour: hourUtc(ctx, 40, 1), path: "/", count: 2 },
-        { sigilId: ctx.sigilA, hour: hourUtc(ctx, 40, 5), path: "/", count: 3 },
-        {
-          sigilId: ctx.sigilA,
-          hour: hourUtc(ctx, 40, 23),
-          path: "/",
-          count: 5,
-        },
-      ]);
-
-      await jobs.collapseAnalytics.run();
-
-      const rows = await ctx.probe.views.findMany({});
-      const old = rows.filter((r) => r.hour.startsWith(dayUtc(ctx, 40)));
-      const recent = rows.filter((r) => r.hour.startsWith(dayUtc(ctx, 1)));
-
-      expect(old).toHaveLength(1);
-      expect(old[0].hour).toBe(`${dayUtc(ctx, 40)}T00`);
-      expect(old[0].count).toBe(10);
-      expect(recent).toHaveLength(2);
-    });
-
-    it("does not merge different paths or countries into one bucket", async ({
-      expect,
-    }) => {
-      await ctx.probe.views.createMany([
-        {
-          sigilId: ctx.sigilA,
-          hour: hourUtc(ctx, 40, 1),
-          path: "/a",
-          country: "FR",
-          count: 1,
-        },
-        {
-          sigilId: ctx.sigilA,
-          hour: hourUtc(ctx, 40, 2),
-          path: "/b",
-          country: "FR",
-          count: 1,
-        },
-        {
-          sigilId: ctx.sigilA,
-          hour: hourUtc(ctx, 40, 3),
-          path: "/a",
-          country: "DE",
-          count: 1,
-        },
-      ]);
-
-      await jobs.collapseAnalytics.run();
-
-      const rows = await ctx.probe.views.findMany({});
-      expect(rows).toHaveLength(3);
-      expect(rows.every((r) => r.hour === `${dayUtc(ctx, 40)}T00`)).toBe(true);
-    });
-  });
-
-  describe("legacy totals survive the collapse", () => {
-    /*
-      `collapseAnalytics.run()` folds `sigil_views_hourly` rows past the
-      30-day boundary into daily buckets. "views hourly-to-daily collapse"
-      above already pins the raw row shape the fold produces (row count,
-      the folded hour, the summed count on that one row); this pins the
-      aggregate a caller of `LoreAnalyticsStore` actually gets back — a fold
-      that mis-sums or double-counts across the boundary could still look
-      right in the raw rows (e.g. two rows that should have summed to one
-      value each did) and wrong in the aggregate a real query returns.
-
-      This used to be asserted through `InsightsController`, back when
-      Insights read `totalViews` from this same table — the describe block
-      was named "what Insights reads afterwards" for exactly that reason.
-      Task 12 moved that read onto the `sigil_views` `$analytics()` dataset,
-      which `collapseAnalytics` does not touch at all (its own sweep is
-      `AnalyticsRollupJobs`, exercised in `@alepha/analytics`'s own suite) —
-      so asserting through Insights here would no longer test the fold, only
-      that a table nobody swept stayed the same. Reading `LoreAnalyticsStore`
-      directly keeps this test pinned to the thing that's actually being
-      exercised: the legacy store's own arithmetic survives its own sweep.
-    */
-    it("reports the same total views before and after a sweep", async ({
-      expect,
-    }) => {
-      await ctx.probe.views.createMany([
-        { sigilId: ctx.sigilA, hour: hourUtc(ctx, 10, 9), path: "/", count: 7 },
-      ]);
-
-      // The same 30-day window `range: "30d"` would compute: today minus 29
-      // days, inclusive.
-      const window = { sigilIds: [ctx.sigilA], since: dayUtc(ctx, 29) };
-
-      expect(await ctx.analytics.totalViews(window)).toBe(7);
-
-      await jobs.collapseAnalytics.run();
-
-      expect(await ctx.analytics.totalViews(window)).toBe(7);
-    });
-  });
-
   describe("what Insights reads afterwards", () => {
     /*
-      `uniqueVisitors` is the one number in this describe block still true to
-      its name: Insights still answers it from `sigil_uniques_daily`, which
-      is exactly what `collapseAnalytics` sweeps here. `totalViews` moved to
-      `$analytics()` in Task 12 — see "legacy totals survive the collapse"
-      above for where that regression guard lives now.
+      Insights answers `uniqueVisitors` from `sigil_uniques_daily`, which is
+      exactly what `collapseAnalytics` sweeps here — so a fold that mis-summed
+      or double-counted across the boundary would show up in what a real
+      query returns, not just in the raw rows. `totalViews` moved to
+      `$analytics()` in Task 12 and reads no table this sweep touches at all;
+      the regression guard for its own rollup lives in `@alepha/analytics`'s
+      own suite.
     */
     it("reports the same unique-visitor total before and after a sweep", async ({
       expect,

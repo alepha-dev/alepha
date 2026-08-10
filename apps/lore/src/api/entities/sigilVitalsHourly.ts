@@ -13,8 +13,14 @@ export {
  *
  * Declared by `@alepha/sigil/ingest`'s entity factory; see `sigilAnalytics.ts`
  * for why the schema lives in the package while the foreign key into `sigils`
- * stays here. The bucket constants are re-exported because every call site in
- * this app imports them from the entity module.
+ * stays here.
+ *
+ * **Frozen.** Nothing reads or writes this table anymore — vitals moved onto
+ * `LoreAnalytics`'s `sigil_vitals` `$analytics()` dataset, one row per
+ * `(hour, sigilId, metric, path, bucket)` rather than one row with seven
+ * bucket columns. `VITALS_BUCKET_COUNT` / `vitalsBucketColumn` are
+ * re-exported below only because this module is where existing call sites
+ * already import them from, not because anything still calls them here.
  */
 export const sigilVitalsHourly = sigilAnalytics.vitals;
 
