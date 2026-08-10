@@ -92,6 +92,20 @@ export const insightsResourceSchema = z.object({
       lastSeenAt: z.string(),
     }),
   ),
+  /**
+   * Whether the view and vitals numbers are reconstructed from a sample.
+   *
+   * A field on the response, not a note in the docs: the UI renders these in
+   * the typography of measurement, and the only thing that stops it doing so
+   * wrongly is this value reaching it. Unique visitors are always exact and are
+   * unaffected.
+   */
+  estimated: z.boolean(),
+  /**
+   * Largest sample interval behind these numbers. `1` means nothing was
+   * sampled and the numbers are exact despite `estimated` being true.
+   */
+  sampleInterval: z.number().optional(),
 });
 
 export type InsightsResource = Infer<typeof insightsResourceSchema>;
