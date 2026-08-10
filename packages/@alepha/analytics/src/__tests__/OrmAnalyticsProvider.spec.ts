@@ -206,12 +206,27 @@ describe("OrmAnalyticsProvider", () => {
     }
   });
 
-  it("recordPruneFloor is a no-op, and pruneFloor always undefined, when registerPruneFloors() was never called", async () => {
-    // The property that keeps a plain relational deployment migration-free:
-    // `register(dataset)` alone — what every non-WAE consumer of this
-    // provider calls, Lore's own Cloudflare deployment included, which has
-    // never constructed `WaeAnalyticsProvider` — must never bring the
-    // shared `analytics_prune_floors` table into existence on its own.
+  it("registers the prune-floor table from register() alone, so the schema does not depend on the runtime", async () => {
+    // ⚠️ Regression guard for a production outage (2026-08-11). This test
+    // used to assert the exact opposite: that `register(dataset)` alone must
+    // NOT bring `analytics_prune_floors` into existence, so a plain
+    // relational deployment would not carry a table it can never use. Only
+    // `WaeAnalyticsProvider.register()` called `registerPruneFloors()`.
+    //
+    // That made the set of tables an app declares a function of the runtime
+    // it booted under — and migrations are generated under one runtime and
+    // applied under another. `alepha db migrations create` runs on Node,
+    // where `OrmAnalyticsProvider` is the selected provider, so the floor
+    // table never entered the snapshot and never got a migration. Production
+    // runs workerd, where `WaeAnalyticsProvider` IS selected, and its
+    // `query()` reads the floor before every single read — against a table
+    // D1 had never been told to create. Every Insights read 500'd.
+    //
+    // The saving in the relational case was two columns. The cost was an
+    // outage no test, no typecheck and no `check:migrations` could see,
+    // because every one of them runs on the runtime where the table is not
+    // declared. Schema must not vary by runtime; the floor table is now
+    // unconditional.
     const alepha = Alepha.create().with(AlephaOrmPostgres);
     const provider = alepha.inject(OrmAnalyticsProvider);
     provider.register(dataset);
@@ -219,12 +234,9 @@ describe("OrmAnalyticsProvider", () => {
 
     try {
       expect(await provider.pruneFloor(dataset)).toBeUndefined();
-      // Must not throw either — a plain relational deployment has no floor
-      // and never will, which is a permanent, correct state, not an error.
-      await expect(
-        provider.recordPruneFloor(dataset, "2026-08-05"),
-      ).resolves.toBeUndefined();
-      expect(await provider.pruneFloor(dataset)).toBeUndefined();
+
+      await provider.recordPruneFloor(dataset, "2026-08-05");
+      expect(await provider.pruneFloor(dataset)).toBe("2026-08-05");
     } finally {
       await alepha.stop();
     }

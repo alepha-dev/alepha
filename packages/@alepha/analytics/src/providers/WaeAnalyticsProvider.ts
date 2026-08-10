@@ -297,16 +297,16 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    *   time, not once a report quietly comes up short months later.
    * - `cold` is registered, so its own tables exist before `alepha.start()`
    *   — the same eager-registration rule `OrmAnalyticsProvider` follows.
-   * - `cold`'s shared prune-floor table is registered too, via
-   *   `OrmAnalyticsProvider.registerPruneFloors()` — **only from here**, not
-   *   from `OrmAnalyticsProvider.register()` itself. This provider is the
-   *   one deployment shape that needs a floor at all (Analytics Engine has
-   *   no delete API — see {@link prune}); a plain relational deployment
-   *   genuinely deletes and would otherwise carry a table it can never use.
+   *   That call brings the shared prune-floor table with it, which this
+   *   provider is the only one to actually read (Analytics Engine has no
+   *   delete API — see {@link prune}). It used to be requested from here
+   *   instead, so that a relational deployment would not carry it; that made
+   *   the schema depend on the runtime, and the table was consequently
+   *   missing from every migration ever generated. See
+   *   `OrmAnalyticsProvider.registerPruneFloors()`.
    */
   public register(dataset: AnalyticsDataset): void {
     this.assertRetention(dataset);
-    this.cold.registerPruneFloors();
     this.cold.register(dataset);
   }
 

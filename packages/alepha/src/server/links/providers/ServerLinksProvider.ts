@@ -215,7 +215,8 @@ export class ServerLinksProvider {
         }),
       ),
     },
-    handler: async ({ body }) => {
+    handler: async (request) => {
+      const { body } = request;
       if (body.length > ServerLinksProvider.MAX_BATCH_SIZE) {
         // The caller sent too many entries — that is a bad request, not a
         // server fault. A bare AlephaError surfaced as a 500.
@@ -234,11 +235,19 @@ export class ServerLinksProvider {
         ),
       );
 
-      return results.map((result, i) => {
+      const entries: Array<{
+        action: string;
+        status: number;
+        data?: any;
+        error?: string;
+      }> = [];
+
+      for (const [i, result] of results.entries()) {
         const action = body[i].action;
 
         if (result.status === "fulfilled") {
-          return { action, status: 200, data: result.value };
+          entries.push({ action, status: 200, data: result.value });
+          continue;
         }
 
         const reason = result.reason;
@@ -252,23 +261,87 @@ export class ServerLinksProvider {
           error: reason,
         });
 
+        await this.reportSubRequestError(request, action, reason);
+
         // Same rule the single-request path applies in `sendError`: a 5xx
         // message is internal (DB URLs, upstream errors, credentials in a
         // connection string) and must not reach the client in production.
         // 4xx messages are deliberate, client-facing context and are kept.
         // Without this the batch endpoint was a way around the sanitizer —
         // and it is the path the React client uses by default.
-        return {
+        entries.push({
           action,
           status,
           error:
             status >= 500 && this.alepha.isProduction()
               ? "Internal Server Error"
               : message,
-        };
-      });
+        });
+      }
+
+      return entries;
     },
   });
+
+  /**
+   * Announces a sub-request failure on `server:onError`, the way the
+   * single-request path does from `ServerRouterProvider.errorHandler`.
+   *
+   * ⚠️ **Not optional bookkeeping.** This endpoint answers 200 with a
+   * per-entry error, so `errorHandler` — the only other emitter of that event
+   * — never runs for anything that fails in here. Every consumer of the event
+   * (the error logger, the log buffer, crash reporting) was therefore blind
+   * to the batch, and the batch is the path the React client uses by default:
+   * on a client-rendered app it is not some corner of the API surface, it is
+   * the whole of it. An app can lose an entire outage this way and see an
+   * empty crash inbox throughout.
+   *
+   * The route reported is the failing action's own, not `/api/_batch` —
+   * reports that all blame the batch endpoint name the one route that is
+   * always innocent, and group into one useless pile.
+   *
+   * **The batch's own reply is restored afterwards.** A hook may answer the
+   * event by setting a status (that is how a custom error page works, and
+   * `errorHandler` explicitly honours it). Here the response is already
+   * decided: the failure belongs to one entry, and letting a hook promote it
+   * would fail the whole batch — including the entries that succeeded.
+   */
+  protected async reportSubRequestError(
+    request: any,
+    action: string,
+    error: unknown,
+  ): Promise<void> {
+    const reply = request.reply;
+    const status = reply?.status;
+    try {
+      await this.alepha.events.emit("server:onError", {
+        request,
+        route: { path: this.actionPath(action) } as any,
+        error: error as Error,
+      });
+    } catch (hookError) {
+      // A broken observer must never turn a reported failure into a second
+      // one, nor take down the entries that succeeded.
+      this.log.warn("server:onError hook failed for a batch entry", hookError);
+    } finally {
+      if (reply) reply.status = status;
+    }
+  }
+
+  /**
+   * The path a direct HTTP call to `action` would have hit — prefix included,
+   * the same composition {@link LinkProvider.followRemote} performs.
+   *
+   * Reported rather than the bare link path so one failing action reads
+   * identically whether it failed inside a batch or as its own request.
+   * Falls back to the action name when the link is unknown, which is a
+   * poorer label but a truthful one.
+   */
+  protected actionPath(action: string): string {
+    const link = this.linkProvider.links.find((it) => it.name === action);
+    if (!link) return action;
+    return `${link.prefix ?? "/api"}${link.path}`;
+  }
 
   protected static readonly MAX_BATCH_SIZE = 20;
 

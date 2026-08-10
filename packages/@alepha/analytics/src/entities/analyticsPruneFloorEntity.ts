@@ -24,12 +24,14 @@ import { $entity, db } from "alepha/orm";
  *
  * Registered eagerly — the same as every dataset's own raw/rolled pair, not
  * lazily on first `prune()`, for the same container-locks-after-start
- * reason — but **not** unconditionally alongside every dataset.
- * `OrmAnalyticsProvider.registerPruneFloors()` is a separate call, made only
- * by `WaeAnalyticsProvider.register()`: a plain relational deployment
- * genuinely deletes on `prune()` and has no use for a floor, so it must
- * never carry this table, on pain of a production migration nothing ever
- * reads or writes.
+ * reason — and **unconditionally**, alongside every dataset, on every
+ * deployment shape. Only `WaeAnalyticsProvider` ever reads a floor, so a
+ * plain relational deployment carries this table empty and never touches it.
+ * That waste is deliberate: gating registration on the deployment shape made
+ * the schema depend on which runtime the process booted under, and since
+ * migrations are generated on Node and applied on workerd, the table ended up
+ * in no migration at all and every production analytics read failed on it.
+ * See `OrmAnalyticsProvider.registerPruneFloors()`.
  */
 export const analyticsPruneFloorEntity = $entity({
   name: "analytics_prune_floors",

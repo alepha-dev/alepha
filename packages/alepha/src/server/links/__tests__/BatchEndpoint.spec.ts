@@ -277,4 +277,61 @@ describe("POST /api/_batch", () => {
       data: { id: "2", name: "User 2" },
     });
   });
+  it("reports a failing sub-request through server:onError, like any other 5xx", async ({
+    expect,
+  }) => {
+    // ⚠️ Regression guard for a production blind spot (2026-08-11). This
+    // endpoint answers 200 with a per-entry error, which is right for the
+    // HTTP contract and was silently wrong for observability: `allSettled`
+    // caught every sub-request failure, so `ServerRouterProvider.errorHandler`
+    // — the only emitter of `server:onError` — never ran for it. Everything
+    // downstream of that event (the error logger, the log buffer, crash
+    // reporting) therefore saw nothing.
+    //
+    // It is the path the React client uses BY DEFAULT, so on an app whose
+    // pages are client-rendered this was not an edge case: it was every API
+    // failure the app ever had. Lore's crash inbox sat empty through an
+    // outage in which every analytics read was 500ing.
+    class App {
+      boom = $action({
+        schema: { response: z.text() },
+        handler: () => {
+          throw new AlephaError("boom");
+        },
+      });
+    }
+
+    const alepha = Alepha.create().with(App).with(ServerLinksProvider);
+    const seen: Array<{ path?: string; message: string }> = [];
+    alepha.events.on("server:onError", ({ route, error }) => {
+      seen.push({ path: route?.path, message: error.message });
+    });
+    await alepha.start();
+
+    try {
+      const res = await fetch(
+        `${alepha.inject(ServerProvider).hostname}/api/_batch`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify([{ action: "boom" }]),
+        },
+      );
+
+      // The envelope itself is unchanged: still 200, still one entry.
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data).toHaveLength(1);
+      expect(data[0].status).toBe(500);
+
+      expect(seen).toHaveLength(1);
+      expect(seen[0].message).toBe("boom");
+      // The failing action's own path, not `/api/_batch` — a report that
+      // blames the batch endpoint names the one route that is always
+      // innocent.
+      expect(seen[0].path).toBe("/api/boom");
+    } finally {
+      await alepha.stop();
+    }
+  });
 });

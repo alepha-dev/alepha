@@ -88,11 +88,9 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
    * `analyticsPruneFloorEntity`'s own doc) — one repository for every
    * dataset this provider ever registers, never one per dataset.
    *
-   * **Not built by {@link register} unconditionally** — see
-   * {@link registerPruneFloors}'s own doc for why: a plain relational
-   * deployment genuinely deletes on `prune()` and has no use for a floor,
-   * so it must never carry this table, on pain of a phantom production
-   * migration.
+   * Built by {@link register}, unconditionally — see
+   * {@link registerPruneFloors} for why "only when the deployment needs it"
+   * was the wrong condition.
    */
   protected floors?: Repository<ZObject>;
 
@@ -105,11 +103,15 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
    * dataset is a no-op, so callers do not need to track what they already
    * registered.
    *
-   * Deliberately does **not** also register the prune-floor table — see
-   * {@link registerPruneFloors}.
+   * Also registers the shared prune-floor table, for every deployment shape
+   * and not only the one that reads it — see {@link registerPruneFloors}.
    */
   public register(dataset: AnalyticsDataset): void {
     if (this.registered.has(dataset.name)) return;
+
+    // Before the raw/rolled pair rather than after, so a dataset is never
+    // half-declared if a later step throws.
+    this.registerPruneFloors();
 
     const built = AnalyticsEntityFactory.build(dataset);
     const raw = this.buildRepository(built.raw);
@@ -123,17 +125,27 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
    * than once safely, and — like every other registration in this
    * package — must run **before** `alepha.start()`.
    *
-   * **Deliberately not part of {@link register}'s own unconditional path.**
-   * This provider's own `prune()` genuinely deletes; there is nothing for a
-   * floor to paper over on a plain relational deployment, and it would
-   * never write or read one. Registering the table anyway would mean every
-   * such deployment (Lore's own Cloudflare deployment among them, which
-   * runs this provider directly and has never constructed
-   * `WaeAnalyticsProvider`) carries a production table it can never use and
-   * pays a migration for it. Only `WaeAnalyticsProvider` — precisely
-   * because Analytics Engine has no delete API of its own — needs a floor,
-   * so only its own `register()` calls this, on `cold`, right alongside
-   * `cold.register(dataset)`.
+   * ⚠️ **Unconditional, and that is the fix for a production outage.** This
+   * used to be called only from `WaeAnalyticsProvider.register()`, on the
+   * reasoning that a plain relational deployment genuinely deletes on
+   * `prune()`, would never read a floor, and should not pay a migration for
+   * a table it cannot use. The saving was two columns. The flaw was that it
+   * made **the set of tables an app declares a function of the runtime it
+   * booted under** — and migrations are generated under one runtime and
+   * applied under another.
+   *
+   * `alepha db migrations create` runs on Node, where `index.ts` selects
+   * `OrmAnalyticsProvider` and nothing ever called this. So the table never
+   * entered the snapshot and never got a migration. Production runs workerd,
+   * where `index.workerd.ts` selects `WaeAnalyticsProvider`, whose `query()`
+   * reads the floor before *every* read — against a table the database had
+   * never been told to create. Every analytics read 500'd, and nothing
+   * upstream could have gone red: unit tests, typecheck and
+   * `check:migrations` all run on the runtime where the table is not
+   * declared.
+   *
+   * A relational deployment carrying an empty two-column table it never
+   * reads is the correct trade. Schema does not vary by runtime.
    */
   public registerPruneFloors(): void {
     if (this.floors) return;

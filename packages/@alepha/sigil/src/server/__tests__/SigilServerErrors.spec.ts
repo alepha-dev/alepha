@@ -1,4 +1,6 @@
-import { Alepha } from "alepha";
+import { Alepha, AlephaError, z } from "alepha";
+import { $action, ServerProvider } from "alepha/server";
+import { ServerLinksProvider } from "alepha/server/links";
 import { describe, expect, it } from "vitest";
 import { SigilServerErrors } from "../SigilServerErrors.ts";
 import { SigilSinkProvider } from "../SigilSinkProvider.ts";
@@ -151,5 +153,53 @@ describe("SigilServerErrors — background jobs", () => {
       origin: "server",
       message: "D1 unreachable",
     });
+  });
+});
+
+describe("SigilServerErrors — batched actions", () => {
+  it("should report an action that failed inside /api/_batch", async () => {
+    /*
+      ⚠️ Regression guard for a production blind spot (2026-08-11). The batch
+      endpoint answers 200 with a per-entry error, so for as long as it kept
+      its sub-request failures to itself, `server:onError` never fired for
+      them and this class never saw them. That is the path the React client
+      uses by default: on a client-rendered app every API failure went
+      unreported, and Lore's own crash inbox stayed empty through an outage in
+      which every analytics read was 500ing.
+
+      Driven over real HTTP rather than by emitting the event, because the
+      whole defect lived in the wiring between the two — each half was
+      individually fine.
+    */
+    class App {
+      boom = $action({
+        schema: { response: z.text() },
+        handler: () => {
+          throw new AlephaError("db down");
+        },
+      });
+    }
+
+    const alepha = make().with(App).with(ServerLinksProvider);
+    alepha.inject(SigilServerErrors);
+    await alepha.start();
+
+    try {
+      await fetch(`${alepha.inject(ServerProvider).hostname}/api/_batch`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify([{ action: "boom" }]),
+      });
+
+      const sink = alepha.inject(SigilSinkProvider) as FakeSink;
+      expect(sink.ingested).toHaveLength(1);
+      expect(sink.ingested[0].errors[0]).toMatchObject({
+        sourceUrl: "/api/boom",
+        origin: "server",
+        message: "db down",
+      });
+    } finally {
+      await alepha.stop();
+    }
   });
 });
