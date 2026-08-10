@@ -412,6 +412,19 @@ export class BuildCloudflareTask extends BuildTask {
       binding: BuildCloudflareTask.ANALYTICS_ENGINE_BINDING,
       dataset,
     });
+
+    // The binding alone is not enough, exactly as it is not for R2. The
+    // provider reads this name at runtime for two things the binding cannot
+    // supply: it is what `index.workerd.ts` checks to select the Analytics
+    // Engine backend at all, and it is the table spliced into `FROM` on the
+    // read path, which goes over HTTP rather than through the binding.
+    //
+    // Without it the worker boots with a perfectly good binding and never
+    // uses it: provider selection falls through to the relational backend,
+    // every write lands in D1, and the dataset stays empty forever with no
+    // error anywhere. Mirrors `wrangler.vars.R2_BUCKET_NAME`.
+    wrangler.vars ??= {};
+    wrangler.vars.CLOUDFLARE_ANALYTICS_DATASET = dataset;
   }
 
   protected enhanceQueue(wrangler: WranglerConfig): void {

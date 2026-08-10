@@ -198,6 +198,25 @@ const envSchema = z.object({
  */
 export class WaeAnalyticsProvider extends AnalyticsProvider {
   /**
+   * The Workers env key the write binding is exposed under.
+   *
+   * A wrangler `analytics_engine_datasets` entry has two independent fields:
+   * `binding` is the property name on `env`, `dataset` is the table the SQL
+   * API reads. `alepha build` emits a fixed `binding` of `ANALYTICS` and a
+   * derived `dataset` (the deployment prefix), so the two are **not** the same
+   * string and this must not be looked up by dataset name.
+   *
+   * That mistake is worse than a miss, and it cost a production 500. Datasets
+   * and R2 buckets are both named from the same prefix, so
+   * `env["lore-production"]` resolved to the **R2 bucket** — truthy, past the
+   * not-found guard, and straight into `n.writeDataPoint is not a function`.
+   *
+   * Must stay in sync with `BuildCloudflareTask.ANALYTICS_ENGINE_BINDING`.
+   * Duplicated rather than imported: this package must not depend on the CLI.
+   */
+  public static readonly BINDING = "ANALYTICS";
+
+  /**
    * Analytics Engine keeps roughly three months.
    */
   public static readonly MAX_HOT_DAYS = 90;
@@ -252,10 +271,12 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
         return;
       }
 
-      const binding = cloudflareEnv[name] as AnalyticsEngineDataset | undefined;
+      const binding = cloudflareEnv[WaeAnalyticsProvider.BINDING] as
+        | AnalyticsEngineDataset
+        | undefined;
       if (!binding) {
         this.log.warn(
-          `Analytics Engine inert: binding '${name}' not found in Workers environment.`,
+          `Analytics Engine inert: binding '${WaeAnalyticsProvider.BINDING}' not found in Workers environment.`,
         );
         return;
       }
@@ -887,7 +908,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     throw new AlephaError(
       !name
         ? "Cannot write to Analytics Engine: CLOUDFLARE_ANALYTICS_DATASET is not set."
-        : `Cannot write to Analytics Engine: binding '${name}' was not found in the Workers environment at start(). Is this running on Workers with a matching wrangler.toml entry?`,
+        : `Cannot write to Analytics Engine: binding '${WaeAnalyticsProvider.BINDING}' was not found in the Workers environment at start() (dataset '${name}'). Is this running on Workers with a matching wrangler.toml entry?`,
     );
   }
 

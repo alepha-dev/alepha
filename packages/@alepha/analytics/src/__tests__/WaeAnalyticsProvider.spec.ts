@@ -20,6 +20,14 @@ const dataset = {
 };
 
 const BINDING_NAME = "ANALYTICS";
+/**
+ * Deliberately DIFFERENT from BINDING_NAME. A wrangler entry has a fixed
+ * `binding` and a derived `dataset`, and production never makes them equal —
+ * `ANALYTICS` vs `lore-production`. When this fixture set them to the same
+ * string, a provider that looked the binding up by dataset name passed every
+ * test and threw in production.
+ */
+const DATASET_NAME = "lore-production";
 const ACCOUNT_ID = "acct";
 const API_TOKEN = "tok";
 
@@ -88,7 +96,7 @@ class TestWaeAnalyticsProvider extends WaeAnalyticsProvider {
 const build = async (ds: AnalyticsDataset = dataset) => {
   const alepha = Alepha.create({
     env: {
-      CLOUDFLARE_ANALYTICS_DATASET: BINDING_NAME,
+      CLOUDFLARE_ANALYTICS_DATASET: DATASET_NAME,
       CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
       CLOUDFLARE_ANALYTICS_TOKEN: API_TOKEN,
     },
@@ -179,7 +187,7 @@ describe("WaeAnalyticsProvider", () => {
   it("refuses to write when no binding was found at start()", async () => {
     const alepha = Alepha.create({
       env: {
-        CLOUDFLARE_ANALYTICS_DATASET: BINDING_NAME,
+        CLOUDFLARE_ANALYTICS_DATASET: DATASET_NAME,
         CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
         CLOUDFLARE_ANALYTICS_TOKEN: API_TOKEN,
       },
@@ -587,7 +595,7 @@ describe("WaeAnalyticsProvider — the read side merges with cold", () => {
     const hotDataset = { ...dataset, retention: { hot: "5d" } };
     const alepha = Alepha.create({
       env: {
-        CLOUDFLARE_ANALYTICS_DATASET: BINDING_NAME,
+        CLOUDFLARE_ANALYTICS_DATASET: DATASET_NAME,
         CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
         CLOUDFLARE_ANALYTICS_TOKEN: API_TOKEN,
       },
@@ -953,7 +961,7 @@ describe("WaeAnalyticsProvider selection", () => {
     const alepha = Alepha.create({
       env: {
         NODE_ENV: "production",
-        CLOUDFLARE_ANALYTICS_DATASET: BINDING_NAME,
+        CLOUDFLARE_ANALYTICS_DATASET: DATASET_NAME,
       },
     })
       .with(AlephaOrmPostgres)
@@ -978,7 +986,7 @@ describe("WaeAnalyticsProvider selection", () => {
 analyticsConformance("wae", async () => {
   const alepha = Alepha.create({
     env: {
-      CLOUDFLARE_ANALYTICS_DATASET: BINDING_NAME,
+      CLOUDFLARE_ANALYTICS_DATASET: DATASET_NAME,
       CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
       CLOUDFLARE_ANALYTICS_TOKEN: API_TOKEN,
     },
