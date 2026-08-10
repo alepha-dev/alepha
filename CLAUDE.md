@@ -140,6 +140,12 @@ Two test environments are configured:
 - **Filtered tests**: `yarn w alepha vitest run <pattern>` (e.g., `yarn w alepha vitest run init.spec`)
 - **With coverage**: `yarn vitest run --coverage`
 
+#### E2E ports — `playwright.port.ts`
+
+All five Playwright configs (`apps/docs`, `lore`, `playground`, `shop`, `example-ssr`) take their port from `e2ePort(default)` in the repo-root `playwright.port.ts`, the same way every vitest config takes its browser project from `vitest.jsdom.ts`. Add port logic there, never to a caller.
+
+It exists because `reuseExistingServer` is `!process.env.CI`: **locally a busy port does not fail, Playwright attaches to whatever answers on it**. Two agents running e2e at once — one git worktree each — would otherwise share a server, and the later run reports green having tested the other's build against a database holding that run's rows. So the primary checkout keeps its documented 33xx port and a linked worktree derives its own in 3400-3899. `E2E_PORT` overrides both.
+
 #### Testing Patterns
 - **Automatic Lifecycle**: `Alepha.create()` automatically handles start/stop in test environments
 - **Service Substitution**: Use `Alepha.with()` for mocking dependencies (preferred over traditional mocking)
@@ -265,7 +271,8 @@ Conventions enforced by review, not by lint. They are not obvious from the code,
 
 ### Typing traps
 
-- **`t.any()` is not valid** for `TResponseBody` / `TRequestBody` in `$route` schemas. Use `t.record(t.text(), t.any())`, with `as any` on the return value.
+- **Schemas are Zod, imported as `z` from `"alepha"`.** There is no `t` export — TypeBox was purged before v1. Anything you read that says `t.text()` / `t.object()` / `import { t } from "alepha"` is pre-migration and wrong.
+- **`z.any()` is not valid** for `TResponseBody` / `TRequestBody` in `$route` schemas. Use `z.record(z.text(), z.any())`, with `as any` on the return value.
 - **`schema.response` is what serializes.** A field added to the entity, the type and the component still will not appear in the payload unless it is declared on the response schema — and it fails silently.
 - **`this.alepha.env.*` returns `string | number | boolean`** — coerce with `String()` / `Number()` when assigning to a typed field.
 - **`HttpClient.fetch()` without a `schema` option returns `{ data: {} }`** — cast `res.data as any` for untyped endpoints.

@@ -77,7 +77,7 @@ test.describe("Project wizard — feature toggles", () => {
       sidebar.getByRole("link", { name: /^milestones$|^chapitres$/i }),
     ).toHaveCount(0);
 
-    // Kanban is a `?view=kanban` toggle on the Quests page now, not a
+    // Kanban is a view of the Quests page now, not a
     // sidebar entry (the great rename, Task 8) — there is no sidebar link
     // whose absence would prove the toggle persisted. The UI's only other
     // observable surface for the flag is the settings sub-page switch.

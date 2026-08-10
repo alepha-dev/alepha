@@ -106,7 +106,7 @@ test.describe("ControlSelect variants", () => {
   test("native select for short enum", async ({ page }) => {
     await page.goto("/demo/forms/selects");
     await expect(page.getByText("Fruit (enum)")).toBeVisible();
-    // native select trigger has role=combobox in radix
+    // The select trigger reports role=combobox, not role=listbox.
     await expect(
       page.getByRole("combobox").filter({ hasText: "apple" }),
     ).toBeVisible();

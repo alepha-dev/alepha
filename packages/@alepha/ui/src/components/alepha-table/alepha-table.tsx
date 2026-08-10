@@ -804,10 +804,20 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
           </div>
         )}
 
+        {/*
+          The toolbar, the rows and the footer are one panel: each facing edge
+          is flattened and its border dropped so no double line appears, and
+          `-mt-2` cancels the wrapper's `gap-2`. The footer half is
+          unconditional because the page row below already renders
+          unconditionally — gating it on `meta` would pop the bar in and flip
+          this bottom border on every load, since `meta` starts null and only
+          fills after the fetch.
+        */}
         <div
           className={cn(
             "flex min-h-0 flex-1 flex-col overflow-auto rounded-md border",
             showToolbar && "-mt-2 rounded-t-none border-t-0",
+            "rounded-b-none border-b-0",
           )}
         >
           <Table>
@@ -961,7 +971,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
           </Table>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="bg-card -mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md rounded-t-none border p-2">
           <p className="text-muted-foreground text-xs">
             {meta
               ? `Page ${meta.number + 1}${meta.totalPages ? ` of ${meta.totalPages}` : ""} · ${meta.numberOfElements} of ${meta.totalElements ?? "?"}`

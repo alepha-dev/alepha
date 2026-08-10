@@ -28,13 +28,13 @@ import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { currentQuestCountAtom } from "../../atoms/currentQuestCountAtom.ts";
 import { currentSigilAtom } from "../../atoms/currentSigilAtom.ts";
 import { currentSigilsAtom } from "../../atoms/currentSigilsAtom.ts";
+import { type QuestsView, questsViewAtom } from "../../atoms/questsViewAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import HeaderActions from "../shared/header/HeaderActions.tsx";
 import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
 import ProjectQuestsViewSwitcher from "./ProjectQuestsViewSwitcher.tsx";
 import ProjectSwitcher from "./ProjectSwitcher.tsx";
 import QuestLog from "./QuestLog.tsx";
-import { type QuestsView, writeStoredQuestsView } from "./questsView.ts";
 
 const ROUTES_WITH_QUEST_LOG = new Set(["projectQuests", "projectQuest"]);
 
@@ -94,21 +94,23 @@ const ProjectView = () => {
   const router = useRouter<AppRouter>();
   const { tr } = useI18n<I18n, "en">();
   const name = routerState.name ?? "";
-  // Kanban is a `?view=kanban` toggle on `projectQuests`, not its own route
-  // anymore (the great rename, Task 8) — the board needs the same
-  // full-width, no quest-log treatment its old dedicated route got, so
-  // branch on the query in addition to the route name.
-  const kanbanView =
-    name === "projectQuests" && routerState.query.view === "kanban";
+  const [questsView, setQuestsView] = useStore(questsViewAtom);
+  // Kanban is not its own route anymore (the great rename, Task 8) — the
+  // board needs the same full-width, no quest-log treatment its old
+  // dedicated route got, so branch on the stored view in addition to the
+  // route name. That view was a `?view=kanban` query param until #156;
+  // reading it from an atom is what lets this component see it at all
+  // without the page having to publish it into the URL first.
+  const kanbanView = name === "projectQuests" && questsView.view === "kanban";
   const showQuestLog = ROUTES_WITH_QUEST_LOG.has(name) && !kanbanView;
   const fullWidth = ROUTES_FULL_WIDTH.has(name) || kanbanView;
-  // The view rail belongs to the whole quests surface, so it renders on the
+  // The view bar belongs to the whole quests surface, so it renders on the
   // same routes as the quest log — including the quest DETAIL route, where
   // the log is also shown. Dropping it there would slide the log (and every
-  // pixel right of it) left by the rail's width the moment a quest opens,
-  // which is exactly the jump hoisting the rail out of the content area was
-  // meant to remove. From detail, picking a view navigates back to the list.
-  const showViewRail = ROUTES_WITH_QUEST_LOG.has(name);
+  // pixel below it) up by the bar's height the moment a quest opens, which is
+  // exactly the jump hoisting the switcher out of the content area was meant
+  // to remove. From detail, picking a view navigates back to the list.
+  const showViewBar = ROUTES_WITH_QUEST_LOG.has(name);
 
   const [project] = useStore(currentProjectAtom);
   const [questCount] = useStore(currentQuestCountAtom);
@@ -129,14 +131,16 @@ const ProjectView = () => {
     ...project.features,
   };
 
-  // Writes `?view=list` explicitly rather than clearing the param: the stored
-  // preference only SEEDS a bare `/p/:id/`, so an explicit choice has to win
-  // over it — clearing would let the seed put the board straight back. Also
-  // navigates by name, so picking a view from the quest DETAIL route lands on
-  // the list rather than trying to apply a view to a quest page.
+  // The view is state, not a destination, so picking one is a plain write —
+  // no navigation, no history entry, and nothing for a later render to undo.
+  // The one case that still navigates is the quest DETAIL route: the bar
+  // renders there too (see `showViewBar`), and a view means nothing on a
+  // single quest, so picking one goes back to the list to show it.
   const selectView = (view: QuestsView) => {
-    writeStoredQuestsView(view);
-    router.push("projectQuests", { params: { projectId }, query: { view } });
+    setQuestsView({ view });
+    if (name !== "projectQuests") {
+      router.push("projectQuests", { params: { projectId } });
+    }
   };
 
   // Four unlabelled groups (`NavGroup.label` omitted on purpose — see the
@@ -282,9 +286,9 @@ const ProjectView = () => {
       href: router.path("project", { params: { projectId } }),
     },
   ];
-  // Kanban is a `?view=kanban` toggle on `projectQuests`, not its own
-  // section anymore (Task 8) — the breadcrumb reads "Quests" whichever
-  // view is active, same as the sidebar's single Quests entry.
+  // Kanban is a view of `projectQuests`, not its own section anymore
+  // (Task 8) — the breadcrumb reads "Quests" whichever view is active,
+  // same as the sidebar's single Quests entry.
   const sectionKey = SECTION_LABEL_KEYS[name];
   if (sectionKey) {
     // For folio routes, the "Folios" section label links back to
@@ -338,20 +342,25 @@ const ProjectView = () => {
         </>
       }
     >
-      {/* The rail is the FIRST child of the content area — outside the
-          three-way branch below, so it holds the same x-position whether the
+      {/* The view bar is the FIRST child of the content area — outside the
+          three-way branch below, so it holds the same position whether the
           branch renders the quest log, the full-width board, or the centered
           column. Anything rendered from inside a branch necessarily sits to
-          the right of the quest log, which is what this replaces. */}
-      <div className="flex h-full">
-        {showViewRail && (
+          the right of the quest log, which is what this replaces. It was a
+          vertical rail down the left edge until #163; as a top bar the same
+          invariant holds on the y-axis instead. */}
+      <div className="flex h-full flex-col">
+        {showViewBar && (
           <ProjectQuestsViewSwitcher
-            view={kanbanView ? "kanban" : "list"}
+            // The stored preference, not `kanbanView` — on the quest DETAIL
+            // route the layout is never the board, but the bar still stands
+            // for which view the list will come back as.
+            view={questsView.view}
             kanbanEnabled={features.kanban === true}
             onSelect={selectView}
           />
         )}
-        <div className="flex h-full min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col">
           <div
             className={`flex min-h-0 flex-1 flex-col ${showQuestLog || fullWidth ? "overflow-hidden" : "overflow-auto"}`}
           >

@@ -1,5 +1,6 @@
 import { type Infer, z } from "alepha";
 import { SIGIL_TRACKERS } from "../sigilFeatures.ts";
+import { SIGIL_FEEDBACK_POSITIONS } from "../sigilFeedbackPosition.ts";
 
 /**
  * What the sink tells an app about how much it wants.
@@ -46,6 +47,14 @@ export const sigilConfig = z.object({
    * this package needs to know what is behind it.
    */
   feedbackUrl: z.string().max(2000).optional(),
+  /**
+   * Which corner the feedback button sits in, or absent for the default.
+   *
+   * Absent rather than defaulted on the wire so an older sink — which sends
+   * nothing here — is indistinguishable from one that has never been
+   * configured, and both land on `bottom-right`.
+   */
+  feedbackPosition: z.enum(SIGIL_FEEDBACK_POSITIONS).optional(),
 });
 
 export type SigilConfig = Infer<typeof sigilConfig>;

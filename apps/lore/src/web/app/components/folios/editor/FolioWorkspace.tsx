@@ -172,16 +172,20 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
     // The tree resizer was blamed for this and is innocent: reproduced with
     // `lor.folio.workspace.treeWidth` unset.
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
-      {/* The menubar and toolbar rows land HERE, portalled up from inside
-          MDXEditor's realm (see `FolioDocument`'s `renderToolbar`). The
-          design puts both rows above all three panes, spanning the whole
-          surface — but every control on them (Bold, Block type, Undo) can
-          only be published from inside that realm. A portal is what
-          reconciles the two: it moves the DOM without leaving the React
-          tree, so the rows keep their realm context while rendering here.
-          A callback ref (via `useState`) rather than `useRef` so the
-          document re-renders once the node exists and the portal has a
-          target on the first paint after mount. */}
+      {/* The MENUBAR row lands HERE, portalled up from inside MDXEditor's
+          realm (see `FolioDocument`'s `renderToolbar`). The design puts it
+          above all three panes, spanning the whole surface — but its
+          `edit.*`/`insert.*` items can only be published from inside that
+          realm. A portal is what reconciles the two: it moves the DOM
+          without leaving the React tree, so the row keeps its realm
+          context while rendering here. A callback ref (via `useState`)
+          rather than `useRef` so the document re-renders once the node
+          exists and the portal has a target on the first paint after mount.
+
+          The formatting toolbar used to land here too and no longer does —
+          it is text-formatting only, so it portals into the document column
+          instead (`FolioWorkspaceContent`'s `toolbarSlot`). The empty state
+          below already rendered no toolbar, so nothing changes for it. */}
       <div ref={setChromeSlot} className="flex flex-none flex-col" />
       <div className="relative flex min-h-0 flex-1">
         {project && (

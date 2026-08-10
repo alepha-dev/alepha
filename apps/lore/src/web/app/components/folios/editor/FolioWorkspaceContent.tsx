@@ -23,10 +23,12 @@ export interface FolioWorkspaceContentProps {
    */
   directoryId?: string;
   /**
-   * The DOM node above the pane row that the menubar and toolbar portal
-   * into. Owned by `FolioWorkspace` because the design puts both rows
-   * above the tree as well as the document — see that file's comment for
-   * why a portal, and not a plain move, is what gets them there.
+   * The DOM node above the pane row that the MENUBAR portals into. Owned
+   * by `FolioWorkspace` because the design puts that row above the tree as
+   * well as the document — see that file's comment for why a portal, and
+   * not a plain move, is what gets it there. The formatting toolbar used
+   * to share this slot and no longer does: it targets `toolbarSlot`, which
+   * this component owns, because it belongs to the document column.
    */
   chromeSlot: HTMLElement | null;
   /**
@@ -117,6 +119,14 @@ const FolioWorkspaceContent = (
     null,
   );
 
+  // The formatting toolbar's portal target. A sibling ABOVE the scroll
+  // container rather than a child of it, so the row stays put while a long
+  // folio scrolls under it — `position: absolute` inside a scrolling box
+  // would scroll away with the text it formats, the same trap the find bar
+  // below documents. Same callback-ref-via-`useState` reason as
+  // `contentElement`: the portal needs a re-render once the node exists.
+  const [toolbarSlot, setToolbarSlot] = useState<HTMLElement | null>(null);
+
   // Find-in-folio searches the RENDERED pane, which is why it is wired
   // here — `contentElement` above is the same DOM handle the Outline tab
   // scrolls headings within, and the only place the document's text nodes
@@ -155,6 +165,7 @@ const FolioWorkspaceContent = (
             of it: an `absolute` element inside a scrolling box scrolls away
             with the text it is searching. */}
         <div className="relative flex min-w-0 flex-1 flex-col">
+          <div ref={setToolbarSlot} className="flex flex-none flex-col" />
           <div
             ref={setContentElement}
             className="min-w-0 flex-1 overflow-y-auto"
@@ -166,6 +177,7 @@ const FolioWorkspaceContent = (
                 draft={draft}
                 actions={actions}
                 chromeSlot={props.chromeSlot}
+                toolbarSlot={toolbarSlot}
                 revisionCount={revisionCount}
                 imageUploadHandler={imageUploadHandler}
               />

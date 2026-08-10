@@ -16,6 +16,17 @@ import {
 } from "@alepha/ui/components/ui/breadcrumb";
 import { Button } from "@alepha/ui/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@alepha/ui/components/ui/dropdown-menu";
+import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
@@ -221,6 +232,7 @@ function renderNavIcon(icon: NavItem["icon"], className: string): ReactNode {
 
 function SidebarNavItem(props: { item: NavItem }) {
   const { item } = props;
+  const { state, isMobile } = useSidebar();
   const children = item.children;
   const isGroup = !!children && children.length > 0;
   const hasActive = isGroup && hasActiveDescendant(item);
@@ -302,6 +314,55 @@ function SidebarNavItem(props: { item: NavItem }) {
     );
   }
 
+  // Collapsed to icons, the expanded branch below is a dead button: it still
+  // flips `open`, but what `open` reveals is a `SidebarMenuSub`, which carries
+  // `group-data-[collapsible=icon]:hidden`. The group has no `href` either, so
+  // there is no fallback — every child is simply unreachable. A dropdown is the
+  // standard answer, and it belongs here rather than in any one app because
+  // this hits EVERY `NavItem` with children.
+  //
+  // Mobile is excluded: it uses the sheet, not icon mode, so the sub renders
+  // normally there.
+  if (isGroup && state === "collapsed" && !isMobile) {
+    return (
+      <SidebarMenuItem>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              // No `tooltip` here on purpose. `SidebarMenuButton` turns itself
+              // into a `TooltipTrigger` when given one, and layering the
+              // dropdown trigger on top makes hover and click fight over the
+              // same element. The menu names itself with a label instead.
+              //
+              // `hasActive` joins `item.active` so the trigger still reads as
+              // current when a descendant is — collapsed, it is the only clue
+              // which group holds the open page.
+              <SidebarMenuButton isActive={item.active || hasActive} />
+            }
+          >
+            {renderNavIcon(item.icon, "size-4")}
+            <span className="flex-1 text-left">{item.label}</span>
+            <ChevronRight className="size-4" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="right" align="start" className="min-w-48">
+            {/*
+              The group wrapper is required, not cosmetic: `DropdownMenuLabel`
+              is Base UI's `Menu.GroupLabel`, which reads `MenuGroupContext` and
+              THROWS outside a `Menu.Group`. Nothing types this — the label
+              compiles fine, and the whole app-shell crashes at the first click
+              on the trigger, because the throw happens when the menu opens
+              rather than when it mounts.
+            */}
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>{item.label}</DropdownMenuLabel>
+              <NavDropdownItems items={children} />
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarMenuItem>
+    );
+  }
+
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
@@ -335,6 +396,67 @@ function SidebarNavItem(props: { item: NavItem }) {
         </SidebarMenuSub>
       )}
     </SidebarMenuItem>
+  );
+}
+
+/**
+ * The children of a collapsed nav group, as dropdown entries.
+ *
+ * Recurses through nested groups via `DropdownMenuSub` — `SidebarNavItem`
+ * recurses into itself for depth-2 groups in the expanded tree, and without the
+ * matching recursion here a nested group would be dead again one level down,
+ * which is the very bug this branch exists to fix.
+ *
+ * Badges are carried inline. `SidebarMenuBadge` is
+ * `group-data-[collapsible=icon]:hidden`, so a collapsed sidebar drops every
+ * count — and the count is usually why you opened the group.
+ */
+function NavDropdownItems(props: { items: NavItem[] }) {
+  return (
+    <>
+      {props.items.map((child, ci) => {
+        const badge = child.badge != null && child.badge !== false && (
+          <span className="text-muted-foreground ml-auto pl-2 text-xs tabular-nums">
+            {child.badge}
+          </span>
+        );
+
+        if (child.children && child.children.length > 0) {
+          return (
+            <DropdownMenuSub key={child.href ?? ci}>
+              <DropdownMenuSubTrigger>
+                {renderNavIcon(child.icon, "size-4")}
+                <span>{child.label}</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <NavDropdownItems items={child.children} />
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          );
+        }
+
+        if (child.disabled) {
+          return (
+            <DropdownMenuItem key={child.href ?? ci} disabled>
+              {renderNavIcon(child.icon, "size-4")}
+              <span>{child.label}</span>
+              <Lock className="ml-auto size-3.5 opacity-70" />
+            </DropdownMenuItem>
+          );
+        }
+
+        return (
+          <DropdownMenuItem
+            key={child.href ?? ci}
+            render={<Link href={child.href ?? "#"} />}
+          >
+            {renderNavIcon(child.icon, "size-4")}
+            <span>{child.label}</span>
+            {badge}
+          </DropdownMenuItem>
+        );
+      })}
+    </>
   );
 }
 

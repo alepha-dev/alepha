@@ -111,6 +111,27 @@ export interface StoragePrimitiveOptions {
    * - omitted — the injected default for the environment
    */
   provider?: Service<FileStorageProvider> | "memory";
+
+  /**
+   * This interface is **open for augmentation**: a package that adds an
+   * upload-time concern declares its own option here rather than getting a
+   * field reserved for it in core. Pair it with a `files:beforeUpload`
+   * subscriber that reads `storage.options` and acts on it, and core carries
+   * neither the option nor the dependency behind it.
+   *
+   * ```ts
+   * declare module "alepha/api/files" {
+   *   interface StoragePrimitiveOptions {
+   *     image?: { maxWidth: number };
+   *   }
+   * }
+   * ```
+   *
+   * Installing such a package makes the option available, typed, at every
+   * `$storage({ ... })` call site with no import — and uninstalling it stops
+   * those call sites compiling, which is the honest outcome, since the option
+   * would no longer do anything.
+   */
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

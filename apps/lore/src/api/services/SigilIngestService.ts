@@ -203,7 +203,16 @@ export class SigilIngestService {
       // Omitted rather than empty when the module is off: the client treats an
       // absent url as "no feedback surface", which is the honest reading.
       ...(gates.feedback
-        ? { feedbackUrl: `${publicUrl}/p/${sigil.projectId}/request` }
+        ? {
+            feedbackUrl: `${publicUrl}/p/${sigil.projectId}/request`,
+            // Only when the app has actually chosen one. Sending the default
+            // explicitly would make "never configured" indistinguishable from
+            // "deliberately bottom-right", and both already resolve the same
+            // way client-side.
+            ...(sigil.feedbackPosition
+              ? { feedbackPosition: sigil.feedbackPosition }
+              : {}),
+          }
         : {}),
     };
   }

@@ -1,9 +1,14 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type FullConfig, request } from "@playwright/test";
+import { e2ePort } from "../../../playwright.port.ts";
 
-// Keep in sync with playwright.config.ts — see the port note there.
-const port = Number(process.env.E2E_PORT ?? 3304);
+// The same derivation `playwright.config.ts` uses, not a copy of its default.
+// "Keep in sync" was doing the work here and did not: this read `E2E_PORT ??
+// 3304` while the config had grown the per-worktree derivation, so in a linked
+// worktree the server came up on 37xx and setup posted to 3304 — ECONNREFUSED
+// before a single spec ran.
+const port = e2ePort(3304);
 const ADMIN_EMAIL = "admin@alepha.dev";
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "adminadmin";

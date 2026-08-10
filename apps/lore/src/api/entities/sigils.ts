@@ -1,3 +1,4 @@
+import { SIGIL_FEEDBACK_POSITIONS } from "@alepha/sigil/feedback-position";
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { projects } from "./projects.ts";
@@ -37,6 +38,17 @@ export const sigils = $entity({
     tokenPrefix: z.string().min(1).max(32),
     /** Capability buckets this sigil's ingest endpoint accepts. */
     kinds: db.default(z.array(z.string().max(50)).max(10), []),
+    /**
+     * Which corner this app's feedback button sits in.
+     *
+     * Optional, and deliberately without a `db.default`: `undefined` means
+     * bottom-right, so every sigil predating the column keeps the original
+     * placement with no backfill — and a nullable `ADD COLUMN` is the one shape
+     * that does not make drizzle rebuild the table. `sigils` is the CASCADE
+     * parent of the four analytics tables, so a rebuild here is the wipe bomb
+     * documented in CLAUDE.md.
+     */
+    feedbackPosition: z.enum(SIGIL_FEEDBACK_POSITIONS).optional(),
     createdBy: db.ref(z.uuid().optional(), () => users.cols.id),
     createdAt: db.createdAt(),
     /** Last time this sigil reported anything. Drives the "silent" badge. */
