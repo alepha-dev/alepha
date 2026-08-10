@@ -1,4 +1,5 @@
 import { $env, $hook, $inject, Alepha, AlephaError, z } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { AnalyticsBuckets } from "../planner/AnalyticsBuckets.ts";
 import { AnalyticsSlotMap } from "../planner/AnalyticsSlotMap.ts";
@@ -129,6 +130,40 @@ const envSchema = z.object({
  * {@link prune} still delegates in full, unmodified: nothing needs to be
  * forwarded to delete it.
  *
+ * ## The read side has to merge too
+ *
+ * Forwarding rows into `cold` is pointless if `query()` never reads them
+ * back — a window older than Analytics Engine's retention would still
+ * silently return nothing, and the worst case is a window straddling the
+ * boundary returning only the Analytics Engine portion with no sign anything
+ * is missing. So {@link query} queries both sources and merges, the same way
+ * `OrmAnalyticsProvider.query()` already merges its own raw and rolled
+ * tiers — same merge key (`JSON.stringify` of the grouped dimension values),
+ * same two mergeable aggregates (`sum`/`count`, added across sources),
+ * ordering and `limit` applied once to the merged set rather than per
+ * source. Two things are specific to a *composite* of two different
+ * backends rather than two tables in the same one:
+ *
+ * - **Skipping `cold` when it cannot matter.** A window entirely within
+ *   `dataset`'s declared hot retention cannot have anything forwarded into
+ *   it yet in a correctly-running system — see {@link mightNeedCold} — so
+ *   `query()` skips `cold` for that case with zero calls to it, the same
+ *   structural argument that makes {@link forwardToCold} safe rather than a
+ *   speed hack.
+ * - **Not double-counting an hour Analytics Engine still has after it was
+ *   forwarded.** Analytics Engine has no delete API, so a forwarded hour
+ *   keeps existing on both sides forever. `query()` re-derives the same
+ *   watermark {@link forwardToCold} uses and narrows the Analytics Engine
+ *   side's `since` to exclude whatever `cold` already covers — see
+ *   {@link nextBucket} — rather than trusting the two sources to be disjoint.
+ * - **`estimated`.** The merged result is `estimated: true` whenever
+ *   Analytics Engine contributed any row to it — not just because Analytics
+ *   Engine samples, but because a row `cold` holds only got there through
+ *   `forwardToCold`, which itself read it as a sample-corrected estimate.
+ *   Landing in a relational table does not retroactively make it a
+ *   measurement. Only a merge where every contributing row came from `cold`
+ *   (nothing from Analytics Engine) reports `estimated: false`.
+ *
  * ## Writes are free of round-trips
  *
  * `writeDataPoint()` returns nothing and is not awaited; the runtime writes in
@@ -151,10 +186,11 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly env = $env(envSchema);
   protected readonly log = $logger();
+  protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
-   * The durable store for `rollup`/`prune`. The concrete class — see the
-   * class doc for why the abstract `AnalyticsProvider` seam would be
+   * The durable store for `rollup`/`prune`/`query`. The concrete class — see
+   * the class doc for why the abstract `AnalyticsProvider` seam would be
    * circular here.
    */
   protected readonly cold = $inject(OrmAnalyticsProvider);
@@ -266,7 +302,83 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     }
   }
 
+  /**
+   * Queries Analytics Engine and `cold` and merges the two — see the class
+   * doc's "The read side has to merge too" section for why both the skip and
+   * the watermark exclusion are necessary, not optional polish.
+   */
   public async query(
+    dataset: AnalyticsDataset,
+    query: AnalyticsQuery,
+  ): Promise<AnalyticsResult> {
+    if (!this.mightNeedCold(dataset, query.since)) {
+      return this.queryHot(dataset, query);
+    }
+
+    const watermark = await this.coldWatermark(dataset);
+
+    // `orderBy`/`limit` are deliberately left out of what each source
+    // receives. `mergeResults` is the only place they may be applied — once,
+    // to the merged set — because applying a `limit` to each source
+    // separately can drop a row that only belongs in the true top-N once
+    // both sources are combined (see the class doc).
+    const unordered: AnalyticsQuery = {
+      since: query.since,
+      where: query.where,
+      groupBy: query.groupBy,
+      select: query.select,
+    };
+    const hotSince = watermark
+      ? this.laterBound(query.since, this.nextBucket(watermark))
+      : query.since;
+
+    const [hot, cold] = await Promise.all([
+      this.queryHot(dataset, { ...unordered, since: hotSince }),
+      this.cold.query(dataset, unordered),
+    ]);
+
+    return this.mergeResults(query, hot, cold);
+  }
+
+  /**
+   * Whether a query starting at `since` could possibly need `cold` at all,
+   * decided from `dataset`'s own declared retention rather than `cold`'s
+   * actual state — computable with zero calls to `cold`, which is what lets
+   * {@link query} skip it entirely for a window that is clearly still within
+   * Analytics Engine's live range.
+   *
+   * Safe even when wrong in the "check anyway" direction (harmless, just a
+   * wasted round trip) and provably safe in the "skip" direction too: a
+   * correctly-running {@link forwardToCold} never forwards a row newer than
+   * `dataset`'s declared hot floor, and Analytics Engine never deletes
+   * anything on its own — so if the whole window is at or after that floor,
+   * every row it could contain is still in Analytics Engine regardless of
+   * whether `cold` also happens to have a copy.
+   *
+   * Conservative when retention is undeclared: with no declared hot window,
+   * Cloudflare's own ~90-day platform limit is the only bound this class
+   * knows, and it is not narrow enough to skip `cold` safely — so this
+   * returns `true` (always check) rather than guess.
+   */
+  protected mightNeedCold(dataset: AnalyticsDataset, since: string): boolean {
+    const hot = dataset.retention?.hot;
+    if (!hot) return true;
+    const days = AnalyticsBuckets.parseWindow(hot) / (24 * 60 * 60 * 1000);
+    const today = AnalyticsBuckets.day(
+      AnalyticsBuckets.hour(this.dateTime.nowMillis()),
+    );
+    const hotFloor = AnalyticsBuckets.shiftDays(today, -days);
+    return since < hotFloor;
+  }
+
+  /**
+   * The Analytics Engine half of `query()` — everything this class did
+   * before it had a `cold` to merge with, unchanged. {@link forwardToCold}
+   * also calls this directly (never the public `query()`) specifically to
+   * avoid the merge: forwarding needs Analytics Engine's own rows, not an
+   * already-merged view that would include rows `cold` itself contributed.
+   */
+  protected async queryHot(
     dataset: AnalyticsDataset,
     query: AnalyticsQuery,
   ): Promise<AnalyticsResult> {
@@ -440,12 +552,14 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     const select: Record<string, AnalyticsAggregate> = {};
     for (const measure of measures) select[measure] = "sum";
 
-    // Reuses this class's own `query()` rather than talking to `sql()`
-    // directly — the sample-interval correction (`aggregateExpression`) and
-    // the dimension/measure name validation both live there, and forwarded
-    // rows have to carry the same corrected totals a caller querying
-    // Analytics Engine directly would see, not a raw stored double.
-    const result = await this.query(dataset, {
+    // `queryHot`, not `query()`: the sample-interval correction
+    // (`aggregateExpression`) and the dimension/measure name validation both
+    // live there, and forwarded rows have to carry the same corrected totals
+    // a caller querying Analytics Engine directly would see, not a raw
+    // stored double — but this must stay scoped to Analytics Engine's own
+    // rows. Calling the public `query()` here would merge in `cold`'s rows
+    // too, which is exactly what must NOT be forwarded back into `cold`.
+    const result = await this.queryHot(dataset, {
       since,
       groupBy: ["hour", ...dimensions],
       select,
@@ -530,6 +644,109 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
       return AnalyticsBuckets.day(hour) <= watermark;
     }
     return hour <= watermark;
+  }
+
+  /**
+   * The smallest bucket string strictly after `watermark`, safe to use as a
+   * `since` lower bound: excludes exactly what {@link isForwarded} already
+   * treats as covered, and nothing more.
+   *
+   * Day-precision in, day-precision out — `AnalyticsBuckets.shiftDays`
+   * already does that arithmetic. Hour-precision needs real millisecond
+   * arithmetic, since `AnalyticsBuckets` has no `nextHour`: this is `query()`
+   * narrowing the Analytics Engine side away from an hour `cold` picked up
+   * mid-crash (see {@link isForwarded}'s hour-precision case) — a real but
+   * rare path, not the everyday one.
+   */
+  protected nextBucket(watermark: string): string {
+    if (watermark.length === 10) {
+      return AnalyticsBuckets.shiftDays(watermark, 1);
+    }
+    const millis = Date.parse(`${watermark}:00:00.000Z`);
+    return new Date(millis + 60 * 60 * 1000).toISOString().slice(0, 13);
+  }
+
+  /**
+   * The chronologically later of two bucket-prefixed strings, comparable
+   * directly even when one is day-precision and the other hour-precision —
+   * the same property `isForwarded`/`nextBucket` already rely on: a bare day
+   * is a prefix of every hour within it, and a prefix sorts before anything
+   * it is a prefix of.
+   */
+  protected laterBound(a: string, b: string): string {
+    return a > b ? a : b;
+  }
+
+  /**
+   * Merges Analytics Engine's and `cold`'s results the same way
+   * `OrmAnalyticsProvider.query()` merges its own raw and rolled tiers: one
+   * `JSON.stringify`-keyed pass to combine matching groups (never a
+   * delimiter join — an unsanitised dimension value could collide), ordering
+   * and `limit` applied exactly once, to the merged set, never per source
+   * (a per-source `limit` would drop rows that belong in the true top-N).
+   *
+   * `estimated`/`sampleInterval` follow `hot` alone: see the class doc's
+   * "The read side has to merge too" section for why a `cold` row does not
+   * un-estimate itself just by living in a relational table.
+   */
+  protected mergeResults(
+    query: AnalyticsQuery,
+    hot: AnalyticsResult,
+    cold: AnalyticsResult,
+  ): AnalyticsResult {
+    const groupBy = query.groupBy ?? [];
+    const merged = new Map<string, Record<string, string | number>>();
+
+    for (const result of [hot, cold]) {
+      for (const row of result.rows) {
+        const key = JSON.stringify(groupBy.map((name) => row[name]));
+        const existing = merged.get(key);
+        if (!existing) {
+          merged.set(key, { ...row });
+          continue;
+        }
+        for (const [measure, aggregate] of Object.entries(query.select)) {
+          existing[measure] = this.mergeValue(
+            Number(existing[measure] ?? 0),
+            Number(row[measure] ?? 0),
+            aggregate,
+          );
+        }
+      }
+    }
+
+    let rows = [...merged.values()];
+
+    if (query.orderBy) {
+      const { key, direction } = query.orderBy;
+      rows.sort((a, b) => {
+        const left = a[key];
+        const right = b[key];
+        const comparison =
+          typeof left === "number" && typeof right === "number"
+            ? left - right
+            : String(left).localeCompare(String(right));
+        return direction === "desc" ? -comparison : comparison;
+      });
+    }
+
+    if (query.limit !== undefined) rows = rows.slice(0, query.limit);
+
+    const estimated = hot.rows.length > 0;
+    return {
+      rows,
+      estimated,
+      sampleInterval: estimated ? hot.sampleInterval : undefined,
+    };
+  }
+
+  protected mergeValue(
+    left: number,
+    right: number,
+    aggregate: AnalyticsAggregate,
+  ): number {
+    if (aggregate === "sum" || aggregate === "count") return left + right;
+    throw new AlephaError(`Received an unknown aggregate '${aggregate}'.`);
   }
 
   /**

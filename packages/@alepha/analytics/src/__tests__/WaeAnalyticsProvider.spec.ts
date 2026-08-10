@@ -1,4 +1,5 @@
 import { Alepha, z } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, expect, it } from "vitest";
 import { AlephaAnalytics } from "../index.workerd.ts";
@@ -6,6 +7,8 @@ import { AnalyticsSlotMap } from "../planner/AnalyticsSlotMap.ts";
 import { AnalyticsProvider } from "../providers/AnalyticsProvider.ts";
 import { OrmAnalyticsProvider } from "../providers/OrmAnalyticsProvider.ts";
 import { WaeAnalyticsProvider } from "../providers/WaeAnalyticsProvider.ts";
+import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
+import type { AnalyticsQuery } from "../schemas/analyticsQuerySchema.ts";
 import { FakeAnalyticsEngine } from "./FakeAnalyticsEngine.ts";
 
 const dataset = {
@@ -67,30 +70,16 @@ class TestWaeAnalyticsProvider extends WaeAnalyticsProvider {
  * for tests that never touch `cold`, the same as every
  * `OrmAnalyticsProvider.spec.ts` test does. Docker/Postgres are already a
  * hard requirement of this repo's test suite for that reason.
+ *
+ * Always registers `dataset` before `start()` — required for `cold`'s tables
+ * to exist at all (registering after `start()` never gets migrated; see
+ * `OrmAnalyticsProvider`'s own eager-registration rule) — which used to be a
+ * separate `buildRegistered()` helper reserved for tests that touched `cold`
+ * directly. `query()` now consults `cold` on every call whose window might
+ * reach it (see `mightNeedCold`), so *every* test needs it registered, not
+ * just the ones that used to opt in.
  */
 const build = async () => {
-  const alepha = Alepha.create({
-    env: {
-      CLOUDFLARE_ANALYTICS_DATASET: BINDING_NAME,
-      CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
-      CLOUDFLARE_API_TOKEN: API_TOKEN,
-    },
-  }).with(AlephaOrmPostgres);
-
-  const provider = alepha.inject(TestWaeAnalyticsProvider);
-  alepha.set("cloudflare.env", { [BINDING_NAME]: provider.fakeEngine });
-  await alepha.start();
-  return { alepha, provider, engine: provider.fakeEngine };
-};
-
-/**
- * Same as {@link build}, except `provider.register(dataset)` runs BEFORE
- * `start()` — required whenever a test needs `cold`'s tables to actually
- * exist (registering after `start()` never gets migrated; see
- * `OrmAnalyticsProvider`'s own eager-registration rule). `build()` cannot be
- * reused for this because it already calls `start()` internally.
- */
-const buildRegistered = async () => {
   const alepha = Alepha.create({
     env: {
       CLOUDFLARE_ANALYTICS_DATASET: BINDING_NAME,
@@ -104,6 +93,21 @@ const buildRegistered = async () => {
   provider.register(dataset);
   await alepha.start();
   return { alepha, provider, engine: provider.fakeEngine };
+};
+
+/**
+ * Pins `alepha`'s `DateTimeProvider` to an exact instant, computing the
+ * offset dynamically so this works regardless of the real wall-clock date
+ * the suite happens to run on — required for `mightNeedCold`'s
+ * `dataset.retention.hot`-relative "is this window still fully inside
+ * Analytics Engine's live range" check, the one piece of `query()` that
+ * reads the clock.
+ */
+const pinNow = async (alepha: Alepha, iso: string) => {
+  const dateTime = alepha.inject(DateTimeProvider);
+  dateTime.pause();
+  const offset = Date.parse(iso) - dateTime.nowMillis();
+  await dateTime.travel([offset, "milliseconds"]);
 };
 
 describe("WaeAnalyticsProvider", () => {
@@ -345,13 +349,20 @@ describe("WaeAnalyticsProvider", () => {
   it("rejects a where filter that is not a declared dimension", async () => {
     const { alepha, provider } = await build();
     try {
+      // `query()` now runs the Analytics Engine side and the `cold` side
+      // concurrently (`Promise.all`), and both independently validate
+      // `where`'s keys against `dataset`'s declared dimensions — this
+      // class's own `AnalyticsSlotMap.blobSlot` ("unknown dimension") and
+      // `OrmAnalyticsProvider.assertKnownDimension` ("not a declared
+      // dimension"). Either can be the one `Promise.all` surfaces first, so
+      // the assertion has to accept both rather than assume which wins.
       await expect(
         provider.query(dataset, {
           since: "2026-08-09",
           where: { "app; DROP TABLE app_analytics; --": "a" },
           select: { count: "sum" },
         }),
-      ).rejects.toThrow(/unknown dimension/);
+      ).rejects.toThrow(/unknown dimension|not a declared dimension/);
     } finally {
       await alepha.stop();
     }
@@ -360,12 +371,13 @@ describe("WaeAnalyticsProvider", () => {
   it("rejects a select measure that is not a declared measure", async () => {
     const { alepha, provider } = await build();
     try {
+      // See the sibling test above for why both error sources are accepted.
       await expect(
         provider.query(dataset, {
           since: "2026-08-09",
           select: { "count; DROP TABLE app_analytics; --": "sum" },
         }),
-      ).rejects.toThrow(/unknown measure/);
+      ).rejects.toThrow(/unknown measure|not a declared measure/);
     } finally {
       await alepha.stop();
     }
@@ -397,7 +409,7 @@ describe("WaeAnalyticsProvider", () => {
     // is seeded directly into `coldProvider` (bypassing Analytics Engine
     // entirely) so this stays a test of delegation, not of forwarding —
     // {@link forwardToCold} is covered on its own below.
-    const { alepha, provider } = await buildRegistered();
+    const { alepha, provider } = await build();
     try {
       await provider.coldProvider.record(dataset, [
         { hour: "2026-08-01T10", app: "a", path: "/x", count: 4 },
@@ -432,7 +444,7 @@ describe("WaeAnalyticsProvider", () => {
     // `provider.record()` — i.e. it only ever exists in Analytics Engine —
     // so this proves `rollup()` itself moves it into `cold`, not merely that
     // `cold.rollup()` gets called.
-    const { alepha, provider } = await buildRegistered();
+    const { alepha, provider } = await build();
     try {
       await provider.record(dataset, [
         { hour: "2026-08-01T10", app: "a", path: "/x", count: 3 },
@@ -456,7 +468,7 @@ describe("WaeAnalyticsProvider", () => {
     // The one that matters most: without the watermark, the second sweep
     // would re-query the same Analytics Engine rows (nothing ever deletes
     // them) and `cold.record()`'s accumulate-upsert would add them again.
-    const { alepha, provider } = await buildRegistered();
+    const { alepha, provider } = await build();
     try {
       await provider.record(dataset, [
         { hour: "2026-08-01T10", app: "a", path: "/x", count: 4 },
@@ -482,7 +494,7 @@ describe("WaeAnalyticsProvider", () => {
   });
 
   it("forwards nothing and does not throw when the Analytics Engine window is empty", async () => {
-    const { alepha, provider } = await buildRegistered();
+    const { alepha, provider } = await build();
     try {
       await expect(
         provider.rollup(dataset, "2026-08-02"),
@@ -499,7 +511,7 @@ describe("WaeAnalyticsProvider", () => {
   });
 
   it("forwards the sample-corrected value into cold, not a raw stored double", async () => {
-    const { alepha, provider, engine } = await buildRegistered();
+    const { alepha, provider, engine } = await build();
     try {
       // `_sample_interval: 4` on a stored `count` of 10 means the corrected
       // total is 40 — the fake never simulates real sampling (see its class
@@ -523,6 +535,194 @@ describe("WaeAnalyticsProvider", () => {
         select: { count: "sum" },
       });
       expect(result.rows).toEqual([{ count: 40 }]);
+    } finally {
+      await alepha.stop();
+    }
+  });
+});
+
+describe("WaeAnalyticsProvider — the read side merges with cold", () => {
+  it("skips cold entirely for a window inside the declared hot retention", async () => {
+    // A call-counting substitute for `cold` — `.with({ provide, use })`
+    // works here because `CountingOrmAnalyticsProvider extends
+    // OrmAnalyticsProvider` (inherits its protected DB-dependent internals
+    // rather than reimplementing them), the same requirement that makes
+    // `coldProvider` on `TestWaeAnalyticsProvider` a getter into the real
+    // thing rather than a lightweight double.
+    class CountingOrmAnalyticsProvider extends OrmAnalyticsProvider {
+      public queryCount = 0;
+      public override async query(target: AnalyticsDataset, q: AnalyticsQuery) {
+        this.queryCount++;
+        return super.query(target, q);
+      }
+    }
+
+    const hotDataset = { ...dataset, retention: { hot: "5d" } };
+    const alepha = Alepha.create({
+      env: {
+        CLOUDFLARE_ANALYTICS_DATASET: BINDING_NAME,
+        CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
+        CLOUDFLARE_API_TOKEN: API_TOKEN,
+      },
+    })
+      .with(AlephaOrmPostgres)
+      .with({
+        provide: OrmAnalyticsProvider,
+        use: CountingOrmAnalyticsProvider,
+      });
+
+    const provider = alepha.inject(TestWaeAnalyticsProvider);
+    alepha.set("cloudflare.env", { [BINDING_NAME]: provider.fakeEngine });
+    provider.register(hotDataset);
+    await alepha.start();
+
+    try {
+      await pinNow(alepha, "2026-08-09T00:00:00.000Z");
+
+      await provider.record(hotDataset, [
+        { hour: "2026-08-08T10", app: "a", path: "/x", count: 3 },
+      ]);
+
+      // since = 2026-08-05, hot floor = 2026-08-09 - 5d = 2026-08-04: the
+      // whole window is at/after the floor, so `cold` cannot have anything
+      // extra for it in a correctly-running system.
+      const result = await provider.query(hotDataset, {
+        since: "2026-08-05",
+        select: { count: "sum" },
+      });
+
+      expect(result.rows).toEqual([{ count: 3 }]);
+      const cold =
+        provider.coldProvider as unknown as CountingOrmAnalyticsProvider;
+      expect(cold.queryCount).toBe(0);
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  it("returns cold's data for a window entirely older than what Analytics Engine still has reachable — the case that returned nothing before this fix", async () => {
+    const { alepha, provider, engine } = await build();
+    try {
+      await provider.record(dataset, [
+        { hour: "2026-08-01T10", app: "a", path: "/x", count: 4 },
+      ]);
+      await provider.rollup(dataset, "2026-08-02");
+
+      // The fake, unlike real Analytics Engine, never drops a point on its
+      // own — so without this, the query below would pass even with `cold`
+      // never consulted at all, simply because Analytics Engine still
+      // happens to have the same point. `answer()` simulates the point
+      // having genuinely aged out of Analytics Engine's own retention (it
+      // overrides only the one Analytics Engine call this query issues),
+      // which is the scenario this test actually means to cover: a row that
+      // exists ONLY in `cold` because it no longer exists in Analytics
+      // Engine at all.
+      engine.answer([]);
+
+      const result = await provider.query(dataset, {
+        since: "2026-08-01",
+        select: { count: "sum" },
+      });
+
+      expect(result.rows).toEqual([{ count: 4 }]);
+      // Every contributing row came from `cold` — exact, not sampled.
+      expect(result.estimated).toBe(false);
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  it("returns the union across a window straddling the forwarded boundary, totals equal to the sum of both parts", async () => {
+    const { alepha, provider, engine } = await build();
+    try {
+      await provider.record(dataset, [
+        { hour: "2026-08-01T10", app: "a", path: "/x", count: 4 },
+      ]);
+      await provider.rollup(dataset, "2026-08-02");
+
+      // Recorded after the rollup — still only in Analytics Engine.
+      await provider.record(dataset, [
+        { hour: "2026-08-09T10", app: "a", path: "/x", count: 7 },
+      ]);
+
+      // Simulates the old point having genuinely aged out of Analytics
+      // Engine, the same as the test above — Analytics Engine now reports
+      // only the new point (7), so a correct total of 11 can only have come
+      // from also reading `cold`.
+      engine.answer([{ count: "7" }]);
+
+      const result = await provider.query(dataset, {
+        since: "2026-08-01",
+        select: { count: "sum" },
+      });
+
+      expect(result.rows).toEqual([{ count: 11 }]);
+      // Analytics Engine contributed a row (the new one), so the merged
+      // result stays an estimate even though the old part is exact.
+      expect(result.estimated).toBe(true);
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  it("does not double-count an hour that exists in both Analytics Engine and cold", async () => {
+    const { alepha, provider, engine } = await build();
+    try {
+      await provider.record(dataset, [
+        { hour: "2026-08-01T10", app: "a", path: "/x", count: 4 },
+      ]);
+      await provider.rollup(dataset, "2026-08-02");
+
+      // Analytics Engine has no delete API: the point recorded above is
+      // still sitting in `engine.points`, untouched by rollup, at the same
+      // time its corrected total also lives in `cold`'s rolled tier. An
+      // unconditional merge of both sources would count it twice.
+      expect(engine.points).toHaveLength(1);
+
+      const result = await provider.query(dataset, {
+        since: "2026-08-01",
+        select: { count: "sum" },
+      });
+
+      expect(result.rows).toEqual([{ count: 4 }]);
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  it("orderBy + limit across a straddling window return the globally correct top-N, not a per-source top-N", async () => {
+    const { alepha, provider } = await build();
+    try {
+      // Old, forwarded to cold: "/a" and "/shared" each rank ABOVE nothing —
+      // there are only two cold groups, so a per-source limit of 1 would
+      // keep "/a" (10 > 9) and drop "/shared".
+      await provider.record(dataset, [
+        { hour: "2026-08-01T10", app: "a", path: "/a", count: 10 },
+        { hour: "2026-08-01T11", app: "a", path: "/shared", count: 9 },
+      ]);
+      await provider.rollup(dataset, "2026-08-02");
+
+      // New, still only in Analytics Engine: symmetric shape — a
+      // per-source limit of 1 there would keep "/b" (10 > 9) and drop
+      // "/shared" too.
+      await provider.record(dataset, [
+        { hour: "2026-08-09T10", app: "a", path: "/b", count: 10 },
+        { hour: "2026-08-09T11", app: "a", path: "/shared", count: 9 },
+      ]);
+
+      // Per-source top-1 would therefore never see "/shared" at all in
+      // either source and could only ever return "/a" or "/b" (each 10).
+      // The true global total for "/shared" is 9 + 9 = 18 — higher than
+      // either "/a" or "/b" alone — so only a merge-then-limit is correct.
+      const result = await provider.query(dataset, {
+        since: "2026-08-01",
+        groupBy: ["path"],
+        select: { count: "sum" },
+        orderBy: { key: "count", direction: "desc" },
+        limit: 1,
+      });
+
+      expect(result.rows).toEqual([{ path: "/shared", count: 18 }]);
     } finally {
       await alepha.stop();
     }
