@@ -227,6 +227,14 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
   return (
     <div
       ref={wrapperRef}
+      // `min-w-0` because grid and flex items default to `min-width: auto`,
+      // which forbids shrinking below the content's min-content width. This
+      // editor's min-content width is set by its toolbar — eleven controls that
+      // do not wrap — which is wider than `DialogContent`'s `sm:max-w-xl`, so
+      // inside a dialog the cap bound the container and the editor spilled out
+      // over the page behind it. Here rather than at each call site: every
+      // embedding wants it, and the two dialogs that embed this had the bug.
+      className="min-w-0"
       // React's onFocus is the bubbling `focusin`, and it crosses the
       // portal the folio workspace renders its toolbar through — so a
       // click on Bold marks the editor touched just as typing does.

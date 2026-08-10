@@ -44,7 +44,14 @@ const QuestCompletionDialog = (props: QuestCompletionDialogProps) => {
 
   return (
     <Dialog open={props.open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-xl">
+      {/*
+        `3xl` rather than `xl`: the editor's toolbar wants ~810px and a
+        completion summary is worth the room. This is the cosmetic half of
+        #171 — the fix that matters is `min-w-0` on the editor wrapper plus a
+        scrollable toolbar, without which a wider dialog only moves the
+        breakpoint to a narrower viewport.
+      */}
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>{tr("quest.view.complete.title")}</DialogTitle>
           <DialogDescription>
