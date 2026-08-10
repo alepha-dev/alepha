@@ -716,6 +716,9 @@ export default {
   "insights.totalViews.tooltip":
     "Raw page-view count. Nothing throttles what an enrolled app reports, so this number is inflatable by whoever holds its token. Trust the unique-visitor count instead.",
   "insights.overTime": "Views over time",
+  "insights.estimated": "Estimated",
+  "insights.estimated.note":
+    "Page views and performance are sampled, so these are estimates. Unique visitors are exact.",
   "insights.topCountries": "Top countries",
   "insights.topPaths": "Top pages",
   "insights.empty": "No page views recorded in this range yet.",

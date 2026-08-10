@@ -726,6 +726,9 @@ export default {
   "insights.totalViews.tooltip":
     "Nombre brut de pages vues. Rien ne limite ce qu’une application enrôlée déclare, donc ce chiffre est gonflable par qui détient son jeton. Fiez-vous plutôt aux visiteurs uniques.",
   "insights.overTime": "Pages vues dans le temps",
+  "insights.estimated": "Estimation",
+  "insights.estimated.note":
+    "Les pages vues et les performances sont échantillonnées : ces chiffres sont des estimations. Les visiteurs uniques sont exacts.",
   "insights.topCountries": "Principaux pays",
   "insights.topPaths": "Pages les plus vues",
   "insights.empty": "Aucune page vue enregistrée sur cette période.",

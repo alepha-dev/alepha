@@ -21,6 +21,7 @@ import { BarChart3, Eye, Info, Users } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { currentSigilInsightsAtom } from "../../../atoms/currentSigilInsightsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import AppAnalyticsEstimatedBadge from "./AppAnalyticsEstimatedBadge.tsx";
 
 // Chart palette — `ChartContainer` exposes each key as a `--color-<key>`
 // CSS variable so the bars track the theme + dark mode.
@@ -104,6 +105,10 @@ const AppAnalytics = () => {
             <p className="text-muted-foreground mt-1 text-xs">
               {tr("insights.totalViews.note")}
             </p>
+            <AppAnalyticsEstimatedBadge
+              estimated={data.estimated}
+              sampleInterval={data.sampleInterval}
+            />
           </CardContent>
         </Card>
       </div>
@@ -115,6 +120,10 @@ const AppAnalytics = () => {
             <BarChart3 className="size-5" />
             {tr("insights.overTime")}
           </CardTitle>
+          <AppAnalyticsEstimatedBadge
+            estimated={data.estimated}
+            sampleInterval={data.sampleInterval}
+          />
         </CardHeader>
         <CardContent>
           {data.totalViews > 0 ? (
