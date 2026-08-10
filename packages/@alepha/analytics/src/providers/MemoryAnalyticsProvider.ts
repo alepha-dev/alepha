@@ -49,6 +49,18 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
     dataset: AnalyticsDataset,
     query: AnalyticsQuery,
   ): Promise<AnalyticsResult> {
+    for (const name of Object.keys(query.where ?? {})) {
+      this.assertKnownDimension(dataset, name);
+    }
+    for (const name of query.groupBy ?? []) {
+      if (name !== "day" && name !== "hour") {
+        this.assertKnownDimension(dataset, name);
+      }
+    }
+    for (const name of Object.keys(query.select)) {
+      this.assertKnownMeasure(dataset, name);
+    }
+
     const rows = (this.stored.get(dataset.name) ?? []).filter((row) =>
       this.matches(row, query),
     );
@@ -186,8 +198,44 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
     value: number,
     aggregate: AnalyticsAggregate,
   ): number {
-    if (aggregate === "count") return Number(current ?? 0) + 1;
     if (aggregate === "sum") return Number(current ?? 0) + value;
     throw new AlephaError(`Received an unknown aggregate '${aggregate}'.`);
+  }
+
+  /**
+   * Refuses a query name (from `where`/`groupBy`) that is not one of the
+   * dataset's own declared dimensions.
+   *
+   * `OrmAnalyticsProvider` and `WaeAnalyticsProvider` both throw `AlephaError`
+   * for an unknown name — the former because it is about to splice the name
+   * into SQL text, the latter because it resolves the name to a slot. This
+   * provider had no equivalent guard: an undeclared name silently fell
+   * through to `matches`/`dimensionOf`, which read `row[name]` as
+   * `undefined` and produced empty rows or a folded `0` instead of an error.
+   * Since Memory is the provider every test runs against, a typo'd dimension
+   * name used to be green in every test suite and only surfaced as a 500 in
+   * production, against a real backend.
+   */
+  protected assertKnownDimension(
+    dataset: AnalyticsDataset,
+    name: string,
+  ): void {
+    if (!Object.hasOwn(dataset.dimensions.shape, name)) {
+      throw new AlephaError(
+        `Query on dataset '${dataset.name}' references '${name}', which is not a declared dimension. Declared dimensions: ${Object.keys(dataset.dimensions.shape).join(", ") || "(none)"}.`,
+      );
+    }
+  }
+
+  /**
+   * Same guard as {@link assertKnownDimension}, for `select` keys against the
+   * dataset's declared measures.
+   */
+  protected assertKnownMeasure(dataset: AnalyticsDataset, name: string): void {
+    if (!Object.hasOwn(dataset.measures.shape, name)) {
+      throw new AlephaError(
+        `Query on dataset '${dataset.name}' references '${name}', which is not a declared measure. Declared measures: ${Object.keys(dataset.measures.shape).join(", ") || "(none)"}.`,
+      );
+    }
   }
 }

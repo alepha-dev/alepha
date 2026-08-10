@@ -78,8 +78,21 @@ export class AnalyticsEntityFactory {
    * name does not error — it overwrites, and the loser vanishes from the table
    * with nothing to show for it. Three ways that can happen, all rejected here
    * rather than at the first confusing query.
+   *
+   * **Public, and also called from `AnalyticsPrimitive.onInit`** — this used
+   * to be reachable only from {@link build}, i.e. only from
+   * `OrmAnalyticsProvider.register()`. `MemoryAnalyticsProvider.register()`
+   * and `WaeAnalyticsProvider.register()` never call `build()` at all (they
+   * have no relational table to derive), so a dataset with, say, a `day`
+   * dimension used to pass every test — the bound provider under
+   * `alepha.isTest()` is Memory — and only throw once a relational or
+   * Analytics Engine deployment actually registered it. Hoisting the call
+   * into the primitive's own `onInit` (which runs regardless of which
+   * provider ends up bound) closes that gap; this stays here too as defence
+   * in depth for a hand-built `AnalyticsDataset` passed straight to a
+   * provider without going through `$analytics()`.
    */
-  protected static assertNoCollisions(dataset: AnalyticsDataset): void {
+  public static assertNoCollisions(dataset: AnalyticsDataset): void {
     const dimensions = Object.keys(dataset.dimensions.shape);
     const measures = Object.keys(dataset.measures.shape);
 

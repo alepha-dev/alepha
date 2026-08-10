@@ -1,15 +1,33 @@
 /**
  * The aggregates a dataset can be asked for.
  *
- * Exactly the two that are both mergeable across buckets and exactly
- * correctable under sampling: `sum(x * _sample_interval)` and
- * `sum(_sample_interval)` reconstruct the true total and count from a sampled
- * window. `avg` and percentiles are absent for a mergeability reason: the mean
- * of two means is wrong when the buckets differ in size, and the p75 of two
+ * `sum` alone. It is both mergeable across buckets (summing two `sum`s
+ * produces the correct total for their union — the fold `rollup()` performs,
+ * and the fold a hot/cold merge performs, are the same operation) and exactly
+ * correctable under sampling: `sum(x * _sample_interval)` reconstructs the
+ * true total from a sampled window. An app that wants a row count declares a
+ * measure that is `1` per event and sums it — that is a `sum`, not a separate
+ * aggregate, and it survives a rollup and a sampled backend for the same
+ * reason any other `sum` does.
+ *
+ * `count` used to be a second aggregate here, implemented as the number of
+ * *stored rows* — `COUNT(*)` relationally, `+1` per array entry in memory.
+ * That is not the same number on every backend (a relational upsert
+ * accumulates multiple writes into one row; an in-memory push does not), and
+ * it does not survive `rollup()` on any backend: folding rows collapses the
+ * very thing being counted, so a `count` taken before a rollup and the same
+ * `count` taken after disagree. Both failures are the same category this
+ * type excludes `min`/`max` for — an aggregate has to be correct after a
+ * rollup and identical across backends, not just individually plausible on
+ * one of them — so `count` was removed rather than fixed.
+ *
+ * `avg` and percentiles are absent for a mergeability reason: the mean of two
+ * means is wrong when the buckets differ in size, and the p75 of two
  * distributions is not the mean of their p75s. An app wanting a mean declares
- * a sum measure and a count measure and divides; an app wanting a percentile
- * makes the histogram bucket a dimension and walks the result. Both stay
- * caller-side and obvious, and no merge-rule enforcement layer has to exist.
+ * a sum measure and a count-as-sum measure (see above) and divides; an app
+ * wanting a percentile makes the histogram bucket a dimension and walks the
+ * result. Both stay caller-side and obvious, and no merge-rule enforcement
+ * layer has to exist.
  *
  * `min` and `max` are absent for a *different* reason: they merge across
  * buckets by construction, but they are not sample-correctable. If Analytics
@@ -19,7 +37,7 @@
  * distinct-counts from this seam; admitting min/max despite it would be
  * inconsistent.
  */
-export type AnalyticsAggregate = "sum" | "count";
+export type AnalyticsAggregate = "sum";
 
 /**
  * Dimension filters. Only equality and set membership — no ranges.

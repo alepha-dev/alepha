@@ -97,9 +97,10 @@ const envSchema = z.object({
  *
  * Analytics Engine samples, and `_sample_interval` — how many real events each
  * stored row stands for — varies per row, so a constant multiplier is wrong.
- * Counts come back as `sum(double * _sample_interval)`, never `count()`, and
- * the result carries `estimated: true` so a UI cannot present them as
- * measurements by accident.
+ * Every measure comes back as `sum(double * _sample_interval)` — the
+ * sample-interval-corrected sum, never a raw stored double — and the result
+ * carries `estimated: true` so a UI cannot present them as measurements by
+ * accident.
  *
  * ## The cold tier cannot be Analytics Engine
  *
@@ -119,13 +120,17 @@ const envSchema = z.object({
  * before delegating: it tops up `cold`'s raw tier with Analytics Engine rows
  * older than `before` (hour granularity, matching what `record()` would have
  * written directly), *then* calls `cold.rollup()` to fold them — see
- * {@link forwardToCold}. The rows that cross over stop being estimates the
- * moment they land in `cold`: Analytics Engine's `_sample_interval`
- * correction has already been applied by `query()`, so what gets forwarded
- * is the corrected total, not a raw stored double, and `cold` from then on
- * treats it as exact — the same one-way trip every folded number already
- * takes when `OrmAnalyticsProvider` moves a row from its own raw tier to its
- * own rolled tier.
+ * {@link forwardToCold}. What crosses over is the sample-corrected total
+ * `query()` already computed, not a raw stored double, so `cold`'s own
+ * arithmetic (the upsert accumulate, the day fold) can add and fold it
+ * exactly like any other number, the same one-way trip every folded number
+ * already takes when `OrmAnalyticsProvider` moves a row from its own raw
+ * tier to its own rolled tier. That is a statement about arithmetic, not
+ * about epistemics, and the two must not be conflated: the number is safe to
+ * add without re-applying a correction, but it is still, irreducibly, a
+ * number that came from a sample. See "The read side has to merge too"
+ * below for why `estimated` stays `true` regardless of which tier answered a
+ * query.
  *
  * {@link prune} still delegates in full, unmodified: nothing needs to be
  * forwarded to delete it.
@@ -139,10 +144,10 @@ const envSchema = z.object({
  * is missing. So {@link query} queries both sources and merges, the same way
  * `OrmAnalyticsProvider.query()` already merges its own raw and rolled
  * tiers — same merge key (`JSON.stringify` of the grouped dimension values),
- * same two mergeable aggregates (`sum`/`count`, added across sources),
- * ordering and `limit` applied once to the merged set rather than per
- * source. Two things are specific to a *composite* of two different
- * backends rather than two tables in the same one:
+ * the same mergeable aggregate (`sum`, added across sources), ordering and
+ * `limit` applied once to the merged set rather than per source. Two things
+ * are specific to a *composite* of two different backends rather than two
+ * tables in the same one:
  *
  * - **Skipping `cold` when it cannot matter.** A window entirely within
  *   `dataset`'s declared hot retention cannot have anything forwarded into
@@ -156,13 +161,15 @@ const envSchema = z.object({
  *   watermark {@link forwardToCold} uses and narrows the Analytics Engine
  *   side's `since` to exclude whatever `cold` already covers — see
  *   {@link nextBucket} — rather than trusting the two sources to be disjoint.
- * - **`estimated`.** The merged result is `estimated: true` whenever
- *   Analytics Engine contributed any row to it — not just because Analytics
- *   Engine samples, but because a row `cold` holds only got there through
- *   `forwardToCold`, which itself read it as a sample-corrected estimate.
- *   Landing in a relational table does not retroactively make it a
- *   measurement. Only a merge where every contributing row came from `cold`
- *   (nothing from Analytics Engine) reports `estimated: false`.
+ * - **`estimated` is unconditionally `true`.** Not just because Analytics
+ *   Engine samples, but because a row `cold` holds only ever got there
+ *   through `forwardToCold`, which itself read it out of Analytics Engine as
+ *   a sample-corrected estimate. Landing in a relational table does not
+ *   retroactively make it a measurement — so a merge where every
+ *   contributing row came from `cold` is *not* exact either, and does not
+ *   report `estimated: false`. Nothing this provider can return was ever
+ *   measured directly; only `OrmAnalyticsProvider` running on its own
+ *   (never forwarded through Analytics Engine at all) earns that.
  *
  * ## Writes are free of round-trips
  *
@@ -410,11 +417,18 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
           return { rows: [], estimated: true };
         }
         conditions.push(
-          `${slot} IN (${AnalyticsEngineSql.quoteList(filter.inArray)})`,
+          // Every dimension, whatever its declared type, is stored as a
+          // String blob (`record()` always writes `String(row[name])`) — so
+          // a numeric dimension's filter value has to be quoted as the
+          // string Analytics Engine actually stores, not left as a bare
+          // numeric literal. `String(...)` first, unconditionally: a blob
+          // column compared against an unquoted number does not match, since
+          // the column itself was never numeric to begin with.
+          `${slot} IN (${AnalyticsEngineSql.quoteList(filter.inArray.map(String))})`,
         );
       } else {
         conditions.push(
-          `${slot} = ${AnalyticsEngineSql.quote(filter as string | number)}`,
+          `${slot} = ${AnalyticsEngineSql.quote(String(filter))}`,
         );
       }
     }
@@ -460,7 +474,23 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
       );
       const record: Record<string, string | number> = {};
       for (const name of groupBy) {
-        record[name] = AnalyticsEngineSql.str(row, name);
+        // `day`/`hour` are always strings. Every other declared dimension is
+        // stored as a String blob regardless of its own declared type
+        // (`record()` always writes `String(row[name])`), so reading it back
+        // has to decode through `dataset`'s own declared type rather than
+        // blanket-stringing it. A numeric dimension (a histogram bucket
+        // index, say) otherwise comes back as `"3"` instead of `3`, which
+        // throws downstream in `cold.record()` (validated against the same
+        // declared type) and splits one group into two in `mergeResults`'s
+        // `JSON.stringify`-keyed merge with `cold` — `cold` decodes the
+        // identical dimension through its own typed column and
+        // never stringifies it.
+        const isDayOrHour = name === "day" || name === "hour";
+        const isNumeric =
+          !isDayOrHour && z.schema.isNumber(dataset.dimensions.shape[name]);
+        record[name] = isNumeric
+          ? AnalyticsEngineSql.num(row, name)
+          : AnalyticsEngineSql.str(row, name);
       }
       for (const measure of Object.keys(query.select)) {
         record[measure] = AnalyticsEngineSql.num(row, measure);
@@ -593,7 +623,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    * `cold` has nothing yet for this dataset, i.e. forward from the beginning.
    *
    * The `select` measure is arbitrary — any declared one — and the
-   * aggregate is `"count"` only because `AnalyticsQuery.select` cannot be
+   * aggregate is `"sum"` only because `AnalyticsQuery.select` cannot be
    * empty; the value itself is discarded. Only `row.hour` (really
    * whichever bucket is newest, day- or hour-precision — see
    * {@link isForwarded}) is used.
@@ -607,7 +637,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     const result = await this.cold.query(dataset, {
       since: WaeAnalyticsProvider.EPOCH_DAY,
       groupBy: ["hour"],
-      select: { [measure]: "count" },
+      select: { [measure]: "sum" },
       orderBy: { key: "hour", direction: "desc" },
       limit: 1,
     });
@@ -685,9 +715,14 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    * and `limit` applied exactly once, to the merged set, never per source
    * (a per-source `limit` would drop rows that belong in the true top-N).
    *
-   * `estimated`/`sampleInterval` follow `hot` alone: see the class doc's
-   * "The read side has to merge too" section for why a `cold` row does not
-   * un-estimate itself just by living in a relational table.
+   * `estimated` is unconditionally `true` — see the class doc's "The read
+   * side has to merge too" section for why every row this provider can ever
+   * return, `cold`'s included, traces back to a sample. `sampleInterval`
+   * still follows `hot` alone: `cold` never stores what interval a forwarded
+   * row was corrected with, so the only sample-interval `mergeResults` can
+   * ever report is the one `hot` itself just measured — `undefined` when
+   * `hot` contributed nothing to this merge, which is honest (unknown)
+   * rather than the false confidence of an assumed `1`.
    */
   protected mergeResults(
     query: AnalyticsQuery,
@@ -732,11 +767,14 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
 
     if (query.limit !== undefined) rows = rows.slice(0, query.limit);
 
-    const estimated = hot.rows.length > 0;
     return {
       rows,
-      estimated,
-      sampleInterval: estimated ? hot.sampleInterval : undefined,
+      // Always `true` on this provider — see the class doc and this
+      // method's own doc. There is no merge outcome that earns
+      // `estimated: false` here; only `OrmAnalyticsProvider` running on its
+      // own, never touched by Analytics Engine at all, can report that.
+      estimated: true,
+      sampleInterval: hot.rows.length > 0 ? hot.sampleInterval : undefined,
     };
   }
 
@@ -745,23 +783,22 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     right: number,
     aggregate: AnalyticsAggregate,
   ): number {
-    if (aggregate === "sum" || aggregate === "count") return left + right;
+    if (aggregate === "sum") return left + right;
     throw new AlephaError(`Received an unknown aggregate '${aggregate}'.`);
   }
 
   /**
-   * Never `count()`, never a bare `sum()`: the sample interval varies per
-   * row, so the correction has to live inside the aggregate expression
-   * itself. The `AlephaError` branch is defence in depth — `AnalyticsQuery`
-   * types `select`'s values as {@link AnalyticsAggregate}, but a query built
-   * from unchecked request input (`select[key] = req.query.aggregate`)
-   * could still hand this a string the type system never sees.
+   * Never a bare `sum()`: the sample interval varies per row, so the
+   * correction has to live inside the aggregate expression itself. The
+   * `AlephaError` branch is defence in depth — `AnalyticsQuery` types
+   * `select`'s values as {@link AnalyticsAggregate}, but a query built from
+   * unchecked request input (`select[key] = req.query.aggregate`) could
+   * still hand this a string the type system never sees.
    */
   protected aggregateExpression(
     aggregate: AnalyticsAggregate,
     slot: string,
   ): string {
-    if (aggregate === "count") return "sum(_sample_interval)";
     if (aggregate === "sum") return `sum(${slot} * _sample_interval)`;
     throw new AlephaError(`Received an unknown aggregate '${aggregate}'.`);
   }

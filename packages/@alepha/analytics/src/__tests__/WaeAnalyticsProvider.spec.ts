@@ -9,6 +9,7 @@ import { OrmAnalyticsProvider } from "../providers/OrmAnalyticsProvider.ts";
 import { WaeAnalyticsProvider } from "../providers/WaeAnalyticsProvider.ts";
 import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
 import type { AnalyticsQuery } from "../schemas/analyticsQuerySchema.ts";
+import { analyticsConformance } from "./analyticsConformance.ts";
 import { FakeAnalyticsEngine } from "./FakeAnalyticsEngine.ts";
 
 const dataset = {
@@ -78,8 +79,13 @@ class TestWaeAnalyticsProvider extends WaeAnalyticsProvider {
  * directly. `query()` now consults `cold` on every call whose window might
  * reach it (see `mightNeedCold`), so *every* test needs it registered, not
  * just the ones that used to opt in.
+ *
+ * Takes an optional `ds`, defaulting to the module-level `dataset` — tests
+ * exercising a dataset with a differently-shaped dimension (a numeric one,
+ * say) register that dataset instead, but still get the same wired-up
+ * container.
  */
-const build = async () => {
+const build = async (ds: AnalyticsDataset = dataset) => {
   const alepha = Alepha.create({
     env: {
       CLOUDFLARE_ANALYTICS_DATASET: BINDING_NAME,
@@ -90,7 +96,7 @@ const build = async () => {
 
   const provider = alepha.inject(TestWaeAnalyticsProvider);
   alepha.set("cloudflare.env", { [BINDING_NAME]: provider.fakeEngine });
-  provider.register(dataset);
+  provider.register(ds);
   await alepha.start();
   return { alepha, provider, engine: provider.fakeEngine };
 };
@@ -267,27 +273,6 @@ describe("WaeAnalyticsProvider", () => {
       );
       expect(byPath).toEqual({ "/x": 5, "/y": 9 });
       expect(engine.lastQuery).toContain("GROUP BY blob4");
-    } finally {
-      await alepha.stop();
-    }
-  });
-
-  it("counts rows via sum(_sample_interval), not the sum of the measure", async () => {
-    const { alepha, provider } = await build();
-    try {
-      await provider.record(dataset, [
-        { hour: "2026-08-09T10", appId: "a", path: "/x", count: 5 },
-        { hour: "2026-08-09T11", appId: "a", path: "/y", count: 7 },
-      ]);
-
-      const result = await provider.query(dataset, {
-        since: "2026-08-09",
-        select: { count: "count" },
-      });
-
-      // 2 rows, never 12 — the measure values are chosen so the two readings
-      // cannot be confused.
-      expect(result.rows).toEqual([{ count: 2 }]);
     } finally {
       await alepha.stop();
     }
@@ -600,7 +585,7 @@ describe("WaeAnalyticsProvider — the read side merges with cold", () => {
     }
   });
 
-  it("returns cold's data for a window entirely older than what Analytics Engine still has reachable — the case that returned nothing before this fix", async () => {
+  it("returns cold's data for a window entirely older than what Analytics Engine still has reachable, still flagged estimated since cold's rows are forwarded estimates", async () => {
     const { alepha, provider, engine } = await build();
     try {
       await provider.record(dataset, [
@@ -625,8 +610,13 @@ describe("WaeAnalyticsProvider — the read side merges with cold", () => {
       });
 
       expect(result.rows).toEqual([{ count: 4 }]);
-      // Every contributing row came from `cold` — exact, not sampled.
-      expect(result.estimated).toBe(false);
+      // Every contributing row came from `cold` — but `cold` only has it
+      // because `forwardToCold` read it out of Analytics Engine as a
+      // sample-corrected estimate. Landing in a relational table does not
+      // retroactively make it a measurement, so this stays `estimated: true`
+      // even though nothing in *this* query touched Analytics Engine
+      // directly — the same reasoning `mergeResults`'s class doc gives.
+      expect(result.estimated).toBe(true);
     } finally {
       await alepha.stop();
     }
@@ -729,6 +719,110 @@ describe("WaeAnalyticsProvider — the read side merges with cold", () => {
   });
 });
 
+describe("WaeAnalyticsProvider — numeric dimensions", () => {
+  // `queryHot()` used to return every dimension as a string
+  // (`AnalyticsEngineSql.str`), whatever the dataset actually declared.
+  // Every dimension IS stored as a String blob (`record()` always writes
+  // `String(row[name])`), so a numeric dimension round-tripped through
+  // `queryHot()` came back as `"3"` rather than `3`. That broke three
+  // things independently: `forwardToCold()` fed the string straight into
+  // `cold.record()`, which validates against the declared `z.number()` and
+  // throws; the hot/cold merge key (`JSON.stringify` of the grouped
+  // dimension values) split one group into two, `"3"` from hot and `3` from
+  // cold; and a `where` filter on the dimension quoted a bare unquoted
+  // number against a column that only ever holds strings, so it could not
+  // match. All three are fixed by decoding through the dataset's own
+  // declared type and by always quoting a filter value as the string
+  // Analytics Engine stores.
+  const histogramDataset = {
+    name: "wae_histogram",
+    index: "appId",
+    dimensions: z.object({ appId: z.string(), bucket: z.number() }),
+    measures: z.object({ samples: z.number() }),
+  };
+
+  it("forwards a numeric dimension into cold without throwing during rollup", async () => {
+    const { alepha, provider } = await build(histogramDataset);
+    try {
+      await provider.record(histogramDataset, [
+        { hour: "2026-08-01T10", appId: "a", bucket: 3, samples: 1 },
+      ]);
+
+      // Before the fix, `forwardToCold()` fed `bucket: "3"` (a string) into
+      // `cold.record()`, which validates against the dataset's declared
+      // `z.number()` and throws — exactly the failure that made a
+      // Cloudflare deployment's cold-forward sweep fail every run for any
+      // dataset with a numeric dimension (Lore's `sigil_vitals.bucket`).
+      await expect(
+        provider.rollup(histogramDataset, "2026-08-02"),
+      ).resolves.toBeUndefined();
+
+      const result = await provider.coldProvider.query(histogramDataset, {
+        since: "2026-08-01",
+        groupBy: ["bucket"],
+        select: { samples: "sum" },
+      });
+      expect(result.rows).toEqual([{ bucket: 3, samples: 1 }]);
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  it("merges a window straddling the forwarded boundary into one row per bucket, not one per source type", async () => {
+    const { alepha, provider } = await build(histogramDataset);
+    try {
+      // Forwarded to cold — decoded there through the dataset's declared
+      // `z.number()`, so this side was always a real number.
+      await provider.record(histogramDataset, [
+        { hour: "2026-08-01T10", appId: "a", bucket: 3, samples: 4 },
+      ]);
+      await provider.rollup(histogramDataset, "2026-08-02");
+
+      // Still only in Analytics Engine — read back through `queryHot()`,
+      // which used to decode every dimension as a string.
+      await provider.record(histogramDataset, [
+        { hour: "2026-08-09T10", appId: "a", bucket: 3, samples: 5 },
+      ]);
+
+      const result = await provider.query(histogramDataset, {
+        since: "2026-08-01",
+        groupBy: ["bucket"],
+        select: { samples: "sum" },
+      });
+
+      // One row (bucket 3, total 9) — before the fix, the merge key split
+      // `"3"` (from hot) from `3` (from cold) into two separate rows whose
+      // totals never combined, silently halving a histogram bucket.
+      expect(result.rows).toEqual([{ bucket: 3, samples: 9 }]);
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  it("matches a where filter on a numeric dimension, quoted as the string Analytics Engine actually stores it as", async () => {
+    const { alepha, provider } = await build(histogramDataset);
+    try {
+      await provider.record(histogramDataset, [
+        { hour: "2026-08-09T10", appId: "a", bucket: 3, samples: 1 },
+        { hour: "2026-08-09T10", appId: "a", bucket: 7, samples: 1 },
+      ]);
+
+      const result = await provider.query(histogramDataset, {
+        since: "2026-08-09",
+        where: { bucket: 3 },
+        select: { samples: "sum" },
+      });
+
+      // Before the fix, a numeric filter value was quoted as a bare number
+      // (`blob5 = 3`) against a column that only ever holds strings, so it
+      // could not match the stored `"3"`.
+      expect(result.rows).toEqual([{ samples: 1 }]);
+    } finally {
+      await alepha.stop();
+    }
+  });
+});
+
 describe("WaeAnalyticsProvider selection", () => {
   // `alepha.isTest()` reads `NODE_ENV`, which vitest sets to `"test"` by
   // default — so proving the non-test branches means overriding it, the
@@ -757,4 +851,35 @@ describe("WaeAnalyticsProvider selection", () => {
       OrmAnalyticsProvider,
     );
   });
+});
+
+analyticsConformance("wae", async () => {
+  const alepha = Alepha.create({
+    env: {
+      CLOUDFLARE_ANALYTICS_DATASET: BINDING_NAME,
+      CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
+      CLOUDFLARE_API_TOKEN: API_TOKEN,
+    },
+  }).with(AlephaOrmPostgres);
+
+  const provider = alepha.inject(TestWaeAnalyticsProvider);
+  alepha.set("cloudflare.env", { [BINDING_NAME]: provider.fakeEngine });
+  // Must mirror `analyticsConformance.ts`'s own internal `dataset` fixture
+  // exactly (name, dimensions, measures) — the suite has no way to hand
+  // this factory the dataset object it will call `record()`/`query()`
+  // with, and registration has to happen before `alepha.start()`. This is
+  // the exact same mirrored declaration `OrmAnalyticsProvider.spec.ts` uses
+  // for its own conformance wiring.
+  provider.register({
+    name: "conformance_views",
+    index: "appId",
+    dimensions: z.object({
+      appId: z.string(),
+      path: z.string(),
+      bucket: z.number(),
+    }),
+    measures: z.object({ samples: z.number() }),
+  });
+  await alepha.start();
+  return provider;
 });

@@ -117,30 +117,61 @@ backend answers the query.
 
 ## The aggregate set is deliberately small
 
-`select` only accepts `"sum"` and `"count"` as aggregates. That is not a temporary gap — it is
-the complete set of aggregates that are simultaneously:
+`select` only accepts `"sum"` as an aggregate. That is not a temporary gap — `sum` is the
+complete set of aggregates that are simultaneously:
 
 - **Mergeable across a rollup boundary.** When the hourly rollup folds a day's worth of hour
   buckets into one day bucket (see [Retention and rollup](#retention-and-rollup)), the fold
-  itself has to be an aggregate: summing eight `sum`s or eight `count`s produces the correct
-  day-level `sum`/`count`. There is no equivalent fold for an average or a percentile — the mean
-  of several means is wrong the moment the buckets differ in size, and the p75 of several
-  distributions is not the mean of their p75s.
+  itself has to be an aggregate: summing eight `sum`s produces the correct day-level `sum`. There
+  is no equivalent fold for an average or a percentile — the mean of several means is wrong the
+  moment the buckets differ in size, and the p75 of several distributions is not the mean of
+  their p75s.
 - **Exactly correctable under sampling.** Analytics Engine samples, and every stored row carries
-  a `_sample_interval`. `sum(x * _sample_interval)` and `sum(_sample_interval)` reconstruct the
-  true total and the true count from a sampled window, exactly. Nothing about `min` or `max`
-  survives that reconstruction the same way: both merge across buckets by construction (the max
-  of several maxes is the true max), but neither is sample-correctable — if the sampler happens
-  to drop the one row holding the true extreme, no `_sample_interval` weighting recovers it, and
-  the query silently returns the extreme of whatever survived. That is the same failure mode
-  that keeps distinct-counts out of this seam (see [Unique visitors](#what-analytics-cannot-do)
-  below), and admitting `min`/`max` despite it would be inconsistent with excluding those.
+  a `_sample_interval`. `sum(x * _sample_interval)` reconstructs the true total from a sampled
+  window, exactly. Nothing about `min` or `max` survives that reconstruction the same way: both
+  merge across buckets by construction (the max of several maxes is the true max), but neither is
+  sample-correctable — if the sampler happens to drop the one row holding the true extreme, no
+  `_sample_interval` weighting recovers it, and the query silently returns the extreme of
+  whatever survived. That is the same failure mode that keeps distinct-counts out of this seam
+  (see [Unique visitors](#what-analytics-cannot-do) below), and admitting `min`/`max` despite it
+  would be inconsistent with excluding those.
 
-Two patterns cover what the missing aggregates would have given you, and both stay caller-side
-and obvious rather than needing a merge-rule enforcement layer inside the package:
+### There is no `count` aggregate — declare a count measure and sum it
 
-- **A mean**: declare a `sum` measure and a `count` measure, and divide them yourself once the
-  query returns.
+An earlier version of this package also accepted `"count"`, meaning "the number of stored rows"
+rather than a sum of any measure. That number is not portable: relationally it was `COUNT(*)`,
+and in memory it was one increment per recorded array entry — not the same number on identical
+writes (a relational upsert accumulates repeated writes into one row; an in-memory record pushes
+a new one), and it does not survive a rollup on **either** backend, because folding rows into a
+day bucket collapses the very thing a row count was measuring. Summing eight `sum`s across a
+rollup boundary reproduces the pre-rollup total exactly; summing eight `count`s does not, because
+after the fold there are fewer, larger rows to count. `count` was removed rather than special-cased,
+for the same reason `min`/`max` were never admitted: an aggregate in this seam has to be correct
+after a rollup and identical across every backend, not merely plausible on the one you tested
+against.
+
+The portable replacement is the pattern `apps/lore`'s own `sigil_views` dataset already uses:
+declare a measure that is `1` per event (call it `count`, or anything else) and `sum` it. That is
+an ordinary `sum`, so it survives a rollup and a sampled backend for the same reason any other
+measure does:
+
+```typescript
+measures: z.object({ count: z.integer() }),
+```
+
+```typescript
+await this.views.record({ app, path, country, count: 1 });
+```
+
+```typescript
+select: { count: "sum" },
+```
+
+Two patterns cover what the other missing aggregates would have given you, and both stay
+caller-side and obvious rather than needing a merge-rule enforcement layer inside the package:
+
+- **A mean**: declare a `sum` measure and a count-as-sum measure (see above), and divide them
+  yourself once the query returns.
 - **A percentile**: see [The histogram pattern](#the-histogram-pattern) below.
 
 ### What analytics cannot do

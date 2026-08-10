@@ -167,6 +167,34 @@ describe("$analytics", () => {
     expect(error?.message).toContain('explicit { name: "..." }');
   });
 
+  it("rejects a dimension named 'day', which is permanently shadowed by the time pseudo-dimension, even under MemoryAnalyticsProvider", () => {
+    // `AnalyticsEntityFactory.assertNoCollisions` used to be reachable only
+    // from `OrmAnalyticsProvider.register()` (via its own
+    // `AnalyticsEntityFactory.build()`). `MemoryAnalyticsProvider.register()`
+    // is a no-op and never calls it, so under test — where memory is always
+    // the bound provider — this dataset used to pass every test and only
+    // throw once a relational or Analytics Engine deployment registered it
+    // in production. Hoisting the check into `AnalyticsPrimitive.onInit`
+    // (this test's whole point) makes it backend-independent.
+    class App {
+      public readonly views = $analytics({
+        index: "app",
+        dimensions: z.object({ app: z.string(), day: z.string() }),
+        measures: z.object({ count: z.number() }),
+      });
+    }
+
+    const alepha = Alepha.create();
+    let error: Error | undefined;
+    try {
+      alepha.inject(App);
+    } catch (caught) {
+      error = caught as Error;
+    }
+
+    expect(error?.message).toContain("reserved as a time pseudo-dimension");
+  });
+
   it("lets an explicit snake_case name override a camelCase property key", async () => {
     class App {
       public readonly pageViews = $analytics({

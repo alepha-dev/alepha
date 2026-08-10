@@ -243,32 +243,43 @@ export const analyticsConformance = (
       expect(Number(result.rows[0]?.samples)).toBe(5);
     });
 
-    it("counts rows rather than summing the measure", async () => {
+    it("a count declared as a measure (1 per event, summed) survives a rollup — the portable replacement for a 'count' aggregate", async () => {
+      // `AnalyticsAggregate` has no `count` — it is stored-row count on every
+      // backend (`COUNT(*)` relationally, `+1` per array entry in memory),
+      // which is not the same number across backends on identical writes and
+      // does not survive a rollup at all (folding rows collapses the very
+      // thing being counted). The portable pattern is what this test pins:
+      // declare a measure that is `1` per event, and `sum` it — `sum` is
+      // mergeable across a rollup boundary and sample-correctable, so a
+      // count modelled this way is exactly the same number before and after
+      // folding, on every backend.
       const provider = await factory();
       await provider.record(dataset, [
         {
-          hour: "2026-08-09T10",
+          hour: "2026-08-01T10",
           appId: "a",
           path: "/x",
           bucket: 0,
-          samples: 5,
+          samples: 1,
         },
         {
-          hour: "2026-08-09T11",
+          hour: "2026-08-01T11",
           appId: "a",
           path: "/y",
           bucket: 0,
-          samples: 7,
+          samples: 1,
         },
       ]);
 
+      await provider.rollup(dataset, "2026-08-02");
+
       const result = await provider.query(dataset, {
-        since: "2026-08-09",
-        select: { samples: "count" },
+        since: "2026-08-01",
+        select: { samples: "sum" },
       });
 
-      // 2, never 12 — the measure values are chosen so the two readings
-      // cannot be confused.
+      // Two events, each contributing 1 — the row count, reconstructed by
+      // summing after the fold rather than by counting rows.
       expect(Number(result.rows[0]?.samples)).toBe(2);
     });
 

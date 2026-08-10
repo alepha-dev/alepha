@@ -8,6 +8,7 @@ import type {
   AnalyticsQuery,
   AnalyticsResult,
 } from "../schemas/analyticsQuerySchema.ts";
+import { AnalyticsEntityFactory } from "../services/AnalyticsEntityFactory.ts";
 
 /**
  * Declares an analytics dataset: what you record, and what you can ask.
@@ -96,11 +97,21 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
    * Validates the dataset and registers it with the bound provider.
    *
    * `onInit` rather than a lifecycle hook or first use, and synchronous by
-   * requirement of the base class. Four things have to happen here, in
+   * requirement of the base class. Five things have to happen here, in
    * order:
    *
    * - The name has to be legal on every backend before anything else runs,
    *   since a rejected name should never reach a provider's `register()`.
+   * - No dimension/measure name may collide with a reserved word or with each
+   *   other — see {@link AnalyticsEntityFactory.assertNoCollisions}. That
+   *   check used to be reachable only from `OrmAnalyticsProvider.register()`
+   *   (via its own `AnalyticsEntityFactory.build()`), so a dataset with a
+   *   `day` dimension, say, passed every test under `MemoryAnalyticsProvider`
+   *   (the bound provider in test mode, whose `register()` never calls the
+   *   factory) and only threw once a relational or Analytics Engine
+   *   deployment registered it in production. Running it here, ahead of
+   *   every provider's own `register()`, makes the check backend-independent
+   *   the same way {@link assertLegalName} already is.
    * - `retention` has to describe a boundary that can actually be enforced
    *   safely — see {@link assertValidRetention} — before anything downstream
    *   (a provider's `register()`, `AnalyticsRollupJobs`) trusts it.
@@ -116,6 +127,7 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
    */
   protected onInit(): void {
     this.assertLegalName();
+    AnalyticsEntityFactory.assertNoCollisions(this.dataset);
     this.assertValidRetention();
     AnalyticsSlotMap.forDataset(this.dataset);
     this.provider.register(this.dataset);

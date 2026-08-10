@@ -392,12 +392,12 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
 
     for (const [measure, aggregate] of Object.entries(query.select)) {
       this.assertKnownMeasure(dataset, measure);
+      this.assertKnownAggregate(aggregate);
       const column = this.columnName(repository, measure);
-      const expression = aggregate === "count" ? "COUNT(*)" : `SUM(${column})`;
       // Quoted for the same reason the dimension alias above is: an
       // unquoted multi-word alias would fold to lowercase on Postgres and no
       // longer match `shape`'s exact-case key.
-      projections.push(`${expression} AS "${measure}"`);
+      projections.push(`SUM(${column}) AS "${measure}"`);
       shape[measure] = z.coerce.number();
     }
 
@@ -466,7 +466,22 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
     right: number,
     aggregate: AnalyticsAggregate,
   ): number {
-    if (aggregate === "sum" || aggregate === "count") return left + right;
-    throw new AlephaError(`Received an unknown aggregate '${aggregate}'.`);
+    this.assertKnownAggregate(aggregate);
+    return left + right;
+  }
+
+  /**
+   * Defence in depth against a query built from unchecked request input
+   * (`select[key] = req.query.aggregate`) — `AnalyticsQuery` types `select`'s
+   * values as {@link AnalyticsAggregate}, but the type system cannot see that
+   * far, and `"sum"` is the only value this provider knows how to fold or
+   * project.
+   */
+  protected assertKnownAggregate(
+    aggregate: AnalyticsAggregate,
+  ): asserts aggregate is "sum" {
+    if (aggregate !== "sum") {
+      throw new AlephaError(`Received an unknown aggregate '${aggregate}'.`);
+    }
   }
 }

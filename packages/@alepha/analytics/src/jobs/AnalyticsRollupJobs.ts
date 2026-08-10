@@ -199,7 +199,7 @@ export class AnalyticsRollupJobs {
     const scanned = await this.provider.query(dataset, {
       since: AnalyticsRollupJobs.EPOCH_DAY,
       groupBy: ["hour"],
-      select: { [measure]: "count" },
+      select: { [measure]: "sum" },
       orderBy: { key: "hour", direction: "asc" },
       limit: AnalyticsRollupJobs.MAX_BUCKET_SCAN,
     });

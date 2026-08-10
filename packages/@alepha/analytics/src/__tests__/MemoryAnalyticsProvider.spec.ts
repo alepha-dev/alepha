@@ -66,19 +66,53 @@ describe("MemoryAnalyticsProvider", () => {
     expect(result.rows).toEqual([{ count: 1 }]);
   });
 
-  it("counts rows for the count aggregate, not the sum of the measure", async () => {
+  it("rejects a where filter that is not a declared dimension", async () => {
+    // Regression guard: this provider used to validate no query names at
+    // all — an undeclared `where`/`groupBy`/`select` key silently produced
+    // empty rows or a folded `0` instead of an error. Since Memory is the
+    // provider every test runs against, a typo'd dimension used to be green
+    // in every test suite and only a 500 in production, against Orm or Wae.
     const provider = new MemoryAnalyticsProvider();
     await provider.record(dataset, [
-      { hour: "2026-08-09T10", app: "a", path: "/x", country: "FR", count: 5 },
-      { hour: "2026-08-09T11", app: "a", path: "/x", country: "FR", count: 7 },
+      { hour: "2026-08-09T10", app: "a", path: "/x", country: "FR", count: 1 },
     ]);
 
-    const result = await provider.query(dataset, {
-      since: "2026-08-09",
-      select: { count: "count" },
-    });
+    await expect(
+      provider.query(dataset, {
+        since: "2026-08-09",
+        where: { region: "FR" },
+        select: { count: "sum" },
+      }),
+    ).rejects.toThrow(/not a declared dimension/);
+  });
 
-    expect(result.rows).toEqual([{ count: 2 }]);
+  it("rejects a groupBy that is not a declared dimension", async () => {
+    const provider = new MemoryAnalyticsProvider();
+    await provider.record(dataset, [
+      { hour: "2026-08-09T10", app: "a", path: "/x", country: "FR", count: 1 },
+    ]);
+
+    await expect(
+      provider.query(dataset, {
+        since: "2026-08-09",
+        groupBy: ["region"],
+        select: { count: "sum" },
+      }),
+    ).rejects.toThrow(/not a declared dimension/);
+  });
+
+  it("rejects a select measure that is not a declared measure", async () => {
+    const provider = new MemoryAnalyticsProvider();
+    await provider.record(dataset, [
+      { hour: "2026-08-09T10", app: "a", path: "/x", country: "FR", count: 1 },
+    ]);
+
+    await expect(
+      provider.query(dataset, {
+        since: "2026-08-09",
+        select: { total: "sum" },
+      }),
+    ).rejects.toThrow(/not a declared measure/);
   });
 
   it("folds hour buckets to day buckets on rollup, without changing sums", async () => {
