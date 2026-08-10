@@ -25,6 +25,7 @@ export const sigilClientAtom = $atom({
     sampling: z.record(z.string(), z.number()),
     excludedPaths: z.array(z.string()),
     feedbackUrl: z.string().optional(),
+    feedbackPosition: z.string().optional(),
   }),
   default: {
     enabled: Object.fromEntries(SIGIL_TRACKERS.map((t) => [t, true])),
