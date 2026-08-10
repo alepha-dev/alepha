@@ -71,7 +71,7 @@ Defined in `src/web/app/AppRouter.ts`. Route names (the `$page` keys) are what `
 | `/` | `home` | `home/Home.tsx` | Project list |
 | `/new-project` | `projectCreate` | `project/ProjectCreate.tsx` | New project form |
 | `/p/:projectId` | `project` | `project/ProjectView.tsx` | Project layout — sets `currentProjectAtom` + milestones/member/quests/feedback-count/blight-count/quest-count on load |
-| `/p/:projectId/` | `projectQuests` | `project/ProjectQuestsPage.tsx` | Quest list grouped by area; renders the kanban board instead when the URL has `?view=kanban` (see "Kanban ↔ Header Communication" below — kanban is no longer its own route) |
+| `/p/:projectId/` | `projectQuests` | `project/ProjectQuestsPage.tsx` | Quest list grouped by area; renders the kanban board instead when `questsViewAtom` says `kanban` (see "Kanban ↔ Header Communication" below — kanban is no longer its own route, and no longer a `?view=` param either) |
 | `/p/:projectId/milestones` | `projectMilestones` | `project/milestones/ProjectMilestones.tsx` | Milestones list |
 | `/p/:projectId/reports` | `projectReports` | `project/reports/ReportsLayout.tsx` | Reports layout |
 | `/p/:projectId/reports/` | `reportsOverview` | `project/reports/ReportsOverview.tsx` | Overview |
@@ -151,15 +151,15 @@ Live in `src/web/app/atoms/` (19 files). The project route loader fills the `cur
 Both live in the one file `atoms/kanbanProjectAtom.ts`.
 
 ### Kanban ↔ Header Communication
-Kanban is not a route anymore — it's a `?view=kanban` query toggle on the `projectQuests` page (`ProjectQuestsPage.tsx` reads `routerState.query.view === "kanban"` and renders `KanbanBoard` instead of `ProjectQuestsTable`; the view lives in the URL rather than component state so a shared link still opens a board and the back button behaves). `KanbanBoard` sets `kanbanProjectAtom` with `{ project }`. The Header reads it to:
+Kanban is not a route anymore — it's a second view of the `projectQuests` page (`ProjectQuestsPage.tsx` renders `KanbanBoard` instead of `ProjectQuestsTable`). `KanbanBoard` sets `kanbanProjectAtom` with `{ project }`. The Header reads it to:
 1. Show the project name in the header (falls back from `currentProjectAtom`)
 2. Show the "Create Quest" button
 
 After creating a quest from the header, it bumps `kanbanReloadAtom` which `KanbanBoard` watches to trigger a reload.
 
-**The switch between the two views is not in the header.** It is `ProjectQuestsViewSwitcher.tsx`, a two-entry icon rail down the **far-left edge of the project content area** — rendered by `ProjectView` as the first child of that area and *outside* the `showQuestLog / fullWidth / else` branch, so it sits left of the Quest Log and holds the same x-position in list and board view (#153). It used to live inside `ProjectQuestsPage`, which necessarily put it *between* the quest log and the table and made it read as a control for the table; no CSS inside the page could fix that, because a `NestedView`'s content is always right of the log. It renders on the same routes as the quest log (`projectQuests` **and** `projectQuest`) — dropping it on the detail route would shift the log left the moment a quest opened. It is gated on `project.features.kanban`: with kanban off the rail renders nothing rather than a single dead entry, and no empty column where it was.
+**The view is an atom, not a query param.** `questsViewAtom` (`lor.quests.view`, cookie-persisted) is the single source of truth since #156. It was `?view=kanban` for exactly one iteration, seeded from `localStorage` by an effect on a bare `/p/:id/` — and that effect keyed on `useRouterState`, which is a global store, so it fired during the OUTGOING render of every navigation away from the page, saw the *next* route's empty query, and bounced the user straight back. Every sidebar link was dead for as long as the board was the stored view. Moving the view out of the URL removes the question the page could not answer ("nobody has chosen yet" vs "we are leaving"). Cookie rather than `localStorage` persistence because `ProjectView` picks the layout during SSR, where web storage does not exist.
 
-The URL stays the single source of truth; `localStorage` (`lor.quests.view`, `questsView.ts`) only *seeds* it, and only on a bare `/p/:id/` with no `view` param — that seeding is a `replace` navigation so it costs no history entry. An explicit `?view=` always wins, which is why the rail writes `?view=list` rather than clearing the param. This is not stylistic: `ProjectView` reads the same query param for `fullWidth`, and it cannot see the stored preference, so a view held only in `localStorage` would render a board inside the list layout.
+**The switch between the two views is not in the header.** It is `ProjectQuestsViewSwitcher.tsx`, a two-entry horizontal bar across the **top of the project content area** — rendered by `ProjectView` as the first child of that area and *outside* the `showQuestLog / fullWidth / else` branch, so it sits above the Quest Log and holds the same y-position in list and board view (#153, axis rotated by #163 — it was a vertical left rail until then). It used to live inside `ProjectQuestsPage`, which necessarily put it *between* the quest log and the table and made it read as a control for the table; no CSS inside the page could fix that, because a `NestedView`'s content is always right of the log. It renders on the same routes as the quest log (`projectQuests` **and** `projectQuest`) — dropping it on the detail route would shift the log up the moment a quest opened. Its entries carry visible labels rather than bare icons: a full-width band holding two icon buttons reads as unfinished in a way the narrow rail did not. It is gated on `project.features.kanban`: with kanban off it renders nothing rather than a single dead entry, and no empty band where it was.
 
 ### QuestView Reusability
 `QuestView` works in two contexts:
@@ -629,6 +629,20 @@ The `@/` alias is still duplicated in both configs, and the root copy is load-be
 - `migration-safety.spec.ts` — asserts the great-rename migration (and the sigil-family rebuild before it) never drops a table the `projects` cascade reaches, and that a fresh D1-shaped database boots with all migrations applied
 - `petition-reporter-migration.spec.ts` / `petition-reporter-restore-migration.spec.ts` — deliberately still "petition"-named: they pin the behavior of two specific *historical* migrations (`reporterUserId`/`reporterEmail` column churn) that predate the 2026-08 rename, not the current Feedback module
 - Shared fixtures live in `test/fixtures/`
+
+### ⚠️ Running e2e while another agent is running it
+
+`reuseExistingServer` is `!process.env.CI`, so locally a busy port does **not** fail — Playwright attaches to whatever answers on it. Two agents running this suite at once (one per git worktree) therefore both land on 3303, and the later one silently tests the other's `node dist` against an in-memory database already holding that run's rows. A green suite then says nothing about your code.
+
+`e2ePort()` in the repo-root `playwright.port.ts` — shared by all five Playwright configs, same pattern as `vitest.jsdom.ts` — derives the port to make that impossible: the primary checkout keeps **3303**, a **linked worktree** hashes its own path into **3400-3899** (detected by `.git` being a file rather than a directory). The hash is seeded with the app's default port too, so apps stay distinct from each other inside one worktree. Deliberately not a random port — a fresh port never hits reuse, so every local run would pay the full `yarn start` build+boot that reuse exists to avoid.
+
+`E2E_PORT` overrides both. Reach for it when the derivation cannot help — most often a worktree checked out *before* this landed, which still carries the old fixed-3303 config:
+
+```bash
+E2E_PORT=3999 npx playwright test quest.spec.ts
+```
+
+Before killing anything on a busy port, check whose it is — `lsof -a -p <pid> -d cwd`. A `node dist` whose cwd sits under `.claude/worktrees/` belongs to another agent's run.
 
 ### E2E convention: one file per feature
 

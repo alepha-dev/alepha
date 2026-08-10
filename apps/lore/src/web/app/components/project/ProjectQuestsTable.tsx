@@ -50,6 +50,36 @@ const getPriorityColor = (priority: string) => {
 const removeHtmlTags = (text: string) => text.replace(/<[^>]*>/g, "");
 
 /**
+ * Turn a markdown description into a one-line snippet.
+ *
+ * Descriptions are markdown, so the raw first line is often `## Symptom`
+ * or a fence rather than a sentence. Take the first line that carries
+ * prose, then strip the inline syntax so the row reads as text and not
+ * as source. Truncation itself is left to CSS — see the `title` column.
+ */
+const descriptionSnippet = (description: string) => {
+  const line = removeHtmlTags(description)
+    .split("\n")
+    .map((l) => l.trim())
+    .find(
+      (l) =>
+        l.length > 0 &&
+        !l.startsWith("#") &&
+        !l.startsWith("```") &&
+        !l.startsWith("---") &&
+        !l.startsWith("|"),
+    );
+
+  return (line ?? "")
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[\[([^\]]*)\]\]/g, "$1")
+    .replace(/^[>*+-]\s+/, "")
+    .replace(/^\d+\.\s+/, "")
+    .replace(/[*_`~]/g, "");
+};
+
+/**
  * Board filter shape. Empty by default → "All statuses", which means
  * everything still in scope: shelved quests are excluded server-side
  * until you ask for them explicitly. AlephaTable persists the chosen
@@ -256,19 +286,32 @@ const ProjectQuestsTable = () => {
           title: {
             label: tr("board.table.title"),
             sortable: true,
+            // `w-full max-w-0` is what makes truncation follow the available
+            // width instead of a character count: the table is auto-layout,
+            // so `max-width: 0` stops this column claiming its content width
+            // and `width: 100%` makes it absorb whatever the other columns
+            // leave. Without the pair, the column grows to fit the longest
+            // title and `text-overflow: ellipsis` never fires.
+            //
+            // `min-w-48` is the floor the pair needs. Once the other columns'
+            // intrinsic widths fill the container there is nothing left for
+            // `width: 100%` to claim, and `max-width: 0` then collapses this
+            // column to literally zero — at 1024px the titles disappeared
+            // entirely and the header overlapped the next one. min-width wins
+            // over max-width, so the column stops shrinking there and the
+            // table's own `overflow-x-auto` container takes over.
+            className: "w-full max-w-0 min-w-48",
             cell: (quest: QuestResource) => (
               <div className="flex flex-col overflow-hidden whitespace-nowrap">
                 <span
-                  className={`text-sm font-medium ${quest.completedAt ? "text-muted-foreground line-through" : ""}`}
+                  className={`truncate text-sm font-medium ${quest.completedAt ? "text-muted-foreground line-through" : ""}`}
                   title={quest.title}
                 >
-                  {quest.title.length > 50
-                    ? `${quest.title.slice(0, 50)}…`
-                    : quest.title}
+                  {quest.title}
                 </span>
                 {quest.description && (
                   <span className="text-muted-foreground truncate text-xs">
-                    {removeHtmlTags(quest.description.slice(0, 60))}
+                    {descriptionSnippet(quest.description)}
                   </span>
                 )}
               </div>
