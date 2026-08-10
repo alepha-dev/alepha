@@ -174,11 +174,7 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
     aggregate: AnalyticsAggregate,
   ): number {
     if (aggregate === "count") return Number(current ?? 0) + 1;
-    if (current === undefined) return value;
-    const left = Number(current);
-    if (aggregate === "sum") return left + value;
-    if (aggregate === "min") return Math.min(left, value);
-    if (aggregate === "max") return Math.max(left, value);
+    if (aggregate === "sum") return Number(current ?? 0) + value;
     throw new AlephaError(`Received an unknown aggregate '${aggregate}'.`);
   }
 }

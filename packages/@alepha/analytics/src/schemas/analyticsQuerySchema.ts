@@ -1,15 +1,25 @@
 /**
  * The aggregates a dataset can be asked for.
  *
- * Exactly the four that merge across buckets by construction. `avg` and
- * percentiles are deliberately absent: the mean of two means is wrong when the
- * buckets differ in size, and the p75 of two distributions is not the mean of
- * their p75s. An app wanting a mean declares a sum measure and a count measure
- * and divides; an app wanting a percentile makes the histogram bucket a
- * dimension and walks the result. Both stay caller-side and obvious, and no
- * merge-rule enforcement layer has to exist.
+ * Exactly the two that are both mergeable across buckets and exactly
+ * correctable under sampling: `sum(x * _sample_interval)` and
+ * `sum(_sample_interval)` reconstruct the true total and count from a sampled
+ * window. `avg` and percentiles are absent for a mergeability reason: the mean
+ * of two means is wrong when the buckets differ in size, and the p75 of two
+ * distributions is not the mean of their p75s. An app wanting a mean declares
+ * a sum measure and a count measure and divides; an app wanting a percentile
+ * makes the histogram bucket a dimension and walks the result. Both stay
+ * caller-side and obvious, and no merge-rule enforcement layer has to exist.
+ *
+ * `min` and `max` are absent for a *different* reason: they merge across
+ * buckets by construction, but they are not sample-correctable. If Analytics
+ * Engine drops the row holding the true extreme, no `_sample_interval`
+ * weighting reconstructs it — the query silently returns the extreme of
+ * whatever survived. That is the same failure mode that excludes
+ * distinct-counts from this seam; admitting min/max despite it would be
+ * inconsistent.
  */
-export type AnalyticsAggregate = "sum" | "count" | "min" | "max";
+export type AnalyticsAggregate = "sum" | "count";
 
 /**
  * Dimension filters. Only equality and set membership — no ranges.

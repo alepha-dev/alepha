@@ -156,21 +156,40 @@ export const analyticsConformance = (
       expect(twice.rows).toEqual(once.rows);
     });
 
-    it("reports min and max across the rollup boundary", async () => {
+    it("sums across the rollup boundary", async () => {
       const provider = await factory();
       await provider.record(dataset, [
         { hour: "2026-08-01T10", app: "a", path: "/x", bucket: 0, samples: 2 },
-        { hour: "2026-08-09T10", app: "a", path: "/x", bucket: 0, samples: 9 },
+        { hour: "2026-08-09T10", app: "a", path: "/x", bucket: 0, samples: 3 },
       ]);
 
       await provider.rollup(dataset, "2026-08-02");
 
       const result = await provider.query(dataset, {
         since: "2026-08-01",
-        select: { samples: "max" },
+        select: { samples: "sum" },
       });
 
-      expect(Number(result.rows[0]?.samples)).toBe(9);
+      // Small enough to sit below any sampling threshold, so a sampled
+      // backend can satisfy it truthfully.
+      expect(Number(result.rows[0]?.samples)).toBe(5);
+    });
+
+    it("counts rows rather than summing the measure", async () => {
+      const provider = await factory();
+      await provider.record(dataset, [
+        { hour: "2026-08-09T10", app: "a", path: "/x", bucket: 0, samples: 5 },
+        { hour: "2026-08-09T11", app: "a", path: "/y", bucket: 0, samples: 7 },
+      ]);
+
+      const result = await provider.query(dataset, {
+        since: "2026-08-09",
+        select: { samples: "count" },
+      });
+
+      // 2, never 12 — the measure values are chosen so the two readings
+      // cannot be confused.
+      expect(Number(result.rows[0]?.samples)).toBe(2);
     });
 
     it("prunes rolled rows older than the cold boundary", async () => {
@@ -180,6 +199,11 @@ export const analyticsConformance = (
         { hour: "2026-08-09T10", app: "a", path: "/x", bucket: 0, samples: 1 },
       ]);
 
+      // Roll first. Pruning only ever runs past the cold boundary, which is
+      // always older than the hot one, so in production every row it deletes
+      // has already been folded. A prune test on un-rolled rows would pass
+      // against an implementation that never looks at the rolled tier at all.
+      await provider.rollup(dataset, "2026-08-05");
       await provider.prune(dataset, "2026-08-05");
 
       const result = await provider.query(dataset, {
@@ -191,7 +215,7 @@ export const analyticsConformance = (
       expect(result.rows.map((row) => row.day)).toEqual(["2026-08-09"]);
     });
 
-    it("declares whether its numbers are estimated", async () => {
+    it("keeps estimated and sampleInterval consistent with each other", async () => {
       const provider = await factory();
       await provider.record(dataset, [
         { hour: "2026-08-09T10", app: "a", path: "/x", bucket: 0, samples: 1 },
@@ -202,7 +226,14 @@ export const analyticsConformance = (
         select: { samples: "sum" },
       });
 
-      expect(typeof result.estimated).toBe("boolean");
+      // A real invariant rather than a type check. An exact backend must not
+      // claim a sample interval; a sampling one must report the interval it
+      // actually applied, and 1 means it did not sample.
+      if (result.estimated) {
+        expect(result.sampleInterval).toBeGreaterThanOrEqual(1);
+      } else {
+        expect(result.sampleInterval).toBeUndefined();
+      }
     });
   });
 };

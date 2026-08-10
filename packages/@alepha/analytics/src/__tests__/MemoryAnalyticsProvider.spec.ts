@@ -81,38 +81,6 @@ describe("MemoryAnalyticsProvider", () => {
     expect(result.rows).toEqual([{ count: 2 }]);
   });
 
-  it("returns the smallest measure value for the min aggregate", async () => {
-    const provider = new MemoryAnalyticsProvider();
-    await provider.record(dataset, [
-      { hour: "2026-08-09T10", app: "a", path: "/x", country: "FR", count: 5 },
-      { hour: "2026-08-09T11", app: "a", path: "/x", country: "FR", count: 2 },
-      { hour: "2026-08-09T12", app: "a", path: "/x", country: "FR", count: 9 },
-    ]);
-
-    const result = await provider.query(dataset, {
-      since: "2026-08-09",
-      select: { count: "min" },
-    });
-
-    expect(result.rows).toEqual([{ count: 2 }]);
-  });
-
-  it("returns the largest measure value for the max aggregate", async () => {
-    const provider = new MemoryAnalyticsProvider();
-    await provider.record(dataset, [
-      { hour: "2026-08-09T10", app: "a", path: "/x", country: "FR", count: 5 },
-      { hour: "2026-08-09T11", app: "a", path: "/x", country: "FR", count: 2 },
-      { hour: "2026-08-09T12", app: "a", path: "/x", country: "FR", count: 9 },
-    ]);
-
-    const result = await provider.query(dataset, {
-      since: "2026-08-09",
-      select: { count: "max" },
-    });
-
-    expect(result.rows).toEqual([{ count: 9 }]);
-  });
-
   it("folds hour buckets to day buckets on rollup, without changing sums", async () => {
     const provider = new MemoryAnalyticsProvider();
     await provider.record(dataset, [

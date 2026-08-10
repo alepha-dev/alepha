@@ -41,7 +41,14 @@ export abstract class AnalyticsProvider {
   abstract rollup(dataset: AnalyticsDataset, before: string): Promise<void>;
 
   /**
-   * Deletes rolled rows older than `before`.
+   * Deletes every row older than `before`, on whichever tier it lives.
+   *
+   * Deliberately not scoped to the rolled tier. Pruning only ever runs past
+   * the cold boundary, which is always older than the hot one, so in
+   * practice every row it removes has already been folded — but a provider
+   * that reaches both tiers cannot strand an orphan if a rollup was ever
+   * missed, and no caller can construct a case where the two scopings
+   * differ.
    */
   abstract prune(dataset: AnalyticsDataset, before: string): Promise<void>;
 }
