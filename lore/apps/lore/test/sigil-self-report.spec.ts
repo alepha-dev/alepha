@@ -8,9 +8,9 @@ import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { describe, expect, it } from "vitest";
+import { LoreAnalytics } from "../src/api/entities/loreAnalytics.ts";
 import { projects } from "../src/api/entities/projects.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
-import { sigilViewsHourly } from "../src/api/entities/sigilViewsHourly.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreSigilSinkProvider } from "../src/api/providers/LoreSigilSinkProvider.ts";
 
@@ -31,8 +31,26 @@ import { LoreSigilSinkProvider } from "../src/api/providers/LoreSigilSinkProvide
 class Probe {
   projects = $repository(projects);
   sigils = $repository(sigils);
-  views = $repository(sigilViewsHourly);
 }
+
+/**
+ * Views, read back through the `$analytics()` dataset that is now the only
+ * write `SigilIngestService.absorbViews` makes — see that method's doc.
+ */
+const readViews = async (analytics: LoreAnalytics, sigilId: string) => {
+  const result = await analytics.views.query({
+    since: "2000-01-01",
+    where: { sigilId: { inArray: [sigilId] } },
+    groupBy: ["hour", "path", "country"],
+    select: { count: "sum" },
+  });
+  return result.rows as unknown as Array<{
+    hour: string;
+    path: string;
+    country: string;
+    count: number;
+  }>;
+};
 
 const KEY = "sg_selfreport_fixed_for_the_test";
 
@@ -78,6 +96,7 @@ const setup = async (
   alepha.with({ provide: SigilSinkProvider, use: LoreSigilSinkProvider });
 
   const probe = alepha.inject(Probe);
+  const analytics = alepha.inject(LoreAnalytics);
   const crypto = alepha.inject(CryptoProvider);
   const users = alepha.inject(UserService);
   const sink = alepha.inject(SigilSinkProvider);
@@ -102,19 +121,17 @@ const setup = async (
     kinds: over.kinds ?? ["beacon", "vitals", "blights", "feedback"],
   });
 
-  return { alepha, probe, project, sigil, sink };
+  return { alepha, probe, analytics, project, sigil, sink };
 };
 
 describe("Lore reports to Lore", () => {
   it("should write a batch straight into its own tables, with no sink reachable", async () => {
-    const { probe, sigil, sink } = await setup();
+    const { analytics, sigil, sink } = await setup();
 
     await sink.ingest({ views: [{ path: "/dogfood" }] }, {});
     await sink.flush();
 
-    const rows = await probe.views.findMany({
-      where: { sigilId: { eq: sigil.id } },
-    });
+    const rows = await readViews(analytics, sigil.id);
     expect(rows).toHaveLength(1);
     expect(rows[0].path).toBe("/dogfood");
   });
@@ -147,16 +164,14 @@ describe("Lore reports to Lore", () => {
   });
 
   it("should honour a switched-off project by writing nothing", async () => {
-    const { probe, sigil, sink } = await setup({
+    const { analytics, sigil, sink } = await setup({
       features: { ...allOn, sigils: false },
     });
 
     await sink.ingest({ views: [{ path: "/dogfood" }] }, {});
     await sink.flush();
 
-    expect(
-      await probe.views.findMany({ where: { sigilId: { eq: sigil.id } } }),
-    ).toHaveLength(0);
+    expect(await readViews(analytics, sigil.id)).toHaveLength(0);
   });
 
   it("should drop the batch rather than throw when SIGIL_KEY names no sigil", async () => {
@@ -166,13 +181,13 @@ describe("Lore reports to Lore", () => {
       that happened to trigger the flush. The app is working; its observer is
       not.
     */
-    const { probe, sigil, sink } = await setup({ key: "sg_not_a_real_token" });
+    const { analytics, sigil, sink } = await setup({
+      key: "sg_not_a_real_token",
+    });
 
     await sink.ingest({ views: [{ path: "/dogfood" }] }, {});
     await expect(sink.flush()).resolves.toBeUndefined();
 
-    expect(
-      await probe.views.findMany({ where: { sigilId: { eq: sigil.id } } }),
-    ).toHaveLength(0);
+    expect(await readViews(analytics, sigil.id)).toHaveLength(0);
   });
 });

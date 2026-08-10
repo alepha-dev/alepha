@@ -37,6 +37,7 @@ import { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
 import { FolioHistoryService } from "./services/FolioHistoryService.ts";
 import { FolioLinkService } from "./services/FolioLinkService.ts";
 import { FolioNameService } from "./services/FolioNameService.ts";
+import { FrozenSigilAnalyticsTables } from "./services/FrozenSigilAnalyticsTables.ts";
 import { InvitationService } from "./services/InvitationService.ts";
 import { ProjectLimits } from "./services/ProjectLimits.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
@@ -69,6 +70,10 @@ export const LoreApi = $module({
     // Substituted for the framework's `FileAccessProvider` in
     // `main.server.ts`. Listed here only so DI scanning sees the class.
     LoreFileAccessProvider,
+    // Pins `sigil_views_hourly` / `sigil_vitals_hourly` in the migration
+    // snapshot now that nothing else holds a repository on either — see its
+    // own doc for why that would otherwise read as a dropped table.
+    FrozenSigilAnalyticsTables,
     FolioNameService,
     FolioDirectoryService,
     FolioBlobService,
@@ -92,9 +97,12 @@ export const LoreApi = $module({
     ProjectLimits,
     BlightRuleService,
     // The sink half: the token an app presents, and what happens to what it
-    // sends. `SigilIngestService` is also the only place the four aggregate
-    // tables are declared — an entity exists, for the migration generator,
-    // exactly as long as some `$repository` names it.
+    // sends. `SigilIngestService` itself holds no repository on any of the
+    // aggregate tables — writes go through `LoreAnalyticsStore` (uniques) and
+    // the `LoreAnalytics` `$analytics()` datasets (views, vitals). An entity
+    // exists, for the migration generator, exactly as long as some
+    // `$repository` — or, for the two frozen legacy tables,
+    // `FrozenSigilAnalyticsTables` above — names it.
     SigilTokenService,
     SigilIngestService,
     // Controllers

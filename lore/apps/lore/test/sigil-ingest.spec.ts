@@ -9,12 +9,11 @@ import { AlephaServer, ServerProvider } from "alepha/server";
 import { AlephaServerCors } from "alepha/server/cors";
 import { describe, expect, it } from "vitest";
 import { blights } from "../src/api/entities/blights.ts";
+import { LoreAnalytics } from "../src/api/entities/loreAnalytics.ts";
 import { projects } from "../src/api/entities/projects.ts";
 import { sigilErrorGroups } from "../src/api/entities/sigilErrorGroups.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
 import { sigilUniquesDaily } from "../src/api/entities/sigilUniquesDaily.ts";
-import { sigilViewsHourly } from "../src/api/entities/sigilViewsHourly.ts";
-import { sigilVitalsHourly } from "../src/api/entities/sigilVitalsHourly.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { BlightRuleService } from "../src/api/services/BlightRuleService.ts";
 import { SigilIngestService } from "../src/api/services/SigilIngestService.ts";
@@ -23,12 +22,53 @@ import { SigilTokenService } from "../src/api/services/SigilTokenService.ts";
 class Probe {
   projects = $repository(projects);
   sigils = $repository(sigils);
-  views = $repository(sigilViewsHourly);
   uniques = $repository(sigilUniquesDaily);
-  vitals = $repository(sigilVitalsHourly);
   errorGroups = $repository(sigilErrorGroups);
   blights = $repository(blights);
 }
+
+/**
+ * Views and vitals, read back through the `$analytics()` datasets they are
+ * now the only write for — see `SigilIngestService.absorbViews`'s doc.
+ *
+ * `groupBy` names every dimension the legacy tables carried as columns, so
+ * these come back as close to "one row per hit-shape" as the dataset allows
+ * — `readViews` mirrors `sigilViewsHourly`'s old grain exactly (one row per
+ * `(hour, path, country)`); `readVitals` cannot: a bucket is a dimension on
+ * the dataset rather than one of seven columns on one row, so a metric/path
+ * with two populated buckets comes back as two rows, not one row with two
+ * non-zero columns.
+ */
+const readViews = async (analytics: LoreAnalytics, sigilId: string) => {
+  const result = await analytics.views.query({
+    since: "2000-01-01",
+    where: { sigilId: { inArray: [sigilId] } },
+    groupBy: ["hour", "path", "country"],
+    select: { count: "sum" },
+  });
+  return result.rows as unknown as Array<{
+    hour: string;
+    path: string;
+    country: string;
+    count: number;
+  }>;
+};
+
+const readVitals = async (analytics: LoreAnalytics, sigilId: string) => {
+  const result = await analytics.vitals.query({
+    since: "2000-01-01",
+    where: { sigilId: { inArray: [sigilId] } },
+    groupBy: ["hour", "metric", "path", "bucket"],
+    select: { samples: "sum" },
+  });
+  return result.rows as unknown as Array<{
+    hour: string;
+    metric: string;
+    path: string;
+    bucket: number;
+    samples: number;
+  }>;
+};
 
 /**
  * Every capability switched on, which is what most tests here want as a
@@ -80,6 +120,7 @@ const setup = async (over: { kinds?: string[]; features?: unknown } = {}) => {
   alepha.with(LoreApi);
 
   const probe = alepha.inject(Probe);
+  const analytics = alepha.inject(LoreAnalytics);
   const tokens = alepha.inject(SigilTokenService);
   const server = alepha.inject(ServerProvider);
   const users = alepha.inject(UserService);
@@ -127,6 +168,7 @@ const setup = async (over: { kinds?: string[]; features?: unknown } = {}) => {
   return {
     alepha,
     probe,
+    analytics,
     owner,
     project,
     sigil,
@@ -148,16 +190,14 @@ const anError = (over: Record<string, unknown> = {}) => ({
 
 describe("sigil ingest", () => {
   it("aggregates views on write instead of storing one row per hit", async () => {
-    const { probe, sigil, post } = await setup();
+    const { analytics, sigil, post } = await setup();
 
     for (let i = 0; i < 5; i++) {
       const res = await post({ views: [{ path: "/home" }] });
       expect(res.status).toBe(204);
     }
 
-    const rows = await probe.views.findMany({
-      where: { sigilId: { eq: sigil.id } },
-    });
+    const rows = await readViews(analytics, sigil.id);
     expect(rows).toHaveLength(1);
     expect(rows[0].count).toBe(5);
   });
@@ -170,14 +210,12 @@ describe("sigil ingest", () => {
   });
 
   it("ignores a kind the sigil does not carry", async () => {
-    const { probe, sigil, post } = await setup({ kinds: ["blights"] });
+    const { analytics, sigil, post } = await setup({ kinds: ["blights"] });
 
     const res = await post({ views: [{ path: "/home" }] });
     expect(res.status).toBe(204);
 
-    const rows = await probe.views.findMany({
-      where: { sigilId: { eq: sigil.id } },
-    });
+    const rows = await readViews(analytics, sigil.id);
     expect(rows).toHaveLength(0);
   });
 
@@ -189,7 +227,7 @@ describe("sigil ingest", () => {
     are wired to the three kinds they claim.
   */
   it("refuses vitals from a sigil without the vitals kind", async () => {
-    const { probe, sigil, post } = await setup({
+    const { analytics, sigil, post } = await setup({
       kinds: ["beacon", "blights"],
     });
 
@@ -198,9 +236,7 @@ describe("sigil ingest", () => {
     });
     expect(res.status).toBe(204);
 
-    expect(
-      await probe.vitals.findMany({ where: { sigilId: { eq: sigil.id } } }),
-    ).toHaveLength(0);
+    expect(await readVitals(analytics, sigil.id)).toHaveLength(0);
   });
 
   it("refuses errors from a sigil without the blights kind", async () => {
@@ -234,7 +270,7 @@ describe("sigil ingest", () => {
     only thing being proven is that it no longer has any effect.
   */
   it("writes views regardless of the retired Beacon project flag", async () => {
-    const { probe, sigil, post } = await setup({
+    const { analytics, probe, sigil, post } = await setup({
       features: { ...allOn, beacon: false },
     });
 
@@ -246,9 +282,7 @@ describe("sigil ingest", () => {
     expect(res.status).toBe(204);
 
     expect(sigil.kinds).toContain("beacon");
-    expect(
-      await probe.views.findMany({ where: { sigilId: { eq: sigil.id } } }),
-    ).toHaveLength(1);
+    expect(await readViews(analytics, sigil.id)).toHaveLength(1);
     // The daily visitor hash is a view-side write too, and it is the one that
     // is personal data — it follows the same gate.
     expect(
@@ -257,7 +291,7 @@ describe("sigil ingest", () => {
   });
 
   it("writes vitals regardless of the retired Vitals project flag", async () => {
-    const { probe, sigil, post } = await setup({
+    const { analytics, sigil, post } = await setup({
       features: { ...allOn, vitals: false },
     });
 
@@ -267,9 +301,7 @@ describe("sigil ingest", () => {
     expect(res.status).toBe(204);
 
     expect(sigil.kinds).toContain("vitals");
-    expect(
-      await probe.vitals.findMany({ where: { sigilId: { eq: sigil.id } } }),
-    ).toHaveLength(1);
+    expect(await readVitals(analytics, sigil.id)).toHaveLength(1);
   });
 
   it("writes errors regardless of the retired Blights project flag", async () => {
@@ -294,7 +326,7 @@ describe("sigil ingest", () => {
   });
 
   it("writes nothing at all when the sigils master switch is off", async () => {
-    const { probe, project, sigil, post } = await setup({
+    const { analytics, probe, project, sigil, post } = await setup({
       features: { ...allOn, sigils: false },
     });
 
@@ -306,12 +338,8 @@ describe("sigil ingest", () => {
     });
     expect(res.status).toBe(204);
 
-    expect(
-      await probe.views.findMany({ where: { sigilId: { eq: sigil.id } } }),
-    ).toHaveLength(0);
-    expect(
-      await probe.vitals.findMany({ where: { sigilId: { eq: sigil.id } } }),
-    ).toHaveLength(0);
+    expect(await readViews(analytics, sigil.id)).toHaveLength(0);
+    expect(await readVitals(analytics, sigil.id)).toHaveLength(0);
     expect(
       await probe.blights.findMany({
         where: { projectId: { eq: project.id } },
@@ -329,7 +357,7 @@ describe("sigil ingest", () => {
     // `gatesFor`, so this fails the moment one of them grows a rule of its own.
     // Vitals is withheld via the sigil's own kinds, not a project flag — that
     // flag is retired and no longer able to create this gap.
-    const { probe, sigil, post, getConfig } = await setup({
+    const { analytics, sigil, post, getConfig } = await setup({
       kinds: ["beacon", "blights", "feedback"],
     });
 
@@ -342,26 +370,21 @@ describe("sigil ingest", () => {
       vitals: [{ path: "/home", metric: "lcp", value: 900 }],
     });
 
-    expect(
-      await probe.views.findMany({ where: { sigilId: { eq: sigil.id } } }),
-    ).toHaveLength(1);
-    expect(
-      await probe.vitals.findMany({ where: { sigilId: { eq: sigil.id } } }),
-    ).toHaveLength(0);
+    expect(await readViews(analytics, sigil.id)).toHaveLength(1);
+    expect(await readVitals(analytics, sigil.id)).toHaveLength(0);
   });
 
   it("survives a proxy that stamps an empty country", async () => {
-    const { probe, sigil, post } = await setup();
+    const { analytics, sigil, post } = await setup();
 
     // `country` is `z.string().max(8).optional()`, so `""` is valid on the
-    // wire, and `sigil_views_hourly.country` is `min(1)`. `?? "ZZ"` does not
-    // catch an empty string and the whole batch 500s.
+    // wire. `absorbViews` normalises it with `||`, not `??` — an empty
+    // string is falsy but not `undefined`, so `?? "ZZ"` would let it through
+    // unnormalised.
     const res = await post({ views: [{ path: "/home" }], country: "" });
     expect(res.status).toBe(204);
 
-    const rows = await probe.views.findMany({
-      where: { sigilId: { eq: sigil.id } },
-    });
+    const rows = await readViews(analytics, sigil.id);
     expect(rows).toHaveLength(1);
     expect(rows[0].country).toBe("ZZ");
   });
@@ -380,53 +403,48 @@ describe("sigil ingest", () => {
   });
 
   it("strips the query string so storage stays bounded by page count", async () => {
-    const { probe, sigil, post } = await setup();
+    const { analytics, sigil, post } = await setup();
 
     await post({ views: [{ path: "/search?q=a" }] });
     await post({ views: [{ path: "/search?q=b" }] });
 
-    const rows = await probe.views.findMany({
-      where: { sigilId: { eq: sigil.id } },
-    });
+    const rows = await readViews(analytics, sigil.id);
     expect(rows).toHaveLength(1);
     expect(rows[0].path).toBe("/search");
     expect(rows[0].count).toBe(2);
   });
 
   it("keeps vitals as bucket counts rather than samples", async () => {
-    const { probe, sigil, post } = await setup();
+    const { analytics, sigil, post } = await setup();
 
     await post({ vitals: [{ path: "/home", metric: "lcp", value: 900 }] });
     await post({ vitals: [{ path: "/home", metric: "lcp", value: 950 }] });
     await post({ vitals: [{ path: "/home", metric: "lcp", value: 5000 }] });
 
-    const rows = await probe.vitals.findMany({
-      where: { sigilId: { eq: sigil.id } },
-    });
-    expect(rows).toHaveLength(1);
+    const rows = await readVitals(analytics, sigil.id);
     // 900 and 950 both land in the first bucket (<= 1000); 5000 in the fifth.
     // Accumulated across three separate batches, so this is also the guard
     // that the increment reads the stored value rather than overwriting it.
-    expect([
-      rows[0].b0,
-      rows[0].b1,
-      rows[0].b2,
-      rows[0].b3,
-      rows[0].b4,
-      rows[0].b5,
-      rows[0].b6,
-    ]).toEqual([2, 0, 0, 0, 0, 1, 0]);
+    // Unlike the deleted legacy table, an empty bucket has no row at all — a
+    // bucket is a dataset dimension now, not one of seven columns on a
+    // single row — so only the two populated buckets come back.
+    const byBucket = new Map(rows.map((row) => [row.bucket, row.samples]));
+    expect([...byBucket.keys()].sort()).toEqual([0, 5]);
+    expect(byBucket.get(0)).toBe(2);
+    expect(byBucket.get(5)).toBe(1);
   });
 
   /**
    * The lost-update race the JSON column made unavoidable: with a
    * read-modify-write, two samples for the same `(hour, metric, path)` in
    * flight together both read the same "before" and one overwrites the other.
-   * A column per bucket makes it `b0 = b0 + excluded.b0` in one statement,
-   * where concurrency costs nothing.
+   * A column per bucket made it `b0 = b0 + excluded.b0` in one statement on
+   * the legacy table; the `$analytics()` dataset that replaced it upserts the
+   * same way, keyed on `(hour, sigilId, metric, path, bucket)` — concurrency
+   * still costs nothing.
    */
   it("does not lose concurrent samples for the same bucket", async () => {
-    const { probe, sigil, post } = await setup();
+    const { analytics, sigil, post } = await setup();
 
     await Promise.all(
       Array.from({ length: 8 }, () =>
@@ -434,11 +452,11 @@ describe("sigil ingest", () => {
       ),
     );
 
-    const rows = await probe.vitals.findMany({
-      where: { sigilId: { eq: sigil.id }, path: { eq: "/race" } },
-    });
+    const rows = (await readVitals(analytics, sigil.id)).filter(
+      (row) => row.path === "/race",
+    );
     expect(rows).toHaveLength(1);
-    expect(rows[0].b0).toBe(8);
+    expect(rows[0].samples).toBe(8);
   });
 
   /**
@@ -447,7 +465,7 @@ describe("sigil ingest", () => {
    * conflict targets in a single statement are rejected outright by Postgres.
    */
   it("adds up several samples for one bucket inside a single batch", async () => {
-    const { probe, sigil, post } = await setup();
+    const { analytics, sigil, post } = await setup();
 
     await post({
       vitals: [
@@ -458,12 +476,12 @@ describe("sigil ingest", () => {
       ],
     });
 
-    const rows = await probe.vitals.findMany({
-      where: { sigilId: { eq: sigil.id }, path: { eq: "/batch" } },
-    });
-    expect(rows).toHaveLength(1);
-    expect(rows[0].b0).toBe(3);
-    expect(rows[0].b5).toBe(1);
+    const rows = (await readVitals(analytics, sigil.id)).filter(
+      (row) => row.path === "/batch",
+    );
+    const byBucket = new Map(rows.map((row) => [row.bucket, row.samples]));
+    expect(byBucket.get(0)).toBe(3);
+    expect(byBucket.get(5)).toBe(1);
   });
 
   /**
@@ -471,7 +489,7 @@ describe("sigil ingest", () => {
    * must add up rather than count as one.
    */
   it("adds up repeated views of one path inside a single batch", async () => {
-    const { probe, sigil, post } = await setup();
+    const { analytics, sigil, post } = await setup();
 
     await post({
       views: [
@@ -482,10 +500,8 @@ describe("sigil ingest", () => {
       ],
     });
 
-    const rows = await probe.views.findMany({
-      where: { sigilId: { eq: sigil.id } },
-    });
-    const byPath = new Map(rows.map((r) => [r.path, r.count]));
+    const rows = await readViews(analytics, sigil.id);
+    const byPath = new Map(rows.map((row) => [row.path, row.count]));
     expect(byPath.get("/dup")).toBe(3);
     expect(byPath.get("/other")).toBe(1);
   });

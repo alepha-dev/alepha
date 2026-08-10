@@ -6,7 +6,6 @@ import { bucketIndex, type VitalMetric } from "@alepha/sigil/vitals";
 import { $inject, Alepha } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
-import { $logger } from "alepha/logger";
 import { $repository, sql } from "alepha/orm";
 import { blights } from "../entities/blights.ts";
 import { LoreAnalytics } from "../entities/loreAnalytics.ts";
@@ -70,24 +69,25 @@ export class SigilIngestService {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly rules = $inject(BlightRuleService);
-  protected readonly log = $logger();
 
   /**
-   * Views, uniques and vitals go through the store, never through a
-   * repository here: those three are the closed set of questions
-   * `@alepha/sigil/ingest` owns, and routing them through the interface is
-   * what makes the storage backend swappable per runtime. Error groups and
-   * blights stay on repositories on purpose — see `AnalyticsStore`'s
-   * "deliberately not here".
+   * Uniques only. `LoreAnalyticsStore` used to hold views and vitals too,
+   * behind the now-deleted `AnalyticsStore` interface from
+   * `@alepha/sigil/ingest` — see that class's doc for why a distinct visitor
+   * count is the one question storage-swappable `$analytics()` datasets
+   * cannot answer, and so is the one thing that stayed on a repository.
+   * Error groups and blights stay on repositories for an unrelated reason:
+   * they keep the *first* stack sample, which needs a read before every
+   * write, something an append-only analytics backend cannot do.
    */
   protected readonly analytics = $inject(LoreAnalyticsStore);
 
   /**
-   * Dual-write target for Task 11: mirrors views and vitals into the
-   * portable `$analytics()` datasets alongside `sigilViewsHourly` /
-   * `sigilVitalsHourly`. Every read still goes through `analytics` above —
-   * nothing consumes these datasets yet, so this is reversible by deleting
-   * the two `recordMany` calls below.
+   * Where views and vitals actually live: the portable `$analytics()`
+   * datasets declared on `LoreAnalytics`. This was a dual-write mirror
+   * alongside the legacy `sigilViewsHourly` / `sigilVitalsHourly` tables
+   * while `InsightsController` still read from those tables; now that it
+   * reads from these datasets instead, this is the only write for both.
    */
   protected readonly datasets = $inject(LoreAnalytics);
 
@@ -338,32 +338,28 @@ export class SigilIngestService {
     }
 
     await this.analytics.absorb({
-      views: [...buckets.values()].map((bucket) => ({
-        sigilId: sigil.id,
-        ...bucket,
-      })),
       // One row per visitor per day. Recorded once per batch rather than per
-      // view: the same person loading ten pages is one unique.
+      // view: the same person loading ten pages is one unique. `views` has no
+      // counterpart here anymore — it stays bespoke, see `LoreAnalyticsStore`'s
+      // class doc.
       uniques: visitor
         ? [{ sigilId: sigil.id, day, visitorHash: visitor }]
         : [],
     });
 
-    // Dual-write while `sigil_views` fills under real traffic. Reads stay on
-    // the old table above until a later task switches them, so this is
-    // reversible by deleting this call. `uniques` has no counterpart here —
-    // it stays bespoke, see `LoreAnalytics`'s class doc. Isolated through
-    // `mirrorAnalyticsWrite` — see that method's doc for why.
-    await this.mirrorAnalyticsWrite("sigil_views", () =>
-      this.datasets.views.recordMany(
-        [...buckets.values()].map((bucket) => ({
-          sigilId: sigil.id,
-          path: bucket.path,
-          country: bucket.country,
-          count: bucket.count,
-          hour: bucket.hour,
-        })),
-      ),
+    // The only write for `sigil_views` — `InsightsController` reads it back
+    // through the same `LoreAnalytics` declaration. Unlike the uniques write
+    // above, nothing catches a failure here: there is no other copy of this
+    // batch to fall back on, so a throw is real data loss and has to surface
+    // as one, not be swallowed the way the now-deleted dual-write mirror did.
+    await this.datasets.views.recordMany(
+      [...buckets.values()].map((bucket) => ({
+        sigilId: sigil.id,
+        path: bucket.path,
+        country: bucket.country,
+        count: bucket.count,
+        hour: bucket.hour,
+      })),
     );
   }
 
@@ -401,58 +397,19 @@ export class SigilIngestService {
       else samples.set(key, { hour, metric, path, bucket, count: 1 });
     }
 
-    await this.analytics.absorb({
-      vitals: [...samples.values()].map((sample) => ({
+    // The only write for `sigil_vitals` — no repository write behind it at
+    // all anymore. See `absorbViews`'s comment on why a throw here is left to
+    // propagate rather than caught.
+    await this.datasets.vitals.recordMany(
+      [...samples.values()].map((sample) => ({
         sigilId: sigil.id,
-        ...sample,
+        metric: sample.metric,
+        path: sample.path,
+        bucket: sample.bucket,
+        samples: sample.count,
+        hour: sample.hour,
       })),
-    });
-
-    // Dual-write while `sigil_vitals` fills under real traffic. Reads stay on
-    // the old table above until a later task switches them, so this is
-    // reversible by deleting this call. Isolated through
-    // `mirrorAnalyticsWrite` — see that method's doc for why.
-    await this.mirrorAnalyticsWrite("sigil_vitals", () =>
-      this.datasets.vitals.recordMany(
-        [...samples.values()].map((sample) => ({
-          sigilId: sigil.id,
-          metric: sample.metric,
-          path: sample.path,
-          bucket: sample.bucket,
-          samples: sample.count,
-          hour: sample.hour,
-        })),
-      ),
     );
-  }
-
-  /**
-   * Runs a mirrored `$analytics()` write and swallows whatever it throws.
-   *
-   * The dual-write datasets carry zero production traffic today — nothing
-   * reads them — so a failure on this path must never turn into a failure of
-   * `absorb()` itself. Without this isolation, a transient error on the new
-   * path would do two things it must not: turn a `204` into a `5xx` at
-   * `SigilIngestController`, which has no error handling of its own either,
-   * and — because a throw here would unwind out of `absorbViews` /
-   * `absorbVitals` — skip whatever `absorb()` was about to do next (the
-   * sibling absorb call, and the `lastSeenAt` stamp), silently losing a
-   * legacy-table write that would otherwise have succeeded. Degrading to
-   * "lost telemetry on the new path" is the only acceptable failure mode for
-   * a mirror that nothing depends on yet.
-   */
-  protected async mirrorAnalyticsWrite(
-    dataset: string,
-    write: () => Promise<void>,
-  ): Promise<void> {
-    try {
-      await write();
-    } catch (error) {
-      this.log.warn(
-        "Mirrored analytics write failed; legacy write already committed",
-        { dataset, error },
-      );
-    }
   }
 
   /**

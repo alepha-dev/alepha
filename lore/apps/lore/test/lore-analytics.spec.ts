@@ -17,16 +17,17 @@ import { describe, expect, it } from "vitest";
 import { LoreAnalytics } from "../src/api/entities/loreAnalytics.ts";
 import { projects } from "../src/api/entities/projects.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
-import { sigilViewsHourly } from "../src/api/entities/sigilViewsHourly.ts";
-import { sigilVitalsHourly } from "../src/api/entities/sigilVitalsHourly.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { SigilTokenService } from "../src/api/services/SigilTokenService.ts";
 
 /**
- * A mirrored-write provider that always fails. Used to prove
- * `SigilIngestService.mirrorAnalyticsWrite` actually isolates the dual-write:
- * with this substituted in, ingest must still answer `204` and the legacy
- * tables must still receive the row.
+ * A provider that always fails to record. Used to prove that once
+ * `SigilIngestService` writes views and vitals through `$analytics()` alone
+ * (Task 14 retired the dual-write into `sigilViewsHourly` /
+ * `sigilVitalsHourly` this file used to also assert on), a failure on that
+ * write is no longer swallowed — see `SigilIngestService.absorbViews`'s doc
+ * for why the old mirror's failure-isolating try/catch does not survive the
+ * legacy write it used to protect.
  */
 class ThrowingAnalyticsProvider extends MemoryAnalyticsProvider {
   public override async record(
@@ -40,21 +41,19 @@ class ThrowingAnalyticsProvider extends MemoryAnalyticsProvider {
 class Probe {
   projects = $repository(projects);
   sigils = $repository(sigils);
-  views = $repository(sigilViewsHourly);
-  vitals = $repository(sigilVitalsHourly);
 }
 
 /**
  * Boots the real ingest HTTP path, the same way `sigil-ingest.spec.ts` does,
- * so the dual-write assertions below exercise `SigilIngestService.absorb`
- * exactly as production would, not a hand-called method.
+ * so the assertions below exercise `SigilIngestService.absorb` exactly as
+ * production would, not a hand-called method.
  *
  * `analyticsProvider`, when given, is substituted for `AnalyticsProvider`
  * BEFORE any module wires — a substitution is only honoured the first time
  * it is recorded (`Alepha.with`'s "first call wins, later calls are
  * no-ops when `optional`" rule), and `AlephaAnalytics`'s own default pick is
  * exactly that kind of optional call. Recording it here first is what lets a
- * test force the mirrored write to fail.
+ * test force the dataset write to fail.
  */
 const setup = async (
   analyticsProvider?: new (...args: any[]) => AnalyticsProvider,
@@ -171,14 +170,12 @@ describe("Lore analytics datasets", () => {
   });
 
   /**
-   * The dual-write guard: a real ingest call must still land in the legacy
-   * `sigil_views_hourly` / `sigil_vitals_hourly` tables (what every read
-   * still uses through Task 12) AND in the new `$analytics()` datasets. If
-   * this task had cut reads over instead of mirroring writes, the legacy
-   * tables would come back empty.
+   * A real ingest call lands in the dataset — the one and only write for
+   * views and vitals now that Task 14 retired the dual-write into
+   * `sigilViewsHourly` / `sigilVitalsHourly`.
    */
-  it("writes both the legacy table and the new dataset on ingest", async () => {
-    const { probe, analytics, sigil, post } = await setup();
+  it("writes a real ingest call into the dataset", async () => {
+    const { analytics, sigil, post } = await setup();
 
     const res = await post({
       views: [{ path: "/home" }],
@@ -186,19 +183,6 @@ describe("Lore analytics datasets", () => {
     });
     expect(res.status).toBe(204);
 
-    // Legacy tables — still the only thing any read path uses today.
-    const legacyViews = await probe.views.findMany({
-      where: { sigilId: { eq: sigil.id } },
-    });
-    expect(legacyViews).toHaveLength(1);
-    expect(legacyViews[0].count).toBe(1);
-
-    const legacyVitals = await probe.vitals.findMany({
-      where: { sigilId: { eq: sigil.id } },
-    });
-    expect(legacyVitals).toHaveLength(1);
-
-    // Mirrored datasets — the new path, unread by anything yet.
     const viewsResult = await analytics.views.query({
       since: "2000-01-01",
       where: { sigilId: { inArray: [sigil.id] } },
@@ -217,39 +201,28 @@ describe("Lore analytics datasets", () => {
   });
 
   /**
-   * `SigilIngestService.mirrorAnalyticsWrite` must isolate a failure on the
-   * new, zero-production-traffic path: ingest still answers `204` (the
-   * legacy write already committed before the mirrored call runs), the
-   * legacy table still received the row, and — because `absorbViews` and
-   * `absorbVitals` are independent — a throw mirroring views must not skip
-   * the legacy vitals write or the `lastSeenAt` stamp either. Without the
-   * try/catch this test pins, a transient error on the dual-write path would
-   * turn a healthy ingest into a `5xx` and silently drop a legacy write that
-   * would otherwise have succeeded.
+   * The dataset write used to be a mirror alongside a legacy-table write,
+   * with its own failure isolated so a transient error on the (then
+   * zero-traffic) new path could never turn a healthy ingest into a `5xx` —
+   * see the deleted `mirrorAnalyticsWrite`. Now that it is the only write,
+   * that isolation would hide real data loss instead of a redundant path
+   * failing, so `SigilIngestService.absorbViews` / `absorbVitals` let the
+   * error propagate. `lastSeenAt` is asserted unset for the same reason: it
+   * is stamped after both absorb calls, so a batch that never finished
+   * writing must not look like one that reported successfully.
    */
-  it("keeps ingest healthy and the legacy writes intact when the mirrored write throws", async () => {
+  it("fails the request when the dataset write fails, since nothing else backs it up", async () => {
     const { probe, sigil, post } = await setup(ThrowingAnalyticsProvider);
 
     const res = await post({
       views: [{ path: "/home" }],
       vitals: [{ path: "/home", metric: "lcp", value: 900 }],
     });
-    expect(res.status).toBe(204);
-
-    const legacyViews = await probe.views.findMany({
-      where: { sigilId: { eq: sigil.id } },
-    });
-    expect(legacyViews).toHaveLength(1);
-    expect(legacyViews[0].count).toBe(1);
-
-    const legacyVitals = await probe.vitals.findMany({
-      where: { sigilId: { eq: sigil.id } },
-    });
-    expect(legacyVitals).toHaveLength(1);
+    expect(res.status).toBe(500);
 
     const after = await probe.sigils.findOne({
       where: { id: { eq: sigil.id } },
     });
-    expect(after?.lastSeenAt).toBeTruthy();
+    expect(after?.lastSeenAt).toBeUndefined();
   });
 });

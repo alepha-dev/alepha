@@ -23,9 +23,13 @@ import { sigils } from "./sigils.ts";
  * relational backend gets a real foreign key, and Memory / Analytics Engine
  * are unaffected since both only ever read `Object.keys(dimensions.shape)`.
  *
- * `SigilIngestService` dual-writes into these alongside `sigilViewsHourly` /
- * `sigilVitalsHourly` — every read still goes through the legacy tables until
- * a later task switches them over.
+ * `SigilIngestService` writes views and vitals here exclusively —
+ * `sigilViewsHourly` / `sigilVitalsHourly` used to receive the same rows
+ * through a dual-write while `InsightsController` still read from them, but
+ * both the read and the dual-write retired once Insights moved onto these
+ * datasets. The two legacy tables stay declared only so
+ * `yarn check:migrations` keeps agreeing with what is still physically on
+ * disk; nothing in the app reads or writes them anymore.
  */
 export class LoreAnalytics {
   public readonly views = $analytics({
