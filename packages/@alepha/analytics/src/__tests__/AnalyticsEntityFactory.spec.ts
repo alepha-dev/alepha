@@ -22,8 +22,63 @@ describe("AnalyticsEntityFactory", () => {
     const { raw, rolled } = AnalyticsEntityFactory.build(dataset);
     for (const entity of [raw, rolled]) {
       expect(Object.keys(entity.options.schema.shape).sort()).toEqual(
-        ["app", "bucket", "count", "path"].sort(),
+        ["app", "time_bucket", "count", "path"].sort(),
       );
+    }
+  });
+
+  it("rejects a dimension named after the reserved time column", () => {
+    expect(() =>
+      AnalyticsEntityFactory.build({
+        ...dataset,
+        dimensions: z.object({ app: z.string(), time_bucket: z.string() }),
+      }),
+    ).toThrow(/'time_bucket'.*reserved for the time bucket/);
+  });
+
+  it("rejects a name declared as both a dimension and a measure", () => {
+    expect(() =>
+      AnalyticsEntityFactory.build({
+        ...dataset,
+        dimensions: z.object({ app: z.string(), count: z.string() }),
+        measures: z.object({ count: z.number() }),
+      }),
+    ).toThrow(/'count'.*both a dimension and a measure/);
+  });
+
+  it("rejects a dataset name that is not a legal table-name fragment", () => {
+    expect(() =>
+      AnalyticsEntityFactory.build({ ...dataset, name: "Bad-Name" }),
+    ).toThrow(/'Bad-Name' is not a legal table-name fragment/);
+  });
+
+  it("builds cleanly for the conformance fixture's own shape, with 'bucket' surviving as a real dimension", () => {
+    // This is the shape `analyticsConformance.ts` uses for every provider:
+    // a histogram bucket index modelled as an ordinary dimension, alongside
+    // a `samples` measure. It is the case the original reserved-column bug
+    // silently broke — `bucket` the dimension would have overwritten the
+    // reserved time column, and the unique index would have carried a
+    // duplicate `bucket` entry.
+    const conformanceDataset = {
+      name: "conformance_views",
+      index: "app",
+      dimensions: z.object({
+        app: z.string(),
+        path: z.string(),
+        bucket: z.number(),
+      }),
+      measures: z.object({ samples: z.number() }),
+    };
+
+    const { raw, rolled } = AnalyticsEntityFactory.build(conformanceDataset);
+    for (const entity of [raw, rolled]) {
+      expect(Object.keys(entity.options.schema.shape).sort()).toEqual(
+        ["app", "bucket", "path", "samples", "time_bucket"].sort(),
+      );
+      // `bucket` is a genuine dimension column here, distinct from the
+      // reserved `time_bucket` time column — neither was overwritten.
+      expect(entity.options.schema.shape.bucket).toBeDefined();
+      expect(entity.options.schema.shape.time_bucket).toBeDefined();
     }
   });
 
