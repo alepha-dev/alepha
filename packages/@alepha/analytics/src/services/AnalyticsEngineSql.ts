@@ -146,6 +146,29 @@ export class AnalyticsEngineSql {
     return `'${value.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
   }
 
+  /**
+   * Quote an identifier — a dataset name in a `FROM` clause.
+   *
+   * Distinct from {@link quote}, which quotes *values*. Identifiers use double
+   * quotes; single quotes would make the name a string literal, and backticks
+   * are rejected outright by this dialect.
+   *
+   * Not optional, and this cost a production 422 to learn. Dataset names are
+   * derived from the deployment prefix, so `lore-production` is typical — and
+   * a bare hyphen parses as subtraction:
+   *
+   * ```
+   * FROM lore-production   → 422 sql parser error: Expected end of statement, found: -
+   * FROM `lore-production` → 422 sql parser error: Expected identifier, found: `
+   * FROM "lore-production" → 200
+   * ```
+   *
+   * No fake can catch this: it is the real endpoint's parser that rejects it.
+   */
+  static quoteIdentifier(name: string): string {
+    return `"${name.replace(/"/g, '""')}"`;
+  }
+
   /** `IN (…)` list, each element quoted. Empty stays empty — see the caller. */
   static quoteList(values: Array<string | number>): string {
     return values.map((value) => AnalyticsEngineSql.quote(value)).join(", ");

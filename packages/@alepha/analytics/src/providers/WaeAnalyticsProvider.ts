@@ -53,10 +53,10 @@ const envSchema = z.object({
         "Cloudflare account id, for the Analytics Engine SQL read API (there is no read binding — see AnalyticsEngineSql).",
     })
     .optional(),
-  CLOUDFLARE_API_TOKEN: z
+  CLOUDFLARE_ANALYTICS_TOKEN: z
     .text({
       description:
-        "API token scoped Account · Account Analytics · Read, for the Analytics Engine SQL read API.",
+        "API token scoped Account · Account Analytics · Read, for the Analytics Engine SQL read API. Deliberately NOT named CLOUDFLARE_API_TOKEN: wrangler treats that name as its own credential, so setting it in .env.<env> makes `wrangler auth token` return this read-only token and every provisioning call fails with an authentication error.",
     })
     .optional(),
 });
@@ -72,7 +72,7 @@ const envSchema = z.object({
  * on its own. Follows `CloudflareEmailProvider` closely — the closest
  * existing analogue, combining a **write-only Workers binding** with an
  * **account-scoped REST API** gated by `CLOUDFLARE_ACCOUNT_ID` /
- * `CLOUDFLARE_API_TOKEN`:
+ * `CLOUDFLARE_ANALYTICS_TOKEN`:
  *
  * - `$inject(Alepha)` + `$hook({ on: "start" })` reads
  *   `this.alepha.get("cloudflare.env")` and stores the binding in a
@@ -497,7 +497,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
 
     const rows = await this.sql().query(`
       SELECT ${projections.join(", ")}
-      FROM ${this.requireDatasetName()}
+      FROM ${AnalyticsEngineSql.quoteIdentifier(this.requireDatasetName())}
       WHERE ${conditions.join(" AND ")}
       ${grouping.length ? `GROUP BY ${grouping.join(", ")}` : ""}
       HAVING COUNT(*) > 0
@@ -903,7 +903,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
 
   /**
    * Lazily builds (and caches) the read-side client from
-   * `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN` — the same "construct on
+   * `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_ANALYTICS_TOKEN` — the same "construct on
    * first real use, from env, with a clear error if the credentials are
    * missing" shape as `CloudflareEmailProvider.sendViaRest`'s account
    * id/token check.
@@ -911,10 +911,10 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
   protected sql(): AnalyticsEngineSql {
     if (this.sqlClient) return this.sqlClient;
     const accountId = this.env.CLOUDFLARE_ACCOUNT_ID;
-    const token = this.env.CLOUDFLARE_API_TOKEN;
+    const token = this.env.CLOUDFLARE_ANALYTICS_TOKEN;
     if (!accountId || !token) {
       throw new AlephaError(
-        "Cannot query Analytics Engine: CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN must both be set.",
+        "Cannot query Analytics Engine: CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_ANALYTICS_TOKEN must both be set.",
       );
     }
     this.sqlClient = new AnalyticsEngineSql({

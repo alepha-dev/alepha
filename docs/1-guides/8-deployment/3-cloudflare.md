@@ -17,7 +17,7 @@ Required for deployment:
 | Variable | Description |
 |----------|-------------|
 | `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare account ID |
-| `CLOUDFLARE_API_TOKEN` | API token with Workers permissions |
+| `CLOUDFLARE_ANALYTICS_TOKEN` | API token with Workers permissions |
 
 ## Deploy
 

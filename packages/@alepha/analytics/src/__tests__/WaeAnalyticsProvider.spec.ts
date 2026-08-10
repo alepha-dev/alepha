@@ -90,7 +90,7 @@ const build = async (ds: AnalyticsDataset = dataset) => {
     env: {
       CLOUDFLARE_ANALYTICS_DATASET: BINDING_NAME,
       CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
-      CLOUDFLARE_API_TOKEN: API_TOKEN,
+      CLOUDFLARE_ANALYTICS_TOKEN: API_TOKEN,
     },
   }).with(AlephaOrmPostgres);
 
@@ -181,7 +181,7 @@ describe("WaeAnalyticsProvider", () => {
       env: {
         CLOUDFLARE_ANALYTICS_DATASET: BINDING_NAME,
         CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
-        CLOUDFLARE_API_TOKEN: API_TOKEN,
+        CLOUDFLARE_ANALYTICS_TOKEN: API_TOKEN,
       },
     }).with(AlephaOrmPostgres);
     const provider = alepha.inject(TestWaeAnalyticsProvider);
@@ -273,6 +273,48 @@ describe("WaeAnalyticsProvider", () => {
       );
       expect(byPath).toEqual({ "/x": 5, "/y": 9 });
       expect(engine.lastQuery).toContain("GROUP BY blob4");
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  /**
+   * Regression guard for a production 422.
+   *
+   * Dataset names are derived from the deployment prefix, so a hyphen is the
+   * common case rather than the exotic one — `lore-production`. Unquoted, the
+   * Analytics Engine parser reads the hyphen as subtraction and rejects the
+   * whole statement, so every read fails. Backticks are rejected too; only
+   * double quotes work.
+   *
+   * The fake cannot catch this on its own — it does not implement the real
+   * dialect's parser — so this asserts the generated text directly.
+   */
+  it("quotes the dataset name so a hyphen cannot break the FROM clause", async () => {
+    const hyphenated = "lore-production";
+    const alepha = Alepha.create({
+      env: {
+        CLOUDFLARE_ANALYTICS_DATASET: hyphenated,
+        CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
+        CLOUDFLARE_ANALYTICS_TOKEN: API_TOKEN,
+      },
+    }).with(AlephaOrmPostgres);
+
+    const provider = alepha.inject(TestWaeAnalyticsProvider);
+    alepha.set("cloudflare.env", { [hyphenated]: provider.fakeEngine });
+    provider.register(dataset);
+    await alepha.start();
+
+    try {
+      await provider.query(dataset, {
+        since: "2026-08-09",
+        select: { count: "sum" },
+      });
+
+      expect(provider.fakeEngine.lastQuery).toContain(`FROM "${hyphenated}"`);
+      expect(provider.fakeEngine.lastQuery).not.toMatch(
+        new RegExp(`FROM\\s+${hyphenated}`),
+      );
     } finally {
       await alepha.stop();
     }
@@ -547,7 +589,7 @@ describe("WaeAnalyticsProvider — the read side merges with cold", () => {
       env: {
         CLOUDFLARE_ANALYTICS_DATASET: BINDING_NAME,
         CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
-        CLOUDFLARE_API_TOKEN: API_TOKEN,
+        CLOUDFLARE_ANALYTICS_TOKEN: API_TOKEN,
       },
     })
       .with(AlephaOrmPostgres)
@@ -938,7 +980,7 @@ analyticsConformance("wae", async () => {
     env: {
       CLOUDFLARE_ANALYTICS_DATASET: BINDING_NAME,
       CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
-      CLOUDFLARE_API_TOKEN: API_TOKEN,
+      CLOUDFLARE_ANALYTICS_TOKEN: API_TOKEN,
     },
   }).with(AlephaOrmPostgres);
 
