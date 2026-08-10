@@ -38,7 +38,8 @@ const QuestSummaryEditDialog = (props: QuestSummaryEditDialogProps) => {
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
+      {/* Same shape and same reasoning as QuestCompletionDialog — see #171. */}
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>{tr("quest.view.editSummary.title")}</DialogTitle>
           <DialogDescription>

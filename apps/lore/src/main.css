@@ -227,6 +227,17 @@ body::before {
   border-bottom: 1px solid var(--border);
   border-radius: 0;
   background: var(--muted);
+  /*
+   * The other half of the `min-w-0` on the editor wrapper, and not optional.
+   * `.lore-mdx` is `overflow: hidden`, so letting the box shrink without this
+   * turns a visible overflow into silently CLIPPED, unreachable toolbar
+   * buttons — a worse bug than the one being fixed, because nothing looks
+   * wrong. Eleven controls need roughly 810px; below that they scroll.
+   *
+   * Same decision `FolioToolbar` already made for the folio surface, where its
+   * own comment records the 810px figure. The default toolbar never got it.
+   */
+  overflow-x: auto;
 }
 
 .lore-mdx-content {
