@@ -823,6 +823,86 @@ describe("WaeAnalyticsProvider — numeric dimensions", () => {
   });
 });
 
+describe("WaeAnalyticsProvider — prune floor", () => {
+  // `AnalyticsProvider.prune`'s own contract: "deletes every row older than
+  // `before`, on whichever tier it lives." Analytics Engine has no delete
+  // API, so `cold.prune()` alone cannot honour that — the floor recorded by
+  // `prune()` and consulted by `query()`/`forwardToCold()` is what closes
+  // the gap. The conformance suite's own "prunes rolled rows older than the
+  // cold boundary" case (`AnalyticsProvider conformance: wae`, wired up
+  // above) is the real gate: it fails without this mechanism and passes
+  // with it, exercised through the exact same `AnalyticsProvider` seam every
+  // other backend is held to.
+
+  it("a prune floor survives a subsequent rollup() — forwardToCold does not re-import pruned data", async () => {
+    const { alepha, provider, engine } = await build();
+    try {
+      await provider.record(dataset, [
+        { hour: "2026-08-01T10", appId: "a", path: "/x", count: 4 },
+      ]);
+      await provider.rollup(dataset, "2026-08-02");
+      await provider.prune(dataset, "2026-08-02");
+
+      // Analytics Engine has no delete API — the point rolled up and then
+      // pruned from `cold` is still sitting right here, exactly like real
+      // Analytics Engine would still have it within its own retention.
+      expect(engine.points).toHaveLength(1);
+
+      // A second rollup sweep, well past the pruned boundary. Without the
+      // floor, this would re-query Analytics Engine from the beginning (no
+      // watermark survives a prune of everything `cold` held), re-forward
+      // the same point, and resurrect exactly what `prune()` just removed.
+      await provider.rollup(dataset, "2026-08-10");
+
+      const result = await provider.coldProvider.query(dataset, {
+        since: "1970-01-01",
+        select: { count: "sum" },
+      });
+      expect(result.rows).toEqual([]);
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  it("two successive prunes: a later boundary moves the floor forward, an earlier one does not move it backwards", async () => {
+    const { alepha, provider } = await build();
+    try {
+      await provider.record(dataset, [
+        { hour: "2026-08-01T10", appId: "a", path: "/x", count: 1 },
+        { hour: "2026-08-05T10", appId: "a", path: "/x", count: 2 },
+        { hour: "2026-08-09T10", appId: "a", path: "/x", count: 4 },
+      ]);
+      await provider.rollup(dataset, "2026-08-10");
+
+      // Floor -> 2026-08-06 (later boundary): the 08-01 and 08-05 rows are
+      // gone from `cold`, only the 08-09 one remains.
+      await provider.prune(dataset, "2026-08-06");
+      const afterFirstPrune = await provider.coldProvider.query(dataset, {
+        since: "1970-01-01",
+        select: { count: "sum" },
+      });
+      expect(afterFirstPrune.rows).toEqual([{ count: 4 }]);
+
+      // An EARLIER boundary than the floor already recorded. If this moved
+      // the floor backwards, `query()` would start allowing Analytics
+      // Engine to answer for [2026-08-02, 2026-08-06) again — resurrecting
+      // exactly what the first prune already hid, even though `cold` itself
+      // has nothing left there to delete either way.
+      await provider.prune(dataset, "2026-08-02");
+      const afterEarlierPrune = await provider.coldProvider.query(dataset, {
+        since: "1970-01-01",
+        select: { count: "sum" },
+      });
+      expect(afterEarlierPrune.rows).toEqual([{ count: 4 }]);
+
+      const floor = await provider.coldProvider.pruneFloor(dataset);
+      expect(floor).toBe("2026-08-06");
+    } finally {
+      await alepha.stop();
+    }
+  });
+});
+
 describe("WaeAnalyticsProvider selection", () => {
   // `alepha.isTest()` reads `NODE_ENV`, which vitest sets to `"test"` by
   // default — so proving the non-test branches means overriding it, the

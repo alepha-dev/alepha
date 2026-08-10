@@ -205,6 +205,59 @@ describe("OrmAnalyticsProvider", () => {
       await alepha.stop();
     }
   });
+
+  it("recordPruneFloor is monotonic: a later boundary moves it, an earlier one does not", async () => {
+    // The mechanism `WaeAnalyticsProvider.prune()` relies on to honour
+    // `AnalyticsProvider.prune`'s "on whichever tier it lives" contract when
+    // the hot tier (Analytics Engine) has no delete API of its own. Tested
+    // here directly, independent of any WAE plumbing, since this provider
+    // owns the storage and the monotonic guarantee.
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const provider = alepha.inject(OrmAnalyticsProvider);
+    provider.register(dataset);
+    await alepha.start();
+
+    try {
+      expect(await provider.pruneFloor(dataset)).toBeUndefined();
+
+      await provider.recordPruneFloor(dataset, "2026-08-05");
+      expect(await provider.pruneFloor(dataset)).toBe("2026-08-05");
+
+      await provider.recordPruneFloor(dataset, "2026-08-09");
+      expect(await provider.pruneFloor(dataset)).toBe("2026-08-09");
+
+      // Earlier than what is already recorded — must not regress, or a
+      // caller could resurrect a range that was already correctly hidden.
+      await provider.recordPruneFloor(dataset, "2026-08-02");
+      expect(await provider.pruneFloor(dataset)).toBe("2026-08-09");
+    } finally {
+      await alepha.stop();
+    }
+  });
+
+  it("keeps a separate prune floor per dataset", async () => {
+    const otherDataset = {
+      name: "orm_other_views",
+      index: "app",
+      dimensions: z.object({ app: z.string() }),
+      measures: z.object({ count: z.number() }),
+    };
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const provider = alepha.inject(OrmAnalyticsProvider);
+    provider.register(dataset);
+    provider.register(otherDataset);
+    await alepha.start();
+
+    try {
+      await provider.recordPruneFloor(dataset, "2026-08-05");
+
+      expect(await provider.pruneFloor(dataset)).toBe("2026-08-05");
+      expect(await provider.pruneFloor(otherDataset)).toBeUndefined();
+    } finally {
+      await alepha.stop();
+    }
+  });
 });
 
 analyticsConformance("orm", async () => {

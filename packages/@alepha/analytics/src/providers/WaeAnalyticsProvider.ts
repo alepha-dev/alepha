@@ -132,8 +132,27 @@ const envSchema = z.object({
  * below for why `estimated` stays `true` regardless of which tier answered a
  * query.
  *
- * {@link prune} still delegates in full, unmodified: nothing needs to be
- * forwarded to delete it.
+ * ## `prune()` cannot rely on deletion alone
+ *
+ * Analytics Engine has no delete API, so `cold.prune(dataset, before)` alone
+ * cannot make Analytics Engine's own copy of `[..., before)` stop existing —
+ * it only removes `cold`'s copy. Left at that, `AnalyticsProvider.prune`'s
+ * own contract ("deletes every row older than `before`, **on whichever tier
+ * it lives**") would be silently broken on this backend: a query for an
+ * already-pruned window would fall out of `cold` and fall back to Analytics
+ * Engine, which still has it and always will until its own ~90-day
+ * retention eventually, invisibly, ages it out. {@link prune} therefore also
+ * durably records `before` as a prune floor — via
+ * `OrmAnalyticsProvider.recordPruneFloor`, kept in `cold` because it is the
+ * one piece of this provider's state that already survives a restart — and
+ * {@link query}/{@link forwardToCold} both clamp their effective `since` to
+ * it, on every read, regardless of what either tier currently holds. That is
+ * what makes `prune()` mean the same thing here as it does on
+ * `OrmAnalyticsProvider`: once pruned, gone from every result, not merely
+ * from `cold`'s own copy. See `recordPruneFloor`'s own doc for why this is a
+ * dedicated table rather than a row in the dataset's own raw/rolled table,
+ * and {@link prune}'s own doc for why the floor is written *before* the
+ * delete, not after.
  *
  * ## The read side has to merge too
  *
@@ -313,13 +332,24 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    * Queries Analytics Engine and `cold` and merges the two — see the class
    * doc's "The read side has to merge too" section for why both the skip and
    * the watermark exclusion are necessary, not optional polish.
+   *
+   * Clamped first to `dataset`'s prune floor (see {@link prune}): Analytics
+   * Engine has no delete API, so a window `prune()` was already asked to
+   * remove could otherwise still be answered from Analytics Engine even
+   * after `cold` has genuinely forgotten it. Raising the effective `since`
+   * to the floor — before either leg runs, never after — is what makes
+   * `prune()` mean the same thing here as it does on `OrmAnalyticsProvider`:
+   * once pruned, gone from every read, not just from `cold`'s own copy.
    */
   public async query(
     dataset: AnalyticsDataset,
     query: AnalyticsQuery,
   ): Promise<AnalyticsResult> {
-    if (!this.mightNeedCold(dataset, query.since)) {
-      return this.queryHot(dataset, query);
+    const floor = await this.cold.pruneFloor(dataset);
+    const since = floor ? this.laterBound(query.since, floor) : query.since;
+
+    if (!this.mightNeedCold(dataset, since)) {
+      return this.queryHot(dataset, { ...query, since });
     }
 
     const watermark = await this.coldWatermark(dataset);
@@ -330,14 +360,14 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     // separately can drop a row that only belongs in the true top-N once
     // both sources are combined (see the class doc).
     const unordered: AnalyticsQuery = {
-      since: query.since,
+      since,
       where: query.where,
       groupBy: query.groupBy,
       select: query.select,
     };
     const hotSince = watermark
-      ? this.laterBound(query.since, this.nextBucket(watermark))
-      : query.since;
+      ? this.laterBound(since, this.nextBucket(watermark))
+      : since;
 
     const [hot, cold] = await Promise.all([
       this.queryHot(dataset, { ...unordered, since: hotSince }),
@@ -537,10 +567,28 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
   }
 
   /**
-   * Delegated in full — nothing needs to be forwarded to delete it.
+   * Records `before` as the prune floor, **then** deletes from `cold` —
+   * order matters. Analytics Engine has no delete API, so `cold.prune()`
+   * alone cannot make the data stop existing; it only stops being *this
+   * provider's* copy of it. `query()`/`forwardToCold()` are what actually
+   * honour `prune()`'s contract on this backend, by clamping every read to
+   * {@link OrmAnalyticsProvider.pruneFloor}, so the floor has to be durable
+   * and visible to them before anything is deleted.
+   *
+   * The floor-first ordering is deliberate, not incidental: if this crashes
+   * between the two steps, the floor is already recorded, so a query
+   * immediately after under-reports (some rows `cold.prune()` never actually
+   * got to delete are simply not served, even though they still exist) —
+   * never over-reports. The reverse order would mean a crash after deleting
+   * but before recording the floor leaves `query()` free to resurrect the
+   * just-deleted range from Analytics Engine, which is exactly the bug this
+   * whole mechanism exists to close. Either way self-heals on the next
+   * sweep; only the direction of the transient error differs, and
+   * under-reporting briefly is the safe one.
    */
-  public prune(dataset: AnalyticsDataset, before: string): Promise<void> {
-    return this.cold.prune(dataset, before);
+  public async prune(dataset: AnalyticsDataset, before: string): Promise<void> {
+    await this.cold.recordPruneFloor(dataset, before);
+    await this.cold.prune(dataset, before);
   }
 
   /**
@@ -567,15 +615,32 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
    * `cold`'s raw tier but was never folded still moves the watermark (it is
    * still the newest row `cold` holds), so the next sweep will not forward it
    * again — it will just re-run `cold.rollup()`, which is already idempotent.
+   *
+   * ## Never re-imports what `prune()` already removed
+   *
+   * `prune()`'s effect on `cold` (a real `DELETE`) is easy to undo by
+   * accident here: without a check, the very next sweep would re-query
+   * Analytics Engine for that same range (it never forgot it — no delete
+   * API) and forward it right back into `cold`, quietly resurrecting data a
+   * caller already asked to prune. {@link OrmAnalyticsProvider.pruneFloor}
+   * is consulted the same way the watermark is — both narrow `since` and
+   * both filter `result.rows` — so a pruned range is excluded going in
+   * (cheaper) and would still be excluded even if it were not (correct).
    */
   protected async forwardToCold(
     dataset: AnalyticsDataset,
     before: string,
   ): Promise<void> {
-    const watermark = await this.coldWatermark(dataset);
-    const since = watermark
+    const [watermark, floor] = await Promise.all([
+      this.coldWatermark(dataset),
+      this.cold.pruneFloor(dataset),
+    ]);
+    const watermarkSince = watermark
       ? AnalyticsBuckets.day(watermark)
       : WaeAnalyticsProvider.EPOCH_DAY;
+    const since = floor
+      ? this.laterBound(watermarkSince, floor)
+      : watermarkSince;
 
     const dimensions = Object.keys(dataset.dimensions.shape).sort();
     const measures = Object.keys(dataset.measures.shape);
@@ -600,6 +665,7 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     for (const row of result.rows) {
       const hour = String(row.hour);
       if (watermark && this.isForwarded(hour, watermark)) continue;
+      if (floor && AnalyticsBuckets.day(hour) < floor) continue;
       if (AnalyticsBuckets.day(hour) >= boundary) continue;
 
       const forwarded: Record<string, string | number> & { hour: string } = {
