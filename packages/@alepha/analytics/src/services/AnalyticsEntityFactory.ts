@@ -34,6 +34,12 @@ export class AnalyticsEntityFactory {
    */
   public static readonly TIME_COLUMN = "time_bucket";
 
+  /**
+   * Names a dataset may not give a dimension, because `groupBy` treats them as
+   * time pseudo-dimensions and would shadow the real column forever.
+   */
+  public static readonly RESERVED_DIMENSIONS = ["day", "hour"];
+
   public static build(dataset: AnalyticsDataset): {
     raw: EntityPrimitive;
     rolled: EntityPrimitive;
@@ -81,6 +87,14 @@ export class AnalyticsEntityFactory {
       if (name === AnalyticsEntityFactory.TIME_COLUMN) {
         throw new AlephaError(
           `Dataset '${dataset.name}' declares '${name}', which is reserved for the time bucket. Rename it — on a relational backend it would overwrite the bucket column.`,
+        );
+      }
+    }
+
+    for (const name of dimensions) {
+      if (AnalyticsEntityFactory.RESERVED_DIMENSIONS.includes(name)) {
+        throw new AlephaError(
+          `Dataset '${dataset.name}' declares '${name}' as a dimension, which is reserved as a time pseudo-dimension. A query's 'groupBy' always resolves '${name}' to the bucket boundary rather than this column, so it would be permanently unreachable. Rename it.`,
         );
       }
     }

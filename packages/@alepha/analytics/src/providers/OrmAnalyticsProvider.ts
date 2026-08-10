@@ -8,7 +8,6 @@ import {
 } from "alepha";
 import {
   DatabaseProvider,
-  DrizzleKitProvider,
   type EntityPrimitive,
   Repository,
   sql,
@@ -43,52 +42,17 @@ type NamedColumn = { name: string };
  * so a page hit five hundred times in an hour is one row rather than five
  * hundred.
  *
- * ## Lazy registration cannot go through the normal DI path
+ * ## Registration is eager, not lazy
  *
- * A dataset is not known until something calls `record()`/`query()`/
- * `rollup()`/`prune()` with it, so its two tables are derived and registered
- * on first use rather than declared up front. That first use is necessarily
- * **after** `alepha.start()` in every real caller (and in this provider's own
- * tests) — which rules out the obvious approach of resolving a `Repository`
- * via `alepha.inject()` or `RepositoryProvider.getRepository()`: both ask the
- * container for a **singleton**, and the container refuses to mint a new
- * singleton once `started` is `true` (`ContainerLockedError` — confirmed by
- * running exactly that against a live Postgres in this file's own tests).
- * `Repository.of(entity)` + `alepha.inject(_, { lifetime: "transient" })`
- * (see {@link buildRepository}) is the one path the framework exposes for
- * "construct a service instance without touching the locked singleton
- * registry" — it still runs the constructor (which calls
- * `DatabaseProvider.registerEntity`), it just never caches the result in the
- * container, so this provider keeps its own cache instead ({@link registered}).
- *
- * Registration alone is still not enough to make the tables queryable:
- * `DatabaseProvider`'s `onStart` hook already ran `migrate()` once, and in
- * dev/test that push-synced whatever was registered *at that instant* — a
- * table registered afterwards would not exist yet, and the first real query
- * against it would fail with "relation ... does not exist". `register()`
- * therefore re-syncs after registering a never-seen-before dataset's tables,
- * via {@link synchronizeNewTables} rather than a second call to
- * `DatabaseProvider.migrate()`: in test mode `migrate()`'s sync
- * (`DrizzleKitProvider.synchronize()`) diffs against an EMPTY baseline every
- * time — there is no persisted "what did we already create" snapshot in
- * dev/test — so a second call regenerates `CREATE TABLE` for every table the
- * first call (from `onStart`) already created, starting with the framework's
- * own `alepha_sequences` bookkeeping table, and fails with "already exists"
- * (confirmed against a live Postgres in this file's own tests).
- * {@link synchronizeNewTables} generates that same always-from-scratch
- * statement list and executes it leniently instead, which is exactly the
- * fallback `DrizzleKitProvider.synchronize()` itself uses when its own push
- * sync is unavailable — that fallback is `protected`, hence not reusable
- * from here directly.
- *
- * That re-sync is a dev/test convenience only: it no-ops in production and on
- * serverless targets, matching `DrizzleKitProvider.synchronize()`'s own
- * behaviour there, since tables come from file-based migrations generated
- * ahead of time in those environments. A production deployment must
- * therefore ensure every dataset it will ever query is registered — i.e.
- * touched once via this provider — before `alepha db migrations create`
- * runs, the same requirement as any other `$entity`. Nothing in this
- * provider can invent a table in production at request time.
+ * Call {@link register} once per dataset, **before** `alepha.start()` — the
+ * same rule every `$entity`/`$repository` in the framework already lives
+ * under (`Repository`'s constructor calls `DatabaseProvider.registerEntity`
+ * unconditionally, with no lazy path). `entities()` is then a plain lookup;
+ * a dataset that was never registered throws `AlephaError` at first use
+ * rather than trying to invent a table at request time. Task 7's `$analytics()`
+ * primitive is expected to call `register()` for every declared dataset at
+ * construction, which — like every other primitive's `$inject`/`$repository`
+ * field — runs before the app starts.
  *
  * ## Dimension and measure names are never trusted as SQL identifiers
  *
@@ -106,18 +70,33 @@ type NamedColumn = { name: string };
 export class OrmAnalyticsProvider extends AnalyticsProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly database = $inject(DatabaseProvider);
-  protected readonly kit = $inject(DrizzleKitProvider);
 
   /**
-   * One resolved `{ raw, rolled }` pair per dataset name, keyed by the
-   * in-flight (or settled) registration promise rather than the result
-   * itself — so two calls racing on the same never-seen-before dataset share
-   * one registration + re-sync instead of each doing it independently.
+   * One `{ raw, rolled }` repository pair per registered dataset name.
    */
   protected readonly registered = new Map<
     string,
-    Promise<{ raw: Repository<ZObject>; rolled: Repository<ZObject> }>
+    { raw: Repository<ZObject>; rolled: Repository<ZObject> }
   >();
+
+  /**
+   * Derives `dataset`'s raw and rolled tables and registers both with
+   * `DatabaseProvider`, so `migrate()` (run from the database provider's own
+   * `start` hook) picks them up. **Must be called before `alepha.start()`.**
+   *
+   * Idempotent per dataset name — a second call for an already-registered
+   * dataset is a no-op, so callers do not need to track what they already
+   * registered.
+   */
+  public register(dataset: AnalyticsDataset): void {
+    if (this.registered.has(dataset.name)) return;
+
+    const built = AnalyticsEntityFactory.build(dataset);
+    const raw = this.buildRepository(built.raw);
+    const rolled = this.buildRepository(built.rolled);
+
+    this.registered.set(dataset.name, { raw, rolled });
+  }
 
   public async record(
     dataset: AnalyticsDataset,
@@ -125,7 +104,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
   ): Promise<void> {
     if (rows.length === 0) return;
 
-    const { raw } = await this.entities(dataset);
+    const { raw } = this.entities(dataset);
     const dimensions = Object.keys(dataset.dimensions.shape).sort();
     const measures = Object.keys(dataset.measures.shape);
 
@@ -148,7 +127,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
     dataset: AnalyticsDataset,
     query: AnalyticsQuery,
   ): Promise<AnalyticsResult> {
-    const { raw, rolled } = await this.entities(dataset);
+    const { raw, rolled } = this.entities(dataset);
     const groupBy = query.groupBy ?? [];
     const merged = new Map<string, Record<string, string | number>>();
 
@@ -194,7 +173,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
     dataset: AnalyticsDataset,
     before: string,
   ): Promise<void> {
-    const { raw, rolled } = await this.entities(dataset);
+    const { raw, rolled } = this.entities(dataset);
     const dimensions = Object.keys(dataset.dimensions.shape).sort();
     const measures = Object.keys(dataset.measures.shape);
     const boundary = AnalyticsBuckets.day(before);
@@ -239,7 +218,7 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
   }
 
   public async prune(dataset: AnalyticsDataset, before: string): Promise<void> {
-    const { raw, rolled } = await this.entities(dataset);
+    const { raw, rolled } = this.entities(dataset);
     const boundary = AnalyticsBuckets.day(before);
     const dayExpression = `substr(${AnalyticsEntityFactory.TIME_COLUMN}, 1, 10)`;
 
@@ -254,102 +233,40 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
   // -------------------------------------------------------------------------------------------------------------------
 
   /**
-   * Resolves (and, on first use of a dataset, registers) the raw and rolled
-   * repositories for `dataset`. See the class doc for why this has to go
-   * through {@link buildRepository} + {@link synchronizeNewTables} rather
-   * than the normal `$repository()`/`alepha.inject()`/`migrate()` path.
+   * Looks up the raw and rolled repositories for `dataset`.
+   *
+   * Throws if `dataset` was never passed to {@link register}. This provider
+   * never registers a table on the caller's behalf — see the class doc — so
+   * a missing dataset here means an app is querying a dataset it never
+   * declared, which is a bug worth failing loudly on rather than attempting
+   * runtime DDL.
    */
-  protected entities(
-    dataset: AnalyticsDataset,
-  ): Promise<{ raw: Repository<ZObject>; rolled: Repository<ZObject> }> {
+  protected entities(dataset: AnalyticsDataset): {
+    raw: Repository<ZObject>;
+    rolled: Repository<ZObject>;
+  } {
     const existing = this.registered.get(dataset.name);
     if (existing) return existing;
 
-    const promise = this.register(dataset);
-    this.registered.set(dataset.name, promise);
-    return promise;
-  }
-
-  protected async register(
-    dataset: AnalyticsDataset,
-  ): Promise<{ raw: Repository<ZObject>; rolled: Repository<ZObject> }> {
-    const built = AnalyticsEntityFactory.build(dataset);
-
-    // Constructing a repository is what registers its entity with
-    // `DatabaseProvider` (see `Repository`'s constructor) — building both
-    // here means the raw and rolled tables are always registered together,
-    // regardless of which public method saw this dataset first.
-    const raw = this.buildRepository(built.raw);
-    const rolled = this.buildRepository(built.rolled);
-
-    await this.synchronizeNewTables();
-
-    return { raw, rolled };
+    throw new AlephaError(
+      `Dataset '${dataset.name}' was never registered with OrmAnalyticsProvider. Call register(dataset) before alepha.start() — this provider cannot create tables at request time.`,
+    );
   }
 
   /**
-   * Constructs a `Repository` for a runtime-derived entity without asking
-   * the (possibly already-locked) DI container for a new singleton. See the
-   * class doc's "Lazy registration" section for why `alepha.inject(Entity)`
-   * or `RepositoryProvider.getRepository()` cannot be used here.
+   * Constructs a `Repository` for a runtime-derived entity.
+   *
+   * `Repository.of(entity)` is the framework's documented factory for an
+   * entity that only exists as a runtime value (not a class-field
+   * declaration), and `{ lifetime: "transient" }` means this call itself is
+   * never cached in the DI container — `register()` keeps the returned
+   * instance in {@link registered} instead, so each dataset still gets
+   * exactly one `Repository` per tier for the life of this provider.
    */
   protected buildRepository(entity: EntityPrimitive): Repository<ZObject> {
     return this.alepha.inject(Repository.of(entity), {
       lifetime: "transient",
     });
-  }
-
-  /**
-   * Creates whatever tables were just registered, leaving everything else
-   * untouched. See the class doc for why `DatabaseProvider.migrate()` itself
-   * cannot be called a second time.
-   *
-   * `generateMigration()` diffs the currently-registered models against an
-   * empty baseline, so its statement list always includes every table ever
-   * registered, not only the new one. Executing each statement individually
-   * and swallowing only "already exists" failures — mirroring
-   * `DrizzleKitProvider`'s own (`protected`, otherwise unreachable from here)
-   * `executeStatementsLenient` — means the already-existing tables are
-   * no-ops and the new ones are created.
-   *
-   * A no-op in production and on serverless targets: those environments get
-   * their tables from file-based migrations generated ahead of time, and
-   * must never have arbitrary DDL executed against them from a request path.
-   */
-  protected async synchronizeNewTables(): Promise<void> {
-    if (this.alepha.isProduction() || this.alepha.isServerless()) return;
-
-    const { statements } = await this.kit.generateMigration(this.database);
-    for (const statement of statements) {
-      try {
-        await this.database.execute(sql.raw(statement));
-      } catch (error) {
-        if (!this.mentionsAlreadyExists(error)) throw error;
-      }
-    }
-  }
-
-  /**
-   * Whether an error, or anything in its `cause` chain, mentions "already
-   * exists" — mirrors `DrizzleKitProvider.errorMentions`. drizzle rc.4 wraps
-   * driver errors in `DrizzleQueryError`, whose own message is
-   * `Failed query: <sql>`; the driver's actual text ("relation ... already
-   * exists") is one level down, in `cause`.
-   */
-  protected mentionsAlreadyExists(error: unknown): boolean {
-    const seen = new Set<unknown>();
-    let current: unknown = error;
-
-    while (current && typeof current === "object" && !seen.has(current)) {
-      seen.add(current);
-      const withMessage = current as { message?: unknown; cause?: unknown };
-      if (String(withMessage.message ?? "").includes("already exists")) {
-        return true;
-      }
-      current = withMessage.cause;
-    }
-
-    return false;
   }
 
   /**

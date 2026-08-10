@@ -15,6 +15,7 @@ describe("OrmAnalyticsProvider", () => {
   it("adds to an existing bucket rather than inserting a duplicate row", async () => {
     const alepha = Alepha.create().with(AlephaOrmPostgres);
     const provider = alepha.inject(OrmAnalyticsProvider);
+    provider.register(dataset);
     await alepha.start();
 
     try {
@@ -40,6 +41,7 @@ describe("OrmAnalyticsProvider", () => {
   it("reads across the raw and rolled tables in one query", async () => {
     const alepha = Alepha.create().with(AlephaOrmPostgres);
     const provider = alepha.inject(OrmAnalyticsProvider);
+    provider.register(dataset);
     await alepha.start();
 
     try {
@@ -60,16 +62,11 @@ describe("OrmAnalyticsProvider", () => {
     }
   });
 
-  it("registers a dataset's tables lazily, on first use, after alepha.start()", async () => {
-    // Regression guard for the timing constraint called out in the brief: a
-    // provider registered via `alepha.inject()` has no way to know which
-    // datasets it will ever see, so registration can only happen when a
-    // dataset is first touched — which, in every real caller (and in this
-    // very test), is after `alepha.start()` has already run `migrate()`
-    // once. If the provider only registered the entity without re-syncing,
-    // this insert would fail with "relation ... does not exist".
+  it("registers a dataset's tables idempotently, and a second call is a no-op", async () => {
     const alepha = Alepha.create().with(AlephaOrmPostgres);
     const provider = alepha.inject(OrmAnalyticsProvider);
+    provider.register(dataset);
+    provider.register(dataset);
     await alepha.start();
 
     try {
@@ -83,6 +80,27 @@ describe("OrmAnalyticsProvider", () => {
     }
   });
 
+  it("throws a clear error when a dataset was never registered before use", async () => {
+    // This provider never invents a table at request time — see the class
+    // doc. A dataset reaching `record()`/`query()` without a prior
+    // `register()` call is an app bug: it declared a dataset it never
+    // registered, and the failure needs to be loud and specific rather than
+    // a bare "relation does not exist" from Postgres.
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const provider = alepha.inject(OrmAnalyticsProvider);
+    await alepha.start();
+
+    try {
+      await expect(
+        provider.record(dataset, [
+          { hour: "2026-08-09T10", app: "a", path: "/x", count: 1 },
+        ]),
+      ).rejects.toThrow(/'orm_views' was never registered/);
+    } finally {
+      await alepha.stop();
+    }
+  });
+
   it("rejects a where filter that is not a declared dimension", async () => {
     // `query.where`'s keys reach SQL as raw identifiers. An API surface that
     // forwards request-controlled keys into `where` without checking them
@@ -90,6 +108,7 @@ describe("OrmAnalyticsProvider", () => {
     // attacker splice arbitrary SQL text in as a column reference.
     const alepha = Alepha.create().with(AlephaOrmPostgres);
     const provider = alepha.inject(OrmAnalyticsProvider);
+    provider.register(dataset);
     await alepha.start();
 
     try {
@@ -117,6 +136,7 @@ describe("OrmAnalyticsProvider", () => {
     // remain distinguishable.
     const alepha = Alepha.create().with(AlephaOrmPostgres);
     const provider = alepha.inject(OrmAnalyticsProvider);
+    provider.register(dataset);
     await alepha.start();
 
     try {
@@ -140,6 +160,20 @@ describe("OrmAnalyticsProvider", () => {
 analyticsConformance("orm", async () => {
   const alepha = Alepha.create().with(AlephaOrmPostgres);
   const provider = alepha.inject(OrmAnalyticsProvider);
+  // Must mirror `analyticsConformance.ts`'s own internal `dataset` fixture
+  // exactly (name, dimensions, measures) — the suite has no way to hand this
+  // factory the dataset object it will call `record()`/`query()` with, and
+  // registration has to happen before `alepha.start()`.
+  provider.register({
+    name: "conformance_views",
+    index: "app",
+    dimensions: z.object({
+      app: z.string(),
+      path: z.string(),
+      bucket: z.number(),
+    }),
+    measures: z.object({ samples: z.number() }),
+  });
   await alepha.start();
   return provider;
 });

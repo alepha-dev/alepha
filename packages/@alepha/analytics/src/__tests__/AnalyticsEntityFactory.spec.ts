@@ -36,6 +36,22 @@ describe("AnalyticsEntityFactory", () => {
     ).toThrow(/'time_bucket'.*reserved for the time bucket/);
   });
 
+  it("rejects a dimension named after a time pseudo-dimension", () => {
+    expect(() =>
+      AnalyticsEntityFactory.build({
+        ...dataset,
+        dimensions: z.object({ app: z.string(), day: z.string() }),
+      }),
+    ).toThrow(/'day'.*reserved as a time pseudo-dimension/);
+
+    expect(() =>
+      AnalyticsEntityFactory.build({
+        ...dataset,
+        dimensions: z.object({ app: z.string(), hour: z.string() }),
+      }),
+    ).toThrow(/'hour'.*reserved as a time pseudo-dimension/);
+  });
+
   it("rejects a name declared as both a dimension and a measure", () => {
     expect(() =>
       AnalyticsEntityFactory.build({
