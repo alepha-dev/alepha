@@ -71,6 +71,14 @@ export default defineConfig({
       // promoted upstream (CloudflareAdapter.exportDb) — see Alepha quest
       // #220.
 
+      // `icons:backfill` lived here on 2026-08-10 and was deleted once it had
+      // run. It downscaled the 15 project icons uploaded before
+      // `$storage({ image })` existed — 667 KB average, 2 MB peak, all of them
+      // rendered into a 32px box — to a 17 KB average, minting a new file id
+      // per icon so the `immutable` browser and edge caches missed instead of
+      // serving the old bytes for a year. There is no second set to fix; new
+      // uploads are bounded by the storage constraint. See Alepha folio #79.
+
       /**
        * Sync the production R2 bucket into the local dev `buckets/` dir
        * `LocalFileStorageProvider` reads. Requires `rclone` on PATH plus an
