@@ -11,6 +11,13 @@ export interface AnalyticsDataset {
   /**
    * Storage-facing name. Becomes the `blob1` discriminator on Analytics
    * Engine and the table prefix on a relational backend.
+   *
+   * Must be snake_case — lowercase letters, digits and underscores, starting
+   * with a letter. `$analytics()` enforces this at `onInit` (and defaults the
+   * name to the property key it is declared on, so a camelCase field needs an
+   * explicit `name` here); a hand-built `AnalyticsDataset` passed straight to
+   * a provider is not otherwise checked until `OrmAnalyticsProvider`'s
+   * `AnalyticsEntityFactory` derives table names from it.
    */
   name: string;
 

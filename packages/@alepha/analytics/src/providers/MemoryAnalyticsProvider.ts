@@ -26,8 +26,13 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
   /**
    * No-op: memory storage is a plain `Map` keyed by dataset name at first
    * write, so there is nothing to declare ahead of time.
+   *
+   * Takes `dataset` (unused) rather than dropping the parameter, so the
+   * signature matches {@link AnalyticsProvider.register} exactly — a narrower
+   * override here would make it unsound for a subclass (e.g. a test's
+   * recording provider) to override with the full signature.
    */
-  public register(): void {
+  public register(dataset: AnalyticsDataset): void {
     // Nothing to declare — see the class doc.
   }
 

@@ -1,4 +1,4 @@
-import { $inject, createPrimitive, KIND, Primitive } from "alepha";
+import { $inject, AlephaError, createPrimitive, KIND, Primitive } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { AnalyticsBuckets } from "../planner/AnalyticsBuckets.ts";
 import { AnalyticsSlotMap } from "../planner/AnalyticsSlotMap.ts";
@@ -53,6 +53,13 @@ export interface AnalyticsPrimitiveOptions
   /**
    * Storage-facing dataset name. Defaults to the property key it is declared
    * on, the same way `$storage` names a bucket.
+   *
+   * Must be snake_case — lowercase letters, digits and underscores, starting
+   * with a letter — because it becomes a relational table name fragment and
+   * the Analytics Engine `blob1` discriminator. A camelCase property key
+   * (the convention every other class field in this codebase uses) is
+   * rejected at `onInit`; pass an explicit snake_case `name` here to keep a
+   * camelCase property.
    */
   name?: string;
 }
@@ -60,6 +67,21 @@ export interface AnalyticsPrimitiveOptions
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
+  /**
+   * What a dataset name is allowed to look like on every backend: lowercase
+   * letters, digits and underscores, starting with a letter.
+   *
+   * Identical to the pattern `AnalyticsEntityFactory` enforces for the
+   * relational backend — that check stays in place as defence in depth, but
+   * it is unreachable from `MemoryAnalyticsProvider.register()`, which is a
+   * no-op. Tests run in test mode, where memory is the bound provider, so
+   * without this check here a camelCase property key — the convention every
+   * other class field in this codebase uses — would pass silently under
+   * every test and only fail once the app actually runs against a relational
+   * or Analytics Engine backend.
+   */
+  public static readonly NAME_PATTERN = /^[a-z][a-z0-9_]*$/;
+
   protected readonly provider = $inject(AnalyticsProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
 
@@ -74,8 +96,11 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
    * Validates the dataset and registers it with the bound provider.
    *
    * `onInit` rather than a lifecycle hook or first use, and synchronous by
-   * requirement of the base class. Both halves have to happen here:
+   * requirement of the base class. Three things have to happen here, in
+   * order:
    *
+   * - The name has to be legal on every backend before anything else runs,
+   *   since a rejected name should never reach a provider's `register()`.
    * - The slot caps and the index check are cheap, and their failure mode is a
    *   wire format that silently misreads stored rows — so they are asserted at
    *   boot rather than at the first write.
@@ -87,8 +112,48 @@ export class AnalyticsPrimitive extends Primitive<AnalyticsPrimitiveOptions> {
    *   constructor follows (`Repository.ts:123-127`).
    */
   protected onInit(): void {
+    this.assertLegalName();
     AnalyticsSlotMap.forDataset(this.dataset);
     this.provider.register(this.dataset);
+  }
+
+  /**
+   * Refuses a dataset name that is not legal snake_case.
+   *
+   * The message names both ways out — rename the property, or pass an
+   * explicit `name` — rather than just describing what is wrong, because a
+   * camelCase property key is normal Alepha style everywhere else in this
+   * codebase; the fix is not obvious without being told.
+   *
+   * Deliberately does not auto-convert camelCase to snake_case on the
+   * caller's behalf: the name is the `blob1` discriminator written to
+   * Analytics Engine, so a stored value silently different from what the
+   * developer wrote in source would be confusing when reading raw data back.
+   */
+  protected assertLegalName(): void {
+    const name = this.dataset.name;
+    if (AnalyticsPrimitive.NAME_PATTERN.test(name)) {
+      return;
+    }
+
+    throw new AlephaError(
+      `Dataset name '${name}' must be snake_case: lowercase letters, digits ` +
+        "and underscores, starting with a letter. It becomes a table name " +
+        "and the Analytics Engine dataset discriminator, so it cannot be " +
+        `camelCase. Either rename the property to '${AnalyticsPrimitive.toSnakeCase(name)}', ` +
+        'or pass an explicit { name: "..." }.',
+    );
+  }
+
+  /**
+   * camelCase to snake_case, for the rename {@link assertLegalName} suggests
+   * in its error message.
+   *
+   * A pure function, kept `static` rather than a free function — this
+   * codebase never declares code outside a class.
+   */
+  public static toSnakeCase(value: string): string {
+    return value.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
   }
 
   public async record(

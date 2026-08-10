@@ -7,7 +7,12 @@ import { describe, expect, it } from "vitest";
 // `index.ts` (where `$module({ primitives: [$analytics] })` is called) has
 // been evaluated. `../index.ts` mirrors how `alepha/api/files`'s own
 // `$storage.spec.ts` imports `$storage`.
-import { $analytics } from "../index.ts";
+import {
+  $analytics,
+  type AnalyticsDataset,
+  AnalyticsProvider,
+  MemoryAnalyticsProvider,
+} from "../index.ts";
 
 class PageViews {
   public readonly views = $analytics({
@@ -83,5 +88,79 @@ describe("$analytics", () => {
 
     // The relational provider has no ceiling, so this must be accepted here.
     expect(app.views.dataset.retention?.hot).toBe("120d");
+  });
+
+  it("rejects a camelCase property key, since it becomes a table name", () => {
+    // `MemoryAnalyticsProvider.register()` is a no-op, so under test — where
+    // memory is always the bound provider — a bad name would otherwise pass
+    // silently and only fail once the app runs against a relational or
+    // Analytics Engine backend. `pageViews` is deliberately the exact style
+    // every other class field in this codebase uses.
+    class App {
+      public readonly pageViews = $analytics({
+        index: "app",
+        dimensions: z.object({ app: z.string() }),
+        measures: z.object({ count: z.number() }),
+      });
+    }
+
+    const alepha = Alepha.create();
+    let error: Error | undefined;
+    try {
+      alepha.inject(App);
+    } catch (caught) {
+      error = caught as Error;
+    }
+
+    // Names both remedies rather than only describing the problem.
+    expect(error?.message).toContain(
+      "Dataset name 'pageViews' must be snake_case",
+    );
+    expect(error?.message).toContain("rename the property to 'page_views'");
+    expect(error?.message).toContain('explicit { name: "..." }');
+  });
+
+  it("lets an explicit snake_case name override a camelCase property key", async () => {
+    class App {
+      public readonly pageViews = $analytics({
+        name: "page_views",
+        index: "app",
+        dimensions: z.object({ app: z.string() }),
+        measures: z.object({ count: z.number() }),
+      });
+    }
+
+    const alepha = Alepha.create();
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    expect(app.pageViews.dataset.name).toBe("page_views");
+  });
+
+  it("registers the dataset with the provider before alepha.start(), not after", () => {
+    // Service substitution, not `vi.mock`/`vi.spyOn` — this codebase's house
+    // style. `RecordingAnalyticsProvider` wraps the real (memory) provider so
+    // the recorded call is a faithful `register()`, not a bare stub.
+    class RecordingAnalyticsProvider extends MemoryAnalyticsProvider {
+      public readonly registered: string[] = [];
+
+      public override register(dataset: AnalyticsDataset): void {
+        this.registered.push(dataset.name);
+        super.register(dataset);
+      }
+    }
+
+    const alepha = Alepha.create().with({
+      provide: AnalyticsProvider,
+      use: RecordingAnalyticsProvider,
+    });
+
+    alepha.inject(PageViews);
+    const provider = alepha.inject(RecordingAnalyticsProvider);
+
+    // No `alepha.start()` anywhere in this test — the assertion has to hold
+    // with the container still unstarted, which is what pins the ordering
+    // rather than merely the fact that registration happens at some point.
+    expect(provider.registered).toEqual(["views"]);
   });
 });
