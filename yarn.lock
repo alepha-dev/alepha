@@ -10518,6 +10518,7 @@ __metadata:
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/utilities": "npm:^3.2.2"
     "@lexical/react": "npm:^0.48.0"
+    "@lexical/rich-text": "npm:^0.48.0"
     "@lexical/text": "npm:^0.48.0"
     "@mdxeditor/editor": "npm:^4.2.0"
     "@mdxeditor/gurx": "npm:^1.2.1"

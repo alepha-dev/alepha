@@ -637,4 +637,105 @@ test.describe("Folio workspace", () => {
       expect(content).toContain(`[[No Such Folio ${stamp}]]`);
     });
   });
+
+  /**
+   * Regression guard for #170: the toolbar's block-type Select published to
+   * `applyBlockType$`, an MDXEditor signal with no subscriber, so the control
+   * had never worked for any of its five values.
+   *
+   * Asserts the SAVED MARKDOWN, never the trigger label. The read side was
+   * healthy the whole time — the trigger showed "Heading 2" correctly while
+   * changing nothing — so a test that checks the trigger passes against the
+   * bug it is meant to catch.
+   *
+   * All five values, because they take three different paths:
+   * `$createHeadingNode` for h1/h2/h3, `$createQuoteNode` for quote and
+   * `$createParagraphNode` for paragraph. A heading-only test would stay green
+   * with quote broken.
+   */
+  test("13 — the block-type select converts the current block", async () => {
+    const cases: { value: RegExp; expect: string }[] = [
+      { value: /heading 1/i, expect: "# " },
+      { value: /heading 2/i, expect: "## " },
+      { value: /heading 3/i, expect: "### " },
+      { value: /quote/i, expect: "> " },
+    ];
+
+    for (const item of cases) {
+      const url = await createFolio(
+        `Block-${item.expect.trim().length}-${stamp}`.slice(0, 24),
+        "Convert me",
+      );
+      await page.goto(url);
+
+      const body = page.getByRole("textbox", { name: /editable markdown/i });
+      await expect(body).toBeVisible({ timeout: 20_000 });
+      // The TEXT, not the box. MDXEditor keeps a trailing empty paragraph, so
+      // clicking the container's centre drops the caret in THAT — and the
+      // select then reports the trailing paragraph's type rather than the
+      // block under test.
+      await body.getByText("Convert me").click();
+
+      await page
+        .getByRole("combobox", { name: /block type|type de bloc/i })
+        .click();
+      await page.getByRole("option", { name: item.value }).click();
+
+      await page.getByRole("button", { name: /^save$|^enregistrer$/i }).click();
+      await expect(page.getByText(/^saved /i).first()).toBeVisible({
+        timeout: 15_000,
+      });
+
+      const shortId = Number(url.split("/").pop());
+      const content = await page.evaluate(
+        async ({ pid, sid }) => {
+          const r = await fetch(`/api/projects/${pid}/folios/${sid}`, {
+            credentials: "include",
+          });
+          return ((await r.json()) as { content?: string }).content ?? "";
+        },
+        { pid: projectId, sid: shortId },
+      );
+      expect(content.trimStart()).toContain(`${item.expect}Convert me`);
+    }
+
+    // Paragraph is the round trip, and the one value with no marker of its
+    // own: converting away from a heading has to leave plain text behind.
+    const url = await createFolio(
+      `Block-para-${stamp}`.slice(0, 24),
+      "## Convert me back",
+    );
+    await page.goto(url);
+    const body = page.getByRole("textbox", { name: /editable markdown/i });
+    await expect(body).toBeVisible({ timeout: 20_000 });
+    // Specifically the heading. Clicking the container centre would land in
+    // the trailing empty paragraph, where the control already reads
+    // "Paragraph" — selecting it fires no change event, nothing converts, and
+    // this test hangs on a Save button that never enables. That is exactly how
+    // it failed the first time it ran.
+    await body.locator("h2").click();
+    await page
+      .getByRole("combobox", { name: /block type|type de bloc/i })
+      .click();
+    await page
+      .getByRole("option", { name: /^paragraph$|^paragraphe$/i })
+      .click();
+    await page.getByRole("button", { name: /^save$|^enregistrer$/i }).click();
+    await expect(page.getByText(/^saved /i).first()).toBeVisible({
+      timeout: 15_000,
+    });
+
+    const shortId = Number(url.split("/").pop());
+    const content = await page.evaluate(
+      async ({ pid, sid }) => {
+        const r = await fetch(`/api/projects/${pid}/folios/${sid}`, {
+          credentials: "include",
+        });
+        return ((await r.json()) as { content?: string }).content ?? "";
+      },
+      { pid: projectId, sid: shortId },
+    );
+    expect(content).toContain("Convert me back");
+    expect(content).not.toContain("## Convert me back");
+  });
 });

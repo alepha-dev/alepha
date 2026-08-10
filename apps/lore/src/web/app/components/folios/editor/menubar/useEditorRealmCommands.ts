@@ -110,21 +110,26 @@ export const useEditorRealmCommands = (): Partial<FolioActionHandlers> => {
       });
       activeEditor.focus();
     },
-    // Headings need a level (`applyBlockType$` takes a `HeadingTagType`,
-    // e.g. `h2`) that this generic "insert a heading" menu item doesn't
-    // carry — it is not "insert an H2" specifically. Inserting the ATX
-    // marker as markdown and letting the next keystrokes fill it in
-    // matches the item's own `syntaxHint` ("##") and needs no level
-    // decided up front.
+    // Headings need a level that this generic "insert a heading" menu item
+    // doesn't carry — it is not "insert an H2" specifically. Inserting the ATX
+    // marker as markdown and letting the next keystrokes fill it in matches
+    // the item's own `syntaxHint` ("##") and needs no level decided up front.
+    //
+    // This comment used to justify itself against `applyBlockType$`. That
+    // signal has no subscriber in MDXEditor and does nothing at all, so it was
+    // never the alternative being weighed — see FolioToolbar. The conversion
+    // primitive that does work is `convertSelectionToNode$`, and the reasoning
+    // above holds against it unchanged.
     "insert.heading": () => insertMarkdown("## "),
     "insert.bulletList": () => applyListType("bullet"),
     "insert.numberedList": () => applyListType("number"),
     "insert.taskList": () => applyListType("check"),
-    // Same reasoning as headings: `applyBlockType$("quote")` CONVERTS the
-    // current block in place (destroying whatever was already there)
-    // rather than inserting a new one — not what an Insert-menu item
-    // should do. Insert the marker as markdown instead, matching the
-    // item's `syntaxHint` (">").
+    // Same reasoning as headings: converting the current block in place
+    // (`convertSelectionToNode$` with `$createQuoteNode`, which is what the
+    // toolbar's block-type Select does) would destroy whatever was already
+    // there rather than insert a new block — not what an Insert-menu item
+    // should do. Insert the marker as markdown instead, matching the item's
+    // `syntaxHint` (">").
     "insert.quote": () => insertMarkdown("> "),
     "insert.image": () => openImageDialog(),
     "insert.table": () => insertTable({ rows: 3, columns: 3 }),
