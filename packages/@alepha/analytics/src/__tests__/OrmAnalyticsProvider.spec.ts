@@ -216,9 +216,9 @@ analyticsConformance("orm", async () => {
   // registration has to happen before `alepha.start()`.
   provider.register({
     name: "conformance_views",
-    index: "app",
+    index: "appId",
     dimensions: z.object({
-      app: z.string(),
+      appId: z.string(),
       path: z.string(),
       bucket: z.number(),
     }),

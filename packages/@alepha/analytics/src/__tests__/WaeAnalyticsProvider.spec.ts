@@ -13,8 +13,8 @@ import { FakeAnalyticsEngine } from "./FakeAnalyticsEngine.ts";
 
 const dataset = {
   name: "wae_views",
-  index: "app",
-  dimensions: z.object({ app: z.string(), path: z.string() }),
+  index: "appId",
+  dimensions: z.object({ appId: z.string(), path: z.string() }),
   measures: z.object({ count: z.number() }),
 };
 
@@ -115,7 +115,7 @@ describe("WaeAnalyticsProvider", () => {
     const { alepha, engine, provider } = await build();
     try {
       await provider.record(dataset, [
-        { hour: "2026-08-09T10", app: "a", path: "/x", count: 1 },
+        { hour: "2026-08-09T10", appId: "a", path: "/x", count: 1 },
       ]);
 
       expect(engine.points[0]?.blobs?.[AnalyticsSlotMap.KIND_SLOT - 1]).toBe(
@@ -130,7 +130,7 @@ describe("WaeAnalyticsProvider", () => {
     const { alepha, engine, provider } = await build();
     try {
       await provider.record(dataset, [
-        { hour: "2026-08-09T05", app: "a", path: "/x", count: 1 },
+        { hour: "2026-08-09T05", appId: "a", path: "/x", count: 1 },
       ]);
 
       expect(engine.points[0]?.blobs?.[AnalyticsSlotMap.HOUR_SLOT - 1]).toBe(
@@ -145,12 +145,12 @@ describe("WaeAnalyticsProvider", () => {
     const { alepha, engine, provider } = await build();
     try {
       await provider.record(dataset, [
-        { hour: "2026-08-09T10", app: "a", path: "/x", count: 1 },
+        { hour: "2026-08-09T10", appId: "a", path: "/x", count: 1 },
       ]);
 
       const map = AnalyticsSlotMap.forDataset(dataset);
       const blobs = engine.points[0]?.blobs ?? [];
-      expect(blobs[map.blobSlot("app") - 1]).toBe("a");
+      expect(blobs[map.blobSlot("appId") - 1]).toBe("a");
       expect(blobs[map.blobSlot("path") - 1]).toBe("/x");
     } finally {
       await alepha.stop();
@@ -161,7 +161,7 @@ describe("WaeAnalyticsProvider", () => {
     const { alepha, engine, provider } = await build();
     try {
       await provider.record(dataset, [
-        { hour: "2026-08-09T10", app: "a", path: "/x", count: 1 },
+        { hour: "2026-08-09T10", appId: "a", path: "/x", count: 1 },
       ]);
 
       expect(engine.points[0]?.indexes).toEqual(["a"]);
@@ -184,7 +184,7 @@ describe("WaeAnalyticsProvider", () => {
     try {
       await expect(
         provider.record(dataset, [
-          { hour: "2026-08-09T10", app: "a", path: "/x", count: 1 },
+          { hour: "2026-08-09T10", appId: "a", path: "/x", count: 1 },
         ]),
       ).rejects.toThrow(/binding 'ANALYTICS' was not found/);
     } finally {
@@ -214,7 +214,7 @@ describe("WaeAnalyticsProvider", () => {
     try {
       const result = await provider.query(dataset, {
         since: "2026-08-09",
-        where: { app: { inArray: [] } },
+        where: { appId: { inArray: [] } },
         select: { count: "sum" },
       });
 
@@ -251,9 +251,9 @@ describe("WaeAnalyticsProvider", () => {
     const { alepha, engine, provider } = await build();
     try {
       await provider.record(dataset, [
-        { hour: "2026-08-09T10", app: "a", path: "/x", count: 3 },
-        { hour: "2026-08-09T11", app: "a", path: "/y", count: 9 },
-        { hour: "2026-08-09T12", app: "a", path: "/x", count: 2 },
+        { hour: "2026-08-09T10", appId: "a", path: "/x", count: 3 },
+        { hour: "2026-08-09T11", appId: "a", path: "/y", count: 9 },
+        { hour: "2026-08-09T12", appId: "a", path: "/x", count: 2 },
       ]);
 
       const result = await provider.query(dataset, {
@@ -276,8 +276,8 @@ describe("WaeAnalyticsProvider", () => {
     const { alepha, provider } = await build();
     try {
       await provider.record(dataset, [
-        { hour: "2026-08-09T10", app: "a", path: "/x", count: 5 },
-        { hour: "2026-08-09T11", app: "a", path: "/y", count: 7 },
+        { hour: "2026-08-09T10", appId: "a", path: "/x", count: 5 },
+        { hour: "2026-08-09T11", appId: "a", path: "/y", count: 7 },
       ]);
 
       const result = await provider.query(dataset, {
@@ -297,12 +297,12 @@ describe("WaeAnalyticsProvider", () => {
     const { alepha, engine, provider } = await build();
     try {
       await provider.record(dataset, [
-        { hour: "2026-08-09T10", app: "a", path: "/x", count: 1 },
+        { hour: "2026-08-09T10", appId: "a", path: "/x", count: 1 },
       ]);
 
       await provider.query(dataset, {
         since: "2026-08-09",
-        where: { app: "a" },
+        where: { appId: "a" },
         select: { count: "sum" },
       });
 
@@ -322,9 +322,9 @@ describe("WaeAnalyticsProvider", () => {
     const { alepha, engine, provider } = await build();
     try {
       await provider.record(dataset, [
-        { hour: "2026-08-09T10", app: "a", path: "/low", count: 1 },
-        { hour: "2026-08-09T10", app: "a", path: "/high", count: 5 },
-        { hour: "2026-08-09T10", app: "a", path: "/mid", count: 3 },
+        { hour: "2026-08-09T10", appId: "a", path: "/low", count: 1 },
+        { hour: "2026-08-09T10", appId: "a", path: "/high", count: 5 },
+        { hour: "2026-08-09T10", appId: "a", path: "/mid", count: 3 },
       ]);
 
       const result = await provider.query(dataset, {
@@ -387,12 +387,12 @@ describe("WaeAnalyticsProvider", () => {
     const { alepha, provider } = await build();
     try {
       await provider.record(dataset, [
-        { hour: "2026-08-09T10", app: "a", path: "/x", count: 1 },
+        { hour: "2026-08-09T10", appId: "a", path: "/x", count: 1 },
       ]);
 
       const result = await provider.query(dataset, {
         since: "2026-08-09",
-        where: { app: { inArray: ["nonexistent"] } },
+        where: { appId: { inArray: ["nonexistent"] } },
         select: { count: "sum" },
       });
 
@@ -412,7 +412,7 @@ describe("WaeAnalyticsProvider", () => {
     const { alepha, provider } = await build();
     try {
       await provider.coldProvider.record(dataset, [
-        { hour: "2026-08-01T10", app: "a", path: "/x", count: 4 },
+        { hour: "2026-08-01T10", appId: "a", path: "/x", count: 4 },
       ]);
 
       // rollup()/prune() are asserted through `provider`, not
@@ -447,8 +447,8 @@ describe("WaeAnalyticsProvider", () => {
     const { alepha, provider } = await build();
     try {
       await provider.record(dataset, [
-        { hour: "2026-08-01T10", app: "a", path: "/x", count: 3 },
-        { hour: "2026-08-01T11", app: "a", path: "/x", count: 2 },
+        { hour: "2026-08-01T10", appId: "a", path: "/x", count: 3 },
+        { hour: "2026-08-01T11", appId: "a", path: "/x", count: 2 },
       ]);
 
       await provider.rollup(dataset, "2026-08-02");
@@ -471,7 +471,7 @@ describe("WaeAnalyticsProvider", () => {
     const { alepha, provider } = await build();
     try {
       await provider.record(dataset, [
-        { hour: "2026-08-01T10", app: "a", path: "/x", count: 4 },
+        { hour: "2026-08-01T10", appId: "a", path: "/x", count: 4 },
       ]);
 
       await provider.rollup(dataset, "2026-08-02");
@@ -521,7 +521,7 @@ describe("WaeAnalyticsProvider", () => {
       engine.answer([
         {
           hour: "2026-08-01T10",
-          app: "a",
+          appId: "a",
           path: "/x",
           count: "40",
           _sample_interval: "4",
@@ -580,7 +580,7 @@ describe("WaeAnalyticsProvider — the read side merges with cold", () => {
       await pinNow(alepha, "2026-08-09T00:00:00.000Z");
 
       await provider.record(hotDataset, [
-        { hour: "2026-08-08T10", app: "a", path: "/x", count: 3 },
+        { hour: "2026-08-08T10", appId: "a", path: "/x", count: 3 },
       ]);
 
       // since = 2026-08-05, hot floor = 2026-08-09 - 5d = 2026-08-04: the
@@ -604,7 +604,7 @@ describe("WaeAnalyticsProvider — the read side merges with cold", () => {
     const { alepha, provider, engine } = await build();
     try {
       await provider.record(dataset, [
-        { hour: "2026-08-01T10", app: "a", path: "/x", count: 4 },
+        { hour: "2026-08-01T10", appId: "a", path: "/x", count: 4 },
       ]);
       await provider.rollup(dataset, "2026-08-02");
 
@@ -636,13 +636,13 @@ describe("WaeAnalyticsProvider — the read side merges with cold", () => {
     const { alepha, provider, engine } = await build();
     try {
       await provider.record(dataset, [
-        { hour: "2026-08-01T10", app: "a", path: "/x", count: 4 },
+        { hour: "2026-08-01T10", appId: "a", path: "/x", count: 4 },
       ]);
       await provider.rollup(dataset, "2026-08-02");
 
       // Recorded after the rollup — still only in Analytics Engine.
       await provider.record(dataset, [
-        { hour: "2026-08-09T10", app: "a", path: "/x", count: 7 },
+        { hour: "2026-08-09T10", appId: "a", path: "/x", count: 7 },
       ]);
 
       // Simulates the old point having genuinely aged out of Analytics
@@ -669,7 +669,7 @@ describe("WaeAnalyticsProvider — the read side merges with cold", () => {
     const { alepha, provider, engine } = await build();
     try {
       await provider.record(dataset, [
-        { hour: "2026-08-01T10", app: "a", path: "/x", count: 4 },
+        { hour: "2026-08-01T10", appId: "a", path: "/x", count: 4 },
       ]);
       await provider.rollup(dataset, "2026-08-02");
 
@@ -697,8 +697,8 @@ describe("WaeAnalyticsProvider — the read side merges with cold", () => {
       // there are only two cold groups, so a per-source limit of 1 would
       // keep "/a" (10 > 9) and drop "/shared".
       await provider.record(dataset, [
-        { hour: "2026-08-01T10", app: "a", path: "/a", count: 10 },
-        { hour: "2026-08-01T11", app: "a", path: "/shared", count: 9 },
+        { hour: "2026-08-01T10", appId: "a", path: "/a", count: 10 },
+        { hour: "2026-08-01T11", appId: "a", path: "/shared", count: 9 },
       ]);
       await provider.rollup(dataset, "2026-08-02");
 
@@ -706,8 +706,8 @@ describe("WaeAnalyticsProvider — the read side merges with cold", () => {
       // per-source limit of 1 there would keep "/b" (10 > 9) and drop
       // "/shared" too.
       await provider.record(dataset, [
-        { hour: "2026-08-09T10", app: "a", path: "/b", count: 10 },
-        { hour: "2026-08-09T11", app: "a", path: "/shared", count: 9 },
+        { hour: "2026-08-09T10", appId: "a", path: "/b", count: 10 },
+        { hour: "2026-08-09T11", appId: "a", path: "/shared", count: 9 },
       ]);
 
       // Per-source top-1 would therefore never see "/shared" at all in

@@ -184,12 +184,26 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
     for (const name of measures) shape[name] = z.coerce.number();
 
     const dayExpression = `substr(${timeColumn}, 1, 10)`;
+    // Resolved through `columnName`, same as `readOne` — see its class doc.
+    // `folded`'s decoded rows are fed straight into `rolled.upsertMany`,
+    // keyed by these JS names (via `shape`), so every projection here has to
+    // come back aliased to the JS name whenever the real column differs, not
+    // merely be valid SQL.
     const selectList = [
       `${dayExpression} AS ${timeColumn}`,
-      ...dimensions,
-      ...measures.map((name) => `SUM(${name}) AS ${name}`),
+      ...dimensions.map((name) => {
+        const column = this.columnName(raw, name);
+        return column === name ? column : `${column} AS "${name}"`;
+      }),
+      ...measures.map((name) => {
+        const column = this.columnName(raw, name);
+        return `SUM(${column}) AS "${name}"`;
+      }),
     ].join(", ");
-    const groupList = [dayExpression, ...dimensions].join(", ");
+    const groupList = [
+      dayExpression,
+      ...dimensions.map((name) => this.columnName(raw, name)),
+    ].join(", ");
 
     const folded = await this.database.run(
       sql`
@@ -296,13 +310,15 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
    * {@link accumulateSet} already relies on for the `excluded.<name>` half of
    * an upsert.
    *
-   * `readOne` never splices a JS field name into `sql.raw` directly: the
-   * model builder snake-cases multi-word column names (`sigilId` is stored as
-   * `sigil_id`), so a raw splice of the JS name produces valid SQL only by
-   * accident, when a dimension happens to be a single word. Every other name
-   * throws `no such column` — the `where` filter every project-scoped
-   * analytics read applies (`{ sigilId: { inArray: [...] } }`) hit exactly
-   * this.
+   * Neither `readOne` nor `rollup` splices a JS field name into `sql.raw`
+   * directly: the model builder snake-cases multi-word column names
+   * (`sigilId` is stored as `sigil_id`), so a raw splice of the JS name
+   * produces valid SQL only by accident, when a dimension or measure happens
+   * to be a single word. Every other name throws `no such column` — the
+   * `where` filter every project-scoped analytics read applies
+   * (`{ sigilId: { inArray: [...] } }`) hit exactly this in `readOne`, and
+   * `rollup`'s `SELECT`/`GROUP BY` over the exact same dimensions hit the
+   * identical bug the moment the hot-retention sweep tried to fold them.
    */
   protected columnName(repository: Repository<ZObject>, name: string): string {
     const table = repository.table as never as Record<string, NamedColumn>;
