@@ -429,7 +429,6 @@ test.describe("Sigils", () => {
         "Dashboard",
         "Analytics",
         "Performance",
-        "Errors",
         "Settings",
       ]) {
         await expect(
@@ -475,32 +474,6 @@ test.describe("Sigils", () => {
       await expect(page.getByText(/2[,.\s]?500\s*ms/)).toBeVisible();
     });
 
-    await test.step("the Errors tab names the app that is still failing", async () => {
-      // `sigil_error_groups` was written on every accepted error and read by
-      // nothing outside `test/`. This is the surface that reads it — split per
-      // sigil, unlike the inbox, which folds every sigil into one row per
-      // project on purpose.
-      await page
-        .getByTestId("app-tabs")
-        .getByRole("link", { name: "Errors", exact: true })
-        .click();
-
-      await expect(page.getByText("Still happening")).toBeVisible({
-        timeout: 15_000,
-      });
-
-      // Asserted on the row, not on the page: the app's name is also in the
-      // heading, the breadcrumb and the sidebar, so a page-wide match would
-      // pass with an empty table.
-      const row = page.getByTestId("error-group-row");
-      await expect(row).toHaveCount(1);
-      await expect(row.getByText(blightMessage)).toBeVisible();
-      await expect(row.getByText(appName, { exact: true })).toBeVisible();
-      // 3 + 4, counted per app. Same total as the inbox here because there is
-      // one sigil; the split is what the table exists to keep.
-      await expect(row.getByText("7", { exact: true })).toBeVisible();
-    });
-
     await test.step("turning Beacon off hides the analytics tabs, back on restores them", async () => {
       // Capabilities live on the app's own Settings tab now, not a
       // project-wide card — the switch here governs this app alone.
@@ -527,7 +500,7 @@ test.describe("Sigils", () => {
       // AppSettingsCapabilities.tsx), so the tab bar reflects the app's own
       // kinds without a manual page reload.
       const tabs = page.getByTestId("app-tabs");
-      for (const label of ["Analytics", "Performance", "Errors"]) {
+      for (const label of ["Analytics", "Performance"]) {
         await expect(
           tabs.getByRole("link", { name: label, exact: true }),
         ).toHaveCount(0, { timeout: 15_000 });
@@ -536,7 +509,7 @@ test.describe("Sigils", () => {
       await beacon.click();
       await waitForSigilKind(page, projectId, appName, "beacon", true);
 
-      for (const label of ["Analytics", "Performance", "Errors"]) {
+      for (const label of ["Analytics", "Performance"]) {
         await expect(
           tabs.getByRole("link", { name: label, exact: true }),
         ).toBeVisible({ timeout: 15_000 });

@@ -41,7 +41,6 @@ const NAV_ROUTE_NAMES = [
   "app",
   "appAnalytics",
   "appPerformance",
-  "appErrors",
   "appSettings",
   // Settings nav array — ProjectSettings.tsx. This is the array that broke.
   "projectSettingsMembers",
@@ -100,9 +99,6 @@ describe("AppRouter route table", () => {
     );
     expect(router.path("appPerformance", { params })).toBe(
       `/p/7/apps/${appName}/performance`,
-    );
-    expect(router.path("appErrors", { params })).toBe(
-      `/p/7/apps/${appName}/errors`,
     );
     expect(router.path("appSettings", { params })).toBe(
       `/p/7/apps/${appName}/settings`,

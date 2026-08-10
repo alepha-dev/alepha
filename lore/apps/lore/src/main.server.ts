@@ -1,4 +1,4 @@
-import { SigilSinkProvider } from "@alepha/sigil/server";
+import { SigilSinkProvider, sigilOptions } from "@alepha/sigil/server";
 import { Alepha, run } from "alepha";
 import { FileAccessProvider } from "alepha/api/files";
 import { oauthOptions } from "alepha/api/oauth";
@@ -49,6 +49,19 @@ alepha.set(oauthOptions, {
   realm: "default",
   resource: "/mcp",
   loginPath: "/auth/login",
+});
+
+// Lore self-reports through its own sigil, so the floating feedback button
+// renders on every Lore page — including the feedback form itself, where it
+// offers to open the form you are already looking at. `*` matches within one
+// path segment, so this covers `/p/2/request` and not `/p/2/request/anything`.
+//
+// The list stays app-side rather than on the sigil row: only the app knows
+// which of its own routes are meaningless to report from. An operator-editable
+// server-side list is a different feature — it would let someone silence a
+// button in an app whose source they do not control, which is not this case.
+alepha.set(sigilOptions, {
+  excludedPaths: ["/p/*/request"],
 });
 
 alepha.with(LoreApi);

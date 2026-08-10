@@ -675,7 +675,6 @@ export default {
   "app.tab.dashboard": "Dashboard",
   "app.tab.analytics": "Analytics",
   "app.tab.performance": "Performance",
-  "app.tab.errors": "Errors",
   "app.tab.settings": "Settings",
   "app.dashboard.errors": "Errors still happening",
   "app.dashboard.beaconOff":
@@ -731,16 +730,6 @@ export default {
   "insights.vitals.good": "Good",
   "insights.vitals.needsImprovement": "Needs work",
   "insights.vitals.poor": "Poor",
-  "insights.errors.title": "Error budget",
-  "insights.errors.subtitle": "per app",
-  "insights.errors.heading": "Still happening",
-  "insights.errors.col.error": "Error",
-  "insights.errors.col.app": "App",
-  "insights.errors.col.count": "Occurrences",
-  "insights.errors.col.firstSeen": "First seen",
-  "insights.errors.col.lastSeen": "Last seen",
-  "insights.errors.empty":
-    "No errors reported in this range. Unlike the Blights inbox, this list keeps each app separate — so a bug fixed in one app still shows here if another is still hitting it.",
 
   "blights.empty":
     "No blights. Crashes captured from your sigils will appear here.",
@@ -883,7 +872,7 @@ export default {
   "feedback.request.success": "Feedback submitted",
   "feedback.request.error": "Failed to submit feedback",
   "feedback.request.submit": "Submit feedback",
-  "feedback.request.cancel": "Cancel",
+  "feedback.request.myFeedbackLink": "See my previous reports",
   "feedback.request.submittingAs": "Submitting as",
   "feedback.request.forProject": "for project",
   "feedback.request.loginRequiredTitle": "Sign in to submit feedback",
@@ -922,4 +911,27 @@ export default {
     "The user will be signed out from this session.",
   "admin.sessions.revoked": "Session revoked",
   "admin.sessions.bulkRevokeTitle": "Revoke sessions",
+
+  "profile.apiKeys.revoke.title": 'Revoke "{0}"?',
+  "profile.apiKeys.revoke.description":
+    "Any Claude or MCP client using this key stops working immediately. The key cannot be restored — you would have to create a new one and reconfigure every client.",
+  "profile.apiKeys.revoke.confirm": "Revoke key",
+  "profile.sessions.revokeAll.title": "Sign out everywhere?",
+  "profile.sessions.revokeAll.description":
+    "Every session is revoked, including this one — you will be signed out here immediately. Signing in again restores access.",
+  "profile.sessions.revokeAll.confirm": "Sign out everywhere",
+  "profile.identities.password.set": "Set password",
+  "profile.identities.password.change": "Change password",
+  "profile.identities.password.setHint":
+    "Set up a password to sign in with your email address without going through an external provider.",
+  "profile.identities.password.changeHint":
+    "Changing your password signs out every other device. This one stays signed in.",
+  "profile.identities.password.current": "Current password",
+  "profile.identities.password.new": "New password",
+  "profile.identities.password.confirm": "Confirm password",
+  "profile.identities.password.cancel": "Cancel",
+  "profile.identities.password.mismatch": "Passwords do not match.",
+  "profile.identities.password.wasSet": "Password has been set.",
+  "profile.identities.password.changed":
+    "Password changed. {0} other session(s) signed out.",
 };
