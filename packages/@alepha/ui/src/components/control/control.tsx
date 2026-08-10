@@ -102,9 +102,14 @@ export interface ControlProps {
    */
   select?: boolean;
   /**
-   * Force a combobox (searchable select).
+   * Force a combobox (searchable select). Alias for `searchable: true`.
    */
   combobox?: boolean;
+  /**
+   * Force the select's search input on or off. Defaults to "auto" — on above
+   * ~20 options, off below.
+   */
+  searchable?: boolean;
   /**
    * Force a `<Segmented>` control (one option visible at a time).
    */
@@ -379,6 +384,7 @@ export function Control(props: ControlProps) {
         description={merged.description ?? props.description}
         segmented={merged.segmented}
         combobox={merged.combobox}
+        searchable={merged.searchable}
         items={items as never}
         icon={resolveIcon(merged.icon)}
         disabled={merged.disabled}

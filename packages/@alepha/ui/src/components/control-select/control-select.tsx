@@ -18,14 +18,6 @@ import {
   useComboboxAnchor,
 } from "@alepha/ui/components/ui/combobox";
 import { Segmented } from "@alepha/ui/components/ui/segmented";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from "@alepha/ui/components/ui/select";
 import { cn } from "@alepha/ui/lib/utils";
 import type { Async } from "alepha";
 import { useAction } from "alepha/react";
@@ -85,9 +77,18 @@ export interface ControlSelectProps {
    */
   segmented?: boolean;
   /**
-   * Render as a searchable combobox instead of a native select.
+   * Force the search input on. Kept as the historical name for
+   * `searchable: true` — every select is a combobox now, the flag only
+   * decides whether it carries a search field.
    */
   combobox?: boolean;
+  /**
+   * Whether the dropdown carries a search input. Defaults to "auto": on for
+   * multi-select, for a long-mode `loader`, and for static lists longer than
+   * `SEARCH_THRESHOLD`. Set explicitly to search a short list or to drop the
+   * search field from a long one.
+   */
+  searchable?: boolean;
   /**
    * Async option loader. Triggers long-mode (server-side search) above `loaderThreshold` options.
    */
@@ -165,6 +166,13 @@ export interface ControlSelectProps {
  * the boundary so callers never see it.
  */
 const CLEAR_VALUE = "__alepha_clear__";
+
+/**
+ * Static option count above which the dropdown grows a search input. Below it
+ * the very same combobox renders without one — the threshold decides whether
+ * you can type, never which control you get.
+ */
+const SEARCH_THRESHOLD = 20;
 
 const optValue = (o: SelectOption) => (typeof o === "string" ? o : o.value);
 const optLabel = (o: SelectOption) => (typeof o === "string" ? o : o.label);
@@ -289,52 +297,17 @@ export function ControlSelect(props: ControlSelectProps) {
   const clearLabel =
     props.clearLabel ?? tr("controlSelect.none", { default: "None" });
 
-  // Async loader, multi-select, explicit combobox, or many items → Combobox
-  if (isArray || props.combobox || mode === "long" || data.length > 20) {
-    return (
-      <FormField
-        id={meta.id}
-        label={meta.label}
-        description={meta.description}
-        error={meta.error}
-        required={meta.required}
-      >
-        <Combobox
-          id={meta.id}
-          data={data}
-          loading={loading}
-          multi={isArray}
-          disabled={props.disabled}
-          value={value}
-          onChange={(v) => setValue(v)}
-          coerce={coerce}
-          onSearch={mode === "long" ? search.run : undefined}
-          createNewEntry={props.createNewEntry}
-          icon={props.icon}
-          // `clearable` used to reach this path as a placeholder and nothing
-          // else, so a filter chip that had switched to the combobox (>20
-          // options) could be set but never put back to "All …".
-          clearable={props.clearable}
-          clearLabel={clearLabel}
-          // An optional field must also be able to go back to empty without a
-          // dedicated row: Base UI never emits `null`, so re-pressing the
-          // selected row deselects (see `handleSingle`). A required field keeps
-          // its value — clearing it would only produce a validation error the
-          // user cannot see yet.
-          deselectable={props.clearable || !meta.required}
-          placeholder={props.clearable ? clearLabel : undefined}
-        />
-      </FormField>
-    );
-  }
+  // One control for every list. The option count decides whether the popup
+  // carries a search field — it no longer decides which primitive renders.
+  // The native `Select` path this replaced silently dropped `description`,
+  // `tag`, per-option `disabled` and `deselectable`, and styled its trigger
+  // differently, purely because a list happened to be short.
+  // Multi-select is never search-less: the chips input IS its trigger.
+  const searchable =
+    isArray ||
+    (props.searchable ??
+      (props.combobox || mode === "long" || data.length > SEARCH_THRESHOLD));
 
-  // Infer / short — native Select
-  const labelFor = (raw: string) => {
-    const found = data.find((o) => optValue(o) === raw);
-    return found ? optLabel(found) : raw;
-  };
-  const selectedValue =
-    value != null ? String(value) : props.clearable ? CLEAR_VALUE : undefined;
   return (
     <FormField
       id={meta.id}
@@ -343,62 +316,35 @@ export function ControlSelect(props: ControlSelectProps) {
       error={meta.error}
       required={meta.required}
     >
-      <Select
-        value={selectedValue}
-        onValueChange={(v) => {
-          if (v === CLEAR_VALUE) {
-            setValue(undefined);
-            return;
-          }
-          setValue(coerce(v ?? ""));
-        }}
+      <Combobox
+        id={meta.id}
+        data={data}
+        loading={loading}
+        multi={isArray}
+        searchable={searchable}
         disabled={props.disabled}
-      >
-        <SelectTrigger
-          id={meta.id}
-          className={cn("w-full", props.triggerClassName)}
-        >
-          {props.icon && (
-            <props.icon className="text-muted-foreground size-4 shrink-0" />
-          )}
-          <SelectValue
-            placeholder={
-              props.clearable
-                ? clearLabel
-                : tr("controlSelect.select", { default: "Select…" })
-            }
-          >
-            {selectedValue === CLEAR_VALUE
-              ? clearLabel
-              : selectedValue != null
-                ? labelFor(selectedValue)
-                : undefined}
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          {props.clearable && (
-            <>
-              <SelectItem value={CLEAR_VALUE}>{clearLabel}</SelectItem>
-              <SelectSeparator />
-            </>
-          )}
-          {data.map((o) => {
-            const icon = optIcon(o);
-            return (
-              <SelectItem key={optValue(o)} value={optValue(o)}>
-                {icon ? (
-                  <span className="flex items-center gap-2">
-                    <span className="flex shrink-0 items-center">{icon}</span>
-                    <span>{optLabel(o)}</span>
-                  </span>
-                ) : (
-                  optLabel(o)
-                )}
-              </SelectItem>
-            );
-          })}
-        </SelectContent>
-      </Select>
+        value={value}
+        onChange={(v) => setValue(v)}
+        coerce={coerce}
+        onSearch={mode === "long" ? search.run : undefined}
+        createNewEntry={props.createNewEntry}
+        icon={props.icon}
+        // Used to be dropped on this path, so a filter chip sized `w-40` lost
+        // its width as soon as its list crossed the threshold.
+        triggerClassName={props.triggerClassName}
+        // `clearable` used to reach this path as a placeholder and nothing
+        // else, so a filter chip that had switched to the combobox (>20
+        // options) could be set but never put back to "All …".
+        clearable={props.clearable}
+        clearLabel={clearLabel}
+        // An optional field must also be able to go back to empty without a
+        // dedicated row: Base UI never emits `null`, so re-pressing the
+        // selected row deselects (see `handleSingle`). A required field keeps
+        // its value — clearing it would only produce a validation error the
+        // user cannot see yet.
+        deselectable={props.clearable || !meta.required}
+        placeholder={props.clearable ? clearLabel : undefined}
+      />
     </FormField>
   );
 }
@@ -408,6 +354,12 @@ interface ComboboxProps {
   data: SelectOption[];
   loading: boolean;
   multi: boolean;
+  /**
+   * Render the search input. When false the popup is the list alone — the
+   * shape a short static list gets. Multi-select ignores it: its input is the
+   * chips box itself, and it is the only way to open and type.
+   */
+  searchable: boolean;
   disabled?: boolean;
   value: unknown;
   onChange: (v: unknown) => void;
@@ -415,6 +367,7 @@ interface ComboboxProps {
   onSearch?: (q: string) => void;
   createNewEntry?: ControlSelectProps["createNewEntry"];
   icon?: IconComponent;
+  triggerClassName?: string;
   /**
    * Trigger text when nothing is selected. Mirrors the native-Select path,
    * where a `clearable` field shows its `clearLabel` (e.g. "All zones") as the
@@ -703,6 +656,7 @@ function Combobox(props: ComboboxProps) {
             className={cn(
               "w-full",
               props.disabled && "pointer-events-none opacity-50",
+              props.triggerClassName,
             )}
           >
             {props.icon && (
@@ -743,6 +697,7 @@ function Combobox(props: ComboboxProps) {
               selected.length === 0 &&
                 !props.clearable &&
                 "text-muted-foreground",
+              props.triggerClassName,
             )}
           >
             <span className="flex min-w-0 items-center gap-2">
@@ -753,7 +708,9 @@ function Combobox(props: ComboboxProps) {
             </span>
           </ComboboxTrigger>
           <ComboboxContent>
-            <ComboboxInput showTrigger={false} placeholder="Search…" />
+            {props.searchable && (
+              <ComboboxInput showTrigger={false} placeholder="Search…" />
+            )}
             {popupBody}
           </ComboboxContent>
         </>
