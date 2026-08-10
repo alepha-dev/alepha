@@ -153,9 +153,17 @@ const MyFeedback = () => {
           title: {
             label: "Title",
             sortable: true,
+            // See ProjectQuestsTable: `w-full max-w-0` lets the column take
+            // the space the others leave, so the ellipsis appears only when
+            // the title genuinely does not fit, and `min-w-48` stops the pair
+            // collapsing the column to zero once there is no space left.
+            className: "w-full max-w-0 min-w-48",
             cell: (p: MyFeedbackResource) => (
-              <span className="text-sm font-medium" title={p.title}>
-                {p.title.length > 60 ? `${p.title.slice(0, 60)}…` : p.title}
+              <span
+                className="block truncate text-sm font-medium"
+                title={p.title}
+              >
+                {p.title}
               </span>
             ),
           },

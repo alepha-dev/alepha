@@ -38,6 +38,12 @@ interface SpotlightHit {
  * Scoped to the open project, because quests and folios both are. Outside
  * one there is nothing to search, so the input says so rather than
  * accepting a query it cannot answer.
+ *
+ * Since `HeaderSearchButton` hides both openers off a project, the palette
+ * can no longer be opened there and the `projectId === undefined` branches
+ * below are unreachable. They are kept on purpose: this component is mounted
+ * app-wide, so the day a third opener appears they are the difference between
+ * a disabled input and a crash.
  */
 const Spotlight = (): ReactElement => {
   const { tr } = useI18n<I18n, "en">();

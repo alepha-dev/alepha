@@ -869,36 +869,41 @@ test.describe("Quest", () => {
       });
     });
 
-    await test.step("the rail is left of the quest log and never moves", async () => {
-      // #153: the rail used to be rendered by the Quests PAGE, which put it
-      // between the quest log and the table — reading as a control for the
+    await test.step("the view bar is above the quest log and never moves", async () => {
+      // #153: the switcher used to be rendered by the Quests PAGE, which put
+      // it between the quest log and the table — reading as a control for the
       // table rather than for the surface. It is now the first child of the
-      // content area, outside the layout's three-way branch, so its x must be
-      // smaller than the log's and identical under the board (which has no
-      // log at all and goes full width).
+      // content area, outside the layout's three-way branch.
+      //
+      // #163 turned it from a vertical left rail into a horizontal top bar,
+      // which rotates the invariant onto the other axis: its y must be smaller
+      // than the log's and identical under the board (which has no log at all
+      // and goes full width). Being outside the branch is what buys that, on
+      // whichever axis — anything rendered from inside a branch is necessarily
+      // right of, and below, the quest log.
       await page.goto(`/p/${projectId}/`);
       await expect(page.getByTestId("quests-table")).toBeVisible({
         timeout: 10_000,
       });
-      const railInList = await page
+      const barInList = await page
         .getByTestId("quests-view-switcher")
         .boundingBox();
       const log = await page.getByTestId("quest-log").boundingBox();
-      if (!railInList || !log) throw new Error("missing bounding boxes");
-      expect(railInList.x).toBeLessThan(log.x);
+      if (!barInList || !log) throw new Error("missing bounding boxes");
+      expect(barInList.y).toBeLessThan(log.y);
 
       await page.getByTestId("quests-view-kanban").click();
       await expect(page.getByTestId("kanban-board")).toBeVisible({
         timeout: 10_000,
       });
-      const railInKanban = await page
+      const barInKanban = await page
         .getByTestId("quests-view-switcher")
         .boundingBox();
-      if (!railInKanban) throw new Error("missing bounding box");
-      expect(railInKanban.x).toBe(railInList.x);
+      if (!barInKanban) throw new Error("missing bounding box");
+      expect(barInKanban.y).toBe(barInList.y);
 
       // And it survives opening a quest: the log is shown on the detail
-      // route too, so a rail that vanished there would slide the log left.
+      // route too, so a bar that vanished there would slide the log up.
       await page.goto(`/p/${projectId}/`);
       const { shortId } = await apiPost<{ shortId: number }>(
         page,
@@ -918,14 +923,14 @@ test.describe("Quest", () => {
       await expect(page.getByTestId("quest-log")).toBeVisible({
         timeout: 10_000,
       });
-      const railInDetail = await page
+      const barInDetail = await page
         .getByTestId("quests-view-switcher")
         .boundingBox();
-      if (!railInDetail) throw new Error("missing bounding box");
-      expect(railInDetail.x).toBe(railInList.x);
+      if (!barInDetail) throw new Error("missing bounding box");
+      expect(barInDetail.y).toBe(barInList.y);
     });
 
-    await test.step("the rail disappears when kanban is off", async () => {
+    await test.step("the view bar disappears when kanban is off", async () => {
       await setProjectFeature(page, projectId, "kanban", false);
       await page.goto(`/p/${projectId}/`);
       await expect(page.getByTestId("quests-table")).toBeVisible({
