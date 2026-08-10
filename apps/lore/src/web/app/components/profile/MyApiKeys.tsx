@@ -8,12 +8,15 @@ import {
 } from "@alepha/ui/components/ui/dialog";
 import { Input } from "@alepha/ui/components/ui/input";
 import { Label } from "@alepha/ui/components/ui/label";
+import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import type { ApiKeyController } from "alepha/api/keys";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { Check, Clipboard, Key, Plus, Trash2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
+import type { I18n } from "../../services/I18n.ts";
 
 interface ApiKey {
   id: string;
@@ -32,6 +35,8 @@ const MyApiKeys = (props: MyApiKeysProps) => {
   const dt = useInject(DateTimeProvider);
   const apiKeyApi = useClient<ApiKeyController>();
   const toaster = useToast();
+  const dialog = useDialog();
+  const { tr } = useI18n<I18n, "en">();
   const [apiKeys, setApiKeys] = useState<ApiKey[]>(props.apiKeys);
   const [opened, setOpened] = useState(false);
   const [name, setName] = useState("");
@@ -69,9 +74,27 @@ const MyApiKeys = (props: MyApiKeysProps) => {
     }
   };
 
-  const handleRevoke = async (id: string) => {
-    await apiKeyApi.revokeMyApiKey({ params: { id } });
-    setApiKeys((prev) => prev.filter((key) => key.id !== id));
+  /**
+   * Confirmed, unlike the other revokes in this profile area, because this one
+   * is unrecoverable AND its damage is invisible from here: the key is shown
+   * once at creation, cannot be re-issued as the same value, and every Claude
+   * client configured with it stops working. The rows are told apart only by a
+   * nickname and a truncated suffix, which is exactly the situation where a
+   * misclick is plausible and its consequence unclear.
+   */
+  const handleRevoke = async (key: ApiKey) => {
+    const ok = await dialog.confirm({
+      title: String(tr("profile.apiKeys.revoke.title", { args: [key.name] })),
+      description: String(tr("profile.apiKeys.revoke.description")),
+      confirmLabel: String(tr("profile.apiKeys.revoke.confirm")),
+      destructive: true,
+    });
+    if (!ok) {
+      return;
+    }
+
+    await apiKeyApi.revokeMyApiKey({ params: { id: key.id } });
+    setApiKeys((prev) => prev.filter((it) => it.id !== key.id));
   };
 
   const handleCopy = async (value: string) => {
@@ -133,7 +156,7 @@ const MyApiKeys = (props: MyApiKeysProps) => {
                 variant="ghost"
                 size="icon"
                 className="text-red-500 hover:text-red-600"
-                onClick={() => handleRevoke(key.id)}
+                onClick={() => void handleRevoke(key)}
                 aria-label="Revoke key"
               >
                 <Trash2 className="size-4" />

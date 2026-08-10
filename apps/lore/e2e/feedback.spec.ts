@@ -155,7 +155,7 @@ test.describe("Feedback", () => {
     });
   });
 
-  test("cancel from the request form never 403s a non-member into the error page", async ({
+  test("the request form gives a non-member no route into the members-only project", async ({
     page,
     browser,
     baseURL,
@@ -182,8 +182,16 @@ test.describe("Feedback", () => {
     }, projectId);
 
     // A different logged-in user who is NOT a member of the project — the
-    // exact case that used to break: Cancel pushed to the members-only
-    // project view → 403 → "Oh no! Something went wrong" (feedback #7).
+    // exact case that used to break: Cancel pushed to the members-only project
+    // view → 403 → "Oh no! Something went wrong" (feedback #7).
+    //
+    // Cancel is gone (#174): it discarded a typed report with no prompt, and
+    // in the sigil popup it called `window.close()` on a draft held in
+    // `sessionStorage`, which dies with the window. So this no longer drives
+    // that button — it asserts the property the button used to threaten, which
+    // is now structural: the form offers a non-member NO in-page navigation to
+    // the project. Written this way it keeps failing if either the button
+    // returns or the new link starts navigating this window.
     const reporter = await newUserContext(browser, baseURL!, "reporter");
     try {
       await reporter.page.goto(`/p/${projectId}/request`);
@@ -193,17 +201,28 @@ test.describe("Feedback", () => {
         timeout: 15_000,
       });
 
-      await reporter.page.getByRole("button", { name: /^cancel$/i }).click();
-      await reporter.page.waitForLoadState("networkidle");
+      await expect(
+        reporter.page.getByRole("button", { name: /^cancel$/i }),
+      ).toHaveCount(0);
 
-      // Must NOT land on the crash boundary, and must NOT be sitting on the
-      // members-only project view.
+      // The one link out opens the parent browser rather than replacing this
+      // document — inside the popup a same-window navigation would trap the
+      // whole app in a 540×790 chrome-less window and lose the draft.
+      const link = reporter.page.getByRole("link", {
+        name: /see my previous reports|voir mes retours/i,
+      });
+      await expect(link).toHaveAttribute("target", "_blank");
+      await expect(link).toHaveAttribute("href", "/auth/profile/feedback");
+
+      // No link anywhere on the form points into the members-only project.
+      const projectLinks = reporter.page.locator(
+        `a[href^="/p/${projectId}/"], a[href$="/p/${projectId}"]`,
+      );
+      await expect(projectLinks).toHaveCount(0);
+
       await expect(
         reporter.page.getByText(/something went wrong/i),
       ).toHaveCount(0);
-      expect(reporter.page.url()).not.toMatch(
-        new RegExp(`/p/${projectId}(?:/|$)`),
-      );
     } finally {
       await reporter.ctx.close();
     }

@@ -10,12 +10,14 @@ import { Input } from "@alepha/ui/components/ui/input";
 import { Label } from "@alepha/ui/components/ui/label";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { AlephaError } from "alepha";
+import type { MyPasswordController } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { GitBranch, Key, Lock, Shield, User } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import type { IdentityController } from "@/api/controllers/IdentityController.ts";
+import type { I18n } from "../../services/I18n.ts";
 
 export interface MyIdentitiesProps {
   identities: Array<{
@@ -31,13 +33,15 @@ const MyIdentities = (props: MyIdentitiesProps) => {
   const { identities } = props;
   const [opened, setOpened] = useState(false);
   const [localIdentities, setLocalIdentities] = useState(identities);
+  const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const identityApi = useClient<IdentityController>();
+  const passwordApi = useClient<MyPasswordController>();
   const toaster = useToast();
   const dt = useInject(DateTimeProvider);
-  const { l } = useI18n();
+  const { l, tr } = useI18n<I18n, "en">();
 
   const hasPasswordIdentity = localIdentities.some(
     (identity) => identity.provider === "credentials",
@@ -45,18 +49,54 @@ const MyIdentities = (props: MyIdentitiesProps) => {
 
   const close = () => {
     setOpened(false);
+    setCurrentPassword("");
     setPassword("");
     setConfirmPassword("");
   };
 
+  /**
+   * Changing an existing password goes through a DIFFERENT endpoint than
+   * setting a first one, and deliberately so.
+   *
+   * `identityApi.setPassword` takes only the new password and trusts the
+   * session — defensible when there is no password yet, since there is nothing
+   * to prove knowledge of. Reusing it to *change* one would make an unattended
+   * signed-in browser a full account takeover.
+   *
+   * `changeMyPassword` is the framework's self-service path and already makes
+   * both calls this needs: it verifies `currentPassword`, and it revokes every
+   * OTHER session while keeping this one — the usual reason to change a
+   * password is believing someone else has it, and leaving their session alive
+   * would accomplish nothing. It reports how many it ended, which is why the
+   * toast can say so rather than leave the person guessing about their phone.
+   */
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      toaster.show("Passwords do not match", "danger");
+      toaster.show(
+        String(tr("profile.identities.password.mismatch")),
+        "danger",
+      );
       return;
     }
     setSubmitting(true);
     try {
+      if (hasPasswordIdentity) {
+        const { otherSessionsRevoked } = await passwordApi.changeMyPassword({
+          body: { currentPassword, newPassword: password },
+        });
+        toaster.show(
+          String(
+            tr("profile.identities.password.changed", {
+              args: [String(otherSessionsRevoked)],
+            }),
+          ),
+          "success",
+        );
+        close();
+        return;
+      }
+
       const { success } = await identityApi.setPassword({
         body: { password },
       });
@@ -74,7 +114,7 @@ const MyIdentities = (props: MyIdentitiesProps) => {
           updatedAt: nowIso,
         },
       ]);
-      toaster.show("Password has been set successfully", "success");
+      toaster.show(String(tr("profile.identities.password.wasSet")), "success");
       close();
     } catch (error: any) {
       toaster.show(error?.message || "Failed to set password", "danger");
@@ -104,12 +144,14 @@ const MyIdentities = (props: MyIdentitiesProps) => {
           <span className="text-lg font-bold">Identities</span>
           <Badge variant="secondary">{localIdentities.length}</Badge>
         </div>
-        {!hasPasswordIdentity && (
-          <Button variant="secondary" size="sm" onClick={() => setOpened(true)}>
-            <Lock className="size-3.5" />
-            Set Password
-          </Button>
-        )}
+        <Button variant="secondary" size="sm" onClick={() => setOpened(true)}>
+          <Lock className="size-3.5" />
+          {tr(
+            hasPasswordIdentity
+              ? "profile.identities.password.change"
+              : "profile.identities.password.set",
+          )}
+        </Button>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -155,21 +197,46 @@ const MyIdentities = (props: MyIdentitiesProps) => {
       <Dialog open={opened} onOpenChange={(o) => !o && close()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Set Password</DialogTitle>
+            <DialogTitle>
+              {tr(
+                hasPasswordIdentity
+                  ? "profile.identities.password.change"
+                  : "profile.identities.password.set",
+              )}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <span className="text-sm text-muted-foreground">
-              Set up a password to sign in with your email address without going
-              through an external provider.
+              {tr(
+                hasPasswordIdentity
+                  ? "profile.identities.password.changeHint"
+                  : "profile.identities.password.setHint",
+              )}
             </span>
+            {hasPasswordIdentity && (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="currentPassword">
+                  {tr("profile.identities.password.current")}
+                </Label>
+                <Input
+                  id="currentPassword"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  autoComplete="current-password"
+                  required
+                />
+              </div>
+            )}
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">
+                {tr("profile.identities.password.new")}
+              </Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password"
                 autoComplete="new-password"
                 minLength={6}
                 maxLength={128}
@@ -177,13 +244,14 @@ const MyIdentities = (props: MyIdentitiesProps) => {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword">
+                {tr("profile.identities.password.confirm")}
+              </Label>
               <Input
                 id="confirmPassword"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm password"
                 autoComplete="new-password"
                 minLength={6}
                 maxLength={128}
@@ -192,10 +260,14 @@ const MyIdentities = (props: MyIdentitiesProps) => {
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="ghost" onClick={close}>
-                Cancel
+                {tr("profile.identities.password.cancel")}
               </Button>
               <Button type="submit" disabled={submitting}>
-                Set Password
+                {tr(
+                  hasPasswordIdentity
+                    ? "profile.identities.password.change"
+                    : "profile.identities.password.set",
+                )}
               </Button>
             </div>
           </form>

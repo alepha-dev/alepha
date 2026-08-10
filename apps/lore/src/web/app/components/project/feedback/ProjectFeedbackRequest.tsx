@@ -360,25 +360,6 @@ const ProjectFeedbackRequest = () => {
     setAttachments((prev) => prev.filter((a) => a.id !== id));
   };
 
-  // Cancelling must never push to the project view: that route is
-  // members-only (`assertMember`), but this form is open to ANY logged-in
-  // user (it's the external feedback channel), so a non-member reporter would
-  // 403 into the error boundary — the bug feedback #7 reported. Instead:
-  // close the sigil popup (as a successful submit does), else go back, else
-  // land on the reporter's own feedback list.
-  const handleCancel = () => {
-    if (typeof window === "undefined") return;
-    if (window.name === "lore-feedback") {
-      window.close();
-      return;
-    }
-    if (window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-    void meRouter.push("myFeedback");
-  };
-
   if (!auth.user) {
     // Anonymous: invite to log in. The draft was already persisted to
     // sessionStorage on mount, so it survives the round-trip through Google.
@@ -564,15 +545,35 @@ const ProjectFeedbackRequest = () => {
                   )}
                 </div>
 
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={handleCancel}
-                    disabled={submitting}
+                {/*
+                  No Cancel button (#174). It sat one edge away from Submit and
+                  threw the report away with no prompt: in the sigil popup —
+                  the primary way this form is reached — it called
+                  `window.close()`, and the draft lives in `sessionStorage`,
+                  which dies with the window. Text and uploaded attachments,
+                  gone, unrecoverable, next to the button you meant to press.
+                  The popup already closes from its own chrome and a normal tab
+                  has the back button, so nothing was lost with it.
+
+                  The link on the left is deliberately at the FAR end of this
+                  row from Submit, for the same reason (#175).
+                */}
+                <div className="flex items-center justify-between gap-2 pt-2">
+                  {/*
+                    A plain anchor, not the router's `Link`: inside the popup a
+                    client-side navigation would replace this document — losing
+                    the form — and a full page load would trap the whole app in
+                    a 540×790 chrome-less window. `target="_blank"` opens it in
+                    the parent browser, which is right in a normal tab too.
+                  */}
+                  <a
+                    href={meRouter.path("myFeedback")}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-muted-foreground hover:text-foreground text-xs underline underline-offset-2"
                   >
-                    {tr("feedback.request.cancel")}
-                  </Button>
+                    {tr("feedback.request.myFeedbackLink")}
+                  </a>
                   <Button type="submit" disabled={submitting || uploading}>
                     {submitting && <Loader2 className="size-4 animate-spin" />}
                     {tr("feedback.request.submit")}

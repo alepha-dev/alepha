@@ -683,7 +683,6 @@ export default {
   "app.tab.dashboard": "Vue d'ensemble",
   "app.tab.analytics": "Audience",
   "app.tab.performance": "Performance",
-  "app.tab.errors": "Erreurs",
   "app.tab.settings": "Paramètres",
   "app.dashboard.errors": "Erreurs toujours d'actualité",
   "app.dashboard.beaconOff":
@@ -740,16 +739,6 @@ export default {
   "insights.vitals.good": "Bon",
   "insights.vitals.needsImprovement": "À améliorer",
   "insights.vitals.poor": "Médiocre",
-  "insights.errors.title": "Budget d'erreurs",
-  "insights.errors.subtitle": "par application",
-  "insights.errors.heading": "Toujours d'actualité",
-  "insights.errors.col.error": "Erreur",
-  "insights.errors.col.app": "Application",
-  "insights.errors.col.count": "Occurrences",
-  "insights.errors.col.firstSeen": "Première fois",
-  "insights.errors.col.lastSeen": "Dernière fois",
-  "insights.errors.empty":
-    "Aucune erreur signalée sur cette période. Contrairement à la boîte des fléaux, cette liste garde chaque application séparée — un bug corrigé dans une application reste visible ici si une autre le déclenche encore.",
 
   "blights.empty":
     "Aucun fléau. Les plantages capturés par vos sigils apparaîtront ici.",
@@ -897,7 +886,7 @@ export default {
   "feedback.request.success": "Retour envoyé",
   "feedback.request.error": "Échec de l'envoi du retour",
   "feedback.request.submit": "Envoyer le retour",
-  "feedback.request.cancel": "Annuler",
+  "feedback.request.myFeedbackLink": "Voir mes retours précédents",
   "feedback.request.submittingAs": "En tant que",
   "feedback.request.forProject": "pour le projet",
   "feedback.request.loginRequiredTitle":
@@ -937,4 +926,28 @@ export default {
     "L'utilisateur sera déconnecté de cette session.",
   "admin.sessions.revoked": "Session révoquée",
   "admin.sessions.bulkRevokeTitle": "Révoquer les sessions",
+
+  "profile.apiKeys.revoke.title": "Révoquer « {0} » ?",
+  "profile.apiKeys.revoke.description":
+    "Tout client Claude ou MCP utilisant cette clé cessera immédiatement de fonctionner. La clé est irrécupérable — il faudrait en créer une nouvelle et reconfigurer chaque client.",
+  "profile.apiKeys.revoke.confirm": "Révoquer la clé",
+  "profile.sessions.revokeAll.title": "Se déconnecter partout ?",
+  "profile.sessions.revokeAll.description":
+    "Toutes les sessions sont révoquées, y compris celle-ci — vous serez déconnecté immédiatement. Une nouvelle connexion rétablit l'accès.",
+  "profile.sessions.revokeAll.confirm": "Se déconnecter partout",
+  "profile.identities.password.set": "Définir un mot de passe",
+  "profile.identities.password.change": "Changer le mot de passe",
+  "profile.identities.password.setHint":
+    "Définissez un mot de passe pour vous connecter avec votre adresse e-mail, sans passer par un fournisseur externe.",
+  "profile.identities.password.changeHint":
+    "Changer votre mot de passe déconnecte tous vos autres appareils. Celui-ci reste connecté.",
+  "profile.identities.password.current": "Mot de passe actuel",
+  "profile.identities.password.new": "Nouveau mot de passe",
+  "profile.identities.password.confirm": "Confirmer le mot de passe",
+  "profile.identities.password.cancel": "Annuler",
+  "profile.identities.password.mismatch":
+    "Les mots de passe ne correspondent pas.",
+  "profile.identities.password.wasSet": "Mot de passe défini.",
+  "profile.identities.password.changed":
+    "Mot de passe modifié. {0} autre(s) session(s) déconnectée(s).",
 };

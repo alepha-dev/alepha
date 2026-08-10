@@ -51,7 +51,6 @@ const ROUTES_APP = new Set([
   "app",
   "appAnalytics",
   "appPerformance",
-  "appErrors",
   "appSettings",
 ]);
 
@@ -79,7 +78,6 @@ const SECTION_LABEL_KEYS: Record<string, string> = {
   app: "project.menu.apps",
   appAnalytics: "project.menu.apps",
   appPerformance: "project.menu.apps",
-  appErrors: "project.menu.apps",
   appSettings: "project.menu.apps",
   projectSettings: "project.menu.settings",
   projectSettingsBanner: "project.menu.settings",

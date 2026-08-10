@@ -428,7 +428,6 @@ export class AppRouter {
       this.app,
       this.appAnalytics,
       this.appPerformance,
-      this.appErrors,
       this.appSettings,
     ],
     schema: {
@@ -520,18 +519,6 @@ export class AppRouter {
       title: `${previous?.title ?? ""} › Performance`,
     }),
     lazy: () => import("./components/project/apps/AppPerformance.tsx"),
-    loader: async () => {
-      this.assertBeacon();
-    },
-  });
-
-  appErrors = $page({
-    name: "appErrors",
-    path: "/errors",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Errors`,
-    }),
-    lazy: () => import("./components/project/apps/AppErrors.tsx"),
     loader: async () => {
       this.assertBeacon();
     },

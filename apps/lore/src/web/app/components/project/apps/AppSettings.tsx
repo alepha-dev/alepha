@@ -134,7 +134,9 @@ const AppSettings = () => {
   };
 
   return (
-    <div className="flex max-w-3xl flex-col gap-4">
+    // `max-w-3xl` kept as an inner measure — settings cards read badly at full
+    // width — but the centring lives on `AppLayout` so every tab shares it.
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
       {freshToken && (
         <TokenReveal
           token={freshToken}
