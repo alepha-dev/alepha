@@ -4,7 +4,6 @@ import { AnalyticsProvider } from "./providers/AnalyticsProvider.ts";
 import { MemoryAnalyticsProvider } from "./providers/MemoryAnalyticsProvider.ts";
 import { OrmAnalyticsProvider } from "./providers/OrmAnalyticsProvider.ts";
 
-export * from "./__tests__/FakeAnalyticsEngine.ts";
 export * from "./planner/AnalyticsBuckets.ts";
 export * from "./planner/AnalyticsSlotMap.ts";
 export * from "./primitives/$analytics.ts";
