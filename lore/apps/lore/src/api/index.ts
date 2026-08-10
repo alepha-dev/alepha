@@ -1,3 +1,4 @@
+import { AlephaAnalyticsRollup } from "@alepha/analytics";
 import { $module } from "alepha";
 import { AdminInvitationController } from "./controllers/AdminInvitationController.ts";
 import { BlightController } from "./controllers/BlightController.ts";
@@ -50,6 +51,16 @@ import { SigilTokenService } from "./services/SigilTokenService.ts";
 
 export const LoreApi = $module({
   name: "lore.api",
+  // `$analytics()` (used by `LoreAnalytics`) auto-wires `AlephaAnalytics`
+  // itself the moment a dataset is injected — the same module-tagging
+  // mechanism `$repository` uses for `AlephaOrm`. The hourly retention sweep
+  // does not: `AnalyticsRollupJobs` lives in the separate `AlephaAnalyticsRollup`
+  // module specifically so declaring a dataset never forces a database
+  // connection onto an app that has none. Both `sigil_views` and
+  // `sigil_vitals` declare `retention.hot`, so this import is required, not
+  // optional — without it the sweep never runs and the raw tables grow
+  // forever with no error (see `AnalyticsRetentionGuard`'s boot warning).
+  imports: [AlephaAnalyticsRollup],
   services: [
     // Declares the `$realm`. Nothing injects it — it must be listed here
     // explicitly or the realm (and every permission) is never registered.

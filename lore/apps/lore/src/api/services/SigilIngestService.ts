@@ -8,6 +8,7 @@ import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, sql } from "alepha/orm";
 import { blights } from "../entities/blights.ts";
+import { LoreAnalytics } from "../entities/loreAnalytics.ts";
 import { projects } from "../entities/projects.ts";
 import { sigilErrorGroups } from "../entities/sigilErrorGroups.ts";
 import { type Sigil, type SigilKind, sigils } from "../entities/sigils.ts";
@@ -78,6 +79,15 @@ export class SigilIngestService {
    * "deliberately not here".
    */
   protected readonly analytics = $inject(LoreAnalyticsStore);
+
+  /**
+   * Dual-write target for Task 11: mirrors views and vitals into the
+   * portable `$analytics()` datasets alongside `sigilViewsHourly` /
+   * `sigilVitalsHourly`. Every read still goes through `analytics` above —
+   * nothing consumes these datasets yet, so this is reversible by deleting
+   * the two `recordMany` calls below.
+   */
+  protected readonly datasets = $inject(LoreAnalytics);
 
   protected readonly projects = $repository(projects);
   protected readonly sigils = $repository(sigils);
@@ -336,6 +346,20 @@ export class SigilIngestService {
         ? [{ sigilId: sigil.id, day, visitorHash: visitor }]
         : [],
     });
+
+    // Dual-write while `sigil_views` fills under real traffic. Reads stay on
+    // the old table above until a later task switches them, so this is
+    // reversible by deleting this call. `uniques` has no counterpart here —
+    // it stays bespoke, see `LoreAnalytics`'s class doc.
+    await this.datasets.views.recordMany(
+      [...buckets.values()].map((bucket) => ({
+        sigilId: sigil.id,
+        path: bucket.path,
+        country: bucket.country,
+        count: bucket.count,
+        hour: bucket.hour,
+      })),
+    );
   }
 
   protected async absorbVitals(
@@ -378,6 +402,20 @@ export class SigilIngestService {
         ...sample,
       })),
     });
+
+    // Dual-write while `sigil_vitals` fills under real traffic. Reads stay on
+    // the old table above until a later task switches them, so this is
+    // reversible by deleting this call.
+    await this.datasets.vitals.recordMany(
+      [...samples.values()].map((sample) => ({
+        sigilId: sigil.id,
+        metric: sample.metric,
+        path: sample.path,
+        bucket: sample.bucket,
+        samples: sample.count,
+        hour: sample.hour,
+      })),
+    );
   }
 
   /**
