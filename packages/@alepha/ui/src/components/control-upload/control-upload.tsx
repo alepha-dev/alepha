@@ -35,6 +35,10 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  type ResizeImageOptions,
+  resizeImage,
+} from "../../lib/resize-image.ts";
 
 export interface ControlUploadProps {
   /**
@@ -63,6 +67,24 @@ export interface ControlUploadProps {
    * Max size per file (bytes). Files over the limit are rejected.
    */
   maxSize?: number;
+  /**
+   * Downscale images to these bounds before uploading.
+   *
+   * Set it wherever the result is rendered small — the bytes never leave the
+   * machine, so it speeds up the upload as well as every later fetch. Applied
+   * before {@link maxSize}, so a photo that would have been rejected for being
+   * too large is resized and accepted instead.
+   *
+   * Best-effort by design: a browser without `OffscreenCanvas`, an SVG, or an
+   * image the decoder chokes on is uploaded as-is, and the storage's own
+   * `maxSize` remains what actually bounds it. That trade is deliberate — a
+   * server-side codec able to close the gap costs more bundle than the case is
+   * worth on an edge runtime, and encodes worse (see `files:beforeUpload` in
+   * `alepha/api/files` for where it would attach if you want it anyway).
+   *
+   * @example { maxWidth: 256 }
+   */
+  image?: ResizeImageOptions;
   /**
    * Bucket name passed to the upload endpoint.
    */
@@ -170,7 +192,11 @@ export function ControlUpload(props: ControlUploadProps) {
 
     try {
       for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+        // Ahead of the size check on purpose: a 4 MB photo destined for a 32px
+        // avatar should become a few kilobytes, not an error.
+        const file = props.image
+          ? await resizeImage(files[i], props.image)
+          : files[i];
 
         if (props.maxSize && file.size > props.maxSize) {
           toast.error(

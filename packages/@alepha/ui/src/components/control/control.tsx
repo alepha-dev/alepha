@@ -222,7 +222,10 @@ export interface ControlProps {
    */
   upload?:
     | boolean
-    | Pick<ControlUploadProps, "multi" | "accept" | "maxSize" | "bucket">;
+    | Pick<
+        ControlUploadProps,
+        "multi" | "accept" | "maxSize" | "bucket" | "image"
+      >;
 }
 
 /**

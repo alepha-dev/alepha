@@ -228,6 +228,19 @@ export class ServerEtagProvider {
         return;
       }
 
+      // Initialize headers if not present
+      response.headers ??= {};
+
+      // Error responses get NOTHING from this middleware — not even the
+      // Cache-Control header. The directive describes the route, not the
+      // outcome, so a route declaring `public, max-age=1y, immutable` used to
+      // hand that to its own 404s: the header was set here, above the guard
+      // below, which only ever skipped the store/etag work. Every browser that
+      // saw one transient failure then pinned it for a year.
+      if (response.status && response.status >= 400) {
+        return;
+      }
+
       // Set Cache-Control header if configured
       const cacheControl = this.buildCacheControlHeader(options);
       if (cacheControl) {
@@ -246,14 +259,6 @@ export class ServerEtagProvider {
       if (request.metadata?.etagHit) {
         return;
       }
-
-      // Don't cache error responses (status >= 400)
-      if (response.status && response.status >= 400) {
-        return;
-      }
-
-      // Initialize headers if not present
-      response.headers ??= {};
 
       const key = this.createCacheKey(route, request);
 

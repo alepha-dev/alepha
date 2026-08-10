@@ -219,6 +219,32 @@ class TestApp {
     },
   });
 
+  /**
+   * The immutable-year pair: same `control`, one outcome each. Together they
+   * pin that the directive follows the route on success and never rides along
+   * on a failure.
+   */
+  immutableFileAction = $action({
+    use: [
+      $etag({
+        control: { public: true, maxAge: [1, "year"], immutable: true },
+      }),
+    ],
+    handler: () => "file-bytes",
+  });
+
+  immutableMissingFileAction = $action({
+    use: [
+      $etag({
+        control: { public: true, maxAge: [1, "year"], immutable: true },
+      }),
+    ],
+    handler: ({ reply }) => {
+      reply.status = 404;
+      return "not-found";
+    },
+  });
+
   conditionalErrorAction = $action({
     use: [$etag(true)],
     handler: ({ reply }) => {
@@ -1259,6 +1285,21 @@ describe("ServerEtagProvider", () => {
       const successResponse2 = await app.conditionalErrorAction.fetch();
       expect(successResponse2.status).toBe(304);
       expect(successResponse2.data).toBe("success-1");
+    });
+
+    test("should NOT set Cache-Control on an error response", async ({
+      expect,
+    }) => {
+      // Regression: the header was written above the status guard, so a route
+      // declaring `public, max-age=1y, immutable` handed it to its own 404s
+      // and every browser that saw one pinned the failure for a year.
+      const ok = await app.immutableFileAction.fetch();
+      expect(ok.status).toBe(200);
+      expect(ok.headers.get("cache-control")).toContain("immutable");
+
+      const missing = await app.immutableMissingFileAction.fetch();
+      expect(missing.status).toBe(404);
+      expect(missing.headers.get("cache-control")).toBeNull();
     });
 
     test("should NOT cache 4xx client errors", async ({ expect }) => {

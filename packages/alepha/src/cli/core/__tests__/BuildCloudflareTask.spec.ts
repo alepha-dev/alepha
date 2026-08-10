@@ -317,6 +317,84 @@ describe("BuildCloudflareTask", () => {
       );
     });
 
+    describe("edge cache", () => {
+      /**
+       * Lifts the generated `isEdgeCacheable` predicate out of the emitted
+       * worker and makes it callable, so these assert what the policy DOES
+       * rather than how it is spelled. It is the only thing standing between
+       * a shared, URL-keyed cache and a per-user response.
+       */
+      const loadPolicy = async () => {
+        const { task, fs } = createTaskWithFs();
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+        const source = await fs.readTextFile(ENTRY);
+        const start = source.indexOf("const isEdgeCacheable");
+        const end = source.indexOf("export default");
+        return new Function(
+          `${source.slice(start, end)}; return isEdgeCacheable;`,
+        )() as (request: Request, response?: Response) => boolean;
+      };
+
+      const req = (headers: Record<string, string> = {}, method = "GET") =>
+        new Request("https://x.test/api/public/files/abc", { method, headers });
+
+      const res = (headers: Record<string, string>, status = 200) =>
+        new Response("bytes", { status, headers });
+
+      const PUBLIC = { "cache-control": "public, max-age=31536000, immutable" };
+
+      it("caches a public, anonymous, 200 GET", async () => {
+        const isEdgeCacheable = await loadPolicy();
+        expect(isEdgeCacheable(req(), res(PUBLIC))).toBe(true);
+      });
+
+      it("refuses a response the caller's identity could have shaped", async () => {
+        const isEdgeCacheable = await loadPolicy();
+        // A shared entry is keyed by URL alone, so a credentialed request must
+        // stay out however loudly the route opts in.
+        expect(
+          isEdgeCacheable(req({ authorization: "Bearer t" }), res(PUBLIC)),
+        ).toBe(false);
+        expect(isEdgeCacheable(req({ cookie: "sid=1" }), res(PUBLIC))).toBe(
+          false,
+        );
+        expect(
+          isEdgeCacheable(req(), res({ ...PUBLIC, "set-cookie": "sid=1" })),
+        ).toBe(false);
+      });
+
+      it("refuses anything the route did not declare public", async () => {
+        const isEdgeCacheable = await loadPolicy();
+        expect(
+          isEdgeCacheable(req(), res({ "cache-control": "private, no-cache" })),
+        ).toBe(false);
+        expect(isEdgeCacheable(req(), res({}))).toBe(false);
+        expect(
+          isEdgeCacheable(req(), res({ "cache-control": "public, no-store" })),
+        ).toBe(false);
+      });
+
+      it("refuses non-GET and non-200", async () => {
+        const isEdgeCacheable = await loadPolicy();
+        expect(isEdgeCacheable(req({}, "POST"), res(PUBLIC))).toBe(false);
+        expect(isEdgeCacheable(req(), res(PUBLIC, 404))).toBe(false);
+        expect(isEdgeCacheable(req(), res(PUBLIC, 206))).toBe(false);
+        expect(isEdgeCacheable(req(), undefined)).toBe(false);
+      });
+
+      it("looks the cache up before booting the container", async () => {
+        const { task, fs } = createTaskWithFs();
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+        const source = await fs.readTextFile(ENTRY);
+
+        // The whole point: a hit that still paid for __alepha.start() would
+        // leave the expensive half of a cold request exactly where it was.
+        expect(source.indexOf("cache.match(request)")).toBeLessThan(
+          source.indexOf("await __alepha.start()"),
+        );
+      });
+    });
+
     describe("websocket routing", () => {
       it("re-exports the DO class and adds an upgrade branch when websocket is present", async () => {
         const { task, fs } = createTaskWithFs();

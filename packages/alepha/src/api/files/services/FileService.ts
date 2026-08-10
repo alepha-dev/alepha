@@ -241,7 +241,6 @@ export class FileService {
 
     if ("buffered" in peek) {
       const data = peek.buffered;
-      checksum = this.hashBuffer(data.buffer as ArrayBuffer);
       file = this.fileSystem.createFile({
         arrayBuffer: data.buffer as ArrayBuffer,
         name: file.name,
@@ -249,6 +248,20 @@ export class FileService {
       });
 
       this.assertAllowed(file, storage);
+
+      // Ahead of the checksum, because a subscriber that rewrites the bytes
+      // must have the row describe what was actually stored — hashing first
+      // would pin the checksum, the size and the MIME type to a file nobody can
+      // fetch. After `assertAllowed`, so an oversized upload is refused before
+      // any subscriber spends work on it.
+      //
+      // Only this branch. The streaming path below never holds the whole file,
+      // and a subscriber that cannot see the bytes cannot transform them.
+      const ev = { file, storage };
+      await this.alepha.events.emit("files:beforeUpload", ev);
+      file = ev.file;
+
+      checksum = this.hashBuffer(await file.arrayBuffer());
       blobId = await storage.provider.upload(storage.name, file);
     } else {
       // MIME is known from the headers, so it is still checked up front. Size

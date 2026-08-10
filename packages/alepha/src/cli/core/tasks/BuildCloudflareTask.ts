@@ -665,9 +665,52 @@ const bindEnv = (env) => {
   __alepha.loadEnv(env);
 };
 
+// --- Edge cache -------------------------------------------------------------
+//
+// Cloudflare's CDN sits in front of an ORIGIN, not in front of a Worker: a
+// response this Worker generates is never stored, no matter what its
+// Cache-Control says. Measured against lore.alepha.dev before this existed —
+// \`/api/public/files/:id\` returned \`public, max-age=1y, immutable\` and no
+// \`cf-cache-status\` header at all, while a static asset on the same zone came
+// back \`cf-cache-status: HIT\`. So the header only ever reached browsers, and
+// every new visitor re-paid the full D1 + R2 round trip.
+//
+// \`Cache-Control: public\` IS the opt-in. A route that declares its body
+// shareable across users has already made exactly the statement a shared cache
+// needs; nothing else is stored, and \`private\` (the default everywhere else)
+// keeps a route out by construction.
+const edgeCache = () =>
+  typeof caches !== "undefined" && caches.default ? caches.default : undefined;
+
+// A shared entry is keyed by URL ALONE. Anything the caller's identity could
+// have influenced must stay out however loudly the route opts in — hence the
+// request-side credential check, which no Cache-Control directive can override.
+const isEdgeCacheable = (request, response) => {
+  if (request.method !== "GET") return false;
+  if (request.headers.has("authorization")) return false;
+  if (request.headers.has("cookie")) return false;
+  if (!response || response.status !== 200) return false;
+  // \`put\` rejects a Set-Cookie response outright; refusing here keeps that a
+  // decision rather than a caught exception.
+  if (response.headers.has("set-cookie")) return false;
+  const control = response.headers.get("cache-control") ?? "";
+  return control.includes("public") && !control.includes("no-store");
+};
+
 export default {
   fetch: async (request, env, executionCtx) => {${upgradeBranch}
     const ctx = { req: request, res: undefined };
+
+    // Before \`__alepha.start()\`, deliberately. A hit that still paid for the
+    // container boot would leave the expensive half of a cold request exactly
+    // where it was — that boot is what separates a 60ms warm response from a
+    // 700-990ms cold one. Consulting the cache for every GET is safe because
+    // only \`isEdgeCacheable\` responses are ever written to it.
+    const cache = edgeCache();
+    if (cache && request.method === "GET") {
+      const hit = await cache.match(request);
+      if (hit) return hit;
+    }
 
     bindEnv(env);
 
@@ -681,6 +724,18 @@ export default {
     await withExecutionContext(executionCtx, () =>
       __alepha.events.emit("web:request", ctx),
     );
+
+    if (cache && isEdgeCacheable(request, ctx.res)) {
+      // \`put\` drains the body it is given, so the clone goes to the cache and
+      // the original goes to the client. waitUntil keeps the isolate alive
+      // until the write lands instead of racing the response.
+      const stored = ctx.res.clone();
+      if (executionCtx && typeof executionCtx.waitUntil === "function") {
+        executionCtx.waitUntil(cache.put(request, stored));
+      } else {
+        await cache.put(request, stored);
+      }
+    }
 
     return ctx.res;
   },

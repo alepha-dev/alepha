@@ -105,6 +105,8 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
             // Bucket value stays "campaign-icons" — see the note on
             // `iconBucket` in `ProjectController.ts`.
             bucket: "campaign-icons",
+            // Matches the server-side `image` constraint on that bucket.
+            image: { maxWidth: 256 },
           },
         },
         title: {
