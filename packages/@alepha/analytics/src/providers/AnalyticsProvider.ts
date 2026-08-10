@@ -21,6 +21,16 @@ export type AnalyticsRow = Record<string, string | number> & { hour: string };
  * both layouts.
  */
 export abstract class AnalyticsProvider {
+  /**
+   * Declares a dataset before the container starts.
+   *
+   * Synchronous and eager by requirement, not by preference: a relational
+   * backend has to have its tables registered before `migrate()` runs, and the
+   * container is locked by then. Backends with nothing to declare — memory,
+   * and Analytics Engine's hot tier — implement this as a no-op.
+   */
+  abstract register(dataset: AnalyticsDataset): void;
+
   abstract record(
     dataset: AnalyticsDataset,
     rows: AnalyticsRow[],

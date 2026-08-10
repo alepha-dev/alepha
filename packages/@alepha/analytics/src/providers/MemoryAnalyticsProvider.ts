@@ -23,6 +23,14 @@ import { AnalyticsProvider, type AnalyticsRow } from "./AnalyticsProvider.ts";
 export class MemoryAnalyticsProvider extends AnalyticsProvider {
   protected readonly stored = new Map<string, AnalyticsRow[]>();
 
+  /**
+   * No-op: memory storage is a plain `Map` keyed by dataset name at first
+   * write, so there is nothing to declare ahead of time.
+   */
+  public register(): void {
+    // Nothing to declare — see the class doc.
+  }
+
   public async record(
     dataset: AnalyticsDataset,
     rows: AnalyticsRow[],
