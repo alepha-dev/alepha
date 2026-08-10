@@ -1,5 +1,7 @@
 import { $analytics } from "@alepha/analytics";
 import { z } from "alepha";
+import { db } from "alepha/orm";
+import { sigils } from "./sigils.ts";
 
 /**
  * Lore's two portable analytics datasets.
@@ -11,7 +13,15 @@ import { z } from "alepha";
  *
  * `sigilId` is the index dimension on both: Analytics Engine samples equitably
  * per index value, and per-app is the granularity every Insights read filters
- * on.
+ * on. It is also a real `db.ref` into `sigils`, `onDelete: "cascade"` — the
+ * same shape `sigilErrorGroups` uses. Without it, once the legacy aggregate
+ * tables are eventually deleted, deleting a sigil would orphan its analytics
+ * here forever instead of erasing them, breaking the "rotate, don't delete"
+ * guidance the UI gives operators specifically because the legacy tables
+ * cascade. `db.ref` mutates the zod schema in place (`pgAttr`), so this
+ * metadata survives `AnalyticsEntityFactory`'s spread into `$entity` — the
+ * relational backend gets a real foreign key, and Memory / Analytics Engine
+ * are unaffected since both only ever read `Object.keys(dimensions.shape)`.
  *
  * `SigilIngestService` dual-writes into these alongside `sigilViewsHourly` /
  * `sigilVitalsHourly` — every read still goes through the legacy tables until
@@ -22,7 +32,9 @@ export class LoreAnalytics {
     name: "sigil_views",
     index: "sigilId",
     dimensions: z.object({
-      sigilId: z.string(),
+      sigilId: db.ref(z.uuid(), () => sigils.cols.id, {
+        onDelete: "cascade",
+      }),
       path: z.string(),
       country: z.string(),
     }),
@@ -41,7 +53,9 @@ export class LoreAnalytics {
     name: "sigil_vitals",
     index: "sigilId",
     dimensions: z.object({
-      sigilId: z.string(),
+      sigilId: db.ref(z.uuid(), () => sigils.cols.id, {
+        onDelete: "cascade",
+      }),
       metric: z.string(),
       path: z.string(),
       bucket: z.number(),

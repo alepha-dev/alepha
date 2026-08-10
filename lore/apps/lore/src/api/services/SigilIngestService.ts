@@ -6,6 +6,7 @@ import { bucketIndex, type VitalMetric } from "@alepha/sigil/vitals";
 import { $inject, Alepha } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
+import { $logger } from "alepha/logger";
 import { $repository, sql } from "alepha/orm";
 import { blights } from "../entities/blights.ts";
 import { LoreAnalytics } from "../entities/loreAnalytics.ts";
@@ -69,6 +70,7 @@ export class SigilIngestService {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly rules = $inject(BlightRuleService);
+  protected readonly log = $logger();
 
   /**
    * Views, uniques and vitals go through the store, never through a
@@ -350,15 +352,18 @@ export class SigilIngestService {
     // Dual-write while `sigil_views` fills under real traffic. Reads stay on
     // the old table above until a later task switches them, so this is
     // reversible by deleting this call. `uniques` has no counterpart here —
-    // it stays bespoke, see `LoreAnalytics`'s class doc.
-    await this.datasets.views.recordMany(
-      [...buckets.values()].map((bucket) => ({
-        sigilId: sigil.id,
-        path: bucket.path,
-        country: bucket.country,
-        count: bucket.count,
-        hour: bucket.hour,
-      })),
+    // it stays bespoke, see `LoreAnalytics`'s class doc. Isolated through
+    // `mirrorAnalyticsWrite` — see that method's doc for why.
+    await this.mirrorAnalyticsWrite("sigil_views", () =>
+      this.datasets.views.recordMany(
+        [...buckets.values()].map((bucket) => ({
+          sigilId: sigil.id,
+          path: bucket.path,
+          country: bucket.country,
+          count: bucket.count,
+          hour: bucket.hour,
+        })),
+      ),
     );
   }
 
@@ -405,17 +410,49 @@ export class SigilIngestService {
 
     // Dual-write while `sigil_vitals` fills under real traffic. Reads stay on
     // the old table above until a later task switches them, so this is
-    // reversible by deleting this call.
-    await this.datasets.vitals.recordMany(
-      [...samples.values()].map((sample) => ({
-        sigilId: sigil.id,
-        metric: sample.metric,
-        path: sample.path,
-        bucket: sample.bucket,
-        samples: sample.count,
-        hour: sample.hour,
-      })),
+    // reversible by deleting this call. Isolated through
+    // `mirrorAnalyticsWrite` — see that method's doc for why.
+    await this.mirrorAnalyticsWrite("sigil_vitals", () =>
+      this.datasets.vitals.recordMany(
+        [...samples.values()].map((sample) => ({
+          sigilId: sigil.id,
+          metric: sample.metric,
+          path: sample.path,
+          bucket: sample.bucket,
+          samples: sample.count,
+          hour: sample.hour,
+        })),
+      ),
     );
+  }
+
+  /**
+   * Runs a mirrored `$analytics()` write and swallows whatever it throws.
+   *
+   * The dual-write datasets carry zero production traffic today — nothing
+   * reads them — so a failure on this path must never turn into a failure of
+   * `absorb()` itself. Without this isolation, a transient error on the new
+   * path would do two things it must not: turn a `204` into a `5xx` at
+   * `SigilIngestController`, which has no error handling of its own either,
+   * and — because a throw here would unwind out of `absorbViews` /
+   * `absorbVitals` — skip whatever `absorb()` was about to do next (the
+   * sibling absorb call, and the `lastSeenAt` stamp), silently losing a
+   * legacy-table write that would otherwise have succeeded. Degrading to
+   * "lost telemetry on the new path" is the only acceptable failure mode for
+   * a mirror that nothing depends on yet.
+   */
+  protected async mirrorAnalyticsWrite(
+    dataset: string,
+    write: () => Promise<void>,
+  ): Promise<void> {
+    try {
+      await write();
+    } catch (error) {
+      this.log.warn(
+        "Mirrored analytics write failed; legacy write already committed",
+        { dataset, error },
+      );
+    }
   }
 
   /**

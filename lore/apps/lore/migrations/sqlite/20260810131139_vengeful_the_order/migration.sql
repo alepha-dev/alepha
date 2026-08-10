@@ -3,7 +3,8 @@ CREATE TABLE `analytics_sigil_views_raw` (
 	`sigil_id` text NOT NULL,
 	`path` text NOT NULL,
 	`country` text NOT NULL,
-	`count` real NOT NULL
+	`count` real NOT NULL,
+	CONSTRAINT `fk_analytics_sigil_views_raw_sigil_id_sigils_id_fk` FOREIGN KEY (`sigil_id`) REFERENCES `sigils`(`id`) ON DELETE CASCADE
 );
 --> statement-breakpoint
 CREATE TABLE `analytics_sigil_views_rolled` (
@@ -11,7 +12,8 @@ CREATE TABLE `analytics_sigil_views_rolled` (
 	`sigil_id` text NOT NULL,
 	`path` text NOT NULL,
 	`country` text NOT NULL,
-	`count` real NOT NULL
+	`count` real NOT NULL,
+	CONSTRAINT `fk_analytics_sigil_views_rolled_sigil_id_sigils_id_fk` FOREIGN KEY (`sigil_id`) REFERENCES `sigils`(`id`) ON DELETE CASCADE
 );
 --> statement-breakpoint
 CREATE TABLE `analytics_sigil_vitals_raw` (
@@ -20,7 +22,8 @@ CREATE TABLE `analytics_sigil_vitals_raw` (
 	`metric` text NOT NULL,
 	`path` text NOT NULL,
 	`bucket` real NOT NULL,
-	`samples` real NOT NULL
+	`samples` real NOT NULL,
+	CONSTRAINT `fk_analytics_sigil_vitals_raw_sigil_id_sigils_id_fk` FOREIGN KEY (`sigil_id`) REFERENCES `sigils`(`id`) ON DELETE CASCADE
 );
 --> statement-breakpoint
 CREATE TABLE `analytics_sigil_vitals_rolled` (
@@ -29,7 +32,8 @@ CREATE TABLE `analytics_sigil_vitals_rolled` (
 	`metric` text NOT NULL,
 	`path` text NOT NULL,
 	`bucket` real NOT NULL,
-	`samples` real NOT NULL
+	`samples` real NOT NULL,
+	CONSTRAINT `fk_analytics_sigil_vitals_rolled_sigil_id_sigils_id_fk` FOREIGN KEY (`sigil_id`) REFERENCES `sigils`(`id`) ON DELETE CASCADE
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `analytics_sigil_views_raw_time_bucket_country_path_sigil_id_idx` ON `analytics_sigil_views_raw` (`time_bucket`,`country`,`path`,`sigil_id`);--> statement-breakpoint
