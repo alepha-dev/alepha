@@ -31,6 +31,22 @@ const COUNTRIES_BIG = Array.from({ length: 50 }, (_, i) => ({
   label: `Country #${i + 1}`,
 }));
 
+/**
+ * Short list exercising every per-option feature the old native-`Select`
+ * path dropped below the threshold: description, tag, icon, disabled.
+ */
+const ROLES_SHORT = [
+  {
+    value: "user",
+    label: "User",
+    description: "Everyone gets this",
+    tag: "base",
+    disabled: true,
+  },
+  { value: "editor", label: "Editor", description: "Can write content" },
+  { value: "admin", label: "Admin", description: "Full access", tag: "danger" },
+];
+
 const fakeAsyncSearch = async (q: string) => {
   await new Promise((r) => setTimeout(r, 250));
   const all = COUNTRIES_BIG;
@@ -52,14 +68,14 @@ const schema = z.object({
       $control: { items: ["S", "M", "L", "XL"], width: 50 },
     })
     .describe('$control.items: ["S", "M", "L", "XL"]'),
-  // 3. Rich items {value, label, description, tag} → forces combobox (>20 disabled, force via combobox flag)
+  // 3. Rich items {value, label, description, tag} — no flag needed anymore
   color: z
     .string()
     .meta({
       title: "Color (rich items)",
-      $control: { items: COLORS_RICH, combobox: true, width: 50 },
+      $control: { items: COLORS_RICH, width: 50 },
     })
-    .describe("Items with description + tag."),
+    .describe("Items with description + tag, on a 5-item list."),
   // 4. Segmented (short enum, force segmented)
   size2: z
     .enum(["S", "M", "L"])
@@ -114,6 +130,45 @@ const schema = z.object({
       },
     })
     .describe("$control.clearable → an explicit 'All regions' row.")
+    .optional(),
+  // 9. Short list, every per-option feature — no search box, same control
+  role: z
+    .string()
+    .meta({
+      title: "Role (short, rich, no search)",
+      $control: { items: ROLES_SHORT, width: 50 },
+    })
+    .describe(
+      "3 items → no search field, but description/tag/disabled still render.",
+    )
+    .optional(),
+  // 9b. Same list, search forced on — checks disabled rows behave the same
+  // with and without the input in the popup.
+  role2: z
+    .string()
+    .meta({
+      title: "Role (rich + search)",
+      $control: { items: ROLES_SHORT, searchable: true, width: 50 },
+    })
+    .describe("Same options, search field on.")
+    .optional(),
+  // 10. Force the search field ON for a short list
+  fruit2: z
+    .enum(["apple", "banana", "cherry"])
+    .meta({
+      title: "Fruit (searchable: true)",
+      $control: { searchable: true, width: 50 },
+    })
+    .describe("$control.searchable = true → search on a 3-item list.")
+    .optional(),
+  // 11. Force the search field OFF for a long list
+  many2: z
+    .string()
+    .meta({
+      title: "Big list (searchable: false)",
+      $control: { items: COUNTRIES_BIG, searchable: false, width: 50 },
+    })
+    .describe("$control.searchable = false → 50 items, scroll only.")
     .optional(),
 });
 
