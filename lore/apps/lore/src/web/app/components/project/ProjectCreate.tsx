@@ -339,6 +339,11 @@ const StepLogo = (props: StepLogoProps) => {
         accept="image/*"
         maxSize={2 * 1024 * 1024}
         bucket="campaign-icons"
+        // Matches `iconBucket`'s server-side `image` constraint. Doing it here
+        // as well is not redundant: it is what stops the megabytes leaving the
+        // machine, and lossy WebP with alpha is smaller than anything the
+        // server's wasm encoder can produce.
+        image={{ maxWidth: 256 }}
         disabled={props.disabled}
       />
     </div>

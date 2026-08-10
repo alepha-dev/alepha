@@ -1,5 +1,6 @@
 import { useStore } from "alepha/react";
 import { sigilClientAtom } from "../../shared/sigilClientAtom.ts";
+import { sigilFeedbackPositionOf } from "../../shared/sigilFeedbackPosition.ts";
 import { sigilAnyGlobMatch } from "../../shared/sigilGlobMatch.ts";
 import { useCurrentPath } from "../useCurrentPath.ts";
 import { useFeedbackUrl } from "../useFeedbackUrl.ts";
@@ -31,5 +32,10 @@ export const SigilRoot = () => {
     return null;
   }
 
-  return <SigilFeedbackButton feedbackUrl={feedbackUrl} />;
+  return (
+    <SigilFeedbackButton
+      feedbackUrl={feedbackUrl}
+      position={sigilFeedbackPositionOf(config.feedbackPosition)}
+    />
+  );
 };

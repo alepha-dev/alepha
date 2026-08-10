@@ -15,9 +15,14 @@ export interface ProjectUpdateProps {
 }
 
 /**
- * Radix Select rejects `value=""` (reserved as "no selection"). The
- * "No preference" option uses this sentinel and the form handler maps
+ * Sentinel for the "No preference" language option: the form handler maps
  * it back to `null` before hitting the API.
+ *
+ * The original comment here justified it by a Radix constraint. There is no
+ * Radix in this codebase — `Select` is `@base-ui/react/select` — so that
+ * reason was not the real one. The sentinel is kept because a select option
+ * still needs a non-null `value` to be addressable, and `""` reads as "unset"
+ * rather than as a deliberate choice.
  */
 const NO_LANG = "__none__";
 
@@ -100,6 +105,8 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
             // Bucket value stays "campaign-icons" — see the note on
             // `iconBucket` in `ProjectController.ts`.
             bucket: "campaign-icons",
+            // Matches the server-side `image` constraint on that bucket.
+            image: { maxWidth: 256 },
           },
         },
         title: {

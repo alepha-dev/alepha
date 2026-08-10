@@ -171,10 +171,14 @@ body::before {
 }
 
 /* ────────────────────────────────────────────────────────────────────────
- * MarkdownEditor (MDXEditor) — map the editor's Radix-style variables onto
- * the shadcn tokens so it follows every Lore theme and the light/dark mode
- * automatically. `.mdxeditor-popup-container` is portalled to <body>, so it
- * needs the same mapping.
+ * MarkdownEditor (MDXEditor) — map the editor's own variables onto the shadcn
+ * tokens so it follows every Lore theme and the light/dark mode automatically.
+ * `.mdxeditor-popup-container` is portalled to <body>, so it needs the same
+ * mapping.
+ *
+ * The `--base*` names below are the Radix Colors scale, which MDXEditor
+ * bundles (`@radix-ui/colors`). That transitive dependency is the only Radix
+ * in this repo — the UI components are Base UI.
  * ──────────────────────────────────────────────────────────────────────── */
 
 /* Double the class for specificity: MDXEditor's own stylesheet defines

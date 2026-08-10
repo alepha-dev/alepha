@@ -744,7 +744,7 @@ test.describe("Quest", () => {
   });
 
   /**
-   * Kanban is a `?view=kanban` toggle on the Quests page, not its own route
+   * Kanban is a view of the Quests page, not its own route
    * (the great rename, Task 8). `/p/:id/kanban` used to render the board;
    * now it must not.
    */
@@ -759,12 +759,13 @@ test.describe("Quest", () => {
     await registerAndVerify(page, email, password);
     const projectId = await createProjectViaWizard(page, projectTitle);
 
-    await page.goto(`/p/${projectId}/?view=kanban`);
+    await page.goto(`/p/${projectId}/`);
+    await page.getByTestId("quests-view-kanban").click();
     await expect(page.getByTestId("kanban-board")).toBeVisible({
       timeout: 10_000,
     });
 
-    await page.goto(`/p/${projectId}/`);
+    await page.getByTestId("quests-view-list").click();
     await expect(page.getByTestId("quests-table")).toBeVisible({
       timeout: 10_000,
     });
@@ -778,8 +779,8 @@ test.describe("Quest", () => {
   /**
    * The view-switcher rail is the only entry point to the board since the
    * sidebar entry left with the route (#135). It has to reach the board and
-   * come back without the URL bar, remember the choice across a reload, and
-   * still lose to an explicit `?view=` in a shared link.
+   * come back, remember the choice across a reload, and — since #156 —
+   * do all of that without touching the URL.
    */
   test("view switcher reaches the kanban board and remembers the choice", async ({
     page,
@@ -804,7 +805,10 @@ test.describe("Quest", () => {
       await expect(page.getByTestId("kanban-board")).toBeVisible({
         timeout: 10_000,
       });
-      expect(new URL(page.url()).searchParams.get("view")).toBe("kanban");
+      // The view is state, not a destination. It lived in `?view=kanban`
+      // until #156, where the seeding effect that kept the URL in sync
+      // bounced every sidebar navigation back to the board.
+      expect(new URL(page.url()).search).toBe("");
 
       await page.getByTestId("quests-view-list").click();
       await expect(page.getByTestId("quests-table")).toBeVisible({
@@ -824,45 +828,83 @@ test.describe("Quest", () => {
       });
     });
 
-    await test.step("an explicit ?view= still wins over the stored choice", async () => {
-      await page.goto(`/p/${projectId}/?view=list`);
-      await expect(page.getByTestId("quests-table")).toBeVisible({
+    // #156. The board used to trap the project on itself: the seeding
+    // effect that put `?view=kanban` back on a bare `/p/:id/` also fired on
+    // the OUTGOING render of a navigation away — `useRouterState` is a
+    // global store, so the leaving page saw the next route's empty query
+    // and pushed straight back. Every sidebar link was dead while the board
+    // was the stored view. Arriving proves nothing here: the bounce was a
+    // second navigation landing after the first succeeded, so the URL has
+    // to still be there once the outgoing page has finished unmounting.
+    await test.step("leaving the board actually leaves it", async () => {
+      await expect(page.getByTestId("kanban-board")).toBeVisible({
         timeout: 10_000,
       });
-      await expect(page.getByTestId("kanban-board")).toHaveCount(0);
+
+      await page.locator(`a[href="/p/${projectId}/folios"]`).first().click();
+      await page.waitForURL(`**/p/${projectId}/folios`, { timeout: 15_000 });
+      await page.waitForTimeout(1_500);
+      expect(new URL(page.url()).pathname).toBe(`/p/${projectId}/folios`);
+
+      // The Settings entry points at the layout's default child, hence the
+      // prefix match rather than an exact href.
+      await page.locator(`a[href^="/p/${projectId}/settings"]`).first().click();
+      await page.waitForURL(`**/p/${projectId}/settings**`, {
+        timeout: 15_000,
+      });
+      await page.waitForTimeout(1_500);
+      expect(new URL(page.url()).pathname).toContain(
+        `/p/${projectId}/settings`,
+      );
     });
 
-    await test.step("the rail is left of the quest log and never moves", async () => {
-      // #153: the rail used to be rendered by the Quests PAGE, which put it
-      // between the quest log and the table — reading as a control for the
-      // table rather than for the surface. It is now the first child of the
-      // content area, outside the layout's three-way branch, so its x must be
-      // smaller than the log's and identical under the board (which has no
-      // log at all and goes full width).
-      await page.goto(`/p/${projectId}/?view=list`);
+    await test.step("back on the board for the layout checks", async () => {
+      await page.goto(`/p/${projectId}/`);
+      await expect(page.getByTestId("kanban-board")).toBeVisible({
+        timeout: 10_000,
+      });
+      await page.getByTestId("quests-view-list").click();
       await expect(page.getByTestId("quests-table")).toBeVisible({
         timeout: 10_000,
       });
-      const railInList = await page
+    });
+
+    await test.step("the view bar is above the quest log and never moves", async () => {
+      // #153: the switcher used to be rendered by the Quests PAGE, which put
+      // it between the quest log and the table — reading as a control for the
+      // table rather than for the surface. It is now the first child of the
+      // content area, outside the layout's three-way branch.
+      //
+      // #163 turned it from a vertical left rail into a horizontal top bar,
+      // which rotates the invariant onto the other axis: its y must be smaller
+      // than the log's and identical under the board (which has no log at all
+      // and goes full width). Being outside the branch is what buys that, on
+      // whichever axis — anything rendered from inside a branch is necessarily
+      // right of, and below, the quest log.
+      await page.goto(`/p/${projectId}/`);
+      await expect(page.getByTestId("quests-table")).toBeVisible({
+        timeout: 10_000,
+      });
+      const barInList = await page
         .getByTestId("quests-view-switcher")
         .boundingBox();
       const log = await page.getByTestId("quest-log").boundingBox();
-      if (!railInList || !log) throw new Error("missing bounding boxes");
-      expect(railInList.x).toBeLessThan(log.x);
+      if (!barInList || !log) throw new Error("missing bounding boxes");
+      expect(barInList.y).toBeLessThan(log.y);
 
       await page.getByTestId("quests-view-kanban").click();
       await expect(page.getByTestId("kanban-board")).toBeVisible({
         timeout: 10_000,
       });
-      const railInKanban = await page
+      const barInKanban = await page
         .getByTestId("quests-view-switcher")
         .boundingBox();
-      if (!railInKanban) throw new Error("missing bounding box");
-      expect(railInKanban.x).toBe(railInList.x);
+      if (!barInKanban) throw new Error("missing bounding box");
+      expect(barInKanban.y).toBe(barInList.y);
 
       // And it survives opening a quest: the log is shown on the detail
-      // route too, so a rail that vanished there would slide the log left.
-      await page.goto(`/p/${projectId}/?view=list`);
+      // route too, so a bar that vanished there would slide the log up.
+      await page.goto(`/p/${projectId}/`);
       const { shortId } = await apiPost<{ shortId: number }>(
         page,
         "createQuest",
@@ -881,14 +923,14 @@ test.describe("Quest", () => {
       await expect(page.getByTestId("quest-log")).toBeVisible({
         timeout: 10_000,
       });
-      const railInDetail = await page
+      const barInDetail = await page
         .getByTestId("quests-view-switcher")
         .boundingBox();
-      if (!railInDetail) throw new Error("missing bounding box");
-      expect(railInDetail.x).toBe(railInList.x);
+      if (!barInDetail) throw new Error("missing bounding box");
+      expect(barInDetail.y).toBe(barInList.y);
     });
 
-    await test.step("the rail disappears when kanban is off", async () => {
+    await test.step("the view bar disappears when kanban is off", async () => {
       await setProjectFeature(page, projectId, "kanban", false);
       await page.goto(`/p/${projectId}/`);
       await expect(page.getByTestId("quests-table")).toBeVisible({

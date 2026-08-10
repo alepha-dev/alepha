@@ -14,6 +14,7 @@ import {
   kanbanReloadAtom,
 } from "./atoms/kanbanProjectAtom.ts";
 import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
+import { questsViewAtom } from "./atoms/questsViewAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import { MeRouter } from "./components/profile/me/MeRouter.ts";
 import { I18n } from "./services/I18n.ts";
@@ -32,6 +33,10 @@ export const LoreWebApp = $module({
     currentQuestAtom,
     kanbanProjectAtom,
     kanbanReloadAtom,
+    // Registered here, unlike most of the `current*` atoms, because
+    // `persist: "cookie"` only binds for atoms the state manager knows
+    // about — an unregistered persisted atom is silently in-memory only.
+    questsViewAtom,
     userProjectsAtom,
   ],
   register(alepha) {

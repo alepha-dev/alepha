@@ -14,23 +14,15 @@ export default {
 
   "spotlight.title": "Search",
   "spotlight.description": "Find quests and folios in this project.",
+  "spotlight.description.projects": "Jump to one of your projects.",
   "spotlight.placeholder": "Search quests and folios…",
-  "spotlight.no-project": "Open a project to search.",
+  "spotlight.placeholder.projects": "Jump to a project…",
   "spotlight.hint": "Type to search quests and folios.",
   "spotlight.empty": "Nothing matched.",
+  "spotlight.empty.projects": "No project matched.",
   "spotlight.group.quests": "Quests",
   "spotlight.group.folios": "Folios",
-
-  "header.connections.title": "Connected apps",
-  "header.connections.state.live": "Connected — used in the last 24h",
-  "header.connections.state.stale": "Connected apps, idle recently",
-  "header.connections.state.empty": "No connected apps",
-  "header.connections.empty.body":
-    "Connect an MCP client (e.g. Claude) to https://lore.alepha.dev/mcp — it will appear here.",
-  "header.connections.row.usedAt": "Last used $1",
-  "header.connections.row.never": "never used",
-  "header.connections.revoke": "Revoke",
-  "header.connections.manage": "Manage connected apps",
+  "spotlight.group.projects": "Projects",
 
   "quest-log.quests": "Quests:",
   "quest-log.search": "Find by name, area...",
@@ -697,6 +689,11 @@ export default {
     "What this app may report. Turning one off stops the ingest endpoint accepting it — for this app only, not for the others.",
   "app.settings.capabilities.feedbackModuleOff":
     "The project's Feedback module is off, so this app's link stays hidden whatever this switch says. Turn the module on under Settings ▸ Feedback.",
+  "app.settings.feedbackPosition.title": "Feedback button position",
+  "app.settings.feedbackPosition.description":
+    "Which corner this app's floating feedback button sits in. Move it if it covers something — pagination usually lives bottom-right.",
+  "app.settings.feedbackPosition.bottomLeft": "Bottom left",
+  "app.settings.feedbackPosition.bottomRight": "Bottom right",
   "app.settings.rotate.title": "Rotate the token",
   "app.settings.rotate.description":
     "Mints a new token and stops the current one immediately. Everything this app has reported is kept — this is how a leaked token is revoked without losing its history.",

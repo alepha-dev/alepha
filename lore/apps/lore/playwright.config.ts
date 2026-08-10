@@ -1,6 +1,17 @@
 import { defineConfig, devices } from "@playwright/test";
+import { e2ePort } from "../../playwright.port.ts";
 
-const port = 3303;
+/*
+ * 3303 sits in the same band as the other apps' e2e ports (docs 3302,
+ * playground 3304, shop 3305, example-ssr 3311/3312). Never 5173/5174 — Vite's
+ * default and its first fallback — because an unrelated dev server squatting
+ * the port turns `reuseExistingServer: false` into a hard failure that looks
+ * like a regression.
+ *
+ * `e2ePort` moves a linked worktree off this port so two agents cannot land on
+ * the same server — read it for why that matters more than it sounds.
+ */
+const port = e2ePort(3303);
 
 export default defineConfig({
   testDir: "./e2e",

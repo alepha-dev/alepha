@@ -10,12 +10,13 @@ import {
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { FileText, Folder, Lock, Swords } from "lucide-react";
+import { FileText, Folder, LayoutGrid, Lock, Swords } from "lucide-react";
 import { type ReactElement, useEffect, useState } from "react";
 import type { SearchController } from "@/api/controllers/SearchController.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { spotlightOpenAtom } from "../../../atoms/spotlightOpenAtom.ts";
+import { userProjectsAtom } from "../../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 
 interface SpotlightHit {
@@ -35,15 +36,32 @@ interface SpotlightHit {
  * reconciled their three different shapes here; see that controller's doc
  * for why that moved to the server.
  *
- * Scoped to the open project, because quests and folios both are. Outside
- * one there is nothing to search, so the input says so rather than
- * accepting a query it cannot answer.
+ * TWO MODES, decided by whether a project is open.
+ *
+ * Inside one it searches that project's quests and folios, because that is what
+ * `SearchController.search` is: `/projects/:projectId/search`, member-gated and
+ * hard-filtered by project. There is no cross-project search to offer.
+ *
+ * Outside one — `/`, `/new-project`, `/auth/profile/*` — it lists the user's
+ * projects and jumps to one. That is the only useful thing ⌘K can do there, and
+ * those are exactly the pages where "take me to project X" is all anyone wants.
+ * The heading names the mode, because someone who types a quest title on the
+ * home page must be able to see why nothing matched.
+ *
+ * The project list is complete, not a recent-few sample, so the copy can say
+ * "projects" without qualification — see the note on the filter below.
+ *
+ * ⌘K is bound HERE rather than on the header button. The two used to be one
+ * concept, so the shortcut lived with the opener; now that the palette answers
+ * off-project and the button does not render there, only an always-mounted
+ * owner can keep the shortcut alive. This component is that owner.
  */
 const Spotlight = (): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
   const [project] = useStore(currentProjectAtom);
   const [spotlight, setSpotlight] = useStore(spotlightOpenAtom);
+  const [overview] = useStore(userProjectsAtom);
   const searchApi = useClient<SearchController>();
 
   const [query, setQuery] = useState("");
@@ -91,6 +109,39 @@ const Spotlight = (): ReactElement => {
     setQuery("");
     setHits([]);
   }, [spotlight.open]);
+
+  // Capture phase for the same reason the folio workspace binds its shortcuts
+  // there: ⌘K reaches a focused input otherwise.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (
+        !(event.metaKey || event.ctrlKey) ||
+        event.key.toLowerCase() !== "k"
+      ) {
+        return;
+      }
+      event.preventDefault();
+      setSpotlight({ open: true });
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [setSpotlight]);
+
+  // Filtered here rather than on the server because the list is already
+  // complete in the atom: `getHomeOverview` returns every membership with no
+  // cap (`totalCount` is literally `projects.length`), so there is no
+  // "+N more" tail this can fail to find. That is what lets the mode call
+  // itself "Projects" rather than "Recent projects" — a switcher that silently
+  // omits a project you own reads as a bug, not as a cap.
+  const projectMatches = (overview?.projects ?? []).filter((it) => {
+    const q = query.trim().toLowerCase();
+    return !q || it.title.toLowerCase().includes(q);
+  });
+
+  const goProject = async (id: number): Promise<void> => {
+    close();
+    await router.push("project", { params: { projectId: String(id) } });
+  };
 
   const go = async (hit: SpotlightHit): Promise<void> => {
     if (projectId === undefined) return;
@@ -144,7 +195,13 @@ const Spotlight = (): ReactElement => {
         if (!open) close();
       }}
       title={String(tr("spotlight.title"))}
-      description={String(tr("spotlight.description"))}
+      description={String(
+        tr(
+          projectId === undefined
+            ? "spotlight.description.projects"
+            : "spotlight.description",
+        ),
+      )}
     >
       {/* `CommandDialog` drops its children straight into the dialog
           without a `Command` around them, so the store the input and list
@@ -161,25 +218,52 @@ const Spotlight = (): ReactElement => {
           placeholder={String(
             tr(
               projectId === undefined
-                ? "spotlight.no-project"
+                ? "spotlight.placeholder.projects"
                 : "spotlight.placeholder",
             ),
           )}
-          disabled={projectId === undefined}
         />
         <CommandList>
           <CommandEmpty>
-            {tr(query.trim() ? "spotlight.empty" : "spotlight.hint")}
+            {tr(
+              projectId === undefined
+                ? "spotlight.empty.projects"
+                : query.trim()
+                  ? "spotlight.empty"
+                  : "spotlight.hint",
+            )}
           </CommandEmpty>
-          {quests.length > 0 && (
-            <CommandGroup heading={String(tr("spotlight.group.quests"))}>
-              {quests.map(row)}
-            </CommandGroup>
-          )}
-          {folios.length > 0 && (
-            <CommandGroup heading={String(tr("spotlight.group.folios"))}>
-              {folios.map(row)}
-            </CommandGroup>
+          {projectId === undefined ? (
+            projectMatches.length > 0 && (
+              // The heading is the mode indicator. Without it, typing a quest
+              // name here and getting nothing reads as broken search rather
+              // than as the wrong surface.
+              <CommandGroup heading={String(tr("spotlight.group.projects"))}>
+                {projectMatches.map((it) => (
+                  <CommandItem
+                    key={it.id}
+                    value={`project:${it.id}`}
+                    onSelect={() => void goProject(it.id)}
+                  >
+                    <LayoutGrid />
+                    <span className="flex-1 truncate">{it.title}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )
+          ) : (
+            <>
+              {quests.length > 0 && (
+                <CommandGroup heading={String(tr("spotlight.group.quests"))}>
+                  {quests.map(row)}
+                </CommandGroup>
+              )}
+              {folios.length > 0 && (
+                <CommandGroup heading={String(tr("spotlight.group.folios"))}>
+                  {folios.map(row)}
+                </CommandGroup>
+              )}
+            </>
           )}
         </CommandList>
       </Command>

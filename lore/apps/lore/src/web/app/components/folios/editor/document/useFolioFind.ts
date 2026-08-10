@@ -57,11 +57,28 @@ const clearHighlights = (): void => {
  * and recording where each one starts. Attribute values, element names and
  * anything else non-textual are invisible to this, which is what makes the
  * search match what the reader actually sees rather than the markup.
+ *
+ * Form controls are skipped. The title and summary fields sit in the same
+ * scroll container as the prose, and a `<textarea>` carries its value as a
+ * real text node — so without this they join the match list. That is not a
+ * cosmetic count problem: the CSS Custom Highlight API cannot paint inside
+ * a form control's rendered value, so such a hit would advance the counter
+ * to a match nothing on screen ever highlights. Find-in-folio searches the
+ * folio, and the title is not part of it. (The title was an `<input>` when
+ * this was written, which hid the question — an input's value is not a text
+ * node at all — and made it look handled when nothing handled it.)
  */
 const collectTextNodes = (
   root: HTMLElement,
 ): { text: string; entries: FolioFindTextNode[] } => {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) =>
+      (node.parentElement as HTMLElement | null)?.closest(
+        "textarea, input, select",
+      )
+        ? NodeFilter.FILTER_REJECT
+        : NodeFilter.FILTER_ACCEPT,
+  });
   const entries: FolioFindTextNode[] = [];
   let text = "";
 
