@@ -1,5 +1,5 @@
+import { AnalyticsEngineSql } from "@alepha/analytics";
 import type { VitalMetric } from "../shared/schemas/sigilVitalsBuckets.ts";
-import { AnalyticsEngineSql } from "./AnalyticsEngineSql.ts";
 import type {
   AnalyticsBatch,
   AnalyticsLeaderboardRow,

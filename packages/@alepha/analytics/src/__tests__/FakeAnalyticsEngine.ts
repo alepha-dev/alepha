@@ -1,5 +1,5 @@
-import { MemoryAnalyticsStore } from "../MemoryAnalyticsStore.ts";
-import type { AnalyticsEngineDataset } from "../WaeAnalyticsStore.ts";
+import type { AnalyticsEngineDataset } from "@alepha/sigil/ingest";
+import { MemoryAnalyticsStore } from "@alepha/sigil/ingest";
 
 interface Point {
   indexes: string[];
@@ -45,7 +45,7 @@ export class FakeAnalyticsEngine {
   readonly queries: string[] = [];
 
   readonly dataset: AnalyticsEngineDataset = {
-    writeDataPoint: (point) => {
+    writeDataPoint: (point: Point) => {
       this.points.push({
         indexes: point.indexes ?? [],
         blobs: point.blobs ?? [],
