@@ -8,7 +8,7 @@ import { useRouter } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
 import { LayoutDashboard, Search } from "lucide-react";
 import { useState } from "react";
-import { adminRouterOptionsAtom } from "./admin-router-options.ts";
+import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
 
 /**
  * The admin shell.

@@ -26,7 +26,7 @@ import {
   UsersIcon,
 } from "lucide-react";
 import AdminLayout from "./admin-layout.tsx";
-import { adminRouterOptionsAtom } from "./admin-router-options.ts";
+import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
 
 /**
  * The whole `/admin` surface — ten pages and their shell — mounted and wired.
