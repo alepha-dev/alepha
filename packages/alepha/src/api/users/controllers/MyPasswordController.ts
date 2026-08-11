@@ -66,9 +66,18 @@ export class MyPasswordController {
         credentials.password,
       );
       if (!ok) {
-        // Deliberately not "wrong password" vs "no password set" — those are
-        // the same message above and here, so a caller cannot use this endpoint
-        // to learn how an account authenticates.
+        // This message and the "no password set" one above are DIFFERENT, and
+        // that is safe here only because of `$secure()` + `user.id`: the caller
+        // can only ever ask about their own account, so the pair discloses
+        // nothing they do not already know. There is no id parameter to point
+        // at somebody else.
+        //
+        // The distinction earns its keep — an OAuth-only account told "current
+        // password is incorrect" would hunt for a password it never had.
+        //
+        // If this ever grows a way to name another account, the two must
+        // collapse into one message first, or the endpoint becomes an oracle
+        // for how any given account authenticates.
         throw new BadRequestError("Current password is incorrect");
       }
 

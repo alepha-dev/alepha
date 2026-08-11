@@ -240,11 +240,31 @@ export class FileController {
    * must override the provider to opt files in — typically by bucket name
    * (avatars, campaign icons, etc.).
    *
-   * Cache-Control is `public, immutable, max-age=1y` so Cloudflare's edge
+   * Cache-Control is `public, immutable, max-age=1w` so Cloudflare's edge
    * cache and any intermediary proxy can serve subsequent hits without
    * touching the Worker. The split URL prefix (vs `/files/:id`) is what
    * makes this safe: edge cache is URL-keyed, so public and private files
    * live in separate cache lanes.
+   *
+   * **A week, not a year, and the difference is deletion.** The worker entry
+   * consults `caches.default` BEFORE `__alepha.start()`, so a hit never
+   * reaches `getFileById` or `assertPublic` — no row lookup, no policy. And
+   * nothing invalidates: there is no `cache.delete` and no zone-purge call
+   * anywhere, and `caches.default.delete()` would only evict the PoP serving
+   * it. So once a body is stored, `max-age` IS the retention floor for a file
+   * that has since been deleted, its account closed, or its bucket dropped
+   * from `assertPublic`. A year of that on user-uploaded avatars is not a
+   * cache, it is a copy nobody can reach to remove.
+   *
+   * The header was harmless until it became load-bearing: Cloudflare does not
+   * store Worker-generated responses, so before the edge cache landed this
+   * bound one requesting browser and nothing else.
+   *
+   * A week costs close to nothing — the expensive case is the cold D1 + R2 +
+   * boot path for a first-time visitor, and anything requested at all is
+   * requested well inside a week (PoPs evict low-traffic entries by LRU long
+   * before that regardless). `immutable` stays: it suppresses revalidation
+   * WITHIN the freshness window, it does not extend it.
    */
   public readonly streamPublicFile = $action({
     path: "/public/files/:id",
@@ -254,7 +274,7 @@ export class FileController {
       $etag({
         control: {
           public: true,
-          maxAge: [1, "year"],
+          maxAge: [7, "days"],
           immutable: true,
         },
       }),
