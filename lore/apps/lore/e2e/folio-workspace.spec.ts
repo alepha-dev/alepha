@@ -696,7 +696,14 @@ test.describe("Folio workspace", () => {
         },
         { pid: projectId, sid: shortId },
       );
-      expect(content.trimStart()).toContain(`${item.expect}Convert me`);
+      // ANCHORED, not `toContain`. Every heading marker is a prefix of the
+      // next one, so `"### Convert me"` contains `"# Convert me"` AND
+      // `"## Convert me"` — a regression that converted everything to h3
+      // would satisfy all three heading cases of this loop. `startsWith`
+      // after `trimStart` is what makes the levels distinguishable.
+      expect(content.trimStart().startsWith(`${item.expect}Convert me`)).toBe(
+        true,
+      );
     }
 
     // Paragraph is the round trip, and the one value with no marker of its
@@ -735,7 +742,11 @@ test.describe("Folio workspace", () => {
       },
       { pid: projectId, sid: shortId },
     );
-    expect(content).toContain("Convert me back");
-    expect(content).not.toContain("## Convert me back");
+    // Anchored for the same reason as the loop above, and here it is the only
+    // assertion that means anything: `not.toContain("## Convert me back")` is
+    // satisfied by `"# Convert me back"`, so an h2 that converted to h1
+    // instead of to a paragraph would have passed. "Paragraph" means no
+    // marker at all, which is exactly what `startsWith` on the text says.
+    expect(content.trimStart().startsWith("Convert me back")).toBe(true);
   });
 });
