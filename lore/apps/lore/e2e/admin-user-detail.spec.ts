@@ -106,10 +106,13 @@ test.describe("admin user detail", () => {
     await page.getByRole("button", { name: /^reset$/i }).click();
     await expect(page.locator('input[name="firstName"]')).toHaveValue("");
 
-    // -- can't remove username (required) -----------------------------
+    // -- can't remove username ----------------------------------------
+    // This realm is `username: "email"` — the slug is derived at signup
+    // rather than demanded of the admin, so a blank one is refused as
+    // "cannot be removed", not as "required".
     await page.locator('input[name="username"]').fill("");
     await page.getByRole("button", { name: /save changes/i }).click();
-    await expect(page.getByText(/username is required/i)).toBeVisible();
+    await expect(page.getByText(/username cannot be removed/i)).toBeVisible();
     // Re-fill so subsequent tests aren't blocked by validation.
     await page.locator('input[name="username"]').fill(victim!.username ?? "");
 
