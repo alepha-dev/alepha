@@ -1,5 +1,6 @@
 import {
   $page,
+  type PageCanContext,
   type PageConfigSchema,
   type PagePrimitive,
   type PagePrimitiveOptions,
@@ -23,6 +24,23 @@ export interface NavPageOptions<
    * still takes precedence over this when both are set.
    */
   permission?: string | string[];
+
+  /**
+   * Action name(s) this page's content depends on — the nav entry is hidden
+   * when the server does not offer them.
+   *
+   * This is what makes a page mounted for a module the application did not
+   * register disappear on its own. `permission` cannot do it: `$secure` on
+   * this very page declares the permission it names, so an admin holding the
+   * `*` wildcard is granted it whether or not any controller exists. An
+   * action name has no such shortcut — `LinkProvider.can()` resolves it
+   * against `/api/_links`, which only ever lists actions the server actually
+   * registered and this caller may actually call.
+   *
+   * A single name requires that action; an array requires ALL of them.
+   * Name the action the page reads on load, not one behind a button.
+   */
+  requires?: string | string[];
 }
 
 /**
@@ -41,16 +59,32 @@ export const navPage = <
 >(
   options: NavPageOptions<TConfig, TProps, TPropsParent>,
 ): PagePrimitive<TConfig, TProps, TPropsParent> => {
-  const { permission, use, nav, ...rest } = options;
+  const { permission, requires, use, nav, can: ownCan, ...rest } = options;
   const permissions = permission
     ? Array.isArray(permission)
       ? permission
       : [permission]
     : undefined;
 
+  const requiredActions = requires
+    ? Array.isArray(requires)
+      ? requires
+      : [requires]
+    : undefined;
+
+  const can = requiredActions
+    ? (ctx: PageCanContext) => {
+        if (!requiredActions.every((action) => ctx.has(action))) {
+          return false;
+        }
+        return ownCan ? ownCan(ctx) : true;
+      }
+    : ownCan;
+
   return $page<TConfig, TProps, TPropsParent>({
     ...rest,
     use: permissions ? [$secure({ permissions }), ...(use ?? [])] : use,
     nav: nav ? { ...nav, permission: nav.permission ?? permission } : nav,
+    can,
   });
 };

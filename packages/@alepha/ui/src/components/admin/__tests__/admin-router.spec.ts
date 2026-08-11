@@ -76,4 +76,55 @@ describe("AdminRouter", () => {
     expect(products).toBeDefined();
     expect(products!.options.parent).toBe(alepha.inject(AdminRouter).layout);
   });
+
+  it("hides a page whose backing action the server does not offer", async () => {
+    const alepha = Alepha.create().with(AlephaReactRouter);
+    const router = alepha.inject(AdminRouter);
+    await alepha.start();
+
+    const can = router.audits.options.can;
+    expect(can).toBeDefined();
+
+    // The audits module is registered: the entry belongs in the sidebar.
+    expect(can!({ has: () => true })).toBe(true);
+
+    // It is not: `findAudits` is absent from /api/_links, so the entry goes.
+    // `admin:audit:read` still answers true here on purpose — this page's own
+    // `$secure` declares it, which is exactly why the permission alone cannot
+    // be the gate.
+    expect(can!({ has: (name) => name !== "findAudits" })).toBe(false);
+  });
+
+  it("gates every admin page on an action, not only a permission", async () => {
+    const alepha = Alepha.create().with(AlephaReactRouter);
+    const router = alepha.inject(AdminRouter);
+    await alepha.start();
+
+    const pages = [
+      router.users,
+      router.userDetail,
+      router.sessions,
+      router.keys,
+      router.jobs,
+      router.notifications,
+      router.audits,
+      router.files,
+      router.parameters,
+      router.payments,
+    ];
+
+    for (const page of pages) {
+      expect(page.options.can).toBeDefined();
+      // Simulate the `*`-wildcard admin from the bug report: every
+      // permission-shaped name (colon in it) is granted, but no action name
+      // is. A `can` derived only from `permission` (e.g. via `$page`'s
+      // `deriveCanFromGuards` fallback) would answer `true` here, since the
+      // permission it checks is exactly the kind of name this `has` grants —
+      // which is why this must go false, and only does because `requires` is
+      // wired in independently of `permission`.
+      expect(page.options.can!({ has: (name) => name.includes(":") })).toBe(
+        false,
+      );
+    }
+  });
 });

@@ -30,17 +30,24 @@ import { adminRouterOptionsAtom } from "./admin-router-options.ts";
  *
  * ### Every page is mounted; none is conditionally registered
  *
- * A page whose module is not registered hides itself, and so does a page whose
- * permission the signed-in admin does not hold — both through one mechanism.
- * `useAuth().has()` resolves via `LinkProvider.can()`, backed by `/api/_links`,
- * a registry the server prunes per caller. `$secure({ permissions: [...] })` is
- * what *declares* a permission, so an unregistered controller declares nothing;
- * and `SecurityProvider.getPermissions()` expands the `*` wildcard against the
- * container's live registry rather than a static list, so not even an
- * all-permissions admin is granted something nothing declared.
+ * A page whose permission the signed-in admin does not hold hides itself, and
+ * so does a page whose module is not registered — but through two separate
+ * gates, not one. Each `navPage` here declares both `permission` and
+ * `requires`, and the entry is hidden when either fails.
  *
- * This is why there is no `pages: [...]` allowlist. A second gate on top of one
- * that already works goes stale: an application that later turns on
+ * `permission` alone cannot cover "the module is not registered": `navPage`
+ * wires it into `use: [$secure({ permissions })]` on the page itself, and
+ * `$secure` registers that permission into `SecurityProvider` eagerly, at
+ * definition time — so the permission exists whether or not any controller
+ * backing the page does, and an admin holding the `*` wildcard is granted it
+ * regardless. `requires` closes that gap with an action name instead of a
+ * permission: `useAuth().has()` resolves it via `LinkProvider.can()` against
+ * `/api/_links`, a registry built from the actions the server actually
+ * registered, so an action nothing declared never appears there for anyone
+ * to be granted.
+ *
+ * This is why there is no `pages: [...]` allowlist. A second gate on top of
+ * two that already work goes stale: an application that later turns on
  * `features.audits` would still not see the Audits page until someone
  * remembered to edit the list.
  *
@@ -103,6 +110,7 @@ export class AdminRouter {
     path: "/users",
     head: { title: "Users" },
     permission: "admin:user:read",
+    requires: "findUsers",
     nav: { label: "Users", icon: <UsersIcon />, group: "Identity", order: 1 },
     lazy: () => import("./admin-users.tsx"),
     props: () => this.options.pages?.users ?? {},
@@ -117,6 +125,7 @@ export class AdminRouter {
     path: "/users/:userId",
     head: { title: "User" },
     permission: "admin:user:read",
+    requires: "findUsers",
     schema: {
       params: z.object({
         userId: z.uuid(),
@@ -131,6 +140,7 @@ export class AdminRouter {
     path: "/sessions",
     head: { title: "Sessions" },
     permission: "admin:session:read",
+    requires: "findSessions",
     nav: {
       label: "Sessions",
       icon: <ShieldCheck />,
@@ -145,6 +155,7 @@ export class AdminRouter {
     path: "/keys",
     head: { title: "API keys" },
     permission: "admin:api-key:read",
+    requires: "findApiKeys",
     nav: {
       label: "API keys",
       icon: <KeyRound />,
@@ -160,6 +171,7 @@ export class AdminRouter {
     path: "/jobs",
     head: { title: "Jobs" },
     permission: "admin:job:read",
+    requires: "listJobs",
     nav: { label: "Jobs", icon: <Timer />, group: "Operations", order: 4 },
     lazy: () => import("./admin-jobs.tsx"),
   });
@@ -169,6 +181,7 @@ export class AdminRouter {
     path: "/notifications",
     head: { title: "Notifications" },
     permission: "admin:notification:read",
+    requires: "findNotifications",
     nav: {
       label: "Notifications",
       icon: <Bell />,
@@ -183,6 +196,7 @@ export class AdminRouter {
     path: "/audits",
     head: { title: "Audit log" },
     permission: "admin:audit:read",
+    requires: "findAudits",
     nav: {
       label: "Audit log",
       icon: <ShieldAlert />,
@@ -197,6 +211,7 @@ export class AdminRouter {
     path: "/files",
     head: { title: "Files" },
     permission: "admin:file:read",
+    requires: "findFiles",
     nav: { label: "Files", icon: <Files />, group: "Operations", order: 7 },
     lazy: () => import("./admin-files.tsx"),
   });
@@ -206,6 +221,7 @@ export class AdminRouter {
     path: "/parameters",
     head: { title: "Parameters" },
     permission: "admin:parameter:read",
+    requires: "getParameterTree",
     nav: {
       label: "Parameters",
       icon: <SlidersHorizontal />,
@@ -227,6 +243,7 @@ export class AdminRouter {
     path: "/payments",
     head: { title: "Payments" },
     permission: ["admin:payment:read", "payments:read"],
+    requires: "listIntents",
     nav: {
       label: "Payments",
       icon: <CreditCard />,
