@@ -12,6 +12,7 @@ import MarkdownEditor from "../../../shared/markdown-editor/MarkdownEditor.tsx";
 import FolioPassphraseDialog from "../../FolioPassphraseDialog.tsx";
 import WikiLinkHoverProvider from "../../WikiLinkHoverProvider.tsx";
 import FolioEditorMenubar from "../menubar/FolioEditorMenubar.tsx";
+import FolioMenubar from "../menubar/FolioMenubar.tsx";
 import { useFolioShortcuts } from "../menubar/useFolioShortcuts.ts";
 import FolioToolbar from "../toolbar/FolioToolbar.tsx";
 import type { UseFolioActionsResult } from "../useFolioActions.ts";
@@ -217,6 +218,32 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
             wikiLinks={wikiLinks}
             minHeight={420}
             variant="bare"
+            // The menubar is created inside MDXEditor's realm and portalled up
+            // — so a cold editor chunk meant the chrome row was simply ABSENT
+            // for about a second on every first folio open, then popped in.
+            // Reserving its height would have hidden the layout jump and left
+            // the flicker; this renders the real row immediately, from outside
+            // the realm, with `editorLoading` greying out only the commands
+            // that genuinely need one. Suspense swaps it for the realm-backed
+            // `FolioEditorMenubar` when the chunk lands, so the two are never
+            // mounted together.
+            loadingChrome={
+              props.chromeSlot
+                ? createPortal(
+                    <FolioMenubar
+                      handlers={props.actions.handlers}
+                      state={{
+                        ...props.actions.actionState,
+                        editorLoading: true,
+                      }}
+                      hasImageUpload={!!props.imageUploadHandler}
+                      statusKey={props.draft.statusKey}
+                      savedAt={props.draft.savedAt}
+                    />,
+                    props.chromeSlot,
+                  )
+                : null
+            }
             renderToolbar={() => (
               // Two portals, not one. Both keep their row inside MDXEditor's
               // React tree — so `usePublisher`/`useCellValue` still resolve

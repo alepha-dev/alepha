@@ -26,11 +26,6 @@ import { currentBlightCountAtom } from "../../../atoms/currentBlightCountAtom.ts
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 
-export interface ProjectBlightsProps {
-  items: BlightResource[];
-  openCount: number;
-}
-
 /**
  * Filter form, owned by AlephaTable: a status select (open / resolved / all)
  * and a sigil select (`"all"` or a sigil id). Both filters are applied
@@ -53,7 +48,7 @@ const blightsFiltersSchema = z.object({
  * interpolation (`{value}`) — React escapes it. NEVER MarkdownView /
  * dangerouslySetInnerHTML. See folio #12.
  */
-const ProjectBlights = (_props: ProjectBlightsProps) => {
+const ProjectBlights = () => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
   const [project] = useStore(currentProjectAtom);

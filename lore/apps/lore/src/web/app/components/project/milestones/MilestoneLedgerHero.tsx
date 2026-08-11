@@ -1,10 +1,15 @@
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@alepha/ui/components/ui/tooltip";
 import { cn } from "@alepha/ui/lib/utils";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Square } from "lucide-react";
+import { Pencil, Square } from "lucide-react";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import type { MilestoneWithCount } from "./ProjectMilestones.tsx";
 
@@ -49,22 +54,7 @@ const MilestoneLedgerHero = (props: MilestoneLedgerHeroProps) => {
     totalMs != null ? Math.min(100, Math.round((ageMs / totalMs) * 100)) : null;
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      // Without an explicit label the banner's accessible name is computed
-      // from its contents, which now include the Close Milestone button —
-      // so a query for that button matched the banner too.
-      aria-label={milestone.title}
-      onClick={props.onOpenDetail}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          props.onOpenDetail();
-        }
-      }}
-      className="bg-card border-border flex cursor-pointer flex-col gap-6 border-b border-l-[3px] border-l-green-600 px-5 py-5 text-left transition-colors lg:flex-row lg:items-center lg:gap-7 lg:px-7"
-    >
+    <div className="bg-card border-border flex flex-col gap-6 border-b px-5 py-5 transition-colors lg:flex-row lg:items-center lg:gap-7 lg:px-7">
       <div className="relative flex size-13 shrink-0 items-center justify-center rounded-full bg-green-600 text-xl font-bold text-white">
         {milestone.number}
         <span className="ring-card absolute -bottom-px -right-px size-3 animate-pulse rounded-full bg-green-400 ring-2" />
@@ -78,6 +68,29 @@ const MilestoneLedgerHero = (props: MilestoneLedgerHeroProps) => {
               args: [dt.of(milestone.createdAt).fromNow()],
             })}
           </span>
+          {/* The banner used to be one big click target opening this sheet.
+              A whole-card hit area announces nothing, cannot be reached by
+              keyboard as itself, and forced every control inside it — the
+              Close button below — to stop propagation just to stay usable.
+              An icon button says what it does and frees the band to grow
+              more actions. The label is a real accessible name, not decoration:
+              a pencil alone names nothing. */}
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground hover:text-foreground -my-1 size-6 shrink-0"
+                  aria-label={String(tr("milestone.ledger.edit"))}
+                  onClick={props.onOpenDetail}
+                />
+              }
+            >
+              <Pencil className="size-3.5" />
+            </TooltipTrigger>
+            <TooltipContent>{tr("milestone.ledger.edit")}</TooltipContent>
+          </Tooltip>
         </div>
         <h2 className="mt-1.5 truncate text-[22px] font-semibold tracking-[-0.015em]">
           {milestone.title}
@@ -156,16 +169,11 @@ const MilestoneLedgerHero = (props: MilestoneLedgerHeroProps) => {
           value={props.contributorCount}
         />
         {/* Mirrors where Start Milestone sits on the empty banner: the one
-            action that changes the state the banner reports. The banner
-            itself opens the detail sheet, so this has to stop the click
-            from reaching it. */}
+            action that changes the state the banner reports. */}
         <Button
           variant="outline"
           className="border-amber-500/60 text-amber-700 hover:bg-amber-500/10 dark:text-amber-300"
-          onClick={(e) => {
-            e.stopPropagation();
-            props.onClose();
-          }}
+          onClick={props.onClose}
         >
           <Square className="size-4" />
           {tr("milestone.close")}

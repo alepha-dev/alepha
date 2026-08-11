@@ -395,14 +395,20 @@ export class AppRouter {
       if (!project.features?.sigils) {
         throw new NotFoundError("Apps are not enabled for this project");
       }
-      const res = await this.blightApi.listBlights({
-        params: { projectId: project.id },
-        query: {},
-      });
-      this.alepha.store.set(currentBlightCountAtom, {
-        count: res.openCount,
-      });
-      return { items: res.items, openCount: res.openCount };
+      // No fetch here on purpose. The page hands `listBlights` to an
+      // `AlephaTable`, which owns paging/sort/filters and therefore always
+      // issues its own call with its own query — so a copy fetched here was
+      // read by nothing and thrown away on every visit. The badge does not
+      // need it either: the parent `project` loader already seeds
+      // `currentBlightCountAtom` via `countOpenBlights`, and the table
+      // refreshes it a moment later.
+      //
+      // Nor can the two be merged: `$action` coalesces CONCURRENT calls into
+      // `/api/_batch`, and these were sequential by construction — the loader
+      // has to resolve before the page renders and the table mounts.
+      //
+      // The rule: a route loader fetches only what the page cannot fetch for
+      // itself.
     },
   });
 

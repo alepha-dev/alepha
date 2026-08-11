@@ -241,7 +241,7 @@ export default {
   "board.table.title": "Quest",
   "board.table.tags": "Tags",
   "board.table.linked": "Linked",
-  "board.table.linked.tooltip": "Blocked by quest #{0}",
+  "board.table.linked.tooltip": "Blocked by quest #$1",
   "board.table.priority": "Priority",
   "board.table.rank": "Rank",
   "board.table.area": "Area",
@@ -549,6 +549,7 @@ export default {
   "milestone.status.closed": "Closed",
 
   "milestone.ledger.recording": "Recording",
+  "milestone.ledger.edit": "Edit milestone",
   "milestone.ledger.started": "started $1",
   "milestone.ledger.autoCloses": "Auto-closes $1 · $2",
   "milestone.ledger.manualOnly": "Closes when you say so",
@@ -912,7 +913,7 @@ export default {
   "admin.sessions.revoked": "Session revoked",
   "admin.sessions.bulkRevokeTitle": "Revoke sessions",
 
-  "profile.apiKeys.revoke.title": 'Revoke "{0}"?',
+  "profile.apiKeys.revoke.title": 'Revoke "$1"?',
   "profile.apiKeys.revoke.description":
     "Any Claude or MCP client using this key stops working immediately. The key cannot be restored — you would have to create a new one and reconfigure every client.",
   "profile.apiKeys.revoke.confirm": "Revoke key",
@@ -920,6 +921,11 @@ export default {
   "profile.sessions.revokeAll.description":
     "Every session is revoked, including this one — you will be signed out here immediately. Signing in again restores access.",
   "profile.sessions.revokeAll.confirm": "Sign out everywhere",
+  "profile.identities.title": "Identities",
+  "profile.identities.active": "Active",
+  "profile.identities.empty": "No identities found. This shouldn't happen.",
+  "profile.identities.provider.credentials": "Password",
+  "profile.identities.password.failed": "Failed to set password.",
   "profile.identities.password.set": "Set password",
   "profile.identities.password.change": "Change password",
   "profile.identities.password.setHint":
@@ -933,5 +939,5 @@ export default {
   "profile.identities.password.mismatch": "Passwords do not match.",
   "profile.identities.password.wasSet": "Password has been set.",
   "profile.identities.password.changed":
-    "Password changed. {0} other session(s) signed out.",
+    "Password changed. $1 other session(s) signed out.",
 };

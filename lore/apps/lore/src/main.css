@@ -148,6 +148,67 @@ body::before {
 }
 
 /* ────────────────────────────────────────────────────────────────────────
+ * Sidebar active item.
+ *
+ * shadcn's sidebar spends ONE token, `--sidebar-accent`, on both hover and
+ * active — so "where I am" and "where the pointer is" render identically, and
+ * on a sidebar that is not strictly white the shared fill also has to carry all
+ * the contrast on its own. Raising the token fixes visibility (the theme blocks
+ * below now hold `--sidebar-accent` at ≥1.35:1 against `--sidebar`, up from
+ * 1.04:1 on the stock light palette) but cannot separate the two states.
+ *
+ * So the active item is given a treatment of its own here: a primary-tinted
+ * fill plus a left bar. The bar matters beyond taste — presence/absence of a
+ * shape is not a color distinction, so the active item stays identifiable where
+ * two fills alone would not survive low vision or a bad display.
+ *
+ * The label is deliberately left on `--sidebar-accent-foreground` rather than
+ * recolored to the primary: tinting the text too would have capped it around
+ * 3:1 on its own fill, where leaving it alone keeps 4.7–12:1 across the four
+ * themes. Hue, fill and the bar carry the state; the text just stays readable.
+ *
+ * Written against `--sidebar-primary` rather than fixed colors so all four
+ * themes and both modes follow along with no per-theme values. It lives here,
+ * not in `sidebar.tsx`: that file is stock shadcn and `yarn w @alepha/ui sync`
+ * overwrites `components/ui/` wholesale.
+ *
+ * The doubled `[data-active]` is for specificity — Tailwind's own
+ * `data-active:bg-sidebar-accent` is (0,2,0), and so would a single attribute
+ * be. Same trick as `.lore-mdx.lore-mdx` below.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+[data-slot="sidebar-menu-button"][data-active][data-active],
+[data-slot="sidebar-menu-sub-button"][data-active][data-active] {
+  position: relative;
+  background-color: color-mix(
+    in oklch,
+    var(--sidebar-primary) 30%,
+    transparent
+  );
+}
+
+[data-slot="sidebar-menu-button"][data-active][data-active]:hover,
+[data-slot="sidebar-menu-sub-button"][data-active][data-active]:hover {
+  background-color: color-mix(
+    in oklch,
+    var(--sidebar-primary) 40%,
+    transparent
+  );
+}
+
+[data-slot="sidebar-menu-button"][data-active][data-active]::after,
+[data-slot="sidebar-menu-sub-button"][data-active][data-active]::after {
+  content: "";
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  left: 0;
+  width: 3px;
+  border-radius: 9999px;
+  background-color: var(--sidebar-primary);
+}
+
+/* ────────────────────────────────────────────────────────────────────────
  * Display font — used on h1/h2/h3 + .display utility.
  * Each theme overrides --font-display via the theme class. ThemePicker
  * lazy-loads the matching Google Fonts CSS only for the active theme.
@@ -377,24 +438,74 @@ body::before {
   background: color-mix(in oklch, var(--foreground) 6%, transparent);
 }
 
-/* The toolbar stays out of the way until the block is hovered or has
- * focus inside it — `focus-within` is what keeps it reachable by keyboard
- * rather than hover-only. */
+/* The toolbar is permanently visible, and small enough to afford it.
+ *
+ * It used to be hover/focus-within revealed, which had a failure mode worse
+ * than the clutter it avoided: opening the language dropdown moves the pointer
+ * off the wrapper, and Radix portals the popup to the editor root — outside the
+ * wrapper — so `:focus-within` is false too. Both controls faded to nothing at
+ * the exact moment the user was operating them, with no way to tell "gone" from
+ * "hidden". Revealing on `[data-state="open"]` as well would have papered over
+ * it; being always-there removes the state that could disagree.
+ *
+ * The size reduction is what buys the permanence: dimmed until interacted with,
+ * so a block being read is still mostly code.
+ */
 .lore-mdx [class*="_codeMirrorToolbar_"] {
-  opacity: 0;
-  transform: scale(0.92);
-  transform-origin: top right;
-  transition:
-    opacity 120ms ease,
-    transform 120ms ease;
+  opacity: 0.55;
+  padding: 0.125rem;
+  gap: 0.125rem;
+  transition: opacity 120ms ease;
 }
 
 .lore-mdx [class*="_codeMirrorWrapper_"]:hover [class*="_codeMirrorToolbar_"],
 .lore-mdx
   [class*="_codeMirrorWrapper_"]:focus-within
-  [class*="_codeMirrorToolbar_"] {
+  [class*="_codeMirrorToolbar_"],
+/* Its own dropdown being open is the one moment the toolbar is certainly
+ * being looked at — and the moment neither hover nor focus-within is true,
+ * because the popup is portalled out of the wrapper and takes the pointer
+ * with it. Keyed on the trigger's own `data-state`, which Radix owns. */
+.lore-mdx [class*="_codeMirrorToolbar_"]:has([data-state="open"]) {
   opacity: 1;
-  transform: scale(1);
+}
+
+.lore-mdx [class*="_codeMirrorToolbar_"] [class*="_selectTrigger_"] {
+  width: auto;
+  min-width: 6rem;
+  margin: 0;
+  padding: 0.0625rem 0.25rem;
+  font-size: 0.6875rem;
+}
+
+.lore-mdx [class*="_codeMirrorToolbar_"] button {
+  padding: 0.125rem;
+}
+
+.lore-mdx [class*="_codeMirrorToolbar_"] svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+/* The language list is eleven entries and was free to grow to the full height
+ * Radix offers it (`--radix-select-content-available-height`), which on a tall
+ * viewport is the rest of the screen. Cap it and let it scroll.
+ *
+ * `.mdxeditor-select-content` is a plain class MDXEditor puts on every
+ * `Select.Content` alongside the hashed module one — unlike the
+ * `[class*="_codeMirrorWrapper_"]` selectors above, it is not version-coupled,
+ * so prefer it for anything targeting a dropdown.
+ *
+ * `!important` because MDXEditor writes `max-height` as an INLINE style on the
+ * viewport — nothing in a stylesheet can outrank that. The `min()` keeps
+ * Radix's own measurement as the ceiling, so the list still shrinks to fit a
+ * short viewport (the editor also runs inside dialogs). */
+.mdxeditor-select-content [data-editor-dropdown] {
+  max-height: min(
+    15rem,
+    var(--radix-select-content-available-height)
+  ) !important;
+  overflow-y: auto;
 }
 
 /* ────────────────────────────────────────────────────────────────────────
@@ -433,7 +544,7 @@ body::before {
   --sidebar-foreground: oklch(0.27 0.012 250);
   --sidebar-primary: oklch(0.55 0.18 250);
   --sidebar-primary-foreground: oklch(0.99 0.003 240);
-  --sidebar-accent: oklch(0.92 0.008 240);
+  --sidebar-accent: oklch(0.85 0.01 240);
   --sidebar-accent-foreground: oklch(0.27 0.012 250);
   --sidebar-border: oklch(0.87 0.012 240);
   --sidebar-ring: oklch(0.55 0.18 250);
@@ -509,7 +620,7 @@ body::before {
   --sidebar-foreground: oklch(0.26 0.05 145);
   --sidebar-primary: oklch(0.45 0.13 145);
   --sidebar-primary-foreground: oklch(0.97 0.02 150);
-  --sidebar-accent: oklch(0.84 0.09 130);
+  --sidebar-accent: oklch(0.82 0.09 130);
   --sidebar-accent-foreground: oklch(0.26 0.05 145);
   --sidebar-border: oklch(0.8 0.06 140);
   --sidebar-ring: oklch(0.45 0.13 145);
@@ -581,7 +692,7 @@ body::before {
   --sidebar-foreground: oklch(0.23 0.05 290);
   --sidebar-primary: oklch(0.5 0.21 290);
   --sidebar-primary-foreground: oklch(0.97 0.02 295);
-  --sidebar-accent: oklch(0.85 0.08 290);
+  --sidebar-accent: oklch(0.835 0.08 290);
   --sidebar-accent-foreground: oklch(0.23 0.05 290);
   --sidebar-border: oklch(0.82 0.05 290);
   --sidebar-ring: oklch(0.5 0.21 290);
@@ -612,7 +723,7 @@ body::before {
   --sidebar-foreground: oklch(0.92 0.03 290);
   --sidebar-primary: oklch(0.68 0.22 290);
   --sidebar-primary-foreground: oklch(0.14 0.035 290);
-  --sidebar-accent: oklch(0.31 0.08 290);
+  --sidebar-accent: oklch(0.315 0.08 290);
   --sidebar-accent-foreground: oklch(0.92 0.03 290);
   --sidebar-border: oklch(0.31 0.08 290);
   --sidebar-ring: oklch(0.68 0.22 290);
@@ -653,7 +764,7 @@ body::before {
   --sidebar-foreground: oklch(0.23 0.04 250);
   --sidebar-primary: oklch(0.52 0.15 235);
   --sidebar-primary-foreground: oklch(0.97 0.012 235);
-  --sidebar-accent: oklch(0.85 0.05 230);
+  --sidebar-accent: oklch(0.83 0.05 230);
   --sidebar-accent-foreground: oklch(0.23 0.04 250);
   --sidebar-border: oklch(0.82 0.035 235);
   --sidebar-ring: oklch(0.52 0.15 235);
@@ -684,7 +795,7 @@ body::before {
   --sidebar-foreground: oklch(0.92 0.025 235);
   --sidebar-primary: oklch(0.7 0.15 230);
   --sidebar-primary-foreground: oklch(0.16 0.03 245);
-  --sidebar-accent: oklch(0.32 0.05 240);
+  --sidebar-accent: oklch(0.323 0.05 240);
   --sidebar-accent-foreground: oklch(0.92 0.025 235);
   --sidebar-border: oklch(0.32 0.05 240);
   --sidebar-ring: oklch(0.7 0.15 230);

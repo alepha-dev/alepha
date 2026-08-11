@@ -1,10 +1,11 @@
 import { useStore } from "alepha/react";
 import { useRouter } from "alepha/react/router";
-import { type ReactElement, useMemo, useState } from "react";
+import { type ReactElement, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Folio } from "@/api/entities/folios.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import { preloadMarkdownEditor } from "../../shared/markdown-editor/MarkdownEditor.tsx";
 import FolioEmptyState from "./document/FolioEmptyState.tsx";
 import FolioWorkspaceContent from "./FolioWorkspaceContent.tsx";
 import type { FolioInspectorTab } from "./inspector/FolioInspector.tsx";
@@ -123,6 +124,15 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
   // Published by `FolioTree` once its model exists. `undefined` for the one
   // frame before that effect runs, and whenever the project has not loaded.
   const [treeActions, setTreeActions] = useState<FolioTreeActions>();
+
+  // Start fetching the editor chunk as soon as the workspace mounts, rather
+  // than when something first renders the editor. It matters most on the empty
+  // `/folios`, where the next click is almost certainly a folio and nothing has
+  // asked for the chunk yet — by the time it opens, the chunk is usually in the
+  // module cache and `FolioDocument`'s loading menubar never appears.
+  useEffect(() => {
+    preloadMarkdownEditor();
+  }, []);
 
   // The empty state has no `useFolioActions` — that hook needs a draft, and
   // there is no document here. Only the five ids `availableWithoutFolio`
