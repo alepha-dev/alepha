@@ -17,6 +17,15 @@ export interface VatBucket {
  * a compliant invoice needs, so it lives here rather than staying locked in one
  * application.
  *
+ * ### Why the core, and not `invoicing`
+ *
+ * It shipped under `invoicing/`, reachable only through a module that imports
+ * checkout — so a point-of-sale wanting nothing but the arithmetic had to take
+ * carts and checkout sessions with it, tables this package elsewhere says a POS
+ * should not carry. A receipt needs this maths and never issues an invoice, and
+ * the very application it came from is a POS. It belongs to the core, and is
+ * exported as `@alepha/commerce/vat` for consumers that want only this.
+ *
  * The rule that matters, and the reason this is not a one-liner: **the base is
  * rounded and the tax is the remainder**, so `base + vat === ttc` exactly, for
  * every input, forever. Computing both by rounding produces totals that are one

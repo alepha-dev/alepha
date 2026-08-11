@@ -10,10 +10,10 @@ import { HtmlInvoiceRenderer } from "../invoicing/providers/HtmlInvoiceRenderer.
 import { InvoiceRenderer } from "../invoicing/providers/InvoiceRenderer.ts";
 import { sellerIdentityAtom } from "../invoicing/sellerIdentityAtom.ts";
 import { InvoiceService } from "../invoicing/services/InvoiceService.ts";
-import { VatCalculator } from "../invoicing/services/VatCalculator.ts";
 import { CatalogService } from "../services/CatalogService.ts";
 import { OrderService } from "../services/OrderService.ts";
 import { StockService } from "../services/StockService.ts";
+import { VatCalculator } from "../services/VatCalculator.ts";
 
 const seller = {
   name: "Atelier Aurore",

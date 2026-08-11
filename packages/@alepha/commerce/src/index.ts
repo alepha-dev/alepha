@@ -7,6 +7,7 @@ import { ProductKindRegistry } from "./providers/ProductKindRegistry.ts";
 import { CatalogService } from "./services/CatalogService.ts";
 import { OrderService } from "./services/OrderService.ts";
 import { StockService } from "./services/StockService.ts";
+import { VatCalculator } from "./services/VatCalculator.ts";
 
 export * from "./controllers/OrderController.ts";
 export * from "./controllers/ProductController.ts";
@@ -23,6 +24,7 @@ export * from "./providers/ProductKindRegistry.ts";
 export * from "./services/CatalogService.ts";
 export * from "./services/OrderService.ts";
 export * from "./services/StockService.ts";
+export * from "./services/VatCalculator.ts";
 
 declare module "alepha" {
   interface Hooks {
@@ -79,6 +81,9 @@ export const AlephaCommerce = $module({
     CatalogService,
     OrderService,
     StockService,
+    // Core, not invoicing: a receipt needs this arithmetic and never issues an
+    // invoice. See the note on the class.
+    VatCalculator,
     ProductController,
     OrderController,
   ],

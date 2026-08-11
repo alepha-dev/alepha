@@ -21,6 +21,7 @@
       "import": "./src/index.ts",
       "default": "./src/index.ts"
     },
+    "./vat": "./src/services/VatCalculator.ts",
     "./cart": "./src/cart/index.ts",
     "./checkout": "./src/checkout/index.ts",
     "./shipping": "./src/shipping/index.ts",

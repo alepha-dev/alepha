@@ -6,7 +6,6 @@ import { InvoiceRenderer } from "./providers/InvoiceRenderer.ts";
 import { sellerIdentityAtom } from "./sellerIdentityAtom.ts";
 import { InvoiceIssueListener } from "./services/InvoiceIssueListener.ts";
 import { InvoiceService } from "./services/InvoiceService.ts";
-import { VatCalculator } from "./services/VatCalculator.ts";
 
 export * from "./entities/invoices.ts";
 export * from "./providers/HtmlInvoiceRenderer.ts";
@@ -14,7 +13,6 @@ export * from "./providers/InvoiceRenderer.ts";
 export * from "./sellerIdentityAtom.ts";
 export * from "./services/InvoiceIssueListener.ts";
 export * from "./services/InvoiceService.ts";
-export * from "./services/VatCalculator.ts";
 
 /**
  * Gapless, frozen invoices with a per-rate tax breakdown.
@@ -44,12 +42,7 @@ export const AlephaCommerceInvoicing = $module({
   name: "alepha.commerce.invoicing",
   imports: [AlephaCommerceCheckout],
   atoms: [sellerIdentityAtom],
-  services: [
-    VatCalculator,
-    InvoiceService,
-    InvoiceRenderer,
-    InvoiceIssueListener,
-  ],
+  services: [InvoiceService, InvoiceRenderer, InvoiceIssueListener],
   variants: [HtmlInvoiceRenderer],
   register: (alepha) => {
     alepha.with({

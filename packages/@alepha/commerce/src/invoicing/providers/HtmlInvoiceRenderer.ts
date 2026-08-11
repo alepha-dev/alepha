@@ -1,6 +1,6 @@
+import type { VatBucket } from "../../services/VatCalculator.ts";
 import type { InvoiceEntity, InvoiceLine } from "../entities/invoices.ts";
 import type { SellerIdentity } from "../sellerIdentityAtom.ts";
-import type { VatBucket } from "../services/VatCalculator.ts";
 import { InvoiceRenderer, type RenderedInvoice } from "./InvoiceRenderer.ts";
 
 /**

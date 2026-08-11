@@ -4,13 +4,13 @@ import { $repository, $sequence, DatabaseProvider } from "alepha/orm";
 import { TaxService } from "../../checkout/services/TaxService.ts";
 import { CommerceError } from "../../errors/CommerceError.ts";
 import { OrderService } from "../../services/OrderService.ts";
+import { type VatBucket, VatCalculator } from "../../services/VatCalculator.ts";
 import {
   type InvoiceEntity,
   type InvoiceLine,
   invoices,
 } from "../entities/invoices.ts";
 import { sellerIdentityAtom } from "../sellerIdentityAtom.ts";
-import { type VatBucket, VatCalculator } from "./VatCalculator.ts";
 
 /**
  * Issues invoices and credit notes.
