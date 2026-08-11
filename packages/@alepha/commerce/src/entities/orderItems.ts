@@ -31,6 +31,16 @@ export const orderItems = $entity({
     name: z.text({ maxLength: 200 }),
     unitPrice: z.integer().min(0),
 
+    /**
+     * The product's VAT rate at order time, in basis points. Unset means the
+     * seller's default applied.
+     *
+     * Snapshotted for the same reason as the price: a rate can be corrected in
+     * the catalog, or changed by law, and an invoice already issued has to keep
+     * showing the rate it was actually computed with.
+     */
+    rateBps: z.integer().min(0).max(10000).optional(),
+
     quantity: z.integer().min(1),
 
     /** The product's `config` at order time — what `fulfil` consumes. */

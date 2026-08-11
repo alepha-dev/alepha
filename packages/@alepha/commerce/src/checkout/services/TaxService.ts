@@ -41,14 +41,37 @@ export class TaxService {
   }
 
   /**
-   * Extract the tax contained in a tax-inclusive amount.
+   * Extract the tax contained in a tax-inclusive cart.
    *
-   * `tax = gross − gross / (1 + rate)`, rounded half-up to the smallest unit.
+   * Each line is taxed at its product's own rate, falling back to
+   * {@link rateBps} where the catalog sets none. Lines sharing a rate are
+   * summed *before* the split, so a rate rounds once rather than once per line
+   * — the same rule the invoice applies, which is what keeps the figure quoted
+   * at checkout equal to the one on the document that follows it.
+   *
+   * Per rate: `tax = gross − gross / (1 + rate)`, rounded to the smallest unit.
    */
   public compute(cart: PricedCart, shippingTotal = 0): TaxResult {
-    const gross = cart.subtotal + shippingTotal;
-    const rate = this.rateBps();
-    const total = gross - Math.round((gross * 10000) / (10000 + rate));
-    return { total, byRate: { [rate]: total } };
+    const grossByRate = new Map<number, number>();
+    const add = (rate: number, gross: number) =>
+      grossByRate.set(rate, (grossByRate.get(rate) ?? 0) + gross);
+
+    for (const line of cart.lines) {
+      add(line.rateBps ?? this.rateBps(), line.lineTotal);
+    }
+    // Delivery bills at the seller's default: a mixed-rate basket has no single
+    // "rate of the goods" for it to inherit. Matches InvoiceService.
+    if (shippingTotal > 0) {
+      add(this.rateBps(), shippingTotal);
+    }
+
+    const byRate: Record<number, number> = {};
+    let total = 0;
+    for (const [rate, gross] of [...grossByRate].sort((a, b) => a[0] - b[0])) {
+      const tax = gross - Math.round((gross * 10000) / (10000 + rate));
+      byRate[rate] = tax;
+      total += tax;
+    }
+    return { total, byRate };
   }
 }

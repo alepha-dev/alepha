@@ -54,6 +54,23 @@ export const products = $entity({
      */
     images: db.default(z.array(z.text({ maxLength: 500 })), []),
 
+    /**
+     * VAT rate in basis points (2000 = 20.00 %), or unset to take the seller's
+     * default from `TaxService`.
+     *
+     * A real column rather than a `config` field because a catalog is routinely
+     * mixed-rate — books and food sit at a reduced rate beside goods at the
+     * standard one — and the tax on a sale is not a per-kind concern that a
+     * handler could own. Without it, a shop's invoice showed one bucket at the
+     * seller's default rate whatever it had actually sold: the per-rate
+     * breakdown the invoicing module promises, and the law requires, could
+     * never have more than one line.
+     *
+     * Snapshotted onto the order line at purchase, so editing the catalog
+     * afterwards cannot retroactively change what was invoiced.
+     */
+    vatRateBps: z.integer().min(0).max(10000).optional(),
+
     /** Kind-specific payload. Validated by the registered handler. */
     config: z.json().optional(),
 

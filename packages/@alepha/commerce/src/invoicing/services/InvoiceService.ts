@@ -69,24 +69,32 @@ export class InvoiceService {
     const items = await this.orders.itemsOf(orderId);
     const seller = this.seller;
     const exempt = Boolean(seller.vatExemptionNotice);
-    const rateBps = exempt ? 0 : this.tax.rateBps();
+    // Each line bills at the rate snapshotted onto it, falling back to the
+    // seller's default. A mixed-rate order — books beside goods — is the normal
+    // case, not an edge one, and applying one rate to all of it produced an
+    // invoice whose single bucket disagreed with what was sold.
+    const rateOf = (snapshot?: number) =>
+      exempt ? 0 : (snapshot ?? this.tax.rateBps());
 
     const lines: InvoiceLine[] = items.map((item) => ({
       description: item.name,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       lineTotal: item.unitPrice * item.quantity,
-      rateBps,
+      rateBps: rateOf(item.rateBps),
     }));
 
-    // Delivery is a billable line of its own, at the same rate as the goods.
+    // Delivery is a billable line of its own. It takes the seller's default
+    // rate rather than any one product's: with a mixed-rate basket there is no
+    // single "rate of the goods" to inherit, and apportioning delivery across
+    // the rates present is a further step this does not take.
     if (order.shippingTotal > 0) {
       lines.push({
         description: `Livraison${order.shippingMethod ? ` (${order.shippingMethod})` : ""}`,
         quantity: 1,
         unitPrice: order.shippingTotal,
         lineTotal: order.shippingTotal,
-        rateBps,
+        rateBps: rateOf(undefined),
       });
     }
 

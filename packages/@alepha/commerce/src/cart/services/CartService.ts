@@ -22,6 +22,8 @@ export interface PricedCartLine {
   name: string;
   kind: string;
   unitPrice: number;
+  /** The product's VAT rate in basis points, or unset for the seller default. */
+  rateBps?: number;
   quantity: number;
   /** `unitPrice * quantity`. */
   lineTotal: number;
@@ -178,6 +180,7 @@ export class CartService {
         name: product.name,
         kind: product.kind,
         unitPrice: product.price,
+        rateBps: product.vatRateBps,
         quantity: item.quantity,
         lineTotal: product.price * item.quantity,
         image: product.images[0],

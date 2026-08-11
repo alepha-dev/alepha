@@ -11,6 +11,8 @@ export interface CreateProduct {
   price: number;
   currency?: string;
   categoryId?: string;
+  /** VAT rate in basis points; omit to bill at the seller's default rate. */
+  vatRateBps?: number;
   /** File ids or URLs; the first is the listing image. */
   images?: string[];
   config?: Record<string, any>;

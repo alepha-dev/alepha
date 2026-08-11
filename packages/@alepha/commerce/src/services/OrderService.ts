@@ -120,6 +120,7 @@ export class OrderService {
             kind: product.kind,
             name: product.name,
             unitPrice: product.price,
+            rateBps: product.vatRateBps,
             quantity: line.quantity,
             config: product.config,
           };

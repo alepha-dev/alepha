@@ -146,6 +146,86 @@ describe("invoice issuing", () => {
     expect(issued[0]!.baseTotal + issued[0]!.vatTotal).toBe(8900);
   });
 
+  /**
+   * A catalog is routinely mixed-rate — a book at 5.5 % beside a good at 20 %.
+   * The rate used to come from `TaxService.rateBps()`, which takes no argument,
+   * so every line billed at the seller's default and the invoice carried a
+   * single bucket that disagreed with what had been sold. The per-rate
+   * breakdown this module exists to produce could never have more than one line.
+   */
+  it("bills each line at its own rate, and shows one bucket per rate", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+
+    // 20,00 € at the standard rate, 10,00 € at the reduced one.
+    const good = await ctx.catalog.create({
+      slug: `good-${randomUUID()}`,
+      name: "Écrin",
+      price: 2000,
+      published: true,
+    });
+    const book = await ctx.catalog.create({
+      slug: `book-${randomUUID()}`,
+      name: "Catalogue",
+      price: 1000,
+      vatRateBps: 550,
+      published: true,
+    });
+
+    await ctx.stock.recordIntake(good.id, 1);
+    await ctx.stock.recordIntake(book.id, 1);
+
+    const cart = await ctx.carts.resolve(ctx.carts.newToken());
+    await ctx.carts.add(cart.id, good.id, 1);
+    await ctx.carts.add(cart.id, book.id, 1);
+    const opened = await ctx.checkout.start(cart.id);
+    const { session, handoff } = await ctx.checkout.pay(opened.id, {
+      returnUrl: "https://bijoux.example/merci",
+    });
+    await ctx.payments.handleWebhookEvent(handoff.intentId, "captured");
+
+    const [invoice] = await ctx.invoices.listForOrder(session.orderId!);
+
+    expect(invoice!.vatBuckets.map((b) => b.rateBps)).toEqual([550, 2000]);
+
+    const reduced = invoice!.vatBuckets.find((b) => b.rateBps === 550)!;
+    const standard = invoice!.vatBuckets.find((b) => b.rateBps === 2000)!;
+    // 10,00 € inclusive of 5,5 % → 9,48 € base + 0,52 € tax.
+    expect(reduced.baseCents + reduced.vatCents).toBe(1000);
+    expect(reduced.vatCents).toBe(52);
+    // 20,00 € inclusive of 20 % → 16,67 € base + 3,33 € tax.
+    expect(standard.baseCents + standard.vatCents).toBe(2000);
+    expect(standard.vatCents).toBe(333);
+
+    expect(invoice!.grandTotal).toBe(3000);
+    expect(invoice!.vatTotal).toBe(385);
+  });
+
+  it("snapshots the rate, so editing the catalog cannot rewrite an invoice", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const book = await ctx.catalog.create({
+      slug: `book-${randomUUID()}`,
+      name: "Catalogue",
+      price: 1000,
+      vatRateBps: 550,
+      published: true,
+    });
+    await ctx.stock.recordIntake(book.id, 1);
+
+    const orderId = await sell(ctx, book.id);
+
+    // The catalog is corrected afterwards. A document already issued has to
+    // keep the rate it was actually computed with.
+    await ctx.catalog.update(book.id, { vatRateBps: 2000 });
+
+    const [invoice] = await ctx.invoices.listForOrder(orderId);
+    expect(invoice!.vatBuckets.map((b) => b.rateBps)).toEqual([550]);
+    expect(invoice!.vatTotal).toBe(52);
+  });
+
   it("numbers without gaps, in order", async ({ expect }) => {
     const ctx = await setup();
     const ring = await aRing(ctx.catalog);
