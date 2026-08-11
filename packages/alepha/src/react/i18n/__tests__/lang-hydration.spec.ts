@@ -1,6 +1,10 @@
-import { Alepha } from "alepha";
+import { $inject, Alepha, z } from "alepha";
+import { $action, AlephaServer } from "alepha/server";
+import { AlephaServerCookies } from "alepha/server/cookies";
 import { describe, expect, it } from "vitest";
 import { AlephaReactI18n } from "../index.ts";
+import { $dictionary } from "../primitives/$dictionary.ts";
+import { I18nProvider } from "../providers/I18nProvider.ts";
 
 /**
  * The language the server resolved has to reach the browser.
@@ -41,5 +45,54 @@ describe("i18n language hydration", () => {
     expect(alepha.store.exportAtoms()).not.toHaveProperty(
       "alepha.react.i18n.lang",
     );
+  });
+
+  /**
+   * Choosing a language writes the `lang` cookie from the BROWSER, and every
+   * later request resolves it on the SERVER — so the two sides have to agree on
+   * the cookie's name.
+   *
+   * They did not. The server namespaces cookie names with `APP_NAME`, the
+   * browser variant cannot (`APP_NAME` is neither bundled nor hydrated), so the
+   * browser wrote `lang` while the server looked for `myapp.lang`. An explicit
+   * choice never survived a page load: SSR kept rendering in the
+   * `Accept-Language` language and the browser repainted to the chosen one —
+   * the same hydration mismatch the cookie exists to prevent. The cookie now
+   * declares `prefix: false`, which is what that option is for.
+   */
+  it("honours a lang cookie written by the browser, under its bare name", async () => {
+    class App {
+      protected i18n = $inject(I18nProvider);
+
+      fr = $dictionary({ lazy: async () => ({ default: {} }) });
+      en = $dictionary({ lazy: async () => ({ default: {} }) });
+
+      probe = $action({
+        schema: { response: z.text() },
+        handler: () => this.i18n.lang,
+      });
+    }
+
+    const alepha = Alepha.create({ env: { APP_NAME: "AppA" } })
+      .with(AlephaServer)
+      .with(AlephaServerCookies)
+      .with(AlephaReactI18n)
+      .with(App);
+
+    await alepha.start();
+
+    // The bare name, JSON- then URI-encoded: exactly what the browser variant
+    // leaves in document.cookie. Accept-Language deliberately disagrees, so a
+    // cookie that fails to resolve falls through to "en" and the test fails.
+    const response = await alepha.inject(App).probe.fetch(
+      {},
+      {
+        request: {
+          headers: { cookie: "lang=%22fr%22", "accept-language": "en-US" },
+        },
+      },
+    );
+
+    expect(response.data).toBe("fr");
   });
 });

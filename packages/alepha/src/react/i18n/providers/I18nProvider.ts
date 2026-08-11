@@ -22,10 +22,29 @@ export class I18nProvider<
   protected alepha = $inject(Alepha);
   protected dateTimeProvider = $inject(DateTimeProvider);
 
+  /**
+   * `prefix: false` because this cookie is written by the BROWSER (`setLang`)
+   * and read by the SERVER (`onRender`). The server namespaces cookie names
+   * with `APP_NAME`; the browser cannot — `APP_NAME` is neither baked into the
+   * client bundle nor hydrated — so a prefixed declaration had the browser
+   * write `lang` while the server looked for `myapp.lang` and never found it.
+   * Choosing a language then persisted client-side only: every full page load
+   * server-rendered in the `Accept-Language` language and repainted to the
+   * chosen one, a hydration mismatch on every reload.
+   *
+   * Dropping the namespace means two Alepha apps sharing a cookie jar (same
+   * host, different ports) also share their language preference. That is the
+   * trade `AtomCookiePersistence` already makes, and it is benign here: an
+   * unsigned, unencrypted user preference that means the same thing in both
+   * apps. The namespace still guards what it was introduced for —
+   * `APP_SECRET`-encrypted cookies like the auth tokens, which are server-only
+   * and stay prefixed.
+   */
   protected cookie = $cookie({
     name: "lang",
     schema: z.text(),
     ttl: [1, "year"],
+    prefix: false,
   });
 
   public readonly registry: Array<{

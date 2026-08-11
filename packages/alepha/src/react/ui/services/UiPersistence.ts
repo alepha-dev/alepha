@@ -27,12 +27,25 @@ const colorSchemeBoot = `(function(){try{var m=document.cookie.match(/(?:^|;\\s*
  * but not on cross-origin requests.
  */
 export class UiPersistence {
+  /**
+   * `prefix: false` because everything except the server reads and writes this
+   * cookie under its bare name: the browser `$cookie` variant (which cannot see
+   * `APP_NAME` — it is neither bundled nor hydrated) and {@link colorSchemeBoot},
+   * whose regex is a literal `alepha-ui`. Left prefixed, the server wrote and
+   * looked for `myapp.alepha-ui`, so a theme chosen in the browser was invisible
+   * to SSR and to the very boot script that exists to prevent the flash.
+   *
+   * Sharing one theme preference between two Alepha apps in the same cookie jar
+   * is the intended outcome, not a regression — see the note on the i18n `lang`
+   * cookie for the same trade.
+   */
   ui = $cookie({
     name: "alepha-ui",
     key: uiAtom.key,
     schema: uiAtom.schema,
     ttl: [365, "days"],
     sameSite: "lax",
+    prefix: false,
   });
 
   head = $head({

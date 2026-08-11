@@ -300,6 +300,70 @@ describe("ServerCookiesProvider", () => {
         .read.fetch({}, { request: { headers: { cookie: incoming } } });
       expect(readB.data.value).toBeUndefined();
     });
+
+    /**
+     * The browser `$cookie` variant cannot see `APP_NAME` — it is neither
+     * bundled nor hydrated — so it always reads and writes the bare name. A
+     * cookie shared between the two sides (i18n's `lang`, the UI theme) must
+     * therefore opt out of the namespace: left prefixed, the server writes and
+     * looks for `appa.lang` while the browser writes `lang`, and neither side
+     * ever sees the other's value.
+     */
+    describe("prefix: false, for cookies the browser also writes", () => {
+      class PrefApp {
+        lang = $cookie({
+          name: "lang",
+          schema: z.text(),
+          prefix: false,
+        });
+
+        set = $action({
+          handler: () => {
+            this.lang.set("fr");
+          },
+        });
+
+        read = $action({
+          schema: { response: z.object({ value: z.text().optional() }) },
+          handler: ({ cookies }) => ({ value: this.lang.get({ cookies }) }),
+        });
+      }
+
+      const makePrefApp = () =>
+        Alepha.create({
+          env: { COOKIE_SECRET: TEST_COOKIE_SECRET, APP_NAME: "AppA" },
+        })
+          .with(AlephaServer)
+          .with(AlephaServerCookies)
+          .with(PrefApp);
+
+      test("the server writes it under the bare name", async () => {
+        const app = makePrefApp();
+        await app.start();
+
+        const response = await app.inject(PrefApp).set.fetch();
+        const setCookieHeader = response.headers.get("set-cookie");
+
+        expect(setCookieHeader).toContain("lang=");
+        expect(setCookieHeader).not.toContain("appa.lang=");
+      });
+
+      test("the server reads back what the browser wrote", async () => {
+        const app = makePrefApp();
+        await app.start();
+
+        // Exactly what the browser variant puts in document.cookie: the bare
+        // name, JSON-encoded then URI-encoded.
+        const read = await app
+          .inject(PrefApp)
+          .read.fetch(
+            {},
+            { request: { headers: { cookie: "lang=%22fr%22" } } },
+          );
+
+        expect(read.data.value).toBe("fr");
+      });
+    });
   });
 
   test("should delete a scoped cookie with its own path and domain", async () => {
