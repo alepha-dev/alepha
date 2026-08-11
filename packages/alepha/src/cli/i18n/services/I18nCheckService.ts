@@ -51,6 +51,19 @@ const DICTIONARY_MARKER = "$dictionary";
 const DICTIONARY_LAZY_IMPORT_RE =
   /\$dictionary\s*\(\s*\{[^{}]*?import\s*\(\s*["']([^"']+)["']/g;
 
+/**
+ * Matches an ICU/`String.format`-style placeholder — `{0}`, `{1}`, … — inside a
+ * dictionary file.
+ *
+ * Alepha interpolates `$1`, `$2`, … (see `I18nProvider.render`). `{0}` is not a
+ * syntax it knows, so it survives verbatim into the rendered string and the user
+ * reads a literal `{0}` where a number or a name belonged. The failure is
+ * entirely silent — no throw, no missing-key fallback — which is why it is worth
+ * a check rather than a code review. The two syntaxes are unambiguous, so a
+ * match is always a mistake and never a deliberate choice.
+ */
+const BAD_PLACEHOLDER_RE = /\{\d+\}/g;
+
 export interface I18nCheckOptions {
   root: string;
   scan: string[];
@@ -69,6 +82,17 @@ export interface I18nCheckResult {
   dictionaryFiles: string[];
   /** Keys that have no quoted-literal reference anywhere in the scan. */
   unused: string[];
+  /** Entries written with a `{0}`-style placeholder Alepha never interpolates. */
+  badPlaceholders: I18nBadPlaceholder[];
+}
+
+export interface I18nBadPlaceholder {
+  /** Absolute path of the dictionary file the entry was declared in. */
+  file: string;
+  /** The dotted key the placeholder belongs to. */
+  key: string;
+  /** The offending placeholder as written, e.g. `{0}`. */
+  placeholder: string;
 }
 
 export class I18nCheckService {
@@ -129,13 +153,19 @@ export class I18nCheckService {
 
     const dictionaryFiles: string[] = [];
     const allKeys = new Set<string>();
+    const badPlaceholders: I18nBadPlaceholder[] = [];
     for (const file of dictionarySet) {
       const text = fileContents.get(file);
       if (!text) continue;
       const before = allKeys.size;
+      const declarations: Array<{ key: string; index: number }> = [];
       for (const m of text.matchAll(KEY_DECLARATION_RE)) {
         allKeys.add(m[1]);
+        declarations.push({ key: m[1], index: m.index ?? 0 });
       }
+      badPlaceholders.push(
+        ...this.findBadPlaceholders(file, text, declarations),
+      );
       if (allKeys.size > before) dictionaryFiles.push(file);
     }
 
@@ -171,7 +201,36 @@ export class I18nCheckService {
       scannedFiles,
       dictionaryFiles,
       unused: unused.sort(),
+      badPlaceholders,
     };
+  }
+
+  /**
+   * Attribute every `{0}`-style placeholder in a dictionary file to the key it
+   * belongs to.
+   *
+   * The value is matched by position rather than parsed: a formatter is free to
+   * wrap a long entry across several lines, so a regex anchored to the key
+   * declaration would miss exactly the long strings most likely to interpolate
+   * something. The nearest preceding `"a.b.c":` is the owning key.
+   */
+  protected findBadPlaceholders(
+    file: string,
+    text: string,
+    declarations: Array<{ key: string; index: number }>,
+  ): I18nBadPlaceholder[] {
+    const found: I18nBadPlaceholder[] = [];
+    for (const m of text.matchAll(BAD_PLACEHOLDER_RE)) {
+      const at = m.index ?? 0;
+      let key: string | undefined;
+      for (const d of declarations) {
+        if (d.index > at) break;
+        key = d.key;
+      }
+      if (!key) continue;
+      found.push({ file, key, placeholder: m[0] });
+    }
+    return found;
   }
 
   /**

@@ -63,6 +63,20 @@ test.describe("Milestones", () => {
       await expect(page.getByText(/recording/i).first()).toBeVisible();
     });
 
+    await test.step("the hero's edit button opens the detail sheet", async () => {
+      // The detail sheet used to open by clicking anywhere on the hero band.
+      // It is an explicit, named control now, so this asserts the affordance
+      // exists and is reachable by its accessible name — the thing a whole-card
+      // click target could never offer.
+      await page.getByRole("button", { name: /edit milestone/i }).click();
+
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByText(startedTitle).first()).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(dialog).toBeHidden();
+    });
+
     const questTitle = `Recorded${t}`;
 
     await test.step("a completed quest lands in the live changelog", async () => {

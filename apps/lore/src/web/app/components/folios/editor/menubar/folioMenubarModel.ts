@@ -351,6 +351,41 @@ const NEEDS_SAVED_FOLIO = new Set<FolioActionId>([
   "history.keep",
 ]);
 
+/**
+ * The actions whose handler comes from `useEditorRealmCommands`, i.e. that can
+ * only work once MDXEditor's realm exists.
+ *
+ * Kept as a list rather than derived from that hook's return because the hook
+ * is only callable INSIDE the realm — the whole point here is to render the
+ * menubar while there is no realm to ask. It must stay in step with that hook:
+ * an id added there and forgotten here renders enabled and does nothing for the
+ * second the chunk is loading.
+ *
+ * Deliberately absent: `edit.find` (owned by `useFolioFind`) and the
+ * `view.tree` / `view.inspector` / `view.focus` pane toggles — all pure app
+ * state, all usable with no editor.
+ */
+const NEEDS_EDITOR = new Set<FolioActionId>([
+  "edit.undo",
+  "edit.redo",
+  "edit.bold",
+  "edit.italic",
+  "edit.code",
+  "edit.link",
+  "edit.wikiLink",
+  "insert.heading",
+  "insert.bulletList",
+  "insert.numberedList",
+  "insert.taskList",
+  "insert.quote",
+  "insert.image",
+  "insert.table",
+  "insert.codeBlock",
+  "insert.divider",
+  "view.rich",
+  "view.source",
+]);
+
 export interface FolioActionState {
   /**
    * `/folios` with nothing open — no document at all, as opposed to
@@ -381,6 +416,18 @@ export interface FolioActionState {
    * to show Pin (false) or Unpin (true) for `folio.pin`.
    */
   isPinned: boolean;
+  /**
+   * MDXEditor's chunk has not resolved yet, so there is no realm and no
+   * `useEditorRealmCommands` to dispatch through.
+   *
+   * Exists so the menubar can render on the FIRST paint of a folio instead of
+   * waiting for the editor that publishes half its commands: the row used to be
+   * created inside the realm and portalled out, so a cold chunk meant a second
+   * of no menubar at all, then a pop-in. Everything folio-level stays live
+   * throughout; only {@link NEEDS_EDITOR} greys out, and only until the chunk
+   * lands.
+   */
+  editorLoading?: boolean;
 }
 
 export const isFolioActionEnabled = (
@@ -391,6 +438,7 @@ export const isFolioActionEnabled = (
   // Checked first: with no document open there is no draft to be new or
   // locked, so the other two branches have nothing to reason about.
   if (state.noFolio) return item?.availableWithoutFolio === true;
+  if (state.editorLoading && NEEDS_EDITOR.has(id)) return false;
   if (state.isNew && NEEDS_SAVED_FOLIO.has(id)) return false;
   if (!state.locked) return true;
   return item?.availableWhenLocked === true;

@@ -1,3 +1,4 @@
+import { ControlPassword } from "@alepha/ui/components/control-password/control-password";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import {
@@ -6,8 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@alepha/ui/components/ui/dialog";
-import { Input } from "@alepha/ui/components/ui/input";
-import { Label } from "@alepha/ui/components/ui/label";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { AlephaError } from "alepha";
 import type { MyPasswordController } from "alepha/api/users";
@@ -117,7 +116,10 @@ const MyIdentities = (props: MyIdentitiesProps) => {
       toaster.show(String(tr("profile.identities.password.wasSet")), "success");
       close();
     } catch (error: any) {
-      toaster.show(error?.message || "Failed to set password", "danger");
+      toaster.show(
+        error?.message || String(tr("profile.identities.password.failed")),
+        "danger",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -132,7 +134,8 @@ const MyIdentities = (props: MyIdentitiesProps) => {
   const providerLabel = (provider: string) => {
     if (provider === "github") return "GitHub";
     if (provider === "google") return "Google";
-    if (provider === "credentials") return "Password";
+    if (provider === "credentials")
+      return String(tr("profile.identities.provider.credentials"));
     return provider;
   };
 
@@ -141,7 +144,9 @@ const MyIdentities = (props: MyIdentitiesProps) => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Shield className="size-5" />
-          <span className="text-lg font-bold">Identities</span>
+          <span className="text-lg font-bold">
+            {tr("profile.identities.title")}
+          </span>
           <Badge variant="secondary">{localIdentities.length}</Badge>
         </div>
         <Button variant="secondary" size="sm" onClick={() => setOpened(true)}>
@@ -169,7 +174,7 @@ const MyIdentities = (props: MyIdentitiesProps) => {
                   {providerLabel(identity.provider)}
                 </span>
                 <Badge variant="outline" className="text-xs">
-                  Active
+                  {tr("profile.identities.active")}
                 </Badge>
               </div>
               <span className="text-xs text-muted-foreground">
@@ -188,7 +193,7 @@ const MyIdentities = (props: MyIdentitiesProps) => {
           <div className="flex flex-col items-center justify-center gap-2 py-8">
             <User className="size-10 opacity-30" />
             <span className="text-center text-muted-foreground">
-              No identities found. This shouldn't happen.
+              {tr("profile.identities.empty")}
             </span>
           </div>
         )}
@@ -214,50 +219,35 @@ const MyIdentities = (props: MyIdentitiesProps) => {
               )}
             </span>
             {hasPasswordIdentity && (
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="currentPassword">
-                  {tr("profile.identities.password.current")}
-                </Label>
-                <Input
-                  id="currentPassword"
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  autoComplete="current-password"
-                  required
-                />
-              </div>
+              <ControlPassword
+                id="currentPassword"
+                label={String(tr("profile.identities.password.current"))}
+                value={currentPassword}
+                onChange={setCurrentPassword}
+                autoComplete="current-password"
+                required
+              />
             )}
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="password">
-                {tr("profile.identities.password.new")}
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="new-password"
-                minLength={6}
-                maxLength={128}
-                required
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="confirmPassword">
-                {tr("profile.identities.password.confirm")}
-              </Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                autoComplete="new-password"
-                minLength={6}
-                maxLength={128}
-                required
-              />
-            </div>
+            <ControlPassword
+              id="password"
+              label={String(tr("profile.identities.password.new"))}
+              value={password}
+              onChange={setPassword}
+              autoComplete="new-password"
+              minLength={6}
+              maxLength={128}
+              required
+            />
+            <ControlPassword
+              id="confirmPassword"
+              label={String(tr("profile.identities.password.confirm"))}
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+              autoComplete="new-password"
+              minLength={6}
+              maxLength={128}
+              required
+            />
             <div className="flex justify-end gap-2">
               <Button type="button" variant="ghost" onClick={close}>
                 {tr("profile.identities.password.cancel")}

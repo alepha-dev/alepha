@@ -267,7 +267,7 @@ export default {
   "board.table.title": "Quête",
   "board.table.tags": "Étiquettes",
   "board.table.linked": "Liée",
-  "board.table.linked.tooltip": "Bloquée par la quête #{0}",
+  "board.table.linked.tooltip": "Bloquée par la quête #$1",
   "board.table.priority": "Priorité",
   "board.table.rank": "Rang",
   "board.table.area": "Domaine",
@@ -554,6 +554,7 @@ export default {
   "milestone.status.closed": "Clos",
 
   "milestone.ledger.recording": "Enregistrement",
+  "milestone.ledger.edit": "Modifier le jalon",
   "milestone.ledger.started": "ouvert $1",
   "milestone.ledger.autoCloses": "Clôture automatique le $1 · $2",
   "milestone.ledger.manualOnly": "Clôture manuelle uniquement",
@@ -927,7 +928,7 @@ export default {
   "admin.sessions.revoked": "Session révoquée",
   "admin.sessions.bulkRevokeTitle": "Révoquer les sessions",
 
-  "profile.apiKeys.revoke.title": "Révoquer « {0} » ?",
+  "profile.apiKeys.revoke.title": "Révoquer « $1 » ?",
   "profile.apiKeys.revoke.description":
     "Tout client Claude ou MCP utilisant cette clé cessera immédiatement de fonctionner. La clé est irrécupérable — il faudrait en créer une nouvelle et reconfigurer chaque client.",
   "profile.apiKeys.revoke.confirm": "Révoquer la clé",
@@ -935,6 +936,13 @@ export default {
   "profile.sessions.revokeAll.description":
     "Toutes les sessions sont révoquées, y compris celle-ci — vous serez déconnecté immédiatement. Une nouvelle connexion rétablit l'accès.",
   "profile.sessions.revokeAll.confirm": "Se déconnecter partout",
+  "profile.identities.title": "Identités",
+  "profile.identities.active": "Active",
+  "profile.identities.empty":
+    "Aucune identité trouvée. Cela ne devrait pas arriver.",
+  "profile.identities.provider.credentials": "Mot de passe",
+  "profile.identities.password.failed":
+    "Impossible de définir le mot de passe.",
   "profile.identities.password.set": "Définir un mot de passe",
   "profile.identities.password.change": "Changer le mot de passe",
   "profile.identities.password.setHint":
@@ -949,5 +957,5 @@ export default {
     "Les mots de passe ne correspondent pas.",
   "profile.identities.password.wasSet": "Mot de passe défini.",
   "profile.identities.password.changed":
-    "Mot de passe modifié. {0} autre(s) session(s) déconnectée(s).",
+    "Mot de passe modifié. $1 autre(s) session(s) déconnectée(s).",
 };

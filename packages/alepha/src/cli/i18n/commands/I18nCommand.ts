@@ -48,24 +48,51 @@ export class I18nCommand {
         );
       }
 
-      if (result.unused.length === 0) {
+      if (result.badPlaceholders.length > 0) {
+        process.stdout.write(
+          `\n${c.set("RED", "✗")} Placeholders that never interpolate ` +
+            `(${result.badPlaceholders.length}):\n`,
+        );
+        for (const b of result.badPlaceholders) {
+          const file = b.file.startsWith(root)
+            ? b.file.slice(root.length + 1)
+            : b.file;
+          process.stdout.write(
+            `  ${c.set("DIM", "-")} ${b.key} ${c.set("DIM", `(${file})`)}: ` +
+              `${b.placeholder}\n`,
+          );
+        }
+        process.stdout.write(
+          `\nAlepha interpolates ${c.set("CYAN", "$1")}, ` +
+            `${c.set("CYAN", "$2")}, … — a ${c.set("CYAN", "{0}")} is copied ` +
+            `into the rendered string verbatim. Rewrite the placeholder ` +
+            `(note ${c.set("CYAN", "$1")} is the FIRST argument, not ` +
+            `${c.set("CYAN", "$0")}).\n`,
+        );
+      }
+
+      if (result.unused.length > 0) {
+        process.stdout.write(
+          `\n${c.set("RED", "✗")} Unused translations (${result.unused.length}):\n`,
+        );
+        for (const k of result.unused) {
+          process.stdout.write(`  ${c.set("DIM", "-")} ${k}\n`);
+        }
+        process.stdout.write(
+          `\nEither delete the key from its dictionary, or add its prefix to ` +
+            `${c.set("CYAN", "dynamicPrefixes")} in alepha.config.ts ` +
+            `if it's constructed at runtime.\n`,
+        );
+      }
+
+      if (result.unused.length === 0 && result.badPlaceholders.length === 0) {
         process.stdout.write(
           `\n${c.set("GREEN", "✓")} All translations are referenced.\n\n`,
         );
         return;
       }
 
-      process.stdout.write(
-        `\n${c.set("RED", "✗")} Unused translations (${result.unused.length}):\n`,
-      );
-      for (const k of result.unused) {
-        process.stdout.write(`  ${c.set("DIM", "-")} ${k}\n`);
-      }
-      process.stdout.write(
-        `\nEither delete the key from its dictionary, or add its prefix to ` +
-          `${c.set("CYAN", "dynamicPrefixes")} in alepha.config.ts ` +
-          `if it's constructed at runtime.\n\n`,
-      );
+      process.stdout.write("\n");
       process.exit(1);
     },
   });

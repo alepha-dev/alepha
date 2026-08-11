@@ -1,6 +1,13 @@
 import { FileImage } from "@alepha/ui/components/file-image/file-image";
 import { useClient } from "alepha/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
@@ -118,6 +125,13 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
     new Map<string, FolioPreview | QuestPreview | BlobPreview>(),
   );
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  // `handleLeave` must read the CURRENT anchor, not the one captured when the
+  // callback was created: moving straight from one wiki-link to another swaps
+  // `hover` before the next leave fires, and a stale closure would then test
+  // the departure against the previous anchor.
+  const hoverRef = useRef<HoverState | null>(null);
+  hoverRef.current = hover;
 
   const blobByUuid = useMemo(() => {
     const m = new Map<string, BlobRef>();
@@ -165,9 +179,27 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
     [projectId, cancelClose],
   );
 
+  /**
+   * Close as soon as the pointer leaves the hovered LINK — not the pane.
+   *
+   * Both handlers are delegated on the wrapper, so the obvious `e.currentTarget`
+   * is the whole document pane; testing containment against it meant
+   * "anywhere else in this folio" counted as still-hovering, and the card only
+   * ever closed by leaving the pane entirely.
+   *
+   * The card itself stays exempt — that is what makes the preview hoverable —
+   * as does the anchor's own subtree, so moving onto a `<strong>` inside the
+   * link is not a departure. The 120 ms `scheduleClose` grace covers the gap
+   * between the link and the card.
+   */
   const handleLeave = useCallback(
-    (current: Node, related: Node | null) => {
-      if (related && current.contains(related)) return;
+    (related: Node | null) => {
+      const current = hoverRef.current;
+      if (!current) return;
+      if (related) {
+        if (current.anchorEl.contains(related)) return;
+        if (cardRef.current?.contains(related)) return;
+      }
       scheduleClose();
     },
     [scheduleClose],
@@ -188,12 +220,8 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
       className="relative [&_a[href^='lore-broken:']]:text-destructive [&_a[href^='lore-broken:']]:decoration-destructive/40 [&_a[href^='lore-broken:']]:decoration-wavy [&_a[href^='lore-broken:']]:cursor-help"
       onMouseOver={(e) => handleEnter(e.target)}
       onFocus={(e) => handleEnter(e.target)}
-      onMouseOut={(e) =>
-        handleLeave(e.currentTarget, e.relatedTarget as Node | null)
-      }
-      onBlur={(e) =>
-        handleLeave(e.currentTarget, e.relatedTarget as Node | null)
-      }
+      onMouseOut={(e) => handleLeave(e.relatedTarget as Node | null)}
+      onBlur={(e) => handleLeave(e.relatedTarget as Node | null)}
       onClick={handleClick}
     >
       {props.children}
@@ -206,6 +234,7 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
           cache={cache.current}
           folioApi={folioApi}
           questApi={questApi}
+          cardRef={cardRef}
           onEnter={cancelClose}
           onLeave={scheduleClose}
         />
@@ -248,6 +277,12 @@ interface HoverCardPopoverProps {
   cache: Map<string, FolioPreview | QuestPreview | BlobPreview>;
   folioApi: ReturnType<typeof useClient<FolioController>>;
   questApi: ReturnType<typeof useClient<QuestController>>;
+  /**
+   * Handed up so the delegated leave check can exempt the card: it is rendered
+   * inside the pane but positioned `fixed` over it, and crossing into it must
+   * not read as leaving the link.
+   */
+  cardRef: RefObject<HTMLDivElement | null>;
   onEnter: () => void;
   onLeave: () => void;
 }
@@ -345,6 +380,7 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: presentational popover that follows the anchor; no keyboard interaction expected.
     <div
+      ref={props.cardRef}
       style={{ position: "fixed", top, left, zIndex: 50 }}
       className="bg-popover text-popover-foreground border-border w-[360px] max-w-[90vw] rounded-md border p-3 shadow-lg"
       onMouseEnter={props.onEnter}

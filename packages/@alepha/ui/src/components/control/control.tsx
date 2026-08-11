@@ -18,6 +18,7 @@ import {
 import { ControlDate } from "@alepha/ui/components/control-date/control-date";
 import { ControlNumber } from "@alepha/ui/components/control-number/control-number";
 import { ControlObject } from "@alepha/ui/components/control-object/control-object";
+import { ControlPassword } from "@alepha/ui/components/control-password/control-password";
 import {
   ControlSelect,
   type SelectOption,
@@ -26,7 +27,6 @@ import {
   ControlUpload,
   type ControlUploadProps,
 } from "@alepha/ui/components/control-upload/control-upload";
-import { Button } from "@alepha/ui/components/ui/button";
 import { Input } from "@alepha/ui/components/ui/input";
 import { Switch } from "@alepha/ui/components/ui/switch";
 import { Textarea } from "@alepha/ui/components/ui/textarea";
@@ -39,7 +39,7 @@ import {
   useFormState,
 } from "alepha/react/form";
 import { resolveSchemaControl, type SchemaControl } from "alepha/react/ui";
-import { Check, Eye, EyeOff, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import {
   type ComponentType,
   type HTMLAttributes,
@@ -514,7 +514,7 @@ export function Control(props: ControlProps) {
   if (isPassword) {
     return wrapWithSlots(
       merged,
-      <PasswordControl
+      <ControlPassword
         id={meta.id}
         name={props.input.props.name}
         label={merged.label ?? meta.label}
@@ -676,69 +676,3 @@ const wrapWithSlots = (
     </div>
   );
 };
-
-interface PasswordControlProps {
-  id?: string;
-  name?: string;
-  label?: string;
-  description?: string;
-  error?: string;
-  required?: boolean;
-  disabled?: boolean;
-  autoComplete?: string;
-  autoFocus?: boolean;
-  inputProps?: HTMLAttributes<HTMLElement>;
-  icon?: IconComponent;
-  value: string;
-  onChange: (v: string) => void;
-}
-
-function PasswordControl(props: PasswordControlProps) {
-  const [reveal, setReveal] = useState(false);
-  const Icon = props.icon;
-  return (
-    <FormField
-      id={props.id}
-      label={props.label}
-      description={props.description}
-      error={props.error}
-      required={props.required}
-    >
-      <div className="relative">
-        {Icon && (
-          <Icon className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2 pointer-events-none" />
-        )}
-        <Input
-          {...props.inputProps}
-          {...formFieldAriaProps({
-            id: props.id,
-            error: props.error,
-            description: props.description,
-          })}
-          id={props.id}
-          name={props.name}
-          type={reveal ? "text" : "password"}
-          autoComplete={props.autoComplete ?? "current-password"}
-          autoFocus={props.autoFocus}
-          disabled={props.disabled}
-          value={props.value}
-          onChange={(e) => props.onChange(e.target.value)}
-          className={[props.inputProps?.className, Icon ? "pr-9 pl-9" : "pr-9"]
-            .filter(Boolean)
-            .join(" ")}
-        />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          disabled={props.disabled}
-          onClick={() => setReveal((r) => !r)}
-          aria-label={reveal ? "Hide password" : "Show password"}
-          className="text-muted-foreground hover:text-foreground absolute top-1/2 right-1 size-7 -translate-y-1/2"
-        >
-          {reveal ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-        </Button>
-      </div>
-    </FormField>
-  );
-}

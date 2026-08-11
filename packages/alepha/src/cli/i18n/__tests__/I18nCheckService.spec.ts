@@ -157,6 +157,77 @@ export class Router {
     expect(result.dictionaryFiles).not.toContain(`${ROOT}/src/web/Home.tsx`);
   });
 
+  it("reports {0}-style placeholders, which never interpolate", async () => {
+    await env.fs.mkdir(`${ROOT}/src/web`, { recursive: true });
+    await env.fs.writeFile(
+      `${ROOT}/src/web/I18n.ts`,
+      dictionary({
+        "session.ok": "Signed out of $1 sessions.",
+        "session.bad": "Signed out of {0} sessions.",
+      }),
+    );
+    await env.fs.writeFile(
+      `${ROOT}/src/web/Home.tsx`,
+      `export const Home = () => [tr("session.ok"), tr("session.bad")];`,
+    );
+
+    const result = await env.service.check({
+      root: ROOT,
+      scan: ["src"],
+      dynamicPrefixes: [],
+      exclude: [],
+    });
+
+    expect(result.badPlaceholders).toEqual([
+      {
+        file: `${ROOT}/src/web/I18n.ts`,
+        key: "session.bad",
+        placeholder: "{0}",
+      },
+    ]);
+  });
+
+  it("attributes a placeholder to its key even when the value wraps", async () => {
+    await env.fs.mkdir(`${ROOT}/src/web`, { recursive: true });
+    // A formatter is free to break a long entry onto its own line — the
+    // placeholder is then nowhere near the key declaration.
+    await env.fs.writeFile(
+      `${ROOT}/src/web/I18n.ts`,
+      `import { $dictionary } from "alepha/react/i18n";
+export class I18n {
+  en = $dictionary({
+    lazy: async () => ({
+      default: {
+        "a.short": "Fine",
+        "a.wrapped":
+          "A very long sentence that the formatter pushed down a line, {1}.",
+      },
+    }),
+  });
+}
+`,
+    );
+    await env.fs.writeFile(
+      `${ROOT}/src/web/Home.tsx`,
+      `export const Home = () => [tr("a.short"), tr("a.wrapped")];`,
+    );
+
+    const result = await env.service.check({
+      root: ROOT,
+      scan: ["src"],
+      dynamicPrefixes: [],
+      exclude: [],
+    });
+
+    expect(result.badPlaceholders).toEqual([
+      {
+        file: `${ROOT}/src/web/I18n.ts`,
+        key: "a.wrapped",
+        placeholder: "{1}",
+      },
+    ]);
+  });
+
   it("returns totalKeys=0 when no dictionary is found", async () => {
     await env.fs.mkdir(`${ROOT}/src`, { recursive: true });
     await env.fs.writeFile(
