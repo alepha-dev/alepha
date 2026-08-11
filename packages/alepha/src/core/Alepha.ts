@@ -677,9 +677,7 @@ export class Alepha {
         return this;
       }
 
-      this.log?.info(
-        `App is now ready [${Math.round(performance.now() - now)}ms]`,
-      );
+      this.log?.info(this.readyMessage(performance.now() - now));
 
       this.ready = true;
       return this;
@@ -697,6 +695,32 @@ export class Alepha {
       this.resetStartup();
       throw error;
     }
+  }
+
+  /**
+   * Format the "ready" line, reporting the boot duration only when the runtime
+   * was actually able to measure it.
+   *
+   * On workerd the clock does not advance during pure-CPU work — it only moves
+   * after I/O — and container boot performs none: bindings (D1, KV, R2,
+   * Analytics Engine) are bound, never connected. So `performance.now()` is
+   * identical either side of the whole boot and the delta is exactly zero.
+   *
+   * Measured on a deployed Worker: 12 of 12 cold starts emitted every boot log
+   * line under a single identical timestamp while burning 30-216ms of CPU, and
+   * all of them printed "[0ms]". That number is not "boot was free", it is
+   * "the runtime could not see boot" — and reporting it hid a real ~45ms of
+   * per-cold-start CPU behind a zero. Say nothing rather than say zero.
+   *
+   * A sub-millisecond boot under Node still rounds to 0 but has a non-zero
+   * delta, so it keeps its bracket and stays distinguishable.
+   */
+  protected readyMessage(elapsedMs: number): string {
+    if (elapsedMs <= 0) {
+      return "App is now ready";
+    }
+
+    return `App is now ready [${Math.round(elapsedMs)}ms]`;
   }
 
   /**
