@@ -82,23 +82,40 @@ describe("AdminRouter", () => {
     const router = alepha.inject(AdminRouter);
     await alepha.start();
 
-    const can = router.audits.options.can;
-    expect(can).toBeDefined();
+    // Seed the link registry `can` actually consults: `findUsers` is
+    // registered, `findAudits` deliberately is not.
+    alepha.store.set("alepha.server.request.apiLinks", {
+      actions: {
+        findUsers: { path: "/users" },
+      },
+    });
 
-    // The audits module is registered: the entry belongs in the sidebar.
-    expect(can!({ has: () => true })).toBe(true);
+    const usersCan = router.users.options.can;
+    const auditsCan = router.audits.options.can;
+    expect(usersCan).toBeDefined();
+    expect(auditsCan).toBeDefined();
 
-    // It is not: `findAudits` is absent from /api/_links, so the entry goes.
-    // `admin:audit:read` still answers true here on purpose — this page's own
-    // `$secure` declares it, which is exactly why the permission alone cannot
-    // be the gate.
-    expect(can!({ has: (name) => name !== "findAudits" })).toBe(false);
+    // `has: () => true` is deliberate: it proves the permission side cannot
+    // rescue either entry, since `can` now consults `LinkProvider` directly
+    // and ignores the context it is called with entirely.
+    //
+    // The users module is registered: the entry belongs in the sidebar.
+    expect(usersCan!({ has: () => true })).toBe(true);
+
+    // The audits module is not: `findAudits` is absent from the registry, so
+    // the entry goes — even though `admin:audit:read` (a permission-shaped
+    // name) would be granted here, which is exactly why the permission alone
+    // can never be the gate.
+    expect(auditsCan!({ has: () => true })).toBe(false);
   });
 
   it("gates every admin page on an action, not only a permission", async () => {
     const alepha = Alepha.create().with(AlephaReactRouter);
     const router = alepha.inject(AdminRouter);
     await alepha.start();
+
+    // An empty registry: no action exists for any page to be granted.
+    alepha.store.set("alepha.server.request.apiLinks", { actions: {} });
 
     const pages = [
       router.users,
@@ -120,8 +137,8 @@ describe("AdminRouter", () => {
       // is. A `can` derived only from `permission` (e.g. via `$page`'s
       // `deriveCanFromGuards` fallback) would answer `true` here, since the
       // permission it checks is exactly the kind of name this `has` grants —
-      // which is why this must go false, and only does because `requires` is
-      // wired in independently of `permission`.
+      // which is why this must go false, and only does because `can` is
+      // wired to a `$client` action independently of `permission`.
       expect(page.options.can!({ has: (name) => name.includes(":") })).toBe(
         false,
       );

@@ -1,7 +1,19 @@
 import { navPage } from "@alepha/ui/components/nav-shell/nav-page";
 import { $store, z } from "alepha";
+import type { AdminAuditController } from "alepha/api/audits";
+import type { FileController } from "alepha/api/files";
+import type { AdminJobController } from "alepha/api/jobs";
+import type { AdminApiKeyController } from "alepha/api/keys";
+import type { AdminNotificationController } from "alepha/api/notifications";
+import type { AdminParameterController } from "alepha/api/parameters";
+import type { AdminPaymentController } from "alepha/api/payments";
+import type {
+  AdminSessionController,
+  AdminUserController,
+} from "alepha/api/users";
 import { $page, Redirection } from "alepha/react/router";
 import { $secure } from "alepha/security";
+import { $client } from "alepha/server/links";
 import {
   Bell,
   CreditCard,
@@ -32,19 +44,22 @@ import { adminRouterOptionsAtom } from "./admin-router-options.ts";
  *
  * A page whose permission the signed-in admin does not hold hides itself, and
  * so does a page whose module is not registered — but through two separate
- * gates, not one. Each `navPage` here declares both `permission` and
- * `requires`, and the entry is hidden when either fails.
+ * gates, not one. Each `navPage` here declares `permission`, and its `can`
+ * calls a typed `$client` action, and the entry is hidden when either fails.
  *
  * `permission` alone cannot cover "the module is not registered": `navPage`
  * wires it into `use: [$secure({ permissions })]` on the page itself, and
  * `$secure` registers that permission into `SecurityProvider` eagerly, at
  * definition time — so the permission exists whether or not any controller
  * backing the page does, and an admin holding the `*` wildcard is granted it
- * regardless. `requires` closes that gap with an action name instead of a
- * permission: `useAuth().has()` resolves it via `LinkProvider.can()` against
+ * regardless. `can` closes that gap with an action instead of a permission:
+ * `this.userApi.findUsers.can()` is `LinkProvider.can("findUsers")` against
  * `/api/_links`, a registry built from the actions the server actually
  * registered, so an action nothing declared never appears there for anyone
- * to be granted.
+ * to be granted. The action is read off a `$client<AdminUserController>()`
+ * field, so a rename on the controller is a compile error here rather than a
+ * silently dead sidebar entry — the failure mode a plain string name would
+ * have.
  *
  * This is why there is no `pages: [...]` allowlist. A second gate on top of
  * two that already work goes stale: an application that later turns on
@@ -84,6 +99,16 @@ import { adminRouterOptionsAtom } from "./admin-router-options.ts";
 export class AdminRouter {
   protected readonly options = $store(adminRouterOptionsAtom);
 
+  protected readonly userApi = $client<AdminUserController>();
+  protected readonly sessionApi = $client<AdminSessionController>();
+  protected readonly apiKeyApi = $client<AdminApiKeyController>();
+  protected readonly jobApi = $client<AdminJobController>();
+  protected readonly notificationApi = $client<AdminNotificationController>();
+  protected readonly auditApi = $client<AdminAuditController>();
+  protected readonly fileApi = $client<FileController>();
+  protected readonly parameterApi = $client<AdminParameterController>();
+  protected readonly paymentApi = $client<AdminPaymentController>();
+
   /**
    * Anchors the shell and the first breadcrumb. Not itself a nav entry — a
    * shell root is excluded from its own sidebar.
@@ -110,7 +135,7 @@ export class AdminRouter {
     path: "/users",
     head: { title: "Users" },
     permission: "admin:user:read",
-    requires: "findUsers",
+    can: () => this.userApi.findUsers.can(),
     nav: { label: "Users", icon: <UsersIcon />, group: "Identity", order: 1 },
     lazy: () => import("./admin-users.tsx"),
     props: () => this.options.pages?.users ?? {},
@@ -125,7 +150,7 @@ export class AdminRouter {
     path: "/users/:userId",
     head: { title: "User" },
     permission: "admin:user:read",
-    requires: "findUsers",
+    can: () => this.userApi.findUsers.can(),
     schema: {
       params: z.object({
         userId: z.uuid(),
@@ -140,7 +165,7 @@ export class AdminRouter {
     path: "/sessions",
     head: { title: "Sessions" },
     permission: "admin:session:read",
-    requires: "findSessions",
+    can: () => this.sessionApi.findSessions.can(),
     nav: {
       label: "Sessions",
       icon: <ShieldCheck />,
@@ -155,7 +180,7 @@ export class AdminRouter {
     path: "/keys",
     head: { title: "API keys" },
     permission: "admin:api-key:read",
-    requires: "findApiKeys",
+    can: () => this.apiKeyApi.findApiKeys.can(),
     nav: {
       label: "API keys",
       icon: <KeyRound />,
@@ -171,7 +196,7 @@ export class AdminRouter {
     path: "/jobs",
     head: { title: "Jobs" },
     permission: "admin:job:read",
-    requires: "listJobs",
+    can: () => this.jobApi.listJobs.can(),
     nav: { label: "Jobs", icon: <Timer />, group: "Operations", order: 4 },
     lazy: () => import("./admin-jobs.tsx"),
   });
@@ -181,7 +206,7 @@ export class AdminRouter {
     path: "/notifications",
     head: { title: "Notifications" },
     permission: "admin:notification:read",
-    requires: "findNotifications",
+    can: () => this.notificationApi.findNotifications.can(),
     nav: {
       label: "Notifications",
       icon: <Bell />,
@@ -196,7 +221,7 @@ export class AdminRouter {
     path: "/audits",
     head: { title: "Audit log" },
     permission: "admin:audit:read",
-    requires: "findAudits",
+    can: () => this.auditApi.findAudits.can(),
     nav: {
       label: "Audit log",
       icon: <ShieldAlert />,
@@ -211,7 +236,7 @@ export class AdminRouter {
     path: "/files",
     head: { title: "Files" },
     permission: "admin:file:read",
-    requires: "findFiles",
+    can: () => this.fileApi.findFiles.can(),
     nav: { label: "Files", icon: <Files />, group: "Operations", order: 7 },
     lazy: () => import("./admin-files.tsx"),
   });
@@ -221,7 +246,7 @@ export class AdminRouter {
     path: "/parameters",
     head: { title: "Parameters" },
     permission: "admin:parameter:read",
-    requires: "getParameterTree",
+    can: () => this.parameterApi.getParameterTree.can(),
     nav: {
       label: "Parameters",
       icon: <SlidersHorizontal />,
@@ -243,7 +268,7 @@ export class AdminRouter {
     path: "/payments",
     head: { title: "Payments" },
     permission: ["admin:payment:read", "payments:read"],
-    requires: "listIntents",
+    can: () => this.paymentApi.listIntents.can(),
     nav: {
       label: "Payments",
       icon: <CreditCard />,
