@@ -398,6 +398,8 @@ export const uiFr: Record<string, string> = {
   "admin.userDetail.disabled": "Utilisateur désactivé",
   "admin.userDetail.disabledBadge": "Désactivé",
   "admin.userDetail.email": "Adresse e-mail",
+  "admin.userDetail.emailCannotBeCleared":
+    "L'adresse e-mail ne peut pas être supprimée une fois renseignée",
   "admin.userDetail.emailRequired": "L'adresse e-mail est requise",
   "admin.userDetail.emailVerified": "Adresse vérifiée",
   "admin.userDetail.enable": "Réactiver",
@@ -448,6 +450,8 @@ export const uiFr: Record<string, string> = {
   "admin.userDetail.tabSessions": "Sessions",
   "admin.userDetail.thisUser": "cet utilisateur",
   "admin.userDetail.username": "Identifiant",
+  "admin.userDetail.usernameCannotBeCleared":
+    "L'identifiant ne peut pas être supprimé une fois renseigné",
   "admin.userDetail.usernameRequired": "L'identifiant est requis",
   "admin.userDetail.verified": "Vérifié",
   "admin.users.active": "Actif",

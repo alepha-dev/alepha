@@ -6,6 +6,7 @@ import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
 import type { FormModel } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { ShieldCheck } from "lucide-react";
+import type { ProfilePolicy } from "./admin-user-detail-profile-policy.ts";
 import type { profileSchema } from "./admin-user-detail-profile-schema.ts";
 
 export interface AdminUserDetailOverviewTabProps {
@@ -15,6 +16,12 @@ export interface AdminUserDetailOverviewTabProps {
    * but not togglable.
    */
   availableRoles: ReadonlyArray<{ name: string; default?: boolean }>;
+  /**
+   * Which identity fields the realm collects. A field the realm has turned
+   * off is not rendered at all — an Email input on a username-only realm is
+   * an invitation to write a value nothing can use.
+   */
+  policy: ProfilePolicy;
 }
 
 /**
@@ -25,11 +32,32 @@ export const AdminUserDetailOverviewTab = (
 ) => {
   const { tr } = useI18n();
 
+  // AutoForm renders every key of the schema unless it is handed groups, so
+  // one group carrying the offered fields is how a field is left out.
+  const fields = (
+    [
+      "username",
+      "email",
+      "emailVerified",
+      "firstName",
+      "lastName",
+      "roles",
+    ] as const
+  ).filter((name) => {
+    if (name === "username") return props.policy.username.visible;
+    // The verified flag is meaningless without the address it qualifies.
+    if (name === "email" || name === "emailVerified") {
+      return props.policy.email.visible;
+    }
+    return true;
+  });
+
   return (
     <div className="min-h-0 flex-1 overflow-auto">
       <div className="flex max-w-6xl flex-col gap-6 p-6">
         <AutoForm
           form={props.form}
+          groups={[{ fields: [...fields] }]}
           card
           icon="user"
           title={tr("admin.userDetail.profile", { default: "Profile" })}
