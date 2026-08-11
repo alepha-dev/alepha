@@ -20,6 +20,8 @@ export default {
   "spotlight.hint": "Type to search quests and folios.",
   "spotlight.empty": "Nothing matched.",
   "spotlight.empty.projects": "No project matched.",
+  "spotlight.group.pages": "Pages",
+  "spotlight.group.apps": "app",
   "spotlight.group.quests": "Quests",
   "spotlight.group.folios": "Folios",
   "spotlight.group.projects": "Projects",
@@ -103,6 +105,17 @@ export default {
   "folios.activity.action.rename": "renamed",
   "folios.activity.action.tag-change": "tagged",
   "folios.activity.action.revert": "reverted",
+
+  "folios.wikilink.broken.title": "Broken link",
+  "folios.wikilink.broken.folioNotFound":
+    "No folio matches this reference. Inside [[…]], #N means a folio — a quest is [[quest:#N]].",
+  "folios.wikilink.broken.ambiguous":
+    "Several entries share this title — use the explicit #N form to disambiguate.",
+  "folios.wikilink.broken.questNotFound": "No quest matches this reference.",
+  "folios.wikilink.broken.blobNotFound":
+    "No folio blob matches this reference.",
+  "folios.wikilink.broken.questFormWanted":
+    "There is no folio #$1, but quest #$1 exists. Inside [[…]], #N means a folio — write [[quest:#$1]] instead.",
 
   "folios.editor.menu.folio": "Folio",
   "folios.editor.menu.edit": "Edit",
@@ -865,7 +878,7 @@ export default {
     "Paste a screenshot (Ctrl/⌘+V) or drag files anywhere here.",
   "feedback.request.attachments": "Attachments",
   "feedback.request.attachmentsHelper":
-    "Screenshots, CSVs, logs (max 5 MB each, up to $1 files).",
+    "Screenshots, CSVs, logs (max $1 MB each, up to $2 files).",
   "feedback.request.attach": "Attach file",
   "feedback.request.attachmentsCount": "$1 / $2 files",
   "feedback.request.tooManyFiles": "Too many files (max $1)",

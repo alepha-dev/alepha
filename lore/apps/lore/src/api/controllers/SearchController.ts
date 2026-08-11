@@ -17,11 +17,33 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
  * while `kind` says "folio" — and normalising that in each caller is how
  * the palette's first version ended up mis-mapping three fields.
  */
+/**
+ * Characters of body context a palette row shows. Enough for a sentence,
+ * short enough that twelve of them do not outweigh the titles.
+ */
+const MAX_PREVIEW = 140;
+
 const searchHitSchema = z.object({
   kind: z.enum(["quest", "folio", "directory"]),
   id: z.string(),
   shortId: z.integer(),
   title: z.string(),
+  /**
+   * One line of context under the title in the palette — a quest's
+   * description, a folio's summary. Absent for a directory, which has no
+   * body, and for anything whose source field is empty.
+   *
+   * Truncated HERE rather than in the browser: a folio summary or quest
+   * description can run to paragraphs, and a twelve-row palette has no use
+   * for the rest of it. Sending it whole would put kilobytes on the wire per
+   * keystroke to render ~140 characters.
+   *
+   * ⚠️ A protected folio's body never reaches this field — `summary` is the
+   * only source used, and it is deliberately the one part of a protected
+   * folio that stays plaintext (its `searchText` is blank by design). Do not
+   * "improve" this by falling back to `content` for folios with no summary.
+   */
+  description: z.string().optional(),
   /**
    * Set only for a protected folio, so a caller can mark it without
    * having to know that "protected" is a flag rather than a kind.
@@ -115,12 +137,14 @@ export class SearchController {
           id: String(q.id),
           shortId: q.shortId,
           title: q.title,
+          description: this.preview(q.description),
         })),
         ...folioRows.map((f) => ({
           kind: "folio" as const,
           id: f.id,
           shortId: f.shortId,
           title: f.title,
+          description: this.preview(f.summary),
           protected: f.protected || undefined,
         })),
         ...directoryRows.map((d) => ({
@@ -134,4 +158,25 @@ export class SearchController {
       return { hits: orderSearchHits(hits, needle, !!idMatch, limit) };
     },
   });
+
+  /**
+   * Collapse a body down to one short line fit for a palette row.
+   *
+   * Markdown is flattened rather than rendered — the palette shows plain
+   * muted text, and leaving `##` or `**` in would put syntax on screen. This
+   * is intentionally cruder than the folio hover card's `stripMarkdown`: at
+   * ~140 characters the difference between a good strip and a rough one is
+   * invisible, and the alternative is a second copy of that helper on the
+   * server for no gain.
+   */
+  protected preview(raw: string | null | undefined): string | undefined {
+    if (!raw) return undefined;
+    const flat = raw
+      .replace(/```[\s\S]*?```/g, " ")
+      .replace(/[#>*_`~[\]]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!flat) return undefined;
+    return flat.length > MAX_PREVIEW ? `${flat.slice(0, MAX_PREVIEW)}…` : flat;
+  }
 }

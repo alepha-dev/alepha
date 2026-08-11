@@ -10,20 +10,38 @@ import {
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { FileText, Folder, LayoutGrid, Lock, Swords } from "lucide-react";
+import {
+  AppWindow,
+  FileText,
+  Folder,
+  LayoutGrid,
+  Lock,
+  PanelsTopLeft,
+  Swords,
+} from "lucide-react";
 import { type ReactElement, useEffect, useState } from "react";
 import type { SearchController } from "@/api/controllers/SearchController.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import {
+  type ProjectNavEntry,
+  projectNavAtom,
+} from "../../../atoms/projectNavAtom.ts";
 import { spotlightOpenAtom } from "../../../atoms/spotlightOpenAtom.ts";
 import { userProjectsAtom } from "../../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { matchProjectNav } from "./matchProjectNav.ts";
 
 interface SpotlightHit {
   kind: "quest" | "folio" | "directory";
   id: string;
   shortId: number;
   title: string;
+  /**
+   * One line of context — a quest's description, a folio's summary. Already
+   * flattened and truncated by `SearchController`; render it as-is.
+   */
+  description?: string;
   protected?: boolean;
 }
 
@@ -62,6 +80,7 @@ const Spotlight = (): ReactElement => {
   const [project] = useStore(currentProjectAtom);
   const [spotlight, setSpotlight] = useStore(spotlightOpenAtom);
   const [overview] = useStore(userProjectsAtom);
+  const [projectNav] = useStore(projectNavAtom);
   const searchApi = useClient<SearchController>();
 
   const [query, setQuery] = useState("");
@@ -138,6 +157,15 @@ const Spotlight = (): ReactElement => {
     return !q || it.title.toLowerCase().includes(q);
   });
 
+  // Pages and apps the sidebar currently offers, matched against the query.
+  // See `matchProjectNav` for the ranking and why it happens client-side.
+  const navMatches = matchProjectNav(projectNav, query);
+
+  const goNav = async (entry: ProjectNavEntry): Promise<void> => {
+    close();
+    await router.push(entry.href);
+  };
+
   const goProject = async (id: number): Promise<void> => {
     close();
     await router.push("project", { params: { projectId: String(id) } });
@@ -181,7 +209,17 @@ const Spotlight = (): ReactElement => {
       onSelect={() => void go(hit)}
     >
       {iconFor(hit)}
-      <span className="flex-1 truncate">{hit.title}</span>
+      {/* `min-w-0` is what lets both lines truncate: a flex child defaults to
+          `min-width: auto`, so without it the column refuses to shrink below
+          its longest line and the `#N` on the right gets pushed off. */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate">{hit.title}</span>
+        {hit.description && (
+          <span className="text-muted-foreground truncate text-xs">
+            {hit.description}
+          </span>
+        )}
+      </div>
       <span className="text-muted-foreground text-xs tabular-nums">
         #{hit.shortId}
       </span>
@@ -194,6 +232,11 @@ const Spotlight = (): ReactElement => {
       onOpenChange={(open) => {
         if (!open) close();
       }}
+      /* `CommandDialog` sets position and padding but never a width, so it
+         inherited `DialogContent`'s `sm:max-w-sm` — 384px. Widened HERE and
+         not in `command.tsx`: that file is stock shadcn and
+         `yarn w @alepha/ui sync` overwrites `components/ui/` wholesale. */
+      className="sm:max-w-2xl"
       title={String(tr("spotlight.title"))}
       description={String(
         tr(
@@ -253,6 +296,29 @@ const Spotlight = (): ReactElement => {
             )
           ) : (
             <>
+              {/* Pages first. A page label is short and specific, so a match on
+                  one is a strong signal of navigation intent — and when the
+                  query is really a folio title it matches no page at all, so
+                  this group simply does not render. */}
+              {navMatches.length > 0 && (
+                <CommandGroup heading={String(tr("spotlight.group.pages"))}>
+                  {navMatches.map((entry) => (
+                    <CommandItem
+                      key={`nav:${entry.href}`}
+                      value={`nav:${entry.href}`}
+                      onSelect={() => void goNav(entry)}
+                    >
+                      {entry.kind === "app" ? <AppWindow /> : <PanelsTopLeft />}
+                      <span className="flex-1 truncate">{entry.label}</span>
+                      {entry.kind === "app" && (
+                        <span className="text-muted-foreground text-xs">
+                          {tr("spotlight.group.apps")}
+                        </span>
+                      )}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
               {quests.length > 0 && (
                 <CommandGroup heading={String(tr("spotlight.group.quests"))}>
                   {quests.map(row)}

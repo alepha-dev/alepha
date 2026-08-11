@@ -37,7 +37,26 @@ export type BrokenWikiLinkReason =
   | "folio-not-found"
   | "ambiguous-title"
   | "quest-not-found"
-  | "blob-not-found";
+  | "blob-not-found"
+  /**
+   * `[[#N]]` matched no folio, but quest #N exists — almost certainly a quest
+   * reference written in the folio form.
+   *
+   * Kept as its own reason rather than resolving to the quest, because
+   * inferring across entity types is worse than the broken link it would
+   * replace: `[[#42]]` is unambiguous today, and making it mean "folio 42, or
+   * quest 42 if that folio is missing" would make a link's destination depend
+   * on which folios happen to exist — so deleting an unrelated folio could
+   * silently repoint a link somewhere else entirely.
+   *
+   * The mistake is predictable enough to be worth naming: quests are shown as
+   * `#156` everywhere in the product, and only inside `[[…]]` does `#N` mean a
+   * folio. The editor's `[[` typeahead already prevents it by offering quests
+   * and inserting `quest:#N` — but MCP clients write markdown directly and
+   * never see that typeahead, which is how the references that prompted this
+   * were authored in the first place.
+   */
+  | "folio-not-found-quest-exists";
 
 /**
  * Synthetic href scheme for a reference that resolved to nothing. It is not
@@ -185,12 +204,27 @@ export const createFolioWikiLinkResolver = (
     return blobByUuid.get(trimmed);
   };
 
+  /**
+   * `hint` is appended to the href after a colon (reasons never contain one)
+   * so a diagnosis can carry a value the message needs — currently the quest
+   * shortId behind `folio-not-found-quest-exists`.
+   *
+   * It rides in the href for the same reason the reason does: a rewritten
+   * markdown document passes through a renderer that understands links and
+   * nothing else, so anything the hover card needs has to survive as part of
+   * the URL. Reading it back off the rendered label would work today and break
+   * the moment the label's format changes.
+   */
   const brokenTarget = (
     body: string,
     reason: BrokenWikiLinkReason,
+    hint?: string | number,
   ): WikiLinkTarget => ({
     kind: "broken",
-    href: `${BROKEN_HREF_PREFIX}${reason}`,
+    href:
+      hint == null
+        ? `${BROKEN_HREF_PREFIX}${reason}`
+        : `${BROKEN_HREF_PREFIX}${reason}:${hint}`,
     label: `[[${body}]]`,
     reason,
   });
@@ -286,10 +320,16 @@ export const createFolioWikiLinkResolver = (
       else if (hit && hit.count > 1) folioAmbiguous = true;
     }
     if (!folio) {
-      return brokenTarget(
-        body,
-        folioAmbiguous ? "ambiguous-title" : "folio-not-found",
-      );
+      if (folioAmbiguous) return brokenTarget(body, "ambiguous-title");
+      // Only for the `#N` form. A bare title that matches no folio says
+      // nothing about quests — the two namespaces are unrelated.
+      if (rest.startsWith("#")) {
+        const n = Number.parseInt(rest.slice(1), 10);
+        if (Number.isFinite(n) && questByShort.has(n)) {
+          return brokenTarget(body, "folio-not-found-quest-exists", n);
+        }
+      }
+      return brokenTarget(body, "folio-not-found");
     }
     // Folio detail lives under `/folios/:shortId` — keep this in sync with
     // AppRouter.

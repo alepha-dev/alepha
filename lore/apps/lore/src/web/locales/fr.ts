@@ -17,6 +17,8 @@ export default {
   "spotlight.hint": "Saisissez pour rechercher quêtes et folios.",
   "spotlight.empty": "Aucun résultat.",
   "spotlight.empty.projects": "Aucun projet ne correspond.",
+  "spotlight.group.pages": "Pages",
+  "spotlight.group.apps": "app",
   "spotlight.group.quests": "Quêtes",
   "spotlight.group.folios": "Folios",
   "spotlight.group.projects": "Projets",
@@ -103,6 +105,18 @@ export default {
   "folios.activity.action.rename": "a renommé",
   "folios.activity.action.tag-change": "a étiqueté",
   "folios.activity.action.revert": "a restauré",
+
+  "folios.wikilink.broken.title": "Lien cassé",
+  "folios.wikilink.broken.folioNotFound":
+    "Aucun folio ne correspond à cette référence. Dans [[…]], #N désigne un folio — pour une quête, écrivez [[quest:#N]].",
+  "folios.wikilink.broken.ambiguous":
+    "Plusieurs entrées portent ce titre — utilisez la forme explicite #N pour lever l'ambiguïté.",
+  "folios.wikilink.broken.questNotFound":
+    "Aucune quête ne correspond à cette référence.",
+  "folios.wikilink.broken.blobNotFound":
+    "Aucun fichier de folio ne correspond à cette référence.",
+  "folios.wikilink.broken.questFormWanted":
+    "Le folio #$1 n'existe pas, mais la quête #$1 existe. Dans [[…]], #N désigne un folio — écrivez plutôt [[quest:#$1]].",
 
   "folios.editor.menu.folio": "Folio",
   "folios.editor.menu.edit": "Édition",
@@ -879,7 +893,7 @@ export default {
     "Collez une capture d'écran (Ctrl/⌘+V) ou glissez des fichiers ici.",
   "feedback.request.attachments": "Pièces jointes",
   "feedback.request.attachmentsHelper":
-    "Captures, CSV, logs (max 5 Mo chacun, jusqu'à $1 fichiers).",
+    "Captures, CSV, logs (max $1 Mo chacun, jusqu'à $2 fichiers).",
   "feedback.request.attach": "Joindre un fichier",
   "feedback.request.attachmentsCount": "$1 / $2 fichiers",
   "feedback.request.tooManyFiles": "Trop de fichiers (max $1)",
