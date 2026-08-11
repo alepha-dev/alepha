@@ -73,7 +73,18 @@ const tabSchema = z.object({ tab: z.string().optional() });
 export const AdminUserDetail = (props: AdminUserDetailProps) => {
   const router = useRouter();
   const routerState = useRouterState();
-  const userId = String(routerState.params.userId ?? "");
+  /**
+   * `AdminRouter`'s own route declares `:userId`, but this component is also
+   * consumed by routers outside this repo (e.g. an application that vendors
+   * `@alepha/ui` and still declares its user-detail route as `:id`, the name
+   * this component read exclusively before `AdminRouter` existed). The
+   * fallback is what keeps a vendored upgrade from silently resolving an
+   * empty id instead of failing loudly — `:userId` is always preferred when
+   * present.
+   */
+  const userId = String(
+    routerState.params.userId ?? routerState.params.id ?? "",
+  );
   const userClient = useClient<AdminUserController>();
   const sessionClient = useClient<AdminSessionController>();
   const identityClient = useClient<AdminIdentityController>();

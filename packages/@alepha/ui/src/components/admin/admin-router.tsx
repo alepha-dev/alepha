@@ -25,7 +25,6 @@ import {
   Timer,
   UsersIcon,
 } from "lucide-react";
-import AdminLayout from "./admin-layout.tsx";
 import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
 
 /**
@@ -127,7 +126,7 @@ export class AdminRouter {
       }
       return {};
     },
-    component: AdminLayout,
+    lazy: () => import("./admin-layout.tsx"),
   });
 
   users = navPage({
