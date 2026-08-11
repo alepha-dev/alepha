@@ -1,4 +1,4 @@
-import { $atom, Alepha, z } from "alepha";
+import { $atom, $hook, Alepha, type State, z } from "alepha";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ReactBrowserProvider,
@@ -174,6 +174,53 @@ describe("ReactBrowserProvider", () => {
       expect(
         alepha.store.getAtom("alepha.react.router.layers"),
       ).toBeUndefined();
+    });
+  });
+
+  /**
+   * Hydration is inbound state: the server already decided it, so every `start`
+   * hook must boot with it in place.
+   *
+   * Applying it in `ready` (where the render happens) meant `start` hooks read
+   * defaults and configured themselves against a value that was about to
+   * change. i18n is the case that exposed it: `I18nProvider` preloads the
+   * dictionaries for the active language on `start`, so with the payload
+   * unapplied it preloaded the fallback language's dictionary instead. The real
+   * language landed in `ready`, but `StateManager.set` emits `state:mutate`
+   * fire-and-forget, so that dictionary's loader was still in flight when
+   * `render()` hydrated React one line later — and `translate()` falls through
+   * to the fallback dictionary when the active one has no entry for a key.
+   * The whole page rendered in the fallback language while `lang` already said
+   * otherwise, and it never repaired itself, because finishing a dictionary
+   * load notifies nobody.
+   */
+  describe("hydration ordering", () => {
+    const key = "test.hydration.ordering" as keyof State;
+
+    it("applies the SSR payload before any start hook runs", async () => {
+      const script = document.createElement("script");
+      script.id = "__ssr";
+      script.type = "application/json";
+      script.textContent = JSON.stringify({ [key]: "en" });
+      document.body.appendChild(script);
+
+      const seenByStartHook: Array<unknown> = [];
+
+      class Probe {
+        readonly onStart = $hook({
+          on: "start",
+          handler: () => {
+            seenByStartHook.push(alepha.store.get(key));
+          },
+        });
+      }
+
+      alepha.inject(Probe);
+
+      // `start` only — `ready` is where the render lives and needs a router.
+      await alepha.events.emit("start", alepha);
+
+      expect(seenByStartHook).toEqual(["en"]);
     });
   });
 

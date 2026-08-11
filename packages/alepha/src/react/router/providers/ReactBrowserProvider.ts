@@ -297,6 +297,19 @@ export class ReactBrowserProvider {
    * Get embedded layers from the server.
    */
   protected getHydrationState(): ReactHydrationState | undefined {
+    if (this.hydrationState === undefined) {
+      this.hydrationState = this.readHydrationState() ?? null;
+    }
+    return this.hydrationState ?? undefined;
+  }
+
+  /**
+   * Cached `#__ssr` payload. `null` means "read, and there was none" — as
+   * opposed to `undefined`, "not read yet".
+   */
+  protected hydrationState?: ReactHydrationState | null;
+
+  protected readHydrationState(): ReactHydrationState | undefined {
     try {
       const el = this.document.getElementById("__ssr");
       if (el?.textContent) {
@@ -306,6 +319,40 @@ export class ReactBrowserProvider {
       console.error(error);
     }
   }
+
+  /**
+   * Install the SSR payload into the store BEFORE any `start` hook runs.
+   *
+   * Hydration is inbound state: it is what the server already decided, so the
+   * app must boot with it in place, not adopt it afterwards. Applying it in
+   * `ready` (where the render happens) left every `start` hook reading a store
+   * the server had already filled in — they saw defaults and configured
+   * themselves against a value that was about to change.
+   *
+   * i18n is the case that exposed it. `I18nProvider`'s `start` hook preloads
+   * the dictionaries for the active language; with the payload unapplied it
+   * read `lang` as empty, fell back to `fallbackLang`, and preloaded the wrong
+   * dictionary. `applyHydration` then set the real language in `ready` — but
+   * `StateManager.set` emits `state:mutate` fire-and-forget, so the loader for
+   * the real language was still in flight when `render()` hydrated React one
+   * line later. `translate()` found the active dictionary empty, fell through
+   * to the loaded fallback one, and rendered the whole page in the fallback
+   * language while `lang` already said otherwise — a hydration mismatch that
+   * never repaired itself, because finishing a dictionary load notifies nobody.
+   *
+   * Applying the payload here closes that window at the source: `start` hooks
+   * see the language the server actually chose, and preload against it.
+   */
+  protected readonly hydrateBeforeStart = $hook({
+    on: "start",
+    priority: "first",
+    handler: () => {
+      const hydration = this.getHydrationState();
+      if (hydration) {
+        this.applyHydration(hydration);
+      }
+    },
+  });
 
   /**
    * Apply the SSR hydration payload (the `#__ssr` script tag) to the atom
@@ -373,12 +420,11 @@ export class ReactBrowserProvider {
   public readonly ready = $hook({
     on: "ready",
     handler: async () => {
+      // Already applied by `hydrateBeforeStart`; this only needs the render
+      // instructions, which are not atom values and are not applied to the
+      // store at all.
       const hydration = this.getHydrationState();
       const previous = hydration?.["alepha.react.router.layers"] ?? [];
-
-      if (hydration) {
-        this.applyHydration(hydration);
-      }
 
       await this.render({ previous });
 
