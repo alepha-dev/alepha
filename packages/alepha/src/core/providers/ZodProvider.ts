@@ -164,6 +164,60 @@ const defType = (s: any): string | undefined => s?._zod?.def?.type;
 const strFmt = (base: zod.ZodType, format: string): zod.ZodString =>
   meta(base, { format }) as unknown as zod.ZodString;
 
+/**
+ * JSON Schema keywords whose own keys are user-chosen NAMES, not keywords.
+ *
+ * {@link stripInternalMeta} must descend into their values but never filter
+ * their keys: a schema is allowed to declare a property literally named
+ * `~options`, and dropping it would silently delete a real field.
+ */
+const SCHEMA_MAP_KEYWORDS = new Set([
+  "properties",
+  "patternProperties",
+  "dependentSchemas",
+  "$defs",
+  "definitions",
+]);
+
+/**
+ * Drop Alepha's internal `~`-prefixed metadata from a generated JSON Schema.
+ *
+ * `z.text()` stores its string transforms under `~options` so the schema
+ * carries its own behaviour, but that key is implementation detail. Every
+ * caller of `z.toJSONSchema` publishes the result on a wire — OpenAPI, MCP
+ * `tools/list`, devtools metadata, the admin parameter forms — so stripping
+ * here rather than at each call site is what makes the key genuinely internal.
+ * Nothing reads it back out: `jsonSchemaToZod`, the only inverse, ignores it.
+ */
+const stripInternalMeta = <T>(root: T): T => {
+  const seen = new WeakSet<object>();
+
+  const walk = (node: any, isSchemaNode: boolean): void => {
+    if (!node || typeof node !== "object" || seen.has(node)) {
+      return;
+    }
+    seen.add(node);
+
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        walk(item, true);
+      }
+      return;
+    }
+
+    for (const key of Object.keys(node)) {
+      if (isSchemaNode && key.startsWith("~")) {
+        delete node[key];
+        continue;
+      }
+      walk(node[key], !isSchemaNode || !SCHEMA_MAP_KEYWORDS.has(key));
+    }
+  };
+
+  walk(root, true);
+  return root;
+};
+
 // ---------------------------------------------------------------------------
 // The `z` provider — mirrors `t`'s surface.
 // ---------------------------------------------------------------------------
@@ -345,8 +399,17 @@ export const z = {
   // NOT provided here — call the native zod methods directly on the schema
   // (`schema.optional()`, `schema.pick({ a: true })`, `schema.parse(v)`, …).
 
-  /** Export a schema to JSON Schema (OpenAPI / form generation). */
-  toJSONSchema: zod.toJSONSchema,
+  /**
+   * Export a schema to JSON Schema (OpenAPI / form generation).
+   *
+   * Alepha's internal `~`-prefixed metadata is stripped from the result — see
+   * {@link stripInternalMeta}. Callers publish this on a wire; none of them
+   * should have to remember to clean it first.
+   */
+  toJSONSchema: ((schema: any, params?: any) =>
+    stripInternalMeta(
+      zod.toJSONSchema(schema, params),
+    )) as typeof zod.toJSONSchema,
 
   /** Runtime type guards (`z.schema.*`) — schema introspection for ORM + forms. */
   schema: {

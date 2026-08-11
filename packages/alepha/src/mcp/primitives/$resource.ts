@@ -1,5 +1,6 @@
 import { $inject, createPrimitive, KIND, Primitive } from "alepha";
 import type {
+  McpAnnotations,
   McpContext,
   McpIcon,
   McpResourceDescriptor,
@@ -111,6 +112,20 @@ export interface ResourcePrimitiveOptions {
   mimeType?: string;
 
   /**
+   * Audience / priority / `lastModified` hints (spec 2025-03-26+).
+   *
+   * `lastModified` is the useful one: it is how a client decides whether the
+   * copy it already holds is still current, instead of re-reading blindly.
+   */
+  annotations?: McpAnnotations;
+
+  /**
+   * Arbitrary metadata passed through to clients on the descriptor
+   * (spec 2025-06-18+). For anything the protocol has no field for.
+   */
+  _meta?: Record<string, unknown>;
+
+  /**
    * Handler function that returns the resource content.
    *
    * Called when the resource is read. Can return text or binary content.
@@ -181,6 +196,10 @@ export class ResourcePrimitive extends Primitive<ResourcePrimitiveOptions> {
     if (this.options.icons && this.options.icons.length > 0) {
       descriptor.icons = this.options.icons;
     }
+    if (this.options.annotations) {
+      descriptor.annotations = this.options.annotations;
+    }
+    if (this.options._meta) descriptor._meta = this.options._meta;
     return descriptor;
   }
 }

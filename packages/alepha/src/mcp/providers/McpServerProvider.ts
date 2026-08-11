@@ -7,19 +7,22 @@ import {
   McpPromptNotFoundError,
   McpResourceNotFoundError,
   McpToolNotFoundError,
+  McpToolOutputError,
 } from "../errors/McpError.ts";
 import {
   createErrorResponse,
   createInternalError,
   createResponse,
   isSupportedProtocolVersion,
-  MCP_PROTOCOL_VERSION,
   SUPPORTED_PROTOCOL_VERSIONS,
 } from "../helpers/jsonrpc.ts";
 import type {
   JsonRpcRequest,
   JsonRpcResponse,
   McpCapabilities,
+  McpCompletionArgument,
+  McpCompletionRef,
+  McpCompletionResult,
   McpContent,
   McpContext,
   McpInitializeResult,
@@ -29,12 +32,14 @@ import type {
   McpResourceContent,
   McpResourceDescriptor,
   McpResourceReadResult,
+  McpResourceTemplateDescriptor,
   McpServerInfo,
   McpToolCallResult,
   McpToolDescriptor,
 } from "../interfaces/McpTypes.ts";
 import type { PromptPrimitive } from "../primitives/$prompt.ts";
 import type { ResourcePrimitive } from "../primitives/$resource.ts";
+import type { ResourceTemplatePrimitive } from "../primitives/$resourceTemplate.ts";
 import type { ToolPrimitive } from "../primitives/$tool.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -54,14 +59,17 @@ export class McpServerProvider {
 
   protected readonly tools = new Map<string, ToolPrimitive<any>>();
   protected readonly resources = new Map<string, ResourcePrimitive>();
+  protected readonly resourceTemplates = new Map<
+    string,
+    ResourceTemplatePrimitive<any>
+  >();
   protected readonly prompts = new Map<string, PromptPrimitive<any>>();
 
   /**
-   * Protocol version negotiated with the client during `initialize`.
-   * Used by transports to validate the `MCP-Protocol-Version` header on
-   * subsequent HTTP requests (per spec 2025-06-18+).
+   * Requests currently being handled, so `notifications/cancelled` can reach
+   * them. Keyed by `clientKey:id` — see {@link McpContext.clientKey}.
    */
-  public negotiatedVersion: string = MCP_PROTOCOL_VERSION;
+  protected readonly inFlight = new Map<string, AbortController>();
 
   /**
    * Server identity returned during `initialize`. Consumers may override
@@ -73,6 +81,26 @@ export class McpServerProvider {
     name: "alepha-mcp",
     version: "1.0.0",
   };
+
+  /**
+   * Maximum number of entries returned by one `tools/list`, `resources/list`,
+   * `resources/templates/list` or `prompts/list` call. Beyond it the response
+   * carries a `nextCursor` the client passes back to fetch the next page.
+   *
+   * The default is deliberately above what a typical server registers, so
+   * turning pagination on changed nothing for anyone already shipping. Lower
+   * it when the descriptor blob is what you are trying to keep out of the
+   * model's context — that is the knob, not the default. `0` disables paging
+   * and always returns everything.
+   */
+  public pageSize = 100;
+
+  /**
+   * Maximum number of candidates returned by one `completion/complete`. Beyond
+   * it the response reports `hasMore: true` and the real `total`, so a picker
+   * can tell the user to keep typing.
+   */
+  public completionLimit = 100;
 
   // -----------------------------------------------------------------------------------------------------------------
   // Registration Methods
@@ -95,6 +123,18 @@ export class McpServerProvider {
   }
 
   /**
+   * Register a resource template with the MCP server.
+   */
+  public registerResourceTemplate(
+    template: ResourceTemplatePrimitive<any>,
+  ): void {
+    this.log.trace(
+      `Registering MCP resource template: ${template.uriTemplate}`,
+    );
+    this.resourceTemplates.set(template.uriTemplate, template);
+  }
+
+  /**
    * Register a prompt with the MCP server.
    */
   public registerPrompt(prompt: PromptPrimitive<any>): void {
@@ -112,9 +152,33 @@ export class McpServerProvider {
   public getCapabilities(): McpCapabilities {
     return {
       tools: this.tools.size > 0 ? {} : undefined,
-      resources: this.resources.size > 0 ? {} : undefined,
+      // Templates live under the same capability as concrete resources —
+      // `resources/templates/list` is part of the resources surface, so a
+      // server offering only templates still declares `resources`.
+      resources:
+        this.resources.size > 0 || this.resourceTemplates.size > 0
+          ? {}
+          : undefined,
       prompts: this.prompts.size > 0 ? {} : undefined,
+      // Gated on a handler actually existing, the same way the three above are
+      // gated on a non-empty registry. A `completions` capability backed by
+      // nothing would have every client offering an autocomplete that always
+      // comes back empty.
+      completions: this.hasCompletions() ? {} : undefined,
     };
+  }
+
+  /**
+   * Whether any prompt or resource template can answer `completion/complete`.
+   */
+  protected hasCompletions(): boolean {
+    for (const prompt of this.prompts.values()) {
+      if (prompt.hasCompletion()) return true;
+    }
+    for (const template of this.resourceTemplates.values()) {
+      if (template.hasCompletion()) return true;
+    }
+    return false;
   }
 
   /**
@@ -129,6 +193,13 @@ export class McpServerProvider {
    */
   public getResources(): ResourcePrimitive[] {
     return Array.from(this.resources.values());
+  }
+
+  /**
+   * Get all registered resource templates.
+   */
+  public getResourceTemplates(): ResourceTemplatePrimitive<any>[] {
+    return Array.from(this.resourceTemplates.values());
   }
 
   /**
@@ -178,14 +249,31 @@ export class McpServerProvider {
 
     // Notifications have no id and expect no response
     if (id === undefined) {
-      await this.handleNotification(request);
+      await this.handleNotification(request, context);
       return null;
     }
 
+    const key = this.inFlightKey(context?.clientKey, id);
+    const controller = new AbortController();
+    this.inFlight.set(key, controller);
+
     try {
-      const result = await this.handleRequest(request, context);
+      const result = await this.handleRequest(request, {
+        ...context,
+        signal: controller.signal,
+      });
+      // The client has withdrawn the request. Answering it now would be a
+      // response to a question nobody is listening for any more — and per
+      // spec the cancelled request's response MUST NOT be sent.
+      if (controller.signal.aborted) {
+        return null;
+      }
       return createResponse(id, result);
     } catch (error) {
+      if (controller.signal.aborted) {
+        this.log.debug("MCP request aborted by client", { id });
+        return null;
+      }
       this.log.error("MCP request failed", error);
       // Preserve error code from McpError instances
       if (error instanceof McpError) {
@@ -214,7 +302,39 @@ export class McpServerProvider {
         id,
         createInternalError((error as Error).message),
       );
+    } finally {
+      this.inFlight.delete(key);
     }
+  }
+
+  // -----------------------------------------------------------------------------------------------------------------
+  // Cancellation
+  // -----------------------------------------------------------------------------------------------------------------
+
+  protected inFlightKey(
+    clientKey: string | undefined,
+    id: string | number,
+  ): string {
+    return `${clientKey ?? ""}:${id}`;
+  }
+
+  /**
+   * Abandon an in-flight request: its handler's {@link McpContext.signal} is
+   * aborted and its response will be suppressed.
+   *
+   * Deliberately public and trigger-agnostic. `notifications/cancelled` is how
+   * a 2025-11-25 client asks for this; under 2026-07-28 the trigger becomes
+   * closing the SSE response stream instead. The plumbing is the same either
+   * way, so a transport can call this from whichever signal it observes.
+   *
+   * Returns whether a matching request was actually running — an unknown id is
+   * normal, not an error: the request may have completed just before the
+   * cancellation arrived.
+   */
+  public cancelRequest(id: string | number, clientKey?: string): boolean {
+    const controller = this.inFlight.get(this.inFlightKey(clientKey, id));
+    controller?.abort();
+    return !!controller;
   }
 
   /**
@@ -232,17 +352,21 @@ export class McpServerProvider {
       case "ping":
         return this.handlePing();
       case "tools/list":
-        return this.handleToolsList();
+        return this.handleToolsList(params);
       case "tools/call":
         return this.handleToolsCall(params, context);
       case "resources/list":
-        return this.handleResourcesList();
+        return this.handleResourcesList(params);
+      case "resources/templates/list":
+        return this.handleResourceTemplatesList(params);
       case "resources/read":
         return this.handleResourcesRead(params, context);
       case "prompts/list":
-        return this.handlePromptsList();
+        return this.handlePromptsList(params);
       case "prompts/get":
         return this.handlePromptsGet(params, context);
+      case "completion/complete":
+        return this.handleCompletionComplete(params, context);
       default:
         throw new McpMethodNotFoundError(method);
     }
@@ -251,16 +375,24 @@ export class McpServerProvider {
   /**
    * Handle a notification (no response expected).
    */
-  protected async handleNotification(request: JsonRpcRequest): Promise<void> {
+  protected async handleNotification(
+    request: JsonRpcRequest,
+    context?: McpContext,
+  ): Promise<void> {
     const { method } = request;
 
     switch (method) {
       case "notifications/initialized":
         this.log.debug("MCP client initialized");
         break;
-      case "notifications/cancelled":
-        this.log.debug("MCP request cancelled", request.params);
+      case "notifications/cancelled": {
+        const requestId = request.params?.requestId as string | number;
+        const found =
+          requestId !== undefined &&
+          this.cancelRequest(requestId, context?.clientKey);
+        this.log.debug("MCP request cancelled", { requestId, found });
         break;
+      }
       default:
         this.log.debug(`Unknown MCP notification: ${method}`);
     }
@@ -287,8 +419,12 @@ export class McpServerProvider {
       negotiatedProtocolVersion: negotiated,
     });
 
-    this.negotiatedVersion = negotiated;
-
+    // The negotiated version is deliberately NOT stored on this provider.
+    // It was, and the transport validated the `MCP-Protocol-Version` header
+    // against it — but the provider is a process-global singleton, so client
+    // B's `initialize` changed what client A was checked against, and a fresh
+    // Worker isolate reset it. The transport now validates against the
+    // SUPPORTED set instead; see its comment.
     return {
       protocolVersion: negotiated,
       capabilities: this.getCapabilities(),
@@ -300,17 +436,107 @@ export class McpServerProvider {
     return {};
   }
 
-  protected handleToolsList(): { tools: McpToolDescriptor[] } {
+  // -----------------------------------------------------------------------------------------------------------------
+  // Pagination
+  // -----------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Encode a list position as an opaque cursor.
+   *
+   * Opaque is the contract: the client passes it back verbatim and never
+   * constructs one. The `kind` tag is what stops a `tools/list` cursor from
+   * being replayed against `prompts/list`, where the same offset addresses a
+   * completely different registry.
+   *
+   * A positional cursor is stable because the registries are `Map`s populated
+   * once at container start, so iteration order is registration order and does
+   * not change between pages.
+   */
+  protected encodeCursor(kind: string, offset: number): string {
+    return btoa(JSON.stringify({ k: kind, o: offset }));
+  }
+
+  /**
+   * Resolve a client-supplied cursor back to an offset. An absent cursor is
+   * page one; anything unrecognized is `-32602`, never a silent reset to page
+   * one — a client looping on a cursor it mangled would otherwise never
+   * terminate.
+   */
+  protected decodeCursor(kind: string, cursor: unknown): number {
+    if (cursor === undefined || cursor === null) {
+      return 0;
+    }
+    if (typeof cursor === "string") {
+      try {
+        const parsed = JSON.parse(atob(cursor));
+        if (parsed?.k === kind && Number.isInteger(parsed.o) && parsed.o >= 0) {
+          return parsed.o;
+        }
+      } catch {
+        // Fall through to the single rejection below.
+      }
+    }
+    throw new McpInvalidParamsError("Invalid params: invalid cursor");
+  }
+
+  /**
+   * Slice one page out of a registry listing, and mint the cursor for the next.
+   */
+  protected paginateList<T>(
+    kind: string,
+    all: T[],
+    params: Record<string, unknown>,
+  ): { page: T[]; nextCursor?: string } {
+    const offset = this.decodeCursor(kind, params.cursor);
+    if (this.pageSize <= 0) {
+      return { page: all.slice(offset) };
+    }
+    const page = all.slice(offset, offset + this.pageSize);
+    const next = offset + page.length;
     return {
-      tools: Array.from(this.tools.values()).map((t) => t.toDescriptor()),
+      page,
+      nextCursor: next < all.length ? this.encodeCursor(kind, next) : undefined,
     };
+  }
+
+  /**
+   * Read a required string out of a request's `params`.
+   *
+   * Without this, `params.name as string` on an absent field flows into the
+   * registry lookup and comes back as "Unknown tool: undefined" — a not-found
+   * error for a tool the caller never named. A missing required field is
+   * `-32602 Invalid params`, and the message says which field.
+   */
+  protected requireStringParam(
+    params: Record<string, unknown>,
+    key: string,
+  ): string {
+    const value = params[key];
+    if (typeof value !== "string" || value.length === 0) {
+      throw new McpInvalidParamsError(
+        `Invalid params: missing required string "${key}"`,
+      );
+    }
+    return value;
+  }
+
+  protected handleToolsList(params: Record<string, unknown>): {
+    tools: McpToolDescriptor[];
+    nextCursor?: string;
+  } {
+    const { page, nextCursor } = this.paginateList(
+      "tools",
+      Array.from(this.tools.values()),
+      params,
+    );
+    return { tools: page.map((t) => t.toDescriptor()), nextCursor };
   }
 
   protected async handleToolsCall(
     params: Record<string, unknown>,
     context?: McpContext,
   ): Promise<McpToolCallResult> {
-    const name = params.name as string;
+    const name = this.requireStringParam(params, "name");
     const args = (params.arguments ?? {}) as Record<string, unknown>;
 
     const tool = this.tools.get(name);
@@ -359,11 +585,30 @@ export class McpServerProvider {
 
       return callResult;
     } catch (error) {
+      // Not everything that escapes a tool is the model's problem. An McpError
+      // carries a JSON-RPC code precisely because it is NOT self-correctable:
+      // McpToolOutputError (the tool broke its own output contract),
+      // McpUnauthorizedError / McpForbiddenError (the caller may not do this).
+      // Flattening those into `isError: true` text discarded the code and told
+      // the model to try again at something it can never fix. Rethrowing lets
+      // handleMessage map them to real JSON-RPC errors.
+      if (error instanceof McpError) {
+        if (error instanceof McpToolOutputError) {
+          this.log.error(
+            `MCP tool "${name}" returned a value violating its own output schema`,
+            error,
+          );
+        }
+        throw error;
+      }
+
       // Spec 2025-11-25 / SEP-1303: input-validation failures (and other
       // tool-runtime errors) are returned as Tool Execution Errors, not
       // JSON-RPC protocol errors, so the model can self-correct.
       // For Zod validation errors we surface the failing path so the
-      // model knows which argument was malformed.
+      // model knows which argument was malformed. Only INPUT decoding can
+      // reach here — the output encode throws McpToolOutputError, handled
+      // above.
       if (error instanceof SchemaValidationError) {
         const path = error.value?.path || "/";
         const message = error.value?.message || error.message;
@@ -433,11 +678,30 @@ export class McpServerProvider {
     };
   }
 
-  protected handleResourcesList(): { resources: McpResourceDescriptor[] } {
+  protected handleResourcesList(params: Record<string, unknown>): {
+    resources: McpResourceDescriptor[];
+    nextCursor?: string;
+  } {
+    const { page, nextCursor } = this.paginateList(
+      "resources",
+      Array.from(this.resources.values()),
+      params,
+    );
+    return { resources: page.map((r) => r.toDescriptor()), nextCursor };
+  }
+
+  protected handleResourceTemplatesList(params: Record<string, unknown>): {
+    resourceTemplates: McpResourceTemplateDescriptor[];
+    nextCursor?: string;
+  } {
+    const { page, nextCursor } = this.paginateList(
+      "resourceTemplates",
+      Array.from(this.resourceTemplates.values()),
+      params,
+    );
     return {
-      resources: Array.from(this.resources.values()).map((r) =>
-        r.toDescriptor(),
-      ),
+      resourceTemplates: page.map((t) => t.toDescriptor()),
+      nextCursor,
     };
   }
 
@@ -445,19 +709,47 @@ export class McpServerProvider {
     params: Record<string, unknown>,
     context?: McpContext,
   ): Promise<McpResourceReadResult> {
-    const uri = params.uri as string;
+    const uri = this.requireStringParam(params, "uri");
 
+    // A concrete resource always wins over a template that happens to match
+    // its URI. Registering `db://users/me` alongside `db://users/{id}` is a
+    // deliberate special case, and the special case is the more specific one.
     const resource = this.resources.get(uri);
-    if (!resource) {
-      throw new McpResourceNotFoundError(uri);
+    if (resource) {
+      return this.toReadResult(
+        uri,
+        resource.mimeType,
+        await resource.read(context),
+      );
     }
 
-    const content = await resource.read(context);
+    for (const template of this.resourceTemplates.values()) {
+      const variables = template.match(uri);
+      if (!variables) {
+        continue;
+      }
+      const content = await template.read(uri, variables, context);
+      // A template can match the shape of a URI and still have nothing at it
+      // — `folio://3/999` is well-formed and absent. Returning undefined is
+      // how a handler says so without inventing empty content.
+      if (content === undefined) {
+        break;
+      }
+      return this.toReadResult(uri, template.mimeType, content);
+    }
 
-    const resourceContent: McpResourceContent = {
-      uri,
-      mimeType: resource.mimeType,
-    };
+    throw new McpResourceNotFoundError(uri);
+  }
+
+  /**
+   * Shape a handler's {@link ResourceContent} into the wire result.
+   */
+  protected toReadResult(
+    uri: string,
+    mimeType: string,
+    content: { text?: string; blob?: Uint8Array },
+  ): McpResourceReadResult {
+    const resourceContent: McpResourceContent = { uri, mimeType };
 
     if (content.text !== undefined) {
       resourceContent.text = content.text;
@@ -468,22 +760,86 @@ export class McpServerProvider {
       resourceContent.blob = Buffer.from(content.blob).toString("base64");
     }
 
+    return { contents: [resourceContent] };
+  }
+
+  /**
+   * Argument autocompletion for a prompt argument or a resource template's URI
+   * variable.
+   */
+  protected async handleCompletionComplete(
+    params: Record<string, unknown>,
+    context?: McpContext,
+  ): Promise<McpCompletionResult> {
+    const ref = params.ref as McpCompletionRef | undefined;
+    const argument = params.argument as McpCompletionArgument | undefined;
+
+    if (!argument || typeof argument.name !== "string") {
+      throw new McpInvalidParamsError(
+        'Invalid params: missing required "argument.name"',
+      );
+    }
+
+    // Already-filled arguments, so a completion can narrow on them
+    // (spec 2025-06-18+). Absent from older clients.
+    const filled = (params.context as { arguments?: Record<string, string> })
+      ?.arguments;
+
+    const args = {
+      argument: { name: argument.name, value: argument.value ?? "" },
+      arguments: filled,
+      context,
+    };
+
+    let candidates: string[];
+    if (ref?.type === "ref/prompt") {
+      const prompt = this.prompts.get(ref.name);
+      if (!prompt) {
+        throw new McpPromptNotFoundError(ref.name);
+      }
+      candidates = await prompt.complete(args);
+    } else if (ref?.type === "ref/resource") {
+      const template = this.resourceTemplates.get(ref.uri);
+      if (!template) {
+        throw new McpResourceNotFoundError(ref.uri);
+      }
+      candidates = await template.complete(args);
+    } else {
+      throw new McpInvalidParamsError(
+        'Invalid params: "ref" must be { type: "ref/prompt", name } or { type: "ref/resource", uri }',
+      );
+    }
+
+    // A primitive without a `complete` handler answers with an empty list
+    // rather than an error: the reference is valid, the server just has
+    // nothing to suggest.
+    const values = candidates.slice(0, this.completionLimit);
     return {
-      contents: [resourceContent],
+      completion: {
+        values,
+        total: candidates.length,
+        hasMore: candidates.length > values.length,
+      },
     };
   }
 
-  protected handlePromptsList(): { prompts: McpPromptDescriptor[] } {
-    return {
-      prompts: Array.from(this.prompts.values()).map((p) => p.toDescriptor()),
-    };
+  protected handlePromptsList(params: Record<string, unknown>): {
+    prompts: McpPromptDescriptor[];
+    nextCursor?: string;
+  } {
+    const { page, nextCursor } = this.paginateList(
+      "prompts",
+      Array.from(this.prompts.values()),
+      params,
+    );
+    return { prompts: page.map((p) => p.toDescriptor()), nextCursor };
   }
 
   protected async handlePromptsGet(
     params: Record<string, unknown>,
     context?: McpContext,
   ): Promise<McpPromptGetResult> {
-    const name = params.name as string;
+    const name = this.requireStringParam(params, "name");
     const args = (params.arguments ?? {}) as Record<string, string>;
 
     const prompt = this.prompts.get(name);
@@ -493,17 +849,20 @@ export class McpServerProvider {
 
     const messages = await prompt.get(args, context);
 
-    const mcpMessages: McpPromptMessage[] = messages.map((msg) => ({
-      role: msg.role,
-      content: {
-        type: "text" as const,
-        text: msg.content,
-      },
-    }));
-
     return {
       description: prompt.description,
-      messages: mcpMessages,
+      messages: messages.flatMap((msg) =>
+        // On the wire a message carries exactly one content block, so a
+        // handler that returns several becomes several messages, in order,
+        // all with the same role.
+        (Array.isArray(msg.content) ? msg.content : [msg.content]).map(
+          (block): McpPromptMessage => ({
+            role: msg.role,
+            content:
+              typeof block === "string" ? { type: "text", text: block } : block,
+          }),
+        ),
+      ),
     };
   }
 }

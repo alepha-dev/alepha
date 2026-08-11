@@ -29,6 +29,8 @@ such as files, database records, API responses, or computed data.
 | `icons` | `McpIcon[]` | No | Optional icons surfaced in client UIs (spec 2025-11-25 / SEP-973). |
 | `description` | `string` | No | Description of what this resource contains |
 | `mimeType` | `string` | No | MIME type of the resource content |
+| `annotations` | `McpAnnotations` | No | Audience / priority / `lastModified` hints (spec 2025-03-26+) |
+| `_meta` | `Record&lt;string, unknown&gt;` | No | Arbitrary metadata passed through to clients on the descriptor (spec 2025-06-18+) |
 | `handler` | `ResourceHandler` | Yes | Handler function that returns the resource content |
 
 ## Examples

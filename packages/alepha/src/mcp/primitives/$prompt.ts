@@ -9,6 +9,8 @@ import {
   z,
 } from "alepha";
 import type {
+  CompletionHandler,
+  CompletionHandlerArgs,
   McpContext,
   McpIcon,
   McpPromptArgument,
@@ -102,6 +104,12 @@ export interface PromptPrimitiveOptions<T extends ZObject> {
   icons?: McpIcon[];
 
   /**
+   * Arbitrary metadata passed through to clients on the descriptor
+   * (spec 2025-06-18+). For anything the protocol has no field for.
+   */
+  _meta?: Record<string, unknown>;
+
+  /**
    * Zod schema defining the prompt arguments.
    *
    * Each property in the schema becomes an argument that can be
@@ -118,6 +126,22 @@ export interface PromptPrimitiveOptions<T extends ZObject> {
    * @returns Array of prompt messages
    */
   handler: (args: PromptHandlerArgs<T>) => Async<PromptMessage[]>;
+
+  /**
+   * Optional argument autocompletion, served over `completion/complete`.
+   *
+   * Declaring one on any prompt is what makes the server advertise the
+   * `completions` capability.
+   *
+   * @example
+   * ```ts
+   * complete: async ({ argument }) =>
+   *   argument.name === "language"
+   *     ? LANGUAGES.filter((l) => l.startsWith(argument.value))
+   *     : [],
+   * ```
+   */
+  complete?: CompletionHandler;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -141,8 +165,23 @@ export class PromptPrimitive<T extends ZObject> extends Primitive<
     return this.options.description;
   }
 
+  /**
+   * Whether this prompt offers argument autocompletion.
+   */
+  public hasCompletion(): boolean {
+    return !!this.options.complete;
+  }
+
   protected onInit(): void {
     this.mcpServer.registerPrompt(this);
+  }
+
+  /**
+   * Candidate values for one of this prompt's arguments. Empty when the prompt
+   * declares no `complete` handler.
+   */
+  public async complete(args: CompletionHandlerArgs): Promise<string[]> {
+    return (await this.options.complete?.(args)) ?? [];
   }
 
   /**
@@ -180,6 +219,7 @@ export class PromptPrimitive<T extends ZObject> extends Primitive<
     if (this.options.icons && this.options.icons.length > 0) {
       descriptor.icons = this.options.icons;
     }
+    if (this.options._meta) descriptor._meta = this.options._meta;
     return descriptor;
   }
 

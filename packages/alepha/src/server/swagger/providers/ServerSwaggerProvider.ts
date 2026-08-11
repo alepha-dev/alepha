@@ -147,10 +147,10 @@ export class ServerSwaggerProvider {
       }
       // zod stamps a `$schema` dialect URL we don't want in OpenAPI fragments.
       json.$schema = undefined;
-      this.removePrivateFields(json, [
-        ...(this.options.excludeKeys || []),
-        "~options",
-      ]);
+      // Alepha's internal `~`-prefixed metadata is already gone: `z.toJSONSchema`
+      // strips it for every consumer. Only the document's own `excludeKeys`
+      // remain to apply here.
+      this.removePrivateFields(json, this.options.excludeKeys || []);
       return json;
     };
 

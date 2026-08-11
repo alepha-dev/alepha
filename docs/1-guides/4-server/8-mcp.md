@@ -177,6 +177,60 @@ class Resources {
 | `handler` | `function` | Returns `{ text }` for text content or `{ blob }` for binary. |
 | `name` | `string` | Display name. Defaults to the property key. |
 
+### $resourceTemplate -- Parameterized Resources
+
+`$resource` addresses one thing at a fixed URI. `$resourceTemplate` addresses a
+*family* of them, so an AI can read `folio://1/86` without you registering every
+folio up front:
+
+```typescript
+import { $resourceTemplate } from "alepha/mcp";
+
+class FolioResources {
+  folio = $resourceTemplate({
+    uriTemplate: "folio://{projectId}/{shortId}",
+    description: "A folio, by project and short id.",
+    mimeType: "text/markdown",
+    variables: z.object({
+      projectId: z.text(),
+      shortId: z.text(),
+    }),
+    handler: async ({ variables }) => {
+      const folio = await this.folios.find(variables.projectId, variables.shortId);
+      // `undefined` means "well-formed URI, nothing there" -> not found.
+      return folio ? { text: folio.content } : undefined;
+    },
+  });
+}
+```
+
+Templates are advertised on `resources/templates/list`, and `resources/read`
+falls through to them when no fixed resource matches the URI exactly. A concrete
+`$resource` always wins over a template that also matches — registering
+`db://users/me` alongside `db://users/{id}` does what you would expect.
+
+**URI templates.** Two RFC 6570 forms are supported:
+
+| Form | Matches | Use for |
+|------|---------|---------|
+| `{var}` | one segment, never spanning `/`; percent-decoded | ids, slugs |
+| `{+var}` | greedy, `/` included; not decoded | trailing paths (`file:///{+path}`) |
+
+Any other operator (`{?query}`, `{#frag}`, `{/path*}`) throws when the container
+wires the primitive up, rather than compiling into a pattern that silently never
+matches.
+
+**Options:**
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `uriTemplate` | `string` | Required. The RFC 6570 pattern. |
+| `variables` | `ZObject` | Validates the extracted values. A failure is `-32602`, so a malformed URI never reaches the handler. |
+| `handler` | `function` | Receives `{ variables, uri, context }`. Returns `{ text }`, `{ blob }`, or `undefined` for not found. |
+| `description` | `string` | What this family of resources contains. |
+| `mimeType` | `string` | Content type. Defaults to `text/plain`. |
+| `name` | `string` | Display name. Defaults to the property key. |
+
 ### $prompt -- Message Templates
 
 Prompts define reusable conversation templates with typed arguments.
@@ -349,6 +403,38 @@ task_list = $tool({
 });
 ```
 
+`context.data` carries whatever the transport put there. By default that is the
+authenticated user (`request.user`), so a tool can read the caller without
+resolving it again:
+
+```typescript
+task_list = $tool({
+  description: "List the caller's tasks.",
+  handler: async ({ context }) => {
+    const user = context?.data as UserAccountToken | undefined;
+    return this.tasks.findMany({ where: { ownerId: user?.id } });
+  },
+});
+```
+
+To carry anything else — a tenant, a project scope, a request id — override
+`buildContext` on the transport and register the subclass:
+
+```typescript
+import { StreamableHttpMcpTransport } from "alepha/mcp";
+
+class MyMcpTransport extends StreamableHttpMcpTransport {
+  protected buildContext(request: any) {
+    return {
+      ...super.buildContext(request),
+      data: { user: request.user, tenant: request.headers.host },
+    };
+  }
+}
+
+alepha.with({ provide: StreamableHttpMcpTransport, use: MyMcpTransport });
+```
+
 ## Error Handling
 
 Throw errors in handlers and they are returned as tool results the AI can read:
@@ -368,20 +454,39 @@ handler: async ({ params, context }) => {
 }
 ```
 
+An ordinary `Error` becomes a **tool execution error** (`isError: true` with the
+message as text) so the model can read it and self-correct. An `McpError`
+subclass is a **JSON-RPC protocol error** instead, carrying its code — use one
+when the caller cannot fix the problem by changing its arguments.
+
 Available error classes:
 
 | Error | Code | When to use |
 |-------|------|-------------|
 | `McpUnauthorizedError` | -32001 | Missing or invalid credentials |
 | `McpForbiddenError` | -32003 | Authenticated but not allowed |
-| `McpToolNotFoundError` | -32601 | Unknown tool name |
-| `McpResourceNotFoundError` | -32601 | Unknown resource URI |
-| `McpPromptNotFoundError` | -32601 | Unknown prompt name |
+| `McpToolNotFoundError` | -32602 | Unknown tool name |
+| `McpResourceNotFoundError` | -32602 | Unknown resource URI |
+| `McpPromptNotFoundError` | -32602 | Unknown prompt name |
 | `McpInvalidParamsError` | -32602 | Bad parameters |
+| `McpToolOutputError` | -32603 | A tool returned a value violating its own `schema.result` (server raised, not thrown by you) |
+
+Unknown names are `-32602 Invalid params`, not `-32601 Method not found`:
+`-32601` says the *method* `tools/call` does not exist, which a client can read
+as "this server has no tools at all".
+
+Input validation stays a tool execution error — the model sent bad arguments and
+can retry. Output validation does not: a handler that breaks its own
+`schema.result` is a server bug, so it is logged and returned as `-32603`,
+never as a validation error pointing at an input path the caller never sent.
 
 ## Transport
 
-The HTTP transport is **Streamable HTTP** (MCP spec 2025-03-26+), a single endpoint:
+Transports are opt-in: wire the one you need.
+
+### Streamable HTTP
+
+**Streamable HTTP** (MCP spec 2025-03-26+), a single endpoint:
 
 - `POST /mcp` -- JSON-RPC endpoint; single responses return `application/json`
 - `GET /mcp` -- returns `405 Method Not Allowed` (the legacy two-endpoint SSE pattern is deliberately not served)
@@ -392,6 +497,77 @@ The path is configurable (keep it outside `/api`, which belongs to the `$action`
 import { mcpStreamableHttpOptions } from "alepha/mcp";
 
 alepha.store.mut(mcpStreamableHttpOptions, (o) => ({ ...o, path: "/my-mcp" }));
+```
+
+### stdio -- local servers
+
+Claude Desktop, Claude Code and every other *local* client launch the server as
+a subprocess and speak newline-delimited JSON-RPC over its pipes:
+
+```typescript
+import { Alepha, run } from "alepha";
+import { AlephaMcp, StdioMcpTransport } from "alepha/mcp";
+
+run(Alepha.create().with(AlephaMcp).with(StdioMcpTransport).with(MyTools));
+```
+
+Then point the client at the built binary:
+
+```json
+{
+  "mcpServers": {
+    "my-app": {
+      "command": "node",
+      "args": ["/path/to/my-app/dist/main.js"],
+      "env": { "DATABASE_URL": "..." }
+    }
+  }
+}
+```
+
+**stdout belongs to the protocol.** A single stray `console.log` -- yours,
+Alepha's, or a dependency's -- lands inside a JSON-RPC message and corrupts the
+stream permanently. While this transport runs it redirects `process.stdout` to
+stderr and keeps the real stdout for protocol messages only, so your logs still
+appear (on stderr, where the spec wants them) and cannot break the stream.
+
+A stdio server takes credentials from its environment rather than the HTTP
+authorization framework, so `requireAuth` has no meaning there -- whoever
+launched the process is the caller.
+
+### Progress on long calls
+
+When a client attaches a `_meta.progressToken` to a request, the HTTP response
+upgrades to `text/event-stream`: progress notifications as they happen, then the
+final response. Without a token, nothing changes -- the response is plain JSON.
+
+```typescript
+index_repo = $tool({
+  description: "Index every file in the repository.",
+  handler: async ({ context }) => {
+    const files = await this.files.list();
+    for (const [i, file] of files.entries()) {
+      await this.index(file);
+      context?.reportProgress?.(i + 1, files.length, `Indexed ${file.name}`);
+    }
+    return { indexed: files.length };
+  },
+});
+```
+
+`reportProgress` is absent when the client did not ask for progress, so call it
+through `?.`. The same context carries a `signal` that aborts when the client
+cancels -- pass it to `fetch`, DB queries and anything else that accepts one,
+or a tool nobody is waiting for keeps running to completion.
+
+### Paginated lists
+
+`tools/list`, `resources/list`, `resources/templates/list` and `prompts/list`
+page through an opaque cursor. The default page size is 100; lower it when the
+descriptor blob is what you are trying to keep out of the model's context:
+
+```typescript
+alepha.inject(McpServerProvider).pageSize = 25;
 ```
 
 ## Naming Convention

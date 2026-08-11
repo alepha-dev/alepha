@@ -1,5 +1,5 @@
 import { Alepha, z } from "alepha";
-import { describe, expect, test } from "vitest";
+import { describe, expect, it, test } from "vitest";
 import {
   $prompt,
   $resource,
@@ -7,7 +7,9 @@ import {
   AlephaMcp,
   MCP_PROTOCOL_VERSION,
   type McpContext,
+  McpForbiddenError,
   McpServerProvider,
+  McpUnauthorizedError,
 } from "../index.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -576,6 +578,403 @@ describe("McpServerProvider", () => {
     });
   });
 
+  describe("cancellation", () => {
+    /**
+     * A tool that parks until the test releases it, so a cancellation can
+     * arrive while it is genuinely in flight.
+     */
+    const slowContainer = async () => {
+      let release: (() => void) | undefined;
+      const parked = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const observed = { aborted: false, finished: false };
+
+      class Tools {
+        slow = $tool({
+          description: "Parks until released",
+          schema: { result: z.text() },
+          handler: async ({ context }) => {
+            await parked;
+            observed.aborted = context?.signal?.aborted ?? false;
+            observed.finished = true;
+            return "done";
+          },
+        });
+      }
+
+      const alepha = Alepha.create().with(AlephaMcp).with(Tools);
+      await alepha.start();
+
+      return {
+        provider: alepha.inject(McpServerProvider),
+        release: release!,
+        observed,
+      };
+    };
+
+    it("aborts the handler's signal and suppresses the response", async () => {
+      const { provider, release, observed } = await slowContainer();
+
+      const call = provider.handleMessage({
+        jsonrpc: "2.0",
+        id: 7,
+        method: "tools/call",
+        params: { name: "slow", arguments: {} },
+      });
+
+      await provider.handleMessage({
+        jsonrpc: "2.0",
+        method: "notifications/cancelled",
+        params: { requestId: 7 },
+      });
+
+      release();
+      const response = await call;
+
+      expect(observed.aborted).toBe(true);
+      // Not an error response, not a late result: nothing at all.
+      expect(response).toBeNull();
+    });
+
+    it("leaves an uncancelled request alone", async () => {
+      const { provider, release, observed } = await slowContainer();
+
+      const call = provider.handleMessage({
+        jsonrpc: "2.0",
+        id: 7,
+        method: "tools/call",
+        params: { name: "slow", arguments: {} },
+      });
+
+      release();
+      const response = await call;
+
+      expect(observed.aborted).toBe(false);
+      expect(observed.finished).toBe(true);
+      expect(response?.result).toBeDefined();
+    });
+
+    it("ignores a cancellation for a request that is not running", async () => {
+      const alepha = Alepha.create().with(AlephaMcp);
+      await alepha.start();
+      const provider = alepha.inject(McpServerProvider);
+
+      expect(provider.cancelRequest(999)).toBe(false);
+    });
+
+    /**
+     * JSON-RPC ids are unique per connection, and this server has no session
+     * concept — so without a client key two callers both using `id: 1` would
+     * share one cancellation slot.
+     */
+    it("does not let one client cancel another's request", async () => {
+      const { provider, release, observed } = await slowContainer();
+
+      const call = provider.handleMessage(
+        {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: { name: "slow", arguments: {} },
+        },
+        { clientKey: "alice" },
+      );
+
+      await provider.handleMessage(
+        {
+          jsonrpc: "2.0",
+          method: "notifications/cancelled",
+          params: { requestId: 1 },
+        },
+        { clientKey: "mallory" },
+      );
+
+      release();
+      const response = await call;
+
+      expect(observed.aborted).toBe(false);
+      expect(response?.result).toBeDefined();
+    });
+  });
+
+  describe("list pagination", () => {
+    /**
+     * Seven tools, registered in declaration order — which is the order
+     * `tools/list` pages through, because the registry is a Map filled once at
+     * container start.
+     */
+    class SevenTools {
+      tool0 = $tool({ description: "0", handler: async () => 0 });
+      tool1 = $tool({ description: "1", handler: async () => 1 });
+      tool2 = $tool({ description: "2", handler: async () => 2 });
+      tool3 = $tool({ description: "3", handler: async () => 3 });
+      tool4 = $tool({ description: "4", handler: async () => 4 });
+      tool5 = $tool({ description: "5", handler: async () => 5 });
+      tool6 = $tool({ description: "6", handler: async () => 6 });
+    }
+
+    const withTools = async (pageSize: number) => {
+      const alepha = Alepha.create().with(AlephaMcp).with(SevenTools);
+      await alepha.start();
+
+      const provider = alepha.inject(McpServerProvider);
+      provider.pageSize = pageSize;
+      return provider;
+    };
+
+    const list = async (
+      provider: McpServerProvider,
+      params: Record<string, unknown> = {},
+    ) => {
+      const response = await provider.handleMessage({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/list",
+        params,
+      });
+      return response as {
+        result?: { tools: Array<{ name: string }>; nextCursor?: string };
+        error?: { code: number };
+      };
+    };
+
+    it("returns page one and a cursor when the registry overflows", async () => {
+      const provider = await withTools(2);
+
+      const first = await list(provider);
+
+      expect(first.result?.tools.map((t) => t.name)).toEqual([
+        "tool0",
+        "tool1",
+      ]);
+      expect(first.result?.nextCursor).toBeTruthy();
+    });
+
+    it("omits nextCursor when everything fits", async () => {
+      const provider = await withTools(100);
+
+      const only = await list(provider);
+
+      expect(only.result?.tools).toHaveLength(7);
+      expect(only.result?.nextCursor).toBeUndefined();
+    });
+
+    it("traverses the full list exactly once", async () => {
+      const provider = await withTools(3);
+
+      const seen: string[] = [];
+      let cursor: string | undefined;
+      let guard = 0;
+      do {
+        const page = await list(provider, cursor ? { cursor } : {});
+        seen.push(...(page.result?.tools.map((t) => t.name) ?? []));
+        cursor = page.result?.nextCursor;
+      } while (cursor && ++guard < 20);
+
+      expect(seen).toEqual([
+        "tool0",
+        "tool1",
+        "tool2",
+        "tool3",
+        "tool4",
+        "tool5",
+        "tool6",
+      ]);
+      expect(new Set(seen).size).toBe(seen.length);
+    });
+
+    it("rejects a malformed cursor with -32602 rather than resetting", async () => {
+      const provider = await withTools(2);
+
+      const bad = await list(provider, { cursor: "not-a-cursor" });
+
+      expect(bad.result).toBeUndefined();
+      expect(bad.error?.code).toBe(-32602);
+    });
+
+    /**
+     * Offsets mean different things in different registries, so a cursor is
+     * tagged with the list that minted it.
+     */
+    it("rejects a cursor minted for another list", async () => {
+      const provider = await withTools(2);
+      const cursor = (await list(provider)).result?.nextCursor;
+
+      const response = await provider.handleMessage({
+        jsonrpc: "2.0",
+        id: 2,
+        method: "prompts/list",
+        params: { cursor },
+      });
+
+      expect(response?.error?.code).toBe(-32602);
+    });
+  });
+
+  describe("error attribution", () => {
+    const call = async (alepha: Alepha, name: string, args = {}) =>
+      alepha.inject(McpServerProvider).handleMessage({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name, arguments: args },
+      });
+
+    it("keeps an input violation a self-correctable tool error", async () => {
+      const alepha = Alepha.create();
+
+      class Tools {
+        double = $tool({
+          description: "Double a number",
+          schema: { params: z.object({ n: z.number() }), result: z.number() },
+          handler: async ({ params }) => params.n * 2,
+        });
+      }
+
+      alepha.with(AlephaMcp).with(Tools);
+      await alepha.start();
+
+      const response = await call(alepha, "double", { n: "not a number" });
+      const result = response?.result as {
+        isError?: boolean;
+        content: Array<{ text: string }>;
+      };
+
+      expect(response?.error).toBeUndefined();
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("/n");
+    });
+
+    /**
+     * The failure this pins: a handler breaking its OWN output contract used
+     * to be reported as `Validation error at /n`, naming a path the caller
+     * never sent. The model would retry forever adjusting arguments that were
+     * never the problem.
+     */
+    it("reports an output violation as a server error, not an input path", async () => {
+      const alepha = Alepha.create();
+
+      class Tools {
+        broken = $tool({
+          description: "Declares a number, returns a string",
+          schema: { params: z.object({ n: z.number() }), result: z.number() },
+          handler: async () => "definitely not a number" as any,
+        });
+      }
+
+      alepha.with(AlephaMcp).with(Tools);
+      await alepha.start();
+
+      const response = await call(alepha, "broken", { n: 1 });
+
+      expect(response?.result).toBeUndefined();
+      expect(response?.error?.code).toBe(-32603);
+      expect(response?.error?.message).toContain("output schema");
+      expect(response?.error?.message).toContain("broken");
+    });
+
+    /**
+     * McpUnauthorizedError / McpForbiddenError were exported with dedicated
+     * codes that the tool-error catch discarded, making them dead public API.
+     */
+    it.each([
+      [McpUnauthorizedError, -32001],
+      [McpForbiddenError, -32003],
+    ])("honours %s thrown by a handler", async (ErrorClass, code) => {
+      const alepha = Alepha.create();
+
+      class Tools {
+        guarded = $tool({
+          description: "Refuses",
+          handler: async () => {
+            throw new ErrorClass("nope");
+          },
+        });
+      }
+
+      alepha.with(AlephaMcp).with(Tools);
+      await alepha.start();
+
+      const response = await call(alepha, "guarded");
+
+      expect(response?.result).toBeUndefined();
+      expect(response?.error?.code).toBe(code);
+      expect(response?.error?.message).toBe("nope");
+    });
+
+    it("still reports an ordinary handler throw as a tool error", async () => {
+      const alepha = Alepha.create();
+
+      class Tools {
+        boom = $tool({
+          description: "Throws",
+          handler: async () => {
+            throw new Error("kaboom");
+          },
+        });
+      }
+
+      alepha.with(AlephaMcp).with(Tools);
+      await alepha.start();
+
+      const response = await call(alepha, "boom");
+      const result = response?.result as { isError?: boolean };
+
+      expect(response?.error).toBeUndefined();
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  describe("invalid params", () => {
+    /**
+     * `-32601` means "the method `tools/call` does not exist", which a
+     * conforming client can read as "this server has no tools at all". An
+     * unknown NAME is a bad argument to a method that does exist: `-32602`.
+     */
+    it.each([
+      ["tools/call", { name: "nope" }],
+      ["resources/read", { uri: "nope://x" }],
+      ["prompts/get", { name: "nope" }],
+    ])("%s with an unknown name yields -32602", async (method, params) => {
+      const alepha = Alepha.create();
+      alepha.with(AlephaMcp);
+      await alepha.start();
+
+      const response = await alepha
+        .inject(McpServerProvider)
+        .handleMessage({ jsonrpc: "2.0", id: 1, method, params });
+
+      expect(response?.error?.code).toBe(-32602);
+    });
+
+    /**
+     * `params.name as string` on an absent field used to reach the registry
+     * and come back as "Unknown tool: undefined" — a not-found error for a
+     * tool the caller never named.
+     */
+    it.each([
+      ["tools/call", "name"],
+      ["resources/read", "uri"],
+      ["prompts/get", "name"],
+    ])(
+      "%s without %s yields -32602 naming the field",
+      async (method, field) => {
+        const alepha = Alepha.create();
+        alepha.with(AlephaMcp);
+        await alepha.start();
+
+        const response = await alepha
+          .inject(McpServerProvider)
+          .handleMessage({ jsonrpc: "2.0", id: 1, method, params: {} });
+
+        expect(response?.error?.code).toBe(-32602);
+        expect(response?.error?.message).toContain(field);
+        expect(response?.error?.message).not.toContain("undefined");
+      },
+    );
+  });
+
   describe("unknown methods", () => {
     test("should return method not found error", async () => {
       const alepha = Alepha.create();
@@ -782,16 +1181,16 @@ describe("McpServerProvider", () => {
       expect(receivedContext?.data).toEqual({ role: "admin" });
     });
 
-    test("should work without context (backward compatibility)", async () => {
+    test("should work when the transport supplies no context", async () => {
       const alepha = Alepha.create();
 
-      let contextWasUndefined = false;
+      let seen: McpContext | undefined;
 
       class Tools {
         noContextTool = $tool({
           description: "Tool without context",
           handler: async ({ context }) => {
-            contextWasUndefined = context === undefined;
+            seen = context;
             return "done";
           },
         });
@@ -810,7 +1209,11 @@ describe("McpServerProvider", () => {
         params: { name: "noContextTool", arguments: {} },
       });
 
-      expect(contextWasUndefined).toBe(true);
+      // handleMessage always hands down a context, because there is always a
+      // cancellation signal to hand over — but nothing else is invented.
+      expect(seen?.headers).toBeUndefined();
+      expect(seen?.data).toBeUndefined();
+      expect(seen?.signal).toBeInstanceOf(AbortSignal);
     });
 
     test("should use context for authentication in tools", async () => {

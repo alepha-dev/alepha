@@ -22,8 +22,10 @@ interaction patterns.
 | `title` | `string` | No | Human-friendly display title (spec 2025-11-25) |
 | `description` | `string` | No | Description of what this prompt does |
 | `icons` | `McpIcon[]` | No | Optional icons surfaced in client UIs (spec 2025-11-25 / SEP-973). |
+| `_meta` | `Record&lt;string, unknown&gt;` | No | Arbitrary metadata passed through to clients on the descriptor (spec 2025-06-18+) |
 | `args` | `T` | No | Zod schema defining the prompt arguments |
 | `handler` | `Object` | Yes | Handler function that generates the prompt messages |
+| `complete` | `CompletionHandler` | No | Optional argument autocompletion, served over `completion/complete` |
 
 ## Examples
 

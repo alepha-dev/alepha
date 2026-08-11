@@ -188,3 +188,128 @@ describe("StreamableHttpMcpTransport — spec compliance", () => {
     expect(res.status).toBe(200);
   });
 });
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * `McpContext.data` is documented as the place a transport passes the
+ * authenticated user through. Nothing populated it: the transport built
+ * `{ headers }` and there was no hook. Four unit tests "covered" it by calling
+ * `primitive.execute(args, { data })` directly, which bypasses every transport
+ * and so proved nothing about the production path. These go over HTTP.
+ */
+describe("StreamableHttpMcpTransport — context", () => {
+  let seen: unknown;
+
+  class WhoAmITool {
+    whoami = $tool({
+      description: "Report the context data",
+      schema: { result: z.text() },
+      handler: async ({ context }) => {
+        seen = context?.data;
+        return JSON.stringify(context?.data ?? null);
+      },
+    });
+  }
+
+  const callWhoAmI = async (alepha: Alepha) => {
+    const url = `${alepha.inject(ServerProvider).hostname}/mcp`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-tenant": "acme" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name: "whoami", arguments: {} },
+      }),
+    });
+    return res.json() as any;
+  };
+
+  it("passes headers through to the handler over HTTP", async () => {
+    seen = undefined;
+    let headers: Record<string, unknown> | undefined;
+
+    class HeaderTool {
+      peek = $tool({
+        description: "Report a header",
+        schema: { result: z.text() },
+        handler: async ({ context }) => {
+          headers = context?.headers;
+          return "ok";
+        },
+      });
+    }
+
+    const alepha = Alepha.create({
+      env: { LOG_LEVEL: "error", SERVER_PORT: 0 },
+    })
+      .with(AlephaMcp)
+      .with(StreamableHttpMcpTransport)
+      .with(HeaderTool);
+    await alepha.start();
+
+    const url = `${alepha.inject(ServerProvider).hostname}/mcp`;
+    await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-tenant": "acme" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name: "peek", arguments: {} },
+      }),
+    });
+
+    expect(headers?.["x-tenant"]).toBe("acme");
+    await alepha.stop();
+  });
+
+  it("leaves data undefined when no user is authenticated", async () => {
+    seen = "sentinel";
+
+    const alepha = Alepha.create({
+      env: { LOG_LEVEL: "error", SERVER_PORT: 0 },
+    })
+      .with(AlephaMcp)
+      .with(StreamableHttpMcpTransport)
+      .with(WhoAmITool);
+    await alepha.start();
+
+    await callWhoAmI(alepha);
+
+    expect(seen).toBeUndefined();
+    await alepha.stop();
+  });
+
+  it("lets a subclass populate data, and the handler receives it", async () => {
+    seen = undefined;
+
+    class TenantTransport extends StreamableHttpMcpTransport {
+      protected buildContext(request: {
+        headers: Record<string, any>;
+        user?: unknown;
+      }) {
+        return {
+          ...super.buildContext(request),
+          data: { tenant: request.headers["x-tenant"] },
+        };
+      }
+    }
+
+    const alepha = Alepha.create({
+      env: { LOG_LEVEL: "error", SERVER_PORT: 0 },
+    })
+      .with(AlephaMcp)
+      .with({ provide: StreamableHttpMcpTransport, use: TenantTransport })
+      .with(WhoAmITool);
+    await alepha.start();
+
+    const body = await callWhoAmI(alepha);
+
+    expect(seen).toEqual({ tenant: "acme" });
+    expect(body.result.content[0].text).toBe('{"tenant":"acme"}');
+    await alepha.stop();
+  });
+});

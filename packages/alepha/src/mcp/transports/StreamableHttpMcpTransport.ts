@@ -3,13 +3,15 @@ import { $logger } from "alepha/logger";
 import { $route } from "alepha/server";
 import {
   createErrorResponse,
+  createInternalError,
+  createNotification,
   createParseError,
   isSupportedProtocolVersion,
   JsonRpcParseError,
   parseMessage,
   SUPPORTED_PROTOCOL_VERSIONS,
 } from "../helpers/jsonrpc.ts";
-import type { McpContext } from "../interfaces/McpTypes.ts";
+import type { JsonRpcRequest, McpContext } from "../interfaces/McpTypes.ts";
 import { McpServerProvider } from "../providers/McpServerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -77,8 +79,8 @@ export const mcpSseOptions = mcpStreamableHttpOptions;
  *
  * Implements the 2025-03-26+ Streamable HTTP transport: a single `/mcp`
  * endpoint that accepts JSON-RPC over POST and returns either
- * `application/json` (single response, the default) or
- * `text/event-stream` (when the server wants to stream multiple messages).
+ * `application/json` (single response, the default) or `text/event-stream`
+ * (when the client asked for progress via `_meta.progressToken`).
  *
  * Designed for serverless deployment (Cloudflare Workers, etc.) — there is
  * no long-lived GET stream. GET on the endpoint returns 405 Method Not
@@ -137,9 +139,11 @@ export class StreamableHttpMcpTransport {
 
   /**
    * POST endpoint for client-to-server JSON-RPC messages.
-   * Returns `application/json` for single responses; tools that need to
-   * stream progress would upgrade to `text/event-stream` (deferred until a
-   * concrete need exists).
+   *
+   * Returns `application/json` for single responses. When the client attaches
+   * a `_meta.progressToken`, the response upgrades to `text/event-stream`:
+   * `notifications/progress` as the handler reports them, then the final
+   * JSON-RPC response, then close.
    */
   message = $route({
     method: "POST",
@@ -206,7 +210,6 @@ export class StreamableHttpMcpTransport {
 
         const rpcRequest = parseMessage(body);
 
-        // Build context from request headers
         const headers = { ...request.headers } as Record<
           string,
           string | string[] | undefined
@@ -240,11 +243,14 @@ export class StreamableHttpMcpTransport {
           }
         }
 
-        const context: McpContext = { headers };
+        const progressToken = this.progressToken(rpcRequest);
+        if (progressToken !== undefined && this.acceptsEventStream(headers)) {
+          return this.streamResponse(request, rpcRequest, progressToken);
+        }
 
         const response = await this.mcpServer.handleMessage(
           rpcRequest,
-          context,
+          this.buildContext(request),
         );
 
         if (response) {
@@ -273,4 +279,187 @@ export class StreamableHttpMcpTransport {
       }
     },
   });
+
+  // -------------------------------------------------------------------------------------------------------------
+  // SSE response streaming
+  // -------------------------------------------------------------------------------------------------------------
+
+  /**
+   * The progress token the client attached to this request, if any.
+   *
+   * This is what decides whether the response streams. A progress notification
+   * is *addressed* to a token, so a request without one has nothing to stream
+   * — plain JSON stays the default, and every client that does not ask for
+   * progress sees exactly the behaviour it saw before.
+   */
+  protected progressToken(rpcRequest: {
+    params?: Record<string, unknown>;
+  }): string | number | undefined {
+    const meta = rpcRequest.params?._meta as
+      | { progressToken?: unknown }
+      | undefined;
+    const token = meta?.progressToken;
+    return typeof token === "string" || typeof token === "number"
+      ? token
+      : undefined;
+  }
+
+  /**
+   * Whether the client is willing to read an event stream. Clients are
+   * supposed to accept both, but one that explicitly listed only JSON gets
+   * JSON — an unreadable response is worse than a missing progress report.
+   */
+  protected acceptsEventStream(
+    headers: Record<string, string | string[] | undefined>,
+  ): boolean {
+    const raw = headers.accept;
+    const accept = Array.isArray(raw) ? raw.join(",") : raw;
+    if (!accept) {
+      return true;
+    }
+    return (
+      accept.includes("text/event-stream") ||
+      accept.includes("*/*") ||
+      accept.includes("application/*")
+    );
+  }
+
+  /**
+   * Answer with `text/event-stream`: progress notifications as they happen,
+   * then the final JSON-RPC response, then close.
+   */
+  protected streamResponse(
+    request: any,
+    rpcRequest: JsonRpcRequest,
+    progressToken: string | number,
+  ): ReadableStream {
+    request.reply.headers["content-type"] = "text/event-stream";
+    request.reply.headers["cache-control"] = "no-cache";
+    request.reply.headers.connection = "keep-alive";
+    // Without this nginx buffers the whole response and delivers it at the
+    // end, which defeats the entire point of streaming progress.
+    request.reply.headers["x-accel-buffering"] = "no";
+
+    const encoder = new TextEncoder();
+    const context = this.buildContext(request);
+
+    return new ReadableStream({
+      start: (controller) => {
+        let open = true;
+        const send = (message: unknown): void => {
+          if (!open) return;
+          try {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify(message)}\n\n`),
+            );
+          } catch {
+            // The stream is already gone; nothing useful left to do.
+            open = false;
+          }
+        };
+
+        const streamContext: McpContext = {
+          ...context,
+          reportProgress: (progress, total, message) =>
+            send(
+              createNotification("notifications/progress", {
+                progressToken,
+                progress,
+                ...(total !== undefined ? { total } : {}),
+                ...(message !== undefined ? { message } : {}),
+              }),
+            ),
+        };
+
+        this.mcpServer
+          .handleMessage(rpcRequest, streamContext)
+          .then((response) => {
+            // A cancelled request yields null: no final message, just the
+            // close. The client asked us to forget it.
+            if (response) {
+              send(response);
+            }
+          })
+          .catch((error: Error) => {
+            this.log.error("Failed to process streamed MCP message", error);
+            send(
+              createErrorResponse(
+                rpcRequest.id ?? null,
+                createInternalError(error.message),
+              ),
+            );
+          })
+          .finally(() => {
+            open = false;
+            try {
+              controller.close();
+            } catch {
+              // Already closed.
+            }
+          });
+      },
+      // The runtime cancels the stream when the client disconnects. Under
+      // 2026-07-28 that IS the cancellation signal, so route it to the same
+      // place `notifications/cancelled` goes.
+      cancel: () => {
+        if (rpcRequest.id !== undefined) {
+          this.mcpServer.cancelRequest(rpcRequest.id, context.clientKey);
+        }
+      },
+    });
+  }
+
+  /**
+   * Build the {@link McpContext} handed to every tool, resource and prompt
+   * handler for this request.
+   *
+   * `data` defaults to the authenticated user — the thing `requireAuth`
+   * already gates on but, until this hook existed, never forwarded. Handlers
+   * had a documented `context.data` that was `undefined` in production no
+   * matter what; the only code exercising it was unit tests calling
+   * `primitive.execute(args, { data })` directly, which proves nothing about
+   * the real path.
+   *
+   * Override in a subclass to carry anything else the handlers need:
+   *
+   * ```ts
+   * class MyMcpTransport extends StreamableHttpMcpTransport {
+   *   protected buildContext(request: any) {
+   *     return { ...super.buildContext(request), data: { tenant: request.headers.host } };
+   *   }
+   * }
+   *
+   * alepha.with({ provide: StreamableHttpMcpTransport, use: MyMcpTransport });
+   * ```
+   */
+  protected buildContext(request: {
+    headers: Record<string, any>;
+    user?: unknown;
+  }): McpContext {
+    return {
+      headers: { ...request.headers },
+      data: request.user,
+      clientKey: this.buildClientKey(request),
+    };
+  }
+
+  /**
+   * Identify the caller well enough to correlate a request with the
+   * `notifications/cancelled` that cancels it — the two arrive as separate
+   * POSTs and the only thing linking them is the JSON-RPC id, which is unique
+   * per connection, not globally.
+   *
+   * `Mcp-Session-Id` is used when the client sends one. It is a hint, not a
+   * credential: a caller who forges another's key can only cancel a request
+   * whose id it also guesses, and nothing else keys off this value. An app
+   * with authenticated MCP clients should override this to return the user id,
+   * which removes the guess entirely.
+   */
+  protected buildClientKey(request: {
+    headers: Record<string, any>;
+  }): string | undefined {
+    const raw = request.headers["mcp-session-id"];
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    return typeof value === "string" ? value : undefined;
+  }
 }

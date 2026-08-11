@@ -42,6 +42,12 @@ export interface McpCapabilities {
   tools?: Record<string, never>;
   resources?: Record<string, never>;
   prompts?: Record<string, never>;
+  /**
+   * Declared only when at least one prompt or resource template provides a
+   * `complete` handler — advertising argument autocompletion the server cannot
+   * actually perform is worse than advertising nothing.
+   */
+  completions?: Record<string, never>;
 }
 
 /**
@@ -67,7 +73,14 @@ export interface McpClientInfo {
 export interface McpIcon {
   src: string;
   mimeType?: string;
-  sizes?: string;
+  /**
+   * Size specifications, web-app-manifest style — `["48x48"]`, `["any"]` for
+   * a scalable format, `["48x48", "96x96"]` for several. An array, not a
+   * single string: SEP-973 defines it that way.
+   */
+  sizes?: string[];
+  /** Which client theme this icon is drawn for. */
+  theme?: "light" | "dark";
 }
 
 /**
@@ -148,21 +161,43 @@ export interface McpToolCallResult {
 }
 
 /**
+ * Hints about how a client should treat a piece of content or a resource.
+ * All optional, all advisory (spec 2025-03-26+).
+ */
+export interface McpAnnotations {
+  /** Who this is for. A client may hide `["assistant"]` content from the user. */
+  audience?: Array<"user" | "assistant">;
+  /** 0 (least) to 1 (most) important. */
+  priority?: number;
+  /**
+   * ISO 8601 timestamp of the last change. This is what lets a client decide
+   * whether it needs to re-read a resource it already has.
+   */
+  lastModified?: string;
+}
+
+interface McpContentBase {
+  annotations?: McpAnnotations;
+  /** Arbitrary metadata passthrough (spec 2025-06-18+). */
+  _meta?: Record<string, unknown>;
+}
+
+/**
  * Discriminated content union covering text, image, audio (added 2025-03-26),
  * inlined resources, and resource links (added 2025-06-18).
  */
 export type McpContent =
-  | { type: "text"; text: string }
-  | { type: "image"; data: string; mimeType: string }
-  | { type: "audio"; data: string; mimeType: string }
-  | { type: "resource"; resource: McpResourceContent }
-  | {
+  | (McpContentBase & { type: "text"; text: string })
+  | (McpContentBase & { type: "image"; data: string; mimeType: string })
+  | (McpContentBase & { type: "audio"; data: string; mimeType: string })
+  | (McpContentBase & { type: "resource"; resource: McpResourceContent })
+  | (McpContentBase & {
       type: "resource_link";
       uri: string;
       name: string;
       description?: string;
       mimeType?: string;
-    };
+    });
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Resource Types
@@ -177,6 +212,28 @@ export interface McpResourceDescriptor {
   mimeType?: string;
   /** Optional icons (spec 2025-11-25 / SEP-973). */
   icons?: McpIcon[];
+  /** Audience / priority / lastModified hints (spec 2025-03-26+). */
+  annotations?: McpAnnotations;
+  /** Arbitrary metadata passthrough (spec 2025-06-18+). */
+  _meta?: Record<string, unknown>;
+}
+
+/**
+ * A family of resources addressed by an RFC 6570 URI template, returned by
+ * `resources/templates/list`. Carries `uriTemplate` where a
+ * {@link McpResourceDescriptor} carries a concrete `uri`.
+ */
+export interface McpResourceTemplateDescriptor {
+  uriTemplate: string;
+  name: string;
+  /** Human-friendly display label (spec 2025-11-25). Distinct from `name`. */
+  title?: string;
+  description?: string;
+  mimeType?: string;
+  /** Optional icons (spec 2025-11-25 / SEP-973). */
+  icons?: McpIcon[];
+  /** Audience / priority / lastModified hints (spec 2025-03-26+). */
+  annotations?: McpAnnotations;
   /** Arbitrary metadata passthrough (spec 2025-06-18+). */
   _meta?: Record<string, unknown>;
 }
@@ -230,15 +287,67 @@ export interface McpPromptGetResult {
 
 export interface McpPromptMessage {
   role: "user" | "assistant";
-  content: McpPromptContent;
+  content: McpContent;
 }
 
-export interface McpPromptContent {
-  type: "text" | "image" | "resource";
-  text?: string;
-  data?: string;
-  mimeType?: string;
+/**
+ * A prompt message's content block.
+ *
+ * Now an alias of {@link McpContent}. It used to be a separate, looser shape
+ * (`type: "text" | "image" | "resource"` with optional `text`/`data`) that
+ * described a capability nothing could reach: `PromptMessage.content` was
+ * `string` and the server hard-coded every message to a text block. The types
+ * over-promised; this makes them tell the truth.
+ */
+export type McpPromptContent = McpContent;
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Completion Types
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * What the client is asking to complete: a named prompt's argument, or a
+ * resource template's URI variable.
+ */
+export type McpCompletionRef =
+  | { type: "ref/prompt"; name: string }
+  | { type: "ref/resource"; uri: string };
+
+export interface McpCompletionArgument {
+  name: string;
+  /** What the user has typed so far — may be empty. */
+  value: string;
 }
+
+export interface McpCompletionResult {
+  completion: {
+    values: string[];
+    /** How many candidates exist in total, before the cap. */
+    total?: number;
+    /** True when `values` was truncated. */
+    hasMore?: boolean;
+  };
+}
+
+export interface CompletionHandlerArgs<TContext = unknown> {
+  /** The argument being completed and its partial value. */
+  argument: McpCompletionArgument;
+  /**
+   * Arguments the user has already filled in, when the client sends them
+   * (`params.context.arguments`, spec 2025-06-18+). Use it to narrow: a
+   * `city` completion depends on the `country` already chosen.
+   */
+  arguments?: Record<string, string>;
+  context?: McpContext<TContext>;
+}
+
+/**
+ * Returns candidate values for one argument. Return everything that matches —
+ * the server applies the cap and reports `hasMore`.
+ */
+export type CompletionHandler<TContext = unknown> = (
+  args: CompletionHandlerArgs<TContext>,
+) => Async<string[]>;
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Primitive Schema Types
@@ -276,8 +385,50 @@ export interface McpContext<T = unknown> {
   /**
    * Custom context data set by transport or middleware.
    * Can be used to pass authenticated user, project scope, etc.
+   *
+   * Populated by the transport's `buildContext` — the authenticated user by
+   * default. Override that method to carry anything else.
    */
   data?: T;
+
+  /**
+   * Aborted when the client gives up on this request
+   * (`notifications/cancelled`).
+   *
+   * Pass it to `fetch`, DB queries and anything else that accepts one: without
+   * it, a tool the client has abandoned runs to completion anyway — still
+   * holding a connection, still burning CPU, still writing whatever it was
+   * going to write. Absent when the transport does not support cancellation.
+   */
+  signal?: AbortSignal;
+
+  /**
+   * Report incremental progress on a long-running call.
+   *
+   * Present only when the client attached a `_meta.progressToken` to the
+   * request AND the transport can stream — a progress notification is
+   * addressed to that token, so without one there is nothing to send it to.
+   * Handlers should call it unconditionally through `?.`:
+   *
+   * ```ts
+   * context?.reportProgress?.(done, total, `Indexed ${done} files`);
+   * ```
+   *
+   * @param progress - How far along, in the same unit as `total`.
+   * @param total - The end value, when known.
+   * @param message - Human-readable status line.
+   */
+  reportProgress?: (progress: number, total?: number, message?: string) => void;
+
+  /**
+   * Identifies the caller for the purpose of correlating a request with the
+   * `notifications/cancelled` that cancels it. Set by the transport.
+   *
+   * JSON-RPC ids are unique per connection, not globally, and this server has
+   * no session concept — so without a client key, two callers that both use
+   * `id: 1` share a cancellation slot and either could cancel the other.
+   */
+  clientKey?: string;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -325,5 +476,12 @@ export interface PromptHandlerArgs<T extends ZObject, TContext = unknown> {
 
 export interface PromptMessage {
   role: "user" | "assistant";
-  content: string;
+  /**
+   * A plain string (the common case, wrapped into a text block for you), a
+   * single content block, or several.
+   *
+   * An array becomes one wire message per block, all with this message's role
+   * — `PromptMessage.content` is a single block on the wire, not a list.
+   */
+  content: string | McpContent | McpContent[];
 }

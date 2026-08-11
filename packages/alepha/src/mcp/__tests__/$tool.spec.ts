@@ -1,5 +1,5 @@
 import { Alepha, z } from "alepha";
-import { describe, expect, test } from "vitest";
+import { describe, expect, it, test } from "vitest";
 import {
   $tool,
   AlephaMcp,
@@ -402,5 +402,85 @@ describe("$tool primitive", () => {
       { headers: { authorization: "Bearer valid-token" } },
     );
     expect(result).toBe("Access granted");
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+describe("$tool descriptor hygiene", () => {
+  /**
+   * Collect every `~`-prefixed key reachable from a descriptor. `z.text()`
+   * carries its transforms under `~options`, which is Alepha's business and
+   * not the client's — it used to ride the wire on every `tools/list`.
+   */
+  const internalKeys = (node: unknown, path = ""): string[] => {
+    if (!node || typeof node !== "object") return [];
+    if (Array.isArray(node)) {
+      return node.flatMap((item, i) => internalKeys(item, `${path}/${i}`));
+    }
+    return Object.entries(node).flatMap(([key, value]) =>
+      key.startsWith("~")
+        ? [`${path}/${key}`]
+        : internalKeys(value, `${path}/${key}`),
+    );
+  };
+
+  it("emits no internal ~ keys in inputSchema or outputSchema", async () => {
+    const alepha = Alepha.create();
+
+    class Tools {
+      greet = $tool({
+        description: "Greet someone",
+        schema: {
+          params: z.object({
+            who: z.text(),
+            aliases: z.array(z.shortText()),
+            nested: z.object({ note: z.longText().optional() }),
+          }),
+          result: z.object({ message: z.text() }),
+        },
+        handler: async ({ params }) => ({ message: `Hello, ${params.who}!` }),
+      });
+    }
+
+    alepha.with(AlephaMcp).with(Tools);
+    await alepha.start();
+
+    const descriptor = alepha
+      .inject(McpServerProvider)
+      .getTool("greet")
+      ?.toDescriptor();
+
+    expect(descriptor?.inputSchema.properties?.who).toMatchObject({
+      type: "string",
+      maxLength: 255,
+    });
+    expect(internalKeys(descriptor)).toEqual([]);
+  });
+
+  it("keeps a property genuinely named ~options", async () => {
+    const alepha = Alepha.create();
+
+    class Tools {
+      odd = $tool({
+        description: "A tool with an awkward field name",
+        schema: {
+          params: z.object({ "~options": z.text() }),
+        },
+        handler: async () => "ok",
+      });
+    }
+
+    alepha.with(AlephaMcp).with(Tools);
+    await alepha.start();
+
+    const descriptor = alepha
+      .inject(McpServerProvider)
+      .getTool("odd")
+      ?.toDescriptor();
+
+    // The strip walks schema NODES; a `properties` map is keyed by user-chosen
+    // field names, so filtering it by key would delete a real parameter.
+    expect(descriptor?.inputSchema.properties).toHaveProperty("~options");
   });
 });

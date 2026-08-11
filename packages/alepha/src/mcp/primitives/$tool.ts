@@ -4,10 +4,12 @@ import {
   createPrimitive,
   KIND,
   Primitive,
+  SchemaValidationError,
   type ZObject,
   type ZType,
   z,
 } from "alepha";
+import { McpToolOutputError } from "../errors/McpError.ts";
 import type {
   McpContext,
   McpIcon,
@@ -119,6 +121,12 @@ export interface ToolPrimitiveOptions<T extends ToolPrimitiveSchema> {
   icons?: McpIcon[];
 
   /**
+   * Arbitrary metadata passed through to clients on the descriptor
+   * (spec 2025-06-18+). For anything the protocol has no field for.
+   */
+  _meta?: Record<string, unknown>;
+
+  /**
    * Zod schema defining the tool's parameters and result type.
    *
    * - **params**: ZObject schema for input parameters (optional)
@@ -190,7 +198,9 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
   ): Promise<ToolHandlerResult<T>> {
     let validatedParams: any = params ?? {};
 
-    // Validate params using alepha.codec if schema provided
+    // Input validation. A failure here IS the caller's fault, so the raw
+    // SchemaValidationError propagates and the server reports it as a
+    // self-correctable tool execution error (SEP-1303).
     if (this.options.schema?.params) {
       validatedParams = this.alepha.codec.decode(
         this.options.schema.params,
@@ -203,12 +213,24 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
       context,
     });
 
-    // Validate and encode result if schema provided
+    // Output validation. A failure here is a bug in THIS tool, and must not
+    // reach the caller wearing the same error type as an input failure — see
+    // McpToolOutputError.
     if (this.options.schema?.result && result !== undefined) {
-      return this.alepha.codec.encode(
-        this.options.schema.result,
-        result,
-      ) as ToolHandlerResult<T>;
+      try {
+        return this.alepha.codec.encode(
+          this.options.schema.result,
+          result,
+        ) as ToolHandlerResult<T>;
+      } catch (error) {
+        if (error instanceof SchemaValidationError) {
+          throw new McpToolOutputError(
+            this.name,
+            `at ${error.value?.path || "/"}: ${error.value?.message || error.message}`,
+          );
+        }
+        throw error;
+      }
     }
 
     return result as ToolHandlerResult<T>;
@@ -238,6 +260,7 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
     if (this.options.icons && this.options.icons.length > 0) {
       descriptor.icons = this.options.icons;
     }
+    if (this.options._meta) descriptor._meta = this.options._meta;
 
     // Output schema is emitted when the tool declares `schema.result`,
     // unlocking structured content on tools/call responses.
