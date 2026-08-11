@@ -28,5 +28,3 @@ export const AdminBrand = () => {
     </div>
   );
 };
-
-export default AdminBrand;
