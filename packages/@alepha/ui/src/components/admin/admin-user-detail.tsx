@@ -73,7 +73,7 @@ const tabSchema = z.object({ tab: z.string().optional() });
 export const AdminUserDetail = (props: AdminUserDetailProps) => {
   const router = useRouter();
   const routerState = useRouterState();
-  const userId = String(routerState.params.id ?? "");
+  const userId = String(routerState.params.userId ?? "");
   const userClient = useClient<AdminUserController>();
   const sessionClient = useClient<AdminSessionController>();
   const identityClient = useClient<AdminIdentityController>();

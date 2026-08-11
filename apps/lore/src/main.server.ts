@@ -1,9 +1,11 @@
 import { SigilSinkProvider, sigilOptions } from "@alepha/sigil/server";
+import { adminRouterOptionsAtom } from "@alepha/ui/components/admin/admin-router-options";
 import { Alepha, run } from "alepha";
 import { FileAccessProvider } from "alepha/api/files";
 import { oauthOptions } from "alepha/api/oauth";
 import { CaptchaProvider, TurnstileCaptchaProvider } from "alepha/captcha";
 import { AlephaEmailCloudflare } from "alepha/email/cloudflare";
+import { loreAdminOptions } from "@/web/admin/adminChrome.tsx";
 import { LoreWebAdmin } from "@/web/admin/index.ts";
 import { LoreApi } from "./api/index.ts";
 import { LoreFileAccessProvider } from "./api/providers/LoreFileAccessProvider.ts";
@@ -50,6 +52,11 @@ alepha.set(oauthOptions, {
   resource: "/mcp",
   loginPath: "/auth/login",
 });
+
+// Lore's admin chrome (the back-arrow brand + hidden name columns on the
+// users table) is set here AND in main.browser.ts — server-only would leave
+// the browser rendering default chrome after hydration.
+alepha.set(adminRouterOptionsAtom, loreAdminOptions);
 
 // Lore self-reports through its own sigil, so the floating feedback button
 // renders on every Lore page — including the feedback form itself, where it
