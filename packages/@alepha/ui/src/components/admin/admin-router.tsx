@@ -94,6 +94,20 @@ import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
  * `order` of 100 or more, or declare a group of its own. `useNavEntries` sorts
  * groups by their smallest member, so a custom page at `order: 2` would
  * silently reshuffle the built-in sidebar.
+ *
+ * ### These ten route names are claimed globally
+ *
+ * `users`, `userDetail`, `sessions`, `keys`, `jobs`, `notifications`,
+ * `audits`, `files`, `parameters` and `payments` each carry an explicit
+ * `name:` so a future rename of the field itself (done for readability,
+ * without touching the string) never silently changes the public route
+ * name — the same reason `AuthRouter`'s pages all carry one too.
+ *
+ * Route names live in one process-wide namespace, and a duplicate does not
+ * throw: `ReactPageProvider.page()` returns the first match. An adopter that
+ * registers its own page named `files` (or any of the other nine) either
+ * shadows this one or is shadowed by it, silently, depending on mount order.
+ * Treat these ten names as reserved when hanging pages off `layout`.
  */
 export class AdminRouter {
   protected readonly options = $store(adminRouterOptionsAtom);
@@ -132,6 +146,7 @@ export class AdminRouter {
   users = navPage({
     parent: this.layout,
     path: "/users",
+    name: "users",
     head: { title: "Users" },
     permission: "admin:user:read",
     can: () => this.userApi.findUsers.can(),
@@ -147,9 +162,10 @@ export class AdminRouter {
   userDetail = navPage({
     parent: this.layout,
     path: "/users/:userId",
+    name: "userDetail",
     head: { title: "User" },
     permission: "admin:user:read",
-    can: () => this.userApi.findUsers.can(),
+    can: () => this.userApi.getUser.can(),
     schema: {
       params: z.object({
         userId: z.uuid(),
@@ -162,6 +178,7 @@ export class AdminRouter {
   sessions = navPage({
     parent: this.layout,
     path: "/sessions",
+    name: "sessions",
     head: { title: "Sessions" },
     permission: "admin:session:read",
     can: () => this.sessionApi.findSessions.can(),
@@ -177,6 +194,7 @@ export class AdminRouter {
   keys = navPage({
     parent: this.layout,
     path: "/keys",
+    name: "keys",
     head: { title: "API keys" },
     permission: "admin:api-key:read",
     can: () => this.apiKeyApi.findApiKeys.can(),
@@ -193,6 +211,7 @@ export class AdminRouter {
   jobs = navPage({
     parent: this.layout,
     path: "/jobs",
+    name: "jobs",
     head: { title: "Jobs" },
     permission: "admin:job:read",
     can: () => this.jobApi.listJobs.can(),
@@ -203,6 +222,7 @@ export class AdminRouter {
   notifications = navPage({
     parent: this.layout,
     path: "/notifications",
+    name: "notifications",
     head: { title: "Notifications" },
     permission: "admin:notification:read",
     can: () => this.notificationApi.findNotifications.can(),
@@ -218,6 +238,7 @@ export class AdminRouter {
   audits = navPage({
     parent: this.layout,
     path: "/audits",
+    name: "audits",
     head: { title: "Audit log" },
     permission: "admin:audit:read",
     can: () => this.auditApi.findAudits.can(),
@@ -233,6 +254,7 @@ export class AdminRouter {
   files = navPage({
     parent: this.layout,
     path: "/files",
+    name: "files",
     head: { title: "Files" },
     permission: "admin:file:read",
     can: () => this.fileApi.findFiles.can(),
@@ -243,6 +265,7 @@ export class AdminRouter {
   parameters = navPage({
     parent: this.layout,
     path: "/parameters",
+    name: "parameters",
     head: { title: "Parameters" },
     permission: "admin:parameter:read",
     can: () => this.parameterApi.getParameterTree.can(),
@@ -265,6 +288,7 @@ export class AdminRouter {
   payments = navPage({
     parent: this.layout,
     path: "/payments",
+    name: "payments",
     head: { title: "Payments" },
     permission: ["admin:payment:read", "payments:read"],
     can: () => this.paymentApi.listIntents.can(),

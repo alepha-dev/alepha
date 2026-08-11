@@ -1,7 +1,42 @@
-import { $inject, Alepha } from "alepha";
-import { $page, AlephaReactRouter } from "alepha/react/router";
+import { $inject, Alepha, OPTIONS } from "alepha";
+import {
+  $page,
+  AlephaReactRouter,
+  type PagePrimitive,
+} from "alepha/react/router";
 import { describe, expect, it } from "vitest";
 import { AdminRouter } from "../admin-router.tsx";
+
+/**
+ * Reads the permission(s) a page's route gate actually enforces, the same
+ * way `PagePrimitive.deriveCanFromGuards` does: walk `options.use`, find the
+ * `$secure` middleware by its structural name (`alepha/react/router` cannot
+ * import `alepha/security` to compare types), and read the permissions off
+ * its metadata. Reading it back this way — rather than re-reading
+ * `options.permission`, the value a page was built from — is what makes the
+ * test catch a page whose `permission` was dropped: the route gate is the
+ * thing that would actually change.
+ */
+const permissionsOf = (page: PagePrimitive): string[] => {
+  const required: string[] = [];
+  for (const middleware of page.options.use ?? []) {
+    const metadata = middleware[OPTIONS];
+    if (metadata?.name !== "$secure") {
+      continue;
+    }
+    const permissions = (
+      metadata.options as
+        | { permissions?: Array<string | { name: string }> }
+        | undefined
+    )?.permissions;
+    for (const permission of permissions ?? []) {
+      required.push(
+        typeof permission === "string" ? permission : permission.name,
+      );
+    }
+  }
+  return required;
+};
 
 /**
  * Registering `AdminRouter` must be the whole integration.
@@ -24,7 +59,7 @@ describe("AdminRouter", () => {
     await alepha.start();
     return alepha
       .primitives($page)
-      .map((page) => ({ path: page.options.path, name: page.options.name }));
+      .map((page) => ({ path: page.options.path, name: page.name }));
   };
 
   it("mounts the shell and its ten pages", async () => {
@@ -33,18 +68,41 @@ describe("AdminRouter", () => {
     expect(pages).toEqual(
       expect.arrayContaining([
         { path: "/admin", name: "admin" },
-        { path: "/users", name: undefined },
-        { path: "/users/:userId", name: undefined },
-        { path: "/sessions", name: undefined },
-        { path: "/keys", name: undefined },
-        { path: "/jobs", name: undefined },
-        { path: "/notifications", name: undefined },
-        { path: "/audits", name: undefined },
-        { path: "/files", name: undefined },
-        { path: "/parameters", name: undefined },
-        { path: "/payments", name: undefined },
+        { path: "/users", name: "users" },
+        { path: "/users/:userId", name: "userDetail" },
+        { path: "/sessions", name: "sessions" },
+        { path: "/keys", name: "keys" },
+        { path: "/jobs", name: "jobs" },
+        { path: "/notifications", name: "notifications" },
+        { path: "/audits", name: "audits" },
+        { path: "/files", name: "files" },
+        { path: "/parameters", name: "parameters" },
+        { path: "/payments", name: "payments" },
       ]),
     );
+  });
+
+  it("gates every page on its documented permission", async () => {
+    const alepha = Alepha.create().with(AlephaReactRouter);
+    const router = alepha.inject(AdminRouter);
+    await alepha.start();
+
+    const expected: Array<[PagePrimitive, string[]]> = [
+      [router.users, ["admin:user:read"]],
+      [router.userDetail, ["admin:user:read"]],
+      [router.sessions, ["admin:session:read"]],
+      [router.keys, ["admin:api-key:read"]],
+      [router.jobs, ["admin:job:read"]],
+      [router.notifications, ["admin:notification:read"]],
+      [router.audits, ["admin:audit:read"]],
+      [router.files, ["admin:file:read"]],
+      [router.parameters, ["admin:parameter:read"]],
+      [router.payments, ["admin:payment:read", "payments:read"]],
+    ];
+
+    for (const [page, permissions] of expected) {
+      expect(permissionsOf(page)).toEqual(permissions);
+    }
   });
 
   it("never uses :id as a param name", async () => {

@@ -17,8 +17,25 @@ import {
  * Playground's admin chrome. The nested group is not a real route subtree —
  * it exists to exercise `AppShell`'s nested `NavItem.children` and
  * `NavShell`'s `extraNav` escape hatch, which the shared router forwards.
+ *
+ * `brand` restores the link-out the deleted `AdminLayout.tsx` had — without
+ * it, the default shell brand is a plain non-clickable `<div>` and there is
+ * no way out of `/admin` by clicking the logo.
  */
 export const playgroundAdminOptions: AdminRouterOptions = {
+  brand: (
+    <a
+      href="/"
+      className="flex items-center gap-2 px-2 py-2 font-semibold group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+    >
+      <span className="bg-primary text-primary-foreground flex size-7 shrink-0 items-center justify-center rounded">
+        α
+      </span>
+      <span className="truncate group-data-[collapsible=icon]:hidden">
+        Alepha Admin
+      </span>
+    </a>
+  ),
   extraNav: [
     {
       label: "Catalog (demo)",

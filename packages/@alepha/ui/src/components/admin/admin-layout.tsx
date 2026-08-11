@@ -3,6 +3,7 @@ import { ButtonLanguage } from "@alepha/ui/components/button-language/button-lan
 import { ButtonUser } from "@alepha/ui/components/button-user/button-user";
 import { NavShell } from "@alepha/ui/components/nav-shell/nav-shell";
 import { Spotlight } from "@alepha/ui/components/nav-shell/spotlight";
+import { DropdownMenuSeparator } from "@alepha/ui/components/ui/dropdown-menu";
 import { useStore } from "alepha/react";
 import { useRouter } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
@@ -27,6 +28,13 @@ import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
  *   `SidebarProvider` from `min-h-svh` to `h-full`, which is what lets a table
  *   body scroll inside the main area instead of pushing the whole page taller.
  * - Spotlight is `root`-scoped to `admin`, so ⌘K searches admin pages only.
+ * - `ButtonUser` is given custom `children` rather than its default
+ *   `onAdminClick` menu: that default item is labelled "Admin Panel" and
+ *   documented as `router.push("admin")` — the exact opposite of what it
+ *   would do here, since the account menu already lives inside `/admin` and
+ *   the only useful action is leaving it. Composing the menu by hand keeps
+ *   `ButtonUser`'s own default label correct for its normal use outside
+ *   admin.
  */
 export const AdminLayout = () => {
   const router = useRouter<any>();
@@ -71,11 +79,16 @@ export const AdminLayout = () => {
               <ButtonLanguage />
               <ButtonDark />
               <ButtonUser
-                onSignIn={() => router.push("login")}
-                onAdminClick={() =>
-                  router.push(options.homeRouteName ?? "home")
-                }
-              />
+                onSignIn={() => router.push(options.loginRouteName ?? "login")}
+              >
+                <ButtonUser.Email />
+                <ButtonUser.AdminMenuItem
+                  label="Back to site"
+                  onClick={() => router.push(options.homeRouteName ?? "home")}
+                />
+                <DropdownMenuSeparator />
+                <ButtonUser.LogoutMenuItem />
+              </ButtonUser>
             </div>
           )
         }

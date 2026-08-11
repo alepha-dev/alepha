@@ -41,6 +41,17 @@ export interface AdminRouterOptions {
   homeRouteName?: string;
 
   /**
+   * Route name the shell's sign-in affordance pushes.
+   *
+   * `login` is the conventional name because `AuthRouter` mounts a page by
+   * that name. This option exists for applications that mount their own auth
+   * routes under a different name instead of `AuthRouter`.
+   *
+   * @default "login"
+   */
+  loginRouteName?: string;
+
+  /**
    * Props forwarded to the three pages that accept them, keyed by page.
    *
    * Each entry reuses that component's own exported props interface rather
