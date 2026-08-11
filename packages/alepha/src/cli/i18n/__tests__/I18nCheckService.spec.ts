@@ -228,6 +228,74 @@ export class I18n {
     ]);
   });
 
+  it("reports a tr() call passing fewer args than its key needs", async () => {
+    await env.fs.mkdir(`${ROOT}/src/web`, { recursive: true });
+    await env.fs.writeFile(
+      `${ROOT}/src/web/I18n.ts`,
+      dictionary({
+        "files.hint": "up to $1 files",
+        "files.count": "$1 / $2 files",
+        "files.plain": "Attachments",
+      }),
+    );
+    await env.fs.writeFile(
+      `${ROOT}/src/web/Form.tsx`,
+      `export const Form = () => [
+         tr("files.hint"),
+         tr("files.count", { args: [String(a), String(b)] }),
+         tr("files.plain"),
+       ];`,
+    );
+
+    const result = await env.service.check({
+      root: ROOT,
+      scan: ["src"],
+      dynamicPrefixes: [],
+      exclude: [],
+    });
+
+    expect(result.missingArgs).toEqual([
+      {
+        key: "files.hint",
+        needs: 1,
+        got: 0,
+        file: `${ROOT}/src/web/Form.tsx`,
+      },
+    ]);
+  });
+
+  it("does not flag what it cannot count, or keys that are not calls", async () => {
+    await env.fs.mkdir(`${ROOT}/src/web`, { recursive: true });
+    await env.fs.writeFile(
+      `${ROOT}/src/web/I18n.ts`,
+      dictionary({
+        "a.spread": "hi $1",
+        "a.default": "hi $1",
+        "a.listed": "hi $1",
+      }),
+    );
+    await env.fs.writeFile(
+      `${ROOT}/src/web/Form.tsx`,
+      `const nav = ["a.listed"];
+       export const Form = () => [
+         nav,
+         tr("a.spread", { args: [...parts] }),
+         tr("a.default", { args: [x], default: "hi" }),
+       ];`,
+    );
+
+    const result = await env.service.check({
+      root: ROOT,
+      scan: ["src"],
+      dynamicPrefixes: [],
+      exclude: [],
+    });
+
+    // `a.spread` is unknowable, `a.default` passes one, and `a.listed` never
+    // appears as a call at all — a bare key in a nav array is not a call site.
+    expect(result.missingArgs).toEqual([]);
+  });
+
   it("returns totalKeys=0 when no dictionary is found", async () => {
     await env.fs.mkdir(`${ROOT}/src`, { recursive: true });
     await env.fs.writeFile(

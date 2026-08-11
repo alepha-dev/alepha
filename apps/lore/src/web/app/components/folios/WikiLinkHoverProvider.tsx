@@ -1,5 +1,6 @@
 import { FileImage } from "@alepha/ui/components/file-image/file-image";
 import { useClient } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import {
   type RefObject,
   useCallback,
@@ -12,6 +13,8 @@ import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
+import type { I18n } from "../../services/I18n.ts";
+import type { BrokenWikiLinkReason } from "./folioWikiLinkResolver.ts";
 import { type BlobRef, BROKEN_HREF_PREFIX } from "./rewriteFolioWikiLinks.ts";
 
 /**
@@ -36,17 +39,22 @@ export interface WikiLinkHoverProviderProps {
   children: React.ReactNode;
 }
 
-export type BrokenReason =
-  | "folio-not-found"
-  | "ambiguous-title"
-  | "quest-not-found"
-  | "blob-not-found";
+/**
+ * Re-exported from the resolver rather than restated.
+ *
+ * It used to be a second, hand-kept copy of the same union — which meant
+ * adding a reason on the resolver side was not a type error here, it just left
+ * `BROKEN_REASON_TEXT` without an entry and rendered `undefined` into the
+ * card. Aliasing makes the `Record` below exhaustive, so the next reason
+ * cannot be added without its explanation.
+ */
+export type BrokenReason = BrokenWikiLinkReason;
 
 type HoverTarget =
   | { kind: "folio"; shortId: number }
   | { kind: "quest"; shortId: number }
   | { kind: "blob"; fileId: string }
-  | { kind: "broken"; reason: BrokenReason };
+  | { kind: "broken"; reason: BrokenReason; hint?: string };
 
 interface HoverState {
   target: HoverTarget;
@@ -64,8 +72,16 @@ const parseHref = (
 ): HoverTarget | null => {
   if (!href) return null;
   if (href.startsWith(BROKEN_HREF_PREFIX)) {
-    const reason = href.slice(BROKEN_HREF_PREFIX.length) as BrokenReason;
-    return { kind: "broken", reason };
+    // `reason[:hint]` — no reason contains a colon, so the first one splits.
+    const rest = href.slice(BROKEN_HREF_PREFIX.length);
+    const sep = rest.indexOf(":");
+    return sep === -1
+      ? { kind: "broken", reason: rest as BrokenReason }
+      : {
+          kind: "broken",
+          reason: rest.slice(0, sep) as BrokenReason,
+          hint: rest.slice(sep + 1),
+        };
   }
   // Strip protocol/host if present (markdown links are typically root-relative
   // but a user could paste an absolute URL into a wiki body).
@@ -87,16 +103,16 @@ const parseHref = (
 
 const targetKey = (t: HoverTarget): string => {
   if (t.kind === "blob") return `blob:${t.fileId}`;
-  if (t.kind === "broken") return `broken:${t.reason}`;
+  if (t.kind === "broken") return `broken:${t.reason}:${t.hint ?? ""}`;
   return `${t.kind}:${t.shortId}`;
 };
 
-const BROKEN_REASON_TEXT: Record<BrokenReason, string> = {
-  "folio-not-found": "No folio matches this reference.",
-  "ambiguous-title":
-    "Several entries share this title — use the explicit `#N` form to disambiguate.",
-  "quest-not-found": "No quest matches this reference.",
-  "blob-not-found": "No folio blob matches this reference.",
+const BROKEN_REASON_KEY: Record<BrokenReason, string> = {
+  "folio-not-found": "folios.wikilink.broken.folioNotFound",
+  "ambiguous-title": "folios.wikilink.broken.ambiguous",
+  "quest-not-found": "folios.wikilink.broken.questNotFound",
+  "blob-not-found": "folios.wikilink.broken.blobNotFound",
+  "folio-not-found-quest-exists": "folios.wikilink.broken.questFormWanted",
 };
 
 const formatBytes = (bytes: number | undefined): string => {
@@ -289,6 +305,7 @@ interface HoverCardPopoverProps {
 
 const HoverCardPopover = (props: HoverCardPopoverProps) => {
   const { state, projectId, blobByUuid, cache, folioApi, questApi } = props;
+  const { tr } = useI18n<I18n, "en">();
   const key = targetKey(state.target);
   const [data, setData] = useState<
     FolioPreview | QuestPreview | BlobPreview | null
@@ -390,10 +407,12 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
         <div className="flex flex-col gap-1">
           <span className="text-destructive flex items-center gap-1.5 text-sm font-semibold">
             <span aria-hidden>⚠</span>
-            Broken link
+            {tr("folios.wikilink.broken.title")}
           </span>
           <span className="text-muted-foreground text-xs">
-            {BROKEN_REASON_TEXT[state.target.reason]}
+            {tr(BROKEN_REASON_KEY[state.target.reason], {
+              args: [state.target.hint ?? ""],
+            })}
           </span>
         </div>
       ) : loading ? (

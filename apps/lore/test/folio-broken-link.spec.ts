@@ -32,6 +32,43 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
     expect(out).toBe("See [\\[\\[#999\\]\\]](lore-broken:folio-not-found).");
   });
 
+  it("[[#N]] with no folio N but a quest N → names the quest form (#192)", () => {
+    const out = rewriteFolioWikiLinks(
+      "See [[#156]].",
+      PROJECT_ID,
+      [folio(1, "Roadmap")],
+      [{ shortId: 156, title: "Some quest" }],
+    );
+    // Still broken on purpose — resolving it to the quest would make a link's
+    // destination depend on which folios happen to exist. The shortId rides
+    // along so the hover card can name `[[quest:#156]]`.
+    expect(out).toBe(
+      "See [\\[\\[#156\\]\\]](lore-broken:folio-not-found-quest-exists:156).",
+    );
+  });
+
+  it("[[#N]] with neither a folio nor a quest N → plain folio-not-found", () => {
+    const out = rewriteFolioWikiLinks(
+      "See [[#156]].",
+      PROJECT_ID,
+      [folio(1, "Roadmap")],
+      [{ shortId: 7, title: "Unrelated" }],
+    );
+    expect(out).toBe("See [\\[\\[#156\\]\\]](lore-broken:folio-not-found).");
+  });
+
+  it("an unresolved TITLE never suggests a quest — the namespaces are unrelated", () => {
+    const out = rewriteFolioWikiLinks(
+      "Cf. [[Some quest]].",
+      PROJECT_ID,
+      [folio(1, "Roadmap")],
+      [{ shortId: 156, title: "Some quest" }],
+    );
+    expect(out).toBe(
+      "Cf. [\\[\\[Some quest\\]\\]](lore-broken:folio-not-found).",
+    );
+  });
+
   it("unresolved folio title → folio-not-found marker", () => {
     const out = rewriteFolioWikiLinks(
       "Cf. [[Nonexistent]].",

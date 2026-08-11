@@ -193,8 +193,17 @@ export class FeedbackController {
    * a top-level route (not under the `project` layout) so it has no project
    * data — and it must work for non-members. Gated EXACTLY like
    * `submitFeedback`: any logged-in user, but only when the project has the
-   * feedback module on. Returns just the title + icon needed to render the
-   * "you're submitting to X" header — nothing else.
+   * feedback module on. Returns the title + icon needed to render the
+   * "you're submitting to X" header, plus the two attachment limits the form
+   * has to state.
+   *
+   * The limits are here rather than hardcoded in the browser because the form
+   * *quotes them to the user* ("max 5 MB each, up to 10 files") while the
+   * server enforces them from `feedbackOptionsAtom` — which is `serverOnly`
+   * and overridable per deployment. Three copies of the same number (the
+   * atom, the client constant, the sentence) is two too many: whichever
+   * deployment tunes the atom would have had the form confidently quote the
+   * wrong cap, and the user would only discover it on a rejected upload.
    */
   feedbackContext = $action({
     use: [$secure()],
@@ -205,11 +214,19 @@ export class FeedbackController {
       response: z.object({
         title: z.string(),
         icon: z.union([z.uuid(), z.null()]).optional(),
+        maxAttachments: z.integer(),
+        maxFileSizeMb: z.integer(),
       }),
     },
     handler: async ({ params }) => {
       const project = await this.assertFeedbackOpen(params.projectId);
-      return { title: project.title, icon: project.icon ?? null };
+      const limits = this.rateLimiter.options();
+      return {
+        title: project.title,
+        icon: project.icon ?? null,
+        maxAttachments: limits.maxAttachmentsPerFeedback,
+        maxFileSizeMb: Math.floor(limits.maxFileSizeBytes / (1024 * 1024)),
+      };
     },
   });
 

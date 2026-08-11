@@ -29,7 +29,16 @@ import { UserAvatar } from "../../shared/UserAvatar.tsx";
 // draft saved under the old key at deploy time is silently discarded once,
 // since nothing reads it back under the new name.
 const DRAFT_STORAGE_KEY = "lor.feedback.draft";
-const MAX_FILES = 10;
+/**
+ * Used only until `feedbackContext` answers — the server owns both caps (see
+ * `feedbackOptionsAtom`) and the form quotes whatever it returns. Kept as a
+ * fallback rather than gating the attachment UI on the fetch: the context call
+ * is allowed to fail without breaking the form, and an attach button that
+ * never appears would be a worse failure than one whose stated cap is briefly
+ * the default.
+ */
+const DEFAULT_MAX_FILES = 10;
+const DEFAULT_MAX_FILE_SIZE_MB = 5;
 const MAX_TAGS = 20;
 const MAX_TAG_LENGTH = 100;
 
@@ -49,6 +58,8 @@ type Attachment = {
 type ProjectContext = {
   title: string;
   icon?: string | null;
+  maxAttachments: number;
+  maxFileSizeMb: number;
 };
 
 const readDraftFromQuery = (query: URLSearchParams): DraftContext => {
@@ -200,6 +211,8 @@ const ProjectFeedbackRequest = () => {
   // like `submitFeedback` (any logged-in user, feedback feature on). A
   // failed/pending fetch just hides the project side — never breaks the form.
   const [project, setProject] = useState<ProjectContext | null>(null);
+  const maxFiles = project?.maxAttachments ?? DEFAULT_MAX_FILES;
+  const maxFileSizeMb = project?.maxFileSizeMb ?? DEFAULT_MAX_FILE_SIZE_MB;
   useEffect(() => {
     if (!auth.user || !Number.isFinite(projectId)) return;
     let cancelled = false;
@@ -285,10 +298,10 @@ const ProjectFeedbackRequest = () => {
 
   const uploadFiles = async (files: File[]) => {
     if (files.length === 0) return;
-    if (attachments.length + files.length > MAX_FILES) {
+    if (attachments.length + files.length > maxFiles) {
       toaster.show(
         String(
-          tr("feedback.request.tooManyFiles", { args: [String(MAX_FILES)] }),
+          tr("feedback.request.tooManyFiles", { args: [String(maxFiles)] }),
         ),
         "danger",
       );
@@ -478,7 +491,9 @@ const ProjectFeedbackRequest = () => {
                     {tr("feedback.request.attachments")}
                   </label>
                   <p className="text-muted-foreground text-xs">
-                    {tr("feedback.request.attachmentsHelper")}
+                    {tr("feedback.request.attachmentsHelper", {
+                      args: [String(maxFileSizeMb), String(maxFiles)],
+                    })}
                   </p>
                   <div className="flex flex-wrap items-center gap-2">
                     <input
@@ -492,7 +507,7 @@ const ProjectFeedbackRequest = () => {
                       type="button"
                       variant="outline"
                       size="sm"
-                      disabled={uploading || attachments.length >= MAX_FILES}
+                      disabled={uploading || attachments.length >= maxFiles}
                       onClick={() => inputRef.current?.click()}
                     >
                       {uploading ? (
@@ -504,7 +519,7 @@ const ProjectFeedbackRequest = () => {
                     </Button>
                     <span className="text-muted-foreground text-xs">
                       {tr("feedback.request.attachmentsCount", {
-                        args: [String(attachments.length), String(MAX_FILES)],
+                        args: [String(attachments.length), String(maxFiles)],
                       })}
                     </span>
                   </div>

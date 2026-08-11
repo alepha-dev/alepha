@@ -16,6 +16,7 @@ import {
   Inbox,
   TriangleAlert,
 } from "lucide-react";
+import { useEffect } from "react";
 import {
   defaultProjectFeatures,
   type ProjectFeatures,
@@ -28,9 +29,14 @@ import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { currentQuestCountAtom } from "../../atoms/currentQuestCountAtom.ts";
 import { currentSigilAtom } from "../../atoms/currentSigilAtom.ts";
 import { currentSigilsAtom } from "../../atoms/currentSigilsAtom.ts";
+import {
+  type ProjectNavEntry,
+  projectNavAtom,
+} from "../../atoms/projectNavAtom.ts";
 import { type QuestsView, questsViewAtom } from "../../atoms/questsViewAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import HeaderActions from "../shared/header/HeaderActions.tsx";
+import HeaderSearchButton from "../shared/header/HeaderSearchButton.tsx";
 import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
 import ProjectQuestsViewSwitcher from "./ProjectQuestsViewSwitcher.tsx";
 import ProjectSwitcher from "./ProjectSwitcher.tsx";
@@ -278,6 +284,42 @@ const ProjectView = () => {
     },
   ].filter((group) => group.items.length > 0);
 
+  // Publish what the sidebar offers so the ⌘K palette can list pages and apps
+  // beside its content hits — see `projectNavAtom` for why it is derived from
+  // the built `nav` rather than assembled a second time.
+  //
+  // Flattened here rather than in the palette so the palette never has to know
+  // the sidebar's shape: `children` is what makes an entry a group (today only
+  // Apps), and a group's own row is a disclosure with no destination of its
+  // own, so it contributes its children and not itself.
+  const navPages: ProjectNavEntry[] = nav.flatMap((group) =>
+    group.items.flatMap((item): ProjectNavEntry[] => {
+      if (item.children?.length) {
+        return item.children
+          .filter((child) => !!child.href)
+          .map((child) => ({
+            label: String(child.label),
+            href: String(child.href),
+            kind: "app",
+          }));
+      }
+      if (!item.href) return [];
+      return [
+        { label: String(item.label), href: String(item.href), kind: "page" },
+      ];
+    }),
+  );
+  const [, setProjectNav] = useStore(projectNavAtom);
+  // Keyed on the CONTENT, not the array: `navPages` is rebuilt on every render,
+  // so an effect depending on its identity would set the atom, re-render, and
+  // loop. Cleared on leave like the other `current*` atoms — a stale page list
+  // would otherwise offer another project's apps.
+  const navSignature = JSON.stringify(navPages);
+  useEffect(() => {
+    setProjectNav(navPages);
+    return () => setProjectNav(undefined);
+  }, [navSignature, setProjectNav]);
+
   const breadcrumbs: { label: string; href?: string }[] = [
     {
       label: project.title,
@@ -335,6 +377,7 @@ const ProjectView = () => {
       breadcrumbs={breadcrumbs}
       topbarActions={
         <>
+          <HeaderSearchButton />
           <ProjectActionsCreateButton />
           <HeaderActions />
         </>

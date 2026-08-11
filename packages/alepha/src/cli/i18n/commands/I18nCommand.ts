@@ -71,6 +71,27 @@ export class I18nCommand {
         );
       }
 
+      if (result.missingArgs.length > 0) {
+        process.stdout.write(
+          `\n${c.set("RED", "✗")} Calls passing too few arguments ` +
+            `(${result.missingArgs.length}):\n`,
+        );
+        for (const a of result.missingArgs) {
+          const file = a.file.startsWith(root)
+            ? a.file.slice(root.length + 1)
+            : a.file;
+          process.stdout.write(
+            `  ${c.set("DIM", "-")} ${a.key} ${c.set("DIM", `(${file})`)}: ` +
+              `needs ${a.needs}, passes ${a.got}\n`,
+          );
+        }
+        process.stdout.write(
+          `\nThe unfilled ${c.set("CYAN", "$N")} is rendered to the user ` +
+            `verbatim. Pass ${c.set("CYAN", "{ args: [...] }")} at the call ` +
+            `site, or drop the placeholder from the entry.\n`,
+        );
+      }
+
       if (result.unused.length > 0) {
         process.stdout.write(
           `\n${c.set("RED", "✗")} Unused translations (${result.unused.length}):\n`,
@@ -85,7 +106,11 @@ export class I18nCommand {
         );
       }
 
-      if (result.unused.length === 0 && result.badPlaceholders.length === 0) {
+      if (
+        result.unused.length === 0 &&
+        result.badPlaceholders.length === 0 &&
+        result.missingArgs.length === 0
+      ) {
         process.stdout.write(
           `\n${c.set("GREEN", "✓")} All translations are referenced.\n\n`,
         );
