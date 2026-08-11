@@ -30,7 +30,10 @@
     "typecheck": "tsc --noEmit"
   },
   "exports": {
-    "./components/*": "./src/components/*.tsx",
+    "./components/*": [
+      "./src/components/*.tsx",
+      "./src/components/*.ts"
+    ],
     "./hooks/*": "./src/hooks/*.ts",
     "./lib/*": "./src/lib/*.ts",
     "./styles.css": "./src/styles.css"

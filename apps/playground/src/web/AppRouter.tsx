@@ -1,22 +1,10 @@
-import { $page, Redirection } from "alepha/react/router";
-import { $secure } from "alepha/security";
-import {
-  Bell,
-  Files,
-  KeyRound,
-  Settings2,
-  ShieldAlert,
-  ShieldCheck,
-  Timer,
-  Users,
-} from "lucide-react";
-import { AdminLayout } from "./AdminLayout.tsx";
+import { $page } from "alepha/react/router";
 import { Layout } from "./Layout.tsx";
 
 /**
  * AppRouter — every leaf page is loaded via `lazy: () => import(…)` so each
- * route is its own code-split chunk. Both layouts (Layout, AdminLayout) stay
- * eager because they're the long-lived shells.
+ * route is its own code-split chunk. `Layout` stays eager because it's the
+ * long-lived shell.
  */
 export class AppRouter {
   // ── Public shell: /, demo/*, playgrounds/* ───────────────────────────
@@ -58,113 +46,14 @@ export class AppRouter {
   // path props at all, so every cross-link relied on the components' `/auth/*`
   // fallbacks. Those fallbacks are precisely what this router makes explicit.
 
-  // ── /admin/* — gated by `admin:ui` ───────────────────────────────────
-  adminLayout = $page({
-    name: "admin",
-    path: "/admin",
-    use: [$secure({ permissions: ["admin:ui"] })],
-    nav: { label: "Admin" },
-    component: AdminLayout,
-    loader: async ({ url }) => {
-      if (url.pathname === "/admin" || url.pathname === "/admin/") {
-        throw new Redirection("/admin/users");
-      }
-      return {};
-    },
-    children: (): any[] => [
-      this.adminUsers,
-      this.adminSessions,
-      this.adminKeys,
-      this.adminJobs,
-      this.adminAudits,
-      this.adminNotifications,
-      this.adminFiles,
-      this.adminParameters,
-    ],
-  });
-
-  adminUsers = $page({
-    path: "/users",
-    head: { title: "Users" },
-    nav: { label: "Users", icon: <Users />, group: "Identity", order: 1 },
-    lazy: () => import("./pages/admin/Users.tsx"),
-  });
-
-  adminSessions = $page({
-    path: "/sessions",
-    head: { title: "Sessions" },
-    nav: {
-      label: "Sessions",
-      icon: <ShieldCheck />,
-      group: "Identity",
-      order: 2,
-    },
-    lazy: () => import("./pages/admin/Sessions.tsx"),
-  });
-
-  adminKeys = $page({
-    path: "/keys",
-    head: { title: "API keys" },
-    nav: {
-      label: "API keys",
-      icon: <KeyRound />,
-      group: "Identity",
-      order: 3,
-      keywords: ["tokens", "credentials"],
-    },
-    lazy: () => import("./pages/admin/Keys.tsx"),
-  });
-
-  adminJobs = $page({
-    path: "/jobs",
-    head: { title: "Jobs" },
-    nav: { label: "Jobs", icon: <Timer />, group: "Operations", order: 4 },
-    lazy: () => import("./pages/admin/Jobs.tsx"),
-  });
-
-  adminAudits = $page({
-    path: "/audits",
-    head: { title: "Audit log" },
-    nav: {
-      label: "Audit log",
-      icon: <ShieldAlert />,
-      group: "Operations",
-      order: 6,
-    },
-    lazy: () => import("./pages/admin/Audits.tsx"),
-  });
-
-  adminNotifications = $page({
-    path: "/notifications",
-    head: { title: "Notifications" },
-    nav: {
-      label: "Notifications",
-      icon: <Bell />,
-      group: "Operations",
-      order: 5,
-    },
-    lazy: () => import("./pages/admin/Notifications.tsx"),
-  });
-
-  adminFiles = $page({
-    path: "/files",
-    head: { title: "Files" },
-    nav: { label: "Files", icon: <Files />, group: "Operations", order: 7 },
-    lazy: () => import("./pages/admin/Files.tsx"),
-  });
-
-  adminParameters = $page({
-    path: "/parameters",
-    head: { title: "Parameters" },
-    nav: {
-      label: "Parameters",
-      icon: <Settings2 />,
-      group: "Operations",
-      order: 8,
-      keywords: ["settings", "config", "configuration"],
-    },
-    lazy: () => import("./pages/admin/Parameters.tsx"),
-  });
+  // ── /admin/* ─────────────────────────────────────────────────────────
+  //
+  // Not declared here: `AdminRouter` from `@alepha/ui` mounts the whole
+  // `/admin` surface, and `PlaygroundWeb` registers it as a service.
+  //
+  // The eight pages this replaced were pass-through wrappers — each rendered
+  // one `@alepha/ui` component and nothing else, which is exactly what the
+  // shared router's own pages already are.
 
   // ── Playgrounds + Demo ───────────────────────────────────────────────
   playgroundJobs = $page({
