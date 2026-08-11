@@ -99,6 +99,49 @@ export class VatCalculator {
   }
 
   /**
+   * Split one sale's ventilation across several tenders, one group per amount.
+   *
+   * A split payment — half on a card, the rest in cash, or a wallet covering
+   * part of a basket — records a leg per tender, and each leg carries its own
+   * share of the tax. The daily closure then aggregates legs, so a cent lost
+   * here is a cent the closure is out by, and a closure that does not reconcile
+   * is the kind of problem that surfaces at an inspection rather than in a test.
+   *
+   * Every remainder therefore lands on the LAST tender: shares are rounded as
+   * they are taken and whatever is left over is assigned rather than recomputed,
+   * so the legs sum back to the sale exactly, for any split, at any rate.
+   *
+   * Ported from Club's caisse together with the rest of this class.
+   */
+  public apportion(buckets: VatBucket[], amounts: number[]): VatBucket[][] {
+    const total = amounts.reduce((sum, amount) => sum + amount, 0);
+    if (total <= 0 || amounts.length === 0) {
+      return amounts.map(() => []);
+    }
+
+    const out: VatBucket[][] = amounts.map(() => []);
+    for (const bucket of buckets) {
+      let baseLeft = bucket.baseCents;
+      let vatLeft = bucket.vatCents;
+      for (let i = 0; i < amounts.length; i++) {
+        const last = i === amounts.length - 1;
+        const baseCents = last
+          ? baseLeft
+          : Math.round((bucket.baseCents * amounts[i]!) / total);
+        const vatCents = last
+          ? vatLeft
+          : Math.round((bucket.vatCents * amounts[i]!) / total);
+        baseLeft -= baseCents;
+        vatLeft -= vatCents;
+        if (baseCents !== 0 || vatCents !== 0) {
+          out[i]!.push({ rateBps: bucket.rateBps, baseCents, vatCents });
+        }
+      }
+    }
+    return out;
+  }
+
+  /**
    * Merge several ventilations into one. Used to aggregate a period.
    */
   public merge(groups: VatBucket[][]): VatBucket[] {

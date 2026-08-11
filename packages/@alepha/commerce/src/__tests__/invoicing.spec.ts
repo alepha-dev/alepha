@@ -126,6 +126,33 @@ describe("VAT arithmetic", () => {
       vatCents: 0,
     });
   });
+
+  it("apportions across tenders without losing a cent", async ({ expect }) => {
+    const { vat } = await setup();
+
+    // 10,00 € at 5,5 % beside 20,00 € at 20 %, settled in three equal tenders —
+    // amounts that divide evenly at neither rate.
+    const buckets = vat.ventilate([
+      { ttcCents: 1000, rateBps: 550 },
+      { ttcCents: 2000, rateBps: 2000 },
+    ]);
+    const legs = vat.apportion(buckets, [1000, 1000, 1000]);
+
+    expect(legs).toHaveLength(3);
+    // Re-merging the legs must reproduce the sale exactly: a closure aggregates
+    // legs, so drift here is drift in the day's declared VAT.
+    expect(vat.merge(legs)).toEqual(buckets);
+  });
+
+  it("apportions to empty groups when there is nothing to settle", async ({
+    expect,
+  }) => {
+    const { vat } = await setup();
+    const buckets = vat.ventilate([{ ttcCents: 1000, rateBps: 2000 }]);
+
+    expect(vat.apportion(buckets, [0, 0])).toEqual([[], []]);
+    expect(vat.apportion(buckets, [])).toEqual([]);
+  });
 });
 
 describe("invoice issuing", () => {
