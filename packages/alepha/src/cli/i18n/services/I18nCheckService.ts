@@ -171,8 +171,14 @@ export class I18nCheckService {
     // recorded, so the call-site scan below stays proportional to those.
     const arity = new Map<string, number>();
     for (const file of dictionarySet) {
-      const text = fileContents.get(file);
-      if (!text) continue;
+      const raw = fileContents.get(file);
+      if (!raw) continue;
+      // Both scans below read the text BETWEEN two key declarations, so a
+      // comment sitting there is attributed to the entry above it. A comment
+      // documenting placeholders — exactly the kind a careful dictionary
+      // carries — then makes its neighbour look like it needs arguments it
+      // does not, and the entry fails a check its own documentation caused.
+      const text = this.blankComments(raw);
       const before = allKeys.size;
       const declarations: Array<{ key: string; index: number }> = [];
       for (const m of text.matchAll(KEY_DECLARATION_RE)) {
@@ -256,6 +262,71 @@ export class I18nCheckService {
       found.push({ file, key, placeholder: m[0] });
     }
     return found;
+  }
+
+  /**
+   * Replace every comment with spaces, leaving the text the same length.
+   *
+   * Same length is the whole point: the key declarations are located by index
+   * into this string, so deleting the comments outright would slide every
+   * declaration after the first one out of position.
+   *
+   * String literals are tracked rather than skipped naively, because a value
+   * may legitimately contain `//` — `"Voir https://example.com/$1"` is a
+   * dictionary entry, not a comment, and blanking from the slashes would drop
+   * the `$1` and under-count the entry's arity.
+   */
+  protected blankComments(text: string): string {
+    const out = text.split("");
+    let quote: string | undefined;
+    let comment: "line" | "block" | undefined;
+
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      const next = text[i + 1];
+
+      if (comment === "line") {
+        if (c === "\n") comment = undefined;
+        else out[i] = " ";
+        continue;
+      }
+
+      if (comment === "block") {
+        // Keep newlines so line numbers reported elsewhere stay honest.
+        if (c !== "\n") out[i] = " ";
+        if (c === "*" && next === "/") {
+          out[i + 1] = " ";
+          i++;
+          comment = undefined;
+        }
+        continue;
+      }
+
+      if (quote) {
+        // `\"` inside a string is data, not the closing quote.
+        if (c === "\\") i++;
+        else if (c === quote) quote = undefined;
+        continue;
+      }
+
+      if (c === '"' || c === "'" || c === "`") {
+        quote = c;
+        continue;
+      }
+
+      if (c === "/" && next === "/") {
+        comment = "line";
+        out[i] = " ";
+        continue;
+      }
+
+      if (c === "/" && next === "*") {
+        comment = "block";
+        out[i] = " ";
+      }
+    }
+
+    return out.join("");
   }
 
   /**

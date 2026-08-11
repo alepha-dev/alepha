@@ -296,6 +296,92 @@ export class I18n {
     expect(result.missingArgs).toEqual([]);
   });
 
+  /**
+   * An entry's value is read as the text up to the NEXT declaration, so a
+   * comment in that gap counted as part of the entry above it. A dictionary
+   * documenting its placeholders — `// "$1" = label, "$2" = range` — therefore
+   * made the preceding entry demand two arguments, and a correct call site was
+   * reported as passing too few. The dictionary's own documentation broke it.
+   */
+  it("ignores comments when measuring how many arguments an entry needs", async () => {
+    await env.fs.mkdir(`${ROOT}/src/web`, { recursive: true });
+    await env.fs.writeFile(
+      `${ROOT}/src/web/I18n.ts`,
+      `import { $dictionary } from "alepha/react/i18n";
+export class I18n {
+  en = $dictionary({
+    lazy: async () => ({
+      default: {
+        "hours.weekend": "Sat - Sun: $1",
+        // Per-day lines: "$1" = day label, "$2" = range.
+        "hours.line": "$1: $2",
+        /* block form, same trap: $2 */
+        "hours.closed": "Closed",
+      },
+    }),
+  });
+}
+`,
+    );
+    await env.fs.writeFile(
+      `${ROOT}/src/web/Hours.tsx`,
+      `export const Hours = () => [
+         tr("hours.weekend", { args: [a] }),
+         tr("hours.line", { args: [a, b] }),
+         tr("hours.closed"),
+       ];`,
+    );
+
+    const result = await env.service.check({
+      root: ROOT,
+      scan: ["src"],
+      dynamicPrefixes: [],
+      exclude: [],
+    });
+
+    expect(result.missingArgs).toEqual([]);
+  });
+
+  it("treats // inside a value as text, not as the start of a comment", async () => {
+    await env.fs.mkdir(`${ROOT}/src/web`, { recursive: true });
+    await env.fs.writeFile(
+      `${ROOT}/src/web/I18n.ts`,
+      `import { $dictionary } from "alepha/react/i18n";
+export class I18n {
+  en = $dictionary({
+    lazy: async () => ({
+      default: {
+        "docs.link": "See https://example.com/guide for $1",
+      },
+    }),
+  });
+}
+`,
+    );
+    await env.fs.writeFile(
+      `${ROOT}/src/web/Docs.tsx`,
+      `export const Docs = () => tr("docs.link");`,
+    );
+
+    const result = await env.service.check({
+      root: ROOT,
+      scan: ["src"],
+      dynamicPrefixes: [],
+      exclude: [],
+    });
+
+    // Blanking from the URL's slashes would swallow the `$1`, and this
+    // genuinely-unfilled placeholder would go unreported.
+    expect(result.missingArgs).toEqual([
+      {
+        key: "docs.link",
+        needs: 1,
+        got: 0,
+        file: `${ROOT}/src/web/Docs.tsx`,
+      },
+    ]);
+  });
+
   it("returns totalKeys=0 when no dictionary is found", async () => {
     await env.fs.mkdir(`${ROOT}/src`, { recursive: true });
     await env.fs.writeFile(
