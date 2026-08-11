@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { describe, expect, it } from "vitest";
 import { AdminRouter } from "../admin-router.tsx";
@@ -50,5 +50,30 @@ describe("AdminRouter", () => {
   it("never uses :id as a param name", async () => {
     const pages = await mount();
     expect(pages.map((it) => it.path)).not.toContain("/users/:id");
+  });
+
+  it("lets an application hang its own page off the shell", async () => {
+    class ShopAdminRouter {
+      protected readonly admin = $inject(AdminRouter);
+
+      products = $page({
+        parent: this.admin.layout,
+        path: "/products",
+        nav: { label: "Catalogue", group: "Commerce", order: 100 },
+        component: () => "products",
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaReactRouter);
+    alepha.inject(AdminRouter);
+    alepha.with(ShopAdminRouter);
+    await alepha.start();
+
+    const products = alepha
+      .primitives($page)
+      .find((page) => page.name === "products");
+
+    expect(products).toBeDefined();
+    expect(products!.options.parent).toBe(alepha.inject(AdminRouter).layout);
   });
 });
