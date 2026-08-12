@@ -15,6 +15,11 @@ import { AdminRouter } from "./admin-router.tsx";
  * `parent: this.admin.layout` by hand on every page — puts the rules of that
  * composition nowhere an author will read them.
  *
+ * It carries the `$` prefix to sit with the framework's other declarations at
+ * a call site, but it is a plain function wrapping `navPage` — which in turn
+ * wraps `$page` — rather than a `createPrimitive` primitive. Nothing about
+ * its lifecycle differs from declaring `$page` yourself.
+ *
  * The page appears in the shell's sidebar with no separate registration
  * step: `useNavEntries` walks the parent chain and reads each page's own
  * `nav`, the same as any other page hung off `AdminRouter.layout`.
@@ -44,7 +49,7 @@ import { AdminRouter } from "./admin-router.tsx";
  *
  * ```tsx
  * class ShopAdminRouter {
- *   products = adminPage({
+ *   products = $pageAdmin({
  *     path: "/products",
  *     nav: { label: "Catalogue", icon: <Gem />, group: "Commerce", order: 100 },
  *     can: () => this.productApi.commerceAdminProductList.can(),
@@ -53,7 +58,7 @@ import { AdminRouter } from "./admin-router.tsx";
  * }
  * ```
  */
-export const adminPage = <
+export const $pageAdmin = <
   TConfig extends PageConfigSchema = PageConfigSchema,
   TProps extends object = TPropsDefault,
   TPropsParent extends object = TPropsParentDefault,

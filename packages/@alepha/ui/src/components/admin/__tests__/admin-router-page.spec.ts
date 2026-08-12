@@ -2,19 +2,19 @@ import { Alepha } from "alepha";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { describe, expect, it } from "vitest";
 import { AdminRouter } from "../admin-router.tsx";
-import { adminPage } from "../admin-router-page.tsx";
+import { $pageAdmin } from "../admin-router-page.tsx";
 
 /**
- * `adminPage` is the one-call form of "a page inside the shared admin shell".
+ * `$pageAdmin` is the one-call form of "a page inside the shared admin shell".
  *
  * It exists because the alternative — injecting `AdminRouter` and writing
  * `parent: this.admin.layout` by hand — puts the rules of the composition
  * nowhere an author will read them.
  */
-describe("adminPage", () => {
+describe("$pageAdmin", () => {
   it("mounts the page under the admin shell without the app wiring a parent", async () => {
     class ShopAdminRouter {
-      products = adminPage({
+      products = $pageAdmin({
         path: "/products",
         nav: { label: "Catalogue", group: "Commerce", order: 100 },
         component: () => "products",
@@ -35,7 +35,7 @@ describe("adminPage", () => {
 
   it("registers AdminRouter, so the app never mounts the shell itself", async () => {
     class ShopAdminRouter {
-      products = adminPage({
+      products = $pageAdmin({
         path: "/products",
         component: () => "products",
       });

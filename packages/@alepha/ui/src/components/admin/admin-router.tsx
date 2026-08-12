@@ -67,7 +67,7 @@ import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
  *
  * ### Extending the shell
  *
- * {@link adminPage} (`@alepha/ui/components/admin/admin-router-page`) is the
+ * {@link $pageAdmin} (`@alepha/ui/components/admin/admin-router-page`) is the
  * way to add a page to this shell — the one-call form an application, or a
  * satellite package such as `@alepha/commerce/admin`, whose pages
  * deliberately live outside this design system so it never depends on a
@@ -75,7 +75,7 @@ import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
  *
  * ```tsx
  * class ShopAdminRouter {
- *   products = adminPage({
+ *   products = $pageAdmin({
  *     path: "/products",
  *     nav: { label: "Catalogue", group: "Commerce", order: 100 },
  *     lazy: () => import("./AdminProducts.tsx"),
@@ -83,17 +83,17 @@ import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
  * }
  * ```
  *
- * See `adminPage`'s own JSDoc for the rules this composition must follow —
+ * See `$pageAdmin`'s own JSDoc for the rules this composition must follow —
  * the `AdminRouter` registration it triggers, the `order` / `nav.group`
  * contract, and gating with `can` rather than `permission` alone.
  *
- * `layout` stays public as the seam underneath: `adminPage` is exactly
+ * `layout` stays public as the seam underneath: `$pageAdmin` is exactly
  * `$inject(AdminRouter)` plus `parent: this.admin.layout`, done for you. An
- * application that wants that composition without going through `adminPage`
+ * application that wants that composition without going through `$pageAdmin`
  * — for instance to control itself whether and when `AdminRouter` gets
  * registered, rather than as an unconditional side effect of a field
  * initializer — injects `AdminRouter` and sets `parent: this.admin.layout`
- * directly, the same way `adminPage` does internally.
+ * directly, the same way `$pageAdmin` does internally.
  *
  * ### Group order is a contract
  *
