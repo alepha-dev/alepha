@@ -136,7 +136,7 @@ export class AdminRouter {
     nav: { label: "Admin" },
     loader: async ({ url }) => {
       if (url.pathname === "/admin" || url.pathname === "/admin/") {
-        throw new Redirection("/admin/users");
+        throw new Redirection(this.options.indexPath ?? "/admin/users");
       }
       return {};
     },

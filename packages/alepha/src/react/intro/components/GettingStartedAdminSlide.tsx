@@ -12,12 +12,12 @@ export const useAdminSlide = (): GettingStartedSlide | undefined => {
   const router = useRouter();
 
   // Check if admin routes exist
-  const hasAdmin = router.pages.find((it) => it.name === "adminLayout");
+  const hasAdmin = router.pages.find((it) => it.name === "admin");
   if (!hasAdmin) {
     return undefined;
   }
 
-  const adminAnchorProps = router.anchor(router.path("adminLayout"));
+  const adminAnchorProps = router.anchor(router.path("admin"));
   const canAccessAdmin = has("admin:*");
 
   // User is admin - show success message

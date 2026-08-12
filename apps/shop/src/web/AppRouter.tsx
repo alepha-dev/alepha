@@ -1,9 +1,16 @@
 import type { ProductController } from "@alepha/commerce";
+import type {
+  AdminOrderController,
+  AdminProductController,
+} from "@alepha/commerce/admin";
 import type { CheckoutController } from "@alepha/commerce/checkout";
+import type { AdminShippingController } from "@alepha/commerce/shipping";
+import { AdminRouter } from "@alepha/ui/components/admin/admin-router";
 import { $atom, $inject, Alepha, z } from "alepha";
-import { $page, Redirection } from "alepha/react/router";
+import { Tr } from "alepha/react/i18n";
+import { $page } from "alepha/react/router";
 import { $client } from "alepha/server/links";
-import { AdminLayout } from "./AdminLayout.tsx";
+import { Gem, Package, Truck } from "lucide-react";
 import { Layout } from "./Layout.tsx";
 
 /**
@@ -44,6 +51,18 @@ export class AppRouter {
   protected readonly alepha = $inject(Alepha);
   protected readonly produits = $client<ProductController>();
   protected readonly checkoutApi = $client<CheckoutController>();
+
+  // ── Back office (composed onto the shared shell) ────────────────────
+  //
+  // The three commerce screens live in `@alepha/commerce/admin` and
+  // `@alepha/commerce/shipping`, deliberately outside `@alepha/ui` so the
+  // design system never depends on a domain. They hang off `AdminRouter`'s
+  // public `layout` field rather than being declared inside `AdminRouter`
+  // itself — the documented cross-package composition seam.
+  protected readonly admin = $inject(AdminRouter);
+  protected readonly productApi = $client<AdminProductController>();
+  protected readonly orderApi = $client<AdminOrderController>();
+  protected readonly shippingApi = $client<AdminShippingController>();
 
   // ── Storefront ───────────────────────────────────────────────────────
 
@@ -172,59 +191,64 @@ export class AppRouter {
   // altogether.
 
   // ── Back office ──────────────────────────────────────────────────────
-
-  adminLayout = $page({
-    path: "/admin",
-    component: AdminLayout,
-    /*
-     * ### Why a loader and not `$secure`
-     *
-     * The first version wrote `use: [$secure({ permissions: ["admin:ui"] })]`
-     * here and a comment claiming an unauthorised visitor would be redirected.
-     * It is not: in the browser `$secure` short-circuits by returning
-     * `undefined`, so the *loader* never runs and the page renders anyway. An
-     * anonymous visitor typing `/admin/pieces` got the whole back-office shell,
-     * sidebar and all, with empty tables behind it — every request underneath
-     * answering 401. The e2e suite is what caught it.
-     *
-     * So the redirect lives in the loader, the way `apps/lore` does it: throw
-     * `Redirection` and the router follows it on the server and in the browser
-     * alike. `?redirect=` carries the intended page so signing in lands where
-     * the visitor was going.
-     *
-     * This is a UI guard, not an authorisation. Every endpoint underneath keeps
-     * its own `$secure` — that is what actually enforces the permission, and it
-     * answers 401 whatever the interface does.
-     */
-    loader: async ({ user }) => {
-      if (!user?.roles?.includes("admin")) {
-        throw new Redirection(
-          `/auth/login?redirect=${encodeURIComponent("/admin/pieces")}`,
-        );
-      }
-    },
-    children: (): any[] => [
-      this.adminPieces,
-      this.adminCommandes,
-      this.adminLivraison,
-    ],
-  });
+  //
+  // `AdminRouter` (from `@alepha/ui`) owns the shell and its own ten pages;
+  // it is mounted as a service in `./index.ts`. These three are shop's own,
+  // hung off its public `layout` field rather than declared inside it —
+  // `packages/@alepha/ui/src/components/admin/admin-router.tsx`'s own
+  // "Extending the shell" section documents exactly this composition.
+  //
+  // `AdminRouter.layout` carries `use: [$secure({ permissions: ["admin:ui"] })]`,
+  // and `ShopRealm` declares `admin:ui` — that is the whole access gate for
+  // reaching `/admin/*` at all: an unauthorised visitor is redirected to
+  // sign-in (anonymous) or refused with 403 (authenticated) before any child
+  // page below renders. Every endpoint underneath keeps its own `$secure`
+  // regardless, which is what actually enforces the permission.
+  //
+  // `can` below is a second, narrower gate: it hides the sidebar entry (and
+  // command palette hit) unless the signed-in admin can call the action the
+  // page actually loads, closing the gap `admin:ui` alone leaves — a wildcard
+  // role holds `admin:ui` whether or not the commerce module is registered.
 
   adminPieces = $page({
+    parent: this.admin.layout,
     path: "/pieces",
     head: { title: "Pièces · gestion" },
+    nav: {
+      label: <Tr k="admin.pieces" />,
+      icon: <Gem />,
+      group: "Commerce",
+      order: 100,
+    },
+    can: () => this.productApi.commerceAdminProductList.can(),
     lazy: () => import("./pages/admin/AdminPieces.tsx"),
   });
 
   adminCommandes = $page({
+    parent: this.admin.layout,
     path: "/commandes",
     head: { title: "Commandes · gestion" },
+    nav: {
+      label: <Tr k="admin.orders" />,
+      icon: <Package />,
+      group: "Commerce",
+      order: 101,
+    },
+    can: () => this.orderApi.commerceAdminOrderList.can(),
     lazy: () => import("./pages/admin/AdminCommandes.tsx"),
   });
 
   adminLivraison = $page({
+    parent: this.admin.layout,
     path: "/livraison",
     head: { title: "Livraison · gestion" },
+    nav: {
+      label: <Tr k="admin.shipping" />,
+      icon: <Truck />,
+      group: "Commerce",
+      order: 102,
+    },
+    can: () => this.shippingApi.commerceAdminShippingRates.can(),
     lazy: () => import("./pages/admin/AdminLivraison.tsx"),
   });
 }

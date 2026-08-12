@@ -41,6 +41,17 @@ export interface AdminRouterOptions {
   homeRouteName?: string;
 
   /**
+   * Where a bare `/admin` redirects.
+   *
+   * Defaults to the users list, which is the first entry of the built-in
+   * sidebar. An application whose back office is mostly its own pages will
+   * want one of those instead.
+   *
+   * @default "/admin/users"
+   */
+  indexPath?: string;
+
+  /**
    * Route name the shell's sign-in affordance pushes.
    *
    * `login` is the conventional name because `AuthRouter` mounts a page by

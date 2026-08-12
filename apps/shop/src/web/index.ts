@@ -1,3 +1,4 @@
+import { AdminRouter } from "@alepha/ui/components/admin/admin-router";
 import { AuthRouter } from "@alepha/ui/components/auth/auth-router";
 import { $module } from "alepha";
 import { AlephaReactAuth } from "alepha/react/auth";
@@ -39,8 +40,14 @@ export const ShopWeb = $module({
    * framework's `/auth/*` paths, so a missed prop is a 404 that typecheck, unit
    * tests and a URL-driven e2e suite all render invisible. The shop had already
    * been bitten by it once.
+   *
+   * `AdminRouter` supplies the whole `/admin` shell and its ten built-in
+   * pages; `AppRouter` hangs three commerce pages off its public `layout`
+   * field (see `AppRouter.tsx`'s "Back office" section). Its chrome is
+   * configured via `adminRouterOptionsAtom`, set from both `main.server.ts`
+   * and `main.browser.ts` (see `./adminChrome.tsx`).
    */
-  services: [AppRouter, AuthRouter, ShopI18n],
+  services: [AppRouter, AuthRouter, AdminRouter, ShopI18n],
   register: (alepha) => {
     // French is the atelier's own language, so it is the fallback rather than
     // the framework's default of English. `autoDetect` stays on: a first-time
