@@ -177,11 +177,9 @@ export class ShopI18n {
 
         // Admin shell
         "admin.brand": "Atelier · gestion",
-        "admin.group": "Boutique",
         "admin.pieces": "Pièces",
         "admin.orders": "Commandes",
         "admin.shipping": "Livraison",
-        "admin.viewShop": "Voir la boutique",
       },
     }),
   });
@@ -318,11 +316,9 @@ export class ShopI18n {
           "This shop is a technical demonstration. The workshop, the 1962 rolling mill and the pieces are invented.",
 
         "admin.brand": "Workshop · admin",
-        "admin.group": "Shop",
         "admin.pieces": "Pieces",
         "admin.orders": "Orders",
         "admin.shipping": "Delivery",
-        "admin.viewShop": "View the shop",
       },
     }),
   });

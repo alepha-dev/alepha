@@ -70,6 +70,23 @@ type TabKey = "overview" | "security" | "sessions" | "audits";
 const tabSchema = z.object({ tab: z.string().optional() });
 
 /**
+ * Resolves the id param for this page, preferring `:userId` (the param name
+ * `AdminRouter`'s own route declares) and falling back to `:id` (the name
+ * this component read exclusively before `AdminRouter` existed).
+ *
+ * The fallback exists for `~/git/club/apps/platform`, which vendors
+ * `@alepha/ui` and declares its own user-detail route as `/users/:id` against
+ * this same component. Without it, that application's next upgrade of
+ * `@alepha/ui` would resolve `userId` to `undefined`, fall through to the
+ * empty string, and load `AdminUserDetail` with no id at all instead of
+ * failing to build.
+ */
+export const resolveUserDetailId = (params: {
+  userId?: string;
+  id?: string;
+}): string => String(params.userId ?? params.id ?? "");
+
+/**
  * Composition root for the admin user detail page.
  *
  * Owns the data (queries, forms, mutations) and the shell — top bar, tab
@@ -79,7 +96,7 @@ const tabSchema = z.object({ tab: z.string().optional() });
 export const AdminUserDetail = (props: AdminUserDetailProps) => {
   const router = useRouter();
   const routerState = useRouterState();
-  const userId = String(routerState.params.id ?? "");
+  const userId = resolveUserDetailId(routerState.params);
   const userClient = useClient<AdminUserController>();
   const sessionClient = useClient<AdminSessionController>();
   const identityClient = useClient<AdminIdentityController>();
