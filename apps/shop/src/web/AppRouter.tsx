@@ -5,7 +5,7 @@ import type {
 } from "@alepha/commerce/admin";
 import type { CheckoutController } from "@alepha/commerce/checkout";
 import type { AdminShippingController } from "@alepha/commerce/shipping";
-import { AdminRouter } from "@alepha/ui/components/admin/admin-router";
+import { adminPage } from "@alepha/ui/components/admin/admin-router-page";
 import { $atom, $inject, Alepha, z } from "alepha";
 import { Tr } from "alepha/react/i18n";
 import { $page } from "alepha/react/router";
@@ -56,10 +56,10 @@ export class AppRouter {
   //
   // The three commerce screens live in `@alepha/commerce/admin` and
   // `@alepha/commerce/shipping`, deliberately outside `@alepha/ui` so the
-  // design system never depends on a domain. They hang off `AdminRouter`'s
-  // public `layout` field rather than being declared inside `AdminRouter`
-  // itself — the documented cross-package composition seam.
-  protected readonly admin = $inject(AdminRouter);
+  // design system never depends on a domain. They are declared with
+  // `adminPage` (`@alepha/ui/components/admin/admin-router-page`), which
+  // parents them onto `AdminRouter`'s shell without this router injecting
+  // `AdminRouter` or wiring `parent:` itself.
   protected readonly productApi = $client<AdminProductController>();
   protected readonly orderApi = $client<AdminOrderController>();
   protected readonly shippingApi = $client<AdminShippingController>();
@@ -192,11 +192,11 @@ export class AppRouter {
 
   // ── Back office ──────────────────────────────────────────────────────
   //
-  // `AdminRouter` (from `@alepha/ui`) owns the shell and its own ten pages;
-  // it is mounted as a service in `./index.ts`. These three are shop's own,
-  // hung off its public `layout` field rather than declared inside it —
-  // `packages/@alepha/ui/src/components/admin/admin-router.tsx`'s own
-  // "Extending the shell" section documents exactly this composition.
+  // `AdminRouter` (from `@alepha/ui`) owns the shell and its own ten pages.
+  // `adminPage` registers `AdminRouter` and parents each of these three onto
+  // its shell in one call — `./index.ts` still lists `AdminRouter` in
+  // `services: [...]` too, as the honest declaration of what the app mounts,
+  // even though `adminPage` already brings it in.
   //
   // `AdminRouter.layout` carries `use: [$secure({ permissions: ["admin:ui"] })]`,
   // and `ShopRealm` declares `admin:ui` — that is the whole access gate for
@@ -210,8 +210,7 @@ export class AppRouter {
   // page actually loads, closing the gap `admin:ui` alone leaves — a wildcard
   // role holds `admin:ui` whether or not the commerce module is registered.
 
-  adminPieces = $page({
-    parent: this.admin.layout,
+  adminPieces = adminPage({
     path: "/pieces",
     head: { title: "Pièces · gestion" },
     nav: {
@@ -224,8 +223,7 @@ export class AppRouter {
     lazy: () => import("./pages/admin/AdminPieces.tsx"),
   });
 
-  adminCommandes = $page({
-    parent: this.admin.layout,
+  adminCommandes = adminPage({
     path: "/commandes",
     head: { title: "Commandes · gestion" },
     nav: {
@@ -238,8 +236,7 @@ export class AppRouter {
     lazy: () => import("./pages/admin/AdminCommandes.tsx"),
   });
 
-  adminLivraison = $page({
-    parent: this.admin.layout,
+  adminLivraison = adminPage({
     path: "/livraison",
     head: { title: "Livraison · gestion" },
     nav: {
