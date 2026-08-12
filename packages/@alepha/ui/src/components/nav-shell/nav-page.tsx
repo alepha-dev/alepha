@@ -8,7 +8,7 @@ import {
 } from "alepha/react/router";
 import { $secure } from "alepha/security";
 
-export interface NavPageOptions<
+export interface PageNavOptions<
   TConfig extends PageConfigSchema = PageConfigSchema,
   TProps extends object = TPropsDefault,
   TPropsParent extends object = TPropsParentDefault,
@@ -34,12 +34,12 @@ export interface NavPageOptions<
  * Pages declared this way are picked up by {@link useNavTree} /
  * {@link NavShell} purely from their `nav` field — no separate nav list.
  */
-export const navPage = <
+export const $pageNav = <
   TConfig extends PageConfigSchema = PageConfigSchema,
   TProps extends object = TPropsDefault,
   TPropsParent extends object = TPropsParentDefault,
 >(
-  options: NavPageOptions<TConfig, TProps, TPropsParent>,
+  options: PageNavOptions<TConfig, TProps, TPropsParent>,
 ): PagePrimitive<TConfig, TProps, TPropsParent> => {
   const { permission, use, nav, ...rest } = options;
   const permissions = permission

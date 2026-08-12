@@ -1,4 +1,4 @@
-import { navPage } from "@alepha/ui/components/nav-shell/nav-page";
+import { $pageNav } from "@alepha/ui/components/nav-shell/nav-page";
 import { $store, z } from "alepha";
 import type { AdminAuditController } from "alepha/api/audits";
 import type { FileController } from "alepha/api/files";
@@ -43,10 +43,10 @@ import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
  *
  * A page whose permission the signed-in admin does not hold hides itself, and
  * so does a page whose module is not registered — but through two separate
- * gates, not one. Each `navPage` here declares `permission`, and its `can`
+ * gates, not one. Each `$pageNav` here declares `permission`, and its `can`
  * calls a typed `$client` action, and the entry is hidden when either fails.
  *
- * `permission` alone cannot cover "the module is not registered": `navPage`
+ * `permission` alone cannot cover "the module is not registered": `$pageNav`
  * wires it into `use: [$secure({ permissions })]` on the page itself, and
  * `$secure` registers that permission into `SecurityProvider` eagerly, at
  * definition time — so the permission exists whether or not any controller
@@ -151,7 +151,7 @@ export class AdminRouter {
     lazy: () => import("./admin-layout.tsx"),
   });
 
-  users = navPage({
+  users = $pageNav({
     parent: this.layout,
     path: "/users",
     name: "users",
@@ -167,7 +167,7 @@ export class AdminRouter {
    * No `nav` — a secured route that is not a sidebar entry. The breadcrumb
    * label falls back to `head.title`.
    */
-  userDetail = navPage({
+  userDetail = $pageNav({
     parent: this.layout,
     path: "/users/:userId",
     name: "userDetail",
@@ -183,7 +183,7 @@ export class AdminRouter {
     props: () => this.options.pages?.userDetail ?? {},
   });
 
-  sessions = navPage({
+  sessions = $pageNav({
     parent: this.layout,
     path: "/sessions",
     name: "sessions",
@@ -199,7 +199,7 @@ export class AdminRouter {
     lazy: () => import("./admin-sessions.tsx"),
   });
 
-  keys = navPage({
+  keys = $pageNav({
     parent: this.layout,
     path: "/keys",
     name: "keys",
@@ -216,7 +216,7 @@ export class AdminRouter {
     lazy: () => import("./admin-keys.tsx"),
   });
 
-  jobs = navPage({
+  jobs = $pageNav({
     parent: this.layout,
     path: "/jobs",
     name: "jobs",
@@ -227,7 +227,7 @@ export class AdminRouter {
     lazy: () => import("./admin-jobs.tsx"),
   });
 
-  notifications = navPage({
+  notifications = $pageNav({
     parent: this.layout,
     path: "/notifications",
     name: "notifications",
@@ -243,7 +243,7 @@ export class AdminRouter {
     lazy: () => import("./admin-notifications.tsx"),
   });
 
-  audits = navPage({
+  audits = $pageNav({
     parent: this.layout,
     path: "/audits",
     name: "audits",
@@ -259,7 +259,7 @@ export class AdminRouter {
     lazy: () => import("./admin-audits.tsx"),
   });
 
-  files = navPage({
+  files = $pageNav({
     parent: this.layout,
     path: "/files",
     name: "files",
@@ -270,7 +270,7 @@ export class AdminRouter {
     lazy: () => import("./admin-files.tsx"),
   });
 
-  parameters = navPage({
+  parameters = $pageNav({
     parent: this.layout,
     path: "/parameters",
     name: "parameters",
@@ -291,9 +291,9 @@ export class AdminRouter {
   /**
    * Both permissions are required, matching `AdminPaymentController`, which
    * gates every read with `["admin:payment:read", "payments:read"]` — and
-   * `navPage` treats an array as AND, the same way `$secure` does.
+   * `$pageNav` treats an array as AND, the same way `$secure` does.
    */
-  payments = navPage({
+  payments = $pageNav({
     parent: this.layout,
     path: "/payments",
     name: "payments",

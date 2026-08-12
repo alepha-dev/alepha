@@ -5,18 +5,18 @@ import type {
   TPropsDefault,
   TPropsParentDefault,
 } from "alepha/react/router";
-import { type NavPageOptions, navPage } from "../nav-shell/nav-page.tsx";
+import { $pageNav, type PageNavOptions } from "../nav-shell/nav-page.tsx";
 import { AdminRouter } from "./admin-router.tsx";
 
 /**
- * `navPage` already parented to {@link AdminRouter}'s `/admin` shell — the
+ * `$pageNav` already parented to {@link AdminRouter}'s `/admin` shell — the
  * one-call form of "a page inside the shared admin shell". It exists because
  * the alternative — injecting `AdminRouter` and writing
  * `parent: this.admin.layout` by hand on every page — puts the rules of that
  * composition nowhere an author will read them.
  *
  * It carries the `$` prefix to sit with the framework's other declarations at
- * a call site, but it is a plain function wrapping `navPage` — which in turn
+ * a call site, but it is a plain function wrapping `$pageNav` — which in turn
  * wraps `$page` — rather than a `createPrimitive` primitive. Nothing about
  * its lifecycle differs from declaring `$page` yourself.
  *
@@ -63,12 +63,12 @@ export const $pageAdmin = <
   TProps extends object = TPropsDefault,
   TPropsParent extends object = TPropsParentDefault,
 >(
-  options: Omit<NavPageOptions<TConfig, TProps, TPropsParent>, "parent">,
+  options: Omit<PageNavOptions<TConfig, TProps, TPropsParent>, "parent">,
 ): PagePrimitive<TConfig, TProps, TPropsParent> => {
   const { alepha } = $context();
   const admin = alepha.inject(AdminRouter);
-  return navPage<TConfig, TProps, TPropsParent>({
+  return $pageNav<TConfig, TProps, TPropsParent>({
     ...options,
     parent: admin.layout,
-  } as NavPageOptions<TConfig, TProps, TPropsParent>);
+  } as PageNavOptions<TConfig, TProps, TPropsParent>);
 };
