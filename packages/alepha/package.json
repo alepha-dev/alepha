@@ -99,6 +99,12 @@
     "api"
   ],
   "exports": {
+    "./api/analytics": {
+      "types": "./src/api/analytics/index.ts",
+      "workerd": "./src/api/analytics/index.workerd.ts",
+      "import": "./src/api/analytics/index.ts",
+      "default": "./src/api/analytics/index.ts"
+    },
     "./api/audits": {
       "types": "./src/api/audits/index.ts",
       "react-native": "./src/api/audits/index.browser.ts",
@@ -538,6 +544,12 @@
     "types": "./dist/core/index.d.ts",
     "bin": "./dist/bin/index.js",
     "exports": {
+      "./api/analytics": {
+        "types": "./dist/api/analytics/index.d.ts",
+        "workerd": "./dist/api/analytics/index.workerd.js",
+        "import": "./dist/api/analytics/index.js",
+        "default": "./dist/api/analytics/index.js"
+      },
       "./api/audits": {
         "types": "./dist/api/audits/index.d.ts",
         "react-native": "./dist/api/audits/index.browser.js",

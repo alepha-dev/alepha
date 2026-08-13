@@ -2,7 +2,7 @@ import { Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, expect, it } from "vitest";
-import { AlephaAnalytics } from "../index.workerd.ts";
+import { AlephaApiAnalytics } from "../index.workerd.ts";
 import { AnalyticsSlotMap } from "../planner/AnalyticsSlotMap.ts";
 import { AnalyticsProvider } from "../providers/AnalyticsProvider.ts";
 import { OrmAnalyticsProvider } from "../providers/OrmAnalyticsProvider.ts";
@@ -969,7 +969,7 @@ describe("WaeAnalyticsProvider selection", () => {
       },
     })
       .with(AlephaOrmPostgres)
-      .with(AlephaAnalytics);
+      .with(AlephaApiAnalytics);
 
     expect(alepha.inject(AnalyticsProvider)).toBeInstanceOf(
       WaeAnalyticsProvider,
@@ -979,7 +979,7 @@ describe("WaeAnalyticsProvider selection", () => {
   it("falls back to OrmAnalyticsProvider when no dataset is configured, so D1-only stays a valid deployment", () => {
     const alepha = Alepha.create({ env: { NODE_ENV: "production" } })
       .with(AlephaOrmPostgres)
-      .with(AlephaAnalytics);
+      .with(AlephaApiAnalytics);
 
     expect(alepha.inject(AnalyticsProvider)).toBeInstanceOf(
       OrmAnalyticsProvider,

@@ -4,12 +4,13 @@
 dimensions you group and filter by and the measures you aggregate once, and the same
 declaration runs unchanged on a relational database, in memory for tests, and on Cloudflare
 Workers Analytics Engine in production. Application code never names a backend — which one is
-bound is a runtime decision made by the `@alepha/analytics` module.
+bound is a runtime decision made by the `alepha/api/analytics` module.
 
-It lives in its own package rather than inside `alepha` itself:
+It ships inside the `alepha` package as an `api/*` sub-module, with the retention sweep and
+the admin surface as separate opt-in modules alongside it:
 
 ```typescript
-import { $analytics } from "@alepha/analytics";
+import { $analytics } from "alepha/api/analytics";
 ```
 
 ## Declaring a dataset
@@ -18,7 +19,7 @@ A dataset is `index` (which dimension Analytics Engine samples on), `dimensions`
 (each a `z.object(...)`, exactly like an `$entity` schema), and an optional `retention`:
 
 ```typescript check
-import { $analytics } from "@alepha/analytics";
+import { $analytics } from "alepha/api/analytics";
 import { z } from "alepha";
 
 class PageViews {
@@ -191,7 +192,7 @@ as an ordinary dimension holding the bucket index, with `count` (or whatever you
 measure) as the thing you sum. This is exactly how `apps/lore` tracks Web Vitals:
 
 ```typescript
-import { $analytics } from "@alepha/analytics";
+import { $analytics } from "alepha/api/analytics";
 import { z } from "alepha";
 import { db } from "alepha/orm";
 
@@ -251,21 +252,21 @@ under if the app might ever run on Analytics Engine.
 ### Declaring `retention` does nothing on its own
 
 This is the sharpest edge in the whole primitive, worth stating plainly: **nothing in
-`@alepha/analytics` enforces `retention` automatically.** Registering `$analytics()` datasets —
-importing `AlephaAnalytics` — wires the provider and lets you `record()`/`query()`, full stop.
+`alepha/api/analytics` enforces `retention` automatically.** Registering `$analytics()` datasets —
+importing `AlephaApiAnalytics` — wires the provider and lets you `record()`/`query()`, full stop.
 The hourly sweep that actually folds and prunes rows lives in a **separate module**,
-`AlephaAnalyticsRollup`, which your app has to import explicitly alongside `AlephaAnalytics`:
+`AlephaApiAnalyticsRollup`, which your app has to import explicitly alongside `AlephaApiAnalytics`:
 
 ```typescript
-import { AlephaAnalytics, AlephaAnalyticsRollup } from "@alepha/analytics";
+import { AlephaApiAnalytics, AlephaApiAnalyticsRollup } from "alepha/api/analytics";
 import { Alepha } from "alepha";
 
 const alepha = Alepha.create()
-  .with(AlephaAnalytics)
-  .with(AlephaAnalyticsRollup);
+  .with(AlephaApiAnalytics)
+  .with(AlephaApiAnalyticsRollup);
 ```
 
-Forgetting `AlephaAnalyticsRollup` is silent in the sense that nothing throws: `record()` and
+Forgetting `AlephaApiAnalyticsRollup` is silent in the sense that nothing throws: `record()` and
 `query()` keep working normally, and the raw table simply grows forever. It is not *completely*
 silent, though — a boot-time `log.warn` from the retention guard names every dataset that
 declares `retention.hot` while no rollup job was ever constructed, specifically so this mistake
@@ -273,7 +274,7 @@ does not stay invisible once the app is actually running.
 
 The split exists because `AnalyticsRollupJobs` is built on `$job`, and `$job` always needs a
 real database connection (it holds a `$repository` on its own job-execution table), in every
-environment including tests. Folding the rollup job into `AlephaAnalytics` directly would mean
+environment including tests. Folding the rollup job into `AlephaApiAnalytics` directly would mean
 merely declaring one `$analytics()` field — the one thing this package promises works with no
 database at all — starts requiring a live database connection to boot.
 
@@ -311,7 +312,7 @@ chooses:
 | Node / Bun, no Cloudflare binding | `OrmAnalyticsProvider` | Relational tables, exact, no sampling |
 | Cloudflare Worker with a dataset binding | `WaeAnalyticsProvider` | Workers Analytics Engine, samples under load |
 
-`AlephaApiPayments`, `AlephaAnalytics` and most other Alepha modules follow this same
+`AlephaApiPayments`, `AlephaApiAnalytics` and most other Alepha modules follow this same
 test-substitution pattern — see [Unit Tests](/docs/guides-testing-unit-tests) for the general
 shape.
 
@@ -332,17 +333,17 @@ changed.
 A real example, from `apps/lore`:
 
 ```typescript
-import { AlephaAnalyticsRollup } from "@alepha/analytics";
+import { AlephaApiAnalyticsRollup } from "alepha/api/analytics";
 import { $module } from "alepha";
 import { LoreAnalytics } from "./entities/loreAnalytics.ts";
 
 export const LoreApi = $module({
   name: "lore.api",
-  // `$analytics()` (used by `LoreAnalytics`) auto-wires `AlephaAnalytics` itself
+  // `$analytics()` (used by `LoreAnalytics`) auto-wires `AlephaApiAnalytics` itself
   // the moment a dataset is injected — the same module-tagging mechanism
   // `$repository` uses for `AlephaOrm`. The retention sweep does not auto-wire:
   // it needs its own explicit import, or retention silently does nothing.
-  imports: [AlephaAnalyticsRollup],
+  imports: [AlephaApiAnalyticsRollup],
   services: [LoreAnalytics /* ...the rest of the app's services */],
 });
 ```
@@ -351,7 +352,7 @@ export const LoreApi = $module({
 `apps/lore/src/api/entities/loreAnalytics.ts`:
 
 ```typescript
-import { $analytics } from "@alepha/analytics";
+import { $analytics } from "alepha/api/analytics";
 import { z } from "alepha";
 import { db } from "alepha/orm";
 import { sigils } from "./sigils.ts";
@@ -382,7 +383,7 @@ needed, and no sampling to account for in assertions:
 
 ```typescript
 import { Alepha } from "alepha";
-import { AlephaAnalytics } from "@alepha/analytics";
+import { AlephaApiAnalytics } from "alepha/api/analytics";
 
 class Stats {
   views = $analytics({
@@ -392,7 +393,7 @@ class Stats {
   });
 }
 
-const alepha = Alepha.create().with(AlephaAnalytics);
+const alepha = Alepha.create().with(AlephaApiAnalytics);
 const stats = alepha.inject(Stats);
 await alepha.start();
 
