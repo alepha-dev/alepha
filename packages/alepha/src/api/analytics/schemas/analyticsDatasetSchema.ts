@@ -42,8 +42,8 @@ export interface AnalyticsRetention {
    *
    * Declaring this does nothing by itself. Nothing in this package enforces
    * retention automatically — the app must also import
-   * `AlephaAnalyticsRollup` (from `@alepha/analytics`, alongside
-   * `AlephaAnalytics`) so its hourly sweep (`AnalyticsRollupJobs`) actually
+   * `AlephaApiAnalyticsRollup` (from `alepha/api/analytics`, alongside
+   * `AlephaApiAnalytics`) so its hourly sweep (`AnalyticsRollupJobs`) actually
    * runs. Forgetting it is silent: the table simply grows forever, with no
    * error — though a boot-time `log.warn` from `AnalyticsRetentionGuard`
    * names any dataset caught in this state, so it should not stay silent for

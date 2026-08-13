@@ -1,12 +1,15 @@
 import { $module } from "alepha";
 import { AlephaApiJobs } from "alepha/api/jobs";
+import { AdminAnalyticsController } from "./controllers/AdminAnalyticsController.ts";
 import { AnalyticsRollupJobs } from "./jobs/AnalyticsRollupJobs.ts";
 import { $analytics } from "./primitives/$analytics.ts";
 import { AnalyticsProvider } from "./providers/AnalyticsProvider.ts";
 import { MemoryAnalyticsProvider } from "./providers/MemoryAnalyticsProvider.ts";
 import { OrmAnalyticsProvider } from "./providers/OrmAnalyticsProvider.ts";
+import { AdminAnalyticsService } from "./services/AdminAnalyticsService.ts";
 import { AnalyticsRetentionGuard } from "./services/AnalyticsRetentionGuard.ts";
 
+export * from "./controllers/AdminAnalyticsController.ts";
 export * from "./jobs/AnalyticsRollupJobs.ts";
 export * from "./planner/AnalyticsBuckets.ts";
 export * from "./planner/AnalyticsSlotMap.ts";
@@ -15,8 +18,12 @@ export * from "./providers/AnalyticsProvider.ts";
 export * from "./providers/MemoryAnalyticsProvider.ts";
 export * from "./providers/OrmAnalyticsProvider.ts";
 export * from "./providers/WaeAnalyticsProvider.ts";
+export * from "./schemas/adminAnalyticsQuerySchema.ts";
+export * from "./schemas/adminAnalyticsResultSchema.ts";
+export * from "./schemas/adminDatasetSchema.ts";
 export * from "./schemas/analyticsDatasetSchema.ts";
 export * from "./schemas/analyticsQuerySchema.ts";
+export * from "./services/AdminAnalyticsService.ts";
 export * from "./services/AnalyticsEngineSql.ts";
 export * from "./services/AnalyticsRetentionGuard.ts";
 
@@ -35,16 +42,16 @@ export * from "./services/AnalyticsRetentionGuard.ts";
  * `CLOUDFLARE_ANALYTICS_DATASET`.
  *
  * `AnalyticsRollupJobs` is deliberately **not** wired here — see
- * {@link AlephaAnalyticsRollup} just below for why it is a separate module.
+ * {@link AlephaApiAnalyticsRollup} just below for why it is a separate module.
  * `AnalyticsRetentionGuard` *is* wired here, unconditionally, precisely to
  * catch an app that forgets the split: it `log.warn`s at boot if any
  * dataset declares `retention.hot` while no `AnalyticsRollupJobs` was ever
  * constructed.
  *
- * @module alepha.analytics
+ * @module alepha.api.analytics
  */
-export const AlephaAnalytics = $module({
-  name: "alepha.analytics",
+export const AlephaApiAnalytics = $module({
+  name: "alepha.api.analytics",
   primitives: [$analytics],
   // AnalyticsProvider is the abstract seam and is always auto-injected; the
   // concrete implementations are `variants` (module-tagged, not auto-injected)
@@ -76,7 +83,7 @@ export const AlephaAnalytics = $module({
 /**
  * The hourly retention sweep, as its own module.
  *
- * Not folded into {@link AlephaAnalytics} above, even though the plan this
+ * Not folded into {@link AlephaApiAnalytics} above, even though the plan this
  * shipped from asked for exactly that. `AnalyticsRollupJobs` uses `$job`,
  * and `$job` is never test-substituted the way `AnalyticsProvider` is:
  * `JobProvider` holds a real `$repository(jobExecutionEntity)`, so
@@ -85,7 +92,7 @@ export const AlephaAnalytics = $module({
  * which both explicitly attach `AlephaOrmPostgres` for exactly this reason).
  *
  * Folding `imports: [AlephaApiJobs]` and `services: [AnalyticsRollupJobs]`
- * into `AlephaAnalytics` was tried first, and it broke `analytics.spec.ts`
+ * into `AlephaApiAnalytics` was tried first, and it broke `analytics.spec.ts`
  * outright: `$module.register()` wires `imports[]` and auto-injects every
  * `services[]` entry unconditionally, so merely declaring one `$analytics()`
  * field anywhere — the one thing this package promises works with no
@@ -93,10 +100,10 @@ export const AlephaAnalytics = $module({
  * Nine tests failed with "Postgres URL is not supported for SQLite
  * provider" before this was caught.
  *
- * Splitting it out preserves the invariant `AlephaAnalytics`'s own doc
+ * Splitting it out preserves the invariant `AlephaApiAnalytics`'s own doc
  * already states for `AlephaOrm`: nothing here is real infrastructure until
  * something asks for it. An app that wants the scheduled sweep imports this
- * module explicitly, alongside `AlephaAnalytics` — the same relationship
+ * module explicitly, alongside `AlephaApiAnalytics` — the same relationship
  * `AlephaApiJobsQueue` already has to `AlephaApiJobs`.
  *
  * That relationship is not quite as safe as it sounds, though.
@@ -104,14 +111,30 @@ export const AlephaAnalytics = $module({
  * direct mode instead of through a real queue. Omitting *this* module is not
  * additive: `retention` simply does nothing, forever, with no fallback and
  * no error. `AnalyticsRetentionGuard` (wired unconditionally into
- * `AlephaAnalytics` above) exists specifically to catch that: it warns at
+ * `AlephaApiAnalytics` above) exists specifically to catch that: it warns at
  * boot if any dataset declares `retention.hot` while no `AnalyticsRollupJobs`
  * was ever constructed.
  *
- * @module alepha.analytics.rollup
+ * @module alepha.api.analytics.rollup
  */
-export const AlephaAnalyticsRollup = $module({
-  name: "alepha.analytics.rollup",
+export const AlephaApiAnalyticsRollup = $module({
+  name: "alepha.api.analytics.rollup",
   imports: [AlephaApiJobs],
   services: [AnalyticsRollupJobs],
+});
+
+/**
+ * Opt-in admin surface: dataset listing + validated aggregate queries at
+ * `/api/admin/analytics/*`, gated on `admin:analytics:read`.
+ *
+ * A separate module for the same reason {@link AlephaApiAnalyticsRollup} is
+ * one: `$analytics()` auto-wires {@link AlephaApiAnalytics} the moment a
+ * dataset is declared, and declaring a dataset must never force HTTP
+ * endpoints onto an app. Register it explicitly, next to your server module.
+ *
+ * @module alepha.api.analytics.admin
+ */
+export const AlephaApiAnalyticsAdmin = $module({
+  name: "alepha.api.analytics.admin",
+  services: [AdminAnalyticsService, AdminAnalyticsController],
 });

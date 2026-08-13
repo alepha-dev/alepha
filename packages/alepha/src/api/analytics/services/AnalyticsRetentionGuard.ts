@@ -8,23 +8,23 @@ import { $analytics } from "../primitives/$analytics.ts";
  * ever enforce it.
  *
  * `retention` is inert by construction: it is read only by
- * `AnalyticsRollupJobs`, which lives in the separate `AlephaAnalyticsRollup`
- * module (not `AlephaAnalytics`) — see that module's doc in `index.ts` for
+ * `AnalyticsRollupJobs`, which lives in the separate `AlephaApiAnalyticsRollup`
+ * module (not `AlephaApiAnalytics`) — see that module's doc in `index.ts` for
  * why. An app can declare `$analytics({ retention: { hot: "60d" } })`,
- * import only `AlephaAnalytics`, and get a table that grows forever with no
+ * import only `AlephaApiAnalytics`, and get a table that grows forever with no
  * error anywhere: `register()`, `record()` and `query()` all work perfectly
  * normally regardless of whether anything ever prunes them. That silence is
  * exactly the failure mode `WaeAnalyticsProvider.onStart` already guards
  * against for its own "silently inert" risk (a missing Workers binding) —
  * this class does the equivalent check for a missing rollup module.
  *
- * Always part of `AlephaAnalytics.services`, so it runs regardless of
- * whether `AlephaAnalyticsRollup` is ever imported — the whole point is to
+ * Always part of `AlephaApiAnalytics.services`, so it runs regardless of
+ * whether `AlephaApiAnalyticsRollup` is ever imported — the whole point is to
  * catch the case where it is not. It imports `AnalyticsRollupJobs` only to
  * check whether one was constructed (`Alepha.services()`), never to
  * construct one itself, so this file does not pull `alepha/api/jobs` (and
  * the real database it needs) into every app that merely declares a
- * dataset — the same DB-cascade problem `AlephaAnalyticsRollup` itself
+ * dataset — the same DB-cascade problem `AlephaApiAnalyticsRollup` itself
  * exists to avoid. The import direction only goes one way (this file reads
  * `AnalyticsRollupJobs`; `AnalyticsRollupJobs.ts` never reads this file),
  * so there is no circular import between the two.
@@ -56,16 +56,16 @@ export class AnalyticsRetentionGuard {
 
     // A real instance, not just the class being wired — `Alepha.services()`
     // reflects what was actually constructed, so this cannot be fooled by
-    // `AlephaAnalyticsRollup` being merely imported without ever running.
+    // `AlephaApiAnalyticsRollup` being merely imported without ever running.
     if (this.alepha.services(AnalyticsRollupJobs).length > 0) {
       return;
     }
 
     const names = withHot.map((primitive) => primitive.dataset.name).join(", ");
     this.log.warn(
-      `Dataset(s) [${names}] declare 'retention.hot' but AlephaAnalyticsRollup is not ` +
+      `Dataset(s) [${names}] declare 'retention.hot' but AlephaApiAnalyticsRollup is not ` +
         "imported, so retention is never enforced — the table(s) will grow forever. " +
-        "Import AlephaAnalyticsRollup (from '@alepha/analytics') alongside AlephaAnalytics " +
+        "Import AlephaApiAnalyticsRollup (from 'alepha/api/analytics') alongside AlephaApiAnalytics " +
         "to run the scheduled sweep.",
     );
   }

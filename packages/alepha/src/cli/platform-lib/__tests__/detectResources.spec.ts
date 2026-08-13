@@ -105,10 +105,10 @@ describe("platform.detectResources — hasKV decision", () => {
  *
  * Typed against a minimal duck-typed shape rather than a real `Alepha`
  * instance (unlike `detectHasKV` above): registering a real `$analytics`
- * primitive lives in `@alepha/analytics`, a separate workspace package that
- * depends on this one — `packages/alepha` cannot depend back on it without
- * a cycle. `alepha.primitives()` itself is just a string-keyed lookup, so a
- * fake is enough to exercise the exact expression this mirrors.
+ * dataset (now `alepha/api/analytics`, in this same package) would drag
+ * providers and a database seam into a spec that only cares about the
+ * detection expression. `alepha.primitives()` itself is just a string-keyed
+ * lookup, so a fake is enough to exercise the exact expression this mirrors.
  */
 const detectHasAnalytics = (alepha: { primitives(name: string): unknown[] }) =>
   alepha.primitives("$analytics").length > 0;

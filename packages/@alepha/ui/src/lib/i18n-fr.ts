@@ -193,6 +193,17 @@ export const uiFr: Record<string, string> = {
 
   // The `@alepha/ui/admin` back office: users, sessions, API keys, files, jobs,
   // audits, notifications, payments and parameters.
+  "admin.analytics.empty": "Aucune donnée pour cette requête.",
+  "admin.analytics.estimated": "Estimé (échantillonné ×$1)",
+  "admin.analytics.exactSample": "Exact (aucun échantillonnage sur la fenêtre)",
+  "admin.analytics.filters": "Filtres",
+  "admin.analytics.groupBy": "Grouper par",
+  "admin.analytics.noDatasets":
+    "Aucun jeu de données analytics n'est déclaré dans cette application.",
+  "admin.analytics.pickDataset": "Choisir un jeu de données",
+  "admin.analytics.rowCount": "$1 lignes",
+  "admin.analytics.run": "Lancer la requête",
+  "admin.analytics.since": "Depuis (jour UTC)",
   "admin.audits.actionAll": "Toutes les actions",
   "admin.audits.bulkDelete": "Supprimer la sélection",
   "admin.audits.bulkDeleteConfirm":

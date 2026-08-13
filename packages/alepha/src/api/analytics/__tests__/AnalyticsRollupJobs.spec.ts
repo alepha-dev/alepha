@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 // `../index.ts` (where `$module({ ... })` is called) has been evaluated.
 import {
   $analytics,
-  AlephaAnalyticsRollup,
+  AlephaApiAnalyticsRollup,
   type AnalyticsDataset,
   AnalyticsProvider,
   AnalyticsRollupJobs,
@@ -18,8 +18,8 @@ import {
 } from "../index.ts";
 
 /**
- * `AnalyticsRollupJobs` lives in `AlephaAnalyticsRollup`, not
- * `AlephaAnalytics` — see the class doc on `AlephaAnalyticsRollup` in
+ * `AnalyticsRollupJobs` lives in `AlephaApiAnalyticsRollup`, not
+ * `AlephaApiAnalytics` — see the class doc on `AlephaApiAnalyticsRollup` in
  * `../index.ts`. `$job` always needs a real `DatabaseProvider` (job
  * execution tracking is never test-substituted), so — exactly like
  * `$job.spec.ts` and `AuditJobs.spec.ts` — this container attaches
@@ -28,10 +28,10 @@ import {
  * below regardless of which ORM driver is attached.
  *
  * A caller-supplied `provider` substitution has to be applied *before*
- * `.with(AlephaAnalyticsRollup)`, not after: that call eagerly injects
+ * `.with(AlephaApiAnalyticsRollup)`, not after: that call eagerly injects
  * `AnalyticsRollupJobs`, whose own `$inject(AnalyticsProvider)` field
- * triggers `AlephaAnalytics`'s own (optional) `AnalyticsProvider` binding —
- * so by the time `.with(AlephaAnalyticsRollup)` returns, `AnalyticsProvider`
+ * triggers `AlephaApiAnalytics`'s own (optional) `AnalyticsProvider` binding —
+ * so by the time `.with(AlephaApiAnalyticsRollup)` returns, `AnalyticsProvider`
  * is already substituted, and a *non*-optional `.with()` after that point
  * throws `TooLateSubstitutionError`.
  */
@@ -40,7 +40,7 @@ const makeApp = (provider?: new () => AnalyticsProvider) => {
   if (provider) {
     alepha = alepha.with({ provide: AnalyticsProvider, use: provider });
   }
-  return alepha.with(AlephaAnalyticsRollup);
+  return alepha.with(AlephaApiAnalyticsRollup);
 };
 
 class Views {
@@ -307,9 +307,9 @@ describe("AnalyticsRollupJobs", () => {
     expect(brokenResult.rows).toEqual([{ hour: "2020-01-01T10", count: 1 }]);
   });
 
-  it("warns at boot when a dataset declares retention but AlephaAnalyticsRollup is not imported", async () => {
-    // Deliberately no `.with(AlephaAnalyticsRollup)` here — `AnalyticsRetentionGuard`
-    // is wired into `AlephaAnalytics` unconditionally, so declaring `Views`
+  it("warns at boot when a dataset declares retention but AlephaApiAnalyticsRollup is not imported", async () => {
+    // Deliberately no `.with(AlephaApiAnalyticsRollup)` here — `AnalyticsRetentionGuard`
+    // is wired into `AlephaApiAnalytics` unconditionally, so declaring `Views`
     // (retention.hot set) alone is enough to exercise the check.
     const alepha = Alepha.create();
     alepha.inject(Views);
@@ -320,12 +320,12 @@ describe("AnalyticsRollupJobs", () => {
       (entry) =>
         entry.level === "WARN" &&
         entry.message.includes("views") &&
-        entry.message.includes("AlephaAnalyticsRollup"),
+        entry.message.includes("AlephaApiAnalyticsRollup"),
     );
     expect(warned).toBe(true);
   });
 
-  it("does not warn once AlephaAnalyticsRollup is imported", async () => {
+  it("does not warn once AlephaApiAnalyticsRollup is imported", async () => {
     const alepha = makeApp();
     alepha.inject(Views);
     await alepha.start();
@@ -334,7 +334,7 @@ describe("AnalyticsRollupJobs", () => {
     const warned = destination.logs.some(
       (entry) =>
         entry.level === "WARN" &&
-        entry.message.includes("AlephaAnalyticsRollup"),
+        entry.message.includes("AlephaApiAnalyticsRollup"),
     );
     expect(warned).toBe(false);
   });

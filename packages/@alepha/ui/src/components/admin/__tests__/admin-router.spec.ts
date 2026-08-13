@@ -62,7 +62,7 @@ describe("AdminRouter", () => {
       .map((page) => ({ path: page.options.path, name: page.name }));
   };
 
-  it("mounts the shell and its ten pages", async () => {
+  it("mounts the shell and its eleven pages", async () => {
     const pages = await mount();
 
     expect(pages).toEqual(
@@ -78,6 +78,7 @@ describe("AdminRouter", () => {
         { path: "/files", name: "files" },
         { path: "/parameters", name: "parameters" },
         { path: "/payments", name: "payments" },
+        { path: "/analytics", name: "analytics" },
       ]),
     );
   });
@@ -98,6 +99,7 @@ describe("AdminRouter", () => {
       [router.files, ["admin:file:read"]],
       [router.parameters, ["admin:parameter:read"]],
       [router.payments, ["admin:payment:read", "payments:read"]],
+      [router.analytics, ["admin:analytics:read"]],
     ];
 
     for (const [page, permissions] of expected) {
@@ -186,6 +188,7 @@ describe("AdminRouter", () => {
       router.files,
       router.parameters,
       router.payments,
+      router.analytics,
     ];
 
     for (const page of pages) {
