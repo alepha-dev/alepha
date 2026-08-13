@@ -6,7 +6,7 @@ import { type Infer, z } from "alepha";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
-import { Search, Trash2 } from "lucide-react";
+import { Activity, Search, Trash2 } from "lucide-react";
 import { useCallback } from "react";
 import type { AdminProjectController } from "@/api/controllers/AdminProjectController.ts";
 import type { AdminProjectResource } from "@/api/schemas/adminProjectResourceSchema.ts";
@@ -145,6 +145,7 @@ export const AdminProjects = () => {
                 input={form.input.activity}
                 label=""
                 clearable
+                icon={Activity}
                 clearLabel="Any activity"
                 triggerClassName="w-44"
                 items={[

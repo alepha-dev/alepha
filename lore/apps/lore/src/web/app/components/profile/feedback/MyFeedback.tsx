@@ -5,7 +5,7 @@ import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject } from "alepha/react";
-import { Search, Trash } from "lucide-react";
+import { CircleDot, FolderKanban, Search, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { MyFeedbackResource } from "@/api/schemas/myFeedbackResourceSchema.ts";
@@ -95,6 +95,7 @@ const MyFeedback = () => {
                   input={form.input.status}
                   label=""
                   clearable
+                  icon={CircleDot}
                   clearLabel="All statuses"
                   triggerClassName="w-full"
                   items={[
@@ -111,6 +112,7 @@ const MyFeedback = () => {
                     input={form.input.projectId}
                     label=""
                     clearable
+                    icon={FolderKanban}
                     clearLabel="All projects"
                     triggerClassName="w-full"
                     items={projectOptions}
