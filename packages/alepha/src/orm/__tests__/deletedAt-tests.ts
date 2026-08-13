@@ -11,7 +11,7 @@ import {
 const entity = $entity({
   name: "test_entity",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     deletedAt: db.deletedAt(),
     name: z.text().optional(),
   }),

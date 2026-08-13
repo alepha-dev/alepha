@@ -25,6 +25,13 @@ export class CryptoProvider {
   protected static readonly AES_TAG_LENGTH = 16;
   protected static readonly AES_KEY_LENGTH = 32;
 
+  /**
+   * UUIDv7 monotonic state — see {@link randomUUIDv7}.
+   */
+  protected uuidV7EmittedMs = -1;
+  protected uuidV7InputMs = -1;
+  protected uuidV7Counter = 0;
+
   public async hashPassword(password: string): Promise<string> {
     const salt = randomBytes(CryptoProvider.SALT_LENGTH).toString("hex");
     const derivedKey = (await this.scryptAsync(
@@ -143,6 +150,70 @@ export class CryptoProvider {
 
   public randomUUID(): string {
     return randomUUID();
+  }
+
+  /**
+   * Generate an RFC 9562 UUIDv7 for the given unix-millisecond timestamp.
+   *
+   * The caller supplies the timestamp (usually `DateTimeProvider.nowMillis()`)
+   * so this module stays free of any clock dependency and generated ids follow
+   * `travel()` in tests.
+   *
+   * Within a single millisecond, a 12-bit counter in `rand_a` keeps ids
+   * strictly increasing; it is seeded at or below 0x7ff on each new
+   * millisecond, guaranteeing at least 2048 increments before it overflows
+   * and borrows one millisecond from the timestamp. Lexicographic order of
+   * the canonical string therefore matches generation order as long as the
+   * supplied timestamps never decrease; a rewound clock is honored as-is.
+   */
+  public randomUUIDv7(timestampMs: number): string {
+    const ms = Math.floor(timestampMs);
+    if (ms < 0 || ms > 0xffff_ffff_ffff) {
+      throw new AlephaError(
+        `UUIDv7 timestamp out of range: ${timestampMs} (expected 0..2^48-1 unix ms)`,
+      );
+    }
+
+    if (ms < this.uuidV7InputMs || ms > this.uuidV7EmittedMs) {
+      this.uuidV7EmittedMs = ms;
+      this.uuidV7Counter = randomInt(0x800);
+    } else {
+      this.uuidV7Counter++;
+      if (this.uuidV7Counter > 0xfff) {
+        this.uuidV7EmittedMs++;
+        this.uuidV7Counter = randomInt(0x800);
+      }
+    }
+    this.uuidV7InputMs = ms;
+
+    return this.formatUuidV7(
+      this.uuidV7EmittedMs,
+      this.uuidV7Counter,
+      randomBytes(8),
+    );
+  }
+
+  protected formatUuidV7(
+    timestampMs: number,
+    counter: number,
+    rand: Uint8Array,
+  ): string {
+    const ts = timestampMs.toString(16).padStart(12, "0");
+    const seq = counter.toString(16).padStart(3, "0");
+    const tail = [
+      (rand[0]! & 0x3f) | 0x80,
+      rand[1]!,
+      rand[2]!,
+      rand[3]!,
+      rand[4]!,
+      rand[5]!,
+      rand[6]!,
+      rand[7]!,
+    ]
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+
+    return `${ts.slice(0, 8)}-${ts.slice(8)}-7${seq}-${tail.slice(0, 4)}-${tail.slice(4)}`;
   }
 
   public randomText(length: number): string {

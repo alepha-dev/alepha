@@ -26,9 +26,9 @@ const players = $entity({
   name: "players",
   schema: z.object({
     id: db.primaryKey(),
-    teamId: db.ref(z.integer(), () => teams.cols.id),
+    teamId: db.ref(z.uuid(), () => teams.cols.id),
     name: z.text(),
-    mentorId: db.ref(z.integer().optional(), () => players.cols.id),
+    mentorId: db.ref(z.uuid().optional(), () => players.cols.id),
   }),
 });
 
@@ -45,8 +45,8 @@ const entries = $entity({
   name: "entries",
   schema: z.object({
     id: db.primaryKey(),
-    teamId: db.ref(z.integer(), () => teams.cols.id),
-    tournamentId: db.ref(z.integer(), () => tournaments.cols.id),
+    teamId: db.ref(z.uuid(), () => teams.cols.id),
+    tournamentId: db.ref(z.uuid(), () => tournaments.cols.id),
   }),
   indexes: [{ columns: ["teamId", "tournamentId"], unique: true }],
 });

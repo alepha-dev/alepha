@@ -5,7 +5,7 @@ import { $action } from "alepha/server";
 const visitEntity = $entity({
   name: "visits",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     name: z.text(),
     count: z.integer(),
   }),

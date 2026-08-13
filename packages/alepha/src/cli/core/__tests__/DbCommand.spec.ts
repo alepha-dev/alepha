@@ -46,7 +46,7 @@ class FakeCliUtils extends AlephaCliUtils {
 const widgets = $entity({
   name: "widgets",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     name: z.text(),
   }),
 });

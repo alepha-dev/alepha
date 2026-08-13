@@ -59,11 +59,12 @@ export class DatabaseTypeProvider {
 
   /**
    * Creates a primary key for a given type. Supports:
-   * - `z.integer()` -> PG INT (default)
-   * - `z.bigint()` -> PG BIGINT
-   * - `z.uuid()` -> PG UUID
+   * - no argument -> UUID, generated app-side as a time-ordered UUIDv7 (default)
+   * - `z.uuid()` -> UUID, same app-side UUIDv7 generation
+   * - `z.integer()` -> PG INT identity
+   * - `z.bigint()` -> PG BIGINT identity
    */
-  public primaryKey(): PgAttr<PgAttr<ZodNumber, PgPrimaryKey>, PgDefault>;
+  public primaryKey(): PgAttr<PgAttr<ZodString, PgPrimaryKey>, PgDefault>;
   public primaryKey(
     type: ZodString,
     options?: StringOptions,
@@ -88,7 +89,11 @@ export class DatabaseTypeProvider {
     _options?: NumberOptions | StringOptions,
     identity?: PgIdentityOptions,
   ): PgAttr<PgAttr<ZType, PgPrimaryKey>, PgDefault> {
-    if (!type || z.schema.isInteger(type)) {
+    if (!type) {
+      return pgAttr(pgAttr(z.uuid(), PG_PRIMARY_KEY), PG_DEFAULT);
+    }
+
+    if (z.schema.isInteger(type)) {
       return pgAttr(
         pgAttr(pgAttr(z.integer(), PG_PRIMARY_KEY), PG_IDENTITY, identity),
         PG_DEFAULT,

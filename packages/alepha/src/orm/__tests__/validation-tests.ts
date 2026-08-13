@@ -5,7 +5,7 @@ import { $entity, $repository, db } from "../core/index.ts";
 const TestEntity = $entity({
   name: "test_validation",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
     name: z.text(),

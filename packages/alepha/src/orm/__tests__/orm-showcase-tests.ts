@@ -10,7 +10,7 @@ import { $entity, $repository, db } from "../core/index.ts";
 const teams = $entity({
   name: "teams",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     name: z.text(),
     country: z.text(),
   }),
@@ -19,7 +19,7 @@ const teams = $entity({
 const players = $entity({
   name: "players",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     teamId: db.ref(z.integer().optional(), () => teams.cols.id),
     name: z.text(),
     position: z.text(),

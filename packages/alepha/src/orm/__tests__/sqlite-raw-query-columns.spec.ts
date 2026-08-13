@@ -15,7 +15,7 @@ import { $entity, $repository, db } from "../core/index.ts";
 const owners = $entity({
   name: "test_raw_owners",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     name: z.text(),
   }),
 });
@@ -23,7 +23,7 @@ const owners = $entity({
 const pets = $entity({
   name: "test_raw_pets",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     name: z.text(),
     ownerId: db.ref(z.integer(), () => owners.cols.id),
   }),

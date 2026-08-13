@@ -9,7 +9,7 @@ import { DatabaseProvider } from "../providers/drivers/DatabaseProvider.ts";
 const widgets = $entity({
   name: "widgets",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     name: z.text(),
   }),
 });

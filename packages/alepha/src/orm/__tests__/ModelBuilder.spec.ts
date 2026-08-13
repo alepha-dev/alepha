@@ -24,7 +24,7 @@ describe("ModelBuilder", () => {
     };
 
     beforeEach(() => {
-      builder = new PostgresModelBuilder();
+      builder = Alepha.create().inject(PostgresModelBuilder);
       options = {
         tables: new Map(),
         enums: new Map(),
@@ -37,7 +37,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           name: z.text(),
           email: z.email(),
         }),
@@ -54,7 +54,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           email: z.email(),
           username: z.text(),
         }),
@@ -72,7 +72,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           email: z.email(),
           username: z.text(),
         }),
@@ -96,7 +96,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "posts",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           userId: z.text(),
           createdAt: z.string().meta({ format: "date-time" }),
           title: z.text(),
@@ -120,7 +120,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "user_roles",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           userId: z.text(),
           roleId: z.text(),
         }),
@@ -145,7 +145,7 @@ describe("ModelBuilder", () => {
       const usersEntity = $entity({
         name: "users",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           name: z.text(),
         }),
       });
@@ -158,7 +158,7 @@ describe("ModelBuilder", () => {
       const postsEntity = $entity({
         name: "posts",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           userId: z.text(),
           title: z.text(),
         }),
@@ -182,7 +182,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           email: z.email(),
           username: z.text(),
         }),
@@ -206,7 +206,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           age: z.integer(),
         }),
         constraints: [
@@ -229,7 +229,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "user_settings",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           userId: z.text(),
           settingKey: z.text(),
           settingValue: z.text(),
@@ -256,7 +256,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           name: z.text(),
         }),
         config: customConfig,
@@ -276,7 +276,7 @@ describe("ModelBuilder", () => {
       const rolesEntity = $entity({
         name: "roles",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           name: z.text(),
         }),
       });
@@ -288,7 +288,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           email: z.email(),
           username: z.text(),
           age: z.integer(),
@@ -338,7 +338,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           firstName: z.text(),
           lastName: z.text(),
           emailAddress: z.email(),
@@ -358,7 +358,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "counters",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           totalViews: z.bigint(),
         }),
       });
@@ -395,7 +395,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           realm: z.text(),
           username: z.text(),
         }),
@@ -419,7 +419,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           email: z.email(),
         }),
         indexes: [
@@ -440,7 +440,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           name: z.text(),
         }),
       });
@@ -466,7 +466,7 @@ describe("ModelBuilder", () => {
     };
 
     beforeEach(() => {
-      builder = new SqliteModelBuilder();
+      builder = Alepha.create().inject(SqliteModelBuilder);
       options = {
         tables: new Map(),
         enums: new Map(),
@@ -479,7 +479,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           name: z.text(),
           email: z.email(),
         }),
@@ -496,7 +496,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           email: z.email(),
           username: z.text(),
         }),
@@ -520,7 +520,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "posts",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           userId: z.text(),
           createdAt: z.string().meta({ format: "date-time" }),
         }),
@@ -544,7 +544,7 @@ describe("ModelBuilder", () => {
       const usersEntity = $entity({
         name: "users",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           name: z.text(),
         }),
       });
@@ -557,7 +557,7 @@ describe("ModelBuilder", () => {
       const postsEntity = $entity({
         name: "posts",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           userId: z.text(),
           title: z.text(),
         }),
@@ -580,7 +580,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "products",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           name: z.text(),
           sku: z.text(),
           price: z.number(),
@@ -610,7 +610,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "users",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           realm: z.text(),
           username: z.text(),
         }),
@@ -638,7 +638,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "products",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           channels: z.array(z.enum(["desk", "portal", "mobile"])),
         }),
       });
@@ -661,7 +661,7 @@ describe("ModelBuilder", () => {
       const entity = $entity({
         name: "complex_table",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           name: z.text(),
           email: z.email(),
           status: z.text(),
@@ -694,7 +694,7 @@ describe("ModelBuilder", () => {
 
   describe("abstract methods", () => {
     it("should convert camelCase to snake_case correctly", () => {
-      const builder = new PostgresModelBuilder();
+      const builder = Alepha.create().inject(PostgresModelBuilder);
 
       // Access the protected method via type assertion
       const toColumnName = (builder as any).toColumnName.bind(builder);
@@ -713,7 +713,7 @@ describe("ModelBuilder", () => {
       const roleEntity = $entity({
         name: "roles",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           name: z.string(),
         }),
       });
@@ -721,7 +721,7 @@ describe("ModelBuilder", () => {
       const userEntity = $entity({
         name: "users",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           email: z.email(),
           roleId: z.integer(),
         }),
@@ -757,7 +757,7 @@ describe("ModelBuilder", () => {
       const categoryEntity = $entity({
         name: "categories",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           name: z.string(),
         }),
       });
@@ -765,7 +765,7 @@ describe("ModelBuilder", () => {
       const userEntity = $entity({
         name: "users",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           username: z.string(),
         }),
       });
@@ -773,7 +773,7 @@ describe("ModelBuilder", () => {
       const postEntity = $entity({
         name: "posts",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           title: z.string(),
           userId: z.integer(),
           categoryId: z.integer(),
@@ -810,7 +810,7 @@ describe("ModelBuilder", () => {
       const tenantEntity = $entity({
         name: "tenants",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           code: z.string(),
           name: z.string(),
         }),
@@ -819,7 +819,7 @@ describe("ModelBuilder", () => {
       const userEntity = $entity({
         name: "users",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           tenantId: z.integer(),
           tenantCode: z.string(),
           username: z.string(),
@@ -852,7 +852,7 @@ describe("ModelBuilder", () => {
       const entity1 = $entity({
         name: "entity1",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           value: z.string(),
         }),
       });
@@ -860,7 +860,7 @@ describe("ModelBuilder", () => {
       const entity2 = $entity({
         name: "entity2",
         schema: z.object({
-          id: db.primaryKey(),
+          id: db.primaryKey(z.integer()),
           entity1Id: z.integer(),
           entity1Value: z.string(),
         }),
@@ -937,8 +937,14 @@ describe("ModelBuilder", () => {
     // "Unsupported schema type" at startup on postgres is a deploy-time
     // surprise, not a schema error.
     const dialects = [
-      { name: "postgres", create: () => new PostgresModelBuilder() },
-      { name: "sqlite", create: () => new SqliteModelBuilder() },
+      {
+        name: "postgres",
+        create: () => Alepha.create().inject(PostgresModelBuilder),
+      },
+      {
+        name: "sqlite",
+        create: () => Alepha.create().inject(SqliteModelBuilder),
+      },
     ];
 
     const options = () => ({
@@ -953,7 +959,7 @@ describe("ModelBuilder", () => {
         const entity = $entity({
           name: "events",
           schema: z.object({
-            id: db.primaryKey(),
+            id: db.primaryKey(z.integer()),
             payload: z.any(),
           }),
         });
@@ -967,7 +973,7 @@ describe("ModelBuilder", () => {
         const entity = $entity({
           name: "events",
           schema: z.object({
-            id: db.primaryKey(),
+            id: db.primaryKey(z.integer()),
             payloads: z.array(z.any()),
           }),
         });
@@ -984,8 +990,14 @@ describe("ModelBuilder", () => {
     // and no error — migration generation then emitted a schema silently
     // missing it. Failing loudly at build time is the only safe answer.
     const dialects = [
-      { name: "postgres", create: () => new PostgresModelBuilder() },
-      { name: "sqlite", create: () => new SqliteModelBuilder() },
+      {
+        name: "postgres",
+        create: () => Alepha.create().inject(PostgresModelBuilder),
+      },
+      {
+        name: "sqlite",
+        create: () => Alepha.create().inject(SqliteModelBuilder),
+      },
     ];
 
     const options = () => ({
@@ -1000,7 +1012,7 @@ describe("ModelBuilder", () => {
         const entity = $entity({
           name: "users",
           schema: z.object({
-            id: db.primaryKey(),
+            id: db.primaryKey(z.integer()),
             email: z.email(),
           }),
           indexes: ["emial" as any],
@@ -1015,7 +1027,7 @@ describe("ModelBuilder", () => {
         const entity = $entity({
           name: "users",
           schema: z.object({
-            id: db.primaryKey(),
+            id: db.primaryKey(z.integer()),
             email: z.email(),
             username: z.text(),
           }),
@@ -1031,7 +1043,7 @@ describe("ModelBuilder", () => {
         const entity = $entity({
           name: "users",
           schema: z.object({
-            id: db.primaryKey(),
+            id: db.primaryKey(z.integer()),
             email: z.email(),
           }),
           constraints: [{ columns: ["emial"] as any, unique: true }],
@@ -1049,7 +1061,7 @@ describe("ModelBuilder", () => {
         const usersEntity = $entity({
           name: "users",
           schema: z.object({
-            id: db.primaryKey(),
+            id: db.primaryKey(z.integer()),
             name: z.text(),
           }),
         });
@@ -1059,7 +1071,7 @@ describe("ModelBuilder", () => {
         const postsEntity = $entity({
           name: "posts",
           schema: z.object({
-            id: db.primaryKey(),
+            id: db.primaryKey(z.integer()),
             userId: z.text(),
           }),
           foreignKeys: [

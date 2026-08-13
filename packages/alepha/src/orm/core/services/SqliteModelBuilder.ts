@@ -1,5 +1,13 @@
-import { randomUUID } from "node:crypto";
-import { AlephaError, type Infer, type ZObject, type ZType, z } from "alepha";
+import {
+  $inject,
+  AlephaError,
+  type Infer,
+  type ZObject,
+  type ZType,
+  z,
+} from "alepha";
+import { CryptoProvider } from "alepha/crypto";
+import { DateTimeProvider } from "alepha/datetime";
 import { type BuildColumns, sql } from "drizzle-orm";
 import * as pg from "drizzle-orm/sqlite-core";
 import {
@@ -27,6 +35,9 @@ import type { SequencePrimitive } from "../primitives/$sequence.ts";
 import { ModelBuilder, type TableConfigBuilders } from "./ModelBuilder.ts";
 
 export class SqliteModelBuilder extends ModelBuilder {
+  protected readonly crypto = $inject(CryptoProvider);
+  protected readonly dateTime = $inject(DateTimeProvider);
+
   public buildTable(
     entity: EntityPrimitive<any>,
     options: {
@@ -275,10 +286,14 @@ export class SqliteModelBuilder extends ModelBuilder {
   mapStringToSqliteColumn = (key: string, value: any) => {
     if (z.schema.format(value) === "uuid") {
       if (PG_PRIMARY_KEY in value) {
+        // App-side UUIDv7: time-ordered ids on every runtime (node, bun,
+        // Cloudflare D1), clocked by DateTimeProvider so `travel()` applies.
         return pg
           .text(key)
           .primaryKey()
-          .$defaultFn(() => randomUUID());
+          .$defaultFn(() =>
+            this.crypto.randomUUIDv7(this.dateTime.nowMillis()),
+          );
       }
 
       return pg.text(key);

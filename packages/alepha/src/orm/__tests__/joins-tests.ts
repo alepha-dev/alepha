@@ -11,7 +11,7 @@ import { $entity, $repository, db } from "../core/index.ts";
 const countries = $entity({
   name: "countries",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     name: z.text(),
     code: z.text(),
   }),
@@ -20,7 +20,7 @@ const countries = $entity({
 const cities = $entity({
   name: "cities",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     countryId: db.ref(z.integer(), () => countries.cols.id),
     name: z.text(),
     population: z.integer().optional(),
@@ -30,7 +30,7 @@ const cities = $entity({
 const users = $entity({
   name: "users",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     name: z.text(),
     email: z.text(),
     cityId: db.ref(z.integer().optional(), () => cities.cols.id),
@@ -41,7 +41,7 @@ const users = $entity({
 const profiles = $entity({
   name: "profiles",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     userId: db.ref(z.integer(), () => users.cols.id),
     bio: z.text(),
     website: z.text().optional(),
@@ -51,7 +51,7 @@ const profiles = $entity({
 const posts = $entity({
   name: "posts",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     authorId: db.ref(z.integer(), () => users.cols.id),
     title: z.text(),
     content: z.text(),
@@ -62,7 +62,7 @@ const posts = $entity({
 const comments = $entity({
   name: "comments",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     postId: db.ref(z.integer(), () => posts.cols.id),
     authorId: db.ref(z.integer(), () => users.cols.id),
     content: z.text(),
@@ -73,7 +73,7 @@ const comments = $entity({
 const tags = $entity({
   name: "tags",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     name: z.text(),
   }),
 });
@@ -81,7 +81,7 @@ const tags = $entity({
 const postTags = $entity({
   name: "post_tags",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     postId: db.ref(z.integer(), () => posts.cols.id),
     tagId: db.ref(z.integer(), () => tags.cols.id),
   }),

@@ -35,7 +35,7 @@ describe("Database Error Tests", () => {
   const parents = $entity({
     name: "error_test_parents",
     schema: z.object({
-      id: db.primaryKey(),
+      id: db.primaryKey(z.integer()),
       name: z.text(),
       email: z.text(),
     }),
@@ -46,7 +46,7 @@ describe("Database Error Tests", () => {
   const children = $entity({
     name: "error_test_children",
     schema: z.object({
-      id: db.primaryKey(),
+      id: db.primaryKey(z.integer()),
       parentId: z.integer(), // Plain integer, no db.ref() to avoid cascade
       name: z.text(),
     }),
@@ -62,7 +62,7 @@ describe("Database Error Tests", () => {
   const requiredFields = $entity({
     name: "error_test_required",
     schema: z.object({
-      id: db.primaryKey(),
+      id: db.primaryKey(z.integer()),
       requiredName: z.text(), // NOT NULL by default
       optionalNote: z.text().optional(), // Nullable
     }),

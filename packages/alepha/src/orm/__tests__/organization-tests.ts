@@ -6,7 +6,7 @@ import { $entity, $repository, db } from "../core/index.ts";
 const entity = $entity({
   name: "test_org_entity",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     organization: db.organization(),
     name: z.text().optional(),
   }),
@@ -30,7 +30,7 @@ const setup = async (alepha: Alepha) => {
 const strictEntity = $entity({
   name: "test_org_strict_entity",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     organization: db.organization({ strict: true, nullable: true }),
     name: z.text().optional(),
   }),
@@ -42,7 +42,7 @@ const strictEntity = $entity({
 const strictSeedEntity = $entity({
   name: "test_org_strict_entity",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     organization: db.organization(),
     name: z.text().optional(),
   }),
@@ -58,7 +58,7 @@ class StrictApp {
 const upsertEntity = $entity({
   name: "test_org_upsert_entity",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     organization: db.organization(),
     code: z.text(),
     name: z.text().optional(),
@@ -393,7 +393,7 @@ export const testOrgFilterOnDelete = async (alepha: Alepha) => {
 const lenientEntity = $entity({
   name: "test_org_lenient_entity",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     organization: db.organization({ strict: false }),
     name: z.text().optional(),
   }),
@@ -411,7 +411,7 @@ class LenientApp {
 const notNullStrictEntity = $entity({
   name: "test_org_notnull_strict_entity",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     organization: db.organization({ strict: true }),
     name: z.text().optional(),
   }),

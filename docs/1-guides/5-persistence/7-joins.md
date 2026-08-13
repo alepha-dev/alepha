@@ -27,7 +27,7 @@ const players = $entity({
   name: "players",
   schema: z.object({
     id: db.primaryKey(),
-    teamId: db.ref(z.integer().optional(), () => teams.cols.id),
+    teamId: db.ref(z.uuid().optional(), () => teams.cols.id),
     name: z.text(),
     position: z.text(),
   }),
@@ -44,7 +44,7 @@ Use the `with` option on `getOne`, `findOne`, `findMany`, or `paginate` to join 
 class PlayerService {
   players = $repository(players);
 
-  async getPlayerWithTeam(playerId: number) {
+  async getPlayerWithTeam(playerId: string) {
     return await this.players.getOne({
       where: { id: { eq: playerId } },
       with: {
@@ -69,7 +69,7 @@ the shortest path: they take an optional `with` map and skip the
 `where: { id: { eq: id } }` boilerplate.
 
 ```typescript
-async getPlayerWithTeam(playerId: number) {
+async getPlayerWithTeam(playerId: string) {
   return await this.players.getById(playerId, {
     with: {
       team: { join: teams, on: ["teamId", teams.cols.id] },
@@ -319,7 +319,7 @@ const users = $entity({
   schema: z.object({
     id: db.primaryKey(),
     name: z.text(),
-    managerId: db.ref(z.integer().optional(), () => users.cols.id),
+    managerId: db.ref(z.uuid().optional(), () => users.cols.id),
   }),
 });
 

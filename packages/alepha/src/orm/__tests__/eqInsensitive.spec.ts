@@ -12,7 +12,7 @@ import { AlephaOrmPostgres } from "../postgres/index.ts";
 const people = $entity({
   name: "test_eqi_people",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     handle: z.text(),
   }),
 });

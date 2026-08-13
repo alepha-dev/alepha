@@ -7,7 +7,7 @@ import { db } from "../core/providers/DatabaseTypeProvider.ts";
 const userEntity = $entity({
   name: "users",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     name: z.string(),
     email: z.email(),
     active: z.boolean(),
@@ -17,7 +17,7 @@ const userEntity = $entity({
 const postEntity = $entity({
   name: "posts",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     userId: z.integer(),
     title: z.string(),
     content: z.text(),
@@ -172,7 +172,7 @@ export const testDeleteReturning = async (alepha: Alepha) => {
 const softEntity = $entity({
   name: "soft_delete_items",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     name: z.string(),
     deletedAt: db.deletedAt(),
   }),

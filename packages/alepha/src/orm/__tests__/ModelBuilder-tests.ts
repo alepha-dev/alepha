@@ -12,7 +12,7 @@ import { db } from "../core/providers/DatabaseTypeProvider.ts";
 const roleEntity = $entity({
   name: "roles",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     name: z.string(),
     description: z.string().optional(),
   }),
@@ -29,7 +29,7 @@ const roleEntity = $entity({
 const userEntity = $entity({
   name: "users",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     email: z.email(),
     username: z.string(),
     age: z.integer(),
@@ -71,7 +71,7 @@ const userEntity = $entity({
 const postEntity = $entity({
   name: "posts",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     userId: z.integer(),
     title: z.string(),
     content: z.text(),
@@ -310,7 +310,7 @@ export const testCustomConfig = async (alepha: Alepha) => {
   const customEntity = $entity({
     name: "custom_table",
     schema: z.object({
-      id: db.primaryKey(),
+      id: db.primaryKey(z.integer()),
       data: z.string(),
     }),
     config: (self) => {
@@ -342,7 +342,7 @@ export const testComplexRelationships = async (alepha: Alepha) => {
   const categoryEntity = $entity({
     name: "categories",
     schema: z.object({
-      id: db.primaryKey(),
+      id: db.primaryKey(z.integer()),
       name: z.string(),
     }),
     indexes: [
@@ -356,7 +356,7 @@ export const testComplexRelationships = async (alepha: Alepha) => {
   const productEntity = $entity({
     name: "products",
     schema: z.object({
-      id: db.primaryKey(),
+      id: db.primaryKey(z.integer()),
       name: z.string(),
       categoryId: z.integer(),
       price: z.number(),
@@ -430,7 +430,7 @@ export const testComplexRelationships = async (alepha: Alepha) => {
 const usersWithLowerIndex = $entity({
   name: "users_lower",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     realm: z.text(),
     username: z.text(),
   }),

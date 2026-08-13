@@ -6,7 +6,7 @@ import { AlephaOrmPostgres } from "../postgres/index.ts";
 const blobs = $entity({
   name: "test_binary_blobs",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     payload: z.binary(),
   }),
 });

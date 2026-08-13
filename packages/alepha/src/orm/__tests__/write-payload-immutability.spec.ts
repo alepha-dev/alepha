@@ -11,7 +11,7 @@ import { $entity, $repository, db } from "../core/index.ts";
 const items = $entity({
   name: "write_payload_items",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
     name: z.text(),
@@ -82,7 +82,7 @@ describe("writes do not mutate the caller's payload", () => {
     const softItems = $entity({
       name: "write_payload_soft_items",
       schema: z.object({
-        id: db.primaryKey(),
+        id: db.primaryKey(z.integer()),
         deletedAt: db.deletedAt(),
         name: z.text(),
       }),

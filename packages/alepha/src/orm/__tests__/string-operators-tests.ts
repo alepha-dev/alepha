@@ -5,7 +5,7 @@ import { $entity, $repository, db } from "../core/index.ts";
 const User = $entity({
   name: "users",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
     name: z.text(),

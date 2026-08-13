@@ -230,4 +230,29 @@ describe("BrowserCryptoProvider", () => {
       expect(a.iv).not.toBe(b.iv);
     });
   });
+
+  describe("randomUUIDv7", () => {
+    it("generates a canonical version-7 uuid encoding the timestamp", () => {
+      const crypto = new BrowserCryptoProvider();
+
+      const timestamp = 1_700_000_000_123;
+      const uuid = crypto.randomUUIDv7(timestamp);
+      expect(uuid).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+      );
+      const tsHex = uuid.slice(0, 8) + uuid.slice(9, 13);
+      expect(Number.parseInt(tsHex, 16)).toBe(timestamp);
+    });
+
+    it("sorts lexicographically within a single millisecond", () => {
+      const crypto = new BrowserCryptoProvider();
+
+      const ids = Array.from({ length: 500 }, () =>
+        crypto.randomUUIDv7(1_700_000_000_000),
+      );
+      for (let i = 1; i < ids.length; i++) {
+        expect(ids[i]! > ids[i - 1]!).toBe(true);
+      }
+    });
+  });
 });

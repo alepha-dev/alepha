@@ -29,7 +29,7 @@ describe("SQL Injection Security Tests", () => {
   const users = $entity({
     name: "users",
     schema: z.object({
-      id: db.primaryKey(),
+      id: db.primaryKey(z.integer()),
       username: z.text(),
       email: z.text(),
       age: z.integer(),
