@@ -1,6 +1,7 @@
 import { AlephaAnalyticsRollup } from "@alepha/analytics";
 import { $module } from "alepha";
 import { AdminInvitationController } from "./controllers/AdminInvitationController.ts";
+import { AdminProjectController } from "./controllers/AdminProjectController.ts";
 import { BlightController } from "./controllers/BlightController.ts";
 import { BlobController } from "./controllers/BlobController.ts";
 import { DirectoryController } from "./controllers/DirectoryController.ts";
@@ -116,6 +117,7 @@ export const LoreApi = $module({
     ProjectQuestPortabilityController,
     InvitationController,
     AdminInvitationController,
+    AdminProjectController,
     KanbanController,
     FolioController,
     DirectoryController,

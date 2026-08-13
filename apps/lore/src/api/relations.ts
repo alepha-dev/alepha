@@ -66,6 +66,12 @@ export const relations = $relations(schema, (r) => ({
   },
 
   projects: {
+    /**
+     * The account that created the project. `projects.createdBy` carries no
+     * foreign key — same as `quests.createdBy` and `sigils.createdBy` below,
+     * which declare their `author` here for exactly that reason.
+     */
+    owner: r.one.users({ from: r.projects.createdBy, to: r.users.id }),
     memberships: r.many.members({
       from: r.projects.id,
       to: r.members.projectId,

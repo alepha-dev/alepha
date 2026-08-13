@@ -28,12 +28,14 @@ import { quests } from "../entities/quests.ts";
 import type { User } from "../entities/users.ts";
 import { relations } from "../relations.ts";
 import { questResourceSchema } from "../schemas/questResourceSchema.ts";
+import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 
 export class ProjectController {
   log = $logger();
   alepha = $inject(Alepha);
+  projectDeletion = $inject(ProjectDeletionService);
   projects = $repository(projects);
   members = $repository(members);
   /**
@@ -445,13 +447,9 @@ export class ProjectController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      await this.projects.deleteById(params.id);
-      await this.members.deleteMany({
-        projectId: { eq: params.id },
-      });
-      await this.quests.deleteMany({
-        projectId: { eq: params.id },
-      });
+      // Shared with the admin shell's delete — see `ProjectDeletionService`
+      // for why the cascade is not written out twice.
+      await this.projectDeletion.deleteProject(params.id);
 
       return { ok: true };
     },
