@@ -646,7 +646,28 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
         )}
 
         {showToolbar && (
-          <div className="bg-card flex flex-wrap items-end gap-2 rounded-md rounded-b-none border p-2">
+          // `bg-muted`, paired with the pagination footer below: the filter bar
+          // and the footer are the table's chrome and bracket it top and
+          // bottom, so they sit one step off the page while the table itself
+          // (header included) stays on it. They were `bg-card` — pure white in
+          // light, the same colour as the page, so neither had an edge.
+          //
+          // The controls need an explicit fill because of that. shadcn ships
+          // inputs and select triggers `bg-transparent` in light and only fills
+          // them in dark (`dark:bg-input/30`) — the light case assumes a white
+          // page, where transparent already reads as a white field. On this bar
+          // it does not: they would take the muted grey and the border alone
+          // would have to say "input". Scoped here rather than to the
+          // primitives, which `yarn w @alepha/ui sync` overwrites.
+          //
+          // `bg-background` suits both modes: white against the muted bar in
+          // light, near-black in dark, so the control reads as a well sunk
+          // into the chrome either way. The `dark:` copy is not redundant —
+          // the primitives ship `dark:bg-input/30` at (0,2,0), a translucent
+          // WHITE wash that leaves the field lighter than the bar. Only the
+          // dark-scoped rule (0,3,0) outranks it, and without it the two
+          // controls disagreed: the trigger went dark, the input stayed light.
+          <div className="bg-muted flex flex-wrap items-end gap-2 rounded-md rounded-b-none border p-2 [&_:is(input,[role=combobox])]:bg-background dark:[&_:is(input,[role=combobox])]:bg-background">
             {props.filters && form ? (
               <form
                 {...form.props}
@@ -971,7 +992,8 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
           </Table>
         </div>
 
-        <div className="bg-card -mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md rounded-t-none border p-2">
+        {/* `bg-muted`, paired with the filter bar above — see the note there. */}
+        <div className="bg-muted -mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md rounded-t-none border p-2">
           <p className="text-muted-foreground text-xs">
             {meta
               ? `Page ${meta.number + 1}${meta.totalPages ? ` of ${meta.totalPages}` : ""} · ${meta.numberOfElements} of ${meta.totalElements ?? "?"}`
@@ -1043,23 +1065,41 @@ function ColumnPicker<T>(props: {
 }) {
   const { tr } = useI18n();
   const entries = Object.entries(props.columns);
+  const label = tr("alephaTable.toggleColumns", {
+    default: "Toggle columns",
+  });
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="h-9 w-9 p-0"
-            aria-label={tr("alephaTable.toggleColumns", {
-              default: "Toggle columns",
-            })}
-          />
-        }
-      >
-        <Columns3 className="size-4" />
-      </DropdownMenuTrigger>
+      {/*
+       * The trigger is composed rather than plain: it has to be the dropdown
+       * trigger AND the tooltip trigger at once, or this button is the only
+       * icon-only control in the toolbar with no tooltip (reset-filters and
+       * refresh sit right next to it and both have one).
+       *
+       * `TooltipTrigger` wraps the rendered element rather than the other way
+       * round, matching how `sidebar.tsx` composes the same two primitives.
+       * `TooltipProvider` is supplied by the toolbar that renders this.
+       */}
+      <Tooltip>
+        <DropdownMenuTrigger
+          render={
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-9 w-9 p-0"
+                  aria-label={label}
+                />
+              }
+            />
+          }
+        >
+          <Columns3 className="size-4" />
+        </DropdownMenuTrigger>
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
       <DropdownMenuContent align="end">
         <DropdownMenuGroup>
           <DropdownMenuLabel>
