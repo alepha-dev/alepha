@@ -1,6 +1,5 @@
 import { $hook } from "alepha";
 import type { DateTime } from "alepha/datetime";
-import { parseCronExpression } from "cron-schedule";
 import { CronProvider } from "./CronProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -53,7 +52,7 @@ export class WorkerdCronProvider extends CronProvider {
   ): void {
     this.cronJobs.push({
       name,
-      cron: parseCronExpression(expression),
+      cron: this.parseCronJob(name, expression),
       expression,
       handler,
       loop: false,

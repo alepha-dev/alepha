@@ -208,6 +208,14 @@ export class DateTimeProvider {
   protected readonly timeouts: Timeout[] = [];
   protected readonly intervals: Interval[] = [];
 
+  /**
+   * `setTimeout` takes a 32-bit signed delay (~24.8 days). Node clamps
+   * anything larger to 1ms, so an unclamped far-future timer — a monthly
+   * cron on the 31st can be 61 days out — fires immediately instead.
+   * Longer delays are chained in hops of at most this length.
+   */
+  protected readonly maxTimerMs = 2147483647;
+
   constructor() {
     for (const plugin of DateTimeProvider.PLUGINS) {
       DayjsApi.extend(plugin);
@@ -224,7 +232,7 @@ export class DateTimeProvider {
             return;
           }
           await interval.run();
-          interval.timer = setInterval(interval.run, interval.duration);
+          this.armInterval(interval);
         }),
       );
     },
@@ -370,6 +378,10 @@ export class DateTimeProvider {
    *
    * You can clear the timeout by using the `AbortSignal` API.
    * Aborted signal will resolve the promise immediately, it does not reject it.
+   *
+   * `options.now` anchors the duration at an earlier instant: the wait
+   * resolves at `now + duration`, however far in the past `now` is. An
+   * already-elapsed expiry resolves immediately.
    */
   public wait(
     duration: DurationLike,
@@ -417,10 +429,45 @@ export class DateTimeProvider {
     this.intervals.push(interval);
 
     if (start) {
-      interval.timer = setInterval(interval.run, interval.duration);
+      this.armInterval(interval);
     }
 
     return interval;
+  }
+
+  /**
+   * Arms `interval.timer`. Periods within the 32-bit `setTimeout` limit use
+   * a plain `setInterval`; longer ones are chained in hops (`setInterval`
+   * clamps oversized delays to ~1ms just like `setTimeout`, spinning the
+   * handler continuously). Chained periods re-arm only after the handler
+   * settles, which is indistinguishable at multi-week scale.
+   */
+  protected armInterval(interval: Interval): void {
+    if (interval.duration <= this.maxTimerMs) {
+      interval.timer = setInterval(interval.run, interval.duration);
+      return;
+    }
+
+    const hop = (remaining: number): void => {
+      if (remaining > this.maxTimerMs) {
+        interval.timer = setTimeout(
+          () => hop(remaining - this.maxTimerMs),
+          this.maxTimerMs,
+        );
+        return;
+      }
+
+      interval.timer = setTimeout(async () => {
+        await interval.run();
+        // `clearInterval` / `travel()` null the handle to suspend the
+        // interval — do not re-arm once that has happened.
+        if (interval.timer != null) {
+          hop(interval.duration);
+        }
+      }, remaining);
+    };
+
+    hop(interval.duration);
   }
 
   /**
@@ -431,9 +478,14 @@ export class DateTimeProvider {
     duration: DurationLike,
     now?: number,
   ): Timeout {
-    if (this.ref && now) {
-      // Replaying a timer that was created at an earlier virtual instant
-      // (`now`) under a paused or travelled clock.
+    if (now) {
+      // `now` anchors the duration at an earlier instant: the expiry is
+      // `now + duration`, and only the REMAINING time from the current
+      // instant is actually waited. Honoring it on the real clock matters as
+      // much as under a paused one — `CronProvider` anchors every tick at
+      // the previous scheduled tick, and waiting the full interval from the
+      // call instant instead lets scheduling lateness accumulate tick after
+      // tick, drifting the whole cron grid off its wall-clock alignment.
       const next = this.of(now).add(this.duration(duration));
       const remaining = next.valueOf() - this.now().valueOf();
 
@@ -449,11 +501,10 @@ export class DateTimeProvider {
         };
       }
 
-      // Still in the future. This used to return an unregistered dummy, so
-      // `travel()` past the expiry never fired it and `wait(d, { now })` hung
-      // forever — stalling any paused-clock cron chain
-      // (`CronProvider` is a production caller). Register it against the
-      // REMAINING virtual time instead.
+      // Still in the future. This used to return an unregistered dummy under
+      // a paused clock, so `travel()` past the expiry never fired it and
+      // `wait(d, { now })` hung forever — stalling any paused-clock cron
+      // chain. Register it against the REMAINING time instead.
       return this.createTimeout(callback, remaining);
     }
 
@@ -464,17 +515,40 @@ export class DateTimeProvider {
       clear: () => this.clearTimeout(timeout),
     };
 
-    timeout.timer = setTimeout(() => {
+    this.registerTimer(timeout, timeout.duration, () => {
       const index = this.timeouts.indexOf(timeout);
       if (index !== -1) {
         this.timeouts.splice(index, 1);
       }
       timeout.callback();
-    }, timeout.duration);
+    });
 
     this.timeouts.push(timeout);
 
     return timeout;
+  }
+
+  /**
+   * Arms `timeout.timer` to run `fire` after `remaining` ms, chaining hops
+   * of at most `maxTimerMs` so far-future delays survive the 32-bit
+   * `setTimeout` limit. Each hop reassigns `timeout.timer`, so
+   * `clearTimeout` and `travel()` always see the live handle. The chain
+   * never mutates `timeout.now` / `timeout.duration` — `travel()` owns that
+   * bookkeeping.
+   */
+  protected registerTimer(
+    timeout: Timeout,
+    remaining: number,
+    fire: () => void,
+  ): void {
+    if (remaining <= this.maxTimerMs) {
+      timeout.timer = setTimeout(fire, remaining);
+      return;
+    }
+
+    timeout.timer = setTimeout(() => {
+      this.registerTimer(timeout, remaining - this.maxTimerMs, fire);
+    }, this.maxTimerMs);
   }
 
   public clearTimeout(timeout: Timeout): void {
@@ -529,6 +603,8 @@ export class DateTimeProvider {
     const now = this.nowMillis();
     this.ref = this.ref.add(this.duration(duration, unit));
 
+    const due: Timeout[] = [];
+
     for (const timeout of [...this.timeouts]) {
       if (!timeout.timer) {
         continue;
@@ -547,16 +623,25 @@ export class DateTimeProvider {
         if (index !== -1) {
           this.timeouts.splice(index, 1);
         }
-        timeout.callback();
+        due.push(timeout);
       } else {
-        timeout.timer = setTimeout(() => {
+        this.registerTimer(timeout, timeout.duration, () => {
           const index = this.timeouts.indexOf(timeout);
           if (index !== -1) {
             this.timeouts.splice(index, 1);
           }
           timeout.callback();
-        }, timeout.duration);
+        });
       }
+    }
+
+    // Fire in expiry order, not creation order — real timers do the same.
+    // Every remaining duration shares the same base instant, so the most
+    // negative one is the earliest expiry. The sort is stable: same-expiry
+    // timeouts keep their creation order.
+    due.sort((a, b) => a.duration - b.duration);
+    for (const timeout of due) {
+      timeout.callback();
     }
 
     for (const interval of this.intervals) {

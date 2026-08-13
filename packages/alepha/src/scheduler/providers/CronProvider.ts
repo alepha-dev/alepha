@@ -1,4 +1,4 @@
-import { $hook, $inject, Alepha } from "alepha";
+import { $hook, $inject, Alepha, AlephaError } from "alepha";
 import { type DateTime, DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { type Cron, parseCronExpression } from "cron-schedule";
@@ -65,6 +65,16 @@ export class CronProvider {
       return;
     }
 
+    // Same guard as the `start` hook — a job registered after start (e.g.
+    // `createCronJob(..., start: true)`) must not spin up a timer loop in an
+    // environment where the start hook refuses to.
+    if (this.alepha.isServerless()) {
+      this.log.debug(
+        `Ignoring cron job '${cron.name}' in serverless environment`,
+      );
+      return;
+    }
+
     cron.running = true;
 
     this.log.debug(
@@ -104,7 +114,7 @@ export class CronProvider {
   ): void {
     const cron: CronJob = {
       name,
-      cron: parseCronExpression(expression),
+      cron: this.parseCronJob(name, expression),
       expression,
       handler,
       loop: true,
@@ -115,6 +125,25 @@ export class CronProvider {
 
     if (start && this.alepha.isStarted()) {
       this.boot(cron);
+    }
+  }
+
+  /**
+   * Validates that the name is unused and the expression parses.
+   * Shared by the Node and Workerd `createCronJob` implementations.
+   */
+  protected parseCronJob(name: string, expression: string): Cron {
+    if (this.cronJobs.some((job) => job.name === name)) {
+      throw new AlephaError(`Cron job '${name}' is already registered`);
+    }
+
+    try {
+      return parseCronExpression(expression);
+    } catch (error) {
+      throw new AlephaError(
+        `Invalid cron expression '${expression}' for cron job '${name}'`,
+        { cause: error },
+      );
     }
   }
 
@@ -199,10 +228,23 @@ export class CronProvider {
 
   /**
    * Run multiple cron jobs in parallel.
+   *
+   * Shares the overlap guard with the timer loop: a job whose previous
+   * invocation is still in flight — scheduled or triggered — is skipped, so
+   * a manual `trigger()` (or a burst of serverless cron events) can never
+   * run the same job concurrently with itself.
    */
   protected async runJobs(jobs: CronJob[], now: DateTime): Promise<void> {
     const results = await Promise.allSettled(
       jobs.map(async (job) => {
+        if (job.executing) {
+          this.log.warn(
+            `Cron job '${job.name}' is still running, skipping this invocation`,
+          );
+          return;
+        }
+
+        job.executing = true;
         this.log.debug(`Running cron job '${job.name}'`);
         try {
           await job.handler({ now });
@@ -210,6 +252,8 @@ export class CronProvider {
         } catch (error) {
           this.log.error(`Cron job '${job.name}' failed`, error);
           throw error;
+        } finally {
+          job.executing = false;
         }
       }),
     );
