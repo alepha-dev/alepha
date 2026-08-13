@@ -182,7 +182,7 @@ body::before {
   position: relative;
   background-color: color-mix(
     in oklch,
-    var(--sidebar-primary) 30%,
+    var(--sidebar-primary) 15%,
     transparent
   );
 }
