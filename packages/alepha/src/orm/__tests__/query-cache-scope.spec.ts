@@ -15,7 +15,7 @@ const ORG_B = "22222222-2222-2222-2222-222222222222";
 const docs = $entity({
   name: "query_cache_docs",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     organization: db.organization(),
     title: z.text(),
   }),
@@ -24,7 +24,7 @@ const docs = $entity({
 const softDocs = $entity({
   name: "query_cache_soft_docs",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     deletedAt: db.deletedAt(),
     title: z.text(),
   }),

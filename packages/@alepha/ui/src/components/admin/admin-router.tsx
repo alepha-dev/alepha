@@ -1,5 +1,6 @@
 import { $pageNav } from "@alepha/ui/components/nav-shell/nav-page";
 import { $store, z } from "alepha";
+import type { AdminAnalyticsController } from "alepha/api/analytics";
 import type { AdminAuditController } from "alepha/api/audits";
 import type { FileController } from "alepha/api/files";
 import type { AdminJobController } from "alepha/api/jobs";
@@ -16,6 +17,7 @@ import { $secure } from "alepha/security";
 import { $client } from "alepha/server/links";
 import {
   Bell,
+  ChartLine,
   CreditCard,
   Files,
   KeyRound,
@@ -29,7 +31,7 @@ import { createElement } from "react";
 import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
 
 /**
- * The whole `/admin` surface — ten pages and their shell — mounted and wired.
+ * The whole `/admin` surface — eleven pages and their shell — mounted and wired.
  *
  * ⚠️ **Nav icons are `createElement(Icon)`, never `<Icon />`. Do not "fix"
  * them back to JSX.** This module is evaluated *eagerly* in the server graph:
@@ -111,24 +113,24 @@ import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
  * ### Group order is a contract
  *
  * The built-in pages occupy `Identity` (orders 1-3) and `Operations`
- * (orders 4-9). An application's page should either join one of those with an
+ * (orders 4-10). An application's page should either join one of those with an
  * `order` of 100 or more, or declare a group of its own. `useNavEntries` sorts
  * groups by their smallest member, so a custom page at `order: 2` would
  * silently reshuffle the built-in sidebar.
  *
- * ### These ten route names are claimed globally
+ * ### These eleven route names are claimed globally
  *
  * `users`, `userDetail`, `sessions`, `keys`, `jobs`, `notifications`,
- * `audits`, `files`, `parameters` and `payments` each carry an explicit
- * `name:` so a future rename of the field itself (done for readability,
- * without touching the string) never silently changes the public route
- * name — the same reason `AuthRouter`'s pages all carry one too.
+ * `audits`, `files`, `parameters`, `payments` and `analytics` each carry an
+ * explicit `name:` so a future rename of the field itself (done for
+ * readability, without touching the string) never silently changes the public
+ * route name — the same reason `AuthRouter`'s pages all carry one too.
  *
  * Route names live in one process-wide namespace, and a duplicate does not
  * throw: `ReactPageProvider.page()` returns the first match. An adopter that
- * registers its own page named `files` (or any of the other nine) either
+ * registers its own page named `files` (or any of the other ten) either
  * shadows this one or is shadowed by it, silently, depending on mount order.
- * Treat these ten names as reserved when hanging pages off `layout`.
+ * Treat these eleven names as reserved when hanging pages off `layout`.
  */
 export class AdminRouter {
   protected readonly options = $store(adminRouterOptionsAtom);
@@ -142,6 +144,7 @@ export class AdminRouter {
   protected readonly fileApi = $client<FileController>();
   protected readonly parameterApi = $client<AdminParameterController>();
   protected readonly paymentApi = $client<AdminPaymentController>();
+  protected readonly analyticsApi = $client<AdminAnalyticsController>();
 
   /**
    * Anchors the shell and the first breadcrumb. Not itself a nav entry — a
@@ -335,5 +338,21 @@ export class AdminRouter {
       order: 9,
     },
     lazy: () => import("./admin-payments.tsx"),
+  });
+
+  analytics = $pageNav({
+    parent: this.layout,
+    path: "/analytics",
+    name: "analytics",
+    head: { title: "Analytics" },
+    permission: "admin:analytics:read",
+    can: () => this.analyticsApi.listDatasets.can(),
+    nav: {
+      label: "Analytics",
+      icon: createElement(ChartLine),
+      group: "Operations",
+      order: 10,
+    },
+    lazy: () => import("./admin-analytics.tsx"),
   });
 }

@@ -3,6 +3,14 @@ import { AlephaError } from "alepha";
 export class BrowserCryptoProvider {
   protected static readonly AES_ALGORITHM = "AES-GCM";
   protected static readonly AES_IV_LENGTH = 12;
+
+  /**
+   * UUIDv7 monotonic state — see {@link randomUUIDv7}.
+   */
+  protected uuidV7EmittedMs = -1;
+  protected uuidV7InputMs = -1;
+  protected uuidV7Counter = 0;
+
   public hashPassword(): never {
     throw new AlephaError("hashPassword is not supported in the browser");
   }
@@ -107,6 +115,58 @@ export class BrowserCryptoProvider {
 
   public randomUUID(): string {
     return crypto.randomUUID();
+  }
+
+  /**
+   * Generate an RFC 9562 UUIDv7 for the given unix-millisecond timestamp.
+   *
+   * Mirrors the Node `CryptoProvider.randomUUIDv7` contract: the caller
+   * supplies the timestamp, a 12-bit counter in `rand_a` keeps same-ms ids
+   * strictly increasing (seeded at or below 0x7ff, borrowing a millisecond
+   * on overflow), and a rewound clock is honored as-is.
+   */
+  public randomUUIDv7(timestampMs: number): string {
+    const ms = Math.floor(timestampMs);
+    if (ms < 0 || ms > 0xffff_ffff_ffff) {
+      throw new AlephaError(
+        `UUIDv7 timestamp out of range: ${timestampMs} (expected 0..2^48-1 unix ms)`,
+      );
+    }
+
+    if (ms < this.uuidV7InputMs || ms > this.uuidV7EmittedMs) {
+      this.uuidV7EmittedMs = ms;
+      this.uuidV7Counter = this.randomCounterSeed();
+    } else {
+      this.uuidV7Counter++;
+      if (this.uuidV7Counter > 0xfff) {
+        this.uuidV7EmittedMs++;
+        this.uuidV7Counter = this.randomCounterSeed();
+      }
+    }
+    this.uuidV7InputMs = ms;
+
+    const rand = crypto.getRandomValues(new Uint8Array(8));
+    const ts = this.uuidV7EmittedMs.toString(16).padStart(12, "0");
+    const seq = this.uuidV7Counter.toString(16).padStart(3, "0");
+    const tail = [
+      (rand[0]! & 0x3f) | 0x80,
+      rand[1]!,
+      rand[2]!,
+      rand[3]!,
+      rand[4]!,
+      rand[5]!,
+      rand[6]!,
+      rand[7]!,
+    ]
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+
+    return `${ts.slice(0, 8)}-${ts.slice(8)}-7${seq}-${tail.slice(0, 4)}-${tail.slice(4)}`;
+  }
+
+  protected randomCounterSeed(): number {
+    const bytes = crypto.getRandomValues(new Uint8Array(2));
+    return ((bytes[0]! << 8) | bytes[1]!) & 0x7ff;
   }
 
   public randomText(length: number): string {

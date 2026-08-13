@@ -11,7 +11,7 @@ export const testDateFiltersWithDayjs = async (alepha: Alepha) => {
   const Entity = $entity({
     name: "events",
     schema: z.object({
-      id: db.primaryKey(),
+      id: db.primaryKey(z.integer()),
       name: z.text(),
       eventDate: db.createdAt(),
       scheduledFor: z.datetime().optional(),
@@ -119,7 +119,7 @@ export const testMixedDateFormats = async (alepha: Alepha) => {
   const Entity = $entity({
     name: "tasks",
     schema: z.object({
-      id: db.primaryKey(),
+      id: db.primaryKey(z.integer()),
       title: z.text(),
       dueDate: z.datetime().optional(),
     }),
@@ -166,7 +166,7 @@ export const testDateComparisonsInComplexQueries = async (alepha: Alepha) => {
   const Entity = $entity({
     name: "appointments",
     schema: z.object({
-      id: db.primaryKey(),
+      id: db.primaryKey(z.integer()),
       patientName: z.text(),
       appointmentDate: z.datetime(),
       status: z.text(),
@@ -239,7 +239,7 @@ export const testNullDateValues = async (alepha: Alepha) => {
   const Entity = $entity({
     name: "projects",
     schema: z.object({
-      id: db.primaryKey(),
+      id: db.primaryKey(z.integer()),
       name: z.text(),
       completedAt: z.datetime().optional(),
     }),
@@ -284,7 +284,7 @@ export const testDateEncodingWithNotInArray = async (alepha: Alepha) => {
   const Entity = $entity({
     name: "events",
     schema: z.object({
-      id: db.primaryKey(),
+      id: db.primaryKey(z.integer()),
       name: z.text(),
       date: z.datetime(),
     }),

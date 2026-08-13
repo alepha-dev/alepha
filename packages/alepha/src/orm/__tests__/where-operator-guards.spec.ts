@@ -11,7 +11,7 @@ import { $entity, $repository, db } from "../core/index.ts";
 const items = $entity({
   name: "where_guard_items",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     name: z.text(),
     archivedAt: z.datetime().optional(),
     tags: db.default(z.array(z.text()), []),

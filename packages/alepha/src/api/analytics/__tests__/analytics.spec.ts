@@ -3,7 +3,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { describe, expect, it } from "vitest";
 // Imported through the module entry, not the primitive file directly:
 // `$analytics`'s DI auto-wiring depends on `AnalyticsPrimitive` having been
-// tagged with `AlephaAnalytics` module metadata, which only happens once
+// tagged with `AlephaApiAnalytics` module metadata, which only happens once
 // `index.ts` (where `$module({ primitives: [$analytics] })` is called) has
 // been evaluated. `../index.ts` mirrors how `alepha/api/files`'s own
 // `$storage.spec.ts` imports `$storage`.

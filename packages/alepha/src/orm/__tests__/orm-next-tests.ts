@@ -11,7 +11,7 @@ import { $entity, $repository, db, pgAttr } from "../core/index.ts";
 const orderEntity = $entity({
   name: "orders",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     category: z.text(),
     amount: z.number(),
     status: z.text(),
@@ -26,7 +26,7 @@ export const testPartialIndex = async (alepha: Alepha) => {
   const entity = $entity({
     name: "items_partial_idx",
     schema: z.object({
-      id: db.primaryKey(),
+      id: db.primaryKey(z.integer()),
       email: z.text(),
       active: z.boolean(),
     }),
@@ -63,7 +63,7 @@ export const testPartialCompositeIndex = async (alepha: Alepha) => {
   const entity = $entity({
     name: "items_partial_comp_idx",
     schema: z.object({
-      id: db.primaryKey(),
+      id: db.primaryKey(z.integer()),
       category: z.text(),
       name: z.text(),
       active: z.boolean(),
@@ -101,7 +101,7 @@ export const testExistsSubquery = async (alepha: Alepha) => {
   const parentEntity = $entity({
     name: "parents_exist",
     schema: z.object({
-      id: db.primaryKey(),
+      id: db.primaryKey(z.integer()),
       name: z.text(),
     }),
   });
@@ -109,7 +109,7 @@ export const testExistsSubquery = async (alepha: Alepha) => {
   const childEntity = $entity({
     name: "children_exist",
     schema: z.object({
-      id: db.primaryKey(),
+      id: db.primaryKey(z.integer()),
       parentId: z.integer(),
       label: z.text(),
     }),
@@ -269,7 +269,7 @@ export const testGeneratedColumnSqlite = async (alepha: Alepha) => {
   const entity = $entity({
     name: "generated_col",
     schema: z.object({
-      id: db.primaryKey(),
+      id: db.primaryKey(z.integer()),
       firstName: z.text(),
       lastName: z.text(),
       fullName: pgAttr(z.text(), PG_GENERATED, {
@@ -304,7 +304,7 @@ export const testGeneratedColumnPostgres = async (alepha: Alepha) => {
   const entity = $entity({
     name: "generated_col_pg",
     schema: z.object({
-      id: db.primaryKey(),
+      id: db.primaryKey(z.integer()),
       firstName: z.text(),
       lastName: z.text(),
       fullName: pgAttr(z.text(), PG_GENERATED, {
@@ -339,7 +339,7 @@ export const testGeneratedColumnExcludedFromInsertSchema = async (
   const entity = $entity({
     name: "generated_schema_test",
     schema: z.object({
-      id: db.primaryKey(),
+      id: db.primaryKey(z.integer()),
       a: z.text(),
       b: z.text(),
       computed: pgAttr(z.text(), PG_GENERATED, {

@@ -1,4 +1,6 @@
-import { AlephaError, type ZObject, z } from "alepha";
+import { $inject, AlephaError, type ZObject, z } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
+import { DateTimeProvider } from "alepha/datetime";
 import {
   type EntityPrimitive,
   type FromSchema,
@@ -14,7 +16,6 @@ import {
   type PgRefOptions,
   type SequencePrimitive,
   schema,
-  sql,
 } from "alepha/orm";
 import type { BuildExtraConfigColumns } from "drizzle-orm";
 import * as pg from "drizzle-orm/pg-core";
@@ -36,13 +37,22 @@ import {
 import { byte } from "../types/byte.ts";
 
 export class PostgresModelBuilder extends ModelBuilder {
+  protected readonly crypto = $inject(CryptoProvider);
+  protected readonly dateTime = $inject(DateTimeProvider);
+
   protected schemas = new Map<string, PgSchema>();
 
   /**
-   * Create a primary key column with UUID v7
+   * Create a primary key column with an app-generated UUIDv7.
+   *
+   * Generated app-side (not `DEFAULT uuidv7()`): the native function needs
+   * PostgreSQL 18+, while this works on every version — and the timestamp
+   * comes from DateTimeProvider, so ids follow `travel()` in tests.
    */
   protected getPrimaryKeyUUID(key: string) {
-    return pg.uuid(key).default(sql`uuidv7()`);
+    return pg
+      .uuid(key)
+      .$defaultFn(() => this.crypto.randomUUIDv7(this.dateTime.nowMillis()));
   }
 
   protected getPgSchema(name: string) {

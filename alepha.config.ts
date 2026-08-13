@@ -52,6 +52,7 @@ export default (alepha: Alepha) => {
       "topic",
       "websocket",
       // alepha — api sub-modules, also written bare
+      "analytics",
       "audits",
       "files",
       "jobs",

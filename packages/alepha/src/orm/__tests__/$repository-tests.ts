@@ -126,7 +126,7 @@ class CrudApp {
     $entity({
       name: "users",
       schema: z.object({
-        id: db.primaryKey(),
+        id: db.primaryKey(z.integer()),
         createdAt: db.createdAt(),
         updatedAt: db.updatedAt(),
         name: z.text(),
@@ -420,7 +420,7 @@ class HooksApp {
     $entity({
       name: "users",
       schema: z.object({
-        id: db.primaryKey(),
+        id: db.primaryKey(z.integer()),
         name: z.text(),
         email: z.text(),
       }),
@@ -948,7 +948,7 @@ export const testPaginationSort = async (alepha: Alepha) => {
 const dummyEntity = $entity({
   name: "dummies",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     name: z.text().optional(),
   }),
 });
@@ -1204,7 +1204,7 @@ export const testUpsert = async (alepha: Alepha) => {
 // ============================================================================
 
 const serialTestSchema = z.object({
-  id: db.primaryKey(),
+  id: db.primaryKey(z.integer()),
   name: z.text(),
 });
 
@@ -1286,7 +1286,7 @@ export const testUuidIdOperations = async (alepha: Alepha) => {
 // ============================================================================
 
 const rangeSchema = z.object({
-  id: db.primaryKey(),
+  id: db.primaryKey(z.integer()),
   name: z.text(),
   age: z.number(),
 });
@@ -1717,7 +1717,7 @@ export const testPaginationWithQueryLimit = async (alepha: Alepha) => {
 const orSiblingsEntity = $entity({
   name: "test_or_siblings",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     name: z.text(),
     age: z.number(),
   }),

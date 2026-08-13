@@ -155,7 +155,7 @@ export class BuildManifestTask extends BuildTask {
     // typically because `CLOUDFLARE_ANALYTICS_DATASET` is already set by
     // hand from before this mechanism existed. There is no equivalent to
     // R2's "inject the provider directly" route here (`WaeAnalyticsProvider`
-    // is only ever selected internally, by `AlephaAnalytics`'s own
+    // is only ever selected internally, by `AlephaApiAnalytics`'s own
     // `register()`), but honoring an explicit value costs nothing and keeps
     // a hand-set `.env.production` working exactly as it did before.
     if (!hasAnalytics && process.env.CLOUDFLARE_ANALYTICS_DATASET) {

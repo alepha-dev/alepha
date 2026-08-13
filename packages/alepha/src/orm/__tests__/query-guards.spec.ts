@@ -6,7 +6,7 @@ import { AlephaOrmPostgres } from "../postgres/index.ts";
 const items = $entity({
   name: "test_query_guard_items",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     name: z.text(),
     tags: z.array(z.text()),
   }),

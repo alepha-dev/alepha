@@ -193,6 +193,17 @@ export const uiFr: Record<string, string> = {
 
   // The `@alepha/ui/admin` back office: users, sessions, API keys, files, jobs,
   // audits, notifications, payments and parameters.
+  "admin.analytics.empty": "Aucune donnée pour cette requête.",
+  "admin.analytics.estimated": "Estimé (échantillonné ×$1)",
+  "admin.analytics.exactSample": "Exact (aucun échantillonnage sur la fenêtre)",
+  "admin.analytics.filters": "Filtres",
+  "admin.analytics.groupBy": "Grouper par",
+  "admin.analytics.noDatasets":
+    "Aucun jeu de données analytics n'est déclaré dans cette application.",
+  "admin.analytics.pickDataset": "Choisir un jeu de données",
+  "admin.analytics.rowCount": "$1 lignes",
+  "admin.analytics.run": "Lancer la requête",
+  "admin.analytics.since": "Depuis (jour UTC)",
   "admin.audits.actionAll": "Toutes les actions",
   "admin.audits.bulkDelete": "Supprimer la sélection",
   "admin.audits.bulkDeleteConfirm":
@@ -275,12 +286,26 @@ export const uiFr: Record<string, string> = {
   "admin.keys.colOwner": "Propriétaire",
   "admin.keys.colPrefix": "Préfixe",
   "admin.keys.colScopes": "Rôles",
+  "admin.keys.copy": "Copier",
+  "admin.keys.copyFailed": "Impossible de copier",
+  "admin.keys.create": "Ajouter une clé d'API",
+  "admin.keys.createConfirm": "Créer",
+  "admin.keys.createDescription":
+    "La clé est créée pour votre compte et porte vos rôles actuels.",
+  "admin.keys.createNameLabel": "Nom",
+  "admin.keys.createNamePlaceholder": "ex. pipeline CI",
+  "admin.keys.createNameRequired": "Le nom est requis",
+  "admin.keys.createTitle": "Ajouter une clé d'API",
   "admin.keys.noneSelected": "Aucune clé active dans la sélection",
   "admin.keys.revoke": "Révoquer",
   "admin.keys.revokeConfirm":
     "Révoquer « $1 » ? Les applications qui utilisent cette clé perdront l'accès.",
   "admin.keys.revokeTitle": "Révoquer la clé d'API",
   "admin.keys.revoked": "Clé d'API révoquée",
+  "admin.keys.tokenDescription":
+    "Copiez ce jeton maintenant — il n'est affiché qu'une seule fois et ne peut pas être récupéré.",
+  "admin.keys.tokenDone": "Terminé",
+  "admin.keys.tokenTitle": "Clé d'API créée",
   "admin.notifications.bulkDelete": "Supprimer la sélection",
   "admin.notifications.bulkDeleteConfirm":
     "Supprimer $1 notification(s) ? L'opération est irréversible.",

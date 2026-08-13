@@ -24,8 +24,37 @@ export interface AdminRouterOptions {
   /**
    * Replaces the default language / dark-mode / account cluster entirely when
    * set. Supply the whole cluster, not an addition to it.
+   *
+   * The ⌘K search affordance is not part of the cluster and always renders:
+   * the Spotlight state it opens lives inside the layout, where no
+   * replacement cluster could reach it.
    */
   topbarActions?: ReactNode;
+
+  /**
+   * Extra class(es) merged onto the shell's root element.
+   *
+   * Exists for applications whose `/admin` lives inside a document they do
+   * not fully own — a host page that paints fixed overlays over the viewport,
+   * or hardcodes a theme class on `<html>` — and that need one stable hook to
+   * fence the console off from that chrome. Styling inside the shell does not
+   * go through this; components carry their own classes.
+   */
+  className?: string;
+
+  /**
+   * Set `false` to keep the shell from mounting `<ColorScheme />`.
+   *
+   * The shell mounts it because `/admin` is normally not a child of the
+   * application's own layout, so nothing else would apply the dark-mode
+   * atom's class to `<html>`. An application whose host document owns that
+   * class itself — a hardcoded `<html class="dark">`, a theme manager of its
+   * own — turns this off so entering `/admin` cannot rewrite the document's
+   * theme underneath the rest of the app.
+   *
+   * @default true
+   */
+  colorScheme?: boolean;
 
   /**
    * Nav groups appended after the route-derived ones, for entries that map to

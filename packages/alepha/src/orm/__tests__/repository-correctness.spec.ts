@@ -10,7 +10,7 @@ import { AlephaOrmPostgres } from "../postgres/index.ts";
 const authors = $entity({
   name: "test_corr_authors",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     updatedAt: db.updatedAt(),
     deletedAt: db.deletedAt(),
     name: z.text(),
@@ -20,7 +20,7 @@ const authors = $entity({
 const books = $entity({
   name: "test_corr_books",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     title: z.text(),
     authorId: db.ref(z.integer(), () => authors.cols.id),
   }),
@@ -29,7 +29,7 @@ const books = $entity({
 const contacts = $entity({
   name: "test_corr_contacts",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     email: z.text(),
     nickname: z.text().optional(),
   }),

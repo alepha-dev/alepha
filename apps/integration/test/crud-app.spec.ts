@@ -60,7 +60,7 @@ class UserCrudApp {
         });
       }
 
-      // Don't generate UUID - db.primaryKey() handles it automatically
+      // Don't generate UUID - db.primaryKey(z.integer()) handles it automatically
       // Don't need to set isActive - db.default() handles it
       return await this.users.create({
         email: body.email,

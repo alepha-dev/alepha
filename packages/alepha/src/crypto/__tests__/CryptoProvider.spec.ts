@@ -209,4 +209,67 @@ describe("CryptoProvider", () => {
     expect(code).toHaveLength(1);
     expect(code).toMatch(/^\d$/);
   });
+
+  describe("randomUUIDv7", () => {
+    const V7_PATTERN =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+    it("should generate a canonical version-7 uuid", () => {
+      const crypto = Alepha.create().inject(CryptoProvider);
+
+      const uuid = crypto.randomUUIDv7(1_700_000_000_000);
+      expect(uuid).toMatch(V7_PATTERN);
+    });
+
+    it("should encode the given timestamp in the first 48 bits", () => {
+      const crypto = Alepha.create().inject(CryptoProvider);
+
+      const timestamp = 1_700_000_000_123;
+      const uuid = crypto.randomUUIDv7(timestamp);
+      const tsHex = uuid.slice(0, 8) + uuid.slice(9, 13);
+      expect(Number.parseInt(tsHex, 16)).toBe(timestamp);
+    });
+
+    it("should sort lexicographically within a single millisecond", () => {
+      const crypto = Alepha.create().inject(CryptoProvider);
+
+      const ids = Array.from({ length: 500 }, () =>
+        crypto.randomUUIDv7(1_700_000_000_000),
+      );
+      for (let i = 1; i < ids.length; i++) {
+        expect(ids[i] > ids[i - 1]).toBe(true);
+      }
+    });
+
+    it("should keep ordering across a counter overflow in one millisecond", () => {
+      const crypto = Alepha.create().inject(CryptoProvider);
+
+      // The 12-bit counter is seeded at or below 0x7ff, so 5000 calls in the
+      // same millisecond always overflow at least once and must borrow into
+      // the timestamp without breaking the ordering.
+      const ids = Array.from({ length: 5000 }, () =>
+        crypto.randomUUIDv7(1_700_000_000_000),
+      );
+      for (let i = 1; i < ids.length; i++) {
+        expect(ids[i] > ids[i - 1]).toBe(true);
+      }
+    });
+
+    it("should sort later milliseconds after earlier ones", () => {
+      const crypto = Alepha.create().inject(CryptoProvider);
+
+      const earlier = crypto.randomUUIDv7(1_700_000_000_000);
+      const later = crypto.randomUUIDv7(1_700_000_000_001);
+      expect(later > earlier).toBe(true);
+    });
+
+    it("should honor an earlier timestamp when the clock goes backwards", () => {
+      const crypto = Alepha.create().inject(CryptoProvider);
+
+      crypto.randomUUIDv7(1_700_000_000_500);
+      const rewound = crypto.randomUUIDv7(1_700_000_000_000);
+      const tsHex = rewound.slice(0, 8) + rewound.slice(9, 13);
+      expect(Number.parseInt(tsHex, 16)).toBe(1_700_000_000_000);
+    });
+  });
 });

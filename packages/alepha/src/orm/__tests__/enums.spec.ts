@@ -7,7 +7,7 @@ import { AlephaOrmPostgres } from "../postgres/index.ts";
 const textEnumEntity = $entity({
   name: "text_enum_test",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     status: z.enum(["pending", "active", "archived"]).meta({ mode: "text" }),
     role: z.enum(["user", "admin", "moderator"]).meta({ mode: "text" }),
   }),
@@ -17,7 +17,7 @@ const textEnumEntity = $entity({
 const pgEnumEntity = $entity({
   name: "pg_enum_test",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     status: z.enum(["draft", "published", "deleted"]),
     priority: z.enum(["low", "medium", "high"]),
   }),
@@ -27,7 +27,7 @@ const pgEnumEntity = $entity({
 const mixedEnumEntity = $entity({
   name: "mixed_enum_test",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     textStatus: z.enum(["open", "closed"]).meta({ mode: "text" }),
     pgStatus: z.enum(["new", "in_progress", "done"]),
   }),
@@ -37,7 +37,7 @@ const mixedEnumEntity = $entity({
 const sharedEnumEntity1 = $entity({
   name: "shared_enum_test_1",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     status: z
       .enum(["enabled", "disabled"])
       .meta({ name: "shared_status_enum" }),
@@ -47,7 +47,7 @@ const sharedEnumEntity1 = $entity({
 const sharedEnumEntity2 = $entity({
   name: "shared_enum_test_2",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     status: z
       .enum(["enabled", "disabled"])
       .meta({ name: "shared_status_enum" }),
@@ -58,7 +58,7 @@ const sharedEnumEntity2 = $entity({
 const conflictEnumEntity1 = $entity({
   name: "conflict_enum_test_1",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     status: z.enum(["a", "b", "c"]).meta({ name: "conflict_status_enum" }),
   }),
 });
@@ -66,7 +66,7 @@ const conflictEnumEntity1 = $entity({
 const conflictEnumEntity2 = $entity({
   name: "conflict_enum_test_2",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     status: z.enum(["a", "b", "d"]).meta({ name: "conflict_status_enum" }), // Different value!
   }),
 });

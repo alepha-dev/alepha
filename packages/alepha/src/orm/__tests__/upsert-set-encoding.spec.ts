@@ -6,7 +6,7 @@ import { AlephaOrmPostgres } from "../postgres/index.ts";
 const counters = $entity({
   name: "test_upsert_set_counters",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     slug: z.text(),
     hits: z.integer(),
   }),

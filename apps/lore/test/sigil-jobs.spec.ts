@@ -122,7 +122,7 @@ const dayUtc = (ctx: TestContext, daysAgo: number): string => {
  * Views used to be swept here too (`collapseViews`); that half was deleted
  * once `sigil_views_hourly` stopped being written or read at all, and
  * retention for its `$analytics()` replacement moved onto
- * `AnalyticsRollupJobs` in `@alepha/analytics`, exercised by that package's
+ * `AnalyticsRollupJobs` in `alepha/api/analytics`, exercised by that package's
  * own suite rather than this one.
  *
  * Driven through `DateTimeProvider.travel()` rather than by seeding
@@ -269,7 +269,7 @@ describe("SigilJobs", () => {
       or double-counted across the boundary would show up in what a real
       query returns, not just in the raw rows. `totalViews` moved to
       `$analytics()` in Task 12 and reads no table this sweep touches at all;
-      the regression guard for its own rollup lives in `@alepha/analytics`'s
+      the regression guard for its own rollup lives in `alepha/api/analytics`'s
       own suite.
     */
     it("reports the same unique-visitor total before and after a sweep", async ({

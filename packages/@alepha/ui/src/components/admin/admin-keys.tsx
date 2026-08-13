@@ -2,26 +2,64 @@ import * as React from "react";
 
 void React;
 
+import { AdminKeysTokenDialog } from "@alepha/ui/components/admin/admin-keys-token-dialog";
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Badge } from "@alepha/ui/components/ui/badge";
+import { Button } from "@alepha/ui/components/ui/button";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import type {
   AdminApiKeyController,
   AdminApiKeyResource,
+  ApiKeyController,
 } from "alepha/api/keys";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Trash2 } from "lucide-react";
-import { useCallback } from "react";
+import { Plus, Trash2 } from "lucide-react";
+import { useCallback, useState } from "react";
 
 export function AdminKeys() {
   const client = useClient<AdminApiKeyController>();
+  const userClient = useClient<ApiKeyController>();
   const toast = useToast();
   const dialog = useDialog();
   const { l, tr } = useI18n();
+  const [createdToken, setCreatedToken] = useState<string | null>(null);
+  const [refreshSignal, setRefreshSignal] = useState(0);
+
+  const createKey = useAction(
+    {
+      handler: async () => {
+        const name = await dialog.prompt({
+          title: tr("admin.keys.createTitle", { default: "Add API key" }),
+          description: tr("admin.keys.createDescription", {
+            default:
+              "The key is created for your account and carries your current roles.",
+          }),
+          label: tr("admin.keys.createNameLabel", { default: "Name" }),
+          placeholder: tr("admin.keys.createNamePlaceholder", {
+            default: "e.g. CI pipeline",
+          }),
+          confirmLabel: tr("admin.keys.createConfirm", { default: "Create" }),
+          validate: (value) =>
+            value.trim().length === 0
+              ? tr("admin.keys.createNameRequired", {
+                  default: "Name is required",
+                })
+              : null,
+        });
+        if (name === null) return;
+        const created = await userClient.createApiKey({
+          body: { name: name.trim() },
+        });
+        setCreatedToken(created.token);
+        setRefreshSignal((n) => n + 1);
+      },
+    },
+    [userClient, dialog, tr],
+  );
 
   const fetcher = useCallback(
     async (params: { page: number; size: number; sort?: string }) => {
@@ -96,6 +134,18 @@ export function AdminKeys() {
         className="min-h-0 flex-1"
         persistenceKey="admin.keys"
         fetch={fetcher}
+        refreshSignal={refreshSignal}
+        toolbar={
+          <Button
+            type="button"
+            size="sm"
+            loading={createKey.loading}
+            onClick={() => createKey.run()}
+          >
+            <Plus className="size-4" />
+            {tr("admin.keys.create", { default: "Add API key" })}
+          </Button>
+        }
         bulkActions={[
           {
             label: tr("admin.keys.bulkRevoke", {
@@ -154,6 +204,10 @@ export function AdminKeys() {
             onClick: (_k, { refresh }) => revoke.run(k, refresh),
           },
         ]}
+      />
+      <AdminKeysTokenDialog
+        token={createdToken}
+        onClose={() => setCreatedToken(null)}
       />
     </AdminPage>
   );

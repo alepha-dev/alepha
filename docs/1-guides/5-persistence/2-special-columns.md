@@ -14,13 +14,15 @@ The `db` object is an instance of `DatabaseTypeProvider`.
 `db.primaryKey()` creates an auto-generated primary key column.
 
 ```typescript
-db.primaryKey()            // integer with identity (auto-increment) - default
-db.primaryKey(z.uuid())    // UUID with auto-generated default
-db.primaryKey(z.integer()) // integer with identity
+db.primaryKey()            // UUID, app-generated time-ordered UUIDv7 - default
+db.primaryKey(z.uuid())    // UUID, same app-side UUIDv7 generation
+db.primaryKey(z.integer()) // integer with identity (auto-increment)
 db.primaryKey(z.bigint())  // bigint with identity
 ```
 
-Calling `db.primaryKey()` with no argument creates an integer (identity) column. This is the default primary key type.
+Calling `db.primaryKey()` with no argument creates a UUID column. Ids are generated in the application as [UUIDv7](https://www.rfc-editor.org/rfc/rfc9562) — time-ordered, so `ORDER BY id` matches insertion order and index locality stays as good as an integer key — and work identically on PostgreSQL, SQLite, and Cloudflare D1, on any database version. Unlike integer keys, they never leak row counts, can be generated before the row is inserted, and merge safely across databases.
+
+Note that a UUIDv7 embeds its creation timestamp: anyone holding an id can read when the row was created. If that matters — or when humans need to read the ids — use an integer identity key instead, with a `$sequence` for display numbers.
 
 There are also explicit shortcut methods:
 

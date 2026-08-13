@@ -8,7 +8,7 @@ import { BunPostgresProvider } from "../providers/BunPostgresProvider.ts";
 const users = $entity({
   name: "users",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
     name: z.text(),

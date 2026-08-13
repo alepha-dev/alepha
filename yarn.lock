@@ -5,19 +5,6 @@ __metadata:
   version: 10
   cacheKey: 10c0
 
-"@alepha/analytics@workspace:*, @alepha/analytics@workspace:packages/@alepha/analytics":
-  version: 0.0.0-use.local
-  resolution: "@alepha/analytics@workspace:packages/@alepha/analytics"
-  dependencies:
-    alepha: "npm:0.25.1"
-    tsdown: "npm:^0.22.14"
-    typescript: "npm:^7.0.2"
-    vitest: "npm:^4.1.10"
-  peerDependencies:
-    alepha: 0.25.1
-  languageName: unknown
-  linkType: soft
-
 "@alepha/commerce@workspace:*, @alepha/commerce@workspace:packages/@alepha/commerce":
   version: 0.0.0-use.local
   resolution: "@alepha/commerce@workspace:packages/@alepha/commerce"
@@ -10511,7 +10498,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "lore@workspace:apps/lore"
   dependencies:
-    "@alepha/analytics": "workspace:*"
     "@alepha/devtools": "workspace:*"
     "@alepha/sigil": "workspace:*"
     "@alepha/ui": "workspace:*"

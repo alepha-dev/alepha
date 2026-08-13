@@ -15,7 +15,7 @@ const parseDate = (dateValue: any): Date => {
 const articleEntity = $entity({
   name: "articles",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     title: z.string(),
     content: z.text(),
     status: z.string(),
@@ -35,7 +35,7 @@ const articleEntity = $entity({
 const userActivityEntity = $entity({
   name: "user_activities",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     userId: z.integer(),
     action: z.string(),
     metadata: z.record(z.string(), z.any()).optional(),
@@ -272,7 +272,7 @@ export const testTimestampFormats = async (alepha: Alepha) => {
   const eventEntity = $entity({
     name: "events",
     schema: z.object({
-      id: db.primaryKey(),
+      id: db.primaryKey(z.integer()),
       name: z.string(),
       startTime: db.createdAt(),
       endTime: db.updatedAt().optional(),

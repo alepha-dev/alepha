@@ -6,7 +6,7 @@ import { AlephaOrmPostgres } from "../postgres/index.ts";
 const events = $entity({
   name: "test_bigint_events",
   schema: z.object({
-    id: db.primaryKey(),
+    id: db.primaryKey(z.integer()),
     // External 64-bit id (snowflake shape) — NOT a primary key.
     externalId: z.bigint(),
   }),

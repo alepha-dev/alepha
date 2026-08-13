@@ -27,7 +27,7 @@
  * The `AnalyticsStore` interface and its three implementations
  * (`createOrmAnalyticsStore`, `MemoryAnalyticsStore`, `WaeAnalyticsStore`) are
  * gone. That was a question-shaped storage contract this module used to own
- * for views, uniques and vitals alike; `@alepha/analytics`'s `$analytics()`
+ * for views, uniques and vitals alike; `alepha/api/analytics`'s `$analytics()`
  * primitive replaced it end to end for **views and vitals** — sampling,
  * rollup and retention all included, on both a relational database and
  * Workers Analytics Engine.
