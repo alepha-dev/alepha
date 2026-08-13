@@ -297,11 +297,11 @@ const ProjectMilestones = () => {
 
   if (!project) return null;
 
-  const projectId = String(project.id);
+  const projectSlug = project.slug;
   const settingsHref = router.path("projectSettingsMilestones", {
-    params: { projectId },
+    params: { projectSlug },
   });
-  const questsHref = router.path("projectQuests", { params: { projectId } });
+  const questsHref = router.path("projectQuests", { params: { projectSlug } });
 
   // Same wording the settings page offers, so the banner and the setting
   // never disagree on what "auto-close" is currently set to.

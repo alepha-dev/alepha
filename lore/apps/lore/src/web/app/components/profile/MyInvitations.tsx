@@ -30,10 +30,19 @@ const MyInvitations = (props: MyInvitationsProps) => {
     setBusyId(id);
     try {
       await invitationApi.acceptInvitation({ params: { id } });
-      alepha.store.set(userProjectsAtom, await projectApi.getHomeOverview());
+      const overview = await projectApi.getHomeOverview();
+      alepha.store.set(userProjectsAtom, overview);
       setItems((prev) => prev.filter((it) => it.id !== id));
       toaster.success("You have joined the project!");
-      await router.push("project", { params: { projectId } });
+      // The invitation carries the project's id, but the URL takes its slug.
+      // The overview was just refreshed and now includes the project we joined,
+      // so read it from there rather than adding a lookup endpoint.
+      const joined = overview.projects.find(
+        (it) => String(it.id) === projectId,
+      );
+      if (joined) {
+        await router.push("project", { params: { projectSlug: joined.slug } });
+      }
     } catch (error: any) {
       toaster.error(error?.message ?? "Failed to accept invitation");
     } finally {

@@ -29,7 +29,7 @@ export interface FolioTreeRowProps {
   node: FolioTreeNode;
   depth: number;
   tree: FolioTreeState;
-  projectIdStr: string;
+  projectSlug: string;
 }
 
 /**
@@ -233,7 +233,7 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
       <FolioTreeContextMenu
         node={node}
         tree={tree}
-        projectIdStr={props.projectIdStr}
+        projectSlug={props.projectSlug}
       />
     </ContextMenu>
   );

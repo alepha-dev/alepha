@@ -26,7 +26,10 @@ test.describe("Quest", () => {
     const questTitle = `Quest${t}`;
 
     await registerAndVerify(page, email, password);
-    const projectId = await createProjectViaWizard(page, projectTitle);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
 
     const { id: questId, shortId } = await apiPost<{
       id: number;
@@ -46,7 +49,7 @@ test.describe("Quest", () => {
     expect(shortId).toBeGreaterThan(0);
 
     await test.step("open quest view", async () => {
-      await page.goto(`/p/${projectId}/q/${shortId}`);
+      await page.goto(`/${projectSlug}/quests/${shortId}`);
       await page.waitForLoadState("networkidle");
       await expect(page.getByText(questTitle).first()).toBeVisible({
         timeout: 10_000,
@@ -84,7 +87,7 @@ test.describe("Quest", () => {
       // Either stays on the quest view with a completed indicator or animates
       // back to the board — both leave us inside the project URL space.
       await page.waitForLoadState("networkidle");
-      expect(page.url()).toContain(`/p/${projectId}`);
+      expect(page.url()).toContain(`/${projectSlug}`);
     });
   });
 
@@ -107,7 +110,10 @@ test.describe("Quest", () => {
     const questTitle = `Reminder${t}`;
 
     await registerAndVerify(page, email, password);
-    const projectId = await createProjectViaWizard(page, projectTitle);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
 
     // Reminders are an owner toggle, off by default — enable it before
     // exercising the reminder UI.
@@ -127,7 +133,7 @@ test.describe("Quest", () => {
       attachments: [],
     });
 
-    await page.goto(`/p/${projectId}/q/${shortId}`);
+    await page.goto(`/${projectSlug}/quests/${shortId}`);
     await page.waitForLoadState("networkidle");
 
     await test.step("accept quest (reminder is gated on accepted state)", async () => {
@@ -188,7 +194,10 @@ test.describe("Quest", () => {
     const projectTitle = `QL${t}`.slice(0, 20);
 
     await registerAndVerify(page, email, password);
-    const projectId = await createProjectViaWizard(page, projectTitle);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
 
     const predecessor = await apiPost<{ id: number; shortId: number }>(
       page,
@@ -268,7 +277,7 @@ test.describe("Quest", () => {
     });
 
     await test.step("follower view surfaces the Unblocked chip", async () => {
-      await page.goto(`/p/${projectId}/q/${follower.shortId}`);
+      await page.goto(`/${projectSlug}/quests/${follower.shortId}`);
       await page.waitForLoadState("networkidle");
       await expect(
         page.getByText(new RegExp(`unblocked.*#${predecessor.shortId}`, "i")),
@@ -291,7 +300,10 @@ test.describe("Quest", () => {
     const projectTitle = `DP${t}`.slice(0, 20);
 
     await registerAndVerify(page, email, password);
-    const projectId = await createProjectViaWizard(page, projectTitle);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
 
     const predecessor = await apiPost<{ id: number; shortId: number }>(
       page,
@@ -322,7 +334,7 @@ test.describe("Quest", () => {
       },
     );
 
-    await page.goto(`/p/${projectId}/q/${follower.shortId}`);
+    await page.goto(`/${projectSlug}/quests/${follower.shortId}`);
     await page.waitForLoadState("networkidle");
     await expect(page.getByText(`Follow${t}`).first()).toBeVisible({
       timeout: 10_000,
@@ -357,7 +369,7 @@ test.describe("Quest", () => {
     });
 
     await test.step("follower view now shows it is blocked by the predecessor", async () => {
-      await page.goto(`/p/${projectId}/q/${follower.shortId}`);
+      await page.goto(`/${projectSlug}/quests/${follower.shortId}`);
       await page.waitForLoadState("networkidle");
       await expect(
         page.getByText(new RegExp(`blocked by.*#${predecessor.shortId}`, "i")),
@@ -381,7 +393,10 @@ test.describe("Quest", () => {
     const summaryText = `Shipped the thing on ${t}. Files touched: a.ts, b.ts.`;
 
     await registerAndVerify(page, email, password);
-    const projectId = await createProjectViaWizard(page, projectTitle);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
 
     const { shortId } = await apiPost<{ id: number; shortId: number }>(
       page,
@@ -398,7 +413,7 @@ test.describe("Quest", () => {
       },
     );
 
-    await page.goto(`/p/${projectId}/q/${shortId}`);
+    await page.goto(`/${projectSlug}/quests/${shortId}`);
     await page.waitForLoadState("networkidle");
 
     // Accept first — Complete is only enabled on accepted quests.
@@ -433,10 +448,10 @@ test.describe("Quest", () => {
       // view by clicking its row instead of `page.goto` so we exercise
       // the SPA router (goto would force a hard reload + Turnstile
       // polling delays).
-      await page.waitForURL(new RegExp(`/p/${projectId}/?$`), {
+      await page.waitForURL(new RegExp(`/${projectSlug}/?$`), {
         timeout: 15_000,
       });
-      await page.goto(`/p/${projectId}/q/${shortId}`);
+      await page.goto(`/${projectSlug}/quests/${shortId}`);
       await page.waitForLoadState("domcontentloaded");
       // First make sure the quest view actually loaded — the title is
       // always rendered for a valid shortId.
@@ -467,7 +482,10 @@ test.describe("Quest", () => {
     const projectTitle = `WL${t}`.slice(0, 20);
 
     await registerAndVerify(page, email, password);
-    const projectId = await createProjectViaWizard(page, projectTitle);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
 
     // A folio to link to via the bare `[[#N]]` form.
     const folio = await apiPost<{ shortId: number }>(page, "create", {
@@ -508,7 +526,7 @@ test.describe("Quest", () => {
       },
     );
 
-    await page.goto(`/p/${projectId}/q/${host.shortId}`);
+    await page.goto(`/${projectSlug}/quests/${host.shortId}`);
     await page.waitForLoadState("networkidle");
     await expect(page.getByText(`Host${t}`).first()).toBeVisible({
       timeout: 10_000,
@@ -516,7 +534,7 @@ test.describe("Quest", () => {
 
     await test.step("folio link resolves to the folio route", async () => {
       const link = page.locator(
-        `a[href="/p/${projectId}/folios/${folio.shortId}"]`,
+        `a[href="/${projectSlug}/folios/${folio.shortId}"]`,
       );
       await expect(link).toBeVisible({ timeout: 10_000 });
       await expect(link).toHaveText(`Lore${t}`);
@@ -524,7 +542,7 @@ test.describe("Quest", () => {
 
     await test.step("quest link resolves to the quest route", async () => {
       const link = page.locator(
-        `a[href="/p/${projectId}/q/${target.shortId}"]`,
+        `a[href="/${projectSlug}/quests/${target.shortId}"]`,
       );
       await expect(link).toBeVisible();
       await expect(link).toHaveText(`Target${t}`);
@@ -548,7 +566,10 @@ test.describe("Quest", () => {
     const questTitle = `ShelveMe${t}`;
 
     await registerAndVerify(page, email, password);
-    const projectId = await createProjectViaWizard(page, projectTitle);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
 
     const { shortId } = await apiPost<{
       id: number;
@@ -565,7 +586,7 @@ test.describe("Quest", () => {
     });
 
     await test.step("shelve from the quest view", async () => {
-      await page.goto(`/p/${projectId}/q/${shortId}`);
+      await page.goto(`/${projectSlug}/quests/${shortId}`);
       await page.waitForLoadState("networkidle");
 
       await page.getByRole("button", { name: /^shelve$/i }).click();
@@ -582,7 +603,7 @@ test.describe("Quest", () => {
     });
 
     await test.step("shelved quest is gone from the default board", async () => {
-      await page.goto(`/p/${projectId}/`);
+      await page.goto(`/${projectSlug}/`);
       await page.waitForLoadState("networkidle");
       await expect(page.getByText(questTitle).first()).toBeHidden({
         timeout: 10_000,
@@ -604,14 +625,14 @@ test.describe("Quest", () => {
     });
 
     await test.step("unshelve returns it to the backlog", async () => {
-      await page.goto(`/p/${projectId}/q/${shortId}`);
+      await page.goto(`/${projectSlug}/quests/${shortId}`);
       await page.waitForLoadState("networkidle");
       await page.getByRole("button", { name: /^unshelve$/i }).click();
       await expect(page.getByRole("button", { name: /^shelve$/i })).toBeVisible(
         { timeout: 10_000 },
       );
 
-      await page.goto(`/p/${projectId}/`);
+      await page.goto(`/${projectSlug}/`);
       await page.waitForLoadState("networkidle");
       // Board filters persist per project (#113), so the "Shelved" choice
       // from the previous step is still applied — clear it before asserting
@@ -638,7 +659,10 @@ test.describe("Quest", () => {
     const questTitle = `DeleteMe${t}`;
 
     await registerAndVerify(page, email, password);
-    const projectId = await createProjectViaWizard(page, projectTitle);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
 
     await apiPost<{ id: number; shortId: number }>(page, "createQuest", {
       projectId,
@@ -651,7 +675,7 @@ test.describe("Quest", () => {
       attachments: [],
     });
 
-    await page.goto(`/p/${projectId}/`);
+    await page.goto(`/${projectSlug}/`);
     await expect(page.getByText(questTitle).first()).toBeVisible({
       timeout: 10_000,
     });
@@ -695,7 +719,10 @@ test.describe("Quest", () => {
     const projectTitle = `ZC${t}`.slice(0, 20);
 
     await registerAndVerify(page, email, password);
-    const projectId = await createProjectViaWizard(page, projectTitle);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
 
     const areaCombobox = page.getByRole("combobox", { name: "Area" });
     const areaSearch = page.getByRole("combobox", { name: "Search…" });
@@ -705,7 +732,7 @@ test.describe("Quest", () => {
       await expect(areaCombobox).toBeVisible({ timeout: 10_000 });
     };
 
-    await page.goto(`/p/${projectId}/`);
+    await page.goto(`/${projectSlug}/`);
     await openQuestForm();
 
     await test.step("Enter creates the typed area", async () => {
@@ -723,15 +750,15 @@ test.describe("Quest", () => {
     await test.step("the created area reaches the quest", async () => {
       await page.getByRole("textbox", { name: "Name" }).fill(`Q${t}`);
       await page.locator("form button[type=submit]").click();
-      await page.waitForURL(/\/p\/\d+\/q\/\d+/, { timeout: 15_000 });
-      await page.goto(`/p/${projectId}/settings/areas`);
+      await page.waitForURL(/\/quests\/\d+/, { timeout: 15_000 });
+      await page.goto(`/${projectSlug}/settings/areas`);
       await expect(page.getByRole("cell", { name: "Donjon" })).toBeVisible({
         timeout: 10_000,
       });
     });
 
     await test.step("Enter on a partial query picks the existing area", async () => {
-      await page.goto(`/p/${projectId}/`);
+      await page.goto(`/${projectSlug}/`);
       await openQuestForm();
       await areaCombobox.click();
       await areaSearch.fill("Don");
@@ -745,7 +772,7 @@ test.describe("Quest", () => {
 
   /**
    * Kanban is a view of the Quests page, not its own route
-   * (the great rename, Task 8). `/p/:id/kanban` used to render the board;
+   * (the great rename, Task 8). `/:projectSlug/kanban` used to render the board;
    * now it must not.
    */
   test("kanban is a view of the quests page, not a route", async ({ page }) => {
@@ -757,9 +784,12 @@ test.describe("Quest", () => {
     const projectTitle = `KV${t}`.slice(0, 20);
 
     await registerAndVerify(page, email, password);
-    const projectId = await createProjectViaWizard(page, projectTitle);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
 
-    await page.goto(`/p/${projectId}/`);
+    await page.goto(`/${projectSlug}/`);
     await page.getByTestId("quests-view-kanban").click();
     await expect(page.getByTestId("kanban-board")).toBeVisible({
       timeout: 10_000,
@@ -772,7 +802,7 @@ test.describe("Quest", () => {
     await expect(page.getByTestId("kanban-board")).toHaveCount(0);
 
     // The old route is gone.
-    await page.goto(`/p/${projectId}/kanban`);
+    await page.goto(`/${projectSlug}/kanban`);
     await expect(page.getByTestId("kanban-board")).toHaveCount(0);
   });
 
@@ -793,9 +823,12 @@ test.describe("Quest", () => {
     const projectTitle = `VR${t}`.slice(0, 20);
 
     await registerAndVerify(page, email, password);
-    const projectId = await createProjectViaWizard(page, projectTitle);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
 
-    await page.goto(`/p/${projectId}/`);
+    await page.goto(`/${projectSlug}/`);
     await expect(page.getByTestId("quests-table")).toBeVisible({
       timeout: 10_000,
     });
@@ -822,14 +855,14 @@ test.describe("Quest", () => {
         timeout: 10_000,
       });
 
-      await page.goto(`/p/${projectId}/`);
+      await page.goto(`/${projectSlug}/`);
       await expect(page.getByTestId("kanban-board")).toBeVisible({
         timeout: 10_000,
       });
     });
 
     // #156. The board used to trap the project on itself: the seeding
-    // effect that put `?view=kanban` back on a bare `/p/:id/` also fired on
+    // effect that put `?view=kanban` back on a bare `/:projectSlug/` also fired on
     // the OUTGOING render of a navigation away — `useRouterState` is a
     // global store, so the leaving page saw the next route's empty query
     // and pushed straight back. Every sidebar link was dead while the board
@@ -841,25 +874,25 @@ test.describe("Quest", () => {
         timeout: 10_000,
       });
 
-      await page.locator(`a[href="/p/${projectId}/folios"]`).first().click();
-      await page.waitForURL(`**/p/${projectId}/folios`, { timeout: 15_000 });
+      await page.locator(`a[href="/${projectSlug}/folios"]`).first().click();
+      await page.waitForURL(`**/${projectSlug}/folios`, { timeout: 15_000 });
       await page.waitForTimeout(1_500);
-      expect(new URL(page.url()).pathname).toBe(`/p/${projectId}/folios`);
+      expect(new URL(page.url()).pathname).toBe(`/${projectSlug}/folios`);
 
       // The Settings entry points at the layout's default child, hence the
       // prefix match rather than an exact href.
-      await page.locator(`a[href^="/p/${projectId}/settings"]`).first().click();
-      await page.waitForURL(`**/p/${projectId}/settings**`, {
+      await page.locator(`a[href^="/${projectSlug}/settings"]`).first().click();
+      await page.waitForURL(`**/${projectSlug}/settings**`, {
         timeout: 15_000,
       });
       await page.waitForTimeout(1_500);
       expect(new URL(page.url()).pathname).toContain(
-        `/p/${projectId}/settings`,
+        `/${projectSlug}/settings`,
       );
     });
 
     await test.step("back on the board for the layout checks", async () => {
-      await page.goto(`/p/${projectId}/`);
+      await page.goto(`/${projectSlug}/`);
       await expect(page.getByTestId("kanban-board")).toBeVisible({
         timeout: 10_000,
       });
@@ -881,7 +914,7 @@ test.describe("Quest", () => {
       // and goes full width). Being outside the branch is what buys that, on
       // whichever axis — anything rendered from inside a branch is necessarily
       // right of, and below, the quest log.
-      await page.goto(`/p/${projectId}/`);
+      await page.goto(`/${projectSlug}/`);
       await expect(page.getByTestId("quests-table")).toBeVisible({
         timeout: 10_000,
       });
@@ -904,7 +937,7 @@ test.describe("Quest", () => {
 
       // And it survives opening a quest: the log is shown on the detail
       // route too, so a bar that vanished there would slide the log up.
-      await page.goto(`/p/${projectId}/`);
+      await page.goto(`/${projectSlug}/`);
       const { shortId } = await apiPost<{ shortId: number }>(
         page,
         "createQuest",
@@ -919,7 +952,7 @@ test.describe("Quest", () => {
           attachments: [],
         },
       );
-      await page.goto(`/p/${projectId}/q/${shortId}`);
+      await page.goto(`/${projectSlug}/quests/${shortId}`);
       await expect(page.getByTestId("quest-log")).toBeVisible({
         timeout: 10_000,
       });
@@ -932,7 +965,7 @@ test.describe("Quest", () => {
 
     await test.step("the view bar disappears when kanban is off", async () => {
       await setProjectFeature(page, projectId, "kanban", false);
-      await page.goto(`/p/${projectId}/`);
+      await page.goto(`/${projectSlug}/`);
       await expect(page.getByTestId("quests-table")).toBeVisible({
         timeout: 10_000,
       });
@@ -957,7 +990,10 @@ test.describe("Quest", () => {
     const questTitle = `RowShelveMe${t}`;
 
     await registerAndVerify(page, email, password);
-    const projectId = await createProjectViaWizard(page, projectTitle);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
 
     await apiPost(page, "createQuest", {
       projectId,
@@ -970,7 +1006,7 @@ test.describe("Quest", () => {
       attachments: [],
     });
 
-    await page.goto(`/p/${projectId}/`);
+    await page.goto(`/${projectSlug}/`);
     await expect(page.getByText(questTitle).first()).toBeVisible({
       timeout: 10_000,
     });

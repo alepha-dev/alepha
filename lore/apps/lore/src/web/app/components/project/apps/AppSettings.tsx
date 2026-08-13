@@ -125,7 +125,7 @@ const AppSettings = () => {
       // 404 on the next load. The enrolment page is where an operator goes
       // next anyway.
       await router.push("projectSettingsSigils", {
-        params: { projectId: String(project.id) },
+        params: { projectSlug: project.slug },
       });
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));

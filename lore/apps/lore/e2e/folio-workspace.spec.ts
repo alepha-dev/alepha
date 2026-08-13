@@ -10,12 +10,12 @@ import {
 
 /**
  * The three-pane folio workspace — the always-editable surface at
- * `/p/:projectId/folios/:shortId` that replaced the old split between a
+ * `/:projectSlug/folios/:shortId` that replaced the old split between a
  * read-only `FolioView` and a separate `/edit` route (deleted, not
  * redirected).
  *
  * Distinct from `folios.spec.ts`, which covers `FolioBrowser`, the
- * file-manager surface at `/p/:projectId/folios`. Everything here is
+ * file-manager surface at `/:projectSlug/folios`. Everything here is
  * inside one open folio.
  *
  * Coverage:
@@ -45,6 +45,7 @@ test.describe("Folio workspace", () => {
 
   let page: Page;
   let projectId: number;
+  let projectSlug: string;
   const stamp = Date.now();
   const folioTitle = `Ward-${stamp}`.slice(0, 24);
   const otherTitle = `Link-${stamp}`.slice(0, 24);
@@ -76,7 +77,7 @@ test.describe("Folio workspace", () => {
       content: content ?? "",
       projectId,
     });
-    return `/p/${projectId}/folios/${folio.shortId}`;
+    return `/${projectSlug}/folios/${folio.shortId}`;
   };
 
   const inspector = () => page.locator('[data-slot="folio-inspector"]');
@@ -87,7 +88,10 @@ test.describe("Folio workspace", () => {
     const ctx = await browser.newContext({ baseURL });
     page = await ctx.newPage();
     await registerAndVerify(page, `ws-${stamp}@example.com`, "GoodPassw0rd");
-    projectId = await createProjectViaWizard(page, `WS${stamp}`.slice(0, 20));
+    ({ id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      `WS${stamp}`.slice(0, 20),
+    ));
     folioUrl = await createFolio(folioTitle, body);
   });
 
@@ -332,7 +336,7 @@ test.describe("Folio workspace", () => {
   });
 
   test("09 — /folios opens with nothing selected", async () => {
-    await page.goto(`/p/${projectId}/folios`);
+    await page.goto(`/${projectSlug}/folios`);
     await expect(page.locator('[data-slot="folio-tree"]')).toBeVisible({
       timeout: 15_000,
     });
@@ -384,7 +388,7 @@ test.describe("Folio workspace", () => {
   });
 
   test("09b — the empty-state menubar keeps its shape, only its enablement changes", async () => {
-    await page.goto(`/p/${projectId}/folios`);
+    await page.goto(`/${projectSlug}/folios`);
     await expect(page.locator('[data-slot="folio-menubar"]')).toBeVisible({
       timeout: 15_000,
     });
@@ -433,7 +437,7 @@ test.describe("Folio workspace", () => {
   });
 
   test("09c — New directory works from the empty-state menubar", async () => {
-    await page.goto(`/p/${projectId}/folios`);
+    await page.goto(`/${projectSlug}/folios`);
     await expect(page.locator('[data-slot="folio-tree"]')).toBeVisible({
       timeout: 15_000,
     });
@@ -454,7 +458,7 @@ test.describe("Folio workspace", () => {
   });
 
   test("10 — the tree's New folio button starts a folio", async () => {
-    await page.goto(`/p/${projectId}/folios`);
+    await page.goto(`/${projectSlug}/folios`);
     await expect(page.locator('[data-slot="folio-tree"]')).toBeVisible({
       timeout: 15_000,
     });
@@ -464,7 +468,7 @@ test.describe("Folio workspace", () => {
       .click();
     // The tree creates the row and navigates straight into it, ready to be
     // renamed — so the editor is mounted and the chrome is back.
-    await page.waitForURL(new RegExp(`/p/${projectId}/folios/\\d+`), {
+    await page.waitForURL(new RegExp(`/${projectSlug}/folios/\\d+`), {
       timeout: 20_000,
     });
     await expect(
@@ -478,7 +482,7 @@ test.describe("Folio workspace", () => {
     // shared state, and the one thing this test must be sure of is WHICH
     // directory the bytes landed in.
     const dropDirName = `Drop-${stamp}`.slice(0, 24);
-    await page.goto(`/p/${projectId}/folios`);
+    await page.goto(`/${projectSlug}/folios`);
     const created = await page.evaluate(
       async ({ pid, name }) => {
         const r = await fetch(`/api/projects/${pid}/folio/directories`, {
@@ -584,7 +588,7 @@ test.describe("Folio workspace", () => {
     // and the hover card both read.
     await expect(links.first()).toHaveAttribute(
       "data-wiki-href",
-      new RegExp(`^/p/${projectId}/folios/\\d+$`),
+      new RegExp(`^/${projectSlug}/folios/\\d+$`),
     );
 
     const brokenLink = page.locator(".lore-mdx-content .lore-wikilink-broken");

@@ -128,7 +128,7 @@ const ProjectView = () => {
     return null;
   }
 
-  const projectId = String(project.id);
+  const projectSlug = project.slug;
 
   const features: ProjectFeatures = {
     ...defaultProjectFeatures,
@@ -143,7 +143,7 @@ const ProjectView = () => {
   const selectView = (view: QuestsView) => {
     setQuestsView({ view });
     if (name !== "projectQuests") {
-      router.push("projectQuests", { params: { projectId } });
+      router.push("projectQuests", { params: { projectSlug } });
     }
   };
 
@@ -157,7 +157,7 @@ const ProjectView = () => {
     {
       label: tr("project.menu.quests"),
       icon: Grid3x2,
-      href: router.path("projectQuests", { params: { projectId } }),
+      href: router.path("projectQuests", { params: { projectSlug } }),
       active: name === "projectQuests" || name === "project",
       badge: questCount?.count ? questCount.count : undefined,
     },
@@ -181,7 +181,7 @@ const ProjectView = () => {
     workItems.push({
       label: tr("project.menu.blights"),
       icon: Bug,
-      href: router.path("projectBlights", { params: { projectId } }),
+      href: router.path("projectBlights", { params: { projectSlug } }),
       active: name === "projectBlights",
       badge: blightCount?.count ? blightCount.count : undefined,
     });
@@ -190,7 +190,7 @@ const ProjectView = () => {
     workItems.push({
       label: tr("project.menu.feedback"),
       icon: Inbox,
-      href: router.path("projectFeedback", { params: { projectId } }),
+      href: router.path("projectFeedback", { params: { projectSlug } }),
       active: name === "projectFeedback",
       badge: feedbackCount?.count ? feedbackCount.count : undefined,
     });
@@ -199,7 +199,7 @@ const ProjectView = () => {
     workItems.push({
       label: tr("project.menu.milestones"),
       icon: Flag,
-      href: router.path("projectMilestones", { params: { projectId } }),
+      href: router.path("projectMilestones", { params: { projectSlug } }),
       active: name === "projectMilestones",
     });
   }
@@ -209,14 +209,14 @@ const ProjectView = () => {
     knowledgeItems.push({
       label: tr("project.menu.folios"),
       icon: BookOpen,
-      href: router.path("projectFolios", { params: { projectId } }),
+      href: router.path("projectFolios", { params: { projectSlug } }),
       active: name.startsWith("projectFolios"),
     });
   }
   knowledgeItems.push({
     label: tr("project.menu.reports"),
     icon: BarChart3,
-    href: router.path("projectReports", { params: { projectId } }),
+    href: router.path("projectReports", { params: { projectSlug } }),
     active: name === "projectReports" || name.startsWith("reports"),
   });
 
@@ -253,14 +253,14 @@ const ProjectView = () => {
                 label: tr("project.menu.apps.unavailable"),
                 icon: TriangleAlert,
                 href: router.path("projectSettingsSigils", {
-                  params: { projectId },
+                  params: { projectSlug },
                 }),
               },
             ]
           : apps.map((it) => ({
               label: it.name,
               href: router.path("app", {
-                params: { projectId, appName: it.name },
+                params: { projectSlug, appName: it.name },
               }),
               active: activeAppName === it.name,
             })),
@@ -277,7 +277,9 @@ const ProjectView = () => {
         {
           label: tr("project.menu.settings"),
           icon: Cog,
-          href: router.path("projectSettingsBanner", { params: { projectId } }),
+          href: router.path("projectSettingsBanner", {
+            params: { projectSlug },
+          }),
           active: name.startsWith("projectSettings"),
         },
       ],
@@ -323,7 +325,7 @@ const ProjectView = () => {
   const breadcrumbs: { label: string; href?: string }[] = [
     {
       label: project.title,
-      href: router.path("project", { params: { projectId } }),
+      href: router.path("project", { params: { projectSlug } }),
     },
   ];
   // Kanban is a view of `projectQuests`, not its own section anymore
@@ -335,7 +337,7 @@ const ProjectView = () => {
     // the folio root so the user can climb out of a deep folio with
     // one click.
     const sectionHref = name.startsWith("projectFolios")
-      ? router.path("projectFolios", { params: { projectId } })
+      ? router.path("projectFolios", { params: { projectSlug } })
       : undefined;
     breadcrumbs.push({
       label: tr(sectionKey as never),
@@ -348,7 +350,7 @@ const ProjectView = () => {
     breadcrumbs.push({
       label: sigil.name,
       href: router.path("app", {
-        params: { projectId, appName: sigil.name },
+        params: { projectSlug, appName: sigil.name },
       }),
     });
   }
@@ -361,7 +363,7 @@ const ProjectView = () => {
         label: segment.name,
         href:
           segment.shortId !== undefined
-            ? `${router.path("projectFolios", { params: { projectId } })}?dir=${segment.shortId}`
+            ? `${router.path("projectFolios", { params: { projectSlug } })}?dir=${segment.shortId}`
             : undefined,
       });
     }

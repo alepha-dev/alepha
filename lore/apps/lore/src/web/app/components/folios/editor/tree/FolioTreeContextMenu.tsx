@@ -27,7 +27,7 @@ import type { FolioTreeState } from "./useFolioTreeModel.ts";
 export interface FolioTreeContextMenuProps {
   node: FolioTreeNode;
   tree: FolioTreeState;
-  projectIdStr: string;
+  projectSlug: string;
 }
 
 /**
@@ -69,13 +69,13 @@ const FolioTreeContextMenu = (
 
   const hrefFor = (): string =>
     isDirectory
-      ? `${router.path("projectFolios", { params: { projectId: props.projectIdStr } })}?dir=${node.shortId}`
+      ? `${router.path("projectFolios", { params: { projectSlug: props.projectSlug } })}?dir=${node.shortId}`
       : node.kind === "blob"
         ? // Bytes, not a page. The framework's file route sets the content
           // type, so the browser previews an image and downloads the rest.
           `/api/files/${node.id}`
         : router.path("projectFoliosFolio", {
-            params: { projectId: props.projectIdStr, shortId: node.shortId },
+            params: { projectSlug: props.projectSlug, shortId: node.shortId },
           });
 
   const handleOpen = (): void => {

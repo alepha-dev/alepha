@@ -108,7 +108,7 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
 
   useFolioShortcuts(props.actions.handlers, props.actions.actionState);
 
-  const wikiLinks = useWikiLinkEditorContext(project?.id);
+  const wikiLinks = useWikiLinkEditorContext(project?.id, project?.slug);
   // The hover card resolves a blob preview from a precomputed list rather
   // than a fetch, so it needs the same rows the resolver got.
   const hoverBlobs = useMemo(
@@ -209,7 +209,11 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
         // `a[href]` and `[data-wiki-href]`, so one component serves the
         // rewritten markdown of `MarkdownView` and the decorated tokens of
         // the editor without either knowing about the other.
-        <WikiLinkHoverProvider projectId={project?.id ?? 0} blobs={hoverBlobs}>
+        <WikiLinkHoverProvider
+          projectId={project?.id ?? 0}
+          projectSlug={project?.slug ?? ""}
+          blobs={hoverBlobs}
+        >
           <MarkdownEditor
             value={values.content}
             onChange={(v) => props.draft.form.input.content.set(v)}

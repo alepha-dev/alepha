@@ -325,6 +325,13 @@ export default {
   "project.update.preferredLanguage.label": "Preferred Language",
   "project.update.preferredLanguage.helper":
     "Language AI agents should use for generated content (quests, folios). Doesn't change your UI language — that stays in your profile.",
+  "project.update.slug.preview": "URL: /$1",
+  "project.update.slug.taken": "That name is already taken.",
+  "project.update.rename.title": "Rename this project?",
+  "project.update.rename.description":
+    "The project URL changes from /$1 to /$2. Bookmarks, shared links and anything else pointing at the old address will stop working, and the old name becomes available for someone else to take.",
+  "project.update.rename.confirm": "Rename",
+  "project.update.rename.cancel": "Keep current name",
   "project.create.submit": "Create Project",
   "project.create.step.name": "Name your project",
   "project.create.step.logo": "Add a logo",

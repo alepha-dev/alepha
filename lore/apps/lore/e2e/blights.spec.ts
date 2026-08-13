@@ -33,7 +33,10 @@ test.describe("Blights", () => {
     const projectTitle = `BL${t}`.slice(0, 20);
 
     await registerAndVerify(page, email, "BlightTest123!");
-    const projectId = await createProjectViaWizard(page, projectTitle);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
 
     // `projectBlights` is gated on `features.sigils`, not a `blights` flag —
     // `features.blights` is `@deprecated` (Task 3: zero readers, zero
@@ -44,7 +47,7 @@ test.describe("Blights", () => {
     // turn a transient `listSigils` failure into a 404 on a deep link.
     await setProjectFeature(page, projectId, "sigils");
 
-    await page.goto(`/p/${projectId}/blights`);
+    await page.goto(`/${projectSlug}/blights`);
     await page.waitForLoadState("networkidle");
 
     // Inbox chrome renders (status filter defaults to "Open"; the empty-state

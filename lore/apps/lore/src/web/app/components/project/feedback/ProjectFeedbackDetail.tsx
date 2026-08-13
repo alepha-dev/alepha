@@ -190,7 +190,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
                     <a
                       href={router.path("projectQuest", {
                         params: {
-                          projectId: String(project.id),
+                          projectSlug: project.slug,
                           shortId: String(q.shortId),
                         },
                       })}

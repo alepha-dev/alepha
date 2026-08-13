@@ -1,5 +1,5 @@
 import { $atom, z } from "alepha";
-import { projects } from "@/api/entities/projects.ts";
+import { projectResourceSchema } from "@/api/schemas/projectResourceSchema.ts";
 
 /**
  * Home/AppShell bootstrap data: every project the user is a member of, plus
@@ -25,7 +25,7 @@ export const userProjectsAtom = $atom({
   name: "lor.user.projects",
   schema: z
     .object({
-      projects: z.array(projects.schema),
+      projects: z.array(projectResourceSchema),
       totalCount: z.integer(),
       ownedCount: z.integer(),
       maxProjects: z.integer(),

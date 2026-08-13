@@ -107,7 +107,7 @@ const ProjectCreate = () => {
       alepha.store.set(userProjectsAtom, await client.getHomeOverview());
 
       await router.push("project", {
-        params: { projectId: String(project.id) },
+        params: { projectSlug: project.slug },
         meta: { firstOpen: true },
       });
     },

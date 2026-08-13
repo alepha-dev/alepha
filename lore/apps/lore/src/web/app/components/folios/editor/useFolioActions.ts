@@ -232,7 +232,7 @@ export const useFolioActions = (
   const [project] = useStore(currentProjectAtom);
   const [folios, setFolios] = useStore(userFoliosAtom);
   const [tags, setTags] = useStore(folioTagsAtom);
-  const projectId = project ? String(project.id) : "";
+  const projectSlug = project ? project.slug : "";
 
   // Seeded once from the loader-provided `folio` prop. Safe as an
   // INITIALIZER only because `FolioWorkspace` remounts this whole subtree
@@ -618,14 +618,14 @@ export const useFolioActions = (
       }
       await router.push(
         router.path("projectFoliosFolio", {
-          params: { projectId, shortId: saved.shortId },
+          params: { projectSlug, shortId: saved.shortId },
         }),
       );
     }
   };
 
   const saveAction = useAction(
-    { handler: save, invalidates: [["folioTree", projectId]] },
+    { handler: save, invalidates: [["folioTree", projectSlug]] },
     [
       isProtected,
       locked,
@@ -641,7 +641,7 @@ export const useFolioActions = (
       setTags,
       alepha,
       router,
-      projectId,
+      projectSlug,
       tr,
       toaster,
       cryptoProvider,
@@ -711,11 +711,11 @@ export const useFolioActions = (
         setTags([...merged].sort());
         await router.push(
           router.path("projectFoliosFolio", {
-            params: { projectId, shortId: created.shortId },
+            params: { projectSlug, shortId: created.shortId },
           }),
         );
       },
-      invalidates: [["folioTree", projectId]],
+      invalidates: [["folioTree", projectSlug]],
     },
     [
       input.folio,
@@ -732,7 +732,7 @@ export const useFolioActions = (
       setTags,
       alepha,
       router,
-      projectId,
+      projectSlug,
       tr,
       toaster,
       cryptoProvider,
@@ -755,9 +755,9 @@ export const useFolioActions = (
           folios.map((f) => (f.id === updated.id ? { ...f, ...updated } : f)),
         );
       },
-      invalidates: [["folioTree", projectId]],
+      invalidates: [["folioTree", projectSlug]],
     },
-    [input.folio, isPinned, folioApi, folios, setFolios, alepha, projectId],
+    [input.folio, isPinned, folioApi, folios, setFolios, alepha, projectSlug],
   );
 
   const deleteAction = useAction(
@@ -773,10 +773,10 @@ export const useFolioActions = (
         setTags([...remainingTags].sort());
         alepha.store.set(currentFolioAtom, undefined);
         await router.push(
-          router.path("projectFolios", { params: { projectId } }),
+          router.path("projectFolios", { params: { projectSlug } }),
         );
       },
-      invalidates: [["folioTree", projectId]],
+      invalidates: [["folioTree", projectSlug]],
     },
     [
       input.folio,
@@ -785,7 +785,7 @@ export const useFolioActions = (
       setTags,
       alepha,
       router,
-      projectId,
+      projectSlug,
       folioApi,
     ],
   );
@@ -831,7 +831,7 @@ export const useFolioActions = (
         );
         input.draft.markSaved(updated.updatedAt, values);
       },
-      invalidates: [["folioTree", projectId]],
+      invalidates: [["folioTree", projectSlug]],
     },
     [
       input.folio,
@@ -843,12 +843,12 @@ export const useFolioActions = (
       folios,
       setFolios,
       alepha,
-      projectId,
+      projectSlug,
     ],
   );
 
   // `useAction`-wrapped (unlike the brief's given shape) so a failure gets
-  // `["folioTree", projectId]` invalidation and the same `react:action:error`
+  // `["folioTree", projectSlug]` invalidation and the same `react:action:error`
   // event every other mutation here emits, instead of an unhandled
   // rejection. The try/catch stays INSIDE the handler and always returns a
   // string, never throws: `confirmEncrypt`'s contract
@@ -900,7 +900,7 @@ export const useFolioActions = (
           return tr("folios.protected.encrypt-failed");
         }
       },
-      invalidates: [["folioTree", projectId]],
+      invalidates: [["folioTree", projectSlug]],
     },
     [
       input.folio,
@@ -910,7 +910,7 @@ export const useFolioActions = (
       folios,
       setFolios,
       alepha,
-      projectId,
+      projectSlug,
       tr,
     ],
   );
@@ -942,9 +942,9 @@ export const useFolioActions = (
         setCurrentDirectoryId(directoryId ?? undefined);
         setMoveDialogOpen(false);
       },
-      invalidates: [["folioTree", projectId]],
+      invalidates: [["folioTree", projectSlug]],
     },
-    [input.folio, folioApi, folios, setFolios, alepha, projectId],
+    [input.folio, folioApi, folios, setFolios, alepha, projectSlug],
   );
 
   const confirmMove = async (directoryId: string | null): Promise<void> => {
@@ -997,7 +997,7 @@ export const useFolioActions = (
   const handlers: FolioActionHandlers = {
     "folio.new": () => {
       if (!project) return;
-      router.push(router.path("projectFoliosNew", { params: { projectId } }));
+      router.push(router.path("projectFoliosNew", { params: { projectSlug } }));
     },
     "folio.newDirectory": notYetWired,
     "folio.save": () => {

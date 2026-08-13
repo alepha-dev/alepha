@@ -1,9 +1,11 @@
 import { CardContent } from "@alepha/ui/components/ui/card";
+import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { ChevronRight } from "lucide-react";
 import type { SigilResource } from "@/api/controllers/SigilController.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
+import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface ProjectSettingsSigilRowProps {
@@ -21,6 +23,10 @@ export interface ProjectSettingsSigilRowProps {
 const ProjectSettingsSigilRow = (props: ProjectSettingsSigilRowProps) => {
   const { tr, l } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
+  // The sigil row carries the project's integer id, but the app page is
+  // addressed by slug. The row only ever renders inside the project layout,
+  // which is what fills this atom.
+  const [project] = useStore(currentProjectAtom);
   const sigil = props.sigil;
 
   return (
@@ -36,7 +42,7 @@ const ProjectSettingsSigilRow = (props: ProjectSettingsSigilRowProps) => {
       <Link
         href={router.path("app", {
           params: {
-            projectId: String(sigil.projectId),
+            projectSlug: project?.slug ?? "",
             appName: sigil.name,
           },
         })}

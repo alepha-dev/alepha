@@ -16,7 +16,7 @@ import { Loader2 } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 import type { KanbanController } from "@/api/controllers/KanbanController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
-import type { Project } from "@/api/entities/projects.ts";
+import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { currentAssignedQuestsAtom } from "../../atoms/currentAssignedQuestsAtom.ts";
 import {
@@ -41,7 +41,7 @@ const SUB_COLUMN_DOTS = [
 ];
 
 export interface KanbanBoardProps {
-  project: Project;
+  project: ProjectResource;
   quests: QuestResource[];
 }
 

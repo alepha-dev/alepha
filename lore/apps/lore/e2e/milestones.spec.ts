@@ -27,10 +27,13 @@ test.describe("Milestones", () => {
     const projectTitle = `MC${t}`.slice(0, 20);
 
     await registerAndVerify(page, email, password);
-    const projectId = await createProjectViaWizard(page, projectTitle);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
 
     await test.step("empty state names what is not being recorded", async () => {
-      await page.goto(`/p/${projectId}/milestones`);
+      await page.goto(`/${projectSlug}/milestones`);
       await page.waitForLoadState("networkidle");
 
       await expect(
@@ -165,7 +168,7 @@ test.describe("Milestones", () => {
       await expect(dialog).toBeHidden({ timeout: 15_000 });
 
       // The folio lands in the project root, titled after the milestone.
-      await page.goto(`/p/${projectId}/folios`);
+      await page.goto(`/${projectSlug}/folios`);
       await page.waitForLoadState("networkidle");
       await expect(page.getByText(/Milestone #1 —/).first()).toBeVisible({
         timeout: 15_000,

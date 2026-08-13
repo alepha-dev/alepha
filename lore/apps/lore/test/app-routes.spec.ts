@@ -1,6 +1,11 @@
 import { Alepha } from "alepha";
-import { AlephaReactRouter, ReactRouter } from "alepha/react/router";
+import {
+  AlephaReactRouter,
+  ReactPageProvider,
+  ReactRouter,
+} from "alepha/react/router";
 import { afterEach, beforeEach, describe, it } from "vitest";
+import { ProjectSlugService } from "../src/api/services/ProjectSlugService.ts";
 import { AppRouter } from "../src/web/app/AppRouter.ts";
 
 /**
@@ -73,6 +78,7 @@ const NAV_ROUTE_NAMES = [
 describe("AppRouter route table", () => {
   let alepha: Alepha;
   let router: ReactRouter<AppRouter>;
+  let slugs: ProjectSlugService;
 
   beforeEach(async () => {
     alepha = Alepha.create({
@@ -80,6 +86,8 @@ describe("AppRouter route table", () => {
     });
     alepha.with(AlephaReactRouter);
     alepha.inject(AppRouter);
+    // Injected before `start()` — the container locks afterwards.
+    slugs = alepha.inject(ProjectSlugService);
     router = alepha.inject(ReactRouter);
     await alepha.start();
   });
@@ -91,17 +99,30 @@ describe("AppRouter route table", () => {
   const appName = "lore-staging";
 
   it("resolves the per-app page and each of its tabs", ({ expect }) => {
-    const params = { projectId: "7", appName };
+    const params = { projectSlug: "sds", appName };
 
-    expect(router.path("app", { params })).toBe(`/p/7/apps/${appName}/`);
+    expect(router.path("app", { params })).toBe(`/sds/apps/${appName}/`);
     expect(router.path("appAnalytics", { params })).toBe(
-      `/p/7/apps/${appName}/analytics`,
+      `/sds/apps/${appName}/analytics`,
     );
     expect(router.path("appPerformance", { params })).toBe(
-      `/p/7/apps/${appName}/performance`,
+      `/sds/apps/${appName}/performance`,
     );
     expect(router.path("appSettings", { params })).toBe(
-      `/p/7/apps/${appName}/settings`,
+      `/sds/apps/${appName}/settings`,
+    );
+  });
+
+  it("puts quests under /quests and drops the /p prefix", ({ expect }) => {
+    const params = { projectSlug: "sds", shortId: "19" };
+
+    expect(router.path("project", { params })).toBe("/sds");
+    expect(router.path("projectQuest", { params })).toBe("/sds/quests/19");
+    expect(router.path("projectQuestGraph", { params })).toBe(
+      "/sds/quests/19/graph",
+    );
+    expect(router.path("projectFeedbackRequest", { params })).toBe(
+      "/sds/request",
     );
   });
 
@@ -109,13 +130,52 @@ describe("AppRouter route table", () => {
     // A superset of the params any of these routes declares, so a surviving
     // `:segment` in the result means the route's shape changed — not that this
     // test forgot to supply something.
-    const params = { projectId: "7", appName, shortId: "3" };
+    const params = { projectSlug: "sds", appName, shortId: "3" };
 
     for (const name of NAV_ROUTE_NAMES) {
       const path = router.path(name, { params });
       expect(path, `${name} should resolve`).toBeTruthy();
       expect(path, `${name} left an unresolved param`).not.toContain(":");
     }
+  });
+
+  /**
+   * The invariant a root-level `/:projectSlug` creates.
+   *
+   * Every static first segment in the route table is a name a project could
+   * otherwise claim as its slug — `ProjectSlugService.reserved` is what stops
+   * that. Adding a root route later without adding its segment there lets a
+   * project shadow it: the router tries static children first, so the ROUTE
+   * still wins and it is the project that becomes unreachable, silently, for
+   * whoever picked that name.
+   *
+   * This resolves the real route table rather than restating it, so a new
+   * root-level page fails here rather than in production.
+   */
+  it("reserves every static root segment against project slugs", ({
+    expect,
+  }) => {
+    const pageApi = alepha.inject(ReactPageProvider);
+    const params = { projectSlug: "sds", appName, shortId: "3" };
+
+    const unreserved = new Set<string>();
+    for (const page of pageApi.getPages()) {
+      const path = pageApi.pathname(page.name, { params });
+      const first = path.split("/").filter(Boolean)[0];
+      // Skip the project subtree itself (it resolves to the sample slug) and
+      // the wildcard catch-all.
+      if (!first || first === "sds" || first.startsWith("*")) {
+        continue;
+      }
+      if (!slugs.isReserved(first)) {
+        unreserved.add(first);
+      }
+    }
+
+    expect(
+      [...unreserved].sort(),
+      "add these to ProjectSlugService.reserved, or a project can claim them",
+    ).toEqual([]);
   });
 
   it("has no project-level Insights route left", ({ expect }) => {

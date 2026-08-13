@@ -85,7 +85,7 @@ export type WikiLinkTarget =
     };
 
 export interface FolioWikiLinkResolverInput {
-  projectId: number;
+  projectSlug: string;
   folios: Folio[];
   quests: QuestRef[];
   directories?: DirectoryRef[];
@@ -156,7 +156,7 @@ export const formatBlobBytes = (bytes: number): string => {
 export const createFolioWikiLinkResolver = (
   input: FolioWikiLinkResolverInput,
 ): FolioWikiLinkResolver => {
-  const { projectId, folios, quests } = input;
+  const { projectSlug, folios, quests } = input;
   const directories = input.directories ?? [];
   const blobs = input.blobs ?? [];
 
@@ -292,7 +292,7 @@ export const createFolioWikiLinkResolver = (
       }
       return {
         kind: "quest",
-        href: `/p/${projectId}/q/${quest.shortId}`,
+        href: `/${projectSlug}/quests/${quest.shortId}`,
         label: quest.title,
       };
     }
@@ -334,8 +334,8 @@ export const createFolioWikiLinkResolver = (
     // Folio detail lives under `/folios/:shortId` — keep this in sync with
     // AppRouter.
     const href = anchor
-      ? `/p/${projectId}/folios/${folio.shortId}#${slugifyAnchor(anchor)}`
-      : `/p/${projectId}/folios/${folio.shortId}`;
+      ? `/${projectSlug}/folios/${folio.shortId}#${slugifyAnchor(anchor)}`
+      : `/${projectSlug}/folios/${folio.shortId}`;
     return {
       kind: "folio",
       href,

@@ -46,7 +46,10 @@ test.describe("Protected folio", () => {
     const folioBody = `LOOTBAG-${t} — known-good marker for round-trip assertion`;
 
     await registerAndVerify(page, email, password);
-    const projectId = await createProjectViaWizard(page, projectTitle);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
 
     await test.step("create a clear folio via the editor", async () => {
       // Navigate via SPA — direct `page.goto('/folios/new')` from the
@@ -57,7 +60,7 @@ test.describe("Protected folio", () => {
         .getByRole("link", { name: /^folios$/i })
         .first()
         .click();
-      await page.waitForURL(new RegExp(`/p/${projectId}/folios`), {
+      await page.waitForURL(new RegExp(`/${projectSlug}/folios`), {
         timeout: 15_000,
       });
       // `/folios` opens the workspace with nothing selected — the directory
@@ -81,7 +84,7 @@ test.describe("Protected folio", () => {
       // No encryption toggle any more — save as a clear folio, land on
       // its view.
       await page.getByRole("button", { name: /^save$/i }).click();
-      await page.waitForURL(new RegExp(`/p/${projectId}/folios/\\d+`), {
+      await page.waitForURL(new RegExp(`/${projectSlug}/folios/\\d+`), {
         timeout: 30_000,
       });
     });

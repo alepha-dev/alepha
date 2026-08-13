@@ -328,6 +328,13 @@ export default {
   "project.update.preferredLanguage.label": "Langue préférée",
   "project.update.preferredLanguage.helper":
     "Langue que les agents IA doivent utiliser pour le contenu généré (quêtes, folios). Ne change pas votre langue d'interface — celle-ci reste dans votre profil.",
+  "project.update.slug.preview": "URL : /$1",
+  "project.update.slug.taken": "Ce nom est déjà pris.",
+  "project.update.rename.title": "Renommer ce projet ?",
+  "project.update.rename.description":
+    "L'URL du projet passe de /$1 à /$2. Les favoris, les liens partagés et tout ce qui pointe vers l'ancienne adresse cesseront de fonctionner, et l'ancien nom redevient disponible pour quelqu'un d'autre.",
+  "project.update.rename.confirm": "Renommer",
+  "project.update.rename.cancel": "Garder le nom actuel",
   "project.create.submit": "Lancer le projet",
   "project.create.step.name": "Nommez votre projet",
   "project.create.step.logo": "Ajouter un logo",

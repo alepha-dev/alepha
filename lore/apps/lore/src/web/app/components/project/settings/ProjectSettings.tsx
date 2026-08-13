@@ -125,7 +125,7 @@ const ProjectSettings = () => {
     return null;
   }
 
-  const projectId = String(project.id);
+  const projectSlug = project.slug;
   const activeRoute = routerState.name ?? "";
 
   return (
@@ -146,7 +146,7 @@ const ProjectSettings = () => {
                 const Icon = item.icon;
                 const isActive = activeRoute === item.route;
                 const href = router.path(item.route, {
-                  params: { projectId },
+                  params: { projectSlug },
                 });
                 return (
                   <Link

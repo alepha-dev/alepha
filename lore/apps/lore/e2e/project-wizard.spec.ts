@@ -54,10 +54,18 @@ test.describe("Project wizard — feature toggles", () => {
 
     // Submit.
     await page.getByRole("button", { name: /create project/i }).click();
-    await page.waitForURL(/\/p\/\d+/, { timeout: 15_000 });
-    const match = page.url().match(/\/p\/(\d+)/);
-    expect(match).not.toBeNull();
-    const projectId = match![1];
+    // Lands on `/<slug>`. Matched with a predicate rather than a regex —
+    // `/new-project`, the page being left, is also a single root segment.
+    await page.waitForURL(
+      (url) =>
+        url.pathname !== "/new-project" &&
+        url.pathname.split("/").filter(Boolean).length === 1,
+      { timeout: 15_000 },
+    );
+    const projectSlug = new URL(page.url()).pathname
+      .split("/")
+      .filter(Boolean)[0];
+    expect(projectSlug).toBeTruthy();
 
     // ProjectView's sidebar gates the Milestones entry on the matching
     // feature flag. If the toggle persisted as `false`, the link should
@@ -81,7 +89,7 @@ test.describe("Project wizard — feature toggles", () => {
     // sidebar entry (the great rename, Task 8) — there is no sidebar link
     // whose absence would prove the toggle persisted. The UI's only other
     // observable surface for the flag is the settings sub-page switch.
-    await page.goto(`/p/${projectId}/settings/kanban`);
+    await page.goto(`/${projectSlug}/settings/kanban`);
     await page.waitForLoadState("networkidle");
     await expect(page.getByRole("switch", { name: /enable/i })).toHaveAttribute(
       "aria-checked",

@@ -25,7 +25,10 @@ test.describe("Quest CSV import / export", () => {
     const password = "GoodPassw0rd";
 
     await registerAndVerify(page, email, password);
-    const projectId = await createProjectViaWizard(page, `Src${ts}`);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      `Src${ts}`,
+    );
 
     // Seed one quest via the API — UI quest-create is exercised by quest.spec.ts.
     await apiPost<{ id: number; shortId: number }>(page, "createQuest", {
@@ -41,7 +44,7 @@ test.describe("Quest CSV import / export", () => {
 
     // The Data section now lives inside Settings → General (the project
     // settings root). Navigate there to find the export/import controls.
-    await page.goto(`/p/${projectId}/settings/`);
+    await page.goto(`/${projectSlug}/settings/`);
     await page.waitForLoadState("domcontentloaded");
 
     // Export button — labelled by `project.settings.data.export.button`

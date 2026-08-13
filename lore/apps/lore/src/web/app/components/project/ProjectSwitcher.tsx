@@ -80,7 +80,7 @@ const ProjectSwitcher = () => {
                   onClick={() => {
                     if (!isActive) {
                       router.push("project", {
-                        params: { projectId: String(c.id) },
+                        params: { projectSlug: c.slug },
                       });
                     }
                   }}

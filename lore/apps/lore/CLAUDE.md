@@ -8,7 +8,7 @@ Alepha Lore is the **only public Alepha app** and exists in large part to **dogf
 
 ## The Lore of Lore (start here)
 
-The production Alepha Lore instance hosts the project we actually use to run this project: **`https://lore.alepha.dev/p/2`** — the "Lore of Lore." It is the canonical source of truth for what's planned, in-flight, and remembered on Alepha Lore itself. It also dogfoods the MCP surface — every Claude session working on this repo should treat that project as a first-class input, not background trivia.
+The production Alepha Lore instance hosts the project we actually use to run this project: **`https://lore.alepha.dev/lore`** — the "Lore of Lore", **project id `2`** over MCP. The web URL is slug-addressed since 2026-08-13 (`/p/2` no longer resolves); the slug comes from the project's title, "Lore", via the backfill in `20260813135343_nappy_excalibur`. MCP still addresses it by id, so the id stays the durable reference. It is the canonical source of truth for what's planned, in-flight, and remembered on Alepha Lore itself. It also dogfoods the MCP surface — every Claude session working on this repo should treat that project as a first-class input, not background trivia.
 
 **Before non-trivial work, orient via MCP** (these tools are already exposed on `mcp__claude_ai_Lore__*` for this account, project id `2`):
 
@@ -18,7 +18,7 @@ The production Alepha Lore instance hosts the project we actually use to run thi
 
 **Write back what's worth keeping.** When a session produces a non-obvious decision, gotcha, or architectural fact about Lore/Alepha, persist it as a folio (`folio_create` / `folio_update` with good `tags` + `summary`). When in-flight work changes scope or completes, reflect it on the matching quest. Conversation history is ephemeral; folios and quests are the project's long-term memory.
 
-Lore's vocabulary has been renamed twice. Originally the codebase used the plain technical names `project`/`task`/`package`/`players`/`analytics`/`complexity`; a first rename swapped every one of those for RPG flavor — `campaign`/`quest`/`zone`/`member`/`chronicles`/`difficulty` — across code identifiers, DB tables, HTTP routes, MCP tools and URL params. The **2026-08 great rename** partially reversed that: the top-level container went back to the plain, technical **`project`** (campaign → project, `/c/:campaignId` → `/p/:projectId`, `campaign_*` MCP tools → `project_*`), because "campaign" read as more RPG-themed than the container itself deserved. The RPG vocabulary that describes the *work inside* a project was kept and in some cases sharpened: **quest**, member, folio, blight, sigil, and the F/C/B/A/S difficulty ranks are all still RPG-flavored on purpose. A later de-RPG pass (2026-08-09) then took **zone → `area`**: it named the functional part of the system a quest belongs to — "analogous to an Epic in Jira" by its own MCP description — and the map metaphor was carrying no weight. Column, route, `$page` name, MCP param and both locales moved together (FR: *Domaine*); the CSV importer still accepts a `zone` header so pre-rename exports keep working. Three other nouns were renamed in the same pass for clarity rather than theme: Petitions → **Feedback**, Chapters → **Milestones**, and Chronicles → **Reports** (with Reports▸Party → Reports▸Members). The old standalone "Archive" module (directory tree + blobs) was folded entirely into **Folios** — same entities, same MCP tools, one mental model instead of two. A **user** is the account; a **member** is that user's membership row in a project. Identity (name, picture) always comes from the account — the per-project "character" concept was removed in the 2026-07 de-gamification pass.
+Lore's vocabulary has been renamed twice. Originally the codebase used the plain technical names `project`/`task`/`package`/`players`/`analytics`/`complexity`; a first rename swapped every one of those for RPG flavor — `campaign`/`quest`/`zone`/`member`/`chronicles`/`difficulty` — across code identifiers, DB tables, HTTP routes, MCP tools and URL params. The **2026-08 great rename** partially reversed that: the top-level container went back to the plain, technical **`project`** (campaign → project, `/c/:campaignId` → `/:projectSlug`, `campaign_*` MCP tools → `project_*`), because "campaign" read as more RPG-themed than the container itself deserved. The RPG vocabulary that describes the *work inside* a project was kept and in some cases sharpened: **quest**, member, folio, blight, sigil, and the F/C/B/A/S difficulty ranks are all still RPG-flavored on purpose. A later de-RPG pass (2026-08-09) then took **zone → `area`**: it named the functional part of the system a quest belongs to — "analogous to an Epic in Jira" by its own MCP description — and the map metaphor was carrying no weight. Column, route, `$page` name, MCP param and both locales moved together (FR: *Domaine*); the CSV importer still accepts a `zone` header so pre-rename exports keep working. Three other nouns were renamed in the same pass for clarity rather than theme: Petitions → **Feedback**, Chapters → **Milestones**, and Chronicles → **Reports** (with Reports▸Party → Reports▸Members). The old standalone "Archive" module (directory tree + blobs) was folded entirely into **Folios** — same entities, same MCP tools, one mental model instead of two. A **user** is the account; a **member** is that user's membership row in a project. Identity (name, picture) always comes from the account — the per-project "character" concept was removed in the 2026-07 de-gamification pass.
 
 All user-facing strings still go through `I18n.ts` for EN/FR localization.
 
@@ -70,42 +70,72 @@ Defined in `src/web/app/AppRouter.ts`. Route names (the `$page` keys) are what `
 |------|------------|-------------|-------|
 | `/` | `home` | `home/Home.tsx` | Project list |
 | `/new-project` | `projectCreate` | `project/ProjectCreate.tsx` | New project form |
-| `/p/:projectId` | `project` | `project/ProjectView.tsx` | Project layout — sets `currentProjectAtom` + milestones/member/quests/feedback-count/blight-count/quest-count on load |
-| `/p/:projectId/` | `projectQuests` | `project/ProjectQuestsPage.tsx` | Quest list grouped by area; renders the kanban board instead when `questsViewAtom` says `kanban` (see "Kanban ↔ Header Communication" below — kanban is no longer its own route, and no longer a `?view=` param either) |
-| `/p/:projectId/milestones` | `projectMilestones` | `project/milestones/ProjectMilestones.tsx` | Milestones list |
-| `/p/:projectId/reports` | `projectReports` | `project/reports/ReportsLayout.tsx` | Reports layout |
-| `/p/:projectId/reports/` | `reportsOverview` | `project/reports/ReportsOverview.tsx` | Overview |
-| `/p/:projectId/reports/quests` | `reportsQuests` | `project/reports/ReportsQuests.tsx` | Quest analytics |
-| `/p/:projectId/reports/members` | `reportsMembers` | `project/reports/ReportsMembers.tsx` | Per-member contribution (was Reports▸Party) |
-| `/p/:projectId/feedback` | `projectFeedback` | `project/feedback/ProjectFeedback.tsx` | Owner inbox: triage bug/feature requests |
-| `/p/:projectId/blights` | `projectBlights` | `project/blights/ProjectBlights.tsx` | Crash-telemetry inbox (sigil-fed) |
-| `/p/:projectId/apps/:appName` | `projectApp` | `project/apps/AppLayout.tsx` | One enrolled app: tab bar + the range toggle every tab shares. Param is `:appName` — the app's **name**, not its id; the HTTP API still addresses a sigil by UUID (rotate, delete, `?sigilId=`). **Never** `:id` — see the router note below |
-| `/p/:projectId/apps/:appName/` | `app` | `project/apps/AppDashboard.tsx` | Headline numbers + the credential card |
-| `/p/:projectId/apps/:appName/analytics` | `appAnalytics` | `project/apps/AppAnalytics.tsx` | Page views, unique visitors, top pages/countries. 404 when this app's own `kinds` lacks `beacon` |
-| `/p/:projectId/apps/:appName/performance` | `appPerformance` | `project/apps/AppPerformance.tsx` | Web-vitals p75. 404 when this app's own `kinds` lacks `beacon` |
-| `/p/:projectId/apps/:appName/settings` | `appSettings` | `project/apps/AppSettings.tsx` | Capabilities card (per-app `kinds`) + rotate / delete this app (owner-only server-side) |
-| `/p/:projectId/q/:shortId` | `projectQuest` | `project/quest/QuestView.tsx` | Quest detail (param is the integer `shortId`, not a UUID) |
-| `/p/:projectId/q/:shortId/graph` | `projectQuestGraph` | `project/quest/QuestGraph.tsx` | Quest dependency graph |
-| `/p/:projectId/folios` | `projectFolios` | `folios/FoliosLayout.tsx` | The workspace with nothing open — tree + "no folio open" pane. The directory table (`FolioBrowser`) and its Recent Activity panel were deleted here: the tree is the only navigation now. Blob/activity ENDPOINTS are untouched, so blob support can return to the workspace without a server change |
-| `/p/:projectId/folios/new` | `projectFoliosNew` | `folios/FolioCreatePage.tsx` | New folio |
-| `/p/:projectId/folios/:shortId` | `projectFoliosFolio` | `folios/editor/FolioWorkspace.tsx` | Folio workspace — always-editable, title/tags/body/Save. The old read-only `FolioView` + separate `/edit` route (`projectFoliosFolioEdit`) were merged into this one surface and the `/edit` route was deleted, not redirected |
-| `/p/:projectId/settings` | `projectSettings` | `project/settings/ProjectSettings.tsx` | Settings layout (sub-routes below) |
-| `/p/:projectId/settings/` | `projectSettingsBanner` | `…/ProjectSettingsGeneralPage.tsx` | General / banner |
-| `/p/:projectId/settings/members` | `projectSettingsMembers` | `…/ProjectSettingsMembersPage.tsx` | Members & pending invitations — the future home of per-member access rights |
-| `/p/:projectId/settings/areas` | `projectSettingsAreas` | `…/ProjectSettingsAreasPage.tsx` | Areas config |
-| `/p/:projectId/settings/kanban` | `projectSettingsKanban` | `…/ProjectSettingsKanbanPage.tsx` | Kanban columns config |
-| `/p/:projectId/settings/folios` | `projectSettingsFolios` | `…/ProjectSettingsFoliosPage.tsx` | Folios config |
-| `/p/:projectId/settings/feedback` | `projectSettingsFeedback` | `…/ProjectSettingsFeedbackPage.tsx` | `features.feedback` toggle — the module's own page now, split out of the Sigils page |
-| `/p/:projectId/settings/sigils` | `projectSettingsSigils` | `…/ProjectSettingsSigilsPage.tsx` | Sigil inventory — enrol (dialog) + list; master `features.sigils` toggle |
-| `/p/:projectId/settings/milestones` | `projectSettingsMilestones` | `…/ProjectSettingsMilestonesPage.tsx` | Milestone config |
-| `/p/:projectId/settings/quests` | `projectSettingsQuests` | `…/ProjectSettingsQuestsPage.tsx` | Per-quest module toggles (note / chrono / reminder) |
-| `/p/:projectId/request` | `projectFeedbackRequest` | `project/feedback/ProjectFeedbackRequest.tsx` | First-party feedback form (login required). Top-level, **not** nested under the `project` layout — no membership check |
+| `/:projectSlug` | `project` | `project/ProjectView.tsx` | Project layout — sets `currentProjectAtom` + milestones/member/quests/feedback-count/blight-count/quest-count on load |
+| `/:projectSlug/` | `projectQuests` | `project/ProjectQuestsPage.tsx` | Quest list grouped by area; renders the kanban board instead when `questsViewAtom` says `kanban` (see "Kanban ↔ Header Communication" below — kanban is no longer its own route, and no longer a `?view=` param either) |
+| `/:projectSlug/milestones` | `projectMilestones` | `project/milestones/ProjectMilestones.tsx` | Milestones list |
+| `/:projectSlug/reports` | `projectReports` | `project/reports/ReportsLayout.tsx` | Reports layout |
+| `/:projectSlug/reports/` | `reportsOverview` | `project/reports/ReportsOverview.tsx` | Overview |
+| `/:projectSlug/reports/quests` | `reportsQuests` | `project/reports/ReportsQuests.tsx` | Quest analytics |
+| `/:projectSlug/reports/members` | `reportsMembers` | `project/reports/ReportsMembers.tsx` | Per-member contribution (was Reports▸Party) |
+| `/:projectSlug/feedback` | `projectFeedback` | `project/feedback/ProjectFeedback.tsx` | Owner inbox: triage bug/feature requests |
+| `/:projectSlug/blights` | `projectBlights` | `project/blights/ProjectBlights.tsx` | Crash-telemetry inbox (sigil-fed) |
+| `/:projectSlug/apps/:appName` | `projectApp` | `project/apps/AppLayout.tsx` | One enrolled app: tab bar + the range toggle every tab shares. Param is `:appName` — the app's **name**, not its id; the HTTP API still addresses a sigil by UUID (rotate, delete, `?sigilId=`). **Never** `:id` — see the router note below |
+| `/:projectSlug/apps/:appName/` | `app` | `project/apps/AppDashboard.tsx` | Headline numbers + the credential card |
+| `/:projectSlug/apps/:appName/analytics` | `appAnalytics` | `project/apps/AppAnalytics.tsx` | Page views, unique visitors, top pages/countries. 404 when this app's own `kinds` lacks `beacon` |
+| `/:projectSlug/apps/:appName/performance` | `appPerformance` | `project/apps/AppPerformance.tsx` | Web-vitals p75. 404 when this app's own `kinds` lacks `beacon` |
+| `/:projectSlug/apps/:appName/settings` | `appSettings` | `project/apps/AppSettings.tsx` | Capabilities card (per-app `kinds`) + rotate / delete this app (owner-only server-side) |
+| `/:projectSlug/quests/:shortId` | `projectQuest` | `project/quest/QuestView.tsx` | Quest detail (param is the integer `shortId`, not a UUID) |
+| `/:projectSlug/quests/:shortId/graph` | `projectQuestGraph` | `project/quest/QuestGraph.tsx` | Quest dependency graph |
+| `/:projectSlug/folios` | `projectFolios` | `folios/FoliosLayout.tsx` | The workspace with nothing open — tree + "no folio open" pane. The directory table (`FolioBrowser`) and its Recent Activity panel were deleted here: the tree is the only navigation now. Blob/activity ENDPOINTS are untouched, so blob support can return to the workspace without a server change |
+| `/:projectSlug/folios/new` | `projectFoliosNew` | `folios/FolioCreatePage.tsx` | New folio |
+| `/:projectSlug/folios/:shortId` | `projectFoliosFolio` | `folios/editor/FolioWorkspace.tsx` | Folio workspace — always-editable, title/tags/body/Save. The old read-only `FolioView` + separate `/edit` route (`projectFoliosFolioEdit`) were merged into this one surface and the `/edit` route was deleted, not redirected |
+| `/:projectSlug/settings` | `projectSettings` | `project/settings/ProjectSettings.tsx` | Settings layout (sub-routes below) |
+| `/:projectSlug/settings/` | `projectSettingsBanner` | `…/ProjectSettingsGeneralPage.tsx` | General / banner |
+| `/:projectSlug/settings/members` | `projectSettingsMembers` | `…/ProjectSettingsMembersPage.tsx` | Members & pending invitations — the future home of per-member access rights |
+| `/:projectSlug/settings/areas` | `projectSettingsAreas` | `…/ProjectSettingsAreasPage.tsx` | Areas config |
+| `/:projectSlug/settings/kanban` | `projectSettingsKanban` | `…/ProjectSettingsKanbanPage.tsx` | Kanban columns config |
+| `/:projectSlug/settings/folios` | `projectSettingsFolios` | `…/ProjectSettingsFoliosPage.tsx` | Folios config |
+| `/:projectSlug/settings/feedback` | `projectSettingsFeedback` | `…/ProjectSettingsFeedbackPage.tsx` | `features.feedback` toggle — the module's own page now, split out of the Sigils page |
+| `/:projectSlug/settings/sigils` | `projectSettingsSigils` | `…/ProjectSettingsSigilsPage.tsx` | Sigil inventory — enrol (dialog) + list; master `features.sigils` toggle |
+| `/:projectSlug/settings/milestones` | `projectSettingsMilestones` | `…/ProjectSettingsMilestonesPage.tsx` | Milestone config |
+| `/:projectSlug/settings/quests` | `projectSettingsQuests` | `…/ProjectSettingsQuestsPage.tsx` | Per-quest module toggles (note / chrono / reminder) |
+| `/:projectSlug/request` | `projectFeedbackRequest` | `project/feedback/ProjectFeedbackRequest.tsx` | First-party feedback form (login required). Top-level, **not** nested under the `project` layout — no membership check |
 | `/auth/profile/feedback` | `myFeedback` | `profile/feedback/MyFeedback.tsx` | A reporter's own submissions across all projects, declared in `src/web/app/components/profile/me/MeRouter.ts` (nested under `me` at `/auth/profile`), not in `AppRouter`. Detail is a drawer/sheet (`MyFeedbackEditSheet.tsx`), not a separate route — there is no per-feedback status page anymore |
 | `/*` | `notFound` | `NotFound` | — |
 
 Also top-level under the shared layout: `/auth/login` (`login`), `/oauth/continue` (`oauthContinue`), `/auth/register` (`register`), `/auth/reset-password` (`resetPassword`).
 
 HTTP API routes follow the same vocabulary: `/projects/:id/quests/export`, `/quests/attachments`, `/kanban/:projectId`, `/projects/:projectId/feedback`. MCP tools are `project_*`, `quest_*`, `milestone_*`, `folio_*` (also `directory_*` / `blob_*`), `feedback_*`, `blight_*`, `sigil_*`, `insights_*`.
+
+### ⚠️ `/:projectSlug` is a **root-level** param — three consequences
+
+Since 2026-08-13 a project is addressed by a slug derived from its title, at the
+root: `/sds/quests/19`, not `/p/2/q/19`. The `/p` prefix is **deleted, not
+redirected**, and a rename **frees the old slug** for anyone else to take (the
+settings page gates it behind a confirmation that says so). Slugs are unique
+across the whole instance, so two projects can never share a title — anywhere,
+including across different owners.
+
+**Adding a root-level route means reserving its first segment.**
+`ProjectSlugService.reserved` is what stops a project claiming a name the router
+already owns. The router tries static children before the param child, so the
+route wins and it is the *project* that becomes unreachable — silently, and only
+for whoever picked that name. `test/app-routes.spec.ts` resolves the real route
+table and fails if any static root segment is missing from that list.
+
+**An anonymous typo lands on the login page, not a 404.** `/tpyo` matches
+`:projectSlug`, which carries `$secure()`, so a logged-out visitor is redirected
+to `/auth/login?redirect=/tpyo`. Unavoidable without a database round-trip ahead
+of the guard. A signed-in visitor gets a real 404 from the `project` route's own
+`errorHandler` — which exists solely for this and must not be removed.
+
+**Router params are not typechecked.** `router.path()` takes
+`params?: Record<string, any>`, and it merges the *current* route's params
+before yours — so a call site still passing `projectId` keeps working while you
+are inside a project (the slug is inherited from state) and breaks only when
+navigating in from Home or Spotlight. Renaming a param is therefore a grep job,
+not a compile error. The same trap, from the other side, as the `$page`-rename
+one below.
 
 ### ⚠️ Deleting or renaming a `$page` is not typecheck-protected
 
@@ -156,13 +186,13 @@ Kanban is not a route anymore — it's a second view of the `projectQuests` page
 
 After creating a quest from the header, it bumps `kanbanReloadAtom` which `KanbanBoard` watches to trigger a reload.
 
-**The view is an atom, not a query param.** `questsViewAtom` (`lor.quests.view`, cookie-persisted) is the single source of truth since #156. It was `?view=kanban` for exactly one iteration, seeded from `localStorage` by an effect on a bare `/p/:id/` — and that effect keyed on `useRouterState`, which is a global store, so it fired during the OUTGOING render of every navigation away from the page, saw the *next* route's empty query, and bounced the user straight back. Every sidebar link was dead for as long as the board was the stored view. Moving the view out of the URL removes the question the page could not answer ("nobody has chosen yet" vs "we are leaving"). Cookie rather than `localStorage` persistence because `ProjectView` picks the layout during SSR, where web storage does not exist.
+**The view is an atom, not a query param.** `questsViewAtom` (`lor.quests.view`, cookie-persisted) is the single source of truth since #156. It was `?view=kanban` for exactly one iteration, seeded from `localStorage` by an effect on a bare `/:projectSlug/` — and that effect keyed on `useRouterState`, which is a global store, so it fired during the OUTGOING render of every navigation away from the page, saw the *next* route's empty query, and bounced the user straight back. Every sidebar link was dead for as long as the board was the stored view. Moving the view out of the URL removes the question the page could not answer ("nobody has chosen yet" vs "we are leaving"). Cookie rather than `localStorage` persistence because `ProjectView` picks the layout during SSR, where web storage does not exist.
 
 **The switch between the two views is not in the header.** It is `ProjectQuestsViewSwitcher.tsx`, a two-entry horizontal bar across the **top of the project content area** — rendered by `ProjectView` as the first child of that area and *outside* the `showQuestLog / fullWidth / else` branch, so it sits above the Quest Log and holds the same y-position in list and board view (#153, axis rotated by #163 — it was a vertical left rail until then). It used to live inside `ProjectQuestsPage`, which necessarily put it *between* the quest log and the table and made it read as a control for the table; no CSS inside the page could fix that, because a `NestedView`'s content is always right of the log. It renders on the same routes as the quest log (`projectQuests` **and** `projectQuest`) — dropping it on the detail route would shift the log up the moment a quest opened. Its entries carry visible labels rather than bare icons: a full-width band holding two icon buttons reads as unfinished in a way the narrow rail did not. It is gated on `project.features.kanban`: with kanban off it renders nothing rather than a single dead entry, and no empty band where it was.
 
 ### QuestView Reusability
 `QuestView` works in two contexts:
-1. **Project page** — rendered as a route (`/p/:id/q/:shortId`), reads from `currentProjectAtom`, navigates via router
+1. **Project page** — rendered as a route (`/:projectSlug/quests/:shortId`), reads from `currentProjectAtom`, navigates via router
 2. **Kanban drawer** — rendered inside a `Drawer`, receives `onClose` and `onQuestChange` callbacks
 
 When `onClose` is provided, it's used instead of router navigation. When `onQuestChange` is provided, it's called on quest mutations so the parent can update its state.
@@ -193,8 +223,8 @@ User-submitted bug reports / feature requests that the project owner triages. (R
 **Lifecycle**: `pending → accepted` (promoted to one or more quests, each linked back via `quests.feedbackId` — there is no `promotedQuestId` column) `| rejected`.
 
 **Submission flow (login required)** — both live entry points land on `POST /projects/:projectId/feedback`:
-- `/p/:projectId/request` — first-party form on lore (`ProjectFeedbackRequest.tsx`, route `projectFeedbackRequest`). Anonymous visitors see a sign-in CTA. Once logged in, they get the full form (title, description, type bug/feature, file uploads).
-- External "report a bug" buttons on third-party sites are plain `<a target="_blank" rel="noopener noreferrer">` anchors pointing to `/p/:id/request?path=<encoded>&url=<encoded>&type=bug` — no embedded JS, no screenshot capture, no widget. The page reads query params, persists them to `sessionStorage` (key `lor.feedback.draft.<projectId>` — renamed from `lor.petition.draft` in the same pass, unlike the storage bucket literals below, because this key is not a persisted external reference, just a transient client-side draft), cleans the URL via `history.replaceState`, and re-reads after the OAuth round-trip. Cleared on successful submit. `@alepha/sigil`'s reporting client also surfaces this same request URL as `feedbackUrl` in its `/sigils/config` response (only when `features.feedback` is on) so an enrolled app's own "report a bug" widget links out to it.
+- `/:projectSlug/request` — first-party form on lore (`ProjectFeedbackRequest.tsx`, route `projectFeedbackRequest`). Anonymous visitors see a sign-in CTA. Once logged in, they get the full form (title, description, type bug/feature, file uploads).
+- External "report a bug" buttons on third-party sites are plain `<a target="_blank" rel="noopener noreferrer">` anchors pointing to `/:projectSlug/request?path=<encoded>&url=<encoded>&type=bug` — no embedded JS, no screenshot capture, no widget. The page reads query params, persists them to `sessionStorage` (key `lor.feedback.draft.<projectId>` — renamed from `lor.petition.draft` in the same pass, unlike the storage bucket literals below, because this key is not a persisted external reference, just a transient client-side draft), cleans the URL via `history.replaceState`, and re-reads after the OAuth round-trip. Cleared on successful submit. `@alepha/sigil`'s reporting client also surfaces this same request URL as `feedbackUrl` in its `/sigils/config` response (only when `features.feedback` is on) so an enrolled app's own "report a bug" widget links out to it. **That value is an external contract**: it is built in `SigilIngestService.configFor` and rendered by third-party apps. It carries the project's *slug*, so it is re-fetched on every config poll and self-heals on deploy — but an app that cached the old `/p/:id/request` shape has a dead link, and a project rename breaks it exactly the way it breaks a bookmark. `e2e/sigil.spec.ts` asserts the shape; it is the only thing that caught the URL still being id-based after the slug migration.
 
 **Reporter-facing views** — `/auth/profile/feedback` (`myFeedback`, own submissions across projects, detail in a drawer/sheet). There is no separate per-feedback status page (the old one was retired before this rename).
 
@@ -229,7 +259,7 @@ User-submitted bug reports / feature requests that the project owner triages. (R
 
 Folios are markdown notes scoped to a **project** and shared across all its members (they were per-user before quest #65) — they mirror the `~/.claude/projects/*/memory/MEMORY.md` pattern but at the project level: persistent across sessions, exportable, tagged, fully MCP-readable. Treat them as the canonical place where any agent working on a Lore project should look for context and write down what it learns.
 
-Since the 2026-08 great rename, Folios also absorbed the standalone **Archive** module — the directory tree + binary blobs that used to have their own URL path, entities (`archiveDirectories`/`archiveBlobs`/`archiveNames`) and MCP tool class (`ArchiveTools`). Folios live in a directory tree rather than nesting under each other. `folioDirectories` is the tree (depth-capped at 8), `folioBlobs` holds binary attachments, and `folioNames` backs name-uniqueness. `folios.directoryId` is `undefined` for the project root and **cascades on directory delete** — removing a directory removes everything in it, folios included. Surfaced at `/p/:id/folios` and over MCP via `FolioTools` (`directory_*`, `blob_*` tools live in this same file now).
+Since the 2026-08 great rename, Folios also absorbed the standalone **Archive** module — the directory tree + binary blobs that used to have their own URL path, entities (`archiveDirectories`/`archiveBlobs`/`archiveNames`) and MCP tool class (`ArchiveTools`). Folios live in a directory tree rather than nesting under each other. `folioDirectories` is the tree (depth-capped at 8), `folioBlobs` holds binary attachments, and `folioNames` backs name-uniqueness. `folios.directoryId` is `undefined` for the project root and **cascades on directory delete** — removing a directory removes everything in it, folios included. Surfaced at `/:projectSlug/folios` and over MCP via `FolioTools` (`directory_*`, `blob_*` tools live in this same file now).
 
 **Conventions** (apply when curating folios — yourself or via Claude):
 
@@ -278,7 +308,7 @@ A **sigil** is one **app** that reports into a project: a free-form `name`, uniq
 
 > Until 2026-08-06 a sigil was "one environment of one application" — `app` + `environment` + a display `label`, unique on `(projectId, app, environment)`. The three columns collapsed into one `name` (migration `20260806093400_confused_dazzler`, hand-written and additive; see "Migration safety on D1" below). How finely to slice is now the operator's decision rather than the schema's: an app that wants staging kept apart from production enrols two sigils and names them so. Older notes and folios still use the old vocabulary.
 
-Enrolled at `/p/:id/settings/sigils` (a dialog on a card-button, not an inline form) and administered per-app at `/p/:id/apps/:appName` (`SigilController`, reads member-gated, mutations owner-gated — no role, no allowlist: owning the project is the whole gate). `features.sigils` is the master switch. `blights` / `beacon` / `vitals` are **per-app**, the sigil's own `kinds` — set on that app's Settings tab, not a project-wide toggle. `feedback` is the one capability that still also answers to a project-level flag (`features.feedback`, its own settings page at `/p/:id/settings/feedback`): the same flag governs the first-party form at `/p/:id/request`, which exists with no app enrolled at all, so it can't live only on a sigil. A newly enrolled sigil carries all four kinds by default; `SigilController.updateSigil` (`PATCH /projects/:projectId/sigils/:sigilId`, owner-only) is the write path.
+Enrolled at `/:projectSlug/settings/sigils` (a dialog on a card-button, not an inline form) and administered per-app at `/:projectSlug/apps/:appName` (`SigilController`, reads member-gated, mutations owner-gated — no role, no allowlist: owning the project is the whole gate). `features.sigils` is the master switch. `blights` / `beacon` / `vitals` are **per-app**, the sigil's own `kinds` — set on that app's Settings tab, not a project-wide toggle. `feedback` is the one capability that still also answers to a project-level flag (`features.feedback`, its own settings page at `/:projectSlug/settings/feedback`): the same flag governs the first-party form at `/:projectSlug/request`, which exists with no app enrolled at all, so it can't live only on a sigil. A newly enrolled sigil carries all four kinds by default; `SigilController.updateSigil` (`PATCH /projects/:projectId/sigils/:sigilId`, owner-only) is the write path.
 
 **Apps are a sidebar section, not a settings page.** Since 2026-08-06 the project sidebar carries a collapsible **Apps** group (gated on `features.sigils`) listing every enrolled app by name; each opens that app's own page. Rotate and delete live on that page's Settings tab — the settings page enrols and lists, and its rows link out. An empty project **hides the group entirely** rather than showing an "Enrol an app" placeholder — enrolling lives on the settings page, not the sidebar, so an empty group would have nothing to offer. A project whose list could not be read shows "Couldn't load apps" instead, because "empty" and "unreadable" are not the same claim. Past five apps the group stops opening by default (`defaultOpen: apps.length > 5 ? undefined : true`) — the shell then only reveals it when one of its descendants is active. The Blights sidebar entry follows the same data, plus one thing that outlives it: under the `features.sigils` master switch, it appears once some enrolled app's `kinds` carries `blights` **or** the project still has open blights. Both halves are load-bearing — `blights.sigilId` is `ON DELETE SET NULL` and rows are kept for `retentionDays ?? 30`, so dropping the capability (or deleting the last app) must not strand a triage queue that still exists behind a route that still resolves. The open-blight count is therefore fetched under `features.sigils` alone, not under the capability. The list reaches the sidebar through `currentSigilsAtom`, filled by the `project` route loader (defensively: `listSigils` is member-readable, but a failure costs the section, not the page).
 
@@ -288,7 +318,7 @@ Enrolled at `/p/:id/settings/sigils` (a dialog on a card-button, not an inline f
 
 **Rotate, don't delete.** All four aggregate tables cascade on `sigilId`, so deleting a sigil to revoke a leaked token also erases that app's views, vitals, uniques and error groups. `rotateSigil` re-mints `tokenHash`/`tokenPrefix` in place — the old token stops resolving immediately (`verify` looks a sigil up *by* its hash) and every row survives. The UI says which is which; so do the MCP tool descriptions.
 
-- **Blights** — one row per distinct failure, keyed by `(projectId, fingerprint)`, with a count. The owner triages them in the inbox (`/p/:id/blights`): resolve, ignore-by-rule (`blightIgnoreRules`), or **forward to a quest** (filed under the `Blights` area, provenance recorded in `quests.source`). Purged on a retention window (`project.retentionDays ?? 30`) by `BlightJobs`; resolved and `quest:`-forwarded rows are kept as audit trail. A blight survives its sigil — `blights.sigilId` is `ON DELETE SET NULL`.
+- **Blights** — one row per distinct failure, keyed by `(projectId, fingerprint)`, with a count. The owner triages them in the inbox (`/:projectSlug/blights`): resolve, ignore-by-rule (`blightIgnoreRules`), or **forward to a quest** (filed under the `Blights` area, provenance recorded in `quests.source`). Purged on a retention window (`project.retentionDays ?? 30`) by `BlightJobs`; resolved and `quest:`-forwarded rows are kept as audit trail. A blight survives its sigil — `blights.sigilId` is `ON DELETE SET NULL`.
 - **Insights** (`InsightsController`; the two beacon UI tabs 404 in the router when the open app's own `kinds` lacks `beacon` — see `AppRouter.ts`'s `assertBeacon()` — the endpoint itself is member-gated like any other project read, with no feature check of its own) — two segments over one payload: **Analytics** (page views, unique visitors) and **Performance** (web-vitals p75). Views and vitals are read through `@alepha/analytics`'s `$analytics()` datasets — `sigil_views` / `sigil_vitals`, declared in `LoreAnalytics` (`src/api/entities/loreAnalytics.ts`) and asked via `views.query(...)` / `vitals.query(...)` — the same portable declaration that runs on a relational database, in memory for tests, and on Cloudflare Analytics Engine in production, with no backend-specific code in the controller (see the [Analytics guide](../../docs/1-guides/10-analytics.md)). `uniqueVisitors` stays on `sigil_uniques_daily` via `LoreAnalyticsStore`, because a distinct count cannot survive sampling or a rollup and so is out of `$analytics()`'s reach by construction. Buckets are hourly so a 14:00 deploy is visible against 13:00; the daily timeline is the dataset's `"day"` pseudo-dimension folding hour buckets with no epoch math on the controller's side, the same shape the old `substr(hour, 1, 10)` group produced. `uniqueVisitors` is the trustworthy headline — nothing throttles what an app reports, so `totalViews` is inflatable by whoever holds the token. The segments are the Analytics / Performance **tabs of one app's page**; `GET /projects/:projectId/insights?sigilId=` is what narrows them, and the id is verified to belong to the project in the path before it filters anything (member-gating is on the project, so an unchecked id would read another project's rows). Omitted, the endpoint still answers project-wide — which is what MCP's `insights_read` reads.
   - ⚠️ **`sigil_error_groups` is written and swept, and currently read by nothing.** The App ▸ Errors tab was its only reader and was removed in #178: with one enrolled app it duplicated the Blights inbox. It was not a duplicate by construction, though — it answered "is this still happening *in that app*", which the inbox cannot, because the inbox keys on `(projectId, fingerprint)` so a triage decision does not fork, and that necessarily merges every enrolled app into one row. The distinction is worth nothing at one app and returns at two.
     **The table is kept on purpose — do not delete it as unused.** Production holds ~1,086 rows across all four analytics tables, so the storage argument does not exist, and this is the only per-app error signal there is; dropping it would make the tab's return a migration instead of a revert. It stays on its own table rather than an analytics dataset because it keeps the *first* stack sample, which needs a read before every write — something an append-only dataset cannot do.
@@ -503,7 +533,7 @@ the table against a future `DROP TABLE` from the family rebuild forward.
 
 ### ⚠️ A table registered only under one runtime gets a migration under neither (2026-08-11)
 
-Every Insights read 500'd in production — so every `/p/:id/apps/:appName` page
+Every Insights read 500'd in production — so every `/:projectSlug/apps/:appName` page
 rendered the generic ErrorPage — because `analytics_prune_floors` did not exist
 on D1. `WaeAnalyticsProvider.query()` reads that table before *every* read.
 
@@ -579,7 +609,7 @@ views: master && carries(sigil, "beacon")
 
 Same for `errors` (`features.blights`) and `vitals` (`features.vitals`). Only
 `feedback` still carries a project flag, because `features.feedback` also governs
-the first-party form at `/p/:projectId/request`, which exists with no app enrolled.
+the first-party form at `/:projectSlug/request`, which exists with no app enrolled.
 
 **Removing a conjunct is monotone in the "on" direction.** No sigil loses a
 capability; some gain one. A newly minted sigil carries all four kinds, and
@@ -691,7 +721,9 @@ The `@/` alias is still duplicated in both configs, and the root copy is load-be
 - `sigil-controller.spec.ts` / `sigil-ingest.spec.ts` / `sigil-entities.spec.ts` / `sigil-self-report.spec.ts` — sigil CRUD + rotation, token verification, capability gating, aggregate upserts, and Lore's own in-process self-report path
 - `sigil-jobs.spec.ts` — the analytics collapse sweep: the uniques hash-fold, the hourly→daily view fold, idempotency across re-runs, and what Insights reads on either side of a sweep. Drives `DateTimeProvider.travel()` over the window boundary, so it asserts end state and never call counts
 - `insights-controller.spec.ts` / `insights-tools.spec.ts` — beacon/vitals windows and the p75 walk (clock pinned with `DateTimeProvider.pause()`), the `?sigilId=` per-app filter including the cross-project refusal, plus the MCP surface
-- `app-routes.spec.ts` — **regression guard**: boots the real `AppRouter` and resolves every route name the app passes the router as a plain string (every `router.path`/`push` call site and every `route: "…"` nav array in `src/`, including `ProjectSettings.tsx`'s — the array that broke once). `router.path()` takes `keyof VirtualRouter<T> | string`, so a deleted or renamed route is never a type error — this is the only thing that turns it into a red test instead of a production throw
+- `app-routes.spec.ts` — **regression guard**: boots the real `AppRouter` and resolves every route name the app passes the router as a plain string (every `router.path`/`push` call site and every `route: "…"` nav array in `src/`, including `ProjectSettings.tsx`'s — the array that broke once). `router.path()` takes `keyof VirtualRouter<T> | string`, so a deleted or renamed route is never a type error — this is the only thing that turns it into a red test instead of a production throw. Also asserts that **every static root segment in the route table is reserved** in `ProjectSlugService` — the invariant `/:projectSlug` creates
+- `project-slug-service.spec.ts` / `project-slug-controller.spec.ts` — slug derivation (accent folding, separator collapse, the reserved list and the `project-<id>` fallback) and its lifecycle: derived on create, recomputed on rename, 409 on a taken name across *any* owner, freed on delete
+- `project-slug-migration.spec.ts` — **regression guard**: reads the backfill migration for `DROP TABLE` / `ADD COLUMN … NOT NULL`, then actually *applies* it to a seeded database and asserts the slugs that come out (collision, accented title, CJK title, soft-deleted row). `migration-safety.spec.ts` stops at earlier migrations, so nothing else executes this SQL
 - `blight-tools.spec.ts` — the MCP triage surface
 - `migration-safety.spec.ts` — asserts the great-rename migration (and the sigil-family rebuild before it) never drops a table the `projects` cascade reaches, and that a fresh D1-shaped database boots with all migrations applied
 - `petition-reporter-migration.spec.ts` / `petition-reporter-restore-migration.spec.ts` — deliberately still "petition"-named: they pin the behavior of two specific *historical* migrations (`reporterUserId`/`reporterEmail` column churn) that predate the 2026-08 rename, not the current Feedback module
@@ -731,6 +763,7 @@ Before killing anything on a busy port, check whose it is — `lsof -a -p <pid> 
 - `home.spec.ts`, `admin-user-detail.spec.ts`
 - `security-public-project.spec.ts` — regression guard: non-member account hits 403 on every project endpoint after the public-project purge (renamed from `security-public-campaign.spec.ts`)
 - `security-file-access.spec.ts` — regression guard: `/api/files/:id` IDOR fix via `LoreFileAccessProvider` (only owners/members can download an attachment)
+- `project-slug.spec.ts` — the URL identity: the wizard lands on a slug derived from the title, renaming shows the confirmation and moves the URL (cancel reverts the field), the old slug 404s, `/p/:id` 404s, and a taken name is refused with a visible message. ⚠️ The Name field does **not** auto-commit on keystroke — `AutoForm`'s `autoSave` skips string schemas, so it commits via Enter or the inline tick that appears once the field is dirty. A spec that only types saves nothing
 
 Shared setup (register/verify, project-create wizard, API helpers) lives in `e2e/_helpers.ts`. Re-use those rather than copy-pasting auth setup into each new spec.
 

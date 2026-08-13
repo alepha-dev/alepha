@@ -16,11 +16,14 @@ test.describe("Invitation flow (in-app inbox)", () => {
     const aEmail = `inviter-${Date.now()}@example.com`;
     await registerAndVerify(page, aEmail, "GoodPassw0rd");
     const projectTitle = `Inv${Date.now()}`.slice(0, 20);
-    const projectId = await createProjectViaWizard(page, projectTitle);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
 
     const b = await newUserContext(browser, baseURL!, "invitee");
     try {
-      await page.goto(`/p/${projectId}/settings/members`);
+      await page.goto(`/${projectSlug}/settings/members`);
       await page.waitForLoadState("domcontentloaded");
       await page.getByRole("button", { name: /^invite$/i }).click();
       await expect(
@@ -53,7 +56,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
       await b.page.getByRole("button", { name: /^accept$/i }).click();
       expect((await acceptResp).ok()).toBe(true);
 
-      await b.page.waitForURL(new RegExp(`/p/${projectId}`), {
+      await b.page.waitForURL(new RegExp(`/${projectSlug}`), {
         timeout: 10_000,
       });
 
@@ -76,11 +79,14 @@ test.describe("Invitation flow (in-app inbox)", () => {
     const aEmail = `inviter-${Date.now()}@example.com`;
     await registerAndVerify(page, aEmail, "GoodPassw0rd");
     const projectTitle = `Dec${Date.now()}`.slice(0, 20);
-    const projectId = await createProjectViaWizard(page, projectTitle);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
 
     const b = await newUserContext(browser, baseURL!, "decliner");
     try {
-      await page.goto(`/p/${projectId}/settings/members`);
+      await page.goto(`/${projectSlug}/settings/members`);
       await page.waitForLoadState("domcontentloaded");
       await page.getByRole("button", { name: /^invite$/i }).click();
       await page.getByPlaceholder("user@example.com").fill(b.email);
@@ -131,10 +137,13 @@ test.describe("Invitation flow (in-app inbox)", () => {
     const aEmail = `inviter-${Date.now()}@example.com`;
     await registerAndVerify(page, aEmail, "GoodPassw0rd");
     const projectTitle = `Bnd${Date.now()}`.slice(0, 20);
-    const projectId = await createProjectViaWizard(page, projectTitle);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
 
     const invitedEmail = `target-${Date.now()}@example.com`;
-    await page.goto(`/p/${projectId}/settings/members`);
+    await page.goto(`/${projectSlug}/settings/members`);
     await page.waitForLoadState("domcontentloaded");
     await page.getByRole("button", { name: /^invite$/i }).click();
     await page.getByPlaceholder("user@example.com").fill(invitedEmail);
@@ -165,12 +174,12 @@ test.describe("Invitation flow (in-app inbox)", () => {
     const aEmail = `inviter-${Date.now()}@example.com`;
     const target = `dup-${Date.now()}@example.com`;
     await registerAndVerify(page, aEmail, "GoodPassw0rd");
-    const projectId = await createProjectViaWizard(
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       `Dup${Date.now()}`.slice(0, 20),
     );
 
-    await page.goto(`/p/${projectId}/settings/members`);
+    await page.goto(`/${projectSlug}/settings/members`);
     await page.waitForLoadState("domcontentloaded");
 
     await page.getByRole("button", { name: /^invite$/i }).click();
@@ -200,12 +209,12 @@ test.describe("Invitation flow (in-app inbox)", () => {
     test.setTimeout(90_000);
     const aEmail = `selfinv-${Date.now()}@example.com`;
     await registerAndVerify(page, aEmail, "GoodPassw0rd");
-    const projectId = await createProjectViaWizard(
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       `Slf${Date.now()}`.slice(0, 20),
     );
 
-    await page.goto(`/p/${projectId}/settings/members`);
+    await page.goto(`/${projectSlug}/settings/members`);
     await page.waitForLoadState("domcontentloaded");
 
     await page.getByRole("button", { name: /^invite$/i }).click();

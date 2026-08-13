@@ -1,11 +1,11 @@
 import { $atom, z } from "alepha";
-import { projects } from "@/api/entities/projects.ts";
+import { projectResourceSchema } from "@/api/schemas/projectResourceSchema.ts";
 
 export const kanbanProjectAtom = $atom({
   name: "lor.kanban.project",
   schema: z
     .object({
-      project: projects.schema,
+      project: projectResourceSchema,
     })
     .optional(),
 });

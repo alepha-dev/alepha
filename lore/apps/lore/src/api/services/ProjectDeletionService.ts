@@ -32,8 +32,37 @@ export class ProjectDeletionService {
    * explicitly rather than leaving to a database cascade.
    */
   public async deleteProject(projectId: number): Promise<void> {
+    await this.freeSlug(projectId);
     await this.projects.deleteById(projectId);
     await this.members.deleteMany({ projectId: { eq: projectId } });
     await this.quests.deleteMany({ projectId: { eq: projectId } });
+  }
+
+  /**
+   * Releases the project's URL slug so the name can be claimed again.
+   *
+   * Load-bearing, and not obviously so. `deleteById` on an entity with a
+   * `deletedAt` column is a **soft** delete: the row survives, and it keeps
+   * occupying `projects_slug_idx`. But every read path filters soft-deleted
+   * rows out — so `ProjectController.assertSlugAvailable` cannot see the slug
+   * while the UNIQUE index still rejects it. Creating a project with the freed
+   * name would pass the check and then fail on the constraint, surfacing as a
+   * 500 instead of either succeeding or returning a clean 409.
+   *
+   * Clearing it also matches the rename semantics the settings page warns
+   * about: a name you give up is a name someone else can take.
+   *
+   * Runs before the delete rather than after, so `save` is not writing to a
+   * row the repository now considers gone.
+   */
+  protected async freeSlug(projectId: number): Promise<void> {
+    const project = await this.projects.findOne({
+      where: { id: { eq: projectId } },
+    });
+    if (!project?.slug) {
+      return;
+    }
+    project.slug = undefined;
+    await this.projects.save(project);
   }
 }

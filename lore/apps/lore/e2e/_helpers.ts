@@ -138,10 +138,25 @@ export const registerAndVerify = async (
   await page.goto("/auth/register");
   // `networkidle` never settles once Turnstile is loaded — its widget polls.
   await page.waitForLoadState("domcontentloaded");
-  await page.getByRole("textbox", { name: "Email", exact: true }).fill(email);
-  await page
-    .getByRole("textbox", { name: "Password", exact: true })
-    .fill(password);
+
+  const emailField = page.getByRole("textbox", { name: "Email", exact: true });
+  const passwordField = page.getByRole("textbox", {
+    name: "Password",
+    exact: true,
+  });
+
+  // Filled under `toPass` because the page is server-rendered and React
+  // hydrates after first paint: a value typed into the pre-hydration DOM is
+  // discarded when the form model takes over, and the only evidence is the
+  // submit failing with "'password' is required" — which reads like a bad
+  // fixture rather than a race. Re-filling until the values stick is the fix;
+  // a bare `fill` is actionability-aware but knows nothing about hydration.
+  await expect(async () => {
+    await emailField.fill(email);
+    await passwordField.fill(password);
+    await expect(emailField).toHaveValue(email);
+    await expect(passwordField).toHaveValue(password);
+  }).toPass({ timeout: 15_000 });
   // Captcha gate — test site key auto-solves but the submit button stays
   // disabled until Turnstile fires its callback.
   const submit = page.getByRole("button", { name: /create account/i });
@@ -175,7 +190,7 @@ export const registerAndVerify = async (
 export const createProjectViaWizard = async (
   page: Page,
   title: string,
-): Promise<number> => {
+): Promise<{ id: number; slug: string }> => {
   await page.goto("/new-project");
   await page.waitForLoadState("networkidle");
   await page.locator('input[type="text"]').first().fill(title);
@@ -185,10 +200,34 @@ export const createProjectViaWizard = async (
   await page.getByRole("button", { name: /^next$/i }).click();
   // Step 3 → submit
   await page.getByRole("button", { name: /create project/i }).click();
-  await page.waitForURL(/\/p\/\d+/, { timeout: 15_000 });
-  const match = page.url().match(/\/p\/(\d+)/);
-  expect(match).not.toBeNull();
-  return Number(match![1]);
+
+  // The wizard lands on `/<slug>` — a single root segment. Matched with a
+  // predicate rather than a regex because `/new-project`, the page we are
+  // leaving, is also a single root segment and would satisfy one immediately.
+  await page.waitForURL(
+    (url) =>
+      url.pathname !== "/new-project" &&
+      url.pathname.split("/").filter(Boolean).length === 1,
+    { timeout: 15_000 },
+  );
+
+  const slug = new URL(page.url()).pathname.split("/").filter(Boolean)[0];
+  expect(slug).toBeTruthy();
+
+  // Both identities, because callers need both: every URL takes the slug,
+  // while `setProjectFeature`, `apiPost` and the rest of the HTTP API still
+  // take the integer id.
+  const path = await apiPath(page, "getProjectBySlug");
+  const project = await page.evaluate(
+    async (url) => {
+      const r = await fetch(url, { credentials: "include" });
+      if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+      return r.json() as Promise<{ id: number }>;
+    },
+    path.replace(":slug", slug!),
+  );
+
+  return { id: project.id, slug: slug! };
 };
 
 /**

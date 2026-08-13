@@ -38,7 +38,7 @@ const FOLIO_BLOB_BUCKET = "archive-blobs";
 
 export interface UseFolioTreeModelInput {
   projectId: number;
-  projectIdStr: string;
+  projectSlug: string;
   /**
    * The folio open in the document pane, if any. Drives both the
    * highlighted row (`selectedId`) and the ancestor-expansion behavior on
@@ -346,7 +346,7 @@ export const useFolioTreeModel = (
     }
     router.push(
       router.path("projectFoliosFolio", {
-        params: { projectId: input.projectIdStr, shortId: node.shortId },
+        params: { projectSlug: input.projectSlug, shortId: node.shortId },
       }),
     );
   };
@@ -515,7 +515,10 @@ export const useFolioTreeModel = (
         alepha.store.set(pendingFolioTreeRenameAtom, created.id);
         await router.push(
           router.path("projectFoliosFolio", {
-            params: { projectId: input.projectIdStr, shortId: created.shortId },
+            params: {
+              projectSlug: input.projectSlug,
+              shortId: created.shortId,
+            },
           }),
         );
       },
@@ -527,7 +530,7 @@ export const useFolioTreeModel = (
       folioApi,
       alepha,
       input.projectId,
-      input.projectIdStr,
+      input.projectSlug,
       router,
       tr,
     ],
@@ -669,7 +672,7 @@ export const useFolioTreeModel = (
         if (input.currentFolioId === id) {
           await router.push(
             router.path("projectFolios", {
-              params: { projectId: input.projectIdStr },
+              params: { projectSlug: input.projectSlug },
             }),
           );
         }
@@ -682,7 +685,7 @@ export const useFolioTreeModel = (
       folioApi,
       input.currentFolioId,
       input.projectId,
-      input.projectIdStr,
+      input.projectSlug,
       router,
     ],
   );
@@ -706,7 +709,7 @@ export const useFolioTreeModel = (
         if (input.currentFolioId && removedFolioIds.has(input.currentFolioId)) {
           await router.push(
             router.path("projectFolios", {
-              params: { projectId: input.projectIdStr },
+              params: { projectSlug: input.projectSlug },
             }),
           );
         }
@@ -721,7 +724,7 @@ export const useFolioTreeModel = (
       directoryApi,
       input.currentFolioId,
       input.projectId,
-      input.projectIdStr,
+      input.projectSlug,
       router,
     ],
   );
@@ -799,7 +802,10 @@ export const useFolioTreeModel = (
         setFolios([created, ...folios]);
         await router.push(
           router.path("projectFoliosFolio", {
-            params: { projectId: input.projectIdStr, shortId: created.shortId },
+            params: {
+              projectSlug: input.projectSlug,
+              shortId: created.shortId,
+            },
           }),
         );
       },
@@ -810,7 +816,7 @@ export const useFolioTreeModel = (
       setFolios,
       folioApi,
       input.projectId,
-      input.projectIdStr,
+      input.projectSlug,
       router,
       tr,
     ],

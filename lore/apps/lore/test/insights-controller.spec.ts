@@ -169,16 +169,24 @@ const createTestUser = async (
   return { id: response.data.id, roles: response.data.roles };
 };
 
+/**
+ * Project titles derive a globally unique URL slug, so two projects cannot
+ * share one — the cross-project isolation tests below create a second project.
+ * A counter rather than a timestamp keeps the titles deterministic.
+ */
+let projectSeq = 0;
+
 const createProject = async (
   ctx: TestContext,
   user: { id: string; roles: string[] },
 ): Promise<number> => {
+  projectSeq += 1;
   // `sigils` is the only flag this suite needs: the retired `beacon` project
   // flag this fixture used to set is read by nothing since capabilities moved
   // onto each sigil's own `kinds`, and the insights endpoints carry no feature
   // check of their own — they are member-gated like any other project read.
   const created = await ctx.projectController.createProject.fetch(
-    { body: { title: "Insights", features: { sigils: true } } },
+    { body: { title: `Insights ${projectSeq}`, features: { sigils: true } } },
     { user },
   );
   return created.data.id;

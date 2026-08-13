@@ -264,7 +264,7 @@ const QuestView = (props: QuestViewProps) => {
                     <Link
                       key={tag}
                       href={router.path("projectQuests", {
-                        params: { projectId: String(quest.projectId) },
+                        params: { projectSlug: project?.slug ?? "" },
                         query: { tag },
                       })}
                       className="bg-muted hover:bg-muted/70 rounded-sm border px-1.5 py-0.5 font-mono text-xs leading-none"
@@ -365,7 +365,7 @@ const QuestView = (props: QuestViewProps) => {
                 render={
                   <Link
                     href={router.path("projectQuests", {
-                      params: { projectId: String(project.id) },
+                      params: { projectSlug: project.slug },
                     })}
                   />
                 }
@@ -384,7 +384,7 @@ const QuestView = (props: QuestViewProps) => {
                 <Link
                   href={router.path("projectQuestGraph", {
                     params: {
-                      projectId: String(quest.projectId),
+                      projectSlug: project?.slug ?? "",
                       shortId: String(quest.shortId),
                     },
                   })}
@@ -423,7 +423,7 @@ const QuestView = (props: QuestViewProps) => {
                   key={dep.id}
                   href={router.path("projectQuestGraph", {
                     params: {
-                      projectId: String(quest.projectId),
+                      projectSlug: project?.slug ?? "",
                       shortId: String(quest.shortId),
                     },
                   })}

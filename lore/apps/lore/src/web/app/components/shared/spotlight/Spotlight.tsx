@@ -166,14 +166,16 @@ const Spotlight = (): ReactElement => {
     await router.push(entry.href);
   };
 
-  const goProject = async (id: number): Promise<void> => {
+  const goProject = async (slug: string): Promise<void> => {
     close();
-    await router.push("project", { params: { projectId: String(id) } });
+    await router.push("project", { params: { projectSlug: slug } });
   };
 
   const go = async (hit: SpotlightHit): Promise<void> => {
+    // `projectId` gates the search itself (an API call); the navigation below
+    // takes the slug. Both come from the same project, so one guard covers it.
     if (projectId === undefined) return;
-    const params = { projectId: String(projectId) };
+    const params = { projectSlug: project?.slug ?? "" };
     close();
     if (hit.kind === "quest") {
       await router.push("projectQuest", {
@@ -286,7 +288,7 @@ const Spotlight = (): ReactElement => {
                   <CommandItem
                     key={it.id}
                     value={`project:${it.id}`}
-                    onSelect={() => void goProject(it.id)}
+                    onSelect={() => void goProject(it.slug)}
                   >
                     <LayoutGrid />
                     <span className="flex-1 truncate">{it.title}</span>
