@@ -1,11 +1,11 @@
+import { SIGIL_INGEST_PATH } from "@alepha/sigil/paths";
+import { Alepha, AlephaError } from "alepha";
 import {
   type AnalyticsDataset,
   AnalyticsProvider,
   type AnalyticsRow,
   MemoryAnalyticsProvider,
-} from "@alepha/analytics";
-import { SIGIL_INGEST_PATH } from "@alepha/sigil/paths";
-import { Alepha, AlephaError } from "alepha";
+} from "alepha/api/analytics";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake } from "alepha/fake";
@@ -51,7 +51,7 @@ class Probe {
  * `analyticsProvider`, when given, is substituted for `AnalyticsProvider`
  * BEFORE any module wires — a substitution is only honoured the first time
  * it is recorded (`Alepha.with`'s "first call wins, later calls are
- * no-ops when `optional`" rule), and `AlephaAnalytics`'s own default pick is
+ * no-ops when `optional`" rule), and `AlephaApiAnalytics`'s own default pick is
  * exactly that kind of optional call. Recording it here first is what lets a
  * test force the dataset write to fail.
  */
