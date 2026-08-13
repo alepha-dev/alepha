@@ -70,13 +70,21 @@ const createTestUser = async (
   return { id: response.data.id, roles: response.data.roles };
 };
 
+/**
+ * Project titles derive a globally unique URL slug, so two projects cannot
+ * share one — the multi-project tick test creates several. A counter rather
+ * than a timestamp keeps the titles deterministic.
+ */
+let projectSeq = 0;
+
 const createTestProject = async (
   ctx: TestContext,
   user: { id: string; roles: string[] },
   milestoneDuration?: string,
 ): Promise<{ id: number }> => {
+  projectSeq += 1;
   const created = await ctx.projectController.createProject.fetch(
-    { body: { title: "Test Project" } },
+    { body: { title: `Test Project ${projectSeq}` } },
     { user },
   );
   if (milestoneDuration) {

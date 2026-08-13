@@ -29,7 +29,13 @@ import type {
  * project-wide key so navigating between folios does not refetch.
  */
 export const useWikiLinkEditorContext = (
+  /**
+   * Both identities are needed and neither substitutes for the other: the
+   * quest fetch below is an API call keyed on the integer id, while the links
+   * the resolver builds are URLs and take the slug.
+   */
   projectId: number | undefined,
+  projectSlug: string | undefined,
 ): WikiLinkEditorContext | undefined => {
   const router = useRouter<AppRouter>();
   const questApi = useClient<QuestController>();
@@ -58,9 +64,9 @@ export const useWikiLinkEditorContext = (
   );
 
   return useMemo(() => {
-    if (projectId === undefined) return undefined;
+    if (projectSlug === undefined) return undefined;
     const resolver = createFolioWikiLinkResolver({
-      projectId,
+      projectSlug,
       folios: folios as Folio[],
       quests: quests ?? [],
       directories,

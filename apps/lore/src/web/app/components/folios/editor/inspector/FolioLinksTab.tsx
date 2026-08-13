@@ -80,7 +80,7 @@ const FolioLinksTab = (props: FolioLinksTabProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
   const [project] = useStore(currentProjectAtom);
-  const projectId = project ? String(project.id) : "";
+  const projectSlug = project ? project.slug : "";
 
   const links = props.folio?.metadata?.links;
   const inbound = links?.inbound ?? [];
@@ -139,7 +139,7 @@ const FolioLinksTab = (props: FolioLinksTabProps): ReactElement => {
                 <Link
                   href={router.path(route, {
                     params: {
-                      projectId,
+                      projectSlug,
                       shortId: String(ref.shortId),
                     },
                   })}

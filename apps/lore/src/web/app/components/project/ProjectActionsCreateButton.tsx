@@ -140,7 +140,7 @@ const ProjectActionsCreateButton = () => {
                 <DropdownMenuItem
                   onClick={() =>
                     router.push("projectFoliosNew", {
-                      params: { projectId: String(project.id) },
+                      params: { projectSlug: project.slug },
                     })
                   }
                 >
@@ -152,7 +152,7 @@ const ProjectActionsCreateButton = () => {
                 <DropdownMenuItem
                   onClick={() =>
                     router.push("projectFeedbackRequest", {
-                      params: { projectId: String(project.id) },
+                      params: { projectSlug: project.slug },
                     })
                   }
                 >

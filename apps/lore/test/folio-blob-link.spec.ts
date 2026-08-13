@@ -26,7 +26,7 @@ const nonImageCsv: BlobRef = {
   size: 8_192,
 };
 
-const PROJECT_ID = 99;
+const PROJECT_SLUG = "sds";
 
 describe("rewriteFolioWikiLinks — blob references (Phase 1)", () => {
   it("rewrites [[blob:#N]] to a markdown link to /api/files/<uuid>", ({
@@ -34,7 +34,7 @@ describe("rewriteFolioWikiLinks — blob references (Phase 1)", () => {
   }) => {
     const out = rewriteFolioWikiLinks(
       "See [[blob:#42]] for the diagram.",
-      PROJECT_ID,
+      PROJECT_SLUG,
       [],
       [],
       [],
@@ -50,7 +50,7 @@ describe("rewriteFolioWikiLinks — blob references (Phase 1)", () => {
   }) => {
     const out = rewriteFolioWikiLinks(
       "Linked: [[blob:11111111-1111-1111-1111-111111111111]].",
-      PROJECT_ID,
+      PROJECT_SLUG,
       [],
       [],
       [],
@@ -66,7 +66,7 @@ describe("rewriteFolioWikiLinks — blob references (Phase 1)", () => {
   }) => {
     const out = rewriteFolioWikiLinks(
       "Stale: [[blob:#999]].",
-      PROJECT_ID,
+      PROJECT_SLUG,
       [],
       [],
       [],
@@ -82,7 +82,7 @@ describe("rewriteFolioWikiLinks — blob references (Phase 1)", () => {
   }) => {
     const out = rewriteFolioWikiLinks(
       "![Architecture diagram](blob:#42)",
-      PROJECT_ID,
+      PROJECT_SLUG,
       [],
       [],
       [],
@@ -98,7 +98,7 @@ describe("rewriteFolioWikiLinks — blob references (Phase 1)", () => {
   }) => {
     const out = rewriteFolioWikiLinks(
       "![](blob:#7)",
-      PROJECT_ID,
+      PROJECT_SLUG,
       [],
       [],
       [],
@@ -114,7 +114,7 @@ describe("rewriteFolioWikiLinks — blob references (Phase 1)", () => {
   }) => {
     const out = rewriteFolioWikiLinks(
       "![Latest data](blob:#5)",
-      PROJECT_ID,
+      PROJECT_SLUG,
       [],
       [],
       [],
@@ -129,7 +129,7 @@ describe("rewriteFolioWikiLinks — blob references (Phase 1)", () => {
   it("leaves ![alt](blob:#N) untouched when blob is unknown", ({ expect }) => {
     const out = rewriteFolioWikiLinks(
       "![](blob:#999)",
-      PROJECT_ID,
+      PROJECT_SLUG,
       [],
       [],
       [],
@@ -141,7 +141,7 @@ describe("rewriteFolioWikiLinks — blob references (Phase 1)", () => {
   it("handles wiki + image blob refs in the same content", ({ expect }) => {
     const out = rewriteFolioWikiLinks(
       "See [[blob:#42]] and ![](blob:#5)",
-      PROJECT_ID,
+      PROJECT_SLUG,
       [],
       [],
       [],
@@ -158,7 +158,7 @@ describe("rewriteFolioWikiLinks — blob references (Phase 1)", () => {
     const input = "plain markdown with no links";
     const out = rewriteFolioWikiLinks(
       input,
-      PROJECT_ID,
+      PROJECT_SLUG,
       [],
       [],
       [],

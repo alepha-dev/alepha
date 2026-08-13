@@ -56,6 +56,12 @@ type Attachment = {
 };
 
 type ProjectContext = {
+  /**
+   * The integer id `submitFeedback` and `uploadFeedbackAttachment` take. The
+   * URL carries the slug, and this page is outside the project route layout,
+   * so `feedbackContext` is the only place the id can come from.
+   */
+  projectId: number;
   title: string;
   icon?: string | null;
   maxAttachments: number;
@@ -165,10 +171,13 @@ const ProjectFeedbackRequest = () => {
   const toaster = useToast();
 
   const routerState = useRouterState();
-  const projectIdParam = String(routerState.params.projectId);
-  const projectId = Number(projectIdParam);
+  const projectSlug = String(routerState.params.projectSlug ?? "");
 
-  const { draft, clear: clearDraft } = useDraftAutofill(projectIdParam);
+  // Keyed on the slug rather than the integer id: the id is not known until
+  // `feedbackContext` answers, and a draft is transient `sessionStorage` for
+  // one tab. Nothing survives from the old `/p/:id/request` URLs anyway — they
+  // are gone, so no draft written under an id key is reachable any more.
+  const { draft, clear: clearDraft } = useDraftAutofill(projectSlug);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
   // Tags are an internal triage taxonomy — never typed by the reporter.
@@ -189,6 +198,12 @@ const ProjectFeedbackRequest = () => {
     attachments: Attachment[];
     tags: string[];
     source?: FeedbackSource;
+    /**
+     * Resolved asynchronously by `feedbackContext`, so it rides the ref for the
+     * same reason as everything else here: the submit handler is frozen at
+     * first render, when the context has not answered yet.
+     */
+    projectId?: number;
   }>({
     attachments,
     tags,
@@ -211,13 +226,18 @@ const ProjectFeedbackRequest = () => {
   // like `submitFeedback` (any logged-in user, feedback feature on). A
   // failed/pending fetch just hides the project side — never breaks the form.
   const [project, setProject] = useState<ProjectContext | null>(null);
+  // Undefined until the context resolves. Every write path below is guarded on
+  // it — the form cannot submit to a project it has not identified yet.
+  const projectId = project?.projectId;
+  // Declared after `liveRef` is rebuilt above, so it has to be set separately.
+  liveRef.current.projectId = projectId;
   const maxFiles = project?.maxAttachments ?? DEFAULT_MAX_FILES;
   const maxFileSizeMb = project?.maxFileSizeMb ?? DEFAULT_MAX_FILE_SIZE_MB;
   useEffect(() => {
-    if (!auth.user || !Number.isFinite(projectId)) return;
+    if (!auth.user || !projectSlug) return;
     let cancelled = false;
     feedbackApi
-      .feedbackContext({ params: { projectId } })
+      .feedbackContext({ params: { slug: projectSlug } })
       .then((res) => {
         if (!cancelled) setProject(res);
       })
@@ -227,7 +247,7 @@ const ProjectFeedbackRequest = () => {
     return () => {
       cancelled = true;
     };
-  }, [auth.user, projectId]);
+  }, [auth.user, projectSlug]);
 
   // One free-text field. Client schema stays looser than the server's — a
   // `minLength` here would fail TypeBox at form-construction time (empty
@@ -254,8 +274,18 @@ const ProjectFeedbackRequest = () => {
             .map((line) => line.trim())
             .find((line) => line.length > 0) ?? message;
 
+        // The id arrives with `feedbackContext`, so a submit fired before that
+        // resolved (or after it failed) has no project to post to. The form is
+        // only reachable with the context panel rendered, so this is a guard
+        // rather than a state the user can sit in.
+        const target = liveRef.current.projectId;
+        if (target === undefined) {
+          toaster.show(tr("feedback.request.error"), "danger");
+          return;
+        }
+
         await feedbackApi.submitFeedback({
-          params: { projectId },
+          params: { projectId: target },
           body: {
             title: firstLine.slice(0, 120),
             description: message,
@@ -298,6 +328,10 @@ const ProjectFeedbackRequest = () => {
 
   const uploadFiles = async (files: File[]) => {
     if (files.length === 0) return;
+    // Attachments are addressed by the integer project id, which only exists
+    // once `feedbackContext` has answered. The attach control is rendered from
+    // the same state, so this is unreachable in practice.
+    if (projectId === undefined) return;
     if (attachments.length + files.length > maxFiles) {
       toaster.show(
         String(

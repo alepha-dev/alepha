@@ -96,7 +96,11 @@ export class QuestJobs {
               projectTitle: project.title,
               questTitle: quest.title,
               shortId: quest.shortId,
-              questUrl: `${baseUrl}/p/${project.id}/q/${quest.shortId}`,
+              // Slug, not id — `/p/…` no longer resolves. A reminder email
+              // outlives the send by however long it sits in an inbox, so a
+              // rename can still break this link; that is the same accepted
+              // trade-off the rename dialog warns the owner about.
+              questUrl: `${baseUrl}/${project.slug}/quests/${quest.shortId}`,
             },
           });
 

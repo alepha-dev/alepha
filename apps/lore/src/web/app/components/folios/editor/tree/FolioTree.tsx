@@ -9,7 +9,7 @@ import { useFolioTreeModel } from "./useFolioTreeModel.ts";
 
 export interface FolioTreeProps {
   projectId: number;
-  projectIdStr: string;
+  projectSlug: string;
   /**
    * The folio open in the document pane, if any — drives the highlighted
    * row and which ancestor directories auto-expand. `undefined` on the
@@ -61,7 +61,7 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
   const tree = useFolioTreeModel({
     projectId: props.projectId,
-    projectIdStr: props.projectIdStr,
+    projectSlug: props.projectSlug,
     currentFolioId: props.currentFolioId,
   });
 
@@ -173,7 +173,7 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
             node={row.node}
             depth={row.depth}
             tree={tree}
-            projectIdStr={props.projectIdStr}
+            projectSlug={props.projectSlug}
           />
         ))}
       </div>

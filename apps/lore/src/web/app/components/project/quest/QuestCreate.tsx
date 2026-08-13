@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
-import type { Project } from "@/api/entities/projects.ts";
+import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
 import { questCreateSchema } from "@/api/schemas/questCreateSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
@@ -45,7 +45,7 @@ export interface QuestCreateProps {
   onSubmit: (quest: QuestResource) => void;
   onCreated?: (quest: QuestResource) => void;
   quest?: Partial<QuestResource>;
-  project: Project;
+  project: ProjectResource;
 }
 
 const QuestCreate = (props: QuestCreateProps) => {
@@ -125,7 +125,7 @@ const QuestCreate = (props: QuestCreateProps) => {
       } else {
         await router.push("projectQuest", {
           params: {
-            projectId: String(props.project.id),
+            projectSlug: props.project.slug,
             shortId: String(quest.shortId),
           },
         });

@@ -38,7 +38,10 @@ export interface WikiLinkRewriteResult {
  */
 export const useWikiLinkRewrite = (
   content: string,
+  /** Addresses the fetches below — every one of them is an API call. */
   projectId: number | undefined,
+  /** Addresses the links the rewrite produces, which are URLs. */
+  projectSlug: string | undefined,
 ): WikiLinkRewriteResult => {
   const folioApi = useClient<FolioController>();
   const questApi = useClient<QuestController>();
@@ -132,16 +135,25 @@ export const useWikiLinkRewrite = (
   }, [projectId, needsFetch, hasLinks, hasPathLinks, hasBlobRefs]);
 
   const rewritten = useMemo(() => {
-    if (!projectId || !needsFetch) return content ?? "";
+    if (!projectId || !projectSlug || !needsFetch) return content ?? "";
     return rewriteFolioWikiLinks(
       content ?? "",
-      projectId,
+      projectSlug,
       folios,
       questRefs,
       directories,
       blobs,
     );
-  }, [content, projectId, needsFetch, folios, questRefs, directories, blobs]);
+  }, [
+    content,
+    projectId,
+    projectSlug,
+    needsFetch,
+    folios,
+    questRefs,
+    directories,
+    blobs,
+  ]);
 
   return { content: rewritten, folios, questRefs, blobs };
 };

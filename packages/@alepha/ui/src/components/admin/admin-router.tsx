@@ -25,10 +25,23 @@ import {
   Timer,
   UsersIcon,
 } from "lucide-react";
+import { createElement } from "react";
 import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
 
 /**
  * The whole `/admin` surface — ten pages and their shell — mounted and wired.
+ *
+ * ⚠️ **Nav icons are `createElement(Icon)`, never `<Icon />`. Do not "fix"
+ * them back to JSX.** This module is evaluated *eagerly* in the server graph:
+ * `main.server.ts` → `$module` → `alepha.inject(AdminRouter)` runs these class
+ * fields at import time, unlike every page below, which is behind `lazy()`.
+ * `alepha db migrations create` imports that graph in a child process under
+ * `tsx`, and `tsx` applies a single tsconfig resolved from the **cwd** — the
+ * app root. A file outside that tsconfig's `include` (which this one is, being
+ * in a sibling workspace) gets esbuild's defaults instead, and the default JSX
+ * transform is the *classic* one. The emitted `React.createElement` then fails
+ * with `ReferenceError: React is not defined`, breaking migration generation
+ * for the whole app — with a stack that points here and explains none of this.
  *
  * ```ts
  * import { AdminRouter } from "@alepha/ui/components/admin/admin-router";
@@ -158,7 +171,12 @@ export class AdminRouter {
     head: { title: "Users" },
     permission: "admin:user:read",
     can: () => this.userApi.findUsers.can(),
-    nav: { label: "Users", icon: <UsersIcon />, group: "Identity", order: 1 },
+    nav: {
+      label: "Users",
+      icon: createElement(UsersIcon),
+      group: "Identity",
+      order: 1,
+    },
     lazy: () => import("./admin-users.tsx"),
     props: () => this.options.pages?.users ?? {},
   });
@@ -192,7 +210,7 @@ export class AdminRouter {
     can: () => this.sessionApi.findSessions.can(),
     nav: {
       label: "Sessions",
-      icon: <ShieldCheck />,
+      icon: createElement(ShieldCheck),
       group: "Identity",
       order: 2,
     },
@@ -208,7 +226,7 @@ export class AdminRouter {
     can: () => this.apiKeyApi.findApiKeys.can(),
     nav: {
       label: "API keys",
-      icon: <KeyRound />,
+      icon: createElement(KeyRound),
       group: "Identity",
       order: 3,
       keywords: ["tokens", "credentials"],
@@ -223,7 +241,12 @@ export class AdminRouter {
     head: { title: "Jobs" },
     permission: "admin:job:read",
     can: () => this.jobApi.listJobs.can(),
-    nav: { label: "Jobs", icon: <Timer />, group: "Operations", order: 4 },
+    nav: {
+      label: "Jobs",
+      icon: createElement(Timer),
+      group: "Operations",
+      order: 4,
+    },
     lazy: () => import("./admin-jobs.tsx"),
   });
 
@@ -236,7 +259,7 @@ export class AdminRouter {
     can: () => this.notificationApi.findNotifications.can(),
     nav: {
       label: "Notifications",
-      icon: <Bell />,
+      icon: createElement(Bell),
       group: "Operations",
       order: 5,
     },
@@ -252,7 +275,7 @@ export class AdminRouter {
     can: () => this.auditApi.findAudits.can(),
     nav: {
       label: "Audit log",
-      icon: <ShieldAlert />,
+      icon: createElement(ShieldAlert),
       group: "Operations",
       order: 6,
     },
@@ -266,7 +289,12 @@ export class AdminRouter {
     head: { title: "Files" },
     permission: "admin:file:read",
     can: () => this.fileApi.findFiles.can(),
-    nav: { label: "Files", icon: <Files />, group: "Operations", order: 7 },
+    nav: {
+      label: "Files",
+      icon: createElement(Files),
+      group: "Operations",
+      order: 7,
+    },
     lazy: () => import("./admin-files.tsx"),
   });
 
@@ -279,7 +307,7 @@ export class AdminRouter {
     can: () => this.parameterApi.getParameterTree.can(),
     nav: {
       label: "Parameters",
-      icon: <SlidersHorizontal />,
+      icon: createElement(SlidersHorizontal),
       group: "Operations",
       order: 8,
       keywords: ["settings", "config", "configuration"],
@@ -302,7 +330,7 @@ export class AdminRouter {
     can: () => this.paymentApi.listIntents.can(),
     nav: {
       label: "Payments",
-      icon: <CreditCard />,
+      icon: createElement(CreditCard),
       group: "Operations",
       order: 9,
     },

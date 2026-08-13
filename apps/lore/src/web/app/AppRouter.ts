@@ -252,15 +252,35 @@ export class AppRouter {
       this.projectBlights,
       this.projectApp,
     ],
-    path: "/p/:projectId",
+    /**
+     * A **root-level** param: `/sds/quests/19`, not `/p/2/q/19`.
+     *
+     * The router walks static children before the param child and backtracks on
+     * failure (`RouterProvider.search`), so `/auth/login`, `/new-project` and
+     * `/oauth/continue` still win over this. `test/app-routes.spec.ts` asserts
+     * every static root segment is also reserved in `ProjectSlugService`, so a
+     * project can never claim one.
+     *
+     * ⚠️ The param is `projectSlug` here and in `projectFeedbackRequest`, which
+     * shares this tree position. `RouterProvider.push` keeps ONE param name per
+     * position — two routes naming it differently collapse onto one, the outer
+     * wins, and the inner value arrives missing. Same trap documented on
+     * `projectApp`'s `:appName`.
+     */
+    path: "/:projectSlug",
     // Every project surface is member-gated server-side, so nothing under here
     // is reachable anonymously. The guard turns an anonymous visitor away at the
     // router (instead of letting the loader 401 and the errorHandler catch it),
     // and puts the whole subtree in CSR — no HTML render a crawler will ever see.
+    //
+    // Consequence of the root-level param: an anonymous visitor who mistypes ANY
+    // path now lands on the login page rather than a 404, because `/tpyo` matches
+    // here. Unavoidable without a database round-trip ahead of the guard. A
+    // signed-in visitor still gets a real 404 — see `errorHandler` below.
     use: [$secure()],
     schema: {
       params: z.object({
-        projectId: z.integer(),
+        projectSlug: z.string(),
       }),
     },
     head: (props) => {
@@ -281,15 +301,19 @@ export class AppRouter {
     },
     lazy: () => import("./components/project/ProjectView.tsx"),
     loader: async ({ params }) => {
+      // The one slug→id resolution in the app. Every fetch below — and every
+      // endpoint any page under this layout calls — still takes the integer
+      // id, read off `currentProjectAtom`. That is what keeps slug routing out
+      // of the rest of the API surface.
       const { member, quests, ...project } =
-        await this.projectApi.getProjectById({
+        await this.projectApi.getProjectBySlug({
           params: {
-            id: params.projectId,
+            slug: params.projectSlug,
           },
         });
 
       const milestones = await this.milestoneApi.getMilestones({
-        params: { projectId: params.projectId },
+        params: { projectId: project.id },
       });
 
       // Pending-feedback count for the sidebar badge. Fetched once per
@@ -298,7 +322,7 @@ export class AppRouter {
       // correct. Errors leave the count undefined (badge hides).
       const pendingFeedback = await this.feedbackApi
         .listFeedback({
-          params: { projectId: params.projectId },
+          params: { projectId: project.id },
           query: { status: "pending" },
         })
         .then((r) => r.items.length)
@@ -309,7 +333,7 @@ export class AppRouter {
       // keeps a transient error from blocking the whole project load
       // (badge just hides).
       const openQuests = await this.questApi
-        .countOpenQuests({ params: { projectId: params.projectId } })
+        .countOpenQuests({ params: { projectId: project.id } })
         .then((r) => r.count)
         .catch(() => 0);
 
@@ -324,7 +348,7 @@ export class AppRouter {
       // read the apps" — see `currentSigilsAtom`.
       const sigils = project.features?.sigils
         ? await this.sigilApi
-            .listSigils({ params: { projectId: params.projectId } })
+            .listSigils({ params: { projectId: project.id } })
             .then((r) => r.items)
             .catch(() => undefined)
         : [];
@@ -343,7 +367,7 @@ export class AppRouter {
       // and `ProjectView` reads this count to keep that entry reachable.
       const openBlights = project.features?.sigils
         ? await this.blightApi
-            .countOpenBlights({ params: { projectId: params.projectId } })
+            .countOpenBlights({ params: { projectId: project.id } })
             .then((r) => r.count)
             .catch(() => 0)
         : 0;
@@ -372,6 +396,16 @@ export class AppRouter {
       this.alepha.store.set(currentBlightCountAtom, { count: 0 });
       this.alepha.store.set(currentQuestCountAtom, { count: 0 });
       this.alepha.store.set(currentSigilsAtom, undefined);
+    },
+    errorHandler: (error) => {
+      // `/:projectSlug` matches any unclaimed root path, so a typo reaches this
+      // route rather than `notFound`. Without this, a signed-in user who
+      // mistypes a URL gets the layout's generic ErrorPage in production
+      // instead of a 404. (An anonymous one is bounced to login by `$secure()`
+      // before the loader runs at all — see the note on `use` above.)
+      if (HttpError.is(error, 404)) {
+        return createElement(NotFound, { style: { height: "100%" } });
+      }
     },
   });
 
@@ -786,7 +820,7 @@ export class AppRouter {
   });
 
   projectQuest = $page({
-    path: "/q/:shortId",
+    path: "/quests/:shortId",
     schema: {
       params: z.object({
         shortId: z.integer(),
@@ -851,7 +885,7 @@ export class AppRouter {
   // `dependsOn` component, dagre-laid-out, polled every 60s.
   projectQuestGraph = $page({
     name: "projectQuestGraph",
-    path: "/q/:shortId/graph",
+    path: "/quests/:shortId/graph",
     schema: {
       params: z.object({
         shortId: z.integer(),
@@ -1068,9 +1102,12 @@ export class AppRouter {
 
   projectFeedbackRequest = $page({
     name: "projectFeedbackRequest",
-    path: "/p/:projectId/request",
+    // Shares the root param node with `project`, so the param MUST be named
+    // `projectSlug` here too — one name per tree position. Stays a top-level
+    // route rather than a child of `project` so it keeps NO membership guard.
+    path: "/:projectSlug/request",
     schema: {
-      params: z.object({ projectId: z.integer() }),
+      params: z.object({ projectSlug: z.string() }),
     },
     head: { title: "Submit feedback › Alepha Lore" },
     // Deliberately unguarded: an anonymous visitor gets the sign-in CTA rather

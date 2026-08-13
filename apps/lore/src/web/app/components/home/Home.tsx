@@ -116,7 +116,7 @@ const Home = () => {
                     key={project.id}
                     project={project}
                     href={router.path("project", {
-                      params: { projectId: project.id },
+                      params: { projectSlug: project.slug },
                     })}
                     relativeTime={dt.of(project.updatedAt).fromNow()}
                   />

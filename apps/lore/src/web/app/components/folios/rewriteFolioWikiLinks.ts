@@ -34,7 +34,7 @@ export {
  */
 export const rewriteFolioWikiLinks = (
   content: string,
-  projectId: number,
+  projectSlug: string,
   folios: Folio[],
   quests: QuestRef[],
   directories: DirectoryRef[] = [],
@@ -46,7 +46,7 @@ export const rewriteFolioWikiLinks = (
   if (!hasWiki && !hasBlobImage) return content;
 
   const resolver = createFolioWikiLinkResolver({
-    projectId,
+    projectSlug,
     folios,
     quests,
     directories,

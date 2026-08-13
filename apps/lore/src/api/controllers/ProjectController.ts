@@ -12,7 +12,9 @@ import {
 import {
   $action,
   BadRequestError,
+  ConflictError,
   ForbiddenError,
+  NotFoundError,
   okSchema,
 } from "alepha/server";
 import { $etag } from "alepha/server/etag";
@@ -27,9 +29,14 @@ import {
 import { quests } from "../entities/quests.ts";
 import type { User } from "../entities/users.ts";
 import { relations } from "../relations.ts";
+import { projectResourceSchema } from "../schemas/projectResourceSchema.ts";
+import { projectTitleSchema } from "../schemas/projectTitleSchema.ts";
 import { questResourceSchema } from "../schemas/questResourceSchema.ts";
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
+import { ProjectResourceMapper } from "../services/ProjectResourceMapper.ts";
+import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
+import { ProjectSlugService } from "../services/ProjectSlugService.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 
 export class ProjectController {
@@ -83,7 +90,43 @@ export class ProjectController {
       message: "Only the project owner can perform this action",
     });
   questMapper = $inject(QuestResourceMapper);
+  projectMapper = $inject(ProjectResourceMapper);
   limits = $inject(ProjectLimits);
+  slugs = $inject(ProjectSlugService);
+  projectSecurity = $inject(ProjectSecurityService);
+
+  /**
+   * Reserve-and-collision gate for a project slug.
+   *
+   * Lives here rather than on {@link ProjectSlugService} because it needs the
+   * `projects` repository, and that service stays dependency-free so the
+   * browser can inject it for the settings page's live slug preview.
+   *
+   * `exceptProjectId` lets a rename re-assert its own current slug without
+   * colliding with itself.
+   *
+   * ⚠️ `findOne` filters soft-deleted rows out, so a deleted project's slug is
+   * invisible here while the UNIQUE index still enforces it. That would turn a
+   * reuse into a constraint violation (a 500) instead of this clean 409 — which
+   * is why {@link ProjectDeletionService.deleteProject} clears the slug rather
+   * than leaving it on the tombstone.
+   */
+  protected async assertSlugAvailable(
+    slug: string,
+    exceptProjectId?: number,
+  ): Promise<void> {
+    if (this.slugs.isReserved(slug)) {
+      throw new BadRequestError(`The name "${slug}" is reserved`);
+    }
+
+    const existing = await this.projects.findOne({
+      where: { slug: { eq: slug } },
+    });
+
+    if (existing && existing.id !== exceptProjectId) {
+      throw new ConflictError("That name is already taken");
+    }
+  }
 
   /**
    * Project icons (avatars). Image-only, 2 MB cap.
@@ -108,6 +151,13 @@ export class ProjectController {
     schema: {
       body: projects.insertSchema.pick({ title: true, icon: true }).extend({
         /**
+         * Tighter than the entity's own `title`, and deliberately only on the
+         * way in: the title derives the URL slug, so it is constrained to what
+         * can produce one. The entity column stays permissive because its
+         * schema also decodes rows on READ.
+         */
+        title: projectTitleSchema,
+        /**
          * Subset of module toggles to override at creation time. Anything
          * omitted falls back to `defaultProjectFeatures`. Lets the wizard
          * surface a "select modules" step without forcing the client to
@@ -115,7 +165,7 @@ export class ProjectController {
          */
         features: projectFeaturesSchema.partial().optional(),
       }),
-      response: projects.schema,
+      response: projectResourceSchema,
     },
     handler: async ({ body, user }) => {
       const maxProjectsPerUser = await this.limits.maxProjectsPerUser();
@@ -133,11 +183,26 @@ export class ProjectController {
         await this.assertIconBelongsToUser(body.icon, user);
       }
 
+      const slug = this.slugs.slugify(body.title);
+      if (slug) {
+        await this.assertSlugAvailable(slug);
+      }
+
       const project = await this.projects.create({
         ...body,
+        slug: slug || undefined,
         features: { ...defaultProjectFeatures, ...(body.features ?? {}) },
         createdBy: user.id,
       });
+
+      // A title that transliterates to nothing (e.g. "日本語") has no slug
+      // until the row has an id, so this is the one path that writes the slug
+      // twice. It cannot collide: `isReserved` keeps the `project-<n>`
+      // namespace out of user hands.
+      if (!project.slug) {
+        project.slug = this.slugs.fallbackSlug(project.id);
+        await this.projects.save(project);
+      }
 
       await this.members.create({
         projectId: project.id,
@@ -145,7 +210,7 @@ export class ProjectController {
         owner: true,
       });
 
-      return project;
+      return this.projectMapper.toResource(project);
     },
   });
 
@@ -166,7 +231,7 @@ export class ProjectController {
     description: "Get all projects for the authenticated user",
     schema: {
       query: pageQuerySchema,
-      response: z.array(projects.schema),
+      response: z.array(projectResourceSchema),
     },
     handler: async ({ user, query }) => {
       // Membership is a many-to-many through `members`, so the two-step
@@ -187,7 +252,9 @@ export class ProjectController {
       // paged a filter whose id list had already been read in full, so the
       // work was never bounded by page size to begin with. The per-user
       // ownership limit keeps the list small.
-      return all.slice(page * size, page * size + size);
+      return all
+        .slice(page * size, page * size + size)
+        .map((it) => this.projectMapper.toResource(it));
     },
   });
 
@@ -200,7 +267,7 @@ export class ProjectController {
     use: [$secure({ permissions: ["project:read"] })],
     schema: {
       response: z.object({
-        projects: z.array(projects.schema),
+        projects: z.array(projectResourceSchema),
         totalCount: z.integer(),
         ownedCount: z.integer(),
         maxProjects: z.integer(),
@@ -224,7 +291,7 @@ export class ProjectController {
       const result = me?.projects ?? [];
 
       return {
-        projects: result,
+        projects: result.map((it) => this.projectMapper.toResource(it)),
         totalCount: result.length,
         ownedCount,
         maxProjects: maxProjectsPerUser,
@@ -262,7 +329,7 @@ export class ProjectController {
         id: z.integer(),
       }),
       body: z.object({
-        title: z.string().min(3).max(24).optional(),
+        title: projectTitleSchema.optional(),
         icon: z.uuid().nullable().optional(),
         features: projectFeaturesSchema.partial().optional(),
         milestoneDuration: z.string().nullable().optional(),
@@ -271,13 +338,26 @@ export class ProjectController {
         // override → the purge cron falls back to the global 30-day default.
         retentionDays: z.integer().min(1).max(3_650).nullable().optional(),
       }),
-      response: projects.schema,
+      response: projectResourceSchema,
     },
     handler: async ({ params, body, user }) => {
       const project = this.owned.get<Project>();
 
       if (body.title) {
-        project.title = body.title.trim();
+        // `projectTitleSchema` trims, so no `.trim()` here.
+        project.title = body.title;
+
+        // Renaming moves the project's URL. The old slug is freed rather than
+        // kept as a redirect — deliberate, and the reason the settings page
+        // gates the rename behind a confirm dialog naming both URLs.
+        const slug = this.slugs.slugify(body.title);
+        // An empty slug means the new title transliterates to nothing; keep
+        // the id fallback rather than leaving the project unreachable.
+        const nextSlug = slug || this.slugs.fallbackSlug(project.id);
+        if (nextSlug !== project.slug) {
+          await this.assertSlugAvailable(nextSlug, project.id);
+          project.slug = nextSlug;
+        }
       }
 
       if ("icon" in body) {
@@ -314,7 +394,7 @@ export class ProjectController {
       }
 
       await this.projects.save(project);
-      return project;
+      return this.projectMapper.toResource(project);
     },
   });
 
@@ -340,7 +420,7 @@ export class ProjectController {
       params: z.object({
         id: z.integer(),
       }),
-      response: projects.schema.extend({
+      response: projectResourceSchema.extend({
         member: members.schema.optional(),
         quests: z.array(questResourceSchema),
         /**
@@ -372,7 +452,85 @@ export class ProjectController {
       });
 
       return {
-        ...project,
+        ...this.projectMapper.toResource(project),
+        quests: projectQuests.map((quest) =>
+          this.questMapper.mapQuestToResource(quest),
+        ),
+        member,
+        memberCount,
+      };
+    },
+  });
+
+  /**
+   * Resolve a project by its URL slug.
+   *
+   * The `project` route layout calls this once per navigation and seeds
+   * `currentProjectAtom` with the result; every other project endpoint still
+   * takes an integer `projectId`, read off that atom. That is what keeps slug
+   * routing out of the rest of the API surface.
+   *
+   * `$owns` cannot gate this one — it looks a resource up by primary key from
+   * a path param, and this param is not the key. The membership check is
+   * therefore explicit, through the same `ProjectSecurityService.assertMember`
+   * every other project-scoped read uses. A slug is guessable in a way an id
+   * is not, so this gate is the only thing standing between a typed URL and
+   * another tenant's project.
+   */
+  getProjectBySlug = $action({
+    use: [$secure({ permissions: ["project:read"] })],
+    method: "GET",
+    path: "/projects/by-slug/:slug",
+    schema: {
+      params: z.object({
+        slug: z.string(),
+      }),
+      response: projectResourceSchema.extend({
+        member: members.schema.optional(),
+        quests: z.array(questResourceSchema),
+        /**
+         * Total number of members in this project (including the viewer).
+         */
+        memberCount: z.integer(),
+      }),
+    },
+    handler: async ({ params, user }) => {
+      // Soft-deleted rows are filtered out by the repository, so a deleted
+      // project does not resolve by its old slug.
+      const found = await this.projects.findOne({
+        where: { slug: { eq: params.slug } },
+      });
+
+      if (!found) {
+        throw new NotFoundError("Project not found");
+      }
+
+      const { project } = await this.projectSecurity.assertMember(
+        found.id,
+        user,
+      );
+
+      const member = await this.members.findOne({
+        where: {
+          projectId: { eq: project.id },
+          userId: { eq: user.id },
+        },
+      });
+
+      const projectQuests = await this.quests.findMany({
+        where: {
+          projectId: { eq: project.id },
+          completedAt: { isNull: true },
+          acceptedBy: { eq: user.id },
+        },
+      });
+
+      const memberCount = await this.members.count({
+        projectId: { eq: project.id },
+      });
+
+      return {
+        ...this.projectMapper.toResource(project),
         quests: projectQuests.map((quest) =>
           this.questMapper.mapQuestToResource(quest),
         ),

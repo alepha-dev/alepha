@@ -23,8 +23,8 @@ import { type BlobRef, BROKEN_HREF_PREFIX } from "./rewriteFolioWikiLinks.ts";
  * delegation on `<a>` elements — `MarkdownView` lives in `@alepha/ui`
  * and we can't fork it, so we identify wiki-links by their URL shape:
  *
- * - `/p/<projectId>/folios/<shortId>` → folio preview
- * - `/p/<projectId>/q/<shortId>` → quest preview
+ * - `/<projectSlug>/folios/<shortId>` → folio preview
+ * - `/<projectSlug>/quests/<shortId>` → quest preview
  * - `/api/files/<uuid>` → blob preview (the rewriter only emits this
  *   URL for resolved blob refs, so the false-positive risk on a
  *   user-typed link is negligible)
@@ -34,7 +34,10 @@ import { type BlobRef, BROKEN_HREF_PREFIX } from "./rewriteFolioWikiLinks.ts";
  * built (no extra fetch).
  */
 export interface WikiLinkHoverProviderProps {
+  /** Addresses the preview fetches, which are API calls. */
   projectId: number;
+  /** Matched against the first segment of a hovered link's own URL. */
+  projectSlug: string;
   blobs: BlobRef[];
   children: React.ReactNode;
 }
@@ -62,13 +65,16 @@ interface HoverState {
   anchorEl: HTMLElement;
 }
 
-const FOLIO_RE = /^\/p\/(\d+)\/folios\/(\d+)(?:[#?]|$)/;
-const QUEST_RE = /^\/p\/(\d+)\/q\/(\d+)(?:[#?]|$)/;
+// The project segment is the slug, so it is matched as an opaque segment and
+// compared against the open project's own — an id could be matched as `\d+`,
+// a slug cannot be told from any other first segment by shape alone.
+const FOLIO_RE = /^\/([^/]+)\/folios\/(\d+)(?:[#?]|$)/;
+const QUEST_RE = /^\/([^/]+)\/quests\/(\d+)(?:[#?]|$)/;
 const BLOB_RE = /^\/api\/files\/([a-f0-9-]{36})(?:[#?]|$)/i;
 
 const parseHref = (
   href: string | null,
-  projectId: number,
+  projectSlug: string,
 ): HoverTarget | null => {
   if (!href) return null;
   if (href.startsWith(BROKEN_HREF_PREFIX)) {
@@ -89,11 +95,11 @@ const parseHref = (
     ? new URL(href).pathname + new URL(href).search + new URL(href).hash
     : href;
   const folio = FOLIO_RE.exec(path);
-  if (folio && Number(folio[1]) === projectId) {
+  if (folio && folio[1] === projectSlug) {
     return { kind: "folio", shortId: Number(folio[2]) };
   }
   const quest = QUEST_RE.exec(path);
-  if (quest && Number(quest[1]) === projectId) {
+  if (quest && quest[1] === projectSlug) {
     return { kind: "quest", shortId: Number(quest[2]) };
   }
   const blob = BLOB_RE.exec(path);
@@ -132,7 +138,7 @@ const stripMarkdown = (raw: string): string =>
     .trim();
 
 const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
-  const { projectId, blobs } = props;
+  const { projectId, projectSlug, blobs } = props;
   const folioApi = useClient<FolioController>();
   const questApi = useClient<QuestController>();
 
@@ -183,7 +189,7 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
       if (!anchor) return;
       const href =
         anchor.getAttribute("data-wiki-href") ?? anchor.getAttribute("href");
-      const t = parseHref(href, projectId);
+      const t = parseHref(href, projectSlug);
       if (!t) return;
       cancelClose();
       setHover((prev) =>

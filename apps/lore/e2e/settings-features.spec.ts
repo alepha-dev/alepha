@@ -36,10 +36,18 @@ test.describe("Project settings — feature toggles", () => {
     await page.getByRole("button", { name: /^next$/i }).click();
     // Step 3 (modules) — submit with defaults
     await page.getByRole("button", { name: /create project/i }).click();
-    await page.waitForURL(/\/p\/\d+/, { timeout: 15_000 });
-    const match = page.url().match(/\/p\/(\d+)/);
-    expect(match).not.toBeNull();
-    const projectId = match![1];
+    await page.waitForURL(
+      (url) =>
+        url.pathname !== "/new-project" &&
+        url.pathname.split("/").filter(Boolean).length === 1,
+      { timeout: 15_000 },
+    );
+    // The wizard lands on `/<slug>` — the project's URL identity is the whole
+    // first segment now, not an id behind a `/p/` prefix.
+    const projectSlug = new URL(page.url()).pathname
+      .split("/")
+      .filter(Boolean)[0];
+    expect(projectSlug).toBeTruthy();
 
     // Kanban is a view of the Quests page now, not a
     // sidebar entry (the great rename, Task 8), so it can no longer prove
@@ -47,14 +55,14 @@ test.describe("Project settings — feature toggles", () => {
     // plain gated sidebar link (ProjectView.tsx), so it drives the same
     // regression check the test was written for.
     const sidebarMilestones = page.locator(
-      `a[href="/p/${projectId}/milestones"]`,
+      `a[href="/${projectSlug}/milestones"]`,
     );
 
     // Milestones is ON by default → sidebar link is visible
     await expect(sidebarMilestones).toBeVisible();
 
     // Navigate directly to the Milestones settings sub-page
-    await page.goto(`/p/${projectId}/settings/milestones`);
+    await page.goto(`/${projectSlug}/settings/milestones`);
     await page.waitForLoadState("networkidle");
 
     // Switch should be checked

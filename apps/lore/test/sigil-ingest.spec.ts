@@ -133,6 +133,11 @@ const setup = async (over: { kinds?: string[]; features?: unknown } = {}) => {
 
   const project = await probe.projects.create({
     title: "Test",
+    // Written explicitly because this fixture bypasses `createProject`, which
+    // is what normally derives it. Every production row has one (the backfill
+    // filled the rest), and `configFor` builds `feedbackUrl` from it — so a
+    // slug-less fixture would test a shape that cannot occur.
+    slug: "test",
     createdBy: owner.id,
     features: over.features ?? allOn,
   } as any);
@@ -629,7 +634,9 @@ describe("sigil ingest", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.enabled).toEqual({ views: true, errors: true, vitals: true });
-    expect(body.feedbackUrl).toMatch(/\/p\/\d+\/request$/);
+    // Slug-addressed, not `/p/:id/` — this value is rendered by third-party
+    // apps as their "report a bug" link.
+    expect(body.feedbackUrl).toMatch(/\/test\/request$/);
   });
 
   it("refuses to describe itself to an unknown token", async () => {

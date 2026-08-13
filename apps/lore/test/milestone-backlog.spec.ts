@@ -70,12 +70,20 @@ const createTestUser = async (ctx: TestContext): Promise<TestUser> => {
   return { id: response.data.id, roles: response.data.roles };
 };
 
+/**
+ * Project titles derive a globally unique URL slug, so two projects cannot
+ * share one — the cross-project isolation test creates a second project.
+ * A counter rather than a timestamp keeps the titles deterministic.
+ */
+let projectSeq = 0;
+
 const createTestProject = async (
   ctx: TestContext,
   user: TestUser,
 ): Promise<{ id: number }> => {
+  projectSeq += 1;
   const created = await ctx.projectController.createProject.fetch(
-    { body: { title: "Test Project" } },
+    { body: { title: `Test Project ${projectSeq}` } },
     { user },
   );
   return { id: created.data.id };

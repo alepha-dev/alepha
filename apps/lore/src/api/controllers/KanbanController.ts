@@ -4,7 +4,9 @@ import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 import { projects } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
+import { projectResourceSchema } from "../schemas/projectResourceSchema.ts";
 import { questResourceSchema } from "../schemas/questResourceSchema.ts";
+import { ProjectResourceMapper } from "../services/ProjectResourceMapper.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 
@@ -13,6 +15,7 @@ export class KanbanController {
   protected quests = $repository(quests);
   protected security = $inject(ProjectSecurityService);
   protected questMapper = $inject(QuestResourceMapper);
+  protected projectMapper = $inject(ProjectResourceMapper);
 
   /**
    * Get all quests for a project, grouped for kanban display. Members
@@ -27,7 +30,7 @@ export class KanbanController {
         projectId: z.integer(),
       }),
       response: z.object({
-        project: projects.schema,
+        project: projectResourceSchema,
         quests: z.array(questResourceSchema),
       }),
     },
@@ -52,7 +55,7 @@ export class KanbanController {
       });
 
       return {
-        project,
+        project: this.projectMapper.toResource(project),
         quests: allQuests.map((quest) =>
           this.questMapper.mapQuestToResource(quest),
         ),

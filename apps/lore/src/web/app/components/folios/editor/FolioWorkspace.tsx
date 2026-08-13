@@ -149,7 +149,7 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
       // Before the tree publishes, fall back to the create route — the
       // same destination `useFolioActions` uses.
       router.push("projectFoliosNew", {
-        params: { projectId: String(project?.id ?? "") },
+        params: { projectSlug: project?.slug ?? "" },
       });
     };
     handlers["folio.newDirectory"] = () => treeActions?.createDirectory();
@@ -202,7 +202,7 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
           <div className={treeClassName}>
             <FolioTree
               projectId={project.id}
-              projectIdStr={String(project.id)}
+              projectSlug={project.slug}
               currentFolioId={props.folio?.id}
               width={panes.treeWidth}
               onActions={setTreeActions}
@@ -239,7 +239,7 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
             <FolioEmptyState
               onCreate={() =>
                 router.push("projectFoliosNew", {
-                  params: { projectId: String(project?.id ?? "") },
+                  params: { projectSlug: project?.slug ?? "" },
                 })
               }
             />

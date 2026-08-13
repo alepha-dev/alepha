@@ -10,7 +10,7 @@ import {
  * Feedback end-to-end:
  *
  * 1. Owner registers, creates a project, enables the feedback module.
- * 2. Lands on `/p/:id/request?path=…&type=bug`, fills + submits the form, and
+ * 2. Lands on `/:projectSlug/request?path=…&type=bug`, fills + submits the form, and
  *    is redirected to the reporter's cross-project list at `/me/feedback`
  *    (the dedicated status page was retired in favour of this list).
  * 3. The feedback shows up there as `pending`.
@@ -66,7 +66,10 @@ test.describe("Feedback", () => {
     const reportUrl = `https://customer-site.example.com${reportPath}`;
 
     await registerAndVerify(page, email, password);
-    const projectId = await createProjectViaWizard(page, projectTitle);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
 
     // Wizard defaults feedback OFF — flip it on so the request form is
     // reachable.
@@ -86,7 +89,7 @@ test.describe("Feedback", () => {
       // Land on the request URL with the page-context query params the way the
       // `/sigil/request` proxy delivers them after a feedback-button click.
       await page.goto(
-        `/p/${projectId}/request?path=${encodeURIComponent(
+        `/${projectSlug}/request?path=${encodeURIComponent(
           reportPath,
         )}&url=${encodeURIComponent(reportUrl)}&type=bug` +
           `&ua=${encodeURIComponent("CustomUA/9.9")}` +
@@ -167,7 +170,10 @@ test.describe("Feedback", () => {
     const projectTitle = `Cxl${t}`.slice(0, 20);
 
     await registerAndVerify(page, ownerEmail, "OwnerPass123!");
-    const projectId = await createProjectViaWizard(page, projectTitle);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
 
     // Open the feedback module so the request form is reachable.
     await page.evaluate(async (id) => {
@@ -194,7 +200,7 @@ test.describe("Feedback", () => {
     // returns or the new link starts navigating this window.
     const reporter = await newUserContext(browser, baseURL!, "reporter");
     try {
-      await reporter.page.goto(`/p/${projectId}/request`);
+      await reporter.page.goto(`/${projectSlug}/request`);
       await reporter.page.waitForLoadState("networkidle");
       // The free-text field confirms the form rendered for the non-member.
       await expect(reporter.page.locator("textarea").first()).toBeVisible({
@@ -216,7 +222,7 @@ test.describe("Feedback", () => {
 
       // No link anywhere on the form points into the members-only project.
       const projectLinks = reporter.page.locator(
-        `a[href^="/p/${projectId}/"], a[href$="/p/${projectId}"]`,
+        `a[href^="/${projectSlug}/"], a[href$="/${projectSlug}"]`,
       );
       await expect(projectLinks).toHaveCount(0);
 

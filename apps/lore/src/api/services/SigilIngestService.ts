@@ -193,6 +193,13 @@ export class SigilIngestService {
       /\/$/,
       "",
     );
+    // The feedback form is addressed by the project's slug, not its id, so the
+    // row is needed here as well as inside `gatesFor`. Read once and reused
+    // below rather than threaded through the gates, which are a boolean set
+    // and have no business carrying a URL fragment.
+    const project = gates.feedback
+      ? await this.projects.findOne({ where: { id: { eq: sigil.projectId } } })
+      : undefined;
 
     return {
       enabled: {
@@ -202,9 +209,14 @@ export class SigilIngestService {
       },
       // Omitted rather than empty when the module is off: the client treats an
       // absent url as "no feedback surface", which is the honest reading.
-      ...(gates.feedback
+      ...(gates.feedback && project?.slug
         ? {
-            feedbackUrl: `${publicUrl}/p/${sigil.projectId}/request`,
+            // ⚠️ This value crosses the wire into third-party apps, which render
+            // it as their own "report a bug" link. It is re-fetched on every
+            // config poll, so a deploy self-heals — but an app that cached the
+            // old `/p/:id/request` shape has a dead link, and a project rename
+            // breaks it the same way it breaks a bookmark.
+            feedbackUrl: `${publicUrl}/${project.slug}/request`,
             // Only when the app has actually chosen one. Sending the default
             // explicitly would make "never configured" indistinguishable from
             // "deliberately bottom-right", and both already resolve the same

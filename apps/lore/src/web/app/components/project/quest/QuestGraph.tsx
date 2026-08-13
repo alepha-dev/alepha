@@ -240,7 +240,7 @@ const QuestGraph = () => {
             variant="ghost"
             size="sm"
             className="h-8 w-8 p-0"
-            render={<Link href={`/p/${project.id}/q/${shortId}`} />}
+            render={<Link href={`/${project.slug}/quests/${shortId}`} />}
           >
             <ArrowLeft className="size-4" />
           </Button>
@@ -280,7 +280,7 @@ const QuestGraph = () => {
             view={view}
             selectedId={selectedId}
             focusedShortId={shortId}
-            projectId={project.id}
+            projectSlug={project.slug}
             onPick={handlePick}
             chainEmpty={chain.length === 0}
             emptyLabel={tr("quest.graph.empty")}
@@ -323,7 +323,7 @@ interface TimelineWindowProps {
   };
   selectedId: number | null;
   focusedShortId: number;
-  projectId: number;
+  projectSlug: string;
   onPick: (q: ChainQuest) => void;
   chainEmpty: boolean;
   emptyLabel: string;
@@ -343,7 +343,7 @@ interface TimelineWindowProps {
  * Click any quest in prev/next → re-centers the view on that quest.
  */
 const TimelineWindow = (props: TimelineWindowProps) => {
-  const { view: w, selectedId, focusedShortId, projectId, onPick } = props;
+  const { view: w, selectedId, focusedShortId, projectSlug, onPick } = props;
 
   if (props.chainEmpty) {
     return (
@@ -401,7 +401,7 @@ const TimelineWindow = (props: TimelineWindowProps) => {
       <div className="flex h-1/3 min-h-0 flex-col items-center justify-center overflow-y-auto p-6">
         {selected ? (
           <Link
-            href={`/p/${projectId}/q/${selected.shortId}`}
+            href={`/${projectSlug}/quests/${selected.shortId}`}
             className="flex items-center gap-2 rounded px-2 py-1 hover:bg-muted/40"
           >
             <span

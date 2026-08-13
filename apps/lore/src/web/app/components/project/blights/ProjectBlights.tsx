@@ -348,7 +348,7 @@ const ProjectBlights = () => {
                         refresh();
                         router.push("projectQuest", {
                           params: {
-                            projectId: String(project.id),
+                            projectSlug: project.slug,
                             shortId: String(res.questShortId),
                           },
                         });

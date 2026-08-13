@@ -205,13 +205,32 @@ export class FeedbackController {
    * deployment tunes the atom would have had the form confidently quote the
    * wrong cap, and the user would only discover it on a rejected upload.
    */
+  /**
+   * Addressed by **slug**, unlike every other endpoint on this controller.
+   *
+   * The request form at `/:projectSlug/request` is the one project surface
+   * that sits outside the `project` route layout — it has to stay reachable
+   * without membership, so it never runs that layout's loader and has no
+   * `currentProjectAtom` to read an id from. This endpoint is the page's only
+   * way to turn the slug in its URL into the integer `projectId` that
+   * `submitFeedback` and `uploadFeedbackAttachment` still take; both of those
+   * are unchanged.
+   *
+   * Still `$secure()` and still gated on `assertFeedbackOpen`, so the
+   * disclosure surface is unchanged in kind — an id probe became a slug probe.
+   */
   feedbackContext = $action({
     use: [$secure()],
     method: "GET",
-    path: "/projects/:projectId/feedback/context",
+    path: "/projects/by-slug/:slug/feedback/context",
     schema: {
-      params: z.object({ projectId: z.integer() }),
+      params: z.object({ slug: z.string() }),
       response: z.object({
+        /**
+         * The integer id the submit and attachment-upload endpoints take.
+         * Returned here because the page has no other way to learn it.
+         */
+        projectId: z.integer(),
         title: z.string(),
         icon: z.union([z.uuid(), z.null()]).optional(),
         maxAttachments: z.integer(),
@@ -219,9 +238,20 @@ export class FeedbackController {
       }),
     },
     handler: async ({ params }) => {
-      const project = await this.assertFeedbackOpen(params.projectId);
+      // Soft-deleted rows are filtered out by the repository, and a rename
+      // frees the old slug — so neither a deleted nor a renamed project
+      // answers on a stale URL.
+      const found = await this.projects.findOne({
+        where: { slug: { eq: params.slug } },
+      });
+      if (!found) {
+        throw new NotFoundError("Project not found");
+      }
+
+      const project = await this.assertFeedbackOpen(found.id);
       const limits = this.rateLimiter.options();
       return {
+        projectId: project.id,
         title: project.title,
         icon: project.icon ?? null,
         maxAttachments: limits.maxAttachmentsPerFeedback,

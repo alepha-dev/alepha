@@ -94,6 +94,28 @@ export const projects = $entity({
     updatedAt: db.updatedAt(),
     deletedAt: db.deletedAt(),
     title: z.string().min(3).max(24),
+    /**
+     * URL identity. Derived from `title` on create and on every rename by
+     * `ProjectSlugService`, and unique across the whole instance because the
+     * slug is a **root-level** path segment (`/sds/quests/19`).
+     *
+     * Declared `.optional()` with NO `db.default(...)` on purpose: a column
+     * DEFAULT triggers the D1 `projects` table rebuild that cascade-wipes
+     * members, quests, milestones, folios and feedback. See CLAUDE.md
+     * "Migration safety on D1". Optional is a physical-column fact only —
+     * the backfill fills every live row and every write path sets it, so
+     * readers may treat it as present.
+     *
+     * ⚠️ The charset rule lives on `projectTitleSchema`, applied by the
+     * controller on write. It is deliberately NOT on `title` above: the
+     * entity schema also decodes rows on READ, so tightening it there would
+     * make every pre-existing title that violates the new rule fail to
+     * decode — the same failure mode as the 2026-08-05 JSON-key incident.
+     *
+     * Cleared on soft-delete so a deleted project stops holding its name
+     * hostage — SQLite treats NULLs as distinct in a UNIQUE index.
+     */
+    slug: z.string().optional(),
     createdBy: z.uuid(),
     /**
      * @deprecated — the public-project feature was removed. Column is kept
@@ -176,6 +198,10 @@ export const projects = $entity({
   indexes: [
     {
       columns: ["createdBy"],
+    },
+    {
+      columns: ["slug"],
+      unique: true,
     },
   ],
 });

@@ -10,9 +10,12 @@ test.describe("Members settings page", () => {
     const email = `mb-${Date.now()}@example.com`;
     await registerAndVerify(page, email, "GoodPassw0rd");
     const title = `MB${Date.now()}`.slice(0, 20);
-    const projectId = await createProjectViaWizard(page, title);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      title,
+    );
 
-    await page.goto(`/p/${projectId}/settings/members`);
+    await page.goto(`/${projectSlug}/settings/members`);
     await page.waitForLoadState("domcontentloaded");
 
     // The owner's own membership is rendered as a MemberIdentity card.
@@ -37,11 +40,14 @@ test.describe("Members settings page", () => {
     const email = `mb404-${Date.now()}@example.com`;
     await registerAndVerify(page, email, "GoodPassw0rd");
     const title = `MB404${Date.now()}`.slice(0, 20);
-    const projectId = await createProjectViaWizard(page, title);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      title,
+    );
 
     for (const path of [
-      `/p/${projectId}/character`,
-      `/p/${projectId}/roster`,
+      `/${projectSlug}/character`,
+      `/${projectSlug}/roster`,
     ]) {
       await page.goto(path);
       await page.waitForLoadState("domcontentloaded");

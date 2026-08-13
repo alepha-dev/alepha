@@ -186,19 +186,22 @@ test.describe("Sigils", () => {
     const projectTitle = `Sig${t}`.slice(0, 20);
     // Distinct from the project title so `getByText` cannot match the header,
     // and constrained to `APP_NAME_PATTERN` — it's the app's URL segment now
-    // (`/p/:projectId/apps/:appName`), so a capital or a space would be
+    // (`/:projectSlug/apps/:appName`), so a capital or a space would be
     // refused rather than just cosmetic.
     const appName = `app-${t}`;
     const blightMessage = `SigilE2E_${t} is not a function`;
 
     await registerAndVerify(page, email, "SigilTest123!");
-    const projectId = await createProjectViaWizard(page, projectTitle);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
 
     const ingest = `${baseURL}/sigils/ingest`;
     const config = `${baseURL}/sigils/config`;
 
     await test.step("the owner turns Sigils on from settings", async () => {
-      await page.goto(`/p/${projectId}/settings/sigils`);
+      await page.goto(`/${projectSlug}/settings/sigils`);
       await page.waitForLoadState("networkidle");
 
       // The settings page rendering at all is worth asserting: removing this
@@ -317,7 +320,7 @@ test.describe("Sigils", () => {
       // the Sigils page (Task 8) onto its own page (Task 7), which
       // otherwise has no e2e coverage at all — this step earns its keep
       // twice.
-      await page.goto(`/p/${projectId}/settings/feedback`);
+      await page.goto(`/${projectSlug}/settings/feedback`);
       await page.waitForLoadState("networkidle");
 
       const toggle = page.getByRole("switch", { name: "Enable", exact: true });
@@ -333,7 +336,7 @@ test.describe("Sigils", () => {
       // wants" step below only makes API calls (no navigation of its own),
       // and the step after that reloads *this* page expecting to still be
       // looking at the sigil row.
-      await page.goto(`/p/${projectId}/settings/sigils`);
+      await page.goto(`/${projectSlug}/settings/sigils`);
       await page.waitForLoadState("networkidle");
     });
 
@@ -353,7 +356,7 @@ test.describe("Sigils", () => {
       // `features.feedback`, off by default for a wizard-created project and
       // turned on above through its own settings page.
       expect(body.enabled).toEqual({ views: true, errors: true, vitals: true });
-      expect(body.feedbackUrl).toContain(`/p/${projectId}/request`);
+      expect(body.feedbackUrl).toContain(`/${projectSlug}/request`);
 
       const bogus = await request.get(config, {
         headers: { authorization: "Bearer sg_not_a_real_token" },
@@ -370,7 +373,7 @@ test.describe("Sigils", () => {
     });
 
     await test.step("the error lands in the blights inbox", async () => {
-      await page.goto(`/p/${projectId}/blights`);
+      await page.goto(`/${projectSlug}/blights`);
       await page.waitForLoadState("networkidle");
 
       await expect(page.getByText(blightMessage)).toBeVisible({
@@ -406,7 +409,7 @@ test.describe("Sigils", () => {
       // It's a collapsible group, but with one app it starts *open* — the
       // shell only leaves it collapsed past five — so there is nothing to
       // click before the app's own link is reachable.
-      await page.goto(`/p/${projectId}`);
+      await page.goto(`/${projectSlug}`);
       await page.waitForLoadState("networkidle");
 
       await expect(
@@ -415,7 +418,7 @@ test.describe("Sigils", () => {
       await page.getByRole("link", { name: appName, exact: true }).click();
 
       await expect(page).toHaveURL(
-        new RegExp(`/p/${projectId}/apps/${appName}`),
+        new RegExp(`/${projectSlug}/apps/${appName}`),
         { timeout: 15_000 },
       );
       await expect(
@@ -566,7 +569,7 @@ test.describe("Sigils", () => {
 
       // Rotation is revocation *without* the amnesia — this is the whole
       // reason it exists beside delete.
-      await page.goto(`/p/${projectId}/blights`);
+      await page.goto(`/${projectSlug}/blights`);
       await page.waitForLoadState("networkidle");
       await expect(page.getByText(blightMessage)).toBeVisible({
         timeout: 15_000,
@@ -577,7 +580,7 @@ test.describe("Sigils", () => {
       // Back to the app's Settings tab — the same page rotate was driven
       // from. Still one app, so the group is still open by default — no
       // click needed to reach the link.
-      await page.goto(`/p/${projectId}`);
+      await page.goto(`/${projectSlug}`);
       await page.waitForLoadState("networkidle");
       await page.getByRole("link", { name: appName, exact: true }).click();
       await page
@@ -591,7 +594,7 @@ test.describe("Sigils", () => {
       // Its own page no longer has a subject, so the delete lands the operator
       // back on the enrolment page — which now says there is nothing enrolled.
       await expect(page).toHaveURL(
-        new RegExp(`/p/${projectId}/settings/sigils`),
+        new RegExp(`/${projectSlug}/settings/sigils`),
         { timeout: 15_000 },
       );
       await expect(page.getByText(/No app enrolled yet/i)).toBeVisible({
@@ -629,7 +632,7 @@ test.describe("Sigils", () => {
       // Reachable, not merely rendered: the surviving blight is one click from
       // the sidebar, no deep link needed.
       await blightsEntry.click();
-      await expect(page).toHaveURL(new RegExp(`/p/${projectId}/blights`), {
+      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/blights`), {
         timeout: 15_000,
       });
       await page.waitForLoadState("networkidle");

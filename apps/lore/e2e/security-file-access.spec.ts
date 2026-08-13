@@ -146,7 +146,7 @@ test.describe("Public file access", () => {
 
     const email = `pub-${Date.now()}@example.com`;
     await registerAndVerify(page, email, "GoodPassw0rd");
-    const projectId = await createProjectViaWizard(
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       `Pub${Date.now()}`.slice(0, 20),
     );
@@ -182,7 +182,7 @@ test.describe("File download authorization", () => {
 
     const aEmail = `owner-${Date.now()}@example.com`;
     await registerAndVerify(page, aEmail, "GoodPassw0rd");
-    const projectId = await createProjectViaWizard(
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       `Sec${Date.now()}`.slice(0, 20),
     );
