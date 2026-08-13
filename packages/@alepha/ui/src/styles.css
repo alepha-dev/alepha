@@ -80,7 +80,7 @@
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.885 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
@@ -129,4 +129,126 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * Interaction state layer — light mode.
+ *
+ * shadcn spends ABSOLUTE colors on interaction states: `--accent`, `--muted`
+ * and `--sidebar-accent` are all `oklch(0.97 0 0)`, i.e. 3% off white. Dark
+ * mode gets a 12% step (0.145 → 0.269), which is why only light mode reads as
+ * broken — this whole block is scoped to light and leaves dark bit-for-bit.
+ *
+ * An absolute fill cannot track a surface that varies, so the step shrinks to
+ * nothing as the surface darkens: on `--sidebar` (0.985) it is 1.5%, and a
+ * `hover:bg-muted` child sitting on a `bg-muted` panel is a 0% step — the
+ * state is literally invisible. Below 0.97 it inverts and hovering BRIGHTENS.
+ *
+ * So the state fill is an ALPHA WASH rather than a color. Alpha composites
+ * over whatever it lands on, which turns the step into a constant ratio of the
+ * surface instead of a fixed color: the same weight on white, on a card, on
+ * the sidebar and on every Lore theme, and never lighter than its own
+ * background. Same idiom the stock `secondary` button variant already uses
+ * (`color-mix(in oklch, var(--secondary), var(--foreground) 5%)`).
+ *
+ * ⚠️ This file is the durable place for it. `src/components/ui/` is
+ * overwritten wholesale by `yarn w @alepha/ui sync`, so the same fix written
+ * into a primitive's classes would not survive the next sync. This file is not
+ * sync-managed.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+:root:not(.dark) {
+  --state-layer: color-mix(in oklch, var(--foreground) 10%, transparent);
+  --state-layer-weak: color-mix(in oklch, var(--foreground) 5%, transparent);
+
+  /* `--accent` and `--sidebar-accent` are PURE interaction tokens across this
+   * package and apps/lore — every single use is hover/focus/open/selected,
+   * never an opaque surface (verified by grep, incl. the bare `bg-accent`
+   * selected-state uses). So the wash goes on the token itself and reaches
+   * every state variant at once — hover, focus, data-open, data-highlighted,
+   * data-active, aria-expanded — with no selector list to keep in sync.
+   *
+   * This deliberately overrides the per-theme `--accent` values in Lore's
+   * main.css: those were hand-tuned per surface, which is exactly the approach
+   * that does not scale. Specificity (0,2,0) beats a bare `.theme-*` (0,1,0). */
+  --accent: var(--state-layer);
+  --sidebar-accent: var(--state-layer);
+}
+
+/* `--muted` is the exception: it is BOTH a state fill and an opaque surface
+ * (progress track, tabs list, kbd, card footer, slider). It must stay opaque,
+ * so its state variants are reached by selector instead of via the token.
+ *
+ * Unlayered on purpose — Tailwind's utilities live in `@layer utilities`, and
+ * unlayered styles beat layered ones whatever the specificity, so this wins
+ * without `!important` and without racing selector counts.
+ *
+ * Every match is `[class~=]`, the exact space-separated token — never
+ * `[class*=]`. A substring match looks equivalent and is not: it also matches
+ * `dark:hover:bg-muted/50`, so a ghost button rendered in LIGHT mode picked up
+ * the weak layer off its dark-mode class and came out at half strength. Exact
+ * tokens cannot do that. The cost is that the fractional list below is
+ * enumerated rather than wildcarded — a fraction nobody listed keeps today's
+ * behaviour, which is a no-op, not a wrong result. */
+:root:not(.dark)
+:is(
+  [class~="hover:bg-muted"]:hover,
+  [class~="focus:bg-muted"]:focus,
+  [class~="aria-expanded:bg-muted"][aria-expanded="true"]
+) {
+  background-color: var(--state-layer);
+}
+
+:root:not(.dark)
+  :is(
+    [class~="hover:bg-muted/30"]:hover,
+    [class~="hover:bg-muted/40"]:hover,
+    [class~="hover:bg-muted/50"]:hover,
+    [class~="hover:bg-muted/60"]:hover,
+    [class~="hover:bg-muted/70"]:hover,
+    [class~="data-open:bg-muted/50"][data-open],
+    [class~="data-active:bg-muted/50"][data-active],
+    [class~="data-popup-open:bg-muted/50"][data-popup-open],
+    [class~="aria-expanded:bg-muted/50"][aria-expanded="true"]
+  ) {
+  background-color: var(--state-layer-weak);
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * Sidebar active item — a left bar, not a heavier fill.
+ *
+ * The state layer above deliberately gives the active item the SAME weight as
+ * a hovered one, because shadcn spends one token on both. That leaves two
+ * adjacent rows — the current page and the one under the pointer — rendering
+ * as a single merged shape with no way to tell them apart.
+ *
+ * The bar resolves it without touching the fill. Presence/absence of a shape
+ * is not a color distinction, so it survives where two fills never would: low
+ * vision, a bad display, or any theme whose surface drifts. Hover stays purely
+ * a fill, so the two states never encode the same way.
+ *
+ * Both modes, unlike the state layer above: the collision it fixes is
+ * shadcn's one-token design, which is present in dark too — dark just happens
+ * to render both at `oklch(0.308 0 0)` instead of both at a 10% wash.
+ *
+ * `--sidebar-primary` rather than a fixed color, so every Lore theme carries
+ * its own hue with no per-theme values. Lives here rather than in
+ * `sidebar.tsx`, which `yarn w @alepha/ui sync` overwrites wholesale.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+[data-slot="sidebar-menu-button"][data-active],
+[data-slot="sidebar-menu-sub-button"][data-active] {
+  position: relative;
+}
+
+[data-slot="sidebar-menu-button"][data-active]::after,
+[data-slot="sidebar-menu-sub-button"][data-active]::after {
+  content: "";
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  left: 0;
+  width: 3px;
+  border-radius: 9999px;
+  background-color: var(--sidebar-primary);
 }
