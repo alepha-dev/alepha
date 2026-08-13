@@ -8,7 +8,7 @@ import {
  *
  * Used to live on the now-deleted `AnalyticsStore` interface, which every
  * storage backend implemented `vitalHistograms()` against. Storage moved to
- * `@alepha/analytics`'s `$analytics()` datasets, but the shape a histogram
+ * `alepha/api/analytics`'s `$analytics()` datasets, but the shape a histogram
  * walk consumes did not change, so it is declared here instead — the one
  * place both {@link vitalsP75} and its callers need it.
  */

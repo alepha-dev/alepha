@@ -35,7 +35,7 @@ const MAX_DAYS_PER_SWEEP = 14;
  * (`collapseViews`, deleted). That half retired along with the rest of the
  * legacy views/vitals write and read path: `SigilIngestService` no longer
  * writes `sigil_views_hourly` at all, and `AnalyticsRollupJobs`
- * (`@alepha/analytics`) owns retention for the `sigil_views` / `sigil_vitals`
+ * (`alepha/api/analytics`) owns retention for the `sigil_views` / `sigil_vitals`
  * `$analytics()` datasets that replaced it — its own sweep, exercised in that
  * package's own test suite, not this one. `sigil_views_hourly` is therefore
  * now frozen: whatever rows it already holds stay exactly as they are, with
