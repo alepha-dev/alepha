@@ -463,7 +463,14 @@ export class StateManager<State extends object = AlephaState> {
     }
 
     if (options?.skipContext !== true && this.als?.exists()) {
+      // Inside a fork, an `undefined` write stays a WRITE (not a delete):
+      // presence in the fork layer is what shadows the app-level value, and
+      // dropping the key would leak the app store through.
       this.als.set(key as string, value);
+    } else if (value === undefined) {
+      // App level: `set(key, undefined)` (del) removes the key entirely, so
+      // `has()` / `keys()` stop reporting a key that holds nothing.
+      delete store[key];
     } else {
       store[key] = value;
     }
@@ -583,7 +590,9 @@ export class StateManager<State extends object = AlephaState> {
   }
 
   /**
-   * Delete a key from the state (set to undefined)
+   * Delete a key from the state. At app level the key is removed entirely
+   * (`has()` becomes false); inside a fork the layer keeps an `undefined`
+   * marker so the deletion shadows the app-level value for that request.
    */
   public del<Key extends keyof State>(key: Key): this {
     return this.set(key, undefined);

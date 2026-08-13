@@ -297,7 +297,7 @@ alepha.codec.encode(schema, data, { validation: false, as: "string" });
 
 ### Codec Formats
 
-The default codec is `"json"`. Alepha also ships a `"keyless"` codec (smaller payloads, used for internal RPC). Additional codecs like Protobuf can be registered:
+The default codec is `"json"`. Additional codecs like Protobuf can be registered:
 
 ```typescript
 alepha.codec.register({

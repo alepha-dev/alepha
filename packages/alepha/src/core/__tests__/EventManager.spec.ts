@@ -20,7 +20,8 @@ describe("EventManager", () => {
       };
 
       const logFn = () => mockLogger;
-      const eventManager = new EventManager(logFn);
+      const eventManager = new EventManager();
+      eventManager.logFn = logFn;
 
       expect(eventManager).toBeInstanceOf(EventManager);
     });
@@ -358,7 +359,8 @@ describe("EventManager", () => {
         error: vi.fn(),
       };
 
-      const eventManager = new EventManager(() => mockLogger);
+      const eventManager = new EventManager();
+      eventManager.logFn = () => mockLogger;
 
       class TestService {}
 
@@ -383,7 +385,8 @@ describe("EventManager", () => {
         error: vi.fn(),
       };
 
-      const eventManager = new EventManager(() => mockLogger);
+      const eventManager = new EventManager();
+      eventManager.logFn = () => mockLogger;
 
       class TestService {}
 
@@ -410,7 +413,8 @@ describe("EventManager", () => {
         error: vi.fn(),
       };
 
-      const eventManager = new EventManager(() => mockLogger);
+      const eventManager = new EventManager();
+      eventManager.logFn = () => mockLogger;
 
       eventManager.on("echo", async () => {
         // Simple callback
@@ -431,7 +435,8 @@ describe("EventManager", () => {
         error: vi.fn(),
       };
 
-      const eventManager = new EventManager(() => mockLogger);
+      const eventManager = new EventManager();
+      eventManager.logFn = () => mockLogger;
 
       class TestService {}
 
@@ -461,7 +466,8 @@ describe("EventManager", () => {
         error: vi.fn(),
       };
 
-      const eventManager = new EventManager(() => mockLogger);
+      const eventManager = new EventManager();
+      eventManager.logFn = () => mockLogger;
 
       class MyCustomService {}
 
@@ -488,7 +494,8 @@ describe("EventManager", () => {
         error: vi.fn(),
       };
 
-      const eventManager = new EventManager(() => mockLogger);
+      const eventManager = new EventManager();
+      eventManager.logFn = () => mockLogger;
 
       eventManager.on("echo", async () => {});
 
@@ -510,7 +517,8 @@ describe("EventManager", () => {
         error: vi.fn(),
       };
 
-      const eventManager = new EventManager(() => mockLogger);
+      const eventManager = new EventManager();
+      eventManager.logFn = () => mockLogger;
 
       eventManager.on("echo", async () => {});
 
@@ -558,6 +566,22 @@ describe("EventManager", () => {
       expect(callback1).not.toHaveBeenCalled();
       expect(callback2).toHaveBeenCalledTimes(1);
       expect(callback3).toHaveBeenCalledTimes(1);
+    });
+
+    it("should only remove its own registration when one callback is registered twice", async () => {
+      const eventManager = new EventManager();
+      const callback = vi.fn();
+
+      const unsubscribe1 = eventManager.on("echo", callback);
+      eventManager.on("echo", callback);
+
+      unsubscribe1();
+
+      await eventManager.emit("echo", {});
+
+      // The second registration must survive: unsubscribing is per
+      // registration (hook identity), not per callback function.
+      expect(callback).toHaveBeenCalledTimes(1);
     });
 
     it("should allow multiple unsubscribe calls safely", async () => {

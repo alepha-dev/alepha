@@ -108,8 +108,10 @@ describe("$inject - circular dependencies", () => {
       hi = superInject(A);
     }
 
+    // The reported chain is the cycle itself (from the repeated service
+    // onward), not the callers above it: Module re-enters Module.
     expect(() => Alepha.create().inject(Test)).toThrow(
-      new CircularDependencyError("Module", ["Test"]),
+      new CircularDependencyError("Module", ["Module"]),
     );
   });
 
@@ -171,5 +173,72 @@ describe("$inject - inheritance", () => {
 
     // just be to ensure that P1 is not created again (because R3 extends R1)
     expect(logs).toEqual(["P1", "P2"]);
+  });
+});
+
+describe("$inject - throwing constructors", () => {
+  it("should report the original error on every retry, not a phantom cycle", () => {
+    class Boom {
+      constructor() {
+        throw new Error("boom-original");
+      }
+    }
+
+    const alepha = new Alepha();
+    expect(() => alepha.inject(Boom)).toThrow("boom-original");
+    // Before the finally-guard in Alepha.new(), Boom stayed in the pending
+    // stack and this retry threw CircularDependencyError instead.
+    expect(() => alepha.inject(Boom)).toThrow("boom-original");
+  });
+
+  it("should restore the $context cursor after a constructor throws", () => {
+    class Boom {
+      constructor() {
+        throw new Error("boom");
+      }
+    }
+
+    const alepha = new Alepha();
+    expect(() => alepha.inject(Boom)).toThrow("boom");
+    expect(() => $context()).toThrow(MissingContextError);
+  });
+
+  it("should keep injecting other services after a failed instantiation", () => {
+    class Boom {
+      constructor() {
+        throw new Error("boom");
+      }
+    }
+    class Fine {
+      value = "ok";
+    }
+
+    const alepha = new Alepha();
+    expect(() => alepha.inject(Boom)).toThrow("boom");
+    expect(alepha.inject(Fine).value).toBe("ok");
+  });
+});
+
+describe("$inject - circular dependency reporting", () => {
+  it("should report the full cycle path in the error message", () => {
+    class A {
+      b = $inject(B);
+    }
+    class B {
+      c = $inject(C);
+    }
+    class C {
+      a = $inject(A);
+    }
+
+    const alepha = new Alepha();
+    let message = "";
+    try {
+      alepha.inject(A);
+    } catch (error) {
+      expect(error).toBeInstanceOf(CircularDependencyError);
+      message = (error as Error).message;
+    }
+    expect(message).toContain("A -> B -> C -> A");
   });
 });

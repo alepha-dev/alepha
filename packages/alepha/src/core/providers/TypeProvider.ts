@@ -16,19 +16,11 @@ export { z };
 
 /**
  * Static config knobs, still read by `I18nProvider` for validation-error
- * localization.
+ * localization (`translateError` / `setLocale`). The string length caps live
+ * in `Z_LIMITS` (ZodProvider) now.
  */
 export class TypeProvider {
-  static DEFAULT_STRING_MAX_LENGTH: number | undefined = 255;
-  static DEFAULT_SHORT_STRING_MAX_LENGTH: number | undefined = 64;
-  static DEFAULT_LONG_STRING_MAX_LENGTH: number | undefined = 1024;
-  static DEFAULT_RICH_STRING_MAX_LENGTH: number | undefined = 65535;
-  static DEFAULT_ARRAY_MAX_ITEMS = 1000;
   static translateError = (error: { message?: string }, _locale?: string) =>
     error.message ?? "";
   static setLocale = (_locale: string) => {};
-  static isValidBigInt = (value: string | number) =>
-    typeof value === "number"
-      ? Number.isInteger(value)
-      : /^-?\d+$/.test(value.trim());
 }

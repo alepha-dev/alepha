@@ -1,0 +1,84 @@
+import { describe, expect, it } from "vitest";
+import { coerceObject, coerceScalar } from "../helpers/coerceStrings.ts";
+import { z } from "../providers/ZodProvider.ts";
+
+describe("coerceScalar", () => {
+  it("should coerce numeric strings for number schemas", () => {
+    expect(coerceScalar(z.integer(), "42")).toBe(42);
+    expect(coerceScalar(z.number(), "3.14")).toBe(3.14);
+  });
+
+  it("should leave non-numeric strings for number schemas unchanged", () => {
+    expect(coerceScalar(z.integer(), "abc")).toBe("abc");
+    expect(coerceScalar(z.integer(), "")).toBe("");
+    expect(coerceScalar(z.integer(), "  ")).toBe("  ");
+  });
+
+  it("should coerce boolean strings for boolean schemas", () => {
+    expect(coerceScalar(z.boolean(), "true")).toBe(true);
+    expect(coerceScalar(z.boolean(), "false")).toBe(false);
+    expect(coerceScalar(z.boolean(), "yes")).toBe("yes");
+  });
+
+  it("should stringify typed scalars for string schemas", () => {
+    expect(coerceScalar(z.text(), 3000)).toBe("3000");
+    expect(coerceScalar(z.text(), true)).toBe("true");
+  });
+
+  it("should coerce through optional wrappers", () => {
+    expect(coerceScalar(z.integer().optional(), "7")).toBe(7);
+    expect(coerceScalar(z.boolean().optional(), "true")).toBe(true);
+  });
+
+  it("should coerce array elements", () => {
+    expect(coerceScalar(z.array(z.integer()), ["1", "2"])).toEqual([1, 2]);
+  });
+
+  it("should pass through values it cannot coerce", () => {
+    expect(coerceScalar(z.integer(), { a: 1 })).toEqual({ a: 1 });
+    expect(coerceScalar(z.text(), null)).toBe(null);
+  });
+});
+
+describe("coerceObject", () => {
+  it("should coerce declared fields only", () => {
+    const schema = z.object({
+      PORT: z.integer(),
+      DEBUG: z.boolean(),
+    });
+
+    const out = coerceObject(schema, {
+      PORT: "3000",
+      DEBUG: "true",
+      EXTRA: "untouched",
+    });
+
+    expect(out.PORT).toBe(3000);
+    expect(out.DEBUG).toBe(true);
+    expect(out.EXTRA).toBe("untouched");
+  });
+
+  it("should skip null and undefined values", () => {
+    const schema = z.object({
+      PORT: z.integer().optional(),
+    });
+
+    const out = coerceObject(schema, { PORT: undefined, OTHER: null });
+    expect(out.PORT).toBeUndefined();
+    expect(out.OTHER).toBeNull();
+  });
+
+  it("should not mutate the input object", () => {
+    const schema = z.object({ PORT: z.integer() });
+    const input = { PORT: "3000" };
+
+    const out = coerceObject(schema, input);
+    expect(input.PORT).toBe("3000");
+    expect(out.PORT).toBe(3000);
+  });
+
+  it("should pass through when the schema has no shape", () => {
+    const value = { A: "1" };
+    expect(coerceObject(z.any(), value)).toBe(value);
+  });
+});

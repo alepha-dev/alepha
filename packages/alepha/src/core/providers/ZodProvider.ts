@@ -105,7 +105,7 @@ export interface TextOptions extends StringOptions {
 
 // ---------------------------------------------------------------------------
 
-/** Defaults mirroring TypeProvider's static length caps. */
+/** Default length caps for the `z.text()` size families. */
 export const Z_LIMITS = {
   short: 64,
   regular: 255,

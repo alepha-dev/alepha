@@ -89,7 +89,7 @@ describe("CodecManager", () => {
       });
 
       expect(() => codecManager.getCodec("missing")).toThrow(
-        'Codec "missing" not found. Available codecs: json, keyless, mock',
+        'Codec "missing" not found. Available codecs: json, mock',
       );
     });
   });

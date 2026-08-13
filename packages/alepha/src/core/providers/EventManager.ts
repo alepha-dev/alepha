@@ -44,10 +44,6 @@ export class EventManager {
    */
   protected sortedCache = new Map<string, Array<Hook>>();
 
-  constructor(logFn?: () => LoggerInterface | undefined) {
-    this.logFn = logFn;
-  }
-
   protected get log(): LoggerInterface | undefined {
     return this.logFn?.();
   }
@@ -88,7 +84,10 @@ export class EventManager {
       const lists = this.events[event];
       if (!lists) return;
       for (const key of ["first", "normal", "last"] as const) {
-        lists[key] = lists[key].filter((it) => it.callback !== hook.callback);
+        // Remove by hook identity, not callback identity: two subscriptions
+        // sharing one callback function are distinct registrations, and
+        // unsubscribing one must not silently remove the other.
+        lists[key] = lists[key].filter((it) => it !== hook);
       }
       this.invalidateCache(event as string);
     };

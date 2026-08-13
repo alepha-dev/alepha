@@ -13,10 +13,3 @@ export type Async<T> = T | Promise<T>;
 export type AsyncFn = (...args: any[]) => Async<any>;
 
 // ---------------------------------------------------------------------------------------------------------------------
-
-/**
- * Transforms a type T into a promise if it is not already a promise.
- */
-export type MaybePromise<T> = T extends Promise<any> ? T : Promise<T>;
-
-// ---------------------------------------------------------------------------------------------------------------------

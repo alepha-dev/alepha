@@ -263,4 +263,79 @@ describe("$mode", () => {
 
     await alepha.stop();
   });
+
+  it.each(["false", "0", ""])(
+    "should NOT activate when env value is %j",
+    (value) => {
+      class Target {
+        mode = $mode({ env: "MIGRATE" });
+      }
+
+      const alepha = new Alepha({ env: { MIGRATE: value } });
+      alepha.with(Target);
+
+      expect(alepha.inject(Target).mode).toBe(false);
+      expect(alepha.get("alepha.target")).toBeUndefined();
+    },
+  );
+
+  it.each(["true", "1", "yes", "anything"])(
+    "should activate when env value is %j",
+    (value) => {
+      class Target {
+        mode = $mode({ env: "MIGRATE" });
+      }
+
+      const alepha = new Alepha({ env: { MIGRATE: value } });
+      alepha.with(Target);
+
+      expect(alepha.inject(Target).mode).toBe(true);
+    },
+  );
+});
+
+describe("Alepha#isEnvEnabled", () => {
+  it("should treat absent, empty, 'false' and '0' as off", () => {
+    const alepha = new Alepha({
+      env: {
+        EMPTY: "",
+        FALSE: "false",
+        FALSE_UPPER: "FALSE",
+        ZERO: "0",
+        SPACED: "  false  ",
+        BOOL_FALSE: false,
+      },
+    });
+
+    expect(alepha.isEnvEnabled("MISSING")).toBe(false);
+    expect(alepha.isEnvEnabled("EMPTY")).toBe(false);
+    expect(alepha.isEnvEnabled("FALSE")).toBe(false);
+    expect(alepha.isEnvEnabled("FALSE_UPPER")).toBe(false);
+    expect(alepha.isEnvEnabled("ZERO")).toBe(false);
+    expect(alepha.isEnvEnabled("SPACED")).toBe(false);
+    expect(alepha.isEnvEnabled("BOOL_FALSE")).toBe(false);
+  });
+
+  it("should treat any other value as on", () => {
+    const alepha = new Alepha({
+      env: {
+        TRUE: "true",
+        ONE: "1",
+        WORD: "eu-west-3",
+        BOOL_TRUE: true,
+        NUMBER: 8080,
+      },
+    });
+
+    expect(alepha.isEnvEnabled("TRUE")).toBe(true);
+    expect(alepha.isEnvEnabled("ONE")).toBe(true);
+    expect(alepha.isEnvEnabled("WORD")).toBe(true);
+    expect(alepha.isEnvEnabled("BOOL_TRUE")).toBe(true);
+    expect(alepha.isEnvEnabled("NUMBER")).toBe(true);
+  });
+
+  it("should apply to isCI", () => {
+    expect(new Alepha({ env: { CI: "false" } }).isCI()).toBe(false);
+    expect(new Alepha({ env: { CI: "true" } }).isCI()).toBe(true);
+  });
 });

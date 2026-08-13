@@ -1,7 +1,6 @@
 import { AlephaError } from "../errors/AlephaError.ts";
 import { $inject } from "../primitives/$inject.ts";
 import { JsonSchemaCodec } from "./JsonSchemaCodec.ts";
-import { KeylessJsonSchemaCodec } from "./KeylessJsonSchemaCodec.ts";
 import type { SchemaCodec } from "./SchemaCodec.ts";
 import { SchemaValidator } from "./SchemaValidator.ts";
 import type { Infer, ZType } from "./ZodProvider.ts";
@@ -58,7 +57,6 @@ export interface DecodeOptions {
 export class CodecManager {
   protected readonly codecs: Map<string, SchemaCodec> = new Map();
   protected readonly jsonCodec = $inject(JsonSchemaCodec);
-  protected readonly keylessCodec = $inject(KeylessJsonSchemaCodec);
   protected readonly schemaValidator = $inject(SchemaValidator);
 
   public default = "json";
@@ -69,12 +67,6 @@ export class CodecManager {
       name: "json",
       codec: this.jsonCodec,
       default: true,
-    });
-
-    // Register keyless JSON codec (smaller, faster decoding)
-    this.register({
-      name: "keyless",
-      codec: this.keylessCodec,
     });
   }
 

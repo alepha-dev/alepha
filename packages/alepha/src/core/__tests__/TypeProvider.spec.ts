@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Alepha } from "../Alepha.ts";
-import { TypeProvider, z } from "../providers/TypeProvider.ts";
+import { z } from "../providers/TypeProvider.ts";
 
 describe("TypeProvider", () => {
   describe("Primitive Types", () => {
@@ -1596,33 +1596,6 @@ describe("TypeProvider", () => {
       expect(schema.isScalar(z.boolean())).toBe(true);
       expect(schema.isScalar(z.object({}))).toBe(false);
       expect(schema.isScalar(z.array(z.string()))).toBe(false);
-    });
-  });
-
-  describe("TypeProvider static methods", () => {
-    describe("isValidBigInt", () => {
-      it("should validate valid bigint strings", () => {
-        expect(TypeProvider.isValidBigInt("123")).toBe(true);
-        expect(TypeProvider.isValidBigInt("0")).toBe(true);
-        expect(TypeProvider.isValidBigInt("-456")).toBe(true);
-        expect(
-          TypeProvider.isValidBigInt("123456789012345678901234567890"),
-        ).toBe(true);
-      });
-
-      it("should validate integer numbers", () => {
-        expect(TypeProvider.isValidBigInt(123)).toBe(true);
-        expect(TypeProvider.isValidBigInt(0)).toBe(true);
-        expect(TypeProvider.isValidBigInt(-456)).toBe(true);
-      });
-
-      it("should reject invalid bigint values", () => {
-        expect(TypeProvider.isValidBigInt("12.34")).toBe(false);
-        expect(TypeProvider.isValidBigInt("not a number")).toBe(false);
-        expect(TypeProvider.isValidBigInt("")).toBe(false);
-        expect(TypeProvider.isValidBigInt("  ")).toBe(false);
-        expect(TypeProvider.isValidBigInt(3.14)).toBe(false);
-      });
     });
   });
 });

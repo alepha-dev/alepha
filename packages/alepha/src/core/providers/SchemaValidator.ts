@@ -43,12 +43,4 @@ export class SchemaValidator {
   public clone<T extends ZType>(schema: T): T {
     return schema;
   }
-
-  /**
-   * Legacy pre-processing entry point. Coercion now happens inside `parse`,
-   * so this is a no-op kept for call-site compatibility.
-   */
-  public beforeParse(_schema: unknown, value: unknown): unknown {
-    return value;
-  }
 }

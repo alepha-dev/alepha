@@ -1,4 +1,3 @@
-import { Primitive } from "../helpers/primitive.ts";
 import type { InstantiableClass, Service } from "../interfaces/Service.ts";
 import { $context } from "./$context.ts";
 
@@ -29,8 +28,6 @@ export const $inject = <T extends object>(
     ...opts,
   });
 };
-
-export class InjectPrimitive extends Primitive {}
 
 export interface InjectOptions<T extends object = any> {
   /**

@@ -38,6 +38,5 @@ and providing a unified interface for the application.
 
 - [`CodecManager`](/docs/reference-providers-codecmanager) — CodecManager manages multiple codec formats and provides a unified interface
 - [`Json`](/docs/reference-providers-json) — Mimics the JSON global object with stringify and parse methods.
-- [`KeylessJsonSchemaCodec`](/docs/reference-providers-keylessjsonschemacodec) — KeylessJsonSchemaCodec provides schema-driven JSON encoding without keys.
 - [`SchemaValidator`](/docs/reference-providers-schemavalidator) — Validates + coerces a value against a zod schema.
 - [`TypeProvider`](/docs/reference-providers-typeprovider) — Static config knobs, still read by `I18nProvider` for validation-error

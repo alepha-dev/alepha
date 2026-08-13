@@ -796,4 +796,31 @@ describe("StateManager", () => {
       expect(freshAlepha.store.get(counter)).toEqual({ value: 0 });
     });
   });
+
+  describe("del", () => {
+    it("should remove the key from the app-level store", () => {
+      const alepha = new Alepha();
+      alepha.store.set("foo", 1 as any);
+      expect(alepha.store.has("foo")).toBe(true);
+
+      alepha.store.del("foo");
+      expect(alepha.store.has("foo")).toBe(false);
+      expect(alepha.store.keys()).not.toContain("foo");
+      expect(alepha.store.get("foo")).toBeUndefined();
+    });
+
+    it("should shadow the app-level value inside a fork", () => {
+      const alepha = new Alepha();
+      alepha.store.set("foo", "app" as any);
+
+      alepha.fork(() => {
+        alepha.store.del("foo");
+        // The fork owns the deletion: reads resolve undefined, not "app".
+        expect(alepha.store.get("foo")).toBeUndefined();
+      });
+
+      // The app-level value survives the fork.
+      expect(alepha.store.get("foo")).toBe("app");
+    });
+  });
 });

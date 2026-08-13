@@ -128,3 +128,26 @@ describe("$hook", () => {
     expect(stack).toBe("ABCDEF");
   });
 });
+
+describe("$hook after start", () => {
+  it("should refuse a $hook on a service instantiated after start", async () => {
+    class ScopedWithHook {
+      onEcho = $hook({
+        on: "echo",
+        handler: () => {},
+      });
+    }
+
+    const alepha = new Alepha();
+    await alepha.start();
+
+    // A scoped injection inside a request fork is the reachable way to
+    // instantiate a service post-start; each one used to leak its hook on
+    // the app-level EventManager forever.
+    expect(() =>
+      alepha.fork(() => alepha.inject(ScopedWithHook, { lifetime: "scoped" })),
+    ).toThrow(/after Alepha has started/);
+
+    await alepha.stop();
+  });
+});

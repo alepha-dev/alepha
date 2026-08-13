@@ -8,7 +8,8 @@ export interface ModeOptions {
    * Environment variable to check for.
    *
    * The mode activates when:
-   * - The env variable is truthy (e.g. `MIGRATE=true`), OR
+   * - The env variable is enabled (e.g. `MIGRATE=true` — but NOT `MIGRATE=false`,
+   *   `MIGRATE=0` or `MIGRATE=`, see `Alepha#isEnvEnabled`), OR
    * - The `MODE` env equals this value (e.g. `MODE=MIGRATE`)
    *
    * @example "MIGRATE"
@@ -65,8 +66,9 @@ export interface ModeOptions {
 export const $mode = (args: ModeOptions): boolean => {
   const { alepha, service } = $context();
 
-  // Accept MIGRATE=true or MODE=MIGRATE
-  if (alepha.env[args.env] || alepha.env.MODE === args.env) {
+  // Accept MIGRATE=true or MODE=MIGRATE. `isEnvEnabled` (not raw truthiness):
+  // env values are strings, and `MIGRATE=false` used to ACTIVATE the mode.
+  if (alepha.isEnvEnabled(args.env) || alepha.env.MODE === args.env) {
     alepha.set("alepha.target", service);
 
     if (args.ready) {

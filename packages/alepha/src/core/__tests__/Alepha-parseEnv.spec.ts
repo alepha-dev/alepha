@@ -157,4 +157,104 @@ describe("Alepha#parseEnv", () => {
     const second = alepha.parseEnv(schema);
     expect(first).toBe(second);
   });
+
+  it("should keep '$$KEY' as a literal '$KEY' (escape)", async () => {
+    const schema = z.object({
+      PORT: z.text().optional(),
+      PASSWORD: z.text().optional(),
+    });
+
+    const alepha = Alepha.create({
+      env: { PORT: "3000", PASSWORD: "pre$$PORTpost" },
+    });
+
+    const env = alepha.parseEnv(schema);
+    expect(env.PASSWORD).toBe("pre$PORTpost");
+  });
+
+  it("should keep '$$' before an undeclared key untouched", async () => {
+    const schema = z.object({
+      VALUE: z.text().optional(),
+    });
+
+    const alepha = Alepha.create({
+      env: { VALUE: "$$MISSING" },
+    });
+
+    const env = alepha.parseEnv(schema);
+    expect(env.VALUE).toBe("$$MISSING");
+  });
+
+  it("should keep an escape intact through transitive substitution", async () => {
+    const schema = z.object({
+      A: z.text().optional(),
+      B: z.text().optional(),
+      C: z.text().optional(),
+    });
+
+    const alepha = Alepha.create({
+      env: {
+        A: "secret",
+        B: "$$A",
+        C: "$B",
+      },
+    });
+
+    const env = alepha.parseEnv(schema);
+    expect(env.B).toBe("$A");
+    // C resolves $B, whose escaped $$A must stay literal even though the
+    // substitution introduced it mid-pass.
+    expect(env.C).toBe("$A");
+  });
+
+  it("should not let regex metacharacters in keys break substitution", async () => {
+    const schema = z.object({
+      "MY(VAR)": z.text().optional(),
+      "A+B": z.text().optional(),
+      RESULT: z.text().optional(),
+    });
+
+    const alepha = Alepha.create({
+      env: {
+        "MY(VAR)": "one",
+        "A+B": "two",
+        RESULT: "$MY(VAR)/$A+B",
+      },
+    });
+
+    const env = alepha.parseEnv(schema);
+    expect(env.RESULT).toBe("one/two");
+  });
+
+  it("should not treat a dotted key as a regex wildcard", async () => {
+    const schema = z.object({
+      "API.URL": z.text().optional(),
+      RESULT: z.text().optional(),
+    });
+
+    const alepha = Alepha.create({
+      env: {
+        "API.URL": "https://api.example.com",
+        // "$APIXURL" must NOT be rewritten by the "API.URL" pattern.
+        RESULT: "$APIXURL",
+      },
+    });
+
+    const env = alepha.parseEnv(schema);
+    expect(env.RESULT).toBe("$APIXURL");
+  });
+
+  it("should not interpret '$&' replacement patterns in values", async () => {
+    const schema = z.object({
+      PORT: z.text().optional(),
+      URL: z.text().optional(),
+    });
+
+    const alepha = Alepha.create({
+      env: { PORT: "3000", URL: "$PORT and $& stays" },
+    });
+
+    const env = alepha.parseEnv(schema);
+    expect(env.URL).toBe("3000 and $& stays");
+  });
 });

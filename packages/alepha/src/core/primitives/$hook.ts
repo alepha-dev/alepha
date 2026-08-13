@@ -1,5 +1,6 @@
 import type { Hooks } from "../Alepha.ts";
 import { KIND } from "../constants/KIND.ts";
+import { AlephaError } from "../errors/AlephaError.ts";
 import { createPrimitive, Primitive } from "../helpers/primitive.ts";
 import type { Async } from "../interfaces/Async.ts";
 import type { Service } from "../interfaces/Service.ts";
@@ -83,6 +84,21 @@ export class HookPrimitive<T extends keyof Hooks> extends Primitive<
   public called = 0;
 
   protected onInit() {
+    // Enforce the documented contract ("you can't register a hook after the
+    // App has started"). The reachable violation is a $hook declared on a
+    // scoped/transient service instantiated per request: each instantiation
+    // registered another callback on the app-level EventManager, and the
+    // hooks outlived their request scope — an unbounded leak that also
+    // re-ran side effects once per past request.
+    if (this.alepha.isStarted()) {
+      throw new AlephaError(
+        `Cannot register $hook '${this.options.on}' (${this.config.service?.name ?? "unknown"}.${this.config.propertyKey}) after Alepha has started. ` +
+          "Hooks live on the app-level EventManager and are never unregistered — " +
+          "a $hook on a scoped or transient service would leak once per instantiation. " +
+          "Declare it on a singleton service instead.",
+      );
+    }
+
     const handler = this.options.handler;
 
     const resolveDeps = (

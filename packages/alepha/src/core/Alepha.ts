@@ -485,14 +485,31 @@ export class Alepha {
   }
 
   /**
+   * True when the named environment variable is set to an "on" value.
+   *
+   * Environment values are strings, and `!!"false"` is `true` — which is how
+   * `MIGRATE=false` used to *activate* a `$mode`. This is the truthiness
+   * check every env flag must go through: absent, `""`, `"false"` and `"0"`
+   * (case-insensitive) are off; anything else is on.
+   */
+  public isEnvEnabled(name: string): boolean {
+    const value = this.env[name];
+    if (value === undefined || value === false) {
+      return false;
+    }
+    const str = String(value).trim().toLowerCase();
+    return str !== "" && str !== "false" && str !== "0";
+  }
+
+  /**
    * True if the App is running in a Continuous Integration environment.
    */
   public isCI(): boolean {
-    if (this.env.GITHUB_ACTIONS) {
+    if (this.isEnvEnabled("GITHUB_ACTIONS")) {
       return true;
     }
 
-    return !!this.env.CI;
+    return this.isEnvEnabled("CI");
   }
 
   /**
@@ -510,7 +527,7 @@ export class Alepha {
       return false;
     }
 
-    return !!this.env.VITE_ALEPHA_DEV;
+    return this.isEnvEnabled("VITE_ALEPHA_DEV");
   }
 
   /**
@@ -528,12 +545,12 @@ export class Alepha {
       return false;
     }
 
-    if (this.env.ALEPHA_SERVERLESS) {
+    if (this.isEnvEnabled("ALEPHA_SERVERLESS")) {
       return true;
     }
 
     // Vercel support
-    if (this.env.VERCEL_REGION) {
+    if (this.isEnvEnabled("VERCEL_REGION")) {
       return true;
     }
 
@@ -1076,9 +1093,13 @@ export class Alepha {
 
     const index = this.pendingInstantiations.indexOf(service);
     if (index !== -1 && !transient) {
+      // slice(index), not slice(0, index): the cycle is the stack FROM the
+      // repeated service onward. The old slice reported the callers above the
+      // cycle and dropped the cycle itself (empty when the cycle starts the
+      // stack).
       throw new CircularDependencyError(
         service.name,
-        this.pendingInstantiations.slice(0, index).map((it) => it.name),
+        this.pendingInstantiations.slice(index).map((it) => it.name),
       );
     }
 
@@ -1181,7 +1202,9 @@ export class Alepha {
   /**
    * Applies environment variables to the provided schema and state object.
    *
-   * It replaces also all templated $ENV inside string values.
+   * It replaces also all templated $ENV inside string values. Write `$$KEY`
+   * for a literal `$KEY` — e.g. a password containing `$PORT` declared as
+   * `$$PORT` survives substitution untouched.
    *
    * @param schema - The schema object to apply environment variables to.
    * @return The schema object with environment variables applied.
@@ -1205,8 +1228,43 @@ export class Alepha {
     ) as Record<string, any>;
 
     // Sort keys longest-first to prevent substring collisions
-    // (e.g. $PORT must not match inside $PORT_NAME).
-    const sortedKeys = Object.keys(config).sort((a, b) => b.length - a.length);
+    // (e.g. $PORT must not match inside $PORT_NAME). Patterns are compiled
+    // once per key, outside the pass loop — and the key is regex-escaped:
+    // keys are user input, and an unescaped `(` used to blow up the RegExp
+    // constructor while `.` silently matched any character.
+    const patterns = Object.keys(config)
+      .sort((a, b) => b.length - a.length)
+      .map((key) => {
+        const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return {
+          key,
+          // `$$KEY` is the escape spelling for a literal `$KEY`.
+          escape: new RegExp(`\\$\\$${escaped}(?![A-Z0-9_])`, "g"),
+          // Word-boundary match, so a value referencing an UNDECLARED
+          // `$PORTX` is not rewritten by the declared `PORT`.
+          subst: new RegExp(`\\$${escaped}(?![A-Z0-9_])`, "g"),
+        };
+      });
+
+    // Neutralize `$$KEY` escapes BEFORE any substitution pass. The dollar is
+    // parked as a sentinel so the multi-pass loop below can never see (and
+    // substitute) the unescaped `$KEY` it protects — the old single-regex
+    // approach unescaped and substituted in the same passes, so an escaped
+    // `$$PORT` still came out as `$3000`. The sentinel survives transitively
+    // (an escape inside a substituted value stays inert) and is restored
+    // after the last pass.
+    const ESCAPED_DOLLAR = "\u0000alepha:dollar\u0000";
+    for (const key in config) {
+      if (typeof config[key] !== "string") continue;
+      for (const p of patterns) {
+        // Function replacement on purpose: a replacement STRING gives `$`
+        // sequences (`$&`, `$'`) special meaning.
+        config[key] = (config[key] as string).replace(
+          p.escape,
+          () => `${ESCAPED_DOLLAR}${p.key}`,
+        );
+      }
+    }
 
     let changed = true;
 
@@ -1218,21 +1276,25 @@ export class Alepha {
       changed = false;
       for (const key in config) {
         if (typeof config[key] !== "string") continue;
-        for (const env of sortedKeys) {
+        for (const p of patterns) {
           const before = config[key] as string;
-          // Word-boundary match, so a value referencing an UNDECLARED
-          // `$PORTX` is not rewritten by the declared `PORT`. `$$` escapes a
-          // literal `$`, so a password containing `$PORT` can be written
-          // `$$PORT` and survives.
-          config[key] = before.replace(
-            new RegExp(`(\\$\\$)?\\$${env}(?![A-Z0-9_])`, "g"),
-            (match, escaped) =>
-              escaped ? match.slice(1) : String(config[env] ?? ""),
+          config[key] = before.replace(p.subst, () =>
+            String(config[p.key] ?? ""),
           );
           if (config[key] !== before) {
             changed = true;
           }
         }
+      }
+    }
+
+    // Restore escaped dollars: `$$PORT` has now safely become `$PORT`.
+    for (const key in config) {
+      if (
+        typeof config[key] === "string" &&
+        (config[key] as string).includes(ESCAPED_DOLLAR)
+      ) {
+        config[key] = (config[key] as string).replaceAll(ESCAPED_DOLLAR, "$");
       }
     }
 
@@ -1430,42 +1492,50 @@ export class Alepha {
     __alephaRef.alepha = this;
     __alephaRef.service = service;
 
-    const instance: T = isClass(service)
-      ? new service(...args)
-      : (((service as RunFunction)(...args) ?? {}) as T);
+    // The finally block is what keeps a THROWING constructor from corrupting
+    // the container. Without it, the service stayed forever in
+    // `pendingInstantiations` — every later inject() of it reported a phantom
+    // CircularDependencyError that masked the original failure — and the
+    // leaked `__alephaRef` cursor made `$context()` usable outside any
+    // instantiation.
+    try {
+      const instance: T = isClass(service)
+        ? new service(...args)
+        : (((service as RunFunction)(...args) ?? {}) as T);
 
-    const obj = instance as unknown as Record<string, any>;
-    for (const [key, value] of Object.entries(obj)) {
-      if (value instanceof Primitive) {
-        this.processPrimitive(value, key);
+      const obj = instance as unknown as Record<string, any>;
+      for (const [key, value] of Object.entries(obj)) {
+        if (value instanceof Primitive) {
+          this.processPrimitive(value, key);
+        }
+        if (
+          typeof value === "object" &&
+          value !== null &&
+          typeof value[OPTIONS] === "object" &&
+          "getter" in value[OPTIONS]
+        ) {
+          // `$store` hands over the Atom/Computed itself, not its key: a computed
+          // has a `key` but no store entry under it. `StateManager.get` is
+          // overloaded on `Computed | Atom | string`, so the object resolves both.
+          const getter = value[OPTIONS].getter;
+          Object.defineProperty(obj, key, {
+            get: () => this.store.get(getter),
+          });
+        }
       }
-      if (
-        typeof value === "object" &&
-        value !== null &&
-        typeof value[OPTIONS] === "object" &&
-        "getter" in value[OPTIONS]
-      ) {
-        // `$store` hands over the Atom/Computed itself, not its key: a computed
-        // has a `key` but no store entry under it. `StateManager.get` is
-        // overloaded on `Computed | Atom | string`, so the object resolves both.
-        const getter = value[OPTIONS].getter;
-        Object.defineProperty(obj, key, {
-          get: () => this.store.get(getter),
-        });
+
+      return instance;
+    } finally {
+      this.pendingInstantiations.pop();
+
+      // tree is empty, now we can clean the global cursor
+      if (this.pendingInstantiations.length === 0) {
+        __alephaRef.alepha = undefined;
       }
+
+      __alephaRef.service =
+        this.pendingInstantiations[this.pendingInstantiations.length - 1];
     }
-
-    this.pendingInstantiations.pop();
-
-    // tree is empty, now we can clean the global cursor
-    if (this.pendingInstantiations.length === 0) {
-      __alephaRef.alepha = undefined;
-    }
-
-    __alephaRef.service =
-      this.pendingInstantiations[this.pendingInstantiations.length - 1];
-
-    return instance;
   }
 
   protected processPrimitive(value: Primitive, propertyKey = "") {

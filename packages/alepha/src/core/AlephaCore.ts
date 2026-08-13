@@ -4,7 +4,6 @@ import { CodecManager } from "./providers/CodecManager.ts";
 import { EventManager } from "./providers/EventManager.ts";
 import { Json } from "./providers/Json.ts";
 import { JsonSchemaCodec } from "./providers/JsonSchemaCodec.ts";
-import { KeylessJsonSchemaCodec } from "./providers/KeylessJsonSchemaCodec.ts";
 import { SchemaCodec } from "./providers/SchemaCodec.ts";
 import { SchemaValidator } from "./providers/SchemaValidator.ts";
 import { StateManager } from "./providers/StateManager.ts";
@@ -36,7 +35,6 @@ export const AlephaCore = $module({
     AlsProvider,
     Json,
     JsonSchemaCodec,
-    KeylessJsonSchemaCodec,
     SchemaCodec,
     SchemaValidator,
   ],
