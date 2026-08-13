@@ -2,6 +2,10 @@ import * as React from "react";
 
 void React;
 
+import {
+  TurnstileWidget,
+  type TurnstileWidgetHandle,
+} from "@alepha/ui/components/captcha/turnstile-widget";
 import { Control } from "@alepha/ui/components/control/control";
 import { iconFor } from "@alepha/ui/components/control-base/icon-hint";
 import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
@@ -25,7 +29,7 @@ import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { AlertCircle, CheckCircle2, Info } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 export interface AuthResetPasswordProps {
   /**
@@ -78,15 +82,56 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
   const linkQ = [realmBit, redirectBit].filter(Boolean).join("&");
   const realmQuery = linkQ ? `?${linkQ}` : "";
 
+  /**
+   * Captcha, mirroring the registration screen.
+   *
+   * `createPasswordResetIntent` rejects a request with no token whenever the
+   * realm sets `captchaRequired` — it sends mail in our name, so it is gated
+   * exactly like registration. Without a widget here the screen could not
+   * satisfy that gate at all and every reset answered 400.
+   */
+  const captchaSiteKey = props.realmConfig.captchaSiteKey;
+  const [captchaToken, setCaptchaToken] = useState<string | undefined>();
+  const captchaRef = useRef<TurnstileWidgetHandle | null>(null);
+  /*
+   * `useForm` memoizes its handler at form-create time, so the handler closes
+   * over the *initial* `captchaToken` — `undefined` — and would post that
+   * forever. Mirror the live value into a ref the handler reads at submit
+   * time. Same reason, same fix as `auth-register.tsx`.
+   */
+  const captchaTokenRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    captchaTokenRef.current = captchaToken;
+  }, [captchaToken]);
+
+  /**
+   * Turnstile tokens are single-use, and both the first send and every resend
+   * hit the same gated endpoint. Drop the spent token and re-arm the widget
+   * so the next request carries a fresh one rather than a replay the server
+   * will refuse.
+   */
+  const consumeCaptcha = () => {
+    if (!captchaSiteKey) return;
+    setCaptchaToken(undefined);
+    captchaRef.current?.reset();
+  };
+
   const emailForm = useForm({
     schema: resetPasswordRequestSchema,
     handler: async (data) => {
       setError(null);
-      const intent = await userCtrl.createPasswordResetIntent({
-        query: { userRealmName: props.realmConfig.realmName },
-        body: { email: data.email },
-      });
-      setState({ step: "code", intent, email: data.email });
+      try {
+        const intent = await userCtrl.createPasswordResetIntent({
+          query: { userRealmName: props.realmConfig.realmName },
+          body: {
+            email: data.email,
+            captchaToken: captchaSiteKey ? captchaTokenRef.current : undefined,
+          },
+        });
+        setState({ step: "code", intent, email: data.email });
+      } finally {
+        consumeCaptcha();
+      }
     },
   });
 
@@ -140,7 +185,10 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
     try {
       const intent = await userCtrl.createPasswordResetIntent({
         query: { userRealmName: props.realmConfig.realmName },
-        body: { email: state.email },
+        body: {
+          email: state.email,
+          captchaToken: captchaSiteKey ? captchaTokenRef.current : undefined,
+        },
       });
       setState((s) => ({ ...s, intent }));
     } catch (e) {
@@ -153,6 +201,7 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
       );
     } finally {
       setSubmitting(false);
+      consumeCaptcha();
     }
   };
 
@@ -213,7 +262,19 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
                   input={emailForm.input.email}
                   icon={iconFor("email")}
                 />
-                <Button type="submit" loading={emailSubmitting}>
+                {captchaSiteKey && (
+                  <TurnstileWidget
+                    ref={captchaRef}
+                    siteKey={captchaSiteKey}
+                    onToken={setCaptchaToken}
+                    className="flex justify-center"
+                  />
+                )}
+                <Button
+                  type="submit"
+                  loading={emailSubmitting}
+                  disabled={!!captchaSiteKey && !captchaToken}
+                >
                   {tr("auth.reset.sendCode", {
                     default: "Send verification code",
                   })}
@@ -258,10 +319,22 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
                 <Button onClick={handleCodeSubmit} disabled={code.length !== 6}>
                   {tr("auth.reset.continue", { default: "Continue" })}
                 </Button>
+                {/* Resend calls the same gated endpoint as the first send,
+                    and the token that got us here is already spent — so this
+                    step needs its own challenge rather than reusing one. */}
+                {captchaSiteKey && (
+                  <TurnstileWidget
+                    ref={captchaRef}
+                    siteKey={captchaSiteKey}
+                    onToken={setCaptchaToken}
+                    className="flex justify-center"
+                  />
+                )}
                 <Button
                   variant="ghost"
                   onClick={handleResend}
                   loading={submitting}
+                  disabled={!!captchaSiteKey && !captchaToken}
                 >
                   {tr("auth.reset.resend", { default: "Resend code" })}
                 </Button>
