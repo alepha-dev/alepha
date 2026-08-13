@@ -15,9 +15,12 @@ import { useRouter } from "alepha/react/router";
 import {
   Archive,
   ArchiveRestore,
+  CircleDot,
   Link2,
+  MapPin,
   Search,
   Signature,
+  Tag,
   Trash,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -180,6 +183,7 @@ const ProjectQuestsTable = () => {
                   input={form.input.status}
                   label=""
                   clearable
+                  icon={CircleDot}
                   clearLabel={tr("board.filter.allStatuses")}
                   triggerClassName="w-full"
                   items={[
@@ -197,6 +201,7 @@ const ProjectQuestsTable = () => {
                     input={form.input.area}
                     label=""
                     clearable
+                    icon={MapPin}
                     clearLabel={tr("board.filter.allAreas")}
                     triggerClassName="w-full"
                     items={areaOptions}
@@ -210,6 +215,7 @@ const ProjectQuestsTable = () => {
                     input={form.input.tag}
                     label=""
                     clearable
+                    icon={Tag}
                     clearLabel={tr("board.filter.allTags")}
                     triggerClassName="w-full"
                     items={knownTags.map((tag) => ({ label: tag, value: tag }))}

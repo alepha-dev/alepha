@@ -13,7 +13,7 @@ import type { AdminAuditController, AuditEntity } from "alepha/api/audits";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { SlidersHorizontal, Trash2, User } from "lucide-react";
+import { CircleDot, SlidersHorizontal, Trash2, User, Zap } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 const auditFiltersSchema = z.object({
@@ -134,6 +134,7 @@ export function AdminAudits() {
                 input={form.input.status}
                 label=""
                 clearable
+                icon={CircleDot}
                 clearLabel={String(
                   tr("admin.audits.statusAll", { default: "All status" }),
                 )}
@@ -155,6 +156,7 @@ export function AdminAudits() {
                 input={form.input.action}
                 label=""
                 clearable
+                icon={Zap}
                 clearLabel={String(
                   tr("admin.audits.actionAll", { default: "All actions" }),
                 )}

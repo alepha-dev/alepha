@@ -5,6 +5,7 @@ void React;
 import { Control } from "@alepha/ui/components/control/control";
 import type { useFieldValue } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
+import { CircleDot } from "lucide-react";
 
 export interface AdminUsersStatusFilterProps {
   input: Parameters<typeof useFieldValue>[0];
@@ -24,6 +25,7 @@ export const AdminUsersStatusFilter = (props: AdminUsersStatusFilterProps) => {
       input={props.input}
       label=""
       clearable
+      icon={CircleDot}
       clearLabel={String(
         tr("admin.users.statusAll", { default: "All status" }),
       )}

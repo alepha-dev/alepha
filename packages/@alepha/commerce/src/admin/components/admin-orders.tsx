@@ -17,7 +17,13 @@ import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { z } from "alepha";
 import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { CheckCheck, PackageCheck, Receipt, Truck } from "lucide-react";
+import {
+  CheckCheck,
+  CircleDot,
+  PackageCheck,
+  Receipt,
+  Truck,
+} from "lucide-react";
 import { useCallback, useState } from "react";
 import type { OrderEntity, OrderStatus } from "../../entities/orders.ts";
 import type { AdminOrderController } from "../controllers/AdminOrderController.ts";
@@ -193,6 +199,7 @@ export function AdminOrders() {
             <div className="w-52">
               <Control
                 input={form.input.status}
+                icon={CircleDot}
                 label={String(
                   tr("commerce.admin.colStatus", { default: "Statut" }),
                 )}

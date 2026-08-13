@@ -19,7 +19,7 @@ import { type Infer, type Page, z } from "alepha";
 import type { AdminJobController, JobRegistration } from "alepha/api/jobs";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Play, Search, Timer } from "lucide-react";
+import { Play, Search, Shapes, SignalHigh, Timer } from "lucide-react";
 import { useCallback, useState } from "react";
 
 const POLL_MS = 30_000;
@@ -148,6 +148,7 @@ export function AdminJobs() {
                 input={form.input.type}
                 label=""
                 clearable
+                icon={Shapes}
                 clearLabel={String(
                   tr("admin.jobs.typeAll", { default: "All types" }),
                 )}
@@ -162,6 +163,7 @@ export function AdminJobs() {
                 input={form.input.priority}
                 label=""
                 clearable
+                icon={SignalHigh}
                 clearLabel={String(
                   tr("admin.jobs.priorityAll", { default: "All priorities" }),
                 )}

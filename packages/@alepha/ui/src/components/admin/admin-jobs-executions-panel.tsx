@@ -6,7 +6,7 @@ import { type Infer, type Page, z } from "alepha";
 import type { AdminJobController, JobExecutionResource } from "alepha/api/jobs";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Ban, RotateCcw } from "lucide-react";
+import { Ban, CircleDot, RotateCcw } from "lucide-react";
 import { useCallback } from "react";
 
 const EXEC_POLL_MS = 10_000;
@@ -121,6 +121,7 @@ export const JobExecutionsPanel = (props: JobExecutionsPanelProps) => {
             input={form.input.status}
             label=""
             clearable
+            icon={CircleDot}
             clearLabel={String(
               tr("admin.jobs.statusAll", { default: "All statuses" }),
             )}

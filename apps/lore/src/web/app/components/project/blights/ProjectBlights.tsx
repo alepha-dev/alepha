@@ -14,7 +14,14 @@ import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { CheckCircle2, FileText, Send, Trash2 } from "lucide-react";
+import {
+  AppWindow,
+  CheckCircle2,
+  CircleDot,
+  FileText,
+  Send,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import type {
   BlightController,
@@ -160,6 +167,7 @@ const ProjectBlights = () => {
                 <Control
                   input={form.input.status}
                   label=""
+                  icon={CircleDot}
                   triggerClassName="w-full"
                   items={[
                     { label: tr("blights.filter.open"), value: "open" },
@@ -172,6 +180,7 @@ const ProjectBlights = () => {
                 <Control
                   input={form.input.sigilId}
                   label=""
+                  icon={AppWindow}
                   triggerClassName="w-full"
                   items={[
                     { label: tr("blights.filter.allSigils"), value: "all" },

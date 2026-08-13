@@ -21,7 +21,7 @@ import type {
 } from "alepha/api/files";
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Download, Search, Trash2, Upload } from "lucide-react";
+import { Container, Download, Search, Trash2, Upload } from "lucide-react";
 import {
   type ChangeEvent,
   useCallback,
@@ -219,6 +219,7 @@ export function AdminFiles() {
                 input={form.input.bucket}
                 label=""
                 clearable
+                icon={Container}
                 clearLabel={String(
                   tr("admin.files.allBuckets", { default: "All buckets" }),
                 )}

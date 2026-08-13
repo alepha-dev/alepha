@@ -20,7 +20,7 @@ import { z } from "alepha";
 import { useClient, useQuery } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { Eye, EyeOff, PackagePlus, Pencil, Plus } from "lucide-react";
+import { Eye, EyeOff, PackagePlus, Pencil, Plus, Shapes } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import type {
   AdminProductController,
@@ -178,6 +178,7 @@ export function AdminProducts() {
             <div className="w-52">
               <Control
                 input={form.input.kind}
+                icon={Shapes}
                 label={String(
                   tr("commerce.admin.colKind", { default: "Type" }),
                 )}
