@@ -148,67 +148,6 @@ body::before {
 }
 
 /* ────────────────────────────────────────────────────────────────────────
- * Sidebar active item.
- *
- * shadcn's sidebar spends ONE token, `--sidebar-accent`, on both hover and
- * active — so "where I am" and "where the pointer is" render identically, and
- * on a sidebar that is not strictly white the shared fill also has to carry all
- * the contrast on its own. Raising the token fixes visibility (the theme blocks
- * below now hold `--sidebar-accent` at ≥1.35:1 against `--sidebar`, up from
- * 1.04:1 on the stock light palette) but cannot separate the two states.
- *
- * So the active item is given a treatment of its own here: a primary-tinted
- * fill plus a left bar. The bar matters beyond taste — presence/absence of a
- * shape is not a color distinction, so the active item stays identifiable where
- * two fills alone would not survive low vision or a bad display.
- *
- * The label is deliberately left on `--sidebar-accent-foreground` rather than
- * recolored to the primary: tinting the text too would have capped it around
- * 3:1 on its own fill, where leaving it alone keeps 4.7–12:1 across the four
- * themes. Hue, fill and the bar carry the state; the text just stays readable.
- *
- * Written against `--sidebar-primary` rather than fixed colors so all four
- * themes and both modes follow along with no per-theme values. It lives here,
- * not in `sidebar.tsx`: that file is stock shadcn and `yarn w @alepha/ui sync`
- * overwrites `components/ui/` wholesale.
- *
- * The doubled `[data-active]` is for specificity — Tailwind's own
- * `data-active:bg-sidebar-accent` is (0,2,0), and so would a single attribute
- * be. Same trick as `.lore-mdx.lore-mdx` below.
- * ──────────────────────────────────────────────────────────────────────── */
-
-[data-slot="sidebar-menu-button"][data-active][data-active],
-[data-slot="sidebar-menu-sub-button"][data-active][data-active] {
-  position: relative;
-  background-color: color-mix(
-    in oklch,
-    var(--sidebar-primary) 15%,
-    transparent
-  );
-}
-
-[data-slot="sidebar-menu-button"][data-active][data-active]:hover,
-[data-slot="sidebar-menu-sub-button"][data-active][data-active]:hover {
-  background-color: color-mix(
-    in oklch,
-    var(--sidebar-primary) 40%,
-    transparent
-  );
-}
-
-[data-slot="sidebar-menu-button"][data-active][data-active]::after,
-[data-slot="sidebar-menu-sub-button"][data-active][data-active]::after {
-  content: "";
-  position: absolute;
-  top: 0.25rem;
-  bottom: 0.25rem;
-  left: 0;
-  width: 3px;
-  border-radius: 9999px;
-  background-color: var(--sidebar-primary);
-}
-
-/* ────────────────────────────────────────────────────────────────────────
  * Display font — used on h1/h2/h3 + .display utility.
  * Each theme overrides --font-display via the theme class. ThemePicker
  * lazy-loads the matching Google Fonts CSS only for the active theme.
