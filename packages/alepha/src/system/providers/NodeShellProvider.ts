@@ -1,9 +1,13 @@
-import { exec, execFile, spawn } from "node:child_process";
+import { type ExecException, exec, execFile, spawn } from "node:child_process";
 import { join } from "node:path";
 import { $inject, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "./FileSystemProvider.ts";
-import type { ShellProvider, ShellRunOptions } from "./ShellProvider.ts";
+import type {
+  ShellCommandResult,
+  ShellProvider,
+  ShellRunOptions,
+} from "./ShellProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -24,7 +28,7 @@ export class NodeShellProvider implements ShellProvider {
     command: string | string[],
     options: ShellRunOptions = {},
   ): Promise<string> {
-    const { resolve = false, capture = false, root, env, stdin } = options;
+    const { resolve = false, capture = false, root, stdin } = options;
     const cwd = root ?? process.cwd();
     const isArgv = Array.isArray(command);
 
@@ -47,9 +51,11 @@ export class NodeShellProvider implements ShellProvider {
       }
       if (capture) {
         // Argv form never touches a shell — args are passed verbatim.
-        return this.execCaptureArgv(executable, args, { cwd, env, stdin });
+        return this.throwOnFailure(
+          await this.argvResult(executable, args, { ...options, cwd }),
+        );
       }
-      return this.execInherit(executable, args, { cwd, env, stdin });
+      return this.execInherit(executable, args, { ...options, cwd });
     }
 
     if (stdin !== undefined) {
@@ -68,14 +74,48 @@ export class NodeShellProvider implements ShellProvider {
       [executable, ...args] = this.parseCommand(command);
     }
 
-    // Build properly escaped command string for shell execution
-    const shellCommand = this.buildShellCommand(executable, args);
-
     if (capture) {
-      return this.execCapture(shellCommand, { cwd, env });
+      return this.throwOnFailure(
+        await this.shellResult(executable, args, { ...options, cwd }),
+      );
     }
 
-    return this.execInherit(executable, args, { cwd, env });
+    return this.execInherit(executable, args, { ...options, cwd });
+  }
+
+  /**
+   * Run a command and return its full outcome instead of throwing on a
+   * non-zero exit.
+   */
+  public async capture(
+    command: string | string[],
+    options: ShellRunOptions = {},
+  ): Promise<ShellCommandResult> {
+    const { resolve = false, root, stdin } = options;
+    const cwd = root ?? process.cwd();
+
+    if (Array.isArray(command)) {
+      if (command.length === 0) {
+        throw new AlephaError("Cannot run an empty argv array");
+      }
+      let [executable, ...args] = command;
+      if (resolve) {
+        executable = await this.resolveExecutable(executable, cwd);
+      }
+      return this.argvResult(executable, args, { ...options, cwd });
+    }
+
+    if (stdin !== undefined) {
+      throw new AlephaError(
+        'stdin requires the argv-array form: capture(["cmd", "arg"], { stdin }).',
+      );
+    }
+
+    let [executable, ...args] = this.parseCommand(command);
+    if (resolve) {
+      executable = await this.resolveExecutable(executable, cwd);
+    }
+    return this.shellResult(executable, args, { ...options, cwd });
   }
 
   /**
@@ -116,11 +156,7 @@ export class NodeShellProvider implements ShellProvider {
   protected async execInherit(
     executable: string,
     args: string[],
-    options: {
-      cwd: string;
-      env?: Record<string, string>;
-      stdin?: Uint8Array | string;
-    },
+    options: ShellRunOptions & { cwd: string },
   ): Promise<string> {
     const isWindows = process.platform === "win32";
     // Only stdin changes: stdout and stderr keep going straight to the
@@ -158,10 +194,42 @@ export class NodeShellProvider implements ShellProvider {
     }
 
     return new Promise<string>((resolve, reject) => {
+      let timedOut = false;
+      let aborted = false;
+
+      const timer = options.timeout
+        ? setTimeout(() => {
+            timedOut = true;
+            proc.kill("SIGTERM");
+          }, options.timeout)
+        : undefined;
+
+      const onAbort = () => {
+        aborted = true;
+        proc.kill("SIGTERM");
+      };
+      if (options.signal?.aborted) {
+        onAbort();
+      } else {
+        options.signal?.addEventListener("abort", onAbort, { once: true });
+      }
+
+      const cleanup = () => {
+        if (timer) clearTimeout(timer);
+        options.signal?.removeEventListener("abort", onAbort);
+      };
+
       proc.on("exit", (code, signal) => {
-        // `code` is null when the child was killed by a signal — that is a
-        // failure (SIGKILL, SIGSEGV, OOM), not a success.
-        if (signal != null) {
+        cleanup();
+        if (timedOut) {
+          reject(
+            new AlephaError(`Command timed out after ${options.timeout}ms`),
+          );
+        } else if (aborted) {
+          reject(new AlephaError("Command aborted"));
+        } else if (signal != null) {
+          // `code` is null when the child was killed by a signal — that is a
+          // failure (SIGKILL, SIGSEGV, OOM), not a success.
           reject(new AlephaError(`Command killed by signal ${signal}`));
         } else if (code === 0 || code === null) {
           resolve("");
@@ -169,7 +237,10 @@ export class NodeShellProvider implements ShellProvider {
           reject(new AlephaError(`Command exited with code ${code}`));
         }
       });
-      proc.on("error", reject);
+      proc.on("error", (err) => {
+        cleanup();
+        reject(err);
+      });
     });
   }
 
@@ -202,74 +273,56 @@ export class NodeShellProvider implements ShellProvider {
   }
 
   /**
-   * Execute command and capture stdout.
+   * String-form capture engine: a real shell consumes the escaping built by
+   * {@link buildShellCommand}.
+   *
+   * This is the override point for runtimes with their own spawner (Bun) —
+   * they receive the PARSED argv, never the escaped string, so they cannot
+   * corrupt it by re-parsing.
    */
-  protected execCapture(
-    command: string,
-    options: { cwd: string; env?: Record<string, string> },
-  ): Promise<string> {
-    return new Promise<string>((resolve, reject) => {
+  protected shellResult(
+    executable: string,
+    args: string[],
+    options: ShellRunOptions & { cwd: string },
+  ): Promise<ShellCommandResult> {
+    return new Promise<ShellCommandResult>((resolve, reject) => {
       exec(
-        command,
+        this.buildShellCommand(executable, args),
         {
           cwd: options.cwd,
           maxBuffer: 50 * 1024 * 1024,
-          env: {
-            ...process.env,
-            PATH: this.localBinPath(options.cwd),
-            LOG_FORMAT: "pretty",
-            ...options.env,
-          },
+          timeout: options.timeout,
+          signal: options.signal,
+          env: this.captureEnv(options),
         },
         (err, stdout, stderr) => {
-          if (err) {
-            // Attach both streams so callers (e.g. the CLI Runner) can surface
-            // the full output of a failed command, not just stdout.
-            (err as any).stdout = stdout;
-            (err as any).stderr = stderr;
-            reject(err);
-          } else {
-            resolve(stdout);
-          }
+          this.settleExecResult(err, stdout, stderr, options, resolve, reject);
         },
       );
     });
   }
 
   /**
-   * Execute an argv array and capture stdout — no shell involved.
+   * Argv-form capture engine — no shell involved.
    */
-  protected execCaptureArgv(
+  protected argvResult(
     executable: string,
     args: string[],
-    options: {
-      cwd: string;
-      env?: Record<string, string>;
-      stdin?: Uint8Array | string;
-    },
-  ): Promise<string> {
-    return new Promise<string>((resolve, reject) => {
+    options: ShellRunOptions & { cwd: string },
+  ): Promise<ShellCommandResult> {
+    return new Promise<ShellCommandResult>((resolve, reject) => {
       const proc = execFile(
         executable,
         args,
         {
           cwd: options.cwd,
           maxBuffer: 50 * 1024 * 1024,
-          env: {
-            ...process.env,
-            PATH: this.localBinPath(options.cwd),
-            LOG_FORMAT: "pretty",
-            ...options.env,
-          },
+          timeout: options.timeout,
+          signal: options.signal,
+          env: this.captureEnv(options),
         },
         (err, stdout, stderr) => {
-          if (err) {
-            (err as any).stdout = stdout;
-            (err as any).stderr = stderr;
-            reject(err);
-          } else {
-            resolve(stdout);
-          }
+          this.settleExecResult(err, stdout, stderr, options, resolve, reject);
         },
       );
 
@@ -277,6 +330,90 @@ export class NodeShellProvider implements ShellProvider {
         this.writeStdin(proc, options.stdin);
       }
     });
+  }
+
+  /**
+   * Child environment for capture paths.
+   *
+   * `LOG_FORMAT=pretty` keeps captured Alepha subcommand output readable;
+   * the caller's `env` can still override it.
+   */
+  protected captureEnv(
+    options: ShellRunOptions & { cwd: string },
+  ): NodeJS.ProcessEnv {
+    return {
+      ...process.env,
+      PATH: this.localBinPath(options.cwd),
+      LOG_FORMAT: "pretty",
+      ...options.env,
+    };
+  }
+
+  /**
+   * Maps an exec/execFile callback outcome onto the capture contract:
+   * an exit code — any exit code — RESOLVES; only "the command never ran to
+   * completion on its own terms" (not found, timed out, aborted, signalled)
+   * rejects.
+   */
+  protected settleExecResult(
+    err: ExecException | null,
+    stdout: string,
+    stderr: string,
+    options: ShellRunOptions,
+    resolve: (result: ShellCommandResult) => void,
+    reject: (error: Error) => void,
+  ): void {
+    if (!err) {
+      resolve({ stdout, stderr, exitCode: 0 });
+      return;
+    }
+
+    if (options.signal?.aborted || err.name === "AbortError") {
+      reject(new AlephaError("Command aborted"));
+      return;
+    }
+
+    if (options.timeout && (err as { killed?: boolean }).killed) {
+      reject(new AlephaError(`Command timed out after ${options.timeout}ms`));
+      return;
+    }
+
+    if (typeof err.code === "number") {
+      resolve({ stdout, stderr, exitCode: err.code });
+      return;
+    }
+
+    if (err.signal) {
+      reject(new AlephaError(`Command killed by signal ${err.signal}`));
+      return;
+    }
+
+    // Spawn-level failure (ENOENT, EACCES, maxBuffer...): attach both streams
+    // so callers (e.g. the CLI Runner) can surface the full output.
+    const wrapped = new AlephaError(`Command failed: ${err.message}`, {
+      cause: err,
+    });
+    (wrapped as any).stdout = stdout;
+    (wrapped as any).stderr = stderr;
+    reject(wrapped);
+  }
+
+  /**
+   * Converts a capture result into `run()`'s throwing contract: non-zero
+   * exit throws, with both streams attached for the caller to surface.
+   */
+  protected throwOnFailure(result: ShellCommandResult): string {
+    if (result.exitCode !== 0) {
+      const err = new AlephaError(
+        `Command exited with code ${result.exitCode}: ${
+          result.stderr || result.stdout
+        }`,
+      );
+      (err as any).stdout = result.stdout;
+      (err as any).stderr = result.stderr;
+      throw err;
+    }
+    return result.stdout;
   }
 
   /**
@@ -342,8 +479,10 @@ export class NodeShellProvider implements ShellProvider {
    * Alepha.create()?`, naming neither the PATH nor the binary that actually
    * ran.
    *
-   * Prefixing rather than resolving the executable keeps compound commands
-   * (`cd app && yarn build`) working: only lookup changes, not parsing.
+   * Note this changes LOOKUP only. Every token of the command is still a
+   * literal argument — shell operators like `&&` do not compose here (see
+   * `shellStringContract.spec.ts`); callers that want a pipeline must ask
+   * for a shell explicitly (`["sh", "-c", "a | b"]`).
    */
   protected localBinPath(root: string): string {
     const separator = process.platform === "win32" ? ";" : ":";

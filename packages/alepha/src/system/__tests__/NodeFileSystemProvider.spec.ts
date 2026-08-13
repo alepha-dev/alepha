@@ -23,9 +23,9 @@ describe("NodeFileSystemProvider hardening", () => {
     ).rejects.toThrow();
   });
 
-  it("should build a file URL that survives a relative path", async () => {
-    // `file://${path}` parses the first segment of a relative path as the URL
-    // HOST, so the file could never be found.
+  it("should resolve a relative path against the working directory", async () => {
+    // The old `file://${path}` construction parsed the first segment of a
+    // relative path as the URL HOST, so the file could never be found.
     const fs = create();
 
     const file = fs.createFile({ path: "package.json" });
@@ -161,67 +161,45 @@ describe("NodeFileSystem", () => {
       });
     });
 
-    describe("from Web File", () => {
-      it("should create a file from a Web File object", async ({ expect }) => {
-        // Create a mock Web File
-        const webFile = new File(["Hello from File"], "document.txt", {
-          type: "text/plain",
-        });
-
+    describe("from response", () => {
+      it("should read name, type and size from headers", async ({ expect }) => {
         const file = fs.createFile({
-          file: webFile,
+          response: new Response("payload", {
+            headers: {
+              "content-type": "text/plain",
+              "content-length": "7",
+              "content-disposition": 'attachment; filename="report.txt"',
+            },
+          }),
         });
 
-        expect(file.name).toBe("document.txt");
+        expect(file.name).toBe("report.txt");
         expect(file.type).toBe("text/plain");
-        expect(await file.text()).toBe("Hello from File");
+        expect(file.size).toBe(7);
+        expect(await file.text()).toBe("payload");
+        // Memoised: the one-shot body serves repeat reads.
+        expect(await file.text()).toBe("payload");
       });
 
-      it("should allow overriding Web File properties", async ({ expect }) => {
-        const webFile = new File(["content"], "old.txt", {
-          type: "text/plain",
-        });
-
+      it("should decode an RFC 5987 filename*", async ({ expect }) => {
         const file = fs.createFile({
-          file: webFile,
-          name: "new.txt",
-          type: "text/custom",
+          response: new Response("x", {
+            headers: {
+              "content-disposition":
+                "attachment; filename*=UTF-8''r%C3%A9sum%C3%A9.pdf",
+            },
+          }),
         });
-
-        expect(file.name).toBe("new.txt");
-        expect(file.type).toBe("text/custom");
-      });
-    });
-
-    describe("from URL", () => {
-      it("should create a file from a file:// URL", async ({ expect }) => {
-        // This test would require an actual file, so we just test the structure
-        const file = fs.createFile({
-          url: "file:///tmp/test.txt",
-          name: "test.txt",
-        });
-
-        expect(file.name).toBe("test.txt");
-        expect(file.type).toBe("text/plain");
+        expect(file.name).toBe("résumé.pdf");
       });
 
-      it("should extract filename from URL path", async ({ expect }) => {
+      it("should ignore an unparseable content-length", ({ expect }) => {
         const file = fs.createFile({
-          url: "https://example.com/path/to/image.png",
+          response: new Response("x", {
+            headers: { "content-length": "banana" },
+          }),
         });
-
-        expect(file.name).toBe("image.png");
-        expect(file.type).toBe("image/png");
-      });
-
-      it("should allow name override", async ({ expect }) => {
-        const file = fs.createFile({
-          url: "https://example.com/download",
-          name: "custom.pdf",
-        });
-
-        expect(file.name).toBe("custom.pdf");
-        expect(file.type).toBe("application/pdf");
+        expect(file.size).toBe(0);
       });
     });
 
@@ -359,45 +337,6 @@ describe("NodeFileSystem", () => {
         expect(destFiles.some((f) => f.includes("subdir/nested.txt"))).toBe(
           true,
         );
-
-        // Cleanup
-        await fs.rm(testDir, { recursive: true, force: true });
-      });
-    });
-
-    describe("mv", () => {
-      it("should move/rename a file", async ({ expect }) => {
-        const testDir = `${tmpDir}/mv-test-${Date.now()}`;
-        await fs.mkdir(testDir, { recursive: true });
-
-        const { writeFile } = await import("node:fs/promises");
-        await writeFile(`${testDir}/old.txt`, "content");
-
-        await fs.mv(`${testDir}/old.txt`, `${testDir}/new.txt`);
-
-        const files = await fs.ls(testDir);
-        expect(files).not.toContain("old.txt");
-        expect(files).toContain("new.txt");
-
-        // Cleanup
-        await fs.rm(testDir, { recursive: true, force: true });
-      });
-
-      it("should move a directory", async ({ expect }) => {
-        const testDir = `${tmpDir}/mv-dir-test-${Date.now()}`;
-        await fs.mkdir(`${testDir}/olddir`, { recursive: true });
-
-        const { writeFile } = await import("node:fs/promises");
-        await writeFile(`${testDir}/olddir/file.txt`, "content");
-
-        await fs.mv(`${testDir}/olddir`, `${testDir}/newdir`);
-
-        const files = await fs.ls(testDir);
-        expect(files).not.toContain("olddir");
-        expect(files).toContain("newdir");
-
-        const newDirFiles = await fs.ls(`${testDir}/newdir`);
-        expect(newDirFiles).toContain("file.txt");
 
         // Cleanup
         await fs.rm(testDir, { recursive: true, force: true });

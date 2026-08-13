@@ -77,9 +77,32 @@ describe("MemoryFileSystemProvider", () => {
       expect(await fs.exists("/app/src/users")).toBe(true);
     });
 
-    it("should throw EEXIST for duplicate non-recursive mkdir", async () => {
+    it("should tolerate a duplicate mkdir by default, like the node provider", async () => {
+      // recursive AND force both default to true — the old behavior threw
+      // EEXIST here while NodeFileSystemProvider succeeded, so code passed
+      // its tests and failed in production (or vice versa).
       await fs.mkdir("/dir");
-      await expect(fs.mkdir("/dir")).rejects.toThrow("EEXIST");
+      await fs.mkdir("/dir"); // no error
+      expect(await fs.exists("/dir")).toBe(true);
+    });
+
+    it("should throw EEXIST only when recursive and force are both disabled", async () => {
+      await fs.mkdir("/dir");
+      await expect(
+        fs.mkdir("/dir", { recursive: false, force: false }),
+      ).rejects.toThrow("EEXIST");
+    });
+
+    it("should register parents even without an explicit recursive flag", async () => {
+      await fs.mkdir("/a/b/c");
+      expect(await fs.exists("/a")).toBe(true);
+      expect(await fs.exists("/a/b")).toBe(true);
+    });
+
+    it("should throw ENOENT for a non-recursive mkdir with a missing parent", async () => {
+      await expect(
+        fs.mkdir("/no/such/parent", { recursive: false }),
+      ).rejects.toThrow("ENOENT");
     });
 
     it("should not throw for duplicate recursive mkdir", async () => {
@@ -145,34 +168,29 @@ describe("MemoryFileSystemProvider", () => {
       expect(await fs.readTextFile("/dest/b.txt")).toBe("b");
     });
 
+    it("should copy nested directories, not just their files", async () => {
+      await fs.mkdir("/src/nested/empty");
+      await fs.writeFile("/src/nested/file.txt", "x");
+
+      await fs.cp("/src", "/dest");
+
+      expect(await fs.exists("/dest/nested")).toBe(true);
+      expect(await fs.exists("/dest/nested/empty")).toBe(true);
+      expect(await fs.readTextFile("/dest/nested/file.txt")).toBe("x");
+    });
+
+    it("should throw EEXIST instead of overwriting when force is false", async () => {
+      await fs.writeFile("/src.txt", "new");
+      await fs.writeFile("/dest.txt", "old");
+
+      await expect(
+        fs.cp("/src.txt", "/dest.txt", { force: false }),
+      ).rejects.toThrow("EEXIST");
+      expect(await fs.readTextFile("/dest.txt")).toBe("old");
+    });
+
     it("should throw ENOENT for missing source", async () => {
       await expect(fs.cp("/missing", "/dest")).rejects.toThrow("ENOENT");
-    });
-  });
-
-  describe("mv", () => {
-    it("should move a file", async () => {
-      await fs.writeFile("/old.txt", "data");
-      await fs.mv("/old.txt", "/new.txt");
-
-      expect(await fs.exists("/old.txt")).toBe(false);
-      expect(await fs.readTextFile("/new.txt")).toBe("data");
-    });
-
-    it("should move a directory with contents", async () => {
-      await fs.mkdir("/old");
-      await fs.writeFile("/old/file.txt", "hello");
-
-      await fs.mv("/old", "/new");
-
-      expect(await fs.exists("/old")).toBe(false);
-      expect(await fs.exists("/old/file.txt")).toBe(false);
-      expect(await fs.exists("/new")).toBe(true);
-      expect(await fs.readTextFile("/new/file.txt")).toBe("hello");
-    });
-
-    it("should throw ENOENT for missing source", async () => {
-      await expect(fs.mv("/missing", "/dest")).rejects.toThrow("ENOENT");
     });
   });
 
@@ -234,8 +252,29 @@ describe("MemoryFileSystemProvider", () => {
       expect(await fs.exists("/dir")).toBe(true);
     });
 
+    it("should see implicit parents of written files", async () => {
+      // `writeFile` implies its parents — `ls` always knew that, while
+      // `exists` and `rm` said ENOENT for the very same directory.
+      await fs.writeFile("/a/b/file.txt", "data");
+      expect(await fs.exists("/a")).toBe(true);
+      expect(await fs.exists("/a/b")).toBe(true);
+    });
+
     it("should return false for missing paths", async () => {
       expect(await fs.exists("/nope")).toBe(false);
+    });
+  });
+
+  describe("implicit directories", () => {
+    it("rm removes an implicit directory and its files", async () => {
+      await fs.writeFile("/impl/one.txt", "1");
+      await fs.writeFile("/impl/deep/two.txt", "2");
+
+      await fs.rm("/impl", { recursive: true });
+
+      expect(await fs.exists("/impl")).toBe(false);
+      expect(await fs.exists("/impl/one.txt")).toBe(false);
+      expect(await fs.exists("/impl/deep/two.txt")).toBe(false);
     });
   });
 
@@ -295,11 +334,11 @@ describe("MemoryFileSystemProvider", () => {
       expect(fs.wasWrittenMatching("/config.json", /production/)).toBe(false);
     });
 
-    it("wasRead should track reads", async () => {
-      await fs.writeFile("/file.txt", "data");
-      await fs.readFile("/file.txt");
-      expect(fs.wasRead("/file.txt")).toBe(true);
-      expect(fs.wasRead("/other.txt")).toBe(false);
+    it("should record Uint8Array payloads as text, not comma-joined bytes", async () => {
+      // A plain Uint8Array ignores toString("utf-8") — the call log stored
+      // "104,105" and wasWrittenMatching could never match.
+      await fs.writeFile("/u8.txt", new TextEncoder().encode("hi"));
+      expect(fs.wasWrittenMatching("/u8.txt", /^hi$/)).toBe(true);
     });
 
     it("wasDeleted should track deletes", async () => {
@@ -346,8 +385,8 @@ describe("MemoryFileSystemProvider", () => {
 
       expect(fs.files.size).toBe(0);
       expect(fs.directories.size).toBe(0);
+      expect(fs.mtimes.size).toBe(0);
       expect(fs.writeFileCalls).toHaveLength(0);
-      expect(fs.readFileCalls).toHaveLength(0);
       expect(fs.mkdirCalls).toHaveLength(0);
       expect(fs.rmCalls).toHaveLength(0);
       expect(fs.mkdirError).toBeNull();

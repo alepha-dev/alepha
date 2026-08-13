@@ -27,6 +27,18 @@ export interface ShellRunOptions {
   capture?: boolean;
 
   /**
+   * Kill the command and reject when it runs longer than this many
+   * milliseconds. Without it, a hung `ssh` or a wedged build waits forever.
+   */
+  timeout?: number;
+
+  /**
+   * Abort the command from the outside. When the signal fires, the child is
+   * killed and the call rejects.
+   */
+  signal?: AbortSignal;
+
+  /**
    * Bytes to write to the command's stdin, after which the stream is closed.
    *
    * **Argv-array commands only.** The string form is parsed and re-quoted for
@@ -39,6 +51,29 @@ export interface ShellRunOptions {
    * needs one.
    */
   stdin?: Uint8Array | string;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * The full outcome of a shell command, as returned by
+ * {@link ShellProvider.capture}.
+ */
+export interface ShellCommandResult {
+  /**
+   * Everything the command wrote to stdout.
+   */
+  stdout: string;
+
+  /**
+   * Everything the command wrote to stderr.
+   */
+  stderr: string;
+
+  /**
+   * The command's exit code. 0 means success.
+   */
+  exitCode: number;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -64,6 +99,10 @@ export interface ShellRunOptions {
  *
  *     // Capture output
  *     const output = await this.shell.run("echo hello", { capture: true });
+ *
+ *     // Inspect the exit code instead of catching
+ *     const result = await this.shell.capture(["git", "diff", "--quiet"]);
+ *     if (result.exitCode !== 0) { ... }
  *   }
  * }
  * ```
@@ -89,6 +128,26 @@ export abstract class ShellProvider {
     command: string | string[],
     options?: ShellRunOptions,
   ): Promise<string>;
+
+  /**
+   * Run a command and return its full outcome instead of throwing.
+   *
+   * Unlike {@link run}, a non-zero exit RESOLVES — with stdout, stderr and
+   * the exit code — so callers that treat the code as data (`git diff
+   * --quiet`, health probes) don't have to fish it out of a thrown error.
+   * It still rejects when the command cannot run at all (executable not
+   * found), times out, or is aborted.
+   *
+   * Accepts the same command forms and options as {@link run}; `capture`
+   * is implied.
+   *
+   * @param command - The command to run
+   * @param options - Execution options
+   */
+  abstract capture(
+    command: string | string[],
+    options?: ShellRunOptions,
+  ): Promise<ShellCommandResult>;
 
   /**
    * Check if a command is installed and available in the system PATH.

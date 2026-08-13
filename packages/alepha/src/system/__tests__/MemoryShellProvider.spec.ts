@@ -56,6 +56,26 @@ describe("MemoryShellProvider", () => {
     });
   });
 
+  describe("capture", () => {
+    it("should resolve with a structured result and record the call", async () => {
+      shell.outputs.set("git status", "clean\n");
+
+      const result = await shell.capture("git status");
+
+      expect(result).toEqual({ stdout: "clean\n", stderr: "", exitCode: 0 });
+      expect(shell.wasCalled("git status")).toBe(true);
+    });
+
+    it("should turn a configured error into a non-zero exit code", async () => {
+      shell.errors.set("failing-cmd", "it broke");
+
+      const result = await shell.capture("failing-cmd");
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toBe("it broke");
+    });
+  });
+
   describe("wasCalled", () => {
     it("should return true when command was called", async () => {
       await shell.run("git status");

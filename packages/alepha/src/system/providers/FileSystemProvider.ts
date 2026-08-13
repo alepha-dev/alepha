@@ -1,25 +1,7 @@
 import type { FileLike, StreamLike } from "alepha";
 
 /**
- * Options for creating a file from a URL
- */
-export interface CreateFileFromUrlOptions {
-  /**
-   * The URL to load the file from (file://, http://, or https://)
-   */
-  url: string;
-  /**
-   * The MIME type of the file (optional, will be detected from filename if not provided)
-   */
-  type?: string;
-  /**
-   * The name of the file (optional, will be extracted from URL if not provided)
-   */
-  name?: string;
-}
-
-/**
- * Options for creating a file from a path (URL with file:// scheme)
+ * Options for creating a file from a path on the provider's storage.
  */
 export interface CreateFileFromPathOptions {
   /**
@@ -31,7 +13,7 @@ export interface CreateFileFromPathOptions {
    */
   type?: string;
   /**
-   * The name of the file (optional, will be extracted from URL if not provided)
+   * The name of the file (optional, defaults to the path's basename)
    */
   name?: string;
 }
@@ -110,28 +92,6 @@ export interface CreateFileFromResponseOptions {
 }
 
 /**
- * Options for creating a file from a Web File object
- */
-export interface CreateFileFromWebFileOptions {
-  /**
-   * The Web File object
-   */
-  file: File;
-  /**
-   * Override the MIME type (optional, uses file.type if not provided)
-   */
-  type?: string;
-  /**
-   * Override the name (optional, uses file.name if not provided)
-   */
-  name?: string;
-  /**
-   * Override the size (optional, uses file.size if not provided)
-   */
-  size?: number;
-}
-
-/**
  * Options for creating a file from an ArrayBuffer
  */
 export interface CreateFileFromArrayBufferOptions {
@@ -153,12 +113,10 @@ export interface CreateFileFromArrayBufferOptions {
  * Union type for all createFile options
  */
 export type CreateFileOptions =
-  | CreateFileFromUrlOptions
   | CreateFileFromPathOptions
   | CreateFileFromBufferOptions
   | CreateFileFromStreamOptions
   | CreateFileFromTextOptions
-  | CreateFileFromWebFileOptions
   | CreateFileFromResponseOptions
   | CreateFileFromArrayBufferOptions;
 
@@ -187,7 +145,10 @@ export interface CpOptions {
    */
   recursive?: boolean;
   /**
-   * If true, overwrite existing destination
+   * Overwrite an existing destination. When false, copying onto an existing
+   * destination throws instead of silently skipping it.
+   *
+   * @default true
    */
   force?: boolean;
 }
@@ -229,6 +190,28 @@ export interface LsOptions {
 }
 
 /**
+ * Metadata about a file or directory, as returned by {@link FileSystemProvider.stat}.
+ */
+export interface FileStat {
+  /**
+   * Size in bytes. 0 for directories on backends that do not track it.
+   */
+  size: number;
+  /**
+   * Last modification time in milliseconds since epoch.
+   */
+  mtimeMs: number;
+  /**
+   * True when the path is a directory.
+   */
+  isDirectory: boolean;
+  /**
+   * True when the path is a regular file.
+   */
+  isFile: boolean;
+}
+
+/**
  * FileSystem interface providing utilities for working with files.
  */
 export abstract class FileSystemProvider {
@@ -266,14 +249,6 @@ export abstract class FileSystemProvider {
   abstract cp(src: string, dest: string, options?: CpOptions): Promise<void>;
 
   /**
-   * Moves/renames a file or directory.
-   *
-   * @param src - Source path
-   * @param dest - Destination path
-   */
-  abstract mv(src: string, dest: string): Promise<void>;
-
-  /**
    * Creates a directory.
    *
    * @param path - The directory path to create
@@ -299,12 +274,32 @@ export abstract class FileSystemProvider {
   abstract exists(path: string): Promise<boolean>;
 
   /**
+   * Returns metadata about a file or directory.
+   *
+   * Throws when the path does not exist.
+   *
+   * @param path - The path to inspect
+   */
+  abstract stat(path: string): Promise<FileStat>;
+
+  /**
    * Reads the content of a file.
    *
    * @param path - The file path to read
    * @returns The file content as a Buffer
    */
   abstract readFile(path: string): Promise<Buffer>;
+
+  /**
+   * Opens a readable stream over the content of a file.
+   *
+   * Unlike {@link readFile}, the content is never fully materialised in
+   * memory — this is the right call for handing large files to an upload
+   * or a compression step. Throws when the path does not exist.
+   *
+   * @param path - The file path to stream
+   */
+  abstract readFileStream(path: string): Promise<StreamLike>;
 
   /**
    * Writes data to a file.
@@ -332,4 +327,15 @@ export abstract class FileSystemProvider {
    * @returns The parsed JSON content
    */
   abstract readJsonFile<T = unknown>(path: string): Promise<T>;
+
+  /**
+   * Serialises a value as pretty-printed JSON and writes it to a file.
+   *
+   * The counterpart of {@link readJsonFile}. Two-space indentation, because
+   * these files end up in git diffs and human hands.
+   *
+   * @param path - The file path to write to
+   * @param value - The value to serialise
+   */
+  abstract writeJsonFile(path: string, value: unknown): Promise<void>;
 }

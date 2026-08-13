@@ -117,5 +117,40 @@ describe("BunShellProvider", () => {
       });
       expect(out.trim()).toBe("b");
     });
+
+    it("preserves a single quote inside a double-quoted argument", async () => {
+      // Regression: the old Bun capture path re-parsed the POSIX-escaped
+      // string (`'it'\''s'`) with parseCommand, producing `it\s`. The
+      // engine now receives argv directly.
+      const out = await shell.run(`echo "it's"`, { capture: true });
+      expect(out.trim()).toBe("it's");
+    });
+  });
+
+  describe("capture (structured result)", () => {
+    it("resolves with the exit code instead of throwing", async () => {
+      const result = await shell.capture(["sh", "-c", "printf out; exit 5"]);
+      expect(result.exitCode).toBe(5);
+      expect(result.stdout).toBe("out");
+    });
+
+    it("resolves with stdout on success", async () => {
+      const result = await shell.capture(["sh", "-c", "printf ok"]);
+      expect(result).toEqual({ stdout: "ok", stderr: "", exitCode: 0 });
+    });
+  });
+
+  describe("timeout", () => {
+    it("kills a hung capture after the timeout", async () => {
+      await expect(
+        shell.run(["sleep", "60"], { capture: true, timeout: 300 }),
+      ).rejects.toThrow(/timed out after 300ms/);
+    });
+
+    it("kills a hung inherited command after the timeout", async () => {
+      await expect(
+        shell.run(["sleep", "60"], { timeout: 300 }),
+      ).rejects.toThrow(/timed out after 300ms/);
+    });
   });
 });

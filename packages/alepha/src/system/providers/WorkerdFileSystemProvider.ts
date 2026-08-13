@@ -1,8 +1,16 @@
-import { $inject, AlephaError, type FileLike, Json } from "alepha";
+import {
+  $inject,
+  AlephaError,
+  type FileLike,
+  Json,
+  type StreamLike,
+} from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { FileDetector } from "../services/FileDetector.ts";
 import type {
   CpOptions,
   CreateFileOptions,
+  FileStat,
   FileSystemProvider,
   LsOptions,
   MkdirOptions,
@@ -16,7 +24,7 @@ import type {
  *
  * Uses only Web APIs (ReadableStream, TextEncoder, etc.) — no Node.js-specific APIs.
  * Provides working `createFile` with proper streaming support.
- * Filesystem operations (rm, cp, mv, etc.) are not available in edge runtimes and will throw.
+ * Filesystem operations (rm, cp, stat, etc.) are not available in edge runtimes and will throw.
  *
  * @example
  * ```typescript
@@ -30,6 +38,7 @@ import type {
 export class WorkerdFileSystemProvider implements FileSystemProvider {
   protected detector = $inject(FileDetector);
   protected json = $inject(Json);
+  protected dateTime = $inject(DateTimeProvider);
 
   protected encoder = new TextEncoder();
   protected decoder = new TextDecoder();
@@ -77,14 +86,6 @@ export class WorkerdFileSystemProvider implements FileSystemProvider {
       });
     }
 
-    if ("file" in options) {
-      return this.createFileFromWebFile(options.file, {
-        type: options.type,
-        name: options.name,
-        size: options.size,
-      });
-    }
-
     if ("response" in options) {
       return this.createFileFromResponse(options.response, {
         type: options.type,
@@ -97,13 +98,6 @@ export class WorkerdFileSystemProvider implements FileSystemProvider {
         type: options.type,
         name: options.name,
         size: options.size,
-      });
-    }
-
-    if ("url" in options) {
-      return this.createFileFromUrl(options.url, {
-        type: options.type,
-        name: options.name,
       });
     }
 
@@ -130,7 +124,7 @@ export class WorkerdFileSystemProvider implements FileSystemProvider {
       name,
       type: options.type ?? this.detector.getContentType(name),
       size: encoded.byteLength,
-      lastModified: Date.now(),
+      lastModified: this.dateTime.nowMillis(),
       stream: () =>
         new ReadableStream({
           start(controller) {
@@ -157,7 +151,7 @@ export class WorkerdFileSystemProvider implements FileSystemProvider {
       name,
       type: options.type ?? this.detector.getContentType(name),
       size: source.byteLength,
-      lastModified: Date.now(),
+      lastModified: this.dateTime.nowMillis(),
       stream: () =>
         new ReadableStream({
           start(controller) {
@@ -170,22 +164,6 @@ export class WorkerdFileSystemProvider implements FileSystemProvider {
     };
   }
 
-  protected createFileFromWebFile(
-    source: File,
-    options: { type?: string; name?: string; size?: number } = {},
-  ): FileLike {
-    const name = options.name ?? source.name;
-    return {
-      name,
-      type: options.type ?? (source.type || this.detector.getContentType(name)),
-      size: options.size ?? source.size ?? 0,
-      lastModified: source.lastModified || Date.now(),
-      stream: () => source.stream(),
-      arrayBuffer: async () => await source.arrayBuffer(),
-      text: async () => await source.text(),
-    };
-  }
-
   protected createFileFromResponse(
     response: Response,
     options: { type?: string; name?: string } = {},
@@ -195,31 +173,39 @@ export class WorkerdFileSystemProvider implements FileSystemProvider {
     }
 
     const sizeHeader = response.headers.get("content-length");
-    const size = sizeHeader ? parseInt(sizeHeader, 10) : 0;
+    const parsedSize = sizeHeader
+      ? Number.parseInt(sizeHeader, 10)
+      : Number.NaN;
+    const size = Number.isFinite(parsedSize) ? parsedSize : 0;
 
-    let name = options.name;
-    if (!name) {
-      const cd = response.headers.get("content-disposition");
-      if (cd) {
-        const match = cd.match(/filename="?([^"]+)"?/);
-        if (match) {
-          name = match[1];
-        }
-      }
-    }
-    name ??= "file";
+    const name =
+      options.name ??
+      this.detector.getFilenameFromContentDisposition(
+        response.headers.get("content-disposition"),
+      ) ??
+      "file";
 
     const type =
       options.type ?? response.headers.get("content-type") ?? undefined;
+
+    // A Response body reads exactly once. Memoise the consumed bytes so
+    // text() after arrayBuffer() (or either one twice) works instead of
+    // throwing "Body already read" — same contract as the stream variant.
+    let buffer: ArrayBuffer | null = null;
+    const consume = async (): Promise<ArrayBuffer> => {
+      buffer ??= await response.arrayBuffer();
+      return buffer;
+    };
 
     return {
       name,
       type: type ?? this.detector.getContentType(name),
       size,
-      lastModified: Date.now(),
-      stream: () => response.body!,
-      arrayBuffer: async () => await response.arrayBuffer(),
-      text: async () => await response.text(),
+      lastModified: this.dateTime.nowMillis(),
+      stream: () =>
+        buffer ? this.streamFromArrayBuffer(buffer) : response.body!,
+      arrayBuffer: consume,
+      text: async () => this.decoder.decode(await consume()),
     };
   }
 
@@ -257,39 +243,26 @@ export class WorkerdFileSystemProvider implements FileSystemProvider {
       name,
       type: options.type ?? this.detector.getContentType(name),
       size: options.size ?? 0,
-      lastModified: Date.now(),
-      stream: () => source,
+      lastModified: this.dateTime.nowMillis(),
+      // Once buffered, serve fresh streams from the copy instead of
+      // handing back the drained source.
+      stream: () => (buffer ? this.streamFromArrayBuffer(buffer) : source),
       arrayBuffer: consumeStream,
       text: async () => this.decoder.decode(await consumeStream()),
     };
   }
 
-  protected createFileFromUrl(
-    url: string,
-    options: { type?: string; name?: string } = {},
-  ): FileLike {
-    const parsedUrl = new URL(url);
-    const name = options.name ?? parsedUrl.pathname.split("/").pop() ?? "file";
-
-    return {
-      name,
-      type: options.type ?? this.detector.getContentType(name),
-      size: 0,
-      lastModified: Date.now(),
-      stream: () => {
-        throw new AlephaError(
-          "WorkerdFileSystemProvider: streaming from URL is not supported. Use fetch() and createFile({ response }) instead.",
-        );
+  /**
+   * A fresh single-chunk ReadableStream over already-buffered bytes.
+   */
+  protected streamFromArrayBuffer(buffer: ArrayBuffer): ReadableStream {
+    const bytes = new Uint8Array(buffer);
+    return new ReadableStream({
+      start(controller) {
+        controller.enqueue(bytes);
+        controller.close();
       },
-      arrayBuffer: async () => {
-        const res = await fetch(url);
-        return await res.arrayBuffer();
-      },
-      text: async () => {
-        const res = await fetch(url);
-        return await res.text();
-      },
-    };
+    });
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -312,12 +285,6 @@ export class WorkerdFileSystemProvider implements FileSystemProvider {
     );
   }
 
-  public async mv(_src: string, _dest: string): Promise<void> {
-    throw new AlephaError(
-      "WorkerdFileSystemProvider: mv() is not available in edge runtimes.",
-    );
-  }
-
   public async mkdir(_path: string, _options?: MkdirOptions): Promise<void> {
     throw new AlephaError(
       "WorkerdFileSystemProvider: mkdir() is not available in edge runtimes.",
@@ -336,9 +303,21 @@ export class WorkerdFileSystemProvider implements FileSystemProvider {
     );
   }
 
+  public async stat(_path: string): Promise<FileStat> {
+    throw new AlephaError(
+      "WorkerdFileSystemProvider: stat() is not available in edge runtimes.",
+    );
+  }
+
   public async readFile(_path: string): Promise<Buffer> {
     throw new AlephaError(
       "WorkerdFileSystemProvider: readFile() is not available in edge runtimes.",
+    );
+  }
+
+  public async readFileStream(_path: string): Promise<StreamLike> {
+    throw new AlephaError(
+      "WorkerdFileSystemProvider: readFileStream() is not available in edge runtimes.",
     );
   }
 
@@ -360,6 +339,12 @@ export class WorkerdFileSystemProvider implements FileSystemProvider {
   public async readJsonFile<T = unknown>(_path: string): Promise<T> {
     throw new AlephaError(
       "WorkerdFileSystemProvider: readJsonFile() is not available in edge runtimes.",
+    );
+  }
+
+  public async writeJsonFile(_path: string, _value: unknown): Promise<void> {
+    throw new AlephaError(
+      "WorkerdFileSystemProvider: writeJsonFile() is not available in edge runtimes.",
     );
   }
 }

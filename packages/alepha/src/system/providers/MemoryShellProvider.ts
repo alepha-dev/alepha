@@ -1,5 +1,9 @@
 import { AlephaError } from "alepha";
-import type { ShellProvider, ShellRunOptions } from "./ShellProvider.ts";
+import type {
+  ShellCommandResult,
+  ShellProvider,
+  ShellRunOptions,
+} from "./ShellProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -138,6 +142,32 @@ export class MemoryShellProvider implements ShellProvider {
 
     // Return configured output or empty string
     return this.outputs.get(key) ?? "";
+  }
+
+  /**
+   * Record command and return a simulated structured result.
+   *
+   * A configured error becomes `{ exitCode: 1, stderr }` — the structured
+   * API resolves on failure instead of throwing, matching the real
+   * providers' contract.
+   */
+  public async capture(
+    command: string | string[],
+    options: ShellRunOptions = {},
+  ): Promise<ShellCommandResult> {
+    const key = Array.isArray(command) ? command.join(" ") : command;
+    this.calls.push({
+      command: key,
+      argv: Array.isArray(command) ? command : undefined,
+      options,
+    });
+
+    const errorMsg = this.errors.get(key);
+    if (errorMsg) {
+      return { stdout: "", stderr: errorMsg, exitCode: 1 };
+    }
+
+    return { stdout: this.outputs.get(key) ?? "", stderr: "", exitCode: 0 };
   }
 
   /**

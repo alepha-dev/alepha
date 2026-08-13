@@ -98,6 +98,86 @@ describe("NodeShellProvider", () => {
     });
   });
 
+  describe("run with inherit", () => {
+    it("resolves for a zero-exit command", async () => {
+      await expect(shell.run(["node", "-e", "process.exit(0)"])).resolves.toBe(
+        "",
+      );
+    });
+
+    it("rejects with the exit code for a failing command", async () => {
+      await expect(
+        shell.run(["node", "-e", "process.exit(2)"]),
+      ).rejects.toThrow(/exited with code 2/);
+    });
+  });
+
+  describe("timeout and abort", () => {
+    it("kills a hung command after the timeout", async () => {
+      await expect(
+        shell.run(["node", "-e", "setTimeout(() => {}, 60000)"], {
+          capture: true,
+          timeout: 300,
+        }),
+      ).rejects.toThrow(/timed out after 300ms/);
+    });
+
+    it("kills a hung inherited command after the timeout", async () => {
+      await expect(
+        shell.run(["node", "-e", "setTimeout(() => {}, 60000)"], {
+          timeout: 300,
+        }),
+      ).rejects.toThrow(/timed out after 300ms/);
+    });
+
+    it("aborts a command through an AbortSignal", async () => {
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 200);
+
+      await expect(
+        shell.run(["node", "-e", "setTimeout(() => {}, 60000)"], {
+          capture: true,
+          signal: controller.signal,
+        }),
+      ).rejects.toThrow(/aborted/i);
+    });
+  });
+
+  describe("capture (structured result)", () => {
+    it("resolves with stdout and exit code 0 on success", async () => {
+      const result = await shell.capture([
+        "node",
+        "-e",
+        "process.stdout.write('ok')",
+      ]);
+      expect(result).toEqual({ stdout: "ok", stderr: "", exitCode: 0 });
+    });
+
+    it("RESOLVES on a non-zero exit — the code is data, not an exception", async () => {
+      const result = await shell.capture([
+        "node",
+        "-e",
+        "process.stderr.write('boom');process.exit(3)",
+      ]);
+      expect(result.exitCode).toBe(3);
+      expect(result.stderr).toContain("boom");
+    });
+
+    it("works with the string form too", async () => {
+      const result = await shell.capture(
+        `node -e "process.stdout.write('via-shell')"`,
+      );
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toBe("via-shell");
+    });
+
+    it("still rejects when the executable does not exist", async () => {
+      await expect(
+        shell.capture(["definitely-not-a-real-binary-xyz"]),
+      ).rejects.toThrow();
+    });
+  });
+
   describe("run with stdin", () => {
     it("pipes bytes into an argv command and captures what it echoes back", async () => {
       const out = await shell.run(

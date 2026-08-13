@@ -1,5 +1,6 @@
 import { Alepha, z } from "alepha";
 import { $action, ServerProvider } from "alepha/server";
+import { FileSystemProvider, NodeFileSystemProvider } from "alepha/system";
 import { describe, test } from "vitest";
 import { $swagger } from "../index.ts";
 
@@ -29,7 +30,11 @@ class App {
 }
 
 describe("Swagger UI", () => {
-  const alepha = Alepha.create().with(App);
+  // The UI page is served from the package's real on-disk assets — the
+  // memory default has nothing to serve.
+  const alepha = Alepha.create()
+    .with({ provide: FileSystemProvider, use: NodeFileSystemProvider })
+    .with(App);
   const server = alepha.inject(ServerProvider);
 
   test("ui", async ({ expect }) => {

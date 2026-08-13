@@ -36,7 +36,6 @@ export * from "./services/FileDetector.ts";
  */
 export const AlephaSystem = $module({
   name: "alepha.system",
-  primitives: [],
   services: [FileDetector, FileSystemProvider, ShellProvider],
   variants: [
     MemoryFileSystemProvider,
@@ -52,11 +51,18 @@ export const AlephaSystem = $module({
       : alepha.isBun()
         ? BunShellProvider
         : NodeShellProvider;
+    // Tests get the memory backends for BOTH providers: side effects stay in
+    // the container, and `fileSystemContract.spec.ts` pins Memory to Node
+    // semantics so the substitution stays honest. A test that really wants
+    // the disk opts in with `.with({ provide, use: NodeFileSystemProvider })`.
+    const fsImpl = alepha.isTest()
+      ? MemoryFileSystemProvider
+      : NodeFileSystemProvider;
     return alepha
       .with({
         optional: true,
         provide: FileSystemProvider,
-        use: NodeFileSystemProvider,
+        use: fsImpl,
       })
       .with({
         optional: true,

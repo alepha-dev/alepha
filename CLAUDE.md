@@ -177,7 +177,6 @@ const alepha = Alepha.create()
 const fs = alepha.inject(MemoryFileSystemProvider);
 expect(fs.wasWritten("/path/file.ts")).toBe(true);
 expect(fs.wasWrittenMatching("/path/file.ts", /pattern/)).toBe(true);
-expect(fs.wasRead("/path/file.ts")).toBe(true);
 expect(fs.wasDeleted("/path/file.ts")).toBe(true);
 
 const shell = alepha.inject(MemoryShellProvider);
