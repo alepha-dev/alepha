@@ -1,7 +1,11 @@
 import { Alepha, AlephaError, z } from "alepha";
 import { CliProvider } from "alepha/command";
 import { $entity, $repository, db } from "alepha/orm";
-import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
+import {
+  FileSystemProvider,
+  MemoryFileSystemProvider,
+  NodeFileSystemProvider,
+} from "alepha/system";
 import { describe, expect, it } from "vitest";
 import { DbCommand } from "../commands/db.ts";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
@@ -541,7 +545,14 @@ describe("DbCommand", () => {
         provide: AlephaCliUtils,
         use: FakeCliUtils,
       });
-      if (!options.realFs) {
+      if (options.realFs) {
+        // Tests default to MemoryFileSystemProvider; this one writes a real
+        // migration tree for drizzle (raw node:fs), so opt back into disk.
+        alepha = alepha.with({
+          provide: FileSystemProvider,
+          use: NodeFileSystemProvider,
+        });
+      } else {
         alepha = alepha.with({
           provide: FileSystemProvider,
           use: MemoryFileSystemProvider,

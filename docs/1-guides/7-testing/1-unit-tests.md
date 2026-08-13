@@ -93,13 +93,24 @@ Alepha ships memory implementations for all I/O-bound services. These run in-pro
 | `MemoryEmailProvider` | `alepha/email` | Email sending |
 | `MemorySmsProvider` | `alepha/sms` | SMS sending |
 
+In test environments, `FileSystemProvider` and `ShellProvider` both default to
+their memory implementations automatically — file writes and shell commands
+stay inside the container unless a test opts back into the real thing:
+
+```typescript
+import { FileSystemProvider, NodeFileSystemProvider } from "alepha/system";
+
+// Only when a test really needs the disk (e.g. real fixture files):
+const alepha = Alepha.create()
+  .with({ provide: FileSystemProvider, use: NodeFileSystemProvider });
+```
+
 ### Example: File System
 
 ```typescript
-import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
+import { MemoryFileSystemProvider } from "alepha/system";
 
-const alepha = Alepha.create()
-  .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider });
+const alepha = Alepha.create(); // memory file system is the test default
 
 const fs = alepha.inject(MemoryFileSystemProvider);
 
@@ -109,17 +120,15 @@ await myService.generateReport();
 // Assert with built-in helpers
 expect(fs.wasWritten("/path/report.txt")).toBe(true);
 expect(fs.wasWrittenMatching("/path/report.txt", /summary/)).toBe(true);
-expect(fs.wasRead("/path/input.csv")).toBe(true);
 expect(fs.wasDeleted("/path/temp.txt")).toBe(true);
 ```
 
 ### Example: Shell Commands
 
 ```typescript
-import { ShellProvider, MemoryShellProvider } from "alepha/system";
+import { MemoryShellProvider } from "alepha/system";
 
-const alepha = Alepha.create()
-  .with({ provide: ShellProvider, use: MemoryShellProvider });
+const alepha = Alepha.create(); // memory shell is the test default
 
 const shell = alepha.inject(MemoryShellProvider);
 
@@ -127,6 +136,12 @@ const shell = alepha.inject(MemoryShellProvider);
 await myService.installDependencies();
 
 expect(shell.wasCalled("yarn install")).toBe(true);
+
+// Structured results work too: a configured error becomes exitCode 1,
+// mirroring ShellProvider.capture() on the real runtimes.
+shell.errors.set("git diff --quiet", "dirty");
+const result = await shell.capture("git diff --quiet");
+expect(result.exitCode).toBe(1);
 ```
 
 ## Database Testing

@@ -1,8 +1,17 @@
-import { basename as nodeBasename, join as nodeJoin } from "node:path";
-import { $inject, AlephaError, type FileLike, Json } from "alepha";
+import { dirname, basename as nodeBasename, join as nodeJoin } from "node:path";
+import {
+  $inject,
+  AlephaError,
+  type FileLike,
+  Json,
+  type StreamLike,
+} from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
+import { FileDetector } from "../services/FileDetector.ts";
 import type {
   CpOptions,
   CreateFileOptions,
+  FileStat,
   FileSystemProvider,
   LsOptions,
   MkdirOptions,
@@ -11,28 +20,16 @@ import type {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface MemoryFileSystemProviderOptions {
-  /**
-   * Error to throw on mkdir operations (for testing error handling)
-   */
-  mkdirError?: Error | null;
-  /**
-   * Error to throw on writeFile operations (for testing error handling)
-   */
-  writeFileError?: Error | null;
-  /**
-   * Error to throw on readFile operations (for testing error handling)
-   */
-  readFileError?: Error | null;
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
 /**
  * In-memory implementation of FileSystemProvider for testing.
  *
  * This provider stores all files and directories in memory, making it ideal for
  * unit tests that need to verify file operations without touching the real file system.
+ *
+ * One deliberate looseness versus the node provider: `writeFile` succeeds
+ * without its parent directories existing (and registers them implicitly),
+ * so tests can seed fixtures in one call. Everything else follows the
+ * contract pinned by `fileSystemContract.spec.ts`.
  *
  * @example
  * ```typescript
@@ -53,6 +50,8 @@ export interface MemoryFileSystemProviderOptions {
  */
 export class MemoryFileSystemProvider implements FileSystemProvider {
   protected json = $inject(Json);
+  protected dateTime = $inject(DateTimeProvider);
+  protected detector = $inject(FileDetector);
 
   /**
    * In-memory storage for files (path -> content)
@@ -65,6 +64,11 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   public directories = new Set<string>();
 
   /**
+   * Modification times (path -> epoch millis) for {@link stat}.
+   */
+  public mtimes = new Map<string, number>();
+
+  /**
    * Track mkdir calls for test assertions
    */
   public mkdirCalls: Array<{ path: string; options?: MkdirOptions }> = [];
@@ -73,11 +77,6 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
    * Track writeFile calls for test assertions
    */
   public writeFileCalls: Array<{ path: string; data: string }> = [];
-
-  /**
-   * Track readFile calls for test assertions
-   */
-  public readFileCalls: Array<string> = [];
 
   /**
    * Track rm calls for test assertions
@@ -104,12 +103,6 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
    */
   public readFileError: Error | null = null;
 
-  constructor(options: MemoryFileSystemProviderOptions = {}) {
-    this.mkdirError = options.mkdirError ?? null;
-    this.writeFileError = options.writeFileError ?? null;
-    this.readFileError = options.readFileError ?? null;
-  }
-
   /**
    * Join path segments using forward slashes.
    * Uses Node's path.join for proper normalization (handles .. and .)
@@ -129,7 +122,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
 
   /**
    * A path counts as a directory when it was created explicitly or when a
-   * file was written beneath it — `writeFile` does not register parents.
+   * file or directory was registered beneath it.
    */
   protected isExistingDirectory(normalizedPath: string): boolean {
     if (normalizedPath === "" || normalizedPath === "/") {
@@ -137,14 +130,16 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     }
 
     for (const dirPath of this.directories) {
-      const dir = this.normalizePath(dirPath);
-      if (dir === normalizedPath || dir.startsWith(`${normalizedPath}/`)) {
+      if (
+        dirPath === normalizedPath ||
+        dirPath.startsWith(`${normalizedPath}/`)
+      ) {
         return true;
       }
     }
 
     for (const filePath of this.files.keys()) {
-      if (this.normalizePath(filePath).startsWith(`${normalizedPath}/`)) {
+      if (filePath.startsWith(`${normalizedPath}/`)) {
         return true;
       }
     }
@@ -153,80 +148,90 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   }
 
   /**
+   * Registers `path` and every parent as directories.
+   */
+  protected registerDirectoryTree(normalizedPath: string): void {
+    const parts = normalizedPath.split("/").filter(Boolean);
+    // Keep the leading slash: rebuilding `/app/src` as `app/src` registered
+    // a key nothing else looks up, so `exists("/app/src")` said no — while
+    // the node provider reports every parent of a `mkdir -p`.
+    let current = normalizedPath.startsWith("/") ? "" : undefined;
+    for (const part of parts) {
+      current = current === undefined ? part : `${current}/${part}`;
+      this.directories.add(current);
+    }
+  }
+
+  /**
    * Create a FileLike object from various sources.
+   *
+   * Supports the full option union — as the DEFAULT provider in tests, any
+   * source the node provider accepts has to work here too, or production
+   * code paths become untestable by substitution.
    */
   public createFile(options: CreateFileOptions): FileLike {
     if ("path" in options) {
-      const filePath = options.path;
+      const filePath = this.normalizePath(options.path);
       const buffer = this.files.get(filePath);
       if (buffer === undefined) {
         throw new AlephaError(
-          `ENOENT: no such file or directory, open '${filePath}'`,
+          `ENOENT: no such file or directory, open '${options.path}'`,
         );
       }
-      return {
+      return this.fileLikeFromBuffer(buffer, {
         name: options.name ?? nodeBasename(filePath),
-        type: options.type ?? "application/octet-stream",
-        size: buffer.byteLength,
-        lastModified: Date.now(),
-        stream: () => {
-          throw new AlephaError(
-            "Stream not implemented in MemoryFileSystemProvider",
-          );
-        },
-        arrayBuffer: async (): Promise<ArrayBuffer> =>
-          buffer.buffer.slice(
-            buffer.byteOffset,
-            buffer.byteOffset + buffer.byteLength,
-          ) as ArrayBuffer,
-        text: async () => buffer.toString("utf-8"),
-      };
+        type: options.type,
+      });
     }
 
     if ("buffer" in options) {
-      const buffer = options.buffer;
-      return {
+      return this.fileLikeFromBuffer(options.buffer, {
         name: options.name ?? "file",
-        type: options.type ?? "application/octet-stream",
-        size: buffer.byteLength,
-        lastModified: Date.now(),
-        stream: () => {
-          throw new AlephaError(
-            "Stream not implemented in MemoryFileSystemProvider",
-          );
-        },
-        arrayBuffer: async (): Promise<ArrayBuffer> =>
-          buffer.buffer.slice(
-            buffer.byteOffset,
-            buffer.byteOffset + buffer.byteLength,
-          ) as ArrayBuffer,
-        text: async () => buffer.toString("utf-8"),
-      };
+        type: options.type,
+      });
+    }
+
+    if ("arrayBuffer" in options) {
+      return this.fileLikeFromBuffer(Buffer.from(options.arrayBuffer), {
+        name: options.name ?? "file",
+        type: options.type,
+      });
     }
 
     if ("text" in options) {
-      const buffer = Buffer.from(options.text, "utf-8");
-      return {
+      return this.fileLikeFromBuffer(Buffer.from(options.text, "utf-8"), {
         name: options.name ?? "file.txt",
         type: options.type ?? "text/plain",
-        size: buffer.byteLength,
-        lastModified: Date.now(),
-        stream: () => {
-          throw new AlephaError(
-            "Stream not implemented in MemoryFileSystemProvider",
-          );
-        },
-        arrayBuffer: async (): Promise<ArrayBuffer> =>
-          buffer.buffer.slice(
-            buffer.byteOffset,
-            buffer.byteOffset + buffer.byteLength,
-          ) as ArrayBuffer,
-        text: async () => options.text,
-      };
+      });
+    }
+
+    if ("response" in options) {
+      const res = options.response;
+      if (!res.body) {
+        throw new AlephaError("Response has no body stream");
+      }
+      const name =
+        options.name ??
+        this.detector.getFilenameFromContentDisposition(
+          res.headers.get("content-disposition"),
+        ) ??
+        "file";
+      return this.fileLikeFromStream(res.body, {
+        name,
+        type: options.type ?? res.headers.get("content-type") ?? undefined,
+      });
+    }
+
+    if ("stream" in options) {
+      return this.fileLikeFromStream(options.stream, {
+        name: options.name ?? "file",
+        type: options.type,
+        size: options.size,
+      });
     }
 
     throw new AlephaError(
-      "MemoryFileSystemProvider.createFile: unsupported options. Only buffer and text are supported.",
+      "MemoryFileSystemProvider.createFile: unsupported options.",
     );
   }
 
@@ -236,86 +241,103 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   public async rm(path: string, options?: RmOptions): Promise<void> {
     this.rmCalls.push({ path, options });
 
-    const exists = this.files.has(path) || this.directories.has(path);
+    const normalized = this.normalizePath(path);
+    const isFile = this.files.has(normalized);
+    const isDirectory = !isFile && this.isExistingDirectory(normalized);
 
-    if (!exists && !options?.force) {
+    if (!isFile && !isDirectory) {
+      if (options?.force) {
+        return;
+      }
       throw new AlephaError(`ENOENT: no such file or directory, rm '${path}'`);
     }
 
-    if (this.directories.has(path)) {
-      if (options?.recursive) {
-        // Remove directory and all contents
-        this.directories.delete(path);
-        for (const filePath of this.files.keys()) {
-          if (filePath.startsWith(`${path}/`)) {
-            this.files.delete(filePath);
-          }
-        }
-        for (const dirPath of this.directories) {
-          if (dirPath.startsWith(`${path}/`)) {
-            this.directories.delete(dirPath);
-          }
-        }
-      } else {
+    if (isDirectory) {
+      if (!options?.recursive) {
         throw new AlephaError(
           `EISDIR: illegal operation on a directory, rm '${path}'`,
         );
       }
-    } else {
-      this.files.delete(path);
+      this.directories.delete(normalized);
+      this.mtimes.delete(normalized);
+      for (const filePath of this.files.keys()) {
+        if (filePath.startsWith(`${normalized}/`)) {
+          this.files.delete(filePath);
+          this.mtimes.delete(filePath);
+        }
+      }
+      for (const dirPath of this.directories) {
+        if (dirPath.startsWith(`${normalized}/`)) {
+          this.directories.delete(dirPath);
+          this.mtimes.delete(dirPath);
+        }
+      }
+      return;
     }
+
+    this.files.delete(normalized);
+    this.mtimes.delete(normalized);
   }
 
   /**
    * Copy a file or directory in memory.
+   *
+   * Same force semantics as the node provider: overwrite by default, and an
+   * existing destination is an ERROR (not a silent skip) with `force: false`.
    */
   public async cp(
     src: string,
     dest: string,
     options?: CpOptions,
   ): Promise<void> {
-    if (this.directories.has(src)) {
-      this.directories.add(dest);
-      for (const [filePath, content] of this.files) {
-        if (filePath.startsWith(`${src}/`)) {
-          const newPath = filePath.replace(src, dest);
-          this.files.set(newPath, Buffer.from(content));
+    const force = options?.force ?? true;
+    const from = this.normalizePath(src);
+    const to = this.normalizePath(dest);
+
+    if (this.isExistingDirectory(from) && !this.files.has(from)) {
+      if (options?.recursive === false) {
+        throw new AlephaError(
+          `EISDIR: illegal operation on a directory, cp '${src}'`,
+        );
+      }
+      this.registerDirectoryTree(to);
+      for (const dirPath of [...this.directories]) {
+        if (dirPath.startsWith(`${from}/`)) {
+          this.directories.add(`${to}/${dirPath.slice(from.length + 1)}`);
         }
       }
-    } else if (this.files.has(src)) {
-      const content = this.files.get(src)!;
-      this.files.set(dest, Buffer.from(content));
-    } else {
+      for (const [filePath, content] of [...this.files]) {
+        if (filePath.startsWith(`${from}/`)) {
+          const newPath = `${to}/${filePath.slice(from.length + 1)}`;
+          if (!force && this.files.has(newPath)) {
+            throw new AlephaError(
+              `EEXIST: file already exists, cp '${newPath}'`,
+            );
+          }
+          this.files.set(newPath, Buffer.from(content));
+          this.mtimes.set(newPath, this.dateTime.nowMillis());
+        }
+      }
+      return;
+    }
+
+    const content = this.files.get(from);
+    if (!content) {
       throw new AlephaError(`ENOENT: no such file or directory, cp '${src}'`);
     }
-  }
-
-  /**
-   * Move/rename a file or directory in memory.
-   */
-  public async mv(src: string, dest: string): Promise<void> {
-    if (this.directories.has(src)) {
-      // Move directory and contents
-      this.directories.delete(src);
-      this.directories.add(dest);
-      for (const [filePath, content] of this.files) {
-        if (filePath.startsWith(`${src}/`)) {
-          const newPath = filePath.replace(src, dest);
-          this.files.delete(filePath);
-          this.files.set(newPath, content);
-        }
-      }
-    } else if (this.files.has(src)) {
-      const content = this.files.get(src)!;
-      this.files.delete(src);
-      this.files.set(dest, content);
-    } else {
-      throw new AlephaError(`ENOENT: no such file or directory, mv '${src}'`);
+    if (!force && this.files.has(to)) {
+      throw new AlephaError(`EEXIST: file already exists, cp '${dest}'`);
     }
+    this.files.set(to, Buffer.from(content));
+    this.mtimes.set(to, this.dateTime.nowMillis());
   }
 
   /**
    * Create a directory in memory.
+   *
+   * Follows the interface defaults: recursive AND force both default to
+   * true, exactly like the node provider — a duplicate mkdir is a no-op
+   * unless the caller explicitly opts into strictness.
    */
   public async mkdir(path: string, options?: MkdirOptions): Promise<void> {
     this.mkdirCalls.push({ path, options });
@@ -324,26 +346,32 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
       throw this.mkdirError;
     }
 
-    const normalizedPath = this.normalizePath(path);
+    const normalized = this.normalizePath(path);
+    const recursive = options?.recursive ?? true;
+    const force = options?.force ?? true;
 
-    if (this.directories.has(normalizedPath) && !options?.recursive) {
+    if (recursive) {
+      this.registerDirectoryTree(normalized);
+      this.mtimes.set(normalized, this.dateTime.nowMillis());
+      return;
+    }
+
+    if (this.isExistingDirectory(normalized)) {
+      if (force) {
+        return;
+      }
       throw new AlephaError(`EEXIST: file already exists, mkdir '${path}'`);
     }
 
-    this.directories.add(normalizedPath);
-
-    // If recursive, create parent directories
-    if (options?.recursive) {
-      const parts = normalizedPath.split("/").filter(Boolean);
-      // Keep the leading slash: rebuilding `/app/src` as `app/src` registered
-      // a key nothing else looks up, so `exists("/app/src")` said no — while
-      // the node provider reports every parent of a `mkdir -p`.
-      let current = normalizedPath.startsWith("/") ? "" : undefined;
-      for (const part of parts) {
-        current = current === undefined ? part : `${current}/${part}`;
-        this.directories.add(current);
-      }
+    const parent = this.normalizePath(dirname(normalized));
+    if (!this.isExistingDirectory(parent)) {
+      throw new AlephaError(
+        `ENOENT: no such file or directory, mkdir '${path}'`,
+      );
     }
+
+    this.directories.add(normalized);
+    this.mtimes.set(normalized, this.dateTime.nowMillis());
   }
 
   /**
@@ -364,11 +392,8 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
 
     // Find files in the directory
     for (const filePath of this.files.keys()) {
-      const normalizedFilePath = this.normalizePath(filePath);
-      if (normalizedFilePath.startsWith(`${normalizedPath}/`)) {
-        const relativePath = normalizedFilePath.slice(
-          normalizedPath.length + 1,
-        );
+      if (filePath.startsWith(`${normalizedPath}/`)) {
+        const relativePath = filePath.slice(normalizedPath.length + 1);
         const parts = relativePath.split("/");
 
         if (options?.recursive) {
@@ -381,12 +406,11 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
 
     // Find subdirectories
     for (const dirPath of this.directories) {
-      const normalizedDirPath = this.normalizePath(dirPath);
       if (
-        normalizedDirPath.startsWith(`${normalizedPath}/`) &&
-        normalizedDirPath !== normalizedPath
+        dirPath.startsWith(`${normalizedPath}/`) &&
+        dirPath !== normalizedPath
       ) {
-        const relativePath = normalizedDirPath.slice(normalizedPath.length + 1);
+        const relativePath = dirPath.slice(normalizedPath.length + 1);
         const parts = relativePath.split("/");
 
         if (options?.recursive) {
@@ -409,28 +433,66 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
 
   /**
    * Check if a file or directory exists in memory.
+   *
+   * Implicit directories count: a parent of any stored file or directory
+   * exists, exactly as it would on a real filesystem.
    */
   public async exists(path: string): Promise<boolean> {
-    return this.files.has(path) || this.directories.has(path);
+    const normalized = this.normalizePath(path);
+    return this.files.has(normalized) || this.isExistingDirectory(normalized);
+  }
+
+  /**
+   * Returns metadata about a file or directory.
+   */
+  public async stat(path: string): Promise<FileStat> {
+    const normalized = this.normalizePath(path);
+    const content = this.files.get(normalized);
+
+    if (content) {
+      return {
+        size: content.byteLength,
+        mtimeMs: this.mtimes.get(normalized) ?? 0,
+        isDirectory: false,
+        isFile: true,
+      };
+    }
+
+    if (this.isExistingDirectory(normalized)) {
+      return {
+        size: 0,
+        mtimeMs: this.mtimes.get(normalized) ?? 0,
+        isDirectory: true,
+        isFile: false,
+      };
+    }
+
+    throw new AlephaError(`ENOENT: no such file or directory, stat '${path}'`);
   }
 
   /**
    * Read a file from memory.
    */
   public async readFile(path: string): Promise<Buffer> {
-    this.readFileCalls.push(path);
-
     if (this.readFileError) {
       throw this.readFileError;
     }
 
-    const content = this.files.get(path);
+    const content = this.files.get(this.normalizePath(path));
     if (!content) {
       throw new AlephaError(
         `ENOENT: no such file or directory, open '${path}'`,
       );
     }
     return content;
+  }
+
+  /**
+   * Opens a readable stream over a stored file.
+   */
+  public async readFileStream(path: string): Promise<StreamLike> {
+    const content = await this.readFile(path);
+    return this.bufferToStream(content);
   }
 
   /**
@@ -450,25 +512,22 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   }
 
   /**
+   * Serialises a value as pretty-printed JSON and writes it to a file.
+   */
+  public async writeJsonFile(path: string, value: unknown): Promise<void> {
+    await this.writeFile(path, this.json.stringify(value, null, 2));
+  }
+
+  /**
    * Write a file to memory.
    */
   public async writeFile(
     path: string,
     data: Uint8Array | Buffer | string | FileLike,
   ): Promise<void> {
-    const dataStr =
-      typeof data === "string"
-        ? data
-        : data instanceof Buffer || data instanceof Uint8Array
-          ? data.toString("utf-8")
-          : await data.text();
-
-    this.writeFileCalls.push({ path, data: dataStr });
-
-    if (this.writeFileError) {
-      throw this.writeFileError;
-    }
-
+    // Materialise ONCE — FileLike sources may be single-shot streams, so
+    // consuming them twice (once for the assertion log, once for storage)
+    // stored an empty payload.
     const buffer =
       typeof data === "string"
         ? Buffer.from(data, "utf-8")
@@ -476,9 +535,17 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
           ? data
           : data instanceof Uint8Array
             ? Buffer.from(data)
-            : Buffer.from(await data.text(), "utf-8");
+            : Buffer.from(await data.arrayBuffer());
 
-    this.files.set(path, buffer);
+    this.writeFileCalls.push({ path, data: buffer.toString("utf-8") });
+
+    if (this.writeFileError) {
+      throw this.writeFileError;
+    }
+
+    const normalized = this.normalizePath(path);
+    this.files.set(normalized, buffer);
+    this.mtimes.set(normalized, this.dateTime.nowMillis());
   }
 
   /**
@@ -487,9 +554,9 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   public reset(): void {
     this.files.clear();
     this.directories.clear();
+    this.mtimes.clear();
     this.mkdirCalls = [];
     this.writeFileCalls = [];
-    this.readFileCalls = [];
     this.rmCalls = [];
     this.joinCalls = [];
     this.mkdirError = null;
@@ -527,18 +594,6 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   }
 
   /**
-   * Check if a file was read during the test.
-   *
-   * @example
-   * ```typescript
-   * expect(fs.wasRead("/project/package.json")).toBe(true);
-   * ```
-   */
-  public wasRead(path: string): boolean {
-    return this.readFileCalls.includes(path);
-  }
-
-  /**
    * Check if a file was deleted during the test.
    *
    * @example
@@ -554,6 +609,92 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
    * Get the content of a file as a string (convenience method for testing).
    */
   public getFileContent(path: string): string | undefined {
-    return this.files.get(path)?.toString("utf-8");
+    return this.files.get(this.normalizePath(path))?.toString("utf-8");
+  }
+
+  /**
+   * Builds a FileLike over an in-memory buffer.
+   *
+   * Streams come from `Blob` — a fresh, standards-based stream per call on
+   * every runtime, with no `node:stream` import that would poison browser
+   * bundles.
+   *
+   * @protected
+   */
+  protected fileLikeFromBuffer(
+    buffer: Buffer,
+    options: { name: string; type?: string },
+  ): FileLike {
+    const bytes = new Uint8Array(
+      buffer.buffer.slice(
+        buffer.byteOffset,
+        buffer.byteOffset + buffer.byteLength,
+      ) as ArrayBuffer,
+    );
+    return {
+      name: options.name,
+      type: options.type ?? this.detector.getContentType(options.name),
+      size: buffer.byteLength,
+      lastModified: this.dateTime.nowMillis(),
+      stream: () => this.bufferToStream(buffer),
+      arrayBuffer: async (): Promise<ArrayBuffer> =>
+        bytes.buffer as ArrayBuffer,
+      text: async () => buffer.toString("utf-8"),
+    };
+  }
+
+  /**
+   * FileLike over a one-shot stream: the source is consumed (and memoised)
+   * on first read, after which every accessor serves from the copy.
+   *
+   * @protected
+   */
+  protected fileLikeFromStream(
+    source: StreamLike,
+    options: { name: string; type?: string; size?: number },
+  ): FileLike {
+    let buffer: Buffer | null = null;
+    const consume = async (): Promise<Buffer> => {
+      if (buffer) {
+        return buffer;
+      }
+      const chunks: Buffer[] = [];
+      for await (const chunk of source as AsyncIterable<Uint8Array>) {
+        chunks.push(Buffer.from(chunk));
+      }
+      buffer = Buffer.concat(chunks);
+      return buffer;
+    };
+
+    return {
+      name: options.name,
+      type: options.type ?? this.detector.getContentType(options.name),
+      size: options.size ?? 0,
+      lastModified: this.dateTime.nowMillis(),
+      stream: () => (buffer ? this.bufferToStream(buffer) : source),
+      arrayBuffer: async () => {
+        const b = await consume();
+        return b.buffer.slice(
+          b.byteOffset,
+          b.byteOffset + b.byteLength,
+        ) as ArrayBuffer;
+      },
+      text: async () => (await consume()).toString("utf-8"),
+    };
+  }
+
+  /**
+   * A fresh web ReadableStream over a buffer's bytes.
+   *
+   * @protected
+   */
+  protected bufferToStream(buffer: Buffer): StreamLike {
+    const bytes = new Uint8Array(
+      buffer.buffer.slice(
+        buffer.byteOffset,
+        buffer.byteOffset + buffer.byteLength,
+      ) as ArrayBuffer,
+    );
+    return new Blob([bytes]).stream();
   }
 }

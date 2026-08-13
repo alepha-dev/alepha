@@ -1,4 +1,4 @@
-import { createReadStream } from "node:fs";
+import { constants, createReadStream } from "node:fs";
 import {
   access,
   copyFile,
@@ -6,15 +6,13 @@ import {
   mkdir as fsMkdir,
   readFile as fsReadFile,
   rm as fsRm,
+  stat as fsStat,
   writeFile as fsWriteFile,
   readdir,
-  rename,
-  stat,
 } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
-import { PassThrough, Readable } from "node:stream";
+import { Readable } from "node:stream";
 import type { ReadableStream as NodeWebStream } from "node:stream/web";
-import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   $inject,
   AlephaError,
@@ -23,10 +21,12 @@ import {
   Json,
   type StreamLike,
 } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { FileDetector } from "../services/FileDetector.ts";
 import type {
   CpOptions,
   CreateFileOptions,
+  FileStat,
   FileSystemProvider,
   LsOptions,
   MkdirOptions,
@@ -40,8 +40,8 @@ import type {
  * ```typescript
  * const fs = alepha.inject(NodeFileSystemProvider);
  *
- * // Create from URL
- * const file1 = fs.createFile({ url: "file:///path/to/file.png" });
+ * // Create from a path on disk
+ * const file1 = fs.createFile({ path: "/path/to/file.png" });
  *
  * // Create from Buffer
  * const file2 = fs.createFile({ buffer: Buffer.from("hello"), name: "hello.txt" });
@@ -52,7 +52,6 @@ import type {
  * // File operations
  * await fs.mkdir("/tmp/mydir", { recursive: true });
  * await fs.cp("/src/file.txt", "/dest/file.txt");
- * await fs.mv("/old/path.txt", "/new/path.txt");
  * const files = await fs.ls("/tmp");
  * await fs.rm("/tmp/file.txt");
  * ```
@@ -60,6 +59,7 @@ import type {
 export class NodeFileSystemProvider implements FileSystemProvider {
   protected detector = $inject(FileDetector);
   protected json = $inject(Json);
+  protected dateTime = $inject(DateTimeProvider);
 
   public join(...paths: string[]): string {
     return join(...paths);
@@ -75,8 +75,8 @@ export class NodeFileSystemProvider implements FileSystemProvider {
    * ```typescript
    * const fs = alepha.inject(NodeFileSystemProvider);
    *
-   * // From URL
-   * const file1 = fs.createFile({ url: "https://example.com/image.png" });
+   * // From a path on disk
+   * const file1 = fs.createFile({ path: "./assets/image.png" });
    *
    * // From Buffer
    * const file2 = fs.createFile({
@@ -95,20 +95,7 @@ export class NodeFileSystemProvider implements FileSystemProvider {
    */
   createFile(options: CreateFileOptions): FileLike {
     if ("path" in options) {
-      const filePath = options.path;
-      const filename = basename(filePath);
-      // `file://` + path breaks on a relative path (the first segment parses
-      // as the URL host) and on `#`/`?`/`%` in a filename, which truncate
-      // into fragment/query or mis-decode. `pathToFileURL` handles all of it.
-      return this.createFileFromUrl(pathToFileURL(resolve(filePath)).href, {
-        type: options.type,
-        name: options.name || filename,
-      });
-    }
-
-    // Handle URL
-    if ("url" in options) {
-      return this.createFileFromUrl(options.url, {
+      return this.createFileFromPath(options.path, {
         type: options.type,
         name: options.name,
       });
@@ -121,31 +108,22 @@ export class NodeFileSystemProvider implements FileSystemProvider {
       const res = options.response;
       // guess size from content-length header if available
       const sizeHeader = res.headers.get("content-length");
-      const size = sizeHeader ? parseInt(sizeHeader, 10) : undefined;
+      const parsedSize = sizeHeader
+        ? Number.parseInt(sizeHeader, 10)
+        : Number.NaN;
+      const size = Number.isFinite(parsedSize) ? parsedSize : undefined;
       // guess name from content-disposition header if available
-      let name = options.name;
-      const contentDisposition = res.headers.get("content-disposition");
-      if (contentDisposition && !name) {
-        const match = contentDisposition.match(/filename="?([^"]+)"?/);
-        if (match) {
-          name = match[1];
-        }
-      }
+      const name =
+        options.name ??
+        this.detector.getFilenameFromContentDisposition(
+          res.headers.get("content-disposition"),
+        );
       // guess type from content-type header if available
       const type = options.type || res.headers.get("content-type") || undefined;
       return this.createFileFromStream(options.response.body, {
         type,
         name,
         size,
-      });
-    }
-
-    // Handle Web File
-    if ("file" in options) {
-      return this.createFileFromWebFile(options.file, {
-        type: options.type,
-        name: options.name,
-        size: options.size,
       });
     }
 
@@ -214,6 +192,11 @@ export class NodeFileSystemProvider implements FileSystemProvider {
   /**
    * Copies a file or directory.
    *
+   * By default an existing destination is overwritten — the common case is a
+   * build task re-running over its previous output. With `force: false` an
+   * existing destination is an ERROR, never a silent skip: a copy that
+   * quietly did nothing is how stale artifacts ship.
+   *
    * @param src - Source path
    * @param dest - Destination path
    * @param options - Copy options
@@ -222,48 +205,29 @@ export class NodeFileSystemProvider implements FileSystemProvider {
    * ```typescript
    * const fs = alepha.inject(NodeFileSystemProvider);
    *
-   * // Copy a file
+   * // Copy a file (overwrites an existing destination)
    * await fs.cp("/src/file.txt", "/dest/file.txt");
    *
    * // Copy a directory (recursive by default)
    * await fs.cp("/src/dir", "/dest/dir");
    *
-   * // Copy with force (overwrite existing)
-   * await fs.cp("/src/file.txt", "/dest/file.txt", { force: true });
+   * // Refuse to overwrite
+   * await fs.cp("/src/file.txt", "/dest/file.txt", { force: false });
    * ```
    */
   async cp(src: string, dest: string, options?: CpOptions): Promise<void> {
-    const srcStat = await stat(src);
+    const force = options?.force ?? true;
+    const srcStat = await fsStat(src);
 
     if (srcStat.isDirectory()) {
       await fsCp(src, dest, {
         recursive: options?.recursive ?? true,
-        force: options?.force ?? false,
+        force,
+        errorOnExist: !force,
       });
     } else {
-      await copyFile(src, dest);
+      await copyFile(src, dest, force ? 0 : constants.COPYFILE_EXCL);
     }
-  }
-
-  /**
-   * Moves/renames a file or directory.
-   *
-   * @param src - Source path
-   * @param dest - Destination path
-   *
-   * @example
-   * ```typescript
-   * const fs = alepha.inject(NodeFileSystemProvider);
-   *
-   * // Move/rename a file
-   * await fs.mv("/old/path.txt", "/new/path.txt");
-   *
-   * // Move a directory
-   * await fs.mv("/old/dir", "/new/dir");
-   * ```
-   */
-  async mv(src: string, dest: string): Promise<void> {
-    await rename(src, dest);
   }
 
   /**
@@ -345,7 +309,7 @@ export class NodeFileSystemProvider implements FileSystemProvider {
 
       for (const entry of filteredEntries) {
         const fullPath = join(path, entry);
-        const entryStat = await stat(fullPath);
+        const entryStat = await fsStat(fullPath);
 
         if (entryStat.isDirectory()) {
           // Add directory entry
@@ -389,6 +353,27 @@ export class NodeFileSystemProvider implements FileSystemProvider {
   }
 
   /**
+   * Returns metadata about a file or directory.
+   *
+   * @param path - The path to inspect
+   *
+   * @example
+   * ```typescript
+   * const fs = alepha.inject(NodeFileSystemProvider);
+   * const { size, mtimeMs, isDirectory } = await fs.stat("/tmp/file.txt");
+   * ```
+   */
+  async stat(path: string): Promise<FileStat> {
+    const stats = await fsStat(path);
+    return {
+      size: stats.size,
+      mtimeMs: stats.mtimeMs,
+      isDirectory: stats.isDirectory(),
+      isFile: stats.isFile(),
+    };
+  }
+
+  /**
    * Reads the content of a file.
    *
    * @param path - The file path to read
@@ -404,6 +389,30 @@ export class NodeFileSystemProvider implements FileSystemProvider {
    */
   async readFile(path: string): Promise<Buffer> {
     return await fsReadFile(path);
+  }
+
+  /**
+   * Opens a readable stream over the content of a file.
+   *
+   * @param path - The file path to stream
+   *
+   * @example
+   * ```typescript
+   * const fs = alepha.inject(NodeFileSystemProvider);
+   * const stream = await fs.readFileStream("/tmp/big-file.bin");
+   * ```
+   */
+  async readFileStream(path: string): Promise<StreamLike> {
+    // `createReadStream` is lazy — it would only error at first read. Stat
+    // upfront so a missing path (or a directory) fails HERE, where the
+    // caller named it, not deep inside whatever consumes the stream.
+    const stats = await fsStat(path);
+    if (stats.isDirectory()) {
+      throw new AlephaError(
+        `EISDIR: illegal operation on a directory, read '${path}'`,
+      );
+    }
+    return createReadStream(path);
   }
 
   /**
@@ -469,31 +478,54 @@ export class NodeFileSystemProvider implements FileSystemProvider {
   }
 
   /**
-   * Creates a FileLike object from a Web File.
+   * Serialises a value as pretty-printed JSON and writes it to a file.
+   *
+   * @param path - The file path to write to
+   * @param value - The value to serialise
+   *
+   * @example
+   * ```typescript
+   * const fs = alepha.inject(NodeFileSystemProvider);
+   * await fs.writeJsonFile("/tmp/config.json", { name: "alepha" });
+   * ```
+   */
+  async writeJsonFile(path: string, value: unknown): Promise<void> {
+    await this.writeFile(path, this.json.stringify(value, null, 2));
+  }
+
+  /**
+   * Creates a FileLike object over a file on disk.
+   *
+   * The content is read lazily: `stream()` opens a fresh read stream per
+   * call, `arrayBuffer()`/`text()` load (and memoise) the file. `size` is 0
+   * until loaded — use {@link stat} when the byte count matters upfront.
    *
    * @protected
    */
-  protected createFileFromWebFile(
-    source: File,
+  protected createFileFromPath(
+    path: string,
     options: {
       type?: string;
       name?: string;
-      size?: number;
     } = {},
   ): FileLike {
-    const name = options.name ?? source.name;
+    const filepath = resolve(path);
+    const name = options.name || basename(filepath);
+    let buffer: Buffer | null = null;
+    const load = async (): Promise<Buffer> => {
+      buffer ??= await fsReadFile(filepath);
+      return buffer;
+    };
+
     return {
       name,
-      type: options.type ?? (source.type || this.detector.getContentType(name)),
-      size: options.size ?? source.size ?? 0,
-      lastModified: source.lastModified || Date.now(),
-      stream: () => source.stream(),
-      arrayBuffer: async (): Promise<ArrayBuffer> => {
-        return await source.arrayBuffer();
-      },
-      text: async (): Promise<string> => {
-        return await source.text();
-      },
+      type: options.type ?? this.detector.getContentType(name),
+      size: 0, // Unknown size until loaded
+      lastModified: this.dateTime.nowMillis(),
+      stream: () => createReadStream(filepath),
+      arrayBuffer: async () => this.bufferToArrayBuffer(await load()),
+      text: async () => (await load()).toString("utf-8"),
+      filepath,
     };
   }
 
@@ -514,7 +546,7 @@ export class NodeFileSystemProvider implements FileSystemProvider {
       name,
       type: options.type ?? this.detector.getContentType(options.name ?? name),
       size: source.byteLength,
-      lastModified: Date.now(),
+      lastModified: this.dateTime.nowMillis(),
       stream: (): Readable => Readable.from(source),
       arrayBuffer: async (): Promise<ArrayBuffer> => {
         return this.bufferToArrayBuffer(source);
@@ -545,8 +577,12 @@ export class NodeFileSystemProvider implements FileSystemProvider {
       type:
         options.type ?? this.detector.getContentType(options.name ?? "file"),
       size: options.size ?? 0,
-      lastModified: Date.now(),
-      stream: () => source,
+      lastModified: this.dateTime.nowMillis(),
+      // The source itself can only be consumed once. But once text() or
+      // arrayBuffer() has buffered it, stream() can serve fresh streams
+      // forever — returning the drained source instead was a silent
+      // empty-payload bug.
+      stream: () => (buffer ? Readable.from(buffer) : source),
       arrayBuffer: async () => {
         buffer ??= await this.streamToBuffer(source);
         return this.bufferToArrayBuffer(buffer);
@@ -556,123 +592,6 @@ export class NodeFileSystemProvider implements FileSystemProvider {
         return buffer.toString("utf-8");
       },
     };
-  }
-
-  /**
-   * Creates a FileLike object from a URL.
-   *
-   * @protected
-   */
-  protected createFileFromUrl(
-    url: string,
-    options: {
-      type?: string;
-      name?: string;
-    } = {},
-  ): FileLike {
-    const parsedUrl = new URL(url);
-    const filename =
-      options.name || parsedUrl.pathname.split("/").pop() || "file";
-    let buffer: Buffer | null = null;
-
-    return {
-      name: filename,
-      type: options.type ?? this.detector.getContentType(filename),
-      size: 0, // Unknown size until loaded
-      lastModified: Date.now(),
-      stream: () => this.createStreamFromUrl(url),
-      arrayBuffer: async () => {
-        buffer ??= await this.loadFromUrl(url);
-        return this.bufferToArrayBuffer(buffer);
-      },
-      text: async () => {
-        buffer ??= await this.loadFromUrl(url);
-        return buffer.toString("utf-8");
-      },
-      filepath: url,
-    };
-  }
-
-  /**
-   * Gets a streaming response from a URL.
-   *
-   * @protected
-   */
-  protected getStreamingResponse(url: string): Readable {
-    const stream = new PassThrough();
-
-    fetch(url)
-      .then((res) => {
-        // The status was ignored, so a 404 or 500 error page streamed
-        // through as if it were the file's content. The buffered path
-        // already threw on `!ok`; this one silently produced garbage.
-        if (!res.ok) {
-          throw new AlephaError(
-            `Failed to fetch ${url}: ${res.status} ${res.statusText}`,
-          );
-        }
-        if (!res.body) {
-          throw new AlephaError(`Response for ${url} has no body`);
-        }
-        return Readable.fromWeb(res.body as unknown as NodeWebStream).pipe(
-          stream,
-        );
-      })
-      .catch((err) => stream.destroy(err));
-
-    return stream;
-  }
-
-  /**
-   * Loads data from a URL.
-   *
-   * @protected
-   */
-  protected async loadFromUrl(url: string): Promise<Buffer> {
-    const parsedUrl = new URL(url);
-
-    if (parsedUrl.protocol === "file:") {
-      // Handle file:// URLs
-      const filePath = fileURLToPath(url);
-      return await fsReadFile(filePath);
-    } else if (
-      parsedUrl.protocol === "http:" ||
-      parsedUrl.protocol === "https:"
-    ) {
-      // Handle HTTP/HTTPS URLs
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new AlephaError(
-          `Failed to fetch ${url}: ${response.status} ${response.statusText}`,
-        );
-      }
-      const arrayBuffer = await response.arrayBuffer();
-      return Buffer.from(arrayBuffer);
-    } else {
-      throw new AlephaError(`Unsupported protocol: ${parsedUrl.protocol}`);
-    }
-  }
-
-  /**
-   * Creates a stream from a URL.
-   *
-   * @protected
-   */
-  protected createStreamFromUrl(url: string): Readable {
-    const parsedUrl = new URL(url);
-
-    if (parsedUrl.protocol === "file:") {
-      // For file:// URLs, create a stream that reads the file
-      return createReadStream(fileURLToPath(url));
-    } else if (
-      parsedUrl.protocol === "http:" ||
-      parsedUrl.protocol === "https:"
-    ) {
-      // For HTTP/HTTPS URLs, create a stream that fetches the content
-      return this.getStreamingResponse(url);
-    } else {
-      throw new AlephaError(`Unsupported protocol: ${parsedUrl.protocol}`);
-    }
   }
 
   /**

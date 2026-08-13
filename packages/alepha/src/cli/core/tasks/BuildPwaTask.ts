@@ -43,7 +43,7 @@ export class BuildPwaTask extends BuildTask {
         }
 
         const output = this.fs.join(outputDir, "manifest.webmanifest");
-        await this.fs.writeFile(output, JSON.stringify(manifest, null, 2));
+        await this.fs.writeJsonFile(output, manifest);
       },
     });
   }

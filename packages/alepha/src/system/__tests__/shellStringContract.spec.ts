@@ -68,4 +68,14 @@ describe("shell.run(string) — literal argument contract", () => {
     });
     expect(out.trim()).toBe("b");
   });
+
+  it("preserves a single quote inside a double-quoted argument", async () => {
+    // The POSIX escaping turns `it's` into `'it'\''s'`. A runtime that
+    // re-parses that escaped string instead of consuming it with a real
+    // shell corrupts the argument (Bun's old capture path produced `it\s`).
+    // `BunShellProvider.bun.spec.ts` asserts the same case.
+    const shell = await setup();
+    const out = await shell.run(`echo "it's"`, { capture: true });
+    expect(out.trim()).toBe("it's");
+  });
 });

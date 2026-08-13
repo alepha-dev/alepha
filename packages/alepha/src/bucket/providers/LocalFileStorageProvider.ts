@@ -1,6 +1,3 @@
-import type * as fs from "node:fs";
-import { createReadStream } from "node:fs";
-import { mkdir, readdir, stat, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -85,7 +82,7 @@ export class LocalFileStorageProvider implements FileStorageProvider {
       // meant enumerating a primitive registry this provider no longer knows
       // (and never needed) anything about.
       try {
-        await mkdir(this.storagePath, { recursive: true });
+        await this.fileSystemProvider.mkdir(this.storagePath);
       } catch {}
     },
   });
@@ -101,7 +98,7 @@ export class LocalFileStorageProvider implements FileStorageProvider {
 
     // The per-tenant sub-directory isn't pre-created by `onStart` (which only
     // knows the un-scoped bucket name), so ensure it exists before writing.
-    await mkdir(this.path(bucketName), { recursive: true });
+    await this.fileSystemProvider.mkdir(this.path(bucketName));
     await this.fileSystemProvider.writeFile(
       this.path(bucketName, fileId),
       file,
@@ -114,11 +111,11 @@ export class LocalFileStorageProvider implements FileStorageProvider {
     const filePath = this.path(bucketName, fileId);
 
     try {
-      const stats = await stat(filePath);
+      const stats = await this.fileSystemProvider.stat(filePath);
       const mimeType = this.fileDetector.getContentType(fileId);
 
       return this.fileSystemProvider.createFile({
-        stream: createReadStream(filePath),
+        stream: await this.fileSystemProvider.readFileStream(filePath),
         name: fileId,
         type: mimeType,
         size: stats.size,
@@ -132,20 +129,12 @@ export class LocalFileStorageProvider implements FileStorageProvider {
   }
 
   public async exists(bucketName: string, fileId: string): Promise<boolean> {
-    try {
-      await stat(this.path(bucketName, fileId));
-      return true;
-    } catch (error) {
-      if (this.isErrorNoEntry(error)) {
-        return false;
-      }
-      throw new AlephaError("Error checking file existence", { cause: error });
-    }
+    return this.fileSystemProvider.exists(this.path(bucketName, fileId));
   }
 
   public async delete(bucketName: string, fileId: string): Promise<void> {
     try {
-      return await unlink(this.path(bucketName, fileId));
+      await this.fileSystemProvider.rm(this.path(bucketName, fileId));
     } catch (error) {
       if (this.isErrorNoEntry(error)) {
         throw new FileNotFoundError(`File with ID ${fileId} not found.`);
@@ -160,32 +149,24 @@ export class LocalFileStorageProvider implements FileStorageProvider {
   ): Promise<void> {
     await Promise.all(
       fileIds.map((id) =>
-        unlink(this.path(bucketName, id)).catch((error) => {
-          if (this.isErrorNoEntry(error)) return;
-          throw new AlephaError("Error deleting file", { cause: error });
-        }),
+        this.fileSystemProvider
+          .rm(this.path(bucketName, id), { force: true })
+          .catch((error) => {
+            throw new AlephaError("Error deleting file", { cause: error });
+          }),
       ),
     );
   }
 
   public async list(bucketName: string): Promise<string[]> {
     try {
-      const entries = await readdir(this.path(bucketName), {
-        withFileTypes: true,
-      });
-      return entries
-        .filter((entry) => entry.isFile())
-        .map((entry) => entry.name);
+      return await this.fileSystemProvider.ls(this.path(bucketName));
     } catch (error) {
       if (this.isErrorNoEntry(error)) {
         return [];
       }
       throw new AlephaError("Error listing files", { cause: error });
     }
-  }
-
-  protected stat(bucket: string, fileId: string): Promise<fs.Stats> {
-    return stat(this.path(bucket, fileId));
   }
 
   protected createId(mimeType: string): string {
@@ -207,6 +188,14 @@ export class LocalFileStorageProvider implements FileStorageProvider {
   }
 
   protected isErrorNoEntry(error: unknown): boolean {
-    return error instanceof Error && "code" in error && error.code === "ENOENT";
+    if (!(error instanceof Error)) {
+      return false;
+    }
+    // Node errors carry a `code`; MemoryFileSystemProvider throws AlephaError
+    // with the same ENOENT prefix in the message. Both mean "not there".
+    return (
+      ("code" in error && error.code === "ENOENT") ||
+      error.message.startsWith("ENOENT")
+    );
   }
 }

@@ -1,4 +1,4 @@
-import { Readable } from "node:stream";
+import type { Readable } from "node:stream";
 
 export interface FileTypeResult {
   /**
@@ -17,6 +17,17 @@ export interface FileTypeResult {
    * The stream (potentially wrapped to allow re-reading)
    */
   stream: Readable;
+}
+
+/**
+ * A magic-byte signature. `null` bytes are wildcards; `offset` is where the
+ * signature starts in the file (0 unless stated — tar's "ustar" magic sits
+ * at byte 257).
+ */
+export interface MagicByteSignature {
+  signature: (number | null)[];
+  mimeType: string;
+  offset?: number;
 }
 
 /**
@@ -39,262 +50,263 @@ export interface FileTypeResult {
 export class FileDetector {
   /**
    * Magic byte signatures for common file formats.
-   * Each signature is represented as an array of bytes or null (wildcard).
    */
-  protected static readonly MAGIC_BYTES: Record<
-    string,
-    { signature: (number | null)[]; mimeType: string }[]
-  > = {
-    // Images
-    png: [
-      {
-        signature: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
-        mimeType: "image/png",
-      },
-    ],
-    jpg: [
-      { signature: [0xff, 0xd8, 0xff, 0xe0], mimeType: "image/jpeg" },
-      { signature: [0xff, 0xd8, 0xff, 0xe1], mimeType: "image/jpeg" },
-      { signature: [0xff, 0xd8, 0xff, 0xe2], mimeType: "image/jpeg" },
-      { signature: [0xff, 0xd8, 0xff, 0xe3], mimeType: "image/jpeg" },
-      { signature: [0xff, 0xd8, 0xff, 0xe8], mimeType: "image/jpeg" },
-    ],
-    jpeg: [
-      { signature: [0xff, 0xd8, 0xff, 0xe0], mimeType: "image/jpeg" },
-      { signature: [0xff, 0xd8, 0xff, 0xe1], mimeType: "image/jpeg" },
-      { signature: [0xff, 0xd8, 0xff, 0xe2], mimeType: "image/jpeg" },
-      { signature: [0xff, 0xd8, 0xff, 0xe3], mimeType: "image/jpeg" },
-      { signature: [0xff, 0xd8, 0xff, 0xe8], mimeType: "image/jpeg" },
-    ],
-    gif: [
-      {
-        signature: [0x47, 0x49, 0x46, 0x38, 0x37, 0x61],
-        mimeType: "image/gif",
-      }, // GIF87a
-      {
-        signature: [0x47, 0x49, 0x46, 0x38, 0x39, 0x61],
-        mimeType: "image/gif",
-      }, // GIF89a
-    ],
-    webp: [
-      {
-        signature: [
-          0x52,
-          0x49,
-          0x46,
-          0x46,
-          null,
-          null,
-          null,
-          null,
-          0x57,
-          0x45,
-          0x42,
-          0x50,
-        ],
-        mimeType: "image/webp",
-      },
-    ],
-    bmp: [{ signature: [0x42, 0x4d], mimeType: "image/bmp" }],
-    ico: [{ signature: [0x00, 0x00, 0x01, 0x00], mimeType: "image/x-icon" }],
-    tiff: [
-      { signature: [0x49, 0x49, 0x2a, 0x00], mimeType: "image/tiff" }, // Little-endian
-      { signature: [0x4d, 0x4d, 0x00, 0x2a], mimeType: "image/tiff" }, // Big-endian
-    ],
-    tif: [
-      { signature: [0x49, 0x49, 0x2a, 0x00], mimeType: "image/tiff" },
-      { signature: [0x4d, 0x4d, 0x00, 0x2a], mimeType: "image/tiff" },
-    ],
+  protected static readonly MAGIC_BYTES: Record<string, MagicByteSignature[]> =
+    {
+      // Images
+      png: [
+        {
+          signature: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+          mimeType: "image/png",
+        },
+      ],
+      jpg: [
+        { signature: [0xff, 0xd8, 0xff, 0xe0], mimeType: "image/jpeg" },
+        { signature: [0xff, 0xd8, 0xff, 0xe1], mimeType: "image/jpeg" },
+        { signature: [0xff, 0xd8, 0xff, 0xe2], mimeType: "image/jpeg" },
+        { signature: [0xff, 0xd8, 0xff, 0xe3], mimeType: "image/jpeg" },
+        { signature: [0xff, 0xd8, 0xff, 0xe8], mimeType: "image/jpeg" },
+      ],
+      jpeg: [
+        { signature: [0xff, 0xd8, 0xff, 0xe0], mimeType: "image/jpeg" },
+        { signature: [0xff, 0xd8, 0xff, 0xe1], mimeType: "image/jpeg" },
+        { signature: [0xff, 0xd8, 0xff, 0xe2], mimeType: "image/jpeg" },
+        { signature: [0xff, 0xd8, 0xff, 0xe3], mimeType: "image/jpeg" },
+        { signature: [0xff, 0xd8, 0xff, 0xe8], mimeType: "image/jpeg" },
+      ],
+      gif: [
+        {
+          signature: [0x47, 0x49, 0x46, 0x38, 0x37, 0x61],
+          mimeType: "image/gif",
+        }, // GIF87a
+        {
+          signature: [0x47, 0x49, 0x46, 0x38, 0x39, 0x61],
+          mimeType: "image/gif",
+        }, // GIF89a
+      ],
+      webp: [
+        {
+          signature: [
+            0x52,
+            0x49,
+            0x46,
+            0x46,
+            null,
+            null,
+            null,
+            null,
+            0x57,
+            0x45,
+            0x42,
+            0x50,
+          ],
+          mimeType: "image/webp",
+        },
+      ],
+      bmp: [{ signature: [0x42, 0x4d], mimeType: "image/bmp" }],
+      ico: [{ signature: [0x00, 0x00, 0x01, 0x00], mimeType: "image/x-icon" }],
+      tiff: [
+        { signature: [0x49, 0x49, 0x2a, 0x00], mimeType: "image/tiff" }, // Little-endian
+        { signature: [0x4d, 0x4d, 0x00, 0x2a], mimeType: "image/tiff" }, // Big-endian
+      ],
+      tif: [
+        { signature: [0x49, 0x49, 0x2a, 0x00], mimeType: "image/tiff" },
+        { signature: [0x4d, 0x4d, 0x00, 0x2a], mimeType: "image/tiff" },
+      ],
 
-    // Documents
-    pdf: [
-      {
-        signature: [0x25, 0x50, 0x44, 0x46, 0x2d],
-        mimeType: "application/pdf",
-      },
-    ], // %PDF-
-    zip: [
-      { signature: [0x50, 0x4b, 0x03, 0x04], mimeType: "application/zip" },
-      { signature: [0x50, 0x4b, 0x05, 0x06], mimeType: "application/zip" },
-      { signature: [0x50, 0x4b, 0x07, 0x08], mimeType: "application/zip" },
-    ],
+      // Documents
+      pdf: [
+        {
+          signature: [0x25, 0x50, 0x44, 0x46, 0x2d],
+          mimeType: "application/pdf",
+        },
+      ], // %PDF-
+      zip: [
+        { signature: [0x50, 0x4b, 0x03, 0x04], mimeType: "application/zip" },
+        { signature: [0x50, 0x4b, 0x05, 0x06], mimeType: "application/zip" },
+        { signature: [0x50, 0x4b, 0x07, 0x08], mimeType: "application/zip" },
+      ],
 
-    // Archives
-    rar: [
-      {
-        signature: [0x52, 0x61, 0x72, 0x21, 0x1a, 0x07],
-        mimeType: "application/vnd.rar",
-      },
-    ],
-    "7z": [
-      {
-        signature: [0x37, 0x7a, 0xbc, 0xaf, 0x27, 0x1c],
-        mimeType: "application/x-7z-compressed",
-      },
-    ],
-    tar: [
-      {
-        signature: [0x75, 0x73, 0x74, 0x61, 0x72],
-        mimeType: "application/x-tar",
-      },
-    ],
-    gz: [{ signature: [0x1f, 0x8b], mimeType: "application/gzip" }],
-    tgz: [{ signature: [0x1f, 0x8b], mimeType: "application/gzip" }],
+      // Archives
+      rar: [
+        {
+          signature: [0x52, 0x61, 0x72, 0x21, 0x1a, 0x07],
+          mimeType: "application/vnd.rar",
+        },
+      ],
+      "7z": [
+        {
+          signature: [0x37, 0x7a, 0xbc, 0xaf, 0x27, 0x1c],
+          mimeType: "application/x-7z-compressed",
+        },
+      ],
+      tar: [
+        {
+          // "ustar" — POSIX tar magic. It lives at byte 257 (after the
+          // 100-byte name field and the numeric header fields), NOT at the
+          // start of the file; an offset-0 check can never match a real tar.
+          signature: [0x75, 0x73, 0x74, 0x61, 0x72],
+          mimeType: "application/x-tar",
+          offset: 257,
+        },
+      ],
+      gz: [{ signature: [0x1f, 0x8b], mimeType: "application/gzip" }],
+      tgz: [{ signature: [0x1f, 0x8b], mimeType: "application/gzip" }],
 
-    // Audio
-    mp3: [
-      { signature: [0xff, 0xfb], mimeType: "audio/mpeg" },
-      { signature: [0xff, 0xf3], mimeType: "audio/mpeg" },
-      { signature: [0xff, 0xf2], mimeType: "audio/mpeg" },
-      { signature: [0x49, 0x44, 0x33], mimeType: "audio/mpeg" }, // ID3
-    ],
-    wav: [
-      {
-        signature: [
-          0x52,
-          0x49,
-          0x46,
-          0x46,
-          null,
-          null,
-          null,
-          null,
-          0x57,
-          0x41,
-          0x56,
-          0x45,
-        ],
-        mimeType: "audio/wav",
-      },
-    ],
-    ogg: [{ signature: [0x4f, 0x67, 0x67, 0x53], mimeType: "audio/ogg" }],
-    flac: [{ signature: [0x66, 0x4c, 0x61, 0x43], mimeType: "audio/flac" }], // fLaC
+      // Audio
+      mp3: [
+        { signature: [0xff, 0xfb], mimeType: "audio/mpeg" },
+        { signature: [0xff, 0xf3], mimeType: "audio/mpeg" },
+        { signature: [0xff, 0xf2], mimeType: "audio/mpeg" },
+        { signature: [0x49, 0x44, 0x33], mimeType: "audio/mpeg" }, // ID3
+      ],
+      wav: [
+        {
+          signature: [
+            0x52,
+            0x49,
+            0x46,
+            0x46,
+            null,
+            null,
+            null,
+            null,
+            0x57,
+            0x41,
+            0x56,
+            0x45,
+          ],
+          mimeType: "audio/wav",
+        },
+      ],
+      ogg: [{ signature: [0x4f, 0x67, 0x67, 0x53], mimeType: "audio/ogg" }],
+      flac: [{ signature: [0x66, 0x4c, 0x61, 0x43], mimeType: "audio/flac" }], // fLaC
 
-    // Video
-    mp4: [
-      {
-        signature: [null, null, null, null, 0x66, 0x74, 0x79, 0x70],
-        mimeType: "video/mp4",
-      }, // ftyp
-      {
-        signature: [
-          null,
-          null,
-          null,
-          null,
-          0x66,
-          0x74,
-          0x79,
-          0x70,
-          0x69,
-          0x73,
-          0x6f,
-          0x6d,
-        ],
-        mimeType: "video/mp4",
-      }, // ftypisom
-      {
-        signature: [
-          null,
-          null,
-          null,
-          null,
-          0x66,
-          0x74,
-          0x79,
-          0x70,
-          0x6d,
-          0x70,
-          0x34,
-          0x32,
-        ],
-        mimeType: "video/mp4",
-      }, // ftypmp42
-    ],
-    webm: [{ signature: [0x1a, 0x45, 0xdf, 0xa3], mimeType: "video/webm" }],
-    avi: [
-      {
-        signature: [
-          0x52,
-          0x49,
-          0x46,
-          0x46,
-          null,
-          null,
-          null,
-          null,
-          0x41,
-          0x56,
-          0x49,
-          0x20,
-        ],
-        mimeType: "video/x-msvideo",
-      },
-    ],
-    mov: [
-      {
-        signature: [
-          null,
-          null,
-          null,
-          null,
-          0x66,
-          0x74,
-          0x79,
-          0x70,
-          0x71,
-          0x74,
-          0x20,
-          0x20,
-        ],
-        mimeType: "video/quicktime",
-      },
-    ],
-    mkv: [
-      { signature: [0x1a, 0x45, 0xdf, 0xa3], mimeType: "video/x-matroska" },
-    ],
+      // Video
+      mp4: [
+        {
+          signature: [null, null, null, null, 0x66, 0x74, 0x79, 0x70],
+          mimeType: "video/mp4",
+        }, // ftyp
+        {
+          signature: [
+            null,
+            null,
+            null,
+            null,
+            0x66,
+            0x74,
+            0x79,
+            0x70,
+            0x69,
+            0x73,
+            0x6f,
+            0x6d,
+          ],
+          mimeType: "video/mp4",
+        }, // ftypisom
+        {
+          signature: [
+            null,
+            null,
+            null,
+            null,
+            0x66,
+            0x74,
+            0x79,
+            0x70,
+            0x6d,
+            0x70,
+            0x34,
+            0x32,
+          ],
+          mimeType: "video/mp4",
+        }, // ftypmp42
+      ],
+      webm: [{ signature: [0x1a, 0x45, 0xdf, 0xa3], mimeType: "video/webm" }],
+      avi: [
+        {
+          signature: [
+            0x52,
+            0x49,
+            0x46,
+            0x46,
+            null,
+            null,
+            null,
+            null,
+            0x41,
+            0x56,
+            0x49,
+            0x20,
+          ],
+          mimeType: "video/x-msvideo",
+        },
+      ],
+      mov: [
+        {
+          signature: [
+            null,
+            null,
+            null,
+            null,
+            0x66,
+            0x74,
+            0x79,
+            0x70,
+            0x71,
+            0x74,
+            0x20,
+            0x20,
+          ],
+          mimeType: "video/quicktime",
+        },
+      ],
+      mkv: [
+        { signature: [0x1a, 0x45, 0xdf, 0xa3], mimeType: "video/x-matroska" },
+      ],
 
-    // Office (DOCX, XLSX, PPTX are all ZIP-based)
-    docx: [
-      {
-        signature: [0x50, 0x4b, 0x03, 0x04],
-        mimeType:
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      },
-    ],
-    xlsx: [
-      {
-        signature: [0x50, 0x4b, 0x03, 0x04],
-        mimeType:
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      },
-    ],
-    pptx: [
-      {
-        signature: [0x50, 0x4b, 0x03, 0x04],
-        mimeType:
-          "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-      },
-    ],
-    doc: [
-      {
-        signature: [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1],
-        mimeType: "application/msword",
-      },
-    ],
-    xls: [
-      {
-        signature: [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1],
-        mimeType: "application/vnd.ms-excel",
-      },
-    ],
-    ppt: [
-      {
-        signature: [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1],
-        mimeType: "application/vnd.ms-powerpoint",
-      },
-    ],
-  };
+      // Office (DOCX, XLSX, PPTX are all ZIP-based)
+      docx: [
+        {
+          signature: [0x50, 0x4b, 0x03, 0x04],
+          mimeType:
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        },
+      ],
+      xlsx: [
+        {
+          signature: [0x50, 0x4b, 0x03, 0x04],
+          mimeType:
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        },
+      ],
+      pptx: [
+        {
+          signature: [0x50, 0x4b, 0x03, 0x04],
+          mimeType:
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        },
+      ],
+      doc: [
+        {
+          signature: [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1],
+          mimeType: "application/msword",
+        },
+      ],
+      xls: [
+        {
+          signature: [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1],
+          mimeType: "application/vnd.ms-excel",
+        },
+      ],
+      ppt: [
+        {
+          signature: [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1],
+          mimeType: "application/vnd.ms-powerpoint",
+        },
+      ],
+    };
 
   /**
    * All possible format signatures for checking against actual file content
@@ -302,6 +314,16 @@ export class FileDetector {
   protected static readonly ALL_SIGNATURES = Object.entries(
     FileDetector.MAGIC_BYTES,
   ).flatMap(([ext, signatures]) => signatures.map((sig) => ({ ext, ...sig })));
+
+  /**
+   * How many bytes {@link detectFileType} peeks — enough for the deepest
+   * signature in the table (tar's "ustar" ends at byte 262).
+   */
+  protected static readonly PEEK_BYTES = Math.max(
+    ...FileDetector.ALL_SIGNATURES.map(
+      (sig) => (sig.offset ?? 0) + sig.signature.length,
+    ),
+  );
 
   /**
    * MIME type map for file extensions.
@@ -321,6 +343,10 @@ export class FileDetector {
     md: "text/markdown",
     markdown: "text/markdown",
     rtf: "application/rtf",
+    yaml: "application/yaml",
+    yml: "application/yaml",
+    toml: "application/toml",
+    webmanifest: "application/manifest+json",
 
     // Styles and scripts
     css: "text/css",
@@ -329,6 +355,7 @@ export class FileDetector {
     ts: "application/typescript",
     jsx: "text/jsx",
     tsx: "text/tsx",
+    wasm: "application/wasm",
 
     // Archives
     zip: "application/zip",
@@ -344,6 +371,8 @@ export class FileDetector {
     jpeg: "image/jpeg",
     gif: "image/gif",
     webp: "image/webp",
+    avif: "image/avif",
+    heic: "image/heic",
     svg: "image/svg+xml",
     bmp: "image/bmp",
     ico: "image/x-icon",
@@ -354,6 +383,7 @@ export class FileDetector {
     mp3: "audio/mpeg",
     wav: "audio/wav",
     ogg: "audio/ogg",
+    opus: "audio/opus",
     m4a: "audio/mp4",
     aac: "audio/aac",
     flac: "audio/flac",
@@ -433,6 +463,54 @@ export class FileDetector {
   }
 
   /**
+   * Extracts the filename from a Content-Disposition header value.
+   *
+   * Handles the RFC 5987 `filename*=charset''percent-encoded` form (which a
+   * naive `filename=` regex mis-captures as `*=UTF-8''...`), then the plain
+   * quoted and unquoted `filename=` forms.
+   *
+   * @param header - The Content-Disposition header value, if any
+   * @returns The decoded filename, or undefined when none is present
+   *
+   * @example
+   * ```typescript
+   * const detector = alepha.inject(FileDetector);
+   * detector.getFilenameFromContentDisposition(
+   *   `attachment; filename*=UTF-8''r%C3%A9sum%C3%A9.pdf`,
+   * ); // "résumé.pdf"
+   * ```
+   */
+  getFilenameFromContentDisposition(
+    header: string | null | undefined,
+  ): string | undefined {
+    if (!header) {
+      return undefined;
+    }
+
+    // RFC 5987 extended form wins when both are present.
+    const extended = header.match(/filename\*=(?:[\w-]+)''([^;]+)/i);
+    if (extended) {
+      try {
+        return decodeURIComponent(extended[1].trim());
+      } catch {
+        return extended[1].trim();
+      }
+    }
+
+    const quoted = header.match(/filename="([^"]*)"/i);
+    if (quoted) {
+      return quoted[1] || undefined;
+    }
+
+    const plain = header.match(/filename=([^;]+)/i);
+    if (plain) {
+      return plain[1].trim() || undefined;
+    }
+
+    return undefined;
+  }
+
+  /**
    * Detects the file type by checking magic bytes against the stream content.
    *
    * @param stream - The readable stream to check
@@ -462,14 +540,17 @@ export class FileDetector {
         ? filename.substring(lastDotIndex + 1).toLowerCase()
         : "";
 
-    // Read the first 16 bytes (enough for most magic byte checks)
-    const { buffer, stream: newStream } = await this.peekBytes(stream, 16);
+    // Read enough bytes for the deepest signature in the table
+    const { buffer, stream: newStream } = await this.peekBytes(
+      stream,
+      FileDetector.PEEK_BYTES,
+    );
 
     // First, check if the extension's expected signature matches
     const expectedSignatures = FileDetector.MAGIC_BYTES[ext];
     if (expectedSignatures) {
-      for (const { signature, mimeType } of expectedSignatures) {
-        if (this.matchesSignature(buffer, signature)) {
+      for (const { signature, mimeType, offset } of expectedSignatures) {
+        if (this.matchesSignature(buffer, signature, offset)) {
           return {
             mimeType,
             extension: ext,
@@ -485,8 +566,12 @@ export class FileDetector {
       ext: detectedExt,
       signature,
       mimeType,
+      offset,
     } of FileDetector.ALL_SIGNATURES) {
-      if (detectedExt !== ext && this.matchesSignature(buffer, signature)) {
+      if (
+        detectedExt !== ext &&
+        this.matchesSignature(buffer, signature, offset)
+      ) {
         return {
           mimeType,
           extension: detectedExt,
@@ -512,8 +597,12 @@ export class FileDetector {
    *
    * Only enough chunks to satisfy the peek are pulled; the rest of the source
    * is re-attached lazily behind the bytes already consumed. This used to
-   * buffer the ENTIRE stream before looking at 16 magic bytes, so detecting the
-   * type of a multi-GB upload materialised the whole file in memory.
+   * buffer the ENTIRE stream before looking at the magic bytes, so detecting
+   * the type of a multi-GB upload materialised the whole file in memory.
+   *
+   * `node:stream` is imported lazily: this service also ships in the browser
+   * index for its mime maps, and a top-level import would drag a Node
+   * builtin into client bundles that never detect anything.
    *
    * @protected
    */
@@ -521,6 +610,7 @@ export class FileDetector {
     stream: Readable,
     numBytes: number,
   ): Promise<{ buffer: Buffer; stream: Readable }> {
+    const { Readable } = await import("node:stream");
     const chunks: Buffer[] = [];
     let size = 0;
 
@@ -560,20 +650,21 @@ export class FileDetector {
   }
 
   /**
-   * Checks if a buffer matches a magic byte signature.
+   * Checks if a buffer matches a magic byte signature at the given offset.
    *
    * @protected
    */
   protected matchesSignature(
     buffer: Buffer,
     signature: (number | null)[],
+    offset = 0,
   ): boolean {
-    if (buffer.length < signature.length) {
+    if (buffer.length < offset + signature.length) {
       return false;
     }
 
     for (let i = 0; i < signature.length; i++) {
-      if (signature[i] !== null && buffer[i] !== signature[i]) {
+      if (signature[i] !== null && buffer[offset + i] !== signature[i]) {
         return false;
       }
     }

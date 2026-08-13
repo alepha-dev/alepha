@@ -27,10 +27,6 @@ const SRC = "packages/alepha/src";
  * code that has no container.
  */
 const DATE_NOW_EXEMPT = [
-  // `lastModified` on a File-like: filesystem metadata, not domain time.
-  "system/providers/NodeFileSystemProvider.ts",
-  "system/providers/WorkerdFileSystemProvider.ts",
-  "system/providers/MemoryFileSystemProvider.ts",
   "server/core/services/HttpClient.ts",
   // The provider itself has to read the wall clock somewhere.
   "datetime/providers/DateTimeProvider.ts",
