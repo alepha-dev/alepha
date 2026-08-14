@@ -16,7 +16,8 @@ import {
   TooltipTrigger,
 } from "@alepha/ui/components/ui/tooltip";
 import { useAuth } from "alepha/react/auth";
-import { LogIn, LogOut, Shield, User } from "lucide-react";
+import { useRouter } from "alepha/react/router";
+import { CircleUser, LogIn, LogOut, Shield, User } from "lucide-react";
 import type { ReactNode } from "react";
 
 export interface ButtonUserProps {
@@ -136,6 +137,7 @@ const DefaultMenu = (props: DefaultMenuProps) => {
     <>
       <Email />
       {props.onAdminClick && <AdminMenuItem onClick={props.onAdminClick} />}
+      <AccountMenuItem />
       <DropdownMenuSeparator />
       <LogoutMenuItem />
     </>
@@ -192,6 +194,60 @@ const AdminMenuItem = (props: ButtonUserAdminMenuItemProps) => {
   );
 };
 
+export interface ButtonUserAccountMenuItemProps {
+  /**
+   * Where the item navigates. Defaults to pushing the `account` route, which
+   * is what `AccountRouter` registers — leave it alone unless you mounted the
+   * account area under a different name.
+   */
+  onClick?: () => void;
+
+  /**
+   * Item label. Defaults to `"User Account"`.
+   */
+  label?: string;
+}
+
+/**
+ * Link to the signed-in user's own account area.
+ *
+ * ⚠️ **It owns its destination, unlike {@link ButtonUser.AdminMenuItem}.**
+ * That asymmetry is deliberate. Every caller that hard-coded this navigation
+ * got it wrong the moment the account area moved — `router.push("me")` kept
+ * compiling after the `me` route ceased to exist, because `router.push` falls
+ * back to a plain `string` overload, and threw only when someone clicked it.
+ * Defaulting to the route `AccountRouter` actually registers removes the whole
+ * class of bug; `onClick` stays available for an application that mounted the
+ * area itself under another name.
+ *
+ * **It hides itself when no `account` route is registered**, so an application
+ * that never mounts `AccountRouter` gets no dead entry — the same "is the
+ * module actually there" question the router's own `can` gates answer, asked
+ * the only way a menu item can ask it.
+ */
+const AccountMenuItem = (props: ButtonUserAccountMenuItemProps) => {
+  const auth = useAuth();
+  const router = useRouter<any>();
+
+  if (!auth.user) {
+    return null;
+  }
+  // No account area mounted → no entry, rather than one that throws on click.
+  if (
+    !props.onClick &&
+    !router.pages?.some((page: any) => page.name === "account")
+  ) {
+    return null;
+  }
+
+  return (
+    <DropdownMenuItem onClick={props.onClick ?? (() => router.push("account"))}>
+      <CircleUser className="size-4" />
+      {props.label ?? "User Account"}
+    </DropdownMenuItem>
+  );
+};
+
 export interface ButtonUserLogoutMenuItemProps {
   /**
    * Item label. Defaults to `"Logout"`.
@@ -211,4 +267,5 @@ const LogoutMenuItem = (props: ButtonUserLogoutMenuItemProps) => {
 
 ButtonUser.Email = Email;
 ButtonUser.AdminMenuItem = AdminMenuItem;
+ButtonUser.AccountMenuItem = AccountMenuItem;
 ButtonUser.LogoutMenuItem = LogoutMenuItem;

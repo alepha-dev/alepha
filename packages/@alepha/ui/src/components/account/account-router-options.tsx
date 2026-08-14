@@ -17,17 +17,22 @@ import type { AccountSessionsProps } from "./account-sessions.tsx";
  */
 export interface AccountRouterOptions {
   /**
-   * Full-width block above the rail and the content — the identity card, a
-   * back link, a page title.
+   * Replaces the default {@link AccountHeader} — the back link plus the
+   * ambient controls — entirely. Supply the whole bar, not an addition to it.
    *
-   * This is the *whole* top of the shell rather than a slot inside a chrome
-   * the shell also draws. That is why there is no `homeRouteName` option to
-   * go with it, unlike admin: admin renders its own "leave admin" affordance
-   * separately from `brand` and needs to know where it goes, whereas here an
-   * application that wants a Home button simply puts one in the header it is
-   * already supplying.
+   * Set it to `null` for an account area nested inside an application's own
+   * chrome, where a second header would just be a second row of the same
+   * controls.
    */
   header?: ReactNode;
+
+  /**
+   * Route name the default header's back link points at. Ignored when
+   * `header` is supplied, since that replaces the link too.
+   *
+   * @default "home"
+   */
+  homeRouteName?: string;
 
   /**
    * Extra class(es) merged onto the shell's root element, for an account area

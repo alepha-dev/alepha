@@ -1,3 +1,4 @@
+import { AccountHeader } from "@alepha/ui/components/account/account-header";
 import { SettingsLayout } from "@alepha/ui/components/settings/settings-layout";
 import { SettingsNav } from "@alepha/ui/components/settings/settings-nav";
 import { useStore } from "alepha/react";
@@ -39,7 +40,19 @@ export const AccountLayout = () => {
   return (
     <SettingsLayout
       className={options.className}
-      header={options.header}
+      /*
+        `!== undefined`, not `??`. `null ?? x` yields `x`, so nullish
+        coalescing would silently ignore `header: null` — the documented way
+        to say "this account area is nested in my own chrome, draw no bar".
+        Absent means default; explicit null means none.
+      */
+      header={
+        options.header !== undefined ? (
+          options.header
+        ) : (
+          <AccountHeader homeRouteName={options.homeRouteName} />
+        )
+      }
       nav={<SettingsNav items={entries} />}
     >
       <NestedView />

@@ -1,9 +1,6 @@
-import { ButtonDark } from "@alepha/ui/components/button-dark/button-dark";
-import { ButtonLanguage } from "@alepha/ui/components/button-language/button-language";
-import { ButtonUser } from "@alepha/ui/components/button-user/button-user";
+import { AppActions } from "@alepha/ui/components/app-actions/app-actions";
 import { NavShell } from "@alepha/ui/components/nav-shell/nav-shell";
 import { Spotlight } from "@alepha/ui/components/nav-shell/spotlight";
-import { DropdownMenuSeparator } from "@alepha/ui/components/ui/dropdown-menu";
 import { cn } from "@alepha/ui/lib/utils";
 import { useStore } from "alepha/react";
 import { useRouter } from "alepha/react/router";
@@ -82,23 +79,18 @@ export const AdminLayout = () => {
               className="bg-border mx-1 h-5 w-px shrink-0"
             />
             {options.topbarActions ?? (
-              <>
-                <ButtonLanguage />
-                <ButtonDark />
-                <ButtonUser
-                  onSignIn={() =>
-                    router.push(options.loginRouteName ?? "login")
-                  }
-                >
-                  <ButtonUser.Email />
-                  <ButtonUser.AdminMenuItem
-                    label="Back to site"
-                    onClick={() => router.push(options.homeRouteName ?? "home")}
-                  />
-                  <DropdownMenuSeparator />
-                  <ButtonUser.LogoutMenuItem />
-                </ButtonUser>
-              </>
+              <AppActions
+                loginRouteName={options.loginRouteName}
+                /*
+                  `adminRouteName` points back at the site, not at admin: the
+                  account menu already lives inside `/admin`, so the only
+                  useful destination is out. `AdminMenuItem` still carries the
+                  `admin:ui` check, which is the right gate for an item only
+                  an operator should see.
+                */
+                adminRouteName={options.homeRouteName ?? "home"}
+                labels={{ admin: "Back to site" }}
+              />
             )}
           </div>
         }
