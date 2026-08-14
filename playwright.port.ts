@@ -56,11 +56,7 @@ export const e2ePort = (defaultPort: number): number => {
     return defaultPort;
   }
 
-  // Seeded with the app's own default so two apps in the SAME worktree keep
-  // distinct ports — otherwise every suite in a worktree would collide with
-  // its neighbours instead of with the other checkout.
-  const digest = createHash("sha256").update(`${root}:${defaultPort}`).digest();
-  const derived = 3400 + (digest.readUInt16BE(0) % 500);
+  const derived = derivePort(root, defaultPort);
 
   // stderr, not stdout: a `--reporter=json` run writes its payload to stdout
   // and this would corrupt it.
@@ -68,6 +64,28 @@ export const e2ePort = (defaultPort: number): number => {
     `[e2e] linked worktree — port ${derived} instead of ${defaultPort} (${root})\n`,
   );
   return derived;
+};
+
+/**
+ * The pure derivation, split from `e2ePort` so it can be unit-tested without
+ * the env/filesystem handling.
+ *
+ * A per-worktree BASE from the root hash plus a per-app OFFSET from the
+ * default's last two digits. The offset is what makes an intra-worktree
+ * collision impossible rather than unlikely: the previous formula hashed
+ * `root:default` into one 500-slot space per app independently, which left
+ * each pair a 1-in-500 chance of colliding — and one real worktree drew it
+ * (shop 3305 and example-ssr 3312 both derived 3638, so shop's server always
+ * held the port when example-ssr's tried to bind, failing `yarn v`
+ * deterministically while each suite passed alone).
+ *
+ * Requires defaults to stay in the 33xx band with unique last-two-digits,
+ * which is already the hand-allocation rule above.
+ */
+export const derivePort = (root: string, defaultPort: number): number => {
+  const digest = createHash("sha256").update(root).digest();
+  const base = 3400 + (digest.readUInt16BE(0) % 400);
+  return base + (defaultPort % 100);
 };
 
 const checkoutRoot = (): string => {
