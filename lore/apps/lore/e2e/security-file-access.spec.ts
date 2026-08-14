@@ -100,16 +100,18 @@ const attachToQuest = async (
   );
 };
 
-/** Upload a real 1×1 PNG via `updateAvatar` → avatars bucket. Returns the
- *  user's new `picture` file id. */
+/** Upload a real 1×1 PNG via `updateMyAvatar` → avatars bucket. Returns the
+ *  user's new `picture` file id. Lore's own `UserController.updateAvatar` was
+ *  deleted when the account area moved onto the framework's
+ *  `MyProfileController`; this is the same upload through that endpoint. */
 const uploadAvatar = async (page: Page): Promise<string> => {
   return await page.evaluate(async () => {
     const node = document.getElementById("__ssr");
     if (!node?.textContent) throw new Error("__ssr missing");
     const parsed = JSON.parse(node.textContent);
     const links = parsed["alepha.server.request.apiLinks"];
-    const action = links?.actions?.updateAvatar;
-    if (!action) throw new Error("updateAvatar not in apiLinks");
+    const action = links?.actions?.updateMyAvatar;
+    if (!action) throw new Error("updateMyAvatar not in apiLinks");
     const url = `${links.prefix ?? "/api"}${action.path}`;
     // Minimal valid 1×1 transparent PNG (avatars bucket is image-only).
     const b64 =

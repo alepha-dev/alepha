@@ -2,7 +2,11 @@ import { createHash, randomBytes } from "node:crypto";
 import { Alepha, z } from "alepha";
 import { ApiKeyController } from "alepha/api/keys";
 import { oauthOptions } from "alepha/api/oauth";
-import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
+import {
+  AdminUserController,
+  AlephaApiUsers,
+  MyConnectionController,
+} from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake, FakeProvider } from "alepha/fake";
 import { AlephaMcp } from "alepha/mcp";
@@ -10,7 +14,7 @@ import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { SessionController } from "../src/api/controllers/SessionController.ts";
+
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 
@@ -329,8 +333,11 @@ describe("OAuth 2.1 authorization server", () => {
 
     // The session minted by the token exchange must be tagged with the
     // OAuth client and surface under the user's connected apps.
-    const sessions = ctx.alepha.inject(SessionController);
-    const connections = await sessions.getMyConnections.fetch({}, { user });
+    const connectionsApi = ctx.alepha.inject(MyConnectionController);
+    const connections = await connectionsApi.listMyConnections.fetch(
+      {},
+      { user },
+    );
     expect(connections.data).toHaveLength(1);
     expect(connections.data[0].clientId).toBe(clientId);
     expect(connections.data[0].clientName).toBe("Claude");

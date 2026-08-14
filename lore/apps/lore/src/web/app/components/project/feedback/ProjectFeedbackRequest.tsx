@@ -17,7 +17,7 @@ import type { FeedbackSource } from "@/api/schemas/feedbackSourceSchema.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
 import { displayName } from "../../../services/displayName.ts";
 import type { I18n } from "../../../services/I18n.ts";
-import type { MeRouter } from "../../profile/me/MeRouter.ts";
+import type { LoreAccountRouter } from "../../account/LoreAccountRouter.ts";
 import PageHeader from "../../shared/header/PageHeader.tsx";
 import { ProjectIcon } from "../../shared/ProjectIcon.tsx";
 import { UserAvatar } from "../../shared/UserAvatar.tsx";
@@ -165,7 +165,7 @@ const useDraftAutofill = (projectId: string) => {
 const ProjectFeedbackRequest = () => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
-  const meRouter = useRouter<MeRouter>();
+  const meRouter = useRouter<LoreAccountRouter>();
   const auth = useAuth();
   const feedbackApi = useClient<FeedbackController>();
   const toaster = useToast();

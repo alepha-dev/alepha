@@ -83,7 +83,7 @@ export class InvitationNotifications {
         );
 
         const baseUrl = this.alepha.env.PUBLIC_URL ?? "";
-        const inboxUrl = `${baseUrl}/auth/profile/invitations`;
+        const inboxUrl = `${baseUrl}/account/invitations`;
 
         const inviterName = inviter.email
           ? inviter.email.includes("@")
