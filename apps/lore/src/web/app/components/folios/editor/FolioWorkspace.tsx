@@ -2,7 +2,7 @@ import { useStore } from "alepha/react";
 import { useRouter } from "alepha/react/router";
 import { type ReactElement, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import type { Folio } from "@/api/entities/folios.ts";
+import type { FolioResource } from "@/api/schemas/folioResourceSchema.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { preloadMarkdownEditor } from "../../shared/markdown-editor/MarkdownEditor.tsx";
@@ -36,9 +36,15 @@ const EMPTY_STATE_ACTION_STATE: FolioActionState = {
 
 export interface FolioWorkspaceProps {
   /**
-   * `undefined` → create mode. A `Folio` → edit mode.
+   * `undefined` → create mode. A folio → edit mode.
+   *
+   * `FolioResource` (the bare entity plus the loader-populated
+   * `metadata`), not `Folio`, for the same reason `FolioLinksTab` uses
+   * it: the route loader asks `getByShortId` for that metadata and parts
+   * of the workspace read it. A bare `Folio` still satisfies the type —
+   * `metadata` is optional — so create mode and the tests pass unchanged.
    */
-  folio?: Folio;
+  folio?: FolioResource;
   /**
    * Create-mode only: the directory the new folio lands in.
    */

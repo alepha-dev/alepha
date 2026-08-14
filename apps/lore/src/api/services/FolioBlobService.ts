@@ -8,6 +8,7 @@ import { BadRequestError, NotFoundError } from "alepha/server";
 import { folioAssetPath } from "../../web/app/components/folios/folioAssetReference.ts";
 import { type FolioBlob, folioBlobs } from "../entities/folioBlobs.ts";
 import { folios } from "../entities/folios.ts";
+import type { HydratedBlob } from "../schemas/hydratedBlobSchema.ts";
 
 /**
  * Lore-side blob operations on top of the framework `FileService`. The
@@ -59,6 +60,48 @@ export class FolioBlobService {
       orderBy: [{ column: "name", direction: "asc" }],
       limit: 1000,
     });
+  }
+
+  /**
+   * `listByFolio`, joined with the framework `files` rows that carry the
+   * size / mimeType / checksum every listing displays.
+   *
+   * Two queries regardless of how many attachments the folio has. The
+   * caller this replaced (`BlobController.listBlobs`) hydrated one blob at
+   * a time and each hydrate was itself two queries — 2N+1 for a list that
+   * loads on every folio open. Both readers go through here now, so the
+   * shape can only be built one way.
+   */
+  public async listHydratedByFolio(folioId: string): Promise<HydratedBlob[]> {
+    const blobs = await this.listByFolio(folioId);
+    if (blobs.length === 0) return [];
+    const rows = await this.frameworkFiles.findMany({
+      where: { id: { inArray: blobs.map((b) => b.fileId) } },
+    });
+    const fileById = new Map(rows.map((f) => [f.id, f]));
+    const hydrated: HydratedBlob[] = [];
+    for (const blob of blobs) {
+      const file = fileById.get(blob.fileId);
+      // A blob whose framework file went missing is skipped rather than
+      // rendered half-empty — same call the per-row `hydrate` made by
+      // returning `undefined` and being filtered out.
+      if (!file) continue;
+      hydrated.push({
+        id: blob.fileId,
+        shortId: blob.shortId,
+        projectId: blob.projectId,
+        folioId: blob.folioId,
+        name: blob.name,
+        createdAt: blob.createdAt,
+        updatedAt: blob.updatedAt,
+        size: file.size,
+        mimeType: file.mimeType,
+        sha256: file.checksum,
+        originalName: file.originalName,
+        tags: file.tags,
+      });
+    }
+    return hydrated;
   }
 
   /**
