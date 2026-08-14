@@ -1,7 +1,9 @@
+import { resizeImage } from "@alepha/ui/lib/resize-image";
 import { useClient } from "alepha/react";
 import { useCallback } from "react";
 import type { BlobController } from "@/api/controllers/BlobController.ts";
 import { folioAssetPath } from "../../folios/folioAssetReference.ts";
+import { FOLIO_IMAGE_MAX_WIDTH } from "../../folios/folioImageBounds.ts";
 
 // Mirrors `FOLIO_BLOB_BUCKET_NAME` (FolioBlobService) — not imported
 // so the browser bundle doesn't pull the server-side service module.
@@ -37,10 +39,31 @@ export const useFolioImageUpload = (
   const blobApi = useClient<BlobController>();
 
   const handler = useCallback(
-    async (file: File) => {
+    async (original: File) => {
       if (projectId === undefined || folioId === undefined) {
         throw new Error("No folio in scope for image upload");
       }
+      // MDXEditor's paste handler calls this with `DataTransferItem
+      // .getAsFile()`, which is typed `File | null`. It only ever reaches
+      // here for items it has already confirmed are images, so a null is
+      // not expected — but an unguarded one would surface as a confusing
+      // `resizeImage` crash rather than a clear refusal.
+      if (!original) {
+        throw new Error("Nothing to upload");
+      }
+      // Downscaled before the bytes leave the machine, exactly as the
+      // Attachments panel does it. This path carries the toolbar's image
+      // button AND paste — MDXEditor routes clipboard images straight
+      // through here — so a screenshot pasted with ⌘V is the commonest
+      // upload in the app and the one most worth shrinking: a Retina
+      // capture is several megabytes of PNG rendered at document width.
+      //
+      // Best-effort by design: an SVG, a non-raster file, a browser
+      // without `OffscreenCanvas`, or a re-encode that comes out larger
+      // all return the input untouched.
+      const file = await resizeImage(original, {
+        maxWidth: FOLIO_IMAGE_MAX_WIDTH,
+      });
       const form = new FormData();
       form.append("file", file);
       const url = `/api/files?bucket=${encodeURIComponent(FOLIO_BLOB_BUCKET)}`;
