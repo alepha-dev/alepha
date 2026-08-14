@@ -291,6 +291,39 @@ class AppRouter {
 
 `<NestedView />` renders the matched child page. It supports an optional `errorBoundary` prop.
 
+### Ready-made routers from `@alepha/ui`
+
+Three routers ship whole surfaces you can mount instead of rebuilding:
+
+| Router | Surface | Extend with |
+|---|---|---|
+| `AuthRouter` | `/auth/login`, `/register`, `/reset-password`, `/verify-email` | — (write your own to change the URLs) |
+| `AdminRouter` | `/admin` — users, sessions, keys, jobs, audits, … | `$pageAdmin` |
+| `AccountRouter` | `/account` — profile, security, sessions, API keys, connected apps | `$pageAccount` |
+
+`$pageAdmin` and `$pageAccount` are `$pageNav` already parented to their shell,
+so one call adds a page to the shared sidebar with no separate registration —
+the shell reads each page's own `nav` metadata. Both follow the same rules:
+take `order: 100` or above (or your own `nav.group`) so you don't reshuffle the
+built-in entries, and gate with `can: () => this.someApi.someAction.can()`
+rather than `permission` alone, because a permission is self-declaring and
+stays granted over an API that was never mounted.
+
+`AdminRouter` stands alone at the root by design. `AccountRouter` goes either
+way — mount it and `/account` is a root route, or adopt its layout into your
+own shell with `children`, which is the `children` case above:
+
+```typescript
+class AppRouter {
+  protected account = $inject(AccountRouter);
+
+  layout = $page({
+    children: () => [this.home, this.account.layout, this.notFound],
+    lazy: () => import("./Layout.tsx"),
+  });
+}
+```
+
 ## Error Handling
 
 Use `errorHandler` to catch loader or rendering errors. Return a ReactNode for a custom error page, a `Redirection` to redirect, or `undefined` to let the error propagate to parent pages.

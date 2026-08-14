@@ -22,6 +22,7 @@ export class ProjectSlugService {
    * reachable today".
    */
   protected readonly reserved = new Set([
+    "account",
     "auth",
     "oauth",
     "api",

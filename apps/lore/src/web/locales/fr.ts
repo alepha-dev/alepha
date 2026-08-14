@@ -948,35 +948,4 @@ export default {
     "L'utilisateur sera déconnecté de cette session.",
   "admin.sessions.revoked": "Session révoquée",
   "admin.sessions.bulkRevokeTitle": "Révoquer les sessions",
-
-  "profile.apiKeys.revoke.title": "Révoquer « $1 » ?",
-  "profile.apiKeys.revoke.description":
-    "Tout client Claude ou MCP utilisant cette clé cessera immédiatement de fonctionner. La clé est irrécupérable — il faudrait en créer une nouvelle et reconfigurer chaque client.",
-  "profile.apiKeys.revoke.confirm": "Révoquer la clé",
-  "profile.sessions.revokeAll.title": "Se déconnecter partout ?",
-  "profile.sessions.revokeAll.description":
-    "Toutes les sessions sont révoquées, y compris celle-ci — vous serez déconnecté immédiatement. Une nouvelle connexion rétablit l'accès.",
-  "profile.sessions.revokeAll.confirm": "Se déconnecter partout",
-  "profile.identities.title": "Identités",
-  "profile.identities.active": "Active",
-  "profile.identities.empty":
-    "Aucune identité trouvée. Cela ne devrait pas arriver.",
-  "profile.identities.provider.credentials": "Mot de passe",
-  "profile.identities.password.failed":
-    "Impossible de définir le mot de passe.",
-  "profile.identities.password.set": "Définir un mot de passe",
-  "profile.identities.password.change": "Changer le mot de passe",
-  "profile.identities.password.setHint":
-    "Définissez un mot de passe pour vous connecter avec votre adresse e-mail, sans passer par un fournisseur externe.",
-  "profile.identities.password.changeHint":
-    "Changer votre mot de passe déconnecte tous vos autres appareils. Celui-ci reste connecté.",
-  "profile.identities.password.current": "Mot de passe actuel",
-  "profile.identities.password.new": "Nouveau mot de passe",
-  "profile.identities.password.confirm": "Confirmer le mot de passe",
-  "profile.identities.password.cancel": "Annuler",
-  "profile.identities.password.mismatch":
-    "Les mots de passe ne correspondent pas.",
-  "profile.identities.password.wasSet": "Mot de passe défini.",
-  "profile.identities.password.changed":
-    "Mot de passe modifié. $1 autre(s) session(s) déconnectée(s).",
 };

@@ -932,32 +932,4 @@ export default {
     "The user will be signed out from this session.",
   "admin.sessions.revoked": "Session revoked",
   "admin.sessions.bulkRevokeTitle": "Revoke sessions",
-
-  "profile.apiKeys.revoke.title": 'Revoke "$1"?',
-  "profile.apiKeys.revoke.description":
-    "Any Claude or MCP client using this key stops working immediately. The key cannot be restored — you would have to create a new one and reconfigure every client.",
-  "profile.apiKeys.revoke.confirm": "Revoke key",
-  "profile.sessions.revokeAll.title": "Sign out everywhere?",
-  "profile.sessions.revokeAll.description":
-    "Every session is revoked, including this one — you will be signed out here immediately. Signing in again restores access.",
-  "profile.sessions.revokeAll.confirm": "Sign out everywhere",
-  "profile.identities.title": "Identities",
-  "profile.identities.active": "Active",
-  "profile.identities.empty": "No identities found. This shouldn't happen.",
-  "profile.identities.provider.credentials": "Password",
-  "profile.identities.password.failed": "Failed to set password.",
-  "profile.identities.password.set": "Set password",
-  "profile.identities.password.change": "Change password",
-  "profile.identities.password.setHint":
-    "Set up a password to sign in with your email address without going through an external provider.",
-  "profile.identities.password.changeHint":
-    "Changing your password signs out every other device. This one stays signed in.",
-  "profile.identities.password.current": "Current password",
-  "profile.identities.password.new": "New password",
-  "profile.identities.password.confirm": "Confirm password",
-  "profile.identities.password.cancel": "Cancel",
-  "profile.identities.password.mismatch": "Passwords do not match.",
-  "profile.identities.password.wasSet": "Password has been set.",
-  "profile.identities.password.changed":
-    "Password changed. $1 other session(s) signed out.",
 };

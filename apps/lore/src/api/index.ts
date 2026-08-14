@@ -10,7 +10,6 @@ import { BlobController } from "./controllers/BlobController.ts";
 import { DirectoryController } from "./controllers/DirectoryController.ts";
 import { FeedbackController } from "./controllers/FeedbackController.ts";
 import { FolioController } from "./controllers/FolioController.ts";
-import { IdentityController } from "./controllers/IdentityController.ts";
 import { InsightsController } from "./controllers/InsightsController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
 import { KanbanController } from "./controllers/KanbanController.ts";
@@ -20,11 +19,10 @@ import { ProjectQuestPortabilityController } from "./controllers/ProjectQuestPor
 import { ProjectReportsController } from "./controllers/ProjectReportsController.ts";
 import { QuestController } from "./controllers/QuestController.ts";
 import { SearchController } from "./controllers/SearchController.ts";
-import { SessionController } from "./controllers/SessionController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
 import { SigilIngestController } from "./controllers/SigilIngestController.ts";
-import { UserController } from "./controllers/UserController.ts";
 import { VersionController } from "./controllers/VersionController.ts";
+import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
 import { InvitationJobs } from "./jobs/InvitationJobs.ts";
 import { MilestoneJobs } from "./jobs/MilestoneJobs.ts";
@@ -91,6 +89,7 @@ export const LoreApi = $module({
     QuestJobs,
     BlightJobs,
     SigilJobs,
+    UserDeletionHook,
     QuestNotifications,
     InvitationNotifications,
     FeedbackRateLimiter,
@@ -114,10 +113,7 @@ export const LoreApi = $module({
     // Controllers
     QuestController,
     ProjectController,
-    UserController,
-    SessionController,
     MilestoneController,
-    IdentityController,
     ProjectReportsController,
     ProjectQuestPortabilityController,
     InvitationController,

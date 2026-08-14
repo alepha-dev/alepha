@@ -41,7 +41,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
 
       // The invitee opens their profile inbox — no link needed, the
       // invite is bound to their (verified) email.
-      await b.page.goto("/auth/profile/invitations");
+      await b.page.goto("/account/invitations");
       await b.page.waitForLoadState("domcontentloaded");
       await expect(b.page.getByText(projectTitle).first()).toBeVisible({
         timeout: 10_000,
@@ -99,7 +99,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
       await page.getByRole("button", { name: /send invitation/i }).click();
       expect((await createResp).ok()).toBe(true);
 
-      await b.page.goto("/auth/profile/invitations");
+      await b.page.goto("/account/invitations");
       await b.page.waitForLoadState("domcontentloaded");
       await expect(b.page.getByText(projectTitle).first()).toBeVisible({
         timeout: 10_000,
@@ -158,7 +158,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
     // A different account checks the inbox.
     const b = await newUserContext(browser, baseURL!, "stranger");
     try {
-      await b.page.goto("/auth/profile/invitations");
+      await b.page.goto("/account/invitations");
       await b.page.waitForLoadState("domcontentloaded");
       await expect(b.page.getByText(/no pending invitations/i)).toBeVisible({
         timeout: 10_000,

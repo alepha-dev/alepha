@@ -58,7 +58,7 @@ export class InvitationController {
 
   /**
    * Inbox: pending invitations addressed to the current user's email.
-   * Rendered at /auth/profile/invitations.
+   * Rendered at /account/invitations.
    */
   public readonly listMyInvitations = $action({
     path: `${this.url}/me`,

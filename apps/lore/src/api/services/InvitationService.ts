@@ -185,7 +185,7 @@ export class InvitationService {
 
   /**
    * Inbox: pending invitations addressed to the caller's email (case-
-   * insensitive). The user surfaces these on /auth/profile/invitations.
+   * insensitive). The user surfaces these on /account/invitations.
    */
   public async listForUser(user: {
     id: string;

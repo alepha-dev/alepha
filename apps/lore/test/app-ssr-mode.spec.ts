@@ -49,10 +49,11 @@ const GUARDED_ROUTES = [
   "projectBlights",
   "appAnalytics",
   "reportsOverview",
-  // Own-account area (MeRouter) and the admin shell, which already carried
+  // Own-account area (@alepha/ui AccountRouter, adopted into Lore's layout)
+  // and the admin shell, which already carried
   // `$secure({ permissions: ["admin:ui"] })` before this change and was being
   // server-rendered for nobody's benefit.
-  "me",
+  "account",
   "admin",
 ];
 

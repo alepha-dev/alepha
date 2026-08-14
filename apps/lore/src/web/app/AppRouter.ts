@@ -1,3 +1,4 @@
+import { AccountRouter } from "@alepha/ui/components/account/account-router";
 import { $hook, $inject, Alepha, z } from "alepha";
 import type { RealmController } from "alepha/api/users";
 import { ReactAuth } from "alepha/react/auth";
@@ -38,7 +39,6 @@ import { projectBlobsAtom } from "./atoms/projectBlobsAtom.ts";
 import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
 import { userFoliosAtom } from "./atoms/userFoliosAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
-import { MeRouter } from "./components/profile/me/MeRouter.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
 
 export class AppRouter {
@@ -58,7 +58,7 @@ export class AppRouter {
   blobApi = $client<BlobController>();
   router = $inject(ReactRouter);
   auth = $inject(ReactAuth);
-  meRouter = $inject(MeRouter);
+  account = $inject(AccountRouter);
   realmApi = $client<RealmController>();
 
   head = $head(() => {
@@ -106,7 +106,7 @@ export class AppRouter {
       this.project,
       this.projectCreate,
       this.projectFeedbackRequest,
-      this.meRouter.me,
+      this.account.layout,
       this.notFound,
     ],
     // No `ssr` here on purpose. The shell is shared by anonymous pages (home,

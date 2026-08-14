@@ -130,6 +130,72 @@ realm = $realm({
 });
 ```
 
+## Self-Service Account Endpoints
+
+`alepha/api/users` ships the endpoints an account area needs, all under
+`/users/me`. Every one carries a bare `$secure()` — a session and no permission
+— and resolves the row from `user.id`. None of them takes an id parameter,
+which is what makes it safe to leave them un-permissioned: a caller can only
+ever ask about themselves. Operators go through the `Admin*` controllers, which
+have their own permissions.
+
+| Controller | Endpoints |
+|---|---|
+| `MyProfileController` | `GET`/`PATCH /users/me`, `POST`/`DELETE /users/me/avatar` |
+| `MyIdentityController` | `GET /users/me/identities`, `POST /users/me/identities/password`, `DELETE /users/me/identities/:id` |
+| `MyPasswordController` | `POST /users/me/password` |
+| `MySessionController` | `GET /users/me/sessions`, `DELETE /users/me/sessions/:id`, `POST /users/me/sessions/revoke-others` |
+| `MyConnectionController` | `GET /users/me/connections`, `DELETE /users/me/connections/:id` |
+| `MyAccountController` | `DELETE /users/me` |
+
+Two rules are worth knowing before you wire a UI to them:
+
+- **Setting a first password and changing one are different endpoints.**
+  `setMyFirstPassword` trusts the session and refuses once a `credentials`
+  identity exists; `changeMyPassword` verifies the current password and revokes
+  every other session. Using the first to change a password would make an
+  unattended signed-in browser a full account takeover.
+- **Unlinking the last identity is refused.** An account with no sign-in method
+  is not locked, it is unreachable — and password reset cannot recover it,
+  because that needs a `credentials` identity to reset.
+
+`@alepha/ui` provides the matching UI as `AccountRouter` — see the
+[frontend routing guide](../6-frontend/2-routing.md).
+
+### Deleting an Account: the `user:delete:before` Hook
+
+`deleteMyAccount` is a hard delete, and it asks for two independent proofs: the
+current password (that it is *you*) and the account's email typed verbatim
+(that you *meant it*). An OAuth-only account has no password to prove, so the
+confirmation stands alone.
+
+The framework only knows about users, identities and sessions. It cannot know
+what your application hangs off a user id, so it emits `user:delete:before`
+first and **awaits** it. A handler that throws aborts the deletion, and the
+error reaches the caller unwrapped — with its own status and message:
+
+```typescript
+class UserDeletionHook {
+  protected readonly projects = $repository(projects);
+
+  onUserDelete = $hook({
+    on: "user:delete:before",
+    handler: async ({ userId }) => {
+      const owned = await this.projects.count({ createdBy: { eq: userId } });
+      if (owned > 0) {
+        throw new ConflictError(`You still own ${owned} project(s).`);
+      }
+    },
+  });
+}
+```
+
+> **Write one if you have foreign keys to `users.id`.** Without it you are
+> trusting your own cascade rules, and the failure mode is silent: a column
+> with no foreign key leaves orphaned rows pointing at a user that no longer
+> exists, and an `onDelete: "cascade"` column can delete rows the account
+> authored *inside other people's data*. Neither is visible in a diff.
+
 ## Securing Actions
 
 Actions are public by default. To require authentication, add the `$secure()` middleware:

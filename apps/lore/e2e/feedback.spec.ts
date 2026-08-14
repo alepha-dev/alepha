@@ -106,8 +106,8 @@ test.describe("Feedback", () => {
 
       await page.getByRole("button", { name: /^submit feedback$/i }).click();
 
-      // Successful submit redirects to the reporter's /me feedback list.
-      await page.waitForURL(/\/auth\/profile\/feedback/, { timeout: 15_000 });
+      // Successful submit redirects to the reporter's own feedback list.
+      await page.waitForURL(/\/account\/feedback/, { timeout: 15_000 });
       await expect(page.getByText(feedbackTitle, { exact: true })).toBeVisible({
         timeout: 10_000,
       });
@@ -151,7 +151,7 @@ test.describe("Feedback", () => {
     });
 
     await test.step("list reflects the accepted status", async () => {
-      await page.goto("/auth/profile/feedback");
+      await page.goto("/account/feedback");
       await page.waitForLoadState("networkidle");
       const row = page.getByRole("row").filter({ hasText: feedbackTitle });
       await expect(row).toContainText(/accepted/i, { timeout: 10_000 });
@@ -218,7 +218,7 @@ test.describe("Feedback", () => {
         name: /see my previous reports|voir mes retours/i,
       });
       await expect(link).toHaveAttribute("target", "_blank");
-      await expect(link).toHaveAttribute("href", "/auth/profile/feedback");
+      await expect(link).toHaveAttribute("href", "/account/feedback");
 
       // No link anywhere on the form points into the members-only project.
       const projectLinks = reporter.page.locator(

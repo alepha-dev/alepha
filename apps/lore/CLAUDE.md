@@ -54,7 +54,14 @@ apps/lore/                # This app
 └── public/               # Static assets served at /
 ```
 
-**Controllers (20)** — `AdminInvitation`, `Blight`, `Blob`, `Directory`, `Feedback`, `Folio`, `Identity`, `Insights`, `Invitation`, `Kanban`, `Milestone`, `Project`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `Session`, `Sigil`, `SigilIngest`, `User`, `Version`.
+**Controllers (17)** — `AdminInvitation`, `Blight`, `Blob`, `Directory`, `Feedback`, `Folio`, `Insights`, `Invitation`, `Kanban`, `Milestone`, `Project`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `Sigil`, `SigilIngest`, `Version`.
+
+> `User`, `Session` and `Identity` were **deleted** when Lore moved onto the shared
+> `/account` area: they duplicated the framework's `MyProfileController`,
+> `MySessionController` / `MyConnectionController` and `MyIdentityController`
+> respectively. `SessionController` in particular re-implemented all three of
+> `MySessionController`'s actions verbatim. Reach for the `alepha/api/users` and
+> `alepha/api/oauth` controllers instead of re-adding an app-local one.
 
 **Entities (23)** — `blightIgnoreRules`, `blights`, `feedback`, `files`, `folioBlobs`, `folioDirectories`, `folioLinks`, `folioNames`, `folioRevisions`, `folios`, `identities`, `invitations`, `members`, `milestones`, `projects`, `quests`, `sessions`, `sigilErrorGroups`, `sigilUniquesDaily`, `sigilViewsHourly`, `sigilVitalsHourly`, `sigils`, `users`.
 
@@ -100,7 +107,8 @@ Defined in `src/web/app/AppRouter.ts`. Route names (the `$page` keys) are what `
 | `/:projectSlug/settings/milestones` | `projectSettingsMilestones` | `…/ProjectSettingsMilestonesPage.tsx` | Milestone config |
 | `/:projectSlug/settings/quests` | `projectSettingsQuests` | `…/ProjectSettingsQuestsPage.tsx` | Per-quest module toggles (note / chrono / reminder) |
 | `/:projectSlug/request` | `projectFeedbackRequest` | `project/feedback/ProjectFeedbackRequest.tsx` | First-party feedback form (login required). Top-level, **not** nested under the `project` layout — no membership check |
-| `/auth/profile/feedback` | `myFeedback` | `profile/feedback/MyFeedback.tsx` | A reporter's own submissions across all projects, declared in `src/web/app/components/profile/me/MeRouter.ts` (nested under `me` at `/auth/profile`), not in `AppRouter`. Detail is a drawer/sheet (`MyFeedbackEditSheet.tsx`), not a separate route — there is no per-feedback status page anymore |
+| `/account/feedback` | `myFeedback` | `account/feedback/MyFeedback.tsx` | A reporter's own submissions across all projects, declared in `src/web/app/components/account/LoreAccountRouter.ts` via `$pageAccount`, not in `AppRouter`. Detail is a drawer/sheet (`MyFeedbackEditSheet.tsx`), not a separate route — there is no per-feedback status page anymore. **The route name is deliberately still `myFeedback`**, not `accountFeedback`: it predates the `/account` migration and a `$page` rename is not typecheck-protected |
+| `/account/invitations` | `accountInvitations` | `account/MyInvitations.tsx` | Pending invitations addressed to the signed-in user. Also `$pageAccount`, group `Lore` |
 | `/*` | `notFound` | `NotFound` | — |
 
 Also top-level under the shared layout: `/auth/login` (`login`), `/oauth/continue` (`oauthContinue`), `/auth/register` (`register`), `/auth/reset-password` (`resetPassword`).
@@ -122,6 +130,10 @@ already owns. The router tries static children before the param child, so the
 route wins and it is the *project* that becomes unreachable — silently, and only
 for whoever picked that name. `test/app-routes.spec.ts` resolves the real route
 table and fails if any static root segment is missing from that list.
+
+`account` joined that list when the profile pages moved onto `@alepha/ui`'s
+`AccountRouter` — a worked example of the rule, since mounting a shared router
+adds a root segment just as surely as writing one by hand.
 
 **An anonymous typo lands on the login page, not a 404.** `/tpyo` matches
 `:projectSlug`, which carries `$secure()`, so a logged-out visitor is redirected
@@ -226,7 +238,7 @@ User-submitted bug reports / feature requests that the project owner triages. (R
 - `/:projectSlug/request` — first-party form on lore (`ProjectFeedbackRequest.tsx`, route `projectFeedbackRequest`). Anonymous visitors see a sign-in CTA. Once logged in, they get the full form (title, description, type bug/feature, file uploads).
 - External "report a bug" buttons on third-party sites are plain `<a target="_blank" rel="noopener noreferrer">` anchors pointing to `/:projectSlug/request?path=<encoded>&url=<encoded>&type=bug` — no embedded JS, no screenshot capture, no widget. The page reads query params, persists them to `sessionStorage` (key `lor.feedback.draft.<projectId>` — renamed from `lor.petition.draft` in the same pass, unlike the storage bucket literals below, because this key is not a persisted external reference, just a transient client-side draft), cleans the URL via `history.replaceState`, and re-reads after the OAuth round-trip. Cleared on successful submit. `@alepha/sigil`'s reporting client also surfaces this same request URL as `feedbackUrl` in its `/sigils/config` response (only when `features.feedback` is on) so an enrolled app's own "report a bug" widget links out to it. **That value is an external contract**: it is built in `SigilIngestService.configFor` and rendered by third-party apps. It carries the project's *slug*, so it is re-fetched on every config poll and self-heals on deploy — but an app that cached the old `/p/:id/request` shape has a dead link, and a project rename breaks it exactly the way it breaks a bookmark. `e2e/sigil.spec.ts` asserts the shape; it is the only thing that caught the URL still being id-based after the slug migration.
 
-**Reporter-facing views** — `/auth/profile/feedback` (`myFeedback`, own submissions across projects, detail in a drawer/sheet). There is no separate per-feedback status page (the old one was retired before this rename).
+**Reporter-facing views** — `/account/feedback` (`myFeedback`, own submissions across projects, detail in a drawer/sheet). There is no separate per-feedback status page (the old one was retired before this rename).
 
 **Attachments**
 - Uploaded one-at-a-time via `POST /projects/:projectId/feedback/attachments`. Returns a file id; the client collects ids and includes them in the feedback body.
@@ -253,7 +265,7 @@ User-submitted bug reports / feature requests that the project owner triages. (R
 - Tunables atom: `src/api/atoms/feedbackOptionsAtom.ts`
 - Inbox UI: `src/web/app/components/project/feedback/ProjectFeedback.tsx` (+ `ProjectFeedbackCard.tsx`, `ProjectFeedbackDetail.tsx`)
 - Request UI: `src/web/app/components/project/feedback/ProjectFeedbackRequest.tsx`
-- Routes: `projectFeedback` (under `project`), `projectFeedbackRequest` (top-level, not under the project layout — public landing), `myFeedback` (under `me`)
+- Routes: `projectFeedback` (under `project`), `projectFeedbackRequest` (top-level, not under the project layout — public landing), `myFeedback` (under the `/account` area, declared in `LoreAccountRouter`)
 
 ## Folios are this project's memory for Claude
 
@@ -702,7 +714,7 @@ Both are the same shape as the `ADD COLUMN … NOT NULL` trap below — a check 
 
 The `@/` alias is still duplicated in both configs, and the root copy is load-bearing: `apps/playground` and `apps/shop` declare the same `@/* → ./src/*` tsconfig mapping without writing a single `@/` import today, so the first one added in either app resolves into `apps/lore/src` under a root run — typecheck green, wrong file imported. At that point the repo-wide alias has to become per-project, which is why it is not shared the way the jsdom project is.
 
-56 unit / integration specs in `test/` (Vitest, in-memory SQLite). Notable ones:
+57 unit / integration specs in `test/` (Vitest, in-memory SQLite). Notable ones:
 
 - `mcp-security.spec.ts` — MCP auth, API keys, user isolation
 - `project-reports.spec.ts` — reports aggregation
@@ -724,6 +736,7 @@ The `@/` alias is still duplicated in both configs, and the root copy is load-be
 - `app-routes.spec.ts` — **regression guard**: boots the real `AppRouter` and resolves every route name the app passes the router as a plain string (every `router.path`/`push` call site and every `route: "…"` nav array in `src/`, including `ProjectSettings.tsx`'s — the array that broke once). `router.path()` takes `keyof VirtualRouter<T> | string`, so a deleted or renamed route is never a type error — this is the only thing that turns it into a red test instead of a production throw. Also asserts that **every static root segment in the route table is reserved** in `ProjectSlugService` — the invariant `/:projectSlug` creates
 - `project-slug-service.spec.ts` / `project-slug-controller.spec.ts` — slug derivation (accent folding, separator collapse, the reserved list and the `project-<id>` fallback) and its lifecycle: derived on create, recomputed on rename, 409 on a taken name across *any* owner, freed on delete
 - `project-slug-migration.spec.ts` — **regression guard**: reads the backfill migration for `DROP TABLE` / `ADD COLUMN … NOT NULL`, then actually *applies* it to a seeded database and asserts the slugs that come out (collision, accented title, CJK title, soft-deleted row). `migration-safety.spec.ts` stops at earlier migrations, so nothing else executes this SQL
+- `user-deletion-hook.spec.ts` — **regression guard**: `UserDeletionHook` refuses `deleteMyAccount` while the account still owns projects, and the account survives the refusal. Load-bearing because `projects.createdBy` is a bare `z.uuid()` with **no foreign key** — deleting an owner cascades nothing and warns about nothing, leaving a project pointing at a row that no longer exists and failing `assertOwner` for everybody. Nothing in the schema, the types or the migration snapshot can catch that. Also pins that the hook's message reaches the client as a 409 with its text intact (`MyAccountController` emits without `{ log: true }` precisely so it does)
 - `blight-tools.spec.ts` — the MCP triage surface
 - `migration-safety.spec.ts` — asserts the great-rename migration (and the sigil-family rebuild before it) never drops a table the `projects` cascade reaches, and that a fresh D1-shaped database boots with all migrations applied
 - `petition-reporter-migration.spec.ts` / `petition-reporter-restore-migration.spec.ts` — deliberately still "petition"-named: they pin the behavior of two specific *historical* migrations (`reporterUserId`/`reporterEmail` column churn) that predate the 2026-08 rename, not the current Feedback module
@@ -760,6 +773,7 @@ Before killing anything on a busy port, check whose it is — `lsof -a -p <pid> 
 - `folios.spec.ts` — directory tree navigation + blob upload (renamed from `archive.spec.ts`)
 - `project-wizard.spec.ts` — 3-step create wizard (renamed from `campaign-wizard.spec.ts`)
 - `members.spec.ts` — settings members list, identity hover-card, dead `/character` + `/roster` URLs 404
+- `account.spec.ts` — the `/account` area (Lore's consumer of `@alepha/ui`'s `AccountRouter`): lands on the profile, the rail lists the five built-in pages **and** Lore's two `$pageAccount` ones, rename round-trip, password change, sessions, API-key create/reveal-once/revoke, and delete-account refused while a project is owned. ⚠️ The rename test waits for the success toast **before** reloading — without it the reload races the save and the assertion fails for the wrong reason
 - `home.spec.ts`, `admin-user-detail.spec.ts`
 - `security-public-project.spec.ts` — regression guard: non-member account hits 403 on every project endpoint after the public-project purge (renamed from `security-public-campaign.spec.ts`)
 - `security-file-access.spec.ts` — regression guard: `/api/files/:id` IDOR fix via `LoreFileAccessProvider` (only owners/members can download an attachment)

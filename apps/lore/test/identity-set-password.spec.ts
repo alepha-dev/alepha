@@ -1,6 +1,10 @@
 import { Alepha, z } from "alepha";
 import { oauthOptions } from "alepha/api/oauth";
-import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
+import {
+  AdminUserController,
+  AlephaApiUsers,
+  MyIdentityController,
+} from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake, FakeProvider } from "alepha/fake";
 import { AlephaMcp } from "alepha/mcp";
@@ -8,13 +12,12 @@ import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
-import { IdentityController } from "../src/api/controllers/IdentityController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 
 /**
  * Regression coverage for the `/me` "Set Password" flow
- * (`IdentityController.setPassword`).
+ * (`MyIdentityController.setMyFirstPassword`).
  *
  * The bug: the controller used to write a `usernamePassword` identity with the
  * hash nested under `providerData.password`. But the realm's credentials
@@ -38,7 +41,7 @@ interface TestContext {
   alepha: Alepha;
   baseUrl: string;
   adminUserController: AdminUserController;
-  identityController: IdentityController;
+  identityController: MyIdentityController;
   fakeProvider: FakeProvider;
 }
 
@@ -76,7 +79,7 @@ const setup = async (): Promise<TestContext> => {
     alepha,
     baseUrl: server.hostname,
     adminUserController: alepha.inject(AdminUserController),
-    identityController: alepha.inject(IdentityController),
+    identityController: alepha.inject(MyIdentityController),
     fakeProvider: alepha.inject(FakeProvider),
   };
 };
@@ -115,7 +118,7 @@ const login = async (baseUrl: string, email: string, password: string) => {
   });
 };
 
-describe("IdentityController.setPassword (/me)", () => {
+describe("MyIdentityController.setMyFirstPassword (/account)", () => {
   let ctx: TestContext;
 
   beforeEach(async () => {
@@ -137,15 +140,15 @@ describe("IdentityController.setPassword (/me)", () => {
     expect(before.ok).toBe(false);
 
     // Set the password from the profile page.
-    const res = await ctx.identityController.setPassword.run(
+    const res = await ctx.identityController.setMyFirstPassword.run(
       { body: { password } },
       { user },
     );
-    expect(res.success).toBe(true);
+    expect(res.ok).toBe(true);
 
     // A "credentials" identity (the one login reads) must now exist — NOT a
     // dangling "usernamePassword" row.
-    const identities = await ctx.identityController.getMyIdentities.run(
+    const identities = await ctx.identityController.listMyIdentities.run(
       {},
       { user },
     );
@@ -166,13 +169,13 @@ describe("IdentityController.setPassword (/me)", () => {
   }) => {
     const { user } = await createCredentialslessUser(ctx);
 
-    await ctx.identityController.setPassword.run(
+    await ctx.identityController.setMyFirstPassword.run(
       { body: { password: "Sup3rSecret!" } },
       { user },
     );
 
     await expect(
-      ctx.identityController.setPassword.run(
+      ctx.identityController.setMyFirstPassword.run(
         { body: { password: "An0therOne!" } },
         { user },
       ),

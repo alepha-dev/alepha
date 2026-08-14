@@ -60,7 +60,7 @@ interface SpotlightHit {
  * `SearchController.search` is: `/projects/:projectId/search`, member-gated and
  * hard-filtered by project. There is no cross-project search to offer.
  *
- * Outside one — `/`, `/new-project`, `/auth/profile/*` — it lists the user's
+ * Outside one — `/`, `/new-project`, `/account/*` — it lists the user's
  * projects and jumps to one. That is the only useful thing ⌘K can do there, and
  * those are exactly the pages where "take me to project X" is all anyone wants.
  * The heading names the mode, because someone who types a quest title on the

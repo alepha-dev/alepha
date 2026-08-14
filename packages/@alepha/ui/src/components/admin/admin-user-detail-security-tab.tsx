@@ -16,7 +16,7 @@ import type { IdentityResource } from "alepha/api/users";
 import type { UseActionReturn } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { KeyRound, Trash2 } from "lucide-react";
-import { PROVIDER_LABELS } from "./admin-user-detail-provider-labels.ts";
+import { PROVIDER_LABELS } from "../auth/provider-labels.ts";
 
 export interface AdminUserDetailSecurityTabProps {
   /**

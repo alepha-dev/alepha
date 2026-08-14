@@ -7,6 +7,7 @@ import {
 import { afterEach, beforeEach, describe, it } from "vitest";
 import { ProjectSlugService } from "../src/api/services/ProjectSlugService.ts";
 import { AppRouter } from "../src/web/app/AppRouter.ts";
+import { LoreAccountRouter } from "../src/web/app/components/account/LoreAccountRouter.ts";
 
 /**
  * The route table, pinned by name.
@@ -71,8 +72,14 @@ const NAV_ROUTE_NAMES = [
   "register",
   "projectCreate",
   "projectFeedbackRequest",
-  "me",
-  "connections",
+  // The shared /account area (@alepha/ui AccountRouter) plus Lore's own two
+  // pages inside it. `myFeedback` kept its pre-migration name on purpose —
+  // see LoreAccountRouter.
+  "account",
+  "accountProfile",
+  "accountConnections",
+  "accountInvitations",
+  "myFeedback",
 ];
 
 describe("AppRouter route table", () => {
@@ -86,6 +93,9 @@ describe("AppRouter route table", () => {
     });
     alepha.with(AlephaReactRouter);
     alepha.inject(AppRouter);
+    // Registered alongside AppRouter by `LoreWebApp`. Without it the guard
+    // would silently skip Lore's own /account pages.
+    alepha.inject(LoreAccountRouter);
     // Injected before `start()` — the container locks afterwards.
     slugs = alepha.inject(ProjectSlugService);
     router = alepha.inject(ReactRouter);
