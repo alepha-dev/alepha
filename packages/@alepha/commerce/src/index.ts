@@ -31,9 +31,11 @@ declare module "alepha" {
     /**
      * An order's payment has settled and its lines have been fulfilled.
      *
-     * Emitted after the order's transaction commits, so a subscriber reads a
-     * committed order — and so a subscriber that throws cannot unwind a sale
-     * whose money is already in.
+     * Emitted after the OUTERMOST transaction commits — including when
+     * markPaid ran joined to a caller's transaction, as the settlement webhook
+     * does — so a subscriber reads a committed order, runs while no row locks
+     * are held, and cannot unwind a sale whose money is already in by
+     * throwing.
      */
     "commerce:order:paid": {
       orderId: string;

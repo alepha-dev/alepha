@@ -150,14 +150,14 @@ export class OrderService {
     id: string,
     options: { paymentIntentId?: string } = {},
   ): Promise<OrderEntity> {
-    const { order, settled } = await this.db.transactional(async () => {
+    return this.db.transactional(async () => {
       const current = await this.orderRepo.getById(id);
       if (current.status !== "pending") {
         this.log.debug("Order already settled, skipping fulfilment", {
           orderId: id,
           status: current.status,
         });
-        return { order: current, settled: false };
+        return current;
       }
 
       const items = await this.itemRepo.findMany({
@@ -165,71 +165,83 @@ export class OrderService {
       });
       await this.fulfilAll(items);
 
-      return {
-        order: await this.orderRepo.updateById(id, {
-          status: "paid",
-          ...(options.paymentIntentId
-            ? { paymentIntentId: options.paymentIntentId }
-            : {}),
-        }),
-        settled: true,
-      };
-    });
-
-    // Outside the transaction, and only on the transition: a subscriber reads a
-    // committed order, and a redelivered webhook emits nothing the second time —
-    // which is what stops a second invoice being issued for one sale.
-    if (settled) {
-      await this.alepha.events.emit("commerce:order:paid", {
-        orderId: order.id,
-        total: order.total,
-        currency: order.currency,
-        userId: order.userId,
+      const order = await this.orderRepo.updateById(id, {
+        status: "paid",
+        ...(options.paymentIntentId
+          ? { paymentIntentId: options.paymentIntentId }
+          : {}),
       });
-    }
 
-    return order;
+      // Only on the transition — a redelivered webhook returns above and emits
+      // nothing, which is what stops a second invoice for one sale. Deferred
+      // via afterCommit, not placed after this block: this block may be
+      // JOINING a caller's transaction (the webhook path — CheckoutService's
+      // settle() wraps markPaid), and "after markPaid's block" would still be
+      // inside that outer transaction, handing subscribers uncommitted rows
+      // and holding row locks on orders and stock while they issue invoices
+      // and talk to an SMTP server.
+      await this.db.afterCommit(() =>
+        this.alepha.events.emit("commerce:order:paid", {
+          orderId: order.id,
+          total: order.total,
+          currency: order.currency,
+          userId: order.userId,
+        }),
+      );
+
+      return order;
+    });
   }
 
   /**
    * Cancel an unpaid order, giving back whatever it was holding.
    */
   public async cancel(id: string): Promise<OrderEntity> {
-    const order = await this.db.transactional(async () => {
+    return this.db.transactional(async () => {
       await this.stock.releaseFor(id);
-      return this.orderRepo.updateById(id, { status: "cancelled" });
-    });
+      const order = await this.orderRepo.updateById(id, {
+        status: "cancelled",
+      });
 
-    await this.alepha.events.emit("commerce:order:cancelled", {
-      orderId: order.id,
+      // Deferred for the same reason as in markPaid: cancel() is reached from
+      // inside abandonWithOrder()'s transaction on payments:failed.
+      await this.db.afterCommit(() =>
+        this.alepha.events.emit("commerce:order:cancelled", {
+          orderId: order.id,
+        }),
+      );
+
+      return order;
     });
-    return order;
   }
 
   /**
    * Refund a paid order and put its stock back.
    */
   public async refund(id: string): Promise<OrderEntity> {
-    const { order, changed } = await this.db.transactional(async () => {
+    return this.db.transactional(async () => {
       const current = await this.orderRepo.getById(id);
       if (current.status === "refunded") {
-        return { order: current, changed: false };
+        return current;
       }
       await this.stock.releaseOrder(id);
-      return {
-        order: await this.orderRepo.updateById(id, { status: "refunded" }),
-        changed: true,
-      };
-    });
-
-    if (changed) {
-      await this.alepha.events.emit("commerce:order:refunded", {
-        orderId: order.id,
-        total: order.total,
-        currency: order.currency,
+      const order = await this.orderRepo.updateById(id, {
+        status: "refunded",
       });
-    }
-    return order;
+
+      // Only on the transition, and deferred for the same reason as in
+      // markPaid — nothing stops a caller from wrapping refund() in a
+      // transaction of its own.
+      await this.db.afterCommit(() =>
+        this.alepha.events.emit("commerce:order:refunded", {
+          orderId: order.id,
+          total: order.total,
+          currency: order.currency,
+        }),
+      );
+
+      return order;
+    });
   }
 
   /**
