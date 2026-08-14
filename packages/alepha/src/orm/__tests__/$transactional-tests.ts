@@ -235,3 +235,134 @@ export const testDatabaseProviderTransactional = async (alepha: Alepha) => {
   const items = await app.repo.findMany();
   expect(items).toHaveLength(0);
 };
+
+export const testAfterCommitWaitsForOutermostCommit = async (
+  alepha: Alepha,
+) => {
+  class App {
+    repo = $repository(item);
+    db = $inject(DatabaseProvider);
+  }
+
+  const app = alepha.inject(App);
+  await alepha.start();
+
+  const log: string[] = [];
+  let txAtCallback: unknown = "not-run";
+  let rowsAtCallback = -1;
+
+  await app.db.transactional(async () => {
+    await app.repo.create({ name: "outer" });
+
+    // Joins the outer transaction — a callback registered here must wait for
+    // the OUTERMOST commit, not fire when the inner block returns.
+    await app.db.transactional(async () => {
+      await app.db.afterCommit(async () => {
+        log.push("callback");
+        txAtCallback = alepha.get("alepha.orm.tx");
+        rowsAtCallback = (await app.repo.findMany()).length;
+      });
+      log.push("inner:end");
+    });
+
+    log.push("outer:end");
+  });
+
+  expect(log).toStrictEqual(["inner:end", "outer:end", "callback"]);
+  // The callback runs with no ambient transaction open ...
+  expect(txAtCallback).toBeUndefined();
+  // ... and therefore reads the committed row through a plain connection.
+  expect(rowsAtCallback).toBe(1);
+};
+
+export const testAfterCommitDiscardedOnRollback = async (alepha: Alepha) => {
+  class App {
+    repo = $repository(item);
+    db = $inject(DatabaseProvider);
+  }
+
+  const app = alepha.inject(App);
+  await alepha.start();
+
+  let ran = false;
+
+  await expect(
+    app.db.transactional(async () => {
+      await app.repo.create({ name: "doomed" });
+      await app.db.afterCommit(() => {
+        ran = true;
+      });
+      throw new Error("boom");
+    }),
+  ).rejects.toThrow("boom");
+
+  // Nothing committed, so the callback must never run.
+  expect(ran).toBe(false);
+  expect(await app.repo.findMany()).toHaveLength(0);
+};
+
+export const testAfterCommitIsolation = async (alepha: Alepha) => {
+  class App {
+    repo = $repository(item);
+    db = $inject(DatabaseProvider);
+  }
+
+  const app = alepha.inject(App);
+  await alepha.start();
+
+  const events: string[] = [];
+
+  // Overlapping transactions from separate contexts must each keep their own
+  // callback queue: sharing one slot would let B's drain fire A's callback
+  // while A's transaction is still open — the same single-slot failure the tx
+  // marker itself once had. Gated on promises, not timers, so the overlap is
+  // deterministic: A stays open until we release it.
+  let releaseA: () => void = () => {};
+  const holdA = new Promise<void>((resolve) => {
+    releaseA = resolve;
+  });
+
+  const a = alepha.fork(() =>
+    app.db.transactional(async () => {
+      await app.repo.create({ name: "a" });
+      await app.db.afterCommit(() => {
+        events.push("callback:a");
+      });
+      await holdA;
+    }),
+  );
+
+  await alepha.fork(() =>
+    app.db.transactional(async () => {
+      await app.repo.create({ name: "b" });
+      await app.db.afterCommit(() => {
+        events.push("callback:b");
+      });
+    }),
+  );
+
+  // B has committed and drained; A is still open, so its callback must not
+  // have fired — and must fire exactly once when A commits.
+  expect(events).toStrictEqual(["callback:b"]);
+
+  releaseA();
+  await a;
+  expect(events).toStrictEqual(["callback:b", "callback:a"]);
+};
+
+export const testAfterCommitWithoutTransaction = async (alepha: Alepha) => {
+  class App {
+    db = $inject(DatabaseProvider);
+  }
+
+  const app = alepha.inject(App);
+  await alepha.start();
+
+  let ran = false;
+  await app.db.afterCommit(() => {
+    ran = true;
+  });
+
+  // No transaction to wait for: the callback runs (and is awaited) in place.
+  expect(ran).toBe(true);
+};

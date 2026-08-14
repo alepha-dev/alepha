@@ -8,7 +8,6 @@ import { AdminUserCell } from "@alepha/ui/components/admin/admin-user-cell";
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import type {
@@ -136,23 +135,14 @@ export function AdminKeys() {
         persistenceKey="admin.keys"
         fetch={fetcher}
         refreshSignal={refreshSignal}
-        toolbar={
-          /*
-           * `size="lg"` is h-9 — the toolbar's control height. The bar is
-           * bottom-aligned (`items-end`, for label-topped filter inputs), so
-           * a shorter control shows its whole height deficit at the top
-           * instead of centering.
-           */
-          <Button
-            type="button"
-            size="lg"
-            loading={createKey.loading}
-            onClick={() => createKey.run()}
-          >
-            <Plus className="size-4" />
-            {tr("admin.keys.create", { default: "Add API key" })}
-          </Button>
-        }
+        actions={[
+          {
+            icon: Plus,
+            label: tr("admin.keys.create", { default: "Add API key" }),
+            disabled: createKey.loading,
+            onClick: () => createKey.run(),
+          },
+        ]}
         bulkActions={[
           {
             label: tr("admin.keys.bulkRevoke", {

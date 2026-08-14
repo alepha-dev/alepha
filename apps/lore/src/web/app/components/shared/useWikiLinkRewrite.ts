@@ -42,6 +42,13 @@ export const useWikiLinkRewrite = (
   projectId: number | undefined,
   /** Addresses the links the rewrite produces, which are URLs. */
   projectSlug: string | undefined,
+  /**
+   * The folio being rendered, when there is one. Attachments belong to a
+   * single folio, so `blob:` references can only be resolved against it —
+   * omitted (as the quest description does), blob refs stay unresolved
+   * rather than being looked up project-wide, which is no longer a thing.
+   */
+  folioId?: string,
 ): WikiLinkRewriteResult => {
   const folioApi = useClient<FolioController>();
   const questApi = useClient<QuestController>();
@@ -86,8 +93,8 @@ export const useWikiLinkRewrite = (
       hasPathLinks
         ? directoryApi.listAllDirectories({ params: { projectId } })
         : Promise.resolve([] as DirectoryRef[]),
-      hasBlobRefs
-        ? blobApi.listBlobs({ params: { projectId }, query: {} as never })
+      hasBlobRefs && folioId
+        ? blobApi.listBlobs({ params: { folioId } })
         : Promise.resolve(
             [] as Array<{
               id: string;

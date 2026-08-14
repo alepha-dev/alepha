@@ -3,7 +3,7 @@ import { $entity, db } from "alepha/orm";
 
 /**
  * Reservation table that enforces "no two siblings with the same name"
- * across all three folio node types (folios, blobs, directories).
+ * across both folio node types (folios and directories).
  * Every create/rename/move writes the entity row AND a reservation row
  * in one transaction; the UNIQUE INDEX is what makes the DB reject
  * collisions atomically without app-side locking.
@@ -52,8 +52,16 @@ export const folioNames = $entity({
     rootScope: z.string().optional(),
     /** `LOWER(name)` — case-insensitive uniqueness key. */
     lowerName: z.string(),
-    /** Discriminator for the entity table `entityId` lives in. */
-    kind: z.enum(["folio", "blob", "directory"]).meta({ mode: "text" }),
+    /**
+     * Discriminator for the entity table `entityId` lives in.
+     *
+     * `"blob"` was removed when attachments became folio-scoped: this
+     * table exists to stop two SIBLINGS in one folder colliding, and an
+     * attachment is no longer a sibling of anything — it belongs to one
+     * folio, whose own name is what the folder sees. `FolioBlobService`
+     * keeps names unique within a folio on its own.
+     */
+    kind: z.enum(["folio", "directory"]).meta({ mode: "text" }),
     entityId: z.string(),
   }),
   indexes: [

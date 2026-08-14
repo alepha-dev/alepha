@@ -22,6 +22,11 @@ import { SqliteModelBuilder } from "./services/SqliteModelBuilder.ts";
 declare module "alepha" {
   interface State {
     "alepha.orm.tx"?: PgAsyncTransaction<any>;
+    /**
+     * Callbacks queued by `DatabaseProvider.afterCommit()`, created by the
+     * outermost `transactional()` block and drained once its COMMIT returns.
+     */
+    "alepha.orm.afterCommit"?: Array<() => void | Promise<void>>;
   }
   interface Hooks {
     /**

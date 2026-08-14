@@ -4,12 +4,13 @@ import { PanelRightClose } from "lucide-react";
 import type { ReactElement } from "react";
 import type { Folio } from "@/api/entities/folios.ts";
 import type { I18n } from "../../../../services/I18n.ts";
+import FolioAttachmentsTab from "./FolioAttachmentsTab.tsx";
 import FolioHistoryTab from "./FolioHistoryTab.tsx";
 import FolioLinksTab from "./FolioLinksTab.tsx";
 import FolioOutlineTab from "./FolioOutlineTab.tsx";
 import FolioPinnedBudget from "./FolioPinnedBudget.tsx";
 
-export type FolioInspectorTab = "outline" | "history" | "links";
+export type FolioInspectorTab = "outline" | "history" | "links" | "attachments";
 
 export interface FolioInspectorProps {
   /**
@@ -57,6 +58,13 @@ export interface FolioInspectorProps {
    * mounts.
    */
   contentElement: HTMLElement | null;
+  /**
+   * True while the open folio is end-to-end encrypted. The Attachments tab
+   * refuses uploads then — plaintext bytes must not sit beside encrypted
+   * content, the same rule `useFolioImageUpload` enforces for the editor's
+   * own image button.
+   */
+  protectedFolio?: boolean;
 }
 
 // Labels only, no icons: the design's tab row is three words and nothing
@@ -66,6 +74,7 @@ const TABS: { id: FolioInspectorTab; labelKey: string }[] = [
   { id: "outline", labelKey: "folios.editor.inspector.outline" },
   { id: "history", labelKey: "folios.editor.inspector.history" },
   { id: "links", labelKey: "folios.editor.inspector.links" },
+  { id: "attachments", labelKey: "folios.editor.inspector.attachments" },
 ];
 
 /**
@@ -160,6 +169,13 @@ const FolioInspector = (props: FolioInspectorProps): ReactElement => {
         </div>
         <div className={props.tab === "links" ? undefined : "hidden"}>
           <FolioLinksTab folio={props.folio} />
+        </div>
+        <div className={props.tab === "attachments" ? undefined : "hidden"}>
+          <FolioAttachmentsTab
+            folioId={props.folio?.id}
+            projectId={props.folio?.projectId}
+            disabled={props.protectedFolio}
+          />
         </div>
       </div>
 

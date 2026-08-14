@@ -1,5 +1,6 @@
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { AlephaError } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import {
   useAction,
@@ -10,11 +11,13 @@ import {
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
+import { ZipArchive } from "alepha/system";
 import { useEffect, useRef, useState } from "react";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentFolioAtom } from "../../../atoms/currentFolioAtom.ts";
+import { currentFolioBlobsAtom } from "../../../atoms/currentFolioBlobsAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { folioTagsAtom } from "../../../atoms/folioTagsAtom.ts";
 import { userFoliosAtom } from "../../../atoms/userFoliosAtom.ts";
@@ -30,6 +33,7 @@ import {
   folioMarkdownExport,
   triggerFolioDownload,
 } from "./document/folioMarkdownExport.ts";
+import { folioZipEntries } from "./document/folioZipExport.ts";
 import type {
   FolioActionId,
   FolioActionState,
@@ -974,8 +978,69 @@ export const useFolioActions = (
       summary: values.summary,
       content: values.content,
     });
-    const filename = `${folioExportFilename(values.title)}.md`;
-    triggerFolioDownload(filename, markdown, "text/markdown;charset=utf-8");
+    const stem = folioExportFilename(values.title);
+    const attachments = alepha.store.get(currentFolioBlobsAtom) ?? [];
+    if (attachments.length === 0) {
+      triggerFolioDownload(
+        `${stem}.md`,
+        markdown,
+        "text/markdown;charset=utf-8",
+      );
+      return;
+    }
+    void exportZip(stem, markdown, attachments);
+  };
+
+  /**
+   * A folio with attachments exports as a `.zip`: the markdown at the root
+   * and every attachment under `assets/`, which is exactly what the stored
+   * content already refers to — so nothing is rewritten on the way out and
+   * the unzipped folder opens in any markdown viewer.
+   *
+   * Materialised with `.blob()` rather than streamed: `<a download>` cannot
+   * consume a `ReadableStream`. `ZipArchive`'s streaming design buys nothing
+   * here and everything on a future server-side project export.
+   */
+  const exportZip = async (
+    stem: string,
+    markdown: string,
+    attachments: Array<{ id: string; name: string; mimeType: string }>,
+  ): Promise<void> => {
+    try {
+      const fetched = await Promise.all(
+        attachments.map(async (attachment) => {
+          const response = await fetch(`/api/files/${attachment.id}`, {
+            credentials: "include",
+          });
+          if (!response.ok) {
+            throw new AlephaError(`${attachment.name} (${response.status})`);
+          }
+          return {
+            name: attachment.name,
+            mimeType: attachment.mimeType,
+            data: new Uint8Array(
+              await response.arrayBuffer(),
+            ) as Uint8Array<ArrayBuffer>,
+          };
+        }),
+      );
+
+      const archive = await new Response(
+        new ZipArchive().create(
+          folioZipEntries({ filename: stem, markdown, attachments: fetched }),
+        ),
+      ).blob();
+
+      triggerFolioDownload(`${stem}.zip`, archive, "application/zip");
+    } catch (error) {
+      // A partial archive is worse than none: it would look like a complete
+      // export while silently missing an image.
+      toaster.error(
+        `${tr("folios.editor.export.zip-failed")} ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   };
 
   // `history.compare` / `history.restore` / `history.keep` are not this

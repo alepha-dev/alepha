@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
 import type { AppRouter } from "../../../../AppRouter.ts";
-import { projectBlobsAtom } from "../../../../atoms/projectBlobsAtom.ts";
+import { currentFolioBlobsAtom } from "../../../../atoms/currentFolioBlobsAtom.ts";
 import { projectDirectoriesAtom } from "../../../../atoms/projectDirectoriesAtom.ts";
 import { userFoliosAtom } from "../../../../atoms/userFoliosAtom.ts";
 import {
@@ -41,7 +41,7 @@ export const useWikiLinkEditorContext = (
   const questApi = useClient<QuestController>();
   const [folios] = useStore(userFoliosAtom);
   const [directories] = useStore(projectDirectoriesAtom);
-  const [blobs] = useStore(projectBlobsAtom);
+  const [blobs] = useStore(currentFolioBlobsAtom);
 
   const { data: quests } = useQuery<QuestRef[]>(
     {
@@ -71,7 +71,7 @@ export const useWikiLinkEditorContext = (
       quests: quests ?? [],
       directories,
       blobs: blobs.map((b) => ({
-        fileId: b.fileId,
+        fileId: b.id,
         shortId: b.shortId,
         name: b.name,
       })),
@@ -101,7 +101,7 @@ export const useWikiLinkEditorContext = (
         hint: `#${q.shortId}`,
       })),
       ...blobs.map((b) => ({
-        key: `blob:${b.fileId}`,
+        key: `blob:${b.id}`,
         kind: "blob" as const,
         token: `blob:#${b.shortId}`,
         label: b.name,

@@ -2,6 +2,10 @@ import { Alepha } from "alepha";
 import { describe, it } from "vitest";
 import { AlephaOrmPostgres } from "../postgres/index.ts";
 import {
+  testAfterCommitDiscardedOnRollback,
+  testAfterCommitIsolation,
+  testAfterCommitWaitsForOutermostCommit,
+  testAfterCommitWithoutTransaction,
   testBypassImplicitTx,
   testComposeWithMiddleware,
   testConcurrentTransactionals,
@@ -87,6 +91,47 @@ describe("$transactional", () => {
   });
   it("should work with DatabaseProvider.transactional() directly (postgres)", async () => {
     await testDatabaseProviderTransactional(
+      Alepha.create().with(AlephaOrmPostgres),
+    );
+  });
+
+  it("afterCommit waits for the outermost commit (sqlite)", async () => {
+    await testAfterCommitWaitsForOutermostCommit(
+      Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+    );
+  });
+  it("afterCommit waits for the outermost commit (postgres)", async () => {
+    await testAfterCommitWaitsForOutermostCommit(
+      Alepha.create().with(AlephaOrmPostgres),
+    );
+  });
+
+  it("afterCommit is discarded on rollback (sqlite)", async () => {
+    await testAfterCommitDiscardedOnRollback(
+      Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+    );
+  });
+  it("afterCommit is discarded on rollback (postgres)", async () => {
+    await testAfterCommitDiscardedOnRollback(
+      Alepha.create().with(AlephaOrmPostgres),
+    );
+  });
+
+  // Postgres only: on the single sqlite connection, transaction B queues on
+  // the mutex behind the deliberately-held-open A, which this test's promise
+  // gating would turn into a deadlock. Queue isolation is context-based, not
+  // driver-based, so one driver proves it.
+  it("afterCommit queues are isolated across concurrent transactions (postgres)", async () => {
+    await testAfterCommitIsolation(Alepha.create().with(AlephaOrmPostgres));
+  });
+
+  it("afterCommit runs immediately outside a transaction (sqlite)", async () => {
+    await testAfterCommitWithoutTransaction(
+      Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+    );
+  });
+  it("afterCommit runs immediately outside a transaction (postgres)", async () => {
+    await testAfterCommitWithoutTransaction(
       Alepha.create().with(AlephaOrmPostgres),
     );
   });

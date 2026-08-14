@@ -318,7 +318,7 @@ describe("FolioNameService.autoSuffix", () => {
     );
     await ctx.nameService.reserve(
       "logo.png",
-      "blob",
+      "folio",
       crypto.randomUUID(),
       scope,
     );
@@ -327,7 +327,7 @@ describe("FolioNameService.autoSuffix", () => {
     );
     await ctx.nameService.reserve(
       "logo (1).png",
-      "blob",
+      "folio",
       crypto.randomUUID(),
       scope,
     );
@@ -342,7 +342,7 @@ describe("FolioNameService.autoSuffix", () => {
     const scope = { rootScope: "hidden-scope" };
     await ctx.nameService.reserve(
       ".gitignore",
-      "blob",
+      "folio",
       crypto.randomUUID(),
       scope,
     );

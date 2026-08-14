@@ -1,10 +1,9 @@
 import { Button } from "@alepha/ui/components/ui/button";
-import { cn } from "@alepha/ui/lib/utils";
 import { useI18n } from "alepha/react/i18n";
-import { FilePlus, FolderPlus, Upload } from "lucide-react";
-import { type DragEvent, type ReactElement, useEffect, useRef } from "react";
+import { FilePlus, FolderPlus } from "lucide-react";
+import { type ReactElement, useEffect, useRef } from "react";
 import type { I18n } from "../../../../services/I18n.ts";
-import FolioTreeRow, { isFileDrag } from "./FolioTreeRow.tsx";
+import FolioTreeRow from "./FolioTreeRow.tsx";
 import { useFolioTreeModel } from "./useFolioTreeModel.ts";
 
 export interface FolioTreeProps {
@@ -83,32 +82,6 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
     });
   }, [onActions]);
 
-  const handleRootDragOver = (e: DragEvent<HTMLDivElement>): void => {
-    if (!isFileDrag(e)) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "copy";
-    tree.onFileDragOver(undefined);
-  };
-
-  /**
-   * An external file drag has no `dragend` here — that event fires on the
-   * source element, which lives in another application. So the highlight has
-   * to be cleared on the way out, and `dragleave` fires on every child
-   * boundary crossed: the `contains` check keeps a row-to-row move from
-   * flickering the whole pane off and on.
-   */
-  const handleRootDragLeave = (e: DragEvent<HTMLDivElement>): void => {
-    const next = e.relatedTarget;
-    if (next instanceof Node && e.currentTarget.contains(next)) return;
-    tree.onFileDragLeave();
-  };
-
-  const handleRootDrop = (e: DragEvent<HTMLDivElement>): void => {
-    if (!isFileDrag(e)) return;
-    e.preventDefault();
-    void tree.dropFiles([...e.dataTransfer.files], undefined);
-  };
-
   return (
     <div
       data-slot="folio-tree"
@@ -137,31 +110,9 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
         >
           <FolderPlus className="size-3.5" />
         </Button>
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="ghost"
-          onClick={() => tree.uploadBlobs()}
-          aria-label={String(tr("folios.editor.tree.upload"))}
-        >
-          <Upload className="size-3.5" />
-        </Button>
       </div>
 
-      {/* The scroll body doubles as the project-root drop target: a file
-          dropped on empty space below the last row lands at the root, and a
-          row's own handler stops propagation before this one sees it. */}
-      <div
-        onDragOver={handleRootDragOver}
-        onDragLeave={handleRootDragLeave}
-        onDrop={handleRootDrop}
-        className={cn(
-          "min-h-0 flex-1 overflow-y-auto py-1",
-          tree.fileDrop &&
-            tree.fileDrop.parentId === undefined &&
-            "bg-primary/5 ring-1 ring-inset ring-primary/40",
-        )}
-      >
+      <div className="min-h-0 flex-1 overflow-y-auto py-1">
         {!tree.loading && tree.rows.length === 0 && (
           <p className="text-muted-foreground px-3 py-4 text-center text-xs italic">
             {tr("folios.editor.tree.empty")}
