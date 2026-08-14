@@ -1,5 +1,6 @@
 import { type Infer, z } from "alepha";
 import { folios } from "../entities/folios.ts";
+import { hydratedBlobSchema } from "./hydratedBlobSchema.ts";
 
 /**
  * Resolved outbound + inbound `[[wiki-link]]` refs for a folio.
@@ -65,6 +66,25 @@ export const folioPathSchema = z.array(
 export const folioMetadataSchema = z.object({
   links: folioLinksSchema.optional(),
   path: folioPathSchema.optional(),
+  /**
+   * The folio's attachments, same shape `BlobController.listBlobs`
+   * returns. Opt-in via `withBlobs=true` so the workspace gets them in
+   * the call that fetches the folio instead of a second round-trip it
+   * could only start once the folio's `id` was known.
+   */
+  blobs: z.array(hydratedBlobSchema).optional(),
+  /**
+   * How many revisions the folio has — the meta bar's "$3 revisions",
+   * and nothing else.
+   *
+   * A count rather than the rows on purpose. `folio_revisions` stores a
+   * FULL content snapshot per revision (see that entity's own doc: "10
+   * revisions × 50KB"), so inlining the history to save a round-trip
+   * would multiply the payload of every folio open by the retention cap
+   * to feed a panel most opens never show. The History tab fetches the
+   * rows through `listHistory` when it is actually opened.
+   */
+  revisionCount: z.integer().optional(),
 });
 
 /**

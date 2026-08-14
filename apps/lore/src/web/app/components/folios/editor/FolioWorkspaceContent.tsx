@@ -1,6 +1,6 @@
 import { useStore } from "alepha/react";
 import { type ReactElement, useState } from "react";
-import type { Folio } from "@/api/entities/folios.ts";
+import type { FolioResource } from "@/api/schemas/folioResourceSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { useFolioImageUpload } from "../../shared/markdown-editor/useFolioImageUpload.ts";
 import FolioDocument from "./document/FolioDocument.tsx";
@@ -15,9 +15,10 @@ import { useFolioDraft } from "./useFolioDraft.ts";
 
 export interface FolioWorkspaceContentProps {
   /**
-   * `undefined` → create mode. A `Folio` → edit mode.
+   * `undefined` → create mode. A folio → edit mode. `FolioResource`
+   * rather than `Folio` — see `FolioWorkspaceProps`'s own doc.
    */
-  folio?: Folio;
+  folio?: FolioResource;
   /**
    * Create-mode only: the directory the new folio lands in.
    */
@@ -102,10 +103,19 @@ const FolioWorkspaceContent = (
     props.onInspectorTabChange("history");
   };
 
-  // Revision count for the meta bar — sourced from the inspector's
-  // History tab (`onRevisionCount`), which fetches `listHistory` itself.
+  // Revision count for the meta bar. Seeded from the folio's own
+  // `metadata.revisionCount`, which the route loader asked `getByShortId`
+  // for in the same call that fetched the folio — the History tab used to
+  // be the only source, and paying a `listHistory` round-trip on every
+  // folio open to render one number in the meta bar is what that cost.
+  // The tab still reports through `onRevisionCount` once it has actually
+  // fetched (a revert or a pin toggle moves the number), and it overrides
+  // this seed when it does.
+  //
+  // The initializer runs once per mount, which is once per folio: this
+  // whole component is keyed on the folio id in `FolioWorkspace`.
   const [revisionCount, setRevisionCount] = useState<number | undefined>(
-    undefined,
+    () => props.folio?.metadata?.revisionCount,
   );
 
   // The document pane's DOM container, threaded to the inspector's

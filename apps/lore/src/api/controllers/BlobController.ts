@@ -5,26 +5,12 @@ import { $secure } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
 import { folioBlobs } from "../entities/folioBlobs.ts";
 import { folios } from "../entities/folios.ts";
+import { hydratedBlobSchema } from "../schemas/hydratedBlobSchema.ts";
 import {
   FOLIO_BLOB_BUCKET_NAME,
   FolioBlobService,
 } from "../services/FolioBlobService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
-
-const hydratedBlobSchema = z.object({
-  id: z.uuid(),
-  shortId: z.integer(),
-  projectId: z.integer(),
-  folioId: z.uuid(),
-  name: z.string(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-  size: z.number(),
-  mimeType: z.string(),
-  sha256: z.string().optional(),
-  originalName: z.string().optional(),
-  tags: z.array(z.string()).optional(),
-});
 
 /**
  * REST surface for Folio blobs. The framework `FileController`
@@ -131,11 +117,7 @@ export class BlobController {
       });
       if (!folio) throw new NotFoundError("Folio not found");
       await this.security.assertMember(folio.projectId, user);
-      const blobs = await this.blobService.listByFolio(params.folioId);
-      const hydrated = await Promise.all(
-        blobs.map((b) => this.hydrate(b.fileId)),
-      );
-      return hydrated.filter((x) => x !== undefined);
+      return this.blobService.listHydratedByFolio(params.folioId);
     },
   });
 
