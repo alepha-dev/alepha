@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
 import {
+  WorkflowProvider,
   workflowExecutions,
   workflowStepExecutions,
 } from "alepha/api/workflows";
@@ -144,10 +145,15 @@ describe("cart recovery sequence", () => {
     // First reminder after ~1h.
     await waitForParked(ctx.probe, parked!.id, "firstReminder");
     await ctx.dt.travel([61, "minute"]);
+    // Post-travel the clock is frozen: nudge the sweep while polling, so
+    // a delivery lost to the travel storm is re-derived from the rows.
     await waitFor(
-      () => ctx.mail.records.length,
+      async () => {
+        await ctx.alepha.inject(WorkflowProvider).recoverySweep();
+        return ctx.mail.records.length;
+      },
       (n) => n >= 1,
-      { label: "first reminder sent" },
+      { label: "first reminder sent", interval: 100 },
     );
     expect(ctx.mail.records[0]!.to).toBe("camille@example.com");
     expect(ctx.mail.records[0]!.subject).toContain("panier");
@@ -156,18 +162,24 @@ describe("cart recovery sequence", () => {
     await waitForParked(ctx.probe, parked!.id, "secondReminder");
     await ctx.dt.travel([24, "hour"]);
     await waitFor(
-      () => ctx.mail.records.length,
+      async () => {
+        await ctx.alepha.inject(WorkflowProvider).recoverySweep();
+        return ctx.mail.records.length;
+      },
       (n) => n >= 2,
-      { label: "second reminder sent" },
+      { label: "second reminder sent", interval: 100 },
     );
 
     // Abandon after ~24h more.
     await waitForParked(ctx.probe, parked!.id, "markAbandoned");
     await ctx.dt.travel([25, "hour"]);
     await waitFor(
-      async () => (await ctx.probe.sessions.findById(sessionId))?.status,
+      async () => {
+        await ctx.alepha.inject(WorkflowProvider).recoverySweep();
+        return (await ctx.probe.sessions.findById(sessionId))?.status;
+      },
       (s) => s === "abandoned",
-      { label: "session marked abandoned" },
+      { label: "session marked abandoned", interval: 100 },
     );
 
     const done = await waitFor(

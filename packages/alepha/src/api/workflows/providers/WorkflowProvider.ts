@@ -677,6 +677,14 @@ export class WorkflowProvider {
 
     const nextStep = steps.find((s) => s.status === "pending");
 
+    // No pending step is NOT the same as all steps settled: a sweep tick
+    // can land inside a concurrent dispatch's claim window (step already
+    // `running`, handler not yet executed). Completing here would race
+    // the handler — its completion path advances the workflow itself.
+    if (!nextStep && steps.some((s) => s.status === "running")) {
+      return;
+    }
+
     if (nextStep) {
       await this.executions.updateById(workflowId, {
         currentStep: nextStep.stepName,

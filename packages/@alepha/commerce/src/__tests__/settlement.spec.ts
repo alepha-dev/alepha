@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
 import {
+  WorkflowProvider,
   workflowExecutions,
   workflowStepExecutions,
 } from "alepha/api/workflows";
@@ -185,10 +186,15 @@ describe("commerce settlement workflow", () => {
     );
     await alepha.inject(DateTimeProvider).travel([2, "minute"]);
 
+    // Post-travel the clock is frozen: nudge the sweep while polling, so
+    // a retry delivery lost to the travel storm is re-derived from rows.
     const exec = await waitFor(
-      () => findSettlement(ctx.probe, orderId),
+      async () => {
+        await alepha.inject(WorkflowProvider).recoverySweep();
+        return findSettlement(ctx.probe, orderId);
+      },
       (e) => e?.status === "completed",
-      { label: "settlement completed after retry", timeout: 18_000 },
+      { label: "settlement completed after retry", timeout: 18_000, interval: 100 },
     );
     expect(exec?.status).toBe("completed");
 
