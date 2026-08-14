@@ -135,16 +135,18 @@ const FolioInspector = (props: FolioInspectorProps): ReactElement => {
       </div>
 
       {/*
-        All three tabs stay mounted; only the active one is shown (`hidden`,
-        not a conditional unmount). This is load-bearing for History, not
-        just an optimization: `FolioHistoryTab` fetches `listHistory` and
-        reports the count back via `onRevisionCount` from a mount effect.
-        Outline is the DEFAULT tab, so a naive "only render the active tab"
-        version would never mount History (and never fetch, and never call
-        `onRevisionCount`) until the user clicked over to it — the meta
-        bar's "$3 revisions" would read a false "0 revisions" for every
-        folio with real history, for as long as the user stayed on Outline.
-        Found live while verifying this task, not in the original brief.
+        All tabs stay mounted; only the active one is shown (`hidden`, not
+        a conditional unmount) — it keeps each tab's local state (History's
+        expanded row, Outline's scroll) across a tab switch.
+
+        History used to fetch `listHistory` from a plain mount effect, and
+        that made staying mounted load-bearing rather than merely nice:
+        Outline is the DEFAULT tab, so unmounting the others would have
+        left the meta bar reading a false "0 revisions" until the user
+        clicked over. That is no longer why. The count now rides on the
+        folio itself (`metadata.revisionCount`), and History takes an
+        `active` flag so a folio open no longer pays for a revision list
+        nobody is looking at — see that prop's doc.
       */}
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className={props.tab === "outline" ? undefined : "hidden"}>
@@ -157,6 +159,7 @@ const FolioInspector = (props: FolioInspectorProps): ReactElement => {
           {props.folio ? (
             <FolioHistoryTab
               folio={props.folio}
+              active={props.tab === "history"}
               refreshedAt={props.savedAt}
               onReverted={props.onReverted}
               onRevisionCount={props.onRevisionCount}

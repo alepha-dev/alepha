@@ -109,12 +109,28 @@ test.describe("Folio workspace", () => {
     const summary = page.getByLabel(/summary for agents/i);
     await expect(summary).toBeVisible({ timeout: 15_000 });
 
+    // The folio was created through the API, so exactly one revision
+    // exists and the meta bar reads it off the folio's own
+    // `metadata.revisionCount` — the History tab has not been opened and
+    // does not fetch on a folio open any more.
+    await expect(page.getByText(/· 1 (revision|révision)$/)).toBeVisible({
+      timeout: 15_000,
+    });
+
     await summary.fill(summaryText);
     await page.getByRole("button", { name: /^save$|^enregistrer$/i }).click();
     // Wait for the status line to flip to Saved before reloading —
     // navigating mid-request abandons the save and the assertion below
     // then measures the reload, not the write.
     await expect(page.getByText(/^saved /i).first()).toBeVisible({
+      timeout: 15_000,
+    });
+    // …and the count follows the save without a reload, even though the
+    // inspector is sitting on Outline. Deferring the History tab's fetch
+    // to the first time it is shown must not defer it past a save that
+    // moved the number — the fetch is skipped per folio OPENED, not per
+    // folio SAVED. Nothing else in this file covers that distinction.
+    await expect(page.getByText(/· 2 (revisions|révisions)$/)).toBeVisible({
       timeout: 15_000,
     });
 
@@ -157,10 +173,25 @@ test.describe("Folio workspace", () => {
     await expect(
       inspector().getByText(/no revisions yet|aucune révision/i),
     ).toHaveCount(0, { timeout: 15_000 });
+    const revisionRows = inspector().getByRole("button", {
+      name: /created|edited|créé|modifié/i,
+    });
+    await expect(revisionRows.first()).toBeVisible({ timeout: 15_000 });
+
+    // And the meta bar's count agrees with the rows this tab lists.
+    // Load-bearing since the count stopped coming from this tab's own
+    // fetch and started riding on the folio (`metadata.revisionCount`):
+    // the two have independent sources now, and only comparing them
+    // catches a server-side count that disagrees with the list. Counted
+    // rather than hard-coded — the number depends on how many times the
+    // earlier tests in this serial file saved.
+    const rows = await revisionRows.count();
     await expect(
-      inspector()
-        .getByRole("button", { name: /created|edited|créé|modifié/i })
-        .first(),
+      page.getByText(
+        rows === 1
+          ? /· 1 (revision|révision)$/
+          : new RegExp(`· ${rows} (revisions|révisions)$`),
+      ),
     ).toBeVisible({ timeout: 15_000 });
   });
 
@@ -333,6 +364,65 @@ test.describe("Folio workspace", () => {
       (el) => Number.parseInt((el as HTMLElement).style.paddingLeft, 10) || 0,
     );
     expect(depth).toBeGreaterThan(8);
+  });
+
+  /**
+   * Regression guard: opening a folio costs ONE API round-trip.
+   *
+   * It used to cost three. The route loader batched `getByShortId` +
+   * `list` + `listAllDirectories` into one `/api/_batch`, then fired
+   * `listBlobs` on its own (it needs the folio's `id`, which only exists
+   * after the batch resolves, so it could never join the 10ms
+   * `BatchCollector` window), and `FolioHistoryTab` fired `listHistory`
+   * from a mount effect — a whole request returning up to ten FULL
+   * content snapshots, to render one number in the meta bar.
+   *
+   * All three collapsed: the attachments and the revision COUNT ride on
+   * `getByShortId` as `metadata`, the tree's two lists are seeded by the
+   * `/folios` layout loader that necessarily ran first and are not
+   * re-fetched inside their freshness window, and the revision rows wait
+   * until the History tab is actually opened.
+   *
+   * Asserted as a count of requests rather than of any one URL: the point
+   * is the total, and a future addition that re-splits the call would
+   * pass every other test in this file.
+   */
+  test("09a — opening a folio costs one API request", async () => {
+    const row = (name: string) =>
+      page
+        .locator('[data-slot="folio-tree-row"]', {
+          hasText: new RegExp(`^${name}$`),
+        })
+        .first();
+
+    // Land on a folio FIRST, so what the count below measures is a
+    // folio-to-folio navigation and not the surrounding one-time work:
+    // the `/folios` layout loader, and the editor's project-wide
+    // wiki-link quest list (its own fetch, cached for five minutes).
+    await page.goto(folioUrl);
+    await expect(row(otherTitle)).toBeVisible({ timeout: 15_000 });
+    await page.waitForTimeout(2_000);
+
+    const calls: string[] = [];
+    const record = (req: { url: () => string }) => {
+      const { pathname, search } = new URL(req.url());
+      if (pathname.startsWith("/api")) calls.push(pathname + search);
+    };
+    page.on("request", record);
+    try {
+      await row(otherTitle).click();
+      await page.waitForURL(/\/folios\/\d+/, { timeout: 15_000 });
+      await page.waitForTimeout(2_000);
+    } finally {
+      page.off("request", record);
+    }
+
+    expect(
+      calls,
+      `expected one request, got:\n${calls.join("\n")}`,
+    ).toHaveLength(1);
+    expect(calls[0]).toContain("withBlobs=true");
+    expect(calls[0]).toContain("withRevisionCount=true");
   });
 
   test("09 — /folios opens with nothing selected", async () => {

@@ -19,6 +19,7 @@ import {
   folioLinksSchema,
   folioResourceSchema,
 } from "../schemas/folioResourceSchema.ts";
+import { FolioBlobService } from "../services/FolioBlobService.ts";
 import {
   decideRevisionAction,
   FolioHistoryService,
@@ -51,6 +52,7 @@ export class FolioController {
   protected readonly revisionsWith = $repository(relations, "folioRevisions");
   protected readonly users = $repository(users);
   protected readonly linkService = $inject(FolioLinkService);
+  protected readonly blobService = $inject(FolioBlobService);
   protected readonly historyService = $inject(FolioHistoryService);
   protected readonly security = $inject(ProjectSecurityService);
 
@@ -129,14 +131,25 @@ export class FolioController {
         projectId: z.integer(),
         shortId: z.integer(),
       }),
-      // `withLinks=true` attaches the resolved [[wiki-link]] index in
-      // the same response. `withPath=true` attaches the folio's
-      // directory chain (root → … → direct parent) — used by the
-      // Folio UI to render the AppShell breadcrumb without a
-      // separate `listAllDirectories` round-trip.
+      // Every flag here exists so the folio workspace can open in ONE
+      // request. Each one used to be a round-trip the browser could only
+      // start after this one had resolved (they all key off the folio's
+      // `id`, which the caller does not have — it addresses the folio by
+      // `shortId`), so they could not even join the client's batch window.
+      //
+      // `withLinks=true` attaches the resolved [[wiki-link]] index.
+      // `withPath=true` attaches the folio's directory chain (root → … →
+      // direct parent), which renders the AppShell breadcrumb without a
+      // separate `listAllDirectories`. `withBlobs=true` attaches the
+      // attachment list. `withRevisionCount=true` attaches the number the
+      // meta bar shows — a count, NOT the revisions themselves; see
+      // `folioMetadataSchema.revisionCount` for why the rows stay behind
+      // `listHistory`.
       query: z.object({
         withLinks: z.boolean().optional(),
         withPath: z.boolean().optional(),
+        withBlobs: z.boolean().optional(),
+        withRevisionCount: z.boolean().optional(),
       }),
       response: folioResourceSchema,
     },
@@ -149,18 +162,30 @@ export class FolioController {
         },
       });
       if (!folio) throw new NotFoundError("Folio not found");
-      if (!query.withLinks && !query.withPath) return folio;
-      const metadata: {
-        links?: Awaited<ReturnType<FolioController["resolveLinks"]>>;
-        path?: { shortId: number; name: string }[];
-      } = {};
-      if (query.withLinks) {
-        metadata.links = await this.resolveLinks(folio.id);
+      if (
+        !query.withLinks &&
+        !query.withPath &&
+        !query.withBlobs &&
+        !query.withRevisionCount
+      ) {
+        return folio;
       }
-      if (query.withPath) {
-        metadata.path = await this.resolveDirectoryPath(folio.directoryId);
-      }
-      return { ...folio, metadata };
+      // Every requested extra is independent of the others, so they run
+      // concurrently — the handler costs one round of queries, not one
+      // per flag.
+      const [links, path, blobs, revisionCount] = await Promise.all([
+        query.withLinks ? this.resolveLinks(folio.id) : undefined,
+        query.withPath
+          ? this.resolveDirectoryPath(folio.directoryId)
+          : undefined,
+        query.withBlobs
+          ? this.blobService.listHydratedByFolio(folio.id)
+          : undefined,
+        query.withRevisionCount
+          ? this.revisions.count({ folioId: { eq: folio.id } })
+          : undefined,
+      ]);
+      return { ...folio, metadata: { links, path, blobs, revisionCount } };
     },
   });
 

@@ -23,7 +23,7 @@ import {
   Tag,
   Type,
 } from "lucide-react";
-import { type ReactElement, useEffect, useState } from "react";
+import { type ReactElement, useEffect, useRef, useState } from "react";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { FolioRevision } from "@/api/entities/folioRevisions.ts";
 import type { Folio } from "@/api/entities/folios.ts";
@@ -45,6 +45,25 @@ export interface FolioHistoryTabProps {
    * different inspector tab. Found live while verifying this task.
    */
   refreshedAt?: string;
+  /**
+   * Whether the History tab is the one the inspector is currently
+   * showing. This component stays mounted on every tab (see
+   * `FolioInspector`), so without this flag its fetch effect ran on every
+   * folio open — a whole `listHistory` round-trip, returning up to ten
+   * FULL content snapshots, to render a panel the user was not looking
+   * at. The meta bar's count comes from the folio's own
+   * `metadata.revisionCount` now, so nothing needs the rows until the
+   * user actually opens this tab.
+   *
+   * It gates the MOUNT fetch only. A `refreshedAt` that has moved since
+   * mount means a save landed, which may have appended a revision, so
+   * that fetch still runs on a tab the user never opened — otherwise the
+   * meta bar would sit on the load-time count and read "3 revisions"
+   * after the save that made it four. What this drops is the request per
+   * folio OPENED, which is the one that was never worth making; the
+   * request per folio SAVED is unchanged from before.
+   */
+  active: boolean;
   /**
    * Fired after a successful revert — the caller (`useFolioActions`'s
    * `applyReverted`) re-syncs the draft buffer and the shared atoms, since
@@ -122,27 +141,67 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
   const [revisions, setRevisions] = useState<FolioRevision[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Whether the first fetch has come back. Separate from `revisions`
+  // because "not fetched yet" and "fetched, and there are none" render
+  // differently: since the fetch is deferred to the first time this tab
+  // is shown (see `props.active`), an empty list is the state EVERY folio
+  // starts in, and rendering the empty copy for it would flash "no
+  // history yet" over a folio that has ten revisions, every time the user
+  // opens the tab.
+  const [loaded, setLoaded] = useState(false);
+  // What the last fetch was for. Doubles as "have we ever fetched" (the
+  // gate `props.active` opens) and as the guard that stops a plain
+  // tab-switch back to History from re-fetching a list nothing has
+  // invalidated — `props.active` is in the effect's deps, so without it
+  // every visit to the tab would cost a request.
+  const fetchedForRef = useRef<string | undefined>(undefined);
+  // What `refreshedAt` was when this folio opened. A value different from
+  // it means a save has landed since, which may have appended a revision
+  // — the one case where the list is worth fetching for a tab the user
+  // has not opened, because the meta bar's count would otherwise be
+  // wrong. See `props.active`.
+  const openedAtRef = useRef(props.refreshedAt);
 
   useEffect(() => {
+    const key = `${props.folio.id}:${props.refreshedAt ?? ""}`;
+    const savedSinceOpen = props.refreshedAt !== openedAtRef.current;
+    if (
+      !props.active &&
+      !savedSinceOpen &&
+      fetchedForRef.current === undefined
+    ) {
+      return;
+    }
+    if (fetchedForRef.current === key) return;
+    fetchedForRef.current = key;
     let alive = true;
     folioApi
       .listHistory({ params: { id: props.folio.id } })
       .then((rows) => {
-        if (alive) setRevisions(rows);
+        if (!alive) return;
+        setRevisions(rows);
+        setLoaded(true);
       })
+      // A failed load leaves `loaded` false, so the tab keeps rendering
+      // nothing rather than claiming the folio has no history.
       .catch(() => null);
     return () => {
       alive = false;
     };
-  }, [props.folio.id, props.refreshedAt, folioApi]);
+  }, [props.folio.id, props.refreshedAt, props.active, folioApi]);
 
-  // Deliberately fires on every change to `revisions` (initial load,
-  // revert, pin toggle), not just once — the meta bar's count should
-  // never lag behind what this tab itself is showing.
+  // Deliberately fires on every change to `revisions` (revert, pin
+  // toggle, a post-save refetch), not just once — the meta bar's count
+  // should never lag behind what this tab itself is showing. It does NOT
+  // report the empty initial state: until this tab has fetched, the
+  // authoritative count is the one the route loader got from
+  // `metadata.revisionCount`, and reporting `0` over it would replace a
+  // real number with a wrong one on every folio open.
   useEffect(() => {
+    if (!loaded) return;
     props.onRevisionCount(revisions.length);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [revisions]);
+  }, [revisions, loaded]);
 
   const refresh = async () => {
     const next = await folioApi.listHistory({
@@ -185,6 +244,8 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
     });
     await refresh();
   };
+
+  if (!loaded) return <div className="px-3 py-4" />;
 
   if (revisions.length === 0) {
     return (

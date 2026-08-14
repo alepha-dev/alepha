@@ -1,6 +1,7 @@
 import { AccountRouter } from "@alepha/ui/components/account/account-router";
 import { $hook, $inject, Alepha, z } from "alepha";
 import type { RealmController } from "alepha/api/users";
+import { DateTimeProvider } from "alepha/datetime";
 import { ReactAuth } from "alepha/react/auth";
 import { $head, type Head } from "alepha/react/head";
 import { $page, NotFound, ReactRouter, Redirection } from "alepha/react/router";
@@ -10,7 +11,6 @@ import { $client } from "alepha/server/links";
 import { createElement } from "react";
 import type { AdminInvitationController } from "../../api/controllers/AdminInvitationController.ts";
 import type { BlightController } from "../../api/controllers/BlightController.ts";
-import type { BlobController } from "../../api/controllers/BlobController.ts";
 import type { DirectoryController } from "../../api/controllers/DirectoryController.ts";
 import type { FeedbackController } from "../../api/controllers/FeedbackController.ts";
 import type { FolioController } from "../../api/controllers/FolioController.ts";
@@ -36,6 +36,7 @@ import { currentSigilAtom } from "./atoms/currentSigilAtom.ts";
 import { currentSigilInsightsAtom } from "./atoms/currentSigilInsightsAtom.ts";
 import { currentSigilsAtom } from "./atoms/currentSigilsAtom.ts";
 import { folioTagsAtom } from "./atoms/folioTagsAtom.ts";
+import { folioTreeSeedAtom } from "./atoms/folioTreeSeedAtom.ts";
 import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
 import { userFoliosAtom } from "./atoms/userFoliosAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
@@ -55,11 +56,49 @@ export class AppRouter {
   sigilApi = $client<SigilController>();
   folioApi = $client<FolioController>();
   directoryApi = $client<DirectoryController>();
-  blobApi = $client<BlobController>();
   router = $inject(ReactRouter);
   auth = $inject(ReactAuth);
   account = $inject(AccountRouter);
   realmApi = $client<RealmController>();
+  dateTime = $inject(DateTimeProvider);
+
+  /**
+   * How long a folio-tree seed stays usable. Matches the `staleTime` on
+   * `useFolioTreeModel`'s fallback query so both halves of the tree's
+   * freshness policy say the same thing.
+   */
+  protected static readonly FOLIO_TREE_TTL_MS = 30_000;
+
+  /**
+   * Fill `userFoliosAtom` + `projectDirectoriesAtom` — the two lists the
+   * folio tree pane renders from — unless they already hold this
+   * project's rows and were filled recently. See `folioTreeSeedAtom` for
+   * why the unconditional fetch these loaders used to do was two wasted
+   * HTTP calls per folio opened.
+   *
+   * Deliberately does no `await` before deciding: callers put it in a
+   * `Promise.all` next to their own fetch, and anything awaited ahead of
+   * the decision would push these calls into a later tick and out of the
+   * `BatchCollector` window they need to share.
+   */
+  protected async seedFolioTree(projectId: number): Promise<void> {
+    const seed = this.alepha.store.get(folioTreeSeedAtom);
+    const now = this.dateTime.nowMillis();
+    if (
+      seed &&
+      seed.projectId === projectId &&
+      now - seed.at < AppRouter.FOLIO_TREE_TTL_MS
+    ) {
+      return;
+    }
+    const [folios, directories] = await Promise.all([
+      this.folioApi.list({ query: { projectId, limit: 100 } }),
+      this.directoryApi.listAllDirectories({ params: { projectId } }),
+    ]);
+    this.alepha.store.set(userFoliosAtom, folios);
+    this.alepha.store.set(projectDirectoriesAtom, directories);
+    this.alepha.store.set(folioTreeSeedAtom, { projectId, at: now });
+  }
 
   head = $head(() => {
     const head: Head = {
@@ -943,33 +982,26 @@ export class AppRouter {
       if (projectId === undefined) {
         throw new NotFoundError("Project not found");
       }
-      // Two fetches, both for the workspace itself: the folio list (the
-      // tree's rows, and the editor's tag autocomplete) and the tag set.
+      // The tag set (the editor's tag autocomplete) plus the tree's own
+      // two lists, which `seedFolioTree` owns — the folio list AND the
+      // directory list, the latter load-bearing: the tree's fallback
+      // `useQuery` is gated on `enabled: !seeded`, where "seeded" is
+      // satisfied by `userFoliosAtom` ALONE. Any project with at least one
+      // folio therefore looked seeded the moment the folio list resolved,
+      // the fallback never ran, and a hard load of `/folios` rendered a
+      // tree with no directories in it — every nested folio flat at the
+      // root.
       //
       // The directory-contents fetch and the `?dir=` resolution that used
       // to sit here went with `FolioBrowser` — they existed to fill its
-      // table and its breadcrumb. The tree fetches what it needs on its
-      // own, and a folio page sets its own breadcrumb from the folio's
-      // `metadata.path`, so nothing downstream reads them any more.
-      const [folios, tags, directories] = await Promise.all([
-        this.folioApi.list({ query: { limit: 100, projectId } }),
+      // table and its breadcrumb. A folio page sets its own breadcrumb
+      // from the folio's `metadata.path`, so nothing downstream reads
+      // them any more.
+      const [tags] = await Promise.all([
         this.folioApi.listTags({ query: { projectId } }),
-        // Directories likewise, and this one is load-bearing: the tree's own
-        // fallback `useQuery` is gated on `enabled: !seeded`, where "seeded"
-        // is satisfied by `userFoliosAtom` ALONE. Any project with at least
-        // one folio therefore looked seeded the moment the line above
-        // resolved, the fallback never ran, and a hard load of `/folios`
-        // rendered a tree with no directories in it — every nested folio flat
-        // at the root. It only escaped notice because navigating in from a
-        // folio page carried the atom over from `projectFoliosFolio`'s
-        // loader, which has always fetched this.
-        this.directoryApi.listAllDirectories({
-          params: { projectId: Number(projectId) },
-        }),
+        this.seedFolioTree(projectId),
       ]);
-      this.alepha.store.set(userFoliosAtom, folios);
       this.alepha.store.set(folioTagsAtom, tags);
-      this.alepha.store.set(projectDirectoriesAtom, directories);
       // `/folios` itself is just "Folios" in the header — a folio page
       // appends its own directory chain and title when it loads.
       this.alepha.store.set(currentFolioPathAtom, []);
@@ -1012,19 +1044,18 @@ export class AppRouter {
           }
         }
       }
-      // Populate the directory list so the document workspace's meta bar
+      // Populate the tree's lists so the document workspace's meta bar
       // (Task 8) can resolve the create-mode `directoryId` above to a
       // display name — the chip shows where the new folio WILL land, even
       // though it's not clickable yet (there's no row for `folio.move` to
-      // act on until the folio is saved). Mirrors `projectFoliosFolio`'s
-      // own loader. Landing directly on `/folios/new` (rather than
-      // navigating here from `/folios`) previously left this atom unset or
-      // stale from a prior folio view.
+      // act on until the folio is saved). Landing directly on
+      // `/folios/new` (rather than navigating here from `/folios`)
+      // previously left `projectDirectoriesAtom` unset or stale from a
+      // prior folio view. Going through `seedFolioTree` also fills
+      // `userFoliosAtom`, which this loader never did and which the tree
+      // pane's `enabled: !seeded` fallback then had to fetch on mount.
       if (project) {
-        const directories = await this.directoryApi.listAllDirectories({
-          params: { projectId: project.id },
-        });
-        this.alepha.store.set(projectDirectoriesAtom, directories);
+        await this.seedFolioTree(project.id);
       }
       return { directoryId };
     },
@@ -1060,34 +1091,34 @@ export class AppRouter {
       if (!project) {
         throw new NotFoundError("Project not found");
       }
-      // Three calls in one tick → alepha auto-batches them into a
-      // single `/api/_batch` round-trip. Folio (page subject), folio
-      // list + directory list (the workspace's tree pane, Task 9)
-      // all arrive in one network hit, sparing the pane its own
-      // mount-time fetch. See Lore #109.
-      const [folio, folios, directories] = await Promise.all([
+      // ONE call opens a folio. Everything the workspace needs that keys
+      // off the folio itself — its links, its directory chain, its
+      // attachments, its revision count — is asked for on the folio
+      // request, because each of those used to be a follow-up round-trip
+      // that could only START once this one had resolved (they address
+      // the folio by `id`, and the URL only carries `shortId`). Sitting
+      // after the `await`, they were far past the 10ms `BatchCollector`
+      // window and could never join it. See Lore #109.
+      //
+      // `seedFolioTree` rides alongside and is usually a no-op: the
+      // `/folios` layout loader that necessarily ran before this one
+      // already filled the tree's lists, and a layout loader is not
+      // re-run on child navigation. When it does have to fetch, it does
+      // so in this same tick and batches with the folio.
+      const [folio] = await Promise.all([
         this.folioApi.getByShortId({
           params: { projectId: project.id, shortId: params.shortId },
-          query: { withLinks: true, withPath: true },
+          query: {
+            withLinks: true,
+            withPath: true,
+            withBlobs: true,
+            withRevisionCount: true,
+          },
         }),
-        this.folioApi.list({ query: { projectId: project.id, limit: 100 } }),
-        this.directoryApi.listAllDirectories({
-          params: { projectId: project.id },
-        }),
+        this.seedFolioTree(project.id),
       ]);
       this.alepha.store.set(currentFolioAtom, folio);
-      this.alepha.store.set(userFoliosAtom, folios);
-      this.alepha.store.set(projectDirectoriesAtom, directories);
-      // Attachments need the folio's id, which only exists once the folio
-      // above has resolved — so this is a second round-trip rather than a
-      // fourth entry in the batch. Non-fatal: a folio that renders without
-      // its attachment list is degraded, not broken.
-      this.alepha.store.set(
-        currentFolioBlobsAtom,
-        await this.blobApi
-          .listBlobs({ params: { folioId: folio.id } })
-          .catch(() => []),
-      );
+      this.alepha.store.set(currentFolioBlobsAtom, folio.metadata?.blobs ?? []);
       // Populate the folio breadcrumb so the AppShell header reads
       // "Lore › Folios › <dirs…> › <folio title>". Cleared on leave
       // by the parent `projectFolios` route.
