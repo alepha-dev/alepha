@@ -1,5 +1,4 @@
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { AlephaError } from "alepha";
 import {
   useAction,
   useAlepha,
@@ -10,12 +9,10 @@ import {
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { BlobController } from "@/api/controllers/BlobController.ts";
 import type { DirectoryController } from "@/api/controllers/DirectoryController.ts";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { AppRouter } from "../../../../AppRouter.ts";
 import { pendingFolioTreeRenameAtom } from "../../../../atoms/pendingFolioTreeRenameAtom.ts";
-import { projectBlobsAtom } from "../../../../atoms/projectBlobsAtom.ts";
 import { projectDirectoriesAtom } from "../../../../atoms/projectDirectoriesAtom.ts";
 import { userFoliosAtom } from "../../../../atoms/userFoliosAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
@@ -28,13 +25,6 @@ import {
   flattenFolioTree,
   resolveFolioDrop,
 } from "./folioTreeModel.ts";
-
-/**
- * Mirrors `FOLIO_BLOB_BUCKET_NAME` (FolioBlobService) — not imported so the
- * browser bundle does not pull the server-side service module. The value stays
- * "archive-blobs": it is persisted on every existing `files` row.
- */
-const FOLIO_BLOB_BUCKET = "archive-blobs";
 
 export interface UseFolioTreeModelInput {
   projectId: number;
@@ -71,7 +61,6 @@ export interface FolioTreeState {
    * exactly one. Sharing the field would make `dragId` (never set for an
    * external drag) the only thing telling them apart.
    */
-  fileDrop?: { parentId?: string };
   toggle: (id: string) => void;
   select: (node: FolioTreeNode) => void;
   beginRename: (id: string) => void;
@@ -82,15 +71,9 @@ export interface FolioTreeState {
   onDrop: (id: string) => Promise<void>;
   onDragEnd: () => void;
   /** An external file drag is hovering the row/area that owns `parentId`. */
-  onFileDragOver: (parentId?: string) => void;
   /** The file drag left the tree entirely — clear the highlight. */
-  onFileDragLeave: () => void;
-  /** Upload the dropped files into `parentId` (or the project root). */
-  dropFiles: (files: File[], parentId?: string) => Promise<void>;
   createFolio: (parentId?: string) => Promise<void>;
   createDirectory: (parentId?: string) => Promise<void>;
-  /** Pick files and upload them into `parentId` (or the project root). */
-  uploadBlobs: (parentId?: string) => Promise<void>;
   remove: (node: FolioTreeNode) => Promise<void>;
   duplicate: (node: FolioTreeNode) => Promise<void>;
   togglePin: (node: FolioTreeNode) => Promise<void>;
@@ -164,11 +147,9 @@ export const useFolioTreeModel = (
   const dialog = useDialog();
   const folioApi = useClient<FolioController>();
   const directoryApi = useClient<DirectoryController>();
-  const blobApi = useClient<BlobController>();
 
   const [folios, setFolios] = useStore(userFoliosAtom);
   const [directories, setDirectories] = useStore(projectDirectoriesAtom);
-  const [blobs, setBlobs] = useStore(projectBlobsAtom);
 
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   // Seeded from `pendingFolioTreeRenameAtom` — see that atom's doc for why
@@ -190,7 +171,6 @@ export const useFolioTreeModel = (
   const [drop, setDrop] = useState<
     { id: string; position: FolioDropPosition } | undefined
   >();
-  const [fileDrop, setFileDrop] = useState<{ parentId?: string } | undefined>();
   // Guards the one-time default-collapse below — see the file doc.
   const initializedRef = useRef(false);
 
@@ -231,9 +211,8 @@ export const useFolioTreeModel = (
           pinned: f.pinned,
           protected: f.protected,
         })),
-        blobs,
       }),
-    [directories, folios, blobs],
+    [directories, folios],
   );
 
   const rows = useMemo(
@@ -336,14 +315,6 @@ export const useFolioTreeModel = (
       toggle(node.id);
       return;
     }
-    // A blob has no page of its own — it is bytes. The framework's file route
-    // serves them with the right content type, so the browser decides: an
-    // image renders, everything else downloads. Opening in a new tab rather
-    // than navigating keeps the workspace (and any unsaved draft) where it is.
-    if (node.kind === "blob") {
-      window.open(`/api/files/${node.id}`, "_blank", "noopener");
-      return;
-    }
     router.push(
       router.path("projectFoliosFolio", {
         params: { projectSlug: input.projectSlug, shortId: node.shortId },
@@ -368,18 +339,6 @@ export const useFolioTreeModel = (
               d.id === id ? { ...d, name: updated.name } : d,
             ),
           );
-        } else if (node.kind === "blob") {
-          // Its own endpoint and its own atom: routing a blob through
-          // `folioApi.update` would address a folio that does not exist.
-          const updated = await blobApi.renameBlob({
-            params: { id },
-            body: { name: trimmed },
-          });
-          setBlobs(
-            blobs.map((b) =>
-              b.fileId === id ? { ...b, name: updated.name } : b,
-            ),
-          );
         } else {
           const updated = await folioApi.update({
             params: { id },
@@ -398,11 +357,8 @@ export const useFolioTreeModel = (
       setDirectories,
       folios,
       setFolios,
-      blobs,
-      setBlobs,
       directoryApi,
       folioApi,
-      blobApi,
       input.projectId,
     ],
   );
@@ -540,107 +496,6 @@ export const useFolioTreeModel = (
     await createFolioAction.run(parentId);
   };
 
-  /**
-   * Upload files into a directory (or the project root).
-   *
-   * Reuses the same two-step flow as the markdown editor's image button —
-   * framework file bytes, then the blob registration that gives them a place
-   * in this project's tree — rather than a second upload path that would
-   * drift from it.
-   */
-  const uploadBlobsAction = useAction<[File[], string | undefined], void>(
-    {
-      handler: async (files: File[], parentId?: string) => {
-        const created: typeof blobs = [];
-        for (const file of files) {
-          const form = new FormData();
-          form.append("file", file);
-          const uploaded = await fetch(
-            `/api/files?bucket=${encodeURIComponent(FOLIO_BLOB_BUCKET)}`,
-            { method: "POST", body: form, credentials: "include" },
-          );
-          if (!uploaded.ok) {
-            throw new AlephaError(
-              `Upload of "${file.name}" failed (${uploaded.status})`,
-            );
-          }
-          const { id } = (await uploaded.json()) as { id: string };
-          const row = await blobApi.registerBlob({
-            params: { projectId: input.projectId },
-            body: { fileId: id, name: file.name, directoryId: parentId },
-          });
-          created.push({
-            fileId: row.fileId,
-            shortId: row.shortId,
-            name: row.name,
-            directoryId: row.directoryId,
-            updatedAt: row.updatedAt,
-          });
-        }
-        setBlobs([...blobs, ...created]);
-        if (parentId) expandOne(parentId);
-      },
-      invalidates: [["folioTree", input.projectId]],
-    },
-    [blobs, setBlobs, blobApi, input.projectId],
-  );
-
-  /**
-   * Run the upload and surface any failure through `useDialog`, never
-   * `window.alert` — the deleted `FolioBrowser` used `alert` here and the
-   * project bans it. Shared by the picker below and the file-drop path so a
-   * failed drop reports exactly like a failed pick.
-   */
-  const runUpload = async (files: File[], parentId?: string): Promise<void> => {
-    try {
-      await uploadBlobsAction.run(files, parentId);
-    } catch (error) {
-      await dialog.alert({
-        title: tr("folios.editor.tree.upload-failed"),
-        description: error instanceof Error ? error.message : String(error),
-      });
-    }
-  };
-
-  const onFileDragOver = (parentId?: string): void => {
-    // Compare before setting: `dragover` fires continuously while the pointer
-    // sits still, and a fresh object literal every time would re-render the
-    // whole tree at the browser's dragover cadence.
-    setFileDrop((prev) =>
-      prev && prev.parentId === parentId ? prev : { parentId },
-    );
-  };
-
-  const onFileDragLeave = (): void => setFileDrop(undefined);
-
-  const dropFiles = async (files: File[], parentId?: string): Promise<void> => {
-    setFileDrop(undefined);
-    if (files.length === 0) return;
-    await runUpload(files, parentId);
-  };
-
-  /**
-   * Ask for files and upload them.
-   */
-  const uploadBlobs = async (parentId?: string): Promise<void> => {
-    const picker = document.createElement("input");
-    picker.type = "file";
-    picker.multiple = true;
-    picker.style.display = "none";
-    document.body.appendChild(picker);
-    const files = await new Promise<File[]>((resolve) => {
-      picker.onchange = () => resolve([...(picker.files ?? [])]);
-      // `cancel` fires on dismissal in every browser that supports the file
-      // picker's own cancel event; without it the promise would never settle
-      // and the node would leak.
-      picker.oncancel = () => resolve([]);
-      picker.click();
-    });
-    picker.remove();
-    if (files.length === 0) return;
-    await runUpload(files, parentId);
-  };
-
   const createDirectoryAction = useAction<[string | undefined], void>(
     {
       handler: async (parentId?: string) => {
@@ -729,17 +584,6 @@ export const useFolioTreeModel = (
     ],
   );
 
-  const deleteBlobAction = useAction<[string], void>(
-    {
-      handler: async (id: string) => {
-        await blobApi.deleteBlob({ params: { id } });
-        setBlobs(blobs.filter((b) => b.fileId !== id));
-      },
-      invalidates: [["folioTree", input.projectId]],
-    },
-    [blobs, setBlobs, blobApi, input.projectId],
-  );
-
   const remove = async (node: FolioTreeNode): Promise<void> => {
     if (node.kind === "directory") {
       const confirmed = await dialog.confirm({
@@ -769,10 +613,6 @@ export const useFolioTreeModel = (
         destructive: true,
       });
       if (!confirmed) return;
-      if (node.kind === "blob") {
-        await deleteBlobAction.run(node.id);
-        return;
-      }
       await deleteFolioAction.run(node.id);
     }
   };
@@ -855,7 +695,6 @@ export const useFolioTreeModel = (
     renamingId,
     dragId,
     drop,
-    fileDrop,
     toggle,
     select,
     beginRename: (id: string) => setRenamingId(id),
@@ -865,12 +704,8 @@ export const useFolioTreeModel = (
     onDragOver,
     onDrop,
     onDragEnd,
-    onFileDragOver,
-    onFileDragLeave,
-    dropFiles,
     createFolio,
     createDirectory,
-    uploadBlobs,
     remove,
     duplicate,
     togglePin,

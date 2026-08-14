@@ -4,6 +4,7 @@ import { $repository, $transactional } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
 import { folioBlobs } from "../entities/folioBlobs.ts";
+import { folios } from "../entities/folios.ts";
 import {
   FOLIO_BLOB_BUCKET_NAME,
   FolioBlobService,
@@ -14,7 +15,7 @@ const hydratedBlobSchema = z.object({
   id: z.uuid(),
   shortId: z.integer(),
   projectId: z.integer(),
-  directoryId: z.uuid().optional(),
+  folioId: z.uuid(),
   name: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -40,6 +41,7 @@ const hydratedBlobSchema = z.object({
  */
 export class BlobController {
   protected readonly blobs = $repository(folioBlobs);
+  protected readonly folioRows = $repository(folios);
   protected readonly frameworkFiles = $repository(files);
   protected readonly blobService = $inject(FolioBlobService);
   protected readonly fileController = $inject(FileController);
@@ -73,7 +75,7 @@ export class BlobController {
       id: blob.fileId,
       shortId: blob.shortId,
       projectId: blob.projectId,
-      directoryId: blob.directoryId,
+      folioId: blob.folioId,
       name: blob.name,
       createdAt: blob.createdAt,
       updatedAt: blob.updatedAt,
@@ -117,64 +119,23 @@ export class BlobController {
 
   listBlobs = $action({
     use: [$secure({ permissions: ["folio:read"] })],
-    path: "/projects/:projectId/folio/blobs",
-    description: "List blobs in a project (optionally filtered by directory).",
+    path: "/folios/:folioId/blobs",
+    description: "List the attachments of one folio.",
     schema: {
-      params: z.object({ projectId: z.integer() }),
-      query: z.object({
-        directoryId: z.uuid().optional(),
-      }),
+      params: z.object({ folioId: z.uuid() }),
       response: z.array(hydratedBlobSchema),
     },
-    handler: async ({ params, query, user }) => {
-      await this.security.assertMember(params.projectId, user);
-      const blobs = await this.blobService.listInDirectory(
-        params.projectId,
-        query.directoryId,
-      );
+    handler: async ({ params, user }) => {
+      const folio = await this.folioRows.findOne({
+        where: { id: { eq: params.folioId } },
+      });
+      if (!folio) throw new NotFoundError("Folio not found");
+      await this.security.assertMember(folio.projectId, user);
+      const blobs = await this.blobService.listByFolio(params.folioId);
       const hydrated = await Promise.all(
         blobs.map((b) => this.hydrate(b.fileId)),
       );
       return hydrated.filter((x) => x !== undefined);
-    },
-  });
-
-  /**
-   * Flat list of every blob in the project, for the folio tree.
-   *
-   * Separate from `listBlobs`, which is directory-scoped and treats a missing
-   * `directoryId` as "the root" — the tree needs the whole set at once, the
-   * same way it gets directories from `listAllDirectories`. Deliberately not a
-   * flag on `listBlobs`: "no directory" already means something there, and
-   * overloading it would make the root case indistinguishable from the all
-   * case at the call site.
-   */
-  listAllBlobs = $action({
-    use: [$secure({ permissions: ["folio:read"] })],
-    path: "/projects/:projectId/folio/blobs/all",
-    description: "Flat list of every blob in the project.",
-    schema: {
-      params: z.object({ projectId: z.integer() }),
-      response: z.array(
-        z.object({
-          fileId: z.uuid(),
-          shortId: z.integer(),
-          name: z.string(),
-          directoryId: z.uuid().optional(),
-          updatedAt: z.string(),
-        }),
-      ),
-    },
-    handler: async ({ params, user }) => {
-      await this.security.assertMember(params.projectId, user);
-      const rows = await this.blobService.listAll(params.projectId);
-      return rows.map((b) => ({
-        fileId: b.fileId,
-        shortId: b.shortId,
-        name: b.name,
-        directoryId: b.directoryId,
-        updatedAt: b.updatedAt,
-      }));
     },
   });
 
@@ -207,7 +168,7 @@ export class BlobController {
       body: z.object({
         fileId: z.uuid(),
         name: z.string().min(1).max(200),
-        directoryId: z.uuid().optional(),
+        folioId: z.uuid(),
       }),
       response: folioBlobs.schema,
     },
@@ -215,7 +176,7 @@ export class BlobController {
       await this.security.assertMember(params.projectId, user);
       return this.blobService.register({
         projectId: params.projectId,
-        directoryId: body.directoryId,
+        folioId: body.folioId,
         name: body.name,
         fileId: body.fileId,
       });
@@ -236,23 +197,6 @@ export class BlobController {
       if (!blob) throw new NotFoundError("Blob not found");
       await this.security.assertMember(blob.projectId, user);
       return this.blobService.rename(params.id, body.name);
-    },
-  });
-
-  moveBlob = $action({
-    use: [$secure({ permissions: ["folio:write"] }), $transactional()],
-    path: "/folio/blobs/:id/move",
-    description: "Move a folio blob to a new directory (or to root).",
-    schema: {
-      params: z.object({ id: z.uuid() }),
-      body: z.object({ directoryId: z.uuid().optional() }),
-      response: folioBlobs.schema,
-    },
-    handler: async ({ params, body, user }) => {
-      const blob = await this.blobService.findById(params.id);
-      if (!blob) throw new NotFoundError("Blob not found");
-      await this.security.assertMember(blob.projectId, user);
-      return this.blobService.move(params.id, body.directoryId);
     },
   });
 

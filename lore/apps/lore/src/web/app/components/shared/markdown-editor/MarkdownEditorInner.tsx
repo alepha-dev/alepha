@@ -44,6 +44,31 @@ export interface MarkdownEditorInnerProps {
    * omitted, the image plugin and its toolbar button are not mounted.
    */
   imageUploadHandler?: (file: File) => Promise<string>;
+  /**
+   * Turns a stored image `src` into one the browser can actually load.
+   *
+   * Folio content stores `assets/<name>` (see `useFolioImageUpload` for
+   * why), which is a real relative path once exported but resolves to
+   * nothing against the app's own URL. MDXEditor calls this for every image
+   * it renders, so the editor shows the picture instead of a broken icon
+   * without the stored markdown ever changing.
+   */
+  imagePreviewHandler?: (src: string) => Promise<string>;
+  /**
+   * Enables MDXEditor's own image resize handles.
+   *
+   * Off by default, and that default is load-bearing. A resized image
+   * serialises to `<img width="…" src="…" />`, and quest descriptions pass
+   * through `QuestService.sanitizeHtml` on save — which rebuilds every
+   * allowed tag as a bare `<tag>`, stripping ALL attributes. A resized
+   * image there would be persisted as `<img>` with its `src` destroyed:
+   * data loss on save, not merely a lost width.
+   *
+   * Folios do not go through that path (their content is markdown stored
+   * verbatim), and `@alepha/ui`'s `rehypeSafeImg` is what renders the
+   * result, so the folio workspace opts in.
+   */
+  allowImageResize?: boolean;
   minHeight?: number;
   /**
    * Replaces the default toolbar contents. Rendered inside MDXEditor's
@@ -184,7 +209,14 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
         ? [
             imagePlugin({
               imageUploadHandler: props.imageUploadHandler,
-              disableImageResize: true,
+              imagePreviewHandler: props.imagePreviewHandler,
+              // MDXEditor's own resize: 8 pointer handles clamped to the
+              // editor width, plus draggable nodes. An UN-resized image
+              // still serialises as plain `![alt](src)` markdown, so
+              // nothing changes until the author drags a handle. See
+              // `allowImageResize` above for why this is opt-in.
+              disableImageResize: !props.allowImageResize,
+              allowSetImageDimensions: props.allowImageResize,
             }),
           ]
         : []),
@@ -220,9 +252,10 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
     // Presence, not identity, decides the plugin set — for the upload
     // handler and for the wiki-link context alike. Depending on either
     // object would remount the editor (and drop the caret) on every render
-    // of the owning form.
-    // biome-ignore lint/correctness/useExhaustiveDependencies: see above
-  }, [!!props.imageUploadHandler, !!props.wikiLinks]);
+    // of the owning form. `allowImageResize` is already a boolean, so it is
+    // listed plainly; adding it is what made the suppression that used to
+    // sit here unnecessary.
+  }, [!!props.imageUploadHandler, !!props.wikiLinks, props.allowImageResize]);
 
   return (
     <div

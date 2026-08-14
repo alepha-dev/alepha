@@ -143,6 +143,7 @@ export default {
   "folios.editor.action.move": "Déplacer vers…",
   "folios.editor.action.pin": "Épingler au contexte",
   "folios.editor.action.unpin": "Désépingler",
+  "folios.editor.export.zip-failed": "Impossible de créer l'archive :",
   "folios.editor.action.export": "Exporter en .md",
   "folios.editor.action.encrypt": "Chiffrer…",
   "folios.editor.action.remove-protection": "Supprimer la protection",
@@ -209,8 +210,6 @@ export default {
   "folios.editor.tree.title": "Folios",
   "folios.editor.tree.new-folio": "Nouveau folio",
   "folios.editor.tree.new-directory": "Nouveau dossier",
-  "folios.editor.tree.upload": "Téléverser des fichiers",
-  "folios.editor.tree.upload-failed": "Échec du téléversement",
   "folios.editor.tree.empty": "Aucun folio pour l'instant.",
   "folios.editor.tree.untitled-folio": "Nouveau folio",
   "folios.editor.tree.untitled-directory": "Nouveau dossier",
@@ -227,6 +226,22 @@ export default {
   "folios.editor.inspector.expand": "Afficher l'inspecteur",
   "folios.editor.inspector.history": "Historique",
   "folios.editor.inspector.links": "Liens",
+  "folios.editor.inspector.attachments": "Fichiers",
+  "folios.editor.inspector.attachments-add": "Ajouter des fichiers",
+  "folios.editor.inspector.attachments-empty": "Aucun fichier joint.",
+  "folios.editor.inspector.attachments-unsaved":
+    "Enregistrez le folio avant de joindre des fichiers.",
+  "folios.editor.inspector.attachments-rename-title": "Renommer le fichier",
+  "folios.editor.inspector.attachments-rename-body":
+    "Les références dans ce folio sont mises à jour automatiquement.",
+  "folios.editor.inspector.attachments-copy-ref":
+    "Copier la référence markdown",
+  "folios.editor.inspector.attachments-total": "$1 fichiers · $2",
+  "folios.editor.inspector.attachments-upload-failed": "Échec de l'envoi",
+  "folios.editor.inspector.attachments-confirm-delete-title":
+    "Supprimer le fichier ?",
+  "folios.editor.inspector.attachments-confirm-delete":
+    "Supprimer « $1 » ? Toute référence à ce fichier dans ce folio cessera de fonctionner.",
   "folios.editor.inspector.outline-empty":
     "Les titres apparaissent ici à mesure que vous écrivez.",
   "folios.editor.inspector.history-footer":

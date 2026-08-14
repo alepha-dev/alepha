@@ -82,10 +82,11 @@ export const folioExportFilename = (title: string): string =>
  */
 export const triggerFolioDownload = (
   filename: string,
-  body: string,
+  body: string | Blob,
   mime: string,
 ): void => {
-  const blob = new Blob([body], { type: mime });
+  const blob =
+    typeof body === "string" ? new Blob([body], { type: mime }) : body;
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
