@@ -5,7 +5,7 @@ export default {
   "language.en": "English",
   "language.fr": "Français",
 
-  "header.actions.profile": "Profile",
+  "header.actions.profile": "User Account",
   "header.actions.login": "Sign In",
   "header.actions.logout": "Logout",
   "header.actions.admin": "Admin Panel",

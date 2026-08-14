@@ -2,7 +2,7 @@ export default {
   "language.en": "English",
   "language.fr": "Français",
 
-  "header.actions.profile": "Héros",
+  "header.actions.profile": "Mon compte",
   "header.actions.login": "Se connecter",
   "header.actions.logout": "Deconnexion",
   "header.actions.admin": "Panneau admin",
