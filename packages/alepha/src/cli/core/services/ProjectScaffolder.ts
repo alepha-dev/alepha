@@ -3,11 +3,13 @@ import { $inject, AlephaError } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
+import type { Preset } from "../schemas/presetSchema.ts";
 import { agentMd } from "../templates/agentMd.ts";
 import { alephaConfigTs } from "../templates/alephaConfigTs.ts";
 import { apiHelloControllerTs } from "../templates/apiHelloControllerTs.ts";
 import { apiHelloResponseSchemaTs } from "../templates/apiHelloResponseSchemaTs.ts";
 import { apiIndexTs } from "../templates/apiIndexTs.ts";
+import { apiRealmTs } from "../templates/apiRealmTs.ts";
 import { biomeJson } from "../templates/biomeJson.ts";
 import { dummySpecTs } from "../templates/dummySpecTs.ts";
 import { editorconfig } from "../templates/editorconfig.ts";
@@ -79,13 +81,17 @@ export class ProjectScaffolder {
       editorconfig?: boolean;
       /**
        * Write `.env.example`, the committed template for `.env`.
+       *
+       * Pass `{ database: true }` to document `DATABASE_URL` alongside
+       * `APP_SECRET`.
        */
-      envExample?: boolean;
+      envExample?: boolean | { database?: boolean };
       /**
-       * `true` writes the file with no devtools section — pass
-       * `{ devtools: true }` to document the `/__devtools/api/` endpoints.
+       * `true` writes the file with no optional sections — pass
+       * `{ devtools: true }` to document the `/__devtools/api/` endpoints and
+       * `{ saas: true }` to document the identity surface.
        */
-      agentMd?: boolean | { devtools?: boolean };
+      agentMd?: boolean | { devtools?: boolean; saas?: boolean };
       /**
        * Write `.vscode/settings.json` pointing the editor's TypeScript
        * server at the `typescript` copy embedded in `alepha`.
@@ -117,14 +123,23 @@ export class ProjectScaffolder {
       tasks.push(this.ensureEditorConfig(root, { force, checkWorkspace }));
     }
     if (opts.envExample) {
-      tasks.push(this.ensureEnvExample(root, { force }));
+      tasks.push(
+        this.ensureEnvExample(root, {
+          force,
+          database:
+            typeof opts.envExample === "boolean"
+              ? false
+              : opts.envExample.database,
+        }),
+      );
     }
     if (opts.agentMd) {
+      const agentMdOpts = typeof opts.agentMd === "boolean" ? {} : opts.agentMd;
       tasks.push(
         this.ensureAgentMd(root, {
           force,
-          devtools:
-            typeof opts.agentMd === "boolean" ? false : opts.agentMd.devtools,
+          devtools: agentMdOpts.devtools,
+          saas: agentMdOpts.saas,
         }),
       );
     }
@@ -189,9 +204,14 @@ export class ProjectScaffolder {
    */
   public async ensureEnvExample(
     root: string,
-    opts: { force?: boolean } = {},
+    opts: { force?: boolean; database?: boolean } = {},
   ): Promise<void> {
-    await this.ensureFile(root, ".env.example", envExample(), opts.force);
+    await this.ensureFile(
+      root,
+      ".env.example",
+      envExample({ database: opts.database }),
+      opts.force,
+    );
   }
 
   /**
@@ -265,13 +285,13 @@ export class ProjectScaffolder {
    */
   public async ensureAgentMd(
     root: string,
-    options: { force?: boolean; devtools?: boolean } = {},
+    options: { force?: boolean; devtools?: boolean; saas?: boolean } = {},
   ): Promise<void> {
     await Promise.all([
       this.ensureFile(
         root,
         "AGENTS.md",
-        agentMd({ devtools: options.devtools }),
+        agentMd({ devtools: options.devtools, saas: options.saas }),
         options.force,
       ),
       this.ensureFile(root, "CLAUDE.md", "@AGENTS.md\n", options.force),
@@ -324,10 +344,11 @@ export class ProjectScaffolder {
    * Creates:
    * - src/api/index.ts (API module)
    * - src/api/controllers/HelloController.ts (example controller)
+   * - src/api/Realm.ts (saas preset only)
    */
   public async ensureApiProject(
     root: string,
-    opts: { force?: boolean } = {},
+    opts: { force?: boolean; saas?: boolean } = {},
   ): Promise<void> {
     const appName = this.getAppName(root);
 
@@ -343,9 +364,21 @@ export class ProjectScaffolder {
     await this.ensureFile(
       root,
       "src/api/index.ts",
-      apiIndexTs({ appName }),
+      apiIndexTs({ appName, saas: opts.saas }),
       opts.force,
     );
+
+    // Sits at the module root rather than under controllers/ or schemas/: a
+    // realm is neither, and it is the one file in the preset a new project is
+    // guaranteed to edit.
+    if (opts.saas) {
+      await this.ensureFile(
+        root,
+        "src/api/Realm.ts",
+        apiRealmTs({ appName }),
+        opts.force,
+      );
+    }
     await this.ensureFile(
       root,
       "src/api/controllers/HelloController.ts",
@@ -377,6 +410,7 @@ export class ProjectScaffolder {
     root: string,
     opts: {
       force?: boolean;
+      saas?: boolean;
     } = {},
   ): Promise<void> {
     const appName = this.getAppName(root);
@@ -391,7 +425,12 @@ export class ProjectScaffolder {
     await this.ensureFile(root, "public/favicon.svg", logoSvg, opts.force);
 
     // src/main.css
-    await this.ensureFile(root, "src/main.css", mainCss(), opts.force);
+    await this.ensureFile(
+      root,
+      "src/main.css",
+      mainCss({ ui: opts.saas }),
+      opts.force,
+    );
 
     // vite.config.ts (Tailwind CSS plugin)
     await this.ensureFile(root, "vite.config.ts", viteConfigTs(), opts.force);
@@ -400,7 +439,7 @@ export class ProjectScaffolder {
     await this.ensureFile(
       root,
       "src/web/index.ts",
-      webIndexTs({ appName }),
+      webIndexTs({ appName, saas: opts.saas }),
       opts.force,
     );
     await this.ensureFile(
@@ -468,6 +507,7 @@ export class ProjectScaffolder {
     run: RunnerMethod;
     root: string;
     flags: {
+      preset?: Preset;
       pm?: "yarn" | "npm" | "pnpm" | "bun";
       force?: boolean;
       "no-devtools"?: boolean;
@@ -548,6 +588,17 @@ export class ProjectScaffolder {
     const isExpo = await this.pm.hasExpo(root);
     const web = !isExpo;
 
+    // All three saas routers are React pages, so the preset has nothing to
+    // mount without the web module. Refusing beats scaffolding an api-only
+    // project that quietly ignored the flag — the difference would only
+    // surface as a missing /admin much later.
+    const saas = (flags.preset ?? "default") === "saas";
+    if (saas && !web) {
+      throw new AlephaError(
+        "The saas preset needs the web module, which is skipped for expo projects (expo owns its own client runtime). Use the default preset here.",
+      );
+    }
+
     // Devtools is on by default for apps and never for workspace packages —
     // a library has no Vite dev shell for the overlay to attach to.
     const devtools = !flags["no-devtools"] && !workspace.isPackage;
@@ -564,14 +615,15 @@ export class ProjectScaffolder {
             tailwind: web,
             isPackage: workspace.isPackage,
             devtools,
+            ui: saas,
           },
           tsconfigJson: !workspace.config.tsconfigJson,
           biomeJson: true,
           editorconfig: !workspace.config.editorconfig,
           // Same rule as the agent files: a project root owns its env, a
           // monorepo sub-package reads the workspace root's.
-          envExample: writeAgentMd,
-          agentMd: writeAgentMd && { devtools },
+          envExample: writeAgentMd && { database: saas },
+          agentMd: writeAgentMd && { devtools, saas },
           // Editor TS-server pointer at a project root only; monorepo
           // sub-packages inherit the workspace-root `.vscode/`.
           vscodeSettings: writeAgentMd,
@@ -580,11 +632,12 @@ export class ProjectScaffolder {
         // Create alepha.config.ts with documented options
         await this.ensureAlephaConfig(root, { force, devtools });
 
-        // Every project gets the same structure
+        // Every project gets the same structure; the preset only decides
+        // what is mounted on top of it.
         await this.ensureMainServerTs(root, { react: web, force });
-        await this.ensureApiProject(root, { force });
+        await this.ensureApiProject(root, { force, saas });
         if (web) {
-          await this.ensureWebProject(root, { force });
+          await this.ensureWebProject(root, { force, saas });
         }
       },
     });

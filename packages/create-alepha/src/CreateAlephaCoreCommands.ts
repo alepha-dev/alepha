@@ -1,5 +1,5 @@
 import { $inject, z } from "alepha";
-import { ProjectScaffolder } from "alepha/cli";
+import { ProjectScaffolder, presetSchema } from "alepha/cli";
 import { $command } from "alepha/command";
 import { FileSystemProvider } from "alepha/system";
 
@@ -12,13 +12,22 @@ export class CreateAlephaCoreCommands {
    *
    * There used to be a "which template?" question offering minimal / api /
    * full-stack / full-stack + saas, mapped to `--api`, `--react`, `--tailwind`
-   * and `--saas`. `alepha init` dropped those flags when it settled on a single
-   * project shape ("Every project gets the same full-stack shape […] There is
-   * nothing to opt into"), and the extra keys reached it through an `as any`,
-   * so they were silently ignored and all four answers built the same project.
-   * The question is gone rather than reinstated: the flags it fed no longer
-   * exist, and asking something whose answer is discarded is worse than not
-   * asking.
+   * and `--saas`. Those four keys reached `init` through an `as any` and were
+   * silently ignored, so all four answers built the same project; the question
+   * was removed along with them when `init` settled on a single shape.
+   *
+   * `--preset` is not that question coming back. The old flags cut *below* the
+   * project skeleton — whether you got an API, a client, Tailwind — which is
+   * exactly the axis that made two Alepha projects unrecognisable to each
+   * other. A preset cuts above it: every project still has `src/api/`,
+   * `src/web/` and Tailwind in the same places, and `saas` only decides
+   * whether the identity surface is mounted on top. It is also typed and
+   * forwarded, so a value this package accepts but `init` does not is a
+   * compile error rather than a silently dropped key.
+   *
+   * Still not a prompt, though. A preset is a decision about the project, and
+   * the name is already positional, so `create-alepha my-app --preset saas`
+   * runs start to finish without one — which is what a CI needs.
    *
    * The package-manager question went the same way, for a different reason: it
    * was asking something the CLI already knows. `PackageManagerUtils` reads
@@ -40,6 +49,11 @@ export class CreateAlephaCoreCommands {
       })
       .optional(),
     flags: z.object({
+      preset: presetSchema
+        .describe(
+          "Project shape: 'default' (API + web + Tailwind) or 'saas' (adds @alepha/ui with auth, account and admin)",
+        )
+        .optional(),
       pm: z
         .enum(["yarn", "npm", "pnpm", "bun"])
         .describe("Package manager to use")
@@ -75,7 +89,7 @@ export class CreateAlephaCoreCommands {
       await this.scaffolder.init({
         run,
         root,
-        flags: { pm: flags.pm },
+        flags: { pm: flags.pm, preset: flags.preset },
         args: name,
       });
 

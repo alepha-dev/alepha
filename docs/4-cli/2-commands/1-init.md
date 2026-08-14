@@ -12,13 +12,24 @@ alepha dev
 
 That's it. You now have a working full-stack Alepha project.
 
-## One Shape, Always
+## One Shape, Two Presets
 
-There is nothing to opt into. Every Alepha project gets the same structure: an API module, a React web module with SSR, and Tailwind CSS.
+Every Alepha project gets the same structure: an API module, a React web module with SSR, and Tailwind CSS. That part is not configurable, and deliberately so. A single canonical layout means anyone opening an Alepha project — a teammate, a contributor, or an AI assistant — already knows where everything lives. Scaffolding that lets you move the furniture buys a little convenience up front and costs you a code base that looks different in every repository.
 
-This is deliberate. A single canonical layout means anyone opening an Alepha project — a teammate, a contributor, or an AI assistant — already knows where everything lives. Configurable scaffolding buys a little convenience up front and costs you a code base that looks different in every repository.
+A preset does not move the furniture. It decides what is mounted on top of it:
 
-If you don't need the web module, delete `src/web/`. That is easier than remembering which flags you passed six months ago.
+| Preset | What you get |
+|---|---|
+| `default` | The skeleton. API module, web module, Tailwind. |
+| `saas` | The skeleton **plus** the identity surface: `@alepha/ui`, sign-in, an account area and an admin console. |
+
+```bash
+alepha init my-app --preset=saas
+```
+
+Both produce the same `src/api/`, `src/web/`, `src/main.server.ts` and `src/main.css`. Nothing is renamed or relocated between them, so the "which flags did I pass six months ago?" question has no purchase — you can see the answer by looking at `src/web/index.ts`.
+
+This is the one axis worth branching on because it is the one you cannot easily add later by deleting something. Going the other way is trivial: if you don't need the web module, delete `src/web/`.
 
 ## What It Does
 
@@ -34,6 +45,7 @@ If you don't need the web module, delete `src/web/`. That is easier than remembe
 
 | Flag | Description |
 |------|-------------|
+| `--preset <name>` | Project shape: `default` (the default) or `saas` |
 | `--pm <manager>` | Package manager to use: `yarn`, `npm`, `pnpm`, or `bun` |
 | `--force`, `-f` | Override existing files |
 | `--no-devtools` | Skip `@alepha/devtools` (dev-only, no production bundle cost) |
@@ -75,8 +87,7 @@ my-app/
 ├── test/dummy.spec.ts
 ├── public/favicon.svg
 ├── alepha.config.ts
-├── vite.config.ts                   # Tailwind plugin
-├── vitest.config.ts
+├── vite.config.ts                   # Tailwind plugin + Vitest config
 ├── tsconfig.json
 ├── biome.json
 ├── .editorconfig
@@ -90,6 +101,67 @@ The router is wired to the API out of the box — `AppRouter.ts` calls `HelloCon
 **Dependencies:** `alepha`, `react`, `react-dom` and, as dev dependencies, `@types/react`, `tailwindcss`, `@tailwindcss/vite`, `@alepha/devtools`.
 
 The toolchain — TypeScript, Vite, Vitest, Biome, drizzle-kit — ships embedded in `alepha` and never appears in your `package.json`. Upgrading `alepha` moves the whole toolchain at once.
+
+## The `saas` Preset
+
+```bash
+alepha init my-app --preset=saas
+```
+
+Everything above, plus a working identity surface on first run:
+
+| Route | What's there |
+|---|---|
+| `/auth/*` | Login, register, password reset, email verification |
+| `/account/*` | Profile, security, sessions, API keys, connected apps |
+| `/admin/*` | Users, sessions, keys, audit log — and any other console page whose module you mount |
+
+It adds one dependency, `@alepha/ui`, and three files' worth of difference:
+
+```
+src/
+├── api/
+│   ├── Realm.ts                     # ← new: $realm + the admin:ui permission
+│   └── index.ts                     # + AlephaOrm, AlephaApiUsers
+├── web/index.ts                     # + AuthRouter, AccountRouter, AdminRouter
+└── main.css                         # @import "@alepha/ui/styles.css"
+```
+
+Note what is *not* there: no chrome file, and no changes to `main.server.ts` or `main.browser.ts`. The router options atoms default to `{}`, and their `homeRouteName` / `loginRouteName` defaults already point at the pages this scaffold mounts. Configure them when you want your own branding, not before.
+
+### Your first admin
+
+`src/api/Realm.ts` ships with an empty `adminEmails`, so nothing is an admin yet. Put your address in it before you register:
+
+```typescript
+settings: {
+  adminEmails: ["you@yourcompany.com"],
+}
+```
+
+The first registration matching that address is promoted to admin, which is what gets you into `/admin`. The list is empty rather than pre-filled because a scaffolded placeholder address is a real address someone else could register, and the promotion is automatic.
+
+### What's on, and what isn't
+
+`Realm.ts` enables only what the database alone can back — `audits` and `apiKeys`. Everything else (`jobs`, `notifications`, `avatars`, `parameters`, `oauth`) needs a queue, a mailer or a bucket, so it stays off until you have wired the provider.
+
+That is also why `verifyEmailRequired` and `resetPasswordAllowed` are `false`: both can only complete by sending a code, and `$realm` forces them off whenever `notifications` is off. Turn on `notifications`, configure a mail provider, then turn them on.
+
+Admin and account pages follow the same rule automatically. Each one resolves its action against `/api/_links` and hides when it is absent, so turning on a feature makes its screens appear and removing a module takes its screens away — you never get a nav entry pointing at a 404.
+
+### Database
+
+The preset mounts `AlephaOrm`, so `.env.example` carries a `DATABASE_URL` defaulting to a local sqlite file. In development `DATABASE_SYNC` defaults to `true`: your entities are pushed to the database on boot, and there is nothing to generate before the first `alepha dev`.
+
+Before deploying, freeze the schema:
+
+```bash
+alepha db migrations create
+```
+
+### Not available for Expo
+
+Expo brings its own client runtime, so `init` skips the web module for it — and all three routers are React pages. `--preset=saas` in an Expo project fails rather than quietly scaffolding an API with no UI.
 
 ## Empty Directory Check
 
@@ -113,7 +185,7 @@ Step 3 reads `npm_config_user_agent`, which every package manager sets when it s
 
 Vitest ships embedded in `alepha`, so `alepha test` works with nothing to install.
 
-- `vitest.config.ts` — Pins `test.root` so a parent monorepo's vitest config doesn't take over
+- `vite.config.ts` — Carries the `test` block, including the `test.root` that stops a parent monorepo's vitest config taking over. One file, so plugins and aliases can't drift between the build and the tests
 - `test/dummy.spec.ts` — A starter test, also a worked example
 - a `"test": "alepha test"` script
 

@@ -63,6 +63,7 @@ export * from "./providers/AppEntryProvider.ts";
 export * from "./providers/ViteBuildProvider.ts";
 export * from "./providers/ViteDevServerProvider.ts";
 export * from "./schemas/buildManifest.ts";
+export * from "./schemas/presetSchema.ts";
 export * from "./services/AlephaCliUtils.ts";
 export * from "./services/GitMessageParser.ts";
 export * from "./services/PackageManagerUtils.ts";

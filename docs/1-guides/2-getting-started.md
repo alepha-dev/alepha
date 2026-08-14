@@ -241,7 +241,7 @@ See the [Platform Plugin](/docs/cli/plugins/platform) guide for full configurati
 
 ## Project Structure
 
-`alepha init` always scaffolds this structure:
+`alepha init` scaffolds this structure, whichever preset you pick:
 
 ```
 my-app/
@@ -266,6 +266,21 @@ my-app/
       components/
         Home.tsx            # Example React component
 ```
+
+### Presets
+
+The layout above is fixed. A preset only decides what is mounted on top of it:
+
+```bash
+npx alepha init my-app --preset=saas
+```
+
+`saas` adds `@alepha/ui` and three routers — sign-in at `/auth/*`, an account
+area at `/account/*`, an admin console at `/admin/*` — plus the `$realm` in
+`src/api/Realm.ts` that configures them. Nothing moves; you get one extra file
+and a longer `src/web/index.ts`.
+
+Full details in the [init command reference](/docs/cli/commands/init).
 
 ### Devtools
 

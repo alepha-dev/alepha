@@ -2,8 +2,17 @@
  * `devtools` adds the `## Devtools API` section. Gated on the same flag as the
  * plugin itself: documenting endpoints that were never installed sends the
  * reader to a 404 and costs them the time to work out why.
+ *
+ * `saas` adds `## Identity`, for the same reason in reverse: the structure
+ * table below states there are no variants, which stops being true the moment
+ * the preset puts a `Realm.ts` next to `index.ts` and mounts three routers
+ * that declare pages no file in `src/web/` mentions. An agent working from the
+ * unqualified table looks for the admin console in `AppRouter.ts`, does not
+ * find it, and writes a second one.
  */
-export const agentMd = (opts: { devtools?: boolean } = {}): string => {
+export const agentMd = (
+  opts: { devtools?: boolean; saas?: boolean } = {},
+): string => {
   const devtools = opts.devtools
     ? `
 ## Devtools API (dev server only)
@@ -35,6 +44,42 @@ plugin — none of it reaches a production build.
 `
     : "";
 
+  const saas = opts.saas
+    ? `
+## Identity
+
+This project uses the \`saas\` preset, so three routers from \`@alepha/ui\` are
+registered in \`src/web/index.ts\` and mount pages of their own:
+
+| Route | Router | Source |
+|---|---|---|
+| \`/auth/*\` | \`AuthRouter\` | \`@alepha/ui/components/auth/auth-router\` |
+| \`/account/*\` | \`AccountRouter\` | \`@alepha/ui/components/account/account-router\` |
+| \`/admin/*\` | \`AdminRouter\` | \`@alepha/ui/components/admin/admin-router\` |
+
+**These pages are not in \`src/web/\`.** Don't write your own login or admin
+screen — extend the shells instead: \`$pageAdmin\` and \`$pageAccount\` add a page
+to the existing nav in one call. Chrome (branding, nav extras, page props)
+goes through \`adminRouterOptionsAtom\` / \`accountRouterOptionsAtom\`, set with
+\`alepha.set(...)\` from **both** \`main.server.ts\` and \`main.browser.ts\`.
+
+\`src/api/Realm.ts\` is the switchboard for all of it:
+
+- \`settings.adminEmails\` — the first registration matching one of these is
+  promoted to admin. Empty by default, so set it before registering.
+- \`features\` — \`audits\` and \`apiKeys\` are on; \`jobs\`, \`notifications\`,
+  \`avatars\`, \`parameters\` and \`oauth\` each need a provider first. Turning one
+  on registers its module *and* makes its admin/account screens appear.
+- \`verifyEmailRequired\` / \`resetPasswordAllowed\` are forced to \`false\`
+  whenever \`features.notifications\` is off — setting them without it has no
+  effect.
+
+Pages hide themselves when the action behind them is missing from
+\`/api/_links\`, so a missing nav entry means the module is not mounted, not
+that the page is broken.
+`
+    : "";
+
   return `# AGENTS.md
 
 This is an **Alepha** project.
@@ -50,7 +95,12 @@ src/
 │   ├── controllers/      # $action endpoints
 │   ├── services/         # Business logic
 │   ├── entities/         # $entity definitions
-│   ├── schemas/          # Request/response schemas
+│   ├── schemas/          # Request/response schemas${
+    opts.saas
+      ? `
+│   ├── Realm.ts          # $realm — auth settings & features`
+      : ""
+  }
 │   └── index.ts          # ApiModule ($module)
 ├── web/                  # Frontend (React, SSR)
 │   ├── components/       # React components
@@ -96,7 +146,7 @@ alepha platform plan     # Show planned cloud topology (requires platform plugin
 alepha platform up       # Provision + deploy to a configured environment
 alepha platform status   # Inspect deployed resources
 \`\`\`
-${devtools}
+${saas}${devtools}
 ## Testing
 
 - Specs live in \`test/\`, named \`*.spec.ts\`.

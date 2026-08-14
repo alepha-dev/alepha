@@ -10,7 +10,11 @@ Create a new project:
 npx alepha init my-app
 ```
 
-This scaffolds a full-stack project — API, React web module, and Tailwind — and adds `alepha` as a dependency. From then on, run commands from your project directory:
+This scaffolds a full-stack project — API, React web module, and Tailwind — and adds `alepha` as a dependency.
+
+Building something that needs accounts? Add `--preset=saas` and you also get sign-in, an account area and an admin console, wired and running on first boot. See [init](./2-commands/1-init.md#the-saas-preset).
+
+From then on, run commands from your project directory:
 
 ```bash
 npx alepha dev

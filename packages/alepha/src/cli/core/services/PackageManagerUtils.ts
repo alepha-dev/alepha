@@ -539,6 +539,15 @@ export class PackageManagerUtils {
       devDependencies["@alepha/devtools"] = `^${version}`;
     }
 
+    // One line, because `@alepha/ui` carries its own runtime deps
+    // (`lucide-react`, `@base-ui/react`, `recharts`, …) rather than listing
+    // them as peers. Same `version` as `alepha` and for a stronger reason
+    // than devtools: its `alepha` peer range is exact, so the two only ever
+    // resolve together.
+    if (modes.ui) {
+      dependencies["@alepha/ui"] = `^${version}`;
+    }
+
     return {
       type: "module",
       dependencies,
@@ -573,4 +582,9 @@ export interface DependencyModes {
    * default on for apps, always off for workspace packages.
    */
   devtools?: boolean;
+  /**
+   * Whether to depend on `@alepha/ui`. Set by the `saas` preset, which mounts
+   * its auth, account and admin routers.
+   */
+  ui?: boolean;
 }
