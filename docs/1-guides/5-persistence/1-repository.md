@@ -456,6 +456,33 @@ Every repository operation inside the handler automatically participates in the 
 
 Concurrency is safe too: each `transactional()` call runs in its own context, so two blocks started at the same time — `Promise.all`, two requests, a job racing a handler — never read or write through each other's transaction.
 
+### After the commit
+
+Side effects that must only happen once the data is durable — emitting a domain event, sending an email — do not belong inside the transaction: subscribers would read uncommitted rows and every lock the transaction holds stays held while they run. Register them with `DatabaseProvider.afterCommit()` instead:
+
+```typescript
+import { $inject } from "alepha";
+import { DatabaseProvider } from "alepha/orm";
+
+class OrderService {
+  protected readonly db = $inject(DatabaseProvider);
+
+  async markPaid(id: string) {
+    return this.db.transactional(async () => {
+      const order = await this.orders.updateById(id, { status: "paid" });
+
+      await this.db.afterCommit(() =>
+        this.alepha.events.emit("commerce:order:paid", { orderId: order.id }),
+      );
+
+      return order;
+    });
+  }
+}
+```
+
+Because nested `transactional()` blocks join the outermost transaction, the callback waits for the *outermost* commit — even when the method is called from inside someone else's transaction. Callbacks run in registration order and are discarded if the transaction rolls back. Outside any transaction, `afterCommit` runs its callback immediately.
+
 ## Repository.of
 
 For inline repository creation without a separate entity variable:
