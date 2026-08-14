@@ -477,53 +477,23 @@ test.describe("Folio workspace", () => {
     await expect(page.getByText(/no folio open/i)).toHaveCount(0);
   });
 
-  test("11 — dropping a file on a directory row uploads it there", async () => {
-    // Its own directory rather than test 08's: every other test here leans on
-    // shared state, and the one thing this test must be sure of is WHICH
-    // directory the bytes landed in.
-    const dropDirName = `Drop-${stamp}`.slice(0, 24);
-    await page.goto(`/${projectSlug}/folios`);
-    const created = await page.evaluate(
-      async ({ pid, name }) => {
-        const r = await fetch(`/api/projects/${pid}/folio/directories`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ name }),
-        });
-        return `${r.status} ${await r.text()}`;
-      },
-      { pid: projectId, name: dropDirName },
-    );
-    expect(created).toMatch(/^200/);
-    await page.reload();
-    const dirRow = page
-      .locator('[data-slot="folio-tree-row"]', {
-        hasText: new RegExp(`^${dropDirName}$`),
-      })
-      .first();
-    await expect(dirRow).toBeVisible({ timeout: 15_000 });
+  test("11 — attachments upload to the open folio, not to a directory", async () => {
+    // Replaces the old "drop a file on a directory row" test, which drove a
+    // path that no longer exists: an attachment belongs to ONE folio now, so
+    // the tree neither shows nor accepts them. That test asserted the bytes
+    // landed in a particular DIRECTORY — a question the model can no longer
+    // even ask.
+    const url = await createFolio(`Attach-${stamp}`.slice(0, 24));
+    await page.goto(url);
+    await expect(
+      page.getByRole("textbox", { name: /editable markdown/i }),
+    ).toBeVisible({ timeout: 20_000 });
 
-    // A real OS file drop cannot be driven from Playwright — there is no
-    // page-side source element to start it from. Dispatching the two events
-    // with a hand-built `DataTransfer` carrying a `File` is the same thing
-    // from the handlers' point of view: `types` says "Files" on `dragover`
-    // and the bytes appear on `drop`, which is exactly the distinction the
-    // row makes between an external drop and one of its own rows moving.
-    const fileName = `dropped-${stamp}.txt`;
-    const dataTransfer = await page.evaluateHandle((name) => {
-      const dt = new DataTransfer();
-      dt.items.add(
-        new File(["hello dropped blob"], name, { type: "text/plain" }),
-      );
-      return dt;
-    }, fileName);
+    // The inspector's fourth tab owns attachments now.
+    await page.getByRole("tab", { name: /^files$/i }).click();
+    await expect(page.getByText(/no files attached yet/i)).toBeVisible();
 
-    await dirRow.dispatchEvent("dragover", { dataTransfer });
-    // The directory highlights while the drag hovers it — the whole point of
-    // telling a file drop from a row drag is that the target is legible.
-    await expect(dirRow).toHaveClass(/ring-primary/);
-
+    const fileName = `attached-${stamp}.txt`;
     const registered = page.waitForResponse(
       (r) =>
         /\/folio\/blobs$/.test(new URL(r.url()).pathname) &&
@@ -531,41 +501,41 @@ test.describe("Folio workspace", () => {
         r.status() === 200,
       { timeout: 20_000 },
     );
-    await dirRow.dispatchEvent("drop", { dataTransfer });
+    await page.locator('input[type="file"]').setInputFiles({
+      name: fileName,
+      mimeType: "text/plain",
+      buffer: Buffer.from("hello attachment"),
+    });
     await registered;
 
-    // The row appears in the tree under the directory it was dropped on —
-    // and the server agrees about which directory that is.
+    // It shows in the panel, and the folio's own list is what the server
+    // agrees it belongs to.
+    await expect(page.getByText(fileName)).toBeVisible({ timeout: 15_000 });
+
+    const folioShortId = Number(url.split("/").pop());
+    const names = await page.evaluate(
+      async ({ pid, shortId }) => {
+        const folioRes = await fetch(`/api/projects/${pid}/folios/${shortId}`, {
+          credentials: "include",
+        });
+        const folio = (await folioRes.json()) as { id: string };
+        const blobsRes = await fetch(`/api/folios/${folio.id}/blobs`, {
+          credentials: "include",
+        });
+        return ((await blobsRes.json()) as Array<{ name: string }>).map(
+          (b) => b.name,
+        );
+      },
+      { pid: projectId, shortId: folioShortId },
+    );
+    expect(names).toEqual([fileName]);
+
+    // And it is NOT a row in the tree — the whole point of the move.
     await expect(
       page.locator('[data-slot="folio-tree-row"]', {
         hasText: new RegExp(`^${fileName}$`),
       }),
-    ).toBeVisible({ timeout: 15_000 });
-
-    const parentName = await page.evaluate(
-      async ({ pid, name }) => {
-        const [blobsRes, dirsRes] = await Promise.all([
-          fetch(`/api/projects/${pid}/folio/blobs/all`, {
-            credentials: "include",
-          }),
-          fetch(`/api/projects/${pid}/folio/directories`, {
-            credentials: "include",
-          }),
-        ]);
-        const blobs = (await blobsRes.json()) as Array<{
-          name: string;
-          directoryId?: string;
-        }>;
-        const dirs = (await dirsRes.json()) as Array<{
-          id: string;
-          name: string;
-        }>;
-        const blob = blobs.find((b) => b.name === name);
-        return dirs.find((d) => d.id === blob?.directoryId)?.name ?? null;
-      },
-      { pid: projectId, name: fileName },
-    );
-    expect(parentName).toBe(dropDirName);
+    ).toHaveCount(0);
   });
 
   test("12 — wiki-links are live inside the editor body", async () => {

@@ -4,8 +4,8 @@ import { useI18n } from "alepha/react/i18n";
 import { type ReactElement, useMemo } from "react";
 import { createPortal } from "react-dom";
 import type { Folio } from "@/api/entities/folios.ts";
+import { currentFolioBlobsAtom } from "../../../../atoms/currentFolioBlobsAtom.ts";
 import { currentProjectAtom } from "../../../../atoms/currentProjectAtom.ts";
-import { projectBlobsAtom } from "../../../../atoms/projectBlobsAtom.ts";
 import { projectDirectoriesAtom } from "../../../../atoms/projectDirectoriesAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 import MarkdownEditor from "../../../shared/markdown-editor/MarkdownEditor.tsx";
@@ -103,7 +103,7 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
   const [directories] = useStore(projectDirectoriesAtom);
-  const [blobs] = useStore(projectBlobsAtom);
+  const [blobs] = useStore(currentFolioBlobsAtom);
   const [project] = useStore(currentProjectAtom);
 
   useFolioShortcuts(props.actions.handlers, props.actions.actionState);
@@ -114,12 +114,33 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
   const hoverBlobs = useMemo(
     () =>
       blobs.map((b) => ({
-        fileId: b.fileId,
+        fileId: b.id,
         shortId: b.shortId,
         name: b.name,
       })),
     [blobs],
   );
+
+  /**
+   * Content stores `assets/<name>`, which the browser cannot load — resolve
+   * it to the real file URL for display only. The markdown is untouched, so
+   * what gets saved (and exported) stays the portable relative path.
+   *
+   * An unknown name is returned unchanged rather than blanked: the editor
+   * then shows a broken image where the author put one, which is the honest
+   * signal that the attachment is gone.
+   */
+  const imagePreviewHandler = useMemo(() => {
+    const byName = new Map(
+      blobs.map((b) => [b.name.trim().toLowerCase(), b.id]),
+    );
+    return async (src: string): Promise<string> => {
+      const match = /^assets\/(.+)$/i.exec(src);
+      if (!match) return src;
+      const id = byName.get(decodeURIComponent(match[1]).trim().toLowerCase());
+      return id ? `/api/files/${id}` : src;
+    };
+  }, [blobs]);
 
   // Absent on every project that has not opted in — the key is deliberately
   // missing from `defaultProjectFeatures` (adding it there would change the
@@ -219,6 +240,8 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
             onChange={(v) => props.draft.form.input.content.set(v)}
             placeholder={tr("folios.content-placeholder")}
             imageUploadHandler={props.imageUploadHandler}
+            imagePreviewHandler={imagePreviewHandler}
+            allowImageResize
             wikiLinks={wikiLinks}
             minHeight={420}
             variant="bare"

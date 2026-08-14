@@ -25,6 +25,7 @@ import { currentAssignedQuestsAtom } from "./atoms/currentAssignedQuestsAtom.ts"
 import { currentBlightCountAtom } from "./atoms/currentBlightCountAtom.ts";
 import { currentFeedbackCountAtom } from "./atoms/currentFeedbackCountAtom.ts";
 import { currentFolioAtom } from "./atoms/currentFolioAtom.ts";
+import { currentFolioBlobsAtom } from "./atoms/currentFolioBlobsAtom.ts";
 import { currentFolioPathAtom } from "./atoms/currentFolioPathAtom.ts";
 import { currentMilestonesAtom } from "./atoms/currentMilestonesAtom.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
@@ -35,7 +36,6 @@ import { currentSigilAtom } from "./atoms/currentSigilAtom.ts";
 import { currentSigilInsightsAtom } from "./atoms/currentSigilInsightsAtom.ts";
 import { currentSigilsAtom } from "./atoms/currentSigilsAtom.ts";
 import { folioTagsAtom } from "./atoms/folioTagsAtom.ts";
-import { projectBlobsAtom } from "./atoms/projectBlobsAtom.ts";
 import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
 import { userFoliosAtom } from "./atoms/userFoliosAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
@@ -951,12 +951,9 @@ export class AppRouter {
       // table and its breadcrumb. The tree fetches what it needs on its
       // own, and a folio page sets its own breadcrumb from the folio's
       // `metadata.path`, so nothing downstream reads them any more.
-      const [folios, tags, blobs, directories] = await Promise.all([
+      const [folios, tags, directories] = await Promise.all([
         this.folioApi.list({ query: { limit: 100, projectId } }),
         this.folioApi.listTags({ query: { projectId } }),
-        // Uploaded files are tree rows too, so they load with the rest of
-        // the tree rather than from inside it — same auto-batch window.
-        this.blobApi.listAllBlobs({ params: { projectId: Number(projectId) } }),
         // Directories likewise, and this one is load-bearing: the tree's own
         // fallback `useQuery` is gated on `enabled: !seeded`, where "seeded"
         // is satisfied by `userFoliosAtom` ALONE. Any project with at least
@@ -972,7 +969,6 @@ export class AppRouter {
       ]);
       this.alepha.store.set(userFoliosAtom, folios);
       this.alepha.store.set(folioTagsAtom, tags);
-      this.alepha.store.set(projectBlobsAtom, blobs);
       this.alepha.store.set(projectDirectoriesAtom, directories);
       // `/folios` itself is just "Folios" in the header — a folio page
       // appends its own directory chain and title when it loads.
@@ -1025,14 +1021,10 @@ export class AppRouter {
       // navigating here from `/folios`) previously left this atom unset or
       // stale from a prior folio view.
       if (project) {
-        const [directories, blobs] = await Promise.all([
-          this.directoryApi.listAllDirectories({
-            params: { projectId: project.id },
-          }),
-          this.blobApi.listAllBlobs({ params: { projectId: project.id } }),
-        ]);
+        const directories = await this.directoryApi.listAllDirectories({
+          params: { projectId: project.id },
+        });
         this.alepha.store.set(projectDirectoriesAtom, directories);
-        this.alepha.store.set(projectBlobsAtom, blobs);
       }
       return { directoryId };
     },
@@ -1073,7 +1065,7 @@ export class AppRouter {
       // list + directory list (the workspace's tree pane, Task 9)
       // all arrive in one network hit, sparing the pane its own
       // mount-time fetch. See Lore #109.
-      const [folio, folios, directories, blobs] = await Promise.all([
+      const [folio, folios, directories] = await Promise.all([
         this.folioApi.getByShortId({
           params: { projectId: project.id, shortId: params.shortId },
           query: { withLinks: true, withPath: true },
@@ -1082,12 +1074,20 @@ export class AppRouter {
         this.directoryApi.listAllDirectories({
           params: { projectId: project.id },
         }),
-        this.blobApi.listAllBlobs({ params: { projectId: project.id } }),
       ]);
       this.alepha.store.set(currentFolioAtom, folio);
       this.alepha.store.set(userFoliosAtom, folios);
       this.alepha.store.set(projectDirectoriesAtom, directories);
-      this.alepha.store.set(projectBlobsAtom, blobs);
+      // Attachments need the folio's id, which only exists once the folio
+      // above has resolved — so this is a second round-trip rather than a
+      // fourth entry in the batch. Non-fatal: a folio that renders without
+      // its attachment list is degraded, not broken.
+      this.alepha.store.set(
+        currentFolioBlobsAtom,
+        await this.blobApi
+          .listBlobs({ params: { folioId: folio.id } })
+          .catch(() => []),
+      );
       // Populate the folio breadcrumb so the AppShell header reads
       // "Lore › Folios › <dirs…> › <folio title>". Cleared on leave
       // by the parent `projectFolios` route.

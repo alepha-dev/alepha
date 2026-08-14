@@ -803,14 +803,14 @@ export class FolioTools {
 
   blob_list = $tool({
     description:
-      "List blobs in a project (or a single directory). Each entry includes shortId, name, size, mimeType, and the optional sha256 + originalName.",
+      "List the attachments of one folio. Each entry includes shortId, name, size, mimeType, and the optional sha256 + originalName.",
     title: "List blobs",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
       params: z.object({
         project: z.integer().optional(),
         project_name: z.string().optional(),
-        directory_shortId: z.integer().optional(),
+        folio_shortId: z.integer(),
       }),
       result: z.object({
         blobs: z.array(
@@ -831,13 +831,12 @@ export class FolioTools {
         params.project,
         params.project_name,
       );
-      const directoryId = await this.resolveDirectoryShortId(
-        params.directory_shortId,
-        projectId,
-      );
+      const folioId = await this.resolveFolioId({
+        shortId: params.folio_shortId,
+        project: projectId,
+      });
       const blobs = await this.blobController.listBlobs({
-        params: { projectId },
-        query: { directoryId },
+        params: { folioId },
       });
       return {
         blobs: blobs.map((b) => ({
@@ -878,40 +877,6 @@ export class FolioTools {
       const updated = await this.blobController.renameBlob({
         params: { id: fileId },
         body: { name: params.name },
-      });
-      return { shortId: updated.shortId, name: updated.name };
-    },
-  });
-
-  blob_move = $tool({
-    description: "Move a blob to a different directory.",
-    title: "Move blob",
-    annotations: { idempotentHint: true, destructiveHint: false },
-    schema: {
-      params: z.object({
-        project: z.integer().optional(),
-        project_name: z.string().optional(),
-        blob_shortId: z.integer(),
-        new_directory_shortId: z.integer().optional(),
-      }),
-      result: z.object({ shortId: z.integer(), name: z.string() }),
-    },
-    handler: async ({ params }) => {
-      const projectId = await this.resolveProjectId(
-        params.project,
-        params.project_name,
-      );
-      const fileId = await this.resolveBlobFileId(
-        projectId,
-        params.blob_shortId,
-      );
-      const directoryId = await this.resolveDirectoryShortId(
-        params.new_directory_shortId,
-        projectId,
-      );
-      const updated = await this.blobController.moveBlob({
-        params: { id: fileId },
-        body: { directoryId },
       });
       return { shortId: updated.shortId, name: updated.name };
     },

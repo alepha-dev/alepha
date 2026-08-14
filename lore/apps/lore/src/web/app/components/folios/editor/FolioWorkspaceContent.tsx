@@ -150,6 +150,7 @@ const FolioWorkspaceContent = (
 
   const imageUploadHandler = useFolioImageUpload(
     project?.id,
+    props.folio?.id,
     !actions.actionState.isProtected,
   );
 
@@ -209,6 +210,7 @@ const FolioWorkspaceContent = (
               onRevisionCount={setRevisionCount}
               onReverted={actions.applyReverted}
               contentElement={contentElement}
+              protectedFolio={actions.actionState.isProtected}
               savedAt={draft.savedAt}
             />
           </div>

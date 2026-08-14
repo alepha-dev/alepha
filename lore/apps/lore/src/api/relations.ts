@@ -179,6 +179,10 @@ export const relations = $relations(schema, (r) => ({
       from: r.folios.id,
       to: r.folioRevisions.folioId,
     }),
+    blobs: r.many.folioBlobs({
+      from: r.folios.id,
+      to: r.folioBlobs.folioId,
+    }),
     /**
      * Only the outbound side is a relation. Inbound links are found by
      * `toId`, which is a polymorphic string rather than a reference.
@@ -215,10 +219,6 @@ export const relations = $relations(schema, (r) => ({
       from: r.folioDirectories.id,
       to: r.folios.directoryId,
     }),
-    blobs: r.many.folioBlobs({
-      from: r.folioDirectories.id,
-      to: r.folioBlobs.directoryId,
-    }),
   },
 
   folioBlobs: {
@@ -226,9 +226,9 @@ export const relations = $relations(schema, (r) => ({
       from: r.folioBlobs.projectId,
       to: r.projects.id,
     }),
-    directory: r.one.folioDirectories({
-      from: r.folioBlobs.directoryId,
-      to: r.folioDirectories.id,
+    folio: r.one.folios({
+      from: r.folioBlobs.folioId,
+      to: r.folios.id,
     }),
   },
 

@@ -102,6 +102,15 @@ export interface FolioWikiLinkResolver {
   resolve: (body: string) => WikiLinkTarget | undefined;
   /** Resolve a `blob:` embed target (`#42` or a uuid) to its row. */
   resolveBlob: (ref: string) => BlobRef | undefined;
+  /**
+   * Resolve the `<name>` half of an `assets/<name>` path to its row.
+   *
+   * This is the form folio markdown actually stores, and the reason it is by
+   * name rather than by id: the stored document is also the EXPORTED
+   * document, so `assets/photo.webp` has to mean something once unzipped
+   * next to an `assets/` folder, with no Lore to resolve it.
+   */
+  resolveBlobByName: (name: string) => BlobRef | undefined;
 }
 
 /** File extensions that render inline as `<img>` when referenced via `blob:`. */
@@ -202,6 +211,20 @@ export const createFolioWikiLinkResolver = (
       return Number.isFinite(n) ? blobByShort.get(n) : undefined;
     }
     return blobByUuid.get(trimmed);
+  };
+
+  /**
+   * Built lazily and only for `assets/` references, so a document with none
+   * never pays for it. Case-insensitive because `FolioBlobService` enforces
+   * uniqueness case-insensitively too — `Photo.webp` and `photo.webp` cannot
+   * both exist on one folio, so folding the key cannot introduce ambiguity.
+   */
+  let blobByName: Map<string, BlobRef> | undefined;
+  const resolveBlobByName = (name: string): BlobRef | undefined => {
+    blobByName ??= new Map(
+      (blobs ?? []).map((blob) => [blob.name.trim().toLowerCase(), blob]),
+    );
+    return blobByName.get(name.trim().toLowerCase());
   };
 
   /**
@@ -343,7 +366,7 @@ export const createFolioWikiLinkResolver = (
     };
   };
 
-  return { resolve, resolveBlob };
+  return { resolve, resolveBlob, resolveBlobByName };
 };
 
 /**

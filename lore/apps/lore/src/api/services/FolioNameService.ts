@@ -2,11 +2,18 @@ import { $repository } from "alepha/orm";
 import { folioNames } from "../entities/folioNames.ts";
 
 /**
- * Sibling-name uniqueness enforcement for the Folio tree. Folios,
- * blobs and directories share the same namespace per parent: a folio
- * named "notes.md" and a blob named "notes.md" in the same directory
- * collide. Drive-style case-insensitive matching with the original
- * casing preserved on the entity row.
+ * Sibling-name uniqueness enforcement for the Folio tree. Folios and
+ * directories share the same namespace per parent: a folio named
+ * "notes" and a directory named "notes" in the same folder collide.
+ * Drive-style case-insensitive matching with the original casing
+ * preserved on the entity row.
+ *
+ * Attachments (`folio_blobs`) are deliberately NOT in this namespace.
+ * They belong to a single folio rather than sitting in a folder, so
+ * they can only collide with each other — `FolioBlobService` handles
+ * that within the owning folio, and a reservation row here would give
+ * an attachment the power to block a folio name it never appears
+ * beside.
  *
  * Reservations live in `folio_names`. Each create/rename/move
  * writes the entity row AND a reservation row in one transaction
@@ -17,7 +24,7 @@ import { folioNames } from "../entities/folioNames.ts";
  * convenience layer: reserve, release, and "auto-suffix to first
  * available name" (Drive-style `logo (1).png`).
  */
-export type FolioNodeKind = "folio" | "blob" | "directory";
+export type FolioNodeKind = "folio" | "directory";
 
 export interface ScopeKey {
   /** Directory UUID, or `undefined` when reserving at the project root. */

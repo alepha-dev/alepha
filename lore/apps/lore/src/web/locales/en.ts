@@ -142,6 +142,7 @@ export default {
   "folios.editor.action.move": "Move to…",
   "folios.editor.action.pin": "Pin to context",
   "folios.editor.action.unpin": "Unpin from context",
+  "folios.editor.export.zip-failed": "Could not build the archive:",
   "folios.editor.action.export": "Export as .md",
   "folios.editor.action.encrypt": "Encrypt…",
   "folios.editor.action.remove-protection": "Remove protection",
@@ -207,8 +208,6 @@ export default {
   "folios.editor.tree.title": "Folios",
   "folios.editor.tree.new-folio": "New folio",
   "folios.editor.tree.new-directory": "New directory",
-  "folios.editor.tree.upload": "Upload files",
-  "folios.editor.tree.upload-failed": "Upload failed",
   "folios.editor.tree.empty": "No folios yet.",
   "folios.editor.tree.untitled-folio": "New folio",
   "folios.editor.tree.untitled-directory": "New directory",
@@ -225,6 +224,20 @@ export default {
   "folios.editor.inspector.expand": "Show inspector",
   "folios.editor.inspector.history": "History",
   "folios.editor.inspector.links": "Links",
+  "folios.editor.inspector.attachments": "Files",
+  "folios.editor.inspector.attachments-add": "Add files",
+  "folios.editor.inspector.attachments-empty": "No files attached yet.",
+  "folios.editor.inspector.attachments-unsaved":
+    "Save the folio before attaching files.",
+  "folios.editor.inspector.attachments-rename-title": "Rename file",
+  "folios.editor.inspector.attachments-rename-body":
+    "References to it in this folio are updated automatically.",
+  "folios.editor.inspector.attachments-copy-ref": "Copy markdown reference",
+  "folios.editor.inspector.attachments-total": "$1 files · $2",
+  "folios.editor.inspector.attachments-upload-failed": "Upload failed",
+  "folios.editor.inspector.attachments-confirm-delete-title": "Delete file?",
+  "folios.editor.inspector.attachments-confirm-delete":
+    'Delete "$1"? Any reference to it in this folio will stop resolving.',
   "folios.editor.inspector.outline-empty":
     "Headings appear here as you write them.",
   "folios.editor.inspector.history-footer":

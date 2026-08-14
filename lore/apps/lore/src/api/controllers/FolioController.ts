@@ -265,7 +265,7 @@ export class FolioController {
       outBlobIds.length > 0
         ? this.blobs.findMany({
             where: { fileId: { inArray: outBlobIds } },
-            columns: ["fileId", "shortId", "name", "directoryId", "projectId"],
+            columns: ["fileId", "shortId", "name", "folioId", "projectId"],
           })
         : Promise.resolve([]),
       inb.length > 0
@@ -336,7 +336,11 @@ export class FolioController {
             kind: "blob",
             shortId: ref.shortId,
             title: ref.name,
-            path: pathOf(ref.directoryId),
+            // No folder chain: an attachment hangs off one folio rather
+            // than sitting in a directory, so any path shown here would
+            // be the owning folio's, not the blob's. `path` is optional
+            // and the Links tab renders blob rows as plain text anyway.
+            path: undefined,
           });
       } else {
         const ref = folioById.get(l.toId);
