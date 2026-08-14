@@ -1,9 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { $inject, Alepha, z } from "alepha";
+import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { $issuer, $secure, AlephaSecurity } from "alepha/security";
 import { $action, AlephaServer } from "alepha/server";
 import { describe, expect, it } from "vitest";
+import { users } from "../../users/entities/users.ts";
+import { AdminApiKeyController } from "../controllers/AdminApiKeyController.ts";
 import { AlephaApiKeys } from "../index.ts";
 import { ApiKeyService } from "../services/ApiKeyService.ts";
 
@@ -633,5 +636,66 @@ describe("ApiKeyService", () => {
 
     const userInfo = await service.validate(token);
     expect(userInfo?.id).toBe(userId);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Admin listing owner enrichment
+  // ---------------------------------------------------------------------------
+
+  it("embeds the owner summary when a users repository is registered", async () => {
+    // Registering a users repository is what flips the best-effort join on
+    // (and creates the `users` table) — same mechanism as the files module's
+    // uploader join. The other tests in this file run without it and confirm
+    // findAll still works with `user` simply absent.
+    class TestApp {
+      users = $repository(users);
+      issuer = $issuer({
+        secret: "test-secret",
+        roles: [{ name: "admin", permissions: [{ name: "*" }] }],
+      });
+    }
+
+    const alepha = Alepha.create()
+      .with(AlephaOrmPostgres)
+      .with(AlephaServer)
+      .with(AlephaSecurity)
+      .with(AlephaApiKeys);
+    const app = alepha.inject(TestApp);
+
+    const service = alepha.inject(ApiKeyService);
+    const controller = alepha.inject(AdminApiKeyController);
+    await alepha.start();
+
+    const ownerId = randomUUID();
+    const strangerId = randomUUID();
+    await app.users.create({
+      id: ownerId,
+      email: "owner@example.com",
+      username: "owner",
+    });
+    await service.create({ userId: ownerId, name: "Known owner", roles: [] });
+    await service.create({
+      userId: strangerId,
+      name: "Deleted owner",
+      roles: [],
+    });
+
+    // Through the controller rather than the service, so the response schema
+    // is exercised too — a summary the schema fails to declare would vanish
+    // silently from the payload.
+    const page = await controller.findApiKeys.run(
+      { query: {} },
+      { user: { id: randomUUID(), name: "Admin", roles: ["admin"] } },
+    );
+
+    // Matched by our own ids — the test database is shared across specs, so
+    // absolute counts would race with whatever other tests created.
+    const known = page.content.find((row) => row.userId === ownerId);
+    const unknown = page.content.find((row) => row.userId === strangerId);
+    expect(known?.user?.email).toBe("owner@example.com");
+    expect(known?.user?.username).toBe("owner");
+    // A deleted owner stays a bare id: the left join leaves `user` undefined.
+    expect(unknown).toBeDefined();
+    expect(unknown?.user).toBeUndefined();
   });
 });

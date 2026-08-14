@@ -3,6 +3,7 @@ import * as React from "react";
 void React;
 
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
+import { AdminUserCell } from "@alepha/ui/components/admin/admin-user-cell";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import type {
@@ -58,11 +59,7 @@ export function AdminPayments() {
           },
           customer: {
             label: tr("admin.payments.colCustomer", { default: "Customer" }),
-            cell: (p) => (
-              <span className="text-muted-foreground font-mono text-xs">
-                {p.userId?.slice(0, 8) ?? "—"}
-              </span>
-            ),
+            cell: (p) => <AdminUserCell userId={p.userId} user={p.user} />,
           },
           provider: {
             label: tr("admin.payments.colProvider", { default: "Provider" }),

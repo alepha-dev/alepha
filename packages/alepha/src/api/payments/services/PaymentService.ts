@@ -2,7 +2,12 @@ import { $inject, Alepha } from "alepha";
 import { $job } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository, DbEntityNotFoundError } from "alepha/orm";
+import {
+  $repository,
+  DbEntityNotFoundError,
+  type Page,
+  RepositoryProvider,
+} from "alepha/orm";
 import {
   type PaymentIntentEntity,
   paymentIntents,
@@ -21,6 +26,7 @@ export class PaymentService {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly provider = $inject(PaymentProvider);
   protected readonly intentRepo = $repository(paymentIntents);
+  protected readonly repositoryProvider = $inject(RepositoryProvider);
   protected readonly refundRepo = $repository(refunds);
 
   /**
@@ -623,7 +629,40 @@ export class PaymentService {
   }
 
   /**
-   * Find payment intents with optional filters and pagination.
+   * Best-effort left join embedding the paying user on every admin listing
+   * row, so the UI can render `user.email` instead of the bare `userId`.
+   * Joins `payment_intents.userId` → `users.id`.
+   *
+   * The `users` entity is resolved from the repository registry at runtime
+   * rather than imported — same pattern and same reason as
+   * `FileService.resolveCreatorJoin`: the payments module stays usable
+   * standalone, without `alepha/api/users`. Only applied when the `users`
+   * table is actually registered.
+   */
+  protected resolveUserJoin() {
+    const usersEntity = this.repositoryProvider
+      .getRepositories()
+      .find((repo) => repo.entity.name === "users")?.entity;
+    if (!usersEntity) {
+      return undefined;
+    }
+    return {
+      user: {
+        join: usersEntity,
+        on: ["userId", usersEntity.cols.id] as ["userId", { name: string }],
+      },
+    };
+  }
+
+  /**
+   * Find payment intents with optional filters and pagination. Rows carry a
+   * paying-user summary under `user` when the users table is registered —
+   * see {@link resolveUserJoin}.
+   *
+   * Typed without `user` on purpose, like `FileService.findFiles`: the join
+   * attaches it at runtime and the response schema declares it, while the
+   * inferred type of a registry-resolved join is `Record<string, unknown>`,
+   * which would conflict with the schema's shaped optional.
    */
   public async findIntents(query: {
     status?: string;
@@ -631,12 +670,19 @@ export class PaymentService {
     sort?: string;
     size?: number;
     page?: number;
-  }) {
+  }): Promise<Page<PaymentIntentEntity>> {
     const where = this.intentRepo.createQueryWhere();
     if (query.status)
       where.status = { eq: query.status as PaymentIntentEntity["status"] };
     if (query.userId) where.userId = { eq: query.userId };
-    return await this.intentRepo.paginate(query, { where }, { count: true });
+
+    const withUser = this.resolveUserJoin();
+
+    return await this.intentRepo.paginate(
+      query,
+      { where, ...(withUser ? { with: withUser } : {}) },
+      { count: true },
+    );
   }
 
   protected assertStatus(

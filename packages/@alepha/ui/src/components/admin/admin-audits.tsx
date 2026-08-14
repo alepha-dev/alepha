@@ -3,6 +3,7 @@ import * as React from "react";
 void React;
 
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
+import { AdminUserCell } from "@alepha/ui/components/admin/admin-user-cell";
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
@@ -215,20 +216,14 @@ export function AdminAudits() {
           },
           actor: {
             label: tr("admin.audits.colActor", { default: "Actor" }),
-            cell: (a) =>
-              a.userId ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    router.push(`/admin/users/${a.userId}` as never)
-                  }
-                  className="hover:text-primary truncate text-left text-sm underline-offset-2 hover:underline"
-                >
-                  {a.userEmail ?? a.userId}
-                </button>
-              ) : (
-                <span className="text-sm">{a.userEmail ?? "—"}</span>
-              ),
+            /*
+             * Audit rows carry a write-time `userEmail` snapshot rather than
+             * a live join — the actor's address as it was when the action
+             * happened is itself audit data.
+             */
+            cell: (a) => (
+              <AdminUserCell userId={a.userId} fallbackLabel={a.userEmail} />
+            ),
           },
           status: {
             label: tr("admin.audits.colStatus", { default: "Status" }),

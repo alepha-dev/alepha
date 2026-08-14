@@ -3,6 +3,7 @@ import * as React from "react";
 void React;
 
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
+import { AdminUserCell } from "@alepha/ui/components/admin/admin-user-cell";
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
@@ -273,23 +274,13 @@ export function AdminFiles() {
           },
           user: {
             label: tr("admin.files.colUser", { default: "Uploaded by" }),
-            cell: (f) => {
-              const label =
-                f.user?.email ||
-                f.user?.username ||
-                [f.user?.firstName, f.user?.lastName]
-                  .filter(Boolean)
-                  .join(" ") ||
-                f.creatorName ||
-                null;
-              return label ? (
-                <span className="truncate">{label}</span>
-              ) : (
-                <span className="text-muted-foreground font-mono text-xs">
-                  {f.creator?.slice(0, 8) ?? "—"}
-                </span>
-              );
-            },
+            cell: (f) => (
+              <AdminUserCell
+                userId={f.creator}
+                user={f.user}
+                fallbackLabel={f.creatorName}
+              />
+            ),
           },
           size: {
             label: tr("admin.files.colSize", { default: "Size" }),

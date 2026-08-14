@@ -3,7 +3,7 @@ import { $inject, Alepha } from "alepha";
 import { $cache } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository, sql } from "alepha/orm";
+import { $repository, type Page, RepositoryProvider, sql } from "alepha/orm";
 import type { IssuerResolver, UserInfo } from "alepha/security";
 import { ForbiddenError, type ServerRequest } from "alepha/server";
 import { type ApiKeyEntity, apiKeyEntity } from "../entities/apiKeyEntity.ts";
@@ -13,6 +13,7 @@ export class ApiKeyService {
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly log = $logger();
   protected readonly repo = $repository(apiKeyEntity);
+  protected readonly repositoryProvider = $inject(RepositoryProvider);
 
   /**
    * Cache validated API keys for 15 minutes.
@@ -52,6 +53,34 @@ export class ApiKeyService {
    */
   protected markRevocation(): void {
     this.revocationEpoch++;
+  }
+
+  /**
+   * Best-effort left join embedding the owner on every admin listing row, so
+   * the UI can render `user.email` instead of the bare `userId`. Joins
+   * `api_keys.userId` → `users.id`.
+   *
+   * The `users` entity is resolved from the repository registry at runtime
+   * rather than imported — same pattern and same reason as
+   * `FileService.resolveCreatorJoin`: the users module already depends on
+   * this one (`$realm` wires the key resolver), so a compile-time import here
+   * would form a circular dependency. Only applied when the `users` table is
+   * actually registered, keeping the module usable standalone with a plain
+   * `$issuer`.
+   */
+  protected resolveOwnerJoin() {
+    const usersEntity = this.repositoryProvider
+      .getRepositories()
+      .find((repo) => repo.entity.name === "users")?.entity;
+    if (!usersEntity) {
+      return undefined;
+    }
+    return {
+      user: {
+        join: usersEntity,
+        on: ["userId", usersEntity.cols.id] as ["userId", { name: string }],
+      },
+    };
   }
 
   /**
@@ -182,7 +211,14 @@ export class ApiKeyService {
   // -------------------------------------------------------------------------
 
   /**
-   * Find all API keys with optional filtering (admin only).
+   * Find all API keys with optional filtering (admin only). Rows carry an
+   * owner summary under `user` when the users table is registered — see
+   * {@link resolveOwnerJoin}.
+   *
+   * Typed without `user` on purpose, like `FileService.findFiles`: the join
+   * attaches it at runtime and the response schema declares it, while the
+   * inferred type of a registry-resolved join is `Record<string, unknown>`,
+   * which would conflict with the schema's shaped optional.
    */
   public async findAll(query: {
     userId?: string;
@@ -190,7 +226,7 @@ export class ApiKeyService {
     page?: number;
     size?: number;
     sort?: string;
-  }) {
+  }): Promise<Page<ApiKeyEntity>> {
     query.sort ??= "-createdAt";
 
     const where = this.repo.createQueryWhere();
@@ -203,7 +239,13 @@ export class ApiKeyService {
       where.revokedAt = { isNull: true };
     }
 
-    return this.repo.paginate(query, { where }, { count: true });
+    const withOwner = this.resolveOwnerJoin();
+
+    return this.repo.paginate(
+      query,
+      { where, ...(withOwner ? { with: withOwner } : {}) },
+      { count: true },
+    );
   }
 
   /**

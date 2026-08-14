@@ -6,6 +6,7 @@ import { ApiKeyService } from "./services/ApiKeyService.ts";
 export * from "./controllers/AdminApiKeyController.ts";
 export * from "./controllers/ApiKeyController.ts";
 export * from "./entities/apiKeyEntity.ts";
+export * from "./schemas/adminApiKeyOwnerSchema.ts";
 export * from "./schemas/adminApiKeyQuerySchema.ts";
 export * from "./schemas/adminApiKeyResourceSchema.ts";
 export * from "./schemas/createApiKeyBodySchema.ts";

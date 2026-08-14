@@ -3,6 +3,7 @@ import * as React from "react";
 void React;
 
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
+import { AdminUserCell } from "@alepha/ui/components/admin/admin-user-cell";
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
@@ -96,22 +97,7 @@ export function AdminSessions() {
         columns={{
           user: {
             label: tr("admin.sessions.colUser", { default: "User" }),
-            cell: (s) => {
-              const label =
-                s.user?.email ||
-                s.user?.username ||
-                [s.user?.firstName, s.user?.lastName]
-                  .filter(Boolean)
-                  .join(" ") ||
-                null;
-              return label ? (
-                <span className="font-medium">{label}</span>
-              ) : (
-                <span className="text-muted-foreground font-mono text-xs">
-                  {s.userId?.slice(0, 8) ?? "—"}
-                </span>
-              );
-            },
+            cell: (s) => <AdminUserCell userId={s.userId} user={s.user} />,
           },
           ip: {
             label: tr("admin.sessions.colIp", { default: "IP" }),

@@ -4,6 +4,7 @@ void React;
 
 import { AdminKeysTokenDialog } from "@alepha/ui/components/admin/admin-keys-token-dialog";
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
+import { AdminUserCell } from "@alepha/ui/components/admin/admin-user-cell";
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Badge } from "@alepha/ui/components/ui/badge";
@@ -136,9 +137,15 @@ export function AdminKeys() {
         fetch={fetcher}
         refreshSignal={refreshSignal}
         toolbar={
+          /*
+           * `size="lg"` is h-9 — the toolbar's control height. The bar is
+           * bottom-aligned (`items-end`, for label-topped filter inputs), so
+           * a shorter control shows its whole height deficit at the top
+           * instead of centering.
+           */
           <Button
             type="button"
-            size="sm"
+            size="lg"
             loading={createKey.loading}
             onClick={() => createKey.run()}
           >
@@ -169,7 +176,7 @@ export function AdminKeys() {
           },
           owner: {
             label: tr("admin.keys.colOwner", { default: "Owner" }),
-            cell: (k) => <span className="text-sm">{k.userId ?? "—"}</span>,
+            cell: (k) => <AdminUserCell userId={k.userId} user={k.user} />,
           },
           roles: {
             label: tr("admin.keys.colScopes", { default: "Roles" }),

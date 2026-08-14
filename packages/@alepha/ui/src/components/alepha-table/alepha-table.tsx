@@ -228,6 +228,12 @@ export interface AlephaTableProps<T> {
   /**
    * Extra slot rendered to the right of the filter inputs in the
    * toolbar — typically a "New" / "Create" button.
+   *
+   * Controls placed here must be h-9 (`Button size="lg"`, or an explicit
+   * `h-9`): the bar bottom-aligns its children (`items-end`, so controls
+   * share a baseline with label-topped filter inputs) and pins its built-in
+   * icon buttons to h-9 — a shorter control hangs from the bottom edge and
+   * reads as vertically off-center.
    */
   toolbar?: ReactNode;
   /**

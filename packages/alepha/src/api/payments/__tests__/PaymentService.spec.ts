@@ -1,7 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { Alepha } from "alepha";
+import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
+import { users } from "../../users/entities/users.ts";
+import { AdminPaymentController } from "../controllers/AdminPaymentController.ts";
 import { PaymentError } from "../errors/PaymentError.ts";
 import { AlephaApiPayments } from "../index.ts";
 import { MemoryPaymentProvider } from "../providers/MemoryPaymentProvider.ts";
@@ -394,5 +397,60 @@ describe("PaymentService", () => {
 
     const updated = await payments.getIntent(intent.id);
     expect(updated.userId).toBe(userX);
+  });
+
+  it("embeds the paying-user summary when a users repository is registered", async ({
+    expect,
+  }) => {
+    // Registering a users repository is what flips the best-effort join on
+    // (and creates the `users` table) — same mechanism as the files module's
+    // uploader join. The other tests in this file run without it and confirm
+    // findIntents still works with `user` simply absent.
+    class TestUsers {
+      repo = $repository(users);
+    }
+
+    const alepha = Alepha.create()
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiPayments);
+    const testUsers = alepha.inject(TestUsers);
+    const payments = alepha.inject(PaymentService);
+    const controller = alepha.inject(AdminPaymentController);
+    await alepha.start();
+
+    const payerId = randomUUID();
+    await testUsers.repo.create({
+      id: payerId,
+      email: "payer@example.com",
+      username: "payer",
+    });
+
+    const paid = await payments.createIntent(1500, "eur");
+    await payments.createSession(
+      paid.id,
+      "https://example.com",
+      false,
+      payerId,
+    );
+    const anonymous = await payments.createIntent(900, "eur");
+
+    // Through the controller rather than the service, so the response schema
+    // is exercised too — a summary the schema fails to declare would vanish
+    // silently from the payload.
+    const page = await controller.listIntents.run(
+      { query: {} },
+      { user: { id: randomUUID(), name: "Admin", roles: ["admin"] } },
+    );
+
+    // Matched by our own ids — the test database is shared across specs, so
+    // absolute counts would race with whatever other tests created.
+    const withUser = page.content.find((intent) => intent.id === paid.id);
+    const withoutUser = page.content.find(
+      (intent) => intent.id === anonymous.id,
+    );
+    expect(withUser?.user?.email).toBe("payer@example.com");
+    // No userId on the row means the left join matches nothing.
+    expect(withoutUser).toBeDefined();
+    expect(withoutUser?.user).toBeUndefined();
   });
 });

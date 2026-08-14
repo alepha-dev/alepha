@@ -2,6 +2,7 @@ import type { Infer } from "alepha";
 import { z } from "alepha";
 import { pageQuerySchema } from "alepha/orm";
 import { paymentIntents } from "../entities/paymentIntents.ts";
+import { paymentUserSummarySchema } from "./paymentUserSummarySchema.ts";
 
 export const createIntentSchema = z.object({
   amount: z.integer().min(1),
@@ -55,6 +56,12 @@ export const intentQuerySchema = pageQuerySchema.extend({
 
 export type IntentQuery = Infer<typeof intentQuerySchema>;
 
-export const intentResourceSchema = paymentIntents.schema;
+export const intentResourceSchema = paymentIntents.schema.extend({
+  /**
+   * Paying-user summary, embedded by the admin listing via a best-effort
+   * left join. Optional — see `paymentUserSummarySchema`.
+   */
+  user: paymentUserSummarySchema.optional(),
+});
 
 export type IntentResource = Infer<typeof intentResourceSchema>;
