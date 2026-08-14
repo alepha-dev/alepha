@@ -9,20 +9,13 @@ import type { BlobController } from "@/api/controllers/BlobController.ts";
 import { currentFolioBlobsAtom } from "../../../../atoms/currentFolioBlobsAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 import { folioAssetEmbed } from "../../folioAssetReference.ts";
+import { FOLIO_IMAGE_MAX_WIDTH } from "../../folioImageBounds.ts";
 import { formatBlobBytes } from "../../folioWikiLinkResolver.ts";
 
 // Mirrors `FOLIO_BLOB_BUCKET_NAME` (FolioBlobService) — not imported so the
 // browser bundle does not pull a server-side module. Value stays
 // "archive-blobs": it is persisted on every existing `files` row.
 const FOLIO_BLOB_BUCKET = "archive-blobs";
-
-/**
- * Widest an attachment is ever displayed. Folio images render at document
- * width (812px prose measure, ~2x for retina), so anything beyond this is
- * bytes nobody sees. The project logo uses the same mechanism at 256 —
- * see `resize-image.ts` for why the browser is also the better encoder.
- */
-const MAX_IMAGE_WIDTH = 1600;
 
 export interface FolioAttachmentsTabProps {
   /**
@@ -74,7 +67,7 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
         // `OffscreenCanvas` comes back untouched, and the storage's own
         // `maxSize` remains what actually bounds the pathological case.
         const file = await resizeImage(original, {
-          maxWidth: MAX_IMAGE_WIDTH,
+          maxWidth: FOLIO_IMAGE_MAX_WIDTH,
         });
         const form = new FormData();
         form.append("file", file);
