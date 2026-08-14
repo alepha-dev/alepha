@@ -177,6 +177,7 @@ export class WorkflowProvider {
       execution = await this.executions.create({
         workflowName,
         payload: validated as Record<string, unknown>,
+        context: this.captureContext(opts),
         status,
         priority,
         deadlineAt,
@@ -348,9 +349,12 @@ export class WorkflowProvider {
 
       if (stepDef.when) {
         const results = await this.assembleResults(workflowId);
-        const shouldRun = await stepDef.when({
-          payload: workflow.payload as Infer<ZType>,
-          results,
+        const shouldRun = await this.alepha.context.run(async () => {
+          this.restoreContext(workflow);
+          return stepDef.when?.({
+            payload: workflow.payload as Infer<ZType>,
+            results,
+          });
         });
         if (!shouldRun) {
           await this.stepExecutions.updateById(stepExec.id, {
@@ -420,6 +424,7 @@ export class WorkflowProvider {
       await this.alepha.context.run(
         async () => {
           try {
+            this.restoreContext(workflow);
             const results = await this.assembleResults(workflowId);
 
             const handlerResult = await stepDef.handler({
@@ -430,9 +435,34 @@ export class WorkflowProvider {
                 executionId: stepExec.id,
                 stepName,
                 attempt: stepExec.attempt + 1,
+                iteration: stepExec.iteration ?? 0,
               },
               signal: abortController.signal,
             });
+
+            if (
+              stepDef.repeat &&
+              typeof handlerResult === "object" &&
+              handlerResult !== null &&
+              (handlerResult as { repeat?: boolean }).repeat === true
+            ) {
+              const nextIteration = (stepExec.iteration ?? 0) + 1;
+              if (
+                stepDef.repeat.limit != null &&
+                nextIteration >= stepDef.repeat.limit
+              ) {
+                // The step has already run `limit` times. Spend the retry
+                // budget so handleStepFailure treats this as permanent —
+                // retrying would only re-run the handler into the same
+                // verdict.
+                stepExec.attempt = stepExec.maxAttempts;
+                throw new AlephaError(
+                  `Step '${stepName}' still asks to repeat after ${stepDef.repeat.limit} runs (repeat.limit)`,
+                );
+              }
+              await this.repeatStep(workflow, stepExec, stepDef, handlerResult);
+              return;
+            }
 
             await this.stepExecutions.updateById(stepExec.id, {
               status: "completed",
@@ -479,6 +509,63 @@ export class WorkflowProvider {
       clearTimeout(timeoutId);
       this.abortControllers.delete(abortKey);
     }
+  }
+
+  /**
+   * Re-park a repeating step for its next iteration: same row, bumped
+   * iteration counter, fresh retry budget, next not-before stamp. The
+   * verdict object is stored as the step's interim result so the admin UI
+   * shows live progress. Crash-safety mirrors retries: the stamp is
+   * persisted before the delayed dispatch is pushed, and the recovery
+   * sweep re-derives the wake-up from the row alone — a crash between the
+   * verdict and this write replays the same iteration, which is why
+   * iteration handlers must be idempotent.
+   */
+  protected async repeatStep(
+    workflow: WorkflowExecutionEntity,
+    stepExec: WorkflowStepExecutionEntity,
+    stepDef: WorkflowStep,
+    result: unknown,
+  ): Promise<void> {
+    const repeat = stepDef.repeat;
+    if (!repeat) return;
+
+    const iteration = (stepExec.iteration ?? 0) + 1;
+    const delayMs = this.dt.duration(repeat.delay).as("milliseconds");
+    const scheduledAt = this.dt.now().add(delayMs, "millisecond").toISOString();
+
+    await this.stepExecutions.updateById(stepExec.id, {
+      status: "pending",
+      iteration,
+      attempt: 0,
+      result: result != null ? (result as Record<string, unknown>) : undefined,
+      scheduledAt,
+    });
+
+    await this.writeStepLogs(stepExec.id);
+
+    this.log.info(`Workflow step '${stepExec.stepName}' repeating`, {
+      workflowId: workflow.id,
+      iteration,
+    });
+
+    await this.alepha.events.emit(
+      "workflow:step:repeat",
+      {
+        workflowName: workflow.workflowName,
+        workflowId: workflow.id,
+        stepName: stepExec.stepName,
+        iteration,
+      },
+      { catch: true },
+    );
+
+    await this.dispatchStep(
+      workflow.id,
+      stepExec.stepName,
+      workflow.priority,
+      delayMs,
+    );
   }
 
   protected async handleStepFailure(
@@ -626,7 +713,6 @@ export class WorkflowProvider {
         status: "completed",
         currentStep: undefined,
         completedAt: this.dt.nowISOString(),
-        key: null,
       });
 
       this.log.info(`Workflow '${workflow.workflowName}' completed`, {
@@ -692,16 +778,23 @@ export class WorkflowProvider {
       });
 
       try {
-        await stepDef.compensate({
-          payload: workflow.payload as Infer<ZType>,
-          result: stepExec.result,
-          results,
-          context: {
-            workflowId,
-            executionId: stepExec.id,
-            stepName: stepExec.stepName,
-            error: context?.error ?? new Error("Compensation triggered"),
-          },
+        // Fresh scope per compensation: cancel({compensate}) runs in the
+        // CANCELLING caller's context (an admin request, a listener), and
+        // the restored atoms must die with the handler instead of leaking
+        // into it.
+        await this.alepha.context.run(async () => {
+          this.restoreContext(workflow);
+          await stepDef.compensate?.({
+            payload: workflow.payload as Infer<ZType>,
+            result: stepExec.result,
+            results,
+            context: {
+              workflowId,
+              executionId: stepExec.id,
+              stepName: stepExec.stepName,
+              error: context?.error ?? new Error("Compensation triggered"),
+            },
+          });
         });
 
         await this.stepExecutions.updateById(stepExec.id, {
@@ -725,7 +818,6 @@ export class WorkflowProvider {
         await this.executions.updateById(workflowId, {
           status: "compensation_failed",
           completedAt: this.dt.nowISOString(),
-          key: null,
         });
 
         await this.alepha.events.emit(
@@ -746,7 +838,6 @@ export class WorkflowProvider {
     await this.executions.updateById(workflowId, {
       status: "compensated",
       completedAt: this.dt.nowISOString(),
-      key: null,
     });
 
     this.log.info(`Workflow '${workflow.workflowName}' compensated`, {
@@ -761,6 +852,54 @@ export class WorkflowProvider {
       },
       { catch: true },
     );
+  }
+
+  // --- Context ----------------------------------------------------------------------------------------------------
+
+  /**
+   * Snapshot the atoms listed in the workflow's `context` option, keyed by
+   * atom name, at start() time. Undefined values are skipped, and the
+   * column stays null when nothing was captured — a workflow without
+   * `context`, or one started outside any scope, costs nothing.
+   */
+  protected captureContext(
+    opts: WorkflowPrimitiveOptions,
+  ): Record<string, unknown> | undefined {
+    const atoms = opts.context;
+    if (!atoms?.length) {
+      return undefined;
+    }
+    const snapshot: Record<string, unknown> = {};
+    for (const atom of atoms) {
+      const value = this.alepha.store.get(atom);
+      if (value !== undefined) {
+        snapshot[atom.key] = value;
+      }
+    }
+    return Object.keys(snapshot).length > 0 ? snapshot : undefined;
+  }
+
+  /**
+   * Restore a captured snapshot into the CURRENT scope. Every caller must
+   * already be inside a fresh context.run() layer, so the restored values
+   * shadow the caller's state for the handler's duration and die with the
+   * layer — they never leak into whichever request or job triggered the
+   * dispatch.
+   */
+  protected restoreContext(workflow: WorkflowExecutionEntity): void {
+    const snapshot = workflow.context;
+    if (!snapshot) {
+      return;
+    }
+    const atoms = this.getRegistration(workflow.workflowName).options.context;
+    if (!atoms?.length) {
+      return;
+    }
+    for (const atom of atoms) {
+      if (atom.key in snapshot) {
+        this.alepha.store.set(atom, snapshot[atom.key] as never);
+      }
+    }
   }
 
   // --- Cancel -----------------------------------------------------------------------------------------------------
@@ -809,7 +948,6 @@ export class WorkflowProvider {
         cancelledBy: options?.cancelledBy,
         cancelledByName: options?.cancelledByName,
         completedAt: this.dt.nowISOString(),
-        key: null,
       });
     }
 
@@ -823,6 +961,48 @@ export class WorkflowProvider {
       },
       { catch: true },
     );
+  }
+
+  /**
+   * Cancel the live execution armed under a dedup key, if any.
+   *
+   * The partial unique index guarantees at most one non-terminal execution
+   * per (workflowName, key), so "the one to cancel" is well-defined.
+   * Terminal rows keep their key for lookups but are not live, hence the
+   * status filter. Tolerates losing the race to a terminal transition —
+   * disarm-style listeners must not blow up because the workflow finished
+   * a moment before they fired. Returns the cancelled execution's id, or
+   * null when nothing was live under the key.
+   */
+  public async cancelByKey(
+    workflowName: string,
+    key: string,
+    options?: CancelOptions,
+  ): Promise<string | null> {
+    const execution = await this.executions.findOne({
+      where: {
+        workflowName: { eq: workflowName },
+        key: { eq: key },
+        status: { inArray: ["pending", "running"] },
+      },
+    });
+    if (!execution) {
+      return null;
+    }
+
+    try {
+      await this.cancel(execution.id, options);
+    } catch (error) {
+      const current = await this.executions.findById(execution.id);
+      if (
+        current &&
+        (current.status === "pending" || current.status === "running")
+      ) {
+        throw error;
+      }
+      return null;
+    }
+    return execution.id;
   }
 
   // --- Retry ------------------------------------------------------------------------------------------------------

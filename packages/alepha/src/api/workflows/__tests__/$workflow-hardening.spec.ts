@@ -1,4 +1,4 @@
-import { Alepha, z } from "alepha";
+import { $atom, $inject, Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
@@ -7,6 +7,7 @@ import {
   $workflow,
   AlephaApiWorkflows,
   WorkflowProvider,
+  WorkflowTestKit,
   workflowExecutions,
   workflowStepExecutions,
 } from "../index.ts";
@@ -653,5 +654,551 @@ describe("$workflow — dedup race", () => {
       (e) => e?.status === "completed",
       { label: "raced workflow completed" },
     );
+  });
+});
+
+// -----------------------------------------------------------------------------------------------------------------
+
+describe("$workflow — dedup key semantics", () => {
+  it("keeps the key on terminal rows and allows a re-run under the same key", async ({
+    expect,
+  }) => {
+    class App {
+      repo = $repository(workflowExecutions);
+      keyed = $workflow({
+        schema: z.object({ id: z.text() }),
+        steps: [
+          {
+            name: "step1",
+            handler: async () => ({ ok: true }),
+          },
+        ],
+      });
+    }
+
+    const alepha = makeApp().with(App);
+    await alepha.start();
+    const app = alepha.inject(App);
+
+    const first = await app.keyed.start({ id: "a" }, { key: "slot-1" });
+    await waitFor(
+      () => app.repo.findById(first),
+      (e) => e?.status === "completed",
+      { label: "first keyed run completed" },
+    );
+
+    // Terminal rows keep their key: it is the lookup handle for tests and
+    // ops. Dedup does not need the clear — the unique index is partial
+    // over non-terminal statuses only.
+    const done = await app.repo.findById(first);
+    expect(done?.key).toBe("slot-1");
+
+    // A re-run under the same key must be a NEW execution, not a dedup hit
+    // on the completed row.
+    const second = await app.keyed.start({ id: "b" }, { key: "slot-1" });
+    expect(second).not.toBe(first);
+    await waitFor(
+      () => app.repo.findById(second),
+      (e) => e?.status === "completed",
+      { label: "second keyed run completed" },
+    );
+
+    const rows = await app.repo.findMany({
+      where: { key: { eq: "slot-1" } },
+    });
+    expect(rows).toHaveLength(2);
+  });
+
+  it("cancelByKey cancels the live keyed execution and no-ops otherwise", async ({
+    expect,
+  }) => {
+    class App {
+      repo = $repository(workflowExecutions);
+      armed = $workflow({
+        schema: z.object({ id: z.text() }),
+        steps: [
+          {
+            name: "step1",
+            handler: async () => ({ ok: true }),
+          },
+        ],
+      });
+    }
+
+    const alepha = makeApp().with(App);
+    await alepha.start();
+    const app = alepha.inject(App);
+
+    // Parked far in the future so it stays live (pending) while we disarm.
+    const executionId = await app.armed.start(
+      { id: "x" },
+      { key: "booking-9", delay: [5, "minute"] },
+    );
+
+    const cancelled = await app.armed.cancelByKey("booking-9", {
+      cancelledByName: "test disarm",
+    });
+    expect(cancelled).toBe(executionId);
+
+    const row = await app.repo.findById(executionId);
+    expect(row?.status).toBe("cancelled");
+    expect(row?.cancelledByName).toBe("test disarm");
+    // The key survives the terminal transition.
+    expect(row?.key).toBe("booking-9");
+
+    // Nothing live under the key anymore: both the same key and an
+    // unknown key resolve to null instead of throwing.
+    expect(await app.armed.cancelByKey("booking-9")).toBeNull();
+    expect(await app.armed.cancelByKey("never-armed")).toBeNull();
+  });
+});
+
+// -----------------------------------------------------------------------------------------------------------------
+
+const specTenantAtom = $atom({
+  name: "alepha.test.workflowTenant",
+  schema: z.object({ id: z.text() }).optional(),
+});
+
+describe("$workflow — context propagation", () => {
+  it("restores captured atoms in steps dispatched by the sweep, shadowing the ambient value", async ({
+    expect,
+  }) => {
+    const seen: Array<{ id: string } | undefined> = [];
+
+    class App {
+      alepha = $inject(Alepha);
+      repo = $repository(workflowExecutions);
+      stepRepo = $repository(workflowStepExecutions);
+      scoped = $workflow({
+        schema: z.object({ id: z.text() }),
+        context: [specTenantAtom],
+        steps: [
+          {
+            name: "observe",
+            handler: async () => {
+              seen.push(this.alepha.store.get(specTenantAtom));
+              return { ok: true };
+            },
+          },
+        ],
+      });
+    }
+
+    const alepha = makeApp().with(App);
+    await alepha.start();
+    const app = alepha.inject(App);
+
+    // The tenant is ambient when the workflow starts...
+    alepha.store.set(specTenantAtom, { id: "org-1" });
+    const executionId = await app.scoped.start(
+      { id: "x" },
+      { delay: [5, "minute"] },
+    );
+
+    const row = await app.repo.findById(executionId);
+    expect(row?.context).toEqual({
+      "alepha.test.workflowTenant": { id: "org-1" },
+    });
+
+    // ...and by the time the step actually runs — on a sweep dispatch,
+    // standing in for "another process after a crash" — the ambient value
+    // has moved on. The step must see the snapshot, not the ambient.
+    alepha.store.set(specTenantAtom, { id: "org-other" });
+    await alepha.inject(DateTimeProvider).travel([6, "minute"]);
+
+    await waitFor(
+      async () => {
+        await alepha.inject(WorkflowProvider).recoverySweep();
+        return app.repo.findById(executionId);
+      },
+      (e) => e?.status === "completed",
+      { label: "scoped workflow completed", interval: 50 },
+    );
+
+    expect(seen).toEqual([{ id: "org-1" }]);
+    // The restore died with the step's scope: the ambient value is intact.
+    expect(alepha.store.get(specTenantAtom)).toEqual({ id: "org-other" });
+  });
+
+  it("restores captured atoms in compensation handlers", async ({ expect }) => {
+    const compensationSaw: Array<{ id: string } | undefined> = [];
+
+    class App {
+      alepha = $inject(Alepha);
+      repo = $repository(workflowExecutions);
+      stepRepo = $repository(workflowStepExecutions);
+      saga = $workflow({
+        schema: z.object({ id: z.text() }),
+        context: [specTenantAtom],
+        onError: "compensate",
+        steps: [
+          {
+            name: "reserve",
+            handler: async () => ({ ok: true }),
+            compensate: async () => {
+              compensationSaw.push(this.alepha.store.get(specTenantAtom));
+            },
+          },
+          {
+            name: "explode",
+            delay: [1, "minute"],
+            handler: async () => {
+              throw new Error("boom");
+            },
+          },
+        ],
+      });
+    }
+
+    const alepha = makeApp().with(App);
+    await alepha.start();
+    const app = alepha.inject(App);
+
+    alepha.store.set(specTenantAtom, { id: "org-a" });
+    const executionId = await app.saga.start({ id: "y" });
+
+    // Wait for the delayed second step to be parked, then move the
+    // ambient tenant — compensation must still see the snapshot.
+    await waitFor(
+      () =>
+        app.stepRepo.findOne({
+          where: {
+            workflowExecutionId: { eq: executionId },
+            stepName: { eq: "explode" },
+          },
+        }),
+      (s) => s?.status === "pending" && Boolean(s?.scheduledAt),
+      { label: "second step parked" },
+    );
+    alepha.store.set(specTenantAtom, { id: "org-b" });
+    await alepha.inject(DateTimeProvider).travel([2, "minute"]);
+
+    await waitFor(
+      async () => {
+        await alepha.inject(WorkflowProvider).recoverySweep();
+        return app.repo.findById(executionId);
+      },
+      (e) => e?.status === "compensated",
+      { label: "saga compensated", interval: 50 },
+    );
+
+    expect(compensationSaw).toEqual([{ id: "org-a" }]);
+  });
+
+  it("stores no context and keeps ambient reads working when the option is absent", async ({
+    expect,
+  }) => {
+    const seen: Array<{ id: string } | undefined> = [];
+
+    class App {
+      alepha = $inject(Alepha);
+      repo = $repository(workflowExecutions);
+      plain = $workflow({
+        schema: z.object({ id: z.text() }),
+        steps: [
+          {
+            name: "observe",
+            handler: async () => {
+              seen.push(this.alepha.store.get(specTenantAtom));
+              return { ok: true };
+            },
+          },
+        ],
+      });
+    }
+
+    const alepha = makeApp().with(App);
+    await alepha.start();
+    const app = alepha.inject(App);
+
+    alepha.store.set(specTenantAtom, { id: "org-ambient" });
+    const executionId = await app.plain.start({ id: "z" });
+
+    await waitFor(
+      () => app.repo.findById(executionId),
+      (e) => e?.status === "completed",
+      { label: "plain workflow completed" },
+    );
+
+    const row = await app.repo.findById(executionId);
+    // Nothing captured — and the step still reads the ambient app-level
+    // value through the scope chain, exactly as before this feature.
+    expect(row?.context ?? null).toBeNull();
+    expect(seen).toEqual([{ id: "org-ambient" }]);
+  });
+});
+
+// -----------------------------------------------------------------------------------------------------------------
+
+describe("$workflow — repeat steps", () => {
+  it("repeats durably until the handler stops asking, then falls through", async ({
+    expect,
+  }) => {
+    const runs: number[] = [];
+
+    class App {
+      repo = $repository(workflowExecutions);
+      stepRepo = $repository(workflowStepExecutions);
+      cascade = $workflow({
+        schema: z.object({ id: z.text() }),
+        steps: [
+          {
+            name: "offer",
+            repeat: { delay: [10, "minute"] },
+            handler: async ({ context }) => {
+              runs.push(context.iteration);
+              if (runs.length < 3) {
+                return { repeat: true, round: context.iteration };
+              }
+              return { done: true };
+            },
+          },
+          {
+            name: "after",
+            handler: async () => ({ ok: true }),
+          },
+        ],
+      });
+    }
+
+    const alepha = makeApp().with(App);
+    await alepha.start();
+    const app = alepha.inject(App);
+    const dt = alepha.inject(DateTimeProvider);
+
+    const executionId = await app.cascade.start({ id: "loop" });
+
+    for (let round = 1; round <= 2; round++) {
+      // Park-before-travel: the re-park bumps `iteration` and stamps the
+      // next not-before time in ONE write — wait for it.
+      await waitFor(
+        () =>
+          app.stepRepo.findOne({
+            where: {
+              workflowExecutionId: { eq: executionId },
+              stepName: { eq: "offer" },
+            },
+          }),
+        (s) =>
+          s?.status === "pending" &&
+          s?.iteration === round &&
+          Boolean(s?.scheduledAt),
+        { label: `iteration ${round} parked` },
+      );
+      await dt.travel([11, "minute"]);
+      await waitFor(
+        async () => {
+          await alepha.inject(WorkflowProvider).recoverySweep();
+          return runs.length;
+        },
+        (n) => n > round,
+        { label: `iteration ${round} ran`, interval: 50 },
+      );
+    }
+
+    await waitFor(
+      () => app.repo.findById(executionId),
+      (e) => e?.status === "completed",
+      { label: "workflow completed after loop" },
+    );
+
+    expect(runs).toEqual([0, 1, 2]);
+    const step = await app.stepRepo.findOne({
+      where: {
+        workflowExecutionId: { eq: executionId },
+        stepName: { eq: "offer" },
+      },
+    });
+    expect(step?.status).toBe("completed");
+    expect(step?.iteration).toBe(2);
+    // The FINAL verdict is the step's result — the repeat signal never
+    // leaks into downstream results.
+    expect(step?.result).toEqual({ done: true });
+  });
+
+  it("fails the step when it still asks to repeat past the limit", async ({
+    expect,
+  }) => {
+    class App {
+      repo = $repository(workflowExecutions);
+      stepRepo = $repository(workflowStepExecutions);
+      stubborn = $workflow({
+        schema: z.object({ id: z.text() }),
+        onError: "fail",
+        steps: [
+          {
+            name: "again",
+            repeat: { delay: [1, "minute"], limit: 2 },
+            handler: async () => ({ repeat: true }),
+          },
+        ],
+      });
+    }
+
+    const alepha = makeApp().with(App);
+    await alepha.start();
+    const app = alepha.inject(App);
+    const dt = alepha.inject(DateTimeProvider);
+
+    const executionId = await app.stubborn.start({ id: "cap" });
+
+    // Run 1 of 2 parks the second run…
+    await waitFor(
+      () =>
+        app.stepRepo.findOne({
+          where: {
+            workflowExecutionId: { eq: executionId },
+            stepName: { eq: "again" },
+          },
+        }),
+      (s) => s?.status === "pending" && s?.iteration === 1,
+      { label: "second run parked" },
+    );
+    await dt.travel([2, "minute"]);
+
+    // …which asks to repeat AGAIN — over the limit of 2 total runs.
+    await waitFor(
+      async () => {
+        await alepha.inject(WorkflowProvider).recoverySweep();
+        return app.repo.findById(executionId);
+      },
+      (e) => e?.status === "failed",
+      { label: "workflow failed on repeat limit", interval: 50 },
+    );
+
+    const step = await app.stepRepo.findOne({
+      where: {
+        workflowExecutionId: { eq: executionId },
+        stepName: { eq: "again" },
+      },
+    });
+    expect(step?.status).toBe("failed");
+    expect(step?.error).toContain("repeat.limit");
+    const exec = await app.repo.findById(executionId);
+    expect(exec?.errorStep).toBe("again");
+  });
+
+  it("resumes a lost iteration from the row alone, counter intact", async ({
+    expect,
+  }) => {
+    const runs: number[] = [];
+
+    class App {
+      repo = $repository(workflowExecutions);
+      stepRepo = $repository(workflowStepExecutions);
+      durable = $workflow({
+        schema: z.object({ id: z.text() }),
+        steps: [
+          {
+            name: "tick",
+            repeat: { delay: [30, "minute"] },
+            handler: async ({ context }) => {
+              runs.push(context.iteration);
+              if (context.iteration >= 1) {
+                return { done: true };
+              }
+              return { repeat: true };
+            },
+          },
+        ],
+      });
+    }
+
+    const alepha = makeApp().with(App);
+    await alepha.start();
+    const app = alepha.inject(App);
+
+    const executionId = await app.durable.start({ id: "crash" });
+
+    const parked = await waitFor(
+      () =>
+        app.stepRepo.findOne({
+          where: {
+            workflowExecutionId: { eq: executionId },
+            stepName: { eq: "tick" },
+          },
+        }),
+      (s) => s?.status === "pending" && s?.iteration === 1,
+      { label: "second iteration parked" },
+    );
+
+    // Simulate the process dying and the outbox delivery being lost: the
+    // stamp is now due, and NOTHING but the row remembers the iteration.
+    await app.stepRepo.updateById(parked!.id, {
+      scheduledAt: new Date(Date.now() - 1000).toISOString(),
+    });
+
+    await waitFor(
+      async () => {
+        await alepha.inject(WorkflowProvider).recoverySweep();
+        return app.repo.findById(executionId);
+      },
+      (e) => e?.status === "completed",
+      { label: "resumed after simulated crash", interval: 50 },
+    );
+
+    expect(runs).toEqual([0, 1]);
+  });
+});
+
+// -----------------------------------------------------------------------------------------------------------------
+
+describe("$workflow — startEach fan-out and WorkflowTestKit", () => {
+  it("starts one keyed execution per item and dedups a re-drive", async ({
+    expect,
+  }) => {
+    class App {
+      repo = $repository(workflowExecutions);
+      perItem = $workflow({
+        schema: z.object({ shareId: z.text() }),
+        steps: [
+          {
+            name: "resolve",
+            handler: async () => ({ ok: true }),
+          },
+        ],
+      });
+    }
+
+    const alepha = makeApp().with(App);
+    await alepha.start();
+    const app = alepha.inject(App);
+    const kit = alepha.inject(WorkflowTestKit);
+
+    const shares = ["s1", "s2", "s3"];
+    // Delayed so all three stay LIVE while we re-drive the fan-out.
+    const ids = await app.perItem.startEach(shares, (shareId) => ({
+      payload: { shareId },
+      key: shareId,
+      delay: [5, "minute"] as const,
+    }));
+    expect(new Set(ids).size).toBe(3);
+
+    // Re-driving the same fan-out (the crash-recovery move) must dedup
+    // onto the live executions, not double them.
+    const again = await app.perItem.startEach(shares, (shareId) => ({
+      payload: { shareId },
+      key: shareId,
+      delay: [5, "minute"] as const,
+    }));
+    expect(again.sort()).toEqual([...ids].sort());
+    const rows = await app.repo.findMany({
+      where: { workflowName: { eq: "App.perItem" } },
+    });
+    expect(rows).toHaveLength(3);
+
+    // Each item is individually parked; release and settle them via the
+    // kit — park-before-travel and the post-travel nudge in one place.
+    for (const id of ids) {
+      await kit.awaitParked(id, "resolve");
+    }
+    await alepha.inject(DateTimeProvider).travel([6, "minute"]);
+    for (const id of ids) {
+      await kit.awaitStatus(id, "completed");
+    }
+
+    const done = await kit.findByPayload("App.perItem", { shareId: "s2" });
+    expect(done?.status).toBe("completed");
   });
 });

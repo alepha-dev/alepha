@@ -1,5 +1,6 @@
 import {
   $inject,
+  type Atom,
   createPrimitive,
   type Infer,
   KIND,
@@ -26,6 +27,21 @@ export interface WorkflowRetryBackoff {
   jitter?: boolean;
 }
 
+export interface WorkflowRepeatOptions {
+  /**
+   * Durable wait between iterations, persisted like any other wait — a
+   * crash between iterations is resumed by the recovery sweep.
+   */
+  delay: DurationLike;
+
+  /**
+   * Maximum total number of runs of the step. When the handler still asks
+   * to repeat after the limit-th run, the step fails and normal `onError`
+   * semantics apply. Unlimited when omitted.
+   */
+  limit?: number;
+}
+
 // -----------------------------------------------------------------------------------------------------------------
 
 export interface StepHandlerArgs<TInput extends ZType = ZType> {
@@ -36,6 +52,12 @@ export interface StepHandlerArgs<TInput extends ZType = ZType> {
     executionId: string;
     stepName: string;
     attempt: number;
+
+    /**
+     * Zero-based run counter for repeating steps (`repeat` option) —
+     * "which round is this". Always 0 for non-repeating steps.
+     */
+    iteration: number;
   };
   signal: AbortSignal;
 }
@@ -75,6 +97,20 @@ export interface WorkflowStep<TInput extends ZType = ZType> {
    * after 24h".
    */
   delay?: DurationLike;
+
+  /**
+   * Make this step durably repeatable: when its handler resolves with
+   * `{ repeat: true, ... }`, the SAME step is re-parked and runs again
+   * after `delay` — the wait is persisted, so iterations survive crashes
+   * and are resumed by the recovery sweep. Any other resolution is the
+   * step's final result and falls through to the next step.
+   *
+   * The retry budget resets each iteration, and iteration handlers must
+   * be idempotent — a crash between the verdict and the re-park replays
+   * the same iteration. Use for offer/claim loops: "offer the slot to
+   * the next candidate, check back in 10 minutes".
+   */
+  repeat?: WorkflowRepeatOptions;
 }
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -113,6 +149,18 @@ export interface WorkflowPrimitiveOptions<TInput extends ZType = ZType> {
    * Tags for filtering/grouping in admin UI.
    */
   tags?: string[];
+
+  /**
+   * Atoms whose current values are captured when an execution starts and
+   * restored around every step, `when()` and compensation handler — on
+   * whatever process ends up running them, including recovery-sweep
+   * dispatches after a crash. The canonical use is tenancy:
+   * `context: [currentTenantAtom]` makes each step run under the tenant
+   * that started the workflow, without hand-carrying an id through the
+   * payload. Values are persisted with the execution, so they must
+   * survive a JSON round-trip.
+   */
+  context?: Array<Atom<any>>;
 }
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -160,6 +208,43 @@ export class WorkflowPrimitive<TInput extends ZType = ZType> extends Primitive<
   ): Promise<void> {
     return this.workflowProvider.cancel(executionId, {
       compensate: options?.compensate,
+    });
+  }
+
+  /**
+   * Start one execution per item — per-item fan-out. Each child gets its
+   * own dedup key, retry budget, logs and admin row; the trade against a
+   * single step looping over all items is more rows in exchange for
+   * per-item granularity. Keys make the fan-out re-drivable: items whose
+   * key is already live dedup to the existing execution, so calling this
+   * again after a partial failure only starts what is missing.
+   */
+  public async startEach<T>(
+    items: readonly T[],
+    map: (
+      item: T,
+      index: number,
+    ) => { payload: Infer<TInput> } & WorkflowStartOptions,
+  ): Promise<string[]> {
+    return Promise.all(
+      items.map((item, index) => {
+        const { payload, ...options } = map(item, index);
+        return this.start(payload, options);
+      }),
+    );
+  }
+
+  /**
+   * Cancel the live execution armed under a dedup key, if any.
+   * No-op (returns null) when nothing is live under the key.
+   */
+  public async cancelByKey(
+    key: string,
+    options?: { compensate?: boolean; cancelledByName?: string },
+  ): Promise<string | null> {
+    return this.workflowProvider.cancelByKey(this.name, key, {
+      compensate: options?.compensate,
+      cancelledByName: options?.cancelledByName,
     });
   }
 

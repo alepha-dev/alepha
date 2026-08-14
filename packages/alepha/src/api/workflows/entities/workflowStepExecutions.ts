@@ -46,6 +46,13 @@ export const workflowStepExecutions = $entity({
     attempt: db.default(z.integer(), 0),
     maxAttempts: db.default(z.integer(), 1),
 
+    /**
+     * Zero-based run counter for repeating steps (`repeat` option). Bumped
+     * on every re-park; the retry budget (`attempt`) resets with it, so
+     * retries are per-iteration. Always 0 for non-repeating steps.
+     */
+    iteration: db.default(z.integer(), 0),
+
     result: z.record(z.text(), z.any()).optional(),
     error: z.text().optional(),
 

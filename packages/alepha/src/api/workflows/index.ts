@@ -6,6 +6,7 @@ import { WorkflowJobs } from "./jobs/WorkflowJobs.ts";
 import { $workflow } from "./primitives/$workflow.ts";
 import { WorkflowProvider } from "./providers/WorkflowProvider.ts";
 import { WorkflowService } from "./services/WorkflowService.ts";
+import { WorkflowTestKit } from "./services/WorkflowTestKit.ts";
 
 // -----------------------------------------------------------------------------------------------------------------
 
@@ -26,6 +27,7 @@ export * from "./schemas/workflowRegistrationSchema.ts";
 export * from "./schemas/workflowStatsSchema.ts";
 export * from "./schemas/workflowStepExecutionResourceSchema.ts";
 export * from "./services/WorkflowService.ts";
+export * from "./services/WorkflowTestKit.ts";
 
 // -----------------------------------------------------------------------------------------------------------------
 
@@ -53,6 +55,12 @@ declare module "alepha" {
       workflowName: string;
       workflowId: string;
       stepName: string;
+    };
+    "workflow:step:repeat": {
+      workflowName: string;
+      workflowId: string;
+      stepName: string;
+      iteration: number;
     };
     "workflow:completed": { workflowName: string; workflowId: string };
     "workflow:failed": {
@@ -90,14 +98,37 @@ declare module "alepha" {
  *   outbox — a retry scheduled before a crash still fires after it
  * - Durable delayed steps (`delay` on a step) and delayed starts, for
  *   sequences like "send a reminder after 24h"
- * - Workflow-level timeout and cancellation
+ * - Durable loops (`repeat` on a step): the handler resolves
+ *   `{ repeat: true }` to run the same step again after a persisted wait,
+ *   with `context.iteration` as the round counter — offer/claim cascades
+ *   without self-chaining workflows
+ * - Context propagation (`context: [someAtom]`): atom values captured at
+ *   `start()` follow the execution to whatever process runs each step,
+ *   `when()` guard, or compensation — the canonical use is tenancy
+ * - Workflow-level timeout and cancellation, including `cancelByKey` for
+ *   disarm-style listeners
  * - Deduplication via unique keys (race-safe: backed by a partial unique
- *   index)
+ *   index) and `startEach` for re-drivable per-item fan-out
  * - Per-execution log capture
  *
  * Every wait is persisted (`scheduledAt` on the step row) before any
  * timer is armed: timers and queue deliveries only optimize latency,
  * the recovery sweep re-dispatches anything due from the DB alone.
+ *
+ * **Sharp edges, learned by dogfooding:**
+ * - Dedup keys are kept on terminal rows — the partial unique index only
+ *   spans live statuses, so a finished key can be re-used by a new run.
+ *   Look executions up by key or payload; `WorkflowTestKit.findByPayload`
+ *   works for unkeyed workflows too.
+ * - Admin action names are app-global. Two controllers exporting an
+ *   action named `getExecution` collide at boot, not at typecheck.
+ * - Step, `when()` and compensation handlers should be idempotent: crash
+ *   recovery replays the last unacknowledged unit of work.
+ * - Testing with `travel()`: park before travel (wait for the next step
+ *   to be pending WITH its `scheduledAt` stamp), and nudge the recovery
+ *   sweep while polling afterwards — the post-travel clock is frozen, so
+ *   no cron ever ticks again on its own. `WorkflowTestKit` packages both
+ *   disciplines (`awaitParked`, `settle`, `awaitStatus`).
  *
  * @module alepha.api.workflows
  */
@@ -108,6 +139,7 @@ export const AlephaApiWorkflows = $module({
     WorkflowProvider,
     WorkflowService,
     WorkflowJobs,
+    WorkflowTestKit,
     AdminWorkflowController,
   ],
   imports: [AlephaApiJobs, AlephaLock],

@@ -24,6 +24,15 @@ export const workflowExecutions = $entity({
 
     payload: z.record(z.text(), z.any()).optional(),
 
+    /**
+     * Ambient context captured at start() from the atoms listed in the
+     * workflow's `context` option, keyed by atom name. Restored into a
+     * fresh scope around every step, `when()` and compensation handler —
+     * including sweep-driven dispatches on another process, which is the
+     * point: the tenant that started the workflow follows it anywhere.
+     */
+    context: z.record(z.text(), z.any()).optional(),
+
     status: db.default(
       z.enum([
         "pending",

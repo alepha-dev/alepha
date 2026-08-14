@@ -221,6 +221,7 @@ interface WorkflowExecutionSheetStepProps {
     status: string;
     attempt: number;
     maxAttempts: number;
+    iteration?: number;
     error?: string;
     result?: Record<string, unknown>;
     startedAt?: string;
@@ -247,6 +248,9 @@ const WorkflowExecutionSheetStep = (props: WorkflowExecutionSheetStepProps) => {
         <span className="truncate text-sm font-medium">{step.stepName}</span>
         <WorkflowStatusBadge status={step.status} />
         <span className="text-muted-foreground ml-auto text-xs">
+          {step.iteration && step.iteration > 0
+            ? `×${step.iteration + 1} `
+            : null}
           {step.attempt > 0 ? `${step.attempt}/${step.maxAttempts}` : null}
           {durationMs !== null
             ? ` · ${durationMs < 1000 ? `${durationMs} ms` : `${(durationMs / 1000).toFixed(1)} s`}`
