@@ -8,6 +8,7 @@ import { NodeShellProvider } from "./providers/NodeShellProvider.ts";
 import { ShellProvider } from "./providers/ShellProvider.ts";
 import { WorkerdFileSystemProvider } from "./providers/WorkerdFileSystemProvider.ts";
 import { FileDetector } from "./services/FileDetector.ts";
+import { ZipArchive } from "./services/ZipArchive.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -20,6 +21,7 @@ export * from "./providers/NodeShellProvider.ts";
 export * from "./providers/ShellProvider.ts";
 export * from "./providers/WorkerdFileSystemProvider.ts";
 export * from "./services/FileDetector.ts";
+export * from "./services/ZipArchive.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -36,7 +38,7 @@ export * from "./services/FileDetector.ts";
  */
 export const AlephaSystem = $module({
   name: "alepha.system",
-  services: [FileDetector, FileSystemProvider, ShellProvider],
+  services: [FileDetector, FileSystemProvider, ShellProvider, ZipArchive],
   variants: [
     MemoryFileSystemProvider,
     NodeFileSystemProvider,

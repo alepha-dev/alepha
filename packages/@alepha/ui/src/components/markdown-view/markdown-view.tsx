@@ -6,6 +6,7 @@ import "./markdown-view.css";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
+import { rehypeSafeImg } from "../../lib/rehype-safe-img.ts";
 
 export interface MarkdownViewProps {
   content: string;
@@ -18,6 +19,11 @@ export const MarkdownView = (props: MarkdownViewProps) => {
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[
           [rehypeHighlight, { detect: true, ignoreMissing: true }],
+          // Promotes ONLY `<img …>` raw HTML to a real element — what
+          // MDXEditor emits for a resized image. Every other raw node keeps
+          // react-markdown's default, which is to escape it to text. See
+          // `rehype-safe-img.ts` for why this is not `rehype-raw`.
+          rehypeSafeImg,
         ]}
         components={{
           h1: ({ children }) => (

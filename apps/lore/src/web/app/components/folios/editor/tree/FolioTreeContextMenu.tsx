@@ -16,7 +16,6 @@ import {
   PinOff,
   SquareArrowOutUpRight,
   Trash2,
-  Upload,
 } from "lucide-react";
 import type { ReactElement } from "react";
 import type { AppRouter } from "../../../../AppRouter.ts";
@@ -70,13 +69,9 @@ const FolioTreeContextMenu = (
   const hrefFor = (): string =>
     isDirectory
       ? `${router.path("projectFolios", { params: { projectSlug: props.projectSlug } })}?dir=${node.shortId}`
-      : node.kind === "blob"
-        ? // Bytes, not a page. The framework's file route sets the content
-          // type, so the browser previews an image and downloads the rest.
-          `/api/files/${node.id}`
-        : router.path("projectFoliosFolio", {
-            params: { projectSlug: props.projectSlug, shortId: node.shortId },
-          });
+      : router.path("projectFoliosFolio", {
+          params: { projectSlug: props.projectSlug, shortId: node.shortId },
+        });
 
   const handleOpen = (): void => {
     router.push(hrefFor());
@@ -107,33 +102,11 @@ const FolioTreeContextMenu = (
             <FilePlus className="size-4" />
             {tr("folios.editor.tree.new-folio")}
           </ContextMenuItem>
-          <ContextMenuItem onClick={() => props.tree.uploadBlobs(node.id)}>
-            <Upload className="size-3.5" />
-            {tr("folios.editor.tree.upload")}
-          </ContextMenuItem>
           <ContextMenuItem onClick={() => props.tree.createDirectory(node.id)}>
             <FolderPlus className="size-4" />
             {tr("folios.editor.tree.new-directory")}
           </ContextMenuItem>
           <ContextMenuSeparator />
-          <ContextMenuItem onClick={() => props.tree.beginRename(node.id)}>
-            <Pencil className="size-4" />
-            {tr("folios.editor.tree.rename")}
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem
-            variant="destructive"
-            onClick={() => props.tree.remove(node)}
-          >
-            <Trash2 className="size-4" />
-            {tr("folio.action.delete")}
-          </ContextMenuItem>
-        </>
-      ) : node.kind === "blob" ? (
-        // A blob is bytes, not a document: duplicate copies folio content,
-        // a wiki-link resolves to a folio, and pinning feeds the agent
-        // context with prose. None of the three mean anything here.
-        <>
           <ContextMenuItem onClick={() => props.tree.beginRename(node.id)}>
             <Pencil className="size-4" />
             {tr("folios.editor.tree.rename")}

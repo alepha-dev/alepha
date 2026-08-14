@@ -2,14 +2,17 @@ import { $inject } from "alepha";
 import { FileService, files } from "alepha/api/files";
 import { $repository, $sequence } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";
+// A zero-dependency pure helper, deliberately shared with the browser: the
+// two writers and the reader of an `assets/` reference must agree on the
+// encoding exactly, and a second copy here is how that stops being true.
+import { folioAssetPath } from "../../web/app/components/folios/folioAssetReference.ts";
 import { type FolioBlob, folioBlobs } from "../entities/folioBlobs.ts";
-import { FolioDirectoryService } from "./FolioDirectoryService.ts";
-import { FolioNameService } from "./FolioNameService.ts";
+import { folios } from "../entities/folios.ts";
 
 /**
  * Lore-side blob operations on top of the framework `FileService`. The
  * framework owns the bytes + the upload/download flow; we own the
- * project + directory placement and the name-reservation glue.
+ * placement of an attachment on its folio and the sibling-name rule.
  *
  * The bucket name `archive-blobs` is allocated here so per-project
  * separation isn't required at the framework layer — each folio_blob
@@ -24,9 +27,8 @@ const FOLIO_BLOB_BUCKET = "archive-blobs";
 
 export class FolioBlobService {
   protected readonly blobs = $repository(folioBlobs);
+  protected readonly folioRows = $repository(folios);
   protected readonly frameworkFiles = $repository(files);
-  protected readonly directoryService = $inject(FolioDirectoryService);
-  protected readonly names = $inject(FolioNameService);
   protected readonly fileService = $inject(FileService);
   protected readonly blobShortId = $sequence();
 
@@ -47,33 +49,15 @@ export class FolioBlobService {
   }
 
   /**
-   * Every blob in the project, flat.
-   *
-   * Mirrors `listAllDirectories`: the folio tree is assembled in the browser
-   * from flat lists, so it needs the whole set in one call rather than a
-   * `listContents` per directory. `listInDirectory` cannot stand in — called
-   * without a directory it means "the project root", not "everywhere".
+   * Every attachment on one folio, which is the only listing the UI or
+   * an export ever needs — an attachment has no existence outside its
+   * folio.
    */
-  public async listAll(projectId: number): Promise<FolioBlob[]> {
+  public async listByFolio(folioId: string): Promise<FolioBlob[]> {
     return this.blobs.findMany({
-      where: { projectId: { eq: projectId } },
+      where: { folioId: { eq: folioId } },
       orderBy: [{ column: "name", direction: "asc" }],
       limit: 1000,
-    });
-  }
-
-  public async listInDirectory(
-    projectId: number,
-    directoryId: string | undefined,
-  ): Promise<FolioBlob[]> {
-    return this.blobs.findMany({
-      where: directoryId
-        ? { directoryId: { eq: directoryId } }
-        : {
-            projectId: { eq: projectId },
-            directoryId: { isNull: true },
-          },
-      orderBy: [{ column: "name", direction: "asc" }],
     });
   }
 
@@ -82,16 +66,16 @@ export class FolioBlobService {
    * file. Caller is responsible for the upload flow (typically via
    * framework `FileController` endpoints — Lore does not currently
    * expose an MCP-side upload; uploads happen via HTTP). We wire the
-   * metadata and reserve the name.
+   * metadata and resolve the name.
    *
    * The framework file must already exist and live in the
-   * `archive-blobs` bucket — both are validated here. The folio
-   * blob row is created with the given `directoryId` (or root if
-   * undefined); the name is auto-suffixed on collision.
+   * `archive-blobs` bucket — both are validated here. The name is
+   * auto-suffixed on collision with another attachment of the same
+   * folio.
    */
   public async register(input: {
     projectId: number;
-    directoryId?: string;
+    folioId: string;
     name: string;
     fileId: string;
   }): Promise<FolioBlob> {
@@ -106,68 +90,131 @@ export class FolioBlobService {
         `Framework file is in bucket '${frameworkFile.bucket}', expected '${FOLIO_BLOB_BUCKET}'`,
       );
     }
-    if (input.directoryId) {
-      const directory = await this.directoryService.findById(input.directoryId);
-      if (!directory || directory.projectId !== input.projectId) {
-        throw new BadRequestError("Target directory not found in this project");
-      }
+
+    const folio = await this.folioRows.findOne({
+      where: { id: { eq: input.folioId } },
+    });
+    if (!folio || folio.projectId !== input.projectId) {
+      throw new BadRequestError("Target folio not found in this project");
     }
 
-    const scope = this.directoryService.scopeOf(
-      input.projectId,
-      input.directoryId,
-    );
-    const name = await this.names.autoSuffix(input.name, scope);
+    const name = await this.autoSuffix(input.name, input.folioId);
     const shortId = await this.blobShortId.next(String(input.projectId));
-    const blob = await this.blobs.create({
+    return this.blobs.create({
       fileId: input.fileId,
       projectId: input.projectId,
-      directoryId: input.directoryId,
+      folioId: input.folioId,
       shortId,
       name,
     });
-    await this.names.reserve(name, "blob", input.fileId, scope);
-    return blob;
   }
 
   public async rename(fileId: string, name: string): Promise<FolioBlob> {
     const blob = await this.findById(fileId);
     if (!blob) throw new NotFoundError("Blob not found");
-    const scope = this.directoryService.scopeOf(
-      blob.projectId,
-      blob.directoryId,
-    );
-    // Release first: autoSuffix counts the entity's own current
-    // reservation as a sibling otherwise (rename "Abc" → "abc" would
-    // resolve to "abc (1)"). The enclosing controller is $transactional.
-    await this.names.releaseByEntity(fileId);
-    const nextName = await this.names.autoSuffix(name, scope);
-    await this.names.reserve(nextName, "blob", fileId, scope);
-    return this.blobs.updateById(fileId, { name: nextName });
+    const nextName = await this.autoSuffix(name, blob.folioId, fileId);
+    const renamed = await this.blobs.updateById(fileId, { name: nextName });
+    await this.rewriteReferences(blob.folioId, blob.name, nextName);
+    return renamed;
   }
 
-  public async move(
-    fileId: string,
-    newDirectoryId: string | undefined,
-  ): Promise<FolioBlob> {
-    const blob = await this.findById(fileId);
-    if (!blob) throw new NotFoundError("Blob not found");
-    if (newDirectoryId) {
-      const directory = await this.directoryService.findById(newDirectoryId);
-      if (!directory || directory.projectId !== blob.projectId) {
-        throw new BadRequestError("Target directory not found in this project");
-      }
-    }
-    const scope = this.directoryService.scopeOf(blob.projectId, newDirectoryId);
-    // Release first — see rename() above. Move-to-same-parent would
-    // otherwise see the entity's own reservation as a collision.
-    await this.names.releaseByEntity(fileId);
-    const nextName = await this.names.autoSuffix(blob.name, scope);
-    await this.names.reserve(nextName, "blob", fileId, scope);
-    return this.blobs.updateById(fileId, {
-      directoryId: newDirectoryId,
-      name: nextName,
+  /**
+   * Repoint every `assets/<old>` reference in the owning folio at the new
+   * name.
+   *
+   * The cost of addressing attachments by name rather than by id (which is
+   * what makes an export portable — see `useFolioImageUpload`): a rename
+   * that skipped this would leave every embed in the document resolving to
+   * nothing, silently, with the image still present in the panel.
+   *
+   * Deliberately NOT done for a protected folio: `content` there is a
+   * client-side encryption envelope the server cannot read, let alone
+   * rewrite. Attachments on a protected folio are refused upstream, so this
+   * is a guard against a folio that was encrypted after the fact rather
+   * than a reachable path.
+   */
+  protected async rewriteReferences(
+    folioId: string,
+    from: string,
+    to: string,
+  ): Promise<void> {
+    if (from === to) return;
+    const folio = await this.folioRows.findOne({
+      where: { id: { eq: folioId } },
     });
+    if (!folio?.content || folio.protected) return;
+
+    // Match the encoded and the bare form, since the writers percent-encode
+    // but hand-typed markdown will not. The replacement goes through
+    // `folioAssetPath` rather than `encodeURIComponent` so this cannot drift
+    // from what the reader accepts — the difference is parentheses, which
+    // `encodeURIComponent` leaves alone and markdown treats as terminators,
+    // and which `autoSuffix` puts in every collision name.
+    const candidates = new Set([
+      from,
+      encodeURIComponent(from),
+      folioAssetPath(from).slice("assets/".length),
+    ]);
+    const replacement = `](${folioAssetPath(to)})`;
+    let content = folio.content;
+    for (const candidate of candidates) {
+      content = content.split(`](assets/${candidate})`).join(replacement);
+    }
+    if (content === folio.content) return;
+    await this.folioRows.updateById(folioId, { content });
+  }
+
+  /**
+   * First free name of the form `base`, `base (1)`, `base (2)`, … among
+   * the attachments of `folioId`. Drive-style, and the same shape
+   * `FolioNameService.autoSuffix` gives folios and directories — but
+   * resolved against this folio's own attachments rather than the
+   * `folio_names` reservation table, which attachments left when they
+   * stopped being siblings of anything.
+   *
+   * `exceptFileId` skips the row being renamed. Without it a rename
+   * that only changes case ("Abc" → "abc") would count the entity's own
+   * current name as a collision and resolve to "abc (1)".
+   */
+  public async autoSuffix(
+    desired: string,
+    folioId: string,
+    exceptFileId?: string,
+  ): Promise<string> {
+    const siblings = await this.blobs.findMany({
+      where: { folioId: { eq: folioId } },
+      columns: ["fileId", "name"],
+      limit: 1000,
+    });
+    const taken = new Set(
+      siblings
+        .filter((row) => row.fileId !== exceptFileId)
+        .map((row) => row.name.trim().toLowerCase()),
+    );
+
+    const wanted = desired.trim();
+    if (!taken.has(wanted.toLowerCase())) return wanted;
+
+    const { stem, ext } = this.splitExtension(wanted);
+    for (let n = 1; n < 10_000; n++) {
+      const candidate = ext ? `${stem} (${n})${ext}` : `${stem} (${n})`;
+      if (!taken.has(candidate.toLowerCase())) return candidate;
+    }
+    throw new BadRequestError(
+      "Too many attachments with this name on this folio",
+    );
+  }
+
+  /**
+   * Drive-style split: `stem` without the trailing extension, `ext`
+   * with its leading dot (or "" when there is none). A dotfile like
+   * `.gitignore` is all stem, matching Drive.
+   */
+  protected splitExtension(name: string): { stem: string; ext: string } {
+    if (name.startsWith(".")) return { stem: name, ext: "" };
+    const index = name.lastIndexOf(".");
+    if (index <= 0) return { stem: name, ext: "" };
+    return { stem: name.slice(0, index), ext: name.slice(index) };
   }
 
   /**
@@ -178,7 +225,6 @@ export class FolioBlobService {
   public async delete(fileId: string): Promise<void> {
     const blob = await this.findById(fileId);
     if (!blob) throw new NotFoundError("Blob not found");
-    await this.names.releaseByEntity(fileId);
     // FK from folio_blobs.fileId → files.id has CASCADE: deleting
     // the framework file row also drops the folio_blobs row. Use the
     // framework service so storage gets reclaimed too.

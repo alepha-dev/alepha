@@ -10,7 +10,6 @@ import {
   Folder,
   FolderOpen,
   Lock,
-  Paperclip,
   Pin,
 } from "lucide-react";
 import {
@@ -55,11 +54,6 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
   const isDragging = tree.dragId === node.id;
   const dropHere = tree.drop?.id === node.id ? tree.drop.position : undefined;
   // The directory a file drop on THIS row would land in: itself when it is a
-  // directory, otherwise its parent — dropping a file next to a folio puts it
-  // beside that folio rather than dead-zoning half the tree.
-  const fileDropParentId = isDirectory ? node.id : node.parentId;
-  const isFileDropTarget =
-    isDirectory && tree.fileDrop?.parentId === fileDropParentId;
 
   const [draftName, setDraftName] = useState(node.name);
   // Guards against a native `blur` fired by React unmounting the input on
@@ -100,11 +94,10 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
     e.preventDefault();
     e.stopPropagation();
     if (isFileDrag(e)) {
-      // `dataTransfer.files` is deliberately empty during `dragover` (the
-      // browser only exposes the bytes on `drop`), so `types` is the only
-      // thing that can tell an OS file drag from a row being re-parented.
-      e.dataTransfer.dropEffect = "copy";
-      tree.onFileDragOver(fileDropParentId);
+      // An OS file drag has nowhere to land in the tree any more —
+      // attachments belong to a folio, not to a folder — so refuse it
+      // rather than silently treating it as a row re-parent.
+      e.dataTransfer.dropEffect = "none";
       return;
     }
     if (!tree.dragId || tree.dragId === node.id) return;
@@ -125,10 +118,7 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
   const handleDrop = (e: DragEvent<HTMLDivElement>): void => {
     e.preventDefault();
     e.stopPropagation();
-    if (isFileDrag(e)) {
-      void tree.dropFiles([...e.dataTransfer.files], fileDropParentId);
-      return;
-    }
+    if (isFileDrag(e)) return;
     void tree.onDrop(node.id);
   };
 
@@ -159,9 +149,7 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
       : FolderOpen
     : node.kind === "protected"
       ? Lock
-      : node.kind === "blob"
-        ? Paperclip
-        : FileText;
+      : FileText;
 
   return (
     <ContextMenu>
@@ -179,7 +167,7 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
               "relative flex cursor-default items-center gap-1 py-1 pr-2 text-sm select-none hover:bg-muted/60",
               isSelected && "bg-muted font-medium",
               isDragging && "opacity-45",
-              (dropHere === "inside" || isFileDropTarget) &&
+              dropHere === "inside" &&
                 "bg-primary/10 ring-1 ring-inset ring-primary/60",
             )}
             style={{ paddingLeft: `${8 + props.depth * 13}px` }}

@@ -1,6 +1,7 @@
 import type { Folio } from "@/api/entities/folios.ts";
 import {
   type BlobRef,
+  BROKEN_HREF_PREFIX,
   createFolioWikiLinkResolver,
   type DirectoryRef,
   formatBlobBytes,
@@ -43,7 +44,8 @@ export const rewriteFolioWikiLinks = (
   if (!content) return content;
   const hasWiki = content.includes("[[");
   const hasBlobImage = /!\[[^\]]*\]\(blob:/i.test(content);
-  if (!hasWiki && !hasBlobImage) return content;
+  const hasAssets = /\]\(assets\//i.test(content);
+  if (!hasWiki && !hasBlobImage && !hasAssets) return content;
 
   const resolver = createFolioWikiLinkResolver({
     projectSlug,
@@ -53,12 +55,46 @@ export const rewriteFolioWikiLinks = (
     blobs,
   });
 
+  // Step 0 — `assets/<name>`, the form folio markdown actually stores. Both
+  // the embed `![alt](assets/x.webp)` and the plain link `[label](assets/x)`
+  // are rewritten, so an attachment can be shown or linked. Runs before the
+  // `blob:` pass below purely for readability; the two syntaxes cannot
+  // overlap.
+  //
+  // Spaces ARE allowed in the name: hand-written markdown will not be
+  // percent-encoded, and refusing those would resolve nothing for a file
+  // called `my photo.webp`. `)` still terminates — that is markdown's own
+  // rule, and why `folioAssetPath` encodes parentheses on the way in. The
+  // trailing `(?: "[^"]*")?` swallows a markdown title.
+  const withAssets = hasAssets
+    ? content.replace(
+        /(!?)\[([^\]]*)\]\(assets\/([^)\n"]+?)(?:\s+"[^"]*")?\)/gi,
+        (full, bang: string, label: string, name: string) => {
+          const blob = resolver.resolveBlobByName(decodeURIComponent(name));
+          if (!blob) {
+            // A missing attachment is reported the same way a missing folio
+            // is, rather than left to render as a broken-image icon.
+            return `[${escapeMarkdownLabel(full)}](${BROKEN_HREF_PREFIX}blob-not-found)`;
+          }
+          const fileUrl = `/api/files/${blob.fileId}`;
+          // A plain link keeps the author's label whatever the type is —
+          // only an EMBED of a non-image has to degrade, because there is no
+          // image to show.
+          if (!bang) return `[${label}](${fileUrl})`;
+          if (isImageBlob(blob)) return `![${label || blob.name}](${fileUrl})`;
+          const sizeSuffix =
+            blob.size != null ? ` (${formatBlobBytes(blob.size)})` : "";
+          return `[${escapeMarkdownLabel(`📎 ${blob.name}${sizeSuffix}`)}](${fileUrl})`;
+        },
+      )
+    : content;
+
   // Step 1 — rewrite `![alt](blob:#42)` / `![alt](blob:<uuid>)` image
   // syntax BEFORE the wiki-link pass. Image MIME → `<img>` URL.
   // Non-image MIME → a plain link with a paperclip + size annotation
   // (so non-image blobs degrade to a download link instead of a
   // broken-image placeholder).
-  const rewritten = content.replace(
+  const rewritten = withAssets.replace(
     /!\[([^\]]*)\]\(blob:([^)\s]+)\)/gi,
     (full, alt: string, ref: string) => {
       const blob = resolver.resolveBlob(ref);
