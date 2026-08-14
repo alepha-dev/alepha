@@ -12,6 +12,7 @@ import type {
   AdminSessionController,
   AdminUserController,
 } from "alepha/api/users";
+import type { AdminWorkflowController } from "alepha/api/workflows";
 import { $page, Redirection } from "alepha/react/router";
 import { $secure } from "alepha/security";
 import { $client } from "alepha/server/links";
@@ -26,12 +27,13 @@ import {
   SlidersHorizontal,
   Timer,
   UsersIcon,
+  Workflow,
 } from "lucide-react";
 import { createElement } from "react";
 import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
 
 /**
- * The whole `/admin` surface — eleven pages and their shell — mounted and wired.
+ * The whole `/admin` surface — twelve pages and their shell — mounted and wired.
  *
  * ⚠️ **Nav icons are `createElement(Icon)`, never `<Icon />`. Do not "fix"
  * them back to JSX.** This module is evaluated *eagerly* in the server graph:
@@ -113,15 +115,16 @@ import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
  * ### Group order is a contract
  *
  * The built-in pages occupy `Identity` (orders 1-3) and `Operations`
- * (orders 4-10). An application's page should either join one of those with an
+ * (orders 4-11). An application's page should either join one of those with an
  * `order` of 100 or more, or declare a group of its own. `useNavEntries` sorts
  * groups by their smallest member, so a custom page at `order: 2` would
  * silently reshuffle the built-in sidebar.
  *
- * ### These eleven route names are claimed globally
+ * ### These twelve route names are claimed globally
  *
  * `users`, `userDetail`, `sessions`, `keys`, `jobs`, `notifications`,
- * `audits`, `files`, `parameters`, `payments` and `analytics` each carry an
+ * `audits`, `files`, `parameters`, `payments`, `analytics` and `workflows`
+ * each carry an
  * explicit `name:` so a future rename of the field itself (done for
  * readability, without touching the string) never silently changes the public
  * route name — the same reason `AuthRouter`'s pages all carry one too.
@@ -145,6 +148,7 @@ export class AdminRouter {
   protected readonly parameterApi = $client<AdminParameterController>();
   protected readonly paymentApi = $client<AdminPaymentController>();
   protected readonly analyticsApi = $client<AdminAnalyticsController>();
+  protected readonly workflowApi = $client<AdminWorkflowController>();
 
   /**
    * Anchors the shell and the first breadcrumb. Not itself a nav entry — a
@@ -354,5 +358,22 @@ export class AdminRouter {
       order: 10,
     },
     lazy: () => import("./admin-analytics.tsx"),
+  });
+
+  workflows = $pageNav({
+    parent: this.layout,
+    path: "/workflows",
+    name: "workflows",
+    head: { title: "Workflows" },
+    permission: "admin:workflow:read",
+    can: () => this.workflowApi.getWorkflowRegistry.can(),
+    nav: {
+      label: "Workflows",
+      icon: createElement(Workflow),
+      group: "Operations",
+      order: 11,
+      keywords: ["saga", "steps", "executions"],
+    },
+    lazy: () => import("./admin-workflows.tsx"),
   });
 }

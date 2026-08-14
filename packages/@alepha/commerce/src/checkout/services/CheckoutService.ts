@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import { $repository, DatabaseProvider } from "alepha/orm";
 import { CartService } from "../../cart/services/CartService.ts";
@@ -37,6 +37,7 @@ export interface CheckoutTotals {
  */
 export class CheckoutService {
   protected readonly log = $logger();
+  protected readonly alepha = $inject(Alepha);
   protected readonly db = $inject(DatabaseProvider);
   protected readonly repo = $repository(checkoutSessions);
   protected readonly carts = $inject(CartService);
@@ -67,13 +68,19 @@ export class CheckoutService {
       return this.repo.updateById(existing.id, totals);
     }
 
-    return this.repo.create({
+    const session = await this.repo.create({
       cartId,
       userId: options.userId,
       email: options.email,
       status: "open",
       ...totals,
     });
+
+    if (session.email) {
+      await this.emitEmailCaptured(session.id, cartId, session.email);
+    }
+
+    return session;
   }
 
   /**
@@ -86,7 +93,29 @@ export class CheckoutService {
   ): Promise<CheckoutSessionEntity> {
     const session = await this.repo.getById(sessionId);
     this.assertOpen(session);
-    return this.repo.updateById(sessionId, { email });
+    const updated = await this.repo.updateById(sessionId, { email });
+    await this.emitEmailCaptured(updated.id, updated.cartId, email);
+    return updated;
+  }
+
+  /**
+   * Announce a captured email once the write is committed — deferred via
+   * afterCommit for the same reason as the order events: this method can
+   * be reached from inside a caller's transaction, and subscribers must
+   * read committed rows.
+   */
+  protected async emitEmailCaptured(
+    sessionId: string,
+    cartId: string,
+    email: string,
+  ): Promise<void> {
+    await this.db.afterCommit(() =>
+      this.alepha.events.emit(
+        "commerce:checkout:email",
+        { sessionId, cartId, email },
+        { catch: true },
+      ),
+    );
   }
 
   /**
@@ -248,12 +277,26 @@ export class CheckoutService {
       email: session.email,
     });
 
-    return {
-      session: await this.repo.updateById(sessionId, {
-        paymentIntentId: handoff.intentId,
-      }),
-      handoff,
-    };
+    const updated = await this.repo.updateById(sessionId, {
+      paymentIntentId: handoff.intentId,
+    });
+
+    // The buyer is now on the PSP page and may never come back — announce
+    // it so the settlement module can schedule a reconciliation.
+    await this.db.afterCommit(() =>
+      this.alepha.events.emit(
+        "commerce:checkout:paying",
+        {
+          sessionId,
+          cartId: session.cartId,
+          orderId: order.id,
+          intentId: handoff.intentId,
+        },
+        { catch: true },
+      ),
+    );
+
+    return { session: updated, handoff };
   }
 
   /**

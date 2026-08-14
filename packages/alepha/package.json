@@ -176,6 +176,13 @@
       "import": "./src/api/verifications/index.ts",
       "default": "./src/api/verifications/index.ts"
     },
+    "./api/workflows": {
+      "types": "./src/api/workflows/index.ts",
+      "react-native": "./src/api/workflows/index.browser.ts",
+      "browser": "./src/api/workflows/index.browser.ts",
+      "import": "./src/api/workflows/index.ts",
+      "default": "./src/api/workflows/index.ts"
+    },
     "./background": {
       "types": "./src/background/index.ts",
       "workerd": "./src/background/index.workerd.ts",
@@ -620,6 +627,13 @@
         "browser": "./dist/api/verifications/index.browser.js",
         "import": "./dist/api/verifications/index.js",
         "default": "./dist/api/verifications/index.js"
+      },
+      "./api/workflows": {
+        "types": "./dist/api/workflows/index.d.ts",
+        "react-native": "./dist/api/workflows/index.browser.js",
+        "browser": "./dist/api/workflows/index.browser.js",
+        "import": "./dist/api/workflows/index.js",
+        "default": "./dist/api/workflows/index.js"
       },
       "./background": {
         "types": "./dist/background/index.d.ts",

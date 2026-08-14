@@ -10,10 +10,13 @@ import { OrderMailRenderer } from "../providers/OrderMailRenderer.ts";
  * Sends the two emails a buyer expects: "we got your order" and "it's on its
  * way".
  *
- * Driven by the domain's own events, so a shop gets both by importing the
- * module and nothing else. Failures are logged and swallowed — an SMTP outage
- * must not roll back a settled sale, and the order is the record of truth, not
- * the email.
+ * The shipping notice is event-driven (`commerce:order:shipped`). The
+ * confirmation is NOT: it is a step of the settlement workflow
+ * (`@alepha/commerce/settlement`), which calls `sendConfirmationFor` with
+ * per-step retry instead of the swallowed-error hook that used to live
+ * here — an SMTP outage now means a visible, retryable execution rather
+ * than a silently lost email. Import the settlement module to send
+ * confirmations at all.
  *
  * The recipient comes from the checkout session rather than the order: an order
  * has no email column, because a counter sale has no email and inventing a
@@ -29,26 +32,23 @@ export class OrderMailer {
   protected readonly confirmation = $email({ name: "commerce-order-paid" });
   protected readonly shipped = $email({ name: "commerce-order-shipped" });
 
-  protected readonly onPaid = $hook({
-    on: "commerce:order:paid",
-    handler: async (event) => {
-      try {
-        const to = await this.recipientOf(event.orderId);
-        if (!to) {
-          return;
-        }
-        const order = await this.orders.getById(event.orderId);
-        const items = await this.orders.itemsOf(event.orderId);
-        const mail = await this.renderer.confirmation(order, items);
-        await this.confirmation.send({ to, ...mail });
-      } catch (error) {
-        this.log.error("Failed to send an order confirmation", {
-          orderId: event.orderId,
-          error,
-        });
-      }
-    },
-  });
+  /**
+   * Send the order confirmation, returning whether one went out — `false`
+   * means the order has no email on file (a counter sale), which is a
+   * normal outcome, not an error. Throws on render/SMTP failure so the
+   * calling workflow step can retry.
+   */
+  public async sendConfirmationFor(orderId: string): Promise<boolean> {
+    const to = await this.recipientOf(orderId);
+    if (!to) {
+      return false;
+    }
+    const order = await this.orders.getById(orderId);
+    const items = await this.orders.itemsOf(orderId);
+    const mail = await this.renderer.confirmation(order, items);
+    await this.confirmation.send({ to, ...mail });
+    return true;
+  }
 
   protected readonly onShipped = $hook({
     on: "commerce:order:shipped",

@@ -10,11 +10,27 @@ import { AlephaCommerceNotifications } from "../notifications/index.ts";
 import { CatalogService } from "../services/CatalogService.ts";
 import { OrderService } from "../services/OrderService.ts";
 import { StockService } from "../services/StockService.ts";
+import { AlephaCommerceSettlement } from "../settlement/index.ts";
+
+/**
+ * Poll until the mailbox holds `count` mails — the confirmation now
+ * arrives through the settlement workflow, a beat after the webhook.
+ */
+const waitForMail = async (mail: MemoryEmailProvider, count: number) => {
+  const deadline = Date.now() + 5_000;
+  while (mail.records.length < count && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 20));
+  }
+  return mail.records;
+};
 
 const setup = async () => {
+  // Settlement drives the confirmation email since the paid-path moved
+  // onto the workflow; notifications alone only covers the shipped mail.
   const alepha = Alepha.create()
     .with(AlephaOrmPostgres)
-    .with(AlephaCommerceNotifications);
+    .with(AlephaCommerceNotifications)
+    .with(AlephaCommerceSettlement);
 
   const ctx = {
     alepha,
@@ -201,7 +217,7 @@ describe("order emails", () => {
 
     await buy(ctx, ring.id, "camille@example.com");
 
-    const sent = ctx.mail.records;
+    const sent = await waitForMail(ctx.mail, 1);
     expect(sent).toHaveLength(1);
     expect(sent[0]!.to).toBe("camille@example.com");
     expect(sent[0]!.subject).toContain("confirmée");
@@ -216,6 +232,7 @@ describe("order emails", () => {
     const ring = await aRing(ctx.catalog);
     await ctx.stock.recordIntake(ring.id, 2);
     const orderId = await buy(ctx, ring.id);
+    await waitForMail(ctx.mail, 1);
 
     await ctx.orders.markShipped(orderId, {
       trackingNumber: "6A12345678901",
@@ -260,6 +277,9 @@ describe("order emails", () => {
     await ctx.payments.handleWebhookEvent(handoff.intentId, "captured");
     await ctx.payments.handleWebhookEvent(handoff.intentId, "captured");
 
+    await waitForMail(ctx.mail, 1);
+    // Give a would-be duplicate a beat to land before asserting it didn't.
+    await new Promise((r) => setTimeout(r, 200));
     expect(ctx.mail.records).toHaveLength(1);
   });
 });

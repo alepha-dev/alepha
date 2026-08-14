@@ -82,4 +82,28 @@ export class CheckoutSettlementListener {
       await this.checkout.abandonWithOrder(sessionId);
     },
   });
+
+  /**
+   * An intent the payment sweep expired is a failure with a different
+   * name: the buyer opened the PSP page and never finished. Same
+   * treatment — the session and its pending order must not sit in a
+   * `paying` graveyard forever.
+   */
+  protected readonly onExpired = $hook({
+    on: "payments:expired",
+    handler: async (event) => {
+      const sessionId = (event.metadata as { checkoutSessionId?: string })
+        ?.checkoutSessionId;
+      if (!sessionId) {
+        return;
+      }
+
+      this.log.debug("Cancelling checkout from payments:expired", {
+        sessionId,
+        intentId: event.intentId,
+      });
+
+      await this.checkout.abandonWithOrder(sessionId);
+    },
+  });
 }

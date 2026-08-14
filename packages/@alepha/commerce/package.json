@@ -27,6 +27,8 @@
     "./shipping": "./src/shipping/index.ts",
     "./invoicing": "./src/invoicing/index.ts",
     "./notifications": "./src/notifications/index.ts",
+    "./settlement": "./src/settlement/index.ts",
+    "./recovery": "./src/recovery/index.ts",
     "./admin": "./src/admin/index.ts",
     "./admin/components/*": "./src/admin/components/*.tsx",
     "./checkout/components/*": "./src/checkout/components/*",

@@ -140,6 +140,14 @@ export abstract class PostgresProvider extends DatabaseProvider {
 
   /**
    * Drop the current test schema if applicable.
+   *
+   * Retries on a Postgres deadlock (40P01): background work that outran
+   * the stop-time drains — an unawaited cron catch-up from `travel()`,
+   * a fire-and-forget dispatch — can still hold an AccessShare lock on a
+   * table while the CASCADE wants AccessExclusive. Postgres kills one
+   * side, the straggler dies with the app a beat later, and a retry
+   * succeeds. Failing the whole test file over cleanup of a
+   * one-run-only schema is the worse trade.
    */
   protected async dropTestSchema(): Promise<void> {
     if (
@@ -147,9 +155,23 @@ export abstract class PostgresProvider extends DatabaseProvider {
       this.schemaForTesting?.startsWith("test_alepha_")
     ) {
       this.log.info(`Deleting test schema '${this.schemaForTesting}' ...`);
-      await this.execute(
-        sql`DROP SCHEMA IF EXISTS ${sql.raw(this.schemaForTesting)} CASCADE`,
-      );
+      for (let attempt = 1; ; attempt++) {
+        try {
+          await this.execute(
+            sql`DROP SCHEMA IF EXISTS ${sql.raw(this.schemaForTesting)} CASCADE`,
+          );
+          break;
+        } catch (error) {
+          const code = (error as { cause?: { code?: string } })?.cause?.code;
+          if (code !== "40P01" || attempt >= 3) {
+            throw error;
+          }
+          this.log.warn(
+            `Deadlock dropping test schema (attempt ${attempt}), retrying`,
+          );
+          await new Promise((r) => setTimeout(r, 100 * attempt));
+        }
+      }
       this.log.info(`Test schema '${this.schemaForTesting}' deleted`);
     }
   }

@@ -2,6 +2,8 @@ import { ProductKindRegistry } from "@alepha/commerce";
 import { AlephaCommerceAdmin } from "@alepha/commerce/admin";
 import { AlephaCommerceInvoicing } from "@alepha/commerce/invoicing";
 import { AlephaCommerceNotifications } from "@alepha/commerce/notifications";
+import { AlephaCommerceRecovery } from "@alepha/commerce/recovery";
+import { AlephaCommerceSettlement } from "@alepha/commerce/settlement";
 import { AlephaCommerceShipping } from "@alepha/commerce/shipping";
 import { $module } from "alepha";
 import { AlephaApiFiles, FileAccessProvider } from "alepha/api/files";
@@ -37,6 +39,11 @@ export const ShopApi = $module({
     AlephaCommerceShipping,
     AlephaCommerceInvoicing,
     AlephaCommerceNotifications,
+    // The durable paid-path: invoice + confirmation as a $workflow. Invoicing
+    // and notifications do nothing on the paid transition without it.
+    AlephaCommerceSettlement,
+    // Abandoned-cart reminders, riding the same workflow engine.
+    AlephaCommerceRecovery,
     AlephaCommerceAdmin,
   ],
   /*

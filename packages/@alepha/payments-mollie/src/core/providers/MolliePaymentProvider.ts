@@ -150,6 +150,23 @@ export class MolliePaymentProvider implements PaymentProvider {
     });
   }
 
+  /**
+   * The reconciliation poll — and on Mollie the load-bearing one: without
+   * `MOLLIE_WEBHOOK_URL` no webhook ever arrives, so this is how a
+   * payment the buyer completed actually reaches the domain.
+   */
+  public async retrieveSessionStatus(
+    providerRef: string,
+  ): Promise<"authorized" | "captured" | "failed" | null> {
+    try {
+      const payment = await this.mollie.payments.get(providerRef);
+      return this.mapStatus(payment.status);
+    } catch (error) {
+      this.log.warn(`Failed to retrieve Mollie payment ${providerRef}`, error);
+      return null;
+    }
+  }
+
   public async voidPayment(providerRef: string): Promise<void> {
     await this.mollie.payments.cancel(providerRef);
   }

@@ -45,7 +45,14 @@ export class PaymentService {
       });
 
       for (const intent of stale) {
-        await this.expireIntent(intent);
+        // A missing webhook is not a missing payment: ask the PSP before
+        // declaring the intent dead. On providers that can be polled, a
+        // payment the buyer completed settles here instead of being
+        // stomped to "expired" — the Mollie-without-webhook case.
+        const status = await this.syncIntent(intent.id);
+        if (status === "processing") {
+          await this.expireIntent(intent);
+        }
       }
     },
   });
@@ -82,6 +89,55 @@ export class PaymentService {
     }
 
     this.log.info(`Expired stale intent ${intent.id}`);
+
+    // Tell the domain: an expiry is an outcome like any other. Without
+    // this, a buyer who closed the PSP tab left a `paying` checkout (and
+    // its pending order) stranded forever, invisible to every listener.
+    await this.alepha.events.emit(
+      "payments:expired",
+      {
+        intentId: intent.id,
+        amount: intent.amount,
+        currency: intent.currency,
+        metadata: intent.metadata,
+      },
+      { catch: true },
+    );
+  }
+
+  /**
+   * Reconcile an intent against the PSP's own record: ask the provider
+   * for the session's current status and, when it reports a transition
+   * we never saw, route it through {@link handleWebhookEvent} — the same
+   * guarded path a webhook takes, so ordering and idempotency rules hold.
+   *
+   * Returns the intent's status after the attempt. No-ops (returning the
+   * stored status) when the provider cannot be polled or reports nothing
+   * new.
+   */
+  public async syncIntent(intentId: string): Promise<string> {
+    const intent = await this.getIntent(intentId);
+
+    if (intent.status !== "processing" && intent.status !== "authorized") {
+      return intent.status;
+    }
+    if (!intent.providerRef) {
+      return intent.status;
+    }
+
+    const reported = await this.provider.retrieveSessionStatus(
+      intent.providerRef,
+    );
+    if (!reported || reported === intent.status) {
+      return intent.status;
+    }
+
+    this.log.info(
+      `Reconciling intent ${intent.id}: provider reports '${reported}'`,
+    );
+    await this.handleWebhookEvent(intent.id, reported);
+
+    return (await this.getIntent(intentId)).status;
   }
 
   /**

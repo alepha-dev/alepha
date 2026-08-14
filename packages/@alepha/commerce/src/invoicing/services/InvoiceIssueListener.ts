@@ -3,38 +3,21 @@ import { $logger } from "alepha/logger";
 import { InvoiceService } from "./InvoiceService.ts";
 
 /**
- * Issues the invoice when an order is paid, and a credit note when it is
- * refunded.
+ * Issues the credit note when an order is refunded.
  *
- * Hooked onto the domain's own events rather than called from the checkout, so
- * that a counter sale and an online order are invoiced by the same path. Adding
- * this module is the entire integration.
+ * The paid-side invoice is NOT issued here anymore: it is the first step
+ * of the settlement workflow (`@alepha/commerce/settlement`), with
+ * per-step retry and a visible execution — the swallowed-error hook that
+ * used to live here could silently lose a legally required document.
+ * Import the settlement module to issue invoices on payment at all.
  *
- * A failure here must not undo the sale: the money is in, and an invoice that
- * failed to render is a problem to retry, not a reason to unwind a payment. So
- * the error is logged and swallowed — deliberately, and this is the one place in
- * the package where that is the right call.
+ * A failure here must not undo the refund, so the credit-note error is
+ * still logged and swallowed; moving it onto the same durable footing is
+ * the refund-saga follow-up.
  */
 export class InvoiceIssueListener {
   protected readonly log = $logger();
   protected readonly invoices = $inject(InvoiceService);
-
-  protected readonly onOrderPaid = $hook({
-    on: "commerce:order:paid",
-    handler: async (event) => {
-      try {
-        const invoice = await this.invoices.issueForOrder(event.orderId);
-        this.log.info(`Issued invoice ${invoice.number}`, {
-          orderId: event.orderId,
-        });
-      } catch (error) {
-        this.log.error("Failed to issue an invoice for a paid order", {
-          orderId: event.orderId,
-          error,
-        });
-      }
-    },
-  });
 
   protected readonly onOrderRefunded = $hook({
     on: "commerce:order:refunded",

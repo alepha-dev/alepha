@@ -152,4 +152,22 @@ export abstract class PaymentProvider {
    * Called during stale session cleanup.
    */
   abstract expireSession(providerRef: string): Promise<void>;
+
+  /**
+   * Ask the PSP for the current status of a session/intent, mapped to the
+   * webhook vocabulary. This is the reconciliation path for deployments
+   * where webhooks are missing or unreliable (e.g. Mollie without
+   * `MOLLIE_WEBHOOK_URL`): a poller can synthesize the transition the
+   * webhook never delivered.
+   *
+   * Non-abstract on purpose: `null` means "this provider cannot be
+   * polled", and reconciliation quietly does nothing. Providers SHOULD
+   * override it.
+   */
+  public async retrieveSessionStatus(
+    providerRef: string,
+  ): Promise<"authorized" | "captured" | "failed" | null> {
+    void providerRef;
+    return null;
+  }
 }

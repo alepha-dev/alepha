@@ -34,6 +34,33 @@ export * from "./services/CheckoutSettlementListener.ts";
 export * from "./services/StockReservationSweeper.ts";
 export * from "./services/TaxService.ts";
 
+declare module "alepha" {
+  interface Hooks {
+    /**
+     * A checkout session captured (or corrected) a buyer email. Emitted
+     * after the write commits; the cart-recovery module keys its
+     * follow-up sequence off this.
+     */
+    "commerce:checkout:email": {
+      sessionId: string;
+      cartId: string;
+      email: string;
+    };
+
+    /**
+     * A checkout was handed to the payment rail: session `paying`, order
+     * pending, intent created. The settlement module keys its
+     * reconciliation workflow off this — the buyer may never come back.
+     */
+    "commerce:checkout:paying": {
+      sessionId: string;
+      cartId: string;
+      orderId: string;
+      intentId: string;
+    };
+  }
+}
+
 /**
  * Turns a cart into a paid order.
  *

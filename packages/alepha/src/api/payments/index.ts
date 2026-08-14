@@ -42,6 +42,12 @@ declare module "alepha" {
       currency: string;
       metadata?: unknown;
     };
+    "payments:expired": {
+      intentId: string;
+      amount: number;
+      currency: string;
+      metadata?: unknown;
+    };
     "payments:voided": {
       intentId: string;
       amount: number;

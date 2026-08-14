@@ -655,6 +655,44 @@ export class StripePaymentProvider implements PaymentProvider {
     );
   }
 
+  /**
+   * The reconciliation poll: map the live Stripe state of a checkout
+   * session or PaymentIntent to the webhook vocabulary, so a lost
+   * webhook can be synthesized instead of stranding a paid checkout.
+   */
+  public async retrieveSessionStatus(
+    providerRef: string,
+  ): Promise<"authorized" | "captured" | "failed" | null> {
+    try {
+      if (providerRef.startsWith("cs_")) {
+        const session =
+          await this.stripe.checkout.sessions.retrieve(providerRef);
+        if (session.payment_status === "paid") {
+          return "captured";
+        }
+        return session.status === "expired" ? "failed" : null;
+      }
+
+      const intent = await this.stripe.paymentIntents.retrieve(providerRef);
+      switch (intent.status) {
+        case "succeeded":
+          return "captured";
+        case "requires_capture":
+          return "authorized";
+        case "canceled":
+          return "failed";
+        default:
+          return null;
+      }
+    } catch (error) {
+      this.log.warn(
+        `Failed to retrieve Stripe status for ${providerRef}`,
+        error,
+      );
+      return null;
+    }
+  }
+
   public async expireSession(
     providerRef: string,
     options: { stripeAccount?: string } = {},

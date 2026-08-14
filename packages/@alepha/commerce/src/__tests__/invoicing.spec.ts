@@ -14,6 +14,7 @@ import { CatalogService } from "../services/CatalogService.ts";
 import { OrderService } from "../services/OrderService.ts";
 import { StockService } from "../services/StockService.ts";
 import { VatCalculator } from "../services/VatCalculator.ts";
+import { AlephaCommerceSettlement } from "../settlement/index.ts";
 
 const seller = {
   name: "Atelier Aurore",
@@ -27,9 +28,12 @@ const seller = {
 const setup = async (
   identity: Partial<typeof seller> & { vatExemptionNotice?: string } = {},
 ) => {
+  // Settlement drives the paid-side invoice since the paid-path moved
+  // onto the workflow; invoicing alone covers only credit notes.
   const alepha = Alepha.create()
     .with(AlephaOrmPostgres)
-    .with(AlephaCommerceInvoicing);
+    .with(AlephaCommerceInvoicing)
+    .with(AlephaCommerceSettlement);
 
   alepha.store.set(sellerIdentityAtom.key, { ...seller, ...identity } as any);
 
@@ -58,7 +62,11 @@ const aRing = (catalog: CatalogService, price = 8900) =>
     config: { trackStock: true },
   });
 
-/** Sell one unit of a product, end to end, and return the paid order id. */
+/**
+ * Sell one unit of a product, end to end, and return the paid order id.
+ * Waits for the settlement workflow to issue the invoice — issuance is a
+ * workflow step now, landing a beat after the webhook returns.
+ */
 const sell = async (
   ctx: Awaited<ReturnType<typeof setup>>,
   productId: string,
@@ -71,7 +79,29 @@ const sell = async (
     returnUrl: "https://bijoux.example/merci",
   });
   await ctx.payments.handleWebhookEvent(handoff.intentId, "captured");
-  return session.orderId!;
+  const orderId = session.orderId!;
+
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const issued = await ctx.invoices.listForOrder(orderId);
+    if (issued.length > 0) return orderId;
+    await new Promise((r) => setTimeout(r, 20));
+  }
+  throw new Error(`invoice for order ${orderId} never issued`);
+};
+
+/** Poll until the settlement workflow has issued the order's invoice. */
+const invoiceFor = async (
+  ctx: Awaited<ReturnType<typeof setup>>,
+  orderId: string,
+) => {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const issued = await ctx.invoices.listForOrder(orderId);
+    if (issued.length > 0) return issued;
+    await new Promise((r) => setTimeout(r, 20));
+  }
+  throw new Error(`invoice for order ${orderId} never issued`);
 };
 
 describe("VAT arithmetic", () => {
@@ -212,7 +242,7 @@ describe("invoice issuing", () => {
     });
     await ctx.payments.handleWebhookEvent(handoff.intentId, "captured");
 
-    const [invoice] = await ctx.invoices.listForOrder(session.orderId!);
+    const [invoice] = await invoiceFor(ctx, session.orderId!);
 
     expect(invoice!.vatBuckets.map((b) => b.rateBps)).toEqual([550, 2000]);
 
@@ -290,6 +320,9 @@ describe("invoice issuing", () => {
     await ctx.payments.handleWebhookEvent(handoff.intentId, "captured");
     await ctx.payments.handleWebhookEvent(handoff.intentId, "captured");
 
+    await invoiceFor(ctx, session.orderId!);
+    // Give a would-be duplicate a beat to land before asserting it didn't.
+    await new Promise((r) => setTimeout(r, 200));
     expect(await ctx.invoices.listForOrder(session.orderId!)).toHaveLength(1);
   });
 
