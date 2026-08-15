@@ -1,7 +1,7 @@
 {
   "name": "create-alepha",
   "description": "Create a new Alepha project with a single command.",
-  "author": "Feunard",
+  "author": "Nicolas Foures",
   "version": "0.25.2",
   "type": "module",
   "engines": {
@@ -26,7 +26,8 @@
     "test": "vitest run --passWithNoTests",
     "build": "tsdown"
   },
-  "homepage": "https://github.com/feunard/alepha",
+  "homepage": "https://alepha.dev",
+  "llms": "https://alepha.dev/llms.txt",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/feunard/alepha.git"

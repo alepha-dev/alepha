@@ -2,6 +2,13 @@
 
 Convention-driven TypeScript framework for type-safe full-stack applications.
 
+## Documentation
+
+- Index (~37 KB, start here): https://alepha.dev/llms.txt
+- Full text (~680 KB, fetch only a section you need): https://alepha.dev/llms-full.txt
+- Offline: framework sources ship in `node_modules/alepha/src/`, with usage
+  examples in the `.spec.ts` file beside each primitive.
+
 ## Philosophy
 
 - **Primitives**: `$`-prefixed functions (`$action`, `$entity`, `$page`)

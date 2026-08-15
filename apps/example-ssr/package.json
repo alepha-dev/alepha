@@ -29,9 +29,9 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
-    "better-sqlite3": "^13.0.2",
-    "vite": "^8.2.0",
-    "wrangler": "^4.118.0"
+    "better-sqlite3": "^13.0.3",
+    "vite": "^8.2.1",
+    "wrangler": "^4.123.0"
   },
   "dependenciesMeta": {
     "better-sqlite3": {

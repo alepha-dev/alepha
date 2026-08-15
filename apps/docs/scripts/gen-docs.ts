@@ -656,14 +656,42 @@ export class DocsCommand {
     return md;
   }
 
+  /**
+   * Hand-written overview for packages that carry no `@module` block.
+   *
+   * Component libraries like `@alepha/ui` export files directly instead of
+   * registering a `$module`, so there is nothing for {@link collectModuleData}
+   * to read. A `DOC.md` at the package root fills that gap: it becomes the
+   * package page on the docs site, the `## Overview` of the generated README,
+   * and — through both — an entry in `llms.txt`.
+   */
+  async readPackageDoc(packagePath: string): Promise<string | null> {
+    try {
+      const content = await fs.readFile(join(packagePath, "DOC.md"), "utf-8");
+      return content.trim() || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Docs-site page for a package documented by `DOC.md` rather than `@module`. */
+  generatePackagePage(pkgJson: any, packageName: string, doc: string): string {
+    let md = `# ${this.formatPackageName(packageName)}\n\n`;
+    if (pkgJson.description) md += `${pkgJson.description}\n\n`;
+    md += `## Installation\n\n\`\`\`bash\nnpm install ${pkgJson.name}\n\`\`\`\n\n`;
+    return `${md}${doc}\n`;
+  }
+
   generatePackageReadme(
     pkgJson: any,
     packageName: string,
     data: ModuleData,
+    doc: string | null = null,
   ): string {
     let md = `# Alepha ${this.formatPackageName(packageName)}\n\n`;
     if (pkgJson.description) md += `${pkgJson.description}\n\n`;
     md += `## Installation\n\nThis package is part of the Alepha framework and can be installed via the all-in-one package:\n\n\`\`\`bash\nnpm install alepha\n\`\`\`\n\n`;
+    if (doc) md += `${doc}\n\n`;
     if (data.description) md += `## Module\n\n${data.description}\n\n`;
     md += this.generateApiReference(
       data,
@@ -792,9 +820,11 @@ export class DocsCommand {
           const dirName = this.getPackageDirName(realPkgName, allPackageNames);
           const pkgDocsDir = join(packagesDocsDir, dirName);
           const modules = this.extractModules(pkgJson, packagePath);
+          const doc = await this.readPackageDoc(packagePath);
 
           if (modules) {
             await fs.mkdir(pkgDocsDir, { recursive: true });
+            let written = 0;
             for (const mod of modules) {
               const data = await this.collectModuleData(
                 mod.sourcePath,
@@ -821,7 +851,23 @@ export class DocsCommand {
               const targetDir = subdir ? join(pkgDocsDir, subdir) : pkgDocsDir;
               await fs.mkdir(targetDir, { recursive: true });
               await fs.writeFile(join(targetDir, filename), md, "utf-8");
+              written++;
               stats.packages++;
+            }
+
+            // No module carried an `@module` block, so the directory would be
+            // left empty (`@alepha/ui` exports components, not a `$module`).
+            // Fall back to `DOC.md` as a single flat page.
+            if (written === 0) {
+              await fs.rm(pkgDocsDir, { recursive: true, force: true });
+              if (doc) {
+                await fs.writeFile(
+                  join(packagesDocsDir, `${dirName}.md`),
+                  this.generatePackagePage(pkgJson, realPkgName, doc),
+                  "utf-8",
+                );
+                stats.packages++;
+              }
             }
           } else {
             const data = await this.collectModuleData(
@@ -829,18 +875,20 @@ export class DocsCommand {
               srcDir,
               importMap,
             );
-            if (!data.description) return;
+            if (!data.description && !doc) return;
             allPrimitiveDocs.push(...data.primitives);
             allHookDocs.push(...data.hooks);
             allProviderDocs.push(...data.providers);
             await fs.writeFile(
               join(packagesDocsDir, `${dirName}.md`),
-              this.generateModuleMarkdown(
-                pkgJson,
-                entry.name,
-                realPkgName,
-                data,
-              ),
+              data.description
+                ? this.generateModuleMarkdown(
+                    pkgJson,
+                    entry.name,
+                    realPkgName,
+                    data,
+                  )
+                : this.generatePackagePage(pkgJson, realPkgName, doc as string),
               "utf-8",
             );
             stats.packages++;
@@ -860,7 +908,7 @@ export class DocsCommand {
             );
             await fs.writeFile(
               join(packagePath, "README.md"),
-              this.generatePackageReadme(pkgJson, realPkgName, data),
+              this.generatePackageReadme(pkgJson, realPkgName, data, doc),
               "utf-8",
             );
           }

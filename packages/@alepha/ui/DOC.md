@@ -1,15 +1,3 @@
-# Alepha @alepha/ui
-
-Shared shadcn Base UI Nova components for Alepha apps. Edited directly; bugfixes propagate via normal dep updates.
-
-## Installation
-
-This package is part of the Alepha framework and can be installed via the all-in-one package:
-
-```bash
-npm install alepha
-```
-
 ## Overview
 
 `@alepha/ui` is the shared component library for Alepha applications: a
@@ -112,4 +100,3 @@ components in the right place with the right aliases:
 ```bash
 npx shadcn@latest add <component>
 ```
-

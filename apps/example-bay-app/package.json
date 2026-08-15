@@ -18,9 +18,9 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "better-sqlite3": "^13.0.2",
+    "better-sqlite3": "^13.0.3",
     "drizzle-kit": "1.0.0-rc.4",
-    "vite": "^8.2.0"
+    "vite": "^8.2.1"
   },
   "dependenciesMeta": {
     "better-sqlite3": {

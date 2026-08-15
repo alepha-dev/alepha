@@ -2,7 +2,7 @@
   "name": "@alepha/commerce",
   "private": true,
   "description": "Headless commerce for Alepha apps: catalog, cart, checkout. Extended by product-kind handlers.",
-  "author": "Feunard",
+  "author": "Nicolas Foures",
   "version": "0.1.0",
   "type": "module",
   "engines": {
@@ -52,7 +52,8 @@
     "test": "alepha test",
     "build": "tsdown"
   },
-  "homepage": "https://github.com/feunard/alepha",
+  "homepage": "https://alepha.dev",
+  "llms": "https://alepha.dev/llms.txt",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/feunard/alepha.git"
@@ -63,10 +64,11 @@
     "ecommerce",
     "catalog",
     "cart",
-    "checkout"
+    "checkout",
+    "typescript"
   ],
   "dependencies": {
     "@alepha/ui": "workspace:*",
-    "lucide-react": "^1.28.0"
+    "lucide-react": "^1.31.0"
   }
 }

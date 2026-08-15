@@ -1,7 +1,7 @@
 {
   "name": "@alepha/protobuf",
   "description": "Protocol Buffers (Protobuf) codec support for Alepha framework.",
-  "author": "Feunard",
+  "author": "Nicolas Foures",
   "version": "0.25.2",
   "type": "module",
   "engines": {
@@ -15,7 +15,7 @@
     "src"
   ],
   "dependencies": {
-    "protobufjs": "^8.5.0"
+    "protobufjs": "^8.7.2"
   },
   "dependenciesMeta": {
     "protobufjs": {
@@ -37,7 +37,8 @@
     "test": "alepha test",
     "build": "tsdown"
   },
-  "homepage": "https://github.com/feunard/alepha",
+  "homepage": "https://alepha.dev",
+  "llms": "https://alepha.dev/llms.txt",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/feunard/alepha.git"
@@ -46,7 +47,8 @@
     "alepha",
     "protobuf",
     "zod",
-    "codec"
+    "codec",
+    "typescript"
   ],
   "exports": {
     ".": {
