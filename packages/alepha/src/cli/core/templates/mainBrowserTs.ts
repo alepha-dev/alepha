@@ -8,4 +8,4 @@ const alepha = Alepha.create();
 alepha.with(WebModule);
 
 run(alepha);
-`.trim();
+`.trim() + "\n";

@@ -17,7 +17,8 @@ export const mainServerTs = (options: MainServerTsOptions = {}) => {
     withs.push(`alepha.with(WebModule);`);
   }
 
-  return `
+  return (
+    `
 import { Alepha, run } from "alepha";
 ${imports.join("\n")}
 
@@ -26,5 +27,6 @@ const alepha = Alepha.create();
 ${withs.join("\n")}
 
 run(alepha);
-`.trim();
+`.trim() + "\n"
+  );
 };

@@ -18,7 +18,7 @@ __metadata:
     typescript: "npm:^7.0.2"
     vitest: "npm:^4.1.10"
   peerDependencies:
-    alepha: 0.25.2
+    alepha: ^0.25.2
     react: "*"
   languageName: unknown
   linkType: soft
@@ -43,7 +43,7 @@ __metadata:
     vite: "npm:^8.2.1"
     vitest: "npm:^4.1.10"
   peerDependencies:
-    alepha: 0.25.2
+    alepha: ^0.25.2
     react: ^19
     react-dom: ^19
   languageName: unknown
@@ -59,7 +59,7 @@ __metadata:
     typescript: "npm:^7.0.2"
     vitest: "npm:^4.1.10"
   peerDependencies:
-    alepha: 0.25.2
+    alepha: ^0.25.2
   languageName: unknown
   linkType: soft
 
@@ -73,7 +73,7 @@ __metadata:
     typescript: "npm:^7.0.2"
     vitest: "npm:^4.1.10"
   peerDependencies:
-    alepha: 0.25.2
+    alepha: ^0.25.2
   languageName: unknown
   linkType: soft
 
@@ -87,7 +87,7 @@ __metadata:
     typescript: "npm:^7.0.2"
     vitest: "npm:^4.1.10"
   peerDependencies:
-    alepha: 0.25.2
+    alepha: ^0.25.2
   languageName: unknown
   linkType: soft
 
@@ -101,7 +101,7 @@ __metadata:
     typescript: "npm:^7.0.2"
     vitest: "npm:^4.1.10"
   peerDependencies:
-    alepha: 0.25.2
+    alepha: ^0.25.2
   dependenciesMeta:
     protobufjs:
       built: true
@@ -123,7 +123,7 @@ __metadata:
     typescript: "npm:^7.0.2"
     vitest: "npm:^4.1.10"
   peerDependencies:
-    alepha: 0.25.2
+    alepha: ^0.25.2
     react: "*"
     react-dom: "*"
   languageName: unknown
@@ -164,7 +164,7 @@ __metadata:
     tw-animate-css: "npm:^1.4.0"
     typescript: "npm:^7.0.2"
   peerDependencies:
-    alepha: 0.25.2
+    alepha: ^0.25.2
     react: "*"
     react-dom: "*"
     recharts: ^3

@@ -8,4 +8,4 @@ export const tsconfigJson = () =>
     }
   }
 }
-`.trim();
+`.trim() + "\n";

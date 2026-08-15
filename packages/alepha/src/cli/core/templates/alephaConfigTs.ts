@@ -46,6 +46,21 @@ export default defineConfig({
   //   style: "src/main.css",
   // },
   //
+  // How \`alepha build\` packages dist/. Unset, you get "bare": the plain
+  // Node server you run with \`node dist/index.js\`.
+  //
+  //   target: "bare"        dist/ only — deploy it yourself           (default)
+  //          | "docker"     also writes a Dockerfile for dist/
+  //          | "cloudflare" Workers bundle + wrangler config (forces workerd)
+  //          | "static"     prerendered client only, no server
+  //
+  //   runtime: "node"       (default) | "bun" | "workerd"
+  //
+  // Pick "docker" and \`alepha build\` leaves a Dockerfile beside dist/ — that
+  // is the whole container story, there is nothing else to write. For CI,
+  // \`alepha verify\` is the one command worth running on a pull request: it
+  // chains clean, lint, typecheck, test, migration check and build.
+  //
   // build: {
   //   target: "docker",
   //   runtime: "node",

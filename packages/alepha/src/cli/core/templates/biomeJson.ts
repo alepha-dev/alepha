@@ -55,4 +55,4 @@ export const biomeJson = () =>
     }
   }
 }
-`.trim();
+`.trim() + "\n";

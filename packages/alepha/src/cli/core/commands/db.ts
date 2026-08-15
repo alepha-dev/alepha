@@ -53,8 +53,26 @@ export class DbCommand {
         entry,
       });
 
-      const repositoryProvider =
-        alepha.inject<RepositoryProvider>("RepositoryProvider");
+      // An app with no ORM has nothing to check, and saying so beats the
+      // `Service not found: RepositoryProvider` stack trace this used to
+      // throw. It also lets `alepha verify` run the check unconditionally:
+      // gating it on a `migrations/` directory existing meant the one state
+      // worth catching — entities declared, no migrations generated yet —
+      // was the exact state that skipped the check.
+      //
+      // Resolved by name, so absence can only be observed by trying. Anything
+      // that is not "this app has no ORM" is rethrown.
+      let repositoryProvider: RepositoryProvider;
+      try {
+        repositoryProvider =
+          alepha.inject<RepositoryProvider>("RepositoryProvider");
+      } catch (err) {
+        if (!/Service not found/i.test((err as Error)?.message ?? "")) {
+          throw err;
+        }
+        this.log.info("No database configured; nothing to check.");
+        return;
+      }
       const drizzleKitProvider =
         alepha.inject<DrizzleKitProvider>("DrizzleKitProvider");
       const accepted = new Set<string>([]);
@@ -81,14 +99,18 @@ export class DbCommand {
         const migrationDir = this.fs.join(rootDir, "migrations", providerName);
         const lastSnapshot = await this.resolveLastSnapshot(migrationDir);
 
-        // `continue`, not `return`: a snapshot-less or clean provider must not
-        // exit the whole handler and mask drift in the remaining providers
-        // (e.g. a clean Postgres hiding a drifted SQLite/D1 migration set).
+        // No snapshot is not "nothing to compare" — it is a comparison
+        // against an empty database, and `generateMigration` already does
+        // exactly that when `prevSnapshot` is undefined. Skipping it here
+        // meant a project with entities and zero migrations reported clean
+        // and exited 0, so `alepha verify` passed on an app whose first
+        // authenticated request would 500 with `DbTableNotFoundError`. An app
+        // with no models still produces no statements, so a genuinely empty
+        // provider stays green on the same code path.
         if (!lastSnapshot) {
           this.log.info(
-            `No migrations recorded yet for '${providerName}'; nothing to compare.`,
+            `No migrations recorded yet for '${providerName}'; comparing against an empty database.`,
           );
-          continue;
         }
 
         const { statements: migrationStatements } =

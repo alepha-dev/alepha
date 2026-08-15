@@ -116,24 +116,41 @@ export function AuthRegister(props: AuthRegisterProps) {
   const allowed = settings.registrationAllowed !== false;
 
   const schema = useMemo(() => {
-    const s = z.object({
-      firstName: z.text({ trim: true, maxLength: 100 }).optional(),
-      lastName: z.text({ trim: true, maxLength: 100 }).optional(),
-      username: z
-        .text({ trim: true, pattern: settings.usernameRegExp })
-        .optional(),
-      email: z.email().optional(),
-      phoneNumber: z.e164().optional(),
+    // Optionality is decided as each field is built, because that is the only
+    // thing the form reads: `FormModel` derives both the required marker and
+    // the pre-submit check from `z.schema.requiredKeys(schema)`, which asks
+    // whether the field is a `ZodOptional`.
+    //
+    // This used to declare every field optional and then push the configured
+    // names onto the array returned by `z.schema.requiredKeys(s)` — a TypeBox
+    // habit, where a JSON Schema's `required` was a live array hanging off the
+    // schema. The zod implementation computes a fresh array from the shape, so
+    // the pushes mutated a detached value and vanished: a realm with
+    // `email: "required"` still rendered Email with no asterisk and let an
+    // empty one through to the server.
+    const names = settings.firstNameLastName === "required";
+    const shape = {
+      firstName: names
+        ? z.text({ trim: true, maxLength: 100 })
+        : z.text({ trim: true, maxLength: 100 }).optional(),
+      lastName: names
+        ? z.text({ trim: true, maxLength: 100 })
+        : z.text({ trim: true, maxLength: 100 }).optional(),
+      username:
+        settings.username === "required"
+          ? z.text({ trim: true, pattern: settings.usernameRegExp })
+          : z.text({ trim: true, pattern: settings.usernameRegExp }).optional(),
+      email: settings.email === "required" ? z.email() : z.email().optional(),
+      phoneNumber:
+        settings.phoneNumber === "required" ? z.e164() : z.e164().optional(),
       password: z.string().min(settings.passwordPolicy?.minLength ?? 8),
-    });
-    const required = z.schema.requiredKeys(s);
-    if (settings.firstNameLastName === "required") {
-      required.push("firstName", "lastName");
-    }
-    if (settings.username === "required") required.push("username");
-    if (settings.email === "required") required.push("email");
-    if (settings.phoneNumber === "required") required.push("phoneNumber");
-    return s;
+    };
+
+    // The runtime shape varies with the realm, but the *type* must not: every
+    // consumer below reads `data.email`, `data.username` and the rest as
+    // possibly-absent. Widening to the all-optional shape keeps one stable
+    // type instead of a union of eight.
+    return z.object(shape) as unknown as ReturnType<typeof registerFormSchema>;
   }, [settings]);
 
   const form = useForm({
@@ -784,3 +801,24 @@ function RealmLogo(props: {
     />
   );
 }
+
+/**
+ * The reference shape of the registration form, with every configurable field
+ * optional.
+ *
+ * `AuthRegister` builds its real schema from the realm settings, so which
+ * fields are optional changes per realm. This exists purely to give that
+ * schema one stable TypeScript type: the handler reads `data.email`,
+ * `data.username` and `data.phoneNumber` as possibly-absent regardless of what
+ * a given realm requires, which is the correct type for code that has to
+ * compile against all of them.
+ */
+const registerFormSchema = () =>
+  z.object({
+    firstName: z.text({ trim: true, maxLength: 100 }).optional(),
+    lastName: z.text({ trim: true, maxLength: 100 }).optional(),
+    username: z.text({ trim: true }).optional(),
+    email: z.email().optional(),
+    phoneNumber: z.e164().optional(),
+    password: z.string(),
+  });

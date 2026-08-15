@@ -18,9 +18,15 @@ export interface EnvExampleOptions {
  *
  * `APP_SECRET` is left empty on purpose. A scaffolded secret would be a public
  * one, committed to every project generated from this template — worse than
- * none, because it looks configured. `DATABASE_URL` carries a real default
- * instead: a local sqlite file is not a secret, and the alternative is an app
- * that cannot boot until you have read the ORM docs.
+ * none, because it looks configured.
+ *
+ * `DATABASE_URL` is documented but left commented out. Uncommenting it is a
+ * downgrade in the default case: unset, the sqlite driver writes to
+ * `node_modules/.alepha/sqlite.db`, alongside every other generated dev
+ * artifact, and inherits `node_modules/`'s gitignore entry. Any path written
+ * here instead lands in the project root, where nothing ignores it — see
+ * `gitignore`, which deliberately does not carry a `*.db` rule because there
+ * is no database file to ignore until someone opts out of the default.
  */
 export const envExample = (options: EnvExampleOptions = {}) =>
   `
@@ -32,17 +38,23 @@ APP_SECRET=
 ${
   options.database
     ? `
-# Database connection. sqlite is enough to develop against; swap in
-# postgres://… for production.
+# Database connection. Unset, development uses sqlite at
+# node_modules/.alepha/sqlite.db — no configuration, nothing to gitignore,
+# and it is removed with the rest of node_modules. Set this to move the file
+# elsewhere, or to a postgres://… URL for production.
 #
 # In development DATABASE_SYNC defaults to true, so the schema is pushed from
 # your entities on boot and there is nothing to migrate. Before deploying, run
 # \`alepha db migrations create\` to freeze it.
-DATABASE_URL=sqlite://./data.db
+# DATABASE_URL=postgres://user:password@localhost:5432/mydb
+
+# The first account registered with this address is promoted to admin — that
+# is how the first admin is created. Read by \`$realm\` in src/api/Realm.ts.
+# Your \`.env\` already has one, taken from \`git config user.email\`.
+# ADMIN_EMAIL=
 `
     : ""
 }
-
 # Port the server listens on. Falls back to PORT when unset, so hosts that
 # allocate a port themselves work without configuration.
 # SERVER_PORT=3000
@@ -53,4 +65,4 @@ DATABASE_URL=sqlite://./data.db
 
 # Log rendering: cli | pretty | json
 # LOG_FORMAT=cli
-`.trim();
+`.trim() + "\n";

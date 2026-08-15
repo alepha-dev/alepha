@@ -66,7 +66,10 @@ goes through \`adminRouterOptionsAtom\` / \`accountRouterOptionsAtom\`, set with
 \`src/api/Realm.ts\` is the switchboard for all of it:
 
 - \`settings.adminEmails\` — the first registration matching one of these is
-  promoted to admin. Empty by default, so set it before registering.
+  promoted to admin. It reads \`ADMIN_EMAIL\`; init wrote your \`git config
+  user.email\` into \`.env\`, so registering with that address locally makes you
+  admin. Every deployed environment must set its own \`ADMIN_EMAIL\`, and one
+  that does not promotes nobody.
 - \`features\` — \`audits\` and \`apiKeys\` are on; \`jobs\`, \`notifications\`,
   \`avatars\`, \`parameters\` and \`oauth\` each need a provider first. Turning one
   on registers its module *and* makes its admin/account screens appear.
@@ -80,27 +83,30 @@ that the page is broken.
 `
     : "";
 
-  return `# AGENTS.md
+  return (
+    `# AGENTS.md
 
 This is an **Alepha** project.
 
 ## Structure
 
 Every Alepha project has the same layout. There are no variants — put new
-code where this table says it goes.
+code where this table says it goes. Directories marked \`(create)\` are not
+scaffolded, because there is nothing to put in them yet; create them under
+that exact name when you write the first file.
 
 \`\`\`
 src/
 ├── api/                  # Backend
 │   ├── controllers/      # $action endpoints
-│   ├── services/         # Business logic
-│   ├── entities/         # $entity definitions
+│   ├── services/         # Business logic            (create)
+│   ├── entities/         # $entity definitions       (create)
 │   ├── schemas/          # Request/response schemas${
-    opts.saas
-      ? `
+      opts.saas
+        ? `
 │   ├── Realm.ts          # $realm — auth settings & features`
-      : ""
-  }
+        : ""
+    }
 │   └── index.ts          # ApiModule ($module)
 ├── web/                  # Frontend (React, SSR)
 │   ├── components/       # React components
@@ -111,9 +117,14 @@ src/
 └── main.css              # Tailwind entry
 \`\`\`
 
-Every directory has an \`index.ts\` exporting a \`$module\` that groups its
-services. Tailwind is already wired up through \`vite.config.ts\` — use
-utility classes, don't add another CSS framework.
+\`src/api/\` and \`src/web/\` each have an \`index.ts\` exporting the \`$module\`
+that groups everything below it — register new services there. The
+subdirectories are plain folders; they have no \`index.ts\` of their own.
+
+Tailwind is already wired up through \`vite.config.ts\` — style with utility
+classes, don't add another CSS framework. The scaffolded home page renders
+\`GettingStarted\` from the framework and carries no classes of its own, so
+there is no house style to match: the first component you write sets it.
 
 \`vite.config.ts\` also holds the Vitest config, under \`test\`. Don't add a
 \`vitest.config.ts\`: one file keeps plugins and path aliases identical between
@@ -190,5 +201,6 @@ secrets via \`wrangler secret bulk\`. Set \`build.target: "cloudflare"\` in
 
 - Framework source: \`node_modules/alepha/src/\`
 - Docs: https://alepha.dev/llms.txt
-`.trim();
+`.trim() + "\n"
+  );
 };

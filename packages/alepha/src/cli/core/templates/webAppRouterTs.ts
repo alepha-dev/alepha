@@ -11,5 +11,6 @@ export class AppRouter {
     lazy: () => import("./components/Home.tsx"),
     loader: () => this.api.hello(),
   });
-}`;
+}
+`;
 };

@@ -2,7 +2,7 @@ import { basename, dirname } from "node:path";
 import { $inject, AlephaError } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
-import { FileSystemProvider } from "alepha/system";
+import { FileSystemProvider, ShellProvider } from "alepha/system";
 import type { Preset } from "../schemas/presetSchema.ts";
 import { agentMd } from "../templates/agentMd.ts";
 import { alephaConfigTs } from "../templates/alephaConfigTs.ts";
@@ -14,6 +14,7 @@ import { biomeJson } from "../templates/biomeJson.ts";
 import { dummySpecTs } from "../templates/dummySpecTs.ts";
 import { editorconfig } from "../templates/editorconfig.ts";
 import { envExample } from "../templates/envExample.ts";
+import { envLocal } from "../templates/envLocal.ts";
 import { gitignore } from "../templates/gitignore.ts";
 import { logoSvg } from "../templates/logoSvg.ts";
 import { mainBrowserTs } from "../templates/mainBrowserTs.ts";
@@ -47,6 +48,7 @@ export class ProjectScaffolder {
   protected readonly log = $logger();
   protected readonly colors = $inject(ConsoleColorProvider);
   protected readonly fs = $inject(FileSystemProvider);
+  protected readonly shell = $inject(ShellProvider);
   protected readonly pm = $inject(PackageManagerUtils);
   protected readonly utils = $inject(AlephaCliUtils);
 
@@ -212,6 +214,54 @@ export class ProjectScaffolder {
       envExample({ database: opts.database }),
       opts.force,
     );
+  }
+
+  /**
+   * Write the gitignored `.env`, carrying the resolved `ADMIN_EMAIL`.
+   *
+   * Never forced. `--force` exists to re-scaffold the generated files, and a
+   * `.env` is the one file in the tree that is not generated in any meaningful
+   * sense — it is where the developer put their local secrets. Overwriting it
+   * on a re-run would be a data loss bug, so an existing `.env` is left alone
+   * even when everything else is rewritten.
+   */
+  public async ensureEnvLocal(
+    root: string,
+    opts: { adminEmail: string },
+  ): Promise<void> {
+    await this.ensureFile(
+      root,
+      ".env",
+      envLocal({ adminEmail: opts.adminEmail }),
+    );
+  }
+
+  /**
+   * The address the first registration is promoted to admin with.
+   *
+   * `git config user.email` is the one address already on the machine that is
+   * almost certainly the person running `alepha init`, and reading it costs a
+   * subprocess that has already been spawned for `git init`. It is only ever a
+   * local default — `Realm` reads `ADMIN_EMAIL` from the environment, so every
+   * deployed environment still sets its own.
+   *
+   * Falls back to a placeholder on a machine with no git identity. The
+   * fallback is deliberately not a real mailbox anyone can register: it is a
+   * value that makes the wiring visible and obviously needs replacing.
+   */
+  public async resolveAdminEmail(root: string): Promise<string> {
+    const fallback = "admin@alepha.dev";
+    try {
+      const result = await this.shell.capture("git config user.email", {
+        root,
+      });
+      const email = result.stdout.trim();
+      // A machine without a git identity exits non-zero with empty stdout.
+      return result.exitCode === 0 && email ? email : fallback;
+    } catch {
+      // git missing entirely — same outcome, no reason to fail init over it.
+      return fallback;
+    }
   }
 
   /**
@@ -631,6 +681,15 @@ export class ProjectScaffolder {
 
         // Create alepha.config.ts with documented options
         await this.ensureAlephaConfig(root, { force, devtools });
+
+        // Only the saas preset has an identity surface to hand an admin to.
+        // Writing ADMIN_EMAIL into a default-preset project would document a
+        // variable nothing reads.
+        if (saas && writeAgentMd) {
+          await this.ensureEnvLocal(root, {
+            adminEmail: await this.resolveAdminEmail(root),
+          });
+        }
 
         // Every project gets the same structure; the preset only decides
         // what is mounted on top of it.

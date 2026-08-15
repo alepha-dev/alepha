@@ -5,7 +5,15 @@ import {
   type ServerResponse,
 } from "node:http";
 import type { Socket } from "node:net";
-import { $env, $hook, $inject, Alepha, type Infer, z } from "alepha";
+import {
+  $env,
+  $hook,
+  $inject,
+  Alepha,
+  AlephaError,
+  type Infer,
+  z,
+} from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { ServerProvider } from "./ServerProvider.ts";
@@ -154,6 +162,20 @@ export class NodeHttpServerProvider extends ServerProvider {
       });
 
       this.server?.on("error", (err) => {
+        // EADDRINUSE is the one listen failure that is always the operator's
+        // to fix, and node's own message ("listen EADDRINUSE: address already
+        // in use ::1:3000") names the address but not the knob that changes
+        // it. Say which port, and how to pick another.
+        if ((err as NodeJS.ErrnoException).code === "EADDRINUSE") {
+          reject(
+            new AlephaError(
+              `Port ${port} is already in use — another process is listening on ${this.env.SERVER_HOST}:${port}. ` +
+                `Stop it, or set SERVER_PORT to a free port.`,
+              { cause: err },
+            ),
+          );
+          return;
+        }
         reject(err);
       });
     });
@@ -165,6 +187,17 @@ export class NodeHttpServerProvider extends ServerProvider {
     if (this.alepha.isViteDev()) {
       this.server.removeListener("request", this.requestListener);
       this.server.removeListener("connection", this.connectionListener);
+      return;
+    }
+
+    // A failed `listen()` (EADDRINUSE, EACCES) still unwinds the container,
+    // which runs this hook against a server that never opened. `close()` then
+    // rejects with ERR_SERVER_NOT_RUNNING, and because the stop hooks are
+    // reported before the start failure, "Server is not running." became the
+    // first and most visible line of a port conflict — a symptom of the
+    // cleanup path, logged above its own cause. Nothing to close is a
+    // successful close.
+    if (!this.server?.listening) {
       return;
     }
 

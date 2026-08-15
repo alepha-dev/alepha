@@ -437,13 +437,21 @@ export class PackageManagerUtils {
     return JSON.parse(content);
   }
 
+  /**
+   * Write `package.json`, newline-terminated.
+   *
+   * `JSON.stringify` does not end with one, and every other tool that touches
+   * this file does — npm, yarn and biome all rewrite it with a trailing
+   * newline. Without it, the scaffolder emitted the one file in a new project
+   * that its own `alepha lint` immediately had to fix.
+   */
   public async writePackageJson(
     root: string,
     content: Record<string, any>,
   ): Promise<void> {
     await this.fs.writeFile(
       this.fs.join(root, "package.json"),
-      JSON.stringify(content, null, 2),
+      `${JSON.stringify(content, null, 2)}\n`,
     );
   }
 

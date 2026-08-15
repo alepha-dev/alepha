@@ -17,7 +17,8 @@ export const apiIndexTs = (options: ApiIndexTsOptions = {}) => {
   const { appName = "app", saas = false } = options;
 
   if (!saas) {
-    return `
+    return (
+      `
 import { $module } from "alepha";
 import { HelloController } from "./controllers/HelloController.ts";
 
@@ -25,10 +26,12 @@ export const ApiModule = $module({
   name: "${appName}.api",
   services: [HelloController],
 });
-`.trim();
+`.trim() + "\n"
+    );
   }
 
-  return `
+  return (
+    `
 import { $module } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaOrm } from "alepha/orm";
@@ -48,5 +51,6 @@ export const ApiModule = $module({
   imports: [AlephaOrm, AlephaApiUsers],
   services: [Realm, HelloController],
 });
-`.trim();
+`.trim() + "\n"
+  );
 };

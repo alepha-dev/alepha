@@ -58,9 +58,14 @@ export class VerifyCommand {
         await run("alepha test");
       }
 
-      if (await this.utils.exists(root, "migrations")) {
-        await run("alepha db migrations check");
-      }
+      // Unconditional on purpose. This used to be gated on a `migrations/`
+      // directory existing, which inverted the check: a project that had
+      // generated migrations was verified, and one with entities and no
+      // migrations at all — the state that ships a server which boots green
+      // and 500s on its first query — was waved through. The command itself
+      // returns cleanly when the app has no database, so there is nothing
+      // left for a gate to protect.
+      await run("alepha db migrations check");
 
       const isExpo = await this.pm.hasExpo(root);
       if (!isExpo) {

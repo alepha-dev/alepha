@@ -17,4 +17,4 @@ test("alepha app can be created", () => {
   expect(alepha).toBeDefined();
   expect(alepha.inject).toBeTypeOf("function");
 });
-`.trim();
+`.trim() + "\n";

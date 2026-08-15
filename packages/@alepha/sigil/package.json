@@ -48,7 +48,7 @@
     "vitest": "^4.1.10"
   },
   "peerDependencies": {
-    "alepha": "0.25.2",
+    "alepha": "^0.25.2",
     "react": "*",
     "react-dom": "*"
   },

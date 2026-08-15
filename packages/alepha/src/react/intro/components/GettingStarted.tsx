@@ -68,6 +68,17 @@ const GettingStarted = ({ welcome }: GettingStartedProps) => {
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState<"next" | "prev">("next");
 
+  // The devtools slide is decided by `import.meta.env.VITE_ALEPHA_DEVTOOLS`,
+  // which the client bundle has substituted at transform time and the SSR
+  // module graph does not — so the server rendered one slide fewer than the
+  // client and every new project's first page load logged a hydration
+  // mismatch. Gating it on mount makes the first client render match the
+  // server's by construction, whatever the env says; the slide appears in the
+  // commit right after. Anything else that can only be known in the browser
+  // belongs behind this flag too.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   // Get auth-aware slide content (hooks return undefined if routes don't exist)
   const authSlide = useAuthSlide();
   const adminSlide = useAdminSlide();
@@ -96,8 +107,9 @@ const GettingStarted = ({ welcome }: GettingStartedProps) => {
       result.push(adminSlide);
     }
 
-    // Add devtools slide in non-production environments
-    if (devtoolsSlide) {
+    // Add devtools slide in non-production environments — client-only, see
+    // `mounted` above.
+    if (mounted && devtoolsSlide) {
       result.push(devtoolsSlide);
     }
 
@@ -105,7 +117,7 @@ const GettingStarted = ({ welcome }: GettingStartedProps) => {
     result.push(helpSlide);
 
     return result;
-  }, [welcome, authSlide, adminSlide, devtoolsSlide]);
+  }, [welcome, authSlide, adminSlide, devtoolsSlide, mounted]);
 
   const current = filteredMessages[index];
 

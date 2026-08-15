@@ -20,7 +20,8 @@ export const webIndexTs = (options: WebIndexTsOptions = {}) => {
   const { appName = "app", saas = false } = options;
 
   if (!saas) {
-    return `
+    return (
+      `
 import { $module } from "alepha";
 import { AppRouter } from "./AppRouter.ts";
 
@@ -28,10 +29,12 @@ export const WebModule = $module({
   name: "${appName}.web",
   services: [AppRouter],
 });
-`.trim();
+`.trim() + "\n"
+    );
   }
 
-  return `
+  return (
+    `
 import { AccountRouter } from "@alepha/ui/components/account/account-router";
 import { AdminRouter } from "@alepha/ui/components/admin/admin-router";
 import { AuthRouter } from "@alepha/ui/components/auth/auth-router";
@@ -55,5 +58,6 @@ export const WebModule = $module({
   imports: [AlephaReactAuth, AlephaReactI18n, AlephaReactUi],
   services: [AppRouter, AuthRouter, AccountRouter, AdminRouter],
 });
-`.trim();
+`.trim() + "\n"
+  );
 };

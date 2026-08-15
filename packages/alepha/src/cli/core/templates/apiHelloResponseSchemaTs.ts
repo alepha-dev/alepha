@@ -1,5 +1,6 @@
 export const apiHelloResponseSchemaTs = () => {
-  return `import { type Infer, z } from "alepha";
+  return (
+    `import { type Infer, z } from "alepha";
 
 export const helloResponseSchema = z.object({
   appName: z.text(),
@@ -7,5 +8,6 @@ export const helloResponseSchema = z.object({
 });
 
 export type HelloResponse = Infer<typeof helloResponseSchema>;
-`.trim();
+`.trim() + "\n"
+  );
 };

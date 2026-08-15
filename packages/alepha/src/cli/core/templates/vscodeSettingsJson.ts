@@ -50,7 +50,7 @@ export const vscodeSettingsJson = () =>
   "[jsonc]": { "editor.defaultFormatter": "biomejs.biome" },
   "[css]": { "editor.defaultFormatter": "biomejs.biome" }
 }
-`.trim();
+`.trim() + "\n";
 
 /**
  * `.vscode/extensions.json` — the workspace recommendation prompt.
@@ -64,4 +64,4 @@ export const vscodeExtensionsJson = () =>
 {
   "recommendations": ["biomejs.biome"]
 }
-`.trim();
+`.trim() + "\n";

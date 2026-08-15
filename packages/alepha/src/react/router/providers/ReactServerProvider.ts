@@ -74,6 +74,14 @@ export class ReactServerProvider {
    */
   protected hasServerLinksProvider = false;
 
+  /**
+   * Lazily built handler for the not-found page, reused by every denied
+   * navigation. Built on first use rather than at registration: most apps
+   * never hit it, and building it eagerly would run `createHandler` for a
+   * route that is already registered by the normal loop.
+   */
+  protected notFoundHandler?: ServerHandler;
+
   protected readonly options = $store(reactServerOptions);
   protected readonly pageOptions = $store(reactPageOptions);
 
@@ -332,9 +340,25 @@ export class ReactServerProvider {
    * guarded URL redirected to login on an in-app navigation and answered a bare
    * 401 on a hard load or a crawl.
    *
-   * Only 401 is translated. A 403 is a decision about a user we *do* know, and
-   * bouncing them to a login page they are already past is a loop, not an
-   * answer — it keeps its own status and message.
+   * The two denials get different answers, and neither is the raw error.
+   *
+   * A **401** redirects to login: the visitor is anonymous, and there is a page
+   * that fixes that.
+   *
+   * A **403** renders the not-found page. Redirecting is not an option — the
+   * user is already past login, so a bounce there is a loop — but neither is
+   * letting the error escape: this is a page route, and a page route's caller
+   * is a browser doing a hard navigation. It has asked for HTML, and what it
+   * got was `{"error":"ForbiddenError",…}` painted as text on a white
+   * background, with no styles, no favicon and no way back. Rendering the
+   * app's own `/*` page instead costs nothing, uses whatever design the
+   * project already gave it, and tells a user who cannot enter the one true
+   * thing they can act on: there is nothing here for you.
+   *
+   * It also stops the URL confirming what it is guarding — a signed-in user
+   * probing `/admin` learns only that it is not their app to see, which is the
+   * same answer GitHub gives for a private repository. The real reason stays
+   * in the logs, where the developer is.
    */
   protected withGuardDenial(
     route: PageRoute,
@@ -344,11 +368,32 @@ export class ReactServerProvider {
       try {
         return await handler.run(serverRequest);
       } catch (e) {
-        if ((e as { status?: number })?.status !== 401) {
+        const status = (e as { status?: number })?.status;
+        if (status !== 401 && status !== 403) {
           throw e;
         }
 
         const { url, reply } = serverRequest;
+
+        if (status === 403) {
+          const notFound = this.resolveNotFoundRoute();
+          // No `/*` page to fall back on — an app with no pages at all. The
+          // error is still the most useful thing we have.
+          if (!notFound) {
+            throw e;
+          }
+
+          this.log.debug("Guard denied page, rendering not-found", {
+            name: route.name,
+            reason: (e as Error)?.message,
+          });
+
+          this.notFoundHandler ??= this.createHandler(notFound);
+          const result = await this.notFoundHandler(serverRequest);
+          reply.status = 404;
+          return result;
+        }
+
         // Throws for an authenticated caller, or when there is no `login` route
         // to send an anonymous one to — both cases keep surfacing as errors.
         const { redirect } = this.pageApi.denyGuardedPage(url);
@@ -363,6 +408,21 @@ export class ReactServerProvider {
         return;
       }
     };
+  }
+
+  /**
+   * The page a denied navigation falls back to.
+   *
+   * Prefers the conventional `notFound` name, then any `/*` catch-all, so an
+   * app that defined its own 404 page gets its own design here rather than the
+   * framework's built-in one.
+   */
+  protected resolveNotFoundRoute(): PageRoute | undefined {
+    const pages = this.pageApi.getPages();
+    return (
+      pages.find((page) => page.name === "notFound") ??
+      pages.find((page) => page.match === "/*" || page.path === "/*")
+    );
   }
 
   protected createHandler(

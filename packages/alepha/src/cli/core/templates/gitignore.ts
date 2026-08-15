@@ -38,4 +38,4 @@ coverage/
 !.yarn/sdks
 !.yarn/versions
 .pnp.*
-`.trim();
+`.trim() + "\n";
