@@ -244,6 +244,72 @@ describe("Alepha#parseEnv", () => {
     expect(env.RESULT).toBe("$APIXURL");
   });
 
+  describe("aliases", () => {
+    const schema = z.object({
+      SERVER_PORT: z
+        .integer()
+        .meta({ aliases: ["PORT", "HTTP_PORT"] })
+        .default(3000),
+    });
+
+    it("should read the alias when the declared key is absent", () => {
+      const alepha = Alepha.create({ env: { PORT: "8080" } });
+      expect(alepha.parseEnv(schema).SERVER_PORT).toBe(8080);
+    });
+
+    it("should prefer the declared key over its aliases", () => {
+      const alepha = Alepha.create({
+        env: { SERVER_PORT: 4000, PORT: "8080" },
+      });
+      expect(alepha.parseEnv(schema).SERVER_PORT).toBe(4000);
+    });
+
+    it("should try aliases in the declared order", () => {
+      const alepha = Alepha.create({
+        env: { HTTP_PORT: "9090", PORT: "8080" },
+      });
+      expect(alepha.parseEnv(schema).SERVER_PORT).toBe(8080);
+    });
+
+    it("should fall through to a later alias when the first is absent", () => {
+      const alepha = Alepha.create({ env: { HTTP_PORT: "9090" } });
+      expect(alepha.parseEnv(schema).SERVER_PORT).toBe(9090);
+    });
+
+    it("should apply the default when neither key nor alias is set", () => {
+      const alepha = Alepha.create({
+        env: { SERVER_PORT: undefined, PORT: undefined, HTTP_PORT: undefined },
+      });
+      expect(alepha.parseEnv(schema).SERVER_PORT).toBe(3000);
+    });
+
+    it("should coerce and validate an aliased value as the declared key", () => {
+      const alepha = Alepha.create({ env: { PORT: "not-a-port" } });
+      expect(() => alepha.parseEnv(schema)).toThrow();
+    });
+
+    it("should expose the aliased value to $KEY substitution", () => {
+      const withUrl = z.object({
+        SERVER_PORT: z
+          .integer()
+          .meta({ aliases: ["PORT"] })
+          .default(3000),
+        URL: z.text().optional(),
+      });
+
+      const alepha = Alepha.create({
+        env: { PORT: "8080", URL: "http://localhost:$SERVER_PORT" },
+      });
+
+      expect(alepha.parseEnv(withUrl).URL).toBe("http://localhost:8080");
+    });
+
+    it("should not make the alias a key of its own", () => {
+      const alepha = Alepha.create({ env: { PORT: "8080" } });
+      expect(alepha.parseEnv(schema)).not.toHaveProperty("PORT");
+    });
+  });
+
   it("should not interpret '$&' replacement patterns in values", async () => {
     const schema = z.object({
       PORT: z.text().optional(),

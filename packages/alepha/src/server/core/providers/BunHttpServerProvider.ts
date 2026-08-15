@@ -7,7 +7,9 @@ import { ServerRouterProvider } from "./ServerRouterProvider.ts";
 const envSchema = z.object({
   SERVER_PORT: z
     .integer()
-    .meta({ min: 0, max: 65535 })
+    // `PORT` is what a host that allocates the port for you injects (Heroku,
+    // Cloud Run, Railway, Fly), and it is read only when SERVER_PORT is unset.
+    .meta({ min: 0, max: 65535, aliases: ["PORT"] })
     .describe("Set 0 to listen on a random port.")
     .default(3000),
   SERVER_HOST: z.text({

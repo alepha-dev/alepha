@@ -1221,10 +1221,12 @@ export class Alepha {
     }
 
     // Env vars are strings on the wire — coerce declared fields to their
-    // schema types (boolean/number) before strict validation.
+    // schema types (boolean/number) before strict validation. Aliases are
+    // resolved first, so an aliased value is coerced and validated as the key
+    // it stands in for.
     const config = this.codec.validate(
       schema,
-      coerceObject(schema, this.env),
+      coerceObject(schema, this.resolveEnvAliases(schema)),
     ) as Record<string, any>;
 
     // Sort keys longest-first to prevent substring collisions
@@ -1403,6 +1405,7 @@ export class Alepha {
         const enumValues = z.schema.isEnum(inner)
           ? z.schema.enumValues(inner)
           : undefined;
+        const aliases = this.declaredAliases(value);
         env[key] = {
           // The inner (unwrapped) schema first: a `.describe()` sits on the
           // schema it was called on, which for an optional field is the inner
@@ -1410,6 +1413,7 @@ export class Alepha {
           description: inner?.description ?? value.description,
           default: z.schema.getDefault(value) as string | undefined,
           required: required.has(key) ? true : undefined,
+          aliases: aliases.length ? aliases : undefined,
           enum: enumValues?.length
             ? ([...enumValues] as Array<string>)
             : undefined,
@@ -1441,6 +1445,62 @@ export class Alepha {
   protected declaredSecret(schema: unknown): boolean | undefined {
     const value = z.schema.meta(schema).secret;
     return typeof value === "boolean" ? value : undefined;
+  }
+
+  /**
+   * The alternative variable names a schema declared, in the order they are
+   * tried. Empty when it declared none.
+   *
+   * Read from the unwrapped schema first, then from the wrapper: `.meta()`
+   * sits on the schema it was called on, and `z.integer().meta(…).default(0)`
+   * puts it on the inner one. Non-string entries are dropped rather than
+   * coerced — an alias is a variable name, and `["PORT", 3000]` is a mistake
+   * worth ignoring rather than a lookup of the key `"3000"`.
+   */
+  protected declaredAliases(schema: unknown): Array<string> {
+    const value =
+      z.schema.meta(z.schema.unwrap(schema)).aliases ??
+      z.schema.meta(schema).aliases;
+    return Array.isArray(value)
+      ? value.filter((name): name is string => typeof name === "string")
+      : [];
+  }
+
+  /**
+   * The environment as one declared schema sees it, with every key that is
+   * absent filled in from the first of its `aliases` that is present.
+   *
+   * `.meta({ aliases: ["PORT"] })` is how a schema accepts a name it does not
+   * own. Hosts hand values over under names of their choosing — a port they
+   * allocated arrives as `PORT`, a database they provisioned as
+   * `POSTGRES_URL` — and an app should read them without the framework having
+   * to reserve those names. An alias is only ever read: it is not a declared
+   * key, so it stays out of the `Env` type, out of {@link Alepha#dump}'s key
+   * list and out of the deploy manifest, and the declared key remains the one
+   * name the rest of the app refers to.
+   *
+   * "Absent" is asked of the raw environment, which is the only place that can
+   * answer it: a schema default is applied by validation further down, and by
+   * then an unset key is indistinguishable from a defaulted one.
+   */
+  protected resolveEnvAliases(schema: ZObject): Record<string, unknown> {
+    let env: Record<string, unknown> | undefined;
+
+    for (const [key, field] of Object.entries(z.schema.shape(schema))) {
+      if (this.env[key] != null) continue;
+
+      for (const alias of this.declaredAliases(field)) {
+        const value = this.env[alias];
+        if (value == null) continue;
+        // Copied lazily: the overwhelmingly common case is a schema with no
+        // alias to resolve, and the env map is read on every $env parse.
+        env ??= { ...this.env };
+        env[key] = value;
+        break;
+      }
+    }
+
+    return env ?? this.env;
   }
 
   public services<T extends object>(base: Service<T>): Array<T> {
@@ -1581,6 +1641,15 @@ export interface AlephaDumpEnvVariable {
   default?: string;
   required?: boolean;
   enum?: Array<string>;
+  /**
+   * Other variable names this one is read from when it is not set itself,
+   * in the order they are tried. Absent when the field declared none.
+   *
+   * Documentation only — an alias is resolved at parse time and is never a
+   * key of its own, so a consumer that lists variables should mention it
+   * against the declared key rather than as a separate entry.
+   */
+  aliases?: Array<string>;
   /**
    * Whether the value is sensitive. **`true` unless declassified.**
    *

@@ -23,6 +23,10 @@ The server starts on `http://localhost:3000` by default. Configure the host and 
 SERVER_HOST=0.0.0.0 SERVER_PORT=8080 node dist
 ```
 
+`PORT` is read as a fallback when `SERVER_PORT` is not set, so a host that allocates the port
+itself (Heroku, Cloud Run, Railway, Fly) needs no configuration at all. Setting `SERVER_PORT`
+always wins over `PORT`.
+
 ## Output Structure
 
 ```

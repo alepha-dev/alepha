@@ -97,7 +97,7 @@ The result is a minimal image with no shell, no package manager, and no interpre
 docker run -p 3000:3000 --env-file .env.production ghcr.io/myorg/myapp:latest
 ```
 
-`SERVER_HOST=0.0.0.0` is baked into the image so the server binds correctly inside the container; set `SERVER_PORT` if you need a port other than 3000. Migrations ship in the image under `/app/migrations` — run them on startup via your orchestration, or from a release step with `alepha db migrations apply` pointed at the same `DATABASE_URL`.
+`SERVER_HOST=0.0.0.0` is baked into the image so the server binds correctly inside the container; set `SERVER_PORT` if you need a port other than 3000 — or let a host that injects `PORT` (Cloud Run, Fly) decide, which the server reads as a fallback when `SERVER_PORT` is unset. Migrations ship in the image under `/app/migrations` — run them on startup via your orchestration, or from a release step with `alepha db migrations apply` pointed at the same `DATABASE_URL`.
 
 ## Tips
 

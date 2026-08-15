@@ -40,6 +40,12 @@ export class GenEnvCommand {
           if (value.enum) {
             dotEnvFile += `# Possible values: ${value.enum.join(", ")}\n`;
           }
+          // Named against the key it feeds rather than as an entry of its own:
+          // an alias is read, never written, so a reader who pastes a value
+          // must paste it here.
+          if (value.aliases) {
+            dotEnvFile += `# Also read from: ${value.aliases.join(", ")}\n`;
+          }
           // Every var is a secret unless it opted out, so the exception is what
           // carries the label — marking the secrets instead would repeat the
           // same line on nearly every key and tell the reader nothing. Last

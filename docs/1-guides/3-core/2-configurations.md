@@ -57,6 +57,38 @@ class Config {
 }
 ```
 
+### Reading a variable under another name
+
+`aliases` lets a variable be read from other names when it is not set itself.
+Hosts hand values over under names of their choosing — a port they allocated
+arrives as `PORT`, a database they provisioned as `POSTGRES_URL` — and this is
+how an app accepts them without renaming its own configuration:
+
+```typescript check
+import { $env, z } from "alepha";
+
+class Config {
+  env = $env(z.object({
+    DATABASE_URL: z.text({ aliases: ["POSTGRES_URL"] }),
+    SERVER_PORT: z.integer().meta({ aliases: ["PORT"] }).default(3000),
+  }));
+}
+```
+
+The declared key always wins. Aliases are tried in order and only when the key
+itself is absent from the environment, and the value found is coerced and
+validated as the key it stands in for — so `PORT=8080` yields the number `8080`
+on `SERVER_PORT`, and `PORT=nonsense` fails validation the same way
+`SERVER_PORT=nonsense` would. Defaults still apply when neither is set.
+
+An alias is only ever read. It is not a key of its own: it stays out of the
+parsed result, out of `alepha gen env`'s variable list (it is mentioned against
+the key it feeds) and out of the deploy manifest, so the declared name remains
+the single one the rest of the app — and the deploy target — refers to.
+
+`alepha/server` uses this for `SERVER_PORT`, which is why an app deployed to a
+host that injects `PORT` binds the right port with no configuration.
+
 ### Environment caching
 
 Alepha caches parsed env results per schema. Multiple services using the same `z.object(...)` reference will share the same parsed output.

@@ -43,7 +43,8 @@ DATABASE_URL=sqlite://./data.db
     : ""
 }
 
-# Port the server listens on.
+# Port the server listens on. Falls back to PORT when unset, so hosts that
+# allocate a port themselves work without configuration.
 # SERVER_PORT=3000
 
 # Log verbosity: trace | debug | info | warn | error
