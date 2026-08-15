@@ -194,7 +194,11 @@ describe("commerce settlement workflow", () => {
         return findSettlement(ctx.probe, orderId);
       },
       (e) => e?.status === "completed",
-      { label: "settlement completed after retry", timeout: 18_000, interval: 100 },
+      {
+        label: "settlement completed after retry",
+        timeout: 18_000,
+        interval: 100,
+      },
     );
     expect(exec?.status).toBe("completed");
 
