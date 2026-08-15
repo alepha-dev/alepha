@@ -161,6 +161,7 @@ __metadata:
     shadcn: "npm:^4.18.0"
     sonner: "npm:^2.0.8"
     tailwind-merge: "npm:^3.6.0"
+    tsdown: "npm:^0.22.14"
     tw-animate-css: "npm:^1.4.0"
     typescript: "npm:^7.0.2"
   peerDependencies:

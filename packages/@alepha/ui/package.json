@@ -24,11 +24,13 @@
     "url": "git+https://github.com/feunard/alepha.git"
   },
   "files": [
+    "dist",
     "src",
     "components.json"
   ],
   "scripts": {
     "sync": "node scripts/sync.mjs",
+    "build": "tsdown && tsc -p tsconfig.build.json && node scripts/copy-css.mjs",
     "typecheck": "tsc --noEmit"
   },
   "exports": {
@@ -81,6 +83,24 @@
     "alepha": "0.25.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "tsdown": "^0.22.14",
     "typescript": "^7.0.2"
+  },
+  "publishConfig": {
+    "exports": {
+      "./components/*": {
+        "types": "./dist/components/*.d.ts",
+        "default": "./dist/components/*.js"
+      },
+      "./hooks/*": {
+        "types": "./dist/hooks/*.d.ts",
+        "default": "./dist/hooks/*.js"
+      },
+      "./lib/*": {
+        "types": "./dist/lib/*.d.ts",
+        "default": "./dist/lib/*.js"
+      },
+      "./styles.css": "./src/styles.css"
+    }
   }
 }
