@@ -6,7 +6,7 @@
     "devtools"
   ],
   "author": "Feunard",
-  "version": "0.25.1",
+  "version": "0.25.2",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"
@@ -26,7 +26,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.2.18",
     "@xyflow/react": "^12.11.2",
-    "alepha": "0.25.1",
+    "alepha": "0.25.2",
     "lucide-react": "^1.28.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -37,7 +37,7 @@
     "vitest": "^4.1.10"
   },
   "peerDependencies": {
-    "alepha": "0.25.1",
+    "alepha": "0.25.2",
     "react": "^19",
     "react-dom": "^19"
   },

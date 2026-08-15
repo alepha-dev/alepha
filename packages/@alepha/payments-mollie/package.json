@@ -25,12 +25,12 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.6",
-    "alepha": "0.25.1",
+    "alepha": "0.25.2",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   },
   "peerDependencies": {
-    "alepha": "0.25.1"
+    "alepha": "0.25.2"
   },
   "scripts": {
     "lint": "alepha lint && yarn build:check",
