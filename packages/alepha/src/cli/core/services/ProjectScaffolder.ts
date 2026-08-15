@@ -53,6 +53,15 @@ export class ProjectScaffolder {
   protected readonly utils = $inject(AlephaCliUtils);
 
   /**
+   * Name given to the migration generated at init.
+   *
+   * Unnamed, drizzle-kit picks from a random word list and the first file in
+   * the project's history reads `20260815223535_youthful_swarm`. It is the
+   * migration most likely to be opened by someone who did not write it.
+   */
+  protected readonly initialMigrationName = "initial_schema";
+
+  /**
    * Get the app name from the directory name.
    *
    * Converts the directory name to a valid module name:
@@ -732,6 +741,51 @@ export class ProjectScaffolder {
     // `alepha test` works in every project. The dummy spec doubles as a
     // worked example for both humans and AI agents.
     await this.ensureTestDir(root);
+
+    // Freeze the schema the preset just mounted.
+    //
+    // `alepha verify` runs `db migrations check` unconditionally — gating it on
+    // a `migrations/` directory inverted the check, so that gate is gone. A
+    // preset that declares entities and ships no migration therefore fails the
+    // command its own `alepha.config.ts` recommends for CI, on commit zero.
+    //
+    // Deploying in that state is worse than the red build: production's
+    // `DatabaseProvider.migrate()` does not fall back to push-sync the way dev
+    // does. It logs "Migration SKIPPED - no migrations found" and returns, so
+    // the app boots green with no tables and 500s on its first query.
+    //
+    // Generating it here is safe in a way later migrations are not: a baseline
+    // diffs against an empty database, so it is pure CREATE TABLE — none of the
+    // DROP/ALTER statements that need a human reading them before they reach a
+    // CASCADE parent on D1. Only presets that mount an ORM get one; the diff is
+    // computed from the entity declarations against the snapshot on disk, so
+    // this needs no database connection and works offline.
+    //
+    // Ahead of the lint pass on purpose. biome reformats drizzle's
+    // `snapshot.json` — collapsing its arrays, semantically identical, and the
+    // migration check reads the reformatted file happily. But whoever formats
+    // it first wins, and if that is not init then it is the user's first
+    // `lint` or `verify`, which hands them a dirty tree on a project they have
+    // not edited. Formatting it here means the staged copy is the final one.
+    if (saas) {
+      try {
+        await run(
+          `alepha db migrations create --name=${this.initialMigrationName}`,
+          {
+            alias: "generating the initial migration",
+            root,
+          },
+        );
+      } catch (err) {
+        // Same contract as the lint pass below: every file is already on disk,
+        // and leaving a half-scaffolded project behind is worse than leaving a
+        // migration for the user to generate. `verify` will name the command.
+        this.log.warn(
+          "Could not generate the initial migration — continuing. Run `alepha db migrations create` before your first `alepha verify` or deploy.",
+          { error: err instanceof Error ? err.message : String(err) },
+        );
+      }
+    }
 
     // Best-effort lint pass — don't block init if it fails. The user can
     // fix or silence issues later.

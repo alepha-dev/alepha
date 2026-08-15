@@ -30,8 +30,16 @@ describe("alepha init --preset", () => {
       cli: alepha.inject(CliProvider),
       cmd: alepha.inject(InitCommand),
       json: alepha.inject(Json),
+      shell: alepha.inject(MemoryShellProvider),
     };
   };
+
+  /**
+   * The exact command the scaffolder is expected to run. `MemoryShellProvider`
+   * keys both its recorded calls and its configured errors on the whole
+   * string, so the failure case has to name it in full.
+   */
+  const MIGRATION_COMMAND = "alepha db migrations create --name=initial_schema";
 
   const setupProject = async (
     fs: MemoryFileSystemProvider,
@@ -283,6 +291,97 @@ describe("alepha init --preset", () => {
       const browser = await readFile(fs, "/project/src/main.browser.ts");
       expect(server).not.toContain("adminRouterOptionsAtom");
       expect(browser).not.toContain("adminRouterOptionsAtom");
+    });
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // initial migration
+  //
+  // `alepha verify` runs `db migrations check` unconditionally, and in
+  // production `DatabaseProvider.migrate()` creates nothing when there is no
+  // `migrations/` directory — it warns and returns. A preset that declares
+  // entities and generates no migration therefore scaffolds a project that
+  // fails its own documented CI command and, if deployed anyway, boots green
+  // and 500s on its first query. The baseline is generated here so neither is
+  // ever the starting state.
+  // ───────────────────────────────────────────────────────────────────────────
+
+  describe("initial migration", () => {
+    it("should generate a baseline migration for the saas preset", async () => {
+      const { fs, cli, cmd, json, shell } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--preset=saas", root: "/project" });
+
+      expect(shell.wasCalledMatching(/db migrations create/)).toBe(true);
+    });
+
+    /**
+     * drizzle-kit names an unnamed migration from a random word list
+     * (`20260815223535_youthful_swarm`). The first file in a project's history
+     * is the one most often read by someone who did not write it.
+     */
+    it("should name it rather than take drizzle's random word pair", async () => {
+      const { fs, cli, cmd, json, shell } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--preset=saas", root: "/project" });
+
+      expect(shell.wasCalledMatching(/--name=initial_schema/)).toBe(true);
+    });
+
+    it("should not generate one for the default preset", async () => {
+      const { fs, cli, cmd, json, shell } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(shell.wasCalledMatching(/db migrations/)).toBe(false);
+    });
+
+    /**
+     * Same contract as the lint pass: a project whose files are all on disk
+     * must not be left half-scaffolded because a generated artifact failed.
+     * The user can run the command again; they cannot easily undo a partial
+     * init.
+     */
+    it("should not fail init when generation fails", async () => {
+      const { fs, cli, cmd, json, shell } = createTestEnv();
+      await setupProject(fs, json);
+      shell.errors.set(MIGRATION_COMMAND, "drizzle-kit exploded");
+
+      await expect(
+        cli.run(cmd.init, { argv: "--preset=saas", root: "/project" }),
+      ).resolves.not.toThrow();
+
+      expect(shell.wasCalled(MIGRATION_COMMAND)).toBe(true);
+    });
+
+    /**
+     * Ordering is pinned on both sides. After `install`, because it runs the
+     * project's own `alepha` binary. Before the lint pass, because biome
+     * reformats drizzle's `snapshot.json`: generating afterwards leaves the
+     * staged copy unformatted, and the user's first `lint` or `verify` then
+     * dirties a project they have not touched.
+     *
+     * (That it also lands before `git add .` is structural rather than
+     * asserted here — `git init` and `git add` go through
+     * `AlephaCliUtils.exec`, which this provider does not record.)
+     */
+    it("should generate it after install and before the lint pass", async () => {
+      const { fs, cli, cmd, json, shell } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { argv: "--preset=saas", root: "/project" });
+
+      const index = (pattern: RegExp) =>
+        shell.calls.findIndex((call: { command: string }) =>
+          pattern.test(call.command),
+        );
+      const migration = index(/db migrations create/);
+      expect(migration).toBeGreaterThan(-1);
+      expect(migration).toBeGreaterThan(index(/install/));
+      expect(migration).toBeLessThan(index(/lint/));
     });
   });
 
