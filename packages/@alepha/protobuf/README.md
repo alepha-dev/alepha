@@ -4,10 +4,10 @@ Protocol Buffers (Protobuf) codec support for Alepha framework.
 
 ## Installation
 
-This package is part of the Alepha framework and can be installed via the all-in-one package:
+Part of the Alepha framework, published on its own:
 
 ```bash
-npm install alepha
+npm install @alepha/protobuf
 ```
 
 ## Module

@@ -4,10 +4,10 @@ Shared shadcn Base UI Nova components for Alepha apps. Edited directly; bugfixes
 
 ## Installation
 
-This package is part of the Alepha framework and can be installed via the all-in-one package:
+Part of the Alepha framework, published on its own:
 
 ```bash
-npm install alepha
+npm install @alepha/ui
 ```
 
 ## Overview

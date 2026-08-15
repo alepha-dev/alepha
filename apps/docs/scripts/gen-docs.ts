@@ -690,7 +690,7 @@ export class DocsCommand {
   ): string {
     let md = `# Alepha ${this.formatPackageName(packageName)}\n\n`;
     if (pkgJson.description) md += `${pkgJson.description}\n\n`;
-    md += `## Installation\n\nThis package is part of the Alepha framework and can be installed via the all-in-one package:\n\n\`\`\`bash\nnpm install alepha\n\`\`\`\n\n`;
+    md += `## Installation\n\nPart of the Alepha framework, published on its own:\n\n\`\`\`bash\nnpm install ${pkgJson.name}\n\`\`\`\n\n`;
     if (doc) md += `${doc}\n\n`;
     if (data.description) md += `## Module\n\n${data.description}\n\n`;
     md += this.generateApiReference(
