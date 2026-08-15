@@ -29,6 +29,23 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 const idParamsSchema = z.object({ id: z.uuid() });
 
+/**
+ * The columns of `folio_directories` any ancestor walk needs — the tree
+ * edge (`parentId`) plus what a breadcrumb segment displays.
+ */
+type DirectoryRow = {
+  id: string;
+  shortId: number;
+  name: string;
+  parentId?: string;
+};
+
+/**
+ * Resolves the project's directories, once per request at most. See
+ * `FolioController.directoryMapLoader`.
+ */
+type DirectoryMapLoader = () => Promise<Map<string, DirectoryRow>>;
+
 const folioListQuerySchema = z.object({
   limit: z.integer().min(1).max(100).default(50).optional(),
   offset: z.integer().min(0).default(0).optional(),
@@ -173,10 +190,21 @@ export class FolioController {
       // Every requested extra is independent of the others, so they run
       // concurrently — the handler costs one round of queries, not one
       // per flag.
+      //
+      // `withPath` and `withLinks` both need to turn directory ids into
+      // ancestor chains, and they used to do it two different ways: the
+      // link resolver read the project's directories in one shot, while
+      // the path resolver walked the chain one `findOne` per level. One
+      // loader now serves both, so the deeper the folio the more this
+      // saves — and it is lazy, so a folio at the project root with no
+      // links still reads no directories at all.
+      const loadDirectories = this.directoryMapLoader(folio.projectId);
       const [links, path, blobs, revisionCount] = await Promise.all([
-        query.withLinks ? this.resolveLinks(folio.id) : undefined,
+        query.withLinks
+          ? this.resolveLinks(folio.id, folio.projectId, loadDirectories)
+          : undefined,
         query.withPath
-          ? this.resolveDirectoryPath(folio.directoryId)
+          ? this.resolveDirectoryPath(folio.directoryId, loadDirectories)
           : undefined,
         query.withBlobs
           ? this.blobService.listHydratedByFolio(folio.id)
@@ -190,21 +218,56 @@ export class FolioController {
   });
 
   /**
+   * A lazily-resolved `id → directory` map for one project, fetched AT
+   * MOST ONCE however many callers ask for it, and never at all if none
+   * of them do.
+   *
+   * Laziness is the whole point, not an optimization detail: a folio at
+   * the project root with no `[[links]]` needs no directory rows, and
+   * eagerly loading the map would turn its zero directory queries into
+   * one. Memoizing on the promise (not the resolved value) is what makes
+   * the concurrent `Promise.all` callers share a single fetch instead of
+   * racing two.
+   */
+  protected directoryMapLoader(projectId: number): DirectoryMapLoader {
+    let pending: Promise<Map<string, DirectoryRow>> | undefined;
+    return () => {
+      pending ??= this.directories
+        .findMany({
+          where: { projectId: { eq: projectId } },
+          columns: ["id", "shortId", "name", "parentId"],
+        })
+        .then(
+          (rows) => new Map((rows as DirectoryRow[]).map((d) => [d.id, d])),
+        );
+      return pending;
+    };
+  }
+
+  /**
    * Walk the folio-directory chain from `directoryId` up to the root.
    * Returns `[root, ..., directParent]` — empty when the folio lives at
    * the project root. Bounded by `folioDirectories` depth-cap (8).
+   *
+   * Walks the in-memory map rather than issuing a `findOne` per level:
+   * the old version cost one query per directory the folio was nested
+   * in, up to that cap, for a breadcrumb. The `seen` guard stays — a
+   * `parentId` cycle is a database state the tree builder already knows
+   * how to survive, and here it would be an infinite loop rather than an
+   * N+1.
    */
   protected async resolveDirectoryPath(
     directoryId: string | undefined,
+    loadDirectories: DirectoryMapLoader,
   ): Promise<{ shortId: number; name: string }[]> {
+    if (!directoryId) return [];
+    const dirById = await loadDirectories();
     const chain: { shortId: number; name: string }[] = [];
     let cursor: string | undefined = directoryId;
     const seen = new Set<string>();
     while (cursor && !seen.has(cursor)) {
       seen.add(cursor);
-      const dir = (await this.directories.findOne({
-        where: { id: { eq: cursor } },
-      })) as { shortId: number; name: string; parentId?: string } | undefined;
+      const dir = dirById.get(cursor);
       if (!dir) break;
       chain.unshift({ shortId: dir.shortId, name: dir.name });
       cursor = dir.parentId;
@@ -248,7 +311,11 @@ export class FolioController {
       });
       if (!folio) throw new NotFoundError("Folio not found");
       await this.security.assertMember(folio.projectId, user);
-      return this.resolveLinks(folio.id);
+      return this.resolveLinks(
+        folio.id,
+        folio.projectId,
+        this.directoryMapLoader(folio.projectId),
+      );
     },
   });
 
@@ -257,7 +324,11 @@ export class FolioController {
    * `{ kind, shortId, title }` pairs. Caller is responsible for the
    * membership check on the folio itself.
    */
-  protected async resolveLinks(folioId: string) {
+  protected async resolveLinks(
+    folioId: string,
+    projectId: number,
+    loadDirectories: DirectoryMapLoader,
+  ) {
     const [out, inb] = await Promise.all([
       this.linkService.findOutbound(folioId),
       this.linkService.findInbound(folioId),
@@ -301,21 +372,34 @@ export class FolioController {
         : Promise.resolve([]),
     ]);
 
-    // Build a single per-project directory map up front. All linked
-    // folios + blobs share the source's project (link rows are
-    // tenant-scoped via folio_id), so one fetch covers every ref's
-    // ancestor walk and avoids N+1 findOne calls per directory.
+    // One per-project directory map covers every ref's ancestor walk and
+    // avoids N+1 findOne calls per directory. It comes from the caller's
+    // shared loader, so `withPath` on the same request reads the same
+    // rows rather than fetching its own — and a folio with no refs at
+    // all never triggers the fetch, which is what the `projectIds.size`
+    // guard preserves.
+    //
+    // The loader is scoped to the SOURCE folio's project. Every linked
+    // folio and blob shares it, because link rows are tenant-scoped via
+    // `folio_id` and the `[[...]]` resolver only ever matches names
+    // inside one project. `extraProjectIds` is the belt to that braces:
+    // if a cross-project ref ever appears it is fetched rather than
+    // silently rendered without its path.
     const projectIds = new Set<number>();
     for (const f of folioRefs) projectIds.add(f.projectId);
     for (const b of blobRefs) projectIds.add(b.projectId);
     for (const f of inboundRefs) projectIds.add(f.projectId);
-    const dirRows = projectIds.size
-      ? await this.directories.findMany({
-          where: { projectId: { inArray: [...projectIds] } },
-          columns: ["id", "shortId", "name", "parentId"],
-        })
-      : [];
-    const dirById = new Map(dirRows.map((d) => [d.id, d]));
+    const dirById = projectIds.size
+      ? new Map(await loadDirectories())
+      : new Map<string, DirectoryRow>();
+    const extraProjectIds = [...projectIds].filter((p) => p !== projectId);
+    if (extraProjectIds.length > 0) {
+      const extra = (await this.directories.findMany({
+        where: { projectId: { inArray: extraProjectIds } },
+        columns: ["id", "shortId", "name", "parentId"],
+      })) as DirectoryRow[];
+      for (const d of extra) dirById.set(d.id, d);
+    }
     const pathOf = (
       directoryId: string | undefined | null,
     ): { shortId: number; name: string }[] | undefined => {

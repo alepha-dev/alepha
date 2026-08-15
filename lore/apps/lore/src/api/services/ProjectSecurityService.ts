@@ -22,6 +22,24 @@ export class ProjectSecurityService {
   members = $repository(members);
 
   /**
+   * How long `assertMember`'s project read may be served from the ORM's
+   * in-memory query cache.
+   *
+   * This one row is read by EVERY project-scoped request in the app —
+   * same query, same params — so it is the highest-value cacheable read
+   * there is. Writes through `projects` invalidate the whole table's
+   * entries automatically (`Repository` calls `invalidateTable` on every
+   * mutation path), so the window only ever applies to a write made by a
+   * DIFFERENT process: `DbCacheProvider` is a per-process `Map`, and on
+   * Workers that means per isolate.
+   *
+   * 30s is what that cross-isolate staleness is worth here. The values
+   * it gates are `features.*` toggles and `retentionDays` — a settings
+   * change taking up to half a minute to reach another isolate is fine.
+   */
+  public static readonly PROJECT_CACHE_TTL_MS = 30_000;
+
+  /**
    * Membership gate. Requires the caller to be the project owner or a
    * member (membership row exists). Used for every project-scoped read
    * AND write — Lore projects are always private; there is no
@@ -34,14 +52,19 @@ export class ProjectSecurityService {
     projectId: number,
     user: UserAccountToken,
   ): Promise<ProjectGuard> {
-    const project = await this.projects.getOne({
-      where: { id: { eq: projectId } },
-    });
+    const project = await this.projects.getOne(
+      { where: { id: { eq: projectId } } },
+      { cache: { ttl: ProjectSecurityService.PROJECT_CACHE_TTL_MS } },
+    );
 
     if (project.createdBy === user.id || !user.ownership) {
       return { project };
     }
 
+    // Deliberately NOT cached, unlike the project read above. `createdBy`
+    // is immutable, so a stale project row cannot widen the owner branch
+    // — but membership is revocable, and caching this would keep a
+    // removed member reading the project for the length of the window.
     const member = await this.members.findOne({
       where: {
         projectId: { eq: projectId },
