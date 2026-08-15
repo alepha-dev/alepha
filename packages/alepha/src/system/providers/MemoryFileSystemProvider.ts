@@ -1,4 +1,3 @@
-import { dirname, basename as nodeBasename, join as nodeJoin } from "node:path";
 import {
   $inject,
   AlephaError,
@@ -109,7 +108,74 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
    */
   public join(...paths: string[]): string {
     this.joinCalls.push(paths);
-    return nodeJoin(...paths);
+    return this.posixJoin(...paths);
+  }
+
+  /**
+   * Join and normalize path segments, resolving `.` and `..`.
+   *
+   * A local posix implementation rather than `node:path`: this provider is the
+   * portable one — it backs the browser and workerd builds, where importing
+   * `node:path` resolves to an empty stub and every call would throw.
+   */
+  protected posixJoin(...paths: string[]): string {
+    const joined = paths.filter((part) => part.length > 0).join("/");
+    if (joined === "") {
+      return ".";
+    }
+    const isAbsolute = joined.startsWith("/");
+    const trailingSlash = joined.endsWith("/");
+    const segments: string[] = [];
+    for (const segment of joined.split("/")) {
+      if (segment === "" || segment === ".") {
+        continue;
+      }
+      if (segment === "..") {
+        if (segments.length > 0 && segments.at(-1) !== "..") {
+          segments.pop();
+        } else if (!isAbsolute) {
+          segments.push("..");
+        }
+        continue;
+      }
+      segments.push(segment);
+    }
+    let result = segments.join("/");
+    if (isAbsolute) {
+      result = `/${result}`;
+    } else if (result === "") {
+      result = ".";
+    }
+    if (trailingSlash && !result.endsWith("/")) {
+      result += "/";
+    }
+    return result;
+  }
+
+  /**
+   * Trailing path segment, mirroring `path.basename`.
+   */
+  protected posixBasename(path: string): string {
+    const normalized = this.normalizePath(path).replace(/\/+$/, "");
+    if (normalized === "" || normalized === "/") {
+      return "";
+    }
+    return normalized.slice(normalized.lastIndexOf("/") + 1);
+  }
+
+  /**
+   * Parent directory, mirroring `path.dirname`.
+   */
+  protected posixDirname(path: string): string {
+    const normalized = this.normalizePath(path).replace(/\/+$/, "");
+    const index = normalized.lastIndexOf("/");
+    if (index < 0) {
+      return ".";
+    }
+    if (index === 0) {
+      return "/";
+    }
+    return normalized.slice(0, index);
   }
 
   /**
@@ -179,7 +245,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
         );
       }
       return this.fileLikeFromBuffer(buffer, {
-        name: options.name ?? nodeBasename(filePath),
+        name: options.name ?? this.posixBasename(filePath),
         type: options.type,
       });
     }
@@ -363,7 +429,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
       throw new AlephaError(`EEXIST: file already exists, mkdir '${path}'`);
     }
 
-    const parent = this.normalizePath(dirname(normalized));
+    const parent = this.normalizePath(this.posixDirname(normalized));
     if (!this.isExistingDirectory(parent)) {
       throw new AlephaError(
         `ENOENT: no such file or directory, mkdir '${path}'`,
