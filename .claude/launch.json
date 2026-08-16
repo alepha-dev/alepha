@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "lore",
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": ["w", "lore", "dev"],
+      "port": 5173
+    }
+  ]
+}
