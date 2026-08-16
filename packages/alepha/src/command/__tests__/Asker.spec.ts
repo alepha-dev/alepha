@@ -325,4 +325,79 @@ describe("Asker", () => {
       expect(output.text).toContain("Invalid answer, expected 'y' or 'n'");
     });
   });
+
+  describe("choice", () => {
+    it("returns the value behind the number", async () => {
+      const { asker } = setup();
+      asker.answers("2");
+
+      expect(
+        await asker.ask.choice("Choose your color:", ["red", "blue", "green"]),
+      ).toBe("blue");
+    });
+
+    it("numbers the list from 1 and marks the default", async () => {
+      const { asker, output } = setup();
+      asker.answers("1");
+
+      await asker.ask.choice("Choose your color:", ["red", "blue"], {
+        default: "red",
+      });
+
+      expect(output.text).toContain("1. red (default)");
+      expect(output.text).toContain("2. blue");
+    });
+
+    it("prints the label and returns the value", async () => {
+      const { asker, output } = setup();
+      asker.answers("2");
+
+      const preset = await asker.ask.choice(
+        "Project shape:",
+        [
+          { value: "default", label: "default (API + web + Tailwind)" },
+          { value: "saas", label: "saas (adds @alepha/ui)" },
+        ],
+        { default: "default" },
+      );
+
+      expect(preset).toBe("saas");
+      expect(output.text).toContain("2. saas (adds @alepha/ui)");
+    });
+
+    it("takes the default on an empty answer", async () => {
+      const { asker } = setup();
+      asker.answers("");
+
+      expect(
+        await asker.ask.choice("Choose your color:", ["red", "blue"], {
+          default: "blue",
+        }),
+      ).toBe("blue");
+    });
+
+    it("re-asks an empty answer when there is no default", async () => {
+      const { asker } = setup();
+      asker.answers("", "1");
+
+      expect(
+        await asker.ask.choice("Choose your color:", ["red", "blue"]),
+      ).toBe("red");
+    });
+
+    it("re-asks on 0, on past the end, and on a non-number", async () => {
+      const { asker, output } = setup();
+      asker.answers("0", "3", "red", "2");
+
+      expect(
+        await asker.ask.choice("Choose your color:", ["red", "blue"]),
+      ).toBe("blue");
+      expect(output.text).toContain(
+        "Invalid answer, expected a number between 1 and 2",
+      );
+      expect(
+        output.text.match(/Invalid answer, expected a number between 1 and 2/g),
+      ).toHaveLength(3);
+    });
+  });
 });

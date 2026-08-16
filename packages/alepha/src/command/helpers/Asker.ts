@@ -50,6 +50,48 @@ export interface AskConfirmOptions {
   default?: boolean;
 }
 
+export interface AskChoice {
+  value: string;
+
+  /**
+   * Printed in place of the value. Defaults to the value.
+   */
+  label?: string;
+}
+
+export type AskChoices = ReadonlyArray<string | AskChoice>;
+
+/**
+ * The value type behind one entry of a choice list.
+ *
+ * Distributive on purpose: a list may mix bare strings and labelled objects,
+ * and both shapes have to collapse to the same string union.
+ */
+export type AskChoiceValueOf<I> = I extends string
+  ? I
+  : I extends AskChoice
+    ? I["value"]
+    : never;
+
+/**
+ * The union of every value a choice list can yield.
+ *
+ * This is what makes `choice("...", ["red", "blue"])` return `"red" | "blue"`
+ * rather than `string`, so a caller can pass the result straight into a typed
+ * flag without a cast.
+ */
+export type AskChoiceValue<C extends AskChoices> = AskChoiceValueOf<C[number]>;
+
+export interface AskChoiceOptions<C extends AskChoices> {
+  /**
+   * Taken when the answer is empty, and marked "(default)" in the list.
+   *
+   * A value, never an index: an index quietly means something else the moment
+   * somebody reorders the list.
+   */
+  default?: AskChoiceValue<C>;
+}
+
 export interface AskMethods {
   /**
    * Ask for a free-form value, decoded through a schema.
@@ -63,6 +105,15 @@ export interface AskMethods {
    * Ask a yes/no question.
    */
   confirm(question: string, options?: AskConfirmOptions): Promise<boolean>;
+
+  /**
+   * Ask for one entry of a numbered list.
+   */
+  choice<const C extends AskChoices>(
+    question: string,
+    choices: C,
+    options?: AskChoiceOptions<C>,
+  ): Promise<AskChoiceValue<C>>;
 
   intro(title: string): void;
   outro(message: string): void;
@@ -131,6 +182,17 @@ export class Asker {
 
       confirm: (question: string, options: AskConfirmOptions = {}) =>
         this.confirmValue(question, options),
+
+      choice: <const C extends AskChoices>(
+        question: string,
+        choices: C,
+        options: AskChoiceOptions<C> = {},
+      ) =>
+        this.chooseOne(
+          question,
+          choices,
+          options.default as string | undefined,
+        ) as Promise<AskChoiceValue<C>>,
 
       intro: (title: string) => this.printIntro(title),
       outro: (message: string) => this.printOutro(message),
@@ -252,6 +314,87 @@ export class Asker {
         return undefined;
       },
     );
+  }
+
+  /**
+   * Ask for one entry of a numbered list.
+   */
+  protected chooseOne(
+    question: string,
+    choices: AskChoices,
+    defaultValue?: string,
+  ): Promise<string> {
+    const items = this.normalizeChoices(choices);
+
+    return this.loop<string>(
+      () =>
+        this.printChoices(
+          question,
+          items,
+          defaultValue === undefined ? [] : [defaultValue],
+        ),
+      (answer) => {
+        if (!answer) {
+          if (defaultValue === undefined) {
+            this.printError(this.rangeError(items.length));
+            return undefined;
+          }
+          return { value: defaultValue };
+        }
+
+        // Number("1 2") is NaN, so a multi-number answer is rejected here
+        // rather than quietly taking the first one.
+        const position = Number(answer);
+        if (
+          !Number.isInteger(position) ||
+          position < 1 ||
+          position > items.length
+        ) {
+          this.printError(this.rangeError(items.length));
+          return undefined;
+        }
+
+        return { value: items[position - 1].value };
+      },
+    );
+  }
+
+  /**
+   * Widen every entry to `{ value, label }` so the renderer has one shape to
+   * deal with.
+   */
+  protected normalizeChoices(choices: AskChoices): AskChoice[] {
+    return choices.map((choice) =>
+      typeof choice === "string"
+        ? { value: choice, label: choice }
+        : { value: choice.value, label: choice.label ?? choice.value },
+    );
+  }
+
+  /**
+   * Print the question and its numbered list, blank line either side.
+   */
+  protected printChoices(
+    question: string,
+    items: AskChoice[],
+    defaults: string[],
+  ): void {
+    this.printQuestion(question);
+    this.output.print();
+
+    items.forEach((item, index) => {
+      const marker = this.color.set("CYAN", `${index + 1}.`);
+      const suffix = defaults.includes(item.value)
+        ? ` ${this.color.set("GREY_DARK", "(default)")}`
+        : "";
+      this.output.print(`${marker} ${item.label}${suffix}`);
+    });
+
+    this.output.print();
+  }
+
+  protected rangeError(max: number): string {
+    return `Invalid answer, expected a number between 1 and ${max}`;
   }
 
   protected printIntro(title: string): void {
