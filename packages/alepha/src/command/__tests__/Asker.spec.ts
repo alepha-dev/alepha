@@ -399,5 +399,34 @@ describe("Asker", () => {
         output.text.match(/Invalid answer, expected a number between 1 and 2/g),
       ).toHaveLength(3);
     });
+
+    it("throws when the default is not one of the choices", async () => {
+      const { asker } = setup();
+      const fake = asker.answers();
+      // Widened to string[], the way a CLI list built from config or a
+      // directory listing would arrive, so the literal-tuple type parameter
+      // cannot catch this at the call site either.
+      const colors: string[] = ["red", "blue"];
+
+      await expect(
+        asker.ask.choice("Choose your color:", colors, { default: "purple" }),
+      ).rejects.toBeInstanceOf(AlephaError);
+
+      // Failed before ever asking, not after: nothing was printed.
+      expect(fake.prompts).toHaveLength(0);
+    });
+
+    it("re-asks on a hex-looking answer instead of picking by it", async () => {
+      const { asker, output } = setup();
+      const fake = asker.answers("0x2", "2");
+
+      expect(
+        await asker.ask.choice("Choose your color:", ["red", "blue"]),
+      ).toBe("blue");
+      expect(output.text).toContain(
+        "Invalid answer, expected a number between 1 and 2",
+      );
+      expect(fake.prompts).toHaveLength(2);
+    });
   });
 });

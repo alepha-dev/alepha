@@ -319,12 +319,28 @@ export class Asker {
   /**
    * Ask for one entry of a numbered list.
    */
-  protected chooseOne(
+  protected async chooseOne(
     question: string,
     choices: AskChoices,
     defaultValue?: string,
   ): Promise<string> {
     const items = this.normalizeChoices(choices);
+
+    // A default outside the list is a developer mistake, not bad user input:
+    // the type parameter does not catch it when `choices` is a widened
+    // `string[]` rather than a literal tuple, so it fails loudly here instead
+    // of silently handing back an answer nobody was ever offered. Checked
+    // before the loop starts, so it fails before any question is printed.
+    if (
+      defaultValue !== undefined &&
+      !items.some((item) => item.value === defaultValue)
+    ) {
+      throw new AlephaError(
+        `Invalid default "${defaultValue}", expected one of: ${items
+          .map((item) => item.value)
+          .join(", ")}`,
+      );
+    }
 
     return this.loop<string>(
       () =>
@@ -343,13 +359,16 @@ export class Asker {
         }
 
         // Number("1 2") is NaN, so a multi-number answer is rejected here
-        // rather than quietly taking the first one.
+        // rather than quietly taking the first one. The digit check runs
+        // first so formats Number() would otherwise accept — hex ("0x2"),
+        // scientific notation ("2e0"), a leading "+" — are rejected too.
+        if (!/^\d+$/.test(answer)) {
+          this.printError(this.rangeError(items.length));
+          return undefined;
+        }
+
         const position = Number(answer);
-        if (
-          !Number.isInteger(position) ||
-          position < 1 ||
-          position > items.length
-        ) {
+        if (position < 1 || position > items.length) {
           this.printError(this.rangeError(items.length));
           return undefined;
         }
