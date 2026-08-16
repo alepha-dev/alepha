@@ -1,3 +1,4 @@
+import { AlephaSigil } from "@alepha/sigil";
 import { AdminRouter } from "@alepha/ui/components/admin/admin-router";
 import { AuthRouter } from "@alepha/ui/components/auth/auth-router";
 import { $module } from "alepha";
@@ -23,11 +24,18 @@ import { ShopI18n } from "./ShopI18n.ts";
  * columns or a translations table, and that decision belongs to a shop with a
  * second market — see the note in `ShopI18n`.
  *
+ * `AlephaSigil` reports page views, Web Vitals and grouped errors to the sink
+ * named by `SIGIL_SINK` (defaulting to the public Lore instance), under the
+ * `shop-production` sigil. It is inert without `SIGIL_KEY` and inert outside
+ * production, so dev and the e2e suite send nothing. Nothing is mounted in the
+ * tree by importing it: the storefront gets no floating feedback button, which
+ * is the right default for a shop.
+ *
  * @module shop.web
  */
 export const ShopWeb = $module({
   name: "shop.web",
-  imports: [AlephaReactAuth, AlephaReactI18n, AlephaReactUi],
+  imports: [AlephaReactAuth, AlephaReactI18n, AlephaReactUi, AlephaSigil],
   atoms: [panierAtom],
   /*
    * `AuthRouter` is the whole sign-in surface: it mounts `/auth/login`,
