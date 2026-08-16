@@ -329,8 +329,7 @@ export default {
   "project.create.name.helper": "Un nom marquant pour votre épopée.",
   "project.update.preferredLanguage.label": "Langue préférée",
   "project.update.preferredLanguage.helper":
-    "Langue que les agents IA doivent utiliser pour le contenu généré (quêtes, folios). Ne change pas votre langue d'interface — celle-ci reste dans votre profil.",
-  "project.update.slug.preview": "URL : /$1",
+    "Langue que les agents IA doivent utiliser pour le contenu généré (quêtes, folios).",
   "project.update.slug.taken": "Ce nom est déjà pris.",
   "project.update.rename.title": "Renommer ce projet ?",
   "project.update.rename.description":

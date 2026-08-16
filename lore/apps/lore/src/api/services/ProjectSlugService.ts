@@ -6,10 +6,11 @@
  * router registers at the root.
  *
  * ⚠️ This class deliberately declares **no injected dependencies**. The project
- * settings page injects it in the browser to render the live slug preview, so
- * that the preview cannot drift from what the server stores. Adding a
- * `$repository` here would drag server-only code into the client bundle — the
- * availability check that needs the database lives on `ProjectController`.
+ * settings page constructs it in the browser to decide whether an edit moves
+ * the project's URL, which is what gates the rename confirmation, so that
+ * decision cannot drift from what the server stores. Adding a `$repository`
+ * here would drag server-only code into the client bundle — the availability
+ * check that needs the database lives on `ProjectController`.
  */
 export class ProjectSlugService {
   /**

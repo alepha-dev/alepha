@@ -100,7 +100,7 @@ export class ProjectController {
    *
    * Lives here rather than on {@link ProjectSlugService} because it needs the
    * `projects` repository, and that service stays dependency-free so the
-   * browser can inject it for the settings page's live slug preview.
+   * browser can construct it for the settings page's rename check.
    *
    * `exceptProjectId` lets a rename re-assert its own current slug without
    * colliding with itself.

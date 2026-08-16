@@ -9,10 +9,12 @@ import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
  * becomes claimable again. That is a deliberately destructive change, which is
  * why the settings page gates it behind a confirmation naming both URLs.
  *
- * ⚠️ The Name field does not auto-commit on keystroke. `AutoForm`'s `autoSave`
- * skips string schemas (see `auto-form.tsx`), so a text field commits via Enter
- * or the inline tick that appears once it is dirty. The tests below click that
- * button; typing alone saves nothing.
+ * ⚠️ The Name field does not auto-commit. The form has a real Save button in
+ * the settings card's last row, disabled until something is dirty, and the
+ * tests below click it; typing alone saves nothing. It was an `autoSave` form
+ * until the settings-card action row existed, and the tick button that mode
+ * put inside the input carried the same `aria-label="Save"` — which is why
+ * these selectors did not move when the button did.
  */
 test.describe("Project slug routing", () => {
   test("the wizard lands on a slug derived from the title", async ({
@@ -44,9 +46,6 @@ test.describe("Project slug routing", () => {
 
     await page.goto(`/${slug}/settings/`);
     await page.waitForLoadState("networkidle");
-
-    // The URL the project will get is shown before saving.
-    await expect(page.getByText(`URL: /${slug}`)).toBeVisible();
 
     const name = page.getByRole("textbox", { name: "Name" });
     const renamed = `Sum${ts}`.slice(0, 20);

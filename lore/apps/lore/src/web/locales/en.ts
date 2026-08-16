@@ -324,8 +324,7 @@ export default {
     "Set a short name for identifying your project.",
   "project.update.preferredLanguage.label": "Preferred Language",
   "project.update.preferredLanguage.helper":
-    "Language AI agents should use for generated content (quests, folios). Doesn't change your UI language — that stays in your profile.",
-  "project.update.slug.preview": "URL: /$1",
+    "Language AI agents should use for generated content (quests, folios).",
   "project.update.slug.taken": "That name is already taken.",
   "project.update.rename.title": "Rename this project?",
   "project.update.rename.description":
