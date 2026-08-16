@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { CliProvider } from "alepha/command";
+import { Asker, CliProvider } from "alepha/command";
 import {
   FileSystemProvider,
   MemoryFileSystemProvider,
@@ -10,6 +10,28 @@ import { describe, expect, it } from "vitest";
 import { CreateAlephaCoreCommands } from "./CreateAlephaCoreCommands.ts";
 
 /**
+ * Every test here supplies the project name and preset through `args`/
+ * `flags`, so the only question the handler ever reaches is "Include
+ * @alepha/devtools?". An empty answer is enough to clear it: `ask.confirm`
+ * falls back to its `default: true` on a blank line, exactly like a real
+ * terminal user pressing Enter.
+ *
+ * Without this substitution the real `Asker` opens a `readline` interface on
+ * the process's actual stdin, which never answers in a test run and hangs
+ * every test that reaches the prompt until the suite times out.
+ */
+class AutoAnswerAsker extends Asker {
+  protected createPromptInterface(): any {
+    return {
+      question: () => Promise.resolve(""),
+      once: () => {},
+      off: () => {},
+      close: () => {},
+    };
+  }
+}
+
+/**
  * `create-alepha` is a thin wrapper over `ProjectScaffolder.init`, so these
  * assert the wiring — that a flag typed at the prompt reaches the scaffolder —
  * rather than re-testing what `init-preset.spec.ts` already covers.
@@ -18,7 +40,8 @@ describe("create-alepha", () => {
   const createTestEnv = () => {
     const alepha = Alepha.create()
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
-      .with({ provide: ShellProvider, use: MemoryShellProvider });
+      .with({ provide: ShellProvider, use: MemoryShellProvider })
+      .with({ provide: Asker, use: AutoAnswerAsker });
 
     return {
       fs: alepha.inject(MemoryFileSystemProvider),

@@ -1,4 +1,4 @@
-import { $inject, z } from "alepha";
+import { $inject, AlephaError, z } from "alepha";
 import { ProjectScaffolder, presetSchema } from "alepha/cli";
 import { $command } from "alepha/command";
 import { FileSystemProvider } from "alepha/system";
@@ -69,19 +69,44 @@ export class CreateAlephaCoreCommands {
           schema: z.text({ trim: true, lowercase: true }),
           validate: (value) => {
             if (!/^[a-z0-9-]+$/.test(value)) {
-              throw new Error(
+              throw new AlephaError(
                 "Project name must be lowercase alphanumeric with dashes",
               );
             }
           },
         }));
 
+      // 2. Project shape, unless the caller already picked one
+      const preset =
+        flags.preset ??
+        (await ask.choice(
+          "Project shape:",
+          [
+            {
+              value: "default",
+              label: "default (API + web + Tailwind)",
+            },
+            {
+              value: "saas",
+              label: "saas (adds @alepha/ui with auth, account and admin)",
+            },
+          ],
+          { default: "default" },
+        ));
+
+      // 3. DevTools is dev-only and costs nothing in a production bundle, so
+      // the default is yes.
+      const devtools = await ask.confirm("Include @alepha/devtools?", {
+        default: true,
+      });
+
       // Create directory
       await this.fs.mkdir(name);
 
       // `pm` is passed through undefined unless the user forced one, so that
       // `init` runs its own resolution — lockfiles, then workspace, then the
-      // invoking manager via `npm_config_user_agent`.
+      // invoking manager via `npm_config_user_agent`. Prompting for it would
+      // replace a good answer with a worse one.
       //
       // No cast: these are exactly the flags `init` accepts, and keeping it
       // that way is what makes a future removal a type error here instead of a
@@ -89,7 +114,11 @@ export class CreateAlephaCoreCommands {
       await this.scaffolder.init({
         run,
         root,
-        flags: { pm: flags.pm, preset: flags.preset },
+        flags: {
+          pm: flags.pm,
+          preset,
+          "no-devtools": devtools ? undefined : true,
+        },
         args: name,
       });
 
