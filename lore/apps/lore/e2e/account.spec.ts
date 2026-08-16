@@ -43,6 +43,45 @@ test.describe("Account area", () => {
     }
   });
 
+  test("highlights exactly one rail entry per page", async ({ page }) => {
+    test.setTimeout(90_000);
+
+    /*
+      Regression guard for the Profile entry. It sits at `path: "/"` under the
+      shell, and `ReactPageProvider.createMatch` collapses that to the shell's
+      own path (`/account` + `/` → `/account`), so its `match` is a prefix of
+      every sibling's. `isActivePath` is a per-entry predicate and cannot see
+      that a sibling matched deeper, so Profile rendered active on *every*
+      account page until `keepDeepestActive` was added.
+
+      Driven through the real router rather than asserted against a hardcoded
+      href, because the whole bug lives in what `createMatch` produces for an
+      index page. A unit test that assumes `/account` cannot notice that
+      changing.
+    */
+    const email = `ah-${Date.now()}@example.com`;
+    await registerAndVerify(page, email, "GoodPassw0rd");
+
+    const expected: Array<[string, string]> = [
+      ["/account", "Profile"],
+      ["/account/security", "Security"],
+      ["/account/sessions", "Sessions"],
+      ["/account/keys", "API keys"],
+      ["/account/connections", "Connected apps"],
+      ["/account/invitations", "Invitations"],
+      ["/account/feedback", "Feedback"],
+    ];
+
+    for (const [path, label] of expected) {
+      await page.goto(path);
+      await page.waitForLoadState("networkidle");
+
+      const active = page.locator('nav a[aria-current="page"]');
+      await expect(active).toHaveCount(1);
+      await expect(active).toHaveText(label);
+    }
+  });
+
   test("renames the account and persists it across a reload", async ({
     page,
   }) => {
@@ -169,6 +208,58 @@ test.describe("Account area", () => {
     await page.goto("/account");
     await page.waitForLoadState("networkidle");
     await expect(page.getByText(email, { exact: true })).toBeVisible();
+  });
+
+  test("keeps content past the fold reachable inside Lore's clipped shell", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+
+    /*
+      Regression guard for the `fill` seam. Lore's `Layout.tsx` is
+      `h-svh … overflow-hidden`, so the document never scrolls and every page
+      under it has to own its scroll. `SettingsLayout` defaults to the
+      opposite assumption ("the page scrolls"), which is right when the
+      account area is mounted standalone and silently wrong here: without
+      `fill: true` on `accountRouterOptionsAtom` there is no scrollbar
+      anywhere, and everything below the fold is unreachable rather than
+      merely below it. `/account/feedback` past a dozen rows lost the rest of
+      its table AND its pagination bar this way.
+
+      Asserted through the DOM rather than by looking for a specific row,
+      because how much content overflows depends on the page and the viewport
+      — what must hold is that *something* can scroll.
+    */
+    const email = `af-${Date.now()}@example.com`;
+    await registerAndVerify(page, email, "GoodPassw0rd");
+
+    // Short enough that the card stack cannot fit, whatever it holds.
+    await page.setViewportSize({ width: 1280, height: 320 });
+    await page.goto("/account/security");
+    await page.waitForLoadState("networkidle");
+
+    const overflow = await page.evaluate(() => {
+      const overflows = (e: Element) => e.scrollHeight > e.clientHeight + 4;
+      const all = [...document.querySelectorAll("*")];
+      return {
+        // Anything taller than its box whose overflow is hidden is content
+        // the user can never get to — the bug, exactly.
+        clipped: all.filter(
+          (e) =>
+            overflows(e) &&
+            getComputedStyle(e).overflowY === "hidden" &&
+            !e.className.toString().includes("sr-only"),
+        ).length,
+        scrollable: all.filter(
+          (e) =>
+            overflows(e) &&
+            ["auto", "scroll"].includes(getComputedStyle(e).overflowY),
+        ).length,
+      };
+    });
+
+    expect(overflow.clipped).toBe(0);
+    expect(overflow.scrollable).toBeGreaterThan(0);
   });
 
   test("404s the retired /auth/profile paths", async ({ page }) => {

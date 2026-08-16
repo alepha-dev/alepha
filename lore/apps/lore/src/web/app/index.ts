@@ -49,6 +49,12 @@ export const LoreWebApp = $module({
     // framework cannot know that; this fills the dialog's warning slot so the
     // count is stated before the click rather than discovered after it.
     alepha.store.set(accountRouterOptionsAtom, {
+      // `Layout.tsx` is `h-svh … overflow-hidden`, so the document never
+      // scrolls and every page under it owns its scroll. Without this the
+      // account pages have no scrollbar at all: `/account/feedback` past a
+      // dozen rows simply loses the rest of the table and its pagination bar
+      // below the fold, with nothing to scroll.
+      fill: true,
       pages: {
         security: { deleteWarning: createElement(AccountDeleteWarning) },
       },
