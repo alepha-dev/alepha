@@ -92,6 +92,13 @@ export interface AskChoiceOptions<C extends AskChoices> {
   default?: AskChoiceValue<C>;
 }
 
+export interface AskMultiChoiceOptions<C extends AskChoices> {
+  /**
+   * Taken when the answer is empty, and marked "(default)" in the list.
+   */
+  default?: Array<AskChoiceValue<C>>;
+}
+
 export interface AskMethods {
   /**
    * Ask for a free-form value, decoded through a schema.
@@ -114,6 +121,15 @@ export interface AskMethods {
     choices: C,
     options?: AskChoiceOptions<C>,
   ): Promise<AskChoiceValue<C>>;
+
+  /**
+   * Ask for any number of entries of a numbered list.
+   */
+  multiChoice<const C extends AskChoices>(
+    question: string,
+    choices: C,
+    options?: AskMultiChoiceOptions<C>,
+  ): Promise<Array<AskChoiceValue<C>>>;
 
   intro(title: string): void;
   outro(message: string): void;
@@ -193,6 +209,17 @@ export class Asker {
           choices,
           options.default as string | undefined,
         ) as Promise<AskChoiceValue<C>>,
+
+      multiChoice: <const C extends AskChoices>(
+        question: string,
+        choices: C,
+        options: AskMultiChoiceOptions<C> = {},
+      ) =>
+        this.chooseMany(
+          question,
+          choices,
+          options.default as string[] | undefined,
+        ) as Promise<Array<AskChoiceValue<C>>>,
 
       intro: (title: string) => this.printIntro(title),
       outro: (message: string) => this.printOutro(message),
@@ -317,6 +344,26 @@ export class Asker {
   }
 
   /**
+   * Reject a default that is not in the list.
+   *
+   * A developer mistake rather than bad user input: the generic parameter does
+   * not catch it when `choices` is a widened `string[]` rather than a literal
+   * tuple, so it fails loudly here instead of silently handing back an answer
+   * nobody was ever offered. Called before the loop starts, so it fails before
+   * any question is printed.
+   */
+  protected assertDefaults(items: AskChoice[], defaults: string[]): void {
+    const values = items.map((item) => item.value);
+    for (const value of defaults) {
+      if (!values.includes(value)) {
+        throw new AlephaError(
+          `Invalid default "${value}", expected one of: ${values.join(", ")}`,
+        );
+      }
+    }
+  }
+
+  /**
    * Ask for one entry of a numbered list.
    */
   protected async chooseOne(
@@ -325,22 +372,10 @@ export class Asker {
     defaultValue?: string,
   ): Promise<string> {
     const items = this.normalizeChoices(choices);
-
-    // A default outside the list is a developer mistake, not bad user input:
-    // the type parameter does not catch it when `choices` is a widened
-    // `string[]` rather than a literal tuple, so it fails loudly here instead
-    // of silently handing back an answer nobody was ever offered. Checked
-    // before the loop starts, so it fails before any question is printed.
-    if (
-      defaultValue !== undefined &&
-      !items.some((item) => item.value === defaultValue)
-    ) {
-      throw new AlephaError(
-        `Invalid default "${defaultValue}", expected one of: ${items
-          .map((item) => item.value)
-          .join(", ")}`,
-      );
-    }
+    this.assertDefaults(
+      items,
+      defaultValue === undefined ? [] : [defaultValue],
+    );
 
     return this.loop<string>(
       () =>
@@ -376,6 +411,86 @@ export class Asker {
         return { value: items[position - 1].value };
       },
     );
+  }
+
+  /**
+   * Ask for any number of entries of a numbered list.
+   */
+  protected async chooseMany(
+    question: string,
+    choices: AskChoices,
+    defaultValues?: string[],
+  ): Promise<string[]> {
+    const items = this.normalizeChoices(choices);
+    this.assertDefaults(items, defaultValues ?? []);
+
+    return this.loop<string[]>(
+      () => {
+        this.printChoices(question, items, defaultValues ?? []);
+        this.printHint("Enter numbers separated by spaces or commas.");
+      },
+      (answer) => {
+        // Selecting nothing is a legitimate answer here, so an empty line is
+        // not an error the way it is for `choice`.
+        if (!answer) {
+          return { value: defaultValues ?? [] };
+        }
+
+        const positions = this.parseSelection(answer, items.length);
+        if (!positions) {
+          this.printError(this.rangeError(items.length));
+          return undefined;
+        }
+
+        return {
+          value: positions.map((position) => items[position - 1].value),
+        };
+      },
+    );
+  }
+
+  /**
+   * Parse a list of 1-based positions, or `undefined` if any part of it is
+   * unusable.
+   *
+   * `-` is a **separator, not a range**: "1-4" means items 1 and 4, never 1
+   * through 4. Ranges would be ambiguous against the other separators and are
+   * deliberately not supported, so every one of these means the same thing:
+   *
+   * ```
+   * 1 4 10
+   * 1-4-10
+   * 1,4,10
+   * 1,-     4,,,,----       10
+   * ```
+   *
+   * One bad token invalidates the whole answer rather than being skipped: a
+   * silently dropped selection is worse than being asked again.
+   */
+  protected parseSelection(input: string, max: number): number[] | undefined {
+    const tokens = input.split(/[\s,;-]+/).filter(Boolean);
+    if (tokens.length === 0) {
+      return undefined;
+    }
+
+    const positions: number[] = [];
+    for (const token of tokens) {
+      // Plain digits only. `Number()` alone would accept "0x2", "2e0" and
+      // "+2", none of which anybody types to pick a menu item. Match the guard
+      // `chooseOne` already uses.
+      if (!/^\d+$/.test(token)) {
+        return undefined;
+      }
+      const position = Number(token);
+      if (position < 1 || position > max) {
+        return undefined;
+      }
+      if (!positions.includes(position)) {
+        positions.push(position);
+      }
+    }
+
+    return positions;
   }
 
   /**

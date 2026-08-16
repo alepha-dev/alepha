@@ -67,6 +67,7 @@ class FakeInterface {
 class TestAsker extends Asker {
   fake = new FakeInterface([]);
   createdCount = 0;
+  testParseSelection = this.parseSelection.bind(this);
 
   answers(...answers: string[]): FakeInterface {
     this.fake = new FakeInterface(answers);
@@ -427,6 +428,115 @@ describe("Asker", () => {
         "Invalid answer, expected a number between 1 and 2",
       );
       expect(fake.prompts).toHaveLength(2);
+    });
+  });
+
+  describe("multiChoice", () => {
+    it("accepts every separator form", async () => {
+      const { asker } = setup();
+
+      // Straight from the spec. `-` is a SEPARATOR, not a range: "1-4-10" is
+      // three items, never 1 through 4.
+      for (const input of [
+        "1 4 10",
+        "1-4-10",
+        "1,4,10",
+        "1,-     4,,,,----       10",
+      ]) {
+        expect(asker.testParseSelection(input, 10)).toEqual([1, 4, 10]);
+      }
+    });
+
+    it("deduplicates while keeping the order typed", async () => {
+      const { asker } = setup();
+
+      expect(asker.testParseSelection("3 1 3 2", 3)).toEqual([3, 1, 2]);
+    });
+
+    it("rejects the whole answer when one token is out of range", async () => {
+      const { asker } = setup();
+
+      expect(asker.testParseSelection("1 4", 3)).toBeUndefined();
+      expect(asker.testParseSelection("0", 3)).toBeUndefined();
+      expect(asker.testParseSelection("1 red", 3)).toBeUndefined();
+      expect(asker.testParseSelection("1.5", 3)).toBeUndefined();
+      expect(asker.testParseSelection("---", 3)).toBeUndefined();
+      // Same digit guard `choice` uses: no hex, no exponent, no leading plus.
+      expect(asker.testParseSelection("0x2", 3)).toBeUndefined();
+      expect(asker.testParseSelection("+2", 3)).toBeUndefined();
+    });
+
+    it("rejects a default that is not one of the choices", async () => {
+      const { asker, output } = setup();
+      const fake = asker.answers("");
+
+      await expect(
+        asker.ask.multiChoice("Select features:", ["auth", "admin"], {
+          default: ["nope"] as any,
+        }),
+      ).rejects.toBeInstanceOf(AlephaError);
+
+      // Fails before anything is printed: a default nobody was offered is a
+      // developer mistake, not something to ask the user about.
+      expect(fake.prompts).toHaveLength(0);
+      expect(output.text).toBe("");
+    });
+
+    it("returns the selected values", async () => {
+      const { asker } = setup();
+      asker.answers("1, 3");
+
+      expect(
+        await asker.ask.multiChoice("Select features:", [
+          "auth",
+          "admin",
+          "i18n",
+        ]),
+      ).toEqual(["auth", "i18n"]);
+    });
+
+    it("prints the hint under the list", async () => {
+      const { asker, output } = setup();
+      asker.answers("1");
+
+      await asker.ask.multiChoice("Select features:", ["auth", "admin"]);
+
+      expect(output.text).toContain(
+        "Enter numbers separated by spaces or commas.",
+      );
+    });
+
+    it("treats an empty answer as selecting nothing", async () => {
+      const { asker } = setup();
+      asker.answers("");
+
+      expect(
+        await asker.ask.multiChoice("Select features:", ["auth", "admin"]),
+      ).toEqual([]);
+    });
+
+    it("takes the default on an empty answer when there is one", async () => {
+      const { asker, output } = setup();
+      asker.answers("");
+
+      expect(
+        await asker.ask.multiChoice("Select features:", ["auth", "admin"], {
+          default: ["admin"],
+        }),
+      ).toEqual(["admin"]);
+      expect(output.text).toContain("2. admin (default)");
+    });
+
+    it("re-asks a bad answer", async () => {
+      const { asker, output } = setup();
+      asker.answers("1 9", "2");
+
+      expect(
+        await asker.ask.multiChoice("Select features:", ["auth", "admin"]),
+      ).toEqual(["admin"]);
+      expect(output.text).toContain(
+        "Invalid answer, expected a number between 1 and 2",
+      );
     });
   });
 });
