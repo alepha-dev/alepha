@@ -1,15 +1,21 @@
+import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
 import { FileImage } from "@alepha/ui/components/file-image/file-image";
 import { SettingsRow } from "@alepha/ui/components/settings/settings-row";
 import { SettingsSection } from "@alepha/ui/components/settings/settings-section";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
-import { Input } from "@alepha/ui/components/ui/input";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import type { MyProfile, MyProfileController } from "alepha/api/users";
+import type {
+  MyAvatarController,
+  MyProfile,
+  MyProfileController,
+} from "alepha/api/users";
+import { updateMyProfileBodySchema } from "alepha/api/users";
 import { useClient } from "alepha/react";
+import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { Camera, Trash2, User } from "lucide-react";
-import { type ChangeEvent, type FormEvent, useRef, useState } from "react";
+import { AtSign, Camera, Trash2, User } from "lucide-react";
+import { type ChangeEvent, useRef, useState } from "react";
 
 export interface AccountProfileProps {
   /**
@@ -28,42 +34,58 @@ export interface AccountProfileProps {
  */
 const AccountProfile = (props: AccountProfileProps) => {
   const api = useClient<MyProfileController>();
+  const avatarApi = useClient<MyAvatarController>();
   const toaster = useToast();
   const { l } = useI18n();
   const fileInput = useRef<HTMLInputElement>(null);
 
   const [profile, setProfile] = useState<MyProfile | undefined>(props.profile);
-  const [firstName, setFirstName] = useState(props.profile?.firstName ?? "");
-  const [lastName, setLastName] = useState(props.profile?.lastName ?? "");
-  const [username, setUsername] = useState(props.profile?.username ?? "");
-  const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  /**
+   * Validated against the server's own body schema, so "3 to 30 characters"
+   * is enforced before the request rather than only by the 400 that comes
+   * back — and is stated in exactly one place.
+   */
+  const form = useForm({
+    initialValues: {
+      username: props.profile?.username ?? "",
+      firstName: props.profile?.firstName ?? "",
+      lastName: props.profile?.lastName ?? "",
+    },
+    schema: updateMyProfileBodySchema,
+    handler: async (values) => {
+      try {
+        setProfile(
+          await api.updateMyProfile({
+            body: {
+              // Empty is "unset", which the API spells `null` — NOT
+              // `undefined`, which means "leave this column alone" and made
+              // clearing a name a silent no-op that still toasted success.
+              firstName: values.firstName || null,
+              lastName: values.lastName || null,
+              username: values.username,
+            },
+          }),
+        );
+        toaster.show("Profile updated", "success");
+      } catch (error: any) {
+        // The username-taken 409 arrives here with its own message, which is
+        // the only one worth showing. Toasted *and* rethrown: the toast is
+        // what the user reads, and the throw is what keeps the form dirty and
+        // errored so Save stays actionable for the retry.
+        toaster.show(
+          error?.message ?? "Could not update your profile",
+          "danger",
+        );
+        throw error;
+      }
+    },
+  });
 
   if (!profile) {
     return null;
   }
-
-  const save = async (event: FormEvent) => {
-    event.preventDefault();
-    setSaving(true);
-    try {
-      const updated = await api.updateMyProfile({
-        body: {
-          firstName: firstName || undefined,
-          lastName: lastName || undefined,
-          username: username || undefined,
-        },
-      });
-      setProfile(updated);
-      toaster.show("Profile updated", "success");
-    } catch (error: any) {
-      // The username-taken 409 arrives here with its own message, which is
-      // the only one worth showing.
-      toaster.show(error?.message ?? "Could not update your profile", "danger");
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const onPickAvatar = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -72,7 +94,7 @@ const AccountProfile = (props: AccountProfileProps) => {
     }
     setUploading(true);
     try {
-      setProfile(await api.updateMyAvatar({ body: { file } }));
+      setProfile(await avatarApi.updateMyAvatar({ body: { file } }));
       toaster.show("Avatar updated", "success");
     } catch (error: any) {
       toaster.show(error?.message ?? "Could not upload that image", "danger");
@@ -88,7 +110,7 @@ const AccountProfile = (props: AccountProfileProps) => {
   const removeAvatar = async () => {
     setUploading(true);
     try {
-      setProfile(await api.deleteMyAvatar());
+      setProfile(await avatarApi.deleteMyAvatar());
     } catch (error: any) {
       toaster.show(error?.message ?? "Could not remove your avatar", "danger");
     } finally {
@@ -96,109 +118,126 @@ const AccountProfile = (props: AccountProfileProps) => {
     }
   };
 
+  // Realms opt into avatars (`features.avatars`, off by default), and an
+  // unregistered action is absent from `/api/_links` — so this is the realm's
+  // own switch read through the mechanism that cannot drift from it. Checking
+  // a flag mirrored into the client instead would let the picker render
+  // against endpoints that answer 404.
+  const canEditAvatar = avatarApi.updateMyAvatar.can();
+
   return (
     <>
-      <SettingsSection
-        title="Profile picture"
-        description="Shown next to your name wherever you appear."
-      >
-        <SettingsRow
-          label="Avatar"
-          description="PNG, JPEG, GIF or WebP, up to 5 MB."
-        >
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => fileInput.current?.click()}
-              disabled={uploading}
-              aria-label="Change avatar"
-              className="relative size-14 shrink-0 cursor-pointer"
-            >
-              {/* Only the image is clipped to a circle; the camera badge sits
-                  outside the wrapper so the round mask cannot crop it. */}
-              <div className="size-full overflow-hidden rounded-full border bg-muted">
-                <FileImage
-                  id={profile.picture}
-                  public
-                  alt=""
-                  className="size-full object-cover"
-                  fallback={
-                    <div className="flex size-full items-center justify-center">
-                      <User className="size-6" />
-                    </div>
-                  }
-                />
-              </div>
-              <div className="absolute right-0 bottom-0 flex size-5 items-center justify-center rounded-full border bg-card">
-                <Camera className="size-3" />
-              </div>
-            </button>
-            {profile.picture ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={removeAvatar}
-                disabled={uploading}
-              >
-                <Trash2 className="size-4" />
-                Remove
-              </Button>
-            ) : null}
-          </div>
-        </SettingsRow>
-      </SettingsSection>
-
-      <input
-        type="file"
-        ref={fileInput}
-        onChange={onPickAvatar}
-        accept="image/jpeg,image/png,image/webp,image/gif"
-        className="hidden"
-      />
-
-      <form onSubmit={save}>
-        <SettingsSection
-          title="Name"
-          description="How you are identified to other people."
-        >
-          <SettingsRow
-            label="Username"
-            htmlFor="accountUsername"
-            description="Unique across this site."
+      {canEditAvatar && (
+        <>
+          <SettingsSection
+            title="Profile picture"
+            description="Shown next to your name wherever you appear."
           >
-            <Input
-              id="accountUsername"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              autoComplete="username"
-              className="sm:w-64"
-            />
-          </SettingsRow>
-          <SettingsRow label="First name" htmlFor="accountFirstName">
-            <Input
-              id="accountFirstName"
-              value={firstName}
-              onChange={(event) => setFirstName(event.target.value)}
-              autoComplete="given-name"
-              className="sm:w-64"
-            />
-          </SettingsRow>
-          <SettingsRow label="Last name" htmlFor="accountLastName">
-            <Input
-              id="accountLastName"
-              value={lastName}
-              onChange={(event) => setLastName(event.target.value)}
-              autoComplete="family-name"
-              className="sm:w-64"
-            />
-          </SettingsRow>
-          <SettingsRow label="">
-            <Button type="submit" disabled={saving}>
-              Save
-            </Button>
-          </SettingsRow>
-        </SettingsSection>
-      </form>
+            <SettingsRow
+              label="Avatar"
+              description="PNG, JPEG, GIF or WebP, up to 5 MB."
+            >
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => fileInput.current?.click()}
+                  disabled={uploading}
+                  aria-label="Change avatar"
+                  className="relative size-14 shrink-0 cursor-pointer"
+                >
+                  {/* Only the image is clipped to a circle; the camera badge sits
+                  outside the wrapper so the round mask cannot crop it. */}
+                  <div className="size-full overflow-hidden rounded-full border bg-muted">
+                    <FileImage
+                      id={profile.picture}
+                      public
+                      alt=""
+                      className="size-full object-cover"
+                      fallback={
+                        <div className="flex size-full items-center justify-center">
+                          <User className="size-6" />
+                        </div>
+                      }
+                    />
+                  </div>
+                  <div className="absolute right-0 bottom-0 flex size-5 items-center justify-center rounded-full border bg-card">
+                    <Camera className="size-3" />
+                  </div>
+                </button>
+                {profile.picture ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={removeAvatar}
+                    disabled={uploading}
+                  >
+                    <Trash2 className="size-4" />
+                    Remove
+                  </Button>
+                ) : null}
+              </div>
+            </SettingsRow>
+          </SettingsSection>
+
+          <input
+            type="file"
+            ref={fileInput}
+            onChange={onPickAvatar}
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="hidden"
+          />
+        </>
+      )}
+
+      {/* The one section here whose rows are all form fields, so it is an
+          `AutoForm` in row layout rather than hand-wired `SettingsRow`s — same
+          card, same rows, same heading, plus schema validation, the error
+          popover, Reset, and a Save that knows whether anything changed. The
+          sections above and below stay hand-wired because their rows are an
+          avatar picker and read-only values, not fields. */}
+      <AutoForm
+        form={form}
+        layout="row"
+        disabledIfPristine
+        groups={[
+          {
+            title: "Name",
+            description: "How you are identified to other people.",
+            fields: ["username", "firstName", "lastName"],
+          },
+        ]}
+        fields={{
+          // Labels are explicit rather than derived: `prettyName` would title
+          // -case them into "First Name", and this page's wording is settled.
+          //
+          // Icons are explicit because `Control`'s own fallback would resolve
+          // the schema hint, and for a plain string that is the generic "T"
+          // glyph — the same mark three times, saying "this is text" next to a
+          // label that already said so. A field earns an icon by having one
+          // that means something: `@` is what a handle looks like everywhere.
+          username: {
+            label: "Username",
+            description: "Unique across this site.",
+            autoComplete: "username",
+            icon: AtSign,
+            // No clear button: `updateMyProfile` has no "unset" for a
+            // username, so the × would offer a deletion the server cannot
+            // perform. First and last name keep theirs — those genuinely
+            // clear, via `null`.
+            clearable: false,
+          },
+          firstName: {
+            label: "First name",
+            autoComplete: "given-name",
+            icon: User,
+          },
+          lastName: {
+            label: "Last name",
+            autoComplete: "family-name",
+            icon: User,
+          },
+        }}
+      />
 
       <SettingsSection
         title="Account"

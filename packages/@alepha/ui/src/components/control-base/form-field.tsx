@@ -27,6 +27,17 @@ export function FormFieldLayoutProvider(props: {
 }
 
 /**
+ * Read the ambient layout (see {@link FormFieldLayoutProvider}).
+ *
+ * `<FormField>` reads this itself, so a widget only needs the hook when it
+ * sizes or arranges something *around* its FormField — `<Control>` uses it to
+ * give text inputs the settings-row column width.
+ */
+export function useFormFieldLayout(): FormFieldLayout {
+  return useContext(FormFieldLayoutContext);
+}
+
+/**
  * Ambient flag enabling the inline save (tick) affordance on text Controls.
  * Set by `<AutoForm autoSave>`; standalone Controls never show the tick
  * unless explicitly placed inside this provider.
@@ -49,6 +60,39 @@ export function FormFieldAutoSaveProvider(props: {
  */
 export function useFormFieldAutoSave(): boolean {
   return useContext(FormFieldAutoSaveContext);
+}
+
+/**
+ * Ambient control over the required marker (`*`). Defaults to showing it.
+ *
+ * `<AutoForm requiredMarker={false}>` turns it off for a form where nearly
+ * every field is required and the asterisks are noise rather than news.
+ *
+ * ⚠️ **This is a purely visual switch, and must stay one.** The marker is
+ * `aria-hidden`, so it never carried the information to assistive tech in the
+ * first place — `aria-required` on the input does, and it is set from the
+ * schema regardless of this flag. Hiding the marker must never be the reason a
+ * field stops announcing that it is required.
+ */
+const FormFieldRequiredMarkerContext = createContext<boolean>(true);
+
+export function FormFieldRequiredMarkerProvider(props: {
+  value: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <FormFieldRequiredMarkerContext.Provider value={props.value}>
+      {props.children}
+    </FormFieldRequiredMarkerContext.Provider>
+  );
+}
+
+/**
+ * Read the ambient required-marker flag (see
+ * {@link FormFieldRequiredMarkerProvider}).
+ */
+export function useFormFieldRequiredMarker(): boolean {
+  return useContext(FormFieldRequiredMarkerContext);
 }
 
 /**
@@ -83,12 +127,21 @@ export function formFieldAriaProps(props: {
   id?: string;
   error?: string;
   description?: string;
-}): { "aria-invalid"?: true; "aria-describedby"?: string } {
+  required?: boolean;
+}): {
+  "aria-invalid"?: true;
+  "aria-describedby"?: string;
+  "aria-required"?: true;
+} {
   return {
     "aria-invalid": props.error ? true : undefined,
     "aria-describedby":
       formFieldErrorId(props.id, props.error) ??
       formFieldDescriptionId(props.id, props.description, props.error),
+    // The visible marker is `aria-hidden`, so without this a required field
+    // announced nothing at all. It is read from the schema, never from the
+    // marker flag — see {@link FormFieldRequiredMarkerProvider}.
+    "aria-required": props.required ? true : undefined,
   };
 }
 
@@ -171,6 +224,10 @@ export interface FormFieldProps {
 export function FormField(props: FormFieldProps) {
   const ambient = useContext(FormFieldLayoutContext);
   const layout = props.layout ?? ambient;
+  // Hook first, `&&` after: `props.required && useFormFieldRequiredMarker()`
+  // short-circuits, which would make this a conditional hook call.
+  const requiredMarker = useFormFieldRequiredMarker();
+  const showRequiredMarker = props.required && requiredMarker;
   const invalidClasses = props.error
     ? "[&_input]:border-destructive [&_input]:focus-visible:ring-destructive/30 [&_textarea]:border-destructive [&_textarea]:focus-visible:ring-destructive/30 [&_[role=combobox]]:border-destructive"
     : "";
@@ -209,7 +266,7 @@ export function FormField(props: FormFieldProps) {
           {props.label && (
             <Label htmlFor={props.id} className="font-medium">
               {props.label}
-              {props.required && (
+              {showRequiredMarker && (
                 <span className="text-destructive ml-0.5" aria-hidden>
                   *
                 </span>
@@ -247,7 +304,7 @@ export function FormField(props: FormFieldProps) {
       {props.label && (
         <Label htmlFor={props.id}>
           {props.label}
-          {props.required && (
+          {showRequiredMarker && (
             <span className="text-destructive ml-0.5" aria-hidden>
               *
             </span>

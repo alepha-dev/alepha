@@ -104,6 +104,37 @@ export const ProfilePage = () => {
 `autoGroup` derives field groups from the schema shape; pass `groups` instead to
 lay them out yourself.
 
+### Settings cards
+
+`layout="row"` renders the same shape as the `SettingsSection` / `SettingsRow`
+kit rather than an approximation of it: each group becomes a bordered card of
+divided rows, label and help on the left, control on the right, and the action
+bar is the card's own last row. Each group carries its own `title` and
+`description`, rendered through the same `SettingsHeading` the kit uses.
+
+```tsx
+<AutoForm
+  form={form}
+  layout="row"
+  disabledIfPristine
+  groups={[
+    {
+      title: "Name",
+      description: "How you are identified to other people.",
+      fields: ["username", "firstName", "lastName"],
+    },
+  ]}
+/>
+```
+
+So a settings card whose rows are all form fields should be an `AutoForm`.
+Reach for `SettingsSection` directly for the rows that are *not* fields — an
+avatar picker, a read-only value, a lone button.
+
+Add `autoSave` to commit on change instead, which hides the action bar. Text
+fields still never commit on keystroke: they commit on Enter, or on the inline
+tick that appears in the input once the field is dirty.
+
 ## Adding a shadcn component
 
 `components.json` is configured for this package, so the shadcn CLI drops new

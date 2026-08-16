@@ -38,6 +38,7 @@ import {
 } from "../atoms/realmAuthSettingsAtom.ts";
 import { SessionAudits } from "../audits/SessionAudits.ts";
 import { UserAudits } from "../audits/UserAudits.ts";
+import { MyAvatarController } from "../controllers/MyAvatarController.ts";
 import type { identities } from "../entities/identities.ts";
 import type { sessions } from "../entities/sessions.ts";
 import { DEFAULT_USER_REALM_NAME, type users } from "../entities/users.ts";
@@ -102,6 +103,12 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
 
   if (features.avatars) {
     alepha.with(UserStorage);
+    // The endpoints too, not just the storage they use. While they sat on the
+    // always-registered `MyProfileController`, its `$inject(UserStorage)`
+    // pulled the storage in anyway and both routes answered on every realm —
+    // so this flag gated nothing observable, and the account UI showed an
+    // avatar picker whether or not the realm wanted one.
+    alepha.with(MyAvatarController);
   }
 
   if (features.audits) {

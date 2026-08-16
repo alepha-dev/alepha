@@ -5,6 +5,7 @@ import { AdminIdentityController } from "./controllers/AdminIdentityController.t
 import { AdminSessionController } from "./controllers/AdminSessionController.ts";
 import { AdminUserController } from "./controllers/AdminUserController.ts";
 import { MyAccountController } from "./controllers/MyAccountController.ts";
+import { MyAvatarController } from "./controllers/MyAvatarController.ts";
 import { MyConnectionController } from "./controllers/MyConnectionController.ts";
 import { MyIdentityController } from "./controllers/MyIdentityController.ts";
 import { MyPasswordController } from "./controllers/MyPasswordController.ts";
@@ -21,6 +22,7 @@ import { RegistrationService } from "./services/RegistrationService.ts";
 import { SessionCrudService } from "./services/SessionCrudService.ts";
 import { SessionService } from "./services/SessionService.ts";
 import { UsernameSlugger } from "./services/UsernameSlugger.ts";
+import { UserProfileMapper } from "./services/UserProfileMapper.ts";
 import { UserService } from "./services/UserService.ts";
 import { UserStorage } from "./storage/UserStorage.ts";
 
@@ -33,6 +35,7 @@ export * from "./controllers/AdminIdentityController.ts";
 export * from "./controllers/AdminSessionController.ts";
 export * from "./controllers/AdminUserController.ts";
 export * from "./controllers/MyAccountController.ts";
+export * from "./controllers/MyAvatarController.ts";
 export * from "./controllers/MyConnectionController.ts";
 export * from "./controllers/MyIdentityController.ts";
 export * from "./controllers/MyPasswordController.ts";
@@ -74,6 +77,7 @@ export * from "./services/RegistrationService.ts";
 export * from "./services/SessionCrudService.ts";
 export * from "./services/SessionService.ts";
 export * from "./services/UsernameSlugger.ts";
+export * from "./services/UserProfileMapper.ts";
 export * from "./services/UserService.ts";
 export * from "./storage/UserStorage.ts";
 
@@ -104,6 +108,7 @@ export const AlephaApiUsers = $module({
     RegistrationService,
     UserService,
     UsernameSlugger,
+    UserProfileMapper,
     IdentityService,
     UserController,
     AdminUserController,
@@ -123,6 +128,9 @@ export const AlephaApiUsers = $module({
     UserAudits,
     SessionAudits,
     UserStorage,
+    // Registered by `$realm({ features: { avatars: true } })` only — see the
+    // class for why the avatar endpoints are not on `MyProfileController`.
+    MyAvatarController,
   ],
 });
 

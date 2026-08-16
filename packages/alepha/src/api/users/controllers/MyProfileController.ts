@@ -1,11 +1,11 @@
-import { $inject, z } from "alepha";
+import { $inject } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, ConflictError } from "alepha/server";
 import type { UserEntity } from "../entities/users.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
-import { type MyProfile, myProfileSchema } from "../schemas/myProfileSchema.ts";
+import { myProfileSchema } from "../schemas/myProfileSchema.ts";
 import { updateMyProfileBodySchema } from "../schemas/updateMyProfileBodySchema.ts";
-import { UserStorage } from "../storage/UserStorage.ts";
+import { UserProfileMapper } from "../services/UserProfileMapper.ts";
 
 /**
  * Self-service profile — the "who am I" page of an account area.
@@ -21,29 +21,22 @@ import { UserStorage } from "../storage/UserStorage.ts";
  * and the failure mode is an account area that renders empty for users
  * nobody thought to configure. {@link MySessionController} and
  * {@link MyPasswordController} already made this call; this follows them.
+ *
+ * The avatar lives in {@link MyAvatarController} instead, because it is the
+ * one part of a profile a realm can switch off (`features.avatars`) and this
+ * class is always registered. See that class for what went wrong while the
+ * two were together.
  */
 export class MyProfileController {
   protected readonly realmProvider = $inject(RealmProvider);
-  protected readonly userFiles = $inject(UserStorage);
+  protected readonly mapper = $inject(UserProfileMapper);
 
   protected users(realm?: string) {
     return this.realmProvider.userRepository(realm);
   }
 
-  protected toMyProfile(user: UserEntity): MyProfile {
-    return {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      emailVerified: user.emailVerified,
-      phoneNumber: user.phoneNumber,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      picture: user.picture,
-      roles: user.roles,
-      createdAt: user.createdAt,
-      lastLoginAt: user.lastLoginAt,
-    };
+  protected toMyProfile(user: UserEntity) {
+    return this.mapper.toMyProfile(user);
   }
 
   getMyProfile = $action({
@@ -105,68 +98,4 @@ export class MyProfileController {
       return this.toMyProfile(updated);
     },
   });
-
-  updateMyAvatar = $action({
-    method: "POST",
-    path: "/users/me/avatar",
-    use: [$secure()],
-    description: "Replace the caller's avatar",
-    schema: {
-      body: z.object({
-        file: z.file(),
-      }),
-      response: myProfileSchema,
-    },
-    handler: async ({ body, user }) => {
-      const repo = this.users(user.realm);
-      const current = await repo.getOne({ where: { id: { eq: user.id } } });
-
-      const file = await this.userFiles.avatars.upload(body.file, { user });
-      const updated = await repo.updateById(user.id, { picture: file.id });
-
-      // Only after the row points at the new file. Deleting first would leave
-      // the account with a broken avatar if the upload then failed.
-      await this.deletePrevious(current.picture, file.id);
-
-      return this.toMyProfile(updated);
-    },
-  });
-
-  deleteMyAvatar = $action({
-    method: "DELETE",
-    path: "/users/me/avatar",
-    use: [$secure()],
-    description: "Remove the caller's avatar",
-    schema: {
-      response: myProfileSchema,
-    },
-    handler: async ({ user }) => {
-      const repo = this.users(user.realm);
-      const current = await repo.getOne({ where: { id: { eq: user.id } } });
-
-      const updated = await repo.updateById(user.id, { picture: undefined });
-      await this.deletePrevious(current.picture);
-
-      return this.toMyProfile(updated);
-    },
-  });
-
-  /**
-   * Drop the blob an avatar used to point at, once nothing references it.
-   *
-   * Failure is swallowed: the account has already been updated and the
-   * person's avatar has already changed, so turning a storage hiccup into a
-   * failed request would report a lie. The cost of losing this race is an
-   * orphaned blob, not a broken account.
-   */
-  protected async deletePrevious(previous?: string, next?: string) {
-    if (!previous || previous === next) {
-      return;
-    }
-    try {
-      await this.userFiles.avatars.delete(previous);
-    } catch {
-      // Orphaned blob; the profile is correct.
-    }
-  }
 }

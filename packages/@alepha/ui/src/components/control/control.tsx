@@ -10,6 +10,7 @@ import {
   FormField,
   formFieldAriaProps,
   useFormFieldAutoSave,
+  useFormFieldLayout,
 } from "@alepha/ui/components/control-base/form-field";
 import {
   type IconComponent,
@@ -30,6 +31,7 @@ import {
 import { Input } from "@alepha/ui/components/ui/input";
 import { Switch } from "@alepha/ui/components/ui/switch";
 import { Textarea } from "@alepha/ui/components/ui/textarea";
+import { cn } from "@alepha/ui/lib/utils";
 import { z } from "alepha";
 import { useAlepha } from "alepha/react";
 import {
@@ -206,8 +208,16 @@ export interface ControlProps {
     | SelectOption[]
     | ((query: string) => SelectOption[] | Promise<SelectOption[]>);
   /**
-   * Forwarded to `ControlSelect` — adds a synthetic "none" row that
-   * resets the field to `undefined`. Use for optional filter chips.
+   * Whether the field offers a way back to empty.
+   *
+   * On a `ControlSelect`, `true` adds a synthetic "none" row that resets the
+   * field to `undefined` — use it for optional filter chips.
+   *
+   * On a text field the affordance is the opposite way round: an optional
+   * field already shows a clear (×) button whenever it holds a value, and
+   * `false` takes it away. Pass `false` when emptying the field is not
+   * something the API can honour — a username has no "unset" on the server,
+   * so offering the button would promise an edit that silently does nothing.
    */
   clearable?: boolean;
   /**
@@ -241,6 +251,7 @@ export interface ControlProps {
 export function Control(props: ControlProps) {
   const form = useFormState(props.input, ["error", "dirty"]);
   const autoSaveEnabled = useFormFieldAutoSave();
+  const rowLayout = useFormFieldLayout() === "row";
   const [value, setValue] = useFieldValue(props.input);
 
   // Function-form `$control` reads other fields → re-render on any
@@ -490,6 +501,7 @@ export function Control(props: ControlProps) {
             id: meta.id,
             error: meta.error,
             description: merged.description ?? meta.description,
+            required: meta.required,
           })}
           id={meta.id}
           name={props.input.props.name}
@@ -562,7 +574,9 @@ export function Control(props: ControlProps) {
   const showSave = autoSaveEnabled && !!form.dirty && !merged.disabled;
   const isNullable =
     !meta.required && value != null && value !== "" && !merged.disabled;
-  const showClear = !showSave && isNullable;
+  // `clearable !== false`, not `clearable === true`: an optional text field
+  // offers the button by default and a caller opts *out* of it. See the prop.
+  const showClear = !showSave && isNullable && merged.clearable !== false;
   // Reserve a fixed right gutter for any editable field so the tick/clear
   // can swap in without nudging the input width.
   const reserveGutter = !merged.disabled;
@@ -586,6 +600,7 @@ export function Control(props: ControlProps) {
             id: meta.id,
             error: meta.error,
             description: merged.description ?? meta.description,
+            required: meta.required,
           })}
           id={meta.id}
           name={props.input.props.name}
@@ -598,12 +613,22 @@ export function Control(props: ControlProps) {
           minLength={meta.constraints.minLength}
           maxLength={meta.constraints.maxLength}
           pattern={meta.constraints.pattern}
-          className={[
+          // `cn`, not a plain join: the settings width below has to be
+          // overridable by the caller, and only tailwind-merge can decide
+          // that `sm:w-96` beats `sm:w-64` rather than both landing on the
+          // element. Order is precedence — later wins.
+          className={cn(
+            // Row layout is the settings-card shape, whose right-hand cell is
+            // an `auto` grid column: `w-full` there resolves against the
+            // input's own intrinsic size (~172px), so every card would get a
+            // slightly different control column. 256px is the width every
+            // hand-written `SettingsRow` already passes; encoded once here.
+            // Below `sm` the row stacks, and `w-full` from `<Input>` is right.
+            rowLayout && "sm:w-64",
             merged.inputProps?.className,
-            (Icon ? "pl-9" : "") + (reserveGutter ? " pr-9" : ""),
-          ]
-            .filter(Boolean)
-            .join(" ")}
+            Icon && "pl-9",
+            reserveGutter && "pr-9",
+          )}
           onChange={(e) => setValue(e.target.value)}
         />
         {showSave && (

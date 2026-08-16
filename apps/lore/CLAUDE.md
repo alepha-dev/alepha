@@ -780,7 +780,7 @@ Before killing anything on a busy port, check whose it is — `lsof -a -p <pid> 
 - `home.spec.ts`, `admin-user-detail.spec.ts`
 - `security-public-project.spec.ts` — regression guard: non-member account hits 403 on every project endpoint after the public-project purge (renamed from `security-public-campaign.spec.ts`)
 - `security-file-access.spec.ts` — regression guard: `/api/files/:id` IDOR fix via `LoreFileAccessProvider` (only owners/members can download an attachment)
-- `project-slug.spec.ts` — the URL identity: the wizard lands on a slug derived from the title, renaming shows the confirmation and moves the URL (cancel reverts the field), the old slug 404s, `/p/:id` 404s, and a taken name is refused with a visible message. ⚠️ The Name field does **not** auto-commit on keystroke — `AutoForm`'s `autoSave` skips string schemas, so it commits via Enter or the inline tick that appears once the field is dirty. A spec that only types saves nothing
+- `project-slug.spec.ts` — the URL identity: the wizard lands on a slug derived from the title, renaming shows the confirmation and moves the URL (cancel reverts the field), the old slug 404s, `/p/:id` 404s, and a taken name is refused with a visible message. ⚠️ The Name field does **not** auto-commit — the form has a real Save button in the settings card's last row, disabled until something is dirty. A spec that only types saves nothing
 
 Shared setup (register/verify, project-create wizard, API helpers) lives in `e2e/_helpers.ts`. Re-use those rather than copy-pasting auth setup into each new spec.
 

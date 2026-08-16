@@ -9,9 +9,11 @@ import {
 import {
   FormFieldAutoSaveProvider,
   FormFieldLayoutProvider,
+  FormFieldRequiredMarkerProvider,
 } from "@alepha/ui/components/control-base/form-field";
 import { spanClass, widthFor } from "@alepha/ui/components/control-base/grid";
 import { iconFor } from "@alepha/ui/components/control-base/icon-hint";
+import { SettingsHeading } from "@alepha/ui/components/settings/settings-heading";
 import { Button } from "@alepha/ui/components/ui/button";
 import {
   Card,
@@ -35,7 +37,7 @@ import {
   useFormState,
 } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { AlertCircle, RotateCcw, X } from "lucide-react";
+import { AlertCircle, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 /**
@@ -90,6 +92,14 @@ export interface AutoFormGroup {
    * Group title shown in the header.
    */
   title?: string;
+  /**
+   * One line under the title, for context the fields should not each repeat.
+   *
+   * Only rendered in `layout="row"`, where the heading sits above the card
+   * and there is room for it — the boxed group bar the grid layout uses is a
+   * single line by construction.
+   */
+  description?: string;
   /**
    * Icon name (lucide) for the group header.
    */
@@ -191,6 +201,22 @@ export interface AutoFormProps<T extends ZObject> {
   disabled?: boolean;
 
   /**
+   * Show the red `*` next to the label of every required field.
+   *
+   * Set `false` on a form where the marker is not news — one whose fields are
+   * nearly all required, or where the one required field is self-evidently so
+   * (a project's Name). A page of asterisks tells the reader nothing about
+   * which field to be careful with, which is the only thing the marker is for.
+   *
+   * Purely visual. `aria-required` still comes from the schema, so a screen
+   * reader announces the field as required either way — the marker itself is
+   * `aria-hidden` and never carried that.
+   *
+   * @default true
+   */
+  requiredMarker?: boolean;
+
+  /**
    * Cancel button — hidden when omitted.
    */
   onCancel?: () => void;
@@ -259,6 +285,14 @@ export interface AutoFormProps<T extends ZObject> {
    * - `"row"`: settings-style — each control sits on its own line with the
    *   label/description on the left and the control on the right. Each
    *   group renders as a bordered card with horizontal dividers.
+   *
+   * `"row"` **is** the settings-card shape, not an approximation of it: the
+   * rows render the same markup as {@link SettingsRow}, the card the same as
+   * {@link SettingsSection}, the heading through the same
+   * {@link SettingsHeading}, and the action bar as the card's own last
+   * divided row. So a settings card whose rows are form fields should be an
+   * `AutoForm`, and reach for `SettingsSection` only for the rows that are
+   * *not* fields — an avatar picker, a read-only value, a lone button.
    */
   layout?: "stack" | "row";
 
@@ -371,25 +405,7 @@ export function AutoForm<T extends ZObject>(props: AutoFormProps<T>) {
     props.headerAction
   );
 
-  const fieldGroups = (
-    <FormFieldLayoutProvider value={props.layout ?? "stack"}>
-      <FormFieldAutoSaveProvider value={autoSaveEnabled}>
-        {resolvedGroups.map((group, gi) => (
-          <GroupBlock
-            key={gi}
-            group={group}
-            inputs={inputs}
-            disabled={props.disabled}
-            fields={props.fields}
-            i18nPrefix={props.i18nPrefix}
-            multiGroup={resolvedGroups.length > 1}
-            layout={props.layout ?? "stack"}
-            gridClassName={props.gridClassName}
-          />
-        ))}
-      </FormFieldAutoSaveProvider>
-    </FormFieldLayoutProvider>
-  );
+  const layout = props.layout ?? "stack";
 
   const bottomBarProps = {
     form: props.form,
@@ -403,6 +419,44 @@ export function AutoForm<T extends ZObject>(props: AutoFormProps<T>) {
     skipReset: props.skipReset,
     actions: props.actions,
   };
+
+  // In row layout the action bar is the card's own last row, not a second
+  // bordered box floating under it — see the `layout` prop's note. `card`
+  // mode already owns its footer (`CardFooter`), and a form that resolved to
+  // no groups at all has nothing to put the bar inside, so both fall back to
+  // the standalone bar below.
+  const inCardBottomBar =
+    layout === "row" &&
+    !props.card &&
+    !skipBottomBar &&
+    resolvedGroups.length ? (
+      <BottomBar {...bottomBarProps} bare />
+    ) : undefined;
+
+  const fieldGroups = (
+    <FormFieldLayoutProvider value={layout}>
+      <FormFieldRequiredMarkerProvider value={props.requiredMarker ?? true}>
+        <FormFieldAutoSaveProvider value={autoSaveEnabled}>
+          {resolvedGroups.map((group, gi) => (
+            <GroupBlock
+              key={gi}
+              group={group}
+              inputs={inputs}
+              disabled={props.disabled}
+              fields={props.fields}
+              i18nPrefix={props.i18nPrefix}
+              multiGroup={resolvedGroups.length > 1}
+              layout={layout}
+              gridClassName={props.gridClassName}
+              bottomBar={
+                gi === resolvedGroups.length - 1 ? inCardBottomBar : undefined
+              }
+            />
+          ))}
+        </FormFieldAutoSaveProvider>
+      </FormFieldRequiredMarkerProvider>
+    </FormFieldLayoutProvider>
+  );
 
   if (props.card) {
     const cardClassName =
@@ -500,7 +554,9 @@ export function AutoForm<T extends ZObject>(props: AutoFormProps<T>) {
 
         {props.footer}
 
-        {!skipBottomBar && <BottomBar {...bottomBarProps} />}
+        {!skipBottomBar && !inCardBottomBar && (
+          <BottomBar {...bottomBarProps} />
+        )}
       </div>
     </form>
   );
@@ -517,6 +573,12 @@ interface GroupBlockProps {
   multiGroup?: boolean;
   layout: "stack" | "row";
   gridClassName?: string;
+  /**
+   * The form's action bar, rendered as this group's last divided row. Set by
+   * `AutoForm` on the *last* group in `layout="row"`; `undefined` everywhere
+   * else, including every group in the grid layout.
+   */
+  bottomBar?: ReactNode;
 }
 
 function GroupBlock(props: GroupBlockProps) {
@@ -566,7 +628,10 @@ function GroupBlock(props: GroupBlockProps) {
     props: Partial<ControlProps>;
   }>;
 
-  if (!items.length && !props.multiGroup) return null;
+  // `!props.bottomBar`: a group carrying the action bar still renders when it
+  // has no resolvable fields, or the form would silently lose its submit
+  // button rather than merely render empty.
+  if (!items.length && !props.multiGroup && !props.bottomBar) return null;
 
   // Naked group: no title, no icon → no card chrome (lets solo complex
   // fields render with just their own header).
@@ -575,12 +640,23 @@ function GroupBlock(props: GroupBlockProps) {
   // Row layout: each group becomes a divider-stacked card, every Control
   // takes a full row through its own FormField row layout (via context).
   if (props.layout === "row") {
+    const hasHeading = !!(group.title || group.description);
     return (
       <div>
-        {group.title && (
-          <div className="mb-2 flex items-center gap-2 px-1">
-            {Icon && <Icon className="text-muted-foreground size-4" />}
-            <span className="text-sm font-medium">{group.title}</span>
+        {hasHeading && (
+          // `SettingsHeading` rather than a local span pair: this is the same
+          // heading `SettingsSection` renders, and the whole reason that
+          // component exists is that there be exactly one of it. `items-start`
+          // + `mt-0.5` keeps the icon on the title line when a description
+          // wraps a second one under it.
+          <div className="mb-2 flex items-start gap-2">
+            {Icon && (
+              <Icon className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+            )}
+            <SettingsHeading
+              title={group.title}
+              description={group.description}
+            />
           </div>
         )}
         <div className="bg-card divide-y rounded-lg border shadow-sm">
@@ -592,6 +668,11 @@ function GroupBlock(props: GroupBlockProps) {
               disabled={props.disabled || it.props.disabled}
             />
           ))}
+          {props.bottomBar && (
+            // Same `px-4 py-3` every row carries, so the action row sits on
+            // the card's own rhythm and `divide-y` draws its rule flush.
+            <div className="px-4 py-3">{props.bottomBar}</div>
+          )}
         </div>
       </div>
     );
@@ -697,7 +778,12 @@ function BottomBar(props: BottomBarProps) {
           onClick={() => props.form.reset()}
           disabled={props.disabled || !props.dirty}
         >
-          <RotateCcw className="size-4 mr-1" />
+          {/* No icon, deliberately. The submit button next to it carries none
+              — a glyph would have to be either a dated floppy disk or a tick
+              that reads as "done" rather than "do it" — and a bar where only
+              some buttons are decorated reads as unfinished rather than as a
+              hierarchy. `Button` still shows a spinner while submitting,
+              which is the one icon here that carries information. */}
           {tr("autoForm.reset", { default: "Reset" })}
         </Button>
       )}

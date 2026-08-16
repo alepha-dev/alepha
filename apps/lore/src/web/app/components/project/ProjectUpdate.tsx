@@ -3,7 +3,7 @@ import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { AlephaError, z } from "alepha";
 import { useAlepha, useClient } from "alepha/react";
-import { useFieldValue, useForm } from "alepha/react/form";
+import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { HttpError } from "alepha/server";
@@ -61,8 +61,9 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
   const toaster = useToast();
   const router = useRouter<AppRouter>();
   /**
-   * The same class the server derives slugs with, so the preview below cannot
-   * drift from what actually gets stored.
+   * The same class the server derives slugs with, so the handler's "did this
+   * edit move the URL?" test cannot disagree with what the server will
+   * actually store, and the confirmation fires exactly when it should.
    *
    * Constructed rather than injected, and both halves of that are deliberate.
    * `useInject` throws `ContainerLockedError` here — the container is sealed
@@ -96,12 +97,9 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
       // cancelling puts the old title back — otherwise the field would go on
       // showing a rename that never happened.
       //
-      // There is no form-level submit button to hang this on: `AutoForm`'s
-      // `autoSave` hides the footer. A *text* field is not auto-committed on
-      // keystroke either (see `auto-form.tsx` — string schemas are skipped);
-      // it commits via Enter or the inline tick that appears once the field is
-      // dirty. So this handler runs on a deliberate gesture, and the dialog is
-      // the second one.
+      // Inside the handler rather than on the Save button, because only some
+      // edits move the slug: changing the icon or the preferred language
+      // leaves the URL alone, and the button cannot know which edit this was.
       if (nextSlug !== currentSlug) {
         const confirmed = await dialog.confirm({
           title: String(tr("project.update.rename.title")),
@@ -136,11 +134,12 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
           // Slugs are unique across the whole instance, so a name can be taken
           // by a project the viewer cannot even see.
           //
-          // Toasted, not just re-thrown: `AutoForm` swallows a rejected
-          // handler — it logs to the console and renders nothing — so throwing
-          // alone left the rename failing in total silence. Caught by the
-          // "a name already taken is refused" e2e, which asserted on a message
-          // that was never on the page.
+          // Toasted, not just re-thrown. A throw now also reaches the action
+          // row's error popover, but that is an icon the user has to click;
+          // while this form ran on `autoSave` there was no action row at all
+          // and a throw reached nothing, so the rename failed in total
+          // silence. Caught by the "a name already taken is refused" e2e,
+          // which asserted on a message that was never on the page.
           if (HttpError.is(error, 409)) {
             const message = String(tr("project.update.slug.taken"));
             toaster.error(message);
@@ -169,19 +168,25 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
     },
   });
 
-  // Reactive so the URL preview follows what is being typed. Subscribes to
-  // this one field, so the rest of the form does not re-render with it.
-  const [titleValue] = useFieldValue(form.input.title);
-  const previewSlug =
-    slugs.slugify(String(titleValue ?? props.project.title)) ||
-    props.project.slug;
-
   return (
     <AutoForm
       form={form}
       layout="row"
-      autoSave
-      groups={[{ fields: ["icon", "title", "preferredLanguage"] }]}
+      disabledIfPristine
+      // Only Name is required, and a project without one is not a thing you
+      // could have meant. The asterisk singles out the field nobody was going
+      // to leave empty, which is the opposite of what it is for.
+      requiredMarker={false}
+      groups={[
+        {
+          // The card's own heading. It used to be a hand-rolled `<span
+          // className="text-sm">` in `ProjectSettingsGeneralPage` because
+          // `AutoFormGroup` had no way to carry one — the exact drift
+          // `SettingsHeading` exists to prevent, which the group now renders.
+          title: String(tr("project.settings.general.title")),
+          fields: ["icon", "title", "preferredLanguage"],
+        },
+      ]}
       fields={{
         icon: {
           label: "Icon",
@@ -197,10 +202,6 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
         },
         title: {
           icon: Tag,
-          // The title IS the URL — show what it will become before saving.
-          description: String(
-            tr("project.update.slug.preview", { args: [previewSlug] }),
-          ),
         },
         preferredLanguage: {
           label: tr("project.update.preferredLanguage.label"),

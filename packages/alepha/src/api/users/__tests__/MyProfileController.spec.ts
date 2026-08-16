@@ -152,4 +152,54 @@ describe("alepha/api/users - MyProfileController", () => {
 
     expect((await read(ctx)).username).toBe("prof-intact");
   });
+
+  /*
+    A name field has THREE states a caller can express, and the difference
+    between the last two is the whole reason `firstName`/`lastName` are
+    `.nullable()`:
+
+      absent  → leave the column alone
+      string  → set it
+      null    → clear it
+
+    Only the first two ever worked. `undefined` is dropped from an ORM patch,
+    so an account area mapping "the box is empty" to `undefined` could set a
+    first name and never unset one — the request succeeded, the response
+    echoed the old value, and the UI toasted success. Nothing failed; the edit
+    simply did not happen. It stayed invisible for as long as the profile page
+    had no way to empty a filled box, which is exactly how long it lasted.
+  */
+  it("should clear a first name when sent null", async ({ expect }) => {
+    const ctx = await setup("prof-clear-first");
+
+    const updated = await update(ctx, { firstName: null });
+
+    expect(updated.firstName).toBeFalsy();
+    // Read it back through the endpoint rather than trusting the update's own
+    // response, which is built from the row the write returned and could agree
+    // with a write that never reached the column.
+    expect((await read(ctx)).firstName).toBeFalsy();
+  });
+
+  it("should clear a last name when sent null", async ({ expect }) => {
+    const ctx = await setup("prof-clear-last");
+    await update(ctx, { lastName: "Lovelace" });
+
+    const updated = await update(ctx, { lastName: null });
+
+    expect(updated.lastName).toBeFalsy();
+    expect((await read(ctx)).lastName).toBeFalsy();
+  });
+
+  it("should leave a name alone when its field is absent", async ({
+    expect,
+  }) => {
+    // The other half of the contract, and what makes `null` load-bearing: if
+    // absent also cleared, a partial PATCH would wipe everything it omitted.
+    const ctx = await setup("prof-absent");
+
+    const updated = await update(ctx, { lastName: "Hopper" });
+
+    expect(updated.firstName).toBe("Ada");
+  });
 });
