@@ -29,6 +29,11 @@ export class BuildServerTask extends BuildTask {
    */
   protected exportDurableObject = false;
 
+  /**
+   * Memoized chunk parser, resolved on first use by {@link importParseAst}.
+   */
+  protected parseAst?: (code: string) => any;
+
   async run(ctx: BuildTaskContext): Promise<void> {
     if (ctx.flags?.prebuilt) {
       return;
@@ -363,18 +368,34 @@ export class BuildServerTask extends BuildTask {
    * `node:module` at link time, so only the eager call is the problem.
    */
   protected neutralizeWorkerdCreateRequire(code: string): string {
+    // Cheap pre-filter. Parsing a chunk that cannot possibly match is pure
+    // cost, and the overwhelming majority of chunks import nothing from
+    // `node:module`.
+    if (!code.includes("node:module") || !code.includes("import.meta")) {
+      return code;
+    }
+
+    const ast = this.parseChunk(code);
+
     const aliases = new Set<string>();
-    const importPattern =
-      /import\s*\{([^}]*)\}\s*from\s*["'`]node:module["'`]/g;
-    for (const match of code.matchAll(importPattern)) {
-      for (const specifier of match[1].split(",")) {
-        const [imported, local] = specifier
-          .split(/\s+as\s+/)
-          .map((part) => part.trim());
-        if (imported === "createRequire") {
-          aliases.add(local ?? imported);
+    this.walkAst(ast, (node) => {
+      if (
+        node.type !== "ImportDeclaration" ||
+        node.source?.value !== "node:module"
+      ) {
+        return;
+      }
+      for (const specifier of node.specifiers ?? []) {
+        if (
+          specifier.type === "ImportSpecifier" &&
+          specifier.imported?.name === "createRequire"
+        ) {
+          aliases.add(specifier.local?.name ?? "createRequire");
         }
       }
+    });
+    if (aliases.size === 0) {
+      return code;
     }
 
     const inertFactory =
@@ -382,17 +403,19 @@ export class BuildServerTask extends BuildTask {
       `throw new Error("createRequire is unavailable on workerd; cannot require "+JSON.stringify(id))` +
       `};r.resolve=r;return r})()`;
 
-    let output = code;
-    for (const alias of aliases) {
-      const escaped = alias.replace(/[$\\]/g, "\\$&");
-      // Manual left boundary: `\b` misbehaves when the alias starts with `$`.
-      const callPattern = new RegExp(
-        `(^|[^\\w$.])${escaped}\\(import\\.meta\\.url\\)`,
-        "g",
-      );
-      output = output.replace(callPattern, `$1${inertFactory}`);
-    }
-    return output;
+    const edits: ChunkEdit[] = [];
+    this.walkAst(ast, (node) => {
+      if (
+        node.type === "CallExpression" &&
+        node.callee?.type === "Identifier" &&
+        aliases.has(node.callee.name) &&
+        node.arguments?.length === 1 &&
+        this.isImportMetaUrl(node.arguments[0])
+      ) {
+        edits.push({ start: node.start, end: node.end, text: inertFactory });
+      }
+    });
+    return this.applyEdits(code, edits);
   }
 
   /**
@@ -413,8 +436,125 @@ export class BuildServerTask extends BuildTask {
    * on the literal `import.meta.url` token inside the createRequire call.
    */
   protected stubWorkerdImportMetaUrl(code: string, fileName: string): string {
+    if (!code.includes("import.meta")) {
+      return code;
+    }
+
     const stub = JSON.stringify(`file:///server/${fileName}`);
-    return code.replace(/import\.meta\.url\b/g, stub);
+    const edits: ChunkEdit[] = [];
+    this.walkAst(this.parseChunk(code), (node) => {
+      if (this.isImportMetaUrl(node)) {
+        edits.push({ start: node.start, end: node.end, text: stub });
+      }
+    });
+    return this.applyEdits(code, edits);
+  }
+
+  /**
+   * Parse an emitted chunk with the bundler's own JavaScript parser.
+   *
+   * Both workerd rewrites used to be `String.replace` over an
+   * `import\.meta\.url` pattern, which is wrong for a reason that is not
+   * hypothetical: that token is also ordinary *data*. `apps/docs` renders its
+   * changelog from commit messages, two of which name the token verbatim, so
+   * the rewrite terminated a string literal early. The chunk stopped parsing,
+   * rolldown dropped it, and the build still exited 0 — the app entry shipped
+   * as a 37-byte file holding nothing but a sourcemap comment, `run()` never
+   * executed, and Cloudflare refused the upload with `ReferenceError:
+   * __alepha is not defined`.
+   *
+   * A chunk that cannot be parsed is a chunk that cannot be made safe for
+   * workerd, so this throws rather than falling back to a textual rewrite:
+   * a named build failure beats a silent artifact that fails validation
+   * later (error 10021) with no clue where it came from.
+   */
+  protected parseChunk(code: string): any {
+    this.parseAst ??= this.importParseAst();
+    try {
+      return this.parseAst(code);
+    } catch (error) {
+      throw new AlephaError(
+        "Failed to parse an emitted server chunk while preparing it for " +
+          "workerd. The chunk cannot be made safe for Cloudflare, so the " +
+          `build is stopping instead of shipping it: ${String(error)}`,
+      );
+    }
+  }
+
+  /**
+   * Lazily resolve the parser, mirroring {@link ViteUtils.importVite}'s
+   * rolldown-vite-first resolution so both halves of the build agree on one
+   * parser rather than disagreeing about what is valid syntax.
+   */
+  protected importParseAst(): (code: string) => any {
+    // Resolved inline, exactly as `ViteUtils.importVite` does it: neither
+    // package is a declared dependency of this workspace (the CLI runs against
+    // whichever the host app installed), so a bare `require("…")` literal only
+    // teaches depcheck to demand one that must not be added.
+    try {
+      return createRequire(import.meta.url)("rolldown-vite").parseAst;
+    } catch {
+      return createRequire(import.meta.url)("vite").parseAst;
+    }
+  }
+
+  /**
+   * Whether a node is the `import.meta.url` meta-property (in either the
+   * `import.meta.url` or the `import.meta["url"]` spelling).
+   */
+  protected isImportMetaUrl(node: any): boolean {
+    if (node?.type !== "MemberExpression") {
+      return false;
+    }
+    const object = node.object;
+    if (
+      object?.type !== "MetaProperty" ||
+      object.meta?.name !== "import" ||
+      object.property?.name !== "meta"
+    ) {
+      return false;
+    }
+    return node.computed
+      ? node.property?.type === "Literal" && node.property.value === "url"
+      : node.property?.type === "Identifier" && node.property.name === "url";
+  }
+
+  /**
+   * Depth-first walk over every node of an ESTree program.
+   */
+  protected walkAst(node: any, visit: (node: any) => void): void {
+    if (!node || typeof node !== "object") {
+      return;
+    }
+    if (Array.isArray(node)) {
+      for (const child of node) {
+        this.walkAst(child, visit);
+      }
+      return;
+    }
+    if (typeof node.type === "string") {
+      visit(node);
+    }
+    for (const key in node) {
+      if (key !== "type" && key !== "start" && key !== "end") {
+        this.walkAst(node[key], visit);
+      }
+    }
+  }
+
+  /**
+   * Splice offset-addressed replacements into `code`, applying them
+   * back-to-front so each edit's offsets stay valid as earlier ones land.
+   */
+  protected applyEdits(code: string, edits: ChunkEdit[]): string {
+    if (edits.length === 0) {
+      return code;
+    }
+    let output = code;
+    for (const edit of [...edits].sort((a, b) => b.start - a.start)) {
+      output = output.slice(0, edit.start) + edit.text + output.slice(edit.end);
+    }
+    return output;
   }
 
   /**
@@ -510,10 +650,11 @@ export class BuildServerTask extends BuildTask {
       Array.isArray(result) ? result[0] : result
     ) as vite.Rollup.RollupOutput;
 
-    const entryFile = rollupOutput.output.find(
+    const entryChunk = rollupOutput.output.find(
       (it) =>
         "facadeModuleId" in it && it.facadeModuleId === normalizedEntryPath,
-    )?.fileName;
+    );
+    const entryFile = entryChunk?.fileName;
 
     if (!entryFile) {
       throw new AlephaError(
@@ -521,6 +662,47 @@ export class BuildServerTask extends BuildTask {
       );
     }
 
+    this.assertEntryChunkNotEmpty(entryFile, (entryChunk as any)?.code);
+
     return entryFile;
   }
+
+  /**
+   * Refuse an entry chunk that carries no top-level statement.
+   *
+   * A `renderChunk` rewrite that corrupts a chunk does not fail the build:
+   * rolldown drops the unparseable content and emits an empty file, and the
+   * build exits 0. What ships is an app whose `run()` never executes — a
+   * failure that first surfaces as Cloudflare refusing the upload with
+   * `ReferenceError: __alepha is not defined`, a message that points nowhere
+   * near the bundler. An entry chunk always at minimum imports the chunk
+   * holding the app, so an empty one is always a bug worth stopping for.
+   */
+  protected assertEntryChunkNotEmpty(
+    entryFile: string,
+    code: string | undefined,
+  ): void {
+    if (typeof code !== "string") {
+      return;
+    }
+    if (this.parseChunk(code).body.length > 0) {
+      return;
+    }
+    throw new AlephaError(
+      `The server entry chunk "${entryFile}" is empty — it holds no statement ` +
+        "at all, so the application would never start. This means a chunk " +
+        "transform produced code the bundler could not parse and silently " +
+        "dropped. Refusing to ship the build.",
+    );
+  }
+}
+
+/**
+ * One offset-addressed replacement inside an emitted chunk: the source range
+ * `[start, end)` and the text that takes its place.
+ */
+interface ChunkEdit {
+  start: number;
+  end: number;
+  text: string;
 }

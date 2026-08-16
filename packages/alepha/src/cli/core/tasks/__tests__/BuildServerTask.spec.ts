@@ -19,6 +19,9 @@ class TestServerTask extends BuildServerTask {
 
   public testStubImportMetaUrl = (code: string, fileName: string) =>
     this.stubWorkerdImportMetaUrl(code, fileName);
+
+  public testExtractEntry = (root: string, entry: string, result: any) =>
+    this.extractEntryFromBundle(root, entry, result);
 }
 
 /**
@@ -127,8 +130,12 @@ describe("BuildServerTask DO re-export", () => {
     it("rewrites a lazy inline createRequire(import.meta.url)(pkg) call", ({
       expect,
     }) => {
+      // Single-quoted rather than the backticks this test used before: a
+      // module source must be a string literal, so `from \`node:module\`` is
+      // a SyntaxError and could never appear in real bundler output. Only the
+      // old regex's over-permissive quote class ever accepted it.
       const chunk =
-        'import{Readable as a}from"node:stream";import{createRequire as io}from`node:module`;' +
+        "import{Readable as a}from\"node:stream\";import{createRequire as io}from'node:module';" +
         "function load(t){try{return io(import.meta.url)(t)}catch{return null}}";
       const out = createTask().testNeutralize(chunk);
       expect(out).not.toContain("io(import.meta.url)");
@@ -215,6 +222,117 @@ describe("BuildServerTask DO re-export", () => {
       expect(out).toMatch(/var S=\(\(\)=>\{const r=/);
       // ...and the asset URL is a plain valid string construction.
       expect(out).toContain('new URL("./a.png","file:///server/y.js")');
+    });
+  });
+
+  /**
+   * Both workerd rewrites match on the `import.meta.url` token, and that token
+   * is also perfectly ordinary *data*: `apps/docs` generates its changelog from
+   * git history, and the commit that added the stub is literally titled "stub
+   * import.meta.url in workerd server chunks…". A textual rewrite terminates
+   * that string early, the chunk stops parsing, rolldown drops it, and the
+   * build still exits 0 — the app entry silently ships as a 37-byte file with
+   * nothing but a sourcemap comment, so `run()` never executes and Cloudflare
+   * refuses the upload with `ReferenceError: __alepha is not defined`.
+   *
+   * The rewrites must therefore act on real `import.meta` meta-property nodes
+   * only, never on text that merely looks like one.
+   */
+  describe("workerd rewrites only touch real syntax, never string data", () => {
+    const createTask = () => {
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
+      return alepha.inject(TestServerTask);
+    };
+
+    it("leaves an import.meta.url mention inside a string literal alone", ({
+      expect,
+    }) => {
+      const chunk =
+        'var log=[{"message":"stub import.meta.url in workerd server chunks"}];';
+      expect(createTask().testStubImportMetaUrl(chunk, "x.js")).toBe(chunk);
+    });
+
+    it("leaves an import.meta.url mention inside a template literal alone", ({
+      expect,
+    }) => {
+      const chunk = "var t=`we stub import.meta.url on workerd`;";
+      expect(createTask().testStubImportMetaUrl(chunk, "x.js")).toBe(chunk);
+    });
+
+    it("stubs the real occurrence while preserving the quoted one", ({
+      expect,
+    }) => {
+      const chunk =
+        'var m="stub import.meta.url in chunks",u=new URL("./a.png",import.meta.url).href;';
+      const out = createTask().testStubImportMetaUrl(chunk, "y.js");
+      expect(out).toContain('var m="stub import.meta.url in chunks"');
+      expect(out).toContain('new URL("./a.png","file:///server/y.js")');
+      // The whole point: the rewritten chunk is still valid JavaScript.
+      expect(() => new Function(out)).not.toThrow();
+    });
+
+    it("leaves a quoted createRequire(import.meta.url) call alone", ({
+      expect,
+    }) => {
+      // The unaliased import is the dangerous shape: the local name is
+      // `createRequire`, so the quoted call below matches the rewrite pattern
+      // exactly. This very string is in `apps/docs`' generated changelog.
+      const chunk =
+        'import{createRequire}from"node:module";' +
+        'var note="neutralize createRequire(import.meta.url) banners";';
+      const out = createTask().testNeutralize(chunk);
+      expect(out).toBe(chunk);
+    });
+  });
+
+  /**
+   * The backstop for the whole class of failure above, whatever future cause
+   * produces it: when a `renderChunk` rewrite corrupts the entry chunk,
+   * rolldown does not fail the build — it emits an empty file and exits 0. The
+   * app then ships with no `run()` call at all, and the first sign of trouble
+   * is Cloudflare rejecting the upload. An entry chunk with no top-level
+   * statements is never legitimate, so the build must refuse it.
+   */
+  describe("empty entry chunk guard", () => {
+    const createTask = () => {
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
+      return alepha.inject(TestServerTask);
+    };
+
+    const bundle = (code: string) => ({
+      output: [
+        { facadeModuleId: "/repo/src/main.ts", fileName: "abc123.js", code },
+      ],
+    });
+
+    it("refuses an entry chunk holding nothing but a sourcemap comment", ({
+      expect,
+    }) => {
+      expect(() =>
+        createTask().testExtractEntry(
+          "/repo",
+          "src/main.ts",
+          bundle("//# sourceMappingURL=abc123.js.map"),
+        ),
+      ).toThrow(/empty/i);
+    });
+
+    it("accepts an entry chunk that only re-exports another chunk", ({
+      expect,
+    }) => {
+      expect(
+        createTask().testExtractEntry(
+          "/repo",
+          "src/main.ts",
+          bundle('import"./other.js";'),
+        ),
+      ).toBe("abc123.js");
     });
   });
 });
