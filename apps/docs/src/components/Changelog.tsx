@@ -1,106 +1,43 @@
-import {
-  IconAlertTriangle,
-  IconArrowLeft,
-  IconBug,
-  IconGitCommit,
-  IconSparkles,
-} from "@tabler/icons-react";
+import { IconArrowLeft } from "@tabler/icons-react";
 import { Link } from "alepha/react/router";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { ChangelogChange } from "../../scripts/interfaces.ts";
+import { useCallback, useState } from "react";
 import type { ChangelogEntry } from "../config/docs.ts";
 import styles from "./Changelog.module.css";
+import ChangelogRelease from "./ChangelogRelease.tsx";
 import StatusBar from "./layout/StatusBar.tsx";
 
-function parseMessage(message: string): { text: string; isBreaking: boolean } {
-  const isBreaking = message.includes("[BREAKING]");
-  const text = message.replace(/\s*\[BREAKING\]\s*/g, "").trim();
-  return { text, isBreaking };
-}
-
-interface ChangelogProps {
+export interface ChangelogProps {
   entries: ChangelogEntry[];
 }
 
-interface ChangeItemProps {
-  change: ChangelogChange;
-  itemKey: string;
-  isExpanded: boolean;
-  onToggle: (key: string) => void;
-}
-
-const ChangeItem = ({
-  change,
-  itemKey,
-  isExpanded,
-  onToggle,
-}: ChangeItemProps) => {
-  const { text, isBreaking } = parseMessage(change.message);
-  const messageRef = useRef<HTMLSpanElement>(null);
-  const [isOverflowing, setIsOverflowing] = useState(false);
-
-  useEffect(() => {
-    const el = messageRef.current;
-    if (el) {
-      setIsOverflowing(el.scrollWidth > el.clientWidth);
-    }
-  }, [text]);
-
-  const handleClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (!isOverflowing) return;
-      // Don't toggle if clicking the commit link
-      if ((e.target as HTMLElement).closest("a")) return;
-      onToggle(itemKey);
-    },
-    [itemKey, onToggle, isOverflowing],
-  );
-
-  return (
-    <li
-      className={`${styles.item} ${isBreaking ? styles.itemBreaking : ""} ${isExpanded ? styles.itemExpanded : ""} ${isOverflowing ? styles.itemClickable : ""}`}
-      onClick={handleClick}
-    >
-      <span className={styles.scope}>{change.scope}</span>
-      <span ref={messageRef} className={styles.message}>
-        {text}
-      </span>
-      {isBreaking && (
-        <span className={styles.breaking}>
-          <IconAlertTriangle size={14} />
-        </span>
-      )}
-      {change.commit && (
-        <a
-          href={`https://github.com/feunard/alepha/commit/${change.commit}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={styles.commit}
-          title={`View commit ${change.commit}`}
-          aria-label={`View commit ${change.commit.slice(0, 7)} on GitHub (opens in new window)`}
-        >
-          <IconGitCommit size={12} aria-hidden="true" />
-          <span>{change.commit.slice(0, 7)}</span>
-        </a>
-      )}
-    </li>
-  );
-};
-
-const Changelog = ({ entries }: ChangelogProps) => {
+/**
+ * The full release history on one route.
+ *
+ * Releases are collapsed by default and mount their change lists only when
+ * open. Rendering every release in full put the entire history on the page at
+ * once, which made it enormous to scroll and to download.
+ */
+const Changelog = (props: ChangelogProps) => {
+  const [openVersions, setOpenVersions] = useState<Set<string>>(new Set());
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   const toggleItem = useCallback((key: string) => {
-    setExpandedItems((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      return next;
-    });
+    setExpandedItems((prev) => toggled(prev, key));
   }, []);
+
+  const toggleVersion = useCallback((version: string) => {
+    setOpenVersions((prev) => toggled(prev, version));
+  }, []);
+
+  const allOpen = openVersions.size === props.entries.length;
+
+  const toggleAll = useCallback(() => {
+    setOpenVersions((prev) =>
+      prev.size === props.entries.length
+        ? new Set()
+        : new Set(props.entries.map((entry) => entry.version)),
+    );
+  }, [props.entries]);
 
   return (
     <div className="terminal-page">
@@ -115,6 +52,14 @@ const Changelog = ({ entries }: ChangelogProps) => {
             Changelog
             <small aria-hidden="true">.md</small>
           </h1>
+          <button
+            type="button"
+            className={styles.expandAll}
+            onClick={toggleAll}
+            aria-expanded={allOpen}
+          >
+            {allOpen ? "Collapse all" : "Expand all"}
+          </button>
         </header>
 
         {/* Timeline */}
@@ -123,92 +68,16 @@ const Changelog = ({ entries }: ChangelogProps) => {
           role="feed"
           aria-label="Changelog entries"
         >
-          {entries.map((entry, index) => (
-            <article
+          {props.entries.map((entry, index) => (
+            <ChangelogRelease
               key={entry.version}
-              className={`${styles.entry} ${index === 0 ? styles.entryLatest : ""}`}
-              aria-labelledby={`version-${entry.version}`}
-            >
-              <div className={styles.entryCircle} aria-hidden="true" />
-              <div
-                className={`${styles.entryCircle} ${styles.entryCircleRight}`}
-                aria-hidden="true"
-              />
-
-              {/* Timeline node */}
-              <div className={styles.node} aria-hidden="true">
-                <div className={styles.nodeDot} />
-                <div className={styles.nodeLine} />
-              </div>
-
-              {/* Content */}
-              <div className={styles.content}>
-                {/* Version header */}
-                <div className={styles.versionHeader}>
-                  <h2
-                    className={styles.version}
-                    id={`version-${entry.version}`}
-                  >
-                    v{entry.version}
-                  </h2>
-                  <time className={styles.date} dateTime={entry.date}>
-                    {formatDate(entry.date)}
-                  </time>
-                </div>
-
-                {/* Features */}
-                {entry.features.length > 0 && (
-                  <div className={styles.section}>
-                    <h3
-                      className={`${styles.sectionTitle} ${styles.sectionFeatures}`}
-                    >
-                      <IconSparkles size={16} />
-                      Features
-                    </h3>
-                    <ul className={styles.list}>
-                      {entry.features.map((change, i) => {
-                        const key = `${entry.version}-feature-${i}`;
-                        return (
-                          <ChangeItem
-                            key={key}
-                            change={change}
-                            itemKey={key}
-                            isExpanded={expandedItems.has(key)}
-                            onToggle={toggleItem}
-                          />
-                        );
-                      })}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Bug Fixes */}
-                {entry.fixes.length > 0 && (
-                  <div className={styles.section}>
-                    <h3
-                      className={`${styles.sectionTitle} ${styles.sectionFixes}`}
-                    >
-                      <IconBug size={16} />
-                      Bug Fixes
-                    </h3>
-                    <ul className={styles.list}>
-                      {entry.fixes.map((change, i) => {
-                        const key = `${entry.version}-fix-${i}`;
-                        return (
-                          <ChangeItem
-                            key={key}
-                            change={change}
-                            itemKey={key}
-                            isExpanded={expandedItems.has(key)}
-                            onToggle={toggleItem}
-                          />
-                        );
-                      })}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </article>
+              entry={entry}
+              isLatest={index === 0}
+              isOpen={openVersions.has(entry.version)}
+              onToggle={toggleVersion}
+              expandedItems={expandedItems}
+              onToggleItem={toggleItem}
+            />
           ))}
 
           {/* Timeline end */}
@@ -229,13 +98,14 @@ const Changelog = ({ entries }: ChangelogProps) => {
   );
 };
 
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+function toggled(set: Set<string>, key: string): Set<string> {
+  const next = new Set(set);
+  if (next.has(key)) {
+    next.delete(key);
+  } else {
+    next.add(key);
+  }
+  return next;
 }
 
 export default Changelog;

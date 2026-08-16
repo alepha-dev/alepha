@@ -170,12 +170,80 @@
   min-width: 0;
 }
 
+/*
+ * The whole header is the toggle, so the click target is the full row rather
+ * than the chevron alone. Reset the button chrome: everything visual below
+ * still comes from .version / .date / .summary.
+ */
 .versionHeader {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  width: 100%;
+  margin: 0;
+  padding: 6px 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.versionHeader:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border);
+}
+
+.versionHeaderOpen {
   margin-bottom: 20px;
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: transform 0.15s ease;
+}
+
+.versionHeaderOpen .chevron {
+  transform: rotate(90deg);
+}
+
+/*
+ * What a shut release still tells you: how much is inside it. Pushed to the
+ * right so the version and date stay left-aligned down the timeline.
+ */
+.summary {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
+/* `.header` is a centered text block, not a flex row, so this centres itself. */
+.expandAll {
+  margin-top: 20px;
+  padding: 4px 12px;
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.expandAll:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
 }
 
 .version {

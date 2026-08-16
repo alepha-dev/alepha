@@ -82,25 +82,15 @@ import { EmailProvider } from "alepha/email";
 
 class App {
   email = $inject(EmailProvider);
-
-  // queue-mode: await this.sendEmail.push({ to, subject, body })
+  // queue-mode: await this.sendEmail.push(payload)
   sendEmail = $job({
-    schema: z.object({
-      to: z.email(), subject: z.text(), body: z.text()
-    }),
-    retry: { retries: 3 },
-    handler: async ({ payload, attempt }) => {
-      const { to, subject, body } = payload;
-      await this.email.send(to, subject, body);
-    }
+    schema: z.object({ to: z.email(), body: z.text() }),
+    handler: async ({ payload }) =>
+      this.email.send(payload.to, payload.body)
   });
-
-  // cron-mode: same primitive, declare "cron" instead of "schema"
+  // cron-mode: same primitive, "cron" replaces "schema"
   digest = $job({
-    cron: "0 8 * * *",
-    handler: async () => {
-      // ...
-    }
+    cron: "0 8 * * *", handler: async () => {}
   });
 }
 
