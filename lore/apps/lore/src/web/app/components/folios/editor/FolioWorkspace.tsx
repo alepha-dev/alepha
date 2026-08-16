@@ -237,7 +237,6 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
                 <FolioMenubar
                   handlers={emptyStateHandlers}
                   state={EMPTY_STATE_ACTION_STATE}
-                  statusKey="draft"
                 />,
                 chromeSlot,
               )}

@@ -123,10 +123,6 @@ export default {
   "folios.editor.menu.view": "Affichage",
   "folios.editor.menu.history": "Historique",
 
-  "folios.editor.status.draft": "Brouillon · pas encore enregistré",
-  "folios.editor.status.saved": "Enregistré $1",
-  "folios.editor.status.unsaved": "Modifications non enregistrées",
-
   "folios.editor.action.bold": "Gras",
   "folios.editor.action.italic": "Italique",
   "folios.editor.action.code": "Code en ligne",
@@ -162,8 +158,6 @@ export default {
   "folios.editor.action.restore": "Restaurer…",
   "folios.editor.action.keep-version": "Conserver cette version",
 
-  "folios.editor.title-label": "Titre du folio",
-
   "folios.editor.summary.label": "Résumé pour les agents",
   "folios.editor.summary.unavailable": "indisponible",
   "folios.editor.summary.placeholder":
@@ -173,7 +167,8 @@ export default {
   "folios.editor.tag.add-more": "Tag",
   "folios.editor.tag.remove": "Retirer le tag",
 
-  "folios.editor.meta.draft": "Brouillon · pas encore enregistré",
+  "folios.editor.meta.draft": "$1 mots",
+  "folios.editor.meta.draft-one": "1 mot",
   "folios.editor.meta.saved": "n°$1 · $2 mots · $3 révisions",
   "folios.editor.meta.saved-one": "n°$1 · $2 mots · 1 révision",
 
@@ -689,6 +684,17 @@ export default {
   "quest.group.quests.one": "1 quête",
   "quest-log.collapse-all": "Tout réduire",
   "quest-log.expand-all": "Tout déplier",
+  "quest-log.collapse-panel": "Masquer le journal",
+  "quest-log.expand-panel": "Afficher le journal",
+  "home.projects.see-all": "Voir les $1 projets",
+  "account.projects.title": "Projets",
+  "account.projects.description":
+    "Tous les projets dont vous faites partie, que vous en soyez le propriétaire ou un membre.",
+  "account.projects.empty": "Vous ne faites partie d'aucun projet.",
+  "account.projects.owner": "Propriétaire",
+  "account.projects.member": "Membre",
+  "account.projects.updated": "Mis à jour $1",
+  "account.projects.see-all": "Tous les projets",
 
   "area.rename.name": "Nom du domaine",
   "area.rename.submit": "Renommer",

@@ -17,6 +17,13 @@ export interface MarkdownModeToggleProps {
    * changes what is drawn, never what a screen reader gets.
    */
   iconOnly?: boolean;
+  /**
+   * Extra classes on the button. The folio meta bar uses it to skin this as
+   * one of that row's chips — same border, radius and height as the directory
+   * button it now sits beside, so the row reads as one set of controls rather
+   * than a chip row with a stray toolbar button on the end.
+   */
+  className?: string;
 }
 
 /**
@@ -49,6 +56,7 @@ const MarkdownModeToggle = (props: MarkdownModeToggleProps) => {
       type="button"
       size={props.iconOnly ? "icon-sm" : "xs"}
       variant="ghost"
+      className={props.className}
       disabled={props.disabled}
       data-testid="markdown-mode-toggle"
       data-mode={props.mode}

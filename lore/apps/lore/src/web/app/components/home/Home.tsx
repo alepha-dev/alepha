@@ -12,6 +12,7 @@ import type { AppRouter } from "../../AppRouter.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { displayName } from "../../services/displayName.ts";
 import type { I18n } from "../../services/I18n.ts";
+import { RECENT_PROJECTS_CAP } from "../project/recentProjectsCap.ts";
 import PageHeader from "../shared/header/PageHeader.tsx";
 import LoreLogo from "../shared/LoreLogo.tsx";
 import { ProjectIcon } from "../shared/ProjectIcon.tsx";
@@ -38,6 +39,17 @@ const Home = () => {
   const sorted = [...projects].sort((a, b) =>
     a.updatedAt > b.updatedAt ? -1 : 1,
   );
+  // Home shows the five most recently updated and hands the rest to
+  // `/account/projects`. The slice is display-only — `sorted` (and the atom
+  // behind it) stays complete, which is what `Spotlight`'s client-side project
+  // search depends on. See `recentProjectsCap.ts`.
+  //
+  // Gated on `sorted.length`, not on `overview.totalCount`: the two are the
+  // same number today (`getHomeOverview` derives the count from the array it
+  // returns) and reading the one actually being rendered means the link cannot
+  // appear over a list that is not truncated.
+  const recentProjects = sorted.slice(0, RECENT_PROJECTS_CAP);
+  const hasMoreProjects = sorted.length > RECENT_PROJECTS_CAP;
   const loginPath = router.path("login", {
     query: { r: router.path("home") },
   });
@@ -111,7 +123,7 @@ const Home = () => {
 
             <Card className="mt-4 p-0">
               <CardContent className="flex flex-col divide-y p-0">
-                {sorted.map((project) => (
+                {recentProjects.map((project) => (
                   <ProjectCard
                     key={project.id}
                     project={project}
@@ -121,6 +133,21 @@ const Home = () => {
                     relativeTime={dt.of(project.updatedAt).fromNow()}
                   />
                 ))}
+                {/* Inside the card and on the divider, so it reads as the last
+                    row of the list it continues rather than as a separate
+                    control floating under it. */}
+                {hasMoreProjects && (
+                  <Link
+                    href={router.path("accountProjects")}
+                    data-testid="home-see-all-projects"
+                    className="text-muted-foreground hover:text-foreground hover:bg-accent/50 flex items-center justify-center gap-1.5 px-4 py-3 text-sm transition-colors"
+                  >
+                    {tr("home.projects.see-all", {
+                      args: [String(sorted.length)],
+                    })}
+                    <ArrowRight className="size-3.5" />
+                  </Link>
+                )}
               </CardContent>
             </Card>
           </>
@@ -230,6 +257,7 @@ const ProjectCard = (props: ProjectCardProps) => {
   return (
     <Link
       href={props.href}
+      data-testid="home-project-row"
       className="group hover:bg-muted/50 flex items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors"
     >
       <ProjectIcon fileId={props.project.icon} className="size-8" />

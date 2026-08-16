@@ -1,6 +1,6 @@
 import { $pageAccount } from "@alepha/ui/components/account/account-router-page";
 import { $client } from "alepha/server/links";
-import { Mail, MessageSquareWarning } from "lucide-react";
+import { FolderKanban, Mail, MessageSquareWarning } from "lucide-react";
 import { createElement } from "react";
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { InvitationController } from "@/api/controllers/InvitationController.ts";
@@ -18,14 +18,39 @@ import type { InvitationController } from "@/api/controllers/InvitationControlle
  * server graph, which `alepha db migrations create` imports under `tsx`, where
  * the classic JSX transform emits a bare `React.createElement`.
  *
- * Both pages take `order: 100`+ in their own `Lore` group, as `$pageAccount`
- * requires: the built-ins occupy `Account` (1) and `Security` (2-5), and
- * `useNavEntries` sorts groups by their smallest member, so a lower order here
- * would silently reshuffle the shared rail.
+ * All three pages take `order: 100`+ in their own `Lore` group, as
+ * `$pageAccount` requires: the built-ins occupy `Account` (1) and `Security`
+ * (2-5), and `useNavEntries` sorts groups by their smallest member, so a lower
+ * order here would silently reshuffle the shared rail. Projects leads the group
+ * at exactly 100 — putting it first cost a renumber of the other two (101,
+ * 102) rather than the 99 it would otherwise have taken, which is the number
+ * this rule exists to refuse.
  */
 export class LoreAccountRouter {
   protected readonly invitationApi = $client<InvitationController>();
   protected readonly feedbackApi = $client<FeedbackController>();
+
+  /**
+   * The complete project list, behind Home's and the switcher's five.
+   *
+   * No `loader`: the page reads `userProjectsAtom`, which `getHomeOverview`
+   * already filled at bootstrap. A loader here would refetch a list that is
+   * in memory. Also no `can()` — every signed-in user has projects to list,
+   * even if the list is empty, unlike the two pages below whose endpoints are
+   * permission-gated.
+   */
+  projects = $pageAccount({
+    path: "/projects",
+    name: "accountProjects",
+    head: { title: "Projects" },
+    nav: {
+      label: "Projects",
+      icon: createElement(FolderKanban),
+      group: "Lore",
+      order: 100,
+    },
+    lazy: () => import("./MyProjects.tsx"),
+  });
 
   invitations = $pageAccount({
     path: "/invitations",
@@ -36,7 +61,7 @@ export class LoreAccountRouter {
       label: "Invitations",
       icon: createElement(Mail),
       group: "Lore",
-      order: 100,
+      order: 101,
     },
     loader: async () => ({
       invitations: await this.invitationApi.listMyInvitations(),
@@ -66,7 +91,7 @@ export class LoreAccountRouter {
       label: "Feedback",
       icon: createElement(MessageSquareWarning),
       group: "Lore",
-      order: 101,
+      order: 102,
     },
     lazy: () => import("./feedback/MyFeedback.tsx"),
   });

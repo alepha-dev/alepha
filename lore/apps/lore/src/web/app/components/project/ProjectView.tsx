@@ -33,11 +33,13 @@ import {
   type ProjectNavEntry,
   projectNavAtom,
 } from "../../atoms/projectNavAtom.ts";
+import { questLogCollapsedAtom } from "../../atoms/questLogCollapsedAtom.ts";
 import { type QuestsView, questsViewAtom } from "../../atoms/questsViewAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import HeaderActions from "../shared/header/HeaderActions.tsx";
 import HeaderSearchButton from "../shared/header/HeaderSearchButton.tsx";
 import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
+import ProjectQuestLogRail from "./ProjectQuestLogRail.tsx";
 import ProjectQuestsViewSwitcher from "./ProjectQuestsViewSwitcher.tsx";
 import ProjectSwitcher from "./ProjectSwitcher.tsx";
 import QuestLog from "./QuestLog.tsx";
@@ -99,6 +101,9 @@ const ProjectView = () => {
   const { tr } = useI18n<I18n, "en">();
   const name = routerState.name ?? "";
   const [questsView, setQuestsView] = useStore(questsViewAtom);
+  const [questLogCollapsed, setQuestLogCollapsed] = useStore(
+    questLogCollapsedAtom,
+  );
   // Kanban is not its own route anymore (the great rename, Task 8) — the
   // board needs the same full-width, no quest-log treatment its old
   // dedicated route got, so branch on the stored view in addition to the
@@ -379,9 +384,11 @@ const ProjectView = () => {
       breadcrumbs={breadcrumbs}
       topbarActions={
         <>
-          <HeaderSearchButton />
           <ProjectActionsCreateButton />
-          <HeaderActions />
+          {/* Through `before`, not as a sibling: that puts the magnifier in
+              the cluster's own flex row, so it takes the same gap as the four
+              icons it now sits with rather than the topbar's spacing. */}
+          <HeaderActions before={<HeaderSearchButton />} />
         </>
       }
     >
@@ -409,13 +416,33 @@ const ProjectView = () => {
           >
             {showQuestLog ? (
               <div className="flex min-h-0 flex-1">
-                <div
-                  data-testid="quest-log"
-                  className="border-border hidden min-h-0 shrink-0 border-r lg:flex"
-                  style={{ width: "25%", minWidth: 240, maxWidth: 420 }}
-                >
-                  <QuestLog />
-                </div>
+                {/* Collapsed, the pane becomes a rail — but BOTH carry the same
+                    `hidden lg:flex` gate. Below `lg` the quest log does not
+                    render at all today, so a rail without that gate would
+                    introduce 32px of chrome on mobile where there is currently
+                    nothing, and a control that expands a pane the viewport
+                    then refuses to show. */}
+                {questLogCollapsed.collapsed ? (
+                  <div className="hidden min-h-0 lg:flex">
+                    <ProjectQuestLogRail
+                      onExpand={() =>
+                        setQuestLogCollapsed({ collapsed: false })
+                      }
+                    />
+                  </div>
+                ) : (
+                  <div
+                    data-testid="quest-log"
+                    className="border-border hidden min-h-0 shrink-0 border-r lg:flex"
+                    style={{ width: "25%", minWidth: 240, maxWidth: 420 }}
+                  >
+                    <QuestLog
+                      onCollapse={() =>
+                        setQuestLogCollapsed({ collapsed: true })
+                      }
+                    />
+                  </div>
+                )}
                 {/* QuestView owns its own scroll (`overflow-y-auto` on its
                   body), so this wrapper must NOT also scroll — a nested
                   `overflow-auto` here showed a spurious scrollbar even on

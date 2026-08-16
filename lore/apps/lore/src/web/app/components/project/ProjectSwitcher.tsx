@@ -13,12 +13,13 @@ import {
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { Check, ChevronsUpDown, Home, Plus } from "lucide-react";
+import { Check, ChevronsUpDown, Home, LayoutGrid, Plus } from "lucide-react";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { ProjectIcon } from "../shared/ProjectIcon.tsx";
+import { RECENT_PROJECTS_CAP } from "./recentProjectsCap.ts";
 
 const ProjectSwitcher = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -33,15 +34,33 @@ const ProjectSwitcher = () => {
   const projects = overview?.projects ?? [];
   const canCreate = overview?.canCreate ?? true;
   const maxProjects = overview?.maxProjects;
-  const sorted = [...projects].sort((a, b) =>
-    a.title.localeCompare(b.title, undefined, { sensitivity: "base" }),
+  // The five most recently updated, matching Home — NOT the first five
+  // alphabetically. This list used to be sorted by title, which is right for a
+  // complete list (you scan it for a name you know) and wrong for a truncated
+  // one: capping an alphabetical sort answers "which five come first in the
+  // alphabet", a question nobody asked, and hides everything from S onwards
+  // forever.
+  const byRecency = [...projects].sort((a, b) =>
+    a.updatedAt > b.updatedAt ? -1 : 1,
   );
+  const recent = byRecency.slice(0, RECENT_PROJECTS_CAP);
+  // The project you are LOOKING AT has to be in the menu, or the switcher
+  // shows no checkmark and reads as though you are nowhere. `updatedAt` moves
+  // when a project is edited, not when it is visited, so an old project you
+  // are actively browsing genuinely can sit outside the top five. Swap it in
+  // for the least-recent of them rather than appending, so the cap stays five.
+  if (!recent.some((it) => it.id === project.id)) {
+    const current = byRecency.find((it) => it.id === project.id);
+    if (current) recent.splice(RECENT_PROJECTS_CAP - 1, 1, current);
+  }
+  const hasMore = projects.length > recent.length;
 
   return (
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger
+            data-testid="project-switcher"
             render={
               <SidebarMenuButton
                 size="lg"
@@ -72,7 +91,7 @@ const ProjectSwitcher = () => {
               {tr("home.nav")}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            {sorted.map((c) => {
+            {recent.map((c) => {
               const isActive = c.id === project.id;
               return (
                 <DropdownMenuItem
@@ -91,6 +110,15 @@ const ProjectSwitcher = () => {
                 </DropdownMenuItem>
               );
             })}
+            {hasMore && (
+              <DropdownMenuItem
+                data-testid="switcher-all-projects"
+                render={<Link href={router.path("accountProjects")} />}
+              >
+                <LayoutGrid className="size-4" />
+                {tr("account.projects.see-all")}
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             {canCreate ? (
               <DropdownMenuItem

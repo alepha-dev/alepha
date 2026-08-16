@@ -809,6 +809,65 @@ test.describe("Quest", () => {
   });
 
   /**
+   * Collapsing the quest log leaves a rail, and the choice outlives the tab.
+   *
+   * Its own `test()` rather than a step on an existing one: the preference is
+   * cookie-backed and Playwright gives each test a fresh context, so this
+   * starts from "nobody has chosen yet" and cannot leak a collapsed pane into
+   * a sibling test that asserts `quest-log` is visible (two already do).
+   *
+   * The RELOAD is the assertion that matters. Collapsing and seeing the rail
+   * only proves a React state flip; the requirement is that the pane is still
+   * collapsed on a fresh document, which is the half that fails if the atom
+   * loses its `persist` or moves to localStorage — where `ProjectView`, which
+   * picks this layout during SSR, cannot read it.
+   */
+  test("the quest log collapses to a rail and remembers it", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+
+    const t = Date.now();
+    const email = `qlog${t}@example.com`;
+    const password = "QuestLog123!";
+    const projectTitle = `QL${t}`.slice(0, 20);
+
+    await registerAndVerify(page, email, password);
+    const { slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
+
+    // The log is a `lg:`-and-up fixture — below that breakpoint neither it nor
+    // the rail renders at all, so the viewport has to be wide enough for the
+    // pane to exist before anything here means anything.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(`/${projectSlug}/`);
+    await expect(page.getByTestId("quest-log")).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByTestId("quest-log-rail")).toHaveCount(0);
+
+    await page.getByTestId("quest-log-collapse").click();
+    await expect(page.getByTestId("quest-log-rail")).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByTestId("quest-log")).toHaveCount(0);
+
+    await page.reload();
+    await expect(page.getByTestId("quest-log-rail")).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByTestId("quest-log")).toHaveCount(0);
+
+    await page.getByTestId("quest-log-rail").click();
+    await expect(page.getByTestId("quest-log")).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByTestId("quest-log-rail")).toHaveCount(0);
+  });
+
+  /**
    * The view-switcher rail is the only entry point to the board since the
    * sidebar entry left with the route (#135). It has to reach the board and
    * come back, remember the choice across a reload, and — since #156 —

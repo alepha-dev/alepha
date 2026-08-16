@@ -117,14 +117,23 @@ test.describe("Folio workspace", () => {
       timeout: 15_000,
     });
 
+    // ⚠️ No Save click and no "Saved …" line to wait for: an existing folio
+    // auto-saves (`useFolioAutoSave`, 1.5s after typing stops), and both the
+    // button and the status line were removed once that was true. The button
+    // survives in create mode ONLY, which this folio is not in.
+    //
+    // The write still has to be waited for, or the reload below races it and
+    // the final assertion measures the reload rather than the save — the same
+    // hazard the old status-line wait existed to close. Armed BEFORE the edit
+    // that triggers it, like the tree-drag update further down this file.
+    const saved = page.waitForResponse(
+      (r) => /\/api\/update\//.test(r.url()) && r.status() === 200,
+      { timeout: 15_000 },
+    );
     await summary.fill(summaryText);
-    await page.getByRole("button", { name: /^save$|^enregistrer$/i }).click();
-    // Wait for the status line to flip to Saved before reloading —
-    // navigating mid-request abandons the save and the assertion below
-    // then measures the reload, not the write.
-    await expect(page.getByText(/^saved /i).first()).toBeVisible({
-      timeout: 15_000,
-    });
+    // Autosave debounces on the values changing, so blurring is not what
+    // fires it — the wait is on the request itself.
+    await saved;
     // …and the count follows the save without a reload, even though the
     // inspector is sitting on Outline. Deferring the History tab's fetch
     // to the first time it is shown must not defer it past a save that
@@ -734,12 +743,29 @@ test.describe("Folio workspace", () => {
     });
 
     await test.step("the markdown round-trip keeps the brackets", async () => {
-      await page.getByRole("button", { name: /^save$|^enregistrer$/i }).click();
-      await expect(page.getByText(/^saved /i).first()).toBeVisible({
-        timeout: 15_000,
-      });
-
+      // Autosave has already written this — see the note in test 01. The read
+      // below goes straight to the API, so it has to happen after the write
+      // rather than after a click that no longer exists. `waitForResponse`
+      // cannot be armed here (the edit that triggered the save is in the
+      // previous step), so poll the stored content instead of racing it.
       const shortId = Number(hostUrl.split("/").pop());
+      await expect
+        .poll(
+          async () =>
+            page.evaluate(
+              async ({ pid, sid }) => {
+                const r = await fetch(`/api/projects/${pid}/folios/${sid}`, {
+                  credentials: "include",
+                });
+                const folio = (await r.json()) as { content?: string };
+                return folio.content ?? "";
+              },
+              { pid: projectId, sid: shortId },
+            ),
+          { timeout: 15_000 },
+        )
+        .toContain("[[");
+
       const content = await page.evaluate(
         async ({ pid, sid }) => {
           const r = await fetch(`/api/projects/${pid}/folios/${sid}`, {

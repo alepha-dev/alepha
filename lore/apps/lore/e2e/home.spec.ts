@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
+import {
+  apiPost,
+  createProjectViaWizard,
+  registerAndVerify,
+} from "./_helpers.ts";
 
 /**
  * Home is the only SSR'd route. The project list's "Updated <relative time>"
@@ -61,6 +65,68 @@ test.describe("Home (SSR)", () => {
  * exercised the transition. This one clicks the button a signed-out visitor
  * actually clicks.
  */
+/**
+ * Home and the project switcher show five projects; everything else lives at
+ * `/account/projects`.
+ *
+ * Six is the fixture on purpose — the smallest number that truncates. With
+ * five the "see all" link must NOT appear, and a test built on five would pass
+ * against a cap that had silently stopped working.
+ */
+test.describe("Home (recent projects cap)", () => {
+  test("caps at five, and the rest are on the account page", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `cap${t}@example.com`, "CapTest123!");
+
+    // The first goes through the wizard because that is what creates the
+    // session's project context; the rest go through the API, which is far
+    // cheaper than five more wizard runs and is what the count needs.
+    const { slug: firstSlug } = await createProjectViaWizard(
+      page,
+      `Cap${t}`.slice(0, 20),
+    );
+    for (const title of ["Atlas", "Beacon", "Cinder", "Drift", "Ember"]) {
+      await apiPost(page, "createProject", {
+        title: `${title}${t}`.slice(0, 20),
+      });
+    }
+
+    await page.goto("/");
+    await expect(page.getByTestId("home-see-all-projects")).toBeVisible({
+      timeout: 15_000,
+    });
+    // Five rows, not six — the assertion the whole feature exists for.
+    await expect(page.getByTestId("home-project-row")).toHaveCount(5);
+
+    await page.getByTestId("home-see-all-projects").click();
+    await page.waitForURL("**/account/projects", { timeout: 15_000 });
+    await expect(page.getByTestId("account-project-row")).toHaveCount(6);
+
+    // Every one of them was created by this account, so every row says Owner.
+    // The badge is derived from `createdBy`, so a page that rendered no badge
+    // at all would still pass a bare row count.
+    await expect(page.getByText("Owner").first()).toBeVisible();
+
+    // The switcher caps too, and always keeps the project you are looking at.
+    // `firstSlug` is the LEAST recently updated of the six (it was created
+    // first), so it is exactly the case that falls outside the top five — open
+    // its switcher and it must still be listed, or the checkmark disappears
+    // and the menu reads as though you are nowhere.
+    await page.goto(`/${firstSlug}/`);
+    await page.getByTestId("project-switcher").click();
+    await expect(page.getByTestId("switcher-all-projects")).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(
+      page.getByRole("menuitem").filter({ hasText: `Cap${t}`.slice(0, 20) }),
+    ).toBeVisible();
+  });
+});
+
 test.describe("Home (signed out)", () => {
   test("'Start your first project' reaches the register page", async ({
     page,

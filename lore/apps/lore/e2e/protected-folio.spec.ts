@@ -39,7 +39,12 @@ test.describe("Protected folio", () => {
     const projectTitle = `PF${t}`.slice(0, 20);
     const passphrase = "correct horse battery staple";
     const wrongPassphrase = "wrong donkey panini sample";
-    const folioTitle = `Secret${t}`;
+    // The folio is identified by its shortId, read off the URL after save.
+    // It used to be found by a title typed into the document, but the folio
+    // heading is gone — a folio is named in the TREE now — so every folio
+    // created this way is "Untitled" and a title lookup would match whichever
+    // one came back first.
+    let folioShortId = 0;
     // Distinctive plaintext marker — used to verify both round-trip
     // success AND ciphertext-never-on-wire (the marker must NOT appear
     // in the server response for the folio's content).
@@ -70,23 +75,31 @@ test.describe("Protected folio", () => {
         .getByRole("button", { name: /^new folio$/i })
         .first()
         .click();
-      // The create surface IS the workspace now — there is no "New folio"
-      // heading above it any more, so the title field's own placeholder is
-      // what says the editor is ready.
-      await expect(page.getByPlaceholder(/^untitled$/i)).toBeVisible({
+      // The create surface IS the workspace, and the document heading is
+      // gone with it — so the BODY placeholder is what says the editor is
+      // ready. The title field's placeholder used to serve this and no
+      // longer exists.
+      await expect(page.getByText(/start writing markdown/i)).toBeVisible({
         timeout: 15_000,
       });
 
-      // The folio title input is the one with the "Untitled" placeholder.
-      await page.getByPlaceholder(/^untitled$/i).fill(folioTitle);
-      await fillMarkdownEditor(page, folioBody);
-
-      // No encryption toggle any more — save as a clear folio, land on
-      // its view.
-      await page.getByRole("button", { name: /^save$/i }).click();
+      // ⚠️ No Save click. The tree's "New folio" button creates a REAL folio
+      // through the API and navigates to it, so by the time the editor is up
+      // this is an EXISTING folio — `useFolioAutoSave` covers it, and the
+      // button (which survives only in create mode, at /folios/new) is not
+      // rendered. Armed before the edit that triggers the write.
       await page.waitForURL(new RegExp(`/${projectSlug}/folios/\\d+`), {
         timeout: 30_000,
       });
+      const saved = page.waitForResponse(
+        (r) => /\/api\/update\//.test(r.url()) && r.status() === 200,
+        { timeout: 30_000 },
+      );
+      await fillMarkdownEditor(page, folioBody);
+      await saved;
+
+      folioShortId = Number(new URL(page.url()).pathname.split("/").pop());
+      expect(folioShortId).toBeGreaterThan(0);
     });
 
     await test.step("encrypt the folio from its view", async () => {
@@ -122,17 +135,17 @@ test.describe("Protected folio", () => {
         });
         if (!r.ok) throw new Error(`list: ${r.status}`);
         return (await r.json()) as Array<{
-          title: string;
+          shortId: number;
           protected: boolean;
           content: string;
         }>;
       }, projectId)) as Array<{
-        title: string;
+        shortId: number;
         protected: boolean;
         content: string;
       }>;
 
-      const folio = folios.find((f) => f.title === folioTitle);
+      const folio = folios.find((f) => f.shortId === folioShortId);
       expect(folio).toBeDefined();
       expect(folio!.protected).toBe(true);
       // Envelope shape: JSON with salt/iv/ciphertext/kdf.

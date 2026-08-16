@@ -122,10 +122,6 @@ export default {
   "folios.editor.menu.view": "View",
   "folios.editor.menu.history": "History",
 
-  "folios.editor.status.draft": "Draft · not saved yet",
-  "folios.editor.status.saved": "Saved $1",
-  "folios.editor.status.unsaved": "Unsaved changes",
-
   "folios.editor.action.bold": "Bold",
   "folios.editor.action.italic": "Italic",
   "folios.editor.action.code": "Inline code",
@@ -161,8 +157,6 @@ export default {
   "folios.editor.action.restore": "Restore…",
   "folios.editor.action.keep-version": "Keep this version",
 
-  "folios.editor.title-label": "Folio title",
-
   "folios.editor.summary.label": "Summary for agents",
   "folios.editor.summary.unavailable": "unavailable",
   "folios.editor.summary.placeholder":
@@ -172,7 +166,8 @@ export default {
   "folios.editor.tag.add-more": "Tag",
   "folios.editor.tag.remove": "Remove tag",
 
-  "folios.editor.meta.draft": "Draft · not saved yet",
+  "folios.editor.meta.draft": "$1 words",
+  "folios.editor.meta.draft-one": "1 word",
   "folios.editor.meta.saved": "#$1 · $2 words · $3 revisions",
   "folios.editor.meta.saved-one": "#$1 · $2 words · 1 revision",
 
@@ -678,6 +673,17 @@ export default {
   "quest.group.quests.one": "1 quest",
   "quest-log.collapse-all": "Collapse all",
   "quest-log.expand-all": "Expand all",
+  "quest-log.collapse-panel": "Hide quest log",
+  "quest-log.expand-panel": "Show quest log",
+  "home.projects.see-all": "See all $1 projects",
+  "account.projects.title": "Projects",
+  "account.projects.description":
+    "Every project you belong to, whether you own it or joined it.",
+  "account.projects.empty": "You are not part of any project yet.",
+  "account.projects.owner": "Owner",
+  "account.projects.member": "Member",
+  "account.projects.updated": "Updated $1",
+  "account.projects.see-all": "All projects",
 
   "area.rename.name": "Area Name",
   "area.rename.submit": "Rename",
