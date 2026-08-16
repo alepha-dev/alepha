@@ -18,6 +18,26 @@ export interface AdminRouterOptions {
   /**
    * Sidebar header. Lore's back-arrow-plus-title and shop's Poinçon are both
    * just this.
+   *
+   * ⚠️ **It must handle the sidebar collapsing to an icon rail itself.**
+   * `SidebarHeader` renders this node as given, at whatever width it asks for,
+   * while the rail around it shrinks to about one icon — so a title with no
+   * opinion about the collapsed state wraps, takes the header's height with
+   * it, and overlaps the collapse toggle. Both apps have hit this.
+   *
+   * Tailwind exposes the state as a group data attribute, the same hook the
+   * nav items use to drop their labels:
+   *
+   * ```tsx
+   * brand: (
+   *   <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:px-0">
+   *     <Mark className="shrink-0" />
+   *     <span className="group-data-[collapsible=icon]:hidden">My App</span>
+   *   </div>
+   * )
+   * ```
+   *
+   * Keep whatever reads as an icon, hide the words.
    */
   brand?: ReactNode;
 

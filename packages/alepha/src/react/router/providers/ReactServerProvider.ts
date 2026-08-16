@@ -177,7 +177,14 @@ export class ReactServerProvider {
         // Locale-prefixed variants (`/fr/about`, …) point at the SAME handler.
         // The handler reads the active locale back out of the request URL, so
         // no extra route param is needed and matching stays native.
-        if (this.localeProvider.enabled) {
+        // Tested explicitly rather than left to `withPrefix`: on an excluded
+        // page that returns the path unchanged, so the loop below would
+        // re-register `page.match` once per locale — a duplicate route, not a
+        // no-op.
+        if (
+          this.localeProvider.enabled &&
+          !this.localeProvider.isExcluded(page.match)
+        ) {
           for (const locale of this.localeProvider.prefixedLocales) {
             const prefixedPath = this.localeProvider.withPrefix(
               page.match,
@@ -461,9 +468,7 @@ export class ReactServerProvider {
       // Record the active locale so links built during SSR (`pathname()`)
       // carry the prefix, and so hreflang alternates can be emitted.
       if (this.localeProvider.enabled) {
-        this.localeProvider.current = this.localeProvider.detect(
-          url.pathname,
-        ).locale;
+        this.localeProvider.adopt(url.pathname);
       }
 
       // Initialize router state
@@ -637,6 +642,14 @@ export class ReactServerProvider {
 
     const { origin, search } = state.url;
     const canonical = this.localeProvider.detect(state.url.pathname).pathname;
+
+    // An excluded page has exactly one URL, so there is no alternate to point
+    // at. Emitting them anyway would advertise one URL per language that all
+    // resolve to the same page — the duplicate-content problem hreflang exists
+    // to solve, caused by hreflang.
+    if (this.localeProvider.isExcluded(canonical)) {
+      return;
+    }
 
     const links = this.localeProvider.locales.map((locale) => ({
       rel: "alternate",

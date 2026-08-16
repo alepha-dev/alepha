@@ -5,6 +5,7 @@ import type {
 } from "@alepha/commerce/admin";
 import type { CheckoutController } from "@alepha/commerce/checkout";
 import type { AdminShippingController } from "@alepha/commerce/shipping";
+import { AccountRouter } from "@alepha/ui/components/account/account-router";
 import { $pageAdmin } from "@alepha/ui/components/admin/admin-router-page";
 import { $atom, $inject, Alepha, z } from "alepha";
 import { Tr } from "alepha/react/i18n";
@@ -52,6 +53,23 @@ export class AppRouter {
   protected readonly produits = $client<ProductController>();
   protected readonly checkoutApi = $client<CheckoutController>();
 
+  /*
+   * The customer's own `/account` area — five pages and their rail, from
+   * `@alepha/ui`.
+   *
+   * Injected rather than only listed in `ShopWeb.services` because the shop
+   * mounts it *inside* its own chrome: `layout.children` below adopts
+   * `account.layout`, and `ReactPageProvider` drops an adopted page from the
+   * root set, so `/account/*` renders under the atelier's header and footer
+   * instead of standing alone. Registering the service without adopting it
+   * would put the account area at the root, outside the shop entirely.
+   *
+   * Nothing has to be added to the header for it: `<ButtonUser />`'s default
+   * menu already composes `AccountMenuItem`, which hides itself unless a route
+   * named `account` is registered. Mounting this is what reveals the entry.
+   */
+  protected readonly account = $inject(AccountRouter);
+
   // ── Back office (composed onto the shared shell) ────────────────────
   //
   // The three commerce screens live in `@alepha/commerce/admin` and
@@ -75,6 +93,7 @@ export class AppRouter {
       this.panier,
       this.commande,
       this.merci,
+      this.account.layout,
     ],
   });
 

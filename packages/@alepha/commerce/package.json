@@ -30,6 +30,7 @@
     "./settlement": "./src/settlement/index.ts",
     "./recovery": "./src/recovery/index.ts",
     "./admin": "./src/admin/index.ts",
+    "./lib/*": "./src/lib/*.ts",
     "./admin/components/*": "./src/admin/components/*.tsx",
     "./checkout/components/*": "./src/checkout/components/*",
     "./shipping/components/*": "./src/shipping/components/*.tsx"

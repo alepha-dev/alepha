@@ -97,18 +97,18 @@ export function AdminProducts() {
         title: String(
           product.published
             ? tr("commerce.admin.unpublishTitle", {
-                default: "Retirer de la vente",
+                default: "Remove from sale",
               })
-            : tr("commerce.admin.publishTitle", { default: "Mettre en vente" }),
+            : tr("commerce.admin.publishTitle", { default: "Put on sale" }),
         ),
         description: String(
           product.published
             ? tr("commerce.admin.unpublishConfirm", {
-                default: `« ${product.name} » disparaîtra de la boutique. Les commandes déjà passées ne changent pas.`,
+                default: `“${product.name}” will disappear from the shop. Orders already placed are unchanged.`,
                 args: [product.name],
               })
             : tr("commerce.admin.publishConfirm", {
-                default: `« ${product.name} » sera visible et achetable.`,
+                default: `“${product.name}” will be visible and purchasable.`,
                 args: [product.name],
               }),
         ),
@@ -129,11 +129,11 @@ export function AdminProducts() {
     {
       confirm: (product) => ({
         title: String(
-          tr("commerce.admin.restockTitle", { default: "Réapprovisionner" }),
+          tr("commerce.admin.restockTitle", { default: "Restock" }),
         ),
         description: String(
           tr("commerce.admin.restockConfirm", {
-            default: `Ajouter une unité de « ${product.name} » au stock ?`,
+            default: `Add one unit of “${product.name}” to stock?`,
             args: [product.name],
           }),
         ),
@@ -151,7 +151,7 @@ export function AdminProducts() {
       success: (product) =>
         String(
           tr("commerce.admin.restocked", {
-            default: `« ${product.name} » : +1 en stock.`,
+            default: `“${product.name}”: +1 in stock.`,
             args: [product.name],
           }),
         ),
@@ -169,46 +169,51 @@ export function AdminProducts() {
         onRowClick={(product) => setEditing(product)}
         emptyMessage={String(
           tr("commerce.admin.noProducts", {
-            default: "Aucune pièce au catalogue.",
+            default: "No products in the catalogue.",
           }),
         )}
         filters={{
           schema: filtersSchema,
+          /*
+           * No label, and the "all" case is `clearable` rather than an
+           * empty-valued item — the shape every `@alepha/ui` admin table uses
+           * (`admin-users`, `admin-jobs`, `admin-workflows`).
+           *
+           * The label is dropped because the column it filters is named one row
+           * below it: the bar read "Type" directly above a header that also
+           * said "Type". It also set the bar's height, which is what left the
+           * trailing buttons hanging low (see `alepha-table`'s `self-center`).
+           *
+           * `triggerClassName` rather than a wrapping `<div className="w-52">`:
+           * the width belongs to the trigger, and the wrapper made the control
+           * a flex item of its own, which is what the shared pattern avoids.
+           */
           render: (form) => (
-            <div className="w-52">
-              <Control
-                input={form.input.kind}
-                icon={Shapes}
-                label={String(
-                  tr("commerce.admin.colKind", { default: "Type" }),
-                )}
-                items={[
-                  {
-                    value: "",
-                    label: String(
-                      tr("commerce.admin.allKinds", {
-                        default: "Tous les types",
-                      }),
-                    ),
-                  },
-                  ...(kinds?.kinds ?? []).map((kind) => ({
-                    value: kind,
-                    label: kind,
-                  })),
-                ]}
-              />
-            </div>
+            <Control
+              input={form.input.kind}
+              label=""
+              clearable
+              icon={Shapes}
+              clearLabel={String(
+                tr("commerce.admin.allKinds", { default: "All types" }),
+              )}
+              triggerClassName="w-52"
+              items={(kinds?.kinds ?? []).map((kind) => ({
+                value: kind,
+                label: kind,
+              }))}
+            />
           ),
         }}
         toolbar={
           <Button size="sm" onClick={() => setEditing("new")}>
             <Plus className="size-4" />
-            {tr("commerce.admin.newProduct", { default: "Nouvelle pièce" })}
+            {tr("commerce.admin.newProduct", { default: "New product" })}
           </Button>
         }
         rowActions={(product) => [
           {
-            label: String(tr("commerce.admin.edit", { default: "Modifier" })),
+            label: String(tr("commerce.admin.edit", { default: "Edit" })),
             icon: Pencil,
             onClick: (item) => setEditing(item),
           },
@@ -216,25 +221,23 @@ export function AdminProducts() {
             label: String(
               product.published
                 ? tr("commerce.admin.unpublish", {
-                    default: "Retirer de la vente",
+                    default: "Remove from sale",
                   })
-                : tr("commerce.admin.publish", { default: "Mettre en vente" }),
+                : tr("commerce.admin.publish", { default: "Put on sale" }),
             ),
             icon: product.published ? EyeOff : Eye,
             destructive: product.published,
             onClick: (item, ctx) => void publish.run(item, ctx.refresh),
           },
           {
-            label: String(
-              tr("commerce.admin.restock", { default: "Réapprovisionner" }),
-            ),
+            label: String(tr("commerce.admin.restock", { default: "Restock" })),
             icon: PackagePlus,
             onClick: (item, ctx) => void restock.run(item, ctx.refresh),
           },
         ]}
         columns={{
           name: {
-            label: tr("commerce.admin.colName", { default: "Produit" }),
+            label: tr("commerce.admin.colName", { default: "Product" }),
             sortable: true,
             cell: (p) => (
               <div className="flex flex-col">
@@ -252,7 +255,7 @@ export function AdminProducts() {
             ),
           },
           price: {
-            label: tr("commerce.admin.colPrice", { default: "Prix" }),
+            label: tr("commerce.admin.colPrice", { default: "Price" }),
             align: "right",
             sortable: true,
             cell: (p) => (
@@ -279,27 +282,27 @@ export function AdminProducts() {
                   <span className="text-muted-foreground text-xs">
                     {" "}
                     (+{p.reserved}{" "}
-                    {tr("commerce.admin.reserved", { default: "réservés" })})
+                    {tr("commerce.admin.reserved", { default: "reserved" })})
                   </span>
                 ) : null}
               </span>
             ),
           },
           published: {
-            label: tr("commerce.admin.colStatus", { default: "Statut" }),
+            label: tr("commerce.admin.colStatus", { default: "Status" }),
             cell: (p) =>
               p.published ? (
                 <Badge>
-                  {tr("commerce.admin.online", { default: "En ligne" })}
+                  {tr("commerce.admin.online", { default: "Online" })}
                 </Badge>
               ) : (
                 <Badge variant="secondary">
-                  {tr("commerce.admin.draft", { default: "Brouillon" })}
+                  {tr("commerce.admin.draft", { default: "Draft" })}
                 </Badge>
               ),
           },
           createdAt: {
-            label: tr("commerce.admin.colCreated", { default: "Ajouté" }),
+            label: tr("commerce.admin.colCreated", { default: "Added" }),
             sortable: true,
             cell: (p) => (
               <span className="text-muted-foreground text-xs">
@@ -325,9 +328,7 @@ export function AdminProducts() {
             setEditing(undefined);
             setRefreshSignal((n) => n + 1);
             toast.success(
-              String(
-                tr("commerce.admin.saved", { default: "Pièce enregistrée." }),
-              ),
+              String(tr("commerce.admin.saved", { default: "Product saved." })),
             );
           }}
         />
@@ -362,15 +363,15 @@ const AdminProductSheet = (props: AdminProductSheetProps) => {
     () =>
       z.object({
         name: z.text({ minLength: 1, maxLength: 200 }).meta({
-          title: String(tr("commerce.admin.fName", { default: "Nom" })),
+          title: String(tr("commerce.admin.fName", { default: "Name" })),
           $control: { width: 60 },
         }),
         slug: z.text({ minLength: 1, maxLength: 200 }).meta({
-          title: String(tr("commerce.admin.fSlug", { default: "Référence" })),
+          title: String(tr("commerce.admin.fSlug", { default: "Reference" })),
           description: String(
             tr("commerce.admin.fSlugHint", {
               default:
-                "Apparaît dans l'URL. Ne le changez plus après la mise en vente.",
+                "Appears in the URL. Do not change it once the product is on sale.",
             }),
           ),
           $control: { width: 40 },
@@ -392,7 +393,9 @@ const AdminProductSheet = (props: AdminProductSheetProps) => {
           .min(0)
           .meta({
             title: String(
-              tr("commerce.admin.fPrice", { default: "Prix TTC (centimes)" }),
+              tr("commerce.admin.fPrice", {
+                default: "Price incl. tax (cents)",
+              }),
             ),
             $control: { width: 50 },
           }),
@@ -407,7 +410,7 @@ const AdminProductSheet = (props: AdminProductSheetProps) => {
           .optional(),
         published: z.boolean().meta({
           title: String(
-            tr("commerce.admin.fPublished", { default: "En vente" }),
+            tr("commerce.admin.fPublished", { default: "On sale" }),
           ),
           $control: { width: 100 },
         }),
@@ -451,30 +454,28 @@ const AdminProductSheet = (props: AdminProductSheetProps) => {
         <SheetHeader>
           <SheetTitle>
             {isNew
-              ? tr("commerce.admin.newProduct", { default: "Nouvelle pièce" })
+              ? tr("commerce.admin.newProduct", { default: "New product" })
               : current?.name}
           </SheetTitle>
         </SheetHeader>
         <div className="px-4 pb-6">
           <AutoForm
             form={form}
-            submitLabel={String(
-              tr("commerce.admin.save", { default: "Enregistrer" }),
-            )}
+            submitLabel={String(tr("commerce.admin.save", { default: "Save" }))}
           />
 
           {current ? (
             <dl className="text-muted-foreground mt-8 grid grid-cols-2 gap-y-2 text-xs">
               <dt>
-                {tr("commerce.admin.availableLabel", { default: "Disponible" })}
+                {tr("commerce.admin.availableLabel", { default: "Available" })}
               </dt>
               <dd className="tabular-nums">{current.available}</dd>
               <dt>
-                {tr("commerce.admin.onHandLabel", { default: "En stock" })}
+                {tr("commerce.admin.onHandLabel", { default: "On hand" })}
               </dt>
               <dd className="tabular-nums">{current.onHand}</dd>
               <dt>
-                {tr("commerce.admin.reservedLabel", { default: "Réservé" })}
+                {tr("commerce.admin.reservedLabel", { default: "Reserved" })}
               </dt>
               <dd className="tabular-nums">{current.reserved}</dd>
             </dl>

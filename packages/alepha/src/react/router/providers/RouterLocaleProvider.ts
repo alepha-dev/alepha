@@ -33,6 +33,21 @@ export class RouterLocaleProvider {
   public locales: string[] = [];
 
   /**
+   * Path prefixes that never carry a locale prefix.
+   *
+   * Locale-prefixed URLs exist for crawlers: a distinct, indexable URL per
+   * language. That argument covers a storefront and stops dead at the signed-in
+   * surfaces — `/admin`, `/account` — which are behind a guard, never crawled,
+   * and would only gain a second URL for the same private page. Worse, the
+   * prefix is a *route*: `/en/admin` has to be registered, matched and kept
+   * working, and every deep link into the back office acquires a language.
+   *
+   * Excluded subtrees keep one canonical URL and fall back to the cookie for
+   * language, which is what `routing: "none"` does everywhere.
+   */
+  public excluded: string[] = [];
+
+  /**
    * Configure the provider. Called by the i18n module before the SSR routes
    * are registered.
    */
@@ -40,6 +55,7 @@ export class RouterLocaleProvider {
     enabled?: boolean;
     defaultLocale?: string;
     locales?: string[];
+    excluded?: string[];
   }): void {
     if (options.enabled !== undefined) {
       this.enabled = options.enabled;
@@ -50,6 +66,28 @@ export class RouterLocaleProvider {
     if (options.locales !== undefined) {
       this.locales = options.locales;
     }
+    if (options.excluded !== undefined) {
+      this.excluded = options.excluded;
+    }
+  }
+
+  /**
+   * Whether this pathname sits in a subtree that opts out of locale prefixes.
+   *
+   * Matches a prefix on a segment boundary, so `/admin` covers `/admin` and
+   * `/admin/pieces` but not `/administration` — the difference between an
+   * exclusion and an accidental one.
+   *
+   * The pathname is taken unprefixed. Call it with `detect(...).pathname` when
+   * the input may still carry a locale, so an existing `/en/admin` link is
+   * recognised as the excluded `/admin` rather than treated as a normal page.
+   */
+  public isExcluded(pathname: string): boolean {
+    return this.excluded.some(
+      (prefix) =>
+        pathname === prefix ||
+        pathname.startsWith(prefix.endsWith("/") ? prefix : `${prefix}/`),
+    );
   }
 
   /**
@@ -88,11 +126,35 @@ export class RouterLocaleProvider {
       !this.enabled ||
       !locale ||
       locale === this.defaultLocale ||
-      !this.prefixedLocales.includes(locale)
+      !this.prefixedLocales.includes(locale) ||
+      this.isExcluded(pathname)
     ) {
       return pathname;
     }
     return `/${locale}${pathname === "/" ? "" : pathname}`;
+  }
+
+  /**
+   * Read the locale out of `pathname`, adopt it as the active one, and return
+   * the canonical (unprefixed) path to match routes against.
+   *
+   * The one place a navigation turns a URL into "the current language", so the
+   * exclusion rule lives here rather than in each router.
+   *
+   * **An excluded path leaves `current` untouched.** `detect` reports the
+   * default locale for anything unprefixed, so adopting it would publish "the
+   * URL says <default>" on every navigation into `/admin` — and the i18n
+   * module listens to exactly that to pick the language. It would overwrite
+   * the cookie, which inside an excluded subtree is the only thing carrying
+   * the choice. The symptom is a language switch that visibly works and then
+   * reverts on the next navigation or reload.
+   */
+  public adopt(pathname: string): string {
+    const detected = this.detect(pathname);
+    if (!this.isExcluded(detected.pathname)) {
+      this.current = detected.locale;
+    }
+    return detected.pathname;
   }
 
   /**

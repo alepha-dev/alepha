@@ -9,6 +9,7 @@ import type {
   MyAvatarController,
   MyProfile,
   MyProfileController,
+  RealmConfig,
 } from "alepha/api/users";
 import { updateMyProfileBodySchema } from "alepha/api/users";
 import { useClient } from "alepha/react";
@@ -23,6 +24,16 @@ export interface AccountProfileProps {
    * standalone in a story or a test.
    */
   profile?: MyProfile;
+
+  /**
+   * Supplied by the route loader, and read for one thing: whether this realm
+   * collects usernames at all.
+   *
+   * Optional for the same reason `profile` is. Absent, the username field
+   * renders — the historical behaviour, and the right guess for a realm nobody
+   * described.
+   */
+  realmConfig?: RealmConfig;
 }
 
 /**
@@ -42,14 +53,63 @@ const AccountProfile = (props: AccountProfileProps) => {
   const [profile, setProfile] = useState<MyProfile | undefined>(props.profile);
   const [uploading, setUploading] = useState(false);
 
+  /*
+   * Does this realm have usernames at all?
+   *
+   * The avatar section above reads its switch through `can()`, because a realm
+   * with `features.avatars` off registers no avatar action and the capability
+   * is simply absent from `/api/_links`. That cannot work here:
+   * `updateMyProfile` is the same call that saves first and last name, so it
+   * exists in every realm and its presence says nothing about usernames.
+   *
+   * The realm's own `settings.username` is the switch, and `"none"` is the
+   * only value that hides the row: it is the one that means this realm has no
+   * such thing as a username, so there is nothing to show and nothing the user
+   * could set.
+   *
+   * Without this, a `"none"` realm did not merely render a pointless field:
+   * `?? ""` seeded an empty string into a column that is `.optional()` but
+   * `minLength: 3`, `FormModel` decodes its initial values on construction,
+   * and the whole page died at `useForm` with "Too small: expected string to
+   * have >=3 characters at /username" — before anything rendered. `apps/shop`
+   * is such a realm, and `"none"` is also the framework default, so this is
+   * what any new app hits first.
+   *
+   * ⚠️ `auth-register.tsx` excludes `"email"` here as well, and this
+   * deliberately does not. In that mode `RegistrationService` derives the
+   * handle from the address and drops whatever the client sent, so the
+   * registration form is right to hide a field the user does not choose — but
+   * the account page is where an existing, already-derived username is shown,
+   * and `apps/lore` runs exactly this mode. Whether editing it there should be
+   * possible at all is a real question (a rename desyncs it from the email
+   * that produced it, and `updateMyProfile` does not re-run the slugger), but
+   * it is a separate one from "this realm has no usernames", and answering it
+   * by quietly deleting the field is not the place to start.
+   */
+  const hasUsername = props.realmConfig?.settings?.username !== "none";
+
   /**
    * Validated against the server's own body schema, so "3 to 30 characters"
    * is enforced before the request rather than only by the 400 that comes
    * back — and is stated in exactly one place.
+   *
+   * The schema stays whole and `username` is dropped from the *values*: the
+   * column is `.optional()`, so an absent key decodes cleanly, while the empty
+   * string does not. Omitting it from `groups` below is what hides the row —
+   * `AutoForm` renders the fields its groups name and nothing else — and an
+   * absent value is what keeps it out of the request.
+   *
+   * ⚠️ **`username` is never seeded as `""`, even when the field is shown.**
+   * The old `?? ""` was not only a `"none"`-realm problem: `"optional"` is a
+   * realm that collects usernames and does not insist, so an account without
+   * one is the normal case there — and it crashed the page for exactly those
+   * users while working for everyone who had set one. `undefined` is what an
+   * empty optional field means, and it is what the two name fields would use
+   * too if they were not `.nullable()` with a real "clear me" state.
    */
   const form = useForm({
     initialValues: {
-      username: props.profile?.username ?? "",
+      ...(hasUsername ? { username: props.profile?.username } : {}),
       firstName: props.profile?.firstName ?? "",
       lastName: props.profile?.lastName ?? "",
     },
@@ -64,6 +124,9 @@ const AccountProfile = (props: AccountProfileProps) => {
               // clearing a name a silent no-op that still toasted success.
               firstName: values.firstName || null,
               lastName: values.lastName || null,
+              // Absent, not `null`, in a realm without usernames: `null` is the
+              // "clear this column" signal the two name fields use, and
+              // `username` has no such state — absent is "leave it alone".
               username: values.username,
             },
           }),
@@ -203,7 +266,9 @@ const AccountProfile = (props: AccountProfileProps) => {
           {
             title: "Name",
             description: "How you are identified to other people.",
-            fields: ["username", "firstName", "lastName"],
+            fields: hasUsername
+              ? ["username", "firstName", "lastName"]
+              : ["firstName", "lastName"],
           },
         ]}
         fields={{

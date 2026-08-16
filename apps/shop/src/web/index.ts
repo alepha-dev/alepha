@@ -1,4 +1,6 @@
 import { AlephaSigil } from "@alepha/sigil";
+import { AccountRouter } from "@alepha/ui/components/account/account-router";
+import { accountRouterOptionsAtom } from "@alepha/ui/components/account/account-router-options";
 import { AdminRouter } from "@alepha/ui/components/admin/admin-router";
 import { AuthRouter } from "@alepha/ui/components/auth/auth-router";
 import { $module } from "alepha";
@@ -54,9 +56,39 @@ export const ShopWeb = $module({
    * field (see `AppRouter.tsx`'s "Back office" section). Its chrome is
    * configured via `adminRouterOptionsAtom`, set from both `main.server.ts`
    * and `main.browser.ts` (see `./adminChrome.tsx`).
+   *
+   * `AccountRouter` is the customer's own `/account` area — profile, security,
+   * sessions, API keys, connections. `AppRouter` adopts its `layout` into the
+   * storefront shell so those pages keep the atelier's header and footer; it is
+   * listed here as well, as the honest declaration of what the app mounts, the
+   * same way `AdminRouter` is despite `$pageAdmin` already pulling it in.
    */
-  services: [AppRouter, AuthRouter, AdminRouter, ShopI18n],
+  services: [AppRouter, AuthRouter, AdminRouter, AccountRouter, ShopI18n],
   register: (alepha) => {
+    /*
+     * No second header on the account pages.
+     *
+     * `AccountRouter` ships one — a back link plus the language / theme /
+     * account controls — for an area mounted standalone at the root. The shop
+     * adopts it into `AppRouter.layout` instead, which already renders exactly
+     * those controls in the atelier's own header, so the default would paint a
+     * second row of the same buttons under the first. `null` is the documented
+     * value for that case, and `AccountLayout` tests `!== undefined` precisely
+     * so it can tell "nested, drop the bar" from "not configured".
+     *
+     * It also removes a real crash rather than only a duplicate: the default
+     * header's back link resolves the route name `home`, and the storefront
+     * root is named `accueil` (its property key), so rendering it threw
+     * `Page 'home' not found` on every account page. `adminChrome.tsx` answers
+     * the same mismatch with `homeRouteName: "accueil"` — the right fix there,
+     * because `/admin` is a standalone shell that does need its own way out.
+     *
+     * Set here rather than in `main.*.ts` (where the admin options live)
+     * because this value carries no JSX: `register` runs in both the server and
+     * the browser container, so one call covers both.
+     */
+    alepha.store.set(accountRouterOptionsAtom, { header: null });
+
     // French is the atelier's own language, so it is the fallback rather than
     // the framework's default of English. `autoDetect` stays on: a first-time
     // visitor whose browser asks for English gets English, and the choice is
@@ -79,5 +111,17 @@ export const ShopWeb = $module({
      * language, on top of the resolved language now being hydrated.
      */
     i18n.routing = "prefix";
+
+    /*
+     * …but only for the shop. `/admin` and `/account` are behind a sign-in, so
+     * there is no crawler to give a second URL to and nothing the prefix buys
+     * — while switching language from the back office moved the operator to
+     * `/en/admin`, which is a URL the storefront's SEO scheme invented for a
+     * page no search engine will ever see.
+     *
+     * Inside these two, language falls back to the `lang` cookie, exactly as it
+     * works in an app that never turned prefix routing on.
+     */
+    i18n.routingExclude = ["/admin", "/account"];
   },
 });

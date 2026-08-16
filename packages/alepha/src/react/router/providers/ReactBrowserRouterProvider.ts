@@ -84,9 +84,7 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
       // full prefixed URL so generated links carry the prefix forward.
       let matchPathname = pathname;
       if (this.localeProvider.enabled) {
-        const detected = this.localeProvider.detect(pathname);
-        this.localeProvider.current = detected.locale;
-        matchPathname = detected.pathname;
+        matchPathname = this.localeProvider.adopt(pathname);
       }
 
       const { route, params } = this.match(matchPathname);

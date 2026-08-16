@@ -107,17 +107,17 @@ export function AdminOrders() {
       const trackingNumber = await dialog.prompt({
         title: String(
           tr("commerce.admin.shipTitle", {
-            default: "Confier au transporteur",
+            default: "Hand to the carrier",
           }),
         ),
         description: String(
           tr("commerce.admin.shipHint", {
             default:
-              "Numéro de suivi, s'il y en a un. Le client le reçoit par courriel.",
+              "Tracking number, if there is one. The customer receives it by email.",
           }),
         ),
         confirmLabel: String(
-          tr("commerce.admin.shipConfirm", { default: "Expédier" }),
+          tr("commerce.admin.shipConfirm", { default: "Ship" }),
         ),
       });
       // `undefined` is a cancel; an empty string is "no tracking number", which
@@ -138,11 +138,11 @@ export function AdminOrders() {
     {
       confirm: () => ({
         title: String(
-          tr("commerce.admin.deliverTitle", { default: "Marquer comme reçue" }),
+          tr("commerce.admin.deliverTitle", { default: "Mark as received" }),
         ),
         description: String(
           tr("commerce.admin.deliverConfirm", {
-            default: "Le client a confirmé avoir reçu le colis ?",
+            default: "Has the customer confirmed the parcel arrived?",
           }),
         ),
       }),
@@ -157,12 +157,10 @@ export function AdminOrders() {
   const refund = useConfirmedAction<[OrderEntity, () => void]>(
     {
       confirm: (order) => ({
-        title: String(
-          tr("commerce.admin.refundTitle", { default: "Rembourser" }),
-        ),
+        title: String(tr("commerce.admin.refundTitle", { default: "Refund" })),
         description: String(
           tr("commerce.admin.refundConfirm", {
-            default: `Rembourser ${formatPrice(order.total, order.currency)} au client ? L'argent repart chez lui et le stock revient en atelier. Un avoir sera émis.`,
+            default: `Refund ${formatPrice(order.total, order.currency)} to the customer? The money goes back to them and the stock is released. A credit note is issued.`,
             args: [formatPrice(order.total, order.currency)],
           }),
         ),
@@ -176,9 +174,7 @@ export function AdminOrders() {
         refresh();
       },
       success: () =>
-        String(
-          tr("commerce.admin.refunded", { default: "Commande remboursée." }),
-        ),
+        String(tr("commerce.admin.refunded", { default: "Order refunded." })),
     },
     [client],
   );
@@ -191,57 +187,47 @@ export function AdminOrders() {
         fetch={fetcher}
         onRowClick={(order) => setDetailOf(order.id)}
         emptyMessage={String(
-          tr("commerce.admin.noOrders", { default: "Aucune commande." }),
+          tr("commerce.admin.noOrders", { default: "No orders." }),
         )}
         filters={{
           schema: filtersSchema,
+          // Same shape as the catalogue's kind filter — see the note there.
           render: (form) => (
-            <div className="w-52">
-              <Control
-                input={form.input.status}
-                icon={CircleDot}
-                label={String(
-                  tr("commerce.admin.colStatus", { default: "Statut" }),
-                )}
-                items={[
-                  {
-                    value: "",
-                    label: String(
-                      tr("commerce.admin.allStatuses", {
-                        default: "Tous les statuts",
-                      }),
-                    ),
-                  },
-                  ...STATUSES.map((status) => ({
-                    value: status,
-                    label: String(
-                      tr(`commerce.status.${status}`, { default: status }),
-                    ),
-                  })),
-                ]}
-              />
-            </div>
+            <Control
+              input={form.input.status}
+              label=""
+              clearable
+              icon={CircleDot}
+              clearLabel={String(
+                tr("commerce.admin.allStatuses", { default: "All statuses" }),
+              )}
+              triggerClassName="w-52"
+              items={STATUSES.map((status) => ({
+                value: status,
+                label: String(
+                  tr(`commerce.status.${status}`, { default: status }),
+                ),
+              }))}
+            />
           ),
         }}
         rowActions={(order) => [
           {
-            label: String(tr("commerce.admin.ship", { default: "Expédier" })),
+            label: String(tr("commerce.admin.ship", { default: "Ship" })),
             icon: Truck,
             disabled: () => !["paid", "fulfilled"].includes(order.status),
             onClick: (item, ctx) => void ship(item, ctx.refresh),
           },
           {
             label: String(
-              tr("commerce.admin.deliver", { default: "Marquer reçue" }),
+              tr("commerce.admin.deliver", { default: "Mark received" }),
             ),
             icon: CheckCheck,
             disabled: () => order.status !== "shipped",
             onClick: (item, ctx) => void deliver.run(item, ctx.refresh),
           },
           {
-            label: String(
-              tr("commerce.admin.refund", { default: "Rembourser" }),
-            ),
+            label: String(tr("commerce.admin.refund", { default: "Refund" })),
             icon: Receipt,
             destructive: true,
             disabled: () =>
@@ -260,7 +246,7 @@ export function AdminOrders() {
             ),
           },
           status: {
-            label: tr("commerce.admin.colStatus", { default: "Statut" }),
+            label: tr("commerce.admin.colStatus", { default: "Status" }),
             cell: (o) => (
               <Badge variant={STATUS_VARIANT[o.status] ?? "outline"}>
                 {tr(`commerce.status.${o.status}`, { default: o.status })}
@@ -278,7 +264,7 @@ export function AdminOrders() {
             ),
           },
           shippingMethod: {
-            label: tr("commerce.admin.colShipping", { default: "Livraison" }),
+            label: tr("commerce.admin.colShipping", { default: "Shipping" }),
             cell: (o) => (
               <div className="flex flex-col">
                 <span className="text-xs">{o.shippingMethod ?? "—"}</span>
@@ -351,7 +337,7 @@ const AdminOrderSheet = (props: AdminOrderSheetProps) => {
         <div className="space-y-8 px-4 pb-8">
           {loading && !order ? (
             <p className="text-muted-foreground text-sm">
-              {tr("commerce.admin.loading", { default: "Chargement…" })}
+              {tr("commerce.admin.loading", { default: "Loading…" })}
             </p>
           ) : null}
 
@@ -370,7 +356,7 @@ const AdminOrderSheet = (props: AdminOrderSheetProps) => {
 
               <section>
                 <h3 className="mb-3 text-xs font-medium uppercase tracking-wide">
-                  {tr("commerce.admin.lines", { default: "Articles" })}
+                  {tr("commerce.admin.lines", { default: "Items" })}
                 </h3>
                 <ul className="divide-border divide-y">
                   {data.items.map((item) => (
@@ -402,7 +388,7 @@ const AdminOrderSheet = (props: AdminOrderSheetProps) => {
                     <div className="flex justify-between">
                       <dt className="text-muted-foreground">
                         {tr("commerce.admin.shippingLine", {
-                          default: "Livraison",
+                          default: "Shipping",
                         })}
                         {order.shippingMethod
                           ? ` · ${order.shippingMethod}`
@@ -422,7 +408,9 @@ const AdminOrderSheet = (props: AdminOrderSheetProps) => {
                     </dd>
                   </div>
                   <div className="text-muted-foreground flex justify-between text-xs">
-                    <dt>{tr("commerce.admin.vat", { default: "dont TVA" })}</dt>
+                    <dt>
+                      {tr("commerce.admin.vat", { default: "incl. VAT" })}
+                    </dt>
                     <dd className="tabular-nums">
                       {formatPrice(order.taxTotal, order.currency)}
                     </dd>
@@ -433,7 +421,9 @@ const AdminOrderSheet = (props: AdminOrderSheetProps) => {
               {address ? (
                 <section>
                   <h3 className="mb-3 text-xs font-medium uppercase tracking-wide">
-                    {tr("commerce.admin.address", { default: "Livraison" })}
+                    {tr("commerce.admin.address", {
+                      default: "Delivery address",
+                    })}
                   </h3>
                   <address className="text-muted-foreground text-sm not-italic">
                     {address.fullName}

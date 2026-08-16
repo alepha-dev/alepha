@@ -127,7 +127,10 @@ test.describe("order management", () => {
 
     await page.goto("/admin/commandes");
     await expect(page.getByText("95,90 €").first()).toBeVisible();
-    await expect(page.getByText("paid").first()).toBeVisible();
+    // "Payée", not "paid": order statuses are translated now that
+    // `@alepha/commerce` ships a catalogue. The raw identifier was only ever
+    // on screen because `tr()` fell through to its own `default:`.
+    await expect(page.getByText("Payée").first()).toBeVisible();
 
     // The detail sheet shows the frozen lines and the delivery address.
     await page.getByText("95,90 €").first().click();
@@ -170,8 +173,11 @@ test.describe("order management", () => {
     await signInAsAdmin(page);
     await page.goto("/admin/commandes");
 
-    await page.getByLabel("Statut").click();
-    await page.getByRole("option", { name: "pending" }).click();
+    // By role, not by label: the toolbar filter has no label any more. It sat
+    // directly above a column header that already said "Statut", and its
+    // height was what pushed the toolbar's buttons off-centre.
+    await page.getByRole("combobox").click();
+    await page.getByRole("option", { name: "En attente" }).click();
     // No pending orders survive a completed funnel, so the table is empty and
     // says so rather than showing a spinner forever.
     await expect(

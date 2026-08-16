@@ -69,6 +69,7 @@ export class I18nProvider<
     fallbackLang: string;
     autoDetect: boolean;
     routing: "none" | "prefix";
+    routingExclude: string[];
   } = {
     fallbackLang: "en",
     /**
@@ -90,6 +91,22 @@ export class I18nProvider<
      *   cookie / `Accept-Language`), and there is no automatic redirect.
      */
     routing: "none",
+    /**
+     * Path prefixes that stay unprefixed under `routing: "prefix"`, matched on
+     * a segment boundary (`"/admin"` covers `/admin/users`, not
+     * `/administration`). Ignored when `routing` is `"none"`.
+     *
+     * Locale prefixes buy one crawlable URL per language. Behind a sign-in
+     * there is nothing to crawl, so the prefix is pure cost: a second route to
+     * register and match, a language baked into every deep link into the back
+     * office, and a `/en/admin` that has to keep working forever. Listing
+     * `["/admin", "/account"]` keeps those subtrees on one URL.
+     *
+     * Inside an excluded subtree, language behaves exactly as it does under
+     * `routing: "none"` — chosen through the cookie, not the URL — because
+     * there is no prefix left to carry it.
+     */
+    routingExclude: [],
   };
 
   /**
@@ -144,6 +161,7 @@ export class I18nProvider<
           enabled: true,
           defaultLocale: this.fallbackLang,
           locales: this.languages,
+          excluded: this.options.routingExclude,
         });
       }
     },
@@ -172,7 +190,17 @@ export class I18nProvider<
   protected detectUrlLocale(pathname: string | undefined): string | undefined {
     const localeProvider = this.localeProvider;
     if (localeProvider?.enabled && pathname) {
-      return localeProvider.detect(pathname).locale || undefined;
+      const { locale, pathname: canonical } = localeProvider.detect(pathname);
+      // An excluded subtree has no prefix to read, and `detect` reports the
+      // default locale for any unprefixed path. Returning that would make the
+      // URL "say" the default language and win over the cookie — pinning
+      // `/admin` to `fallbackLang` and making the language switch there look
+      // dead. `undefined` hands the decision back to cookie /
+      // `Accept-Language`, which is the whole point of excluding it.
+      if (localeProvider.isExcluded(canonical)) {
+        return undefined;
+      }
+      return locale || undefined;
     }
     return undefined;
   }
@@ -221,7 +249,21 @@ export class I18nProvider<
       if (this.alepha.isBrowser()) {
         // In prefix mode the URL (hydrated into the lang state by the server)
         // is the source of truth, so the cookie must not override it.
-        if (!this.localeProvider?.enabled) {
+        //
+        // Unless this path is excluded from prefixing, where there is no
+        // prefix to be the source of truth and the cookie is the only carrier.
+        // Skipping it there made the language switch look like it half-worked:
+        // the sidebar changed immediately (`applyLang` writes the state) and
+        // reverted on the next reload, because boot ignored the cookie
+        // `setLang` had just written.
+        const localeProvider = this.localeProvider;
+        const urlCarriesLang =
+          localeProvider?.enabled &&
+          !localeProvider.isExcluded(
+            localeProvider.detect(location.pathname).pathname,
+          );
+
+        if (!urlCarriesLang) {
           const cookieLang = this.cookie.get();
           if (cookieLang) {
             this.alepha.store.set("alepha.react.i18n.lang", cookieLang);
@@ -285,8 +327,14 @@ export class I18nProvider<
       const { ReactRouter } = await import("alepha/react/router");
       const router = this.alepha.inject(ReactRouter);
       const canonical = localeProvider.detect(router.pathname).pathname;
-      await router.push(localeProvider.withPrefix(canonical, lang));
-      return;
+      // Excluded subtrees fall through to the cookie branch below. Navigating
+      // would be a no-op here — `withPrefix` returns the path unchanged, so
+      // `push` would re-enter the same URL and nothing would change language —
+      // and the cookie is the only thing left that can carry the choice.
+      if (!localeProvider.isExcluded(canonical)) {
+        await router.push(localeProvider.withPrefix(canonical, lang));
+        return;
+      }
     }
 
     await this.applyLang(lang);

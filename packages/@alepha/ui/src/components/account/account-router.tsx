@@ -6,6 +6,7 @@ import type {
   MyIdentityController,
   MyProfileController,
   MySessionController,
+  RealmController,
 } from "alepha/api/users";
 import { $page } from "alepha/react/router";
 import { $secure } from "alepha/security";
@@ -95,6 +96,7 @@ export class AccountRouter {
   protected readonly options = $store(accountRouterOptionsAtom);
 
   protected readonly profileApi = $client<MyProfileController>();
+  protected readonly realmApi = $client<RealmController>();
   protected readonly identityApi = $client<MyIdentityController>();
   protected readonly sessionApi = $client<MySessionController>();
   protected readonly apiKeyApi = $client<ApiKeyController>();
@@ -131,7 +133,24 @@ export class AccountRouter {
       group: "Account",
       order: 1,
     },
-    loader: async () => ({ profile: await this.profileApi.getMyProfile() }),
+    /*
+     * `realmConfig` rides along because the page has one realm-dependent
+     * field: a realm with `username: "none"` or `"email"` has no handle to
+     * edit. It is the same call `AuthRouter.loadRealm` makes for the same
+     * reason, and the same public endpoint — cheap, and already warm from
+     * sign-in.
+     *
+     * Both are fetched together rather than in sequence: they do not depend
+     * on each other, and the account area is behind `$secure`, so this runs
+     * client-side where a waterfall is two round trips instead of one.
+     */
+    loader: async () => {
+      const [profile, realmConfig] = await Promise.all([
+        this.profileApi.getMyProfile(),
+        this.realmApi.getRealmConfig(),
+      ]);
+      return { profile, realmConfig };
+    },
     lazy: () => import("./account-profile.tsx"),
     props: () => this.options.pages?.profile ?? {},
   });

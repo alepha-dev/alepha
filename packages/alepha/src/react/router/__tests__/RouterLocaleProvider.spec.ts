@@ -124,4 +124,98 @@ describe("RouterLocaleProvider", () => {
       expect(provider.withPrefix("/about")).toBe("/fr/about");
     });
   });
+
+  /**
+   * Excluded subtrees: the signed-in surfaces (`/admin`, `/account`) that keep
+   * one canonical URL while the public site is locale-prefixed.
+   */
+  describe("excluded paths", () => {
+    const excludedConfig = {
+      enabled: true,
+      defaultLocale: "fr",
+      locales: ["fr", "en"],
+      excluded: ["/admin", "/account"],
+    };
+
+    test("matches the prefix itself and anything under it", ({ expect }) => {
+      const provider = setup(excludedConfig);
+      expect(provider.isExcluded("/admin")).toBe(true);
+      expect(provider.isExcluded("/admin/pieces")).toBe(true);
+      expect(provider.isExcluded("/account/security")).toBe(true);
+    });
+
+    /**
+     * The exclusion is a path prefix, not a string prefix. `/administration`
+     * is a different page and a storefront is entitled to one.
+     */
+    test("does not match a longer first segment", ({ expect }) => {
+      const provider = setup(excludedConfig);
+      expect(provider.isExcluded("/administration")).toBe(false);
+      expect(provider.isExcluded("/accounts")).toBe(false);
+    });
+
+    test("withPrefix leaves an excluded path unprefixed", ({ expect }) => {
+      const provider = setup(excludedConfig);
+      expect(provider.withPrefix("/admin/pieces", "en")).toBe("/admin/pieces");
+      // …while the public site still prefixes normally.
+      expect(provider.withPrefix("/atelier", "en")).toBe("/en/atelier");
+    });
+
+    /**
+     * The regression that made the language switch look half-working: `detect`
+     * reports the DEFAULT locale for any unprefixed path, so adopting it on
+     * `/admin` published "the URL says French" and overwrote the cookie that is
+     * the only carrier of the choice there.
+     */
+    test("adopt does not touch the current locale on an excluded path", ({
+      expect,
+    }) => {
+      const provider = setup(excludedConfig);
+      provider.current = "en";
+
+      expect(provider.adopt("/admin/pieces")).toBe("/admin/pieces");
+      expect(provider.current).toBe("en");
+    });
+
+    test("adopt still takes the locale from a public path", ({ expect }) => {
+      const provider = setup(excludedConfig);
+      provider.current = "en";
+
+      expect(provider.adopt("/atelier")).toBe("/atelier");
+      expect(provider.current).toBe("fr");
+    });
+
+    test("adopt strips the prefix and adopts it on a public path", ({
+      expect,
+    }) => {
+      const provider = setup(excludedConfig);
+      expect(provider.adopt("/en/atelier")).toBe("/atelier");
+      expect(provider.current).toBe("en");
+    });
+
+    /**
+     * An `/en/admin` bookmark from before the exclusion still resolves: the
+     * locale is stripped so the route matches, it is simply not adopted.
+     */
+    test("a stale prefixed URL still resolves to the canonical path", ({
+      expect,
+    }) => {
+      const provider = setup(excludedConfig);
+      provider.current = "fr";
+      expect(provider.adopt("/en/admin")).toBe("/admin");
+      expect(provider.current).toBe("fr");
+    });
+
+    test("no exclusions configured leaves every path prefixable", ({
+      expect,
+    }) => {
+      const provider = setup({
+        enabled: true,
+        defaultLocale: "fr",
+        locales: ["fr", "en"],
+      });
+      expect(provider.isExcluded("/admin")).toBe(false);
+      expect(provider.withPrefix("/admin", "en")).toBe("/en/admin");
+    });
+  });
 });

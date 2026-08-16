@@ -17,10 +17,26 @@ import { Poincon } from "./components/Poincon.tsx";
  * language switch instead of freezing it at boot.
  */
 export const shopAdminOptions: AdminRouterOptions = {
+  /*
+   * The `group-data-[collapsible=icon]:*` classes are what make this survive
+   * the sidebar collapsing to a rail.
+   *
+   * `SidebarHeader` renders the brand as-is at whatever width it asks for,
+   * while the rail around it shrinks to roughly one icon. Without these, the
+   * title had nowhere to go and wrapped — "ATELIER · GESTION" over three
+   * lines, a header tall enough to overlap the collapse toggle, and the
+   * Poinçon squeezed out of view entirely.
+   *
+   * So the mark stays (it is exactly what an icon rail wants) and the words
+   * go. `justify-center` re-centres the mark once the text beside it is gone,
+   * and the horizontal padding drops so the rail's own centring is not fought.
+   * `AdminBrand` in `apps/lore` carries the same three classes for the same
+   * reason.
+   */
   brand: (
-    <div className="flex items-center gap-3">
-      <Poincon titre="AA" />
-      <span className="estampe text-xs">
+    <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:px-0">
+      <Poincon titre="AA" className="shrink-0" />
+      <span className="estampe text-xs group-data-[collapsible=icon]:hidden">
         <Tr k="admin.brand" />
       </span>
     </div>

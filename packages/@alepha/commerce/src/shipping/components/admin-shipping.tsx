@@ -86,11 +86,11 @@ export function AdminShipping() {
     {
       confirm: (rate) => ({
         title: String(
-          tr("commerce.admin.withdrawRate", { default: "Retirer ce mode" }),
+          tr("commerce.admin.withdrawRate", { default: "Withdraw this rate" }),
         ),
         description: String(
           tr("commerce.admin.withdrawRateConfirm", {
-            default: `« ${rate.name} » ne sera plus proposé au checkout. Les commandes passées le gardent, et vous pourrez le remettre plus tard.`,
+            default: `“${rate.name}” is no longer offered at checkout. Past orders keep it, and you can put it back later.`,
             args: [rate.name],
           }),
         ),
@@ -130,7 +130,7 @@ export function AdminShipping() {
         refreshSignal={`${zoneId}:${refreshSignal}`}
         emptyMessage={String(
           tr("commerce.admin.noRates", {
-            default: "Aucun mode de livraison dans cette zone.",
+            default: "No shipping rate in this zone.",
           }),
         )}
         toolbar={
@@ -140,7 +140,7 @@ export function AdminShipping() {
             disabled={!zoneId}
           >
             <Plus className="size-4" />
-            {tr("commerce.admin.newRate", { default: "Nouveau mode" })}
+            {tr("commerce.admin.newRate", { default: "New rate" })}
           </Button>
         }
         rowActions={(rate) =>
@@ -148,7 +148,7 @@ export function AdminShipping() {
             ? [
                 {
                   label: String(
-                    tr("commerce.admin.withdraw", { default: "Retirer" }),
+                    tr("commerce.admin.withdraw", { default: "Withdraw" }),
                   ),
                   icon: Ban,
                   destructive: true,
@@ -160,7 +160,7 @@ export function AdminShipping() {
         }
         columns={{
           name: {
-            label: tr("commerce.admin.rateName", { default: "Mode" }),
+            label: tr("commerce.admin.rateName", { default: "Rate" }),
             cell: (r) => (
               <div className="flex flex-col">
                 <span className="font-medium">{r.name}</span>
@@ -171,14 +171,14 @@ export function AdminShipping() {
             ),
           },
           price: {
-            label: tr("commerce.admin.ratePrice", { default: "Tarif" }),
+            label: tr("commerce.admin.ratePrice", { default: "Price" }),
             align: "right",
             cell: (r) => (
               <span className="tabular-nums">{formatPrice(r.price)}</span>
             ),
           },
           freeAbove: {
-            label: tr("commerce.admin.freeAbove", { default: "Offert dès" }),
+            label: tr("commerce.admin.freeAbove", { default: "Free above" }),
             align: "right",
             cell: (r) => (
               <span className="text-muted-foreground text-xs tabular-nums">
@@ -187,7 +187,7 @@ export function AdminShipping() {
             ),
           },
           minDays: {
-            label: tr("commerce.admin.delay", { default: "Délai" }),
+            label: tr("commerce.admin.delay", { default: "Lead time" }),
             cell: (r) => (
               <span className="text-muted-foreground text-xs">
                 {r.minDays == null
@@ -199,15 +199,15 @@ export function AdminShipping() {
             ),
           },
           active: {
-            label: tr("commerce.admin.colStatus", { default: "Statut" }),
+            label: tr("commerce.admin.colStatus", { default: "Status" }),
             cell: (r) =>
               r.active ? (
                 <Badge>
-                  {tr("commerce.admin.offered", { default: "Proposé" })}
+                  {tr("commerce.admin.offered", { default: "Offered" })}
                 </Badge>
               ) : (
                 <Badge variant="secondary">
-                  {tr("commerce.admin.withdrawn", { default: "Retiré" })}
+                  {tr("commerce.admin.withdrawn", { default: "Withdrawn" })}
                 </Badge>
               ),
           },
@@ -244,14 +244,14 @@ const AdminRateSheet = (props: AdminRateSheetProps) => {
     () =>
       z.object({
         name: z.text({ minLength: 1, maxLength: 100 }).meta({
-          title: String(tr("commerce.admin.rateName", { default: "Mode" })),
+          title: String(tr("commerce.admin.rateName", { default: "Rate" })),
           $control: { width: 60 },
         }),
         code: z.text({ minLength: 1, maxLength: 64 }).meta({
           title: String(tr("commerce.admin.rateCode", { default: "Code" })),
           description: String(
             tr("commerce.admin.rateCodeHint", {
-              default: "Écrit sur la commande. Ne le changez plus ensuite.",
+              default: "Written on the order. Do not change it afterwards.",
             }),
           ),
           $control: { width: 40 },
@@ -262,7 +262,7 @@ const AdminRateSheet = (props: AdminRateSheetProps) => {
           .meta({
             title: String(
               tr("commerce.admin.ratePriceCents", {
-                default: "Tarif TTC (centimes)",
+                default: "Price incl. tax (cents)",
               }),
             ),
             $control: { width: 50 },
@@ -273,7 +273,7 @@ const AdminRateSheet = (props: AdminRateSheetProps) => {
           .meta({
             title: String(
               tr("commerce.admin.freeAboveCents", {
-                default: "Offert à partir de (centimes)",
+                default: "Free above (cents)",
               }),
             ),
             $control: { width: 50 },
@@ -285,7 +285,9 @@ const AdminRateSheet = (props: AdminRateSheetProps) => {
           .max(365)
           .meta({
             title: String(
-              tr("commerce.admin.minDays", { default: "Délai min. (jours)" }),
+              tr("commerce.admin.minDays", {
+                default: "Min. lead time (days)",
+              }),
             ),
             $control: { width: 50 },
           })
@@ -296,7 +298,9 @@ const AdminRateSheet = (props: AdminRateSheetProps) => {
           .max(365)
           .meta({
             title: String(
-              tr("commerce.admin.maxDays", { default: "Délai max. (jours)" }),
+              tr("commerce.admin.maxDays", {
+                default: "Max. lead time (days)",
+              }),
             ),
             $control: { width: 50 },
           })
@@ -327,15 +331,13 @@ const AdminRateSheet = (props: AdminRateSheetProps) => {
       <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
         <SheetHeader>
           <SheetTitle>
-            {tr("commerce.admin.newRate", { default: "Nouveau mode" })}
+            {tr("commerce.admin.newRate", { default: "New rate" })}
           </SheetTitle>
         </SheetHeader>
         <div className="px-4 pb-6">
           <AutoForm
             form={form}
-            submitLabel={String(
-              tr("commerce.admin.save", { default: "Enregistrer" }),
-            )}
+            submitLabel={String(tr("commerce.admin.save", { default: "Save" }))}
           />
         </div>
       </SheetContent>

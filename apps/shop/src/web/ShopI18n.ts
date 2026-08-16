@@ -1,3 +1,5 @@
+import { commerceEn } from "@alepha/commerce/lib/i18n-en";
+import { commerceFr } from "@alepha/commerce/lib/i18n-fr";
 import { uiFr } from "@alepha/ui/lib/i18n-fr";
 import { $dictionary } from "alepha/react/i18n";
 
@@ -31,8 +33,26 @@ export class ShopI18n {
          * announced "Open row actions" on an otherwise French site: those
          * components call `tr()` but default to English, so an undefined key is
          * indistinguishable from a deliberate one.
+         *
+         * ⚠️ **This has a mirror-image bug that is still open.** `tr()` falls
+         * back to `fallbackLang` — French here — before it reaches a
+         * component's `default:`, so all 454 keys below now resolve to FRENCH
+         * for an English visitor. `/admin/jobs` in English shows a column
+         * headed "Nom". `@alepha/ui` ships no `uiEn` to spread into the English
+         * dictionary the way `commerceEn` is spread, so there is nothing to fix
+         * it with from here; it needs the twin catalogue upstream.
          */
         ...uiFr,
+
+        /*
+         * `@alepha/commerce`'s back office, same arrangement and same reason:
+         * those components default to English too, so without this the three
+         * `/admin` commerce screens are English on an otherwise French site.
+         *
+         * Spread before the shop's own keys, which is what lets the overrides
+         * below rename "produit" to the atelier's "pièce".
+         */
+        ...commerceFr,
 
         "language.fr": "Français",
         "language.en": "English",
@@ -180,6 +200,18 @@ export class ShopI18n {
         "admin.pieces": "Pièces",
         "admin.orders": "Commandes",
         "admin.shipping": "Livraison",
+
+        /*
+         * The atelier sells *pièces*, not *produits*.
+         *
+         * `commerceFr` is deliberately generic — it serves any shop — so the
+         * three places its wording surfaces to this operator are renamed here.
+         * This is the whole reason the package catalogue is spread first
+         * rather than merged after.
+         */
+        "commerce.admin.noProducts": "Aucune pièce au catalogue.",
+        "commerce.admin.newProduct": "Nouvelle pièce",
+        "commerce.admin.saved": "Pièce enregistrée.",
       },
     }),
   });
@@ -187,6 +219,20 @@ export class ShopI18n {
   en = $dictionary({
     lazy: async () => ({
       default: {
+        /*
+         * The English half of the commerce pair.
+         *
+         * Not optional even though the components already default to English:
+         * `tr()` tries this dictionary, then `fallbackLang` (`fr`), and only
+         * then the component's `default:`. Without it, every key `commerceFr`
+         * defines resolves to French here — which is exactly how the English
+         * back office ended up with a French table.
+         *
+         * The same trap still applies to `uiFr`, which has no English twin —
+         * see the note above it in the `fr` block.
+         */
+        ...commerceEn,
+
         "language.fr": "Français",
         "language.en": "English",
 
@@ -319,6 +365,20 @@ export class ShopI18n {
         "admin.pieces": "Pieces",
         "admin.orders": "Orders",
         "admin.shipping": "Delivery",
+
+        /*
+         * The English twins of the atelier's `pièce` overrides in `fr`.
+         *
+         * Required, not optional polish: a key missing from the active
+         * dictionary falls back to `fallbackLang` — `fr` here — and only an
+         * everywhere-missing key reaches the component's `default:`. Overriding
+         * these three in French alone would not leave English on the package
+         * wording, it would put "Nouvelle pièce" on the English back office.
+         * Any commerce key overridden in `fr` needs its `en` twin.
+         */
+        "commerce.admin.noProducts": "No pieces in the catalogue.",
+        "commerce.admin.newProduct": "New piece",
+        "commerce.admin.saved": "Piece saved.",
       },
     }),
   });

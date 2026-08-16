@@ -1,8 +1,15 @@
 import { defineConfig } from "alepha/cli/config";
+import { devtools } from "alepha/cli/devtools";
 import { platform } from "alepha/cli/platform";
 
 export default defineConfig({
   plugins: [
+    /*
+     * Dev-server only: the plugin is registered by the CLI, never by the app, so
+     * nothing here reaches the deployed Worker. It mounts the inspector at
+     * `/__devtools/` and injects the floating button into every dev page.
+     */
+    devtools(),
     platform({
       /*
        * Worker secrets are auto-detected from the build manifest's `env` list

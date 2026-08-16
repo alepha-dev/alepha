@@ -229,11 +229,10 @@ export interface AlephaTableProps<T> {
    * Extra slot rendered to the right of the filter inputs in the
    * toolbar — typically a "New" / "Create" button.
    *
-   * Controls placed here must be h-9 (`Button size="lg"`, or an explicit
-   * `h-9`): the bar bottom-aligns its children (`items-end`, so controls
-   * share a baseline with label-topped filter inputs) and pins its built-in
-   * icon buttons to h-9 — a shorter control hangs from the bottom edge and
-   * reads as vertically off-center.
+   * Vertically centred in the bar (`self-center`) regardless of its own
+   * height, so it no longer has to match the filter inputs. It used to inherit
+   * the bar's `items-end`, which meant anything shorter than h-9 hung off the
+   * bottom edge and a labelled filter dragged the button down with it.
    */
   toolbar?: ReactNode;
   /**
@@ -684,9 +683,26 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
             ) : (
               <div className="flex flex-1" />
             )}
-            {props.toolbar}
+            {/*
+              `self-center`, against the bar's own `items-end`.
+
+              The bar bottom-aligns because a filter Control may carry a label,
+              and a row of labelled controls has to line up on the inputs rather
+              than on the top of the tallest label. Everything to the right of
+              the filters is a bare control with no label of its own, so
+              inheriting that baseline pinned it to the bottom of whatever the
+              filter area happened to measure — a "New" button sitting low
+              against a labelled select, moving as soon as a filter gained or
+              lost its label.
+
+              Centring only the trailing content keeps the filter row's own
+              alignment intact and makes the actions independent of it.
+            */}
+            {props.toolbar && (
+              <div className="self-center">{props.toolbar}</div>
+            )}
             <TooltipProvider>
-              <div className="flex items-end gap-1">
+              <div className="flex items-center gap-1 self-center">
                 {props.actions?.length ? (
                   <>
                     {props.actions.map((action) => {

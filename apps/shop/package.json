@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@alepha/commerce": "workspace:*",
+    "@alepha/devtools": "workspace:*",
     "@alepha/payments-stripe": "workspace:*",
     "@alepha/sigil": "workspace:*",
     "@alepha/ui": "workspace:*",

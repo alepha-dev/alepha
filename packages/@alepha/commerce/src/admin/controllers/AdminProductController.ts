@@ -54,6 +54,16 @@ export class AdminProductController {
         size: z.integer().min(1).max(100).optional(),
         page: z.integer().min(0).optional(),
         sort: z.text({ maxLength: 40 }).optional(),
+        /*
+         * The catalogue's Type filter.
+         *
+         * `CatalogService.listAll` has always honoured `query.kind` — it was
+         * only missing from this schema, and an undeclared query param is
+         * stripped before the handler sees it. So the filter sent
+         * `?kind=engraved`, got a 200, and the table came back unfiltered:
+         * the one failure shape that looks like the feature working.
+         */
+        kind: z.text({ maxLength: 64 }).optional(),
       }),
       response: db.page(adminProductSchema),
     },
@@ -76,8 +86,23 @@ export class AdminProductController {
    * Reading it from the registry rather than hard-coding a list is what lets an
    * application's own kind appear here without touching this package.
    */
+  /*
+   * No `name:` override.
+   *
+   * It used to register as `commerceAdminProductKindList` while the property
+   * — which is what `$client<AdminProductController>()` dispatches on — stayed
+   * `commerceAdminProductKinds`, so every caller resolved a name the registry
+   * did not have and got "Action commerceAdminProductKinds not found" at
+   * runtime. Typecheck cannot see it: the proxy is typed from the class, so
+   * the property exists and only the registered name is wrong.
+   *
+   * The effect was silent rather than loud — `kinds` stayed undefined, and
+   * both the catalogue's Type filter and the editor's kind picker rendered
+   * with no options at all rather than failing. It was the only `name:`
+   * override in this controller, and nothing anywhere referenced the name it
+   * introduced.
+   */
   public readonly commerceAdminProductKinds = $action({
-    name: "commerceAdminProductKindList",
     method: "GET",
     path: `${this.url}/kinds`,
     group: this.group,
