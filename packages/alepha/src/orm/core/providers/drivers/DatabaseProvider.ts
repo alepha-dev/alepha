@@ -424,6 +424,31 @@ export abstract class DatabaseProvider {
       const exists = await stat(migrationsFolder).catch(() => false);
 
       if (!exists) {
+        // Production is the one environment with no push-sync fallback — the
+        // `synchronize()` call below lives in the dev/test branch. So an
+        // absent migrations folder does not mean "push the schema for me"
+        // here, it means "create nothing", and an app that declares entities
+        // boots green with no tables and throws `DbTableNotFoundError` on its
+        // first query. This used to be a single `warn` and a successful boot,
+        // which put the only notice of a completely broken deploy in a
+        // startup log, at the moment nobody is reading one.
+        //
+        // Narrow on purpose. An app that mounts the ORM and declares nothing
+        // has no schema to create and still boots. And `DATABASE_SYNC=false`
+        // already means "I manage the schema myself" — someone applying DDL
+        // out of band has stated intent, which is exactly what an absent
+        // folder cannot do on its own.
+        const { DATABASE_SYNC } = this.alepha.parseEnv(databaseEnvSchema);
+        const declaresSchema =
+          this.entityPrimitives.length > 0 ||
+          this.sequencePrimitives.length > 0;
+
+        if (declaresSchema && DATABASE_SYNC !== false) {
+          throw new AlephaError(
+            `No migrations found in '${migrationsFolder}', but this app declares ${this.entityPrimitives.length} entit${this.entityPrimitives.length === 1 ? "y" : "ies"}. Production does not push the schema, so the tables would never be created and the first query would fail. Run 'alepha db migrations create' and redeploy, or set DATABASE_SYNC=false if the schema is managed outside the app.`,
+          );
+        }
+
         this.log.warn("Migration SKIPPED - no migrations found");
         return;
       }

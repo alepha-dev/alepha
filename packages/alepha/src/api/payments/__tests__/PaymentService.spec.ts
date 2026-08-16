@@ -286,6 +286,13 @@ describe("PaymentService", () => {
         APP_SECRET: "prod-secret-for-tests-1234567890",
         DATABASE_URL: "sqlite://:memory:",
         SERVER_PORT: 0,
+        // What is under test is the HTTP surface, not the schema. In
+        // production `migrate()` refuses to boot an app that declares
+        // entities with no migrations to create them, which is this
+        // throwaway in-memory database exactly. Saying so explicitly is
+        // what that flag is for, and it leaves the tables uncreated the
+        // same way this test has always run.
+        DATABASE_SYNC: false,
       },
     }).with(AlephaApiPayments);
     await alepha.start();
