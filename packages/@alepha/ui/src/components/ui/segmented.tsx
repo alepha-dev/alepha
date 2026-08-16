@@ -115,9 +115,26 @@ export function Segmented(props: SegmentedProps) {
     if (!el || !container) return;
     const elRect = el.getBoundingClientRect();
     const parentRect = container.getBoundingClientRect();
+    // ⚠️ Subtract the container's border, or it is counted twice and the thumb
+    // sits one border-width down and to the right of the segment it covers.
+    //
+    // `getBoundingClientRect()` measures the BORDER box, so this delta includes
+    // the border. The thumb is `position: absolute`, whose containing block is
+    // the padding box — an origin that already starts inside that same border.
+    // Applying a border-box delta from a padding-box origin adds it a second
+    // time.
+    //
+    // At the default 1px border it is a 1px drift on both axes, which reads as
+    // the active surface being off-centre: 4px of gap above it and 2px below.
+    // Visible, and easy to misdiagnose as missing padding — but padding cannot
+    // be the fix, because the drift is equal on the horizontal axis where the
+    // box is not symmetric to begin with.
+    const parentStyle = getComputedStyle(container);
+    const borderLeft = Number.parseFloat(parentStyle.borderLeftWidth) || 0;
+    const borderTop = Number.parseFloat(parentStyle.borderTopWidth) || 0;
     setThumb({
-      left: elRect.left - parentRect.left,
-      top: elRect.top - parentRect.top,
+      left: elRect.left - parentRect.left - borderLeft,
+      top: elRect.top - parentRect.top - borderTop,
       width: elRect.width,
       height: elRect.height,
     });
