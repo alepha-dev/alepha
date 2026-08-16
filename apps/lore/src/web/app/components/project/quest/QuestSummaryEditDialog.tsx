@@ -11,6 +11,8 @@ import { useI18n } from "alepha/react/i18n";
 import { useEffect, useState } from "react";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import MarkdownEditor from "../../shared/markdown-editor/MarkdownEditor.tsx";
+import type { MarkdownEditorMode } from "../../shared/markdown-editor/MarkdownEditorInner.tsx";
+import MarkdownModeToggle from "../../shared/markdown-editor/MarkdownModeToggle.tsx";
 import { useQuestImageUpload } from "../../shared/markdown-editor/useQuestImageUpload.ts";
 
 export interface QuestSummaryEditDialogProps {
@@ -26,6 +28,7 @@ const QuestSummaryEditDialog = (props: QuestSummaryEditDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
   const imageUploadHandler = useQuestImageUpload();
   const [value, setValue] = useState(props.initialValue ?? "");
+  const [mode, setMode] = useState<MarkdownEditorMode>("edit");
 
   // Re-prime when the dialog re-opens against a different quest / value.
   useEffect(() => {
@@ -46,11 +49,15 @@ const QuestSummaryEditDialog = (props: QuestSummaryEditDialogProps) => {
             {tr("quest.view.editSummary.description")}
           </DialogDescription>
         </DialogHeader>
+        <div className="flex justify-end">
+          <MarkdownModeToggle mode={mode} onChange={setMode} />
+        </div>
         <MarkdownEditor
           value={value}
           onChange={setValue}
           placeholder={tr("quest.view.complete.placeholder")}
           imageUploadHandler={imageUploadHandler}
+          mode={mode}
           minHeight={200}
         />
         <DialogFooter className="gap-2">

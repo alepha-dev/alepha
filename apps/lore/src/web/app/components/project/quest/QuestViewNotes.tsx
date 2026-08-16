@@ -7,6 +7,8 @@ import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuestsAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import MarkdownEditor from "../../shared/markdown-editor/MarkdownEditor.tsx";
+import type { MarkdownEditorMode } from "../../shared/markdown-editor/MarkdownEditorInner.tsx";
+import MarkdownModeToggle from "../../shared/markdown-editor/MarkdownModeToggle.tsx";
 import { useQuestImageUpload } from "../../shared/markdown-editor/useQuestImageUpload.ts";
 
 export interface QuestViewNotesProps {
@@ -22,6 +24,7 @@ const QuestViewNotes = (props: QuestViewNotesProps) => {
 
   const [noteText, setNoteText] = useState(props.quest.note ?? "");
   const [saving, setSaving] = useState(false);
+  const [mode, setMode] = useState<MarkdownEditorMode>("edit");
 
   useEffect(() => {
     setNoteText(props.quest.note ?? "");
@@ -48,11 +51,15 @@ const QuestViewNotes = (props: QuestViewNotesProps) => {
 
   return (
     <div className="flex flex-col gap-2 px-1">
+      <div className="flex justify-end">
+        <MarkdownModeToggle mode={mode} onChange={setMode} />
+      </div>
       <MarkdownEditor
         placeholder={tr("quest.view.notes.placeholder")}
         value={noteText}
         onChange={setNoteText}
         imageUploadHandler={imageUploadHandler}
+        mode={mode}
         minHeight={140}
       />
       <div className="flex justify-end">

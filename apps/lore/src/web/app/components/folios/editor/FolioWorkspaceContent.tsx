@@ -1,7 +1,13 @@
+import type { EditorView } from "@codemirror/view";
 import { useStore } from "alepha/react";
-import { type ReactElement, useState } from "react";
+import { type ReactElement, useRef, useState } from "react";
 import type { FolioResource } from "@/api/schemas/folioResourceSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import type { MarkdownEditorMode } from "../../shared/markdown-editor/MarkdownEditorInner.tsx";
+import {
+  type MarkdownCommandId,
+  markdownCommands,
+} from "../../shared/markdown-editor/markdownCommands.ts";
 import { useFolioImageUpload } from "../../shared/markdown-editor/useFolioImageUpload.ts";
 import FolioDocument from "./document/FolioDocument.tsx";
 import FolioFindBar from "./document/FolioFindBar.tsx";
@@ -11,7 +17,9 @@ import FolioInspector, {
 } from "./inspector/FolioInspector.tsx";
 import FolioInspectorRail from "./inspector/FolioInspectorRail.tsx";
 import { useFolioActions } from "./useFolioActions.ts";
+import { useFolioAutoSave } from "./useFolioAutoSave.ts";
 import { useFolioDraft } from "./useFolioDraft.ts";
+import { useFolioWikiLinks } from "./wikilink/useFolioWikiLinks.ts";
 
 export interface FolioWorkspaceContentProps {
   /**
@@ -27,9 +35,11 @@ export interface FolioWorkspaceContentProps {
    * The DOM node above the pane row that the MENUBAR portals into. Owned
    * by `FolioWorkspace` because the design puts that row above the tree as
    * well as the document — see that file's comment for why a portal, and
-   * not a plain move, is what gets it there. The formatting toolbar used
-   * to share this slot and no longer does: it targets `toolbarSlot`, which
-   * this component owns, because it belongs to the document column.
+   * not a plain move, is what gets it there.
+   *
+   * There is no second slot anymore: the formatting toolbar it used to
+   * share this with was deleted with the editor realm that made those
+   * commands possible.
    */
   chromeSlot: HTMLElement | null;
   /**
@@ -76,9 +86,7 @@ export interface FolioWorkspaceContentProps {
  *
  * Save, pin, duplicate, export, encrypt/remove-protection and delete are
  * all owned by `useFolioActions` now — this component renders the document
- * + inspector regions. The status line and Save button no longer live here
- * either (Task 11): they moved into `FolioToolbar`, which mounts through
- * `MarkdownEditor`'s `renderToolbar` (see `FolioDocument.tsx`) alongside
+ * + inspector regions. The status line and Save button live in
  * `FolioMenubar`. The folio TREE pane (Task 9) is NOT one of these regions
  * — it mounts in `FolioWorkspace.tsx`, outside this component's `key`,
  * because its collapse state must survive a folio-to-folio navigation and
@@ -129,19 +137,56 @@ const FolioWorkspaceContent = (
     null,
   );
 
-  // The formatting toolbar's portal target. A sibling ABOVE the scroll
-  // container rather than a child of it, so the row stays put while a long
-  // folio scrolls under it — `position: absolute` inside a scrolling box
-  // would scroll away with the text it formats, the same trap the find bar
-  // below documents. Same callback-ref-via-`useState` reason as
-  // `contentElement`: the portal needs a re-render once the node exists.
-  const [toolbarSlot, setToolbarSlot] = useState<HTMLElement | null>(null);
+  // View or raw markdown. Held here, not in `FolioDocument`, because
+  // `useFolioActions` below needs a toggle for the `view.mode` id (⌘E) and
+  // this is where that hook is called.
+  //
+  // A folio WITH content opens in `"view"` — it is project memory, read far
+  // more often than written. An empty one opens in `"edit"`.
+  //
+  // The condition is the content, not the route. Create mode is the obvious
+  // empty case, but not the only one: the tree's "New folio" button creates
+  // a real, empty folio through the API and navigates to it, so it arrives
+  // here WITH a `props.folio` and would have opened in View mode showing a
+  // blank pane — nothing to read, and no visible hint that the toggle is
+  // what stands between the author and typing.
+  //
+  // The initializer runs once per mount, which is once per folio (this
+  // component is keyed on the folio id in `FolioWorkspace`), so saving a new
+  // folio does not yank the author out of Edit mode mid-sentence.
+  const [mode, setMode] = useState<MarkdownEditorMode>(
+    props.folio?.content?.trim() ? "view" : "edit",
+  );
+
+  // Both halves of wiki-link support: the `[[` picker's entries and the
+  // rewritten markdown View mode renders. Hoisted to this component rather
+  // than living in `FolioDocument` because `useFolioFind` below has to key
+  // on `rendered`, not on the raw draft — see there.
+  // The live CodeMirror view, handed up by `CodeMirrorEditor` on mount and
+  // nulled on unmount. The menubar's formatting actions and the selection
+  // popup both dispatch into it.
+  const editorViewRef = useRef<EditorView | null>(null);
+
+  const wikiLinks = useFolioWikiLinks(
+    project?.id,
+    project?.slug,
+    draft.values.content,
+  );
 
   // Find-in-folio searches the RENDERED pane, which is why it is wired
   // here — `contentElement` above is the same DOM handle the Outline tab
   // scrolls headings within, and the only place the document's text nodes
   // are reachable from.
-  const find = useFolioFind(contentElement, draft.values.content);
+  //
+  // ⚠️ Keyed on `wikiLinks.rendered`, NOT on `draft.values.content`. The
+  // two differ, and the difference arrives LATE: `rendered` depends on the
+  // project's quest list, which is fetched, so it changes once that request
+  // resolves even though the raw markdown never did. MarkdownView then
+  // replaces the pane's text nodes and every range this hook is holding
+  // points at detached DOM — the match count silently drops to zero
+  // mid-search. Keying on the raw content made that a race that passed or
+  // failed on fetch timing.
+  const find = useFolioFind(contentElement, wikiLinks.rendered);
 
   const actions = useFolioActions({
     folio: props.folio,
@@ -156,6 +201,31 @@ const FolioWorkspaceContent = (
       openHistory,
     },
     find: { show: find.show },
+    mode: {
+      editing: mode === "edit",
+      toggle: () =>
+        setMode((current) => (current === "view" ? "edit" : "view")),
+    },
+    format: {
+      run: (id) => {
+        const view = editorViewRef.current;
+        // Inert with no view — the menubar already disables these in View
+        // mode, so this is the belt to that braces.
+        if (!view) return;
+        markdownCommands[id as MarkdownCommandId]?.(view);
+      },
+    },
+  });
+
+  // Auto-save. Disabled in create mode (a folio should not spring into
+  // existence on the first keystroke) and while a protected folio is
+  // locked (the draft is ciphertext this session cannot re-encrypt).
+  useFolioAutoSave({
+    enabled: !!props.folio && !actions.locked,
+    dirty: draft.dirty,
+    values: draft.values,
+    saving: actions.saving,
+    save: () => actions.handlers["folio.save"](),
   });
 
   const imageUploadHandler = useFolioImageUpload(
@@ -176,7 +246,6 @@ const FolioWorkspaceContent = (
             of it: an `absolute` element inside a scrolling box scrolls away
             with the text it is searching. */}
         <div className="relative flex min-w-0 flex-1 flex-col">
-          <div ref={setToolbarSlot} className="flex flex-none flex-col" />
           <div
             ref={setContentElement}
             className="min-w-0 flex-1 overflow-y-auto"
@@ -188,7 +257,11 @@ const FolioWorkspaceContent = (
                 draft={draft}
                 actions={actions}
                 chromeSlot={props.chromeSlot}
-                toolbarSlot={toolbarSlot}
+                mode={mode}
+                wikiLinks={wikiLinks}
+                onEditorViewReady={(v) => {
+                  editorViewRef.current = v;
+                }}
                 revisionCount={revisionCount}
                 imageUploadHandler={imageUploadHandler}
               />

@@ -130,7 +130,15 @@ test.describe("Folio workspace", () => {
     // to the first time it is shown must not defer it past a save that
     // moved the number — the fetch is skipped per folio OPENED, not per
     // folio SAVED. Nothing else in this file covers that distinction.
-    await expect(page.getByText(/· 2 (revisions|révisions)$/)).toBeVisible({
+    // ONE revision, not two. The folio was created and its summary edited
+    // moments apart, and `FolioHistoryService` folds saves by the same
+    // author inside an hour into a single revision — that coalescing is
+    // what makes auto-save affordable. What this still pins is the thing
+    // it was written for: the meta bar's count reflects a save that
+    // happened while the inspector was sitting on Outline, so the History
+    // tab's deferred fetch is skipped per folio OPENED, never per folio
+    // SAVED.
+    await expect(page.getByText(/· 1 (revision|révision)$/)).toBeVisible({
       timeout: 15_000,
     });
 
@@ -214,8 +222,17 @@ test.describe("Folio workspace", () => {
 
   test("05 — ⌘F finds every occurrence and Escape closes the bar", async () => {
     await page.goto(folioUrl);
-    await expect(page.getByLabel(/summary for agents/i)).toBeVisible({
-      timeout: 15_000,
+    // Wait for the BODY, not just the summary field. The summary is part of
+    // the always-mounted document column, but the body arrives behind
+    // `MarkdownEditor`'s lazy boundary — and `useFolioFind` walks the pane's
+    // text nodes ONCE per (element, content) pair. Searching before the
+    // body is on screen therefore matches nothing and does not retry when
+    // it appears, so this precondition is the difference between a real
+    // assertion and a race. (That no-retry behaviour predates the
+    // View/Edit editor — the MDXEditor body was lazy in exactly the same
+    // way — and is worth fixing separately.)
+    await expect(page.getByText("A ward holds the door")).toBeVisible({
+      timeout: 20_000,
     });
 
     await page.keyboard.press("ControlOrMeta+f");
@@ -511,8 +528,12 @@ test.describe("Folio workspace", () => {
       await expect(
         page.getByRole("menuitem", { name: /^inspector/i }),
       ).toBeEnabled();
+      // The mode toggle replaced Rich text / Markdown source. It acts on a
+      // document, so with nothing open it is present-but-disabled — the
+      // same "shape stays, enablement changes" contract this test exists
+      // to pin.
       await expect(
-        page.getByRole("menuitem", { name: /rich text/i }),
+        page.getByRole("menuitem", { name: /toggle preview/i }),
       ).toBeDisabled();
 
       await page.getByRole("menuitem", { name: /folio tree/i }).click();
@@ -561,9 +582,12 @@ test.describe("Folio workspace", () => {
     await page.waitForURL(new RegExp(`/${projectSlug}/folios/\\d+`), {
       timeout: 20_000,
     });
-    await expect(
-      page.getByRole("textbox", { name: /editable markdown/i }),
-    ).toBeVisible({ timeout: 20_000 });
+    // A brand-new folio opens in Edit mode — there is nothing to read yet,
+    // so the author lands with the caret ready rather than on an empty
+    // rendered pane. See `FolioWorkspaceContent`'s `mode` initializer.
+    await expect(page.locator(".lore-md-edit .cm-content")).toBeVisible({
+      timeout: 20_000,
+    });
     await expect(page.getByText(/no folio open/i)).toHaveCount(0);
   });
 
@@ -575,9 +599,12 @@ test.describe("Folio workspace", () => {
     // even ask.
     const url = await createFolio(`Attach-${stamp}`.slice(0, 24));
     await page.goto(url);
-    await expect(
-      page.getByRole("textbox", { name: /editable markdown/i }),
-    ).toBeVisible({ timeout: 20_000 });
+    // `createFolio` here passes no body, so the folio is empty and opens in
+    // Edit mode — this only needs the document to be mounted before the
+    // inspector is driven.
+    await expect(page.locator('[data-slot="folio-document"]')).toBeVisible({
+      timeout: 20_000,
+    });
 
     // The inspector's fourth tab owns attachments now.
     await page.getByRole("tab", { name: /^files$/i }).click();
@@ -628,53 +655,82 @@ test.describe("Folio workspace", () => {
     ).toHaveCount(0);
   });
 
-  test("12 — wiki-links are live inside the editor body", async () => {
+  test("12 — wiki-links resolve in the rendered body", async () => {
     // Two references in one body: one that resolves to the folio created in
-    // `beforeAll`, one that resolves to nothing. Both have to be decorated,
-    // and told apart.
+    // `beforeAll`, one that resolves to nothing. Both have to render, and be
+    // told apart.
+    //
+    // ⚠️ This asserts VIEW mode, and the behaviour changed with the editor.
+    // Lexical decorated `[[Title]]` in place — the token kept its source
+    // text and carried the target on `data-wiki-href`. There is no in-place
+    // decoration now: View mode renders `rewriteFolioWikiLinks`'s output, so
+    // a reference is an ordinary `<a href>` whose text is the RESOLVED
+    // title. Edit mode shows the raw `[[Title]]` token, unstyled, because
+    // that is what is stored.
     const hostUrl = await createFolio(
       `Refs-${stamp}`.slice(0, 24),
       `Points at [[${folioTitle}]] and at [[No Such Folio ${stamp}]].`,
     );
     await page.goto(hostUrl);
 
-    const links = page.locator(".lore-mdx-content .lore-wikilink");
-    await expect(links).toHaveCount(2, { timeout: 20_000 });
+    const body = page.locator(".lore-md-view");
+    await expect(body).toBeVisible({ timeout: 20_000 });
 
-    // The token keeps its source text — that is the whole point of decorating
-    // in place rather than swapping in a resolved title (#131).
-    await expect(links.first()).toHaveText(`[[${folioTitle}]]`);
-    // …and carries the resolved target, which is what the ⌘-click handler
-    // and the hover card both read.
-    await expect(links.first()).toHaveAttribute(
-      "data-wiki-href",
+    const resolved = body.getByRole("link", { name: folioTitle });
+    await expect(resolved).toHaveAttribute(
+      "href",
       new RegExp(`^/${projectSlug}/folios/\\d+$`),
     );
 
-    const brokenLink = page.locator(".lore-mdx-content .lore-wikilink-broken");
+    // An unresolved reference keeps the text the author typed, which is the
+    // signal that it did not resolve.
+    //
+    // ⚠️ It no longer keeps its `lore-broken:` href, and that is a real
+    // capability loss worth stating plainly. `rewriteFolioWikiLinks` still
+    // EMITS `[label](lore-broken:folio-not-found)`, but View mode renders
+    // through `MarkdownView`, and react-markdown's default `urlTransform`
+    // allows only http/https/mailto/tel and relative URLs — a custom scheme
+    // is stripped to `""`. The old editor decorated broken links itself, in
+    // Lexical, and could style them and explain the reason on hover.
+    //
+    // Not "fixed" here on purpose: the options are to teach `@alepha/ui`
+    // about a Lore-specific scheme (wrong layering, it is a shared package)
+    // or to change the marker syntax (a reader-side change affecting quest
+    // descriptions too). Either is its own decision. The quest reader has
+    // always behaved this way, so this makes the two surfaces consistent
+    // rather than introducing a new inconsistency.
+    const brokenLink = body.getByRole("link", {
+      name: `[[No Such Folio ${stamp}]]`,
+    });
     await expect(brokenLink).toHaveCount(1);
-    await expect(brokenLink).toHaveAttribute(
-      "data-wiki-href",
-      "lore-broken:folio-not-found",
-    );
+    await expect(brokenLink).toHaveAttribute("href", "");
 
     await test.step("the [[ picker inserts a reference", async () => {
-      const body = page.getByRole("textbox", { name: /editable markdown/i });
-      await body.click();
+      // The picker lives in Edit mode now — it is a `@codemirror/autocomplete`
+      // source, not a Lexical typeahead, so the editor has to be mounted
+      // before anything can be typed into it.
+      await page.keyboard.press("ControlOrMeta+e");
+      const editor = page.locator(".lore-md-edit .cm-content");
+      await expect(editor).toBeVisible({ timeout: 10_000 });
+      await editor.click();
+
       // End of the document, then a fresh paragraph so the new token cannot
       // merge into the sentence the assertions above depend on.
       await page.keyboard.press("ControlOrMeta+End");
       await page.keyboard.press("Enter");
       await page.keyboard.type("[[Ward");
 
-      const option = page.getByRole("button", { name: folioTitle }).last();
+      // CodeMirror renders its completions as an `option`-role list.
+      const option = page.getByRole("option", { name: folioTitle }).first();
       await expect(option).toBeVisible({ timeout: 10_000 });
       await option.click();
 
-      // The picker only ever inserts plain `[[token]]` text — the same text
-      // entity that handles hand-typing is what turns it into a live token,
-      // so a third decorated link is the proof both paths converge.
-      await expect(links).toHaveCount(3, { timeout: 10_000 });
+      // The picker only ever inserts plain `[[token]]` text — which is why
+      // the assertion is on the DOCUMENT, not on any decoration. There is no
+      // decoration anymore; the token is markdown like everything else.
+      await expect(editor).toContainText(`[[${folioTitle}]]`, {
+        timeout: 10_000,
+      });
     });
 
     await test.step("the markdown round-trip keeps the brackets", async () => {
@@ -717,100 +773,15 @@ test.describe("Folio workspace", () => {
    * `$createParagraphNode` for paragraph. A heading-only test would stay green
    * with quote broken.
    */
-  test("13 — the block-type select converts the current block", async () => {
-    const cases: { value: RegExp; expect: string }[] = [
-      { value: /heading 1/i, expect: "# " },
-      { value: /heading 2/i, expect: "## " },
-      { value: /heading 3/i, expect: "### " },
-      { value: /quote/i, expect: "> " },
-    ];
-
-    for (const item of cases) {
-      const url = await createFolio(
-        `Block-${item.expect.trim().length}-${stamp}`.slice(0, 24),
-        "Convert me",
-      );
-      await page.goto(url);
-
-      const body = page.getByRole("textbox", { name: /editable markdown/i });
-      await expect(body).toBeVisible({ timeout: 20_000 });
-      // The TEXT, not the box. MDXEditor keeps a trailing empty paragraph, so
-      // clicking the container's centre drops the caret in THAT — and the
-      // select then reports the trailing paragraph's type rather than the
-      // block under test.
-      await body.getByText("Convert me").click();
-
-      await page
-        .getByRole("combobox", { name: /block type|type de bloc/i })
-        .click();
-      await page.getByRole("option", { name: item.value }).click();
-
-      await page.getByRole("button", { name: /^save$|^enregistrer$/i }).click();
-      await expect(page.getByText(/^saved /i).first()).toBeVisible({
-        timeout: 15_000,
-      });
-
-      const shortId = Number(url.split("/").pop());
-      const content = await page.evaluate(
-        async ({ pid, sid }) => {
-          const r = await fetch(`/api/projects/${pid}/folios/${sid}`, {
-            credentials: "include",
-          });
-          return ((await r.json()) as { content?: string }).content ?? "";
-        },
-        { pid: projectId, sid: shortId },
-      );
-      // ANCHORED, not `toContain`. Every heading marker is a prefix of the
-      // next one, so `"### Convert me"` contains `"# Convert me"` AND
-      // `"## Convert me"` — a regression that converted everything to h3
-      // would satisfy all three heading cases of this loop. `startsWith`
-      // after `trimStart` is what makes the levels distinguishable.
-      expect(content.trimStart().startsWith(`${item.expect}Convert me`)).toBe(
-        true,
-      );
-    }
-
-    // Paragraph is the round trip, and the one value with no marker of its
-    // own: converting away from a heading has to leave plain text behind.
-    const url = await createFolio(
-      `Block-para-${stamp}`.slice(0, 24),
-      "## Convert me back",
-    );
-    await page.goto(url);
-    const body = page.getByRole("textbox", { name: /editable markdown/i });
-    await expect(body).toBeVisible({ timeout: 20_000 });
-    // Specifically the heading. Clicking the container centre would land in
-    // the trailing empty paragraph, where the control already reads
-    // "Paragraph" — selecting it fires no change event, nothing converts, and
-    // this test hangs on a Save button that never enables. That is exactly how
-    // it failed the first time it ran.
-    await body.locator("h2").click();
-    await page
-      .getByRole("combobox", { name: /block type|type de bloc/i })
-      .click();
-    await page
-      .getByRole("option", { name: /^paragraph$|^paragraphe$/i })
-      .click();
-    await page.getByRole("button", { name: /^save$|^enregistrer$/i }).click();
-    await expect(page.getByText(/^saved /i).first()).toBeVisible({
-      timeout: 15_000,
-    });
-
-    const shortId = Number(url.split("/").pop());
-    const content = await page.evaluate(
-      async ({ pid, sid }) => {
-        const r = await fetch(`/api/projects/${pid}/folios/${sid}`, {
-          credentials: "include",
-        });
-        return ((await r.json()) as { content?: string }).content ?? "";
-      },
-      { pid: projectId, sid: shortId },
-    );
-    // Anchored for the same reason as the loop above, and here it is the only
-    // assertion that means anything: `not.toContain("## Convert me back")` is
-    // satisfied by `"# Convert me back"`, so an h2 that converted to h1
-    // instead of to a paragraph would have passed. "Paragraph" means no
-    // marker at all, which is exactly what `startsWith` on the text says.
-    expect(content.trimStart().startsWith("Convert me back")).toBe(true);
-  });
+  // ⚠️ DELETED: "13 — the block-type select converts the current block".
+  //
+  // It drove MDXEditor's `BlockTypeSelect` combobox and asserted that
+  // choosing Heading 1/2/3 or Quote wrote the right markdown prefix. That
+  // control is gone with the formatting toolbar, and there is no equivalent
+  // to point the test at: in raw markdown the author types `# `, so nothing
+  // sits between the keystroke and the stored string for a test to verify.
+  //
+  // The coverage IS lost, not relocated. What it protected — that a block
+  // conversion could not silently write the wrong heading level — was a
+  // property of the WYSIWYG serializer, and that serializer no longer runs.
 });

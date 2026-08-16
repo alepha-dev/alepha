@@ -6,12 +6,25 @@ import "./markdown-view.css";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
-import { rehypeSafeImg } from "../../lib/rehype-safe-img.ts";
 
 export interface MarkdownViewProps {
   content: string;
 }
 
+/**
+ * Renders markdown as formatted prose.
+ *
+ * No raw HTML is ever rendered as markup: react-markdown's default is to
+ * escape a raw node to text, and this component deliberately mounts no
+ * plugin that changes that. A narrow `rehypeSafeImg` plugin used to promote
+ * a lone `<img …>` — the one thing MDXEditor emitted for a *resized* image —
+ * and was deleted along with the editor that produced it, since nothing
+ * writes that markup anymore.
+ *
+ * Do not reach for `rehype-raw` to bring the capability back: this renders
+ * content authored by one user to another, so every raw tag becoming live
+ * markup turns every markdown surface in every app into an injection point.
+ */
 export const MarkdownView = (props: MarkdownViewProps) => {
   return (
     <div className="max-w-none text-sm leading-relaxed">
@@ -19,11 +32,6 @@ export const MarkdownView = (props: MarkdownViewProps) => {
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[
           [rehypeHighlight, { detect: true, ignoreMissing: true }],
-          // Promotes ONLY `<img …>` raw HTML to a real element — what
-          // MDXEditor emits for a resized image. Every other raw node keeps
-          // react-markdown's default, which is to escape it to text. See
-          // `rehype-safe-img.ts` for why this is not `rehype-raw`.
-          rehypeSafeImg,
         ]}
         components={{
           h1: ({ children }) => (

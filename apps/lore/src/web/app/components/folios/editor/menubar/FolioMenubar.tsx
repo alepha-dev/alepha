@@ -1,3 +1,4 @@
+import { Button } from "@alepha/ui/components/ui/button";
 import {
   Menubar,
   MenubarContent,
@@ -24,44 +25,39 @@ export interface FolioMenubarProps {
   handlers: FolioActionHandlers;
   state: FolioActionState;
   /**
-   * Whether an image upload handler is actually wired (`false` for a
-   * protected folio — see `useFolioImageUpload`'s doc). `folioMenubarModel`
-   * has no per-plugin concept, so `insert.image` needs this extra,
-   * targeted disable on top of `isFolioActionEnabled` — mirrors
-   * `MarkdownEditorInner`'s own `withImages` gate on the default toolbar's
-   * Insert Image button.
-   */
-  hasImageUpload: boolean;
-  /**
-   * The save-state line, right-aligned on this row. It lives here rather
-   * than on the toolbar because that is where the design puts it — the
-   * toolbar's own copy is gated behind `showDocActions`, which the shipped
-   * mockup state turns off.
+   * The save-state line, right-aligned on this row.
    */
   statusKey: "draft" | "saved" | "unsaved";
   savedAt?: string;
+  /**
+   * True while `folio.save`'s request is in flight.
+   *
+   * This and `dirty` used to belong to `FolioToolbar`, which owned the
+   * visible Save button and was deleted with the editor realm. The button
+   * moved here rather than going away: Save is the one action nobody should
+   * have to open a menu to find, and `folio.save` being reachable at ⌘S and
+   * under Folio▸Save is not the same as it being VISIBLE.
+   */
+  saving?: boolean;
+  /**
+   * Whether the draft differs from what is stored. Save is pointless
+   * otherwise, and an always-enabled Save button invites the reader to
+   * press it for no reason.
+   */
+  dirty?: boolean;
 }
 
 /**
- * The Folio / Edit / Insert / View / History menubar. Renders `FOLIO_MENUS`
- * as-is — labels, shortcuts, syntax hints and per-state availability all
- * come from that model; nothing here restates them.
+ * The Folio / Edit / View / History menubar. Renders `FOLIO_MENUS` as-is —
+ * labels, shortcuts, syntax hints and per-state availability all come from
+ * that model; nothing here restates them.
  *
- * Deliberately free of any MDXEditor dependency. It mounts in two places
- * that do not share a realm:
- *
- * - through `FolioEditorMenubar`, inside `MarkdownEditor`'s `renderToolbar`
- *   and therefore inside MDXEditor's realm provider, which is the only
- *   context where the `edit.*` / `insert.*` dispatchers can be built;
- * - straight into the workspace's chrome slot on the empty `/folios` state,
- *   where no editor is mounted at all and there is no realm to resolve
- *   against.
- *
- * The second case is why the realm wiring lives in the wrapper rather than
- * here: hooks cannot be called conditionally, so a single component that
- * called `useEditorRealmCommands` could never render without an editor.
- * Availability in that state comes from `FolioActionState.noFolio`, so the
- * menus keep their exact shape and only their enablement changes.
+ * There used to be two of these, mounted in contexts that did not share a
+ * realm: a wrapper inside MDXEditor's `renderToolbar` (the only place the
+ * `edit.*` / `insert.*` dispatchers could be built) and this one, on the
+ * empty `/folios` state where no editor is mounted at all. With the
+ * formatting commands deleted there is one mount point, no wrapper and no
+ * realm — every remaining action is plain app state.
  */
 const FolioMenubar = (props: FolioMenubarProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
@@ -84,7 +80,6 @@ const FolioMenubar = (props: FolioMenubarProps): ReactElement => {
 
   const isDisabled = (item: FolioMenuItem): boolean => {
     if (!isFolioActionEnabled(item.id, props.state)) return true;
-    if (item.id === "insert.image" && !props.hasImageUpload) return true;
     return false;
   };
 
@@ -135,6 +130,18 @@ const FolioMenubar = (props: FolioMenubarProps): ReactElement => {
       <span className="text-muted-foreground text-[11.5px] whitespace-nowrap">
         {statusLabel}
       </span>
+      <Button
+        type="button"
+        size="xs"
+        disabled={
+          !isFolioActionEnabled("folio.save", props.state) ||
+          props.saving ||
+          !props.dirty
+        }
+        onClick={() => dispatch("folio.save")}
+      >
+        {tr("folios.editor.action.save")}
+      </Button>
     </div>
   );
 };

@@ -130,6 +130,8 @@ describe("useFolioActions — envelope salt survives an in-session encrypt", () 
           openHistory: () => {},
         },
         find: { show: () => {} },
+        mode: { editing: true, toggle: () => {} },
+        format: { run: () => {} },
       });
       return <div data-testid="update-count">{fakeLink.updates.length}</div>;
     };
@@ -205,6 +207,8 @@ describe("useFolioActions — applyReverted syncs the draft after a history reve
           openHistory: () => {},
         },
         find: { show: () => {} },
+        mode: { editing: true, toggle: () => {} },
+        format: { run: () => {} },
       }),
     );
     return (

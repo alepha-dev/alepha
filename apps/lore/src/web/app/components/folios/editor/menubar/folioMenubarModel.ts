@@ -12,25 +12,20 @@ export type FolioActionId =
   | "folio.export"
   | "folio.encrypt"
   | "folio.delete"
-  | "edit.undo"
-  | "edit.redo"
   | "edit.bold"
   | "edit.italic"
   | "edit.code"
-  | "edit.link"
-  | "edit.wikiLink"
-  | "edit.find"
-  | "insert.heading"
+  | "insert.heading1"
+  | "insert.heading2"
+  | "insert.heading3"
   | "insert.bulletList"
   | "insert.numberedList"
-  | "insert.taskList"
   | "insert.quote"
-  | "insert.image"
   | "insert.table"
   | "insert.codeBlock"
   | "insert.divider"
-  | "view.rich"
-  | "view.source"
+  | "edit.find"
+  | "view.mode"
   | "view.tree"
   | "view.inspector"
   | "view.focus"
@@ -162,53 +157,27 @@ export const FOLIO_MENUS: FolioMenu[] = [
     labelKey: "folios.editor.menu.edit",
     entries: [
       {
-        id: "edit.undo",
-        labelKey: "folios.editor.action.undo",
-        shortcut: "⌘Z",
-        binding: "mod+z",
-      },
-      {
-        id: "edit.redo",
-        labelKey: "folios.editor.action.redo",
-        shortcut: "⇧⌘Z",
-        binding: "mod+shift+z",
-      },
-      sep,
-      {
         id: "edit.bold",
         labelKey: "folios.editor.action.bold",
-        shortcut: "⌘B",
+        shortcut: "\u2318B",
         binding: "mod+b",
       },
       {
         id: "edit.italic",
         labelKey: "folios.editor.action.italic",
-        shortcut: "⌘I",
+        shortcut: "\u2318I",
         binding: "mod+i",
       },
       {
         id: "edit.code",
         labelKey: "folios.editor.action.code",
-        shortcut: "⌘E",
-        binding: "mod+e",
-      },
-      sep,
-      {
-        id: "edit.link",
-        labelKey: "folios.editor.action.link",
-        shortcut: "⌘K",
-        binding: "mod+k",
-      },
-      {
-        id: "edit.wikiLink",
-        labelKey: "folios.editor.action.wiki-link",
-        syntaxHint: "[[",
+        syntaxHint: "`",
       },
       sep,
       {
         id: "edit.find",
         labelKey: "folios.editor.action.find",
-        shortcut: "⌘F",
+        shortcut: "\u2318F",
         binding: "mod+f",
         availableWhenLocked: true,
       },
@@ -219,10 +188,21 @@ export const FOLIO_MENUS: FolioMenu[] = [
     labelKey: "folios.editor.menu.insert",
     entries: [
       {
-        id: "insert.heading",
-        labelKey: "folios.editor.action.heading",
+        id: "insert.heading1",
+        labelKey: "folios.editor.action.heading1",
+        syntaxHint: "#",
+      },
+      {
+        id: "insert.heading2",
+        labelKey: "folios.editor.action.heading2",
         syntaxHint: "##",
       },
+      {
+        id: "insert.heading3",
+        labelKey: "folios.editor.action.heading3",
+        syntaxHint: "###",
+      },
+      sep,
       {
         id: "insert.bulletList",
         labelKey: "folios.editor.action.bullet-list",
@@ -234,17 +214,11 @@ export const FOLIO_MENUS: FolioMenu[] = [
         syntaxHint: "1.",
       },
       {
-        id: "insert.taskList",
-        labelKey: "folios.editor.action.task-list",
-        syntaxHint: "[]",
-      },
-      {
         id: "insert.quote",
         labelKey: "folios.editor.action.quote",
         syntaxHint: ">",
       },
       sep,
-      { id: "insert.image", labelKey: "folios.editor.action.image" },
       { id: "insert.table", labelKey: "folios.editor.action.table" },
       {
         id: "insert.codeBlock",
@@ -263,14 +237,10 @@ export const FOLIO_MENUS: FolioMenu[] = [
     labelKey: "folios.editor.menu.view",
     entries: [
       {
-        id: "view.rich",
-        labelKey: "folios.editor.action.rich-text",
-        availableWhenLocked: true,
-      },
-      {
-        id: "view.source",
-        labelKey: "folios.editor.action.markdown-source",
-        availableWhenLocked: true,
+        id: "view.mode",
+        labelKey: "folios.editor.action.toggle-mode",
+        shortcut: "\u2318E",
+        binding: "mod+e",
       },
       sep,
       {
@@ -352,38 +322,22 @@ const NEEDS_SAVED_FOLIO = new Set<FolioActionId>([
 ]);
 
 /**
- * The actions whose handler comes from `useEditorRealmCommands`, i.e. that can
- * only work once MDXEditor's realm exists.
- *
- * Kept as a list rather than derived from that hook's return because the hook
- * is only callable INSIDE the realm — the whole point here is to render the
- * menubar while there is no realm to ask. It must stay in step with that hook:
- * an id added there and forgotten here renders enabled and does nothing for the
- * second the chunk is loading.
- *
- * Deliberately absent: `edit.find` (owned by `useFolioFind`) and the
- * `view.tree` / `view.inspector` / `view.focus` pane toggles — all pure app
- * state, all usable with no editor.
+ * Actions that edit the document text, so they need CodeMirror mounted —
+ * i.e. Edit mode. In View mode there is nothing to apply them to.
  */
-const NEEDS_EDITOR = new Set<FolioActionId>([
-  "edit.undo",
-  "edit.redo",
+const NEEDS_EDIT_MODE = new Set<FolioActionId>([
   "edit.bold",
   "edit.italic",
   "edit.code",
-  "edit.link",
-  "edit.wikiLink",
-  "insert.heading",
+  "insert.heading1",
+  "insert.heading2",
+  "insert.heading3",
   "insert.bulletList",
   "insert.numberedList",
-  "insert.taskList",
   "insert.quote",
-  "insert.image",
   "insert.table",
   "insert.codeBlock",
   "insert.divider",
-  "view.rich",
-  "view.source",
 ]);
 
 export interface FolioActionState {
@@ -417,17 +371,10 @@ export interface FolioActionState {
    */
   isPinned: boolean;
   /**
-   * MDXEditor's chunk has not resolved yet, so there is no realm and no
-   * `useEditorRealmCommands` to dispatch through.
-   *
-   * Exists so the menubar can render on the FIRST paint of a folio instead of
-   * waiting for the editor that publishes half its commands: the row used to be
-   * created inside the realm and portalled out, so a cold chunk meant a second
-   * of no menubar at all, then a pop-in. Everything folio-level stays live
-   * throughout; only {@link NEEDS_EDITOR} greys out, and only until the chunk
-   * lands.
+   * The document is showing its raw face, so the formatting actions have an
+   * editor to act on. False in View mode, where they are inert.
    */
-  editorLoading?: boolean;
+  editing?: boolean;
 }
 
 export const isFolioActionEnabled = (
@@ -438,7 +385,7 @@ export const isFolioActionEnabled = (
   // Checked first: with no document open there is no draft to be new or
   // locked, so the other two branches have nothing to reason about.
   if (state.noFolio) return item?.availableWithoutFolio === true;
-  if (state.editorLoading && NEEDS_EDITOR.has(id)) return false;
+  if (!state.editing && NEEDS_EDIT_MODE.has(id)) return false;
   if (state.isNew && NEEDS_SAVED_FOLIO.has(id)) return false;
   if (!state.locked) return true;
   return item?.availableWhenLocked === true;

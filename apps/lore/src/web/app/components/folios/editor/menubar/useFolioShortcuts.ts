@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import type { MarkdownEditorMode } from "../../../shared/markdown-editor/MarkdownEditorInner.tsx";
 import type { FolioActionHandlers } from "../useFolioActions.ts";
 import {
   type FolioActionId,
@@ -23,67 +24,30 @@ const normalize = (event: KeyboardEvent): string => {
 };
 
 /**
- * Bindings the editor ALREADY keeps the promise for on its own, with no
- * help from this hook needed or wanted — each one verified LIVE, not
- * assumed: temporarily disabled this hook's handling for the id alone and
- * confirmed the action still happens.
+ * Ids this hook must NOT claim, because the editor already owns the key.
  *
- * - `edit.bold` / `edit.italic` / `edit.undo` / `edit.redo`: the browser
- *   translates the physical key combo into a native `beforeinput` event on
- *   any `contenteditable` (`inputType: "formatBold"` / `"formatItalic"` /
- *   `"historyUndo"` / `"historyRedo"`), and Lexical's own core
- *   `beforeinput` handler (`node_modules/lexical`, not MDXEditor, not us)
- *   switches on exactly these `inputType`s to dispatch its own
- *   `FORMAT_TEXT_COMMAND` / `UNDO_COMMAND` / `REDO_COMMAND`. Universal
- *   contenteditable behavior — nothing in this codebase registers it.
- * - `edit.link`: MDXEditor's own `linkDialogPlugin` registers a
- *   `KEY_DOWN_COMMAND` listener directly on the Lexical root editor
- *   (`@mdxeditor/editor/dist/plugins/link-dialog/index.js`) that matches
- *   `mod+k` itself and opens the link dialog — MDXEditor's code, not ours.
+ * The set used to hold ⌘B/⌘I/⌘Z/⇧⌘Z/⌘K: Lexical translated those into
+ * `beforeinput` natively, so binding them here double-handled them. Every
+ * one of those ids is gone with the formatting commands.
  *
- * Before this exclusion existed, this hook intercepted the keydown in the
- * CAPTURE phase (window, ahead of the contenteditable) and called
- * `preventDefault()` unconditionally on a match. That suppressed the
- * browser's native `beforeinput` translation before Lexical's core ever
- * saw it, so the editor's own handling never ran — and this hook's OWN
- * replacement dispatch (`editorCommandsRef`, called from outside the
- * update cycle the editor's native listener would have run inside)
- * reliably failed to see a selection to format. Net effect: pressing ⌘B
- * did nothing, even though `applyFormat("bold")` really ran and Lexical's
- * `FORMAT_TEXT_COMMAND` handler really reported `handled: true`. Bold via
- * the Edit menu was unaffected throughout — that path dispatches through
- * `useEditorRealmCommands` on a click, never touching this hook.
+ * ⌘F replaced them, and for a sharper reason. Find-in-folio has two
+ * implementations by design: `useFolioFind` walks the RENDERED pane's text
+ * nodes and paints through the CSS Custom Highlight API, which is exactly
+ * right for View mode and completely wrong for Edit mode — CodeMirror
+ * virtualizes its viewport, so a text-node walk sees only the lines
+ * currently painted and silently reports no match for anything scrolled out
+ * of sight. `@codemirror/search` handles that correctly and is already
+ * mounted, so in Edit mode this hook stands aside and lets the keydown
+ * reach it.
  *
- * `⌘B` (and the other four) are still true, kept promises — Task 4's
- * bindings don't change. They're just kept by the editor now, not by this
- * hook. **Do not delete this set to "simplify" the handler** — putting
- * these ids back under `preventDefault()` + dispatch silently reintroduces
- * the exact bug above.
- *
- * `edit.code` looks like it belongs here too but does NOT: there is no
- * native `formatCode`-style `beforeinput` translation for inline code, and
- * no plugin registers a `mod+e` handler either — confirmed live the same
- * way (disabling this hook's handling for it left `mod+e` doing nothing at
- * all). The same is true for every other realm-backed id in the model
- * (`insert.*`, `view.rich`/`view.source`) and for `edit.wikiLink` (no
- * keyboard convention for literal `[[` exists anywhere) — none of them
- * have a second party that already owns the key, so this hook is the only
- * thing that can ever fire them.
- *
- * Adding a new bound id to `FOLIO_MENUS` later? If the editor turns out to
- * already handle that key too, verify it the same way — disable this
- * hook's handling for that id alone and confirm the action still happens —
- * before adding it here. Don't guess from a component name or a plugin's
- * existence; `edit.link`'s own dialog plugin export is one thing, its
- * *keyboard* registration is a separate fact that has to be checked.
+ * This listener is capture-phase, so standing aside is the ONLY way
+ * CodeMirror ever sees the key: a `preventDefault()` here would beat it
+ * every time.
  */
-const EDITOR_NATIVE_BINDINGS: ReadonlySet<FolioActionId> = new Set([
-  "edit.bold",
-  "edit.italic",
-  "edit.undo",
-  "edit.redo",
-  "edit.link",
-]);
+const editorOwnsBinding = (
+  id: FolioActionId,
+  mode: MarkdownEditorMode,
+): boolean => id === "edit.find" && mode === "edit";
 
 /**
  * Binds every OTHER `folioMenubarModel` keyboard shortcut on `window`, in
@@ -109,14 +73,15 @@ const EDITOR_NATIVE_BINDINGS: ReadonlySet<FolioActionId> = new Set([
  * the browser's own behavior for that key combination still applies.
  *
  * Called once, from `FolioDocument` — a component that stays mounted for
- * the folio's whole session regardless of lock state (unlike `FolioMenubar`,
- * which only exists while unlocked — see `useFolioActions.ts`'s doc on
- * `editorCommandsRef` for why binding here, instead of inside the menubar
- * itself, is load-bearing and not just a style choice).
+ * the folio's whole session regardless of lock state, unlike `FolioMenubar`,
+ * which only exists while unlocked. Binding here rather than inside the
+ * menubar is what keeps the pane toggles (⌘\\, ⌘.) working on a locked
+ * folio, where the menubar is not mounted at all.
  */
 export const useFolioShortcuts = (
   handlers: FolioActionHandlers,
   state: FolioActionState,
+  mode: MarkdownEditorMode,
 ): void => {
   useEffect(() => {
     const bindings = folioShortcutBindings();
@@ -124,7 +89,7 @@ export const useFolioShortcuts = (
     const onKeyDown = (event: KeyboardEvent): void => {
       const id = bindings.get(normalize(event));
       if (!id) return;
-      if (EDITOR_NATIVE_BINDINGS.has(id)) return;
+      if (editorOwnsBinding(id, mode)) return;
       if (!isFolioActionEnabled(id, state)) return;
       event.preventDefault();
       handlers[id]();
@@ -134,5 +99,5 @@ export const useFolioShortcuts = (
     return () => {
       window.removeEventListener("keydown", onKeyDown, { capture: true });
     };
-  }, [handlers, state]);
+  }, [handlers, state, mode]);
 };

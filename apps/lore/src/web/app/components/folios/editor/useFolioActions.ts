@@ -12,7 +12,7 @@ import {
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { ZipArchive } from "alepha/system";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
@@ -74,6 +74,29 @@ export interface UseFolioActionsInput {
     openHistory: () => void;
   };
   find: { show: () => void };
+  /**
+   * Flips the document between its rendered and raw faces — backs
+   * `view.mode` (⌘E). Owned by `FolioDocument`, which holds the mode state,
+   * because the same value drives both the menubar entry and what the body
+   * renders.
+   */
+  mode: {
+    /**
+     * Whether the raw editor is currently mounted. Gates every formatting
+     * action — in View mode there is no view to act on.
+     */
+    editing: boolean;
+    toggle: () => void;
+  };
+  /**
+   * Runs a text-formatting command against the live CodeMirror view.
+   *
+   * A plain callback, not a registration handshake: these are string edits
+   * on a document, so the only thing needed from outside is the view. The
+   * previous editor required a whole publish/subscribe apparatus because
+   * its commands could only be built inside a Lexical realm.
+   */
+  format: { run: (id: FolioActionId) => void };
 }
 
 export interface UseFolioActionsResult {
@@ -131,14 +154,6 @@ export interface UseFolioActionsResult {
    * left to `props.folio` re-rendering on its own.
    */
   applyReverted: (folio: Folio) => Promise<void>;
-  /**
-   * Feeds real MDXEditor realm-command dispatchers (Bold, Insert Table,
-   * Undo, …) into this hook's own `handlers`, from OUTSIDE this hook.
-   * Called by `FolioMenubar` (Task 11), the one component that actually
-   * runs inside MDXEditor's realm — see `editorCommandsRef`'s doc below
-   * for why this indirection exists at all.
-   */
-  registerEditorCommands: (commands: Partial<FolioActionHandlers>) => void;
 }
 
 /**
@@ -282,44 +297,6 @@ export const useFolioActions = (
 
   // Edit▸Bold, Insert▸Table and friends dispatch MDXEditor's own realm
   // commands, reachable ONLY from inside its realm provider —
-  // `MDXEditorMethods` exposes just `insertMarkdown`/`setMarkdown`/
-  // `getMarkdown`/`focus` (see `MarkdownEditorInner.tsx`'s doc). This hook
-  // is called from `FolioWorkspaceContent`, a SIBLING of `<MDXEditor>` —
-  // not a descendant — so no hook call made directly in THIS function body
-  // can ever reach the realm, no matter what's imported.
-  //
-  // `FolioMenubar` (Task 11) is the one component that DOES run inside the
-  // realm (mounted through `renderToolbar`), so it computes the real
-  // dispatchers itself (`useEditorRealmCommands`) and hands them back UP
-  // to this hook via `registerEditorCommands`, which just does
-  // `editorCommandsRef.current = commands`. The `edit.*`/`insert.*`
-  // handlers below read through this ref rather than calling anything
-  // realm-specific directly.
-  //
-  // This indirection is what keeps a SINGLE `useFolioShortcuts` binding
-  // (called once, from `FolioDocument`, which never unmounts regardless of
-  // lock state) correct in every state: while locked, `FolioMenubar` isn't
-  // mounted at all (`MarkdownEditor` is replaced by `FolioLockedPanel`), so
-  // `editorCommandsRef.current` is empty and these handlers are safe
-  // no-ops — which matches `isFolioActionEnabled` already disabling every
-  // one of these ids while locked, so they're never actually reachable via
-  // keyboard either. While unlocked, `FolioMenubar`'s effect has populated
-  // the ref by the time any real keydown can fire, so the SAME handler
-  // reference works for a menu click AND a keyboard shortcut without a
-  // second, realm-aware merge living anywhere else. Binding shortcuts
-  // separately inside `FolioMenubar` instead (the seemingly obvious
-  // alternative) would double-handle every realm-backed shortcut while
-  // unlocked (two `window` capture listeners both matching the same
-  // keydown) and lose ALL shortcuts — including the pane toggles that have
-  // nothing to do with the editor content — the moment any folio locks,
-  // since that listener's host would have unmounted with it.
-  const editorCommandsRef = useRef<Partial<FolioActionHandlers>>({});
-  const registerEditorCommands = (
-    commands: Partial<FolioActionHandlers>,
-  ): void => {
-    editorCommandsRef.current = commands;
-  };
-
   const locked = isProtected && !unlocked;
 
   // Writes the freshly decrypted plaintext into the draft AND re-baselines
@@ -1052,13 +1029,6 @@ export const useFolioActions = (
   // own creation UI (Task 9).
   const notYetWired = (): void => {};
 
-  // Every `edit.*`/`insert.*`/`view.rich`/`view.source` id below reads
-  // through `editorCommandsRef` — see that ref's own doc above for why
-  // this hook cannot dispatch these directly.
-  const dispatchEditorCommand = (id: FolioActionId) => (): void => {
-    editorCommandsRef.current[id]?.();
-  };
-
   const handlers: FolioActionHandlers = {
     "folio.new": () => {
       if (!project) return;
@@ -1101,25 +1071,20 @@ export const useFolioActions = (
     "folio.delete": () => {
       handleDelete();
     },
-    "edit.undo": dispatchEditorCommand("edit.undo"),
-    "edit.redo": dispatchEditorCommand("edit.redo"),
-    "edit.bold": dispatchEditorCommand("edit.bold"),
-    "edit.italic": dispatchEditorCommand("edit.italic"),
-    "edit.code": dispatchEditorCommand("edit.code"),
-    "edit.link": dispatchEditorCommand("edit.link"),
-    "edit.wikiLink": dispatchEditorCommand("edit.wikiLink"),
+    "edit.bold": () => input.format.run("edit.bold"),
+    "edit.italic": () => input.format.run("edit.italic"),
+    "edit.code": () => input.format.run("edit.code"),
+    "insert.heading1": () => input.format.run("insert.heading1"),
+    "insert.heading2": () => input.format.run("insert.heading2"),
+    "insert.heading3": () => input.format.run("insert.heading3"),
+    "insert.bulletList": () => input.format.run("insert.bulletList"),
+    "insert.numberedList": () => input.format.run("insert.numberedList"),
+    "insert.quote": () => input.format.run("insert.quote"),
+    "insert.table": () => input.format.run("insert.table"),
+    "insert.codeBlock": () => input.format.run("insert.codeBlock"),
+    "insert.divider": () => input.format.run("insert.divider"),
     "edit.find": () => input.find.show(),
-    "insert.heading": dispatchEditorCommand("insert.heading"),
-    "insert.bulletList": dispatchEditorCommand("insert.bulletList"),
-    "insert.numberedList": dispatchEditorCommand("insert.numberedList"),
-    "insert.taskList": dispatchEditorCommand("insert.taskList"),
-    "insert.quote": dispatchEditorCommand("insert.quote"),
-    "insert.image": dispatchEditorCommand("insert.image"),
-    "insert.table": dispatchEditorCommand("insert.table"),
-    "insert.codeBlock": dispatchEditorCommand("insert.codeBlock"),
-    "insert.divider": dispatchEditorCommand("insert.divider"),
-    "view.rich": dispatchEditorCommand("view.rich"),
-    "view.source": dispatchEditorCommand("view.source"),
+    "view.mode": () => input.mode.toggle(),
     "view.tree": () => input.panes.toggleTree(),
     "view.inspector": () => input.panes.toggleInspector(),
     "view.focus": () => input.panes.toggleFocus(),
@@ -1135,6 +1100,7 @@ export const useFolioActions = (
     dirty: input.draft.dirty,
     isProtected,
     isPinned,
+    editing: input.mode.editing,
   };
 
   return {
@@ -1151,7 +1117,6 @@ export const useFolioActions = (
     closeEncryptDialog: () => setEncryptDialogOpen(false),
     confirmEncrypt,
     applyReverted,
-    registerEditorCommands,
   };
 };
 

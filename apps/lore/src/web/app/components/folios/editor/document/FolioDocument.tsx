@@ -1,4 +1,5 @@
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
+import type { EditorView } from "@codemirror/view";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { type ReactElement, useMemo } from "react";
@@ -9,15 +10,15 @@ import { currentProjectAtom } from "../../../../atoms/currentProjectAtom.ts";
 import { projectDirectoriesAtom } from "../../../../atoms/projectDirectoriesAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 import MarkdownEditor from "../../../shared/markdown-editor/MarkdownEditor.tsx";
+import type { MarkdownEditorMode } from "../../../shared/markdown-editor/MarkdownEditorInner.tsx";
+import MarkdownModeToggle from "../../../shared/markdown-editor/MarkdownModeToggle.tsx";
 import FolioPassphraseDialog from "../../FolioPassphraseDialog.tsx";
 import WikiLinkHoverProvider from "../../WikiLinkHoverProvider.tsx";
-import FolioEditorMenubar from "../menubar/FolioEditorMenubar.tsx";
 import FolioMenubar from "../menubar/FolioMenubar.tsx";
 import { useFolioShortcuts } from "../menubar/useFolioShortcuts.ts";
-import FolioToolbar from "../toolbar/FolioToolbar.tsx";
 import type { UseFolioActionsResult } from "../useFolioActions.ts";
 import type { FolioDraft } from "../useFolioDraft.ts";
-import { useWikiLinkEditorContext } from "../wikilink/useWikiLinkEditorContext.ts";
+import type { FolioWikiLinks } from "../wikilink/useFolioWikiLinks.ts";
 import FolioLockedPanel from "./FolioLockedPanel.tsx";
 import FolioMetaBar from "./FolioMetaBar.tsx";
 import FolioMoveDialog from "./FolioMoveDialog.tsx";
@@ -41,24 +42,30 @@ export interface FolioDocumentProps {
   draft: FolioDraft;
   actions: UseFolioActionsResult;
   /**
-   * Where the MENUBAR row renders. It is created inside MDXEditor's realm
-   * — the only place its commands can be published from — but the design
-   * puts it above all three panes, so `renderToolbar` portals it into this
-   * node rather than rendering it in place. See `FolioWorkspace.tsx` for
-   * the full reasoning.
+   * Where the menubar row renders — a slot above all three panes, owned by
+   * `FolioWorkspace`.
+   *
+   * It is a portal target purely for LAYOUT now. It used to be a necessity:
+   * the menubar had to be created inside MDXEditor's realm, the only place
+   * its formatting commands could be published from, so it was rendered
+   * through `renderToolbar` and portalled back up to where the design
+   * wanted it. With the formatting commands gone there is no realm and no
+   * second `toolbarSlot` — the row is plain React that happens to render
+   * somewhere else in the DOM.
    */
   chromeSlot: HTMLElement | null;
   /**
-   * Where the FORMATTING TOOLBAR renders — a second target inside the
-   * document column, owned by `FolioWorkspaceContent`. The two rows shared
-   * `chromeSlot` until it became clear they are not the same kind of
-   * thing: the menubar carries folio-level actions (move, delete, the pane
-   * toggles) that apply with nothing selected and even while the folio is
-   * locked, so it is workspace chrome; the toolbar is nothing but
-   * text-formatting commands, so it belongs to the text. Same portal
-   * mechanism, different destination.
+   * Which face the body shows. Owned by `FolioWorkspaceContent` because
+   * `useFolioActions` needs a toggle for `view.mode` (⌘E) and that is where
+   * the hook is called.
    */
-  toolbarSlot: HTMLElement | null;
+  mode: MarkdownEditorMode;
+  /**
+   * The `[[` picker's entries and the rewritten markdown View mode shows.
+   * Computed one level up because find-in-folio has to key on the rendered
+   * string — see `FolioWorkspaceContent`.
+   */
+  wikiLinks: FolioWikiLinks;
   /**
    * Revision count for the meta bar's "$3 revisions" — sourced from the
    * inspector's History tab (`FolioInspector`'s `onRevisionCount`), via
@@ -68,6 +75,11 @@ export interface FolioDocumentProps {
    */
   revisionCount?: number;
   imageUploadHandler?: (file: File) => Promise<string>;
+  /**
+   * Receives the live CodeMirror view so the workspace can dispatch
+   * formatting commands into it. `null` on unmount.
+   */
+  onEditorViewReady?: (view: EditorView | null) => void;
 }
 
 /**
@@ -84,20 +96,22 @@ const countWords = (content: string): number => {
 
 /**
  * The document column: title → meta bar → summary → divider → body. Body
- * is either the editable MDXEditor or, for a protected-and-still-locked
- * folio, `FolioLockedPanel` in its place.
+ * is either the `MarkdownEditor` (rendered or raw, per `props.mode`) or,
+ * for a protected-and-still-locked folio, `FolioLockedPanel` in its place.
  *
- * Also owns the menubar/toolbar chrome (Task 11) and the keyboard
- * shortcuts that drive it. `useFolioShortcuts` is called HERE, not inside
- * `FolioMenubar`, deliberately: this component never unmounts while a
- * folio is open (only the `MarkdownEditor`/`FolioLockedPanel` ternary
- * below swaps), so binding shortcuts here — once — keeps every
- * `availableWhenLocked` action (the pane toggles, ⌘S, ⌘D, …) reachable by
- * keyboard the whole time, including while `FolioMenubar` itself isn't
- * mounted (locked). See `useFolioActions.ts`'s doc on `editorCommandsRef`
- * for how `props.actions.handlers` still resolves the realm-backed
- * `edit.*`/`insert.*` ids correctly despite `useFolioShortcuts` living
- * outside the realm.
+ * Also owns the menubar chrome and the keyboard shortcuts that drive it.
+ * `useFolioShortcuts` is called HERE, not inside `FolioMenubar`,
+ * deliberately: this component never unmounts while a folio is open (only
+ * the `MarkdownEditor`/`FolioLockedPanel` ternary below swaps), so binding
+ * shortcuts here — once — keeps every `availableWhenLocked` action (the
+ * pane toggles, ⌘S, ⌘D, …) reachable by keyboard the whole time, including
+ * while `FolioMenubar` itself isn't mounted (locked).
+ *
+ * The mode is threaded into `useFolioShortcuts` because ⌘F means two
+ * different things: in View mode this hook claims it for the find bar, and
+ * in Edit mode it stands aside so `@codemirror/search` gets the keydown.
+ * See that hook's `editorOwnsBinding` for why the walk-the-text-nodes
+ * implementation cannot serve both.
  */
 const FolioDocument = (props: FolioDocumentProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
@@ -106,9 +120,13 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
   const [blobs] = useStore(currentFolioBlobsAtom);
   const [project] = useStore(currentProjectAtom);
 
-  useFolioShortcuts(props.actions.handlers, props.actions.actionState);
+  useFolioShortcuts(
+    props.actions.handlers,
+    props.actions.actionState,
+    props.mode,
+  );
 
-  const wikiLinks = useWikiLinkEditorContext(project?.id, project?.slug);
+  const values = props.draft.values;
   // The hover card resolves a blob preview from a precomputed list rather
   // than a fetch, so it needs the same rows the resolver got.
   const hoverBlobs = useMemo(
@@ -121,34 +139,12 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
     [blobs],
   );
 
-  /**
-   * Content stores `assets/<name>`, which the browser cannot load — resolve
-   * it to the real file URL for display only. The markdown is untouched, so
-   * what gets saved (and exported) stays the portable relative path.
-   *
-   * An unknown name is returned unchanged rather than blanked: the editor
-   * then shows a broken image where the author put one, which is the honest
-   * signal that the attachment is gone.
-   */
-  const imagePreviewHandler = useMemo(() => {
-    const byName = new Map(
-      blobs.map((b) => [b.name.trim().toLowerCase(), b.id]),
-    );
-    return async (src: string): Promise<string> => {
-      const match = /^assets\/(.+)$/i.exec(src);
-      if (!match) return src;
-      const id = byName.get(decodeURIComponent(match[1]).trim().toLowerCase());
-      return id ? `/api/files/${id}` : src;
-    };
-  }, [blobs]);
-
   // Absent on every project that has not opted in — the key is deliberately
   // missing from `defaultProjectFeatures` (adding it there would change the
   // `projects` column DEFAULT and trigger the D1 rebuild that cascade-wipes
   // prod), so `?? false` is the default, not a fallback.
   const summaryVisible = project?.features?.folioSummary ?? false;
 
-  const values = props.draft.values;
   const disabled = props.actions.locked;
 
   // `props.actions.directoryId` (LIVE — moved by `confirmMove`'s own
@@ -186,11 +182,42 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
     // lookup to — the tree and the inspector carry `contenteditable` nodes
     // of their own, so a document-wide query would land in the wrong one.
     <div data-slot="folio-document" className="flex flex-col gap-0">
-      <FolioTitleField
-        value={values.title}
-        onChange={(v) => props.draft.form.input.title.set(v)}
-        disabled={disabled}
-      />
+      {/* A LAYOUT portal, nothing more. The menubar used to be created
+          inside MDXEditor's realm and portalled up here, which forced a
+          `loadingChrome` stand-in for the second before the editor chunk
+          landed — the row was simply absent until then, and popped in. It
+          is plain React now, so it renders on the first paint like
+          everything else. */}
+      {props.chromeSlot &&
+        createPortal(
+          <FolioMenubar
+            handlers={props.actions.handlers}
+            state={props.actions.actionState}
+            statusKey={props.draft.statusKey}
+            savedAt={props.draft.savedAt}
+            saving={props.actions.saving}
+            dirty={props.draft.dirty}
+          />,
+          props.chromeSlot,
+        )}
+
+      {/* Title and mode toggle share a row: the toggle acts on the document
+          the title names, so this is where it is looked for. `items-start`
+          because the title wraps to several lines at long titles and the
+          control should stay on the first one. */}
+      <div className="flex items-start gap-2">
+        <FolioTitleField
+          value={values.title}
+          onChange={(v) => props.draft.form.input.title.set(v)}
+          disabled={disabled}
+        />
+        <MarkdownModeToggle
+          mode={props.mode}
+          onChange={() => props.actions.handlers["view.mode"]()}
+          disabled={props.actions.locked}
+          iconOnly
+        />
+      </div>
 
       <FolioMetaBar
         directoryName={directoryName}
@@ -240,72 +267,12 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
             onChange={(v) => props.draft.form.input.content.set(v)}
             placeholder={tr("folios.content-placeholder")}
             imageUploadHandler={props.imageUploadHandler}
-            imagePreviewHandler={imagePreviewHandler}
-            allowImageResize
-            wikiLinks={wikiLinks}
+            wikiLinkSuggestions={props.wikiLinks.suggestions}
+            viewContent={props.wikiLinks.rendered}
+            mode={props.mode}
             minHeight={420}
             variant="bare"
-            // The menubar is created inside MDXEditor's realm and portalled up
-            // — so a cold editor chunk meant the chrome row was simply ABSENT
-            // for about a second on every first folio open, then popped in.
-            // Reserving its height would have hidden the layout jump and left
-            // the flicker; this renders the real row immediately, from outside
-            // the realm, with `editorLoading` greying out only the commands
-            // that genuinely need one. Suspense swaps it for the realm-backed
-            // `FolioEditorMenubar` when the chunk lands, so the two are never
-            // mounted together.
-            loadingChrome={
-              props.chromeSlot
-                ? createPortal(
-                    <FolioMenubar
-                      handlers={props.actions.handlers}
-                      state={{
-                        ...props.actions.actionState,
-                        editorLoading: true,
-                      }}
-                      hasImageUpload={!!props.imageUploadHandler}
-                      statusKey={props.draft.statusKey}
-                      savedAt={props.draft.savedAt}
-                    />,
-                    props.chromeSlot,
-                  )
-                : null
-            }
-            renderToolbar={() => (
-              // Two portals, not one. Both keep their row inside MDXEditor's
-              // React tree — so `usePublisher`/`useCellValue` still resolve
-              // against the live realm — while putting the DOM where the
-              // design has it: the menubar above all three panes, the
-              // formatting toolbar inside the document column with the text
-              // it acts on. Rendering in place until a slot exists would
-              // flash the row in the wrong position on first paint, so each
-              // renders nothing until its own target is there.
-              <>
-                {props.chromeSlot &&
-                  createPortal(
-                    <FolioEditorMenubar
-                      handlers={props.actions.handlers}
-                      state={props.actions.actionState}
-                      hasImageUpload={!!props.imageUploadHandler}
-                      onEditorCommands={props.actions.registerEditorCommands}
-                      statusKey={props.draft.statusKey}
-                      savedAt={props.draft.savedAt}
-                    />,
-                    props.chromeSlot,
-                  )}
-                {props.toolbarSlot &&
-                  createPortal(
-                    <FolioToolbar
-                      handlers={props.actions.handlers}
-                      state={props.actions.actionState}
-                      saving={props.actions.saving}
-                      dirty={props.draft.dirty}
-                      hasImageUpload={!!props.imageUploadHandler}
-                    />,
-                    props.toolbarSlot,
-                  )}
-              </>
-            )}
+            onViewReady={props.onEditorViewReady}
           />
         </WikiLinkHoverProvider>
       )}

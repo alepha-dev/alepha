@@ -188,20 +188,20 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
     // The tree resizer was blamed for this and is innocent: reproduced with
     // `lor.folio.workspace.treeWidth` unset.
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
-      {/* The MENUBAR row lands HERE, portalled up from inside MDXEditor's
-          realm (see `FolioDocument`'s `renderToolbar`). The design puts it
-          above all three panes, spanning the whole surface — but its
-          `edit.*`/`insert.*` items can only be published from inside that
-          realm. A portal is what reconciles the two: it moves the DOM
-          without leaving the React tree, so the row keeps its realm
-          context while rendering here. A callback ref (via `useState`)
-          rather than `useRef` so the document re-renders once the node
-          exists and the portal has a target on the first paint after mount.
+      {/* The MENUBAR row lands HERE, portalled up from `FolioDocument`.
+          The design puts it above all three panes, spanning the whole
+          surface, while the component that owns its state lives in the
+          document column.
 
-          The formatting toolbar used to land here too and no longer does —
-          it is text-formatting only, so it portals into the document column
-          instead (`FolioWorkspaceContent`'s `toolbarSlot`). The empty state
-          below already rendered no toolbar, so nothing changes for it. */}
+          It used to be portalled for a second, harder reason: the row was
+          created inside MDXEditor's realm, the only context where its
+          `edit.*`/`insert.*` dispatchers could be built, so the portal was
+          what let it keep that context while rendering here. Those commands
+          are gone and so is the realm — this is now a plain layout portal.
+
+          A callback ref (via `useState`) rather than `useRef` so the
+          document re-renders once the node exists and the portal has a
+          target on the first paint after mount. */}
       <div ref={setChromeSlot} className="flex flex-none flex-col" />
       <div className="relative flex min-h-0 flex-1">
         {project && (
@@ -237,7 +237,6 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
                 <FolioMenubar
                   handlers={emptyStateHandlers}
                   state={EMPTY_STATE_ACTION_STATE}
-                  hasImageUpload={false}
                   statusKey="draft"
                 />,
                 chromeSlot,
