@@ -8,8 +8,6 @@ import {
   MenubarShortcut,
   MenubarTrigger,
 } from "@alepha/ui/components/ui/menubar";
-import { DateTimeProvider } from "alepha/datetime";
-import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import type { ReactElement } from "react";
 import type { I18n } from "../../../../services/I18n.ts";
@@ -25,18 +23,8 @@ export interface FolioMenubarProps {
   handlers: FolioActionHandlers;
   state: FolioActionState;
   /**
-   * The save-state line, right-aligned on this row.
-   */
-  statusKey: "draft" | "saved" | "unsaved";
-  savedAt?: string;
-  /**
-   * True while `folio.save`'s request is in flight.
-   *
-   * This and `dirty` used to belong to `FolioToolbar`, which owned the
-   * visible Save button and was deleted with the editor realm. The button
-   * moved here rather than going away: Save is the one action nobody should
-   * have to open a menu to find, and `folio.save` being reachable at ⌘S and
-   * under Folio▸Save is not the same as it being VISIBLE.
+   * True while `folio.save`'s request is in flight. Only reaches the button in
+   * create mode, which is the only state that still renders one.
    */
   saving?: boolean;
   /**
@@ -61,7 +49,6 @@ export interface FolioMenubarProps {
  */
 const FolioMenubar = (props: FolioMenubarProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
-  const dt = useInject(DateTimeProvider);
 
   const dispatch = (id: FolioMenuItem["id"]): void => {
     props.handlers[id]();
@@ -82,13 +69,6 @@ const FolioMenubar = (props: FolioMenubarProps): ReactElement => {
     if (!isFolioActionEnabled(item.id, props.state)) return true;
     return false;
   };
-
-  const statusLabel =
-    props.statusKey === "saved" && props.savedAt
-      ? tr("folios.editor.status.saved", {
-          args: [String(dt.of(props.savedAt).fromNow())],
-        })
-      : tr(`folios.editor.status.${props.statusKey}`);
 
   // 34px, one subtle step off the card, as the design has it — expressed
   // with the theme's own tokens rather than the mockup's raw oklch values,
@@ -127,21 +107,32 @@ const FolioMenubar = (props: FolioMenubarProps): ReactElement => {
         ))}
       </Menubar>
       <div className="flex-1" />
-      <span className="text-muted-foreground text-[11.5px] whitespace-nowrap">
-        {statusLabel}
-      </span>
-      <Button
-        type="button"
-        size="xs"
-        disabled={
-          !isFolioActionEnabled("folio.save", props.state) ||
-          props.saving ||
-          !props.dirty
-        }
-        onClick={() => dispatch("folio.save")}
-      >
-        {tr("folios.editor.action.save")}
-      </Button>
+      {/* Save survives in CREATE MODE ONLY, and the status line not at all.
+          Editing a folio that exists is auto-saved (`useFolioAutoSave`: 1.5s
+          after typing stops, plus once more on the way out), so a button and a
+          "not saved yet" line were both reporting on a problem the reader no
+          longer has.
+
+          Create mode is the one state autosave deliberately does not cover —
+          `enabled: !!props.folio`, so a folio does not spring into existence on
+          the first keystroke. Removing the button there too would leave a new
+          folio with no visible way to save at all: ⌘S and Folio▸Save would
+          still work, which is not the same as being findable. That exact
+          regression has shipped here once before. */}
+      {props.state.isNew && (
+        <Button
+          type="button"
+          size="xs"
+          disabled={
+            !isFolioActionEnabled("folio.save", props.state) ||
+            props.saving ||
+            !props.dirty
+          }
+          onClick={() => dispatch("folio.save")}
+        >
+          {tr("folios.editor.action.save")}
+        </Button>
+      )}
     </div>
   );
 };

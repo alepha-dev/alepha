@@ -1,7 +1,7 @@
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useI18n } from "alepha/react/i18n";
 import { Folder, Plus, X } from "lucide-react";
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import type { I18n } from "../../../../services/I18n.ts";
 
 export interface FolioMetaBarProps {
@@ -22,6 +22,15 @@ export interface FolioMetaBarProps {
   onOpenMove: () => void;
   onAddTag: () => void;
   onRemoveTag: (tag: string) => void;
+  /**
+   * Rendered at the far right of the row, after the word/revision count.
+   *
+   * The view/edit toggle lives here since the document heading was removed —
+   * this row is the only chrome the document has left, and the toggle is a
+   * control over the body exactly like the chips beside it are controls over
+   * the folio.
+   */
+  trailing?: ReactNode;
 }
 
 /**
@@ -32,7 +41,9 @@ export interface FolioMetaBarProps {
 const FolioMetaBar = (props: FolioMetaBarProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-2">
+    // No top margin: the header wrapper's own padding is the spacing now, and
+    // an `mt-4` on top of it double-counted the gap under the menubar.
+    <div className="flex flex-wrap items-center gap-3">
       <button
         type="button"
         onClick={props.onOpenMove}
@@ -100,8 +111,30 @@ const FolioMetaBar = (props: FolioMetaBarProps): ReactElement => {
                 ],
               },
             )
-          : tr("folios.editor.meta.draft")}
+          : // No shortId means the folio does not exist server-side yet. This
+            // used to read "Draft · not saved yet", which was true and useless:
+            // an existing folio auto-saves, so the only state that line ever
+            // described was the one where the reader has not pressed Save yet —
+            // and the Save button is right there saying so. The word count is
+            // what the line can usefully carry meanwhile.
+            tr(
+              props.wordCount === 1
+                ? "folios.editor.meta.draft-one"
+                : "folios.editor.meta.draft",
+              { args: [String(props.wordCount)] },
+            )}
       </span>
+      {/* A hairline between the count and whatever trails it — the count is
+          read-only text and the trailing control is not, so the rule marks
+          where the row stops reporting and starts offering. Rendered WITH the
+          trailing node, never alone: a divider with nothing after it is just a
+          mark. `aria-hidden` because it separates visually and says nothing. */}
+      {props.trailing && (
+        <>
+          <div aria-hidden className="bg-border h-5.5 w-px" />
+          {props.trailing}
+        </>
+      )}
     </div>
   );
 };

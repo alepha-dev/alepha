@@ -23,7 +23,6 @@ import FolioLockedPanel from "./FolioLockedPanel.tsx";
 import FolioMetaBar from "./FolioMetaBar.tsx";
 import FolioMoveDialog from "./FolioMoveDialog.tsx";
 import FolioSummaryField from "./FolioSummaryField.tsx";
-import FolioTitleField from "./FolioTitleField.tsx";
 
 export interface FolioDocumentProps {
   /**
@@ -193,89 +192,103 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
           <FolioMenubar
             handlers={props.actions.handlers}
             state={props.actions.actionState}
-            statusKey={props.draft.statusKey}
-            savedAt={props.draft.savedAt}
             saving={props.actions.saving}
             dirty={props.draft.dirty}
           />,
           props.chromeSlot,
         )}
 
-      {/* Title and mode toggle share a row: the toggle acts on the document
-          the title names, so this is where it is looked for. `items-start`
-          because the title wraps to several lines at long titles and the
-          control should stay on the first one. */}
-      <div className="flex items-start gap-2">
-        <FolioTitleField
-          value={values.title}
-          onChange={(v) => props.draft.form.input.title.set(v)}
+      {/* HEADER — full width, deliberately outside the prose measure below.
+          The document heading is gone: a folio is named in the TREE now, the
+          way a file is renamed in a file manager, so the only name on screen
+          is the one in the tree and there is no second field that could
+          disagree with it. What is left is this chip row, which is chrome
+          about the folio rather than part of the document. */}
+      <div className="p-4">
+        <FolioMetaBar
+          directoryName={directoryName}
+          tags={values.tags}
+          shortId={props.folio?.shortId}
+          wordCount={countWords(values.content)}
+          revisionCount={props.revisionCount}
           disabled={disabled}
-        />
-        <MarkdownModeToggle
-          mode={props.mode}
-          onChange={() => props.actions.handlers["view.mode"]()}
-          disabled={props.actions.locked}
-          iconOnly
+          moveDisabled={!props.folio}
+          onOpenMove={() => props.actions.handlers["folio.move"]()}
+          onAddTag={handleAddTag}
+          onRemoveTag={handleRemoveTag}
+          trailing={
+            <MarkdownModeToggle
+              mode={props.mode}
+              onChange={() => props.actions.handlers["view.mode"]()}
+              disabled={props.actions.locked}
+              iconOnly
+              // Skinned as one of this row's chips: the directory button's
+              // own border, radius and height, so the toggle reads as the
+              // last control in the row rather than a toolbar button parked
+              // beside it.
+              className="border-border text-muted-foreground hover:text-foreground size-6.5 rounded-md border"
+            />
+          }
         />
       </div>
 
-      <FolioMetaBar
-        directoryName={directoryName}
-        tags={values.tags}
-        shortId={props.folio?.shortId}
-        wordCount={countWords(values.content)}
-        revisionCount={props.revisionCount}
-        disabled={disabled}
-        moveDisabled={!props.folio}
-        onOpenMove={() => props.actions.handlers["folio.move"]()}
-        onAddTag={handleAddTag}
-        onRemoveTag={handleRemoveTag}
-      />
-
       {/* Off unless the project opts in (Settings › Folios). The summary is
           written for `project_context` / `folio_list`, so for a reader it is
-          chrome between the title and the first line of prose. Hiding the
-          field does not stop it round-tripping — the draft still carries the
-          stored value and still saves it. */}
+          chrome above the first line of prose. Hiding the field does not stop
+          it round-tripping — the draft still carries the stored value and
+          still saves it. Inside the header's padding, since it belongs with
+          the chrome rather than with the document. */}
       {summaryVisible && (
-        <FolioSummaryField
-          value={values.summary}
-          onChange={(v) => props.draft.form.input.summary.set(v)}
-          unavailable={props.actions.actionState.isProtected}
-        />
-      )}
-
-      <div className="border-border my-6 border-t" />
-
-      {props.actions.locked ? (
-        <FolioLockedPanel
-          onUnlock={props.actions.unlock}
-          onDelete={() => props.actions.handlers["folio.delete"]()}
-        />
-      ) : (
-        // Same hover card the reader gets. The provider delegates on both
-        // `a[href]` and `[data-wiki-href]`, so one component serves the
-        // rewritten markdown of `MarkdownView` and the decorated tokens of
-        // the editor without either knowing about the other.
-        <WikiLinkHoverProvider
-          projectId={project?.id ?? 0}
-          projectSlug={project?.slug ?? ""}
-          blobs={hoverBlobs}
-        >
-          <MarkdownEditor
-            value={values.content}
-            onChange={(v) => props.draft.form.input.content.set(v)}
-            placeholder={tr("folios.content-placeholder")}
-            imageUploadHandler={props.imageUploadHandler}
-            wikiLinkSuggestions={props.wikiLinks.suggestions}
-            viewContent={props.wikiLinks.rendered}
-            mode={props.mode}
-            minHeight={420}
-            variant="bare"
-            onViewReady={props.onEditorViewReady}
+        <div className="px-8">
+          <FolioSummaryField
+            value={values.summary}
+            onChange={(v) => props.draft.form.input.summary.set(v)}
+            unavailable={props.actions.actionState.isProtected}
           />
-        </WikiLinkHoverProvider>
+        </div>
       )}
+
+      {/* Edge to edge, unlike everything under it. The rule separates the
+          document's chrome from the document, so it has to reach the pane's
+          own edges — inside the prose measure it read as an underline on the
+          chip row rather than as a division of the surface. */}
+      <div className="border-border border-t" />
+
+      {/* BODY — the only part still held to the 812px prose measure. This
+          wrapper used to live in `FolioWorkspaceContent` and enclose the
+          header and the rule as well, which is what kept all three the same
+          width. */}
+      <div className="mx-auto w-full max-w-[812px] px-8 py-8">
+        {props.actions.locked ? (
+          <FolioLockedPanel
+            onUnlock={props.actions.unlock}
+            onDelete={() => props.actions.handlers["folio.delete"]()}
+          />
+        ) : (
+          // Same hover card the reader gets. The provider delegates on both
+          // `a[href]` and `[data-wiki-href]`, so one component serves the
+          // rewritten markdown of `MarkdownView` and the decorated tokens of
+          // the editor without either knowing about the other.
+          <WikiLinkHoverProvider
+            projectId={project?.id ?? 0}
+            projectSlug={project?.slug ?? ""}
+            blobs={hoverBlobs}
+          >
+            <MarkdownEditor
+              value={values.content}
+              onChange={(v) => props.draft.form.input.content.set(v)}
+              placeholder={tr("folios.content-placeholder")}
+              imageUploadHandler={props.imageUploadHandler}
+              wikiLinkSuggestions={props.wikiLinks.suggestions}
+              viewContent={props.wikiLinks.rendered}
+              mode={props.mode}
+              minHeight={420}
+              variant="bare"
+              onViewReady={props.onEditorViewReady}
+            />
+          </WikiLinkHoverProvider>
+        )}
+      </div>
 
       <FolioMoveDialog
         open={props.actions.moveDialogOpen}

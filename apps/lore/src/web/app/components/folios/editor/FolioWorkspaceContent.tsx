@@ -250,7 +250,12 @@ const FolioWorkspaceContent = (
             ref={setContentElement}
             className="min-w-0 flex-1 overflow-y-auto"
           >
-            <div className="mx-auto flex max-w-[812px] flex-col gap-4 px-8 py-8">
+            {/* No width cap and no padding here anymore: the header row and
+                the rule under it run edge to edge, and only the BODY is held
+                to the prose measure. `FolioDocument` applies both per section
+                — a single wrapper at this level cannot, since it would have
+                to be two different widths at once. */}
+            <div className="flex flex-col">
               <FolioDocument
                 folio={props.folio}
                 directoryId={props.directoryId}

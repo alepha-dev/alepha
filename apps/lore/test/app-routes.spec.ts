@@ -72,13 +72,14 @@ const NAV_ROUTE_NAMES = [
   "register",
   "projectCreate",
   "projectFeedbackRequest",
-  // The shared /account area (@alepha/ui AccountRouter) plus Lore's own two
+  // The shared /account area (@alepha/ui AccountRouter) plus Lore's own three
   // pages inside it. `myFeedback` kept its pre-migration name on purpose —
   // see LoreAccountRouter.
   "account",
   "accountProfile",
   "accountConnections",
   "accountInvitations",
+  "accountProjects",
   "myFeedback",
 ];
 

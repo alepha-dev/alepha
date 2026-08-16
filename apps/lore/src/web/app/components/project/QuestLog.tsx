@@ -11,6 +11,7 @@ import {
   BookOpen,
   ChevronsDownUp,
   ChevronsUpDown,
+  PanelLeftClose,
   Search,
   X,
 } from "lucide-react";
@@ -19,7 +20,19 @@ import { currentAssignedQuestsAtom } from "../../atoms/currentAssignedQuestsAtom
 import type { I18n } from "../../services/I18n.ts";
 import QuestList from "./quest/QuestList.tsx";
 
-const QuestLog = () => {
+export interface QuestLogProps {
+  /**
+   * Collapses the whole pane to `ProjectQuestLogRail`.
+   *
+   * A callback rather than this component reading `questLogCollapsedAtom`
+   * directly: `ProjectView` owns the layout, and it is the only component that
+   * can swap this pane for the rail. Reading the atom here would let the log
+   * set a flag that something else has to notice.
+   */
+  onCollapse: () => void;
+}
+
+const QuestLog = (props: QuestLogProps) => {
   const [quests = []] = useStore(currentAssignedQuestsAtom);
   const { tr } = useI18n<I18n, "en">();
   const [searchValue, setSearchValue] = useState<string>("");
@@ -92,6 +105,31 @@ const QuestLog = () => {
               {collapseSignal.collapsed
                 ? tr("quest-log.expand-all" as never)
                 : tr("quest-log.collapse-all" as never)}
+            </TooltipContent>
+          </Tooltip>
+          {/* Deliberately NOT a chevron. The button to its left toggles the
+              quest GROUPS and is already a double-chevron; a second chevron
+              beside it would read as one control with two directions rather
+              than two controls with different subjects. A panel icon says the
+              subject is the pane itself. */}
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-6"
+                  data-testid="quest-log-collapse"
+                  onClick={props.onCollapse}
+                  aria-label={tr("quest-log.collapse-panel" as never)}
+                />
+              }
+            >
+              <PanelLeftClose className="size-3.5" />
+            </TooltipTrigger>
+            <TooltipContent>
+              {tr("quest-log.collapse-panel" as never)}
             </TooltipContent>
           </Tooltip>
         </div>

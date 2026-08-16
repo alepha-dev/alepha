@@ -97,7 +97,7 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
                 },
                 { value: "all", label: tr("feedback.filter.all") },
               ]}
-              size="sm"
+              size="lg"
               fullWidth
             />
           </div>
