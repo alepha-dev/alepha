@@ -207,3 +207,74 @@ describe("getWorkspaceContext — workspace membership", () => {
     ).toBe(true);
   });
 });
+
+/**
+ * Regression: a `pnpm create alepha` scaffold installed cleanly, printed
+ * "Project ready!", and then failed `dev`, `build`, `test` and `typecheck`
+ * on `Cannot find module 'vitest'`. The toolchain ships inside `alepha`'s own
+ * dependencies and the generated `vite.config.ts` / dummy spec import it
+ * directly, which only ever worked because npm, bun and yarn hoist. `create`
+ * exited 0 under all four managers, so nothing short of running the
+ * scaffolded project could see it.
+ */
+describe("ensurePnpm — hoisting", () => {
+  const seed = async (files: Record<string, string> = {}) => {
+    const alepha = Alepha.create()
+      .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+      .with({ provide: ShellProvider, use: MemoryShellProvider });
+    const fs = alepha.inject(MemoryFileSystemProvider);
+    fs.files.set(
+      "/app/package.json",
+      Buffer.from(JSON.stringify({ name: "app" })),
+    );
+    for (const [path, content] of Object.entries(files)) {
+      fs.files.set(path, Buffer.from(content));
+    }
+    return { fs, pm: alepha.inject(TestPackageManagerUtils) };
+  };
+
+  const npmrc = async (fs: MemoryFileSystemProvider): Promise<string | null> =>
+    (await fs.exists("/app/.npmrc"))
+      ? (await fs.readFile("/app/.npmrc")).toString("utf-8")
+      : null;
+
+  it("writes node-linker=hoisted into a fresh project", async () => {
+    const { fs, pm } = await seed();
+
+    await pm.ensurePnpm("/app");
+
+    expect(await npmrc(fs)).toBe("node-linker=hoisted\n");
+  });
+
+  it("keeps an existing .npmrc and appends to it", async () => {
+    const { fs, pm } = await seed({
+      "/app/.npmrc": "registry=https://npm.example.com/",
+    });
+
+    await pm.ensurePnpm("/app");
+
+    expect(await npmrc(fs)).toBe(
+      "registry=https://npm.example.com/\nnode-linker=hoisted\n",
+    );
+  });
+
+  it("leaves an explicit node-linker choice alone", async () => {
+    const { fs, pm } = await seed({
+      "/app/.npmrc": "node-linker=isolated\n",
+    });
+
+    await pm.ensurePnpm("/app");
+
+    expect(await npmrc(fs)).toBe("node-linker=isolated\n");
+  });
+
+  it("does not write an .npmrc for the managers that hoist by default", async () => {
+    for (const ensure of ["ensureNpm", "ensureYarn", "ensureBun"] as const) {
+      const { fs, pm } = await seed();
+
+      await pm[ensure]("/app");
+
+      expect(await npmrc(fs)).toBe(null);
+    }
+  });
+});

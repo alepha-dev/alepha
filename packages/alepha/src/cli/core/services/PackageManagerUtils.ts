@@ -385,7 +385,48 @@ export class PackageManagerUtils {
   }
 
   public async ensurePnpm(root: string): Promise<void> {
+    await this.ensurePnpmHoisting(root);
     await this.removeAllPmFilesExcept(root, "pnpm");
+  }
+
+  /**
+   * Opt a pnpm project into a hoisted `node_modules`.
+   *
+   * `alepha` carries the toolchain — vite, vitest, typescript, biome,
+   * drizzle-kit — in its own `dependencies`, and the scaffold's generated
+   * files import part of it directly: `vite.config.ts` imports
+   * `vitest/config`, and the dummy spec imports `vitest`. npm, bun and yarn
+   * all hoist those transitives into the project's top-level `node_modules`,
+   * so the imports resolve. pnpm's isolated linker does not, and the result
+   * is a project that installs cleanly, prints "Project ready!", and then
+   * fails `dev`, `build`, `test` and `typecheck` alike on
+   * `Cannot find module 'vitest'`.
+   *
+   * {@link AlephaCliUtils.resolveBin} already covers the other half of the
+   * same problem — a transitive's *bin* is not linked into `.bin` either —
+   * which is why `lint` was the one script that survived. Nothing can fix
+   * module resolution from the project's own source except the layout.
+   *
+   * Mirrors {@link ensureYarn} writing `nodeLinker: node-modules`: one
+   * layout across all four managers, so there is one bug surface instead of
+   * four. An `.npmrc` that already sets `node-linker` is left alone — that
+   * is a deliberate choice by whoever wrote it.
+   */
+  protected async ensurePnpmHoisting(root: string): Promise<void> {
+    const npmrcPath = this.fs.join(root, ".npmrc");
+    const current = (await this.fs.exists(npmrcPath))
+      ? (await this.fs.readFile(npmrcPath)).toString("utf-8")
+      : "";
+
+    if (/^\s*node-linker\s*=/m.test(current)) {
+      return;
+    }
+
+    const prefix = current.length > 0 && !current.endsWith("\n") ? "\n" : "";
+    await this.fs.writeFile(
+      npmrcPath,
+      `${current}${prefix}node-linker=hoisted\n`,
+    );
   }
 
   public async ensureNpm(root: string): Promise<void> {
