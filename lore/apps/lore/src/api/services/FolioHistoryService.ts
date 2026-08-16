@@ -1,4 +1,5 @@
 import { $inject, Alepha } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { folioHistoryAtom } from "../atoms/folioHistoryAtom.ts";
 import {
@@ -54,27 +55,111 @@ export const decideRevisionAction = (
 };
 
 /**
- * Append-only writer + retention sweeper for `folio_revisions`. Used by
- * `FolioController.update` on every edit; called explicitly by the
- * `revert` endpoint.
+ * How long a revision stays open to further edits by the same author.
+ *
+ * An hour is long enough that one writing session is one entry, and short
+ * enough that coming back after lunch starts a new one. It exists because
+ * the editor auto-saves: without coalescing, every pause in typing would
+ * mint a revision and the retention cap would evict the whole session's
+ * history within minutes.
+ */
+const COALESCE_WINDOW_MS = 60 * 60 * 1000;
+
+/**
+ * Writer + retention sweeper for `folio_revisions`. Used by
+ * `FolioController.update` on every edit; called explicitly by the `revert`
+ * endpoint.
+ *
+ * No longer append-ONLY: see {@link FolioHistoryService.appendRevision} for
+ * why a save inside the coalescing window updates the newest revision in
+ * place instead of inserting beside it.
  */
 export class FolioHistoryService {
   protected readonly revisions = $repository(folioRevisions);
   protected readonly alepha = $inject(Alepha);
+  protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
-   * Append a revision and enforce the retention cap. Caller picks the
+   * The newest revision, if it is still open to being folded into.
+   *
+   * `undefined` when there is none, when it belongs to someone else, when
+   * it is pinned or a revert, or when it has aged out of the window — in
+   * every one of those cases the caller must insert a new row.
+   */
+  protected async findOpenRevision(
+    folioId: string,
+    byUserId: string,
+  ): Promise<FolioRevision | undefined> {
+    const [head] = await this.revisions.findMany({
+      where: { folioId: { eq: folioId } },
+      orderBy: [{ column: "at", direction: "desc" }],
+      limit: 1,
+    });
+    if (!head) return undefined;
+    if (head.byUserId !== byUserId) return undefined;
+    if (head.pinned) return undefined;
+    if (head.action === "revert") return undefined;
+    const age = this.dateTime.nowMillis() - Date.parse(head.at);
+    return age < COALESCE_WINDOW_MS ? head : undefined;
+  }
+
+  /**
+   * Record a revision and enforce the retention cap. Caller picks the
    * `action` (or computes it via {@link decideRevisionAction}).
-   * Returns the inserted revision row.
+   *
+   * ## Append, or fold into the one already open
+   *
+   * If the newest revision is the same author's, is less than an hour old,
+   * and is not one of the two kinds that must stay untouched, this UPDATES
+   * it in place instead of inserting: same row, new snapshot, refreshed
+   * timestamp. One continuous writing session is therefore one history
+   * entry whose snapshot is where the session got to.
+   *
+   * That is what makes auto-save affordable. A save per typing pause would
+   * otherwise insert a revision per pause, and the retention cap (10
+   * non-pinned by default) would evict the entire session — and everything
+   * before it — inside a few minutes of writing. Coalescing keeps history
+   * measured in sessions rather than in keystrokes.
+   *
+   * Two kinds are never folded into:
+   * - **pinned**, because pinning means "keep exactly this snapshot", and
+   *   overwriting it would silently discard the thing the user asked to
+   *   keep;
+   * - **revert**, because a revert is a deliberate checkpoint — folding an
+   *   edit into it would erase the evidence that a revert happened.
+   *
+   * The folded row keeps the action it was CREATED with, so a burst that
+   * began as `create` still reads as `create` however much was typed into
+   * it afterwards. The alternative — relabelling to the latest action —
+   * would report a brand-new folio as an `edit`.
    */
   public async appendRevision(
     folio: Folio,
     byUserId: string,
     action: RevisionAction,
   ): Promise<FolioRevision> {
+    // A revert always gets its own row, in BOTH directions. Blocking only
+    // the "fold into a revert" side was a bug: the revert's own write would
+    // fold into the edit revision that preceded it, overwriting the very
+    // snapshot being reverted away from and leaving no trace that a revert
+    // happened at all.
+    const open =
+      action === "revert"
+        ? undefined
+        : await this.findOpenRevision(folio.id, byUserId);
+    if (open) {
+      return await this.revisions.updateById(open.id, {
+        at: this.dateTime.now().toISOString(),
+        contentSnapshot: folio.content,
+        titleSnapshot: folio.title,
+        tagsSnapshot: folio.tags,
+        summarySnapshot: folio.summary,
+      });
+    }
+
     const inserted = await this.revisions.create({
       folioId: folio.id,
-      at: new Date().toISOString(),
+      at: this.dateTime.now().toISOString(),
       byUserId,
       action,
       contentSnapshot: folio.content,

@@ -432,11 +432,13 @@ test.describe("Quest", () => {
         .getByRole("button", { name: /complete.*quest/i })
         .first()
         .click();
-      // Dialog presents the shared markdown editor (contenteditable).
-      const editor = page.locator('.lore-mdx [contenteditable="true"]').first();
+      // The dialog presents the shared markdown editor. Quest surfaces
+      // open in Edit mode, so CodeMirror is already mounted — but its
+      // surface is a contenteditable, so the text is typed, not filled.
+      const editor = page.locator(".lore-md-edit .cm-content").first();
       await expect(editor).toBeVisible({ timeout: 10_000 });
       await editor.click();
-      await editor.fill(summaryText);
+      await editor.pressSequentially(summaryText);
       await page
         .getByRole("button", { name: /complete with summary/i })
         .click();

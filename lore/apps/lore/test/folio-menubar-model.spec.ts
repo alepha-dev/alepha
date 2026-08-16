@@ -97,9 +97,25 @@ describe("isFolioActionEnabled", () => {
     isPinned: false,
   };
 
-  it("enables everything on an unlocked saved folio", () => {
+  it("enables everything on an unlocked saved folio in Edit mode", () => {
     for (const item of folioMenuItems()) {
-      expect(isFolioActionEnabled(item.id, unlocked), item.id).toBe(true);
+      expect(
+        isFolioActionEnabled(item.id, { ...unlocked, editing: true }),
+        item.id,
+      ).toBe(true);
+    }
+  });
+
+  it("disables the formatting actions in View mode, and only those", () => {
+    // They edit the document text, so they need CodeMirror mounted. Every
+    // other action — save, pin, export, the pane toggles, find — acts on
+    // the folio or the workspace and stays live while reading.
+    const reading = { ...unlocked, editing: false };
+    for (const item of folioMenuItems()) {
+      const needsEditor = /^(edit\.(bold|italic|code)|insert\.)/.test(item.id);
+      expect(isFolioActionEnabled(item.id, reading), item.id).toBe(
+        !needsEditor,
+      );
     }
   });
 
@@ -111,8 +127,11 @@ describe("isFolioActionEnabled", () => {
       isProtected: false,
       isPinned: false,
     };
-    expect(isFolioActionEnabled("edit.bold", locked)).toBe(false);
-    expect(isFolioActionEnabled("insert.table", locked)).toBe(false);
+    // `view.mode` carries what `edit.bold` / `insert.table` used to assert
+    // here: it is the id that means "act on the body", and a locked folio's
+    // body is ciphertext. The formatting ids were deleted with the editor
+    // realm that published them.
+    expect(isFolioActionEnabled("view.mode", locked)).toBe(false);
     expect(isFolioActionEnabled("folio.save", locked)).toBe(false);
   });
 

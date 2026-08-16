@@ -257,17 +257,42 @@ export const newUserContext = async (
 };
 
 /**
- * Type into the shared MDXEditor-based markdown editor. The editor is a
- * contenteditable (not a <textarea>), so `getByPlaceholder(...).fill()`
- * no longer works. `nth` picks among several editors on screen (0-based).
+ * Type into the shared markdown editor.
+ *
+ * Two things changed when MDXEditor became a View/Edit toggle, and both
+ * matter here:
+ *
+ * 1. **The editor is not mounted until Edit mode.** Folios open rendered
+ *    (they are read far more than written), so this switches first — via
+ *    the `data-testid` toggle the quest surfaces carry, falling back to ⌘E,
+ *    which is what the folio workspace binds in its View menu.
+ * 2. **`.fill()` still does not work.** CodeMirror's surface is a
+ *    contenteditable like Lexical's was, so the text has to be typed. The
+ *    select-all + Delete replaces `fill()`'s clearing behaviour.
+ *
+ * `nth` picks among several editors on screen (0-based).
  */
 export async function fillMarkdownEditor(
   page: import("@playwright/test").Page,
   text: string,
   nth = 0,
 ): Promise<void> {
-  const editor = page.locator('.lore-mdx [contenteditable="true"]').nth(nth);
+  const toggle = page.getByTestId("markdown-mode-toggle").nth(nth);
+  if (await toggle.count()) {
+    if ((await toggle.getAttribute("data-mode")) === "view") {
+      await toggle.click();
+    }
+  } else {
+    // The folio workspace drives the mode from its menubar, not an inline
+    // button. ⌘E is the same action.
+    const alreadyEditing = await page.locator(".lore-md-edit").count();
+    if (!alreadyEditing) await page.keyboard.press("ControlOrMeta+e");
+  }
+
+  const editor = page.locator(".lore-md-edit .cm-content").nth(nth);
   await editor.waitFor({ state: "visible", timeout: 10_000 });
   await editor.click();
-  await editor.fill(text);
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("Delete");
+  await editor.pressSequentially(text);
 }

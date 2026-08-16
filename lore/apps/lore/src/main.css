@@ -171,283 +171,6 @@ body::before {
 }
 
 /* ────────────────────────────────────────────────────────────────────────
- * MarkdownEditor (MDXEditor) — map the editor's own variables onto the shadcn
- * tokens so it follows every Lore theme and the light/dark mode automatically.
- * `.mdxeditor-popup-container` is portalled to <body>, so it needs the same
- * mapping.
- *
- * The `--base*` names below are the Radix Colors scale, which MDXEditor
- * bundles (`@radix-ui/colors`). That transitive dependency is the only Radix
- * in this repo — the UI components are Base UI.
- * ──────────────────────────────────────────────────────────────────────── */
-
-/* Double the class for specificity: MDXEditor's own stylesheet defines
- * the same variables on `.mdxeditor` and loads AFTER main.css (it ships
- * inside the lazy editor chunk), so a single-class selector loses. */
-.lore-mdx.lore-mdx,
-.mdxeditor-popup-container.mdxeditor-popup-container {
-  --basePageBg: var(--background);
-  --baseBase: var(--muted);
-  --baseBgSubtle: var(--muted);
-  --baseBg: var(--muted);
-  --baseBgHover: var(--accent);
-  --baseBgActive: var(--accent);
-  --baseLine: var(--border);
-  --baseBorder: var(--border);
-  --baseBorderHover: var(--ring);
-  --baseSolid: var(--muted-foreground);
-  --baseSolidHover: var(--foreground);
-  --baseText: var(--foreground);
-  --baseTextContrast: var(--foreground);
-  --accentBase: transparent;
-  --accentBgSubtle: var(--accent);
-  --accentBg: var(--accent);
-  --accentBgHover: var(--accent);
-  --accentBgActive: var(--accent);
-  --accentLine: var(--border);
-  --accentBorder: var(--border);
-  --accentBorderHover: var(--ring);
-  --accentSolid: var(--primary);
-  --accentSolidHover: var(--primary);
-  --accentText: var(--primary);
-  --accentTextContrast: var(--primary-foreground);
-  --font-body: var(--font-sans, inherit);
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  color: var(--foreground);
-}
-
-.lore-mdx {
-  border: 1px solid var(--input);
-  border-radius: var(--radius);
-  background: var(--background);
-  overflow: hidden;
-}
-
-.lore-mdx .mdx-toolbar {
-  border-bottom: 1px solid var(--border);
-  border-radius: 0;
-  background: var(--muted);
-  /*
-   * The other half of the `min-w-0` on the editor wrapper, and not optional.
-   * `.lore-mdx` is `overflow: hidden`, so letting the box shrink without this
-   * turns a visible overflow into silently CLIPPED, unreachable toolbar
-   * buttons — a worse bug than the one being fixed, because nothing looks
-   * wrong. Eleven controls need roughly 810px; below that they scroll.
-   *
-   * Same decision `FolioToolbar` already made for the folio surface, where its
-   * own comment records the 810px figure. The default toolbar never got it.
-   */
-  overflow-x: auto;
-}
-
-.lore-mdx-content {
-  min-height: var(--lore-mdx-min-h, 16rem);
-  font-size: 0.875rem;
-  line-height: 1.625;
-}
-
-/* Content typography — Tailwind's preflight flattens h1/ul/ol inside the
- * contenteditable, so restore the same scale MarkdownView uses for
- * rendering. Editing and viewing should look like the same document. */
-.lore-mdx-content h1 {
-  margin: 1rem 0 0.75rem;
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.025em;
-}
-
-.lore-mdx-content h2 {
-  margin: 1rem 0 0.5rem;
-  font-size: 1.25rem;
-  font-weight: 600;
-  letter-spacing: -0.025em;
-}
-
-.lore-mdx-content h3 {
-  margin: 0.75rem 0 0.5rem;
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.lore-mdx-content ul {
-  margin: 0.75rem 0;
-  padding-left: 1.25rem;
-  list-style: disc;
-}
-
-.lore-mdx-content ol {
-  margin: 0.75rem 0;
-  padding-left: 1.25rem;
-  list-style: decimal;
-}
-
-/* Task-list items render their own checkbox — no disc marker on top. */
-.lore-mdx-content li[role="checkbox"] {
-  list-style: none;
-}
-
-.lore-mdx-content blockquote {
-  margin: 0.75rem 0;
-  border-left: 2px solid var(--border);
-  padding-left: 0.75rem;
-  color: var(--muted-foreground);
-}
-
-.lore-mdx-content code {
-  border-radius: 0.25rem;
-  background: var(--muted);
-  padding: 0.125rem 0.25rem;
-  font-family: var(--font-mono);
-  font-size: 0.8125rem;
-}
-
-.lore-mdx-content hr {
-  margin: 1rem 0;
-  border-color: var(--border);
-}
-
-/*
- * Wiki-links inside the editor body (#131).
- *
- * The token keeps its `[[...]]` text — see `WikiLinkNode` for why the editor
- * decorates in place instead of swapping in a resolved title — so the styling
- * has to do all the work of saying "this is a live reference". A resolved one
- * reads as a link; an unresolved one gets the wavy-underline treatment a
- * spell-checker uses, which says "look at this" without claiming the document
- * is broken.
- */
-.lore-mdx-content .lore-wikilink {
-  color: var(--primary);
-  cursor: pointer;
-  border-radius: 0.1875rem;
-  background: color-mix(in oklab, var(--primary) 10%, transparent);
-  padding: 0 0.125rem;
-}
-
-.lore-mdx-content .lore-wikilink-broken {
-  color: var(--destructive);
-  background: transparent;
-  text-decoration: underline wavy
-    color-mix(in oklab, var(--destructive) 60%, transparent);
-  text-underline-offset: 0.2em;
-  cursor: help;
-}
-
-/* Source mode: match the old font-mono textarea feel. */
-.lore-mdx .cm-editor {
-  font-size: 0.8125rem;
-}
-
-/*
- * Code blocks inside the editor.
- *
- * MDXEditor ships these as CSS modules with hashed class names
- * (`_codeMirrorWrapper_er3ed_391`), so there is no stable hook — the
- * substring match on the un-hashed part is the same version-coupled
- * trade-off already taken for its diff/source toggle. Check these
- * selectors when bumping @mdxeditor/editor.
- *
- * Two problems being fixed. The block ignored the theme entirely and
- * painted its own light canvas, unreadable in dark mode. And its toolbar
- * — a full-size language dropdown plus a Delete button — sat permanently
- * on top of every block, competing with the code for attention on a page
- * where most blocks are read, not edited.
- */
-.lore-mdx [class*="_codeMirrorWrapper_"] {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--muted);
-  overflow: hidden;
-}
-
-.lore-mdx [class*="_codeMirrorWrapper_"] .cm-editor,
-.lore-mdx [class*="_codeMirrorWrapper_"] .cm-content,
-.lore-mdx [class*="_codeMirrorWrapper_"] .cm-gutters {
-  background: transparent;
-  color: var(--foreground);
-}
-
-.lore-mdx [class*="_codeMirrorWrapper_"] .cm-gutters {
-  border-right: 1px solid var(--border);
-  color: var(--muted-foreground);
-}
-
-.lore-mdx [class*="_codeMirrorWrapper_"] .cm-activeLine,
-.lore-mdx [class*="_codeMirrorWrapper_"] .cm-activeLineGutter {
-  background: color-mix(in oklch, var(--foreground) 6%, transparent);
-}
-
-/* The toolbar is permanently visible, and small enough to afford it.
- *
- * It used to be hover/focus-within revealed, which had a failure mode worse
- * than the clutter it avoided: opening the language dropdown moves the pointer
- * off the wrapper, and Radix portals the popup to the editor root — outside the
- * wrapper — so `:focus-within` is false too. Both controls faded to nothing at
- * the exact moment the user was operating them, with no way to tell "gone" from
- * "hidden". Revealing on `[data-state="open"]` as well would have papered over
- * it; being always-there removes the state that could disagree.
- *
- * The size reduction is what buys the permanence: dimmed until interacted with,
- * so a block being read is still mostly code.
- */
-.lore-mdx [class*="_codeMirrorToolbar_"] {
-  opacity: 0.55;
-  padding: 0.125rem;
-  gap: 0.125rem;
-  transition: opacity 120ms ease;
-}
-
-.lore-mdx [class*="_codeMirrorWrapper_"]:hover [class*="_codeMirrorToolbar_"],
-.lore-mdx
-  [class*="_codeMirrorWrapper_"]:focus-within
-  [class*="_codeMirrorToolbar_"],
-/* Its own dropdown being open is the one moment the toolbar is certainly
- * being looked at — and the moment neither hover nor focus-within is true,
- * because the popup is portalled out of the wrapper and takes the pointer
- * with it. Keyed on the trigger's own `data-state`, which Radix owns. */
-.lore-mdx [class*="_codeMirrorToolbar_"]:has([data-state="open"]) {
-  opacity: 1;
-}
-
-.lore-mdx [class*="_codeMirrorToolbar_"] [class*="_selectTrigger_"] {
-  width: auto;
-  min-width: 6rem;
-  margin: 0;
-  padding: 0.0625rem 0.25rem;
-  font-size: 0.6875rem;
-}
-
-.lore-mdx [class*="_codeMirrorToolbar_"] button {
-  padding: 0.125rem;
-}
-
-.lore-mdx [class*="_codeMirrorToolbar_"] svg {
-  width: 0.875rem;
-  height: 0.875rem;
-}
-
-/* The language list is eleven entries and was free to grow to the full height
- * Radix offers it (`--radix-select-content-available-height`), which on a tall
- * viewport is the rest of the screen. Cap it and let it scroll.
- *
- * `.mdxeditor-select-content` is a plain class MDXEditor puts on every
- * `Select.Content` alongside the hashed module one — unlike the
- * `[class*="_codeMirrorWrapper_"]` selectors above, it is not version-coupled,
- * so prefer it for anything targeting a dropdown.
- *
- * `!important` because MDXEditor writes `max-height` as an INLINE style on the
- * viewport — nothing in a stylesheet can outrank that. The `min()` keeps
- * Radix's own measurement as the ceiling, so the list still shrinks to fit a
- * short viewport (the editor also runs inside dialogs). */
-.mdxeditor-select-content [data-editor-dropdown] {
-  max-height: min(
-    15rem,
-    var(--radix-select-content-available-height)
-  ) !important;
-  overflow-y: auto;
-}
-
-/* ────────────────────────────────────────────────────────────────────────
  * Twilight — GitHub Primer-inspired. Cool blue-grey canvas, accent blue.
  * Light maps to canvas-default/subtle/muted; dark to #0d1117/#161b22/#21262d.
  * ──────────────────────────────────────────────────────────────────────── */
@@ -762,28 +485,19 @@ body::before {
 }
 
 /*
- * The folio workspace's editor: no frame, and the body set in the reading
- * face at the design's own size. The document there IS the page — the
- * design runs the prose straight on under the summary divider rather than
- * boxing it in a form field, which is what every other caller of the
- * shared editor (quest descriptions, feedback replies) still wants.
+ * The folio workspace's document face.
+ *
+ * The design runs the prose straight on under the summary divider rather
+ * than boxing it in a form field, which is what every other caller of the
+ * shared editor (quest descriptions, quest notes) still wants — so `bare`
+ * drops the frame and sets the body in the reading face at the design's own
+ * size.
+ *
+ * Applied to the VIEW face only. Edit mode is raw markdown in a monospace
+ * editor: setting source text in a serif reading face would make the markup
+ * harder to scan, which is the one thing that mode exists for.
  */
-.lore-mdx-bare.lore-mdx-bare {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  overflow: visible;
-}
-
-/* The workspace portals its toolbar rows out of the editor, so MDXEditor's
- * own toolbar container is left rendering nothing — but it keeps its
- * height, background and bottom border, which paints a stray grey strip
- * above the prose. */
-.lore-mdx-bare .mdx-toolbar {
-  display: none;
-}
-
-.lore-mdx-bare .lore-mdx-content {
+.lore-md-view {
   font-family: var(--font-folio-serif);
   font-size: 16.5px;
   line-height: 1.8;
@@ -791,8 +505,13 @@ body::before {
 
 /*
  * Find-in-folio highlighting via the CSS Custom Highlight API. Ranges are
- * registered from `useFolioFind`; injecting <mark> elements would corrupt
- * Lexical's document state, which is why this is done with highlights.
+ * registered from `useFolioFind`, which paints the VIEW face — Edit mode
+ * hands ⌘F to `@codemirror/search` instead (see `useFolioShortcuts`).
+ *
+ * Highlights rather than injected <mark> elements: the reason used to be
+ * that injected nodes would corrupt Lexical's document state. It is now
+ * that View mode's DOM is derived from the markdown on every render, so an
+ * injected node is discarded the moment anything changes.
  *
  * The colours are LITERAL on purpose. Custom properties do not resolve
  * inside `::highlight()`: `var(--primary)` silently falls back and both

@@ -1,5 +1,6 @@
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
+import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake, FakeProvider } from "alepha/fake";
 import { AlephaOrm } from "alepha/orm";
@@ -84,11 +85,16 @@ describe("FolioController.listProjectActivity", () => {
       { body: { projectId: cid, title: "A", content: "" } },
       { user: owner },
     );
-    // Edit to push a second revision.
+    // Edit to push a second revision. Past the coalescing window, or it
+    // folds into A's `create` and the feed shows two items, not three.
+    await ctx.alepha.inject(DateTimeProvider).travel(2, "hours");
     await ctx.folios.update.fetch(
       { params: { id: a.data.id }, body: { content: "first edit" } },
       { user: owner },
     );
+    // Again, so B is strictly newer than A's edit — the feed is ordered by
+    // timestamp and a tie makes the assertion order-dependent.
+    await ctx.alepha.inject(DateTimeProvider).travel(2, "hours");
     await ctx.folios.create.fetch(
       { body: { projectId: cid, title: "B", content: "" } },
       { user: owner },

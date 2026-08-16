@@ -1,27 +1,17 @@
-import { lazy, type ReactNode, Suspense, useSyncExternalStore } from "react";
+import { lazy, Suspense, useSyncExternalStore } from "react";
 import type { MarkdownEditorInnerProps } from "./MarkdownEditorInner.tsx";
 
-export interface MarkdownEditorProps extends MarkdownEditorInnerProps {
-  /**
-   * Rendered alongside the body placeholder for exactly as long as the editor
-   * is not mounted — pre-hydration and while the lazy chunk resolves.
-   *
-   * `renderToolbar` output only exists once the realm does, so any chrome a
-   * caller portals out of the editor is absent until then. Callers that put
-   * such chrome somewhere structural (Lore's folio menubar sits above all three
-   * panes) can pass a stand-in here and let Suspense do the swap: no readiness
-   * flag to thread, no window where both are mounted.
-   */
-  loadingChrome?: ReactNode;
-}
+export type MarkdownEditorProps = MarkdownEditorInnerProps;
 
 /**
- * Lore's markdown editor — a lazy, client-only boundary around MDXEditor.
+ * Lore's markdown surface — a lazy, client-only boundary around the
+ * view/edit toggle.
  *
- * The MDXEditor bundle (Lexical + CodeMirror) is heavy and browser-only,
- * so it must never be evaluated during SSR and never land in the initial
- * chunk: the import happens through `lazy()` and the component renders a
- * placeholder until hydration.
+ * CodeMirror is browser-only, so it must never be evaluated during SSR and
+ * never land in the initial chunk: the import happens through `lazy()` and
+ * the component renders a placeholder until hydration. That was true of the
+ * MDXEditor this replaced and is just as true now — the bundle is far
+ * smaller, but `document` is still required at module scope.
  *
  * Markdown stays the single source of truth (folios are stored, encrypted
  * and MCP-served as markdown strings) — this is only a view over it.
@@ -62,15 +52,13 @@ const MarkdownEditor = (props: MarkdownEditorProps) => {
   // The placeholder has to reserve the same shape the real editor will
   // take, frame included — a bare editor that flashes a bordered box
   // before hydration is a visible jump on every folio open.
-  const { loadingChrome, ...innerProps } = props;
   const placeholder = (
     <>
-      {loadingChrome}
       <div
         className={
           props.variant === "bare"
-            ? "min-h-64"
-            : "border-input bg-background min-h-64 rounded-md border"
+            ? "lore-md-view min-h-64"
+            : "lore-md-view border-input bg-background min-h-64 rounded-md border p-3"
         }
         style={props.minHeight ? { minHeight: props.minHeight } : undefined}
       />
@@ -83,7 +71,7 @@ const MarkdownEditor = (props: MarkdownEditorProps) => {
 
   return (
     <Suspense fallback={placeholder}>
-      <Inner {...innerProps} />
+      <Inner {...props} />
     </Suspense>
   );
 };

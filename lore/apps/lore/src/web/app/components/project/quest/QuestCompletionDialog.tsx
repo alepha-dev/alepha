@@ -12,6 +12,8 @@ import { Swords } from "lucide-react";
 import { useState } from "react";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import MarkdownEditor from "../../shared/markdown-editor/MarkdownEditor.tsx";
+import type { MarkdownEditorMode } from "../../shared/markdown-editor/MarkdownEditorInner.tsx";
+import MarkdownModeToggle from "../../shared/markdown-editor/MarkdownModeToggle.tsx";
 import { useQuestImageUpload } from "../../shared/markdown-editor/useQuestImageUpload.ts";
 
 export interface QuestCompletionDialogProps {
@@ -25,6 +27,7 @@ const QuestCompletionDialog = (props: QuestCompletionDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
   const imageUploadHandler = useQuestImageUpload();
   const [message, setMessage] = useState("");
+  const [mode, setMode] = useState<MarkdownEditorMode>("edit");
 
   const handleClose = (open: boolean) => {
     if (!open) {
@@ -58,11 +61,15 @@ const QuestCompletionDialog = (props: QuestCompletionDialogProps) => {
             {tr("quest.view.complete.description")}
           </DialogDescription>
         </DialogHeader>
+        <div className="flex justify-end">
+          <MarkdownModeToggle mode={mode} onChange={setMode} />
+        </div>
         <MarkdownEditor
           value={message}
           onChange={setMessage}
           placeholder={tr("quest.view.complete.placeholder")}
           imageUploadHandler={imageUploadHandler}
+          mode={mode}
           minHeight={200}
         />
         <DialogFooter className="gap-2">
