@@ -98,7 +98,10 @@ const AccountProfile = (props: AccountProfileProps) => {
 
   return (
     <>
-      <SettingsSection title="Profile picture">
+      <SettingsSection
+        title="Profile picture"
+        description="Shown next to your name wherever you appear."
+      >
         <SettingsRow
           label="Avatar"
           description="PNG, JPEG, GIF or WebP, up to 5 MB."
@@ -154,7 +157,10 @@ const AccountProfile = (props: AccountProfileProps) => {
       />
 
       <form onSubmit={save}>
-        <SettingsSection title="Name">
+        <SettingsSection
+          title="Name"
+          description="How you are identified to other people."
+        >
           <SettingsRow
             label="Username"
             htmlFor="accountUsername"
@@ -194,13 +200,16 @@ const AccountProfile = (props: AccountProfileProps) => {
         </SettingsSection>
       </form>
 
-      <SettingsSection title="Account">
+      <SettingsSection
+        title="Account"
+        description="Details you cannot change from this page."
+      >
         <SettingsRow
           label="Email"
-          description="Changing your email needs verification — it is not a profile edit."
+          description="Changing your email needs verification, so it is not a profile edit."
         >
           <span className="text-muted-foreground text-sm">
-            {profile.email ?? "—"}
+            {profile.email ?? "Not set"}
           </span>
         </SettingsRow>
         <SettingsRow label="Roles">

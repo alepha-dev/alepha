@@ -41,6 +41,20 @@ export interface AccountRouterOptions {
   className?: string;
 
   /**
+   * Bound the account area to its parent's height and let its content column
+   * scroll, rather than relying on the document to scroll.
+   *
+   * Set it whenever the application adopts `AccountRouter.layout` into a shell
+   * that has taken the viewport height and hidden its overflow — the common
+   * `h-svh … overflow-hidden` app frame. Without it those pages have no
+   * scrollbar at all in such a shell, and everything past the fold is
+   * unreachable rather than merely below.
+   *
+   * @default false — the account area scrolls with the document.
+   */
+  fill?: boolean;
+
+  /**
    * Props forwarded to the pages, keyed by page.
    *
    * Each entry reuses that component's own exported props interface rather

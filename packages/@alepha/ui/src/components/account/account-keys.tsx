@@ -125,7 +125,7 @@ const AccountKeys = (props: AccountKeysProps) => {
 
         <SettingsRow
           label="Create a key"
-          description="Shown once, at creation — it cannot be recovered afterwards."
+          description="Shown once, at creation. It cannot be recovered afterwards."
         >
           <Button
             variant="secondary"

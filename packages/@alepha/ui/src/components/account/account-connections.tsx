@@ -52,8 +52,16 @@ const AccountConnections = (props: AccountConnectionsProps) => {
   };
 
   if (connections.length === 0) {
+    /*
+      Same title AND description as the populated branch below. An empty page
+      that drops its description reads as a different page, and the sentence is
+      exactly what a reader with nothing on screen needs.
+    */
     return (
-      <SettingsSection title="Connected apps">
+      <SettingsSection
+        title="Connected apps"
+        description="Applications that can act on your behalf."
+      >
         <SettingsRow
           label={
             <span className="flex items-center gap-2 text-muted-foreground">

@@ -1,5 +1,6 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
+import { SettingsHeading } from "@alepha/ui/components/settings/settings-heading";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { z } from "alepha";
@@ -62,14 +63,16 @@ const MyFeedback = () => {
   }, []);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3">
-      <div className="flex flex-col gap-0.5">
-        <h2 className="text-base font-semibold">Feedback</h2>
-        <p className="text-muted-foreground text-xs">
-          Feedback and requests you submitted across projects. Pending ones can
-          be edited or withdrawn.
-        </p>
-      </div>
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
+      {/*
+        `SettingsHeading`, not a hand-rolled `<h2>`: every other page in the
+        `/account` rail titles itself through it, and this one used to carry a
+        `text-base font-semibold` heading that made it the odd one out.
+      */}
+      <SettingsHeading
+        title="Submitted feedback"
+        description="Bug reports and requests you submitted across projects. Pending ones can still be edited or withdrawn."
+      />
 
       <AlephaTable<MyFeedbackResource>
         key={tableKey}

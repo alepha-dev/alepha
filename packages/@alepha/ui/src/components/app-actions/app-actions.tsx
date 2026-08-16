@@ -99,11 +99,16 @@ export const AppActions = (props: AppActionsProps) => {
         onSignIn={() => router.push(props.loginRouteName ?? "login")}
       >
         <ButtonUser.Email />
+        {/* Account before admin — see `ButtonUser`'s `DefaultMenu` for why. */}
+        <ButtonUser.AccountMenuItem label={props.labels?.account} />
+        {/*
+          `routeName`, not `onClick`: both of these are destinations, so they
+          render as real anchors and keep ⌘-click and open-in-new-tab.
+        */}
         <ButtonUser.AdminMenuItem
           label={props.labels?.admin}
-          onClick={() => router.push(props.adminRouteName ?? "admin")}
+          routeName={props.adminRouteName}
         />
-        <ButtonUser.AccountMenuItem label={props.labels?.account} />
         {props.children}
         <DropdownMenuSeparator />
         <ButtonUser.LogoutMenuItem label={props.labels?.logout} />

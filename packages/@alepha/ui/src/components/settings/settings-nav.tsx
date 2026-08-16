@@ -43,6 +43,14 @@ export interface SettingsNavProps {
    */
   items: SettingsNavItem[];
 
+  /**
+   * Entry height, matching `SidebarMenuButton`'s own sizes: `sm` is `h-7` with
+   * `text-xs`, `default` is `h-8` with `text-sm`.
+   *
+   * @default "sm"
+   */
+  size?: "sm" | "default";
+
   className?: string;
 }
 
@@ -63,8 +71,41 @@ export interface SettingsNavProps {
  * ({@link SettingsNavItem} is structurally a subset of `NavEntry`, so no
  * mapping is needed); a parameterised one passes its own
  * `router.path(name, { params })` list.
+ *
+ * ### Why this is not built out of `SidebarMenuButton`
+ *
+ * It reads like the obvious reuse — this rail is a small sidebar, and the
+ * sizes and metrics below are deliberately `SidebarMenuButton`'s, so the two
+ * look like one family. But the component itself cannot be mounted here:
+ *
+ * - `SidebarMenuButton` calls `useSidebar()`, which **throws** outside a
+ *   `SidebarProvider`. Nothing about a static rail needs that provider — it
+ *   exists to hold collapse state — and mounting one to get a button also
+ *   registers a global ⌘B handler and starts writing the sidebar cookie. On a
+ *   page that already sits inside `AppShell` that is a *second* provider, so
+ *   ⌘B would toggle the wrong sidebar.
+ * - Making `useSidebar` tolerate a missing provider, or exporting the button's
+ *   `cva` to share it, both mean editing `components/ui/sidebar.tsx` — which
+ *   `yarn w @alepha/ui sync` overwrites wholesale from the upstream registry.
+ *   The patch would vanish on the next refresh, silently.
+ *
+ * So the metrics are shared by being written the same, and the coupling is
+ * not. If the sizes below ever drift from `sidebarMenuButtonVariants`, that is
+ * the thing to re-align.
  */
 export const SettingsNav = (props: SettingsNavProps) => {
+  const size = props.size ?? "sm";
+
+  /*
+    `[&_svg]:size-4` is load-bearing, not cosmetic: `useNavEntries` hands over
+    `createElement(Icon)` with no className, and a bare lucide icon defaults to
+    24px — half again the height of the text it sits next to.
+  */
+  const entry = cn(
+    "flex items-center gap-2 whitespace-nowrap rounded-md px-2 text-left [&_svg]:size-4 [&_svg]:shrink-0",
+    size === "sm" ? "h-7 text-xs" : "h-8 text-sm",
+  );
+
   const groups = useMemo(() => {
     const ordered: Array<{ key: string; label?: string }> = [];
     const byKey = new Map<string, SettingsNavItem[]>();
@@ -91,9 +132,11 @@ export const SettingsNav = (props: SettingsNavProps) => {
       )}
     >
       {groups.map((group) => (
-        <div key={group.key} className="flex flex-col gap-1">
+        <div key={group.key} className="flex flex-col gap-0.5">
           {group.label ? (
-            <span className="px-3 font-semibold text-[11px] text-muted-foreground uppercase tracking-wider">
+            // `px-2` matches the entries below, so the heading and the labels
+            // it heads share a left edge.
+            <span className="px-2 font-semibold text-[11px] text-muted-foreground uppercase tracking-wider">
               {group.label}
             </span>
           ) : null}
@@ -102,7 +145,7 @@ export const SettingsNav = (props: SettingsNavProps) => {
               <span
                 key={item.name}
                 aria-disabled="true"
-                className="flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-left text-muted-foreground/50 text-sm"
+                className={cn(entry, "text-muted-foreground/50")}
               >
                 {item.icon}
                 {item.label}
@@ -113,7 +156,8 @@ export const SettingsNav = (props: SettingsNavProps) => {
                 href={item.href}
                 aria-current={item.active ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-left text-sm transition-colors",
+                  entry,
+                  "transition-colors",
                   item.active
                     ? "bg-muted font-medium"
                     : "text-muted-foreground hover:bg-muted/60",

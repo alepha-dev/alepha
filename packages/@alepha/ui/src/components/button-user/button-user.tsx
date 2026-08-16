@@ -16,7 +16,7 @@ import {
   TooltipTrigger,
 } from "@alepha/ui/components/ui/tooltip";
 import { useAuth } from "alepha/react/auth";
-import { useRouter } from "alepha/react/router";
+import { Link, useRouter } from "alepha/react/router";
 import { CircleUser, LogIn, LogOut, Shield, User } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -136,8 +136,15 @@ const DefaultMenu = (props: DefaultMenuProps) => {
   return (
     <>
       <Email />
-      {props.onAdminClick && <AdminMenuItem onClick={props.onAdminClick} />}
+      {/*
+        Account first, admin second: the account page is where every signed-in
+        user has something to do, and the admin panel is a destination a
+        minority of them can even see. Keep the two in this order everywhere
+        the pair is composed (see `AppActions`) so the menu does not reshuffle
+        between surfaces.
+      */}
       <AccountMenuItem />
+      {props.onAdminClick && <AdminMenuItem onClick={props.onAdminClick} />}
       <DropdownMenuSeparator />
       <LogoutMenuItem />
     </>
@@ -168,9 +175,19 @@ const Email = (props: ButtonUserEmailProps) => {
 
 export interface ButtonUserAdminMenuItemProps {
   /**
-   * Called when the item is clicked.
+   * Route name to link to. Defaults to `"admin"`, which is what `AdminRouter`
+   * registers. Prefer this over {@link onClick}: it is what makes the item a
+   * real anchor.
    */
-  onClick: () => void;
+  routeName?: string;
+
+  /**
+   * Escape hatch for a destination no route name can express. Supplying it
+   * turns the item back into a click handler on a `div`, so the entry loses
+   * ⌘-click, middle-click and "open in new tab" — see {@link AccountMenuItem}.
+   */
+  onClick?: () => void;
+
   /**
    * Item label. Defaults to `"Admin Panel"`.
    */
@@ -184,21 +201,46 @@ export interface ButtonUserAdminMenuItemProps {
 
 const AdminMenuItem = (props: ButtonUserAdminMenuItemProps) => {
   const auth = useAuth();
+  const router = useRouter<any>();
   const permission = props.permission ?? "admin:ui";
   if (!auth.has(permission)) return null;
-  return (
-    <DropdownMenuItem onClick={props.onClick}>
+
+  const label = (
+    <>
       <Shield className="size-4" />
       {props.label ?? "Admin Panel"}
+    </>
+  );
+
+  if (props.onClick) {
+    return <DropdownMenuItem onClick={props.onClick}>{label}</DropdownMenuItem>;
+  }
+
+  const routeName = props.routeName ?? "admin";
+  // Same "is the module actually mounted" question `AccountMenuItem` asks. An
+  // unregistered name would resolve to a literal `/admin`-shaped string and
+  // give the user a link to a 404.
+  if (!router.pages?.some((page: any) => page.name === routeName)) return null;
+
+  return (
+    <DropdownMenuItem render={<Link href={router.path(routeName)} />}>
+      {label}
     </DropdownMenuItem>
   );
 };
 
 export interface ButtonUserAccountMenuItemProps {
   /**
-   * Where the item navigates. Defaults to pushing the `account` route, which
-   * is what `AccountRouter` registers — leave it alone unless you mounted the
-   * account area under a different name.
+   * Route name to link to. Defaults to `"account"`, which is what
+   * `AccountRouter` registers — set it only if you mounted the account area
+   * under a different name.
+   */
+  routeName?: string;
+
+  /**
+   * Escape hatch for a destination no route name can express. Supplying it
+   * turns the item back into a click handler on a `div`, giving up everything
+   * an anchor provides.
    */
   onClick?: () => void;
 
@@ -224,6 +266,14 @@ export interface ButtonUserAccountMenuItemProps {
  * that never mounts `AccountRouter` gets no dead entry — the same "is the
  * module actually there" question the router's own `can` gates answer, asked
  * the only way a menu item can ask it.
+ *
+ * ⚠️ **It renders an `<a href>`, not a click handler**, because it is a
+ * destination rather than an action. `DropdownMenuItem` is a Base UI
+ * `Menu.Item`, which defaults to a `div` — correct for Logout, wrong here: a
+ * div navigating from `onClick` cannot be ⌘-clicked, middle-clicked or opened
+ * in a new tab, shows no target on hover, and offers no "copy link address".
+ * `render` swaps the element while Base UI keeps `role="menuitem"` and its
+ * keyboard handling, so the menu semantics are unchanged.
  */
 const AccountMenuItem = (props: ButtonUserAccountMenuItemProps) => {
   const auth = useAuth();
@@ -232,18 +282,27 @@ const AccountMenuItem = (props: ButtonUserAccountMenuItemProps) => {
   if (!auth.user) {
     return null;
   }
-  // No account area mounted → no entry, rather than one that throws on click.
-  if (
-    !props.onClick &&
-    !router.pages?.some((page: any) => page.name === "account")
-  ) {
+
+  const label = (
+    <>
+      <CircleUser className="size-4" />
+      {props.label ?? "User Account"}
+    </>
+  );
+
+  if (props.onClick) {
+    return <DropdownMenuItem onClick={props.onClick}>{label}</DropdownMenuItem>;
+  }
+
+  // No account area mounted → no entry, rather than one that 404s on click.
+  const routeName = props.routeName ?? "account";
+  if (!router.pages?.some((page: any) => page.name === routeName)) {
     return null;
   }
 
   return (
-    <DropdownMenuItem onClick={props.onClick ?? (() => router.push("account"))}>
-      <CircleUser className="size-4" />
-      {props.label ?? "User Account"}
+    <DropdownMenuItem render={<Link href={router.path(routeName)} />}>
+      {label}
     </DropdownMenuItem>
   );
 };

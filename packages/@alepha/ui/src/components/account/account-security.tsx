@@ -74,7 +74,7 @@ const AccountSecurity = (props: AccountSecurityProps) => {
     <>
       <SettingsSection
         title="Sign-in methods"
-        description="At least one must remain — removing the last would lock you out permanently."
+        description="At least one must remain. Removing the last would lock you out permanently."
       >
         {identities.map((identity) => (
           <SettingsRow

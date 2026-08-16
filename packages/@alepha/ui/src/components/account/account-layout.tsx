@@ -23,9 +23,11 @@ import { accountRouterOptionsAtom } from "./account-router-options.tsx";
  *   an application mounting it standalone is already supplying `header` and
  *   owns its chrome. A second component writing to `<html>` would be the
  *   surprise, not the service.
- * - **No scroll container.** The page scrolls. A nested `overflow-auto` would
- *   clip the flush card borders `SettingsSection` depends on and strand the
- *   sticky rail against the wrong scroll root.
+ * - **No scroll container by default.** The page scrolls, and a nested
+ *   `overflow-auto` would strand the sticky rail against the wrong scroll
+ *   root. An application whose own shell has already taken the viewport
+ *   height and hidden its overflow has no page scroll to lend, and opts in
+ *   with `fill` on the options atom — see `SettingsLayout`.
  *
  * `useNavEntries` returns entries already filtered by `can` and permission,
  * and sorted by group then order — and its `NavEntry` is structurally a
@@ -40,6 +42,7 @@ export const AccountLayout = () => {
   return (
     <SettingsLayout
       className={options.className}
+      fill={options.fill}
       /*
         `!== undefined`, not `??`. `null ?? x` yields `x`, so nullish
         coalescing would silently ignore `header: null` — the documented way

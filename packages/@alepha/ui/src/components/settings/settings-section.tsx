@@ -1,3 +1,4 @@
+import { SettingsHeading } from "@alepha/ui/components/settings/settings-heading";
 import { Card } from "@alepha/ui/components/ui/card";
 import { cn } from "@alepha/ui/lib/utils";
 import type { ReactNode } from "react";
@@ -40,22 +41,9 @@ export interface SettingsSectionProps {
  * exactly that and they are the ones that look wrong next to these.
  */
 export const SettingsSection = (props: SettingsSectionProps) => {
-  const hasHeading = props.title != null || props.description != null;
-
   return (
     <div className={cn("flex flex-col gap-2", props.className)}>
-      {hasHeading ? (
-        <div className="flex flex-col gap-0.5">
-          {props.title != null ? (
-            <span className="text-sm">{props.title}</span>
-          ) : null}
-          {props.description != null ? (
-            <span className="text-muted-foreground text-xs">
-              {props.description}
-            </span>
-          ) : null}
-        </div>
-      ) : null}
+      <SettingsHeading title={props.title} description={props.description} />
       <Card className="gap-0 divide-y rounded-lg border bg-card py-0">
         {props.children}
       </Card>

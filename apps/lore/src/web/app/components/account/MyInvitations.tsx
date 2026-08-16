@@ -1,3 +1,4 @@
+import { SettingsHeading } from "@alepha/ui/components/settings/settings-heading";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
@@ -64,13 +65,20 @@ const MyInvitations = (props: MyInvitationsProps) => {
   };
 
   return (
-    <div className="flex w-full flex-col gap-2 p-2">
-      <div className="p-2">
-        <span className="text-xs text-muted-foreground">
-          Pending project invitations addressed to your email. Accept to join
-          the project as a new character, or decline to drop the invite.
-        </span>
-      </div>
+    <div className="flex w-full flex-col gap-2">
+      {/*
+        This page had a description and no title at all, so the rail led to a
+        page that never named itself. `SettingsHeading` is what the rest of the
+        `/account` area titles itself with.
+
+        The old copy also said "join the project as a new character", which the
+        2026-07 de-gamification pass removed everywhere else: `characters`
+        became `members` and identity moved to the account.
+      */}
+      <SettingsHeading
+        title="Pending invitations"
+        description="Project invitations addressed to your email. Accepting adds you to the project as a member."
+      />
 
       {items.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-md border border-border bg-card p-6 text-center">

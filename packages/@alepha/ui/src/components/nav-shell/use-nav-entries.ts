@@ -6,6 +6,7 @@ import {
   hasNavPermission,
   isActivePath,
   isDescendantOf,
+  keepDeepestActive,
   navLabel,
 } from "./nav-tree-util.ts";
 
@@ -39,7 +40,11 @@ export interface NavEntry {
   badge?: ReactNode;
   /** `can()` returned `"disabled"` — show muted, block navigation. */
   disabled: boolean;
-  /** The current route is on or under this entry. */
+  /**
+   * The current route is on or under this entry, and no sibling entry matched
+   * it more specifically. At most one entry in a list is active — see
+   * {@link keepDeepestActive}.
+   */
   active: boolean;
 }
 
@@ -96,6 +101,10 @@ export function useNavEntries(options: UseNavEntriesOptions): NavEntry[] {
       entry.groupOrder = groupOrders.get(entry.group ?? "") ?? 0;
     }
     entries.sort((a, b) => a.groupOrder - b.groupOrder || a.order - b.order);
-    return entries;
+
+    // `isActivePath` sees one entry at a time and so cannot tell that another
+    // matched more specifically. Only now, with the whole set in hand, can the
+    // shallower matches be dropped.
+    return keepDeepestActive(entries);
   }, [pages, current, has, options.root]);
 }
