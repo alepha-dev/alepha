@@ -656,7 +656,6 @@ export class Alepha {
 
       const target = this.store.get("alepha.target");
       if (target) {
-        this.store.set("alepha.target", undefined);
         this.modules = [];
         this.registry = new Map();
         this.seedCoreServices();
@@ -664,7 +663,21 @@ export class Alepha {
         this.pendingInstantiations = [];
         this.events.clear();
         delete (target as WithModule)[MODULE];
-        this.with(target);
+
+        // The claim stays up for the whole rebuild, and `inject` rather than
+        // `with` so the target itself is not swallowed by its own cutoff.
+        //
+        // Clearing it first — which is what this used to do — re-armed `with()`
+        // for every module the target's `$inject` chain reaches. The registry
+        // has just been emptied, so the first module-owned dependency looks
+        // unregistered, gets its module registered again, and that module's
+        // `register()` walks its whole `services` list — which contains the
+        // target, still in `pendingInstantiations`. The container then reported
+        // a circular dependency on the target itself. `delete target[MODULE]`
+        // above only severs the target's own module link, not its dependencies'.
+        this.inject(target);
+
+        this.store.set("alepha.target", undefined);
         for (const [key] of this.substitutions.entries()) {
           this.inject(key);
         }

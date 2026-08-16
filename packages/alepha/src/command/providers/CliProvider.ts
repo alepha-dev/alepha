@@ -14,6 +14,7 @@ import {
   z,
 } from "alepha";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
+import { CommandError } from "../errors/CommandError.ts";
 import { UsageError } from "../errors/UsageError.ts";
 import { Asker } from "../helpers/Asker.ts";
 import { EnvUtils } from "../helpers/EnvUtils.ts";
@@ -176,6 +177,11 @@ export class CliProvider {
         if (error instanceof UsageError) {
           return this.reportUsage(error.message, command);
         }
+        // A task ran and failed. The tool it shelled out to has already said
+        // why, so the reason is all that is left to add.
+        if (error instanceof CommandError) {
+          return this.reportFailure(error);
+        }
         throw error;
       } finally {
         // The command is over, so no question can follow: release stdin.
@@ -300,6 +306,67 @@ export class CliProvider {
     if (typeof process === "object") {
       process.exitCode = 1;
     }
+  }
+
+  /**
+   * Print a task failure as a command failure, not a crash.
+   *
+   * `UsageError`'s own doc justifies the split by saying a `CommandError` from
+   * {@link Runner} means a task genuinely failed "and its stack is the useful
+   * part". That holds for the stack of whatever *threw* — but by the time this
+   * reaches the `ready` hook it has been wrapped twice, and what the user got
+   * was ~30 lines under "Alepha failed to start / Failed during 'ready()' hook
+   * for service: CliProvider", every frame of it inside
+   * `alepha/dist/command/index.js`. None of those frames are the user's code,
+   * and the tool that actually failed — tsc, vitest, biome — has already
+   * printed its diagnostics above.
+   *
+   * So the default is the reason and nothing else, and the stack stays one
+   * `--verbose` away. `CliProvider.run()` is untouched: a caller driving the
+   * CLI from code still gets the error thrown.
+   */
+  protected reportFailure(error: CommandError): void {
+    this.log.error(error.message);
+
+    // The wrapper names the task; the innermost cause carries what went wrong.
+    // For a shelled task that is "Command exited with code 1: <stderr>"; for a
+    // check that throws on its own (schema drift, say) it is the only sentence
+    // that explains anything, and nothing else printed it.
+    //
+    // A bare "Command exited with code N" is the exception: the tool streamed
+    // its own output and the exit code adds nothing the line above did not
+    // already say.
+    const cause = this.rootCause(error);
+    if (
+      cause?.message &&
+      cause.message !== error.message &&
+      !/^Command exited with code \d+$/.test(cause.message)
+    ) {
+      this.log.error(cause.message);
+    }
+
+    this.log.debug("Task failure detail", error);
+
+    if (typeof process === "object") {
+      process.exitCode = 1;
+    }
+  }
+
+  /**
+   * Walk to the deepest `cause`, guarding against a cycle.
+   */
+  protected rootCause(error: Error): Error | undefined {
+    const seen = new Set<unknown>([error]);
+    let current: unknown = error.cause;
+    let last: Error | undefined;
+
+    while (current instanceof Error && !seen.has(current)) {
+      seen.add(current);
+      last = current;
+      current = current.cause;
+    }
+
+    return last;
   }
 
   /**

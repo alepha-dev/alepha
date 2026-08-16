@@ -504,6 +504,56 @@ export abstract class DatabaseProvider {
           error as Error,
         );
       }
+
+      await this.stampBaselineAfterSync();
+    }
+  }
+
+  /**
+   * After a development push, record a lone baseline migration as applied.
+   *
+   * The push creates the tables and leaves the migrations journal empty, so
+   * the same database read by a production boot looks like one where nothing
+   * has ever been applied — and production replays the baseline onto tables
+   * that already exist. A fresh scaffold hits this on its fourth command:
+   * `init --preset saas`, `dev`, `build`, `node dist/index.js`.
+   *
+   * Deliberately narrow. Drizzle's `init: true` records without executing, and
+   * refuses when the journal already has rows or when more than one local
+   * migration exists — which is exactly the state where "the push and the
+   * migration files describe the same schema" stops being a safe assumption.
+   * Both refusals are the normal steady state here (every boot after the
+   * first, and every project past its first migration), so they are logged at
+   * debug and nothing more.
+   *
+   * Best-effort by construction: a driver with no `runMigrator` throws, and a
+   * failure to stamp must never take down `alepha dev`. Production correctness
+   * does not rest on this — {@link NodeSqliteProvider} refusing to share the
+   * development database file is what closes that door.
+   */
+  protected async stampBaselineAfterSync(): Promise<void> {
+    const migrationsFolder = this.getMigrationsFolder();
+
+    const exists = await stat(migrationsFolder).catch(() => false);
+    if (!exists) {
+      return;
+    }
+
+    try {
+      const result = await this.runMigrator(migrationsFolder, { init: true });
+
+      if (result?.exitCode) {
+        this.log.debug(
+          `Baseline not stamped after sync (${result.exitCode}) — the journal is already populated, or more than one migration exists`,
+        );
+        return;
+      }
+
+      this.log.debug(
+        `Baseline recorded as applied for '${this.name}' after schema push`,
+      );
+    } catch (error) {
+      this.log.debug("Could not stamp the baseline after schema push", error);
     }
   }
 
@@ -559,6 +609,22 @@ export abstract class DatabaseProvider {
     }
     throw new AlephaError(
       `'baseline mark' does not yet support the '${this.driver}' driver`,
+    );
+  }
+
+  /**
+   * Whether this process was started to apply migrations and nothing else.
+   *
+   * The same condition `$mode({ env: "MIGRATE" })` activates on. Read here so a
+   * driver can tell "a deployed server is booting" from "someone ran
+   * `alepha db migrations apply`" — the CLI boots the app with
+   * `NODE_ENV=production` for that command so migrations run through the
+   * file-based path, which makes `isProduction()` alone unable to distinguish
+   * the two.
+   */
+  protected isMigrationRun(): boolean {
+    return (
+      this.alepha.isEnvEnabled("MIGRATE") || this.alepha.env.MODE === "MIGRATE"
     );
   }
 

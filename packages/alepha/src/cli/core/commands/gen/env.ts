@@ -1,13 +1,12 @@
 import { $inject, AlephaError, z } from "alepha";
-import { $command } from "alepha/command";
-import { $logger } from "alepha/logger";
+import { $command, ConsoleOutputProvider } from "alepha/command";
 import { FileSystemProvider } from "alepha/system";
 import { AlephaCliUtils } from "../../services/AlephaCliUtils.ts";
 
 export class GenEnvCommand {
-  protected readonly log = $logger();
   protected readonly utils = $inject(AlephaCliUtils);
   protected readonly fs = $inject(FileSystemProvider);
+  protected readonly output = $inject(ConsoleOutputProvider);
 
   public readonly command = $command({
     name: "env",
@@ -58,9 +57,17 @@ export class GenEnvCommand {
         }
 
         if (flags.out) {
-          await this.fs.writeFile(this.fs.join(root, flags.out), dotEnvFile);
+          // `resolve`, not `join`: an absolute `--out` used to be reparented
+          // under the project root, so `-o /tmp/.env` failed on
+          // `<root>/tmp/.env`.
+          await this.fs.writeFile(this.fs.resolve(root, flags.out), dotEnvFile);
         } else {
-          this.log.info(dotEnvFile);
+          // The template is what this command *produces*, so it goes through
+          // the output provider — never the logger, which prefixes a timestamp
+          // and a level and emits ANSI whether or not stdout is a TTY. That is
+          // why `alepha gen env > .env.example` used to write a first line
+          // reading `<esc>[90m14:31:16 I #DATABASE_URL=`.
+          this.output.print(dotEnvFile);
         }
       } catch (err) {
         // Rethrow: the CLI only exits non-zero when the handler throws, so

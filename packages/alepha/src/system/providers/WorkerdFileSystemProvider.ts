@@ -57,6 +57,18 @@ export class WorkerdFileSystemProvider implements FileSystemProvider {
     return resolved.join("/") || ".";
   }
 
+  /**
+   * Join, but restart from the last absolute segment — `node:path`'s `resolve`
+   * semantics, minus the cwd anchoring, since workerd has no cwd to anchor to.
+   */
+  public resolve(...paths: string[]): string {
+    const parts = paths.filter((part) => part.length > 0);
+    const lastAbsolute = parts.findLastIndex((part) => part.startsWith("/"));
+    return lastAbsolute === -1
+      ? this.join(...parts)
+      : this.join(...parts.slice(lastAbsolute));
+  }
+
   public createFile(options: CreateFileOptions): FileLike {
     if ("text" in options) {
       return this.createFileFromText(options.text, {

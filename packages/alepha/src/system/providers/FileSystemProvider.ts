@@ -224,6 +224,20 @@ export abstract class FileSystemProvider {
   abstract join(...paths: string[]): string;
 
   /**
+   * Joins path segments, but lets a later absolute segment win.
+   *
+   * The difference from {@link join} is the whole point: `join("/app", "/tmp/x")`
+   * is `/app/tmp/x`, while `resolve("/app", "/tmp/x")` is `/tmp/x`. Anywhere a
+   * user-supplied path is anchored to a project root — a `--out` flag, a config
+   * value — `join` silently reparents an absolute path under the root and the
+   * write fails on a directory nobody asked for.
+   *
+   * @param paths - The path segments to resolve, left to right
+   * @returns The resolved path
+   */
+  abstract resolve(...paths: string[]): string;
+
+  /**
    * Creates a FileLike object from various sources.
    *
    * @param options - Options for creating the file

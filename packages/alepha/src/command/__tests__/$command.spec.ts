@@ -470,6 +470,91 @@ describe("$command", () => {
     });
   });
 
+  /**
+   * A task that ran and failed is a command failure, not a crash.
+   *
+   * `tsc`, `vitest` and `biome` all print their own diagnostics before the
+   * `CommandError` is raised. Letting it out of the `ready` hook wrapped it in
+   * "Alepha failed to start / Failed during 'ready()' hook for service:
+   * CliProvider" and roughly thirty stack frames, none of them in the user's
+   * code — a crash report for a type error.
+   */
+  describe("Task Failure", () => {
+    const failingCommand = (cause?: Error) =>
+      class FailingCommands {
+        broken = $command({
+          name: "broken",
+          description: "Always fails.",
+          handler: () => {
+            throw new CommandError("Task 'node tsc --noEmit' failed", {
+              cause,
+            });
+          },
+        });
+      };
+
+    test("should report the reason and exit 1 instead of throwing", async () => {
+      const { mockLogger } = await setupTestCommands(["broken"], (alepha) =>
+        alepha.with(
+          failingCommand(
+            new AlephaError(
+              "Command exited with code 1: src/a.ts(1,1): error TS2322",
+            ),
+          ),
+        ),
+      );
+
+      const errors = mockLogger.logs
+        .filter((l) => l.level === "ERROR")
+        .map((l) => l.message);
+
+      expect(errors).toContain("Task 'node tsc --noEmit' failed");
+      // The innermost cause is what actually explains the failure.
+      expect(errors).toContain(
+        "Command exited with code 1: src/a.ts(1,1): error TS2322",
+      );
+      // Never the crash banner, and never a frame of framework internals.
+      expect(errors.join("\n")).not.toContain("Alepha failed to start");
+      expect(errors.join("\n")).not.toContain("    at ");
+      expect(process.exitCode).toBe(1);
+
+      process.exitCode = 0;
+    });
+
+    test("should not repeat the message when there is no cause", async () => {
+      const { mockLogger } = await setupTestCommands(["broken"], (alepha) =>
+        alepha.with(failingCommand()),
+      );
+
+      const errors = mockLogger.logs
+        .filter((l) => l.level === "ERROR")
+        .map((l) => l.message);
+
+      expect(errors).toEqual(["Task 'node tsc --noEmit' failed"]);
+      expect(process.exitCode).toBe(1);
+
+      process.exitCode = 0;
+    });
+
+    // The tool streamed its own diagnostics, so a bare exit code is a second
+    // line saying what the first already said.
+    test("should drop a cause that carries only the exit code", async () => {
+      const { mockLogger } = await setupTestCommands(["broken"], (alepha) =>
+        alepha.with(
+          failingCommand(new AlephaError("Command exited with code 1")),
+        ),
+      );
+
+      const errors = mockLogger.logs
+        .filter((l) => l.level === "ERROR")
+        .map((l) => l.message);
+
+      expect(errors).toEqual(["Task 'node tsc --noEmit' failed"]);
+
+      process.exitCode = 0;
+    });
+  });
+
   describe("Help Message", () => {
     test("should print general help with --help flag", async () => {
       const { mockOutput } = await setupTestCommands(["--help"], (alepha) => {

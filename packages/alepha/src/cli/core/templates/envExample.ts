@@ -27,6 +27,12 @@ export interface EnvExampleOptions {
  * here instead lands in the project root, where nothing ignores it — see
  * `gitignore`, which deliberately does not carry a `*.db` rule because there
  * is no database file to ignore until someone opts out of the default.
+ *
+ * That default is development-only, and the text says so, because production
+ * now refuses it: the scratch file is deleted by `npm ci`, and `alepha dev`
+ * has already pushed a schema into it with an empty migrations journal, so a
+ * production boot on the same file replayed every migration and died on the
+ * first `CREATE TABLE`.
  */
 export const envExample = (options: EnvExampleOptions = {}) =>
   `
@@ -40,8 +46,13 @@ ${
     ? `
 # Database connection. Unset, development uses sqlite at
 # node_modules/.alepha/sqlite.db — no configuration, nothing to gitignore,
-# and it is removed with the rest of node_modules. Set this to move the file
-# elsewhere, or to a postgres://… URL for production.
+# and it is removed with the rest of node_modules.
+#
+# REQUIRED IN PRODUCTION. That scratch path is a development file: \`npm ci\`
+# deletes it, and \`alepha dev\` has already pushed your schema into it, so a
+# production boot would try to migrate tables that already exist. Production
+# refuses to start without this set. Point it at a path outside the bundle
+# (sqlite:///var/lib/myapp/db.sqlite) or at a postgres://… URL.
 #
 # In development DATABASE_SYNC defaults to true, so the schema is pushed from
 # your entities on boot and there is nothing to migrate. Before deploying, run

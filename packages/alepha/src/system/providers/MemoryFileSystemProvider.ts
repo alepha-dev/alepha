@@ -112,6 +112,20 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   }
 
   /**
+   * Join, but restart from the last absolute segment — `node:path`'s `resolve`
+   * semantics, minus the cwd anchoring `resolve` applies to a fully relative
+   * result. There is no cwd here, and this provider also backs the browser and
+   * workerd builds where there is no process to ask.
+   */
+  public resolve(...paths: string[]): string {
+    const parts = paths.filter((part) => part.length > 0);
+    const lastAbsolute = parts.findLastIndex((part) => part.startsWith("/"));
+    return this.posixJoin(
+      ...(lastAbsolute === -1 ? parts : parts.slice(lastAbsolute)),
+    );
+  }
+
+  /**
    * Join and normalize path segments, resolving `.` and `..`.
    *
    * A local posix implementation rather than `node:path`: this provider is the

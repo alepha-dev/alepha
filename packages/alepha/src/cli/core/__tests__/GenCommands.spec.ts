@@ -1,5 +1,9 @@
 import { $env, $module, Alepha, z } from "alepha";
-import { CliProvider } from "alepha/command";
+import {
+  CliProvider,
+  ConsoleOutputProvider,
+  MemoryOutputProvider,
+} from "alepha/command";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
 import { GenEnvCommand } from "../commands/gen/env.ts";
@@ -48,6 +52,7 @@ describe("gen commands", () => {
 
     const alepha = Alepha.create()
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
+      .with({ provide: ConsoleOutputProvider, use: MemoryOutputProvider })
       .with({ provide: AlephaCliUtils, use: FakeCliUtils });
 
     const utils = alepha.inject(FakeCliUtils);
@@ -58,7 +63,23 @@ describe("gen commands", () => {
       openapi: alepha.inject(OpenApiCommand),
       env: alepha.inject(GenEnvCommand),
       fs: alepha.inject(MemoryFileSystemProvider),
+      output: alepha.inject(MemoryOutputProvider),
       utils,
+    };
+  };
+
+  /**
+   * A swagger provider that yields one path, for the cases that only care
+   * about where the document lands.
+   */
+  const stubSwagger = (utils: FakeCliUtils) => {
+    utils.appGraphModules["alepha/server/swagger"] = {
+      AlephaServerSwagger: class ServerSwaggerProvider {
+        public json = undefined;
+        public generateSwaggerDoc() {
+          return { openapi: "3.0.0", paths: { "/api/hello": {} } };
+        }
+      },
     };
   };
 
@@ -149,6 +170,88 @@ describe("gen commands", () => {
     // The unannotated key is a secret and carries no label — it is the norm.
     expect(written).toContain("\n#STRIPE_SECRET_KEY=");
     expect(written).not.toContain("# (public)\n#STRIPE_SECRET_KEY=");
+  });
+
+  /**
+   * `--out` is anchored to the project root so a relative path means what the
+   * caller expects. `join` did that by concatenation, which reparents an
+   * absolute path: `-o /tmp/api.json` wrote to `<root>/tmp/api.json` and, since
+   * no such directory exists, failed with ENOENT. `resolve` lets the later
+   * absolute segment win.
+   */
+  describe("--out", () => {
+    it("should honour an absolute path (openapi)", async () => {
+      const { cli, openapi, utils, fs } = create();
+      stubSwagger(utils);
+
+      await cli.run(openapi.command, {
+        argv: "--out /tmp/api.json",
+        root: "/app",
+      });
+
+      expect(fs.wasWritten("/tmp/api.json")).toBe(true);
+      expect(fs.wasWritten("/app/tmp/api.json")).toBe(false);
+    });
+
+    it("should still anchor a relative path to the root (openapi)", async () => {
+      const { cli, openapi, utils, fs } = create();
+      stubSwagger(utils);
+
+      await cli.run(openapi.command, {
+        argv: "--out docs/api.json",
+        root: "/app",
+      });
+
+      expect(fs.wasWritten("/app/docs/api.json")).toBe(true);
+    });
+
+    it("should honour an absolute path (env)", async () => {
+      const { cli, env, fs } = create();
+
+      await cli.run(env.command, { argv: "--out /tmp/.env", root: "/app" });
+
+      expect(fs.wasWritten("/tmp/.env")).toBe(true);
+      expect(fs.wasWritten("/app/tmp/.env")).toBe(false);
+    });
+  });
+
+  /**
+   * Both commands exist to be redirected — `alepha gen openapi > api.json`.
+   * Emitting through the logger prefixed a timestamp, a level and ANSI colour
+   * regardless of whether stdout was a TTY, so the redirected file was not
+   * parseable. `gen changelog` already wrote straight to stdout; these two now
+   * agree with it.
+   */
+  describe("stdout", () => {
+    it("should print the raw document when no --out is given", async () => {
+      const { cli, openapi, utils, output } = create();
+      stubSwagger(utils);
+
+      await cli.run(openapi.command, { argv: "", root: "/app" });
+
+      expect(output.text.startsWith("{")).toBe(true);
+      expect(JSON.parse(output.text).paths).toHaveProperty("/api/hello");
+    });
+
+    it("should print the raw template when no --out is given", async () => {
+      const { cli, env, utils, output } = create();
+
+      class Payments {
+        env = $env(
+          z.object({
+            STRIPE_SECRET_KEY: z.text().optional(),
+          }),
+        );
+      }
+      utils.userAlepha!.with(
+        $module({ name: "payments.stdout", services: [Payments] }),
+      );
+
+      await cli.run(env.command, { argv: "", root: "/app" });
+
+      expect(output.text.startsWith("#")).toBe(true);
+      expect(output.text).toContain("#STRIPE_SECRET_KEY=");
+    });
   });
 
   it("should fail when env extraction throws", async () => {

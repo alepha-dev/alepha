@@ -65,6 +65,10 @@ export class NodeFileSystemProvider implements FileSystemProvider {
     return join(...paths);
   }
 
+  public resolve(...paths: string[]): string {
+    return resolve(...paths);
+  }
+
   /**
    * Creates a FileLike object from various sources.
    *

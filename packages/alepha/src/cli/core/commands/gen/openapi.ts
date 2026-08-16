@@ -1,14 +1,13 @@
 import { $inject, type Alepha, AlephaError, z } from "alepha";
-import { $command } from "alepha/command";
-import { $logger } from "alepha/logger";
+import { $command, ConsoleOutputProvider } from "alepha/command";
 import type { ServerSwaggerProvider } from "alepha/server/swagger";
 import { FileSystemProvider } from "alepha/system";
 import { AlephaCliUtils } from "../../services/AlephaCliUtils.ts";
 
 export class OpenApiCommand {
-  protected readonly log = $logger();
   protected readonly utils = $inject(AlephaCliUtils);
   protected readonly fs = $inject(FileSystemProvider);
+  protected readonly output = $inject(ConsoleOutputProvider);
 
   public readonly command = $command({
     name: "openapi",
@@ -63,13 +62,20 @@ export class OpenApiCommand {
           );
         }
 
+        const document = JSON.stringify(json, null, 2);
+
         if (flags.out) {
-          await this.fs.writeFile(
-            this.fs.join(root, flags.out),
-            JSON.stringify(json, null, 2),
-          );
+          // `resolve`, not `join`: an absolute `--out` used to be reparented
+          // under the project root, so `-o /tmp/api.json` failed on
+          // `<root>/tmp/api.json`.
+          await this.fs.writeFile(this.fs.resolve(root, flags.out), document);
         } else {
-          this.log.info(JSON.stringify(json, null, 2));
+          // The document is what this command *produces*, so it goes through
+          // the output provider — never the logger, which prefixes a timestamp
+          // and a level and emits ANSI whether or not stdout is a TTY. That is
+          // why `alepha gen openapi > api.json` used to write a file whose
+          // first line was `<esc>[90m14:31:18 I {`.
+          this.output.print(document);
         }
       } catch (err) {
         // Rethrow: the CLI only exits non-zero when the handler throws, so

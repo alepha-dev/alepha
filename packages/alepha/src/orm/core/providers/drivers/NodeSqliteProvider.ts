@@ -111,9 +111,43 @@ export class NodeSqliteProvider extends DatabaseProvider {
 
     if (this.alepha.isTest() || this.alepha.isServerless()) {
       return ":memory:";
-    } else {
-      return "node_modules/.alepha/sqlite.db";
     }
+
+    // `node_modules/.alepha/sqlite.db` is a development scratch path, and
+    // production used to land on it silently. Three things follow from that,
+    // and the third is the one that bit:
+    //
+    // - it is inside `node_modules`, so `npm ci` deletes the database;
+    // - nothing backs it up, and nothing about the path suggests it holds data;
+    // - `alepha dev` has already pushed the schema into that same file with an
+    //   empty migrations journal, so a production boot replays every migration
+    //   from the top and dies on the first `CREATE TABLE`.
+    //
+    // Requiring the variable matches the other production guards (APP_SECRET,
+    // and the no-migrations error above): production states where its data
+    // lives, or it does not start.
+    //
+    // Except when this process exists only to run migrations. `alepha db
+    // migrations apply` boots the app with `NODE_ENV=production` on purpose —
+    // that is what makes it take the file-based migration path rather than the
+    // dev push — so refusing here would break the command in development, where
+    // the scratch file IS the database the developer means. A deploy that
+    // reaches this line with no `DATABASE_URL` still cannot serve: the server
+    // boot that follows has no `MIGRATE` set and hits the throw above. Warn so
+    // that detour leaves a trace rather than passing in silence.
+    if (this.alepha.isProduction()) {
+      if (!this.isMigrationRun()) {
+        throw new AlephaError(
+          "DATABASE_URL is required in production. Without it the SQLite provider falls back to 'node_modules/.alepha/sqlite.db', a development scratch file: it is deleted by 'npm ci', it is not backed up, and it already holds the schema 'alepha dev' pushed with an empty migrations journal — so migrations replay and fail. Set DATABASE_URL to a path outside the bundle (e.g. 'sqlite:///var/lib/myapp/db.sqlite') or to a postgres:// URL.",
+        );
+      }
+
+      this.log.warn(
+        "Migrating 'node_modules/.alepha/sqlite.db' — the development scratch database. Set DATABASE_URL if this was meant to migrate a deployed one.",
+      );
+    }
+
+    return "node_modules/.alepha/sqlite.db";
   }
 
   public override get db(): PgAsyncDatabase<any> {

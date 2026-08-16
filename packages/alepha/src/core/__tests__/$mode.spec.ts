@@ -1,4 +1,4 @@
-import { $hook, $inject, Alepha } from "alepha";
+import { $hook, $inject, $module, Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
 import { $mode } from "../primitives/$mode.ts";
 
@@ -103,6 +103,36 @@ describe("$mode", () => {
 
     expect(stack).toContain("Dep.start");
     expect(stack).toContain("Target.start");
+  });
+
+  /**
+   * The shape that broke `MIGRATE=true` for every ORM app: the target lives in
+   * a module's `services` list, and depends on another service of the same
+   * module. Rebuilding the pruned graph re-resolves that dependency, which
+   * pulls the module in again — and the module's `register()` then re-injects
+   * the target while it is still being constructed.
+   */
+  it("should keep a module-owned dependency without re-registering its module", async () => {
+    class Dep {
+      value = "dep";
+    }
+
+    class Target {
+      dep = $inject(Dep);
+      mode = $mode({ env: "PRUNE_MODULE" });
+    }
+
+    const TargetModule = $module({
+      name: "test.prune.module",
+      services: [Dep, Target],
+    });
+
+    const alepha = Alepha.create({ env: { PRUNE_MODULE: "true" } });
+    alepha.with(TargetModule);
+
+    await alepha.start();
+
+    expect(alepha.inject(Target).dep.value).toBe("dep");
   });
 
   it("should fire ready callback then stop", async () => {

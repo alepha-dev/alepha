@@ -83,6 +83,18 @@ The database driver is selected based on the `DATABASE_URL` environment variable
 | `d1://`           | Cloudflare D1 |
 | Other / no prefix | SQLite (Node.js or Bun, selected automatically) |
 
+Unset, SQLite writes to `node_modules/.alepha/sqlite.db` — a development scratch
+file that needs no configuration and is removed along with the rest of
+`node_modules`.
+
+**`DATABASE_URL` is required in production**, and the app refuses to start
+without it. That scratch path is not a place data can live: `npm ci` deletes it,
+nothing backs it up, and `alepha dev` has already pushed your schema into it with
+an empty migrations journal — so a production boot on the same file would try to
+apply the baseline over tables that already exist and fail on the first
+`CREATE TABLE`. Point it somewhere outside the bundle
+(`sqlite:///var/lib/myapp/db.sqlite`) or at a `postgres://` URL.
+
 ## Workflow Summary
 
 ```bash
