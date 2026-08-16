@@ -283,4 +283,46 @@ describe("Asker", () => {
     // ref'd handle on stdin.
     expect(fake.closeCount).toBe(1);
   });
+
+  describe("confirm", () => {
+    it("accepts every spelling of yes and no", async () => {
+      const { asker } = setup();
+      asker.answers("y", "YES", "n", "No");
+
+      expect(await asker.ask.confirm("Delete everything?")).toBe(true);
+      expect(await asker.ask.confirm("Delete everything?")).toBe(true);
+      expect(await asker.ask.confirm("Delete everything?")).toBe(false);
+      expect(await asker.ask.confirm("Delete everything?")).toBe(false);
+    });
+
+    it("shows which way an empty answer goes", async () => {
+      const { asker, output } = setup();
+      asker.answers("", "");
+
+      expect(await asker.ask.confirm("Keep it?", { default: true })).toBe(true);
+      expect(await asker.ask.confirm("Drop it?", { default: false })).toBe(
+        false,
+      );
+
+      expect(output.text).toContain("Keep it? [Y/n]");
+      expect(output.text).toContain("Drop it? [y/N]");
+    });
+
+    it("re-asks an empty answer when there is no default", async () => {
+      const { asker, output } = setup();
+      asker.answers("", "y");
+
+      expect(await asker.ask.confirm("Proceed?")).toBe(true);
+      expect(output.text).toContain("Proceed? [y/n]");
+      expect(output.text.match(/Proceed\?/g)).toHaveLength(2);
+    });
+
+    it("re-asks on anything else", async () => {
+      const { asker, output } = setup();
+      asker.answers("x", "y");
+
+      expect(await asker.ask.confirm("Delete everything?")).toBe(true);
+      expect(output.text).toContain("Invalid answer, expected 'y' or 'n'");
+    });
+  });
 });

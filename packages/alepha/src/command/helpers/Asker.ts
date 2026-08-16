@@ -42,6 +42,14 @@ export interface AskOptions<T extends ZType = ZodString> {
   validate?: (value: Infer<T>) => void;
 }
 
+export interface AskConfirmOptions {
+  /**
+   * Taken when the answer is empty. Without one, an empty answer re-asks
+   * rather than guessing.
+   */
+  default?: boolean;
+}
+
 export interface AskMethods {
   /**
    * Ask for a free-form value, decoded through a schema.
@@ -50,6 +58,11 @@ export interface AskMethods {
     question: string,
     options?: AskOptions<T>,
   ): Promise<Infer<T>>;
+
+  /**
+   * Ask a yes/no question.
+   */
+  confirm(question: string, options?: AskConfirmOptions): Promise<boolean>;
 
   intro(title: string): void;
   outro(message: string): void;
@@ -115,6 +128,9 @@ export class Asker {
         question: string,
         options: AskOptions<T> = {},
       ) => this.promptValue<T>(question, options),
+
+      confirm: (question: string, options: AskConfirmOptions = {}) =>
+        this.confirmValue(question, options),
 
       intro: (title: string) => this.printIntro(title),
       outro: (message: string) => this.printOutro(message),
@@ -195,6 +211,45 @@ export class Asker {
           }
           throw error;
         }
+      },
+    );
+  }
+
+  /**
+   * Ask a yes/no question.
+   *
+   * The bracket hint tells the user which way an empty answer goes: `[Y/n]`,
+   * `[y/N]`, or `[y/n]` when there is no default and Enter alone is not an
+   * answer at all.
+   */
+  protected confirmValue(
+    question: string,
+    options: AskConfirmOptions,
+  ): Promise<boolean> {
+    const hint =
+      options.default === true
+        ? "[Y/n]"
+        : options.default === false
+          ? "[y/N]"
+          : "[y/n]";
+
+    return this.loop<boolean>(
+      () => this.printQuestion(`${question} ${hint}`),
+      (answer) => {
+        if (!answer) {
+          if (options.default === undefined) {
+            this.printError("Invalid answer, expected 'y' or 'n'");
+            return undefined;
+          }
+          return { value: options.default };
+        }
+
+        const normalized = answer.toLowerCase();
+        if (normalized === "y" || normalized === "yes") return { value: true };
+        if (normalized === "n" || normalized === "no") return { value: false };
+
+        this.printError("Invalid answer, expected 'y' or 'n'");
+        return undefined;
       },
     );
   }
