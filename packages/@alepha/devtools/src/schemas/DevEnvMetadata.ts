@@ -6,9 +6,19 @@ export const devEnvMetadataSchema = z.object({
    */
   propertyKey: z.text(),
   /**
-   * The schema for the environment variables (TypeBox/JSON Schema)
+   * The environment block's shape as JSON Schema.
+   *
+   * `.optional()` for the same reason as `DevAtomMetadata.schema` — see the
+   * full explanation there. Both are fed by
+   * `DevToolsMetadataProvider.toJsonSchema`, which returns `undefined` for any
+   * schema JSON Schema cannot express, and a required field turns that into a
+   * validation error the client hits and the server does not.
+   *
+   * Latent rather than observed: no `$env` schema in the monorepo is a
+   * `z.custom()` today. It is fixed with the atom one because it is the same
+   * defect and would surface the same undebuggable way.
    */
-  schema: z.any(),
+  schema: z.any().optional(),
   /**
    * The parsed values from the environment
    */

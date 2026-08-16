@@ -242,6 +242,13 @@ body:has(.dt-root) {
   flex: none;
   display: flex;
   flex-direction: column;
+  /* Every other group opens with a `.dt-nav-group` label carrying 14px of its
+     own lead-in, so only the FIRST group — the unlabelled one holding
+     Dashboard — started flush against the topbar's bottom border. An active
+     item paints a full-bleed background, so that row's fill touched the rule
+     with nothing between them. 8px rather than the label's 14px: this gap
+     stands in for a label that is not there, not for one that is. */
+  padding-top: 8px;
   border-right: 1px solid var(--dt-border);
   background: var(--dt-panel);
   overflow-y: auto;
