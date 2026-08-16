@@ -92,6 +92,14 @@ The R2 binding is added to `wrangler.jsonc` when `R2_BUCKET_NAME` is set at buil
 
 The Worker's `scheduled` handler dispatches the `cloudflare:scheduled` event, which Alepha routes to the matching `$job` handler.
 
+Expressions are **deduplicated**, so what costs you a Cron Trigger is the number
+of *distinct* expressions, not the number of jobs. Jobs sharing an expression
+all run in the same invocation. The framework's own sweeps default to
+`*/15 * * * *` for this reason — see
+[Sweeps owned by other modules](../4-server/12-background-jobs.md) for the atoms
+that tune them, and prefer aligning a new `$job` with an expression already in
+use over introducing a sixth one.
+
 ## Build with Mode
 
 Use `--mode` to control which `.env` file is loaded:

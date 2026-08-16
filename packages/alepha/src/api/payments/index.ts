@@ -4,6 +4,7 @@ import { MockCheckoutController } from "./controllers/MockCheckoutController.ts"
 import { PaymentController } from "./controllers/PaymentController.ts";
 import { MemoryPaymentProvider } from "./providers/MemoryPaymentProvider.ts";
 import { PaymentProvider } from "./providers/PaymentProvider.ts";
+import { paymentsConfig } from "./schemas/paymentsConfigAtom.ts";
 import { PaymentMethodService } from "./services/PaymentMethodService.ts";
 import { PaymentService } from "./services/PaymentService.ts";
 
@@ -18,6 +19,7 @@ export * from "./providers/MemoryPaymentProvider.ts";
 export * from "./providers/PaymentProvider.ts";
 export * from "./schemas/intentSchemas.ts";
 export * from "./schemas/paymentMethodSchemas.ts";
+export * from "./schemas/paymentsConfigAtom.ts";
 export * from "./schemas/refundSchemas.ts";
 export * from "./services/PaymentMethodService.ts";
 export * from "./services/PaymentService.ts";
@@ -80,6 +82,7 @@ declare module "alepha" {
  */
 export const AlephaApiPayments = $module({
   name: "alepha.api.payments",
+  atoms: [paymentsConfig],
   services: [
     AdminPaymentController,
     PaymentController,

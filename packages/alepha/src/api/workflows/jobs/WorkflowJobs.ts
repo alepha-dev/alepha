@@ -1,6 +1,7 @@
-import { $hook, $inject, z } from "alepha";
+import { $hook, $inject, $store, z } from "alepha";
 import { $job, type JobPriority } from "alepha/api/jobs";
 import { WorkflowProvider } from "../providers/WorkflowProvider.ts";
+import { workflowConfig } from "../schemas/workflowConfigAtom.ts";
 
 // -----------------------------------------------------------------------------------------------------------------
 
@@ -12,9 +13,15 @@ import { WorkflowProvider } from "../providers/WorkflowProvider.ts";
  *   system's durability (outbox row, sweep re-dispatch, priority).
  * - three crons: workflow deadline sweep, crashed-step recovery sweep,
  *   and the retention purge.
+ *
+ * All three cadences come from {@link workflowConfig}. They are read here as
+ * field initializers, so `config` must stay declared above the jobs that use
+ * it — class fields initialize in declaration order, and a `$job` reading an
+ * undefined `this.config` fails at inject time, not at build time.
  */
 export class WorkflowJobs {
   protected readonly workflowProvider = $inject(WorkflowProvider);
+  protected readonly config = $store(workflowConfig);
 
   protected readonly priorityReverse: Record<number, JobPriority> = {
     0: "critical",
@@ -44,7 +51,7 @@ export class WorkflowJobs {
   protected readonly timeoutSweep = $job({
     name: "api:workflows:timeoutSweep",
     description: "Times out workflow executions past their deadline.",
-    cron: "* * * * *",
+    cron: this.config.timeoutCron,
     lock: true,
     record: "error",
     handler: async () => {
@@ -55,7 +62,7 @@ export class WorkflowJobs {
   protected readonly recoverySweep = $job({
     name: "api:workflows:recoverySweep",
     description: "Recovers workflow steps whose process crashed.",
-    cron: "*/5 * * * *",
+    cron: this.config.recoveryCron,
     lock: true,
     record: "error",
     handler: async () => {
@@ -66,7 +73,7 @@ export class WorkflowJobs {
   protected readonly purge = $job({
     name: "api:workflows:purge",
     description: "Deletes terminal workflow executions past retention.",
-    cron: "0 3 * * *",
+    cron: this.config.purgeCron,
     lock: true,
     handler: async () => {
       await this.workflowProvider.purge();

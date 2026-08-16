@@ -3,6 +3,7 @@ import { AlephaApiJobs } from "alepha/api/jobs";
 import { AlephaApiPayments } from "alepha/api/payments";
 import { AlephaCommerceCart } from "../cart/index.ts";
 import { AlephaCommerce } from "../index.ts";
+import { checkoutConfig } from "./checkoutConfigAtom.ts";
 import { CheckoutController } from "./controllers/CheckoutController.ts";
 import { AddressRulesProvider } from "./providers/AddressRulesProvider.ts";
 import { CheckoutPaymentProvider } from "./providers/CheckoutPaymentProvider.ts";
@@ -19,6 +20,7 @@ import { CheckoutSettlementListener } from "./services/CheckoutSettlementListene
 import { StockReservationSweeper } from "./services/StockReservationSweeper.ts";
 import { TaxService } from "./services/TaxService.ts";
 
+export * from "./checkoutConfigAtom.ts";
 export * from "./controllers/CheckoutController.ts";
 export * from "./entities/addresses.ts";
 export * from "./entities/checkoutSessions.ts";
@@ -89,6 +91,7 @@ export const AlephaCommerceCheckout = $module({
     AlephaApiPayments,
     AlephaApiJobs,
   ],
+  atoms: [checkoutConfig],
   services: [
     CheckoutPaymentProvider,
     ShippingQuoteProvider,

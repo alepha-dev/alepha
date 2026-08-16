@@ -5,6 +5,7 @@ import { AdminWorkflowController } from "./controllers/AdminWorkflowController.t
 import { WorkflowJobs } from "./jobs/WorkflowJobs.ts";
 import { $workflow } from "./primitives/$workflow.ts";
 import { WorkflowProvider } from "./providers/WorkflowProvider.ts";
+import { workflowConfig } from "./schemas/workflowConfigAtom.ts";
 import { WorkflowService } from "./services/WorkflowService.ts";
 import { WorkflowTestKit } from "./services/WorkflowTestKit.ts";
 
@@ -135,6 +136,7 @@ declare module "alepha" {
 export const AlephaApiWorkflows = $module({
   name: "alepha.api.workflows",
   primitives: [$workflow],
+  atoms: [workflowConfig],
   services: [
     WorkflowProvider,
     WorkflowService,

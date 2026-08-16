@@ -175,6 +175,25 @@ import { jobConfig } from "alepha/api/jobs";
 alepha.store.mut(jobConfig, (c) => ({ ...c, sweepCron: "*/5 * * * *" }));
 ```
 
+**Mutate before you wire the module.** A cron expression is read once, when the
+`$job` field initializes, and wiring a module injects its services immediately.
+A mut applied after the module is wired lands in the store but never reaches the
+already-registered cron — no error, no effect:
+
+```typescript
+// Works — the store is set before anything reads it.
+const alepha = Alepha.create();
+alepha.store.mut(jobConfig, (c) => ({ ...c, sweepCron: "*/5 * * * *" }));
+alepha.with(MyApp);
+
+// Silently does nothing to the schedule.
+const alepha = Alepha.create().with(MyApp);
+alepha.store.mut(jobConfig, (c) => ({ ...c, sweepCron: "*/5 * * * *" }));
+```
+
+Inside a `$module`, the `register()` hook runs before `imports[]` and
+`services[]`, so it is also a safe place to do this.
+
 | Key | Default | Description |
 |-----|---------|-------------|
 | `sweepCron` | `*/15 * * * *` | Reconciliation sweep — bounds retry latency |
@@ -184,6 +203,26 @@ alepha.store.mut(jobConfig, (c) => ({ ...c, sweepCron: "*/5 * * * *" }));
 | `keepLastSuccess` | `10` | Successful rows kept per job |
 | `keepLastError` | `10` | Error rows kept per job |
 | `drainTimeout` | `30000` | Time (ms) to wait for in-flight jobs on shutdown |
+
+### Sweeps owned by other modules
+
+Modules that ship their own crons expose them the same way. All default to
+`*/15 * * * *` so they collapse onto the jobs sweep's trigger instead of adding
+their own — which matters on Cloudflare, where each distinct expression costs a
+Cron Trigger.
+
+| Atom | Key | Default | Bounded by |
+|------|-----|---------|------------|
+| `workflowConfig` (`alepha/api/workflows`) | `timeoutCron` | `*/15 * * * *` | How late a workflow's `timeout` is enforced |
+| | `recoveryCron` | `*/15 * * * *` | `recovery.staleThreshold` (30 min) |
+| | `purgeCron` | `0 3 * * *` | `retentionDays` |
+| `paymentsConfig` (`alepha/api/payments`) | `expireStaleIntentsCron` | `*/15 * * * *` | The 30-minute intent cutoff |
+| `checkoutConfig` (`@alepha/commerce/checkout`) | `stockSweepCron` | `*/15 * * * *` | Nothing — `reserved()` excludes holds by `expiresAt` |
+
+`timeoutCron` is the one to reconsider if you rely on tight workflow deadlines:
+a workflow past its deadline keeps running until the next tick, so a 15-minute
+tick can let a workflow with a 5-minute timeout run for 20. Set it to
+`* * * * *` if deadlines must bite promptly, and accept the extra trigger.
 
 ## Multi-replica deployments
 

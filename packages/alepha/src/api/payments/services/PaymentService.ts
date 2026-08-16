@@ -1,4 +1,4 @@
-import { $inject, Alepha } from "alepha";
+import { $inject, $store, Alepha } from "alepha";
 import { $job } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -19,9 +19,11 @@ import {
   PaymentProvider,
   type WebhookEvent,
 } from "../providers/PaymentProvider.ts";
+import { paymentsConfig } from "../schemas/paymentsConfigAtom.ts";
 
 export class PaymentService {
   protected readonly alepha = $inject(Alepha);
+  protected readonly config = $store(paymentsConfig);
   protected readonly log = $logger();
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly provider = $inject(PaymentProvider);
@@ -31,12 +33,16 @@ export class PaymentService {
 
   /**
    * Expires stale payment intents that have been in "processing" status
-   * for more than 30 minutes. Runs every 5 minutes — shares the CF wrangler
-   * trigger with the jobs sweep so no extra binding is consumed.
+   * for more than 30 minutes.
+   *
+   * Cadence comes from {@link paymentsConfig}, defaulting to the same
+   * expression as the jobs sweep so Cloudflare emits one shared cron trigger
+   * rather than a second one. The 30-minute cutoff is what bounds correctness
+   * here; the tick only decides how far past it an intent may drift.
    */
   protected readonly expireStaleIntents = $job({
     name: "api:payments:expireStaleIntents",
-    cron: "*/5 * * * *",
+    cron: this.config.expireStaleIntentsCron,
     handler: async () => {
       const cutoff = this.dateTime.now().subtract(30, "minutes").toISOString();
 
