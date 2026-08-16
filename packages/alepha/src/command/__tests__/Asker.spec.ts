@@ -147,6 +147,20 @@ describe("Asker", () => {
     expect(result).toBe("blue");
   });
 
+  it("accepts an empty answer for an optional schema", async () => {
+    const { asker, output } = setup();
+    const fake = asker.answers("");
+
+    expect(
+      await asker.ask.prompt("Middle name?", { schema: z.text().optional() }),
+    ).toBeUndefined();
+
+    // The bug this guards: `undefined` used to mean "retry", so an optional
+    // field with an empty answer re-asked forever, printing no reason.
+    expect(fake.prompts).toHaveLength(1);
+    expect(output.text).not.toContain("Invalid");
+  });
+
   it("retries when custom validation throws an AlephaError", async () => {
     const { asker, output } = setup();
     asker.answers("wrong", "right");

@@ -126,24 +126,30 @@ export class Asker {
    *
    * `render` prints the question (and whatever goes with it) on every attempt,
    * so a rejected answer is followed by the question again rather than a bare
-   * `>`. `parse` returns `undefined` to mean "not valid, ask again", and is
-   * responsible for having printed the reason.
+   * `>`. `parse` is responsible for having printed the reason before it
+   * returns.
+   *
+   * `parse`'s return value distinguishes "here is a value" from "not valid,
+   * ask again" without overloading `undefined`: returning `undefined` itself
+   * means retry, and returning `{ value }` accepts the answer — including
+   * `{ value: undefined }`, which is how a legitimate empty answer (an
+   * optional field left blank) is accepted rather than mistaken for a retry.
    *
    * Every question type in this class goes through here, which is what makes
    * the EOF handling below cost one implementation instead of four.
    */
   protected async loop<V>(
     render: () => void,
-    parse: (answer: string) => V | undefined,
+    parse: (answer: string) => { value: V } | undefined,
   ): Promise<V> {
     const rl = this.getPromptInterface();
     try {
       for (;;) {
         render();
         const answer = await this.readLine(rl);
-        const value = parse(answer.trim());
-        if (value !== undefined) {
-          return value;
+        const result = parse(answer.trim());
+        if (result !== undefined) {
+          return result.value;
         }
       }
     } catch (error) {
@@ -181,7 +187,7 @@ export class Asker {
           if (options.validate) {
             options.validate(value);
           }
-          return value;
+          return { value };
         } catch (error) {
           if (error instanceof AlephaError) {
             this.printError(error.message);
