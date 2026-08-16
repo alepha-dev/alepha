@@ -344,15 +344,24 @@ export class Asker {
   }
 
   /**
-   * Reject a default that is not in the list.
+   * Reject an empty choice list, and reject a default that is not in it.
    *
-   * A developer mistake rather than bad user input: the generic parameter does
-   * not catch it when `choices` is a widened `string[]` rather than a literal
-   * tuple, so it fails loudly here instead of silently handing back an answer
-   * nobody was ever offered. Called before the loop starts, so it fails before
-   * any question is printed.
+   * Both are developer mistakes rather than bad user input, so both fail
+   * loudly here instead of reaching the loop. An empty list makes `chooseOne`
+   * unanswerable: every branch of `parse` returns `undefined`, so the user
+   * sees the range error repeat forever with no input that can satisfy it.
+   * A default outside the list is not caught by the generic parameter when
+   * `choices` is a widened `string[]` rather than a literal tuple, so it
+   * would otherwise hand back an answer nobody was ever offered. Called
+   * before the loop starts, so it fails before any question is printed.
    */
   protected assertDefaults(items: AskChoice[], defaults: string[]): void {
+    if (items.length === 0) {
+      throw new AlephaError(
+        "Cannot ask a choice with an empty list of choices",
+      );
+    }
+
     const values = items.map((item) => item.value);
     for (const value of defaults) {
       if (!values.includes(value)) {
@@ -427,7 +436,9 @@ export class Asker {
     return this.loop<string[]>(
       () => {
         this.printChoices(question, items, defaultValues ?? []);
-        this.printHint("Enter numbers separated by spaces or commas.");
+        this.printHint(
+          "Enter numbers separated by spaces, commas, semicolons, or dashes (a dash separates, not a range).",
+        );
       },
       (answer) => {
         // Selecting nothing is a legitimate answer here, so an empty line is

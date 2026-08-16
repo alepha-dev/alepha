@@ -218,11 +218,12 @@ describe("Asker", () => {
 
   it("throws NoInputError instead of hanging when stdin ends", async () => {
     const { asker } = setup();
-    asker.answers();
+    const fake = asker.answers();
 
     await expect(asker.ask.prompt("Which template?")).rejects.toBeInstanceOf(
       NoInputError,
     );
+    expect(fake.closeCount).toBe(1);
   });
 
   it("does not re-ask a question that stdin can never answer", async () => {
@@ -417,6 +418,22 @@ describe("Asker", () => {
       expect(fake.prompts).toHaveLength(0);
     });
 
+    it("rejects an empty list of choices", async () => {
+      const { asker, output } = setup();
+      const fake = asker.answers();
+
+      // Nothing in this list could ever satisfy `parse`: an empty answer
+      // hits the no-default path, and every digit fails the range check
+      // against a max of 0. Left unguarded, this is an unanswerable prompt.
+      await expect(
+        asker.ask.choice("Choose your color:", []),
+      ).rejects.toBeInstanceOf(AlephaError);
+
+      // Failed before ever asking, not after: nothing was printed.
+      expect(fake.prompts).toHaveLength(0);
+      expect(output.text).toBe("");
+    });
+
     it("re-asks on a hex-looking answer instead of picking by it", async () => {
       const { asker, output } = setup();
       const fake = asker.answers("0x2", "2");
@@ -432,7 +449,7 @@ describe("Asker", () => {
   });
 
   describe("multiChoice", () => {
-    it("accepts every separator form", async () => {
+    it("accepts every separator form", () => {
       const { asker } = setup();
 
       // Straight from the spec. `-` is a SEPARATOR, not a range: "1-4-10" is
@@ -447,13 +464,13 @@ describe("Asker", () => {
       }
     });
 
-    it("deduplicates while keeping the order typed", async () => {
+    it("deduplicates while keeping the order typed", () => {
       const { asker } = setup();
 
       expect(asker.testParseSelection("3 1 3 2", 3)).toEqual([3, 1, 2]);
     });
 
-    it("rejects the whole answer when one token is out of range", async () => {
+    it("rejects the whole answer when one token is out of range", () => {
       const { asker } = setup();
 
       expect(asker.testParseSelection("1 4", 3)).toBeUndefined();
@@ -482,6 +499,19 @@ describe("Asker", () => {
       expect(output.text).toBe("");
     });
 
+    it("rejects an empty list of choices", async () => {
+      const { asker, output } = setup();
+      const fake = asker.answers();
+
+      await expect(
+        asker.ask.multiChoice("Select features:", []),
+      ).rejects.toBeInstanceOf(AlephaError);
+
+      // Failed before ever asking, not after: nothing was printed.
+      expect(fake.prompts).toHaveLength(0);
+      expect(output.text).toBe("");
+    });
+
     it("returns the selected values", async () => {
       const { asker } = setup();
       asker.answers("1, 3");
@@ -502,7 +532,7 @@ describe("Asker", () => {
       await asker.ask.multiChoice("Select features:", ["auth", "admin"]);
 
       expect(output.text).toContain(
-        "Enter numbers separated by spaces or commas.",
+        "Enter numbers separated by spaces, commas, semicolons, or dashes (a dash separates, not a range).",
       );
     });
 
