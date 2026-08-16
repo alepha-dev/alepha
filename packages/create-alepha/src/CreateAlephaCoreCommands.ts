@@ -65,7 +65,7 @@ export class CreateAlephaCoreCommands {
       // 1. Project name
       const name =
         args ??
-        (await ask("What is your project name?", {
+        (await ask.prompt("What is your project name?", {
           schema: z.text({ trim: true, lowercase: true }),
           validate: (value) => {
             if (!/^[a-z0-9-]+$/.test(value)) {

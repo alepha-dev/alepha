@@ -10,7 +10,7 @@ import {
   type ZType,
   z,
 } from "alepha";
-import type { AskMethod } from "../helpers/Asker.ts";
+import type { AskMethods } from "../helpers/Asker.ts";
 import type { RunnerMethod } from "../helpers/Runner.ts";
 
 /**
@@ -310,7 +310,7 @@ export interface CommandHandlerArgs<
   args: A extends ZType ? Infer<A> : Array<string>;
   env: Infer<E>;
   run: RunnerMethod;
-  ask: AskMethod;
+  ask: AskMethods;
   glob: typeof glob;
   fs: typeof fs;
 

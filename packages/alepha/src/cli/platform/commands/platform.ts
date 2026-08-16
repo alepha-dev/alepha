@@ -313,7 +313,7 @@ export class PlatformCommand {
             return flags.env as string;
           }
           ask.intro("Confirm teardown");
-          const value = await ask(prompt);
+          const value = await ask.prompt(prompt);
           ask.outro("");
           return value;
         },
