@@ -1,3 +1,25 @@
+## [0.26.0] - 2026-08-16
+
+### Features
+
+- **ui**: mount the account area, and fix what the back office exposed (`88340abf`)
+- **payments**: make sweep cadences configurable, default to */15 (`1fa582e1`)
+- **ui,api**: finish AutoForm's settings-card layout, and fix what adopting it exposed (`356bbd0c`)
+- **cli**: wire create-alepha to ask.choice/ask.confirm, drop dead Asker injection (`302d3023`)
+- **command**: add ask.multiChoice and the selection parser to Asker (`88646ed8`)
+
+### Bug Fixes
+
+- **cli**: rewrite workerd chunks through the AST, not a regex (`dc6047d7`)
+- **ui**: stop Segmented's thumb sitting one border-width off its segment (`33d2b206`)
+- **devtools**: stop an unrepresentable atom schema breaking the whole UI [BREAKING] (`3c81eaba`)
+- **cli**: make pnpm scaffolds hoist the bundled toolchain (`19ef91bb`)
+- **ui**: make the account area work inside a clipped app shell (`ee539e99`)
+- **core,orm,cli**: close the five defects a 0.25.2 release rehearsal turned up (`a5d3c636`)
+- **orm**: refuse to boot in production when entities have no migrations (`3fb97ae7`)
+- **cli**: generate a baseline migration for ORM presets at init (`4cf4a445`)
+- **cli,react,server,ui**: close the gaps a two-preset init audit turned up (`6e09a2f7`)
+
 ## [0.25.2] - 2026-08-15
 
 ### Features

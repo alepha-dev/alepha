@@ -37,14 +37,14 @@
   },
   "devDependencies": {
     "@types/react": "^19.2.18",
-    "alepha": "0.25.2",
+    "alepha": "0.26.0",
     "react": "^19.2.8",
     "tsdown": "^0.22.14",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   },
   "peerDependencies": {
-    "alepha": "^0.25.2",
+    "alepha": "^0.26.0",
     "react": "*"
   },
   "scripts": {
