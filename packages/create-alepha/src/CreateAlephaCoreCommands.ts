@@ -25,20 +25,26 @@ export class CreateAlephaCoreCommands {
    * forwarded, so a value this package accepts but `init` does not is a
    * compile error rather than a silently dropped key.
    *
-   * Still not a prompt, though. A preset is a decision about the project, and
-   * the name is already positional, so `create-alepha my-app --preset saas`
-   * runs start to finish without one — which is what a CI needs.
+   * Unlike the old four-way question, `--preset` does prompt when it is left
+   * unset: `ask.choice` offers the same two values the flag accepts. Every
+   * question below works the same way, gated on the flag that would otherwise
+   * answer it, so a fully flagged invocation never prompts at all —
+   * `create-alepha my-app --preset saas --no-devtools` runs start to finish
+   * without a question, which is what a script or CI needs. Leave a flag out
+   * and the command asks instead of guessing.
    *
-   * The package-manager question went the same way, for a different reason: it
-   * was asking something the CLI already knows. `PackageManagerUtils` reads
-   * `npm_config_user_agent`, which every manager sets when it runs a binary, so
-   * `yarn create alepha` resolves to yarn and `pnpm create alepha` to pnpm
-   * without anyone being asked. Prompting on top of that could only produce a
-   * worse answer — a project installed with a manager the user did not invoke.
-   * `--pm` still overrides, for the case where the two genuinely differ.
+   * The package-manager question is the one exception, and for a different
+   * reason: it was asking something the CLI already knows. `PackageManagerUtils`
+   * reads `npm_config_user_agent`, which every manager sets when it runs a
+   * binary, so `yarn create alepha` resolves to yarn and `pnpm create alepha`
+   * to pnpm without anyone being asked. Prompting on top of that could only
+   * produce a worse answer — a project installed with a manager the user did
+   * not invoke. `--pm` still overrides, for the case where the two genuinely
+   * differ.
    *
-   * What is left is the name, and it is positional: `create-alepha my-app` runs
-   * start to finish without a prompt, which is what a CI needs.
+   * DevTools follows the same shape as preset: `--no-devtools` skips the
+   * question, and leaving it unset asks. It is dev-only and costs nothing in
+   * a production bundle, so the default answer is yes.
    */
   public readonly root = $command({
     root: true,
@@ -57,6 +63,12 @@ export class CreateAlephaCoreCommands {
       pm: z
         .enum(["yarn", "npm", "pnpm", "bun"])
         .describe("Package manager to use")
+        .optional(),
+      "no-devtools": z
+        .boolean()
+        .describe(
+          "Skip @alepha/devtools. It is included by default and is dev-only, so it costs nothing in a production bundle",
+        )
         .optional(),
     }),
     handler: async ({ ask, args, flags, run, root }) => {
@@ -95,10 +107,13 @@ export class CreateAlephaCoreCommands {
         ));
 
       // 3. DevTools is dev-only and costs nothing in a production bundle, so
-      // the default is yes.
-      const devtools = await ask.confirm("Include @alepha/devtools?", {
-        default: true,
-      });
+      // the default is yes. Asked only when the caller did not already decide:
+      // a fully-flagged invocation has to stay promptless, or `npm create
+      // alepha` stops working from a script.
+      const devtools =
+        flags["no-devtools"] !== undefined
+          ? !flags["no-devtools"]
+          : await ask.confirm("Include @alepha/devtools?", { default: true });
 
       // Create directory
       await this.fs.mkdir(name);
