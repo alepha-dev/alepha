@@ -79,6 +79,32 @@ export class NoShippingRateError extends CommerceError {
 }
 
 /**
+ * A product cannot be deleted because it has been sold.
+ *
+ * Order lines snapshot everything they need, so nothing would *break* — but the
+ * catalogue row is what answers "what was this line?" when someone reads an old
+ * invoice, and deleting is not undoable. Unpublishing achieves what the
+ * operator wanted without destroying that.
+ */
+export class ProductHasOrdersError extends CommerceError {
+  override name = "ProductHasOrdersError";
+  /**
+   * 409 for the same reason as {@link InsufficientStockError}: the request is
+   * well-formed and the id is real. What refuses it is the state of the world.
+   */
+  public readonly status = 409;
+
+  constructor(
+    productId: string,
+    public readonly orderLines: number,
+  ) {
+    super(
+      `Product ${productId} appears on ${orderLines} order line(s) and cannot be deleted. Unpublish it instead to remove it from the shop while keeping order history readable.`,
+    );
+  }
+}
+
+/**
  * Not enough on-hand stock to satisfy a sale.
  */
 export class InsufficientStockError extends CommerceError {

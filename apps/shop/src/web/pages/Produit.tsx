@@ -10,43 +10,43 @@ import { Poincon } from "../components/Poincon.tsx";
 import { Prix } from "../components/Prix.tsx";
 import { usePanier } from "../hooks/usePanier.ts";
 
-export interface PieceProps {
-  piece: PublicProduct;
+export interface ProduitProps {
+  produit: PublicProduct;
   /** What may still be sold — on-hand minus what other carts are holding. */
   disponible: number;
 }
 
 /**
- * One piece.
+ * One produit.
  *
  * The drawing gets the larger half and the facts get the smaller one, which is
  * the reverse of a usual product page where copy dominates. For an object sold on
  * its material and its making, the measurements *are* the argument.
  */
-const Piece = (props: PieceProps) => {
-  const { piece, disponible } = props;
-  const spec = (piece.attributes ?? {}) as Record<string, string>;
+const Produit = (props: ProduitProps) => {
+  const { produit, disponible } = props;
+  const spec = (produit.attributes ?? {}) as Record<string, string>;
   const { ajouter } = usePanier();
   const toast = useToast();
   const { tr } = useI18n();
   const [ajoutEnCours, setAjoutEnCours] = useState(false);
 
-  const surCommande = piece.kind === "engraved";
-  const dematerialise = piece.kind === "digital";
+  const surCommande = produit.kind === "engraved";
+  const dematerialise = produit.kind === "digital";
   const epuise = !dematerialise && disponible <= 0;
 
   const onAjouter = async () => {
     setAjoutEnCours(true);
     try {
-      await ajouter(piece.id);
-      toast.success(tr("piece.added", { args: [piece.name] }));
+      await ajouter(produit.id);
+      toast.success(tr("produit.added", { args: [produit.name] }));
     } catch (error) {
       // The domain answers 409 when the last one has just gone. Say that,
       // not "something went wrong".
       toast.error(
         error instanceof Error && /stock/i.test(error.message)
-          ? tr("piece.addFailedStock")
-          : tr("piece.addFailed"),
+          ? tr("produit.addFailedStock")
+          : tr("produit.addFailed"),
       );
     } finally {
       setAjoutEnCours(false);
@@ -57,8 +57,8 @@ const Piece = (props: PieceProps) => {
     <article className="mx-auto grid w-full max-w-6xl gap-12 px-5 py-12 md:grid-cols-[1fr_22rem] md:py-20">
       <div className="pose relative">
         <Dessin
-          image={piece.images[0]}
-          nom={piece.name}
+          image={produit.images[0]}
+          nom={produit.name}
           priority
           className="mx-auto max-w-[28rem]"
         />
@@ -72,19 +72,19 @@ const Piece = (props: PieceProps) => {
       </div>
 
       <div className="pose" style={{ animationDelay: "120ms" }}>
-        <h1 className="estampe-lg">{piece.name}</h1>
+        <h1 className="estampe-lg">{produit.name}</h1>
 
         <div className="mt-6">
           <Prix
-            cents={piece.price}
-            currency={piece.currency}
+            cents={produit.price}
+            currency={produit.currency}
             className="text-2xl"
           />
         </div>
 
-        <p className="text-muted-foreground mt-6">{piece.description}</p>
+        <p className="text-muted-foreground mt-6">{produit.description}</p>
 
-        <PlaqueSpec spec={spec} reference={piece.slug} variant="detail" />
+        <PlaqueSpec spec={spec} reference={produit.slug} variant="detail" />
 
         {/*
           Availability, stated as a fact rather than as urgency. "Plus que 2 !"
@@ -92,12 +92,12 @@ const Piece = (props: PieceProps) => {
         */}
         <p className="mesure text-muted-foreground mt-6">
           {dematerialise
-            ? tr("piece.instant")
+            ? tr("produit.instant")
             : surCommande
-              ? `${tr("piece.engraved")}${spec.dimensions ? ` · ${spec.dimensions}` : ""}`
+              ? `${tr("produit.engraved")}${spec.dimensions ? ` · ${spec.dimensions}` : ""}`
               : epuise
-                ? tr("piece.noneLeft")
-                : tr("piece.inStock", { args: [String(disponible)] })}
+                ? tr("produit.noneLeft")
+                : tr("produit.inStock", { args: [String(disponible)] })}
         </p>
 
         <Button
@@ -106,22 +106,22 @@ const Piece = (props: PieceProps) => {
           disabled={epuise || ajoutEnCours}
         >
           {epuise
-            ? tr("piece.soldOut")
+            ? tr("produit.soldOut")
             : ajoutEnCours
-              ? tr("piece.adding")
-              : tr("piece.add")}
+              ? tr("produit.adding")
+              : tr("produit.add")}
         </Button>
 
         {epuise ? (
           <p className="text-muted-foreground mt-3 text-sm">
-            {tr("piece.restockNote")}
+            {tr("produit.restockNote")}
           </p>
         ) : (
           <Link
             href="/panier"
             className="mesure text-muted-foreground hover:text-foreground mt-3 block w-full text-center transition-colors"
           >
-            {tr("piece.viewCart")}
+            {tr("produit.viewCart")}
           </Link>
         )}
       </div>
@@ -129,4 +129,4 @@ const Piece = (props: PieceProps) => {
   );
 };
 
-export default Piece;
+export default Produit;

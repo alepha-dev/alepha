@@ -59,7 +59,7 @@ export const Layout = () => {
                   href="/"
                   className="hover:text-foreground text-muted-foreground transition-colors"
                 >
-                  {tr("nav.pieces")}
+                  {tr("nav.produits")}
                 </Link>
                 <Link
                   href="/atelier"

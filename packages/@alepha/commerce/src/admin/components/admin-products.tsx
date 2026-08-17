@@ -5,23 +5,16 @@ void React;
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
-import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
 import { Control } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@alepha/ui/components/ui/sheet";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { z } from "alepha";
-import { useClient, useQuery } from "alepha/react";
-import { useForm } from "alepha/react/form";
+import { useAction, useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { useRouter } from "alepha/react/router";
 import { Eye, EyeOff, PackagePlus, Pencil, Plus, Shapes } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback } from "react";
 import type {
   AdminProductController,
   AdminProductResource,
@@ -41,24 +34,59 @@ const filtersSchema = z.object({
   kind: z.string().optional(),
 });
 
+export interface AdminProductsProps {
+  /**
+   * Where a product's detail page lives. The route belongs to the application —
+   * this package registers no pages — so the path it mounted it at is passed in.
+   * `:productId` is appended. Defaults to `/admin/products`.
+   */
+  detailPath?: string;
+}
+
 /**
- * Catalogue management: list, create, edit, publish, restock.
+ * Catalogue management: list, publish, restock, and the way in to a product.
  *
  * Shows **available** stock rather than on-hand, with held units called out
  * separately: "3 in stock" is misleading when two are already in someone else's
  * checkout, and restocking decisions are made from what is sellable.
  *
- * The editor is a `Sheet`, not a route, so an operator correcting six prices
- * never leaves the list. `AutoForm` builds it from a zod schema, so a new product
- * field is one schema entry rather than a form redesign.
+ * ### There is no editor here, and no create form
+ *
+ * Both used to be a `Sheet` over this list. The sheet reached six of the
+ * product entity's fields and had no room for the rest — images, tax rate,
+ * attributes, per-kind config — so editing moved to a page of its own.
+ *
+ * With the editor gone there is nowhere a create form belongs either, so
+ * "New product" writes a draft immediately (`product-N`, unpublished, at zero)
+ * and opens it. Naming and pricing happen on the page that opens, which is
+ * where the operator was going anyway.
  */
-export function AdminProducts() {
+export function AdminProducts(props: AdminProductsProps) {
   const client = useClient<AdminProductController>();
+  const router = useRouter();
   const { l, tr } = useI18n();
   const toast = useToast();
 
-  const [editing, setEditing] = useState<AdminProductResource | "new">();
-  const [refreshSignal, setRefreshSignal] = useState(0);
+  const detailPath = props.detailPath ?? "/admin/products";
+  const openProduct = (id: string) => void router.push(`${detailPath}/${id}`);
+
+  const createDraft = useAction(
+    {
+      handler: async () => {
+        const draft = await client.commerceAdminProductDraft({});
+        openProduct(draft.id);
+      },
+      onError: () =>
+        toast.error(
+          String(
+            tr("commerce.admin.draftFailed", {
+              default: "Could not create the product",
+            }),
+          ),
+        ),
+    },
+    [client, detailPath],
+  );
 
   // The kinds this deployment registered, read from the server rather than
   // hard-coded — which is what lets an application's own kind appear in the
@@ -140,7 +168,7 @@ export function AdminProducts() {
       }),
       // Deliberately +1 rather than a quantity prompt: a dialog that asks for a
       // number is a form, and forms belong in the editor. One click covers the
-      // common case — a piece came back from the bench.
+      // common case — one unit came back from the workshop.
       handler: async (product, refresh) => {
         await client.commerceAdminProductRestock({
           params: { id: product.id },
@@ -165,8 +193,7 @@ export function AdminProducts() {
         className="min-h-0 flex-1"
         persistenceKey="commerce.admin.products"
         fetch={fetcher}
-        refreshSignal={refreshSignal}
-        onRowClick={(product) => setEditing(product)}
+        onRowClick={(product) => openProduct(product.id)}
         emptyMessage={String(
           tr("commerce.admin.noProducts", {
             default: "No products in the catalogue.",
@@ -206,7 +233,11 @@ export function AdminProducts() {
           ),
         }}
         toolbar={
-          <Button size="sm" onClick={() => setEditing("new")}>
+          <Button
+            size="sm"
+            loading={createDraft.loading}
+            onClick={() => createDraft.run()}
+          >
             <Plus className="size-4" />
             {tr("commerce.admin.newProduct", { default: "New product" })}
           </Button>
@@ -215,7 +246,7 @@ export function AdminProducts() {
           {
             label: String(tr("commerce.admin.edit", { default: "Edit" })),
             icon: Pencil,
-            onClick: (item) => setEditing(item),
+            onClick: (item) => openProduct(item.id),
           },
           {
             label: String(
@@ -312,176 +343,6 @@ export function AdminProducts() {
           },
         }}
       />
-
-      {/*
-        Keyed on the row so opening a different product remounts the form with
-        that row's values — `useForm` anchors its initial values once, so reusing
-        the instance would show the previous product's data.
-      */}
-      {editing ? (
-        <AdminProductSheet
-          key={editing === "new" ? "new" : editing.id}
-          product={editing}
-          kinds={kinds?.kinds ?? []}
-          onClose={() => setEditing(undefined)}
-          onSaved={() => {
-            setEditing(undefined);
-            setRefreshSignal((n) => n + 1);
-            toast.success(
-              String(tr("commerce.admin.saved", { default: "Product saved." })),
-            );
-          }}
-        />
-      ) : null}
     </AdminPage>
   );
 }
-
-interface AdminProductSheetProps {
-  product: AdminProductResource | "new";
-  kinds: string[];
-  onClose: () => void;
-  onSaved: () => void;
-}
-
-/**
- * Create or edit a piece.
- *
- * The schema is built per instance because both its labels and its kind list come
- * from runtime data. `AutoForm` renders it, so layout is a `width` per field
- * rather than a hand-built grid.
- */
-const AdminProductSheet = (props: AdminProductSheetProps) => {
-  const { product, kinds, onClose, onSaved } = props;
-  const client = useClient<AdminProductController>();
-  const { tr } = useI18n();
-
-  const isNew = product === "new";
-  const current = isNew ? undefined : product;
-
-  const schema = useMemo(
-    () =>
-      z.object({
-        name: z.text({ minLength: 1, maxLength: 200 }).meta({
-          title: String(tr("commerce.admin.fName", { default: "Name" })),
-          $control: { width: 60 },
-        }),
-        slug: z.text({ minLength: 1, maxLength: 200 }).meta({
-          title: String(tr("commerce.admin.fSlug", { default: "Reference" })),
-          description: String(
-            tr("commerce.admin.fSlugHint", {
-              default:
-                "Appears in the URL. Do not change it once the product is on sale.",
-            }),
-          ),
-          $control: { width: 40 },
-        }),
-        kind: z.text({ maxLength: 64 }).meta({
-          title: String(tr("commerce.admin.fKind", { default: "Type" })),
-          $control: {
-            width: 50,
-            items: kinds.map((kind) => ({ value: kind, label: kind })),
-          },
-        }),
-        /*
-         * Cents, and labelled as cents. An operator who types 8900 and sees
-         * 89,00 € in the list learns the unit once; a euro field needs a
-         * conversion on both sides and is where rounding bugs come from.
-         */
-        price: z
-          .integer()
-          .min(0)
-          .meta({
-            title: String(
-              tr("commerce.admin.fPrice", {
-                default: "Price incl. tax (cents)",
-              }),
-            ),
-            $control: { width: 50 },
-          }),
-        description: z
-          .text({ maxLength: 4000 })
-          .meta({
-            title: String(
-              tr("commerce.admin.fDescription", { default: "Description" }),
-            ),
-            $control: { width: 100, area: true },
-          })
-          .optional(),
-        published: z.boolean().meta({
-          title: String(
-            tr("commerce.admin.fPublished", { default: "On sale" }),
-          ),
-          $control: { width: 100 },
-        }),
-      }),
-    [kinds, tr],
-  );
-
-  const form = useForm({
-    schema,
-    initialValues: current
-      ? {
-          name: current.name,
-          slug: current.slug,
-          kind: current.kind,
-          price: current.price,
-          description: current.description ?? "",
-          published: current.published,
-        }
-      : { kind: kinds[0] ?? "good", published: false, price: 0 },
-    handler: async (values) => {
-      if (current) {
-        await client.commerceAdminProductUpdate({
-          params: { id: current.id },
-          body: values,
-        });
-      } else {
-        await client.commerceAdminProductCreate({ body: values });
-      }
-      onSaved();
-    },
-  });
-
-  return (
-    <Sheet
-      open
-      onOpenChange={(open: boolean) => {
-        if (!open) onClose();
-      }}
-    >
-      <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
-        <SheetHeader>
-          <SheetTitle>
-            {isNew
-              ? tr("commerce.admin.newProduct", { default: "New product" })
-              : current?.name}
-          </SheetTitle>
-        </SheetHeader>
-        <div className="px-4 pb-6">
-          <AutoForm
-            form={form}
-            submitLabel={String(tr("commerce.admin.save", { default: "Save" }))}
-          />
-
-          {current ? (
-            <dl className="text-muted-foreground mt-8 grid grid-cols-2 gap-y-2 text-xs">
-              <dt>
-                {tr("commerce.admin.availableLabel", { default: "Available" })}
-              </dt>
-              <dd className="tabular-nums">{current.available}</dd>
-              <dt>
-                {tr("commerce.admin.onHandLabel", { default: "On hand" })}
-              </dt>
-              <dd className="tabular-nums">{current.onHand}</dd>
-              <dt>
-                {tr("commerce.admin.reservedLabel", { default: "Reserved" })}
-              </dt>
-              <dd className="tabular-nums">{current.reserved}</dd>
-            </dl>
-          ) : null}
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
-};

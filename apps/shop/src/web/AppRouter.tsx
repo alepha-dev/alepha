@@ -9,7 +9,7 @@ import { AccountRouter } from "@alepha/ui/components/account/account-router";
 import { $pageAdmin } from "@alepha/ui/components/admin/admin-router-page";
 import { $atom, $inject, Alepha, z } from "alepha";
 import { Tr } from "alepha/react/i18n";
-import { $page } from "alepha/react/router";
+import { $page, Redirection } from "alepha/react/router";
 import { $client } from "alepha/server/links";
 import { Gem, Package, Truck } from "lucide-react";
 import { Layout } from "./Layout.tsx";
@@ -35,15 +35,15 @@ import { Layout } from "./Layout.tsx";
  * a typed `fetch`. Same call, same types, both sides.
  */
 /**
- * Set by the piece loader when the slug matches nothing, read by that page's
+ * Set by the product loader when the slug matches nothing, read by that page's
  * `onServerResponse` to answer 404.
  *
  * An atom rather than a field on the router, because the store is per-request on
- * the server: a field would leak one visitor's missing piece into the next
+ * the server: a field would leak one visitor's missing product into the next
  * visitor's response.
  */
-const pieceIntrouvable = $atom({
-  name: "shop.pieceIntrouvable",
+const produitIntrouvable = $atom({
+  name: "shop.produitIntrouvable",
   schema: z.boolean(),
   default: false,
 });
@@ -89,7 +89,8 @@ export class AppRouter {
     children: (): any[] => [
       this.accueil,
       this.atelier,
-      this.piece,
+      this.produit,
+      this.pieceRedirect,
       this.panier,
       this.commande,
       this.merci,
@@ -113,7 +114,7 @@ export class AppRouter {
       // which piece opens the page.
       const heroSlug = "collier-aurore";
       return {
-        pieces: page.content,
+        produits: page.content,
         hero: page.content.find((p) => p.slug === heroSlug) ?? page.content[0],
       };
     },
@@ -126,8 +127,8 @@ export class AppRouter {
     lazy: () => import("./pages/Atelier.tsx"),
   });
 
-  piece = $page({
-    path: "/piece/:slug",
+  produit = $page({
+    path: "/produit/:slug",
     // `$page` needs the params schema declared: without it `params` arrives empty
     // and the loader calls the API with `slug: undefined`, which fails deep in
     // the response encoder with a message that names the field but not the cause.
@@ -147,29 +148,56 @@ export class AppRouter {
     stream: false,
     loader: async ({ params }) => {
       try {
-        const piece = await this.produits.commerceProductGetBySlug({
+        const produit = await this.produits.commerceProductGetBySlug({
           params: { slug: params.slug },
         });
-        return { piece, disponible: piece.available };
+        return { produit, disponible: produit.available };
       } catch (error) {
         // Recorded for `onServerResponse`, which runs after this render and is
         // the only place that can still set the status.
-        this.alepha.store.set(pieceIntrouvable, true);
+        this.alepha.store.set(produitIntrouvable, true);
         throw error;
       }
     },
     onServerResponse: ({ reply }) => {
-      if (this.alepha.store.get(pieceIntrouvable)) {
+      if (this.alepha.store.get(produitIntrouvable)) {
         reply.status = 404;
       }
     },
     // `head` receives the loader's props directly — destructuring `{ props }`
     // silently yields undefined and the page falls back to the default title.
     head: (props: any) => ({
-      title: `${props.piece.name} · Atelier Aurore`,
-      description: props.piece.description,
+      title: `${props.produit.name} · Atelier Aurore`,
+      description: props.produit.description,
     }),
-    lazy: () => import("./pages/Piece.tsx"),
+    lazy: () => import("./pages/Produit.tsx"),
+  });
+
+  /**
+   * The old product URL, kept alive.
+   *
+   * `/piece/:slug` was the public path until the shop stopped calling its
+   * catalogue rows *pièces*. It is live on shop.alepha.dev and indexed, so it
+   * redirects rather than 404s.
+   *
+   * Thrown from the loader rather than declared with `$page`'s `redirect`
+   * shorthand, which takes a static string and so cannot carry the slug
+   * through. `Redirection` answers **302**; the status is hard-coded in
+   * `ReactServerProvider` and the class takes no override. A permanent move
+   * deserves a 301, and a crawler keeps re-checking a 302 indefinitely — worth
+   * fixing in the framework, but not silently pretended here.
+   *
+   * `stream: false` because a streamed page commits its status before the
+   * loader runs, and this page is nothing but its loader.
+   */
+  pieceRedirect = $page({
+    path: "/piece/:slug",
+    schema: { params: z.object({ slug: z.text({ minLength: 1 }) }) },
+    stream: false,
+    loader: async ({ params }) => {
+      throw new Redirection(`/produit/${params.slug}`);
+    },
+    lazy: () => import("./pages/Produit.tsx"),
   });
 
   panier = $page({
@@ -229,17 +257,39 @@ export class AppRouter {
   // page actually loads, closing the gap `admin:ui` alone leaves — a wildcard
   // role holds `admin:ui` whether or not the commerce module is registered.
 
-  adminPieces = $pageAdmin({
-    path: "/pieces",
-    head: { title: "Pièces · gestion" },
+  adminProduits = $pageAdmin({
+    path: "/produits",
+    head: { title: "Produits · gestion" },
     nav: {
-      label: <Tr k="admin.pieces" />,
+      label: <Tr k="admin.produits" />,
       icon: <Gem />,
       group: "Commerce",
       order: 100,
     },
     can: () => this.productApi.commerceAdminProductList.can(),
-    lazy: () => import("./pages/admin/AdminPieces.tsx"),
+    lazy: () => import("./pages/admin/AdminProduits.tsx"),
+  });
+
+  /**
+   * One product, on its own page.
+   *
+   * No `nav` — reached from the catalogue, not from the sidebar.
+   *
+   * The route lives here rather than in `@alepha/commerce`, which registers no
+   * pages at all: the package ships the component and the application decides
+   * where it hangs. That is also why the list is handed `detailPath` — it has
+   * to build a link to a path only this file knows.
+   *
+   * `productId` is unique across the whole route table on purpose. Two routes
+   * declaring different param names at the same position silently lose the
+   * inner value.
+   */
+  adminProduitDetail = $pageAdmin({
+    path: "/produits/:productId",
+    head: { title: "Produit · gestion" },
+    schema: { params: z.object({ productId: z.uuid() }) },
+    can: () => this.productApi.commerceAdminProductGet.can(),
+    lazy: () => import("./pages/admin/AdminProduitDetail.tsx"),
   });
 
   adminCommandes = $pageAdmin({

@@ -58,7 +58,7 @@ export class ShopI18n {
         "language.en": "English",
 
         // Shell
-        "nav.pieces": "Pièces",
+        "nav.produits": "Produits",
         "nav.atelier": "L'atelier",
         "nav.panier": "Panier",
         "nav.home": "Atelier Aurore, accueil",
@@ -82,20 +82,20 @@ export class ShopI18n {
         "home.count": "Les pièces · $1",
 
         // Piece
-        "piece.add": "Ajouter au panier",
-        "piece.adding": "Ajout…",
-        "piece.soldOut": "Épuisée",
-        "piece.added": "$1 est dans votre panier.",
-        "piece.addFailedStock":
+        "produit.add": "Ajouter au panier",
+        "produit.adding": "Ajout…",
+        "produit.soldOut": "Épuisée",
+        "produit.added": "$1 est dans votre panier.",
+        "produit.addFailedStock":
           "Cette pièce vient de partir. Écrivez-nous, nous en refaisons.",
-        "piece.addFailed": "Impossible d'ajouter cette pièce pour le moment.",
-        "piece.instant": "Envoi immédiat par courriel",
-        "piece.engraved": "Gravé après commande",
-        "piece.noneLeft": "Aucune en atelier",
-        "piece.inStock": "$1 en atelier",
-        "piece.restockNote":
+        "produit.addFailed": "Impossible d'ajouter cette pièce pour le moment.",
+        "produit.instant": "Envoi immédiat par courriel",
+        "produit.engraved": "Gravé après commande",
+        "produit.noneLeft": "Aucune en atelier",
+        "produit.inStock": "$1 en atelier",
+        "produit.restockNote":
           "Nous en refaisons régulièrement. Écrivez à contact@atelier-aurore.test et nous vous prévenons.",
-        "piece.viewCart": "Voir le panier",
+        "produit.viewCart": "Voir le panier",
 
         // Spec plate
         "spec.metal": "Métal",
@@ -197,21 +197,9 @@ export class ShopI18n {
 
         // Admin shell
         "admin.brand": "Atelier · gestion",
-        "admin.pieces": "Pièces",
+        "admin.produits": "Produits",
         "admin.orders": "Commandes",
         "admin.shipping": "Livraison",
-
-        /*
-         * The atelier sells *pièces*, not *produits*.
-         *
-         * `commerceFr` is deliberately generic — it serves any shop — so the
-         * three places its wording surfaces to this operator are renamed here.
-         * This is the whole reason the package catalogue is spread first
-         * rather than merged after.
-         */
-        "commerce.admin.noProducts": "Aucune pièce au catalogue.",
-        "commerce.admin.newProduct": "Nouvelle pièce",
-        "commerce.admin.saved": "Pièce enregistrée.",
       },
     }),
   });
@@ -236,7 +224,7 @@ export class ShopI18n {
         "language.fr": "Français",
         "language.en": "English",
 
-        "nav.pieces": "Pieces",
+        "nav.produits": "Products",
         "nav.atelier": "The workshop",
         "nav.panier": "Basket",
         "nav.home": "Atelier Aurore, home",
@@ -256,20 +244,20 @@ export class ShopI18n {
         "home.cta": "See the piece",
         "home.count": "The pieces · $1",
 
-        "piece.add": "Add to basket",
-        "piece.adding": "Adding…",
-        "piece.soldOut": "Sold out",
-        "piece.added": "$1 is in your basket.",
-        "piece.addFailedStock":
+        "produit.add": "Add to basket",
+        "produit.adding": "Adding…",
+        "produit.soldOut": "Sold out",
+        "produit.added": "$1 is in your basket.",
+        "produit.addFailedStock":
           "That one has just gone. Write to us — we make them again.",
-        "piece.addFailed": "This piece cannot be added right now.",
-        "piece.instant": "Sent by email immediately",
-        "piece.engraved": "Engraved to order",
-        "piece.noneLeft": "None in the workshop",
-        "piece.inStock": "$1 in the workshop",
-        "piece.restockNote":
+        "produit.addFailed": "This piece cannot be added right now.",
+        "produit.instant": "Sent by email immediately",
+        "produit.engraved": "Engraved to order",
+        "produit.noneLeft": "None in the workshop",
+        "produit.inStock": "$1 in the workshop",
+        "produit.restockNote":
           "We make these regularly. Write to contact@atelier-aurore.test and we will let you know.",
-        "piece.viewCart": "View basket",
+        "produit.viewCart": "View basket",
 
         "spec.metal": "Metal",
         "spec.titre": "Fineness",
@@ -362,23 +350,9 @@ export class ShopI18n {
           "This shop is a technical demonstration. The workshop, the 1962 rolling mill and the pieces are invented.",
 
         "admin.brand": "Workshop · admin",
-        "admin.pieces": "Pieces",
+        "admin.produits": "Products",
         "admin.orders": "Orders",
         "admin.shipping": "Delivery",
-
-        /*
-         * The English twins of the atelier's `pièce` overrides in `fr`.
-         *
-         * Required, not optional polish: a key missing from the active
-         * dictionary falls back to `fallbackLang` — `fr` here — and only an
-         * everywhere-missing key reaches the component's `default:`. Overriding
-         * these three in French alone would not leave English on the package
-         * wording, it would put "Nouvelle pièce" on the English back office.
-         * Any commerce key overridden in `fr` needs its `en` twin.
-         */
-        "commerce.admin.noProducts": "No pieces in the catalogue.",
-        "commerce.admin.newProduct": "New piece",
-        "commerce.admin.saved": "Piece saved.",
       },
     }),
   });

@@ -36,6 +36,20 @@ export interface CreateOrderInput {
 }
 
 /**
+ * An order line with the few facts about its parent order that make it
+ * readable on its own — which is how the catalogue shows a product's sales.
+ *
+ * The order fields are optional because the parent lookup is a separate query:
+ * an order deleted between the two would otherwise take the whole page down,
+ * and a line whose order has gone is still a true record of a sale.
+ */
+export interface ProductOrderLine extends OrderItemEntity {
+  orderStatus?: OrderStatus;
+  orderCreatedAt?: string;
+  orderCurrency?: string;
+}
+
+/**
  * Creates orders and drives their status.
  *
  * Two entry points, matching the two ways money arrives:
@@ -89,7 +103,34 @@ export class OrderService {
     }
 
     const status = input.status ?? "pending";
+
+    /*
+     * One currency per order, enforced rather than assumed.
+     *
+     * `total` below is a plain sum of `price * quantity` across the lines, and
+     * the order carries a single `currency`. Taking the first product's
+     * currency and summing the rest into it — which is what this did — charges
+     * a cart of a €89 ring and a $120 pendant as 209 EUR. Nothing anywhere
+     * would have reported it: the order looks internally consistent, and the
+     * payment intent is created from the same wrong figure.
+     *
+     * It was unreachable through the back office while nothing could set
+     * `currency`, and reachable through the API the whole time. Multi-currency
+     * pricing is a real feature, but it needs conversion at checkout, not a
+     * silent reinterpretation of the number.
+     */
     const currency = byId.get(productIds[0]!)!.currency;
+    const foreign = productIds.find(
+      (id) => byId.get(id)!.currency !== currency,
+    );
+    if (foreign) {
+      throw new CommerceError(
+        `Cannot create an order mixing currencies: product ${foreign} is priced in ${
+          byId.get(foreign)!.currency
+        }, the order is in ${currency}. Split it into one order per currency.`,
+      );
+    }
+
     const shippingTotal = input.shippingTotal ?? 0;
     let itemsTotal = 0;
     for (const line of input.lines) {
@@ -349,6 +390,54 @@ export class OrderService {
 
   public async itemsOf(orderId: string): Promise<OrderItemEntity[]> {
     return this.itemRepo.findMany({ where: { orderId: { eq: orderId } } });
+  }
+
+  /**
+   * Every order line that sold a given product, newest first, each carrying the
+   * date and status of the order it belongs to.
+   *
+   * The catalogue's answer to "has this ever sold, and to what effect" — which
+   * is a question about lines, not orders: one order may contain the product
+   * twice at different prices, and rolling those into a single order row would
+   * hide exactly the detail being asked for. The line's own snapshotted
+   * `unitPrice` is what it sold for, not today's catalogue price.
+   *
+   * Two queries rather than a join: `orderItems.orderId` is a `db.ref`, but the
+   * page is at most `size` rows, so the second lookup is one `inArray` over a
+   * handful of ids and keeps this readable across both SQL dialects the package
+   * supports.
+   */
+  public async linesOfProduct(
+    productId: string,
+    query: { size?: number; page?: number } = {},
+  ): Promise<Page<ProductOrderLine>> {
+    const page = await this.itemRepo.paginate(
+      { sort: "-createdAt", ...query },
+      { where: { productId: { eq: productId } } },
+      { count: true },
+    );
+
+    if (page.content.length === 0) {
+      return { ...page, content: [] };
+    }
+
+    const parents = await this.orderRepo.findMany({
+      where: { id: { inArray: page.content.map((item) => item.orderId) } },
+    });
+    const byId = new Map(parents.map((order) => [order.id, order]));
+
+    return {
+      ...page,
+      content: page.content.map((item) => {
+        const order = byId.get(item.orderId);
+        return {
+          ...item,
+          orderStatus: order?.status,
+          orderCreatedAt: order?.createdAt,
+          orderCurrency: order?.currency,
+        };
+      }),
+    };
   }
 
   /**

@@ -102,8 +102,9 @@ export const ShopWeb = $module({
      *
      * Each language becomes a distinct crawlable URL, and the URL is the source
      * of truth — it wins over the cookie and over `Accept-Language`, with no
-     * redirect. French is `fallbackLang`, so it stays unprefixed (`/piece/…`) and
-     * English takes the prefix (`/en/piece/…`). There is deliberately no `/fr/`:
+     * redirect. French is `fallbackLang`, so it stays unprefixed (`/produit/…`)
+     * and English takes the prefix (`/en/produit/…`). There is deliberately no
+     * `/fr/`:
      * putting the atelier's own language behind a prefix would mean making
      * English the default, and every existing URL would move.
      *

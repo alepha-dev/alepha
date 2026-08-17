@@ -20,7 +20,7 @@ test.describe("access", () => {
   test("the admin shell is not reachable without the permission", async ({
     page,
   }) => {
-    await page.goto("/admin/pieces");
+    await page.goto("/admin/produits");
     // Redirected to sign-in rather than shown an empty table.
     await expect(page).toHaveURL(/\/auth\/login|\/$/);
   });
@@ -34,7 +34,7 @@ test.describe("catalogue management", () => {
   test("lists every piece, drafts included, with real stock figures", async ({
     page,
   }) => {
-    await page.goto("/admin/pieces");
+    await page.goto("/admin/produits");
     await expect(
       page.getByRole("cell", { name: /Collier Aurore/ }),
     ).toBeVisible();
@@ -43,56 +43,151 @@ test.describe("catalogue management", () => {
     await expect(page.getByText(/6 of 6|6 sur 6/)).toBeVisible();
   });
 
-  test("opens a piece in the editor with its values", async ({ page }) => {
-    await page.goto("/admin/pieces");
+  test("opens a product on its own page with its values", async ({ page }) => {
+    await page.goto("/admin/produits");
     await page.getByRole("cell", { name: "Collier Aurore" }).click();
 
-    const sheet = page.getByRole("dialog");
-    await expect(sheet).toBeVisible();
-    await expect(sheet.locator('input[name="name"]')).toHaveValue(
+    // A route now, not a drawer: the URL is the product.
+    await expect(page).toHaveURL(/\/admin\/produits\/[0-9a-f-]{36}/);
+
+    await expect(page.locator('input[name="name"]')).toHaveValue(
       "Collier Aurore",
     );
     // Prices are edited in cents, and the field says so.
-    await expect(sheet.locator('input[name="price"]')).toHaveValue("8900");
-    // The stock panel distinguishes the three numbers that matter.
-    await expect(sheet.getByText("Disponible")).toBeVisible();
-    await expect(sheet.getByText("Réservé")).toBeVisible();
+    await expect(page.locator('input[name="price"]')).toHaveValue("8900");
+    // The aside distinguishes the three stock numbers that matter.
+    await expect(page.getByText("Disponible")).toBeVisible();
+    await expect(page.getByText("Réservé")).toBeVisible();
+  });
+
+  /**
+   * The five tabs are the reason this is a page. Each one reaches product data
+   * the drawer could not touch at all.
+   */
+  test("the product page offers every tab, and the tab is in the URL", async ({
+    page,
+  }) => {
+    await page.goto("/admin/produits");
+    await page.getByRole("cell", { name: "Collier Aurore" }).click();
+    await expect(page).toHaveURL(/\/admin\/produits\/[0-9a-f-]{36}/);
+
+    await page.getByText("Stock", { exact: true }).click();
+    await expect(page).toHaveURL(/[?&]tab=stock/);
+    await expect(page.getByText("Historique des mouvements")).toBeVisible();
+
+    await page.getByText("Ventes", { exact: true }).click();
+    await expect(page).toHaveURL(/[?&]tab=orders/);
+  });
+
+  /**
+   * Both of these are built from data that arrives *after* the first render —
+   * the kind list and the kind's config schema — and `useForm` captures its
+   * schema once. Built with the default deps, the Type picker silently offered
+   * no options at all and the config card rendered a submit button over no
+   * fields. Neither failed loudly; they were simply empty.
+   */
+  test("the pickers and the kind config are populated from late-arriving data", async ({
+    page,
+  }) => {
+    await page.goto("/admin/produits");
+    await page.getByRole("cell", { name: "Collier Aurore" }).click();
+    await expect(page).toHaveURL(/\/admin\/produits\/[0-9a-f-]{36}/);
+    const url = page.url().split("?")[0];
+
+    // The Type picker's options come from the kinds query.
+    await page.getByRole("combobox").filter({ hasText: "good" }).click();
+    await expect(page.getByRole("option", { name: "engraved" })).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    // The config form's fields come from that kind's JSON Schema.
+    await page.goto(`${url}?tab=details`);
+    await expect(page.getByText("Configuration du type")).toBeVisible();
+    await expect(page.getByText("Low Stock Threshold")).toBeVisible();
+  });
+
+  /**
+   * The tax rate had no UI and was not even accepted by the API, so a
+   * mixed-rate catalogue was unreachable. This is the end-to-end proof that it
+   * now saves.
+   */
+  test("a VAT rate set in the admin survives a reload", async ({ page }) => {
+    await page.goto("/admin/produits");
+    await page.getByRole("cell", { name: "Bague Nadir" }).click();
+    await expect(page).toHaveURL(/\/admin\/produits\/[0-9a-f-]{36}/);
+    const url = page.url();
+
+    await page.locator('input[name="vatRateBps"]').fill("550");
+    await page.getByRole("button", { name: "Enregistrer" }).first().click();
+    await expect(page.getByText(/Produit enregistré/)).toBeVisible();
+
+    await page.goto(url);
+    await expect(page.locator('input[name="vatRateBps"]')).toHaveValue("550");
+
+    // Put it back on the seller's default rate.
+    await page.locator('input[name="vatRateBps"]').fill("");
+    await page.getByRole("button", { name: "Enregistrer" }).first().click();
   });
 
   test("a price edited in the admin shows on the storefront", async ({
     page,
   }) => {
-    await page.goto("/admin/pieces");
+    await page.goto("/admin/produits");
     await page.getByRole("cell", { name: "Boucles Éclipse" }).click();
+    await expect(page).toHaveURL(/\/admin\/produits\/[0-9a-f-]{36}/);
+    const url = page.url();
 
-    const sheet = page.getByRole("dialog");
-    await sheet.locator('input[name="price"]').fill("15500");
-    await sheet.getByRole("button", { name: "Enregistrer" }).click();
-    await expect(page.getByText(/Pièce enregistrée/)).toBeVisible();
+    await page.locator('input[name="price"]').fill("15500");
+    await page.getByRole("button", { name: "Enregistrer" }).first().click();
+    await expect(page.getByText(/Produit enregistré/)).toBeVisible();
 
-    await page.goto("/piece/boucles-eclipse");
+    await page.goto("/produit/boucles-eclipse");
     await expect(page.getByText("155 €")).toBeVisible();
 
     // Put it back, so the checkout specs keep their arithmetic.
-    await page.goto("/admin/pieces");
-    await page.getByRole("cell", { name: "Boucles Éclipse" }).click();
-    await page.getByRole("dialog").locator('input[name="price"]').fill("14500");
+    await page.goto(url);
+    await page.locator('input[name="price"]').fill("14500");
+    await page.getByRole("button", { name: "Enregistrer" }).first().click();
+    await expect(page.getByText(/Produit enregistré/)).toBeVisible();
+  });
+
+  /**
+   * "New product" has no form: it writes a draft and opens it. The draft must
+   * be invisible to the shop until someone publishes it, which is what makes
+   * creating-then-abandoning harmless.
+   */
+  test("New product creates a draft and opens it, unpublished", async ({
+    page,
+  }) => {
+    await page.goto("/admin/produits");
+    await page.getByRole("button", { name: /Nouveau produit/ }).click();
+
+    await expect(page).toHaveURL(/\/admin\/produits\/[0-9a-f-]{36}/);
+    const slug = await page.locator('input[name="slug"]').inputValue();
+    expect(slug).toMatch(/^product-\d+$/);
+    await expect(page.locator('input[name="price"]')).toHaveValue("0");
+
+    // Not on the storefront: a draft is not a product anyone can see.
+    const res = await page.request.get(`/produit/${slug}`);
+    expect(res.status()).toBe(404);
+
+    // Clean up — it has never been ordered, so it deletes.
+    await page.getByRole("button", { name: "Supprimer" }).first().click();
     await page
-      .getByRole("dialog")
-      .getByRole("button", { name: "Enregistrer" })
+      .getByRole("button", { name: /^Supprimer$/ })
+      .last()
       .click();
-    await expect(page.getByText(/Pièce enregistrée/)).toBeVisible();
+    await expect(page).toHaveURL(/\/admin\/produits$/);
   });
 
   test("restocking raises the availability the storefront quotes", async ({
     page,
   }) => {
-    await page.goto("/piece/bracelet-meridien");
+    await page.goto("/produit/bracelet-meridien");
     const before = Number(
       (await page.getByText(/\d+ en atelier/).innerText()).match(/\d+/)![0],
     );
 
-    await page.goto("/admin/pieces");
+    await page.goto("/admin/produits");
     await page
       .getByRole("row", { name: /Bracelet Méridien/ })
       .getByRole("button", {
@@ -103,7 +198,7 @@ test.describe("catalogue management", () => {
     await page.getByRole("button", { name: /Confirmer|Confirm|OK/ }).click();
     await expect(page.getByText(/\+1 en stock/)).toBeVisible();
 
-    await page.goto("/piece/bracelet-meridien");
+    await page.goto("/produit/bracelet-meridien");
     await expect(page.getByText(`${before + 1} en atelier`)).toBeVisible();
   });
 
@@ -230,7 +325,7 @@ const togglePublication = async (
   item: string,
   becomes: string,
 ): Promise<void> => {
-  await page.goto("/admin/pieces");
+  await page.goto("/admin/produits");
   await page
     .getByRole("row", { name: /Carte cadeau/ })
     .getByRole("button", {

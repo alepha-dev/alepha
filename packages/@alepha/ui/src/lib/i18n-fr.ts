@@ -218,6 +218,7 @@ export const uiFr: Record<string, string> = {
   "admin.audits.failed": "Échec",
   "admin.audits.ok": "OK",
   "admin.audits.statusAll": "Tous les statuts",
+  "admin.detail.copyValue": "Copier $1",
   "admin.files.allBuckets": "Tous les buckets",
   "admin.files.bucketPlaceholder": "Bucket",
   "admin.files.bulkDelete": "Supprimer la sélection",
@@ -401,7 +402,6 @@ export const uiFr: Record<string, string> = {
   "admin.userDetail.colResource": "Ressource",
   "admin.userDetail.colStarted": "Ouverte le",
   "admin.userDetail.colWhen": "Date",
-  "admin.userDetail.copyId": "Copier l'identifiant",
   "admin.userDetail.created": "Créé le",
   "admin.userDetail.credentials": "Identifiants",
   "admin.userDetail.credentialsHasPassword":

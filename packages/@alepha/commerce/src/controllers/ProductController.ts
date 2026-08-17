@@ -59,7 +59,7 @@ export class ProductController {
     handler: async ({ query }) => {
       const page = await this.catalog.list(query);
       // Availability per row, so a listing can grey out what is gone without a
-      // second request per piece.
+      // second request per product.
       const content = await Promise.all(
         page.content.map(async (product) => ({
           ...this.publicView(product),

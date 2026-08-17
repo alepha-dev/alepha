@@ -27,7 +27,7 @@ export const buy = async (
     email = "camille@example.test",
   } = options;
 
-  await page.goto(`/piece/${slug}`);
+  await page.goto(`/produit/${slug}`);
   await page.getByRole("button", { name: "Ajouter au panier" }).click();
   // The toast is the signal the server accepted it — waiting on a timeout here is
   // what made the first exploratory pass flaky.
@@ -171,13 +171,13 @@ const submitCredentials = async (
  * `/admin` loader, so staying on the URL *is* the permission check.
  */
 const reachesAdmin = async (page: Page): Promise<boolean> => {
-  await page.goto("/admin/pieces");
+  await page.goto("/admin/produits");
   /*
    * Wait for the outcome instead of reading the URL.
    *
    * The `/admin` loader redirects by throwing `Redirection`, and the router
    * applies that *after* `page.goto` has resolved — so a visitor who is about to
-   * be bounced still reads `/admin/pieces` for a moment. The first version
+   * be bounced still reads `/admin/produits` for a moment. The first version
    * believed it, reported success, and skipped the registration that was the
    * whole point; the specs then failed one by one on the sign-in page.
    *

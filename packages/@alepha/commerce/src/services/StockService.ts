@@ -1,8 +1,11 @@
-import { $inject } from "alepha";
+import { $inject, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository } from "alepha/orm";
-import { stockMovements } from "../entities/stockMovements.ts";
+import { $repository, type Page } from "alepha/orm";
+import {
+  type StockMovementEntity,
+  stockMovements,
+} from "../entities/stockMovements.ts";
 import {
   type StockReservationEntity,
   stockReservations,
@@ -205,6 +208,50 @@ export class StockService {
       reason: options.reason ?? "intake",
       note: options.note,
     });
+  }
+
+  /**
+   * Correct the count, in either direction.
+   *
+   * Distinct from {@link recordIntake} because the reason is different and the
+   * ledger is read by reason: an intake is stock arriving, an adjustment is the
+   * book being wrong — breakage, a miscount, a unit written off. Rolling them
+   * together would make "how much did we take in this quarter" unanswerable.
+   *
+   * `delta` is signed and must not be zero; a zero movement is a row that says
+   * nothing and still shows up in the ledger an operator reads.
+   */
+  public async recordAdjustment(
+    productId: string,
+    delta: number,
+    options: { note?: string } = {},
+  ): Promise<void> {
+    if (delta === 0) {
+      throw new AlephaError("A stock adjustment cannot be zero.");
+    }
+    await this.movements.create({
+      productId,
+      delta,
+      reason: "adjustment",
+      note: options.note,
+    });
+  }
+
+  /**
+   * The product's ledger, newest first — every movement and why it happened.
+   *
+   * Paginated rather than returned whole: this table only grows, and a product
+   * that has sold for a year has a ledger no screen wants in one response.
+   */
+  public async movementsOf(
+    productId: string,
+    query: { size?: number; page?: number; sort?: string } = {},
+  ): Promise<Page<StockMovementEntity>> {
+    return this.movements.paginate(
+      { sort: "-createdAt", ...query },
+      { where: { productId: { eq: productId } } },
+      { count: true },
+    );
   }
 
   /**

@@ -11,7 +11,7 @@ test.describe("address", () => {
   test("rejects a postcode that belongs to another country", async ({
     page,
   }) => {
-    await page.goto("/piece/collier-aurore");
+    await page.goto("/produit/collier-aurore");
     await page.getByRole("button", { name: "Ajouter au panier" }).click();
     await expect(page.getByText(/dans votre panier/)).toBeVisible();
 
@@ -32,7 +32,7 @@ test.describe("address", () => {
   });
 
   test("accepts a Dutch postcode with letters", async ({ page }) => {
-    await page.goto("/piece/collier-aurore");
+    await page.goto("/produit/collier-aurore");
     await page.getByRole("button", { name: "Ajouter au panier" }).click();
     await expect(page.getByText(/dans votre panier/)).toBeVisible();
 
@@ -53,7 +53,7 @@ test.describe("delivery", () => {
   test("offers the French options and prices the chosen one", async ({
     page,
   }) => {
-    await page.goto("/piece/collier-aurore");
+    await page.goto("/produit/collier-aurore");
     await page.getByRole("button", { name: "Ajouter au panier" }).click();
     await expect(page.getByText(/dans votre panier/)).toBeVisible();
 
@@ -80,7 +80,7 @@ test.describe("delivery", () => {
 
   test("free delivery applies above the threshold", async ({ page }) => {
     // 690,00 € clears the 150,00 € free-delivery threshold.
-    await page.goto("/piece/bague-nadir");
+    await page.goto("/produit/bague-nadir");
     await page.getByRole("button", { name: "Ajouter au panier" }).click();
     await expect(page.getByText(/dans votre panier/)).toBeVisible();
 

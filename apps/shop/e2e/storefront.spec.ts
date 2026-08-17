@@ -42,14 +42,14 @@ test.describe("catalogue", () => {
   });
 
   test("the spec plate states the metal and its fineness", async ({ page }) => {
-    await page.goto("/piece/collier-aurore");
+    await page.goto("/produit/collier-aurore");
     await expect(page.getByText("Argent", { exact: false })).toBeVisible();
     await expect(page.getByText("925 ‰")).toBeVisible();
     await expect(page.getByText("4,2 g")).toBeVisible();
   });
 
   test("availability is stated as a fact, not as urgency", async ({ page }) => {
-    await page.goto("/piece/collier-aurore");
+    await page.goto("/produit/collier-aurore");
     await expect(page.getByText(/\d+ en atelier/)).toBeVisible();
     // No pressure tactics in the copy.
     await expect(page.getByText(/Plus que|Vite|Dernière chance/)).toHaveCount(
@@ -60,14 +60,14 @@ test.describe("catalogue", () => {
   test("a made-to-order piece says it is engraved after ordering", async ({
     page,
   }) => {
-    await page.goto("/piece/bague-solstice");
+    await page.goto("/produit/bague-solstice");
     await expect(page.getByText(/Gravé après commande/)).toBeVisible();
   });
 
   test("a dematerialised piece promises immediate delivery", async ({
     page,
   }) => {
-    await page.goto("/piece/carte-cadeau-50");
+    await page.goto("/produit/carte-cadeau-50");
     // The spec plate, not the paragraph below it: the page says "Envoi immédiat"
     // twice, and an unqualified match is a strict-mode violation.
     await expect(
@@ -93,8 +93,32 @@ test.describe("catalogue", () => {
    * expressible at all.
    */
   test("an unknown piece answers 404", async ({ request }) => {
-    const res = await request.get("/piece/nexiste-pas");
+    const res = await request.get("/produit/nexiste-pas");
     expect(res.status()).toBe(404);
+  });
+
+  /*
+   * `/piece/:slug` was this shop's public product URL until the catalogue
+   * stopped calling its rows *pièces*. It is live and indexed, so it has to
+   * keep working — and the slug has to survive the hop, which is the part a
+   * static redirect could not do.
+   */
+  test("the old /piece/ URL redirects to /produit/, keeping the slug", async ({
+    request,
+  }) => {
+    const res = await request.get("/piece/collier-aurore", {
+      maxRedirects: 0,
+    });
+    expect(res.status()).toBe(302);
+    expect(res.headers().location).toBe("/produit/collier-aurore");
+  });
+
+  test("following the old /piece/ URL lands on the product", async ({
+    page,
+  }) => {
+    await page.goto("/piece/collier-aurore");
+    await expect(page).toHaveURL(/\/produit\/collier-aurore$/);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   });
 });
 
@@ -112,7 +136,7 @@ test.describe("cart", () => {
   test("adding a piece updates the header count and the cart", async ({
     page,
   }) => {
-    await page.goto("/piece/collier-aurore");
+    await page.goto("/produit/collier-aurore");
     await page.getByRole("button", { name: "Ajouter au panier" }).click();
     await expect(page.getByText(/dans votre panier/)).toBeVisible();
 
@@ -129,7 +153,7 @@ test.describe("cart", () => {
   test("the cart survives a reload, because it lives in a signed cookie", async ({
     page,
   }) => {
-    await page.goto("/piece/boucles-eclipse");
+    await page.goto("/produit/boucles-eclipse");
     await page.getByRole("button", { name: "Ajouter au panier" }).click();
     await expect(page.getByText(/dans votre panier/)).toBeVisible();
 
@@ -145,7 +169,7 @@ test.describe("cart", () => {
   });
 
   test("changing a quantity re-prices from the server", async ({ page }) => {
-    await page.goto("/piece/collier-aurore");
+    await page.goto("/produit/collier-aurore");
     await page.getByRole("button", { name: "Ajouter au panier" }).click();
     await expect(page.getByText(/dans votre panier/)).toBeVisible();
 
@@ -156,7 +180,7 @@ test.describe("cart", () => {
   });
 
   test("removing the last line empties the cart", async ({ page }) => {
-    await page.goto("/piece/collier-aurore");
+    await page.goto("/produit/collier-aurore");
     await page.getByRole("button", { name: "Ajouter au panier" }).click();
     await expect(page.getByText(/dans votre panier/)).toBeVisible();
 
@@ -171,7 +195,7 @@ test.describe("cart", () => {
 test.describe("interface", () => {
   test("switches between French and English", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("link", { name: "Pièces" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Produits" })).toBeVisible();
 
     /*
      * The menu closes when a language is chosen, so reopening it is the real
@@ -183,11 +207,11 @@ test.describe("interface", () => {
      */
     await page.getByRole("button", { name: "Switch language" }).click();
     await page.getByRole("menuitemcheckbox", { name: "English" }).click();
-    await expect(page.getByRole("link", { name: "Pieces" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Products" })).toBeVisible();
 
     await page.getByRole("button", { name: "Switch language" }).click();
     await page.getByRole("menuitemcheckbox", { name: "Français" }).click();
-    await expect(page.getByRole("link", { name: "Pièces" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Produits" })).toBeVisible();
   });
 
   test("reads on a phone without sideways scrolling", async ({ page }) => {

@@ -31,6 +31,7 @@
     "./recovery": "./src/recovery/index.ts",
     "./admin": "./src/admin/index.ts",
     "./lib/*": "./src/lib/*.ts",
+    "./styles.css": "./src/styles.css",
     "./admin/components/*": "./src/admin/components/*.tsx",
     "./checkout/components/*": "./src/checkout/components/*",
     "./shipping/components/*": "./src/shipping/components/*.tsx"

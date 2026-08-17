@@ -2,18 +2,20 @@ import * as React from "react";
 
 void React;
 
+import {
+  AdminDetailLayout,
+  type AdminDetailTab,
+} from "@alepha/ui/components/admin/admin-detail-layout";
 import { AdminUserDetailAuditsTab } from "@alepha/ui/components/admin/admin-user-detail-audits-tab";
 import { AdminUserDetailIdentityAside } from "@alepha/ui/components/admin/admin-user-detail-identity-aside";
 import { AdminUserDetailOverviewTab } from "@alepha/ui/components/admin/admin-user-detail-overview-tab";
 import { AdminUserDetailPasswordDialog } from "@alepha/ui/components/admin/admin-user-detail-password-dialog";
 import { AdminUserDetailSecurityTab } from "@alepha/ui/components/admin/admin-user-detail-security-tab";
 import { AdminUserDetailSessionsTab } from "@alepha/ui/components/admin/admin-user-detail-sessions-tab";
+import { useDetailTab } from "@alepha/ui/components/admin/use-detail-tab";
 import { Button } from "@alepha/ui/components/ui/button";
-import { Segmented } from "@alepha/ui/components/ui/segmented";
-import { Skeleton } from "@alepha/ui/components/ui/skeleton";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { z } from "alepha";
 import type { AdminAuditController } from "alepha/api/audits";
 import type {
   AdminIdentityController,
@@ -27,10 +29,9 @@ import { useAction, useClient, useQuery } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { FormValidationError, useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { useQueryParams, useRouter, useRouterState } from "alepha/react/router";
+import { useRouter, useRouterState } from "alepha/react/router";
 import { HttpError } from "alepha/server";
 import {
-  ArrowLeft,
   History,
   Monitor,
   ShieldCheck,
@@ -67,7 +68,6 @@ export interface AdminUserDetailProps {
 }
 
 type TabKey = "overview" | "security" | "sessions" | "audits";
-const tabSchema = z.object({ tab: z.string().optional() });
 
 /**
  * Resolves the id param for this page, preferring `:userId` (the param name
@@ -108,14 +108,7 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
   const dialog = useDialog();
 
   const [passwordOpen, setPasswordOpen] = useState(false);
-  // Tab selection is bound to the URL (`?tab=<key>`) via useQueryParams in
-  // querystring mode, which uses replaceState — switching tabs does not add
-  // a browser-history entry.
-  const [tabQuery, setTabQuery] = useQueryParams(tabSchema, {
-    format: "querystring",
-  });
-  const tab = (tabQuery.tab as TabKey) ?? "overview";
-  const setTab = (next: TabKey) => setTabQuery({ tab: next });
+  const [tab, setTab] = useDetailTab<TabKey>("overview");
 
   const isSelf = currentUser?.id === userId;
   const backPath = props.backPath ?? "/admin/users";
@@ -488,30 +481,6 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
 
   // -- Render ---------------------------------------------------------------
 
-  if (userQuery.loading && !user) {
-    return (
-      <div className="flex flex-col gap-4 p-6">
-        <Skeleton className="h-10 w-72" />
-        <Skeleton className="h-40 w-full" />
-        <Skeleton className="h-40 w-full" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="flex flex-col items-start gap-3 p-6">
-        <p className="text-muted-foreground text-sm">
-          {tr("admin.userDetail.notFound", { default: "User not found." })}
-        </p>
-        <Button variant="outline" onClick={() => router.push(backPath)}>
-          <ArrowLeft className="size-4" />
-          {tr("admin.userDetail.back", { default: "Back to users" })}
-        </Button>
-      </div>
-    );
-  }
-
   // A `credentials` identity means a password is set. Password sign-in lives
   // in its own card; the social providers are everything else.
   const hasPassword = identities.some((id) => id.provider === "credentials");
@@ -519,62 +488,54 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
     (id) => id.provider !== "credentials",
   );
 
-  const tabOptions = [
+  const tabs: AdminDetailTab[] = [
     {
       value: "overview",
-      label: (
-        <span className="inline-flex items-center gap-1.5">
-          <User className="size-4" />
-          {tr("admin.userDetail.tabOverview", { default: "Overview" })}
-        </span>
-      ),
+      icon: User,
+      label: tr("admin.userDetail.tabOverview", { default: "Overview" }),
     },
     {
       value: "security",
-      label: (
-        <span className="inline-flex items-center gap-1.5">
-          <ShieldCheck className="size-4" />
-          {tr("admin.userDetail.tabSecurity", { default: "Security" })}
-        </span>
-      ),
+      icon: ShieldCheck,
+      label: tr("admin.userDetail.tabSecurity", { default: "Security" }),
     },
     {
       value: "sessions",
-      label: (
-        <span className="inline-flex items-center gap-1.5">
-          <Monitor className="size-4" />
-          {tr("admin.userDetail.tabSessions", { default: "Sessions" })}
-        </span>
-      ),
+      icon: Monitor,
+      label: tr("admin.userDetail.tabSessions", { default: "Sessions" }),
     },
     {
       value: "audits",
-      label: (
-        <span className="inline-flex items-center gap-1.5">
-          <History className="size-4" />
-          {tr("admin.userDetail.tabAudits", { default: "Audit log" })}
-        </span>
-      ),
+      icon: History,
+      label: tr("admin.userDetail.tabAudits", { default: "Audit log" }),
     },
   ];
 
   return (
-    <div className="flex h-full min-h-0 flex-1 overflow-hidden">
-      {/* Aside (full height) ------------------------------------------- */}
-      <aside className="border-border bg-background hidden w-72 shrink-0 flex-col gap-4 overflow-auto border-r p-6 md:flex">
-        <AdminUserDetailIdentityAside user={user} />
-      </aside>
-
-      {/* Right column: top bar + tab content --------------------------- */}
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="bg-background flex h-14 shrink-0 items-center gap-2 border-b px-4">
-          <Segmented
-            size="sm"
-            options={tabOptions}
-            value={tab}
-            onChange={(v) => setTab(v as typeof tab)}
-          />
-          <div className="ml-auto flex items-center gap-2">
+    <>
+      <AdminDetailLayout
+        loading={userQuery.loading && !user}
+        notFound={
+          user
+            ? undefined
+            : {
+                message: String(
+                  tr("admin.userDetail.notFound", {
+                    default: "User not found.",
+                  }),
+                ),
+                backLabel: String(
+                  tr("admin.userDetail.back", { default: "Back to users" }),
+                ),
+                onBack: () => void router.push(backPath),
+              }
+        }
+        aside={user ? <AdminUserDetailIdentityAside user={user} /> : null}
+        tabs={tabs}
+        tab={tab}
+        onTabChange={(v) => setTab(v as TabKey)}
+        actions={
+          <>
             <Button
               variant="outline"
               size="sm"
@@ -582,7 +543,7 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
               disabled={isSelf}
               onClick={() => toggleEnabled.run()}
             >
-              {user.enabled ? (
+              {user?.enabled ? (
                 <>
                   <UserX className="size-4" />
                   {tr("admin.userDetail.disable", { default: "Disable" })}
@@ -604,8 +565,9 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
               <Trash2 className="size-4" />
               {tr("admin.userDetail.delete", { default: "Delete user" })}
             </Button>
-          </div>
-        </div>
+          </>
+        }
+      >
         {tab === "overview" && (
           <AdminUserDetailOverviewTab
             form={form}
@@ -635,7 +597,7 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
         {tab === "audits" && (
           <AdminUserDetailAuditsTab userId={userId} fetch={auditsFetcher} />
         )}
-      </div>
+      </AdminDetailLayout>
 
       <AdminUserDetailPasswordDialog
         open={passwordOpen}
@@ -643,7 +605,7 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
         form={passwordForm}
         submitting={passwordSubmitting}
       />
-    </div>
+    </>
   );
 };
 

@@ -44,5 +44,5 @@ export const shopAdminOptions: AdminRouterOptions = {
   // `accueil`, not the default "home" — shop's storefront root page carries
   // no explicit `name:`, so its route name is its property key.
   homeRouteName: "accueil",
-  indexPath: "/admin/pieces",
+  indexPath: "/admin/produits",
 };

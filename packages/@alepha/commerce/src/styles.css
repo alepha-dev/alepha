@@ -1,0 +1,28 @@
+/*
+ * Tailwind source registration for this package's React components.
+ *
+ * ### Why this file has to exist
+ *
+ * Tailwind v4 generates a utility only if it finds the class in a scanned
+ * source. `@alepha/ui/styles.css` declares `@source "../**\/*.{ts,tsx}"`, which
+ * covers `@alepha/ui` and nothing else — and an application's own scan covers
+ * the application. This package's components sat in neither.
+ *
+ * The failure is silent and looks like the class working: any class that also
+ * happens to appear somewhere in `@alepha/ui` gets generated and applies here
+ * by coincidence, while a class unique to this package produces no CSS at all
+ * and the element is simply unstyled. `admin-orders.tsx` asked for
+ * `sm:max-w-xl` on its sheet for exactly as long as this file did not exist,
+ * and the sheet has been full width the whole time.
+ *
+ * Consumers import it once, after the design system:
+ *
+ * ```css
+ * @import "@alepha/ui/styles.css";
+ * @import "@alepha/commerce/styles.css";
+ * ```
+ *
+ * No `@import "tailwindcss"` here — the design system already did that, and
+ * importing it twice emits the preflight twice.
+ */
+@source "./**/*.{ts,tsx}";
