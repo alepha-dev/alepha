@@ -4,6 +4,7 @@ import { type ReactElement, useRef, useState } from "react";
 import type { FolioResource } from "@/api/schemas/folioResourceSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { MarkdownEditorMode } from "../../shared/markdown-editor/MarkdownEditorInner.tsx";
+import MarkdownModeToggle from "../../shared/markdown-editor/MarkdownModeToggle.tsx";
 import {
   type MarkdownCommandId,
   markdownCommands,
@@ -110,21 +111,6 @@ const FolioWorkspaceContent = (
     if (!props.inspectorOpen) props.onToggleInspector();
     props.onInspectorTabChange("history");
   };
-
-  // Revision count for the meta bar. Seeded from the folio's own
-  // `metadata.revisionCount`, which the route loader asked `getByShortId`
-  // for in the same call that fetched the folio — the History tab used to
-  // be the only source, and paying a `listHistory` round-trip on every
-  // folio open to render one number in the meta bar is what that cost.
-  // The tab still reports through `onRevisionCount` once it has actually
-  // fetched (a revert or a pin toggle moves the number), and it overrides
-  // this seed when it does.
-  //
-  // The initializer runs once per mount, which is once per folio: this
-  // whole component is keyed on the folio id in `FolioWorkspace`.
-  const [revisionCount, setRevisionCount] = useState<number | undefined>(
-    () => props.folio?.metadata?.revisionCount,
-  );
 
   // The document pane's DOM container, threaded to the inspector's
   // Outline tab so it can resolve a heading entry to the real `<h1…h6>`
@@ -250,11 +236,11 @@ const FolioWorkspaceContent = (
             ref={setContentElement}
             className="min-w-0 flex-1 overflow-y-auto"
           >
-            {/* No width cap and no padding here anymore: the header row and
-                the rule under it run edge to edge, and only the BODY is held
-                to the prose measure. `FolioDocument` applies both per section
-                — a single wrapper at this level cannot, since it would have
-                to be two different widths at once. */}
+            {/* No width cap and no padding here anymore: the summary field
+                and the rule under it run edge to edge, and only the BODY is
+                held to the prose measure. `FolioDocument` applies both per
+                section — a single wrapper at this level cannot, since it
+                would have to be two different widths at once. */}
             <div className="flex flex-col">
               <FolioDocument
                 folio={props.folio}
@@ -267,11 +253,34 @@ const FolioWorkspaceContent = (
                 onEditorViewReady={(v) => {
                   editorViewRef.current = v;
                 }}
-                revisionCount={revisionCount}
                 imageUploadHandler={imageUploadHandler}
               />
             </div>
           </div>
+
+          {/* The view/edit toggle, floating over the document's top-right
+              corner — all that survives of the deleted meta bar (feedback
+              #62), and deliberately bigger than it was in that row, since it
+              is now a lone control rather than the last chip of several.
+
+              A SIBLING of the scroll container, exactly like the find bar
+              below it and for the same reason: an `absolute` child of a
+              scrolling box scrolls away with the text. `z-10` keeps it under
+              the inspector's `z-20` drawer, which is meant to cover the
+              document at narrow widths.
+
+              `bg-card` + a border because it hovers over prose — the ghost
+              variant's transparent background would let the text it covers
+              read straight through it. */}
+          <MarkdownModeToggle
+            mode={mode}
+            onChange={() => actions.handlers["view.mode"]()}
+            disabled={actions.locked}
+            iconOnly
+            className="border-border bg-card text-muted-foreground hover:text-foreground absolute top-3 right-3 z-10 size-9 rounded-lg border shadow-sm"
+            iconClassName="size-4.5"
+          />
+
           <FolioFindBar find={find} />
         </div>
         {!props.inspectorOpen && (
@@ -295,7 +304,6 @@ const FolioWorkspaceContent = (
               tab={props.inspectorTab}
               onTabChange={props.onInspectorTabChange}
               onCollapse={props.onToggleInspector}
-              onRevisionCount={setRevisionCount}
               onReverted={actions.applyReverted}
               contentElement={contentElement}
               protectedFolio={actions.actionState.isProtected}

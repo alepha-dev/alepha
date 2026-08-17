@@ -714,7 +714,6 @@ describe("MCP Security Integration", () => {
               projectId,
               title,
               content: `# ${title}`,
-              tags: ["probe"],
             },
           },
           { user: owner },

@@ -274,7 +274,6 @@ interface FolioPreview {
   title: string;
   summary?: string;
   bodyPreview: string;
-  tags: string[];
 }
 interface QuestPreview {
   kind: "quest";
@@ -338,7 +337,6 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
             title: folio.title,
             summary: folio.summary || undefined,
             bodyPreview: body.split("\n").slice(0, 10).join("\n").slice(0, 600),
-            tags: folio.tags ?? [],
           };
           cache.set(key, preview);
           if (alive) setData(preview);
@@ -441,18 +439,6 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
             <pre className="text-muted-foreground max-h-32 overflow-hidden text-xs leading-relaxed whitespace-pre-wrap">
               {data.bodyPreview}
             </pre>
-          )}
-          {data.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {data.tags.slice(0, 6).map((t) => (
-                <span
-                  key={t}
-                  className="bg-muted rounded-sm border px-1.5 py-0.5 font-mono text-[10px]"
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
           )}
         </div>
       )}

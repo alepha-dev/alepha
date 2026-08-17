@@ -92,11 +92,11 @@ The Lore MCP (`mcp__claude_ai_Lore__*`) is the long-term planning memory for fra
 
 - Before non-trivial framework changes, orient via `project_context` (project `1`) — returns project metadata, active quests, and the folio index in one shot.
 - Read `folio_get` on relevant folios. Folios are how past sessions hand context to future sessions (current examples: #4 Drizzle v1 plan, #5 Stripe-deferred, #6 ui-registry removal).
-- **Prefer folios over quests for framework work.** Folios capture decisions, plans, and gotchas — write one (`folio_create` with a good `summary` + reusable `tags`) whenever a session produces a non-obvious decision or design note. Only create quests when the user explicitly asks.
+- **Prefer folios over quests for framework work.** Folios capture decisions, plans, and gotchas — write one (`folio_create` with a good `summary`) whenever a session produces a non-obvious decision or design note. Only create quests when the user explicitly asks.
 
 #### The folio tree is organised — file folios, don't dump them at the root
 
-Project `1` has a directory tree (browse it with `directory_list`). **Directories are subjects, not document types.** Put a new folio under the subject it is about and tag it `plan` / `spec` / `review`; there are no `plans/` or `specs/` directories, because a spec filed away from its subject is unfindable. Pass `directory_shortId` to `folio_create`:
+Project `1` has a directory tree (browse it with `directory_list`). **Directories are subjects, not document types.** Put a new folio under the subject it is about and say which kind of document it is in its `summary`; there are no `plans/` or `specs/` directories, because a spec filed away from its subject is unfindable. (Folio tags are gone — the summary is the only taxonomy left.) Pass `directory_shortId` to `folio_create`:
 
 | Directory | What goes in it |
 |---|---|
@@ -115,7 +115,7 @@ Project `1` has a directory tree (browse it with `directory_list`). **Directorie
 
 `docs/superpowers/` is in `.gitignore`. A plan written there lives only in the worktree that produced it and **dies when that worktree is removed** — which is exactly what the finishing step does. That has already cost one 1100-line plan, recovered by hand into `assets/`.
 
-So when the `superpowers:writing-plans` or `superpowers:brainstorming` skills produce a plan or a spec, **also persist it as a folio** in project `1`, under its **subject** directory, tagged `plan` or `spec`. The file on disk stays the working copy the executing agent reads; the folio is the copy that survives. Update the folio when the plan changes materially, and mark it done or superseded when the work ships.
+So when the `superpowers:writing-plans` or `superpowers:brainstorming` skills produce a plan or a spec, **also persist it as a folio** in project `1`, under its **subject** directory, with a `summary` naming it as a plan or a spec. The file on disk stays the working copy the executing agent reads; the folio is the copy that survives. Update the folio when the plan changes materially, and mark it done or superseded when the work ships.
 
 A plan folio needs: what is being built, the constraints that bind it, and the decisions already taken with their reasons. A future session that reads only the folio should not need the disk copy to understand why.
 

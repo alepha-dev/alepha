@@ -14,10 +14,13 @@ import type { Folio } from "../entities/folios.ts";
  * - `content` changed → `edit` (covers summary-only edits too — same
  *   class of "content text changed" for the user's purposes)
  * - `title` changed → `rename`
- * - `tags` changed (and content/title didn't) → `tag-change`
  *
- * When multiple categories apply at once, priority is content >
- * rename > tag-change so the History tab labels the dominant change.
+ * When both apply at once, content wins so the History tab labels the
+ * dominant change.
+ *
+ * ⚠️ `tag-change` is still a member of this union and is deliberately never
+ * returned: the tag feature is gone, but production rows already carry that
+ * action and the column's schema has to keep decoding them.
  */
 export type RevisionAction = FolioRevision["action"];
 
@@ -26,19 +29,8 @@ interface RevisionInput {
   title: string;
   /** New content after the change (plaintext markdown or protected envelope). */
   content: string;
-  tags: string[];
   summary: string;
 }
-
-const tagsEqual = (a: string[], b: string[]) => {
-  if (a.length !== b.length) return false;
-  const sorted = [...a].sort();
-  const other = [...b].sort();
-  for (let i = 0; i < sorted.length; i++) {
-    if (sorted[i] !== other[i]) return false;
-  }
-  return true;
-};
 
 export const decideRevisionAction = (
   prev: RevisionInput,
@@ -47,10 +39,8 @@ export const decideRevisionAction = (
   const contentChanged =
     prev.content !== next.content || prev.summary !== next.summary;
   const titleChanged = prev.title !== next.title;
-  const tagsChanged = !tagsEqual(prev.tags, next.tags);
   if (contentChanged) return "edit";
   if (titleChanged) return "rename";
-  if (tagsChanged) return "tag-change";
   return undefined;
 };
 
@@ -152,7 +142,6 @@ export class FolioHistoryService {
         at: this.dateTime.now().toISOString(),
         contentSnapshot: folio.content,
         titleSnapshot: folio.title,
-        tagsSnapshot: folio.tags,
         summarySnapshot: folio.summary,
       });
     }
@@ -164,7 +153,6 @@ export class FolioHistoryService {
       action,
       contentSnapshot: folio.content,
       titleSnapshot: folio.title,
-      tagsSnapshot: folio.tags,
       summarySnapshot: folio.summary,
       pinned: false,
     });

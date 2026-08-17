@@ -633,7 +633,6 @@ export const useFolioTreeModel = (
             projectId: input.projectId,
             title: `${source.title}${tr("folio.action.duplicate-suffix")}`,
             content: source.content,
-            tags: source.tags,
             summary: source.summary,
             protected: source.protected,
             directoryId: source.directoryId,

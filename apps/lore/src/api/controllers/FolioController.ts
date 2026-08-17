@@ -49,12 +49,7 @@ type DirectoryMapLoader = () => Promise<Map<string, DirectoryRow>>;
 const folioListQuerySchema = z.object({
   limit: z.integer().min(1).max(100).default(50).optional(),
   offset: z.integer().min(0).default(0).optional(),
-  tag: z.string().optional(),
   q: z.string().optional(),
-  projectId: z.integer(),
-});
-
-const tagListQuerySchema = z.object({
   projectId: z.integer(),
 });
 
@@ -64,7 +59,6 @@ export class FolioController {
   protected readonly projects = $repository(projects);
   protected readonly directories = $repository(folioDirectories);
   protected readonly blobs = $repository(folioBlobs);
-  protected readonly revisions = $repository(folioRevisions);
   /** ...with the author attached, for the project activity feed. */
   protected readonly revisionsWith = $repository(relations, "folioRevisions");
   protected readonly users = $repository(users);
@@ -81,8 +75,7 @@ export class FolioController {
 
   /**
    * List folios in a project (project-shared — any member sees every
-   * folio). Optional `q` runs `LIKE %q%` over `searchText`; `tag` filters
-   * by the jsonb-encoded tags array.
+   * folio). Optional `q` runs `LIKE %q%` over `searchText`.
    */
   list = $action({
     use: [$secure({ permissions: ["folio:read"] })],
@@ -99,9 +92,6 @@ export class FolioController {
       if (query.q) {
         where.searchText = { like: `%${query.q.toLowerCase()}%` };
       }
-      if (query.tag) {
-        where.tags = { like: `%"${query.tag}"%` };
-      }
       return this.folios.findMany({
         where,
         orderBy: [
@@ -111,31 +101,6 @@ export class FolioController {
         limit: query.limit ?? 50,
         offset: query.offset ?? 0,
       });
-    },
-  });
-
-  /**
-   * Distinct tag list for the project, used by the sidebar tag cloud and
-   * the chip-style tag autocomplete in the editor.
-   */
-  listTags = $action({
-    use: [$secure({ permissions: ["folio:read"] })],
-    description: "Return the distinct set of tags used in the project.",
-    schema: {
-      query: tagListQuerySchema,
-      response: z.array(z.string()),
-    },
-    handler: async ({ query, user }) => {
-      await this.security.assertMember(query.projectId, user);
-      const rows = await this.folios.findMany({
-        where: { projectId: { eq: query.projectId } },
-        columns: ["tags"],
-      });
-      const tags = new Set<string>();
-      for (const row of rows) {
-        for (const tag of row.tags ?? []) tags.add(tag);
-      }
-      return [...tags].sort();
     },
   });
 
@@ -158,15 +123,15 @@ export class FolioController {
       // `withPath=true` attaches the folio's directory chain (root → … →
       // direct parent), which renders the AppShell breadcrumb without a
       // separate `listAllDirectories`. `withBlobs=true` attaches the
-      // attachment list. `withRevisionCount=true` attaches the number the
-      // meta bar shows — a count, NOT the revisions themselves; see
-      // `folioMetadataSchema.revisionCount` for why the rows stay behind
-      // `listHistory`.
+      // attachment list.
+      //
+      // There was a `withRevisionCount` here too, feeding the meta bar's
+      // "N revisions". It went with the meta bar — nothing outside the
+      // History tab counts revisions now, and that tab has the rows.
       query: z.object({
         withLinks: z.boolean().optional(),
         withPath: z.boolean().optional(),
         withBlobs: z.boolean().optional(),
-        withRevisionCount: z.boolean().optional(),
       }),
       response: folioResourceSchema,
     },
@@ -179,12 +144,7 @@ export class FolioController {
         },
       });
       if (!folio) throw new NotFoundError("Folio not found");
-      if (
-        !query.withLinks &&
-        !query.withPath &&
-        !query.withBlobs &&
-        !query.withRevisionCount
-      ) {
+      if (!query.withLinks && !query.withPath && !query.withBlobs) {
         return folio;
       }
       // Every requested extra is independent of the others, so they run
@@ -199,7 +159,7 @@ export class FolioController {
       // saves — and it is lazy, so a folio at the project root with no
       // links still reads no directories at all.
       const loadDirectories = this.directoryMapLoader(folio.projectId);
-      const [links, path, blobs, revisionCount] = await Promise.all([
+      const [links, path, blobs] = await Promise.all([
         query.withLinks
           ? this.resolveLinks(folio.id, folio.projectId, loadDirectories)
           : undefined,
@@ -209,11 +169,8 @@ export class FolioController {
         query.withBlobs
           ? this.blobService.listHydratedByFolio(folio.id)
           : undefined,
-        query.withRevisionCount
-          ? this.revisions.count({ folioId: { eq: folio.id } })
-          : undefined,
       ]);
-      return { ...folio, metadata: { links, path, blobs, revisionCount } };
+      return { ...folio, metadata: { links, path, blobs } };
     },
   });
 
@@ -513,7 +470,6 @@ export class FolioController {
       body: z.object({
         title: z.string().min(1).max(200),
         content: z.string().optional(),
-        tags: z.array(z.string()).optional(),
         summary: z.string().max(500).optional(),
         projectId: z.integer(),
         /**
@@ -536,7 +492,6 @@ export class FolioController {
     },
     handler: async ({ body, user }) => {
       await this.security.assertMember(body.projectId, user);
-      const tags = (body.tags ?? []).map((t) => t.trim()).filter(Boolean);
       const summary = (body.summary ?? "").trim();
       const content = body.content ?? "";
       const isProtected = body.protected === true;
@@ -551,7 +506,6 @@ export class FolioController {
         shortId,
         title: body.title,
         content,
-        tags,
         summary,
         directoryId,
         protected: isProtected,
@@ -565,7 +519,6 @@ export class FolioController {
             ""
           : buildFolioSearchText({
               title: body.title,
-              tags,
               summary,
               content,
             }),
@@ -593,7 +546,6 @@ export class FolioController {
       body: z.object({
         title: z.string().min(1).max(200).optional(),
         content: z.string().optional(),
-        tags: z.array(z.string()).optional(),
         summary: z.string().max(500).optional(),
         /**
          * Move the folio to a different folio directory. `null` →
@@ -646,9 +598,6 @@ export class FolioController {
 
       const title = body.title ?? existing.title;
       const content = body.content ?? existing.content;
-      const tags = body.tags
-        ? body.tags.map((t) => t.trim()).filter(Boolean)
-        : existing.tags;
       const summary =
         body.summary !== undefined ? body.summary.trim() : existing.summary;
 
@@ -677,14 +626,13 @@ export class FolioController {
       const updated = await this.folios.updateById(params.id, {
         title,
         content,
-        tags,
         summary,
         directoryId,
         protected: isProtected,
         pinned,
         searchText: isProtected
           ? ""
-          : buildFolioSearchText({ title, tags, summary, content }),
+          : buildFolioSearchText({ title, summary, content }),
       });
       // Re-sync outbound links whenever content changed. We re-sync even
       // when the content arg was omitted — title changes can render an
@@ -712,17 +660,15 @@ export class FolioController {
       }
 
       // Write a revision row when the change touched anything we record
-      // (content / title / tags / summary). Pin-only or
-      // parent-reparent-only updates skip the revision — they're not
-      // edits in the spec's sense.
+      // (content / title / summary). Pin-only or parent-reparent-only
+      // updates skip the revision — they're not edits in the spec's sense.
       const action = decideRevisionAction(
         {
           title: existing.title,
           content: existing.content,
-          tags: existing.tags,
           summary: existing.summary,
         },
-        { title, content, tags, summary },
+        { title, content, summary },
       );
       if (action) {
         await this.historyService.appendRevision(updated, user.id, action);
@@ -896,13 +842,11 @@ export class FolioController {
       const updated = await this.folios.updateById(folio.id, {
         title: revision.titleSnapshot,
         content: revision.contentSnapshot,
-        tags: revision.tagsSnapshot,
         summary: revision.summarySnapshot,
         searchText: isProtected
           ? ""
           : buildFolioSearchText({
               title: revision.titleSnapshot,
-              tags: revision.tagsSnapshot,
               summary: revision.summarySnapshot,
               content: revision.contentSnapshot,
             }),

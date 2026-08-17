@@ -7,7 +7,6 @@ export const folioRefSchema = z.object({
   id: z.uuid(),
   shortId: z.integer(),
   title: z.string(),
-  tags: z.array(z.string()),
   summary: z.string().optional(),
   updatedAt: z.string(),
 });
@@ -43,7 +42,6 @@ export const folioFullSchema = z.object({
   id: z.uuid(),
   shortId: z.integer(),
   title: z.string(),
-  tags: z.array(z.string()),
   summary: z.string().optional(),
   content: z.string(),
   createdAt: z.string(),

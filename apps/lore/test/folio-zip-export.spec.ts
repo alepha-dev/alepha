@@ -103,7 +103,6 @@ describe("folio zip export", () => {
     const markdown = folioMarkdownExport({
       title: "Notes",
       shortId: 7,
-      tags: ["a"],
       summary: "s",
       content: "Body with ![](assets/photo.webp) inside.",
       createdAt: "2026-01-01T00:00:00.000Z",

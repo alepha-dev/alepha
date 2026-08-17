@@ -162,15 +162,6 @@ export default {
   "folios.editor.summary.placeholder":
     "One or two sentences agents read to decide whether to open this folio.",
 
-  "folios.editor.tag.add": "Add a tag",
-  "folios.editor.tag.add-more": "Tag",
-  "folios.editor.tag.remove": "Remove tag",
-
-  "folios.editor.meta.draft": "$1 words",
-  "folios.editor.meta.draft-one": "1 word",
-  "folios.editor.meta.saved": "#$1 · $2 words · $3 revisions",
-  "folios.editor.meta.saved-one": "#$1 · $2 words · 1 revision",
-
   "folios.editor.locked.title": "This folio is encrypted",
   "folios.editor.locked.body":
     "The content was encrypted in your browser. The server only ever stored the ciphertext, so it cannot be recovered without the passphrase.",

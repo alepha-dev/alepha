@@ -32,15 +32,10 @@ export interface FolioInspectorProps {
    */
   onCollapse: () => void;
   /**
-   * Bubbled up from the History tab so `FolioMetaBar` can show
-   * "$3 revisions" without a fetch of its own.
-   */
-  onRevisionCount: (count: number) => void;
-  /**
    * `useFolioDraft`'s `savedAt` — threaded through to `FolioHistoryTab`
    * so it re-fetches after a save that happened while History wasn't the
    * active tab (see that component's own doc). Not in the brief's
-   * original interface; added after finding live that the revision count
+   * original interface; added after finding live that the revision list
    * otherwise went stale the moment the user saved from Outline or Links.
    */
   savedAt?: string;
@@ -143,10 +138,9 @@ const FolioInspector = (props: FolioInspectorProps): ReactElement => {
         that made staying mounted load-bearing rather than merely nice:
         Outline is the DEFAULT tab, so unmounting the others would have
         left the meta bar reading a false "0 revisions" until the user
-        clicked over. That is no longer why. The count now rides on the
-        folio itself (`metadata.revisionCount`), and History takes an
-        `active` flag so a folio open no longer pays for a revision list
-        nobody is looking at — see that prop's doc.
+        clicked over. Neither half of that is true anymore — the meta bar
+        is gone, and History takes an `active` flag so a folio open no
+        longer pays for a revision list nobody is looking at.
       */}
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className={props.tab === "outline" ? undefined : "hidden"}>
@@ -162,7 +156,6 @@ const FolioInspector = (props: FolioInspectorProps): ReactElement => {
               active={props.tab === "history"}
               refreshedAt={props.savedAt}
               onReverted={props.onReverted}
-              onRevisionCount={props.onRevisionCount}
             />
           ) : (
             <p className="text-muted-foreground px-3 py-4 text-center text-xs italic">

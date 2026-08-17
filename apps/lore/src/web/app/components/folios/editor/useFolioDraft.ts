@@ -12,14 +12,12 @@ import type { Folio } from "@/api/entities/folios.ts";
  */
 export const folioDraftSchema = z.object({
   title: z.string().max(200).meta({ title: "Title" }),
-  tags: z.array(z.string()).meta({ title: "Tags" }),
   summary: z.string().max(500).meta({ title: "Summary" }).default(""),
   content: z.string().meta({ title: "Content" }).default(""),
 });
 
 export interface FolioDraftValues {
   title: string;
-  tags: string[];
   summary: string;
   content: string;
 }
@@ -28,7 +26,7 @@ export interface FolioDraft {
   form: ReturnType<typeof useForm<typeof folioDraftSchema>>;
   /**
    * Current buffer, already narrowed — `useFormValues` returns a loose
-   * record, and every consumer wants these four fields typed.
+   * record, and every consumer wants these three fields typed.
    */
   values: FolioDraftValues;
   /**
@@ -96,11 +94,7 @@ export interface FolioDraft {
  * actually change" comparison this hook already uses for `dirty`.
  */
 export const sameValues = (a: FolioDraftValues, b: FolioDraftValues): boolean =>
-  a.title === b.title &&
-  a.summary === b.summary &&
-  a.content === b.content &&
-  a.tags.length === b.tags.length &&
-  a.tags.every((tag, i) => tag === b.tags[i]);
+  a.title === b.title && a.summary === b.summary && a.content === b.content;
 
 /**
  * Owns the workspace's edit buffer. Handing this back as one object keeps
@@ -122,7 +116,6 @@ export const sameValues = (a: FolioDraftValues, b: FolioDraftValues): boolean =>
 export const useFolioDraft = (folio: Folio | undefined): FolioDraft => {
   const initial = (): FolioDraftValues => ({
     title: folio?.title ?? "",
-    tags: folio?.tags ?? [],
     summary: folio?.summary ?? "",
     // A protected folio's `content` is a crypto envelope. Show nothing
     // until the user unlocks it — otherwise the editor renders ciphertext
@@ -163,7 +156,6 @@ export const useFolioDraft = (folio: Folio | undefined): FolioDraft => {
   const raw = useFormValues(form);
   const values: FolioDraftValues = {
     title: (raw.title as string) ?? "",
-    tags: (raw.tags as string[]) ?? [],
     summary: (raw.summary as string) ?? "",
     content: (raw.content as string) ?? "",
   };
@@ -203,7 +195,6 @@ export const useFolioDraft = (folio: Folio | undefined): FolioDraft => {
     const live = form.currentValues;
     return {
       title: (live.title as string) ?? "",
-      tags: (live.tags as string[]) ?? [],
       summary: (live.summary as string) ?? "",
       content: (live.content as string) ?? "",
     };
