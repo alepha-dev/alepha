@@ -246,71 +246,28 @@ jobs:
         timeout-minutes: 5
         run: yarn e2e-cli
 
-  deploy-docs:
-    # Docs deploy doesn't require the e2e job — only that the codebase
-    # is lint/typecheck-clean and tests pass.
-    needs: [checks, test]
-    # Publishing to GitHub Pages is a real side effect, so it must not fire for
-    # a proposed change. Phrased as "not a PR" rather than copying
-    # `deploy-lore-production`'s `push && ref == main`: docs also deploy on the
-    # `workflow_run` (Release) trigger, and that has to keep working.
-    if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-      - name: Git Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Setup
-        uses: ./.github/actions/setup
-
-      - name: Prepare
-        run: yarn copy
-
-      - name: Build Documentation
-        run: cd apps/docs && yarn build && yarn alepha gen:llms
-
-      - name: Setup Pages
-        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
-        with:
-          path: './apps/docs/dist/public'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
-
   # ---------------------------------------------------------------------------
-  # Cloudflare Workers deploy of the docs at `docs.alepha.dev`.
+  # Cloudflare Workers deploy of the docs at `alepha.dev`.
   #
-  # Runs alongside `deploy-docs`, not instead of it: `alepha.dev` stays on
-  # GitHub Pages until `docs.alepha.dev` has proven itself, and the two deploy
-  # the same commit from the same sources.
+  # This replaced a `deploy-docs` job that published the same `dist/public` to
+  # GitHub Pages. Pages is gone as a deploy target because it cannot host the
+  # one thing the site needs: a same-origin `POST /api/sigil/ingest`, which is
+  # where the visitor's IP becomes a salted hash and where the sigil credential
+  # stays instead of shipping to every reader. A static host can offer neither,
+  # so `alepha.dev` had no analytics at all.
   #
-  # This job was parked while `alepha build -t cloudflare` emitted a silently
-  # broken artifact for this app (a textual `import.meta.url` rewrite corrupted
-  # the changelog data docs generates from git history, so the entry chunk was
-  # dropped and `run()` shipped as 37 bytes). Both workerd rewrites are now
-  # AST-aware and an empty entry chunk fails the build, so what it uploads is
-  # sound.
+  # The cutover was a Worker *Route* (`alepha.dev/*`), not a Custom Domain, so
+  # the apex DNS records were never touched — see the `platform()` block in
+  # `apps/docs/alepha.config.ts` for why, and for how to roll back.
   # ---------------------------------------------------------------------------
   deploy-docs-cloudflare:
+    # Doesn't require the e2e job — only that the codebase is lint/typecheck-
+    # clean and tests pass.
     needs: [checks, test]
-    # Same condition as `deploy-docs` rather than lore's `push && ref == main`,
-    # so the two docs deploys never diverge — including on the `workflow_run`
-    # (Release) trigger.
+    # Deploying is a real side effect, so it must not fire for a proposed
+    # change. Phrased as "not a PR" rather than copying
+    # `deploy-lore-production`'s `push && ref == main`: docs also deploy on the
+    # `workflow_run` (Release) trigger, and that has to keep working.
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10

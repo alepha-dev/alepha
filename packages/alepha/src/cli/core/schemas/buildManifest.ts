@@ -161,4 +161,19 @@ export interface BuildManifest {
    * such.
    */
   publicVars?: string[];
+  /**
+   * The raw `build.cloudflare.config` from the app's `alepha.config.ts`,
+   * captured at artifact-build time.
+   *
+   * The prebuilt/manifest deploy path regenerates `wrangler.jsonc` without
+   * loading the workspace's config, so anything the author wrote there was
+   * silently dropped at deploy — the build produced a correct file and the
+   * deploy overwrote it with the defaults. Nothing failed, which is what made
+   * it expensive: `assets.run_worker_first` and `not_found_handling` were in
+   * the built artifact, absent from the deployed worker, and the only symptom
+   * was the behaviour they were meant to fix still happening in production.
+   *
+   * Absent when the app declares no Cloudflare config.
+   */
+  cloudflareConfig?: Record<string, unknown>;
 }

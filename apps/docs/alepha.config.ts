@@ -13,38 +13,77 @@ export default defineConfig({
     VITE_VERSION: pkg.version,
   },
   // ---------------------------------------------------------------------------
-  // Cloudflare Workers deploy of the docs at `docs.alepha.dev`.
+  // Cloudflare Workers deploy of the docs at `alepha.dev`.
   //
   // Workers Static Assets is a static host with a worker attached as the
   // fallback: the asset manifest is consulted first, and a match is served from
   // the edge without invoking the worker — free and unlimited on every plan.
-  // The worker runs only for paths no asset matches, which is essentially just
-  // `POST /api/sigil/ingest`: docs registers no `$action` of its own and exists
-  // as a worker so `@alepha/sigil` has a same-origin endpoint to post to. That
-  // endpoint is the one thing a purely static host cannot offer, and it is
-  // where the visitor IP becomes a salted hash and where the sigil credential
-  // stays instead of shipping to every reader.
-  //
-  // This block was parked from 2026-08 until the workerd build stopped emitting
-  // a silently BROKEN artifact for this app (exit 0, no warning):
-  // `BuildServerTask` rewrote `import.meta.url` textually, so the changelog
-  // docs generates from git history — which carries commit messages naming that
-  // very token — had a string literal terminated early. The chunk stopped
-  // parsing, rolldown dropped it, and the entry shipped as 37 bytes with no
-  // `run()` call, which Cloudflare rejected with `ReferenceError: __alepha is
-  // not defined`. Both rewrites are now AST-aware and an empty entry chunk
-  // fails the build, so the artifact is sound. Only workerd builds ever ran
-  // that rewrite, so the GitHub Pages deploy of `alepha.dev` — plain
-  // `alepha build`, `dist/public` — was never affected.
-  //
-  // The `deploy-docs-cloudflare` job in `.github/workflows/ci.yml` is still
-  // commented out: deploying is a separate decision from being able to.
+  // The worker exists for `POST /api/sigil/ingest` and nothing else: docs
+  // registers no `$action` of its own, and `@alepha/sigil` needs a same-origin
+  // endpoint to post to. That endpoint is the one thing a purely static host
+  // cannot offer, and it is where the visitor IP becomes a salted hash and
+  // where the sigil credential stays instead of shipping to every reader. It
+  // is the whole reason this site left GitHub Pages, which could host the
+  // files perfectly well and could not host that.
   // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Static routing: the worker is invoked for `/api/*` and nothing else.
+  //
+  // Without `run_worker_first`, wrangler sets `has_user_worker` from the
+  // presence of `main`, and then — in its own words — "requests not matching an
+  // asset will be forwarded to the Worker's code". So every typo, every bot
+  // probing for `/wp-login.php`, cost a worker invocation and a full React
+  // render, and came back **HTTP 200** carrying the NotFound component. A soft
+  // 404 is worse than a slow one: crawlers index it.
+  //
+  // `not_found_handling` alone does not fix that. It governs `env.ASSETS.fetch()`
+  // from inside the worker and the assets-only case — with `main` set it never
+  // sees an inbound miss. Naming the worker's routes explicitly is what moves
+  // the miss to the asset worker, and only then does `404-page` become
+  // reachable and serve the prerendered `404.html` with a real 404.
+  //
+  // Safe here because every route is prerendered (`static: true`, and
+  // `static.entries` for `/docs/:slug`), so nothing but the sigil endpoint needs
+  // to reach the worker. An app with a `$route` at a root path — which never
+  // lives under `/api` — would need that path listed here too.
+  // ---------------------------------------------------------------------------
+  build: {
+    cloudflare: {
+      config: {
+        assets: {
+          run_worker_first: ["/api/*"],
+          not_found_handling: "404-page",
+        },
+      },
+    },
+  },
   plugins: [
     platform({
       environments: {
         production: {
-          domain: "docs.alepha.dev",
+          domain: "alepha.dev",
+          // `zone` is what makes this a Worker *Route* (`alepha.dev/*`) rather
+          // than a Custom Domain, and that distinction is the whole migration
+          // off GitHub Pages.
+          //
+          // A Custom Domain owns the DNS record, so Cloudflare would refuse to
+          // create one while the apex still holds the four GitHub Pages A
+          // records and their AAAA counterparts — the switch would mean
+          // deleting those first, leaving the apex resolving to nothing until
+          // the deploy landed, with no way back but re-typing eight records
+          // from memory. It would also ask Cloudflare to issue a fresh
+          // certificate, which the zone's `CAA 0 issue "letsencrypt.org"` may
+          // refuse depending on which CA it reaches for.
+          //
+          // A Route needs none of that. The Pages records stay exactly where
+          // they are and stay proxied, so traffic still arrives at Cloudflare's
+          // edge; the route matches before the origin fetch, and the Worker
+          // answers instead. GitHub is simply never contacted. The existing
+          // Universal SSL certificate keeps serving, so no CA is involved.
+          //
+          // Rollback is deleting the route: DNS was never touched, so Pages is
+          // serving again the moment it goes.
+          zone: "alepha.dev",
           adapter: "cloudflare",
         },
       },

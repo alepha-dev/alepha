@@ -53,11 +53,9 @@ export class AppRouter {
         `.trim(),
       ],
       link: [
-        {
-          rel: "icon",
-          type: "image/png",
-          href: "/favicon.png",
-        },
+        // No `rel="icon"` here on purpose: ReactServerProvider detects
+        // `public/favicon.png` and emits the tag itself, into early head.
+        // Declaring it again put two of them in every page.
         {
           rel: "manifest",
           href: "/manifest.json",

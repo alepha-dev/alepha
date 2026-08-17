@@ -1,0 +1,46 @@
+# Cloudflare Workers Static Assets reads this file at deploy time: wrangler
+# ships it as a deployment module and leaves it out of the uploaded asset list,
+# so it is never served as a page. GitHub Pages ignores it entirely, which is
+# what makes it safe to land while both hosts are live.
+#
+# It exists because Workers Static Assets defaults every asset to
+# `cache-control: public, max-age=0, must-revalidate`. That is right for HTML —
+# a docs page must not be stale — and wrong for everything whose URL contains
+# its own content hash, where revalidating asks "has the immutable file
+# changed?" once per page load, forever.
+
+# Vite writes the content hash into the name, so these URLs can never change
+# meaning. Fonts carry no hash but are equally frozen: the file behind
+# `asset.<hash>.woff2` is the hash.
+/entry.*
+  Cache-Control: public, max-age=31536000, immutable
+
+/chunk.*
+  Cache-Control: public, max-age=31536000, immutable
+
+/asset.*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Not content-hashed, so not immutable — but a logo that changes twice a year
+# has no business being revalidated on every navigation. A day is the honest
+# trade between staleness and traffic.
+/*.png
+  Cache-Control: public, max-age=86400
+
+/*.svg
+  Cache-Control: public, max-age=86400
+
+/*.ico
+  Cache-Control: public, max-age=86400
+
+# HSTS is the one security header worth setting here: `alepha.dev` is the
+# registrable domain, so `includeSubDomains` covers every app under it. The rest
+# (CSP, frame-options) would guard against nothing on a site with no auth, no
+# cookies and no forms. `nosniff` is free, so it goes in anyway.
+#
+# Deliberately no `preload` directive: that submits the apex to the browsers'
+# built-in HSTS list, which is slow to leave and would strand any subdomain that
+# ever needs plain HTTP.
+/*
+  Strict-Transport-Security: max-age=15552000; includeSubDomains
+  X-Content-Type-Options: nosniff

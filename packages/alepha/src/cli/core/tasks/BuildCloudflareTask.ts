@@ -119,6 +119,14 @@ export class BuildCloudflareTask extends BuildTask {
       this.fs.join(root, distDir, ctx.options.output?.public ?? "public"),
     );
 
+    // In prebuilt mode the workspace's `alepha.config.ts` is never loaded, so
+    // `ctx.options` carries CLI flags only. The manifest is the artifact's
+    // memory of what the author actually declared — read it there, or this
+    // deploy quietly regenerates `wrangler.jsonc` with the defaults and
+    // overwrites a correct file with a worse one.
+    const appConfig =
+      ctx.options.cloudflare?.config ?? ctx.manifest?.cloudflareConfig ?? {};
+
     const wrangler: WranglerConfig = {
       name,
       main: "./main.cloudflare.js",
@@ -131,13 +139,18 @@ export class BuildCloudflareTask extends BuildTask {
           globs: ["index.js", "server/*.js"],
         },
       ],
-      ...ctx.options.cloudflare?.config,
+      ...appConfig,
     };
 
     if (hasAssets) {
-      wrangler.assets ??= {
+      // Merged, not `??=`. The app only ever wants to add a key —
+      // `not_found_handling`, `run_worker_first` — and an all-or-nothing
+      // replace made it restate `directory` and `binding` to do so, which is
+      // a silent footgun: forget `binding` and `env.ASSETS` is simply gone.
+      wrangler.assets = {
         directory: "./public",
         binding: "ASSETS",
+        ...wrangler.assets,
       };
     }
 

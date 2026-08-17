@@ -320,6 +320,9 @@ export class BuildManifestTask extends BuildTask {
       email,
       env,
       publicVars,
+      cloudflareConfig: ctx.options.cloudflare?.config as
+        | Record<string, unknown>
+        | undefined,
     };
 
     // `writeFile` does not create parent directories. This used to be safe by

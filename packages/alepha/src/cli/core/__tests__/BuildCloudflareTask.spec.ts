@@ -557,6 +557,70 @@ describe("BuildCloudflareTask", () => {
       }) as any;
 
     /**
+     * The app declares `assets.run_worker_first` to keep the worker out of the
+     * static path. Replacing the whole `assets` block would drop `binding`
+     * with it, and `env.ASSETS` would vanish without a word.
+     */
+    it("merges the app's asset config over the defaults instead of replacing it", async () => {
+      const { task, fs } = createTaskWithFs();
+      await fs.mkdir("/root/dist/public", { recursive: true });
+
+      const ctx = contextFor({});
+      ctx.options = {
+        cloudflare: {
+          config: {
+            assets: {
+              run_worker_first: ["/api/*"],
+              not_found_handling: "404-page",
+            },
+          },
+        },
+      };
+
+      await task.testGenerateCloudflare(ctx, "dist");
+
+      const wrangler = JSON.parse(fs.getFileContent(WRANGLER) ?? "{}");
+      expect(wrangler.assets).toEqual({
+        directory: "./public",
+        binding: "ASSETS",
+        run_worker_first: ["/api/*"],
+        not_found_handling: "404-page",
+      });
+    });
+
+    /**
+     * Prebuilt deploys never load the workspace's `alepha.config.ts`, so the
+     * artifact has to remember what it declared. Without this, the build wrote
+     * a correct `wrangler.jsonc` and the deploy silently regenerated it with
+     * the defaults — no error, and the only symptom was in production.
+     */
+    it("recovers the app's cloudflare config from the manifest in prebuilt mode", async () => {
+      const { task, fs } = createTaskWithFs();
+      await fs.mkdir("/root/dist/public", { recursive: true });
+
+      const ctx = contextFor({});
+      // Prebuilt: CLI flags only, no workspace config.
+      ctx.options = {};
+      ctx.manifest = {
+        resources: { hasWebSocket: false },
+        crons: [],
+        websocketPaths: [],
+        cloudflareConfig: {
+          assets: { run_worker_first: ["/api/*"] },
+        },
+      };
+
+      await task.testGenerateCloudflare(ctx, "dist");
+
+      const wrangler = JSON.parse(fs.getFileContent(WRANGLER) ?? "{}");
+      expect(wrangler.assets).toEqual({
+        directory: "./public",
+        binding: "ASSETS",
+        run_worker_first: ["/api/*"],
+      });
+    });
+
+    /**
      * lindocara's shape: the realtime layer is `$room` only (no `$websocket`
      * primitive at all). Without the union, the build emitted a worker with
      * no upgrade branch, no DO binding and no DO class export.

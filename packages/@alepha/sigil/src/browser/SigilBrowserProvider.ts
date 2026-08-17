@@ -27,6 +27,22 @@ export class SigilBrowserProvider {
   protected queue?: SigilQueue;
 
   /**
+   * Whether the hydration render has already been counted as a pageview.
+   *
+   * Both `react:transition:end` and `react:browser:render` fire for the initial
+   * render — `ReactBrowserProvider`'s `ready` hook awaits `render()`, which
+   * emits the transition, and then emits the browser render itself, about two
+   * milliseconds later. Listening to both counted every visit's landing page
+   * twice, which is the one number a docs site is read for.
+   *
+   * The `browser:render` listener is the keeper, because it fires after atom
+   * hydration and so sees the sink's real feature flags rather than the
+   * pre-hydration defaults. So the transition listener stands down until this
+   * flag is set, and owns every navigation after it.
+   */
+  protected initialRenderCounted = false;
+
+  /**
    * This page load's sampling verdict per tracker, with the rate it was rolled
    * against. See {@link wants} for why it is remembered rather than re-rolled.
    */
@@ -54,6 +70,9 @@ export class SigilBrowserProvider {
       this.queue = new SigilQueue(send as any);
 
       (this.alepha.events as any).on("react:transition:end", (ev: any) => {
+        // The first one is the hydration render, and `react:browser:render`
+        // below already counts that. See {@link initialRenderCounted}.
+        if (!this.initialRenderCounted) return;
         if (!this.wants("views")) return;
         this.queue!.addView(
           ev.state?.url?.pathname ?? (location as any).pathname,
@@ -102,6 +121,7 @@ export class SigilBrowserProvider {
       // after atom hydration) so it respects the hydrated feature flags instead
       // of the pre-hydration default.
       (this.alepha.events as any).on("react:browser:render", () => {
+        this.initialRenderCounted = true;
         if (!this.wants("views")) return;
         this.queue!.addView(
           (location as any).pathname,

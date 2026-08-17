@@ -50,6 +50,19 @@ export class BuildCompressTask extends BuildTask {
     if (ctx.flags?.prebuilt) {
       return;
     }
+    // Cloudflare Workers Static Assets compresses at the edge and has no
+    // filename negotiation — there is no request that can ever reach a `.br`
+    // sidecar as an encoding. Uploading them anyway made a third of the asset
+    // manifest dead weight (651 of 1349 files for the docs app) and published
+    // every one of them as its own fetchable URL.
+    //
+    // Guarded on the target rather than exposed as an option, because it is
+    // not a preference: the sidecars are unusable there, so no app would ever
+    // choose otherwise. Node and Bay keep them — the Alepha server does serve
+    // a `.br` in place of recompressing per request.
+    if (ctx.options.target === "cloudflare") {
+      return;
+    }
     // `hasClient` asks whether ALEPHA bundled a client, which is false for a
     // site adopted through `static.source` — nothing here was bundled, the
     // files were built by the workspace itself. They still need the `.br`/`.gz`
