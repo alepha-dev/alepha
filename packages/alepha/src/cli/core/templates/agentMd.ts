@@ -73,9 +73,10 @@ goes through \`adminRouterOptionsAtom\` / \`accountRouterOptionsAtom\`, set with
 - \`features\` — \`audits\` and \`apiKeys\` are on; \`jobs\`, \`notifications\`,
   \`avatars\`, \`parameters\` and \`oauth\` each need a provider first. Turning one
   on registers its module *and* makes its admin/account screens appear.
-- \`verifyEmailRequired\` / \`resetPasswordAllowed\` are forced to \`false\`
-  whenever \`features.notifications\` is off — setting them without it has no
-  effect.
+- \`verifyEmailRequired\` / \`verifyPhoneRequired\` / \`resetPasswordAllowed\`
+  each need \`features.notifications\`, because each completes by sending a
+  code. Setting one without it refuses to boot rather than running with the
+  setting quietly ignored.
 
 Pages hide themselves when the action behind them is missing from
 \`/api/_links\`, so a missing nav entry means the module is not mounted, not

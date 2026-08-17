@@ -7,11 +7,11 @@ export interface ApiRealmTsOptions {
  *
  * Only features that need nothing but the database are on. `notifications`
  * is the reason the file reads more conservatively than it looks: with it
- * off, `$realm` *forces* `verifyEmailRequired`, `verifyPhoneRequired` and
- * `resetPasswordAllowed` to false, because each of them can only complete by
- * sending a code. Scaffolding them as `true` would produce a file whose
- * settings the framework silently overrides — so they are written as `false`
- * with the one instruction that changes them.
+ * off, `verifyEmailRequired`, `verifyPhoneRequired` and `resetPasswordAllowed`
+ * are *refused* — each can only complete by sending a code, so a realm that
+ * asks for one without notifications does not boot. Scaffolding them as
+ * `true` would produce a project that fails on first run, so they are
+ * written as `false` with the one instruction that changes them.
  *
  * `adminEmails` reads `ADMIN_EMAIL` rather than carrying a literal. A
  * scaffolded placeholder address is a real address someone else can register

@@ -72,8 +72,6 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
 
   const name = options.issuer?.name ?? DEFAULT_USER_REALM_NAME;
 
-  options.settings ??= {};
-
   // Merge features with defaults
   const features: RealmFeatures = {
     jobs: false,
@@ -86,14 +84,13 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
     ...options.features,
   };
 
-  // When notifications are disabled, force verification-dependent settings to false
-  // These features require sending codes via email/SMS which won't work without notifications
-  if (!features.notifications) {
-    options.settings.verifyEmailRequired = false;
-    options.settings.verifyPhoneRequired = false;
-    options.settings.resetPasswordAllowed = false;
-  }
-
+  // `verifyEmailRequired`, `verifyPhoneRequired` and `resetPasswordAllowed`
+  // need `features.notifications` to send their codes. That used to be
+  // reconciled here by overwriting all three with `false`; it is now refused
+  // by `RealmProvider.register` instead — see the note on
+  // `assertNotificationsCoverSettings` for why silence was the wrong answer.
+  // The check lives there rather than here so a realm registered straight
+  // through the provider, as the tests do, is held to the same rule.
   const realmRegistration = realmProvider.register(name, options);
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -364,6 +361,14 @@ export interface RealmFeatures {
 
   /**
    * Enable notification system for password reset, verification emails, etc.
+   *
+   * Registers the notifications module itself, so there is nothing to add to
+   * your application's `imports` alongside it.
+   *
+   * Required by `settings.verifyEmailRequired`,
+   * `settings.verifyPhoneRequired` and `settings.resetPasswordAllowed` —
+   * each completes by sending a code, so a realm that sets one of them with
+   * this off is refused at boot rather than run with the setting ignored.
    *
    * @default false
    */

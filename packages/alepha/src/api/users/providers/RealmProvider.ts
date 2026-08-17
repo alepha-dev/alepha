@@ -52,6 +52,8 @@ export class RealmProvider {
       ...realmOptions.features,
     };
 
+    this.assertNotificationsCoverSettings(realmName, features, realmOptions);
+
     const realm: Realm = {
       name: realmName,
       repositories: {
@@ -86,6 +88,57 @@ export class RealmProvider {
     };
     this.realms.set(realmName, realm);
     return this.getRealm(realmName);
+  }
+
+  /**
+   * Rejects a realm that asks for a code it has no way to send.
+   *
+   * `verifyEmailRequired`, `verifyPhoneRequired` and `resetPasswordAllowed`
+   * each complete only by delivering a code, which is what
+   * `features.notifications` wires up. Asking for one without the other is a
+   * contradiction with no safe resolution, so it is refused at boot rather
+   * than resolved silently.
+   *
+   * It used to be resolved silently, in `$realm`, by overwriting the three
+   * settings with `false`. That turned a security setting into a lie: the
+   * shop asked for `resetPasswordAllowed: true` and shipped to production
+   * with the reset endpoint rejecting every request and the "forgot
+   * password" link hidden, and nothing anywhere said so. Downgrading a
+   * security setting is the one outcome that must never be quiet.
+   *
+   * Settings left unset are not affected — the atom already defaults all
+   * three to `false`, so only an explicit `true` can contradict.
+   */
+  protected assertNotificationsCoverSettings(
+    realmName: string,
+    features: RealmFeatures,
+    realmOptions: RealmOptions,
+  ): void {
+    if (features.notifications) {
+      return;
+    }
+
+    const settings = realmOptions.settings as
+      | Record<string, unknown>
+      | undefined;
+
+    const contradictions = (
+      [
+        "verifyEmailRequired",
+        "verifyPhoneRequired",
+        "resetPasswordAllowed",
+      ] as const
+    ).filter((setting) => settings?.[setting] === true);
+
+    if (!contradictions.length) {
+      return;
+    }
+
+    throw new AlephaError(
+      `Realm "${realmName}" sets ${contradictions.join(", ")} but features.notifications is off. ` +
+        `Each of these completes by sending a code, so none of them can work. ` +
+        `Set features: { notifications: true } on the realm, or drop the setting.`,
+    );
   }
 
   /**

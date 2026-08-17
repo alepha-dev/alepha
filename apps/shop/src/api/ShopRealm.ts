@@ -92,11 +92,23 @@ export class ShopRealm {
       username: "none",
       firstNameLastName: "optional",
       phoneNumber: "none",
-      // A demo shop that made you check your inbox before browsing would be
-      // tiresome; a real one turns this on.
+      /*
+       * All three need `features: { notifications: true }` to send their
+       * codes, and this realm declares no features at all, so all three are
+       * off.
+       *
+       * `resetPasswordAllowed` read `true` here until the framework started
+       * refusing that combination. It was never true in practice: `$realm`
+       * quietly overwrote it, so the deployed shop hid the "forgot password"
+       * link and rejected every reset request while this file claimed
+       * otherwise. The value below is what the shop has always actually done.
+       *
+       * A demo shop that made you check your inbox before browsing would be
+       * tiresome; a real one turns notifications on and then flips these.
+       */
       verifyEmailRequired: false,
       verifyPhoneRequired: false,
-      resetPasswordAllowed: true,
+      resetPasswordAllowed: false,
       captchaRequired: false,
       defaultRoles: ["user"],
       passwordPolicy: {

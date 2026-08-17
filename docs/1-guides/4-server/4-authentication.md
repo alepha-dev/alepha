@@ -94,6 +94,37 @@ class App {
 - **admin** -- Full access to all resources and permissions.
 - **user** -- Access to owned resources only.
 
+### Settings That Send a Code Need `features.notifications`
+
+`verifyEmailRequired`, `verifyPhoneRequired` and `resetPasswordAllowed` each
+complete only by delivering a code. Turning one on without
+`features: { notifications: true }` is refused at boot:
+
+```typescript
+class App {
+  // Throws: sets resetPasswordAllowed but features.notifications is off.
+  realm = $realm({
+    settings: { resetPasswordAllowed: true },
+  });
+}
+```
+
+The feature flag is all it takes -- it registers the notifications module
+itself, so there is no separate import to remember:
+
+```typescript check
+import { $realm } from "alepha/api/users";
+
+class App {
+  realm = $realm({
+    features: { notifications: true },
+    settings: { resetPasswordAllowed: true },
+  });
+}
+```
+
+Settings you never mention are unaffected; all three default to `false`.
+
 ### Registration Does Not Confirm Who Has an Account
 
 Registration is deliberately unhelpful about which identifiers are already

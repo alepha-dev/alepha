@@ -145,7 +145,7 @@ The first registration matching that address is promoted to admin, which is what
 
 `Realm.ts` enables only what the database alone can back — `audits` and `apiKeys`. Everything else (`jobs`, `notifications`, `avatars`, `parameters`, `oauth`) needs a queue, a mailer or a bucket, so it stays off until you have wired the provider.
 
-That is also why `verifyEmailRequired` and `resetPasswordAllowed` are `false`: both can only complete by sending a code, and `$realm` forces them off whenever `notifications` is off. Turn on `notifications`, configure a mail provider, then turn them on.
+That is also why `verifyEmailRequired` and `resetPasswordAllowed` are `false`: both can only complete by sending a code, and a realm that asks for either while `notifications` is off is refused at boot. Turn on `notifications`, configure a mail provider, then turn them on.
 
 Admin and account pages follow the same rule automatically. Each one resolves its action against `/api/_links` and hides when it is absent, so turning on a feature makes its screens appear and removing a module takes its screens away — you never get a nav entry pointing at a 404.
 
