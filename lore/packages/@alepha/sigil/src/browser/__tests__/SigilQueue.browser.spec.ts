@@ -53,3 +53,54 @@ describe("SigilQueue", () => {
     expect(sent[0].views.length).toBe(50); // cap
   });
 });
+
+describe("SigilQueue — a config that arrives after the queue was filled", () => {
+  /**
+   * The race this closes: a page served from a file or a cache gates its first
+   * events against a config older than the visit, so vitals are queued before
+   * the real answer arrives. Without this they still go out — on a flush that
+   * happens *after* the sink has said it does not want them.
+   */
+  it("drops queued items for trackers that were switched off", async () => {
+    const sent: any[] = [];
+    const queue = new SigilQueue(async (env) => {
+      sent.push(env);
+    });
+
+    queue.addView("/", 1);
+    queue.addVital({ path: "/", metric: "ttfb", value: 78, ts: 1 });
+
+    queue.dropDisabled({ views: true, errors: true, vitals: false });
+    await queue.flush();
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0].views).toHaveLength(1);
+    expect(sent[0].vitals).toBeUndefined();
+  });
+
+  it("sends nothing at all when everything queued was switched off", async () => {
+    const sent: any[] = [];
+    const queue = new SigilQueue(async (env) => {
+      sent.push(env);
+    });
+
+    queue.addVital({ path: "/", metric: "lcp", value: 900, ts: 1 });
+    queue.dropDisabled({ views: true, errors: true, vitals: false });
+    await queue.flush();
+
+    expect(sent).toHaveLength(0);
+  });
+
+  it("leaves a queue alone when nothing was switched off", async () => {
+    const sent: any[] = [];
+    const queue = new SigilQueue(async (env) => {
+      sent.push(env);
+    });
+
+    queue.addVital({ path: "/", metric: "ttfb", value: 78, ts: 1 });
+    queue.dropDisabled({ views: true, errors: true, vitals: true });
+    await queue.flush();
+
+    expect(sent[0].vitals).toHaveLength(1);
+  });
+});

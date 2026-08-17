@@ -54,6 +54,25 @@ export class SigilQueue {
    * switched back on. Without it, "collect nothing" would be a state a page
    * could enter and never leave.
    */
+  /**
+   * Drop what is queued for trackers that are now off.
+   *
+   * The gate runs at enqueue, against whatever config the page was served
+   * with — and a page served from a file or a cache carries one older than the
+   * visit. So the first vitals of a load are queued under the old answer and
+   * would still go out afterwards, on a flush that happens after the real
+   * config has arrived and said not to.
+   *
+   * The sink discards them either way, which is why this is not a data
+   * problem. It is a request the visitor pays for to send something already
+   * known to be unwanted.
+   */
+  public dropDisabled(enabled: Record<string, boolean>) {
+    if (enabled.views === false) this.views.length = 0;
+    if (enabled.errors === false) this.errors.length = 0;
+    if (enabled.vitals === false) this.vitals.length = 0;
+  }
+
   public async flush(options: { force?: boolean } = {}): Promise<void> {
     if (this.timer) {
       clearTimeout(this.timer);
