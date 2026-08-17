@@ -18,7 +18,10 @@ declare module "alepha/react/router" {
 export class AppRouter {
   env = $env(
     z.object({
-      PUBLIC_URL: z.string().default("https://alepha.dev"),
+      // `secret: false` because this is the site's address — without it the
+      // deploy pushes it to the worker as an encrypted secret, which is silly
+      // for a value printed in every page's `<head>`.
+      PUBLIC_URL: z.text({ secret: false }).default("https://alepha.dev"),
     }),
   );
 

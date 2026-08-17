@@ -11,6 +11,15 @@ export default defineConfig({
   env: {
     VITE_BUILD_DATE: new Date().toISOString(),
     VITE_VERSION: pkg.version,
+    // Here rather than in `.env.production` because the canonical URL is baked
+    // into every page at prerender time, so it has to be set for a plain
+    // `alepha build` too — and because it is the site's public address, not a
+    // secret. `AppRouter` keeps the same value as its schema default, but a
+    // `$env` default is only visible to the schema that declares it: the head
+    // layer reads `alepha.env`, which sees nothing until a real variable
+    // exists. Without this line every page shipped with no canonical and no
+    // `og:url`, silently.
+    PUBLIC_URL: "https://alepha.dev",
   },
   // ---------------------------------------------------------------------------
   // Cloudflare Workers deploy of the docs at `alepha.dev`.

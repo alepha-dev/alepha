@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import { SeoExpander } from "../helpers/SeoExpander.ts";
 import type { Head } from "../interfaces/Head.ts";
@@ -14,6 +14,7 @@ import type { Head } from "../interfaces/Head.ts";
  */
 export class HeadProvider {
   protected readonly log = $logger();
+  protected readonly alepha = $inject(Alepha);
   protected readonly seoExpander = $inject(SeoExpander);
 
   public global?: Array<Head | (() => Head)> = [];
@@ -22,6 +23,7 @@ export class HeadProvider {
    * Track if we've warned about page-level htmlAttributes to avoid spam.
    */
   protected warnedAboutHtmlAttributes = false;
+  protected warnedAboutGlobalUrl = false;
 
   /**
    * Resolve global head configuration (from $head primitives only).
@@ -84,6 +86,7 @@ export class HeadProvider {
     for (const h of this.global ?? []) {
       const head = typeof h === "function" ? h() : h;
       this.mergeHead(state, head);
+      this.warnAboutGlobalUrl(head);
     }
 
     for (const layer of state.layers) {
@@ -92,12 +95,113 @@ export class HeadProvider {
       }
     }
 
+    this.fillCanonicalUrl(state);
+
     // Defaults if none were set by global $head or page head
     state.head.title ??= "App";
     state.head.htmlAttributes = {
       lang: "en",
       ...state.head.htmlAttributes,
     };
+  }
+
+  /**
+   * Give the page its own absolute URL when nothing else did.
+   *
+   * {@link SeoExpander} already turns `head.url` into `<link rel="canonical">`,
+   * `og:url` and `twitter:url` — but nothing ever set it, so pages shipped
+   * OpenGraph tags with no `og:url` and no canonical at all. Every URL that
+   * reaches the same content was then equally authoritative to a crawler:
+   * a second hostname serving the same build, `?utm_source=…` variants, a
+   * trailing slash. Search engines pick one by guessing, and split the ranking
+   * signal across the rest.
+   *
+   * Filled from the **matched route path** rather than from the request URL,
+   * which is the whole point and the easy thing to get wrong: building it from
+   * `location.href` bakes the query string into the canonical, so
+   * `?utm_source=twitter` becomes its own authoritative page and the tag
+   * certifies the duplication it exists to collapse. Layer paths are compiled
+   * by the router from the route pattern and its params, so they carry no query
+   * string and a normalised slash.
+   *
+   * Skipped rather than guessed when the answer would be wrong: a wildcard or
+   * `/404` route has no single URL it could name, an error layer means the page
+   * being shown is not the page that was asked for, and with no origin to build
+   * on there is nothing to say — a relative canonical is worse than none,
+   * because it resolves against whichever host served it, which is precisely
+   * the set of hosts being disambiguated.
+   */
+  protected fillCanonicalUrl(state: HeadState): void {
+    if (state.head.url) {
+      return;
+    }
+
+    const origin = this.resolveOrigin();
+    if (!origin) {
+      return;
+    }
+
+    if (state.layers.some((layer) => layer.error)) {
+      return;
+    }
+
+    const path = state.layers.at(-1)?.path;
+    if (path === undefined || path.includes("*") || path === "/404") {
+      return;
+    }
+
+    const url = `${origin.replace(/\/$/, "")}${path || "/"}`;
+    state.head.url = url;
+
+    // Back through the expander rather than pushing three tags by hand, so
+    // an auto-filled URL and an author-supplied one produce the same markup.
+    const { meta, link } = this.seoExpander.expand({ url });
+    state.head.meta = [...(state.head.meta ?? []), ...meta];
+    state.head.link = [...(state.head.link ?? []), ...link];
+  }
+
+  /**
+   * The site's absolute origin: `PUBLIC_URL`, or what the browser is already
+   * on.
+   *
+   * The browser fallback is not a convenience. `fillHead` runs again on every
+   * client-side transition, and `PUBLIC_URL` is a server variable that a client
+   * bundle has no reason to carry — so without it the canonical the server
+   * rendered would be dropped by the browser's head reconciliation on the first
+   * navigation, leaving the tag present on a cold load and absent everywhere
+   * else. `location.origin` is the same answer the server would have given.
+   */
+  protected resolveOrigin(): string | undefined {
+    const configured = this.alepha.env.PUBLIC_URL;
+    if (configured) {
+      return String(configured);
+    }
+    if (typeof location !== "undefined" && location.origin) {
+      return location.origin;
+    }
+    return undefined;
+  }
+
+  /**
+   * A global `url` is almost always a mistake, and a silent one.
+   *
+   * It is a per-page fact — declared globally it names the same URL on every
+   * page, so every page tells crawlers the real version of it lives at the
+   * homepage, and they are dropped from the index. That is strictly worse than
+   * the missing tag it was meant to fix, and nothing about the page looks
+   * wrong afterwards.
+   */
+  protected warnAboutGlobalUrl(head: Head): void {
+    if (!head.url || this.warnedAboutGlobalUrl) {
+      return;
+    }
+    this.warnedAboutGlobalUrl = true;
+    this.log.warn(
+      "Global $head() sets `url`, which names the same canonical URL on every page — " +
+        "search engines read that as every page being a duplicate of that one. " +
+        "Set `url` in a page's own head, or leave it unset: it is filled from PUBLIC_URL " +
+        "and the matched route path.",
+    );
   }
 
   protected mergeHead(state: HeadState, head: Head): void {
@@ -132,6 +236,13 @@ export class HeadProvider {
     const { meta, link } = this.seoExpander.expand(head);
     state.head.meta = [...(state.head.meta ?? []), ...meta];
     state.head.link = [...(state.head.link ?? []), ...link];
+
+    // Record that this page named its own URL. The expansion above already
+    // emitted its canonical, so without this `fillCanonicalUrl` would see an
+    // unset `url`, decide the page had none, and emit a second one.
+    if (head.url) {
+      state.head.url = head.url;
+    }
 
     if (head.title) {
       state.head ??= {};
@@ -199,5 +310,12 @@ interface HeadState {
     route?: HeadRoute;
     props?: Record<string, any>;
     error?: Error;
+    /**
+     * The layer's matched path, compiled by the router from the route pattern
+     * and its params — so `/docs/:slug` arrives here as `/docs/getting-started`,
+     * with no query string. The deepest layer's is the page's own URL path,
+     * which is what {@link HeadProvider.fillCanonicalUrl} builds on.
+     */
+    path?: string;
   }>;
 }

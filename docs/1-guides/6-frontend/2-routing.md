@@ -111,6 +111,26 @@ head: (props) => ({
 })
 ```
 
+#### Canonical URLs
+
+Every page gets a `<link rel="canonical">`, plus `og:url` and `twitter:url`, without declaring anything. Set `PUBLIC_URL` and they are built from it and the page's matched route path:
+
+```
+PUBLIC_URL=https://example.com   →   <link rel="canonical" href="https://example.com/docs/routing">
+```
+
+It is built from the **route path**, not the request URL, so `?utm_source=newsletter` and a trailing slash never reach the tag — collapsing those duplicates is the entire job of a canonical, and one built from `location.href` would certify them instead.
+
+Nothing is emitted when there is no `PUBLIC_URL` to build on, for wildcard and `/404` routes, or when a layer errored — in each case there is no single URL the page could honestly name, and a relative canonical resolves against whichever host served it, which is exactly the ambiguity being removed.
+
+To point a page somewhere else — a duplicate that should defer to the original — set `url` yourself:
+
+```typescript
+head: { url: "https://example.com/docs/routing" }
+```
+
+Set it on a **page**, never in the global `$head()`: there it names the same URL for the whole site, and search engines read that as every page being a duplicate of that one. Alepha logs a warning if you do.
+
 ### static
 
 Pre-render the page at build time (SSG). On the server, acts as a cached page.
