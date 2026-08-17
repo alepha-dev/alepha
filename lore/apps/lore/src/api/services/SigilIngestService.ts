@@ -1,4 +1,3 @@
-import type { SigilConfig } from "@alepha/sigil/config";
 import type { SigilForwarded } from "@alepha/sigil/envelope";
 import { sigilFingerprintSource } from "@alepha/sigil/fingerprint";
 import { sigilScrubUrl } from "@alepha/sigil/scrub";
@@ -175,59 +174,16 @@ export class SigilIngestService {
     };
   }
 
-  /**
-   * The standing answer to "how much should I send" — what `GET /sigils/config`
-   * returns, built here rather than in the route.
+  /*
+   * `configFor` lived here: the standing answer to "how much should I send",
+   * served by `GET /sigils/config`. Both are gone — an app declares what it
+   * collects in its own `SIGIL_CONFIG`, because a fetched config could not
+   * survive a serverless isolate or a prerender.
    *
-   * Because there are two callers now: that route, and the in-process provider
-   * Lore substitutes to report to itself (a Worker cannot fetch its own
-   * hostname). Two constructions of the same answer is how they drift, which is
-   * the failure the shared `@alepha/sigil/paths` already had to fix once.
-   *
-   * `sampling` is deliberately absent: Lore has no per-project rate to tune,
-   * and the client already defaults to keeping everything.
+   * `gatesFor` stayed, and now has one caller instead of two. It was written to
+   * be shared so the advertisement and the write could not disagree; with only
+   * the write left, it is simply the rule.
    */
-  async configFor(sigil: Sigil): Promise<SigilConfig> {
-    const gates = await this.gatesFor(sigil);
-    const publicUrl = String(this.alepha.env.PUBLIC_URL ?? "").replace(
-      /\/$/,
-      "",
-    );
-    // The feedback form is addressed by the project's slug, not its id, so the
-    // row is needed here as well as inside `gatesFor`. Read once and reused
-    // below rather than threaded through the gates, which are a boolean set
-    // and have no business carrying a URL fragment.
-    const project = gates.feedback
-      ? await this.projects.findOne({ where: { id: { eq: sigil.projectId } } })
-      : undefined;
-
-    return {
-      enabled: {
-        views: gates.views,
-        errors: gates.errors,
-        vitals: gates.vitals,
-      },
-      // Omitted rather than empty when the module is off: the client treats an
-      // absent url as "no feedback surface", which is the honest reading.
-      ...(gates.feedback && project?.slug
-        ? {
-            // ⚠️ This value crosses the wire into third-party apps, which render
-            // it as their own "report a bug" link. It is re-fetched on every
-            // config poll, so a deploy self-heals — but an app that cached the
-            // old `/p/:id/request` shape has a dead link, and a project rename
-            // breaks it the same way it breaks a bookmark.
-            feedbackUrl: `${publicUrl}/${project.slug}/request`,
-            // Only when the app has actually chosen one. Sending the default
-            // explicitly would make "never configured" indistinguishable from
-            // "deliberately bottom-right", and both already resolve the same
-            // way client-side.
-            ...(sigil.feedbackPosition
-              ? { feedbackPosition: sigil.feedbackPosition }
-              : {}),
-          }
-        : {}),
-    };
-  }
 
   /**
    * Merges errors into their per-app group, then into the project's

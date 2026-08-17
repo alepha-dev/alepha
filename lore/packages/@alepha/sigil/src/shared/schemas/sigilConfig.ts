@@ -1,73 +1,107 @@
 import { type Infer, z } from "alepha";
-import { SIGIL_TRACKERS } from "../sigilFeatures.ts";
 import { SIGIL_FEEDBACK_POSITIONS } from "../sigilFeedbackPosition.ts";
 
+/** The commons an app reports to when it names no other. */
+export const SIGIL_DEFAULT_SINK = "https://lore.alepha.dev";
+
 /**
- * What the sink tells an app about how much it wants.
+ * What an app collects, and where it sends it.
  *
- * Fetched at runtime rather than read from env, because the two things it
- * carries — a kill-switch and an appetite — are useless if reaching for them
- * requires a redeploy. A sink drowning in one app's vitals must be able to turn
- * them down from its own side, immediately.
+ * One structured environment variable rather than a set of flat ones, and
+ * rather than something fetched from the sink at runtime. Both of those were
+ * tried:
  *
- * Every field is optional so an older sink, or one that grows a field later,
- * never breaks a running app: unknown keys are ignored, missing keys keep their
- * default.
+ * Flat variables cannot express `project`, a button position and a set of
+ * switches without turning into eight names that must be edited together.
+ *
+ * A runtime fetch was worse in a way that took longer to see. It made the sink
+ * the control plane, which reads well — until the two runtimes are considered.
+ * On a serverless host the isolate is discarded between requests, so the cached
+ * config is unset on nearly every one and the fetch happens again; and because
+ * it was awaited before rendering, the first byte of every cold page waited on
+ * a round trip to the sink. On a prerendered app the same hook runs during the
+ * *build*, so the answer was baked into the HTML and could not change until the
+ * next deploy — a kill-switch that needs a redeploy, which is the exact thing
+ * the fetch existed to avoid.
+ *
+ * An environment variable has neither problem and keeps what mattered: on a
+ * platform with a dashboard it is editable in seconds, without CI, which is all
+ * "change it in production" ever meant. It also collapses two control planes
+ * into one — the deploy already owns every other setting, and a sink that grows
+ * a deploy feature governs this the same way it governs the rest, instead of
+ * through a protocol only this package speaks.
+ *
+ * Every field is single-typed on purpose. A `boolean | number` would read
+ * naturally here (`analytics: 0.25` for a sampling rate) and would then have to
+ * be narrowed at every use. If sampling is wanted, it arrives as its own
+ * numeric field.
  */
 export const sigilConfig = z.object({
-  /** Per-tracker kill-switch. Missing tracker = left as it was. */
-  enabled: z
-    .object(
-      Object.fromEntries(
-        SIGIL_TRACKERS.map((t) => [t, z.boolean().optional()]),
-      ) as Record<
-        (typeof SIGIL_TRACKERS)[number],
-        ReturnType<ReturnType<typeof z.boolean>["optional"]>
-      >,
-    )
-    .optional(),
   /**
-   * Fraction of samples to keep, per tracker, between 0 and 1.
+   * The sink-side project this app reports into.
    *
-   * Applied at the source: an app that samples at 0.1 sends a tenth, rather
-   * than sending everything for the sink to throw away. The bandwidth and the
-   * battery are the app's, not the sink's.
+   * Required, and the reason the app needs no round trip before it can render
+   * a feedback link: the URL is `{sink}/{project}/request`, which the sink used
+   * to have to hand back because only it knew the slug.
+   *
+   * It is a second name for something the credential already identifies, so the
+   * sink is expected to reject an envelope whose declared project disagrees
+   * with its token. Silently accepting the mismatch would send telemetry to one
+   * project while pointing readers at another's feedback form.
    */
-  sampling: z
-    .object({
-      views: z.number().min(0).max(1).optional(),
-      errors: z.number().min(0).max(1).optional(),
-      vitals: z.number().min(0).max(1).optional(),
-    })
-    .optional(),
+  project: z.text({
+    description: "Sink-side project slug this app reports into.",
+  }),
+
+  /** Page views. */
+  analytics: z.boolean().default(true),
+
+  /** Client and server errors. */
+  blights: z.boolean().default(true),
+
+  /** Web-vitals samples. */
+  vitals: z.boolean().default(true),
+
   /**
-   * Where a user goes to file feedback, or absent when the sink offers none.
+   * Whether the sink offers this app a feedback link at all.
    *
-   * A URL rather than a feature flag: the app renders a link, and nothing in
-   * this package needs to know what is behind it.
+   * Distinct from {@link feedbackButton}: this decides whether there is a URL,
+   * that decides whether this package renders a control for it. An app that
+   * wants the link in its own header sets `feedback: true` with the button
+   * `hidden` and reads `useFeedbackUrl()`.
    */
-  feedbackUrl: z.string().max(2000).optional(),
+  feedback: z.boolean().default(true),
+
+  /** Where the built-in feedback button sits, or `hidden` to render none. */
+  feedbackButton: z
+    .enum(["hidden", ...SIGIL_FEEDBACK_POSITIONS])
+    .default("bottom-right"),
+
   /**
-   * Which corner the feedback button sits in, or absent for the default.
+   * Pages the button stays off, as path globs — `*` within a segment, `**`
+   * across them, anchored at both ends.
    *
-   * Absent rather than defaulted on the wire so an older sink — which sends
-   * nothing here — is indistinguishable from one that has never been
-   * configured, and both land on `bottom-right`.
+   * The obvious entry is the feedback page itself, where the button would
+   * offer to take a reader somewhere they already are.
+   *
+   * Config rather than app code, because it is a judgement about pages rather
+   * than a fact about routes: which pages a floating button gets in the way of
+   * is exactly the sort of thing noticed after a deploy, by someone reading
+   * the site rather than building it.
    */
-  feedbackPosition: z.enum(SIGIL_FEEDBACK_POSITIONS).optional(),
+  feedbackButtonExcludedPaths: z.array(z.text()).default([]),
+
+  /**
+   * Origin of the sink.
+   *
+   * Defaults to the public instance the way `npm` defaults to
+   * `registry.npmjs.org`: a commons that is there if you want it and one field
+   * away if you do not. Safe to carry as a default precisely because it does
+   * nothing alone — a key is still minted deliberately by whichever instance
+   * you chose, and a key from a self-hosted sink simply 401s against the public
+   * one rather than leaking into it.
+   */
+  sink: z.text({ default: SIGIL_DEFAULT_SINK }),
 });
 
 export type SigilConfig = Infer<typeof sigilConfig>;
-
-/**
- * What an app assumes before the sink has answered — and keeps assuming if it
- * never does.
- *
- * Every tracker stays on and nothing is sampled out. The failure this guards
- * against is an app that cannot reach its sink and *over-emits* into the
- * void; collecting a little less than the sink could take is recoverable,
- * hammering it on reconnect is not.
- */
-export const SIGIL_CONFIG_DEFAULTS = {
-  sampling: { views: 1, errors: 1, vitals: 1 },
-} as const;

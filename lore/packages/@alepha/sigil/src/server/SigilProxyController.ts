@@ -3,6 +3,7 @@ import { CryptoProvider, SecretProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $action } from "alepha/server";
 import { sigilEnvelope } from "../shared/schemas/sigilEnvelope.ts";
+import { sigilClientAtom } from "../shared/sigilClientAtom.ts";
 import { sigilEnv } from "../sigilEnv.ts";
 import { SigilSinkProvider } from "./SigilSinkProvider.ts";
 
@@ -42,7 +43,10 @@ export class SigilProxyController {
         "user-agent": z.string().optional(),
         host: z.string().optional(),
       }),
-      response: z.object({ ok: z.boolean() }),
+      response: z.object({
+        ok: z.boolean(),
+        config: sigilClientAtom.schema,
+      }),
     },
     handler: async (request) => {
       const country = request.headers["cf-ipcountry"] ?? undefined;
@@ -111,7 +115,11 @@ export class SigilProxyController {
       // would be a second place to keep in sync with the fetched config.
       await this.sink.ingest(request.body, { country, visitor });
 
-      return { ok: true };
+      // The config rides back on the call the browser was making anyway. A page
+      // served from a file or a cache carries one older than the visit, and
+      // this is how it catches up — without a second endpoint, and without a
+      // request whose only purpose is to ask.
+      return { ok: true, config: this.sink.clientConfig() };
     },
   });
 }

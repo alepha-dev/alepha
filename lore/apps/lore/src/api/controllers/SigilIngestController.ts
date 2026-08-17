@@ -1,6 +1,5 @@
-import { sigilConfig } from "@alepha/sigil/config";
 import { sigilForwarded } from "@alepha/sigil/envelope";
-import { SIGIL_CONFIG_PATH, SIGIL_INGEST_PATH } from "@alepha/sigil/paths";
+import { SIGIL_INGEST_PATH } from "@alepha/sigil/paths";
 import { $inject, Alepha, z } from "alepha";
 import { $route, UnauthorizedError } from "alepha/server";
 import type { Sigil } from "../entities/sigils.ts";
@@ -55,28 +54,20 @@ export class SigilIngestController {
     },
   });
 
-  /**
-   * `GET /sigils/config` — how much this app should send.
+  /*
+   * There was a `GET /sigils/config` here, which told an app how much to send.
+   * Nothing asks any more: an app declares what it collects in its own
+   * `SIGIL_CONFIG`, because a config fetched at runtime could not survive a
+   * serverless isolate (re-fetched on nearly every request, and awaited in
+   * front of the first byte) or a prerender (baked into the HTML at build
+   * time, unchangeable until the next deploy).
    *
-   * The answer is exactly what `SigilIngestService.absorb` would accept,
-   * because it is the same call: `gatesFor` is the one place the project's
-   * toggles are intersected with the sigil's kinds, and both the gate and this
-   * advertisement read it. Restating the rule here is how a sink ends up
-   * inviting payloads it then discards on arrival.
-   *
-   * `sampling` is deliberately absent: Lore has no per-project rate to tune,
-   * and the package already defaults to keeping everything.
+   * `gatesFor` did not go with it. It still runs on the write path below,
+   * which is the half that matters: what an app chooses to send is its
+   * business, what this sink chooses to keep is ours. A sigil whose `kinds`
+   * withhold vitals discards them on arrival no matter what the sender
+   * believes.
    */
-  config = $route({
-    method: "GET",
-    path: SIGIL_CONFIG_PATH,
-    schema: {
-      headers: z.object({ authorization: z.string().optional() }),
-      response: sigilConfig,
-    },
-    handler: async ({ headers }) =>
-      await this.ingest.configFor(await this.resolve(headers.authorization)),
-  });
 
   /**
    * Turns a bearer header into a sigil, or refuses.

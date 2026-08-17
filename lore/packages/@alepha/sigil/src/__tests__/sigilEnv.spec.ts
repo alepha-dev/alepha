@@ -6,14 +6,15 @@ describe("sigilEnv", () => {
   it("reads a configured sink", () => {
     const alepha = Alepha.create({
       env: {
-        SIGIL_SINK: "https://sigil.example.com",
+        SIGIL_CONFIG: '{"project":"demo","sink":"https://sigil.example.com"}',
         SIGIL_KEY: "tk_secret",
       },
     });
 
     const env = alepha.parseEnv(sigilEnv);
 
-    expect(env.SIGIL_SINK).toBe("https://sigil.example.com");
+    expect(env.SIGIL_CONFIG?.sink).toBe("https://sigil.example.com");
+    expect(env.SIGIL_CONFIG?.project).toBe("demo");
     expect(env.SIGIL_KEY).toBe("tk_secret");
   });
 
@@ -38,17 +39,34 @@ describe("sigilEnv", () => {
 
     const env = alepha.parseEnv(sigilEnv);
 
-    expect(env.SIGIL_SINK).toBe(SIGIL_DEFAULT_SINK);
+    expect(env.SIGIL_CONFIG).toBeUndefined();
     expect(env.SIGIL_KEY).toBe("");
   });
 
-  it("lets a self-hoster override the default", () => {
+  it("lets a self-hoster override the default sink", () => {
     const alepha = Alepha.create({
-      env: { SIGIL_SINK: "https://lore.internal.example.com" },
+      env: {
+        SIGIL_CONFIG:
+          '{"project":"demo","sink":"https://lore.internal.example.com"}',
+      },
     });
 
     const env = alepha.parseEnv(sigilEnv);
 
-    expect(env.SIGIL_SINK).toBe("https://lore.internal.example.com");
+    expect(env.SIGIL_CONFIG?.sink).toBe("https://lore.internal.example.com");
+  });
+
+  it("defaults the sink, and every tracker, from a minimal config", () => {
+    const alepha = Alepha.create({
+      env: { SIGIL_CONFIG: '{"project":"demo"}' },
+    });
+
+    const env = alepha.parseEnv(sigilEnv);
+
+    expect(env.SIGIL_CONFIG?.sink).toBe(SIGIL_DEFAULT_SINK);
+    expect(env.SIGIL_CONFIG?.analytics).toBe(true);
+    expect(env.SIGIL_CONFIG?.blights).toBe(true);
+    expect(env.SIGIL_CONFIG?.vitals).toBe(true);
+    expect(env.SIGIL_CONFIG?.feedbackButton).toBe("bottom-right");
   });
 });

@@ -1,4 +1,4 @@
-import { SigilSinkProvider, sigilOptions } from "@alepha/sigil/server";
+import { SigilSinkProvider } from "@alepha/sigil/server";
 import { adminRouterOptionsAtom } from "@alepha/ui/components/admin/admin-router-options";
 import { Alepha, run } from "alepha";
 import { FileAccessProvider } from "alepha/api/files";
@@ -62,15 +62,6 @@ alepha.set(adminRouterOptionsAtom, loreAdminOptions);
 // renders on every Lore page — including the feedback form itself, where it
 // offers to open the form you are already looking at. `*` matches within one
 // path segment, so this covers `/sds/request` and not `/sds/request/anything`.
-//
-// The list stays app-side rather than on the sigil row: only the app knows
-// which of its own routes are meaningless to report from. An operator-editable
-// server-side list is a different feature — it would let someone silence a
-// button in an app whose source they do not control, which is not this case.
-alepha.set(sigilOptions, {
-  excludedPaths: ["/*/request"],
-});
-
 alepha.with(LoreApi);
 alepha.with(LoreMcp);
 

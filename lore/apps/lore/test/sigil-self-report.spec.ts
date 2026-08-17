@@ -17,7 +17,7 @@ import { LoreSigilSinkProvider } from "../src/api/providers/LoreSigilSinkProvide
 /**
  * Lore dogfooding its own sigil.
  *
- * `SIGIL_SINK` points at a host that does not resolve, on purpose. That is the
+ * `sink` points at a host that does not resolve, on purpose. That is the
  * assertion: every test here would fail if the provider reached for the
  * network, because there is nothing at the other end. Rows landing anyway is
  * the proof that the substitution answered in process.
@@ -37,6 +37,16 @@ class Probe {
  * Views, read back through the `$analytics()` dataset that is now the only
  * write `SigilIngestService.absorbViews` makes — see that method's doc.
  */
+const readVitals = async (analytics: LoreAnalytics, sigilId: string) => {
+  const result = await analytics.vitals.query({
+    since: "2000-01-01",
+    where: { sigilId: { inArray: [sigilId] } },
+    groupBy: ["hour", "metric", "path", "bucket"],
+    select: { samples: "sum" },
+  });
+  return result.rows as unknown as Array<Record<string, unknown>>;
+};
+
 const readViews = async (analytics: LoreAnalytics, sigilId: string) => {
   const result = await analytics.views.query({
     since: "2000-01-01",
@@ -81,7 +91,7 @@ const setup = async (
       DATABASE_URL: ":memory:",
       PUBLIC_URL: "https://lore.test",
       // Unresolvable by construction — see the file comment.
-      SIGIL_SINK: "https://sink.invalid",
+      SIGIL_CONFIG: '{"project":"lore","sink":"https://sink.invalid"}',
       SIGIL_KEY: over.key ?? KEY,
     },
   });
@@ -148,19 +158,22 @@ describe("Lore reports to Lore", () => {
     expect((await probe.sigils.findById(sigil.id))?.lastSeenAt).toBeTruthy();
   });
 
-  it("should read its appetite from the sigil's kinds, not from a default", async () => {
-    // The config path is the second self-subrequest, and the easier one to
-    // miss: it fails open to "collect everything", so a broken fetch looks
-    // exactly like a permissive project. Beacon is withheld via the sigil's
-    // own kinds, not a project flag — that flag is retired.
-    const { sink } = await setup({
+  it("should discard a kind the sigil withholds, on arrival", async () => {
+    // The sender's appetite is its own `SIGIL_CONFIG`; this asserts the other
+    // half — what the sink keeps. Beacon is withheld via the sigil's kinds, so
+    // a view arriving anyway is dropped here rather than trusted.
+    const { analytics, sigil, sink } = await setup({
       kinds: ["vitals", "blights", "feedback"],
     });
 
-    await sink.refreshConfig();
+    await sink.ingest({
+      views: [{ path: "/home", ts: 1 }],
+      vitals: [{ path: "/home", metric: "lcp", value: 900, ts: 1 }],
+    });
+    await sink.flush();
 
-    expect(sink.enabledTrackers().views).toBe(false);
-    expect(sink.enabledTrackers().errors).toBe(true);
+    expect(await readViews(analytics, sigil.id)).toHaveLength(0);
+    expect(await readVitals(analytics, sigil.id)).toHaveLength(1);
   });
 
   it("should honour a switched-off project by writing nothing", async () => {

@@ -198,7 +198,6 @@ test.describe("Sigils", () => {
     );
 
     const ingest = `${baseURL}/sigils/ingest`;
-    const config = `${baseURL}/sigils/config`;
 
     await test.step("the owner turns Sigils on from settings", async () => {
       await page.goto(`/${projectSlug}/settings/sigils`);
@@ -340,26 +339,14 @@ test.describe("Sigils", () => {
       await page.waitForLoadState("networkidle");
     });
 
-    await test.step("the sink tells the app what it wants", async () => {
-      const res = await request.get(config, {
-        headers: { authorization: `Bearer ${token}` },
-      });
-      expect(res.status()).toBe(200);
-
-      const body = (await res.json()) as {
-        enabled: Record<string, boolean>;
-        feedbackUrl?: string;
-      };
-      // A newly enrolled sigil carries all four kinds by default and the
-      // project's `sigils` master switch is on, so the answer is everything
-      // — `feedback` is the one gate that also needs the project's own
-      // `features.feedback`, off by default for a wizard-created project and
-      // turned on above through its own settings page.
-      expect(body.enabled).toEqual({ views: true, errors: true, vitals: true });
-      expect(body.feedbackUrl).toContain(`/${projectSlug}/request`);
-
-      const bogus = await request.get(config, {
+    await test.step("an unknown token is refused at the ingest door", async () => {
+      // There used to be a `GET /sigils/config` step here, checking what the
+      // sink would tell an app to collect. An app reads that from its own
+      // `SIGIL_CONFIG` now, so the endpoint is gone and ingest is the only
+      // door — which makes it the one that has to refuse a stranger.
+      const bogus = await request.post(ingest, {
         headers: { authorization: "Bearer sg_not_a_real_token" },
+        data: { views: [{ path: "/home" }] },
       });
       expect(bogus.status()).toBe(401);
     });

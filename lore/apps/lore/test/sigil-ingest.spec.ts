@@ -357,18 +357,15 @@ describe("sigil ingest", () => {
     ).toHaveLength(0);
   });
 
-  it("advertises exactly what it would accept", async () => {
-    // The contract `/sigils/config` claims to honour. Both halves read the same
-    // `gatesFor`, so this fails the moment one of them grows a rule of its own.
-    // Vitals is withheld via the sigil's own kinds, not a project flag — that
-    // flag is retired and no longer able to create this gap.
-    const { analytics, sigil, post, getConfig } = await setup({
+  it("keeps only the kinds the sigil allows", async () => {
+    // `gatesFor` used to be read twice — once to advertise via
+    // `/sigils/config`, once to gate the write — and the pair had to agree.
+    // The advertisement is gone: an app declares what it sends in its own
+    // `SIGIL_CONFIG`, and this half decides what is kept. Vitals is withheld
+    // via the sigil's own kinds.
+    const { analytics, sigil, post } = await setup({
       kinds: ["beacon", "blights", "feedback"],
     });
-
-    const body = await (await getConfig()).json();
-    expect(body.enabled.vitals).toBe(false);
-    expect(body.enabled.views).toBe(true);
 
     await post({
       views: [{ path: "/home" }],
@@ -685,25 +682,6 @@ describe("sigil ingest", () => {
       where: { id: { eq: sigil.id } },
     });
     expect(after?.lastSeenAt).toBeTruthy();
-  });
-
-  it("tells an app what the project currently wants from it", async () => {
-    const { getConfig } = await setup();
-
-    const res = await getConfig();
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.enabled).toEqual({ views: true, errors: true, vitals: true });
-    // Slug-addressed, not `/p/:id/` — this value is rendered by third-party
-    // apps as their "report a bug" link.
-    expect(body.feedbackUrl).toMatch(/\/test\/request$/);
-  });
-
-  it("refuses to describe itself to an unknown token", async () => {
-    const { getConfig } = await setup();
-
-    const res = await getConfig("sg_nope");
-    expect(res.status).toBe(401);
   });
 
   it("gates blights, beacon and vitals on the sigil's kinds alone", async () => {

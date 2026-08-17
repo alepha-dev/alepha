@@ -19,7 +19,7 @@ const make = () =>
       NODE_ENV: "production",
       APP_SECRET: "test-secret",
       SERVER_PORT: 0,
-      SIGIL_SINK: "https://sigil.example.com/",
+      SIGIL_CONFIG: '{"project":"demo","sink":"https://sigil.example.com/"}',
       SIGIL_KEY: "tk_secret",
       SIGIL_SALT: "salt_secret",
     },

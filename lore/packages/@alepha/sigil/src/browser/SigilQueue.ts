@@ -45,12 +45,26 @@ export class SigilQueue {
     this.timer = setTimeout(() => void this.flush(), this.opts.debounceMs);
   }
 
-  public async flush(): Promise<void> {
+  /**
+   * Sends what is queued.
+   *
+   * `force` sends even when there is nothing to send. That is not a debugging
+   * affordance: the response carries the current config, so an app whose
+   * trackers are all switched off has no other way to hear that they were
+   * switched back on. Without it, "collect nothing" would be a state a page
+   * could enter and never leave.
+   */
+  public async flush(options: { force?: boolean } = {}): Promise<void> {
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;
     }
-    if (!this.views.length && !this.errors.length && !this.vitals.length)
+    if (
+      !options.force &&
+      !this.views.length &&
+      !this.errors.length &&
+      !this.vitals.length
+    )
       return;
     const env: Envelope = {};
     if (this.views.length) env.views = this.views.splice(0);

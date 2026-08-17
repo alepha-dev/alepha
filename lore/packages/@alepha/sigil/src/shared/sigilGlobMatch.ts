@@ -1,6 +1,6 @@
 /**
  * Match a URL pathname against a glob pattern used by sigil
- * `excludedPaths` (quest #110).
+ * `feedbackButtonExcludedPaths`.
  *
  * Glob rules:
  * - `*` matches any sequence of chars WITHIN a path segment (no `/`).
