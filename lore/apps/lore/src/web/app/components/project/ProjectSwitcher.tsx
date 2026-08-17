@@ -96,13 +96,21 @@ const ProjectSwitcher = () => {
               return (
                 <DropdownMenuItem
                   key={c.id}
-                  onClick={() => {
-                    if (!isActive) {
-                      router.push("project", {
+                  // A real anchor, like every other entry in this menu — an
+                  // `onClick` that calls `router.push` navigates on a plain
+                  // click and does nothing else, so shift/⌘/middle-click could
+                  // not open a project in a new tab, the browser showed no
+                  // target URL on hover, and "copy link address" was absent.
+                  // Clicking the active project now re-enters its own route
+                  // instead of no-opping, which is what an anchor to the page
+                  // you are on does everywhere else (Lore feedback #61).
+                  render={
+                    <Link
+                      href={router.path("project", {
                         params: { projectSlug: c.slug },
-                      });
-                    }
-                  }}
+                      })}
+                    />
+                  }
                 >
                   <ProjectIcon fileId={c.icon} className="size-6" />
                   <span className="flex-1 truncate">{c.title}</span>
