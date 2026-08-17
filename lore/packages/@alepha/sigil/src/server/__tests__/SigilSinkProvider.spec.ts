@@ -342,3 +342,39 @@ describe("SigilSinkProvider — surviving a runtime that does not", () => {
     expect(ingests(http)).toHaveLength(0);
   });
 });
+
+describe("SigilSinkProvider — half-configured", () => {
+  /**
+   * Inert, not fatal. Telemetry is never worth an outage: an app whose
+   * observability is misconfigured should still serve its users, and a throw
+   * would make rolling this variable out the riskiest kind of deploy — the app
+   * that fails to boot being the one about to start reporting correctly.
+   */
+  it("stays inert and boots when the key is set without a config", async () => {
+    const alepha = make({ SIGIL_KEY: "tk_secret" });
+    const sink = alepha.inject(SigilSinkProvider);
+
+    await expect(alepha.start()).resolves.toBeDefined();
+    expect(sink.hasSink()).toBe(false);
+  });
+
+  it("stays inert and boots when the config is set without a key", async () => {
+    const alepha = make({ SIGIL_CONFIG: '{"project":"demo"}' });
+    const sink = alepha.inject(SigilSinkProvider);
+
+    await expect(alepha.start()).resolves.toBeDefined();
+    expect(sink.hasSink()).toBe(false);
+  });
+
+  it("captures locally rather than sending when inert", async () => {
+    const alepha = make({ SIGIL_KEY: "tk_secret" });
+    const sink = alepha.inject(SigilSinkProvider);
+    const http = alepha.inject(HttpClient) as RecordingHttpClient;
+    await alepha.start();
+
+    await sink.ingest({ errors: [anError("boom")] });
+    await sink.flush();
+
+    expect(http.calls).toHaveLength(0);
+  });
+});
