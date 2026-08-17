@@ -13,7 +13,11 @@ import { DateTimeProvider } from "alepha/datetime";
 import { LockProvider } from "alepha/lock";
 import { $logger } from "alepha/logger";
 import { $repository, RepositoryProvider } from "alepha/orm";
-import { currentTenantAtom, currentUserAtom } from "alepha/security";
+import {
+  currentTenantAtom,
+  currentUserAtom,
+  tenancyAtom,
+} from "alepha/security";
 import { $topic } from "alepha/topic";
 import { type Parameter, parameters } from "../entities/parameters.ts";
 import type { ParameterPrimitive } from "../primitives/$parameter.ts";
@@ -172,12 +176,24 @@ export class ParameterProvider {
   protected readonly schemaHashes = new Map<string, string>();
 
   /**
-   * Pre-load all registered parameters on ready (non-serverless only).
+   * Pre-load all registered parameters on ready (non-serverless, single-tenant
+   * only).
+   *
+   * The preload runs with no request atom, so it can only ever touch the
+   * org-less rows. Under `tenancy: "multi"` an org-scoped query with no
+   * resolved tenant fails closed by design, so there is nothing this pass can
+   * legitimately warm — every value is per-org and loads lazily on the first
+   * request that carries a tenant. Skipping keeps a multi-tenant app bootable.
+   * (Serverless already skips it, which is where multi-tenant apps typically
+   * run anyway.)
    */
   protected readonly onReady = $hook({
     on: "ready",
     handler: async () => {
       if (this.alepha.isServerless()) {
+        return;
+      }
+      if (this.alepha.store.get(tenancyAtom).mode === "multi") {
         return;
       }
       for (const name of this.primitives.keys()) {
