@@ -22,7 +22,7 @@ const QuestDifficulty = (props: QuestDifficultyProps) => {
   // Keeps the rank box visually lifted in every container.
   return (
     <div
-      className={`flex size-[25px] items-center justify-center rounded-md border bg-background ${ringClass}`}
+      className={`flex size-[25px] shrink-0 items-center justify-center rounded-md border bg-background ${ringClass}`}
     >
       <span className="text-sm font-bold leading-none">
         {getQuestRank(difficulty)}

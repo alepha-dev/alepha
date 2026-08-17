@@ -1,7 +1,6 @@
 import { MarkdownView } from "@alepha/ui/components/markdown-view/markdown-view";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
-import { Card } from "@alepha/ui/components/ui/card";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
@@ -23,7 +22,6 @@ import {
   SquareCheck,
   StickyNote,
   Swords,
-  Tag,
   Trash2,
   X,
 } from "lucide-react";
@@ -224,9 +222,14 @@ const QuestView = (props: QuestViewProps) => {
   };
 
   return (
-    <Card
+    // The quest sits directly on the page surface — no card, no border, no
+    // radius, no margin. `bg-background` is what the AppShell's content panel
+    // already paints, so the route context matches seamlessly; in the kanban
+    // drawer it covers the Sheet's `bg-popover` instead, which keeps the two
+    // contexts looking like the same view rather than two surfaces.
+    <div
       key={quest.id}
-      className="m-0.5 flex flex-1 flex-col gap-0 overflow-hidden border-border p-0 shadow"
+      className="bg-background flex flex-1 flex-col overflow-hidden"
     >
       <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
         <div className="flex flex-1 flex-col gap-6 px-5 py-4">
@@ -235,27 +238,25 @@ const QuestView = (props: QuestViewProps) => {
               drawer share this same scroll container.
               `-mx-5 -mt-4` cancels the parent's padding so the header
               spans the full width and sits flush with the top edge.
-              Carries #shortId, title, priority + difficulty badges, the
-              edit/duplicate/timer/close affordances. The old prose
+              Carries title (prefixed with #shortId), priority + difficulty
+              badges, the edit/duplicate/timer/close affordances. The old prose
               "priority · rank" summary line is absorbed into the badges. */}
-          <header className="bg-card border-border sticky top-0 z-10 -mx-5 -mt-4 flex items-center gap-3 border-b px-5 py-3">
-            {/* Identity: leading icon + (#shortId stacked over rank). All
-                icons in the header are size-4 for visual parity; the stack
-                uses leading-none + a 1px gap so the two glyphs read as a
-                tight pair rather than two unrelated lines. */}
-            <Tag className="text-muted-foreground size-4 shrink-0" />
-            <div className="flex shrink-0 flex-col items-center gap-0.5 leading-none">
-              <span className="text-muted-foreground font-mono text-[11px]">
-                #{quest.shortId}
-              </span>
-              <QuestDifficulty difficulty={quest.difficulty} />
-            </div>
+          <header className="bg-background border-border sticky top-0 z-10 -mx-5 -mt-4 flex items-center gap-3 border-b px-5 py-3">
+            {/* The rank box is the only leading glyph: #shortId reads as part
+                of the quest's name, so it moved into the title, and the Tag
+                icon that anchored the pair went with it. Alone in an
+                `items-center` row the box is vertically centered against the
+                title column — stacked under #shortId it never was. */}
+            <QuestDifficulty difficulty={quest.difficulty} />
 
             {/* Title column: title + tag chips stacked, takes remaining
                 width. leading-tight compresses the title so the chips sit
                 close underneath instead of orphaning a half-line gap. */}
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <span className="cinzel-400 truncate text-lg leading-tight font-bold">
+                <span className="text-muted-foreground font-mono text-sm">
+                  #{quest.shortId}
+                </span>{" "}
                 {quest.title}
               </span>
               {quest.tags && quest.tags.length > 0 && (
@@ -695,7 +696,7 @@ const QuestView = (props: QuestViewProps) => {
           }
         }}
       />
-    </Card>
+    </div>
   );
 };
 
