@@ -74,7 +74,6 @@ export const projectContextParamsSchema = projectParamsSchema;
 const folioIndexEntrySchema = z.object({
   shortId: z.integer(),
   title: z.string(),
-  tags: z.array(z.string()),
   updatedAt: z.string(),
   summary: z.string().optional(),
 });
@@ -101,7 +100,7 @@ export const projectContextResultSchema = z.object({
     shown: z.integer(),
     /**
      * `true` if the index was capped at the limit — the agent should call
-     * `folio_list` (optionally with a `tag` filter) to see the rest.
+     * `folio_list` with a higher `limit` to see the rest.
      */
     capped: z.boolean(),
     items: z.array(folioIndexEntrySchema),

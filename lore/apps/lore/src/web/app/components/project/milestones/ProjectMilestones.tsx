@@ -276,7 +276,6 @@ const ProjectMilestones = () => {
           projectId: project.id,
           title,
           content: changelog.markdown,
-          tags: [...(shownMilestone.tags ?? []), "changelog"],
           summary: tr("milestone.folio.summary", {
             args: [
               String(shownMilestone.number),

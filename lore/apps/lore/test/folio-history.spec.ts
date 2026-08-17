@@ -73,7 +73,7 @@ const createTestUser = async (
 };
 
 describe("decideRevisionAction", () => {
-  const base = { title: "T", content: "C", tags: ["a"], summary: "S" };
+  const base = { title: "T", content: "C", summary: "S" };
 
   it("returns 'edit' when content changes", ({ expect }) => {
     expect(decideRevisionAction(base, { ...base, content: "D" })).toBe("edit");
@@ -89,34 +89,18 @@ describe("decideRevisionAction", () => {
     expect(decideRevisionAction(base, { ...base, title: "U" })).toBe("rename");
   });
 
-  it("returns 'tag-change' when only tags change", ({ expect }) => {
-    expect(decideRevisionAction(base, { ...base, tags: ["a", "b"] })).toBe(
-      "tag-change",
-    );
-  });
-
   it("returns undefined when nothing relevant changed", ({ expect }) => {
     expect(decideRevisionAction(base, base)).toBeUndefined();
   });
 
-  it("content beats rename beats tag-change when several changed at once", ({
-    expect,
-  }) => {
+  it("content beats rename when both changed at once", ({ expect }) => {
     expect(
       decideRevisionAction(base, {
         title: "U",
         content: "D",
-        tags: ["x"],
         summary: "Z",
       }),
     ).toBe("edit");
-    expect(
-      decideRevisionAction(base, {
-        ...base,
-        title: "U",
-        tags: ["x"],
-      }),
-    ).toBe("rename");
   });
 });
 

@@ -1,4 +1,3 @@
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import type { EditorView } from "@codemirror/view";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -7,11 +6,9 @@ import { createPortal } from "react-dom";
 import type { Folio } from "@/api/entities/folios.ts";
 import { currentFolioBlobsAtom } from "../../../../atoms/currentFolioBlobsAtom.ts";
 import { currentProjectAtom } from "../../../../atoms/currentProjectAtom.ts";
-import { projectDirectoriesAtom } from "../../../../atoms/projectDirectoriesAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 import MarkdownEditor from "../../../shared/markdown-editor/MarkdownEditor.tsx";
 import type { MarkdownEditorMode } from "../../../shared/markdown-editor/MarkdownEditorInner.tsx";
-import MarkdownModeToggle from "../../../shared/markdown-editor/MarkdownModeToggle.tsx";
 import FolioPassphraseDialog from "../../FolioPassphraseDialog.tsx";
 import WikiLinkHoverProvider from "../../WikiLinkHoverProvider.tsx";
 import FolioMenubar from "../menubar/FolioMenubar.tsx";
@@ -20,7 +17,6 @@ import type { UseFolioActionsResult } from "../useFolioActions.ts";
 import type { FolioDraft } from "../useFolioDraft.ts";
 import type { FolioWikiLinks } from "../wikilink/useFolioWikiLinks.ts";
 import FolioLockedPanel from "./FolioLockedPanel.tsx";
-import FolioMetaBar from "./FolioMetaBar.tsx";
 import FolioMoveDialog from "./FolioMoveDialog.tsx";
 import FolioSummaryField from "./FolioSummaryField.tsx";
 
@@ -33,9 +29,9 @@ export interface FolioDocumentProps {
    * Create-mode only: the directory the new folio will land in (carried
    * from `FolioCreatePage`'s `?dir=` resolution). Read only when `folio` is
    * unset — an existing folio's real `directoryId` always wins once it
-   * exists. Without this, the meta bar's directory chip showed "Project
-   * root" while creating a folio from inside a directory (via "+ Create →
-   * New folio"), even though the folio was about to be created there.
+   * exists. It is what the Move dialog opens on, so that creating a folio
+   * from inside a directory (via "+ Create → New folio") and then moving it
+   * starts from where the folio is about to land, not from the project root.
    */
   directoryId?: string;
   draft: FolioDraft;
@@ -65,14 +61,6 @@ export interface FolioDocumentProps {
    * string — see `FolioWorkspaceContent`.
    */
   wikiLinks: FolioWikiLinks;
-  /**
-   * Revision count for the meta bar's "$3 revisions" — sourced from the
-   * inspector's History tab (`FolioInspector`'s `onRevisionCount`), via
-   * `FolioWorkspaceContent`. `undefined` until that tab's own
-   * `listHistory` fetch resolves (or in create mode, where there is no
-   * history yet); the meta bar already handles that (`revisionCount ?? 0`).
-   */
-  revisionCount?: number;
   imageUploadHandler?: (file: File) => Promise<string>;
   /**
    * Receives the live CodeMirror view so the workspace can dispatch
@@ -82,21 +70,19 @@ export interface FolioDocumentProps {
 }
 
 /**
- * Rough word count over the raw markdown — deliberately not stripping
- * syntax (`#`, `*`, links): a whitespace split is the honest "how much did
- * you type" number the meta bar wants, matching the same level of
- * simplicity as the deleted `FolioEditor.tsx`'s token estimator
- * (`Math.ceil(content.length / 4)`), not a prose-accurate word counter.
- */
-const countWords = (content: string): number => {
-  const trimmed = content.trim();
-  return trimmed ? trimmed.split(/\s+/).length : 0;
-};
-
-/**
- * The document column: title → meta bar → summary → divider → body. Body
- * is either the `MarkdownEditor` (rendered or raw, per `props.mode`) or,
- * for a protected-and-still-locked folio, `FolioLockedPanel` in its place.
+ * The document column: summary → divider → body. Body is either the
+ * `MarkdownEditor` (rendered or raw, per `props.mode`) or, for a
+ * protected-and-still-locked folio, `FolioLockedPanel` in its place.
+ *
+ * There is no chrome row above the body anymore. `FolioMetaBar` — the
+ * directory chip, the tag chips, and `#id · N words · N revisions` — was
+ * deleted with the tag feature (feedback #62): the directory is already
+ * shown by the tree, and the three counters were reporting numbers nobody
+ * acts on. Moving a folio survives that deletion because `folio.move` is a
+ * menubar action, which is where it was always reachable from anyway. The
+ * one control the row did carry, the view/edit toggle, now floats over the
+ * top-right of the pane — mounted in `FolioWorkspaceContent` so it does not
+ * scroll away with the document.
  *
  * Also owns the menubar chrome and the keyboard shortcuts that drive it.
  * `useFolioShortcuts` is called HERE, not inside `FolioMenubar`,
@@ -114,8 +100,6 @@ const countWords = (content: string): number => {
  */
 const FolioDocument = (props: FolioDocumentProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
-  const dialog = useDialog();
-  const [directories] = useStore(projectDirectoriesAtom);
   const [blobs] = useStore(currentFolioBlobsAtom);
   const [project] = useStore(currentProjectAtom);
 
@@ -144,37 +128,13 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
   // prod), so `?? false` is the default, not a fallback.
   const summaryVisible = project?.features?.folioSummary ?? false;
 
-  const disabled = props.actions.locked;
-
   // `props.actions.directoryId` (LIVE — moved by `confirmMove`'s own
   // success), NOT `props.folio?.directoryId`. The latter is the
-  // route-loader snapshot: reading it directly here reproduced the exact
-  // staleness bug the reviewer flagged for `isProtected` elsewhere in this
-  // task, just for the directory chip instead — after a successful
-  // in-session move, the chip kept showing the OLD directory until a full
-  // reload. In create mode `props.actions.directoryId` is always
-  // `undefined` (no folio yet), so this falls through to the create-mode
-  // target directory (`props.directoryId`) so the chip shows where the
-  // folio WILL land, not always "Project root" while creating.
+  // route-loader snapshot, so after a successful in-session move the Move
+  // dialog would reopen on the OLD directory until a full reload. In create
+  // mode `props.actions.directoryId` is always `undefined` (no folio yet),
+  // so this falls through to the create-mode target directory.
   const directoryId = props.actions.directoryId ?? props.directoryId;
-  const directoryName = directoryId
-    ? (directories.find((d) => d.id === directoryId)?.name ?? "…")
-    : tr("folio.move.root");
-
-  const handleAddTag = async () => {
-    const value = await dialog.prompt({
-      title: tr("folios.editor.tag.add"),
-      placeholder: String(tr("folios.editor.tag.add")),
-    });
-    const trimmed = value?.trim();
-    if (!trimmed) return;
-    if (values.tags.includes(trimmed)) return;
-    props.draft.form.input.tags.set([...values.tags, trimmed]);
-  };
-
-  const handleRemoveTag = (tag: string) => {
-    props.draft.form.input.tags.set(values.tags.filter((t) => t !== tag));
-  };
 
   return (
     // `data-slot` is what `FolioTitleField` scopes its Enter-moves-to-body
@@ -198,61 +158,35 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
           props.chromeSlot,
         )}
 
-      {/* HEADER — full width, deliberately outside the prose measure below.
-          The document heading is gone: a folio is named in the TREE now, the
-          way a file is renamed in a file manager, so the only name on screen
-          is the one in the tree and there is no second field that could
-          disagree with it. What is left is this chip row, which is chrome
-          about the folio rather than part of the document. */}
-      <div className="p-4">
-        <FolioMetaBar
-          directoryName={directoryName}
-          tags={values.tags}
-          shortId={props.folio?.shortId}
-          wordCount={countWords(values.content)}
-          revisionCount={props.revisionCount}
-          disabled={disabled}
-          moveDisabled={!props.folio}
-          onOpenMove={() => props.actions.handlers["folio.move"]()}
-          onAddTag={handleAddTag}
-          onRemoveTag={handleRemoveTag}
-          trailing={
-            <MarkdownModeToggle
-              mode={props.mode}
-              onChange={() => props.actions.handlers["view.mode"]()}
-              disabled={props.actions.locked}
-              iconOnly
-              // Skinned as one of this row's chips: the directory button's
-              // own border, radius and height, so the toggle reads as the
-              // last control in the row rather than a toolbar button parked
-              // beside it.
-              className="border-border text-muted-foreground hover:text-foreground size-6.5 rounded-md border"
-            />
-          }
-        />
-      </div>
-
       {/* Off unless the project opts in (Settings › Folios). The summary is
           written for `project_context` / `folio_list`, so for a reader it is
           chrome above the first line of prose. Hiding the field does not stop
           it round-tripping — the draft still carries the stored value and
-          still saves it. Inside the header's padding, since it belongs with
-          the chrome rather than with the document. */}
-      {summaryVisible && (
-        <div className="px-8">
-          <FolioSummaryField
-            value={values.summary}
-            onChange={(v) => props.draft.form.input.summary.set(v)}
-            unavailable={props.actions.actionState.isProtected}
-          />
-        </div>
-      )}
+          still saves it.
 
-      {/* Edge to edge, unlike everything under it. The rule separates the
-          document's chrome from the document, so it has to reach the pane's
-          own edges — inside the prose measure it read as an underline on the
-          chip row rather than as a division of the surface. */}
-      <div className="border-border border-t" />
+          It is the ONLY chrome left above the body, so it now carries the
+          padding the deleted header row used to provide, and the rule below
+          renders with it rather than unconditionally: a divider with nothing
+          above it is not separating anything, it is just a line under the
+          menubar. */}
+      {summaryVisible && (
+        <>
+          <div className="px-8 pt-4">
+            <FolioSummaryField
+              value={values.summary}
+              onChange={(v) => props.draft.form.input.summary.set(v)}
+              unavailable={props.actions.actionState.isProtected}
+            />
+          </div>
+
+          {/* Edge to edge, unlike everything under it. The rule separates the
+              document's chrome from the document, so it has to reach the
+              pane's own edges — inside the prose measure it read as an
+              underline on the summary field rather than as a division of the
+              surface. */}
+          <div className="border-border border-t" />
+        </>
+      )}
 
       {/* BODY — the only part still held to the 812px prose measure. This
           wrapper used to live in `FolioWorkspaceContent` and enclose the

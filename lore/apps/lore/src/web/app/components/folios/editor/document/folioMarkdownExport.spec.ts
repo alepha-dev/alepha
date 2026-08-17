@@ -8,7 +8,6 @@ describe("folioMarkdownExport", () => {
   const base = {
     shortId: 42,
     title: "My Folio",
-    tags: ["tech/decision", "runbook"],
     summary: "A short summary.",
     content: "# Hello\n\nSome body text.",
     createdAt: "2026-01-01T00:00:00.000Z",
@@ -25,7 +24,6 @@ describe("folioMarkdownExport", () => {
         "---",
         "shortId: 42",
         'title: "My Folio"',
-        'tags: ["tech/decision", "runbook"]',
         'summary: "A short summary."',
         "pinned: true",
         "createdAt: 2026-01-01T00:00:00.000Z",
@@ -37,29 +35,29 @@ describe("folioMarkdownExport", () => {
     );
   });
 
-  it("omits summary when blank, and writes an empty tags array when there are none", ({
-    expect,
-  }) => {
+  it("omits summary when blank", ({ expect }) => {
     const out = folioMarkdownExport({
       ...base,
-      tags: [],
       summary: "   ",
     });
-    expect(out).toContain("tags: []");
     expect(out).not.toContain("summary:");
   });
 
-  it("escapes backslashes and double quotes in title/tags/summary", ({
-    expect,
-  }) => {
+  // The tag feature is gone, so no `tags:` line is written at all — and a
+  // caller that still passes one must not get it smuggled back into the
+  // frontmatter through the spread.
+  it("writes no tags line", ({ expect }) => {
+    const out = folioMarkdownExport(base);
+    expect(out).not.toContain("tags:");
+  });
+
+  it("escapes backslashes and double quotes in title/summary", ({ expect }) => {
     const out = folioMarkdownExport({
       ...base,
       title: 'A "quoted" \\ title',
-      tags: ['weird"tag'],
       summary: 'has "quotes"',
     });
     expect(out).toContain('title: "A \\"quoted\\" \\\\ title"');
-    expect(out).toContain('tags: ["weird\\"tag"]');
     expect(out).toContain('summary: "has \\"quotes\\""');
   });
 

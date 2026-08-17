@@ -37,8 +37,7 @@ const buildSnippet = (text: string, query: string, radius = 100): string => {
  * and co-curates the same set.
  *
  * Designed for AI-first workflows: `folio_search` returns a snippet so the
- * model can disambiguate without a follow-up read; `folio_create` /
- * `folio_update` accept tags as a flat string array; every call requires
+ * model can disambiguate without a follow-up read; every call requires
  * a `project` (or `project_name`) to scope reads/writes. For situational
  * awareness across a whole project, prefer the orientation tool
  * `project_context` — it returns the folio index alongside active quests
@@ -152,7 +151,7 @@ export class FolioTools {
 
   folio_list = $tool({
     description:
-      "List the project's folios (markdown notes that act as the project's shared memory), newest first. Use `tag` to narrow by a tag. Returns id, title, tags, updatedAt — call `folio_get` to read full content. For initial orientation on a project, prefer `project_context` — it returns this same index alongside the active quests in one round-trip.",
+      "List the project's folios (markdown notes that act as the project's shared memory), newest first. Returns id, title, summary, updatedAt — call `folio_get` to read full content. For initial orientation on a project, prefer `project_context` — it returns this same index alongside the active quests in one round-trip.",
     title: "List folios",
     annotations: {
       readOnlyHint: true,
@@ -162,7 +161,6 @@ export class FolioTools {
       params: z.object({
         project: z.integer().optional(),
         project_name: z.string().optional(),
-        tag: z.string().optional(),
         limit: z.integer().min(1).max(100).default(20).optional(),
       }),
       result: z.object({
@@ -175,14 +173,13 @@ export class FolioTools {
         params.project_name,
       );
       const folios = await this.folioController.list({
-        query: { tag: params.tag, limit: params.limit ?? 20, projectId },
+        query: { limit: params.limit ?? 20, projectId },
       });
       return {
         folios: folios.map((f) => ({
           id: f.id,
           shortId: f.shortId,
           title: f.title,
-          tags: f.tags,
           summary: f.summary || undefined,
           updatedAt: f.updatedAt,
         })),
@@ -192,7 +189,7 @@ export class FolioTools {
 
   folio_search = $tool({
     description:
-      "Search the project's folios by free-text query (matches title, tags, and content, case-insensitive). Returns id/title/tags + a ~200-char snippet around the match — use this before folio_get when looking something up.",
+      "Search the project's folios by free-text query (matches title, summary and content, case-insensitive). Returns id/title + a ~200-char snippet around the match — use this before folio_get when looking something up.",
     title: "Search folios",
     annotations: {
       readOnlyHint: true,
@@ -203,7 +200,6 @@ export class FolioTools {
         query: z.string().min(1),
         project: z.integer().optional(),
         project_name: z.string().optional(),
-        tag: z.string().optional(),
         limit: z.integer().min(1).max(50).default(10).optional(),
       }),
       result: z.object({
@@ -212,7 +208,6 @@ export class FolioTools {
             id: z.uuid(),
             shortId: z.integer(),
             title: z.string(),
-            tags: z.array(z.string()),
             snippet: z.string(),
             updatedAt: z.string(),
           }),
@@ -227,7 +222,6 @@ export class FolioTools {
       const folios = await this.folioController.list({
         query: {
           q: params.query,
-          tag: params.tag,
           limit: params.limit ?? 10,
           projectId,
         },
@@ -237,38 +231,10 @@ export class FolioTools {
           id: f.id,
           shortId: f.shortId,
           title: f.title,
-          tags: f.tags,
           snippet: buildSnippet(f.content, params.query),
           updatedAt: f.updatedAt,
         })),
       };
-    },
-  });
-
-  folio_tags = $tool({
-    description:
-      "List every tag used by folios in this project. Helpful before creating a folio so you can reuse existing tags instead of inventing new ones.",
-    title: "List folio tags",
-    annotations: {
-      readOnlyHint: true,
-      idempotentHint: true,
-    },
-    schema: {
-      params: z.object({
-        project: z.integer().optional(),
-        project_name: z.string().optional(),
-      }),
-      result: z.object({ tags: z.array(z.string()) }),
-    },
-    handler: async ({ params }) => {
-      const projectId = await this.resolveProjectId(
-        params.project,
-        params.project_name,
-      );
-      const tags = await this.folioController.listTags({
-        query: { projectId },
-      });
-      return { tags };
     },
   });
 
@@ -294,7 +260,6 @@ export class FolioTools {
         id: folio.id,
         shortId: folio.shortId,
         title: folio.title,
-        tags: folio.tags,
         summary: folio.summary || undefined,
         content: folio.content,
         createdAt: folio.createdAt,
@@ -306,7 +271,7 @@ export class FolioTools {
 
   folio_create = $tool({
     description:
-      "Create a new folio in a project — a markdown note that becomes part of the project's memory for AI agents. Provide `project` (id) or `project_name`. `content` is markdown. **Always set `summary`** — a 1-2 sentence (~200 chars) description of what the folio is for. It's the field other agents (and future calls of yours) read in `project_context` to decide whether to fetch the body. Without a summary, the index falls back to the title and orientation suffers. Reuse existing `tags` when possible (call `folio_tags` first); good tags make `folio_list` / `folio_search` calls precise.",
+      "Create a new folio in a project — a markdown note that becomes part of the project's memory for AI agents. Provide `project` (id) or `project_name`. `content` is markdown. **Always set `summary`** — a 1-2 sentence (~200 chars) description of what the folio is for. It's the field other agents (and future calls of yours) read in `project_context` to decide whether to fetch the body. Without a summary, the index falls back to the title and orientation suffers.",
     title: "Create folio",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
@@ -315,7 +280,6 @@ export class FolioTools {
         project_name: z.string().optional(),
         title: z.string().min(1).max(200),
         content: z.string().optional(),
-        tags: z.array(z.string()).optional(),
         summary: z
           .string()
           .max(500)
@@ -352,7 +316,6 @@ export class FolioTools {
           projectId,
           title: params.title,
           content: params.content,
-          tags: params.tags,
           summary: params.summary,
           directoryId: directoryId ?? undefined,
           pinned: params.pinned,
@@ -362,7 +325,6 @@ export class FolioTools {
         id: folio.id,
         shortId: folio.shortId,
         title: folio.title,
-        tags: folio.tags,
         summary: folio.summary || undefined,
         content: folio.content,
         createdAt: folio.createdAt,
@@ -373,14 +335,13 @@ export class FolioTools {
 
   folio_update = $tool({
     description:
-      "Update a folio. Any omitted field stays unchanged. Pass the full new tag array (it replaces the existing one). Updating `content` is a good moment to also refresh `summary` so the orientation index in `project_context` stays accurate.",
+      "Update a folio. Any omitted field stays unchanged. Updating `content` is a good moment to also refresh `summary` so the orientation index in `project_context` stays accurate.",
     title: "Update folio",
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {
       params: folioRefParamsSchema.extend({
         title: z.string().min(1).max(200).optional(),
         content: z.string().optional(),
-        tags: z.array(z.string()).optional(),
         summary: z
           .string()
           .max(500)
@@ -425,7 +386,6 @@ export class FolioTools {
         body: {
           title: params.title,
           content: params.content,
-          tags: params.tags,
           summary: params.summary,
           directoryId,
           pinned: params.pinned,
@@ -435,7 +395,6 @@ export class FolioTools {
         id: folio.id,
         shortId: folio.shortId,
         title: folio.title,
-        tags: folio.tags,
         summary: folio.summary || undefined,
         content: folio.content,
         createdAt: folio.createdAt,
@@ -446,7 +405,7 @@ export class FolioTools {
 
   folio_history = $tool({
     description:
-      "List the revision history of a folio (newest first). Each entry includes `action` (create / edit / rename / tag-change / revert), `at` timestamp, the user who made the change, and a snapshot of the folio's title/content/tags/summary at the time. Capped at 10 revisions per folio by default (oldest non-pinned drop off when the cap is exceeded). Use this to see how a folio evolved, then `folio_revert` to roll back if needed.",
+      "List the revision history of a folio (newest first). Each entry includes `action` (create / edit / rename / revert — plus the retired `tag-change` on rows written before folio tags were removed), `at` timestamp, the user who made the change, and a snapshot of the folio's title/content/summary at the time. Capped at 10 revisions per folio by default (oldest non-pinned drop off when the cap is exceeded). Use this to see how a folio evolved, then `folio_revert` to roll back if needed.",
     title: "Folio history",
     annotations: {
       readOnlyHint: true,
@@ -468,7 +427,6 @@ export class FolioTools {
               "revert",
             ]),
             titleSnapshot: z.string(),
-            tagsSnapshot: z.array(z.string()),
             summarySnapshot: z.string(),
             contentSnapshot: z.string(),
             pinned: z.boolean(),
@@ -488,7 +446,6 @@ export class FolioTools {
           byUserId: r.byUserId,
           action: r.action,
           titleSnapshot: r.titleSnapshot,
-          tagsSnapshot: r.tagsSnapshot,
           summarySnapshot: r.summarySnapshot,
           contentSnapshot: r.contentSnapshot,
           pinned: r.pinned,
@@ -520,7 +477,6 @@ export class FolioTools {
         id: folio.id,
         shortId: folio.shortId,
         title: folio.title,
-        tags: folio.tags,
         summary: folio.summary || undefined,
         content: folio.content,
         createdAt: folio.createdAt,

@@ -18,21 +18,27 @@ export interface MarkdownModeToggleProps {
    */
   iconOnly?: boolean;
   /**
-   * Extra classes on the button. The folio meta bar uses it to skin this as
-   * one of that row's chips — same border, radius and height as the directory
-   * button it now sits beside, so the row reads as one set of controls rather
-   * than a chip row with a stray toolbar button on the end.
+   * Extra classes on the button. The folio workspace uses it to give the
+   * floating toggle a surface of its own — the control hovers over the
+   * document there, so it needs a background and a border that the default
+   * ghost variant deliberately does not have.
    */
   className?: string;
+  /**
+   * Extra classes on the icon, for when the button is sized past the
+   * default. Without it a bigger button just draws more padding around the
+   * same 14px glyph.
+   */
+  iconClassName?: string;
 }
 
 /**
  * Flips a `MarkdownEditor` between its rendered and raw faces.
  *
  * Used by the quest surfaces, which have no chrome of their own to hang the
- * control on. The folio workspace does NOT use this — its toggle lives in
- * the menubar next to the other document actions, driven by the same `mode`
- * state and ⌘E.
+ * control on, and by the folio workspace, where it floats over the top-right
+ * corner of the document pane. ⌘E drives the same `mode` state from the
+ * keyboard.
  *
  * `data-testid` and `data-mode` are a contract with `fillMarkdownEditor` in
  * `e2e/_helpers.ts`: CodeMirror is not mounted at all in view mode, so a
@@ -67,7 +73,7 @@ const MarkdownModeToggle = (props: MarkdownModeToggleProps) => {
       title={label}
       onClick={() => props.onChange(editing ? "view" : "edit")}
     >
-      <Icon className="size-3.5" />
+      <Icon className={props.iconClassName ?? "size-3.5"} />
       {!props.iconOnly && label}
     </Button>
   );

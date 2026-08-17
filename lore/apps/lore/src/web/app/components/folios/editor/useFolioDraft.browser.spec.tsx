@@ -86,7 +86,6 @@ describe("useFolioDraft — markSaved during an in-flight edit", () => {
     await waitFor(() => expect(getByTestId("dirty").textContent).toBe("dirty"));
     const snapshotAtSaveTime: FolioDraftValues = {
       title: "Edited before save",
-      tags: [],
       summary: "",
       content: "original content",
     };
@@ -145,7 +144,6 @@ describe("useFolioDraft — markSaved during an in-flight edit", () => {
 
     const snapshot: FolioDraftValues = {
       title: "Edited",
-      tags: [],
       summary: "",
       content: "original content",
     };

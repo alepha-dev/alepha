@@ -35,7 +35,6 @@ import { currentQuestCountAtom } from "./atoms/currentQuestCountAtom.ts";
 import { currentSigilAtom } from "./atoms/currentSigilAtom.ts";
 import { currentSigilInsightsAtom } from "./atoms/currentSigilInsightsAtom.ts";
 import { currentSigilsAtom } from "./atoms/currentSigilsAtom.ts";
-import { folioTagsAtom } from "./atoms/folioTagsAtom.ts";
 import { folioTreeSeedAtom } from "./atoms/folioTreeSeedAtom.ts";
 import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
 import { userFoliosAtom } from "./atoms/userFoliosAtom.ts";
@@ -982,9 +981,9 @@ export class AppRouter {
       if (projectId === undefined) {
         throw new NotFoundError("Project not found");
       }
-      // The tag set (the editor's tag autocomplete) plus the tree's own
-      // two lists, which `seedFolioTree` owns — the folio list AND the
-      // directory list, the latter load-bearing: the tree's fallback
+      // The tree's own two lists, which `seedFolioTree` owns — the folio
+      // list AND the directory list, the latter load-bearing: the tree's
+      // fallback
       // `useQuery` is gated on `enabled: !seeded`, where "seeded" is
       // satisfied by `userFoliosAtom` ALONE. Any project with at least one
       // folio therefore looked seeded the moment the folio list resolved,
@@ -997,11 +996,7 @@ export class AppRouter {
       // table and its breadcrumb. A folio page sets its own breadcrumb
       // from the folio's `metadata.path`, so nothing downstream reads
       // them any more.
-      const [tags] = await Promise.all([
-        this.folioApi.listTags({ query: { projectId } }),
-        this.seedFolioTree(projectId),
-      ]);
-      this.alepha.store.set(folioTagsAtom, tags);
+      await this.seedFolioTree(projectId);
       // `/folios` itself is just "Folios" in the header — a folio page
       // appends its own directory chain and title when it loads.
       this.alepha.store.set(currentFolioPathAtom, []);
@@ -1112,7 +1107,6 @@ export class AppRouter {
             withLinks: true,
             withPath: true,
             withBlobs: true,
-            withRevisionCount: true,
           },
         }),
         this.seedFolioTree(project.id),

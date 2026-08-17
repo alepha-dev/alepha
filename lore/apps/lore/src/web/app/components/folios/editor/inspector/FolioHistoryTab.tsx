@@ -51,16 +51,15 @@ export interface FolioHistoryTabProps {
    * `FolioInspector`), so without this flag its fetch effect ran on every
    * folio open — a whole `listHistory` round-trip, returning up to ten
    * FULL content snapshots, to render a panel the user was not looking
-   * at. The meta bar's count comes from the folio's own
-   * `metadata.revisionCount` now, so nothing needs the rows until the
-   * user actually opens this tab.
+   * at. Nothing outside this tab reads the revision list, so nothing needs
+   * the rows until the user actually opens it.
    *
    * It gates the MOUNT fetch only. A `refreshedAt` that has moved since
-   * mount means a save landed, which may have appended a revision, so
-   * that fetch still runs on a tab the user never opened — otherwise the
-   * meta bar would sit on the load-time count and read "3 revisions"
-   * after the save that made it four. What this drops is the request per
-   * folio OPENED, which is the one that was never worth making; the
+   * mount means a save landed, which may have appended a revision, so that
+   * fetch still runs on a tab the user never opened — the list has to be
+   * current the moment the tab is revealed, and revealing it is not itself
+   * a state change this component can see. What this drops is the request
+   * per folio OPENED, which is the one that was never worth making; the
    * request per folio SAVED is unchanged from before.
    */
   active: boolean;
@@ -78,14 +77,15 @@ export interface FolioHistoryTabProps {
    * with nothing catching it — structural typing wouldn't complain.
    */
   onReverted: (folio: Folio) => Promise<void>;
-  /**
-   * Fired whenever the revision list changes (load, revert, pin toggle) so
-   * `FolioMetaBar`'s "$3 revisions" count stays in sync without its own
-   * fetch.
-   */
-  onRevisionCount: (count: number) => void;
 }
 
+/**
+ * ⚠️ `tag-change` is still handled here even though the tag feature is
+ * gone. Nothing PRODUCES that action anymore, but production rows already
+ * carry it and this component has to keep labelling them — a revision list
+ * that renders nothing for a real row is worse than one naming a feature
+ * that no longer exists.
+ */
 const ActionLabel = (props: { action: FolioRevision["action"] }) => {
   const { tr } = useI18n<I18n, "en">();
   switch (props.action) {
@@ -189,19 +189,6 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
       alive = false;
     };
   }, [props.folio.id, props.refreshedAt, props.active, folioApi]);
-
-  // Deliberately fires on every change to `revisions` (revert, pin
-  // toggle, a post-save refetch), not just once — the meta bar's count
-  // should never lag behind what this tab itself is showing. It does NOT
-  // report the empty initial state: until this tab has fetched, the
-  // authoritative count is the one the route loader got from
-  // `metadata.revisionCount`, and reporting `0` over it would replace a
-  // real number with a wrong one on every folio open.
-  useEffect(() => {
-    if (!loaded) return;
-    props.onRevisionCount(revisions.length);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [revisions, loaded]);
 
   const refresh = async () => {
     const next = await folioApi.listHistory({
@@ -429,11 +416,6 @@ const SnapshotBlock = (props: {
     <div className="text-foreground/80 mb-1 text-xs font-semibold">
       {props.revision.titleSnapshot}
     </div>
-    {props.revision.tagsSnapshot.length > 0 && (
-      <div className="text-muted-foreground mb-1 text-[10px]">
-        {props.revision.tagsSnapshot.map((t) => `#${t}`).join(" ")}
-      </div>
-    )}
     {props.revision.contentSnapshot}
   </pre>
 );

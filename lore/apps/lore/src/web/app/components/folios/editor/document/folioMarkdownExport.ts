@@ -2,7 +2,7 @@ import type { Folio } from "@/api/entities/folios.ts";
 
 /**
  * What {@link folioMarkdownExport} needs. Widened from the brief's stated
- * `Pick<Folio, "title" | "shortId" | "tags" | "summary" | "content" |
+ * `Pick<Folio, "title" | "shortId" | "summary" | "content" |
  * "createdAt" | "updatedAt">` to also carry `pinned` (optional): the
  * frontmatter this function writes has always included a `pinned: true|false`
  * line (see below), and the narrower `Pick` would make that line either a
@@ -14,21 +14,16 @@ import type { Folio } from "@/api/entities/folios.ts";
  */
 export type FolioMarkdownExportInput = Pick<
   Folio,
-  | "title"
-  | "shortId"
-  | "tags"
-  | "summary"
-  | "content"
-  | "createdAt"
-  | "updatedAt"
+  "title" | "shortId" | "summary" | "content" | "createdAt" | "updatedAt"
 > & {
   pinned?: boolean;
 };
 
 /**
  * Build the markdown export for a folio. YAML frontmatter on top with the
- * metadata we keep (shortId, title, tags, summary, createdAt, updatedAt,
- * pinned). Body is the original markdown content.
+ * metadata we keep (shortId, title, summary, createdAt, updatedAt,
+ * pinned). Body is the original markdown content. The `tags: []` line the
+ * frontmatter used to carry went with the tag feature itself.
  *
  * Extracted verbatim from `FolioBrowser.tsx`'s `buildFolioMarkdown` (moved,
  * not rewritten) so both the folio browser's row-level download and the
@@ -42,13 +37,6 @@ export const folioMarkdownExport = (
   const lines = ["---"];
   lines.push(`shortId: ${folio.shortId}`);
   lines.push(`title: "${escapeYaml(folio.title)}"`);
-  if (folio.tags && folio.tags.length > 0) {
-    lines.push(
-      `tags: [${folio.tags.map((t) => `"${escapeYaml(t)}"`).join(", ")}]`,
-    );
-  } else {
-    lines.push("tags: []");
-  }
   if (folio.summary?.trim()) {
     lines.push(`summary: "${escapeYaml(folio.summary.trim())}"`);
   }

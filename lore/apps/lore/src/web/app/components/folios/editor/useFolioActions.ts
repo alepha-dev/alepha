@@ -19,7 +19,6 @@ import type { AppRouter } from "../../../AppRouter.ts";
 import { currentFolioAtom } from "../../../atoms/currentFolioAtom.ts";
 import { currentFolioBlobsAtom } from "../../../atoms/currentFolioBlobsAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { folioTagsAtom } from "../../../atoms/folioTagsAtom.ts";
 import { userFoliosAtom } from "../../../atoms/userFoliosAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import {
@@ -250,7 +249,6 @@ export const useFolioActions = (
   const folioApi = useClient<FolioController>();
   const [project] = useStore(currentProjectAtom);
   const [folios, setFolios] = useStore(userFoliosAtom);
-  const [tags, setTags] = useStore(folioTagsAtom);
   const projectSlug = project ? project.slug : "";
 
   // Seeded once from the loader-provided `folio` prop. Safe as an
@@ -313,13 +311,12 @@ export const useFolioActions = (
   const applyDecryptedContent = (folio: Folio, plaintext: string): void => {
     input.draft.form.input.content.set(plaintext);
     // Live read, not `input.draft.values` — see `getLiveValues`'s doc.
-    // Title/tags/summary aren't usually mid-edit during an unlock, but
+    // Title/summary aren't usually mid-edit during an unlock, but
     // reading them live costs nothing and removes the same staleness class
     // of bug from this call site too.
     const live = input.draft.getLiveValues();
     const baselineValues: FolioDraftValues = {
       title: live.title,
-      tags: live.tags,
       summary: live.summary,
       content: plaintext,
     };
@@ -333,10 +330,10 @@ export const useFolioActions = (
    * returns the new state, but nothing about THIS hook's local state
    * refreshes itself just because that happened — the same "props.folio
    * is frozen" premise documented at the top of this file, generalized
-   * one step further: a revert can change title/tags/summary/content all
+   * one step further: a revert can change title/summary/content all
    * at once (whichever fields the reverted-to revision's snapshot held),
    * not just `content` the way `applyDecryptedContent` alone handles it
-   * for unlock. So title/tags/summary are written into the live form
+   * for unlock. So title/summary are written into the live form
    * FIRST, then `applyDecryptedContent` sets content and re-baselines
    * `dirty` against all four together.
    *
@@ -366,7 +363,7 @@ export const useFolioActions = (
    * The two branches that can't call `applyDecryptedContent` use
    * `draft.touchSavedAt`, NOT `draft.markSaved`. This distinction is
    * load-bearing, not stylistic: `locked` (`isProtected && !unlocked`) is
-   * what gates whether the title/tags/summary fields are `disabled`, but
+   * what gates whether the title/summary fields are `disabled`, but
    * `unlocked` is React state while the cached key it's meant to track
    * lives in `protectedFolioKeys.ts`'s module-level cache —
    * `ensureProtectedKeysAutoLock` can evict that cache after 15 idle
@@ -388,9 +385,6 @@ export const useFolioActions = (
     const syncAtoms = (): void => {
       alepha.store.set(currentFolioAtom, reverted);
       setFolios(folios.map((f) => (f.id === reverted.id ? reverted : f)));
-      const merged = new Set<string>(tags);
-      for (const t of reverted.tags) merged.add(t);
-      setTags([...merged].sort());
     };
     // Move `savedAt` alone — see this function's own doc for why this is
     // NOT `markSaved(reverted.updatedAt, input.draft.getLiveValues())`.
@@ -411,7 +405,6 @@ export const useFolioActions = (
           reverted.content,
         );
         input.draft.form.input.title.set(reverted.title);
-        input.draft.form.input.tags.set(reverted.tags);
         input.draft.form.input.summary.set(reverted.summary);
         applyDecryptedContent(reverted, plaintext);
       } catch {
@@ -423,7 +416,6 @@ export const useFolioActions = (
     }
 
     input.draft.form.input.title.set(reverted.title);
-    input.draft.form.input.tags.set(reverted.tags);
     input.draft.form.input.summary.set(reverted.summary);
     applyDecryptedContent(reverted, reverted.content);
     syncAtoms();
@@ -535,7 +527,6 @@ export const useFolioActions = (
           params: { id: folio.id },
           body: {
             title,
-            tags: values.tags,
             summary: values.summary,
             content: contentToSend,
             protected: isProtected,
@@ -544,7 +535,6 @@ export const useFolioActions = (
       : await folioApi.create({
           body: {
             title,
-            tags: values.tags,
             summary: values.summary,
             content: contentToSend,
             protected: false,
@@ -558,9 +548,6 @@ export const useFolioActions = (
       ? folios.map((f) => (f.id === saved.id ? (saved as Folio) : f))
       : [saved as Folio, ...folios];
     setFolios(nextFolios);
-    const merged = new Set<string>(tags);
-    for (const t of saved.tags) merged.add(t);
-    setTags([...merged].sort());
     input.draft.markSaved(saved.updatedAt, { ...values, title });
 
     if (!folio) {
@@ -582,7 +569,6 @@ export const useFolioActions = (
           params: { id: saved.id },
           body: {
             title: latestTitle,
-            tags: latest.tags,
             summary: latest.summary,
             content: latest.content,
           },
@@ -618,8 +604,6 @@ export const useFolioActions = (
       folioApi,
       folios,
       setFolios,
-      tags,
-      setTags,
       alepha,
       router,
       projectSlug,
@@ -662,18 +646,17 @@ export const useFolioActions = (
         const created = await folioApi.create({
           body: {
             title: `${values.title.trim() || tr("folios.title-placeholder")}${tr("folio.action.duplicate-suffix")}`,
-            tags: values.tags,
             summary: values.summary,
             content: contentToSend,
             protected: isProtected,
             projectId: project.id,
             // `currentDirectoryId` (local state, moved by `confirmMove`'s
             // own success), NOT `folio.directoryId` — the same staleness
-            // fix already applied to the meta bar's directory chip in
+            // fix already applied to the Move dialog's starting point in
             // `FolioDocument.tsx` (`props.actions.directoryId ??
             // props.directoryId`). `folio` is `input.folio`, the
             // route-loader prop, frozen for the mount's lifetime: after an
-            // in-session move via the tree (Task 9) or the meta bar's own
+            // in-session move via the tree (Task 9) or the menubar's own
             // "Move to…" dialog, `folio.directoryId` still reads the OLD
             // directory, so a duplicate made after that move would file
             // the copy back under the folio's pre-move location instead of
@@ -687,9 +670,6 @@ export const useFolioActions = (
         }
         alepha.store.set(currentFolioAtom, created as Folio);
         setFolios([created as Folio, ...folios]);
-        const merged = new Set<string>(tags);
-        for (const t of created.tags) merged.add(t);
-        setTags([...merged].sort());
         await router.push(
           router.path("projectFoliosFolio", {
             params: { projectSlug, shortId: created.shortId },
@@ -709,8 +689,6 @@ export const useFolioActions = (
       folioApi,
       folios,
       setFolios,
-      tags,
-      setTags,
       alepha,
       router,
       projectSlug,
@@ -747,11 +725,7 @@ export const useFolioActions = (
         const folio = input.folio;
         if (!folio) return;
         await folioApi.delete({ params: { id: folio.id } });
-        const remaining = folios.filter((f) => f.id !== folio.id);
-        setFolios(remaining);
-        const remainingTags = new Set<string>();
-        for (const f of remaining) for (const t of f.tags) remainingTags.add(t);
-        setTags([...remainingTags].sort());
+        setFolios(folios.filter((f) => f.id !== folio.id));
         alepha.store.set(currentFolioAtom, undefined);
         await router.push(
           router.path("projectFolios", { params: { projectSlug } }),
@@ -759,16 +733,7 @@ export const useFolioActions = (
       },
       invalidates: [["folioTree", projectSlug]],
     },
-    [
-      input.folio,
-      folios,
-      setFolios,
-      setTags,
-      alepha,
-      router,
-      projectSlug,
-      folioApi,
-    ],
+    [input.folio, folios, setFolios, alepha, router, projectSlug, folioApi],
   );
 
   const handleDelete = async (): Promise<void> => {
@@ -796,7 +761,6 @@ export const useFolioActions = (
           params: { id: folio.id },
           body: {
             title: values.title,
-            tags: values.tags,
             summary: values.summary,
             content: values.content,
             protected: false,
@@ -859,7 +823,6 @@ export const useFolioActions = (
             params: { id: folio.id },
             body: {
               title: values.title,
-              tags: values.tags,
               summary: values.summary,
               content: envelope,
               protected: true,
@@ -951,7 +914,6 @@ export const useFolioActions = (
     const markdown = folioMarkdownExport({
       ...folio,
       title: values.title,
-      tags: values.tags,
       summary: values.summary,
       content: values.content,
     });

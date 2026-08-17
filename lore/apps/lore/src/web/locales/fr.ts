@@ -163,15 +163,6 @@ export default {
   "folios.editor.summary.placeholder":
     "Une ou deux phrases que les agents lisent pour décider s'ils ouvrent ce folio.",
 
-  "folios.editor.tag.add": "Ajouter un tag",
-  "folios.editor.tag.add-more": "Tag",
-  "folios.editor.tag.remove": "Retirer le tag",
-
-  "folios.editor.meta.draft": "$1 mots",
-  "folios.editor.meta.draft-one": "1 mot",
-  "folios.editor.meta.saved": "n°$1 · $2 mots · $3 révisions",
-  "folios.editor.meta.saved-one": "n°$1 · $2 mots · 1 révision",
-
   "folios.editor.locked.title": "Ce folio est chiffré",
   "folios.editor.locked.body":
     "Le contenu a été chiffré dans votre navigateur. Le serveur n'a stocké que le texte chiffré : il est irrécupérable sans la phrase secrète.",

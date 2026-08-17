@@ -257,7 +257,6 @@ describe("FolioController per-project visibility (post #65 refactor)", () => {
           projectId: created.data.id,
           title: "Sealed notes",
           summary: "Public summary, encrypted body",
-          tags: ["secret"],
           content: ciphertext,
           protected: true,
         },
@@ -271,7 +270,6 @@ describe("FolioController per-project visibility (post #65 refactor)", () => {
     );
     expect(seenByB.data.title).toBe("Sealed notes");
     expect(seenByB.data.summary).toBe("Public summary, encrypted body");
-    expect(seenByB.data.tags).toEqual(["secret"]);
     expect(seenByB.data.protected).toBe(true);
     // Content remains the opaque ciphertext — server never decrypts.
     expect(seenByB.data.content).toBe(ciphertext);

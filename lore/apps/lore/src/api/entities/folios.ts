@@ -30,6 +30,18 @@ export const folios = $entity({
      */
     protected: db.default(z.boolean(), false),
     content: db.default(z.string(), ""),
+    /**
+     * @deprecated Dead column. The tag feature was removed (feedback #62)
+     * — nothing reads or writes this, and no UI or MCP surface exposes it.
+     *
+     * **It stays declared on purpose.** Dropping a column from SQLite means
+     * a table rebuild, and `folios` is the `ON DELETE CASCADE` parent of
+     * `folio_links`, `folio_revisions` and `folio_blobs` — D1 ignores
+     * `PRAGMA foreign_keys=OFF`, so the rebuild's `DROP TABLE` would
+     * cascade-wipe all three in production. Same verdict, same reasoning as
+     * `projects.unlockedFeatures` / `projects.public`. See "Migration safety
+     * on D1" in apps/lore/CLAUDE.md.
+     */
     tags: db.default(z.array(z.string()), []),
     /**
      * Pin a folio so it sorts to the top of the project's folio list AND
@@ -58,8 +70,13 @@ export const folios = $entity({
      */
     summary: db.default(z.string().max(500), ""),
     /**
-     * Lowercased concatenation of `title + " " + tags + " " + summary + " " + content`.
+     * Lowercased concatenation of `title + " " + summary + " " + content`.
      * Populated on every create/update for cheap `LIKE` search on D1/SQLite.
+     *
+     * Rows written before the tag feature was removed still carry their tag
+     * words in here until their next save. Search stays a superset, so this
+     * is left to age out rather than backfilled with an `UPDATE` over every
+     * row in production.
      */
     searchText: db.default(z.string(), ""),
   }),
@@ -74,21 +91,14 @@ export type Folio = Infer<typeof folios.schema>;
 
 /**
  * Build the lowercase search blob from a folio's user-editable fields.
- * Keep title/tags/summary/content all in one column so a single `LIKE %q%`
- * works. Existing rows have `summary = ""` (default) so the formula is a
- * superset of the pre-summary formula — no backfill is required.
+ * Keep title/summary/content all in one column so a single `LIKE %q%`
+ * works.
  */
 export const buildFolioSearchText = (input: {
   title: string;
-  tags?: string[];
   summary?: string;
   content?: string;
 }): string =>
-  [
-    input.title,
-    (input.tags ?? []).join(" "),
-    input.summary ?? "",
-    input.content ?? "",
-  ]
+  [input.title, input.summary ?? "", input.content ?? ""]
     .join(" ")
     .toLowerCase();

@@ -109,14 +109,6 @@ test.describe("Folio workspace", () => {
     const summary = page.getByLabel(/summary for agents/i);
     await expect(summary).toBeVisible({ timeout: 15_000 });
 
-    // The folio was created through the API, so exactly one revision
-    // exists and the meta bar reads it off the folio's own
-    // `metadata.revisionCount` — the History tab has not been opened and
-    // does not fetch on a folio open any more.
-    await expect(page.getByText(/· 1 (revision|révision)$/)).toBeVisible({
-      timeout: 15_000,
-    });
-
     // ⚠️ No Save click and no "Saved …" line to wait for: an existing folio
     // auto-saves (`useFolioAutoSave`, 1.5s after typing stops), and both the
     // button and the status line were removed once that was true. The button
@@ -134,22 +126,6 @@ test.describe("Folio workspace", () => {
     // Autosave debounces on the values changing, so blurring is not what
     // fires it — the wait is on the request itself.
     await saved;
-    // …and the count follows the save without a reload, even though the
-    // inspector is sitting on Outline. Deferring the History tab's fetch
-    // to the first time it is shown must not defer it past a save that
-    // moved the number — the fetch is skipped per folio OPENED, not per
-    // folio SAVED. Nothing else in this file covers that distinction.
-    // ONE revision, not two. The folio was created and its summary edited
-    // moments apart, and `FolioHistoryService` folds saves by the same
-    // author inside an hour into a single revision — that coalescing is
-    // what makes auto-save affordable. What this still pins is the thing
-    // it was written for: the meta bar's count reflects a save that
-    // happened while the inspector was sitting on Outline, so the History
-    // tab's deferred fetch is skipped per folio OPENED, never per folio
-    // SAVED.
-    await expect(page.getByText(/· 1 (revision|révision)$/)).toBeVisible({
-      timeout: 15_000,
-    });
 
     await page.reload();
     await page.waitForLoadState("networkidle");
@@ -194,22 +170,6 @@ test.describe("Folio workspace", () => {
       name: /created|edited|créé|modifié/i,
     });
     await expect(revisionRows.first()).toBeVisible({ timeout: 15_000 });
-
-    // And the meta bar's count agrees with the rows this tab lists.
-    // Load-bearing since the count stopped coming from this tab's own
-    // fetch and started riding on the folio (`metadata.revisionCount`):
-    // the two have independent sources now, and only comparing them
-    // catches a server-side count that disagrees with the list. Counted
-    // rather than hard-coded — the number depends on how many times the
-    // earlier tests in this serial file saved.
-    const rows = await revisionRows.count();
-    await expect(
-      page.getByText(
-        rows === 1
-          ? /· 1 (revision|révision)$/
-          : new RegExp(`· ${rows} (revisions|révisions)$`),
-      ),
-    ).toBeVisible({ timeout: 15_000 });
   });
 
   test("04 — inspector Links shows a backlink from another folio", async () => {
@@ -401,13 +361,14 @@ test.describe("Folio workspace", () => {
    * after the batch resolves, so it could never join the 10ms
    * `BatchCollector` window), and `FolioHistoryTab` fired `listHistory`
    * from a mount effect — a whole request returning up to ten FULL
-   * content snapshots, to render one number in the meta bar.
+   * content snapshots, to render one number in the meta bar that no
+   * longer exists (the bar was deleted with the tag feature).
    *
-   * All three collapsed: the attachments and the revision COUNT ride on
-   * `getByShortId` as `metadata`, the tree's two lists are seeded by the
-   * `/folios` layout loader that necessarily ran first and are not
-   * re-fetched inside their freshness window, and the revision rows wait
-   * until the History tab is actually opened.
+   * All three collapsed: the attachments ride on `getByShortId` as
+   * `metadata`, the tree's two lists are seeded by the `/folios` layout
+   * loader that necessarily ran first and are not re-fetched inside their
+   * freshness window, and the revision rows wait until the History tab is
+   * actually opened.
    *
    * Asserted as a count of requests rather than of any one URL: the point
    * is the total, and a future addition that re-splits the call would
@@ -448,7 +409,6 @@ test.describe("Folio workspace", () => {
       `expected one request, got:\n${calls.join("\n")}`,
     ).toHaveLength(1);
     expect(calls[0]).toContain("withBlobs=true");
-    expect(calls[0]).toContain("withRevisionCount=true");
   });
 
   test("09 — /folios opens with nothing selected", async () => {
@@ -501,6 +461,49 @@ test.describe("Folio workspace", () => {
     expect(gap).toBeLessThanOrEqual(2);
 
     await page.setViewportSize({ width: 1280, height: 900 });
+  });
+
+  /**
+   * The floating view/edit toggle — all that survives of the deleted meta
+   * bar (feedback #62).
+   *
+   * Two things are asserted that a unit test cannot see. It has to STAY
+   * PUT while the document scrolls: it is deliberately a sibling of the
+   * scroll container rather than a child, and the child version looks
+   * identical until something is long enough to scroll. And the row it
+   * used to live in has to be gone — the directory chip, the tag chips
+   * and the `#id · N words · N revisions` line, none of which any other
+   * test in this file still looks for.
+   */
+  test("08c — the view/edit toggle floats and outlives the meta bar", async () => {
+    await page.goto(folioUrl);
+    const toggle = page.getByTestId("markdown-mode-toggle");
+    await expect(toggle).toBeVisible({ timeout: 15_000 });
+
+    // The chip row is gone: no directory chip, no "Add a tag", no counters.
+    await expect(
+      page.getByRole("button", { name: /^Project root$/ }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: /add a tag|ajouter un tag/i }),
+    ).toHaveCount(0);
+    await expect(page.getByText(/\d+ (words|mots)/)).toHaveCount(0);
+
+    // Give the document something to scroll, then scroll it.
+    const box = await toggle.boundingBox();
+    await page.evaluate(() => {
+      const pane = document.querySelector('[data-slot="folio-document"]')
+        ?.parentElement?.parentElement;
+      if (pane) pane.scrollTop = pane.scrollHeight;
+    });
+    await page.waitForTimeout(300);
+    const after = await toggle.boundingBox();
+    expect(after?.y).toBeCloseTo(box?.y ?? -1, 0);
+
+    // And it still drives the mode — the one job the meta bar's copy had.
+    const before = await toggle.getAttribute("data-mode");
+    await toggle.click();
+    await expect(toggle).not.toHaveAttribute("data-mode", before ?? "");
   });
 
   test("09b — the empty-state menubar keeps its shape, only its enablement changes", async () => {

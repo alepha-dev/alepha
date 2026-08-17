@@ -44,12 +44,26 @@ export const folioRevisions = $entity({
     byUserId: db.ref(z.uuid().optional(), () => users.cols.id, {
       onDelete: "set null",
     }),
+    /**
+     * ⚠️ `tag-change` is no longer PRODUCED — the tag feature was removed
+     * (feedback #62) — but it must stay in this enum: production rows
+     * already carry it, and a row whose stored value is missing from the
+     * schema fails to decode, taking the whole query with it. That is the
+     * 2026-08-05 required-JSON-key incident, and it is a read outage, not a
+     * cosmetic drift. See apps/lore/CLAUDE.md.
+     */
     action: z
       .enum(["create", "edit", "rename", "tag-change", "revert"])
       .meta({ mode: "text" }),
     /** Snapshot of the folio's content at the time of the revision. */
     contentSnapshot: z.string(),
     titleSnapshot: z.string(),
+    /**
+     * @deprecated Dead column — frozen at `[]` for every revision written
+     * since the tag feature was removed. Kept declared for the same reason
+     * as `folios.tags`: dropping it forces a table rebuild, and on D1 that
+     * cascade-wipes. See the note on that column.
+     */
     tagsSnapshot: db.default(z.array(z.string()), []),
     summarySnapshot: db.default(z.string(), ""),
     /**
