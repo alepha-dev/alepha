@@ -65,6 +65,11 @@ export class SigilBrowserProvider {
           const body = await res.json();
           if (body?.config) {
             this.alepha.store.set(sigilClientAtom, body.config);
+            // Applies to what is already waiting, not just to what comes next.
+            // The trackers gated at enqueue used the config this page was
+            // served with, which on anything served from a file or a cache is
+            // older than the visit.
+            this.queue?.dropDisabled(body.config.enabled ?? {});
           }
         } catch {
           // The app is working; its observer is not. Never the app's problem.
