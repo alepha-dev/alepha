@@ -1,6 +1,9 @@
 import { $hook, $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { sigilClientAtom } from "../shared/sigilClientAtom.ts";
+import {
+  sigilClientAtom,
+  sigilConfigIsFresh,
+} from "../shared/sigilClientAtom.ts";
 import type { SigilTracker } from "../shared/sigilFeatures.ts";
 import { sigilScrubUrl } from "../shared/sigilScrubUrl.ts";
 import { SigilQueue } from "./SigilQueue.ts";
@@ -16,10 +19,9 @@ import { SigilVitals } from "./SigilVitals.ts";
  * the atom is hydrated on `ready`, after this `start` hook has attached its
  * listeners; reading them once here would freeze the pre-hydration defaults.
  *
- * Sampling is applied here too, at the source: an app told to keep a tenth of
- * its vitals sends a tenth, rather than sending everything for the sink to
- * throw away. The bandwidth and the battery belong to the visitor. Unlike the
- * gates, it is decided once per page load and then held — see {@link wants}.
+ * A page served from a file or a cache carries a config older than the visit.
+ * `configAt` on the atom is what says so, and the first ingest call brings back
+ * the current one — see the `react:browser:render` handler.
  */
 export class SigilBrowserProvider {
   protected readonly alepha = $inject(Alepha);
@@ -42,29 +44,31 @@ export class SigilBrowserProvider {
    */
   protected initialRenderCounted = false;
 
-  /**
-   * This page load's sampling verdict per tracker, with the rate it was rolled
-   * against. See {@link wants} for why it is remembered rather than re-rolled.
-   */
-  protected readonly sampled = new Map<
-    SigilTracker,
-    { rate: number; keep: boolean }
-  >();
-
   protected readonly start = $hook({
     on: "start",
     handler: () => {
       if (typeof window === "undefined") return;
       if (!this.alepha.isProduction()) return;
 
+      // Every response carries the current config, so the app's own server —
+      // which reads it from env on each request — is what keeps a long-lived
+      // page current. No second endpoint, and no call that exists only to ask.
       const send = async (env: object): Promise<void> => {
-        await fetch("/api/sigil/ingest", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(env),
-          keepalive: true,
-          credentials: "same-origin",
-        } as any).catch(() => {});
+        try {
+          const res = await fetch("/api/sigil/ingest", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(env),
+            keepalive: true,
+            credentials: "same-origin",
+          } as any);
+          const body = await res.json();
+          if (body?.config) {
+            this.alepha.store.set(sigilClientAtom, body.config);
+          }
+        } catch {
+          // The app is working; its observer is not. Never the app's problem.
+        }
       };
 
       this.queue = new SigilQueue(send as any);
@@ -122,11 +126,31 @@ export class SigilBrowserProvider {
       // of the pre-hydration default.
       (this.alepha.events as any).on("react:browser:render", () => {
         this.initialRenderCounted = true;
-        if (!this.wants("views")) return;
-        this.queue!.addView(
-          (location as any).pathname,
-          this.dateTime.nowMillis(),
-        );
+        if (this.wants("views")) {
+          this.queue!.addView(
+            (location as any).pathname,
+            this.dateTime.nowMillis(),
+          );
+        }
+
+        // The page was served with a config older than this visit — it came
+        // from a prerendered file, an edge cache or a restored document. Go and
+        // get the current one now rather than on the debounce, because until it
+        // arrives the feedback button cannot know whether to render, and a
+        // button that appears five seconds into a read is worse than one that
+        // never does.
+        //
+        // Forced, so it still happens when every tracker is off and the queue
+        // is therefore empty. That case is the one that matters most: it is the
+        // only way such a page ever learns it was switched back on.
+        if (
+          !sigilConfigIsFresh(
+            this.alepha.store.get(sigilClientAtom),
+            this.dateTime.nowMillis(),
+          )
+        ) {
+          void this.queue!.flush({ force: true });
+        }
       });
     },
   });
@@ -140,51 +164,19 @@ export class SigilBrowserProvider {
   }
 
   /**
-   * Whether this event should be collected: the tracker is on, and this page
-   * load survives the sink's sampling rate.
+   * Whether this event should be collected.
    *
-   * The kill-switch is read live, per event — that is the whole point of a
-   * kill-switch, and the atom can be rehydrated under it.
+   * Read live, per event, rather than resolved once: the atom is replaced when
+   * an ingest response brings a newer config, and the whole point of a
+   * kill-switch is that events after it stop.
    *
-   * **The sampling roll is not.** It used to be, and that biased the one number
-   * this package calls trustworthy. The `visitor` stamp only reaches the sink
-   * when an envelope is actually sent, so under per-event sampling a visitor
-   * with one pageview was far likelier to send nothing at all than a visitor
-   * with ten: the unique count fell away non-linearly with the rate and the
-   * survivors skewed engaged. Rolling once and reusing the answer means a
-   * sampled-in visitor contributes every view and a sampled-out one contributes
-   * none, so counts stay scalable and uniques stay unbiased. It is also what
-   * makes a funnel measurable at all — thinning each step independently would
-   * multiply every step-to-step conversion by the sampling rate.
-   *
-   * Kept in memory, deliberately. A session id in `sessionStorage` would
-   * survive a reload and be more accurate, and it would also put this package
-   * back inside ePrivacy Art. 5(3) — storage on terminal equipment — for every
-   * app that installs it. A reload re-rolls; that residual bias is a great deal
-   * smaller than the one being fixed, and it costs no downstream consent.
-   *
-   * The roll is cached against the rate that produced it, so the first events
-   * of a page load — buffered vitals fire before the atom is hydrated — do not
-   * pin the pre-hydration default of 1 for the rest of the visit. When
-   * hydration brings a real rate, it re-rolls once and then holds.
-   *
-   * Errors are never sampled away even when a rate is configured for them: the
-   * first occurrence of a new crash is the one that matters, and a rate below 1
-   * would sometimes drop exactly that one. Sampling errors is a thing to do at
-   * the sink, on groups, not at the source on individuals.
+   * Errors are never gated away by a stale config on purpose — see the
+   * `blights` field. There is no sampling here any more: the appetite is a
+   * declared setting rather than something the sink dictates per page, so an
+   * app that wants less says so once.
    */
   protected wants(tracker: SigilTracker): boolean {
-    const config = this.alepha.store.get(sigilClientAtom);
-    if (config.enabled[tracker] === false) return false;
-    if (tracker === "errors") return true;
-
-    const rate = config.sampling[tracker] ?? 1;
-    const rolled = this.sampled.get(tracker);
-    if (rolled && rolled.rate === rate) return rolled.keep;
-
-    const keep = rate >= 1 || Math.random() < rate;
-    this.sampled.set(tracker, { rate, keep });
-    return keep;
+    return this.alepha.store.get(sigilClientAtom).enabled[tracker] !== false;
   }
 
   /**

@@ -40,9 +40,16 @@ const make = (env: Record<string, any> = {}) =>
     },
   }).with({ provide: HttpClient, use: RecordingHttpClient });
 
-const withSink = (env: Record<string, any> = {}) =>
+const withSink = (
+  config: Record<string, any> = {},
+  env: Record<string, any> = {},
+) =>
   make({
-    SIGIL_SINK: "https://sigil.example.com/",
+    SIGIL_CONFIG: JSON.stringify({
+      project: "demo",
+      sink: "https://sigil.example.com/",
+      ...config,
+    }),
     SIGIL_KEY: "tk_secret",
     ...env,
   });
@@ -160,11 +167,10 @@ describe("SigilSinkProvider", () => {
     );
   });
 
-  it("drops a tracker the sink turned off, at the source", async () => {
-    const alepha = withSink();
+  it("drops a tracker the config turned off, at the source", async () => {
+    const alepha = withSink({ analytics: false });
     const sink = alepha.inject(SigilSinkProvider);
     const http = alepha.inject(HttpClient) as RecordingHttpClient;
-    http.configResponse = { enabled: { views: false } };
     await alepha.start();
 
     await sink.ingest({ views: [{ path: "/" }], errors: [anError("boom")] });
@@ -215,43 +221,50 @@ describe("SigilSinkProvider", () => {
         NODE_ENV: "production",
         APP_SECRET: "test-secret",
         SERVER_PORT: 0,
-        SIGIL_SINK: "https://sigil.example.com/",
+        SIGIL_CONFIG: '{"project":"demo","sink":"https://sigil.example.com/"}',
         SIGIL_KEY: "tk_secret",
       },
     })
       .with({ provide: HttpClient, use: RecordingHttpClient })
       .with(AlephaSigil);
-    const http = alepha.inject(HttpClient) as RecordingHttpClient;
-    http.configResponse = { feedbackUrl: "https://lore.example/c/2/request" };
     await alepha.start();
 
     // Nothing has been ingested — and `ingest()` used to be the only caller of
     // `refreshConfig()`. A cold isolate rendering its first page still has to
     // know where feedback goes, or the button is absent until some unrelated
     // traffic happens to warm the cache, which on a per-request runtime may
-    // never be the same isolate.
+    // never be the same isolate. Derived from `project` now, so there is no
+    // cache to be cold.
     await alepha.events.emit("react:server:render:begin", {
       state: {},
     } as any);
 
-    expect(alepha.store.get(sigilClientAtom).feedbackUrl).toBe(
-      "https://lore.example/c/2/request",
+    const published = alepha.store.get(sigilClientAtom);
+    expect(published.feedbackUrl).toBe(
+      "https://sigil.example.com/demo/request",
     );
+    // And stamped, so a page that outlives it can tell.
+    expect(published.configAt).toBeGreaterThan(0);
   });
 
-  it("stops asking for config more than once a minute", async () => {
+  /**
+   * The config is read from `SIGIL_CONFIG`, so there is no GET to rate-limit
+   * any more. This asserts the absence: a provider that asked the sink what to
+   * collect could not cache the answer across a serverless isolate, and baked
+   * it into the HTML on a prerendered app.
+   */
+  it("never asks the sink what to collect", async () => {
     const alepha = withSink();
     const sink = alepha.inject(SigilSinkProvider);
     const http = alepha.inject(HttpClient) as RecordingHttpClient;
     await alepha.start();
 
-    await sink.refreshConfig();
-    await sink.refreshConfig();
-    await sink.refreshConfig();
+    await sink.ingest({ views: [{ path: "/", ts: 1 }] });
+    await sink.flush();
 
-    expect(
-      http.calls.filter((c) => c.url.endsWith("/sigils/config")),
-    ).toHaveLength(1);
+    expect(http.calls.every((c) => c.url.endsWith("/sigils/ingest"))).toBe(
+      true,
+    );
   });
 
   it("flushes what it is holding when the app stops", async () => {
@@ -289,7 +302,7 @@ describe("SigilSinkProvider — surviving a runtime that does not", () => {
     // `ALEPHA_SERVERLESS` is what `isServerless()` reads — set through env
     // rather than by overriding the method, so the test exercises the same
     // signal production does.
-    const alepha = withSink({ ALEPHA_SERVERLESS: "true" });
+    const alepha = withSink({}, { ALEPHA_SERVERLESS: "true" });
     const sink = alepha.inject(TestSinkProvider);
     const http = alepha.inject(HttpClient) as RecordingHttpClient;
     await alepha.start();
@@ -319,7 +332,7 @@ describe("SigilSinkProvider — surviving a runtime that does not", () => {
 
   it("should not send an empty batch on every response", async () => {
     // A request that produced nothing must not cost a round trip to the sink.
-    const alepha = withSink({ ALEPHA_SERVERLESS: "true" });
+    const alepha = withSink({}, { ALEPHA_SERVERLESS: "true" });
     const sink = alepha.inject(TestSinkProvider);
     const http = alepha.inject(HttpClient) as RecordingHttpClient;
     await alepha.start();

@@ -28,14 +28,14 @@ export const SigilRoot = () => {
     return null;
   }
 
-  if (sigilAnyGlobMatch(path, config.excludedPaths)) {
+  if (sigilAnyGlobMatch(path, config.feedbackButtonExcludedPaths)) {
     return null;
   }
 
   return (
     <SigilFeedbackButton
       feedbackUrl={feedbackUrl}
-      position={sigilFeedbackPositionOf(config.feedbackPosition)}
+      position={sigilFeedbackPositionOf(config.feedbackButton)}
     />
   );
 };

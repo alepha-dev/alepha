@@ -43,6 +43,30 @@ export const coerceScalar = (schema: unknown, value: unknown): unknown => {
     return value;
   }
 
+  // A structured value arriving down a string-only wire: an env var holding
+  // JSON, a query parameter carrying an object. Without this, declaring
+  // `z.object()` for such a field can only ever fail — the schema wants an
+  // object and the boundary can only deliver a string, so the field is
+  // undeclarable rather than merely awkward.
+  //
+  // Guarded on the first character so an ordinary string is never fed to
+  // `JSON.parse` on the off-chance it parses: `"null"`, `"7"` and `"true"` are
+  // all valid JSON documents, and a schema expecting an object should reject
+  // them by their own type rather than be handed the wrong one. Malformed input
+  // is returned as it came, per this file's contract — which is what turns a
+  // stray comma in a dashboard textarea into a validation error naming the
+  // variable, instead of an exception thrown from a parser nobody called.
+  if (z.schema.isObject(base) || z.schema.isArray(base)) {
+    const first = value.trimStart()[0];
+    if (first === "{" || first === "[") {
+      try {
+        return JSON.parse(value);
+      } catch {
+        return value;
+      }
+    }
+  }
+
   return value;
 };
 

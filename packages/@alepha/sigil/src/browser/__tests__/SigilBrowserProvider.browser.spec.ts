@@ -14,6 +14,11 @@ describe("SigilBrowserProvider", () => {
     });
     const provider = alepha.inject(SigilBrowserProvider);
     await alepha.start();
+    alepha.store.set(sigilClientAtom, {
+      enabled: { views: true, errors: true, vitals: true },
+      feedbackButtonExcludedPaths: [],
+      configAt: Date.now(),
+    });
     // Hydration first — a transition before it is the hydration render itself,
     // which `react:browser:render` owns.
     await (alepha.events as any).emit("react:browser:render", {});
@@ -33,6 +38,13 @@ describe("SigilBrowserProvider", () => {
     });
     const provider = alepha.inject(SigilBrowserProvider);
     await alepha.start();
+    // A page rendered for this visit. A stale stamp would trigger the config
+    // handshake, which flushes the queue — correct, and not what this asserts.
+    alepha.store.set(sigilClientAtom, {
+      enabled: { views: true, errors: true, vitals: true },
+      feedbackButtonExcludedPaths: [],
+      configAt: Date.now(),
+    });
 
     // What `ReactBrowserProvider.ready` actually does: await `render()`, which
     // emits the transition, then emit the browser render ~2ms later. Counting
@@ -65,8 +77,8 @@ describe("SigilBrowserProvider", () => {
     // and discarded later.
     alepha.store.set(sigilClientAtom, {
       enabled: { views: false, errors: true, vitals: true },
-      sampling: { views: 1, errors: 1, vitals: 1 },
-      excludedPaths: [],
+      feedbackButtonExcludedPaths: [],
+      configAt: Date.now(),
     });
     await (alepha.events as any).emit("react:browser:render", {});
     await (alepha.events as any).emit("react:transition:end", {

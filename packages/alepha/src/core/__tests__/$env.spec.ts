@@ -22,6 +22,35 @@ describe("$env", () => {
     expect(app.env.PORT).toBe("3000");
   });
 
+  /**
+   * A structured variable — one string in a dashboard holding a whole app's
+   * settings, editable without a rebuild. Env vars are strings on the wire, so
+   * declaring an object schema for one could previously only ever fail
+   * validation, which made the field undeclarable rather than merely awkward.
+   */
+  it("should parse a JSON object variable against an object schema", () => {
+    class App {
+      env = $env(
+        z.object({
+          SIGIL_CONFIG: z.object({
+            project: z.text(),
+            analytics: z.boolean().default(true),
+            vitals: z.boolean().default(true),
+          }),
+        }),
+      );
+    }
+
+    const app = Alepha.create({
+      env: { SIGIL_CONFIG: '{"project":"alepha","vitals":false}' },
+    }).inject(App);
+
+    expect(app.env.SIGIL_CONFIG.project).toBe("alepha");
+    expect(app.env.SIGIL_CONFIG.vitals).toBe(false);
+    // Defaults inside the object still apply to keys the JSON omitted.
+    expect(app.env.SIGIL_CONFIG.analytics).toBe(true);
+  });
+
   it("should apply default values when var is missing", () => {
     class App {
       env = $env(

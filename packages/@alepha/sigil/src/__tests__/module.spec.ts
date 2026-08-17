@@ -49,7 +49,7 @@ describe("AlephaSigil module", () => {
 
   it("is configured by env alone", async () => {
     const alepha = make({
-      SIGIL_SINK: "https://sigil.example.com",
+      SIGIL_CONFIG: '{"project":"demo","sink":"https://sigil.example.com"}',
       SIGIL_KEY: "tk",
     });
     const sink = alepha.inject(SigilSinkProvider);

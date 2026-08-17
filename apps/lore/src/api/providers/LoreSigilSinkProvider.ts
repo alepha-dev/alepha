@@ -1,4 +1,3 @@
-import type { SigilConfig } from "@alepha/sigil/config";
 import type { SigilEnvelope } from "@alepha/sigil/envelope";
 import { SigilSinkProvider } from "@alepha/sigil/server";
 import { $inject, AlephaError } from "alepha";
@@ -28,12 +27,14 @@ import { SigilTokenService } from "../services/SigilTokenService.ts";
  * is skipped is the HTTP hop, not the authentication.
  */
 export class LoreSigilSinkProvider extends SigilSinkProvider {
+  /*
+   * There was a `fetchConfig` override here too, for the second self-subrequest
+   * — the GET that asked the sink how much to send. The base class no longer
+   * asks: an app reads its own `SIGIL_CONFIG`, so Lore reads one like everybody
+   * else and only the write path still needs routing in process.
+   */
   protected readonly tokens = $inject(SigilTokenService);
   protected readonly ingestService = $inject(SigilIngestService);
-
-  protected override async fetchConfig(): Promise<SigilConfig> {
-    return await this.ingestService.configFor(await this.ownSigil());
-  }
 
   protected override async deliver(
     payload: SigilEnvelope & { country?: string; visitor?: string },

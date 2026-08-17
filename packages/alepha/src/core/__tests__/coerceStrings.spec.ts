@@ -58,6 +58,52 @@ describe("coerceObject", () => {
     expect(out.EXTRA).toBe("untouched");
   });
 
+  it("should parse a JSON object arriving as a string", () => {
+    const schema = z.object({
+      CONFIG: z.object({ project: z.string(), analytics: z.boolean() }),
+    });
+
+    const out = coerceObject(schema, {
+      CONFIG: '{"project":"alepha","analytics":false}',
+    });
+
+    expect(out.CONFIG).toEqual({ project: "alepha", analytics: false });
+  });
+
+  /**
+   * The contract this file states: what cannot be coerced is returned as it
+   * came, so validation produces a rejection naming the field. A stray comma in
+   * a dashboard textarea has to surface that way, not as an exception thrown
+   * from a parser the caller never invoked.
+   */
+  it("should leave malformed JSON unchanged for validation to reject", () => {
+    const schema = z.object({ CONFIG: z.object({ a: z.string() }) });
+    const broken = '{"a":"b",}';
+
+    expect(coerceObject(schema, { CONFIG: broken }).CONFIG).toBe(broken);
+  });
+
+  /**
+   * `"null"`, `"7"` and `"true"` are all valid JSON documents. A schema
+   * expecting an object should reject them as the wrong type, not receive one.
+   */
+  it("should not parse scalar JSON for an object schema", () => {
+    const schema = z.object({ CONFIG: z.object({ a: z.string() }) });
+
+    expect(coerceObject(schema, { CONFIG: "null" }).CONFIG).toBe("null");
+    expect(coerceObject(schema, { CONFIG: "7" }).CONFIG).toBe("7");
+    expect(coerceObject(schema, { CONFIG: "hello" }).CONFIG).toBe("hello");
+  });
+
+  it("should parse a JSON array arriving as a string", () => {
+    const schema = z.object({ PATHS: z.array(z.string()) });
+
+    expect(coerceObject(schema, { PATHS: '["/a","/b"]' }).PATHS).toEqual([
+      "/a",
+      "/b",
+    ]);
+  });
+
   it("should skip null and undefined values", () => {
     const schema = z.object({
       PORT: z.integer().optional(),

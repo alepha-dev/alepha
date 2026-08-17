@@ -20,9 +20,9 @@ const renderRoot = async (config: {
   await alepha.start();
   alepha.store.set(sigilClientAtom, {
     enabled: { views: true, errors: true, vitals: true },
-    sampling: { views: 1, errors: 1, vitals: 1 },
-    excludedPaths: config.excludedPaths ?? [],
+    feedbackButtonExcludedPaths: config.excludedPaths ?? [],
     feedbackUrl: config.feedbackUrl,
+    configAt: Date.now(),
   });
   render(
     <AlephaContext.Provider value={alepha}>
