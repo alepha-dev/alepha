@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+import { AlephaBackground } from "alepha/background";
 import { RootComponentsProvider } from "alepha/react/router";
 import { createElement } from "react";
 import { SigilRoot } from "./browser/components/SigilRoot.tsx";
@@ -47,6 +48,14 @@ export * from "./sigilEnv.ts";
  */
 export const AlephaSigil = $module({
   name: "alepha.sigil",
+  // `AlephaBackground` is not optional here, and the failure without it is
+  // silent. `SigilSinkProvider` defers its end-of-request flush so the sink
+  // round trip is not inside the browser's own call; on workerd only the
+  // variant this module registers wraps that in `executionCtx.waitUntil`.
+  // Without it the base provider's `keepAlive` is a no-op, the isolate is
+  // frozen the moment the response is returned, and the flush never completes
+  // — an app that answers every beacon `{"ok":true}` and delivers nothing.
+  imports: [AlephaBackground],
   atoms: [sigilClientAtom],
   services: [
     SigilSinkProvider,

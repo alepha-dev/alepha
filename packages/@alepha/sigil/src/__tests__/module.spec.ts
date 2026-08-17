@@ -1,4 +1,5 @@
 import { Alepha } from "alepha";
+import { BackgroundTaskProvider } from "alepha/background";
 import { RootComponentsProvider } from "alepha/react/router";
 import { isValidElement, type ReactElement } from "react";
 import { describe, expect, it } from "vitest";
@@ -75,5 +76,28 @@ describe("sigil envelope scope", () => {
   it("does not export a metrics provider", async () => {
     const mod = await import("../server/index.ts");
     expect(Object.keys(mod)).not.toContain("SigilMetricsProvider");
+  });
+});
+
+describe("AlephaSigil — the flush survives the response", () => {
+  /**
+   * `SigilSinkProvider` defers its end-of-request flush, and on workerd only
+   * `WorkerdBackgroundTaskProvider` keeps the isolate alive for it. Nothing
+   * else in a docs-shaped app pulls `alepha/background` — `alepha/api/jobs`
+   * does, and a static site has no jobs — so without the module's own import
+   * the base provider is resolved, `keepAlive` is a no-op, and every beacon is
+   * answered `{"ok":true}` while nothing is ever delivered.
+   */
+  it("registers the background provider it defers onto", async () => {
+    const alepha = Alepha.create({
+      env: {
+        NODE_ENV: "production",
+        APP_SECRET: "test-secret",
+        SERVER_PORT: 0,
+      },
+    }).with(AlephaSigil);
+    await alepha.start();
+
+    expect(alepha.inject(BackgroundTaskProvider)).toBeDefined();
   });
 });
