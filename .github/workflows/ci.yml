@@ -260,7 +260,7 @@ jobs:
   # the apex DNS records were never touched — see the `platform()` block in
   # `apps/docs/alepha.config.ts` for why, and for how to roll back.
   # ---------------------------------------------------------------------------
-  deploy-docs-cloudflare:
+  deploy-docs-production:
     # Doesn't require the e2e job — only that the codebase is lint/typecheck-
     # clean and tests pass.
     needs: [checks, test]
