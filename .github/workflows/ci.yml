@@ -271,10 +271,22 @@ jobs:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Scopes the app's own secrets to this job. Without it `secrets.SIGIL_*`
+    # resolve to empty and the deploy pushes nothing — the worker keeps whatever
+    # it already had, so the failure is a config that silently stops tracking
+    # `.env.production` rather than anything that goes red.
+    environment: docs-production
 
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # Delivered straight from `process.env` by the deploy, which reads the
+      # app's `$env` declarations as the allowlist. Kept in the GitHub
+      # environment by `alepha platform secrets apply`, because
+      # `.env.production` is gitignored and CI has no other way to see them.
+      APP_SECRET: ${{ secrets.APP_SECRET }}
+      SIGIL_KEY: ${{ secrets.SIGIL_KEY }}
+      SIGIL_CONFIG: ${{ secrets.SIGIL_CONFIG }}
 
     steps:
       - name: Git Checkout
@@ -310,6 +322,12 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # Sigil reads both from env now — the appetite used to be fetched from the
+      # sink, which on this runtime meant refetching it on nearly every request.
+      # Absent, the module goes inert rather than failing, so a missing one here
+      # costs telemetry and nothing else.
+      SIGIL_KEY: ${{ secrets.SIGIL_KEY }}
+      SIGIL_CONFIG: ${{ secrets.SIGIL_CONFIG }}
 
     steps:
       - name: Git Checkout
