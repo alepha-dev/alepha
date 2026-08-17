@@ -1,4 +1,4 @@
-import { $env, $hook, $inject, Alepha, AlephaError } from "alepha";
+import { $env, $hook, $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { HttpClient } from "alepha/server";
@@ -75,8 +75,8 @@ export class SigilSinkProvider {
   /**
    * What this app collects, straight from `SIGIL_CONFIG`.
    *
-   * `undefined` when the variable is unset, which is only legal while there is
-   * no key either — see the boot check.
+   * `undefined` when the variable is unset, which leaves the module inert —
+   * `hasSink()` needs both this and a key.
    */
   public get config(): SigilConfig | undefined {
     return this.env.SIGIL_CONFIG;
@@ -87,22 +87,34 @@ export class SigilSinkProvider {
     handler: () => {
       if (this.alepha.isBrowser()) return;
 
+      // Reporting needs both halves: the credential, and the project it reports
+      // into. Either one missing means inert — captured locally, sent nowhere.
+      //
+      // Inert rather than fatal, deliberately. Half-configured is a real
+      // mistake and the log says so at `warn`, but telemetry is not worth an
+      // outage: an app whose observability is misconfigured should still serve
+      // its users. Throwing here would also make the variable's own rollout the
+      // riskiest kind of deploy, where the app that fails to boot is the one
+      // that was about to start reporting correctly.
       if (!this.hasSink()) {
-        this.log.info(
-          "No sink configured (SIGIL_KEY unset) — capturing locally, sending nothing.",
-        );
-        return;
-      }
+        const key = !!this.env.SIGIL_KEY;
+        const config = !!this.config;
 
-      // A key with nothing to describe it. Fatal rather than assumed: the
-      // project cannot be guessed, and an app that reports into the wrong one —
-      // or into none — looks enrolled from the outside while its data lands
-      // somewhere nobody reads.
-      if (!this.config) {
-        throw new AlephaError(
-          "SIGIL_KEY is set but SIGIL_CONFIG is not. Set SIGIL_CONFIG to at least " +
-            '{"project":"<slug>"} — the project this app reports into.',
-        );
+        if (key !== config) {
+          this.log.warn(
+            key
+              ? "SIGIL_KEY is set but SIGIL_CONFIG is not — sigil is inert. Set " +
+                  'SIGIL_CONFIG to at least {"project":"<slug>"}, naming the project ' +
+                  "this app reports into."
+              : "SIGIL_CONFIG is set but SIGIL_KEY is not — sigil is inert. The key " +
+                  "is minted by the sink and is what authorises reporting.",
+          );
+        } else {
+          this.log.info(
+            "Sigil not configured — capturing locally, sending nothing.",
+          );
+        }
+        return;
       }
 
       // The sink carries a default, and a default nobody can see is how an app
@@ -111,12 +123,13 @@ export class SigilSinkProvider {
       // self-hoster who forgot the field reads one line instead of debugging
       // why their own Lore stayed empty while the public instance answered 401
       // to a key it has never heard of.
+      const config = this.config!;
       this.log.info(
         `Sigil sink: ${this.sinkOrigin()} (${
-          this.config.sink === SIGIL_DEFAULT_SINK
+          config.sink === SIGIL_DEFAULT_SINK
             ? "default — set SIGIL_CONFIG.sink to self-host"
             : "from SIGIL_CONFIG.sink"
-        }), project ${this.config.project}`,
+        }), project ${config.project}`,
       );
     },
   });

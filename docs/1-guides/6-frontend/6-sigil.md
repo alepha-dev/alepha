@@ -20,6 +20,11 @@ Then one server-side variable:
 |---|---|---|
 | `SIGIL_KEY` | **yes** | the sigil token the sink minted for this app — **secret, server-only** |
 | `SIGIL_CONFIG` | **yes** | JSON: what this app reports, and where |
+
+Both or neither. With one missing the module is **inert** — it still captures
+and still collapses a crash loop into one logged warning, but nothing leaves the
+machine. It logs which half is missing and boots anyway: telemetry is not worth
+an outage.
 | `SIGIL_SALT` | no | overrides the secret salting the daily visitor hash. Falls back to `APP_SECRET` |
 
 ```
