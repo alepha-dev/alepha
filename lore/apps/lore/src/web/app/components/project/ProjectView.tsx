@@ -447,8 +447,14 @@ const ProjectView = () => {
                   body), so this wrapper must NOT also scroll — a nested
                   `overflow-auto` here showed a spurious scrollbar even on
                   short quests. Matches the `fullWidth` branch's no-scroll
-                  intent. */}
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
+                  intent.
+                  The quest DETAIL view is flush: it dropped its card, so the
+                  padding that used to sit between the two surfaces has nothing
+                  left to separate. The list still needs it — it has no padding
+                  of its own. */}
+                <div
+                  className={`flex min-h-0 flex-1 flex-col overflow-hidden ${name === "projectQuest" ? "" : "p-2"}`}
+                >
                   <NestedView />
                 </div>
               </div>
