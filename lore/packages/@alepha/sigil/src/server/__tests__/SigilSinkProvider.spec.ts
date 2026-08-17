@@ -1,4 +1,5 @@
 import { Alepha } from "alepha";
+import { BackgroundTaskProvider } from "alepha/background";
 import { HttpClient } from "alepha/server";
 import { describe, expect, it } from "vitest";
 import { AlephaSigil } from "../../index.ts";
@@ -311,6 +312,12 @@ describe("SigilSinkProvider — surviving a runtime that does not", () => {
     expect(ingests(http)).toHaveLength(0);
 
     await sink.testOnResponse();
+    // The hook defers rather than awaits — the point of the change — so the
+    // send is in flight, not done. `BackgroundTaskProvider.flush` is what
+    // `stop` uses to drain them, and it is what makes this deterministic
+    // instead of dependent on how many microtask ticks an await happens to
+    // give it.
+    await alepha.inject(BackgroundTaskProvider).flush();
 
     expect(ingests(http)).toHaveLength(1);
   });

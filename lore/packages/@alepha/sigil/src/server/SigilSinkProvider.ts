@@ -1,4 +1,5 @@
 import { $env, $hook, $inject, Alepha } from "alepha";
+import { BackgroundTaskProvider } from "alepha/background";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { HttpClient } from "alepha/server";
@@ -62,6 +63,7 @@ export class SigilSinkProvider {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly http = $inject(HttpClient);
   protected readonly log = $logger();
+  protected readonly background = $inject(BackgroundTaskProvider);
   protected env = $env(sigilEnv);
 
   /** Errors waiting to be sent, keyed by fingerprint source. */
@@ -314,10 +316,25 @@ export class SigilSinkProvider {
    */
   protected readonly onResponse = $hook({
     on: "server:onResponse",
-    handler: async () => {
+    handler: () => {
       if (!this.alepha.isServerless()) return;
       if (!this.hasPending()) return;
-      await this.flush();
+
+      // Deferred, not awaited. The flush is a request to the sink, and awaiting
+      // it here put that round trip inside the browser's own call — measured at
+      // ~1.1 s cold against a live worker, for a response the visitor is
+      // waiting on. Two things paid for it: the `pagehide` batch, which carries
+      // the metrics finalised on the way out and is the one a browser tearing
+      // down a document is least likely to keep alive for a second; and the
+      // feedback button, which since the config started riding back on this
+      // response cannot render until the sink has answered something it was
+      // never asked.
+      //
+      // `defer` is not fire-and-forget on this runtime. The workerd variant
+      // wraps the task in `executionCtx.waitUntil`, so the isolate is kept
+      // alive until the flush settles rather than frozen at the response —
+      // which is the whole reason this hook exists here instead of a timer.
+      this.background.defer(() => this.flush());
     },
   });
 
