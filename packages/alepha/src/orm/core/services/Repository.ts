@@ -685,6 +685,17 @@ export abstract class Repository<T extends ZObject> {
 
     const tasks: Promise<any>[] = [];
 
+    // Built BEFORE the row query is dispatched: `withOrganization` throws
+    // SYNCHRONOUSLY under strict tenancy, and doing that once `findMany` is
+    // already in flight would abandon its promise before `Promise.all` below
+    // ever attaches a handler — surfacing as an unhandled rejection attributed
+    // to whatever happened to be running at the time.
+    const countWhere = opts.count
+      ? this.withOrganization(
+          this.withDeletedAt((query.where ?? {}) as PgQueryWhere<T>, opts),
+        )
+      : undefined;
+
     tasks.push(
       this.findMany(
         {
@@ -702,17 +713,13 @@ export abstract class Repository<T extends ZObject> {
     );
 
     if (opts.count) {
-      const countWhere = this.withOrganization(
-        this.withDeletedAt((query.where ?? {}) as PgQueryWhere<T>, opts),
-      );
-
       tasks.push(
         // Same db resolution as `count()`: `this.db` ignored an explicit
         // `opts.tx`, so `paginate(..., { count: true, tx })` ran its count
         // OUTSIDE the transaction — reading rows the transaction had not
         // committed, or missing rows it had written.
         (opts.tx === null ? this.provider.db : (opts.tx ?? this.db))
-          .$count(this.table, this.toSQL(countWhere))
+          .$count(this.table, this.toSQL(countWhere as PgQueryWhereOrSQL<T>))
           .then((it: number) => {
             timers.count = this.dateTimeProvider.nowMillis() - timers.count;
             return it;
