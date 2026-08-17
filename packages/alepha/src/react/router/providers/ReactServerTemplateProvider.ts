@@ -3,9 +3,9 @@ import { $logger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
 import type { SimpleHead } from "alepha/react/head";
 import { createElement, type ReactNode } from "react";
-import { renderToString } from "react-dom/server";
 import ErrorViewer from "../components/ErrorViewer.tsx";
 import { Redirection } from "../errors/Redirection.ts";
+import { ReactDomServerProvider } from "./ReactDomServerProvider.ts";
 import type { ReactRouterState } from "./ReactPageProvider.ts";
 
 /**
@@ -17,6 +17,7 @@ import type { ReactRouterState } from "./ReactPageProvider.ts";
 export class ReactServerTemplateProvider {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
+  protected readonly reactDomServer = $inject(ReactDomServerProvider);
 
   /**
    * Shared TextEncoder - reused across all requests.
@@ -527,8 +528,20 @@ export class ReactServerTemplateProvider {
       errorElement,
     );
 
+    // Read without awaiting: this runs inside a stream controller callback.
+    // Safe because an SSR error implies a render is under way, and a render
+    // awaits the same module before opening the stream — see
+    // ReactDomServerProvider.peek.
+    const reactDomServer = this.reactDomServer.peek();
+    if (!reactDomServer) {
+      this.log.error(
+        "SSR renderer not loaded while rendering an error; falling back to plain text",
+      );
+      return error.message;
+    }
+
     try {
-      return renderToString(wrappedElement);
+      return reactDomServer.renderToString(wrappedElement);
     } catch (renderError) {
       this.log.error("Failed to render error component", renderError);
       return error.message;

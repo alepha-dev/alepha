@@ -18,13 +18,13 @@ import { type ServerHandler, ServerRouterProvider } from "alepha/server";
 import { ServerLinksProvider } from "alepha/server/links";
 import { ServerStaticProvider } from "alepha/server/static";
 import { FileSystemProvider } from "alepha/system";
-import { renderToReadableStream } from "react-dom/server";
 import { Redirection } from "../errors/Redirection.ts";
 import {
   $page,
   type PagePrimitiveRenderOptions,
   type PagePrimitiveRenderResult,
 } from "../primitives/$page.ts";
+import { ReactDomServerProvider } from "./ReactDomServerProvider.ts";
 import {
   type PageRoute,
   ReactPageProvider,
@@ -68,6 +68,7 @@ export class ReactServerProvider {
   protected readonly serverRouterProvider = $inject(ServerRouterProvider);
   protected readonly ssrManifestProvider = $inject(SSRManifestProvider);
   protected readonly localeProvider = $inject(RouterLocaleProvider);
+  protected readonly reactDomServer = $inject(ReactDomServerProvider);
 
   /**
    * Cached check for ServerLinksProvider - avoids has() lookup per request.
@@ -698,6 +699,12 @@ export class ReactServerProvider {
 
     const element = this.pageApi.root(state);
     this.alepha.store.set("alepha.react.router.state", state);
+
+    // Loaded here rather than imported at the top so the renderer stays off the
+    // cold-start path — and loaded BEFORE the stream opens, because the error
+    // paths inside it are synchronous controller callbacks that can only read
+    // an already-resolved module. See ReactDomServerProvider.
+    const { renderToReadableStream } = await this.reactDomServer.load();
 
     const reactStream = await renderToReadableStream(element, {
       onError: (error: unknown) => {

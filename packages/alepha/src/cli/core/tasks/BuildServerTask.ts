@@ -184,14 +184,26 @@ export class BuildServerTask extends BuildTask {
             chunkFileNames: "[hash].js",
             assetFileNames: "[hash][extname]",
             format: "esm",
-            codeSplitting: {
-              groups: [
-                {
-                  name: "react",
-                  test: /node_modules\/react(\/|-dom\/)/,
-                },
-              ],
-            },
+            // No `codeSplitting.groups` on purpose — default splitting wins here.
+            //
+            // This used to force everything matching `node_modules/react(/|-dom/)`
+            // into one chunk. That regex covers `react` AND `react-dom/server`,
+            // and the two have opposite needs: `react` is ~8KB imported
+            // statically by every component module, so its chunk is eager by
+            // construction, while `react-dom/server` is ~200KB reached only
+            // through `ReactDomServerProvider.load()`. Grouped together, the
+            // small eager half pinned the large lazy half into the cold-start
+            // graph, and no amount of dynamic-importing at the call sites could
+            // move it: eagerness follows chunk membership, not import style.
+            //
+            // Measured on `apps/lore` (workerd): dropping the group moved the
+            // renderer to a genuinely async chunk and took the eagerly-parsed
+            // server bundle from ~1556KB to ~1329KB. Splitting the group in two
+            // instead — a `react-dom-server` group ahead of a `react` group with
+            // a negative lookahead — did NOT work and produced byte-identical
+            // output, so reach for a measurement before reintroducing any group
+            // here rather than assuming the pattern is what decides.
+
             // Rolldown/Oxc minifier: preserve class and function names
             minify: {
               mangle: { keepNames: true },

@@ -36,6 +36,7 @@ This module enables:
 
 - [`ReactBrowserRendererProvider`](/docs/reference-providers-reactbrowserrendererprovider) — Browser specific React renderer (react-dom/client interface)
 - [`ReactBrowserRouterProvider`](/docs/reference-providers-reactbrowserrouterprovider) — Implementation of AlephaRouter for React in browser environment.
+- [`ReactDomServerProvider`](/docs/reference-providers-reactdomserverprovider) — The renderer half of React, loaded only once something actually renders.
 - [`ReactPageProvider`](/docs/reference-providers-reactpageprovider) — Handle page routes for React applications. (Browser and Server)
 - [`ReactPreloadProvider`](/docs/reference-providers-reactpreloadprovider) — Adds HTTP Link headers for preloading entry assets.
 - [`ReactServerProvider`](/docs/reference-providers-reactserverprovider) — React server provider responsible for SSR and static file serving.
