@@ -235,6 +235,55 @@ describe("SigilJobs", () => {
       expect(rows[0].count).toBe(2);
     });
 
+    it("does no work at all on a day it has already collapsed", async ({
+      expect,
+    }) => {
+      await ctx.probe.uniques.createMany([
+        { sigilId: ctx.sigilA, day: dayUtc(ctx, 4), visitorHash: "aa" },
+        { sigilId: ctx.sigilA, day: dayUtc(ctx, 4), visitorHash: "bb" },
+      ]);
+
+      await jobs.collapseAnalytics.run();
+      const [first] = await ctx.probe.uniques.findMany({});
+
+      await jobs.collapseAnalytics.run();
+      const [second] = await ctx.probe.uniques.findMany({});
+
+      // The row must be the *same* row, not an identical replacement. The fold
+      // deletes a day and re-inserts it, so re-folding mints a new id — which
+      // is the only trace it leaves, the totals being unchanged by
+      // construction. That invisibility is why this ran unnoticed in
+      // production for as long as it did: ~12-13 seconds of D1 round-trips
+      // every hour, re-folding 27 already-folded rows to reach the same
+      // numbers. Asserting the count here would pass either way.
+      expect(second.id).toBe(first.id);
+      expect(second.count).toBe(2);
+    });
+
+    it("folds a late hash into a day it had already collapsed", async ({
+      expect,
+    }) => {
+      await ctx.probe.uniques.createMany([
+        { sigilId: ctx.sigilA, day: dayUtc(ctx, 4), visitorHash: "aa" },
+      ]);
+      await jobs.collapseAnalytics.run();
+
+      // Arrives after that day was sealed — a retry, or an app whose clock
+      // disagreed. Skipping finished days must not mean skipping this: the day
+      // carries a real hash again, so it is back in scope.
+      await ctx.probe.uniques.create({
+        sigilId: ctx.sigilA,
+        day: dayUtc(ctx, 4),
+        visitorHash: "zz",
+      });
+      await jobs.collapseAnalytics.run();
+
+      const rows = await ctx.probe.uniques.findMany({});
+      expect(rows).toHaveLength(1);
+      expect(rows[0].visitorHash).toBe(UNIQUES_COLLAPSED_HASH);
+      expect(rows[0].count).toBe(2);
+    });
+
     it("folds a day the clock has just carried out of the window", async ({
       expect,
     }) => {

@@ -534,6 +534,66 @@ describe("sigil ingest", () => {
     expect(inbox[0].status).toBe("open");
   });
 
+  it("adds up two reports of one fingerprint inside a single batch", async () => {
+    const { probe, project, sigil, post } = await setup();
+
+    // A fingerprint is hashed from `name` + `stack`, so two reports that differ
+    // only in `message` share one. That is ordinary input, and it is exactly
+    // the case `upsertMany` refuses to be handed twice in one statement —
+    // Postgres throws, SQLite silently applies them in sequence — so the batch
+    // has to be folded before it is written.
+    await post({
+      errors: [
+        anError({ count: 2, message: "first sighting" }),
+        anError({ count: 3, message: "second sighting" }),
+      ],
+    });
+
+    const groups = await probe.errorGroups.findMany({
+      where: { sigilId: { eq: sigil.id } },
+    });
+    expect(groups).toHaveLength(1);
+    expect(groups[0].count).toBe(5);
+    // The first occurrence supplies the descriptive fields — the same
+    // precedence a conflicting `set` gives an already-stored row, so a
+    // fingerprint behaves the same whether its sibling arrived in this
+    // envelope or an hour ago in another.
+    expect(groups[0].message).toBe("first sighting");
+
+    const inbox = await probe.blights.findMany({
+      where: { projectId: { eq: project.id } },
+    });
+    expect(inbox).toHaveLength(1);
+    expect(inbox[0].count).toBe(5);
+    expect(inbox[0].message).toBe("first sighting");
+  });
+
+  it("gives each fingerprint in a batch its own increment", async () => {
+    const { probe, sigil, post } = await setup();
+
+    const other = {
+      name: "RangeError",
+      stack: "RangeError: nope\n    at pay (app.iHryQ0pA.js:99:1)",
+    };
+
+    // File both first, so the second batch takes the *conflict* path — where
+    // one `set` clause serves every row in the statement. A captured count
+    // there applies one row's increment to all of them, which is why the
+    // increment has to read `excluded`. Deliberately lopsided counts: equal
+    // ones would pass under either reading.
+    await post({
+      errors: [anError({ count: 1 }), anError({ ...other, count: 1 })],
+    });
+    await post({
+      errors: [anError({ count: 2 }), anError({ ...other, count: 40 })],
+    });
+
+    const groups = await probe.errorGroups.findMany({
+      where: { sigilId: { eq: sigil.id } },
+    });
+    expect(groups.map((g) => g.count).sort((a, b) => a - b)).toEqual([3, 41]);
+  });
+
   it("keeps two apps apart in the groups and together in the inbox", async () => {
     const { alepha, probe, project, sigil, post } = await setup();
 

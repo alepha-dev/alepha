@@ -130,17 +130,40 @@ export class SigilJobs {
   }
 
   /**
-   * The distinct `day` values below the cutoff, oldest first.
+   * The distinct `day` values below the cutoff that still hold visitor hashes,
+   * oldest first.
    *
    * The sweep works one day at a time rather than loading every stale row: a
    * table nobody has ever pruned can hold an unbounded backlog, and this runs
    * on a Cloudflare Worker with a hard memory ceiling. One day's rows for all
    * sigils is a bounded, self-limiting unit of work — and because the fold is
    * idempotent, a sweep that runs out of time simply finishes on the next hour.
+   *
+   * ⚠️ **The `visitorHash` clause is what makes the sweep converge.** A
+   * collapsed row keeps the `day` it was folded from, so a filter on `day`
+   * alone re-selects every day this job has ever finished, forever: the fold
+   * re-runs, deletes the sentinel, and writes back the identical totals. That
+   * is invisible in the data — the fold is idempotent, which is exactly why it
+   * went unnoticed — and expensive on the wire, because each day costs a
+   * select, a delete and an insert against a remote database. Production was
+   * spending 12-13 seconds of D1 round-trips every hour re-folding 27 rows that
+   * were already folded, which is most of what the hourly cron slot cost.
+   *
+   * Excluding the sentinel leaves exactly the days with real hashes left to
+   * fold, so a finished day drops out permanently and an ordinary hour reads
+   * nothing. Late-arriving rows are unaffected: a row written for an
+   * already-collapsed day carries a real hash, so its day re-qualifies and the
+   * next sweep folds it into the existing sentinel. The per-day read in
+   * {@link collapseUniques} still includes the sentinel — that is what keeps
+   * the totals additive rather than double-counted, and it is a different
+   * question from which days are worth visiting.
    */
   protected async staleDays(cutoff: string): Promise<string[]> {
     const rows = await this.uniques.findMany({
-      where: { day: { lt: cutoff } },
+      where: {
+        day: { lt: cutoff },
+        visitorHash: { ne: UNIQUES_COLLAPSED_HASH },
+      },
       columns: ["day"],
       distinct: ["day"],
       orderBy: "day",
