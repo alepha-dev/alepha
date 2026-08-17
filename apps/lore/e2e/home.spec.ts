@@ -124,6 +124,15 @@ test.describe("Home (recent projects cap)", () => {
     await expect(
       page.getByRole("menuitem").filter({ hasText: `Cap${t}`.slice(0, 20) }),
     ).toBeVisible();
+
+    // Every project row is a real anchor pointing at that project's slug, not
+    // a button with an onClick — the difference is invisible on a plain click
+    // and is the whole affordance on shift/⌘/middle-click (Lore feedback #61).
+    // Asserted on a row that is NOT the active one, so a fix that special-cased
+    // the current project would not pass.
+    await expect(
+      page.getByRole("menuitem").filter({ hasText: `Ember${t}`.slice(0, 20) }),
+    ).toHaveAttribute("href", /^\/[a-z0-9-]+$/);
   });
 });
 
