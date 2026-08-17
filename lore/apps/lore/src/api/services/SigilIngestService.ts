@@ -247,17 +247,102 @@ export class SigilIngestService {
   ): Promise<void> {
     const ignoreRules = await this.rules.listForProject(sigil.projectId);
 
+    // Two statements for the whole envelope rather than two per error. Against
+    // D1 an `await` is a network round-trip, not a function call, so the old
+    // serial loop cost `2n + 1` of them and measured ~1.0-1.6s of wall time per
+    // ingest against ~10ms of CPU — the request was almost entirely spent
+    // waiting. The envelope caps `errors` at 20, so one statement per table is
+    // always enough and there is nothing here to chunk.
+    const folded = this.foldByFingerprint(errors, ignoreRules);
+    if (folded.length === 0) {
+      return;
+    }
+
+    await this.errorGroups.upsertMany(
+      folded.map((error) => ({
+        sigilId: sigil.id,
+        fingerprint: error.fingerprint,
+        name: error.name,
+        message: error.message,
+        stackSample: error.stack,
+        sourceUrl: error.sourceUrl,
+        origin: error.origin,
+        firstSeenAt: now,
+        lastSeenAt: now,
+        count: error.count,
+      })),
+      {
+        target: ["sigilId", "fingerprint"],
+        // Only the count and the last sighting move. `stackSample` and
+        // `firstSeenAt` deliberately do not: the newest sample of a recurring
+        // error is rarely the informative one, and letting it drift means the
+        // stored stack stops matching the stored first sighting.
+        //
+        // The increment reads `excluded`, not a captured number: one `set`
+        // clause serves every row in the batch, so `+ ${seen}` would add one
+        // row's count to all of them. `excluded` is the row being inserted.
+        set: {
+          count: sql`${this.errorGroups.table.count} + excluded.count`,
+          lastSeenAt: now,
+        },
+      },
+    );
+
+    await this.blights.upsertMany(
+      folded.map((error) => ({
+        projectId: sigil.projectId,
+        sigilId: sigil.id,
+        fingerprint: error.fingerprint,
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+        sourceUrl: error.sourceUrl,
+        origin: error.origin,
+        firstSeenAt: now,
+        lastSeenAt: now,
+        count: error.count,
+      })),
+      {
+        target: ["projectId", "fingerprint"],
+        set: {
+          count: sql`${this.blights.table.count} + excluded.count`,
+          lastSeenAt: now,
+          // Which app reported it last. Deliberately overwritten:
+          // "still happening, most recently over there" is the useful fact
+          // for triage, and the per-app split is kept in full by
+          // `sigil_error_groups`.
+          sigilId: sigil.id,
+        },
+      },
+    );
+  }
+
+  /**
+   * Accepted errors reduced to one row per fingerprint, counts summed.
+   *
+   * ⚠️ **Not an optimisation — `upsertMany` requires it.** Two rows with the
+   * same conflict target in one statement is a case the engines disagree on:
+   * Postgres refuses outright, SQLite quietly applies them in sequence. Two
+   * reports can share a fingerprint whenever they share a `name` and `stack`,
+   * which is precisely what a fingerprint is hashed from, so this is ordinary
+   * input rather than a corner case.
+   *
+   * The fold reproduces what the serial upsert loop did row by row: the first
+   * occurrence supplies the descriptive fields and later ones contribute only
+   * their count. That is the same precedence a conflicting `set` gives an
+   * already-stored row, so a batch behaves identically whether its fingerprint
+   * was seen a moment ago in this envelope or an hour ago in another.
+   */
+  protected foldByFingerprint(
+    errors: NonNullable<SigilForwarded["errors"]>,
+    ignoreRules: Awaited<ReturnType<BlightRuleService["listForProject"]>>,
+  ): FoldedError[] {
+    const folded = new Map<string, FoldedError>();
+
     for (const error of errors) {
       if (this.rules.matches(error.message, ignoreRules)) {
         continue;
       }
-
-      // `sourceUrl` is scrubbed at the source too, in the reporting package.
-      // Repeating it here is not belt-and-braces: a browser bundle and the sink
-      // it reports to deploy independently, so every app that has not yet taken
-      // the upgrade is still sending `location.href` with its query string —
-      // and this is the last point before it lands somewhere every project
-      // member can read and the retention sweep will not reclaim.
 
       // Hashed from the shared source string, so the group this lands in is the
       // same one the sender aggregated under.
@@ -265,63 +350,31 @@ export class SigilIngestService {
         sigilFingerprintSource(error.name, error.stack),
       );
       const seen = error.count ?? 1;
-      const origin = error.origin ?? "client";
-      const name = this.errorName(error.name);
 
-      await this.errorGroups.upsert(
-        {
-          sigilId: sigil.id,
-          fingerprint,
-          name,
-          message: error.message,
-          stackSample: error.stack,
-          sourceUrl: sigilScrubUrl(error.sourceUrl),
-          origin,
-          firstSeenAt: now,
-          lastSeenAt: now,
-          count: seen,
-        },
-        {
-          target: ["sigilId", "fingerprint"],
-          // Only the count and the last sighting move. `stackSample` and
-          // `firstSeenAt` deliberately do not: the newest sample of a recurring
-          // error is rarely the informative one, and letting it drift means the
-          // stored stack stops matching the stored first sighting.
-          set: {
-            count: sql`${this.errorGroups.table.count} + ${seen}`,
-            lastSeenAt: now,
-          },
-        },
-      );
+      const already = folded.get(fingerprint);
+      if (already) {
+        already.count += seen;
+        continue;
+      }
 
-      await this.blights.upsert(
-        {
-          projectId: sigil.projectId,
-          sigilId: sigil.id,
-          fingerprint,
-          name,
-          message: error.message,
-          stack: error.stack,
-          sourceUrl: sigilScrubUrl(error.sourceUrl),
-          origin,
-          firstSeenAt: now,
-          lastSeenAt: now,
-          count: seen,
-        },
-        {
-          target: ["projectId", "fingerprint"],
-          set: {
-            count: sql`${this.blights.table.count} + ${seen}`,
-            lastSeenAt: now,
-            // Which app reported it last. Deliberately overwritten:
-            // "still happening, most recently over there" is the useful fact
-            // for triage, and the per-app split is kept in full by
-            // `sigil_error_groups`.
-            sigilId: sigil.id,
-          },
-        },
-      );
+      folded.set(fingerprint, {
+        fingerprint,
+        name: this.errorName(error.name),
+        message: error.message,
+        stack: error.stack,
+        // `sourceUrl` is scrubbed at the source too, in the reporting package.
+        // Repeating it here is not belt-and-braces: a browser bundle and the
+        // sink it reports to deploy independently, so every app that has not
+        // yet taken the upgrade is still sending `location.href` with its query
+        // string — and this is the last point before it lands somewhere every
+        // project member can read and the retention sweep will not reclaim.
+        sourceUrl: sigilScrubUrl(error.sourceUrl),
+        origin: error.origin ?? "client",
+        count: seen,
+      });
     }
+
+    return [...folded.values()];
   }
 
   protected async absorbViews(
@@ -514,4 +567,23 @@ export class SigilIngestService {
   protected dayBucket(at: string): string {
     return at.slice(0, 10);
   }
+}
+
+/**
+ * One accepted error, with every same-fingerprint sibling in its envelope
+ * already summed into `count`.
+ *
+ * Produced by {@link SigilIngestService.foldByFingerprint} and written to both
+ * `sigil_error_groups` and `blights`, which is why it carries the union of what
+ * the two tables need under neutral names — `stack` becomes `stackSample` on
+ * one of them.
+ */
+interface FoldedError {
+  fingerprint: string;
+  name: string;
+  message: string;
+  stack: string;
+  sourceUrl: string;
+  origin: "client" | "server";
+  count: number;
 }
