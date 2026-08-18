@@ -726,6 +726,12 @@ export class PlatformCommand {
         .boolean()
         .describe("Keep the intermediate .sql dump file.")
         .optional(),
+      skipPlaceholders: z
+        .boolean()
+        .describe(
+          "Do not write placeholder blobs for exported file rows (they stop the dev server 404ing for objects left in remote storage).",
+        )
+        .optional(),
     }),
     handler: async ({ flags, root, run }) => {
       const config = await this.inspector.resolveConfig(root);
@@ -756,6 +762,7 @@ export class PlatformCommand {
       await adapter.exportDb(ctx, run, {
         output: flags.output,
         keepSql: flags.keepSql,
+        placeholders: !flags.skipPlaceholders,
       });
     },
   });

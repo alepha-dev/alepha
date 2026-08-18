@@ -211,12 +211,35 @@ alepha p db migrate --env production
 
 # Pull the deployed database into a local snapshot (defaults to the dev DB path)
 alepha p db export --env production
-alepha p db export --output ./snapshot.db --keep-sql
+alepha p db export --output ./snapshot.db --keepSql
 
 # Record the baseline migration as already applied on a deployed D1 database,
 # without executing it (D1 only; --reset replaces an existing history)
 alepha p db baseline mark --env production
 ```
+
+#### Placeholder blobs
+
+An export copies rows, not objects. The file table arrives intact while the
+blobs it names stay in remote storage, so a local dev server would answer 404
+for every image it is asked to serve -- once per row.
+
+`db export` therefore writes a stand-in blob for each file row, into the
+directory `LocalFileStorageProvider` reads. Images become a grey
+`PLACEHOLDER` square in their own format, so they render rather than breaking;
+other types get a minimal valid file. Existing blobs are never overwritten, so
+anything uploaded locally survives a re-export.
+
+This never runs against production: the files are written by the CLI, to disk,
+at export time. Serving a stand-in when a blob is missing would need a
+development-only guard, and a guard that fails open would hide real data loss.
+
+```bash
+alepha p db export --env production --skipPlaceholders   # leave the blobs missing
+```
+
+Placeholders are also skipped when `--output` points somewhere other than the
+dev database, since the storage directory only serves the dev server.
 
 ### secrets
 

@@ -18,6 +18,13 @@ export interface ExportDbOptions {
    * Keep the intermediate `.sql` dump instead of deleting it after import.
    */
   keepSql?: boolean;
+  /**
+   * Write placeholder blobs for every exported file row, so a local dev
+   * server answers with a stand-in image instead of 404 for objects that
+   * stayed in remote storage. Defaults to true, and is ignored when
+   * `output` points somewhere other than the dev database.
+   */
+  placeholders?: boolean;
 }
 
 // ---------------------------------------------------------------------------

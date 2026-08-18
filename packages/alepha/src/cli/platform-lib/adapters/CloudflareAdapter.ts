@@ -28,6 +28,7 @@ import {
 } from "../secretKeys.ts";
 import { CloudflareApi } from "../services/CloudflareApi.ts";
 import { tenantDomain } from "../services/NamingService.ts";
+import { StoragePlaceholderService } from "../services/StoragePlaceholderService.ts";
 import { WranglerApi } from "../services/WranglerApi.ts";
 import {
   type ExportDbOptions,
@@ -55,6 +56,7 @@ export class CloudflareAdapter extends PlatformAdapter {
   protected readonly wrangler = $inject(WranglerApi);
   protected readonly runner = $inject(Runner);
   protected readonly buildTask = $inject(BuildCloudflareTask);
+  protected readonly placeholders = $inject(StoragePlaceholderService);
   protected readonly options = $store(platformOptions);
 
   protected provisionedD1Id?: string;
@@ -866,6 +868,14 @@ export class CloudflareAdapter extends PlatformAdapter {
 
     if (!options.keepSql) {
       await this.fs.rm(sqlPath, { force: true });
+    }
+
+    // The dump carries rows, not objects: every file row now names a blob that
+    // is still in R2, so the dev server would 404 once per row. Stand-ins stop
+    // that. Skipped when the caller exported somewhere other than the dev DB,
+    // since the storage directory only serves the dev server.
+    if (options.placeholders !== false && !options.output) {
+      await this.placeholders.fill({ dbPath, root: ctx.root });
     }
   }
 
