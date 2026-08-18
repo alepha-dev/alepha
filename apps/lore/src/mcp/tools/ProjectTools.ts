@@ -2,6 +2,7 @@ import { $inject, Alepha, z } from "alepha";
 import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
 import { pinnedContentAtom } from "../../api/atoms/pinnedContentAtom.ts";
+import { EpicController } from "../../api/controllers/EpicController.ts";
 import { FolioController } from "../../api/controllers/FolioController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import { foldPinnedFolios } from "../../api/services/PinnedFolioFolder.ts";
@@ -27,6 +28,7 @@ const FOLIO_INDEX_CAP = 30;
 export class ProjectTools {
   protected readonly projectController = $inject(ProjectController);
   protected readonly folioController = $inject(FolioController);
+  protected readonly epicController = $inject(EpicController);
   protected readonly alepha = $inject(Alepha);
 
   /**
@@ -147,7 +149,7 @@ export class ProjectTools {
    */
   project_context = $tool({
     description:
-      "ORIENTATION TOOL — call FIRST on any project-scoped task. Returns project metadata, areas, the calling user's currently-active quests, the folio index (titles + summaries + updatedAt, NO content bodies), AND the full content of any pinned folios (the per-project CLAUDE.md / AGENTS.md — read these first, they're the project rules). Folios are this project's shared memory for AI agents — read the index here, then call `folio_get` only on the ones that look relevant. ~2K tokens of complete situational awareness in one round-trip; the folio index is capped at 30 entries (sorted by pinned DESC, updatedAt DESC) — when `folios.capped` is true, use `folio_list` with a higher `limit` to fetch the rest. Pinned-folio total content is capped at ~8K chars; when `pinnedFoliosTruncated` is true some pinned bodies were dropped — `folio_get` them by id. When `preferredLanguage` is set (ISO 639-1 — e.g. `fr`, `ja`), generated content (quest titles, descriptions, folio bodies) MUST be written in that language unless the user explicitly asks for another.",
+      "ORIENTATION TOOL — call FIRST on any project-scoped task. Returns project metadata, areas, the calling user's currently-active quests, the epic index (number, title, status, questCount; every epic, planned/active/done alike), the folio index (titles + summaries + updatedAt, NO content bodies), AND the full content of any pinned folios (the per-project CLAUDE.md / AGENTS.md — read these first, they're the project rules). A quest belonging to a planned epic (see `epics`) still appears in `quest_list` (MCP is not gated), so check the epic index before treating a cluster of related-looking quests as unrelated noise. Folios are this project's shared memory for AI agents — read the index here, then call `folio_get` only on the ones that look relevant. ~2K tokens of complete situational awareness in one round-trip; the folio index is capped at 30 entries (sorted by pinned DESC, updatedAt DESC) — when `folios.capped` is true, use `folio_list` with a higher `limit` to fetch the rest. Pinned-folio total content is capped at ~8K chars; when `pinnedFoliosTruncated` is true some pinned bodies were dropped — `folio_get` them by id. When `preferredLanguage` is set (ISO 639-1 — e.g. `fr`, `ja`), generated content (quest titles, descriptions, folio bodies) MUST be written in that language unless the user explicitly asks for another.",
     title: "Project context (orientation)",
     annotations: {
       readOnlyHint: true,
@@ -168,6 +170,14 @@ export class ProjectTools {
       // + membership + active quests.
       const result = await this.projectController.getProjectById({
         params: { id: projectId },
+      });
+
+      // The epic index. Never gated (same as an epic's own view of
+      // itself) — orientation is exactly what failed for the work that
+      // motivated this: thirteen quests parked under one epic read as
+      // noise with no signal they were one subject.
+      const epics = await this.epicController.getEpics({
+        params: { projectId },
       });
 
       // Fetch one over the cap to detect truncation without a separate count
@@ -222,6 +232,12 @@ export class ProjectTools {
           area: quest.area,
           priority: quest.priority,
           difficulty: quest.difficulty,
+        })),
+        epics: epics.map((epic) => ({
+          number: epic.number,
+          title: epic.title,
+          status: epic.status,
+          questCount: epic.questCount,
         })),
         folios: {
           shown: items.length,
