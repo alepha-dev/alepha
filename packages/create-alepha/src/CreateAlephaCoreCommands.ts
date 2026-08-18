@@ -137,7 +137,9 @@ export class CreateAlephaCoreCommands {
         args: name,
       });
 
-      ask.outro("Project ready!");
+      // No `ask.outro` here: `scaffolder.init` already signs off with
+      // "Project ready!" and the two commands to run next, and it does so for
+      // `alepha init` too. Calling both printed the line twice.
     },
   });
 }

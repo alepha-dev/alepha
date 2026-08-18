@@ -1,6 +1,10 @@
 import { Alepha, Json } from "alepha";
 import { CliProvider } from "alepha/command";
 import {
+  LogDestinationProvider,
+  MemoryDestinationProvider,
+} from "alepha/logger";
+import {
   FileSystemProvider,
   MemoryFileSystemProvider,
   MemoryShellProvider,
@@ -11,17 +15,42 @@ import { InitCommand } from "../commands/init.ts";
 
 describe("alepha init", () => {
   const createTestEnv = () => {
-    const alepha = Alepha.create()
+    const alepha = Alepha.create({ env: { LOG_LEVEL: "info" } })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
-      .with({ provide: ShellProvider, use: MemoryShellProvider });
+      .with({ provide: ShellProvider, use: MemoryShellProvider })
+      .with({
+        provide: LogDestinationProvider,
+        use: MemoryDestinationProvider,
+      });
 
     const fs = alepha.inject(MemoryFileSystemProvider);
     const shell = alepha.inject(MemoryShellProvider);
     const cli = alepha.inject(CliProvider);
     const cmd = alepha.inject(InitCommand);
     const json = alepha.inject(Json);
+    const logs = alepha.inject(MemoryDestinationProvider);
 
-    return { alepha, fs, shell, cli, cmd, json };
+    return { alepha, fs, shell, cli, cmd, json, logs };
+  };
+
+  /**
+   * The sign-off, as it reaches the log stream.
+   *
+   * Everything before it is `Runner` narration ("Starting ...", "Finished ...
+   * after Ns", "Total time"), which every test here would otherwise have to
+   * filter past to see the three lines it cares about.
+   *
+   * Colour is stripped: the destination stores the message as the logger built
+   * it, escape sequences included, and which ones `ConsoleColorProvider`
+   * happens to emit is not what these assert.
+   */
+  const signOff = (logs: MemoryDestinationProvider) => {
+    const ansi = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
+    const messages = logs.logs.map((log) => log.message.replace(ansi, ""));
+    const start = messages.findIndex((message) =>
+      message.includes("Project ready!"),
+    );
+    return start === -1 ? [] : messages.slice(start);
   };
 
   const setupProject = async (
@@ -616,6 +645,85 @@ describe("alepha init", () => {
       await cli.run(cmd.init, { root: "/project" });
 
       expect(shell.wasCalled("yarn run lint")).toBe(true);
+    });
+
+    /**
+     * `git init` writes "Initialized empty Git repository in ..." itself. Run
+     * with stdio inherited it landed raw between two log lines — the one line
+     * in the whole of `init` with no timestamp and no level in front of it.
+     */
+    it("should report git's own output through the logger", async () => {
+      const { fs, shell, cli, cmd, json, logs } = createTestEnv();
+      await setupProject(fs, json);
+      shell.configure({
+        installedCommands: ["git"],
+        outputs: {
+          "git init": "Initialized empty Git repository in /project/.git/",
+        },
+      });
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(shell.wasCalled("git init")).toBe(true);
+      expect(
+        logs.logs.some((log) =>
+          log.message.includes("Initialized empty Git repository"),
+        ),
+      ).toBe(true);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Sign-off
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe("sign-off", () => {
+    /**
+     * Three lines and nothing else. It used to log a blank line either side
+     * and between the heading and the commands, which the `cli` log format
+     * renders as a bare `22:43:28 I` with nothing after it.
+     */
+    it("should log the commands to run next", async () => {
+      const { fs, cli, cmd, json, logs } = createTestEnv();
+      await fs.writeFile(
+        "/project/subdir/package.json",
+        json.stringify({ name: "subdir-app" }),
+      );
+
+      await cli.run(cmd.init, { argv: "subdir", root: "/project" });
+
+      expect(signOff(logs)).toEqual([
+        "Project ready!",
+        "$ cd subdir",
+        "$ yarn dev",
+      ]);
+    });
+
+    /**
+     * `mkdir my-app && cd my-app && alepha init` scaffolds in place, so there
+     * is nowhere to `cd` to.
+     */
+    it("should omit the cd line when the project was scaffolded in place", async () => {
+      const { fs, cli, cmd, logs } = createTestEnv();
+      await fs.mkdir("/project");
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(signOff(logs)).toEqual(["Project ready!", "$ yarn dev"]);
+    });
+
+    /**
+     * A bare `alepha init` on a directory that already had a `package.json` is
+     * the fill-in-the-gaps mode. Nothing was created, so there is nothing to
+     * announce.
+     */
+    it("should stay silent when it only topped up an existing project", async () => {
+      const { fs, cli, cmd, json, logs } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(signOff(logs)).toEqual([]);
     });
   });
 

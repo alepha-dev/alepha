@@ -251,7 +251,14 @@ export class Asker {
     try {
       for (;;) {
         render();
+        // The blank lines live here rather than in each `print*` helper, so
+        // every question type is framed the same way: what was asked, then
+        // air, then the `> ` readline writes, then air again before whatever
+        // the command says next. Packed tight, a wizard reads as one wall of
+        // text and the answers are indistinguishable from the questions.
+        this.output.print();
         const answer = await this.readLine(rl);
+        this.output.print();
         const result = parse(answer.trim());
         if (result !== undefined) {
           return result.value;
@@ -517,7 +524,10 @@ export class Asker {
   }
 
   /**
-   * Print the question and its numbered list, blank line either side.
+   * Print the question and its numbered list, blank line between the two.
+   *
+   * Nothing after the list: {@link loop} adds the blank that separates it from
+   * the `> ` prompt, and `multiChoice` still has its hint to print in between.
    */
   protected printChoices(
     question: string,
@@ -534,8 +544,6 @@ export class Asker {
         : "";
       this.output.print(`${marker} ${item.label}${suffix}`);
     });
-
-    this.output.print();
   }
 
   protected rangeError(max: number): string {
@@ -561,6 +569,9 @@ export class Asker {
 
   protected printError(message: string): void {
     this.output.print(this.color.set("RED", message));
+    // A rejected answer is followed by the whole question again, so the reason
+    // needs air under it or it reads as part of the question it precedes.
+    this.output.print();
   }
 
   protected printHint(message: string): void {

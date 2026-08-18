@@ -328,8 +328,23 @@ export class ProjectScaffolder {
       return false;
     }
 
-    // Initialize git repository
-    await this.utils.exec("git init", { root, global: true });
+    // Initialize git repository.
+    //
+    // Captured rather than inherited: with stdio inherited, git's own
+    // "Initialized empty Git repository in ..." landed raw in the middle of an
+    // otherwise uniform log stream — no timestamp, no level, the one line in
+    // `init` that did not look like the others. Re-emitting it through the
+    // logger keeps the report in one voice.
+    const result = await this.shell.capture("git init", { root });
+    if (result.exitCode !== 0) {
+      throw new AlephaError(
+        `git init failed: ${result.stderr.trim() || result.stdout.trim()}`,
+      );
+    }
+    const initMessage = result.stdout.trim();
+    if (initMessage) {
+      this.log.info(initMessage);
+    }
 
     // Write .gitignore
     await this.ensureFile(root, ".gitignore", gitignore(), opts.force);
@@ -824,26 +839,26 @@ export class ProjectScaffolder {
       return;
     }
 
-    // We must end the run context in order to log success message
+    // We must end the run context in order to log the success message after
+    // the last "Finished ..." line and the total.
     run.end();
 
-    // Success message
+    // Three lines, and only three: the blank ones this used to log came out as
+    // a bare `22:43:28 I` with nothing after it, and the `✓` plus the
+    // two-space indent pushed `$ cd my-app` out of line with every other entry
+    // in the stream.
     const pmRun = pmName === "npm" ? "npm run" : pmName;
     const c = this.colors;
 
-    this.log.info("");
-    this.log.info(`  ${c.set("GREEN", "✓")} Project ready!`);
-    this.log.info("");
+    this.log.info(c.set("GREEN", "Project ready!"));
     // No `cd` line when the project was scaffolded into the current directory
     // — there is nowhere to go.
     if (args) {
-      this.log.info(`  ${c.set("GREY_DARK", "$")} cd ${c.set("CYAN", args)}`);
+      this.log.info(`${c.set("GREY_DARK", "$")} cd ${c.set("CYAN", args)}`);
     }
     this.log.info(
-      `  ${c.set("GREY_DARK", "$")} ${c.set("CYAN", `${pmRun} dev`)}`,
+      `${c.set("GREY_DARK", "$")} ${c.set("CYAN", `${pmRun} dev`)}`,
     );
-
-    this.log.info("");
   }
 
   // ===========================================

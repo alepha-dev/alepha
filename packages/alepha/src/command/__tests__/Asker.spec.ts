@@ -204,6 +204,69 @@ describe("Asker", () => {
     expect(output.text).toContain("Project ready!");
   });
 
+  /**
+   * The exact frame, asserted as a whole rather than as a handful of
+   * `toContain`s. Every question used to sit directly on top of the `> ` the
+   * answer was typed at and directly under the previous answer, so a three
+   * question wizard came out as one block of text with no seam between what
+   * was asked and what was replied.
+   */
+  it("frames every question with a blank line either side of the answer", async () => {
+    const { asker, output } = setup();
+    asker.answers("my-app", "2", "y");
+
+    asker.ask.intro("Create Alepha");
+    await asker.ask.prompt("What is your project name?");
+    await asker.ask.choice(
+      "Project shape:",
+      [
+        { value: "default", label: "default (API + web + Tailwind)" },
+        { value: "saas", label: "saas (adds @alepha/ui)" },
+      ],
+      { default: "default" },
+    );
+    await asker.ask.confirm("Include @alepha/devtools?", { default: true });
+
+    // The `> ` lines themselves are readline's, written straight to the
+    // terminal rather than through the output provider, so they are absent
+    // here — each gap below is where one goes.
+    expect(output.lines).toEqual([
+      "",
+      "Create Alepha",
+      "",
+      "What is your project name?",
+      "", // > my-app
+      "",
+      "Project shape:",
+      "",
+      "1. default (API + web + Tailwind) (default)",
+      "2. saas (adds @alepha/ui)",
+      "", // > 2
+      "",
+      "Include @alepha/devtools? [Y/n]",
+      "", // > y
+      "",
+    ]);
+  });
+
+  it("separates a rejected answer's reason from the question it re-asks", async () => {
+    const { asker, output } = setup();
+    asker.answers("x", "y");
+
+    await asker.ask.confirm("Delete everything?");
+
+    expect(output.lines).toEqual([
+      "Delete everything? [y/n]",
+      "", // > x
+      "",
+      "Invalid answer, expected 'y' or 'n'",
+      "",
+      "Delete everything? [y/n]",
+      "", // > y
+      "",
+    ]);
+  });
+
   it("reuses one interface across questions", async () => {
     const { asker } = setup();
     const fake = asker.answers("first", "second");
