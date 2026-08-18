@@ -73,12 +73,6 @@ const StackSection = () => {
             every breaking change landing on a different Tuesday. The glue
             between them is yours to keep working.
           </p>
-          <p className="section-sub">
-            Alepha is light enough that there is{" "}
-            <strong>no node_modules in production</strong>. The build is a
-            self-contained folder whose own package.json declares zero
-            dependencies, so you ship it and run <code>node dist</code>.
-          </p>
         </div>
 
         <div className="stack-compare">
