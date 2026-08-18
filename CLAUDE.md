@@ -328,7 +328,6 @@ Conventions enforced by review, not by lint. They are not obvious from the code,
 
 ## Notes for AI Assistants
 
-- **CRITICAL**: Don't commit unless the user explicitly tells you to. No `git commit`, `git add`, `git push`, or other history/index-modifying commands by default — leave changes uncommitted and describe them. The only always-allowed git command is `git mv` for renaming/moving files. When the user does authorize a commit, run `yarn v` first and fix any red before committing.
 - Update docs/1-guides/ if you change any public API or behavior (docs/3-reference is auto generated from source code)
 - The framework heavily uses TypeScript generics and decorators (`$` prefix indicates a primitive)
 - All async operations should use `Alepha.create()` and proper lifecycle management
