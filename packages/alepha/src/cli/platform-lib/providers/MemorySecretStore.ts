@@ -22,6 +22,16 @@ export class MemorySecretStore implements SecretStoreProvider {
   public secrets = new Map<string, Map<string, string>>();
 
   /**
+   * Push timestamps (ISO 8601), keyed by environment then by key.
+   *
+   * Separate from {@link secrets} and never written by {@link set}: a test
+   * double has no clock, and the assertions that need a timestamp need to
+   * choose it. A key absent here lists with no `updatedAt`, which is also the
+   * real store's answer when GitHub reports none.
+   */
+  public updatedAt = new Map<string, Map<string, string>>();
+
+  /**
    * All recorded operations.
    */
   public calls: MemorySecretStoreCall[] = [];
@@ -50,7 +60,11 @@ export class MemorySecretStore implements SecretStoreProvider {
     const envSecrets = this.secrets.get(environment);
     if (!envSecrets) return [];
 
-    return Array.from(envSecrets.keys()).map((name) => ({ name }));
+    const stamps = this.updatedAt.get(environment);
+    return Array.from(envSecrets.keys()).map((name) => ({
+      name,
+      updatedAt: stamps?.get(name),
+    }));
   }
 
   public async set(
@@ -109,6 +123,7 @@ export class MemorySecretStore implements SecretStoreProvider {
    */
   public reset(): void {
     this.secrets.clear();
+    this.updatedAt.clear();
     this.calls = [];
     this.availableError = null;
   }
