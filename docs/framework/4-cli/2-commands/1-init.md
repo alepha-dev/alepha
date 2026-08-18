@@ -56,7 +56,9 @@ The first positional argument is the target path:
 alepha init my-app
 ```
 
-This creates `./my-app/` and scaffolds into it.
+This creates `./my-app/` and scaffolds into it. An absolute path is taken as
+given, so `alepha init /tmp/my-app` scaffolds there rather than under the
+current directory.
 
 With no argument, `init` picks its target from what the current directory holds:
 

@@ -615,7 +615,11 @@ export class ProjectScaffolder {
     }
 
     if (args) {
-      root = this.fs.join(root, args);
+      // `resolve`, not `join`: an absolute `alepha init /tmp/foo` names the
+      // target outright, and `join` would reparent it under the cwd and
+      // scaffold into `./tmp/foo` without a word. Relative paths are
+      // unaffected — they still anchor to `root`.
+      root = this.fs.resolve(root, args);
       await this.fs.mkdir(root, { force: true });
     }
 

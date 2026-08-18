@@ -585,6 +585,22 @@ describe("alepha init", () => {
       expect(fs.wasWritten("/project/subdir/tsconfig.json")).toBe(true);
       expect(fs.wasWritten("/project/subdir/biome.json")).toBe(true);
     });
+
+    it("should honour an absolute path instead of reparenting it under root", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await fs.writeFile(
+        "/elsewhere/app/package.json",
+        json.stringify({ name: "absolute-app" }),
+      );
+
+      await cli.run(cmd.init, { argv: "/elsewhere/app", root: "/project" });
+
+      expect(fs.wasWritten("/elsewhere/app/tsconfig.json")).toBe(true);
+      // `join(root, args)` silently reparents the target under the cwd, so the
+      // project lands in `/project/elsewhere/app` — a directory nobody asked
+      // for, created without a word of warning.
+      expect(fs.wasWritten("/project/elsewhere/app/tsconfig.json")).toBe(false);
+    });
   });
 
   // ─────────────────────────────────────────────────────────────────────────────

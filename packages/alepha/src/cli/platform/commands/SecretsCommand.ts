@@ -9,6 +9,7 @@ import {
 } from "alepha/cli/platform-lib";
 import { $command, EnvUtils } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
+import { FileSystemProvider } from "alepha/system";
 
 export class SecretsCommand {
   protected readonly log = $logger();
@@ -19,6 +20,7 @@ export class SecretsCommand {
   protected readonly githubStore = $inject(GitHubSecretStore);
   protected readonly filter = $inject(SecretFilterService);
   protected readonly color = $inject(ConsoleColorProvider);
+  protected readonly fs = $inject(FileSystemProvider);
 
   protected readonly envFlags = z.object({
     env: z
@@ -121,7 +123,7 @@ export class SecretsCommand {
   protected readonly diff = $command({
     name: "diff",
     description:
-      "Compare keys in local .env.<env> against the remote store. Shows + (only local, would be pushed), - (only remote, orphaned), = (in sync). Compares names only — values are not read from remote.",
+      "Compare keys in local .env.<env> against the remote store. Shows + (only local, would be pushed), - (only remote, orphaned), ~ (remote copy predates the last edit of .env.<env>), = (in sync). Values are never read from remote — GitHub Actions secrets are write-only — so ~ compares timestamps, not contents.",
     flags: this.envFlags,
     handler: async ({ flags, root, run }) => {
       const config = await this.inspector.resolveConfig(root);
@@ -138,6 +140,16 @@ export class SecretsCommand {
       await store.ensureAvailable();
       const remoteSecrets = await store.list(envName);
       const remoteKeys = new Set(remoteSecrets.map((s) => s.name));
+      const remoteByName = new Map(remoteSecrets.map((s) => [s.name, s]));
+
+      // The remote value cannot be read back, so the only honest question left
+      // is whether the copy up there was pushed before this file was last
+      // touched. mtime is per-file, so an unrelated edit flags every key —
+      // hence "predates the last edit" rather than "differs".
+      const localMtime = await this.fs
+        .stat(this.fs.join(root, `.env.${env}`))
+        .then((stat) => stat.mtimeMs)
+        .catch(() => undefined);
 
       run.end();
 
@@ -149,6 +161,7 @@ export class SecretsCommand {
       );
 
       let hasChanges = false;
+      let stale = false;
       for (const key of allKeys) {
         const inLocal = localKeys.has(key);
         const inRemote = remoteKeys.has(key);
@@ -160,8 +173,35 @@ export class SecretsCommand {
           process.stdout.write(`   ${c.set("RED", "-")} ${key}\n`);
           hasChanges = true;
         } else {
-          process.stdout.write(`   ${c.set("GREY_DARK", "=")} ${key}\n`);
+          const pushedAt = remoteByName.get(key)?.updatedAt;
+          const pushedAtMs = pushedAt ? Date.parse(pushedAt) : Number.NaN;
+          // A store that reports no timestamp is left alone: the marker states
+          // a known push time, and must not be inferred from its absence.
+          const predatesEdit =
+            localMtime !== undefined &&
+            !Number.isNaN(pushedAtMs) &&
+            pushedAtMs < localMtime;
+
+          if (predatesEdit) {
+            process.stdout.write(`   ${c.set("ORANGE", "~")} ${key}\n`);
+            stale = true;
+            hasChanges = true;
+          } else {
+            process.stdout.write(`   ${c.set("GREY_DARK", "=")} ${key}\n`);
+          }
         }
+      }
+
+      if (stale) {
+        process.stdout.write(
+          `\n   ${c.set("ORANGE", "~")} ${c.set("GREY_LIGHT", `remote copy predates the last edit of .env.${env}. Values are never`)}\n`,
+        );
+        process.stdout.write(
+          `     ${c.set("GREY_LIGHT", "readable, so this compares timestamps: it may just be an unrelated")}\n`,
+        );
+        process.stdout.write(
+          `     ${c.set("GREY_LIGHT", "edit to the file. Re-push with `alepha platform secrets apply`.")}\n`,
+        );
       }
 
       if (!hasChanges) {
@@ -242,6 +282,13 @@ export class SecretsCommand {
       run.end();
       process.stdout.write(
         `\n${keys.length} secret(s) pushed to ${envName}.\n`,
+      );
+      // A push on its own changes nothing that is already running: the deploy
+      // reads these at deploy time, so a live worker keeps the values it was
+      // deployed with. Applying after a deploy has run leaves it on the old
+      // ones with every step reporting success.
+      process.stdout.write(
+        `${this.color.set("GREY_LIGHT", "These take effect on the next deploy — anything already running keeps its current values.")}\n`,
       );
     },
   });
