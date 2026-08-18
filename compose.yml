@@ -21,23 +21,32 @@ services:
     image: adobe/s3mock:latest
     ports:
       - "19090:9090"
-    # S3Mock has no in-memory mode: every object lands on its filesystem store,
-    # and test runs never delete what they write, so the store only ever grows.
+    # S3Mock has no in-memory mode: every object lands on its filesystem store.
     # Left in the container's writable layer it reached ~40 GB in two weeks,
     # filled Docker's virtual disk, and put postgres into a "No space left on
     # device" crash loop — every DB-backed test failed. The image still ships a
     # `root=/s3mockroot` env from 2.x, but the property has since been renamed,
     # so without the variable below the store silently falls back to a temp dir
     # inside the layer.
+    #
+    # The heap cap is disk hygiene too, not tuning: S3Mock serves objects
+    # through streams it only closes on GC, and a deleted-but-open file keeps
+    # its tmpfs pages. At the default heap, GC is rare enough that each
+    # bucket-suite run pinned ~13-26 MB of deleted objects (measured 34→61 held
+    # fds over five runs); at 64 MB the constant GC closes them and five runs
+    # leave ~44 KB. The whole suite, 48 MB multipart upload included, passes
+    # against this heap.
     environment:
       COM_ADOBE_TESTING_S3MOCK_STORE_ROOT: /s3mockroot
+      JAVA_TOOL_OPTIONS: -Xmx64m
     # RAM-backed and hard-capped: leftover objects cost bounded memory, never
     # disk, and are wiped by a container restart (a restart:always container
     # outlives its writable layer's cleanup forever; a tmpfs does not survive a
-    # Docker restart). A bucket-suite run leaves ~100 MB behind, so the cap is
-    # a few days of heavy testing. If it ever fills, bucket tests alone fail
-    # (postgres is untouched) — `docker compose -p alepha restart s3mock`
-    # empties the store.
+    # Docker restart). The bucket suite drains its containers in afterAll
+    # (`emptyBuckets` in packages/alepha/src/bucket/__tests__/shared.ts), so a
+    # run leaves the store roughly empty and the cap is a backstop, not a
+    # countdown. If it ever fills anyway, bucket tests alone fail (postgres is
+    # untouched) — `docker compose -p alepha up -d s3mock` recreates the store.
     volumes:
       - type: tmpfs
         target: /s3mockroot
