@@ -17,7 +17,10 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
  * CRUD, the status lifecycle, and attach/detach for quests and folios.
  *
  * Modelled on `MilestoneController`: same `$secure` permission strings
- * (`quest:read` to read, `quest:create` to mutate), the same
+ * (`quest:read` to read, `quest:create` to mutate, `quest:delete` on
+ * `deleteEpic` — matching `MilestoneController.deleteMilestone` and
+ * `QuestController.deleteQuest`, both of which gate delete on its own
+ * permission rather than `quest:create`), the same
  * `security.assertMember` (read) / `security.assertOwner` (mutate) split,
  * `$transactional()` on create.
  *
@@ -197,7 +200,7 @@ export class EpicController {
    * them by hand.
    */
   deleteEpic = $action({
-    use: [$secure({ permissions: ["quest:create"] })],
+    use: [$secure({ permissions: ["quest:delete"] })],
     schema: {
       params: z.object({ id: z.integer() }),
       response: okSchema,
