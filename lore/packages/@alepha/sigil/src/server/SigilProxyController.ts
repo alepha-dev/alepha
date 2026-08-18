@@ -4,6 +4,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $action } from "alepha/server";
 import { sigilEnvelope } from "../shared/schemas/sigilEnvelope.ts";
 import { sigilClientAtom } from "../shared/sigilClientAtom.ts";
+import { sigilDeviceClass } from "../shared/sigilDeviceClass.ts";
 import { sigilEnv } from "../sigilEnv.ts";
 import { SigilSinkProvider } from "./SigilSinkProvider.ts";
 
@@ -111,9 +112,14 @@ export class SigilProxyController {
       );
       const visitor = this.crypto.hash(`${host}:${ip}:${ua}:${dailySalt}`);
 
+      // Classified here rather than in the browser for the same reason
+      // `country` is: the header is already in hand server-side, so spending
+      // envelope bytes on something the app can read for free would be waste.
+      const device = sigilDeviceClass(ua);
+
       // The kill-switches are applied by the sink provider. Filtering here too
       // would be a second place to keep in sync with the fetched config.
-      await this.sink.ingest(request.body, { country, visitor });
+      await this.sink.ingest(request.body, { country, visitor, device });
 
       // The config rides back on the call the browser was making anyway. A page
       // served from a file or a cache carries one older than the visit, and

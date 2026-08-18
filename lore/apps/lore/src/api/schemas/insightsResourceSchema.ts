@@ -37,6 +37,63 @@ export const insightsResourceSchema = z.object({
     }),
   ),
   /**
+   * Where visits came from, by host.
+   *
+   * `direct` is the catch-all bucket, and it will normally be the largest one
+   * by a wide margin: only a page load's own view carries a referrer at all,
+   * so every client-side navigation lands here alongside genuine bookmark and
+   * typed-URL arrivals. Read the *other* rows; `direct` is a denominator, not
+   * a traffic source.
+   */
+  /**
+   * Page loads, as opposed to `totalViews` which also counts every
+   * client-side navigation. This is the denominator for a bounce rate and the
+   * number a landing-page report is a breakdown of.
+   */
+  entries: z.integer(),
+  /**
+   * Views the visitor scrolled, clicked, typed on, or stayed ten seconds on.
+   *
+   * The one number here that a scraper cannot inflate by accident: an
+   * automated fetch renders the page, reports the view, and never does any of
+   * those things. Compare it against `totalViews` before believing a traffic
+   * spike is people.
+   */
+  engagedViews: z.integer(),
+  /** `engagedViews / totalViews`, rounded to a whole percent. */
+  engagementRate: z.number(),
+  /** Where visits *started*, by `entries` rather than by total views. */
+  topEntryPaths: z.array(
+    z.object({
+      path: z.string(),
+      count: z.integer(),
+      percentage: z.number(),
+    }),
+  ),
+  /** `utm_campaign` / `utm_source` tags on arrivals. `none` is untagged. */
+  topCampaigns: z.array(
+    z.object({
+      campaign: z.string(),
+      count: z.integer(),
+    }),
+  ),
+  /** `mobile` / `tablet` / `desktop`, by total views. */
+  topDevices: z.array(
+    z.object({
+      device: z.string(),
+      count: z.integer(),
+    }),
+  ),
+  topReferrers: z.array(
+    z.object({
+      /** A bare host (`news.ycombinator.com`), or `direct`. */
+      referrer: z.string(),
+      count: z.integer(),
+      /** Share of `totalViews`, rounded to a whole percent. */
+      percentage: z.number(),
+    }),
+  ),
+  /**
    * Web-vitals p75 approximations across every sigil in scope.
    *
    * Derived from the stored histograms, so the cost does not grow with traffic.

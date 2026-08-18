@@ -1,6 +1,7 @@
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@alepha/ui/components/ui/card";
@@ -17,7 +18,14 @@ import {
 } from "@alepha/ui/components/ui/tooltip";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { BarChart3, Eye, Info, Users } from "lucide-react";
+import {
+  BarChart3,
+  DoorOpen,
+  Eye,
+  Info,
+  MousePointerClick,
+  Users,
+} from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { currentSigilInsightsAtom } from "../../../atoms/currentSigilInsightsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -63,7 +71,7 @@ const AppAnalytics = () => {
   return (
     <div className="flex flex-col gap-4">
       {/* Headline metrics */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {/* Unique visitors — the trustworthy headline. */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -109,6 +117,50 @@ const AppAnalytics = () => {
               estimated={data.estimated}
               sampleInterval={data.sampleInterval}
             />
+          </CardContent>
+        </Card>
+
+        {/* Page loads, as opposed to every client-side navigation. */}
+        <Card data-testid="insights-entries">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
+              <DoorOpen className="size-4" />
+              {tr("insights.entries")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold tabular-nums">
+              {data.entries.toLocaleString()}
+            </div>
+            <p className="text-muted-foreground mt-1 text-xs">
+              {tr("insights.entries.note")}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* The number automation does not inflate by accident. */}
+        <Card data-testid="insights-engagement">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
+              <MousePointerClick className="size-4" />
+              {tr("insights.engagement")}
+              <UiTooltip>
+                <TooltipTrigger
+                  render={<Info className="size-3.5 cursor-help opacity-70" />}
+                />
+                <TooltipContent className="max-w-xs">
+                  {tr("insights.engagement.tooltip")}
+                </TooltipContent>
+              </UiTooltip>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold tabular-nums">
+              {data.engagementRate}%
+            </div>
+            <p className="text-muted-foreground mt-1 text-xs">
+              {tr("insights.engagement.note")}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -163,7 +215,7 @@ const AppAnalytics = () => {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Top countries */}
-        <Card>
+        <Card data-testid="insights-countries">
           <CardHeader>
             <CardTitle className="text-base">
               {tr("insights.topCountries")}
@@ -209,7 +261,7 @@ const AppAnalytics = () => {
         </Card>
 
         {/* Top paths */}
-        <Card>
+        <Card data-testid="insights-top-paths">
           <CardHeader>
             <CardTitle className="text-base">
               {tr("insights.topPaths")}
@@ -245,6 +297,161 @@ const AppAnalytics = () => {
           </CardContent>
         </Card>
       </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {/* Landing pages — `topPaths` cannot answer this, see the controller. */}
+        <Card data-testid="insights-entry-paths">
+          <CardHeader>
+            <CardTitle className="text-base">
+              {tr("insights.topEntryPaths")}
+            </CardTitle>
+            <CardDescription>
+              {tr("insights.topEntryPaths.note")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {data.topEntryPaths.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {data.topEntryPaths.map((p) => (
+                  <div key={p.path} className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between gap-2 text-sm">
+                      <span className="truncate font-mono text-xs">
+                        {p.path}
+                      </span>
+                      <span className="text-muted-foreground shrink-0 tabular-nums">
+                        {p.count.toLocaleString()} · {p.percentage}%
+                      </span>
+                    </div>
+                    <div className="bg-muted h-1.5 w-full overflow-hidden rounded">
+                      <div
+                        className="bg-primary h-full rounded"
+                        style={{ width: `${p.percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground py-8 text-center text-sm">
+                {tr("insights.empty")}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Campaigns and devices share a card: both are short lists. */}
+        <Card data-testid="insights-campaigns">
+          <CardHeader>
+            <CardTitle className="text-base">
+              {tr("insights.topCampaigns")}
+            </CardTitle>
+            <CardDescription>
+              {tr("insights.topCampaigns.note")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-6">
+            <AppAnalyticsTally
+              rows={data.topCampaigns.map((c) => ({
+                key: c.campaign,
+                label:
+                  c.campaign === "none"
+                    ? tr("insights.topCampaigns.untagged")
+                    : c.campaign,
+                count: c.count,
+              }))}
+              emptyLabel={tr("insights.empty")}
+            />
+            <div className="flex flex-col gap-2">
+              <p className="text-muted-foreground text-xs font-medium">
+                {tr("insights.topDevices")}
+              </p>
+              <AppAnalyticsTally
+                rows={data.topDevices.map((d) => ({
+                  key: d.device,
+                  label: tr(`insights.device.${d.device}` as never),
+                  count: d.count,
+                }))}
+                emptyLabel={tr("insights.empty")}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Top referrers */}
+      <Card data-testid="insights-referrers">
+        <CardHeader>
+          <CardTitle className="text-base">
+            {tr("insights.topReferrers")}
+          </CardTitle>
+          <CardDescription>{tr("insights.topReferrers.note")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {data.topReferrers.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {data.topReferrers.map((r) => (
+                <div key={r.referrer} className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <span className="truncate font-mono text-xs">
+                      {r.referrer === "direct"
+                        ? tr("insights.topReferrers.direct")
+                        : r.referrer}
+                    </span>
+                    <span className="text-muted-foreground shrink-0 tabular-nums">
+                      {r.count.toLocaleString()} · {r.percentage}%
+                    </span>
+                  </div>
+                  <div className="bg-muted h-1.5 w-full overflow-hidden rounded">
+                    <div
+                      className="bg-primary h-full rounded"
+                      style={{ width: `${r.percentage}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground py-8 text-center text-sm">
+              {tr("insights.empty")}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+interface AppAnalyticsTallyProps {
+  rows: Array<{ key: string; label: string | number; count: number }>;
+  emptyLabel: string;
+}
+
+/**
+ * A plain label/count list, for leaderboards short enough that a bar chart
+ * would be decoration. Shared by the campaign and device lists, which have at
+ * most a handful of rows each.
+ */
+const AppAnalyticsTally = (props: AppAnalyticsTallyProps) => {
+  if (props.rows.length === 0) {
+    return (
+      <p className="text-muted-foreground py-4 text-center text-sm">
+        {props.emptyLabel}
+      </p>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-1.5">
+      {props.rows.map((row) => (
+        <div
+          key={row.key}
+          className="flex items-center justify-between gap-2 text-sm"
+        >
+          <span className="truncate">{row.label}</span>
+          <span className="text-muted-foreground shrink-0 tabular-nums">
+            {row.count.toLocaleString()}
+          </span>
+        </div>
+      ))}
     </div>
   );
 };

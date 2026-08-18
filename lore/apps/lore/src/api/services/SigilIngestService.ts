@@ -117,11 +117,21 @@ export class SigilIngestService {
     if (envelope.errors?.length && gates.errors) {
       await this.absorbErrors(sigil, envelope.errors, now);
     }
-    if (envelope.views?.length && gates.views) {
+    // One call, both arrays. They land in the same bucket map so that a view
+    // and its engagement arriving in one envelope produce ONE row rather than
+    // two that have to be summed back together at read time — which is the
+    // common case, since a visitor who engages usually does so before the
+    // first flush.
+    if (
+      (envelope.views?.length || envelope.engagements?.length) &&
+      gates.views
+    ) {
       await this.absorbViews(
         sigil,
-        envelope.views,
+        envelope.views ?? [],
+        envelope.engagements ?? [],
         envelope.country,
+        envelope.device,
         envelope.visitor,
         now,
       );
@@ -336,7 +346,9 @@ export class SigilIngestService {
   protected async absorbViews(
     sigil: Sigil,
     views: NonNullable<SigilForwarded["views"]>,
+    engagements: NonNullable<SigilForwarded["engagements"]>,
     country: string | undefined,
+    device: string | undefined,
     visitor: string | undefined,
     now: string,
   ): Promise<void> {
@@ -347,24 +359,72 @@ export class SigilIngestService {
     // touch the same row twice inside one. Folding is what makes the batch
     // both legal and correct — each bucket has to carry its own count,
     // because the store's SET clause adds `excluded` rather than a literal 1.
-    const buckets = new Map<
-      string,
-      { hour: string; path: string; country: string; count: number }
-    >();
+    type Bucket = {
+      hour: string;
+      path: string;
+      country: string;
+      referrer: string;
+      campaign: string;
+      device: string;
+      count: number;
+      engaged: number;
+      entries: number;
+    };
+    const buckets = new Map<string, Bucket>();
+    // `||`, not `??`: the wire schema allows an empty string and the column
+    // is `min(1)`, so a proxy that stamps `country: ""` rather than omitting
+    // the field would 500 the whole batch. Same for the device stamp, which
+    // an older app's proxy does not send at all.
+    const iso = country || "ZZ";
+    const dev = device || "desktop";
+
+    const bucketFor = (
+      hour: string,
+      path: string,
+      referrer: string,
+      campaign: string,
+    ): Bucket => {
+      const key = `${hour}|${path}|${iso}|${referrer}|${campaign}|${dev}`;
+      let bucket = buckets.get(key);
+      if (!bucket) {
+        bucket = {
+          hour,
+          path,
+          country: iso,
+          referrer,
+          campaign,
+          device: dev,
+          count: 0,
+          engaged: 0,
+          entries: 0,
+        };
+        buckets.set(key, bucket);
+      }
+      return bucket;
+    };
+
     for (const view of views) {
       const hour = this.hourBucket(this.eventTime(view.ts, now));
       const path = this.normalizePath(view.path);
-      // `||`, not `??`: the wire schema allows an empty string and the
-      // column is `min(1)`, so a proxy that stamps `country: ""` rather
-      // than omitting the field would 500 the whole batch.
-      const iso = country || "ZZ";
-      const key = `${hour}|${path}|${iso}`;
-      const bucket = buckets.get(key);
-      if (bucket) {
-        bucket.count += 1;
-      } else {
-        buckets.set(key, { hour, path, country: iso, count: 1 });
-      }
+      const bucket = bucketFor(
+        hour,
+        path,
+        this.normalizeReferrer(view.referrer),
+        this.normalizeCampaign(view.campaign),
+      );
+      bucket.count += 1;
+      if (view.entry) bucket.entries += 1;
+    }
+
+    // An engagement carries no arrival facts of its own — it is a later
+    // signal about a path, not a second arrival — so it lands in the
+    // `direct`/`none` bucket. That may be a different row from the view it
+    // describes, which is fine and is the property `engaged` being a separate
+    // measure buys: the two sum independently at read time.
+    for (const engagement of engagements) {
+      const hour = this.hourBucket(this.eventTime(engagement.ts, now));
+      const path = this.normalizePath(engagement.path);
+      bucketFor(hour, path, "direct", "none").engaged += 1;
     }
 
     await this.analytics.absorb({
@@ -387,10 +447,55 @@ export class SigilIngestService {
         sigilId: sigil.id,
         path: bucket.path,
         country: bucket.country,
+        referrer: bucket.referrer,
+        campaign: bucket.campaign,
+        device: bucket.device,
         count: bucket.count,
+        engaged: bucket.engaged,
+        entries: bucket.entries,
         hour: bucket.hour,
       })),
     );
+  }
+
+  /**
+   * The campaign tag to store, `none` when there is nothing usable.
+   *
+   * Same posture as {@link normalizeReferrer}: the browser already sends a
+   * short lowercased token, and this is the second line of defence because
+   * the envelope is accepted from anyone holding a sigil token. The character
+   * class is deliberately narrow — a campaign is a slug someone typed into a
+   * URL, and anything else is either a mistake or an attempt to mint
+   * unbounded dimension values.
+   */
+  protected normalizeCampaign(campaign: string | undefined): string {
+    const value = (campaign ?? "").trim().toLowerCase();
+    if (!value || value.length > 64) return "none";
+    if (!/^[a-z0-9._-]+$/.test(value)) return "none";
+    return value;
+  }
+
+  /**
+   * The referrer host to store, `direct` when there is nothing usable.
+   *
+   * The browser already sends a bare, cross-origin, lowercased host — this is
+   * the second line of defence, because the envelope is accepted from anyone
+   * holding a sigil token and an older client predating the field sends
+   * nothing at all. Anything with a slash, a scheme, an `@` or whitespace in
+   * it is not a host, so it is discarded rather than cleaned: a half-parsed
+   * URL in a leaderboard reads as data, and `direct` at least reads as
+   * "unknown".
+   *
+   * `direct` deliberately unites several causes — no referrer, a same-origin
+   * one, `referrer-policy: no-referrer`, and every non-landing view in a
+   * session. They are indistinguishable here, and splitting them would need
+   * the client to be trusted about which of them applied.
+   */
+  protected normalizeReferrer(referrer: string | undefined): string {
+    const host = (referrer ?? "").trim().toLowerCase();
+    if (!host || host.length > 253) return "direct";
+    if (!/^[a-z0-9.-]+(:\d{1,5})?$/.test(host)) return "direct";
+    return host;
   }
 
   protected async absorbVitals(
