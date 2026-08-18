@@ -7,7 +7,7 @@
  * "translatable" and behaves as "English unless somebody defines the key".
  * Until this file, nobody did — and the defaults were French, so the package
  * shipped a French back office to every application regardless of language.
- * `apps/shop` is bilingual and its English admin was French throughout.
+ * `apps/example-shop` is bilingual and its English admin was French throughout.
  *
  * Flipping the defaults to English fixed the English half and would have left
  * the French half worse, so the two moved together: English in the component,
@@ -43,7 +43,7 @@
  * ### Vocabulary
  *
  * Deliberately generic commerce French — "produit", "mode de livraison" —
- * rather than any one shop's voice. `apps/shop` is a jewellery atelier and
+ * rather than any one shop's voice. `apps/example-shop` is a jewellery atelier and
  * says "pièce" for a product; it overrides the handful of keys where that
  * matters in its own catalogue, which is exactly what spreading this first
  * is for.

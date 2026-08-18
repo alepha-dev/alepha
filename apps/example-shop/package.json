@@ -1,7 +1,7 @@
 {
   "private": true,
   "type": "module",
-  "name": "shop",
+  "name": "example-shop",
   "scripts": {
     "dev": "alepha dev",
     "build": "alepha build --stats",

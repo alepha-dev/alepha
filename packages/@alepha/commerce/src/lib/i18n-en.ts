@@ -5,7 +5,7 @@
  *
  * `tr()` resolves a missing key against the application's `fallbackLang`
  * dictionary BEFORE it reaches the `default:` written in the component. So in
- * an application whose fallback is French — `apps/shop` — spreading
+ * an application whose fallback is French — `apps/example-shop` — spreading
  * {@link commerceFr} alone does not leave English on the defaults, it renders
  * the French catalogue to English users. The back office came out with an
  * English shell around a French table: "Produit", "Prix", "Ajouté".

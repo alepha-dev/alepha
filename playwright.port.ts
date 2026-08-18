@@ -8,7 +8,7 @@ import { dirname, join } from "node:path";
  * Same reasoning as `vitest.jsdom.ts`: a setting that must hold across five
  * configs lives in one file, and a caller contributes nothing but its own
  * default. Three of the five had already drifted — `apps/playground` and
- * `apps/shop` grew an `E2E_PORT` override that `apps/docs`, `apps/example-ssr`
+ * `apps/example-shop` grew an `E2E_PORT` override that `apps/docs`, `apps/example-ssr`
  * and `apps/lore` never got.
  *
  * ## Why a port needs logic at all
