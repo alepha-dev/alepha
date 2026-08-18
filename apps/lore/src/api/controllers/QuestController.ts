@@ -378,6 +378,11 @@ export class QuestController {
       // must see it in its own next call, or the tool looks as though it
       // silently failed.
       //
+      // TODO(task-4): that opt-out is NOT wired yet. `quest_list` calls this
+      // action without `includePlanned`, so MCP is currently gated along with
+      // the UI — the paragraph above describes the intended end state, not
+      // today's behaviour. Task 4 passes `includePlanned: true` there.
+      //
       // `includePlanned` is client-settable and that is fine — every caller
       // has already passed `security.assertMember`, so it exposes nothing
       // the caller could not already read. This is a backlog-organisation

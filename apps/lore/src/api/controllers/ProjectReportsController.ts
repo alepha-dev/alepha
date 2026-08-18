@@ -47,31 +47,42 @@ export class ProjectReportsController {
   }
 
   /**
-   * `liveQuest`, additionally gated on the backlog: a quest inside a
-   * `planned` epic is specified and not released yet, so it leaves both the
-   * numerator and the denominator exactly as a shelved one does. Every
+   * `liveQuest`, additionally gated on the backlog: an **open** quest inside
+   * a `planned` epic is specified and not released yet, so it leaves both
+   * the numerator and the denominator the way a shelved one does. Every
    * aggregate below filters on this rather than on `liveQuest` directly, so
    * the KPI tiles, the burn-up and the per-area breakdown cannot disagree
    * about which quests exist.
    *
-   * ⚠️ The two traps of `EpicVisibilityService.applyBacklogGate` are the
-   * same here, and this is hand-written SQL that gets neither for free:
+   * ⚠️ **Completed quests are exempt, and the exemption is the point.**
+   * `liveQuest` needs no such carve-out because shelving carries an
+   * invariant that makes one unnecessary: only a `new` quest can be
+   * shelved, so a shelved quest is never a completed one. Planned epics
+   * carry no equivalent invariant — nothing stops an owner flipping a
+   * `done` epic back to `planned` while its finished quests keep their
+   * `epicId`. Gating those would retroactively erase real work from member
+   * credit, the burn-up and the weekly contribution series. Completed work
+   * is history; the gate answers "is this open to work on", which is not a
+   * question a finished quest has.
    *
-   * 1. `epic_id NOT IN (1,2)` is NULL when `epic_id` is NULL, and a NULL
-   *    predicate excludes the row — hence the explicit `IS NULL` branch,
-   *    without which every unfiled quest drops out of every report.
-   * 2. `NOT IN ()` is a SQL syntax error, not an empty match, so a project
-   *    with no planned epic (the normal case) gets no clause at all.
+   * This is a row-level rule rather than a per-query one because it has to
+   * be: the KPI aggregate, the funnel and both breakdowns count open and
+   * completed quests in a **single pass**, so no choice of which queries to
+   * gate could get them both right.
+   *
+   * The epic-membership test itself — and both of its traps — lives in
+   * `EpicVisibilityService.plannedEpicSqlPredicate`, which returns
+   * `undefined` when there is no planned epic so no clause is emitted.
    */
   protected questInScope(plannedEpicIds: number[]) {
-    if (plannedEpicIds.length === 0) {
+    const outsidePlannedEpic =
+      this.epicVisibility.plannedEpicSqlPredicate(plannedEpicIds);
+
+    if (!outsidePlannedEpic) {
       return this.liveQuest;
     }
 
-    return sql`${this.liveQuest} AND (${this.quests.table.epicId} IS NULL OR ${this.quests.table.epicId} NOT IN (${sql.join(
-      plannedEpicIds.map((id) => sql`${id}`),
-      sql`, `,
-    )}))`;
+    return sql`${this.liveQuest} AND (${this.quests.table.completedAt} IS NOT NULL OR ${outsidePlannedEpic})`;
   }
 
   /**
