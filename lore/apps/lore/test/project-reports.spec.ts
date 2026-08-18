@@ -276,6 +276,63 @@ describe("ProjectReportsController", () => {
       expect(res.data.kpis.totalQuests).toBe(2);
     });
 
+    it("still counts a completed quest whose epic was parked back to planned", async ({
+      expect,
+    }) => {
+      // Completed work is history. Nothing stops an owner flipping a `done`
+      // epic back to `planned`, and if the gate applied to finished quests
+      // that flip would retroactively erase them from member credit and from
+      // the burn-up — rewriting the record of work that actually happened.
+      //
+      // The shelved-quest exemption `liveQuest` relies on does NOT carry
+      // over here: only a `new` quest can be shelved, so a shelved quest is
+      // never a completed one, whereas a completed quest can sit in a
+      // planned epic quite happily.
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+
+      const done = await createTestQuest(ctx, owner, project.id, {
+        title: "Finished Quest",
+      });
+      await ctx.questController.acceptQuest.fetch(
+        { params: { id: done.id } },
+        { user: owner },
+      );
+      await ctx.questController.completeQuest.fetch(
+        { params: { id: done.id }, body: {} },
+        { user: owner },
+      );
+
+      const parkedEpic = await ctx.repos.epics.create({
+        projectId: project.id,
+        number: 1,
+        title: "Re-planned Epic",
+        description: "",
+        status: "planned",
+      });
+      await ctx.repos.quests.updateById(done.id, { epicId: parkedEpic.id });
+
+      const overview = await ctx.reportsController.getReportsOverview.fetch(
+        { params: { id: project.id } },
+        { user: owner },
+      );
+
+      expect(overview.data.kpis.completedQuests).toBe(1);
+      // The burn-up is cumulative, so the last point carries the total.
+      const last = overview.data.burnup[overview.data.burnup.length - 1];
+      expect(last?.completed).toBe(1);
+
+      const members = await ctx.reportsController.getReportsMembers.fetch(
+        { params: { id: project.id } },
+        { user: owner },
+      );
+
+      const credit = members.data.leaderboard.find(
+        (row) => row.userId === owner.id,
+      );
+      expect(credit?.questsCompleted).toBe(1);
+    });
+
     it("keeps the funnel consistent with the KPI totals", async ({
       expect,
     }) => {
