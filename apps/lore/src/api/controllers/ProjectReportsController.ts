@@ -18,6 +18,7 @@ import {
   reportsOverviewSchema,
   reportsQuestsSchema,
 } from "../schemas/reportsSchemas.ts";
+import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export class ProjectReportsController {
@@ -28,6 +29,7 @@ export class ProjectReportsController {
   database = $inject(DatabaseProvider);
   sqlx = $inject(SqlExpressionProvider);
   security = $inject(ProjectSecurityService);
+  epicVisibility = $inject(EpicVisibilityService);
   dt = $inject(DateTimeProvider);
 
   /**
@@ -42,6 +44,34 @@ export class ProjectReportsController {
    */
   protected get liveQuest() {
     return sql`${this.quests.table.deletedAt} IS NULL AND ${this.quests.table.shelvedAt} IS NULL`;
+  }
+
+  /**
+   * `liveQuest`, additionally gated on the backlog: a quest inside a
+   * `planned` epic is specified and not released yet, so it leaves both the
+   * numerator and the denominator exactly as a shelved one does. Every
+   * aggregate below filters on this rather than on `liveQuest` directly, so
+   * the KPI tiles, the burn-up and the per-area breakdown cannot disagree
+   * about which quests exist.
+   *
+   * ⚠️ The two traps of `EpicVisibilityService.applyBacklogGate` are the
+   * same here, and this is hand-written SQL that gets neither for free:
+   *
+   * 1. `epic_id NOT IN (1,2)` is NULL when `epic_id` is NULL, and a NULL
+   *    predicate excludes the row — hence the explicit `IS NULL` branch,
+   *    without which every unfiled quest drops out of every report.
+   * 2. `NOT IN ()` is a SQL syntax error, not an empty match, so a project
+   *    with no planned epic (the normal case) gets no clause at all.
+   */
+  protected questInScope(plannedEpicIds: number[]) {
+    if (plannedEpicIds.length === 0) {
+      return this.liveQuest;
+    }
+
+    return sql`${this.liveQuest} AND (${this.quests.table.epicId} IS NULL OR ${this.quests.table.epicId} NOT IN (${sql.join(
+      plannedEpicIds.map((id) => sql`${id}`),
+      sql`, `,
+    )}))`;
   }
 
   /**
@@ -69,6 +99,10 @@ export class ProjectReportsController {
     handler: async ({ params, user }) => {
       const { project } = await this.security.assertMember(params.id, user);
 
+      const inScope = this.questInScope(
+        await this.epicVisibility.plannedEpicIds(params.id),
+      );
+
       const daysAgo = (days: number) => this.sqlx.ago(days, "days");
       const createdAtDay = this.sqlx.dateDay(this.quests.table.createdAt);
       const completedAtDay = this.sqlx.dateDay(this.quests.table.completedAt);
@@ -91,13 +125,13 @@ export class ProjectReportsController {
 							SELECT ${cycleHours}
 							FROM ${this.quests.table}
 							WHERE ${this.quests.table.projectId} = ${params.id}
-								AND ${this.liveQuest}
+								AND ${inScope}
 								AND ${this.quests.table.acceptedAt} IS NOT NULL
 								AND ${this.quests.table.completedAt} IS NOT NULL
 						), 0) as avg_cycle_time_hours
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.projectId} = ${params.id}
-						AND ${this.liveQuest}
+						AND ${inScope}
 				`,
         z.object({
           total_quests: z.coerce.number(),
@@ -138,7 +172,7 @@ export class ProjectReportsController {
 						COUNT(*) as count
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.projectId} = ${params.id}
-						AND ${this.liveQuest}
+						AND ${inScope}
 					GROUP BY ${createdAtDay}
 				`,
         z.object({
@@ -155,7 +189,7 @@ export class ProjectReportsController {
 						COUNT(*) as count
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.projectId} = ${params.id}
-						AND ${this.liveQuest}
+						AND ${inScope}
 						AND ${this.quests.table.completedAt} IS NOT NULL
 					GROUP BY ${completedAtDay}
 				`,
@@ -230,7 +264,7 @@ export class ProjectReportsController {
 						) THEN 1 END) as blocked_quests
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.projectId} = ${params.id}
-						AND ${this.liveQuest}
+						AND ${inScope}
 				`,
         z.object({
           stale_quests: z.coerce.number(),
@@ -279,6 +313,10 @@ export class ProjectReportsController {
     handler: async ({ params, user }) => {
       const { project } = await this.security.assertMember(params.id, user);
 
+      const inScope = this.questInScope(
+        await this.epicVisibility.plannedEpicIds(params.id),
+      );
+
       const cycleHours = sql`COALESCE(AVG(${this.sqlx.dateDiff(
         this.quests.table.completedAt,
         this.quests.table.acceptedAt,
@@ -302,7 +340,7 @@ export class ProjectReportsController {
 						COUNT(CASE WHEN ${this.quests.table.completedAt} IS NOT NULL THEN 1 END) as completed_count
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.projectId} = ${params.id}
-						AND ${this.liveQuest}
+						AND ${inScope}
 				`,
         z.object({
           new_count: z.coerce.number(),
@@ -326,7 +364,7 @@ export class ProjectReportsController {
 						COUNT(CASE WHEN ${this.quests.table.completedAt} IS NULL THEN 1 END) as remaining
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.projectId} = ${params.id}
-						AND ${this.liveQuest}
+						AND ${inScope}
 					GROUP BY ${this.quests.table.area}
 					ORDER BY (
 						COUNT(CASE WHEN ${this.quests.table.completedAt} IS NOT NULL THEN 1 END)
@@ -356,7 +394,7 @@ export class ProjectReportsController {
 						COUNT(CASE WHEN ${this.quests.table.completedAt} IS NULL THEN 1 END) as remaining
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.projectId} = ${params.id}
-						AND ${this.liveQuest}
+						AND ${inScope}
 					GROUP BY ${this.quests.table.priority}
 					ORDER BY ${priorityOrder}
 				`,
@@ -381,7 +419,7 @@ export class ProjectReportsController {
 						${cycleHours} as avg_hours
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.projectId} = ${params.id}
-						AND ${this.liveQuest}
+						AND ${inScope}
 						AND ${this.quests.table.acceptedAt} IS NOT NULL
 						AND ${this.quests.table.completedAt} IS NOT NULL
 					GROUP BY ${this.quests.table.priority}
@@ -409,7 +447,7 @@ export class ProjectReportsController {
 						${this.quests.table.acceptedAt} as accepted_at
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.projectId} = ${params.id}
-						AND ${this.liveQuest}
+						AND ${inScope}
 						AND ${this.quests.table.acceptedAt} IS NOT NULL
 						AND ${this.quests.table.completedAt} IS NULL
 					ORDER BY ${this.quests.table.acceptedAt} ASC
@@ -477,6 +515,10 @@ export class ProjectReportsController {
     handler: async ({ params, user }) => {
       const { project } = await this.security.assertMember(params.id, user);
 
+      const inScope = this.questInScope(
+        await this.epicVisibility.plannedEpicIds(params.id),
+      );
+
       // Compose a user's display name: "first last" trimmed, else username,
       // else a short fallback derived from the uuid.
       const userName = sql`
@@ -507,7 +549,7 @@ export class ProjectReportsController {
 						FROM ${this.quests.table}
 						WHERE ${this.quests.table.projectId} = ${params.id}
 							AND ${this.quests.table.completedAt} IS NOT NULL
-							AND ${this.liveQuest}
+							AND ${inScope}
 						GROUP BY ${this.quests.table.completedBy}
 					) q ON q.completed_by = ${this.members.table.userId}
 					WHERE ${this.members.table.projectId} = ${params.id}
@@ -551,7 +593,7 @@ export class ProjectReportsController {
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.projectId} = ${params.id}
 						AND ${this.quests.table.completedAt} IS NOT NULL
-						AND ${this.liveQuest}
+						AND ${inScope}
 						AND ${this.quests.table.completedAt} >= ${weeksAgo}
 					GROUP BY week, ${this.quests.table.completedBy}
 				`,
@@ -599,7 +641,7 @@ export class ProjectReportsController {
 					FROM ${this.quests.table}
 					WHERE ${this.quests.table.projectId} = ${params.id}
 						AND ${this.quests.table.completedAt} IS NOT NULL
-						AND ${this.liveQuest}
+						AND ${inScope}
 					GROUP BY ${this.quests.table.completedBy}
 				`,
         z.object({

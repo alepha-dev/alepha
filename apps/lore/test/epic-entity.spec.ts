@@ -10,7 +10,13 @@ describe("epics entity", () => {
   it("orphans its quests on delete instead of deleting them", async ({
     expect,
   }) => {
-    const alepha = Alepha.create();
+    const alepha = Alepha.create({
+      // Pinned, like every other lore spec: the ROOT vitest config — the one
+      // CI runs — sets DATABASE_URL to a Postgres URL, which this app's
+      // SQLite provider rejects outright. A bare `Alepha.create()` passes
+      // under `yarn w lore test` and fails under `yarn test`.
+      env: { LOG_LEVEL: "error", DATABASE_URL: ":memory:" },
+    });
     // Inject the exact fixture class (not a subclass) so the later
     // `alepha.inject(TestEntityRepositories)` calls inside
     // `createTestProject` / `createTestQuest` hit the cached instance
