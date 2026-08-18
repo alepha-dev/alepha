@@ -37,6 +37,12 @@ export const questListParamsSchema = projectParamsSchema.extend({
       "Filter by a single tag (exact match against normalized — trimmed/lowercased — values). Call `quest_tags` first to discover what tags exist in the project.",
     )
     .optional(),
+  epic: z
+    .integer()
+    .describe(
+      "Filter to quests filed under a single epic, by its global id (the `id` field from epic_list / epic_get / epic_create, not the per-project `number`). This tool never hides a planned epic's quests regardless of this filter; see the tool description.",
+    )
+    .optional(),
   limit: z
     .integer()
     .min(1)
@@ -134,6 +140,12 @@ export const questCreateParamsSchema = projectParamsSchema.extend({
     .integer()
     .describe(
       "Per-project shortId of an ACCEPTED feedback item to link this quest to (it then shows under that item's 'linked quests'). Owner-only; the feedback must already be accepted (accept it first via feedback_accept).",
+    )
+    .optional(),
+  epic_number: z
+    .integer()
+    .describe(
+      "Per-project number of an epic to file this quest under (see epic_list / epic_create). Filing into a `planned` epic keeps the quest out of the human-facing backlog/kanban/reports until the epic is activated; quest_list still returns it, since MCP is deliberately not gated. Owner-only (same gate as every other epic mutation).",
     )
     .optional(),
   accept: z
@@ -259,6 +271,12 @@ export const questUpdateParamsSchema = entityRefSchema.extend({
     .integer()
     .describe(
       "Link this quest to the ACCEPTED feedback item with this per-project shortId (shows under that item's 'linked quests'). Pass 0 to clear the link. Owner-only; the feedback must already be accepted.",
+    )
+    .optional(),
+  epic_number: z
+    .integer()
+    .describe(
+      "Reparent the quest to the epic with this per-project number (see epic_list). Pass 0 to remove it from its current epic. Owner-only (same gate as every other epic mutation).",
     )
     .optional(),
 });

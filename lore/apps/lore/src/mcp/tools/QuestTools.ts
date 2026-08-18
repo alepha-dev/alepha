@@ -1,6 +1,7 @@
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
+import { EpicController } from "../../api/controllers/EpicController.ts";
 import { FeedbackController } from "../../api/controllers/FeedbackController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import { QuestController } from "../../api/controllers/QuestController.ts";
@@ -36,6 +37,7 @@ export class QuestTools {
   protected readonly questController = $inject(QuestController);
   protected readonly projectController = $inject(ProjectController);
   protected readonly feedbackController = $inject(FeedbackController);
+  protected readonly epicController = $inject(EpicController);
   protected readonly questMapper = $inject(QuestResourceMapper);
 
   /**
@@ -158,8 +160,14 @@ export class QuestTools {
           status: params.status,
           search: params.search,
           tag: params.tag,
+          epic: params.epic,
           size,
           page,
+          // MCP is deliberately NOT gated (spec §5.3): an agent that files a
+          // quest into a planned epic must see it in its own next call, or
+          // this tool looks as though it silently failed. The UI's listing
+          // surfaces never set this — only this tool does.
+          includePlanned: true,
         },
       });
 
@@ -220,6 +228,16 @@ export class QuestTools {
           params.feedback_shortId,
         );
       }
+      // Resolve `epic_number` → global epic id (same project). Read-only
+      // lookup, so any project member can resolve it; the attach below is
+      // what actually requires ownership.
+      let epicId: number | undefined;
+      if (params.epic_number != null) {
+        const epic = await this.epicController.getEpicByNumber({
+          params: { projectId, number: params.epic_number },
+        });
+        epicId = epic.id;
+      }
       const quest = await this.questController.createQuest({
         body: {
           projectId,
@@ -234,6 +252,17 @@ export class QuestTools {
           feedbackId,
         },
       });
+
+      // File the quest into its epic. `QuestController.createQuest` has no
+      // `epicId` field of its own — `EpicController` owns that mutation
+      // (owner-gated, same as every other epic mutation), so this is a
+      // second call rather than part of the create body.
+      if (epicId != null) {
+        await this.epicController.attachQuest({
+          params: { id: epicId },
+          body: { questId: quest.id },
+        });
+      }
 
       // `accept: true` mirrors the UI's "Create and accept" split button:
       // chain an accept onto the create so an agent about to work the quest
@@ -484,11 +513,15 @@ export class QuestTools {
     },
     handler: async ({ params }) => {
       const id = await this.resolveQuestId(params);
-      // `dependsOn_shortId` / `feedback_shortId` both resolve against the
-      // quest's OWN project; fetch it once if either is supplied.
+      // `dependsOn_shortId` / `feedback_shortId` / `epic_number` all resolve
+      // against the quest's OWN project; fetch it once if any is supplied.
+      // `epic_number === 0` needs it too (unlike the other two) — clearing
+      // the epic link means detaching from the quest's CURRENT epic, and
+      // `current.epicId` is the only place that id comes from.
       const needsProject =
         (params.dependsOn_shortId != null && params.dependsOn_shortId !== 0) ||
-        (params.feedback_shortId != null && params.feedback_shortId !== 0);
+        (params.feedback_shortId != null && params.feedback_shortId !== 0) ||
+        params.epic_number != null;
       const current = needsProject
         ? await this.questController.getQuestById({ params: { id } })
         : undefined;
@@ -520,6 +553,25 @@ export class QuestTools {
         );
       }
 
+      // Translate `epic_number`: 0 = detach from the quest's current epic
+      // (a no-op if it has none), integer = resolve to a global epic id
+      // within the quest's project and attach. Unlike `dependsOn` /
+      // `feedbackId` above, this mutation goes through `EpicController`
+      // (owner-gated, same as every other epic mutation) rather than this
+      // action's own body — it has no `epicId` field.
+      let epicAttachId: number | undefined;
+      let epicDetachId: number | undefined;
+      if (params.epic_number === 0) {
+        if (current?.epicId != null) {
+          epicDetachId = current.epicId;
+        }
+      } else if (params.epic_number != null && current) {
+        const epic = await this.epicController.getEpicByNumber({
+          params: { projectId: current.projectId, number: params.epic_number },
+        });
+        epicAttachId = epic.id;
+      }
+
       const quest = await this.questController.updateQuestById({
         params: { id },
         body: {
@@ -535,6 +587,17 @@ export class QuestTools {
           feedbackId,
         },
       });
+
+      if (epicAttachId != null) {
+        await this.epicController.attachQuest({
+          params: { id: epicAttachId },
+          body: { questId: id },
+        });
+      } else if (epicDetachId != null) {
+        await this.epicController.detachQuest({
+          params: { id: epicDetachId, questId: id },
+        });
+      }
 
       return {
         id: quest.id,

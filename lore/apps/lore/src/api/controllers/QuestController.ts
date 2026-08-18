@@ -372,16 +372,12 @@ export class QuestController {
       // Quests of a `planned` epic are specified but not released into the
       // backlog. This FILTERS; it never mutates a quest row.
       //
-      // Opt-out rather than unconditional, because MCP `quest_list` calls
-      // this same action (`QuestTools.ts:155`) and the spec (§5.3) requires
-      // it to stay ungated: an agent that files a quest into a planned epic
-      // must see it in its own next call, or the tool looks as though it
-      // silently failed.
-      //
-      // TODO(task-4): that opt-out is NOT wired yet. `quest_list` calls this
-      // action without `includePlanned`, so MCP is currently gated along with
-      // the UI — the paragraph above describes the intended end state, not
-      // today's behaviour. Task 4 passes `includePlanned: true` there.
+      // Opt-out rather than unconditional, because MCP `quest_list`
+      // (`QuestTools.ts`) calls this same action with `includePlanned: true`
+      // — the spec (§5.3) requires it to stay ungated: an agent that files a
+      // quest into a planned epic must see it in its own next call, or the
+      // tool looks as though it silently failed. The UI never sets it, so
+      // its listing surfaces stay gated.
       //
       // `includePlanned` is client-settable and that is fine — every caller
       // has already passed `security.assertMember`, so it exposes nothing

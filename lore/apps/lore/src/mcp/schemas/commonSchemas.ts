@@ -9,6 +9,12 @@ export const prioritySchema = z.enum(["optional", "low", "medium", "high"]);
 export { questStatusSchema };
 
 /**
+ * Epic lifecycle status. All transitions between the three are legal —
+ * there is no forbidden edge (see `EpicController.setEpicStatus`).
+ */
+export const epicStatusSchema = z.enum(["planned", "active", "done"]);
+
+/**
  * Quest objective.
  */
 export const objectiveSchema = z.object({
