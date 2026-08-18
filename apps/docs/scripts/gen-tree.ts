@@ -860,7 +860,7 @@ export class TreeCommand {
       this.log.debug("Starting website documentation generation");
       const rootDir = join(import.meta.dirname, "../../..");
       const outputDir = join(import.meta.dirname, "../.gen");
-      const docsDir = join(rootDir, "docs");
+      const docsDir = join(rootDir, "docs/framework");
 
       this.log.debug(`Root directory: ${rootDir}`);
       this.log.debug(`Output directory: ${outputDir}`);

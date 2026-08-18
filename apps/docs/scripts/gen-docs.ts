@@ -715,11 +715,11 @@ export class DocsCommand {
     handler: async ({ run, root }) => {
       const rootDir = join(root, "../..");
       const packagesDir = join(rootDir, "packages");
-      const referenceDocsDir = join(rootDir, "docs/2-reference");
+      const referenceDocsDir = join(rootDir, "docs/framework/2-reference");
       const primitivesDocsDir = join(referenceDocsDir, "1-primitives");
       const hooksDocsDir = join(referenceDocsDir, "2-react-hooks");
       const providersDocsDir = join(referenceDocsDir, "3-providers");
-      const packagesDocsDir = join(rootDir, "docs/3-packages");
+      const packagesDocsDir = join(rootDir, "docs/framework/3-packages");
 
       await run("clean", async () => {
         await fs.rm(referenceDocsDir, { recursive: true, force: true });
