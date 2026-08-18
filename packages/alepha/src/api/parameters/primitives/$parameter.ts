@@ -219,6 +219,26 @@ export class ParameterPrimitive<T extends ZObject> extends Primitive<
   }
 }
 
+/**
+ * Declares a named, schema-validated runtime parameter — configuration that
+ * lives in the database, is editable from the admin UI, and is versioned with
+ * `rollback()`. Read it with `get()`; every change records who made it.
+ *
+ * @example
+ * ```typescript
+ * class FeatureFlags {
+ *   checkout = $parameter({
+ *     name: "checkout.flags",
+ *     schema: z.object({ oneClick: z.boolean() }),
+ *     default: { oneClick: false },
+ *   });
+ *
+ *   async isOneClickEnabled() {
+ *     return (await this.checkout.get()).oneClick;
+ *   }
+ * }
+ * ```
+ */
 export const $parameter = <T extends ZObject>(
   options: ParameterPrimitiveOptions<T>,
 ) => {

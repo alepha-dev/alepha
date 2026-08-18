@@ -3,6 +3,21 @@ import { currentUserAtom } from "alepha/security";
 import { LinkProvider } from "alepha/server/links";
 import { ReactAuth } from "../services/ReactAuth.ts";
 
+/**
+ * Reads the current user and exposes `login()` / `logout()`.
+ *
+ * `user` comes from the shared `currentUserAtom`, so every component using
+ * this hook re-renders together on sign-in and sign-out. The type parameter
+ * names your realm's auth providers, making `login("google")` type-safe.
+ *
+ * @example
+ * ```typescript
+ * const { user, login, logout } = useAuth();
+ * if (!user) {
+ *   await login("credentials", { username, password });
+ * }
+ * ```
+ */
 export const useAuth = <T extends object = any>() => {
   const alepha = useAlepha();
   const [user] = useStore(currentUserAtom);

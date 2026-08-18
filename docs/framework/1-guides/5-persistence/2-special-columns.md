@@ -1,6 +1,6 @@
 # Special Columns
 
-The `db` object from `alepha/orm` provides helper methods for database-specific column types. These extend the base `t` type system with attributes that control how columns behave at the database level.
+The `db` object from `alepha/orm` provides helper methods for database-specific column types. These extend the base Zod schemas (`z`) with attributes that control how columns behave at the database level.
 
 ```typescript check
 import { z } from "alepha";

@@ -10,7 +10,7 @@ import { useQueryParams } from "alepha/react/router";
 
 Hook to manage query parameters in the URL using a defined schema.
 
-Two storage formats are supported via {@link UseQueryParamsHookOptions.format}:
+Two storage formats are supported via `UseQueryParamsHookOptions.format`:
 - `"base64"` (default) packs the whole object into a single opaque param
   (named by `key`, default `q`) — e.g. `?q=eyJ0YWIiOiJzZWN1cml0eSJ9`.
 - `"querystring"` spreads each schema field across its own readable param —

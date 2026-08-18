@@ -19,3 +19,8 @@ Application parameter management.
 - Cross-instance notification via pub/sub
 - Async `.get()` with lazy loading (works in Node and Cloudflare Workers)
 
+## API Reference
+
+### Primitives
+
+- [`$parameter`](/docs/reference-primitives-$parameter) — Declares a named, schema-validated runtime parameter — configuration that

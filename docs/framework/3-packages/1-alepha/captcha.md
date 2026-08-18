@@ -21,5 +21,6 @@ Captcha verification for bot protection.
 
 ### Providers
 
+- [`CaptchaProvider`](/docs/reference-providers-captchaprovider) — Captcha verification provider interface.
 - [`MemoryCaptchaProvider`](/docs/reference-providers-memorycaptchaprovider) — In-memory captcha provider for testing.
 - [`TurnstileCaptchaProvider`](/docs/reference-providers-turnstilecaptchaprovider) — Cloudflare Turnstile captcha verification provider.

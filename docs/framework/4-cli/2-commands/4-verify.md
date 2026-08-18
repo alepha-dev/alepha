@@ -20,7 +20,7 @@ Grab a coffee. When you get back, you'll know if your code is production-ready.
 
 The `verify` command runs a complete quality pipeline:
 
-```
+```bash
 alepha verify
 
 ✓ clean         Clean the project
@@ -70,7 +70,7 @@ Runs Vitest (embedded in `alepha` — nothing to install). Your tests must pass.
 
 > **Optional Step**
 >
-> This step is skipped if the project has no tests — no `test/` directory and no `*.spec.ts(x)` files under `src/`.
+> This step is skipped if the project has no tests — no `test/` directory and no `*.spec.{ts,tsx,js,jsx}` files under `src/`.
 
 ### 5. Database Migrations Check
 
@@ -80,9 +80,9 @@ alepha db migrations check
 
 Verifies your Drizzle migrations are in sync with your schema.
 
-> **Optional Step**
+> **Always Runs**
 >
-> This step is skipped if you don't have a `migrations/` directory.
+> This step is deliberately unconditional. It returns cleanly when the app has no database — but an app with entities and zero migrations now fails here, which is the point: that is the state that ships a server which boots green and 500s on its first query.
 
 ### 6. Build
 
@@ -92,7 +92,7 @@ alepha build
 
 Builds your project for production using Vite. For React apps, this runs twice — once for the frontend (browser bundle) and once for the backend (server bundle). The server build is optimized to be serverless-friendly, bundling everything into a single file.
 
-If it can't build, it can't ship. See the [Build Command](/docs/cli/build) documentation for deployment options.
+If it can't build, it can't ship. See the [Build Command](/docs/cli-commands-build) documentation for deployment options.
 
 > **Expo Projects**
 >
@@ -148,7 +148,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
       - run: npm install
-      - run: alepha verify
+      - run: npx alepha verify
 ```
 
 Your CI should run `verify`. If it fails, the PR doesn't merge.
@@ -206,7 +206,7 @@ alepha build
 
 Biome auto-fixes formatting issues but some lint errors need manual fixes. The error messages tell you what's wrong:
 
-```
+```txt
 src/auth.ts:42:5 lint/suspicious/noExplicitAny
   Don't use `any` type
 ```
@@ -217,7 +217,7 @@ Fix the issue, then run `verify` again.
 
 TypeScript errors mean your types don't match your code:
 
-```
+```txt
 src/auth.ts:42:5 - error TS2345: Argument of type 'string'
 is not assignable to parameter of type 'number'.
 ```
@@ -228,7 +228,7 @@ Fix the type error. If you're stuck, `tsc --noEmit` gives you the full error.
 
 Read the test output. It shows exactly what failed and why:
 
-```
+```txt
 FAIL  src/auth.spec.ts > login > should return token
   AssertionError: expected undefined to equal 'abc123'
 ```
@@ -239,7 +239,7 @@ Fix your code or update the test, depending on what's actually correct.
 
 Build errors are usually TypeScript errors that `typecheck` missed, or runtime issues:
 
-```
+```txt
 Could not resolve './missing-file'
 ```
 

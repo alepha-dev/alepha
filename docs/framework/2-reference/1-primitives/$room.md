@@ -11,7 +11,7 @@ import { $room } from "alepha/websocket";
 Defines a **stateful** WebSocket room — the home for an authoritative,
 optionally tick-driven simulation.
 
-Where {@link $websocket} is a stateless, per-message pub/sub handler, `$room`
+Where `$websocket` is a stateless, per-message pub/sub handler, `$room`
 holds in-memory state across messages and drives a server-side tick loop. It
 is the primitive a real-time game server is built on:
 

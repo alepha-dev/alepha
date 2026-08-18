@@ -17,7 +17,7 @@ the local filesystem all key objects as
 active).
 
 Every upload writes a row to the `files` table alongside the blob, which is
-what makes {@link StoragePrimitive.list} a real paginated query, and what
+what makes `StoragePrimitive.list` a real paginated query, and what
 makes `ttl`, `tags` and creator tracking work at all. That is why `$storage`
 lives in `alepha/api/files` and needs an ORM connection.
 

@@ -142,6 +142,10 @@ Use the `server:onError` hook below to ship the unsanitized error to your logger
 | 502 | BadGatewayError |
 | 503 | ServiceUnavailableError |
 
+Less common codes map too: 405 `MethodNotAllowedError`, 410 `GoneError`, 415 `UnsupportedMediaTypeError`, 501 `NotImplementedError`, 504 `GatewayTimeoutError`.
+
+> Outside production, a handler that throws a bare `Error` triggers an explicit dev warning telling you it will surface as `"Internal Server Error"` once deployed — the sanitization above is invisible locally, so the warning is the only signal you get before production.
+
 ## Global Error Handling
 
 Use the `server:onError` hook to intercept errors across all routes:

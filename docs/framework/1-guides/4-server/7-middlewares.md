@@ -59,7 +59,7 @@ alepha.store.mut(helmetOptions, (old) => ({
 
 ### Multipart
 
-Multipart form-data parsing for file uploads. Active by default when a route schema includes `z.file()`.
+Multipart form-data parsing for file uploads. Runs for any route with a `body` schema when the request's content type is `multipart/form-data`, and handles `z.file()` and `z.stream()` parts.
 
 Configure via the `multipartOptions` atom:
 
@@ -142,10 +142,14 @@ class App {
 
 #### Per-Action Rate Limiting
 
-Apply rate limits directly on an action:
+Apply rate limits directly on an action. The `rateLimit` route option is enforced by
+`AlephaServerRateLimit` — it is not part of the base `AlephaServer`, so without the module
+registered the option is silently ignored:
 
 ```typescript check
 import { $action } from "alepha/server";
+import { AlephaServerRateLimit } from "alepha/server/rate-limit";
+import { Alepha } from "alepha";
 
 class App {
   login = $action({
@@ -158,6 +162,8 @@ class App {
     handler: async ({ body }) => { /* ... */ },
   });
 }
+
+Alepha.create().with(AlephaServerRateLimit).with(App);
 ```
 
 ### Health Check
@@ -174,7 +180,8 @@ That gap is why this is not opt-in. A supervisor or load balancer starting your 
 
 Put your reverse proxy in front of it: `/health` describes your internals and belongs on loopback, not on the public host. [Bay](https://github.com/feunard/alepha/tree/main/apps/bay) returns 404 for it on the public interface.
 
-`AlephaServerHealth` still exists and is a no-op. Drop it from your imports.
+<!-- docs-check-ignore: migration note about a removed symbol -->
+`AlephaServerHealth` has been removed — delete the import if you still have one; `/health` ships with `AlephaServer` itself.
 
 ### Metrics
 

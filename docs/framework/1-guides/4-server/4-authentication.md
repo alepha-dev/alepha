@@ -91,8 +91,8 @@ class App {
 
 `$realm` ships with two default roles:
 
-- **admin** -- Full access to all resources and permissions.
-- **user** -- Access to owned resources only.
+- **admin** — Full access to all resources and permissions.
+- **user** — Access to owned resources only.
 
 ### Settings That Send a Code Need `features.notifications`
 
@@ -109,7 +109,7 @@ class App {
 }
 ```
 
-The feature flag is all it takes -- it registers the notifications module
+The feature flag is all it takes — it registers the notifications module
 itself, so there is no separate import to remember:
 
 ```typescript check
@@ -170,9 +170,13 @@ which is what makes it safe to leave them un-permissioned: a caller can only
 ever ask about themselves. Operators go through the `Admin*` controllers, which
 have their own permissions.
 
+Declared paths are shown; as `$action`s they serve under the `/api` prefix
+(`GET /api/users/me`).
+
 | Controller | Endpoints |
 |---|---|
-| `MyProfileController` | `GET`/`PATCH /users/me`, `POST`/`DELETE /users/me/avatar` |
+| `MyProfileController` | `GET`/`PATCH /users/me` |
+| `MyAvatarController` | `POST`/`DELETE /users/me/avatar` |
 | `MyIdentityController` | `GET /users/me/identities`, `POST /users/me/identities/password`, `DELETE /users/me/identities/:id` |
 | `MyPasswordController` | `POST /users/me/password` |
 | `MySessionController` | `GET /users/me/sessions`, `DELETE /users/me/sessions/:id`, `POST /users/me/sessions/revoke-others` |
@@ -191,7 +195,7 @@ Two rules are worth knowing before you wire a UI to them:
   because that needs a `credentials` identity to reset.
 
 `@alepha/ui` provides the matching UI as `AccountRouter` — see the
-[frontend routing guide](../6-frontend/2-routing.md).
+[frontend routing guide](/docs/guides-frontend-routing).
 
 ### Deleting an Account: the `user:delete:before` Hook
 
@@ -464,12 +468,17 @@ if (client.myAction.can()) {
 `$basicAuth` provides HTTP Basic Authentication for simple use cases (webhooks, internal tools):
 
 ```typescript
+import { $env, z } from "alepha";
 import { $basicAuth } from "alepha/security";
 
-webhook = $action({
-  use: [$basicAuth({ username: "stripe", password: process.env.WEBHOOK_SECRET })],
-  handler: ({ body }) => { /* ... */ },
-});
+class WebhookController {
+  protected readonly env = $env(z.object({ WEBHOOK_SECRET: z.text() }));
+
+  webhook = $action({
+    use: [$basicAuth({ username: "stripe", password: this.env.WEBHOOK_SECRET })],
+    handler: ({ body }) => { /* ... */ },
+  });
+}
 ```
 
 Uses timing-safe comparison to prevent timing attacks. Returns 401 with `WWW-Authenticate` header on failure.
@@ -479,14 +488,17 @@ Uses timing-safe comparison to prevent timing attacks. Returns 401 with `WWW-Aut
 `$serviceAccount` manages tokens for service-to-service communication:
 
 ```typescript
+import { $env, z } from "alepha";
 import { $serviceAccount } from "alepha/security";
+
+env = $env(z.object({ CLIENT_ID: z.text(), CLIENT_SECRET: z.text() }));
 
 // OAuth2 client credentials
 external = $serviceAccount({
   oauth2: {
     url: "https://provider.com/oauth2/token",
-    clientId: process.env.CLIENT_ID,
-    clientSecret: process.env.CLIENT_SECRET,
+    clientId: this.env.CLIENT_ID,
+    clientSecret: this.env.CLIENT_SECRET,
   },
 });
 

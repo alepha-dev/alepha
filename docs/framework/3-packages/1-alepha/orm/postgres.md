@@ -21,3 +21,4 @@ Selected automatically from the `DATABASE_URL` prefix: `postgres://`
 
 - [`BunPostgresProvider`](/docs/reference-providers-bunpostgresprovider) — Bun PostgreSQL provider using Drizzle ORM with Bun's native SQL client.
 - [`CloudflareHyperdriveProvider`](/docs/reference-providers-cloudflarehyperdriveprovider) — Cloudflare Hyperdrive PostgreSQL provider using Drizzle ORM.
+- [`PostgresProvider`](/docs/reference-providers-postgresprovider) — Abstract base class for PostgreSQL database providers.

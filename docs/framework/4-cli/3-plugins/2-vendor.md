@@ -31,11 +31,11 @@ The vendor plugin shallow-clones the Alepha repository, copies the packages you 
 
 Use cases:
 
-- **Auditing** -- review Alepha internals without trusting a published package
-- **AI tooling** -- give agents the full framework source to read alongside your app
-- **Patching** -- fix a bug locally before the next release
-- **Offline work** -- develop without network access to the registry
-- **Compliance** -- meet corporate policies that require vendored dependencies
+- **Auditing** — review Alepha internals without trusting a published package
+- **AI tooling** — give agents the full framework source to read alongside your app
+- **Patching** — fix a bug locally before the next release
+- **Offline work** — develop without network access to the registry
+- **Compliance** — meet corporate policies that require vendored dependencies
 
 ## Configuration
 
@@ -43,7 +43,7 @@ Use cases:
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `packages` | `string[]` | -- | Package directory names to vendor (required) |
+| `packages` | `string[]` | — | Package directory names to vendor (required) |
 | `remote` | `string` | `"https://github.com/feunard/alepha"` | Git remote URL to clone from |
 | `branch` | `string` | `"main"` | Branch to sync from |
 | `dir` | `string` | `".vendor"` | Directory holding the vendored packages (relative to project root); also where `vendor.json` is written |
@@ -98,11 +98,11 @@ Show your local modifications since the last sync.
 alepha vendor diff
 ```
 
-Reads the commit hash from `vendor.json`, clones the remote at that exact commit, and compares your local files against it. Shows file-level changes per package -- added, modified, and removed files -- with line-level detail for modifications. If you have never synced, it reports no changes.
+Reads the commit hash from `vendor.json`, clones the remote at that exact commit, and compares your local files against it. Shows file-level changes per package — added, modified, and removed files — with line-level detail for modifications. If you have never synced, it reports no changes.
 
 > **Before Syncing**
 >
-> Run `diff` before `sync` to verify which local patches you still carry -- those are exactly what a plain `sync` refuses to overwrite.
+> Run `diff` before `sync` to verify which local patches you still carry — those are exactly what a plain `sync` refuses to overwrite.
 
 ## The Lock File
 
@@ -147,7 +147,7 @@ alepha vendor sync --force
 
 ## Tips
 
-**Run `diff` before `sync`.** Know which local patches you're carrying before pulling -- `--force` discards them all.
+**Run `diff` before `sync`.** Know which local patches you're carrying before pulling — `--force` discards them all.
 
 **Commit after syncing.** Vendor updates should be their own commit. This makes it easy to revert if something breaks.
 

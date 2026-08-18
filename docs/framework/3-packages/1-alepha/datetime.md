@@ -29,4 +29,4 @@ Date and time operations.
 
 ### Providers
 
-- [`DateTime`](/docs/reference-providers-datetime) — Immutable wrapper around the underlying date-time engine.
+- [`DateTimeProvider`](/docs/reference-providers-datetimeprovider) — The injectable clock. Every service reads time through it — `nowMillis()`,

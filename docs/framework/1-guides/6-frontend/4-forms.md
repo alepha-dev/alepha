@@ -8,7 +8,7 @@ Alepha provides `useForm` for schema-driven forms with Zod validation, automatic
 import { z } from "alepha";
 import { useForm } from "alepha/react/form";
 
-function LoginForm() {
+const LoginForm = () => {
   const form = useForm({
     schema: z.object({
       email: z.email(),
@@ -35,9 +35,9 @@ Spread `form.props` on the `<form>` element and `form.input.<field>.props` on ea
 
 | Option          | Type                                | Description                                      |
 |-----------------|-------------------------------------|--------------------------------------------------|
-| `schema`        | `TObject`                           | Zod schema defining fields and validation.   |
+| `schema`        | `ZObject`                           | Zod schema defining fields and validation.   |
 | `handler`       | `(values) => unknown`               | Called on submit with validated values.           |
-| `initialValues` | `Partial<Static<T>>`               | Pre-populate fields with existing data.          |
+| `initialValues` | `Partial<Infer<T>>`                | Pre-populate fields with existing data.          |
 | `id`            | `string`                            | Prefix for field IDs and `data-testid` attributes. |
 | `onChange`      | `(key, value, store) => void`       | Called on every field change.                    |
 | `onError`       | `(error) => void`                   | Called when submission throws an error.          |
@@ -54,10 +54,10 @@ The second argument to `useForm` is a dependency array (defaults to `[]`). When 
 
 Spread on the `<form>` element. Includes:
 
-- `id` -- unique form identifier
-- `noValidate` -- set to `true` (validation is handled by the schema)
-- `onSubmit` -- calls `form.submit()` with `preventDefault`
-- `onReset` -- calls `form.reset()`
+- `id` — unique form identifier
+- `noValidate` — set to `true` (validation is handled by the schema)
+- `onSubmit` — calls `form.submit()` with `preventDefault`
+- `onReset` — calls `form.reset()`
 
 ### form.input
 
@@ -68,7 +68,7 @@ A proxy object where each key corresponds to a schema property. Each field has:
 | `props`    | `InputHTMLAttributes`       | Spread on the `<input>` element.            |
 | `path`     | `string`                    | JSON pointer path (e.g., `/email`).         |
 | `required` | `boolean`                   | Whether the field is required.              |
-| `schema`   | `TSchema`                   | The Zod schema for this field.          |
+| `schema`   | `ZType`                     | The Zod schema for this field.          |
 | `set`      | `(value: any) => void`      | Programmatically set the field value.       |
 | `initialValue` | `any`                   | The field's initial value (from `initialValues` or schema defaults). |
 | `items`    | `Record<string, InputField>` | Child fields, for object-typed properties — see [Nested Object Fields](#nested-object-fields). |
@@ -143,7 +143,7 @@ Use `useFormState` to reactively track loading, dirty, error, and value states:
 ```typescript
 import { useFormState } from "alepha/react/form";
 
-function MyForm() {
+const MyForm = () => {
   const form = useForm({ /* ... */ });
   const { loading, dirty, error } = useFormState(form);
 

@@ -15,10 +15,10 @@ export * from "./providers/DevToolsMetadataProvider.ts";
  * Runtime inspection and debugging UI.
  *
  * **Features:**
- * - DevTools UI at `GET /devtools`
- * - Application metadata at `GET /devtools/metadata`
- * - Last 10,000 logs at `GET /devtools/logs`
- * - Runtime inspection of actions, jobs, topics, buckets
+ * - DevTools UI at `GET /__devtools`
+ * - Application metadata at `GET /__devtools/api/metadata`
+ * - Last 10,000 logs at `GET /__devtools/api/logs`
+ * - Runtime inspection of actions, jobs, topics, storages
  * - Log viewer with filtering
  * - React Flow visualization
  * - Provider and module browsing

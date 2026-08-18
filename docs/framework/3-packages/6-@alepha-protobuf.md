@@ -1,4 +1,6 @@
-# @alepha/protobuf - @alepha/protobuf
+# @alepha/protobuf
+
+Protocol Buffers (Protobuf) codec support for Alepha framework.
 
 ## Installation
 

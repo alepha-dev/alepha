@@ -27,4 +27,5 @@ Resource locking for distributed systems.
 
 ### Providers
 
+- [`LockProvider`](/docs/reference-providers-lockprovider) — Store Provider Interface
 - [`MemoryLockProvider`](/docs/reference-providers-memorylockprovider) — A simple in-memory store provider.

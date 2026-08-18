@@ -29,14 +29,14 @@ existing analogue, combining a **write-only Workers binding** with an
   circular the moment `index.workerd.ts`'s `register()` substitutes this
   very class in for that seam — this provider would try to inject itself.
 - `AnalyticsEngineSql` is still a plain constructor-options class (nothing
-  about it needs DI), just built internally by {@link sql} rather than
+  about it needs DI), just built internally by `sql` rather than
   passed in — the same relationship `CloudflareEmailProvider.sendViaRest`
   has with `fetch`.
 
 Testability does not regress: `alepha.set("cloudflare.env", { NAME: fake })`
 before `start()` substitutes the write binding, the same pattern
 `CloudflareEmailProvider.spec.ts` uses; a test subclass overriding
-{@link httpFetch} substitutes the read transport, the same pattern
+`httpFetch` substitutes the read transport, the same pattern
 `CloudflareEmailRest.spec.ts` uses for `httpPost`.
 
 ## Every number read back is an estimate
@@ -62,11 +62,11 @@ raw tier starts every dataset's life with zero rows for it. Left alone,
 `cold.rollup()` would fold a table nothing ever populated: a structural
 no-op, not a race, and it would silently lose every hour past Analytics
 Engine's own ~90-day retention, which is exactly what a hot/cold split
-exists to prevent. {@link rollup} closes that gap itself, immediately
+exists to prevent. `rollup` closes that gap itself, immediately
 before delegating: it tops up `cold`'s raw tier with Analytics Engine rows
 older than `before` (hour granularity, matching what `record()` would have
 written directly), *then* calls `cold.rollup()` to fold them — see
-{@link forwardToCold}. What crosses over is the sample-corrected total
+`forwardToCold`. What crosses over is the sample-corrected total
 `query()` already computed, not a raw stored double, so `cold`'s own
 arithmetic (the upsert accumulate, the day fold) can add and fold it
 exactly like any other number, the same one-way trip every folded number
@@ -87,17 +87,17 @@ own contract ("deletes every row older than `before`, **on whichever tier
 it lives**") would be silently broken on this backend: a query for an
 already-pruned window would fall out of `cold` and fall back to Analytics
 Engine, which still has it and always will until its own ~90-day
-retention eventually, invisibly, ages it out. {@link prune} therefore also
+retention eventually, invisibly, ages it out. `prune` therefore also
 durably records `before` as a prune floor — via
 `OrmAnalyticsProvider.recordPruneFloor`, kept in `cold` because it is the
 one piece of this provider's state that already survives a restart — and
-{@link query}/{@link forwardToCold} both clamp their effective `since` to
+`query`/`forwardToCold` both clamp their effective `since` to
 it, on every read, regardless of what either tier currently holds. That is
 what makes `prune()` mean the same thing here as it does on
 `OrmAnalyticsProvider`: once pruned, gone from every result, not merely
 from `cold`'s own copy. See `recordPruneFloor`'s own doc for why this is a
 dedicated table rather than a row in the dataset's own raw/rolled table,
-and {@link prune}'s own doc for why the floor is written *before* the
+and `prune`'s own doc for why the floor is written *before* the
 delete, not after.
 
 ## The read side has to merge too
@@ -106,7 +106,7 @@ Forwarding rows into `cold` is pointless if `query()` never reads them
 back — a window older than Analytics Engine's retention would still
 silently return nothing, and the worst case is a window straddling the
 boundary returning only the Analytics Engine portion with no sign anything
-is missing. So {@link query} queries both sources and merges, the same way
+is missing. So `query` queries both sources and merges, the same way
 `OrmAnalyticsProvider.query()` already merges its own raw and rolled
 tiers — same merge key (`JSON.stringify` of the grouped dimension values),
 the same mergeable aggregate (`sum`, added across sources), ordering and
@@ -116,16 +116,16 @@ tables in the same one:
 
 - **Skipping `cold` when it cannot matter.** A window entirely within
   `dataset`'s declared hot retention cannot have anything forwarded into
-  it yet in a correctly-running system — see {@link mightNeedCold} — so
+  it yet in a correctly-running system — see `mightNeedCold` — so
   `query()` skips `cold` for that case with zero calls to it, the same
-  structural argument that makes {@link forwardToCold} safe rather than a
+  structural argument that makes `forwardToCold` safe rather than a
   speed hack.
 - **Not double-counting an hour Analytics Engine still has after it was
   forwarded.** Analytics Engine has no delete API, so a forwarded hour
   keeps existing on both sides forever. `query()` re-derives the same
-  watermark {@link forwardToCold} uses and narrows the Analytics Engine
+  watermark `forwardToCold` uses and narrows the Analytics Engine
   side's `since` to exclude whatever `cold` already covers — see
-  {@link nextBucket} — rather than trusting the two sources to be disjoint.
+  `nextBucket` — rather than trusting the two sources to be disjoint.
 - **`estimated` is unconditionally `true`.** Not just because Analytics
   Engine samples, but because a row `cold` holds only ever got there
   through `forwardToCold`, which itself read it out of Analytics Engine as

@@ -48,6 +48,11 @@ declare module "alepha" {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+/**
+ * Filesystem-backed blob storage — the Node default when `S3_ENDPOINT` is
+ * unset. Blobs live under `STORAGE_PATH` (falling back to `DATA_DIR`), which
+ * must sit outside the deployed bundle so uploads survive a redeploy.
+ */
 export class LocalFileStorageProvider implements FileStorageProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();

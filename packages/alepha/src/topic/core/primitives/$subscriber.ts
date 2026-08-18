@@ -32,6 +32,8 @@ import type {
  * @example
  * ```ts
  * class UserActivityService {
+ *   dateTime = $inject(DateTimeProvider);
+ *
  *   userEvents = $topic({
  *     name: "user-activity",
  *     schema: {
@@ -59,7 +61,7 @@ import type {
  *     await this.userEvents.publish({
  *       userId,
  *       action: "login",
- *       timestamp: Date.now()
+ *       timestamp: this.dateTime.nowMillis()
  *     });
  *   }
  * }

@@ -32,7 +32,7 @@ Compare the last migration snapshot against your current `$entity` schemas. Fail
 alepha db migrations check
 ```
 
-Drift is reported across **all** providers before failing, so a clean Postgres never masks a drifted SQLite migration set. This is the check that `alepha verify` runs when a `migrations/` directory exists.
+Drift is reported across **all** providers before failing, so a clean Postgres never masks a drifted SQLite migration set. This is the check that `alepha verify` always runs — it returns cleanly when the app has no database.
 
 Alias: `alepha db m check`.
 
@@ -50,6 +50,7 @@ alepha db migrations create --custom          # empty migration for hand-written
 |------|-------------|
 | `--name` | Name for the generated migration file |
 | `--custom` | Generate an empty migration file for custom SQL (data migrations, manual adjustments) |
+| `--hints` | JSON array of drizzle-kit hints resolving ambiguous diffs (rename-vs-create). When a hint is required, drizzle-kit exits with code 2 and prints the exact JSON to pass — without it, a table rename becomes CREATE+DROP, which is data loss |
 
 ### migrations apply
 

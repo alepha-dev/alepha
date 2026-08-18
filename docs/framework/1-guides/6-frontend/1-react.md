@@ -12,22 +12,20 @@ alepha init my-app
 
 React, SSR and Tailwind are part of every Alepha project — there is no flag to enable them. This generates two entry points:
 
-- `src/main.server.ts` (or `main.ts`) -- server entry, registers modules and starts the app
-- `src/main.browser.ts` -- browser entry, registers browser-side modules and hydrates
+- `src/main.server.ts` — server entry, registers the API and web modules and starts the app
+- `src/main.browser.ts` — browser entry, registers the web module and hydrates
 
-**Server entry (`main.ts`):**
+**Server entry (`main.server.ts`):**
 
 ```typescript
 import { Alepha, run } from "alepha";
-import { AppRouter } from "./AppRouter.ts";
-import { CountApi } from "./CountApi.ts";
+import { ApiModule } from "./api/index.ts";
+import { WebModule } from "./web/index.ts";
 
-const alepha = Alepha.create({
-  env: { APP_NAME: "MY_APP" },
-});
+const alepha = Alepha.create();
 
-alepha.with(CountApi);
-alepha.with(AppRouter);
+alepha.with(ApiModule);
+alepha.with(WebModule);
 
 run(alepha);
 ```
@@ -36,10 +34,10 @@ run(alepha);
 
 ```typescript
 import { Alepha, run } from "alepha";
-import { AppRouter } from "./AppRouter.ts";
+import { WebModule } from "./web/index.ts";
 
 const alepha = Alepha.create();
-alepha.with(AppRouter);
+alepha.with(WebModule);
 
 run(alepha);
 ```
@@ -57,7 +55,7 @@ Returns the current Alepha instance from context. Provides access to the DI cont
 ```typescript check
 import { useAlepha } from "alepha/react";
 
-function MyComponent() {
+const MyComponent = () => {
   const alepha = useAlepha();
   // alepha.inject(SomeService)
   // alepha.events.emit(...)
@@ -74,7 +72,7 @@ Injects a DI service into a React component. The service must be registered with
 ```typescript
 import { useInject } from "alepha/react";
 
-function Dashboard() {
+const Dashboard = () => {
   const analytics = useInject(AnalyticsService);
   // use analytics methods
 }
@@ -82,14 +80,18 @@ function Dashboard() {
 
 ### useClient
 
-Type-safe API calls from React. Connects to server-side controllers via the link system. Works with SSR -- on the server, calls are made internally without HTTP.
+Type-safe API calls from React. Connects to server-side controllers via the link system. Works with SSR — on the server, calls are made internally without HTTP.
 
-```typescript
+```tsx
 import { useAction, useClient } from "alepha/react";
 import { useState } from "react";
 import type { CountApi } from "./CountApi.ts";
 
-const Home = (props: { count: number }) => {
+interface HomeProps {
+  count: number;
+}
+
+const Home = (props: HomeProps) => {
   const [count, setCount] = useState(props.count);
   const countApi = useClient<CountApi>();
 
@@ -107,7 +109,7 @@ const Home = (props: { count: number }) => {
 };
 ```
 
-The type parameter `<CountApi>` provides full type safety -- method names, parameter types, and return types are all inferred from the controller class.
+The type parameter `<CountApi>` provides full type safety — method names, parameter types, and return types are all inferred from the controller class.
 
 ### useAction
 
@@ -139,12 +141,13 @@ import { useAction } from "alepha/react";
 | `debounce`  | `number`              | Delay in milliseconds before executing.           |
 | `runOnInit` | `boolean`             | Run once when the component mounts.               |
 | `runEvery`  | `DurationLike`        | Run periodically at the given interval.           |
+| `invalidates` | `string[]`          | Query-cache keys to invalidate after success — see [Invalidating after a write](#invalidating-after-a-write). |
 
-By default, concurrent executions are prevented -- calling `run` while already executing is a no-op.
+By default, concurrent executions are prevented — calling `run` while already executing is a no-op.
 
 **Debounce example (search input):**
 
-```typescript
+```tsx
 const search = useAction(
   {
     handler: async (query: string) => {
@@ -194,10 +197,10 @@ const fetchData = useAction(
 
 Actions emit events on the Alepha event system:
 
-- `react:action:begin` -- action started
-- `react:action:success` -- action completed successfully
-- `react:action:error` -- action threw an error
-- `react:action:end` -- always emitted at the end
+- `react:action:begin` — action started
+- `react:action:success` — action completed successfully
+- `react:action:error` — action threw an error
+- `react:action:end` — always emitted at the end
 
 Global error handling example:
 
@@ -211,10 +214,10 @@ alepha.events.on("react:action:error", ({ error }) => {
 
 Subscribe to Alepha events inside React components. Subscriptions are automatically cleaned up on unmount.
 
-```typescript check
+```tsx check
 import { useEvents } from "alepha/react";
 
-function StatusBar() {
+const StatusBar = () => {
   useEvents(
     {
       "react:transition:begin": (ev) => {
@@ -231,7 +234,7 @@ function StatusBar() {
 }
 ```
 
-The second argument is a dependency list (same as `useEffect`). Events are fully typed based on the `Hooks` interface.
+The second argument is a dependency list (same as `useEffect`). Events are fully typed based on the `Hooks` interface. Note that `useEvents` no-ops outside the browser — an SSR pass registers nothing, so don't rely on it for server-side listeners.
 
 ## Data fetching and cache invalidation
 
@@ -242,7 +245,7 @@ const { data, loading, isStale } = useQuery(
   {
     key: ["folios", campaignId],
     handler: async ({ signal }) =>
-      folioApi.list({ params: { campaignId }, request: { signal } }),
+      folioApi.list({ params: { campaignId } }, { request: { signal } }),
   },
   [campaignId],
 );
@@ -302,10 +305,10 @@ Mixing them is normal: load the subject in the route, query its satellites in co
 
 Only needed if you are **not** using the Alepha Router (e.g., in Expo or Next.js integrations). When using `$page` and the router, the context is provided automatically.
 
-```typescript
+```tsx
 import { AlephaProvider } from "alepha/react";
 
-function App() {
+const App = () => {
   return (
     <AlephaProvider
       onLoading={() => <div>Loading...</div>}

@@ -19,7 +19,10 @@ Every state transition emits a hook on Alepha's event bus:
 ```typescript
 "payments:authorized" | "payments:captured" | "payments:failed"
 "payments:voided" | "payments:refunded" | "payments:cancelled"
+"payments:expired"
 ```
+
+`payments:expired` is emitted by the stale-intent sweep described above — wire it if your fulfilment or notification code needs to release a reservation when a checkout is abandoned.
 
 Your own modules (accounting, notifications, fulfilment) listen via `$hook` — they never call the PSP directly.
 
@@ -44,23 +47,25 @@ Out of the box this gives you:
 - `GET/POST/DELETE/PATCH /api/payments/payment-methods/...` — list, add, remove, set default.
 - `POST /api/payments/webhook` — PSP webhook ingress (no `$secure` middleware; the provider verifies authenticity).
 - `/api/admin/payments/...` — capture, void, refund, cancel, list intents, record cash payments.
-- A cron running every 5 minutes (`api:payments:expireStaleIntents`) that expires intents stuck in `processing` for more than 30 minutes.
+- A cron running every 15 minutes (`api:payments:expireStaleIntents`, configurable via the `paymentsConfig` atom's `expireStaleIntentsCron`) that expires intents stuck in `processing` for more than 30 minutes.
 
-`AlephaApiPayments` registers `MemoryPaymentProvider` as the default provider — you can boot the module with no PSP configured and exercise the full flow end-to-end via the dev-only mock checkout page at `/payments/mock-checkout/:id`.
+`AlephaApiPayments` registers `MemoryPaymentProvider` as the default provider — you can boot the module with no PSP configured and exercise the full flow end-to-end via the mock checkout page at `/payments/mock-checkout/:id`. The page is gated on `MemoryPaymentProvider` outside production; `mockCheckoutOptions.allowInProduction` is the documented escape hatch if you truly need it live.
 
 ## Creating a payment
 
 The high-level service is `PaymentService`. A typical "buy a one-off thing" flow:
 
 ```typescript
-import { $inject } from "alepha";
+import { $inject, z } from "alepha";
+import { $repository } from "alepha/orm";
 import { $action } from "alepha/server";
 import { $secure } from "alepha/security";
 import { PaymentService } from "alepha/api/payments";
-import { z } from "alepha";
+import { productEntity } from "./entities/product.ts";
 
 class CheckoutController {
   protected readonly payments = $inject(PaymentService);
+  protected readonly products = $repository(productEntity);
 
   buy = $action({
     method: "POST",
@@ -145,12 +150,14 @@ With no provider configured, the `MemoryPaymentProvider` is wired in. `createSes
 In tests, inject a fresh memory provider and assert against its in-memory state:
 
 ```typescript
-import { MemoryPaymentProvider, PaymentProvider } from "alepha/api/payments";
+import { AlephaApiPayments, MemoryPaymentProvider, PaymentProvider } from "alepha/api/payments";
 
-const alepha = Alepha.create().with({
-  provide: PaymentProvider,
-  use: MemoryPaymentProvider,
-});
+const alepha = Alepha.create()
+  .with(AlephaApiPayments)
+  .with({
+    provide: PaymentProvider,
+    use: MemoryPaymentProvider,
+  });
 
 const provider = alepha.inject(MemoryPaymentProvider);
 expect(provider.wasCharged(intent.providerRef)).toBe(true);

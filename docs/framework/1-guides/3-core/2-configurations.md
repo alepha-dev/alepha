@@ -29,7 +29,7 @@ Alepha validates values at instantiation time and throws if required variables a
 
 ### How env values are resolved
 
-`Alepha.create()` merges `process.env` with any values passed in the `state.env` option:
+`Alepha.create()` merges `process.env` with the `env` key of the state object passed to `create()`:
 
 ```typescript
 const alepha = Alepha.create({
@@ -128,7 +128,7 @@ Three things read it:
   template, so whoever fills it in can see at a glance which ones are safe to
   commit — everything unlabelled belongs in a secret store:
 
-  ```
+  ```txt
   # (public)
   #PUBLIC_URL=
 
@@ -174,6 +174,15 @@ The `name` uniquely identifies the atom in the state store. The `schema` defines
 Recommended naming convention for `name` is dot-separated, e.g. `"app.config"`, `"user.settings"`, etc.
 
 If the schema itself is optional (wrapped with `.optional()`, e.g. `z.object({...}).optional()`), the `default` is optional too. Otherwise — even when every field inside the object is optional — `default` is required.
+
+Beyond `name` / `schema` / `default`, an atom also takes `description`, `serverOnly`, and
+`persist: "cookie" | "localStorage" | "sessionStorage"`. Two things to know before reaching
+for them:
+
+- `serverOnly` and `persist` cannot be combined — `$atom()` throws at call time.
+- Cookie persistence is unsigned and unencrypted, and anything client-persisted is
+  attacker-writable. Never persist roles, permissions, or entitlements in an atom; treat a
+  persisted value as user input.
 
 ### Reading and writing atoms
 

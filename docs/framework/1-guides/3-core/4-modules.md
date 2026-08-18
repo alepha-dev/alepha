@@ -34,9 +34,9 @@ All services listed in `services` are automatically instantiated and registered 
 
 ## Module Names
 
-Module names must follow the pattern `project.module.submodule` -- lowercase letters, hyphens, and dots:
+Module names must follow the pattern `project.module.submodule` — lowercase letters, hyphens, and dots:
 
-```
+```txt
 core                    // valid
 my.app                  // valid
 my.app.billing          // valid
@@ -47,7 +47,7 @@ The regex: `/^[a-z-]+(\.[a-z-][a-z0-9-]*)*$/`
 
 Module names are used in logging. Each service in a module has its logger prefixed with the module name:
 
-```
+```txt
 [23:45:53.326] INFO <billing.PaymentService>: Processing payment
 ```
 
@@ -168,7 +168,7 @@ Modules can register atoms in their state:
 import { $atom, $module, z } from "alepha";
 
 const billingConfig = $atom({
-  name: "billing:config",
+  name: "billing.config",
   schema: z.object({
     currency: z.text({ default: "USD" }),
     taxRate: z.number().default(0.2),

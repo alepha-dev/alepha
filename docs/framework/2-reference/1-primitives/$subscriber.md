@@ -37,6 +37,8 @@ subscribers can react to the same events independently.
 
 ```ts
 class UserActivityService {
+  dateTime = $inject(DateTimeProvider);
+
   userEvents = $topic({
     name: "user-activity",
     schema: {
@@ -64,7 +66,7 @@ class UserActivityService {
     await this.userEvents.publish({
       userId,
       action: "login",
-      timestamp: Date.now()
+      timestamp: this.dateTime.nowMillis()
     });
   }
 }

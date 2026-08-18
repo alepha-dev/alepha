@@ -2,7 +2,7 @@
 
 The `with` option performs a SQL join at query time, written per query.
 
-> **Most reads want [Relations](./6-relations.md) instead.** `$relations` declares the graph once and reads it with `include`, which handles one-to-many, many-to-many and nesting — all of which `with` cannot. Reach for `with` when you want a flat one-to-one join written inline, or a SQL join condition that is not a foreign key.
+> **Most reads want [Relations](/docs/guides-persistence-relations) instead.** `$relations` declares the graph once and reads it with `include`, which handles one-to-many, many-to-many and nesting — all of which `with` cannot. Reach for `with` when you want a flat one-to-one join written inline, or a SQL join condition that is not a foreign key.
 
 ```typescript check
 import { z } from "alepha";
@@ -30,11 +30,12 @@ const players = $entity({
     teamId: db.ref(z.uuid().optional(), () => teams.cols.id),
     name: z.text(),
     position: z.text(),
+    goals: z.integer(),
   }),
 });
 ```
 
-See [Special Columns](./2-special-columns.md) for `db.ref()` options like `onDelete` and `onUpdate`.
+See [Special Columns](/docs/guides-persistence-special-columns) for `db.ref()` options like `onDelete` and `onUpdate`.
 
 ## Basic Join
 
@@ -203,7 +204,7 @@ const results = await this.players.findMany({
 });
 ```
 
-All standard [where clause operators](./1-repository.md#where-clause-operators) work on joined table columns.
+All standard [where clause operators](/docs/guides-persistence-repository#where-clause-operators) work on joined table columns.
 
 ## Multiple Joins
 
@@ -403,7 +404,7 @@ const page = await this.players.paginate(
 
 ## Limitations
 
-These are limitations of `with`, not of relations — [Relations](./6-relations.md) covers every one of the first three.
+These are limitations of `with`, not of relations — [Relations](/docs/guides-persistence-relations) covers every one of the first three.
 
 - **No one-to-many joins.** The `with` option produces one-to-one joins (each row gets one joined object). For one-to-many relationships (e.g. a user's posts), use `include`.
 - **No `orderBy` on joined columns.** Sorting is limited to columns on the base table. `include` orders each relation independently.

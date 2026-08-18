@@ -1,3 +1,11 @@
+/**
+ * The Alepha CLI core: `init`, `dev`, `build`, `verify`, `db`, `test`,
+ * `lint`, `typecheck`, `gen` and `pack`. Loaded automatically when the
+ * `alepha` binary runs; each command is documented in the CLI section of the
+ * docs site.
+ *
+ * @module alepha.cli
+ */
 import { $module } from "alepha";
 import { appEntryOptions } from "./atoms/appEntryOptions.ts";
 import { buildOptions } from "./atoms/buildOptions.ts";

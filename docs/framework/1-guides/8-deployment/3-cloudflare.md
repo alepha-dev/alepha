@@ -17,7 +17,9 @@ Required for deployment:
 | Variable | Description |
 |----------|-------------|
 | `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare account ID |
-| `CLOUDFLARE_ANALYTICS_TOKEN` | API token with Workers permissions |
+| `CLOUDFLARE_API_TOKEN` | API token with Workers permissions (or run `wrangler login` interactively) |
+
+`CLOUDFLARE_ANALYTICS_TOKEN` is **not** a deploy credential — it is the optional, app-runtime Analytics Engine read token (scope: Account Analytics · Read). It is deliberately named differently from `CLOUDFLARE_API_TOKEN`: wrangler treats that name as its own credential, so putting a read-only token there makes every provisioning call fail with an authentication error.
 
 ## Deploy
 
@@ -46,8 +48,8 @@ wrangler dev --config=dist/wrangler.jsonc
 
 The build produces:
 
-- `dist/wrangler.jsonc` -- Wrangler configuration with worker name, compatibility flags, and bindings
-- `dist/main.cloudflare.js` -- Worker entry point that bootstraps Alepha and handles `fetch`, `scheduled`, and `queue` events
+- `dist/wrangler.jsonc` — Wrangler configuration with worker name, compatibility flags, and bindings
+- `dist/main.cloudflare.js` — Worker entry point that bootstraps Alepha and handles `fetch`, `scheduled`, and `queue` events
 
 The `wrangler.jsonc` includes `nodejs_compat` compatibility flag and `no_bundle: true` (Alepha bundles the code itself).
 
@@ -96,7 +98,7 @@ Expressions are **deduplicated**, so what costs you a Cron Trigger is the number
 of *distinct* expressions, not the number of jobs. Jobs sharing an expression
 all run in the same invocation. The framework's own sweeps default to
 `*/15 * * * *` for this reason — see
-[Sweeps owned by other modules](../4-server/12-background-jobs.md) for the atoms
+[Sweeps owned by other modules](/docs/guides-server-background-jobs) for the atoms
 that tune them, and prefer aligning a new `$job` with an expression already in
 use over introducing a sixth one.
 

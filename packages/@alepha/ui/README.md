@@ -17,7 +17,7 @@ npm install @alepha/ui
 Base UI and Tailwind, with [lucide](https://lucide.dev) icons.
 
 Unlike the rest of the framework, these components are **meant to be edited
-directly**. The package ships `src/` only — no `dist/`, no build step. Copy a
+directly**: `src/` ships alongside the built `dist/`, so you can copy a
 component into your app and change it, or depend on the package and let
 bugfixes arrive through normal dependency updates.
 
@@ -63,7 +63,7 @@ filtering.
 under `components/`; `use-mobile` lives under `hooks/`.
 
 **`lib/*`** — `utils` exports `cn()`, the `clsx` + `tailwind-merge` helper every
-component uses. Also `resize-image`, `rehype-safe-img`, and `i18n-fr`.
+component uses. Also `resize-image` and `i18n-fr`.
 
 ## Example
 
@@ -143,4 +143,14 @@ components in the right place with the right aliases:
 ```bash
 npx shadcn@latest add <component>
 ```
+
+## Refreshing stock primitives
+
+`yarn w @alepha/ui sync` re-fetches the stock `components/ui/*` primitives from
+the public `ui.shadcn.com/r/styles/base-nova` registry and rewrites their
+`@/registry/...` imports to `@alepha/ui/...`. It touches only the stock
+primitives — the hand-maintained blocks (controls, admin, auth, app-shell,
+alepha-table, …) are never overwritten. After a sync, diff for removed
+`from "alepha/` imports before committing: the registry copy does not know
+about local patches.
 

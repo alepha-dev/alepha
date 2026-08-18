@@ -18,7 +18,7 @@ The build process:
 
 ## Output Structure
 
-```
+```txt
 dist/
   public/
     index.html      # Pre-rendered root page
@@ -93,9 +93,9 @@ A server entry is still required, because the build boots the workspace to analy
 
 The `dist/public/` directory is a standard static site. Deploy it to any static hosting:
 
-- **GitHub Pages** -- copy `dist/public/` to the `gh-pages` branch
-- **Netlify** -- set build output to `dist/public`
-- **Cloudflare Pages** -- set build output to `dist/public`
+- **GitHub Pages** — copy `dist/public/` to the `gh-pages` branch
+- **Netlify** — set build output to `dist/public`
+- **Cloudflare Pages** — set build output to `dist/public`
 
 The `200.html` file serves as the SPA fallback for hosting providers that support it (Surge, Netlify). Configure your hosting provider's rewrite rules to serve `200.html` for all unmatched routes.
 

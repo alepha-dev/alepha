@@ -12,7 +12,7 @@ Runtime-neutral heart of a stateful room: it owns the in-memory state, the
 connected sockets, the authoritative tick loop, per-recipient send and the
 room lifecycle — with zero dependency on Node's `ws` or on
 `cloudflare:workers`. Both providers construct one of these and feed it their
-native sockets through the {@link RoomSocket} adapter.
+native sockets through the `RoomSocket` adapter.
 
 Lifecycle: the room comes to life lazily (first `join`, or first `call` on a
 headless room), running the `state` factory once. While at least one socket

@@ -1,50 +1,50 @@
 # Bay — PoC
 
-Serveur d'applications self-hosted pour apps Alepha. Design complet dans le
-folio **Bay** de la campagne Lore « Alepha ».
+Self-hosted application server for Alepha apps. The full design lives in the
+**Bay** folio of the Alepha project in Lore.
 
-Ce PoC prouve la tranche verticale : **un `app.zip` entre, une URL HTTPS sort.**
+This PoC proves the vertical slice: **an `app.zip` goes in, an HTTPS URL comes out.**
 
 > Installing Bay on a real host: **[INSTALL.md](./INSTALL.md)**. The install itself is four steps;
 > granting a user the right to deploy over SSH is a fifth, and it is the one that produces every
 > confusing first-deploy failure — an empty `bay-control` group, a `bay` missing from the
 > non-interactive PATH, and a host binary too old to read the artifact from stdin.
 
-## Ce qui est dedans
+## What's inside
 
 | | |
 |---|---|
-| Reverse proxy | routage par `Host`, *file-first / fallback app* |
-| Assets statiques | servis depuis **toutes les releases conservées**, négociation `.br`/`.gz`, cache immuable sur les noms hashés |
-| Déploiement | dézippage (avec garde zip-slip), lecture du manifest, bascule atomique de `current` |
-| Provisioning | fichier SQLite, `APP_SECRET` stable, `.env` en `0600` écrit atomiquement |
-| Supervision | démarrage/arrêt, arrêt gracieux (SIGTERM puis SIGKILL), groupe de process |
-| État | un fichier JSON, écrit `temp + rename`, avec `.bak` |
-| API de contrôle | HTTP sur loopback, token porteur obligatoire |
-| CLI | client fin de cette même API — **un seul contrat** |
+| Reverse proxy | routing by `Host`, *file-first / fallback app* |
+| Static assets | served from **every kept release**, `.br`/`.gz` negotiation, immutable cache on hashed names |
+| Deployment | unzip (with zip-slip guard), manifest read, atomic `current` switch |
+| Provisioning | SQLite file, stable `APP_SECRET`, `.env` written atomically at `0600` |
+| Supervision | start/stop, graceful shutdown (SIGTERM then SIGKILL), process group |
+| State | one JSON file, written `temp + rename`, with a `.bak` |
+| Control API | HTTP on loopback, bearer token required |
+| CLI | thin client of that same API — **one contract** |
 
-| TLS / ACME | CertMagic, testable **sans domaine public ni root** via Pebble |
-| Observabilité | `bay status`, `bay logs` — rien n'est stocké |
+| TLS / ACME | CertMagic, testable **without a public domain or root** via Pebble |
+| Observability | `bay status`, `bay logs` — nothing is stored |
 
-## Observer une app, sans rien stocker
+## Observing an app without storing anything
 
-Deux commandes, aucune série temporelle, aucun job, aucune table. C'est
-délibéré : une base de séries qu'il faut administrer, purger et sauvegarder pour
-répondre à deux questions fixes coûte plus cher que les réponses.
+Two commands, no time series, no job, no table. That is deliberate: a series
+database that has to be administered, pruned and backed up to answer two fixed
+questions costs more than the answers.
 
 ```bash
-bay status --json            # up, redémarrages, trafic, fraîcheur des backups
+bay status --json            # up, restarts, traffic, backup freshness
 bay logs lore/production --since 15m --grep 'ECONN' --json
 ```
 
-**`bay logs` sort du JSON Lines.** Son lecteur principal est un agent en SSH, pas
-un œil : `--json`, `--since`, `--grep` (une expression régulière). Sur un vrai
-hôte les entrées viennent de journald, qui apporte sa propre rétention ; sous le
-runner enfant elles viennent de `logs/app.log`, qui est tourné à 32 Mio.
+**`bay logs` emits JSON Lines.** Its primary reader is an agent over SSH, not
+an eyeball: `--json`, `--since`, `--grep` (a regular expression). On a real
+host the entries come from journald, which brings its own retention; under the
+child runner they come from `logs/app.log`, rotated at 32 MiB.
 
-⚠️ `--since` **conserve** les lignes sans horodatage et l'annonce en fin de
-sortie. Une app qui écrit du texte brut sur stdout n'en produit aucun, et les
-masquer supprimerait exactement le `console.log` qu'on vient d'ajouter.
+⚠️ `--since` **keeps** lines with no timestamp and says so at the end of the
+output. An app writing plain text to stdout produces none, and hiding them
+would suppress exactly the `console.log` you just added.
 
 ## What backups cover, and what they do not
 
@@ -86,11 +86,10 @@ otherwise.
 ⚠️ A bucket is durable, not point-in-time: deleting the wrong key deletes it
 everywhere. **Enable versioning on the storage bucket.**
 
-## Tester ACME sans domaine
+## Testing ACME without a domain
 
-Pebble est le serveur ACME de test de Let's Encrypt. Il fait tourner le vrai
-RFC 8555 en local : création de compte, commande, challenge, émission,
-renouvellement (ARI compris).
+Pebble is Let's Encrypt's test ACME server. It runs the real RFC 8555 locally:
+account creation, order, challenge, issuance, renewal (ARI included).
 
 ```bash
 GOBIN=/tmp/baybin go install github.com/letsencrypt/pebble/v2/cmd/pebble@latest
@@ -99,144 +98,143 @@ GOBIN=/tmp/baybin go install github.com/letsencrypt/pebble/v2/cmd/pebble-challte
 BAY_PEBBLE_BIN=/tmp/baybin go test ./internal/tlsconf/ -v
 ```
 
-Le test génère sa propre CA, lance Pebble et challtestsrv, obtient un vrai
-certificat et vérifie qu'il se résout par SNI. Sans Pebble sur le `PATH`, il
-est **ignoré** — `go test ./...` reste vert sur un checkout nu.
+The test generates its own CA, starts Pebble and challtestsrv, obtains a real
+certificate and verifies it resolves via SNI. Without Pebble on the `PATH` it
+is **skipped** — `go test ./...` stays green on a bare checkout.
 
-⚠️ Ne jamais ajouter la CA de Pebble au trust store système : sa clé privée est
-publique.
+⚠️ Never add Pebble's CA to the system trust store: its private key is public.
 
-Pour Let's Encrypt, **toujours staging d'abord** (`--acme-ca https://acme-staging-v02.api.letsencrypt.org/directory`).
-Les quotas de production sont partagés et se consomment vite — et si le domaine
-est en `sslip.io`, le quota est **mutualisé entre tous ses utilisateurs**.
+For Let's Encrypt, **always staging first** (`--acme-ca https://acme-staging-v02.api.letsencrypt.org/directory`).
+Production quotas are shared and burn fast — and if the domain is on
+`sslip.io`, the quota is **pooled across all of its users**.
 
-## Ce qui n'y est pas, et pourquoi
+## What is not here, and why
 
-- **systemd** — inexistant sur macOS. Le PoC supervise des process enfants ;
-  l'interface `runner.Runner` est là pour que systemd se glisse derrière
-  (cgroups, `MemoryMax`, journald, `Restart=always` deviennent gratuits).
-- **Gestion des runtimes** — le PoC emprunte le `node` du `PATH`. Le vrai Bay
-  embarque le sien et gère `bay runtime update`.
-- Rollback, backups, scale-to-zero : phases suivantes.
+- **systemd** — does not exist on macOS. The PoC supervises child processes;
+  the `runner.Runner` interface exists so systemd can slot in behind it
+  (cgroups, `MemoryMax`, journald, `Restart=always` become free).
+- **Runtime management** — the PoC borrows the `node` on the `PATH`. The real
+  Bay ships its own and handles `bay runtime update`.
+- Rollback, backups, scale-to-zero: later phases.
 
-### TODO — les metrics applicatives (req/s, latence, event loop)
+### TODO — application metrics (req/s, latency, event loop)
 
-Une commande `bay top` a existé, lisant le `/metrics` Prometheus que
-`alepha/server/metrics` expose. **Retirée**, pour une raison qu'on n'a vue qu'en
-la lançant sur une vraie machine : ce module est **opt-in**, et aucune des apps
-déployées ne l'importe. La feature marchait sur zéro app sur deux, et il a fallu
-déployer un exemple exprès pour la voir fonctionner.
+A `bay top` command existed, reading the Prometheus `/metrics` that
+`alepha/server/metrics` exposes. **Removed**, for a reason only visible when
+running it on a real machine: that module is **opt-in**, and none of the
+deployed apps import it. The feature worked on zero apps out of two, and an
+example had to be deployed on purpose just to see it function.
 
-Deux constats qui décideront de la reprise :
+Two observations that will decide the retry:
 
-1. **Bay est déjà au bon endroit pour compter.** Le proxy voit chaque requête
-   avec son code de statut (`proxy.go`, là où `lastSeen.touch` est appelé) et le
-   cgroup donne mémoire, CPU et redémarrages. Req/s, err/s et la latence *vue du
-   client* ne demandent donc rien à l'app — et marcheraient pour toutes, y
-   compris non-Alepha.
-2. **Ce que seule l'app peut dire** : le lag de l'event loop (le meilleur signal
-   précoce d'une app Node qui va tomber, invisible du dehors), la distinction
-   heap / RSS, et les métriques métier.
+1. **Bay is already in the right place to count.** The proxy sees every request
+   with its status code (`proxy.go`, where `lastSeen.touch` is called) and the
+   cgroup gives memory, CPU and restarts. Req/s, err/s and *client-observed*
+   latency therefore ask nothing of the app — and would work for all of them,
+   non-Alepha included.
+2. **What only the app can say**: event-loop lag (the best early signal of a
+   Node app about to fall over, invisible from outside), the heap / RSS
+   distinction, and business metrics.
 
-Quand on y reviendra, ce ne sera pas en reparsant du texte Prometheus : ce sera
-un `@alepha/telemetry` basé sur OpenTelemetry.
+When this comes back, it will not be by re-parsing Prometheus text: it will be
+an `@alepha/telemetry` built on OpenTelemetry.
 
-## Essayer
+## Trying it
 
 ```bash
 go build -o bay ./cmd/bay
 
-# fabriquer l'artefact — aucun manifest à écrire, `alepha build` le dérive
+# produce the artifact — no manifest to write, `alepha build` derives it
 cd ../example-api
-yarn alepha build          # émet dist/ + dist/manifest.json
-yarn alepha pack -o /tmp   # émet /tmp/example-api-latest.tar.gz
+yarn alepha build          # emits dist/ + dist/manifest.json
+yarn alepha pack -o /tmp   # emits /tmp/example-api-latest.tar.gz
 cd -
 
 ./bay serve --root /tmp/bay-root --base-domain bay.localhost &
-# Aucun token : le control API écoute sur /tmp/bay-root/control.sock, et
-# `bay deploy` le trouve tout seul. Il faut donc être sur la machine Bay, root
-# ou membre du groupe `bay-control`.
+# No token: the control API listens on /tmp/bay-root/control.sock, and
+# `bay deploy` finds it on its own. So you must be on the Bay machine, root
+# or a member of the `bay-control` group.
 ./bay deploy /tmp/example-api-latest.tar.gz --name example-api \
   --control-socket /tmp/bay-root/control.sock
 
 curl -H "Host: example-api.bay.localhost" http://127.0.0.1:8080/
 ```
 
-⚠️ **`--target=bare` (le défaut), pas `cloudflare`.** Un bundle workerd est
-résolu contre les conditions d'export de Cloudflare et n'a pas de point d'entrée
-exécutable par node. Bay le refuse au déploiement en nommant le correctif —
-sinon l'app se déploie, ne boote pas, et le seul message est
-« never became ready ».
+⚠️ **`--target=bare` (the default), not `cloudflare`.** A workerd bundle is
+resolved against Cloudflare's export conditions and has no entry point node can
+execute. Bay refuses it at deploy time and names the fix — otherwise the app
+deploys, never boots, and the only message is "never became ready".
 
-## L'artefact
+## The artifact
 
-Bay consomme **le format que le framework produit déjà**, pas un format à lui :
+Bay consumes **the format the framework already produces**, not a format of its
+own:
 
 ```
 example-api-latest.tar.gz
 ├── dist/
-│   ├── manifest.json     ← dérivé par `alepha build`
+│   ├── manifest.json     ← derived by `alepha build`
 │   ├── index.js
 │   └── server/
 └── migrations/
 ```
 
-`dist/manifest.json` est le contrat entre le build et tous ses consommateurs —
-`alepha platform up --prebuilt`, Alepha Rocket, et Bay. Déclarer `$repository`
-est ce qui met `hasDatabase: true` dedans, et c'est ce `true` qui fait provisionner
-la base **et** accorder le droit d'écriture dans le bac à sable. Personne n'écrit
-la même chose deux fois, donc la dérive code ↔ infra est impossible par
+`dist/manifest.json` is the contract between the build and all of its
+consumers — `alepha platform up --prebuilt`, Alepha Rocket, and Bay. Declaring
+`$repository` is what puts `hasDatabase: true` in it, and that `true` is what
+provisions the database **and** grants write access in the sandbox. Nobody
+writes the same thing twice, so code ↔ infra drift is impossible by
 construction.
 
-Un tar dézippé en root mérite ses gardes : chemins absolus et `..` refusés,
-symlinks / hardlinks / devices refusés (l'évasion tar classique est de poser un
-lien vers `/etc` puis d'écrire « à travers » à l'entrée suivante), mode d'archive
-ignoré (un bit setuid dans un tarball uploadé serait une primitive d'élévation de
-privilèges), et une taille d'entrée plafonnée (un disque plein fait tomber toutes
-les apps, pas seulement celle qu'on déploie).
+A tar unzipped as root earns its guards: absolute paths and `..` refused,
+symlinks / hardlinks / devices refused (the classic tar escape is planting a
+link to `/etc` then writing "through" it on the next entry), archive mode bits
+ignored (a setuid bit in an uploaded tarball would be a privilege-escalation
+primitive), and a per-entry size cap (a full disk takes down every app, not
+just the one being deployed).
 
-## Mesuré sur ce PoC
+## Measured on this PoC
 
-- binaire `bay` : **9,5 Mo** (sans CertMagic)
-- `app.zip` de Lore : **7,79 Mo** (zip ; 6,34 Mo en zstd)
-- déploiement complet, app prête à répondre : **0,4 s**
-- SSR à travers le proxy : **43 ms**
-- asset CSS : **204 Ko** brut → **26 Ko** en brotli (−87 %)
+- `bay` binary: **9.5 MB** (without CertMagic)
+- Lore's `app.zip`: **7.79 MB** (zip; 6.34 MB as zstd)
+- full deployment, app ready to answer: **0.4 s**
+- SSR through the proxy: **43 ms**
+- CSS asset: **204 KB** raw → **26 KB** as brotli (−87%)
 
-## Ce que le PoC a corrigé dans le design
+## What the PoC corrected in the design
 
-1. **Le build émet `dist/public/`**, pas un `public/` à la racine de l'archive.
-   Hoister voudrait dire déplacer des centaines de fichiers au packaging pour
-   rien.
-2. **Les assets sont servis à plat depuis la racine web** (`/entry.DyJ8G-7l.js`),
-   donc une règle de cache basée sur un préfixe `/assets/` **ne se déclenche
-   jamais**. La détection se fait sur le motif de nom hashé `name.HASH8.ext`.
-3. **Le build produit déjà les `.br`/`.gz`** — les servir est quasi gratuit et
-   divise le transfert par huit.
-4. **Les ports de challenge ACME doivent être configurables et cohérents avec
-   ce qu'on annonce à la CA.** Laissés par défaut, CertMagic sert le challenge
-   sur 80/443 pendant que la CA le cherche ailleurs, et l'échec ne dit pas
-   pourquoi (`connection refused`). D'où `--acme-http-port` / `--acme-tls-port`.
+1. **The build emits `dist/public/`**, not a `public/` at the archive root.
+   Hoisting would mean moving hundreds of files at packaging time for nothing.
+2. **Assets are served flat from the web root** (`/entry.DyJ8G-7l.js`), so a
+   cache rule keyed on an `/assets/` prefix **never fires**. Detection is done
+   on the hashed-name pattern `name.HASH8.ext`.
+3. **The build already produces the `.br`/`.gz`** — serving them is nearly free
+   and divides the transfer by eight.
+4. **ACME challenge ports must be configurable and consistent with what is
+   announced to the CA.** Left at defaults, CertMagic serves the challenge on
+   80/443 while the CA looks elsewhere, and the failure does not say why
+   (`connection refused`). Hence `--acme-http-port` / `--acme-tls-port`.
 
 ## Structure
 
 ```
-cmd/bay/          CLI + serveur + API de contrôle
+cmd/bay/          CLI + server + control API
 internal/
-  manifest/       lecture et validation du manifest.json
-  state/          état JSON, écriture atomique
-  deploy/         dézippage, provisioning, bascule de release
-  runner/         cycle de vie des process (systemd derrière cette interface)
-  proxy/          routage par host, statiques, reverse proxy
+  manifest/       manifest.json reading and validation
+  state/          JSON state, atomic writes
+  deploy/         unzip, provisioning, release switch
+  runner/         process lifecycle (systemd behind this interface)
+  proxy/          host routing, statics, reverse proxy
 ```
 
-## Invariants sous test
+## Invariants under test
 
 `go test ./...`
 
-- un `runtimeVersion` épinglé à l'exact est **refusé** — il recréerait le
-  problème que Bay résout (patcher un CVE sans redéployer chaque app)
-- une app déclarant des crons n'est **jamais** éligible au scale-to-zero
-- l'état survit à un redémarrage, s'écrit en `0600`, laisse un `.bak` et aucun
-  fichier temporaire
-- le token est généré une fois et persiste
+- a `runtimeVersion` pinned to an exact version is **refused** — it would
+  recreate the problem Bay solves (patching a CVE without redeploying every
+  app)
+- an app declaring crons is **never** eligible for scale-to-zero
+- state survives a restart, is written at `0600`, leaves a `.bak` and no
+  temporary files
+- the token is generated once and persists

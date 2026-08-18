@@ -2,7 +2,7 @@
 
 Alepha's link system provides type-safe cross-service communication through `$client` and `$remote`. The same API works for local calls (in-process), remote calls (HTTP), and browser-to-server calls.
 
-## $client -- Type-Safe Action Proxy
+## $client — Type-Safe Action Proxy
 
 `$client<T>()` creates a proxy object that mirrors the actions of a controller class. Property access on the proxy returns virtual actions that can be called like functions.
 
@@ -54,7 +54,7 @@ Each property on a `$client` proxy returns a `VirtualAction` with these methods:
 
 | Method | Description |
 |--------|-------------|
-| `action(config)` | Default call. Local-first -- calls the handler directly if available, otherwise HTTP. |
+| `action(config)` | Default call. Local-first — calls the handler directly if available, otherwise HTTP. |
 | `action.run(config)` | Same as calling the action directly. Local-first. |
 | `action.fetch(config)` | Always makes an HTTP request, even if the action is local. |
 | `action.can()` | Returns `true` if the current user has permission to call this action. |
@@ -72,7 +72,7 @@ if (this.products.getProduct.can()) {
 }
 ```
 
-## $remote -- Remote Service Access
+## $remote — Remote Service Access
 
 `$remote` defines a connection to an external service. Use it when services run as separate deployments.
 
@@ -130,6 +130,8 @@ payments = $remote({
 ```
 
 This is useful when you have a backend-for-frontend (BFF) pattern and want to aggregate multiple services under a single API.
+
+`proxy` also accepts an object form — `proxy: { noInternal: true }` makes the remote reachable only through the proxy, not via internal `$client` calls — and `$remote` takes a `name` to label the link (defaults to the class member's name).
 
 ## Browser Usage
 
