@@ -11,8 +11,14 @@ export const useAuthSlide = (): GettingStartedSlide | undefined => {
   const { user, logout } = useAuth();
   const router = useRouter();
 
-  // Check if auth routes exist
-  const hasAuth = router.pages.find((it) => it.name === "authLayout");
+  // Gate on the very page this slide links to below. It used to be
+  // `authLayout`, the parent page the old `--saas` scaffold generated into the
+  // application's own `AppRouter`; that template is gone and `AuthRouter` from
+  // `@alepha/ui` mounts `login` / `register` / `resetPassword` / `verifyEmail`
+  // with no layout page, so the name matched nothing and the slide was
+  // unreachable in every project. Checking the linked page keeps the gate and
+  // the link honest about each other.
+  const hasAuth = router.pages.find((it) => it.name === "login");
   if (!hasAuth) {
     return undefined;
   }
