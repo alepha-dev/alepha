@@ -149,7 +149,7 @@ Two disjoint bands, and they must stay disjoint:
 | band | owner |
 |---|---|
 | `3001-3004` | `apps/benchmark` |
-| `3300-3399` | **dev servers** — `dev.port` in each app's `alepha.config.ts` (docs 3302, lore 3303, examples/playground 3304, examples/shop 3305, examples/errors 3306, examples/bay-app 3307, examples/ssr 3311) |
+| `3300-3399` | **dev servers** — `dev.port` in each app's `alepha.config.ts` (docs 3302, lore 3303, examples/playground 3304, examples/shop 3305, examples/errors 3306, examples/ssr 3311) |
 | `5173+` | dev servers with no `dev.port` (Vite default); also `alepha dev` in multi-app mode, which hands each child `5173 + index` via `SERVER_PORT` and so **overrides `dev.port`** |
 | `4300-4999` | **e2e, and nothing else** |
 | `11883` / `15432` / `16379` / `19090` | `compose.yml` test services (emqx / postgres / redis / s3mock) |

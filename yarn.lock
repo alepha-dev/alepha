@@ -4747,23 +4747,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"bay-app@workspace:apps/examples/bay-app":
-  version: 0.0.0-use.local
-  resolution: "bay-app@workspace:apps/examples/bay-app"
-  dependencies:
-    "@alepha/sigil": "workspace:*"
-    alepha: "workspace:*"
-    better-sqlite3: "npm:^13.0.3"
-    drizzle-kit: "npm:1.0.0-rc.4"
-    react: "npm:^19.2.8"
-    react-dom: "npm:^19.2.8"
-    vite: "npm:^8.2.1"
-  dependenciesMeta:
-    better-sqlite3:
-      built: true
-  languageName: unknown
-  linkType: soft
-
 "bay@workspace:apps/bay":
   version: 0.0.0-use.local
   resolution: "bay@workspace:apps/bay"
@@ -7791,17 +7774,6 @@ __metadata:
   checksum: 10c0/d3a3216a75ed832993f3f2852edd7a85c5bae30ea6d251182119120488bbf9fed7cfdd91819bcee6daff57b3cfcbca94fd16d6a7c92cee4d806c0d4fa6ff1128
   languageName: node
   linkType: hard
-
-"integration@workspace:apps/integration":
-  version: 0.0.0-use.local
-  resolution: "integration@workspace:apps/integration"
-  dependencies:
-    "@biomejs/biome": "npm:^2.5.8"
-    alepha: "npm:^0.26.0"
-    typescript: "npm:^7.0.2"
-    vitest: "npm:^4.1.10"
-  languageName: unknown
-  linkType: soft
 
 "internal-slot@npm:^1.1.0":
   version: 1.1.0
