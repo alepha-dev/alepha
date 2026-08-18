@@ -1,6 +1,7 @@
 import { $hook, $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import {
+  SIGIL_FIRST_INGEST_MAX_MS,
   sigilClientAtom,
   sigilConfigIsFresh,
 } from "../shared/sigilClientAtom.ts";
@@ -43,6 +44,23 @@ export class SigilBrowserProvider {
    * flag is set, and owns every navigation after it.
    */
   protected initialRenderCounted = false;
+
+  /**
+   * Ceiling on the wait for LCP before the first ingest goes out. A field
+   * rather than the constant inlined, so a test can shorten it.
+   */
+  protected firstIngestDelayMs = SIGIL_FIRST_INGEST_MAX_MS;
+
+  /** Whether the render hook has queued the pageview and started the wait. */
+  protected firstIngestArmed = false;
+
+  /** Whether the first ingest has gone out. It happens once per page load. */
+  protected firstIngestSent = false;
+
+  /** Whether LCP has arrived, which may be before the render hook runs. */
+  protected lcpSeen = false;
+
+  protected firstIngestTimer?: ReturnType<typeof setTimeout>;
 
   protected readonly start = $hook({
     on: "start",
@@ -106,15 +124,19 @@ export class SigilBrowserProvider {
         this.queue!.addError(this.toError(e.reason, (location as any).href));
       });
 
-      new SigilVitals((m) => {
-        if (!this.wants("vitals")) return;
-        this.queue!.addVital({
-          path: (location as any).pathname,
-          metric: m.metric,
-          value: m.value,
-          ts: this.dateTime.nowMillis(),
-        });
-      }).observe();
+      const vitals = new SigilVitals(
+        (m) => {
+          if (!this.wants("vitals")) return;
+          this.queue!.addVital({
+            path: (location as any).pathname,
+            metric: m.metric,
+            value: m.value,
+            ts: this.dateTime.nowMillis(),
+          });
+        },
+        () => this.onLcpArrived(),
+      );
+      vitals.observe();
 
       (window as any).addEventListener("pagehide", () => {
         void this.queue!.flush();
@@ -139,26 +161,82 @@ export class SigilBrowserProvider {
         }
 
         // The page was served with a config older than this visit — it came
-        // from a prerendered file, an edge cache or a restored document. Go and
-        // get the current one now rather than on the debounce, because until it
-        // arrives the feedback button cannot know whether to render, and a
-        // button that appears five seconds into a read is worse than one that
-        // never does.
+        // from a prerendered file, an edge cache or a restored document. It has
+        // to ask, because until the answer arrives the feedback button cannot
+        // know whether to render.
         //
-        // Forced, so it still happens when every tracker is off and the queue
-        // is therefore empty. That case is the one that matters most: it is the
-        // only way such a page ever learns it was switched back on.
+        // Not right now, though. This hook runs while the main thread is still
+        // busy with the render it just finished, and a request fired here
+        // carries one pageview and nothing else: TTFB and FCP land a beat
+        // later and used to leave in a second request of their own. Waiting
+        // for the page to settle makes it one request carrying both.
         if (
           !sigilConfigIsFresh(
             this.alepha.store.get(sigilClientAtom),
             this.dateTime.nowMillis(),
           )
         ) {
-          void this.queue!.flush({ force: true });
+          this.armFirstIngest();
         }
       });
     },
   });
+
+  /**
+   * Starts the wait for the first ingest: LCP, or {@link firstIngestDelayMs},
+   * whichever comes first.
+   *
+   * Arming is what the render hook contributes, and it matters that the wait
+   * starts here rather than at `start`: the pageview is queued by that hook, so
+   * an ingest sent before it would carry an empty envelope and leave the view
+   * for a later request — the second request this exists to remove. LCP that
+   * already arrived is therefore honoured *now*, not earlier.
+   */
+  protected armFirstIngest() {
+    if (this.firstIngestArmed) return;
+    this.firstIngestArmed = true;
+
+    if (this.lcpSeen) {
+      this.sendFirstIngest();
+      return;
+    }
+
+    this.firstIngestTimer = setTimeout(
+      () => this.sendFirstIngest(),
+      this.firstIngestDelayMs,
+    );
+  }
+
+  /**
+   * The page has painted its main content. Sends the first ingest if the
+   * render hook has already queued the view, and otherwise is remembered for
+   * when it does.
+   */
+  protected onLcpArrived() {
+    this.lcpSeen = true;
+    if (this.firstIngestArmed) {
+      this.sendFirstIngest();
+    }
+  }
+
+  /**
+   * Sends everything collected so far, once.
+   *
+   * Forced, so it still happens when every tracker is off and the queue is
+   * therefore empty. That case is the one that matters most: it is the only way
+   * such a page ever learns it was switched back on.
+   */
+  protected sendFirstIngest() {
+    if (this.firstIngestSent) return;
+    this.firstIngestSent = true;
+
+    if (this.firstIngestTimer) {
+      clearTimeout(this.firstIngestTimer);
+      this.firstIngestTimer = undefined;
+    }
+
+    void this.queue?.flush({ force: true });
+  }
 
   /**
    * Returns the list of pending view paths in the queue.

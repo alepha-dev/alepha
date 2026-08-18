@@ -12,6 +12,24 @@ import { SIGIL_TRACKERS } from "./sigilFeatures.ts";
 export const SIGIL_CONFIG_FRESH_MS = 60_000;
 
 /**
+ * How long the browser waits before its first ingest call when the page it was
+ * served carries a stale config.
+ *
+ * The call used to go out the moment the render hook fired. That put a request
+ * on the wire while the main thread was still hydrating, and spent a whole
+ * round trip to carry a single pageview — everything else the page produces
+ * (TTFB, FCP) lands a beat later and went out in a second request.
+ *
+ * Waiting for LCP is what makes it one request instead of two, and this is the
+ * ceiling on that wait. It is a ceiling rather than a fixed delay because LCP
+ * is not guaranteed to arrive: the entry type is unsupported in some browsers,
+ * and a page whose largest element is painted at first paint may never dispatch
+ * a later one. Without the ceiling such a page would never hear its config
+ * again, which is the one state a page must always be able to leave.
+ */
+export const SIGIL_FIRST_INGEST_MAX_MS = 2_000;
+
+/**
  * The public sigil config handed to the browser: which trackers are on, which
  * paths to skip, and where feedback goes.
  *

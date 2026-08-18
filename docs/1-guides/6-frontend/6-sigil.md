@@ -99,6 +99,12 @@ first ingest call, which is a call it was making anyway. Until that returns it
 acts on what it was served with, so at most one envelope goes out under an old
 config, and the server drops what it should not have accepted.
 
+That first call waits for the page to settle — the largest contentful paint, or
+two seconds, whichever comes first — rather than going out the moment the app
+hydrates. It then carries the vitals collected by then instead of leaving them
+for a second request. The visible consequence is that a feedback button on a
+prerendered page appears a moment after the content rather than with it.
+
 The sink decides separately what it *keeps*. What an app sends is its own
 business; a sigil whose kinds withhold vitals discards them on arrival however
 enthusiastic the sender.
