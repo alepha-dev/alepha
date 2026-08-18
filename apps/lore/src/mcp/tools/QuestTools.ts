@@ -257,11 +257,25 @@ export class QuestTools {
       // `epicId` field of its own — `EpicController` owns that mutation
       // (owner-gated, same as every other epic mutation), so this is a
       // second call rather than part of the create body.
+      //
+      // `attachQuest` is owner-gated, but `createQuest` above only needed
+      // `quest:create` — a member who created the quest can also delete it
+      // (`QuestController.deleteQuest`'s `createdBy === user.id` check), so
+      // a non-owner member with `epic_number` set can reach this attach and
+      // have it refused. Clean up rather than leave an orphaned, unlinked
+      // quest behind: an agent that sees the error and retries would
+      // otherwise create a duplicate every time. The original error (not
+      // any delete failure) is what the caller sees.
       if (epicId != null) {
-        await this.epicController.attachQuest({
-          params: { id: epicId },
-          body: { questId: quest.id },
-        });
+        try {
+          await this.epicController.attachQuest({
+            params: { id: epicId },
+            body: { questId: quest.id },
+          });
+        } catch (error) {
+          await this.questController.deleteQuest({ params: { id: quest.id } });
+          throw error;
+        }
       }
 
       // `accept: true` mirrors the UI's "Create and accept" split button:
@@ -572,6 +586,23 @@ export class QuestTools {
         epicAttachId = epic.id;
       }
 
+      // Apply the epic mutation BEFORE the general field update, not after.
+      // `attachQuest`/`detachQuest` are owner-gated while `updateQuestById`
+      // only needs `quest:update` (a non-owner member who can edit the
+      // quest can still be refused here) — doing this first means a
+      // refusal throws before any other field is written, so there is no
+      // window where some fields land and the epic link silently does not.
+      if (epicAttachId != null) {
+        await this.epicController.attachQuest({
+          params: { id: epicAttachId },
+          body: { questId: id },
+        });
+      } else if (epicDetachId != null) {
+        await this.epicController.detachQuest({
+          params: { id: epicDetachId, questId: id },
+        });
+      }
+
       const quest = await this.questController.updateQuestById({
         params: { id },
         body: {
@@ -587,17 +618,6 @@ export class QuestTools {
           feedbackId,
         },
       });
-
-      if (epicAttachId != null) {
-        await this.epicController.attachQuest({
-          params: { id: epicAttachId },
-          body: { questId: id },
-        });
-      } else if (epicDetachId != null) {
-        await this.epicController.detachQuest({
-          params: { id: epicDetachId, questId: id },
-        });
-      }
 
       return {
         id: quest.id,

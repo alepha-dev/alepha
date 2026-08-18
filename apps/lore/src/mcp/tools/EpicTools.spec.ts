@@ -3,7 +3,7 @@ import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake } from "alepha/fake";
 import { AlephaMcp } from "alepha/mcp";
-import { AlephaOrm } from "alepha/orm";
+import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity, currentUserAtom } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { describe, it } from "vitest";
@@ -13,11 +13,25 @@ import {
   TestEntityRepositories,
 } from "../../../test/fixtures/entities.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
+import { members } from "../../api/entities/members.ts";
 import { LoreApi } from "../../api/index.ts";
 import { LoreMcp } from "../index.ts";
 import { EpicTools } from "./EpicTools.ts";
 import { ProjectTools } from "./ProjectTools.ts";
 import { QuestTools } from "./QuestTools.ts";
+
+/**
+ * `members` is not part of `TestEntityRepositories` — this is the only spec
+ * in this file that needs a non-owner project member. `ProjectController`
+ * (already injected pre-`start()` below) has its own `members =
+ * $repository(members)` field, which is what actually registers the table
+ * in the FK closure; this class just gets a typed handle onto the same
+ * table for direct inserts, the same shape as `insights-controller.spec.ts`
+ * / `folio-permissions.spec.ts`'s `addMember` helpers.
+ */
+class MembersProbe {
+  members = $repository(members);
+}
 
 /**
  * The epic surface over MCP, plus the gap it closes: Task 2 made the
@@ -48,6 +62,7 @@ const setup = async () => {
   alepha.with(LoreMcp);
 
   const repos = alepha.inject(TestEntityRepositories);
+  const membersProbe = alepha.inject(MembersProbe);
   const epicTools = alepha.inject(EpicTools);
   const questTools = alepha.inject(QuestTools);
   const projectTools = alepha.inject(ProjectTools);
@@ -85,6 +100,26 @@ const setup = async () => {
     projectApi.createProject({ body: { title: "Test" } } as any),
   );
 
+  /**
+   * A member with no owner bit set — direct repo insert, bypassing the
+   * invitation flow (same as `insights-controller.spec.ts` /
+   * `folio-permissions.spec.ts`'s `addMember` helpers). `resolveProjectId`
+   * only needs `getMyProjects` to list this project for the member to reach
+   * any tool at all; `EpicController`'s `assertOwner` is what then refuses
+   * the epic mutation.
+   */
+  const addNonOwnerMember = async (): Promise<string> => {
+    const member = await users.createUser({
+      username: `member-${crypto.randomUUID().slice(0, 8)}`,
+    });
+    await membersProbe.members.create({
+      userId: member.id,
+      projectId: project.id,
+      owner: false,
+    });
+    return member.id;
+  };
+
   return {
     alepha,
     repos,
@@ -94,6 +129,7 @@ const setup = async () => {
     project,
     call,
     OWNER,
+    addNonOwnerMember,
   };
 };
 
@@ -310,6 +346,95 @@ describe("Lore MCP — epics", () => {
       });
 
       expect((await repos.quests.getById(quest.id)).epicId).toBeUndefined();
+    });
+  });
+
+  describe("epic_number failure does not leave a partial write (non-owner member)", () => {
+    /*
+      `attachQuest`/`detachQuest` are owner-gated (`EpicController.assertOwner`),
+      but `quest_create`/`quest_update` only need `quest:create`/`quest:update`
+      — and `QuestController.deleteQuest`'s own check
+      (`quest.createdBy !== user.id && project.createdBy !== user.id`) means the
+      member who just created a quest is allowed to delete it too. So a member
+      who is not the project owner can reach `quest_create`/`quest_update` with
+      `epic_number` set, and the attach/detach is refused. These guard against
+      that refusal leaving a half-done side effect behind.
+    */
+
+    it("quest_create: a refused attach leaves no quest row behind", async ({
+      expect,
+    }) => {
+      const { alepha, repos, project, questTools, call, addNonOwnerMember } =
+        await setup();
+      const memberId = await addNonOwnerMember();
+      const epic = await createTestEpic(alepha, project);
+      const before = await repos.quests.count({
+        projectId: { eq: project.id },
+      });
+
+      await expect(
+        call(
+          questTools.quest_create,
+          {
+            project: project.id,
+            title: "Should not survive",
+            description: "",
+            area: "Deploy",
+            priority: "medium",
+            difficulty: 2,
+            epic_number: epic.number,
+          },
+          memberId,
+        ),
+      ).rejects.toThrowError();
+
+      const after = await repos.quests.count({
+        projectId: { eq: project.id },
+      });
+      expect(after).toBe(before);
+    });
+
+    it("quest_update: a refused attach leaves the other fields unchanged", async ({
+      expect,
+    }) => {
+      const { alepha, repos, project, questTools, call, addNonOwnerMember } =
+        await setup();
+      const memberId = await addNonOwnerMember();
+      const epic = await createTestEpic(alepha, project);
+
+      // The member creates their OWN quest (no epic_number here — this call
+      // must succeed) so `updateQuestById`'s own creator check would ALSO
+      // pass below. That is what makes the next assertion prove the
+      // reorder: without it, `title` would already be refused for an
+      // unrelated reason and the test would not distinguish the two.
+      const created = await call(
+        questTools.quest_create,
+        {
+          project: project.id,
+          title: "Original title",
+          description: "",
+          area: "Deploy",
+          priority: "medium",
+          difficulty: 2,
+        },
+        memberId,
+      );
+
+      await expect(
+        call(
+          questTools.quest_update,
+          {
+            id: created.id,
+            title: "Changed title",
+            epic_number: epic.number,
+          },
+          memberId,
+        ),
+      ).rejects.toThrowError();
+
+      expect((await repos.quests.getById(created.id)).title).toBe(
+        "Original title",
+      );
     });
   });
 });
