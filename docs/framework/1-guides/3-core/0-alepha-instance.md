@@ -14,7 +14,7 @@ import { Alepha } from "alepha";
 const alepha = Alepha.create();
 ```
 
-`create()` automatically merges `process.env` with any custom configuration you provide. In test environments (Vitest with `globals: true`), it hooks into `beforeAll` and `afterAll` to manage the app lifecycle automatically.
+`create()` automatically merges `process.env` with any custom configuration you provide. In test environments (Vitest with `globals: true`), it hooks into `beforeAll`, `afterAll`, `afterEach` and `onTestFinished` to manage the app lifecycle automatically — the latter two are what make per-test cleanup and failed-test log dumping work.
 
 ### Configuration
 
@@ -100,7 +100,7 @@ alepha.inject(Logger, { lifetime: "transient" });
 
 Alepha has a strict lifecycle to ensure resources are opened and closed correctly:
 
-```
+```txt
 configure  →  start  →  ready  →  (running)  →  stop
 ```
 

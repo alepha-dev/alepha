@@ -25,7 +25,7 @@ HTML head element management.
 
 ### React Hooks
 
-- [`useHead`](/docs/reference-react-hooks-usehead) — ```tsx
+- [`useHead`](/docs/reference-react-hooks-usehead) — Read and update the document head (title, meta, …) from a component.
 
 ### Providers
 

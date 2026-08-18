@@ -108,7 +108,7 @@ import { useI18n } from "alepha/react/i18n";
 The hook accepts two type parameters for full type safety: the class containing the dictionaries and one of its dictionary keys (to infer available translation keys).
 
 ```typescript
-function Header() {
+const Header = () => {
   const { tr, l, setLang, lang, languages } = useI18n<App, "en">();
 
   return (
@@ -151,7 +151,7 @@ Fallback behavior: if the key is not found in the current language, the fallback
 
 ### l(value, options?)
 
-Localize a value (date, number, or error) according to the current locale.
+Localize a value (date, number, or error) according to the current locale. Its return type is `string | number` — wrap in `String()` when assigning to a string-typed field or TSX attribute.
 
 **Number formatting:**
 
@@ -292,7 +292,7 @@ const i18n = alepha.inject(I18nProvider);
 i18n.options.routing = "prefix";
 ```
 
-```
+```txt
 /about        →  en   (default language, unprefixed)
 /fr/about     →  fr
 /de/about     →  de

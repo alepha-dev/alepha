@@ -18,7 +18,7 @@ picks the row up and re-dispatches.
 
 Keeping the isolate alive past the HTTP response (Cloudflare Workers) vs.
 relying on the event loop (Node/Vercel) is delegated to
-{@link BackgroundTaskProvider.defer} — this dispatcher stays
+`BackgroundTaskProvider.defer` — this dispatcher stays
 platform-agnostic. The DB outbox row remains the durability guarantee: if
 the process dies mid-handler, the next sweep re-dispatches.
 

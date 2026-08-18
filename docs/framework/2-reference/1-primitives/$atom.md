@@ -20,10 +20,10 @@ You control how state is structured and validated.
 Features:
 - Schema validation on every write (invalid writes throw)
 - Default value for initial state
-- Automatic getter access in services with {@link $store}
+- Automatic getter access in services with `$store`
 - SSR support (server state automatically serialized and hydrated on client)
 - React integration (useStore / useSelector hooks for automatic re-renders)
-- Derived values with {@link $computed} (useComputed hook)
+- Derived values with `$computed` (useComputed hook)
 - Persistence adapters: cookie (SSR-safe), localStorage, sessionStorage
 - `serverOnly` flag to keep an atom out of the hydration payload
 - reset / watch helpers on the state manager

@@ -17,7 +17,7 @@ Audit trail for compliance.
 - Audit event logging
 - Filtering and searching
 - User action tracking
-- Retention policy with a default + per-type TTL ({@link AuditParameters}, {@link AuditJobs})
+- Retention policy with a default + per-type TTL (`AuditParameters`, `AuditJobs`)
 
 ## API Reference
 

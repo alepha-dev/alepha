@@ -14,7 +14,7 @@ Alepha is an integrated, opinionated, full-stack engine for **Node.js 22+**, **B
 the runtime.
 
 It is not a wrapper around Express or Fastify. It is not a React meta-framework like Next.js.
-It is a complete full-stack platform: server, database, auth, queues, storage, and frontend -- unified.
+It is a complete full-stack platform: server, database, auth, queues, storage, and frontend — unified.
 
 Each layer builds on the previous.
 
@@ -24,7 +24,7 @@ Each layer builds on the previous.
 | **Backend** | Database, storage, API | `$entity`, `$action`, `$repository`, `$storage`, `$topic` |
 | **Frontend** | React with SSR, routing, i18n | `$page`, `$head`, `$atom`, `$dictionary`                |
 | **Platform** | Users, auth, jobs, audits | `$realm`, `$job`, `$audit`, `$notification`             |
-| **Admin** | Admin panel & auth UI | `$ui`, `$uiAdmin`, `$uiAuth`                            |
+| **Admin** | Admin panel & auth UI | `$pageAdmin`, `$pageAccount`, `$pageNav`                |
 
 Not all layers are required. Foundation alone is enough for CLI tools. Add Backend for APIs,
 Frontend for web apps, Platform for users and background jobs.
@@ -42,7 +42,7 @@ Alepha was designed from scratch for this reality.
 
 ### Predictable patterns for AI-assisted development
 
-Every feature in Alepha is expressed through **Primitives** -- explicit `$`-prefixed factory functions
+Every feature in Alepha is expressed through **Primitives** — explicit `$`-prefixed factory functions
 that declare intent directly in your code. There is no hidden magic, no runtime file-system scanning,
 no decorator metadata.
 
@@ -64,7 +64,7 @@ class OrderService {
 }
 ```
 
-The schema, the HTTP method, the validation, the return type -- all visible in one place.
+The schema, the HTTP method, the validation, the return type — all visible in one place.
 No jumping between files, no guessing which middleware runs first.
 
 A machine-readable documentation file is available at [alepha.dev/llms.txt](https://alepha.dev/llms.txt).
@@ -111,7 +111,7 @@ requiring a manual mapping layer.
 ## The Primitive Architecture
 
 Alepha does not use decorators (like NestJS) or file-system magic (like Next.js). It uses
-**Primitives** -- factory functions starting with `$` that live directly in your class properties.
+**Primitives** — factory functions starting with `$` that live directly in your class properties.
 
 ```typescript check
 import { z } from "alepha";
@@ -145,7 +145,7 @@ class ProductService {
 ```
 
 Each primitive registers itself with the dependency injection container at instantiation time.
-The framework discovers your routes, entities, and jobs by reading the primitives on your classes --
+The framework discovers your routes, entities, and jobs by reading the primitives on your classes —
 not by scanning directories or parsing metadata.
 
 ## Infrastructure as Code

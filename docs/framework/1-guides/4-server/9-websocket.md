@@ -2,7 +2,7 @@
 
 Alepha provides real-time, bidirectional messaging through the `$channel` and `$websocket` primitives. You define a typed message schema once, write a single handler, and the same application code runs unchanged on a long-lived Node process (a VPS, backed by `ws`) or on Cloudflare Workers (backed by Durable Objects). The browser client — `useRoom` — is identical on both.
 
-> Need **in-memory state and a server-side tick loop** (a game world, a live simulation) rather than a stateless per-message handler? See [Stateful rooms (`$room`)](./10-rooms.md).
+> Need **in-memory state and a server-side tick loop** (a game world, a live simulation) rather than a stateless per-message handler? See [Stateful Rooms (`$room`)](/docs/guides-server-rooms).
 
 ## Quick Start
 
@@ -32,11 +32,13 @@ export class ChatChannels {
 ```typescript
 // AppChatServer.ts
 import { $inject } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $websocket } from "alepha/websocket";
 import { ChatChannels } from "./channels/ChatChannels.ts";
 
 export class AppChatServer {
   protected readonly channels = $inject(ChatChannels);
+  protected readonly dateTime = $inject(DateTimeProvider);
 
   chat = $websocket({
     channel: this.channels.chatChannel,
@@ -45,7 +47,7 @@ export class AppChatServer {
         message: {
           username: connectionId.slice(0, 8),
           content: message.content,
-          timestamp: Date.now(),
+          timestamp: this.dateTime.nowMillis(),
         },
       });
     },
@@ -125,9 +127,9 @@ class ChatChannels {
 |--------|------|--------------|
 | `path` | `string` | Required. The WebSocket endpoint path (e.g. `/ws/chat`). |
 | `description` | `string` | Optional documentation. |
-| `schema.in` | `TObject \| TUnion` | Messages sent from server to client. |
-| `schema.out` | `TObject \| TUnion` | Messages sent from client to server. |
-| `schema.roomId` | `TString` | Optional room ID validation (e.g. `z.uuid()`). Defaults to any string. |
+| `schema.in` | `ZObject \| ZodUnion` | Messages sent from server to client. |
+| `schema.out` | `ZObject \| ZodUnion` | Messages sent from client to server. |
+| `schema.roomId` | `ZodString` | Optional room ID validation (e.g. `z.uuid()`). Defaults to any string. |
 
 Schemas use the `z` builder — the same one used by `$action`.
 
@@ -171,7 +173,7 @@ The handler context:
 
 | Option | Type | Description |
 |--------|------|--------------|
-| `message` | `Static<TClient>` | Required. The message to send. |
+| `message` | `Infer<TClient>` | Required. The message to send. |
 | `roomId` | `string` | Target room. Defaults to the sender's room. |
 | `exceptSelf` | `boolean` | Exclude the sender's own connection. |
 | `exceptConnectionIds` | `string[]` | Exclude specific connections. |

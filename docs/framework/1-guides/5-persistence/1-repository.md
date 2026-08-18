@@ -4,7 +4,7 @@ Alepha ORM is built on top of [Drizzle ORM](https://orm.drizzle.team/) and Drizz
 
 `$entity` defines a database table. `$repository` creates a type-safe data access layer for that table.
 
-Alepha main target is PostgreSQL, but SQLite are also supported.
+Alepha's main target is PostgreSQL, but SQLite is also supported.
 
 The API is mostly database-agnostic, but some features (e.g. certain column types or operators) may be database-specific.
 
@@ -15,7 +15,7 @@ import { $entity, $repository, db } from "alepha/orm";
 
 ## Defining an Entity
 
-An entity maps directly to a database table. The schema uses Alepha's `t` type system combined with `db` helpers for database-specific column types.
+An entity maps directly to a database table. The schema uses Alepha's Zod schema layer (`z`) combined with `db` helpers for database-specific column types.
 
 ```typescript check
 import { z } from "alepha";
@@ -25,6 +25,7 @@ const product = $entity({
   name: "products",
   schema: z.object({
     id: db.primaryKey(z.uuid()),
+    sku: z.text(),
     name: z.text(),
     price: z.number(),
     createdAt: db.createdAt(),
@@ -56,6 +57,8 @@ indexes: [
 Entities support unique constraints and check constraints at the table level:
 
 ```typescript
+import { $entity, db, sql } from "alepha/orm";
+
 const user = $entity({
   name: "users",
   schema: z.object({
@@ -84,7 +87,7 @@ foreignKeys: [
 ],
 ```
 
-For single-column foreign keys, prefer `db.ref()` on the column itself (see [Special Columns](./2-special-columns.md)).
+For single-column foreign keys, prefer `db.ref()` on the column itself (see [Special Columns](/docs/guides-persistence-special-columns)).
 
 ## Creating a Repository
 
@@ -96,7 +99,7 @@ class ProductService {
 }
 ```
 
-Relations between tables are NOT handled by `$entity`. Declare them separately with `$relations` and read them with `include` — see [Relations](./6-relations.md). For a one-off SQL join written per query, the `with` option is still there; see [Joins](./7-joins.md).
+Relations between tables are NOT handled by `$entity`. Declare them separately with `$relations` and read them with `include` — see [Relations](/docs/guides-persistence-relations). For a one-off SQL join written per query, the `with` option is still there; see [Joins](/docs/guides-persistence-joins).
 
 ## Query Methods
 
@@ -181,6 +184,11 @@ const results = await this.repo.query(
 );
 ```
 
+### aggregate
+
+Grouped aggregations (`sum`, `avg`, `min`, `max`, count) without writing raw SQL —
+see [Joins](/docs/guides-persistence-joins) for the aggregation pipeline it powers.
+
 ## Create Methods
 
 ### create
@@ -235,6 +243,13 @@ const product = await this.repo.upsert(
 
 If the entity has an `updatedAt` column, it is automatically set on conflict.
 
+### upsertMany
+
+Batch upsert. Same options as `upsert`, with two batch-only rules: every row must
+resolve to the same conflict target, and a counter-style `set` must read from
+`excluded` (the incoming row) rather than the table, or every row after the first
+sees stale values.
+
 ## Update Methods
 
 ### updateOne
@@ -272,7 +287,7 @@ const ids = await this.repo.updateMany(
 Save a previously fetched entity. Uses optimistic locking when a `version` column is present. Unlike `updateOne`/`updateById`, `save` expects the full entity object and sets `undefined` fields to `null`.
 
 ```typescript
-const entity = await this.repo.findById("some-uuid");
+const entity = await this.repo.getById("some-uuid"); // getById throws if missing
 entity.name = "Updated Name";
 await this.repo.save(entity);
 ```
@@ -310,7 +325,7 @@ const ids = await this.repo.deleteMany({ status: { eq: "archived" } });
 Delete a previously fetched entity by its primary key.
 
 ```typescript
-const entity = await this.repo.findById("some-uuid");
+const entity = await this.repo.getById("some-uuid");
 await this.repo.destroy(entity);
 ```
 
@@ -348,6 +363,15 @@ Where clauses accept either a direct value (shorthand for `eq`) or an object wit
 
 // Explicit operator
 { status: { eq: "active" } }
+```
+
+**Never pass `undefined` into a where-filter.** `where: { col: undefined }` throws
+`AlephaError` — it used to be dropped silently, which produced a query with no
+`WHERE` clause at all. For optional filters, omit the key entirely:
+
+```typescript
+const where: Record<string, unknown> = {};
+if (status) where.status = status;
 ```
 
 ### Comparison Operators
@@ -432,7 +456,9 @@ await this.repo.transaction(async (tx) => {
 });
 ```
 
-All repository methods accept `{ tx }` in their options parameter to participate in the transaction.
+All repository methods accept `{ tx }` in their options parameter to participate in the transaction. Beyond `tx`, that options parameter also takes `force` (skip optimistic locking), `for` (row locks, e.g. `{ for: "update" }`), `now` (override the timestamp used for `updatedAt`), and `cache` (per-statement cache control).
+
+On drivers without interactive transaction support — Cloudflare D1 — `transaction()` throws and tells you to use `$transactional()` instead.
 
 To wrap a whole handler in a transaction without drilling `{ tx }` through every call, use the `$transactional` middleware:
 
@@ -488,8 +514,11 @@ Because nested `transactional()` blocks join the outermost transaction, the call
 For inline repository creation without a separate entity variable:
 
 ```typescript
+import { $inject } from "alepha";
+import { Repository } from "alepha/orm";
+
 class App {
-  users = $inject(Repository.of(userEntity));
+  users = $inject(Repository.of(user)); // user: the $entity from above
 }
 ```
 
@@ -522,3 +551,5 @@ Repository operations emit lifecycle events:
 | `DbDeadlockError` | Database deadlock detected |
 | `DbTableNotFoundError` | Referenced table does not exist |
 | `DbColumnNotFoundError` | Referenced column does not exist |
+| `DbConnectionError` | The database cannot be reached |
+| `DbMigrationError` | A migration fails to apply |

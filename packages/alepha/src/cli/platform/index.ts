@@ -1,3 +1,10 @@
+/**
+ * The `alepha platform` plugin (`alepha p`): plan, provision, build, migrate,
+ * deploy and tear down named environments on Cloudflare Workers or Bay, plus
+ * `secrets` and `auth` management.
+ *
+ * @module alepha.cli.platform
+ */
 import { $context, $module } from "alepha";
 import { AlephaCli } from "alepha/cli";
 import {

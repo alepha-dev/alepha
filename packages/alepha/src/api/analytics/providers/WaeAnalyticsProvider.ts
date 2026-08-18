@@ -54,10 +54,14 @@ const envSchema = z.object({
         "Cloudflare account id, for the Analytics Engine SQL read API (there is no read binding — see AnalyticsEngineSql).",
     })
     .optional(),
+  // Deliberately NOT named CLOUDFLARE_API_TOKEN: wrangler treats that name as
+  // its own credential, so setting it in .env.<env> makes `wrangler auth token`
+  // return this read-only token and every provisioning call fails with an
+  // authentication error.
   CLOUDFLARE_ANALYTICS_TOKEN: z
     .text({
       description:
-        "API token scoped Account · Account Analytics · Read, for the Analytics Engine SQL read API. Deliberately NOT named CLOUDFLARE_API_TOKEN: wrangler treats that name as its own credential, so setting it in .env.<env> makes `wrangler auth token` return this read-only token and every provisioning call fails with an authentication error.",
+        "API token scoped to Account Analytics Read, for the Analytics Engine SQL read API. Never a deploy credential.",
     })
     .optional(),
 });

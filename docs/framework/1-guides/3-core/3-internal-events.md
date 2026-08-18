@@ -11,7 +11,7 @@ Alepha uses a hook-based event system for lifecycle management and cross-service
 
 When `alepha.start()` is called, the framework emits events in this order:
 
-```
+```txt
 configure  ->  start  ->  ready  ->  (APP RUNNING)  ->  stop
 ```
 
@@ -22,7 +22,7 @@ configure  ->  start  ->  ready  ->  (APP RUNNING)  ->  stop
 | `ready` | After start | Application is fully operational |
 | `stop` | On shutdown (SIGINT/SIGTERM or manual) | Close connections, flush buffers |
 
-`configure`, `start`, and `ready` receive the `Alepha` instance as payload. `stop` also receives the `Alepha` instance.
+All four receive the `Alepha` instance as payload.
 
 ## Using $hook
 
@@ -167,7 +167,8 @@ await alepha.events.emit("billing:invoice:created", payload, {
 
 ## Compiled Events (advanced)
 
-For hot paths (like HTTP request handling), compile events into optimized executors:
+`emit()` already compiles and caches an optimized executor per event, so there is no overhead
+to avoid in normal code. `compile()` exists to hoist that one cache lookup out of a hot loop:
 
 ```typescript
 // After all hooks are registered (e.g. after start)
@@ -177,5 +178,3 @@ const onRequest = alepha.events.compile("server:onRequest", { catch: true });
 const result = onRequest({ request, route });
 if (result) await result;
 ```
-
-This avoids the overhead of `emit()` in performance-critical code paths.

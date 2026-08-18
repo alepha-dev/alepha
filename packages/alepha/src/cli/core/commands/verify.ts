@@ -37,12 +37,11 @@ export class VerifyCommand {
    *
    * This command runs the following checks in order:
    * - Clean the project
-   * - Format the code
-   * - Lint the code
-   * - Run tests (if a `test/` directory exists)
-   * - Check database migrations (if a migrations directory exists)
+   * - Format and lint the code (Biome, one pass)
    * - Type check the code
-   * - Build the project
+   * - Run tests (skipped when the project has no spec files)
+   * - Check database migrations (always; returns cleanly with no database)
+   * - Build the project (skipped for Expo projects)
    * - Clean the project again
    */
   public readonly verify = $command({

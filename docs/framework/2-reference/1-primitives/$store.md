@@ -16,9 +16,9 @@ property is reactive: it re-reads on every access, so a mutation made
 elsewhere is visible immediately.
 
 Accepts either side of the state model:
-- an {@link Atom} — read from the store, and registered on first use if it
+- an `Atom` — read from the store, and registered on first use if it
   was not already
-- a {@link Computed} — derived from its dependencies on every read. Computed
+- a `Computed` — derived from its dependencies on every read. Computed
   values are never stored, so nothing is registered.
 
 **Use cases**: global state, configuration, sharing data between services,

@@ -4,6 +4,22 @@ import { useEffect, useId, useMemo, useRef } from "react";
 import { type FormCtrlOptions, FormModel } from "../services/FormModel.ts";
 
 /**
+ * Shallow / structural equality for form initial-value objects. Form values
+ * are plain data (strings, numbers, arrays, plain objects) so JSON.stringify
+ * is both fast enough and exact. Wrapped in try/catch to fall back to
+ * reference equality if anything exotic sneaks in (e.g. circular refs).
+ */
+const stableEqual = (a: unknown, b: unknown): boolean => {
+  if (a === b) return true;
+  if (a == null || b == null) return false;
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch {
+    return false;
+  }
+};
+
+/**
  * Custom hook to create a form with validation and field management.
  * This hook uses Zod schemas to define the structure and validation rules for the form.
  * It provides a way to handle form submission, field creation, and value management.
@@ -31,22 +47,6 @@ import { type FormCtrlOptions, FormModel } from "../services/FormModel.ts";
  * );
  * ```
  */
-/**
- * Shallow / structural equality for form initial-value objects. Form values
- * are plain data (strings, numbers, arrays, plain objects) so JSON.stringify
- * is both fast enough and exact. Wrapped in try/catch to fall back to
- * reference equality if anything exotic sneaks in (e.g. circular refs).
- */
-const stableEqual = (a: unknown, b: unknown): boolean => {
-  if (a === b) return true;
-  if (a == null || b == null) return false;
-  try {
-    return JSON.stringify(a) === JSON.stringify(b);
-  } catch {
-    return false;
-  }
-};
-
 export const useForm = <T extends ZObject>(
   options: FormCtrlOptions<T>,
   deps: any[] = [],

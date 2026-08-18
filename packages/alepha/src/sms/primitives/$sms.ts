@@ -11,6 +11,21 @@ import { SmsProvider } from "../providers/SmsProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+/**
+ * Declares an SMS channel for sending text messages through the configured
+ * provider — the in-memory provider under test, a real gateway in production.
+ *
+ * @example
+ * ```typescript
+ * class VerificationService {
+ *   sms = $sms();
+ *
+ *   async sendCode(to: string, code: string) {
+ *     await this.sms.send({ to, message: `Your code: ${code}` });
+ *   }
+ * }
+ * ```
+ */
 export const $sms = (options: SmsPrimitiveOptions = {}) =>
   createPrimitive(SmsPrimitive, options);
 

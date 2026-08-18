@@ -31,6 +31,7 @@ This module enables:
 - [`useActive`](/docs/reference-react-hooks-useactive) — Hook to determine if a given route is active and to provide anchor props for navigation.
 - [`useQueryParams`](/docs/reference-react-hooks-usequeryparams) — Hook to manage query parameters in the URL using a defined schema.
 - [`useRouter`](/docs/reference-react-hooks-userouter) — Use this hook to access the React Router instance.
+- [`useRouterState`](/docs/reference-react-hooks-userouterstate) — Subscribes to the router's live state — the matched route, its params and
 
 ### Providers
 

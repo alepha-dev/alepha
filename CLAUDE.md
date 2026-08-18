@@ -75,7 +75,7 @@ Alepha uses a hybrid monorepo structure:
 **Specialized Packages**
 - `@alepha/ui` - Shared shadcn Base UI Nova components. Edit `src/components/` directly. Stock shadcn primitives can be refreshed with `yarn w @alepha/ui sync`, which fetches them from the public `ui.shadcn.com/r/styles/base-nova` registry. Our own blocks (controls, admin, auth, app-shell, alepha-table, …) are not touched by `sync` — they're hand-maintained.
 - `@alepha/devtools` - Development tools and inspection UI
-- `@alepha/sigil` - The reporting half of a sigil: an app sends its page views, Web Vitals and errors to the sink named by `SIGIL_SINK` + `SIGIL_KEY`. Lore is the sink (`apps/lore`, `SigilIngestController`)
+- `@alepha/sigil` - The reporting half of a sigil: an app sends its page views, Web Vitals and errors to the sink named by the `sink` field of `SIGIL_CONFIG`, authenticated by `SIGIL_KEY`. Lore is the sink (`apps/lore`, `SigilIngestController`)
 - `@alepha/payments-stripe` - Stripe payments backend
 - `@alepha/payments-mollie` - Mollie payments backend
 - `@alepha/mqtt` - MQTT transport
@@ -328,7 +328,7 @@ Conventions enforced by review, not by lint. They are not obvious from the code,
 
 ## Notes for AI Assistants
 
-- Update docs/1-guides/ if you change any public API or behavior (docs/3-reference is auto generated from source code)
+- Update docs/framework/1-guides/ if you change any public API or behavior (docs/framework/2-reference and docs/framework/3-packages are regenerated from source JSDoc by `yarn copy` — fix the JSDoc, never those files)
 - The framework heavily uses TypeScript generics and decorators (`$` prefix indicates a primitive)
 - All async operations should use `Alepha.create()` and proper lifecycle management
 - HTTP client (`HttpClient`) has built-in request deduplication and caching

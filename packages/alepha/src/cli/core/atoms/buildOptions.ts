@@ -113,10 +113,11 @@ export const buildOptions = $atom({
         command: z.string().optional(),
 
         /**
-         * Extra packages to install globally in the generated image.
+         * Extra packages to install in the generated image.
          *
-         * Each entry becomes a `RUN npm install --global --no-fund
-         * --no-audit <pkg> …` line inserted after `FROM` and before the
+         * Each entry becomes a `RUN npm install --no-fund --no-audit
+         * <pkg> …` line (local, not `--global`, so the app resolves them
+         * like any dependency) inserted after `FROM` and before the
          * app `COPY`. Use it for CLI tools the running app shells out to
          * — typical example is `wrangler` for a service that deploys to
          * Cloudflare on someone else's behalf.

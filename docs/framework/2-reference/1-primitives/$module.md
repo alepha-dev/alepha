@@ -10,7 +10,7 @@ import { $module } from "alepha";
 
 Wrap Services and Primitives into a Module.
 
-- A module is just a Service with some extra {@link Module}.
+- A module is just a Service with some extra `Module`.
 - You must attach a `name` to it.
 - Name must follow the pattern: `project.module.submodule`. (e.g. `myapp.users.auth`).
 

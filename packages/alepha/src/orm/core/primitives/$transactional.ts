@@ -9,6 +9,17 @@ export interface TransactionalOptions {
   config?: PgTransactionConfig;
 }
 
+// TODO: support savepoints for nested transactions.
+//   Today, a nested $transactional reuses the outer tx (correct for ACID), but
+//   there is no way to roll back ONLY the inner block while preserving the
+//   outer one. Drizzle exposes savepoints (`tx.transaction(...)` inside an
+//   existing tx maps to `SAVEPOINT` on Postgres). Plan:
+//     1. Detect "already inside a tx" in DatabaseProvider.transactional().
+//     2. When nested, open a savepoint instead of reusing the outer scope.
+//     3. On inner throw, ROLLBACK TO SAVEPOINT (don't bubble unless re-thrown).
+//     4. Add an option { savepoint?: boolean } on $transactional (default true
+//        when nested) so users can opt out for "inherit-and-bubble" semantics.
+//   Needs care around connection-bound state and Drizzle's tx proxy.
 /**
  * Middleware that wraps handler execution in a database transaction.
  *
@@ -31,17 +42,6 @@ export interface TransactionalOptions {
  * }
  * ```
  */
-// TODO: support savepoints for nested transactions.
-//   Today, a nested $transactional reuses the outer tx (correct for ACID), but
-//   there is no way to roll back ONLY the inner block while preserving the
-//   outer one. Drizzle exposes savepoints (`tx.transaction(...)` inside an
-//   existing tx maps to `SAVEPOINT` on Postgres). Plan:
-//     1. Detect "already inside a tx" in DatabaseProvider.transactional().
-//     2. When nested, open a savepoint instead of reusing the outer scope.
-//     3. On inner throw, ROLLBACK TO SAVEPOINT (don't bubble unless re-thrown).
-//     4. Add an option { savepoint?: boolean } on $transactional (default true
-//        when nested) so users can opt out for "inherit-and-bubble" semantics.
-//   Needs care around connection-bound state and Drizzle's tx proxy.
 export const $transactional = (options?: TransactionalOptions): Middleware => {
   return createMiddleware({
     name: "$transactional",

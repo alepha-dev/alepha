@@ -41,10 +41,10 @@ import { RqbExecutor } from "./RqbExecutor.ts";
  * top. Everything already true of `Repository` stays true, and an entity with
  * no relations behaves exactly as before.
  *
- * `create` additionally understands nested writes. Every other write —
- * `upsert`, `updateOne`, `deleteMany` — is reached through `.base`, which is
- * fully typed; there is no value in re-exporting operations that relations do
- * not change.
+ * `create` additionally understands nested writes, and `update` / `upsert`
+ * accept `include` on their results. Writes that relations do not change —
+ * `updateMany`, `deleteMany`, and the rest — are also available directly, or
+ * through `.base`, the fully typed plain repository.
  */
 export class RelationalRepository<
   ZType extends EntitySchema,

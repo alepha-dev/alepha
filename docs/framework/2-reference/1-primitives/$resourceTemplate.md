@@ -11,7 +11,7 @@ import { $resourceTemplate } from "alepha/mcp";
 Creates an MCP resource template — a resource addressed by a *pattern*
 rather than a fixed URI.
 
-{@link $resource} covers data that lives at one known address. A template
+`$resource` covers data that lives at one known address. A template
 covers a family of them: every folio, every user, every file under a root.
 Without it, parameterized data can only be exposed as a tool call, and the
 client loses the ability to address it by URI or embed it as a

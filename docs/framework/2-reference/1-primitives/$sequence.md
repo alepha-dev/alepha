@@ -11,7 +11,7 @@ import { $sequence } from "alepha/orm";
 Declare a portable, scoped numeric sequence.
 
 Works identically on Postgres, SQLite, and Cloudflare D1 — backed by the
-shared `alepha_sequences` table managed by {@link SequenceProvider}.
+shared `alepha_sequences` table managed by `SequenceProvider`.
 
 ## Options
 

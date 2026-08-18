@@ -72,7 +72,7 @@ Dotfiles don't count towards "empty", so running `git init` first is fine.
 
 ## Generated Structure
 
-```
+```txt
 my-app/
 ├── src/
 │   ├── api/
@@ -120,7 +120,7 @@ Everything above, plus a working identity surface on first run:
 
 It adds one dependency, `@alepha/ui`, and three files' worth of difference:
 
-```
+```txt
 src/
 ├── api/
 │   ├── Realm.ts                     # ← new: $realm + the admin:ui permission
@@ -133,15 +133,9 @@ Note what is *not* there: no chrome file, and no changes to `main.server.ts` or 
 
 ### Your first admin
 
-`src/api/Realm.ts` ships with an empty `adminEmails`, so nothing is an admin yet. Put your address in it before you register:
+`src/api/Realm.ts` reads the admin list from the `ADMIN_EMAIL` environment variable via `$env` — and `init` already wrote a gitignored `.env` with the address from `git config user.email`, so a fresh project has a working admin without editing anything. Register with that address and you are promoted to admin, which is what gets you into `/admin`.
 
-```typescript
-settings: {
-  adminEmails: ["you@yourcompany.com"],
-}
-```
-
-The first registration matching that address is promoted to admin, which is what gets you into `/admin`. The list is empty rather than pre-filled because a scaffolded placeholder address is a real address someone else could register, and the promotion is automatic.
+Per deployed environment, set `ADMIN_EMAIL` where that environment's variables live (`.env.production`, your platform's dashboard). The address lives in an environment variable rather than the scaffolded source because a committed placeholder address is a real address someone else could register, and the promotion is automatic.
 
 ### What's on, and what isn't
 
@@ -203,18 +197,22 @@ A TypeScript configuration tuned for modern development:
 
 ### vite.config.ts
 
-Registers the official Tailwind v4 Vite plugin:
+Registers the official Tailwind v4 Vite plugin and carries the Vitest `test` block:
 
 ```typescript check
 import tailwindcss from "@tailwindcss/vite";
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [tailwindcss()],
+  test: {
+    root: ".",
+    globals: true,
+  },
 });
 ```
 
-Everything else about the Vite setup is handled internally by the Alepha CLI — this file exists only so Tailwind can hook in.
+Everything else about the Vite setup is handled internally by the Alepha CLI — this file exists so Tailwind can hook in and so Vitest has its config (`test.root` stops Vitest walking up into a parent monorepo's config; there is no separate Vitest config file).
 
 ### biome.json
 

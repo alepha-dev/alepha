@@ -1,19 +1,30 @@
 # Payment Providers
 
-A `PaymentProvider` is the bridge between Alepha's lifecycle and a real payment service provider. The abstract class defines eight methods covering the full intent lifecycle:
+A `PaymentProvider` is the bridge between Alepha's lifecycle and a real payment service provider. The abstract class defines eight required methods covering the full intent lifecycle, plus two a real provider should implement:
 
 ```typescript
 abstract class PaymentProvider {
-  createSession(intent, { returnUrl, authorize }): Promise<{ url, providerRef }>;
+  createSession(intent, { returnUrl, authorize, ... }): Promise<{ url, providerRef }>;
   capturePayment(providerRef, amount): Promise<void>;
   voidPayment(providerRef): Promise<void>;
-  refundPayment(providerRef, amount): Promise<{ providerRef }>;
+  refundPayment(providerRef, amount, options?): Promise<{ providerRef }>;
   parseWebhook(request): Promise<{ providerRef, status, raw }>;
   createPaymentMethod(userId, token): Promise<CreatePaymentMethodResult>;
   deletePaymentMethod(providerRef): Promise<void>;
   expireSession(providerRef): Promise<void>;
+
+  // optional: embedded card fields (Stripe Payment Element and friends);
+  // PaymentService.supportsEmbeddedPayment() dispatches on its presence
+  createElementSession?(intent, options): Promise<ElementSession>;
+
+  // non-abstract, returns null by default — but providers SHOULD override it:
+  // it is the reconciliation path when a webhook goes missing. Both shipped
+  // providers do.
+  retrieveSessionStatus(providerRef): Promise<SessionStatus | null>;
 }
 ```
+
+`createSession` options also carry Connect-style fields (`stripeAccount`, `applicationFeeAmount`, `customerEmail`), and `refundPayment` accepts `{ stripeAccount }`.
 
 `PaymentService` and `PaymentMethodService` call these methods; you never call them directly.
 
@@ -44,6 +55,8 @@ yarn add @alepha/payments-stripe
 |---|---|
 | `STRIPE_SECRET_KEY` | API key (`sk_test_...` / `sk_live_...`). |
 | `STRIPE_WEBHOOK_SECRET` | Signing secret returned by `webhookEndpoints.create`. |
+| `STRIPE_PUBLISHABLE_KEY` | Required for the embedded Payment Element — `createElementSession` throws without it. |
+| `STRIPE_CONNECT_WEBHOOK_SECRET` | Signing secret for Connect webhooks; gates `parseConnectWebhook`. |
 
 ### Webhook security
 
@@ -105,14 +118,14 @@ For most EU SaaS apps either works; for marketplaces with US sellers, Stripe is 
 
 ## Writing your own provider
 
-Extend the abstract class and register it the same way:
+Implement the contract and register it the same way. Both shipped providers use `implements` rather than `extends` — note that with `implements`, the normally-optional `retrieveSessionStatus` becomes required, which is a feature: it forces the reconciliation path to exist.
 
 ```typescript
 import { $module } from "alepha";
 import { AlephaApiPayments, PaymentProvider } from "alepha/api/payments";
 
 class AdyenPaymentProvider implements PaymentProvider {
-  // ... implement the eight methods ...
+  // ... implement the lifecycle methods ...
 }
 
 export const AlephaPaymentsAdyen = $module({

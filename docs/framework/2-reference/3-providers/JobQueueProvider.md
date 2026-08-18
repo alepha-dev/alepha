@@ -10,7 +10,7 @@ import { JobQueueProvider } from "alepha/api/jobs";
 
 Queue-backed `JobDispatcher` registered by `AlephaApiJobsQueue`.
 
-Extends {@link JobDispatcher} and substitutes the default
+Extends `JobDispatcher` and substitutes the default
 `DirectJobDispatcher` so that `$job.push()` is delivered through
 `AlephaQueue` (e.g. Cloudflare Queues, Redis, in-memory) instead of
 being processed in-process.

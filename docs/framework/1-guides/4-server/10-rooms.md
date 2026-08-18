@@ -1,4 +1,4 @@
-# Stateful rooms (`$room`)
+# Stateful Rooms
 
 `$websocket` is a stateless, per-message handler. A real-time game server needs
 the opposite: **in-memory state that lives across messages, and an authoritative
@@ -69,8 +69,9 @@ cross-room shared state and single-owner leases — reached from another room, a
 HTTP action, or anywhere on the server.
 
 ```typescript
+// partySchema: any z.object() / union message schema
 class Party {
-  channel = $channel({ path: "/ws/party", schema: { in: any, out: any } });
+  channel = $channel({ path: "/ws/party", schema: { in: partySchema, out: partySchema } });
 
   session = $room({
     channel: this.channel,
@@ -93,8 +94,8 @@ call. Either way the room comes to life lazily on its first call.
 
 ## Mapping a sharded game server onto `$room`
 
-A game like [lindocara](https://github.com/feunard) — a cooperative RPG on
-Workers — has three kinds of authoritative object. All three are one `$room`:
+A cooperative RPG on Workers has three kinds of authoritative object. All
+three are one `$room`:
 
 | Game object | `$room` shape | addressed by |
 | --- | --- | --- |

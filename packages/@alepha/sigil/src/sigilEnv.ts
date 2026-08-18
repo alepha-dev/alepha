@@ -37,9 +37,9 @@ export { SIGIL_DEFAULT_SINK };
 export const sigilEnv = z.object({
   /**
    * Optional so an app can install this module and configure it later — the
-   * package is inert without `SIGIL_KEY` anyway. `SigilSinkProvider` fails at
-   * boot when a key is present without a config, rather than reporting into a
-   * project nobody named.
+   * package is inert without `SIGIL_KEY` anyway. `SigilSinkProvider` warns at
+   * boot when a key is present without a config and stays inert, rather than
+   * reporting into a project nobody named.
    *
    * Declassified: every field of it is already public. The project slug and
    * the sink origin are in the feedback URL this package renders into the

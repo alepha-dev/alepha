@@ -18,9 +18,9 @@ arrive rather than by trusting `Content-Length` and then buffering anyway.
 
 The budget is resolved at three levels, most specific last:
 
-1. {@link multipartOptions} — the application-wide default.
+1. `multipartOptions` — the application-wide default.
 2. `z.file({ maxBytes })` on the route's own body schema.
-3. {@link MultipartCapProvider} — the only level that knows where the bytes
+3. `MultipartCapProvider` — the only level that knows where the bytes
    are actually going, which is why it wins.
 
 A level can *raise* the ceiling, not merely lower it. That inversion was the

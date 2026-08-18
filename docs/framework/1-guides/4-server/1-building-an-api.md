@@ -62,7 +62,7 @@ class ProductController {
 
 ## URL Generation
 
-`$action` is a specialized `$route` where all paths are prefixed with `/api` by default.
+`$action` sits above `$route`: same pipeline, but all paths are prefixed with `/api` by default.
 
 ```typescript
 $action({ path: "/users" })       // GET /api/users
@@ -180,17 +180,17 @@ A disabled action throws an error if called via `.run()`.
 Actions can be called directly (no HTTP overhead) or via HTTP:
 
 ```typescript
-// Force direct local call - runs the handler in-process
+// Direct local call - runs the handler in-process
 const result = await this.list.run({ query: { page: 1, limit: 10 } });
 
 // Force HTTP call - sends an actual HTTP request to the server
 const response = await this.list.fetch({ query: { page: 1, limit: 10 } });
 
-// Auto (local-first) - calls handler directly if available, otherwise HTTP
-const result = await this.list({ query: { page: 1, limit: 10 } });
+// Calling the action itself is the same as .run() - always local, never HTTP
+const same = await this.list({ query: { page: 1, limit: 10 } });
 ```
 
-> Calling controllers directly are not recommended for shared libraries. Use `$client` links instead, which work across process and network boundaries (see [HTTP Links](/docs/guides-server-http-links)).
+> For local-first-then-HTTP dispatch, use `$client` links, which work across process and network boundaries (see [HTTP Links](/docs/guides-server-http-links)). Calling controllers directly is not recommended for shared libraries.
 
 ## Streaming with SSE
 
@@ -216,7 +216,7 @@ class AiController {
 }
 ```
 
-The handler receives `emit()` to push typed events and `close()` to end the stream early. The stream closes automatically when the handler returns.
+The handler receives `emit()` to push typed events and `close()` to end the stream early. The stream closes automatically when the handler returns. It also receives `signal`, an `AbortSignal` that fires when the client disconnects — check it in any long-running loop, or the handler keeps running for a reader that is gone.
 
 On the client, SSE endpoints are consumed through the same `$client` proxy as actions:
 

@@ -14,20 +14,20 @@ Alepha.create()
   .start();
 ```
 
-Then one server-side variable:
+Then the server-side variables:
 
 | Variable | Required | |
 |---|---|---|
 | `SIGIL_KEY` | **yes** | the sigil token the sink minted for this app — **secret, server-only** |
 | `SIGIL_CONFIG` | **yes** | JSON: what this app reports, and where |
-
-Both or neither. With one missing the module is **inert** — it still captures
-and still collapses a crash loop into one logged warning, but nothing leaves the
-machine. It logs which half is missing and boots anyway: telemetry is not worth
-an outage.
 | `SIGIL_SALT` | no | overrides the secret salting the daily visitor hash. Falls back to `APP_SECRET` |
 
-```
+`SIGIL_KEY` and `SIGIL_CONFIG` go together — both or neither. With one missing
+the module is **inert**: it still captures and still collapses a crash loop into
+one logged warning, but nothing leaves the machine. It logs which half is
+missing and boots anyway: telemetry is not worth an outage.
+
+```bash
 SIGIL_CONFIG={"project":"alepha","vitals":false}
 ```
 
@@ -63,7 +63,7 @@ Active in production only.
 The browser posts to `/api/sigil/ingest` on the app's **own origin**; the app
 then forwards to the sink server-to-server.
 
-```
+```txt
 browser ──(same-origin)──▶ /api/sigil/ingest ──(server→server, SIGIL_KEY)──▶ lore.example.com
 ```
 
@@ -119,28 +119,26 @@ not one payload per occurrence.
 This is what keeps storage bound by how many distinct faults exist rather than
 by how much traffic you have.
 
-## Nothing is mounted for you
+## The feedback button mounts itself
 
-The module puts nothing in your React tree on its own. What it ships is one
-optional component and one hook, both at `@alepha/sigil/react`:
+Importing the module is the whole integration: `<SigilRoot />` is pushed into
+the root components automatically, so the floating feedback button appears with
+no JSX to place. Control it from `SIGIL_CONFIG` — `feedbackButton: "hidden"`
+keeps it out of the tree, `feedbackButtonExcludedPaths` keeps it off specific
+routes.
+
+To render your own link instead, `@alepha/sigil/react` re-exports the pieces:
 
 ```tsx
-import { SigilRoot, usePetitionUrl } from "@alepha/sigil/react";
+import { useFeedbackUrl } from "@alepha/sigil/react";
 
-// Batteries included: a floating feedback button, rendered only when the sink
-// hands out a petition URL and the current path is not excluded.
-<SigilRoot />;
-
-// Or render your own link, wherever it belongs.
-const petition = usePetitionUrl();
-return petition ? <a href={petition}>Report a problem</a> : null;
+// Renders only when the sink hands out a feedback URL
+// and the current path is not excluded.
+const feedback = useFeedbackUrl();
+return feedback ? <a href={feedback}>Report a problem</a> : null;
 ```
 
-`@alepha/sigil/react` is a subpath of its own rather than part of the main
-entry: importing the module should not drag React into an app that has none,
-and a server-rendered host has to be able to resolve the component on the
-server pass too.
-
-A reporting package that injects DOM *without being asked* is one you then have
-to style, translate and keep out of your own layout — for one button. Opting in
-costs one line and gives you the placement.
+Pair it with `feedbackButton: "hidden"` so the built-in button and your link do
+not both show. (`react` and `react-dom` are peer dependencies of the package
+either way, which is why the main entry is allowed to pull React: a headless
+API app had to install them anyway.)

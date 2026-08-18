@@ -25,15 +25,19 @@ This creates a `my-app` directory with:
 - `src/api/` with an example controller
 - `src/web/` with a React router and page
 - `src/main.server.ts` and `src/main.browser.ts` as the entry files
+- `AGENTS.md` and `CLAUDE.md` so AI assistants know the project's conventions
+- the supporting files: `.gitignore`, `.editorconfig`, `.env.example`,
+  `.vscode/` settings, `public/favicon.svg`, and a starter `test/dummy.spec.ts`
 
 Dependencies are installed automatically.
 
-Every Alepha project has this same shape — there are no flags to pick a
-flavour. One layout means anyone opening the project, human or AI, already
-knows where things live. If you don't need the frontend, delete `src/web/`.
+Every Alepha project has this same shape. One layout means anyone opening the
+project, human or AI, already knows where things live. If you don't need the
+frontend, delete `src/web/`. A [preset](#presets) can add more on top of this
+base, but never moves it around.
 
-The only options are `--pm` to choose a package manager, `--force` to
-overwrite existing files, and `--no-devtools`:
+The flags that change what is scaffolded are `--preset` and `--no-devtools`;
+`--pm` (package manager) and `--force` (overwrite existing files) control how:
 
 ```bash
 npx alepha@latest init my-app --pm=bun
@@ -78,7 +82,7 @@ class App {
 run(App);
 ```
 
-That `$route` call is a **Primitive** -- a factory function that registers an HTTP endpoint
+That `$route` call is a **Primitive** — a factory function that registers an HTTP endpoint
 directly on your class. No separate router file, no middleware chain.
 
 `run(App)` creates an Alepha container, registers `App`, starts the server, and handles
@@ -92,7 +96,7 @@ npm run dev
 
 You should see:
 
-```
+```txt
 [02:10:43.013] INFO <alepha.core.Alepha>: Starting App...
 [02:10:43.013] INFO <alepha.core.Alepha>: App is now ready [0ms]
 
@@ -105,13 +109,13 @@ Open [http://localhost:5173](http://localhost:5173) in your browser. You will se
 
 Development mode gives you:
 
-1. **Hot Module Replacement (HMR)** -- change code, server updates instantly.
-2. **TypeScript support** -- no build step required.
-3. **Pretty logs** -- readable, structured output.
+1. **Hot Module Replacement (HMR)** — change code, server updates instantly.
+2. **TypeScript support** — no build step required.
+3. **Pretty logs** — readable, structured output.
 
 ## Add a Typed API Endpoint
 
-`$route` is low-level. For real APIs, use `$action` -- it adds schema validation, automatic
+`$route` is low-level. For real APIs, use `$action` — it adds schema validation, automatic
 OpenAPI documentation, and type-safe client calls.
 
 ```typescript filename="src/main.server.ts"
@@ -132,8 +136,6 @@ class App {
     },
     handler: () => ({
       message: "Hello from Alepha",
-      // consider using `dateTimeProvider.nowISOString()` instead of `new Date().toISOString()`
-      // for better testability and consistency across runtimes
       serverTime: this.dateTimeProvider.nowISOString(),
     }),
   });
@@ -141,6 +143,9 @@ class App {
 
 run(App);
 ```
+
+Time comes from the injected `DateTimeProvider` rather than `new Date()` so
+tests can freeze or travel the clock.
 
 Key differences from `$route`:
 
@@ -186,7 +191,7 @@ Alepha adapts the build output based on where you deploy:
 npm run build -- --target=cloudflare   # Adapts output for Cloudflare Workers
 npm run build -- --runtime=bun         # Optimizes for Bun runtime
 # or with alepha
-npx alepha build
+npx alepha build --target=cloudflare
 ```
 
 Build targets and runtime can also be set in `alepha.config.ts`:
@@ -229,7 +234,7 @@ Then deploy:
 npx alepha p up
 ```
 
-Alepha scans your code for primitives (`$entity`, `$storage`, `$job`, etc.), provisions the matching Cloudflare resources (D1, R2, Queue), builds for Workers, runs migrations, and deploys -- all in one step.
+Alepha scans your code for primitives (`$entity`, `$storage`, `$job`, etc.), provisions the matching Cloudflare resources (D1, R2, Queue), builds for Workers, runs migrations, and deploys — all in one step.
 
 Preview what will be created before deploying:
 
@@ -237,19 +242,19 @@ Preview what will be created before deploying:
 npx alepha p plan
 ```
 
-See the [Platform Plugin](/docs/cli/plugins/platform) guide for full configuration, secrets, monorepo support, and teardown.
+See the [Platform Plugin](/docs/cli-plugins-platform) guide for full configuration, secrets, monorepo support, and teardown.
 
 ## Project Structure
 
 `alepha init` scaffolds this structure, whichever preset you pick:
 
-```
+```txt
 my-app/
   alepha.config.ts          # Build and entry point configuration
   package.json
   tsconfig.json
   biome.json
-  vite.config.ts            # Tailwind plugin
+  vite.config.ts            # Tailwind plugin + Vitest config
   src/
     main.server.ts          # Server entry point
     main.browser.ts         # Browser entry point
@@ -280,12 +285,12 @@ area at `/account/*`, an admin console at `/admin/*` — plus the `$realm` in
 `src/api/Realm.ts` that configures them. Nothing moves; you get one extra file
 and a longer `src/web/index.ts`.
 
-Full details in the [init command reference](/docs/cli/commands/init).
+Full details in the [init command reference](/docs/cli-commands-init).
 
 ### Devtools
 
 `alepha init` registers the devtools plugin in `alepha.config.ts` and adds
-`@alepha/devtools` to `devDependencies`, so `yarn dev` gives you the inspection
+`@alepha/devtools` to `devDependencies`, so `npm run dev` gives you the inspection
 UI straight away — a floating cog at the bottom-left, or `/__devtools/`
 directly. It covers atoms, modules, database contents, configuration and logs.
 
@@ -316,7 +321,7 @@ projects skip the web scaffolding automatically.
 
 As your project grows, group features into modules:
 
-```
+```txt
 src/
   api/
     users/

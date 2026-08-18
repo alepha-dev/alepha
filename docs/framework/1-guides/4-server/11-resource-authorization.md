@@ -112,7 +112,7 @@ $secure({
 
 Guards may be async and run after all other `$secure` checks. `params`, `query`, and `body` come from the action request when there is one, falling back to the raw HTTP request — so the same guard works over HTTP, over `action.run()`, and over MCP.
 
-## Browser behaviour
+## Browser Behavior
 
 On the client, `$secure` returns `undefined` instead of throwing, and the guard sees empty `params`. A guard that reads request data therefore denies in the browser and is re-evaluated for real on the server. `$owns` goes further: ownership lives in database rows the browser can't load, so its browser variant always returns `undefined` — the server-side gate is what actually enforces it.
 

@@ -6,8 +6,10 @@ declaration runs unchanged on a relational database, in memory for tests, and on
 Workers Analytics Engine in production. Application code never names a backend — which one is
 bound is a runtime decision made by the `alepha/api/analytics` module.
 
-It ships inside the `alepha` package as an `api/*` sub-module, with the retention sweep and
-the admin surface as separate opt-in modules alongside it:
+It ships inside the `alepha` package as an `api/*` sub-module, with the retention sweep
+(`AlephaApiAnalyticsRollup`, covered below) and the admin surface (`AlephaApiAnalyticsAdmin`:
+dataset listing and validated aggregate queries at `/api/admin/analytics/*`, gated on
+`admin:analytics:read`) as separate opt-in modules alongside it:
 
 ```typescript
 import { $analytics } from "alepha/api/analytics";
@@ -134,7 +136,7 @@ complete set of aggregates that are simultaneously:
   sample-correctable — if the sampler happens to drop the one row holding the true extreme, no
   `_sample_interval` weighting recovers it, and the query silently returns the extreme of
   whatever survived. That is the same failure mode that keeps distinct-counts out of this seam
-  (see [Unique visitors](#what-analytics-cannot-do) below), and admitting `min`/`max` despite it
+  (see [What analytics cannot do](#what-analytics-cannot-do) below), and admitting `min`/`max` despite it
   would be inconsistent with excluding those.
 
 ### There is no `count` aggregate — declare a count measure and sum it
@@ -194,7 +196,6 @@ measure) as the thing you sum. This is exactly how `apps/lore` tracks Web Vitals
 ```typescript
 import { $analytics } from "alepha/api/analytics";
 import { z } from "alepha";
-import { db } from "alepha/orm";
 
 class WebVitals {
   vitals = $analytics({
@@ -245,9 +246,10 @@ and only to already-rolled rows.
 ### `retention.hot` cannot exceed roughly 90 days on Analytics Engine
 
 Cloudflare's own Analytics Engine keeps data for approximately 90 days regardless of what you
-declare. Asking for a longer `hot` window does not error — it silently gives you a shorter
-window than what you declared, on that one backend only. Keep `retention.hot` at 90 days or
-under if the app might ever run on Analytics Engine.
+declare. A dataset declaring a longer `hot` window is **rejected at registration** on that
+backend — the provider throws an `AlephaError` at boot rather than letting a report quietly
+come up short months later. The relational and memory backends honour the longer window, so
+the same declaration is only portable when `retention.hot` stays at 90 days or under.
 
 ### Declaring `retention` does nothing on its own
 
@@ -312,14 +314,16 @@ chooses:
 | Node / Bun, no Cloudflare binding | `OrmAnalyticsProvider` | Relational tables, exact, no sampling |
 | Cloudflare Worker with a dataset binding | `WaeAnalyticsProvider` | Workers Analytics Engine, samples under load |
 
-`AlephaApiPayments`, `AlephaApiAnalytics` and most other Alepha modules follow this same
-test-substitution pattern — see [Unit Tests](/docs/guides-testing-unit-tests) for the general
+`AlephaApiAnalytics` and most other Alepha modules ship a memory implementation as the
+substitutable default — see [Unit Tests](/docs/guides-testing-unit-tests) for the general
 shape.
 
 ### The Analytics Engine slot map is a wire format
 
 Analytics Engine has no columns, only 20 positional `blob` slots and 20 positional `double`
-slots per data point. `AnalyticsSlotMap` assigns each declared dimension a `blob` slot and each
+slots per data point — and two blob slots are reserved, so a dataset can declare at most
+18 dimensions and 20 measures before `AnalyticsSlotMap` throws at boot. It assigns each
+declared dimension a `blob` slot and each
 measure a `double` slot, derived from the dimension/measure names **sorted alphabetically** —
 never from declaration order. That has one direct consequence worth internalizing before a
 dataset ships to production: **reordering the fields in your `dimensions`/`measures` object
@@ -382,8 +386,8 @@ export class LoreAnalytics {
 needed, and no sampling to account for in assertions:
 
 ```typescript
-import { Alepha } from "alepha";
-import { AlephaApiAnalytics } from "alepha/api/analytics";
+import { Alepha, z } from "alepha";
+import { $analytics, AlephaApiAnalytics } from "alepha/api/analytics";
 
 class Stats {
   views = $analytics({

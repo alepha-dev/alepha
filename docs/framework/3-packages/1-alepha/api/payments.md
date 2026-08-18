@@ -12,6 +12,6 @@ npm install alepha
 
 Provider-agnostic payments: intents, checkout sessions, capture, refunds,
 webhooks, and admin operations. `MemoryPaymentProvider` is registered by
-default; plug a PSP with `@alepha/payments-stripe` or
-`@alepha/payments-mollie`.
+default; plug a PSP with `@alepha/payments-stripe` (published) or the
+in-repo `@alepha/payments-mollie`.
 

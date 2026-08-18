@@ -8,6 +8,23 @@ import {
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import { ServerRouterProvider } from "../providers/ServerRouterProvider.ts";
 
+/**
+ * Applies middleware functions to every route whose path starts with a prefix.
+ *
+ * Use it for cross-cutting behavior (auth headers, logging, shaping) that
+ * should cover a whole path family rather than one action — per-action
+ * middleware belongs in the action's own `use: [...]`.
+ *
+ * @example
+ * ```typescript
+ * class Security {
+ *   api = $middleware({
+ *     path: "/api",
+ *     use: [myRateLimiter()],
+ *   });
+ * }
+ * ```
+ */
 export const $middleware = (options: ServerMiddlewarePrimitiveOptions) => {
   return createPrimitive(ServerMiddlewarePrimitive, options);
 };

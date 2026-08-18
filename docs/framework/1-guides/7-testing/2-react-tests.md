@@ -4,7 +4,7 @@ Alepha provides testing utilities for React components through `alepha/react/tes
 
 ## File Naming Convention
 
-Browser test files use the `.browser.spec.ts` or `.browser.spec.tsx` extension. Configure a Vitest project in your `vitest.config.ts` that routes these files to the jsdom environment:
+Browser test files use the `.browser.spec.ts` or `.browser.spec.tsx` extension. Configure a Vitest project in the `test` block of your `vite.config.ts` that routes these files to the jsdom environment:
 
 ```typescript
 projects: [
@@ -17,7 +17,7 @@ projects: [
 ]
 ```
 
-```
+```txt
 src/
   web/
     components/
@@ -43,7 +43,7 @@ The `alepha/react/testing` module exports:
 
 ## Basic Rendering
 
-```typescript
+```tsx
 import { renderWithAlepha, setupJsdomMocks } from "alepha/react/testing";
 
 beforeAll(() => setupJsdomMocks());
@@ -61,7 +61,7 @@ test("should render greeting", async () => {
 
 Pass a pre-configured Alepha instance to swap services or providers:
 
-```typescript
+```tsx
 import { renderWithAlepha } from "alepha/react/testing";
 
 test("should render with mocked service", async () => {
@@ -77,7 +77,7 @@ test("should render with mocked service", async () => {
 
 Use the `wrapper` option to add UI framework providers (theme, i18n):
 
-```typescript
+```tsx
 import { renderWithAlepha } from "alepha/react/testing";
 import { ThemeProvider } from "my-ui-library";
 
@@ -95,7 +95,7 @@ test("should render themed component", async () => {
 
 Form helpers find inputs by test IDs constructed as `{formId}-{fieldName}`.
 
-```typescript
+```tsx
 import {
   renderWithAlepha,
   fillForm,

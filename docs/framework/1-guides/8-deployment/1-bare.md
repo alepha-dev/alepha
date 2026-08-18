@@ -8,7 +8,7 @@ The default deployment target. `alepha build` produces a self-contained `dist/` 
 alepha build
 ```
 
-This bundles both server and client code into a single optimized output. The server bundle includes all dependencies -- no `npm install` is needed in production.
+This bundles both server and client code into a single optimized output. The server bundle includes all dependencies — no `npm install` is needed in production.
 
 ## Run
 
@@ -29,7 +29,7 @@ always wins over `PORT`.
 
 ## Output Structure
 
-```
+```txt
 dist/
   index.js       # Server entry point
   public/        # Client assets (if React frontend exists)

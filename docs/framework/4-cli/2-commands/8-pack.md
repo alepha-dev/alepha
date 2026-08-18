@@ -12,7 +12,7 @@ alepha pack --tag 0.0.2
 
 ## What's Inside
 
-```
+```txt
 dist/          pre-built output, including manifest.json
 migrations/    SQL migration files (if present)
 ```

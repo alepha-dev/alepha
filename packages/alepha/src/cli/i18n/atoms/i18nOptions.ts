@@ -21,7 +21,7 @@ export const i18nOptions = $atom({
 
       /**
        * Key prefixes that are constructed at runtime (e.g. via template
-       * literals like `` tr(`archive.type.${kind}`) ``). Every key
+       * literals like `` tr(`folio.type.${kind}`) ``). Every key
        * starting with one of these prefixes is exempted from the
        * unused check.
        *

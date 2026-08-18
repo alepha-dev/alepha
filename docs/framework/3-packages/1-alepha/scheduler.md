@@ -17,7 +17,7 @@ There is no scheduler primitive. Declare scheduled work with
 things a bare tick lacks: run history, retries, timeouts and an admin view.
 
 `CronProvider` remains the single registry of cron expressions — the
-the Cloudflare build reads it to emit native platform triggers.
+Cloudflare build reads it to emit native platform triggers.
 Register a cron directly with `CronProvider.createCronJob()` if you need a
 tick without a database.
 
@@ -32,4 +32,5 @@ from `alepha/api/jobs` — it layers durability on top of this scheduler.
 
 ### Providers
 
+- [`CronProvider`](/docs/reference-providers-cronprovider) — The single registry of cron expressions in the container.
 - [`WorkerdCronProvider`](/docs/reference-providers-workerdcronprovider) — Cloudflare Workers cron provider.

@@ -22,7 +22,7 @@ hundred.
 
 ## Registration is eager, not lazy
 
-Call {@link register} once per dataset, **before** `alepha.start()` — the
+Call `register` once per dataset, **before** `alepha.start()` — the
 same rule every `$entity`/`$repository` in the framework already lives
 under (`Repository`'s constructor calls `DatabaseProvider.registerEntity`
 unconditionally, with no lazy path). `entities()` is then a plain lookup;
@@ -40,8 +40,8 @@ provider inherits without extra checks. `AnalyticsQuery.where` / `groupBy`
 / `select`, by contrast, are the shape an HTTP endpoint is most likely to
 forward client-supplied keys into unmodified. Every name drawn from a query
 (rather than from the dataset descriptor itself) is checked against the
-dataset's declared dimensions/measures — via {@link assertKnownDimension}
-/ {@link assertKnownMeasure} — before it is ever spliced into SQL text with
+dataset's declared dimensions/measures — via `assertKnownDimension`
+/ `assertKnownMeasure` — before it is ever spliced into SQL text with
 `sql.raw`. An unknown name throws `AlephaError` instead of reaching the
 database as an attacker-chosen identifier.
 
