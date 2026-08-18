@@ -3,12 +3,15 @@ import { users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import { type Epic, epics } from "@/api/entities/epics.ts";
 import { feedback } from "@/api/entities/feedback.ts";
+import { folioDirectories } from "@/api/entities/folioDirectories.ts";
+import { type Folio, folios } from "@/api/entities/folios.ts";
 import { milestones } from "@/api/entities/milestones.ts";
 import { type Project, projects } from "@/api/entities/projects.ts";
 import { type Quest, type QuestInsert, quests } from "@/api/entities/quests.ts";
 
 type ProjectInsert = Infer<typeof projects.insertSchema>;
 type EpicInsert = Infer<typeof epics.insertSchema>;
+type FolioInsert = Infer<typeof folios.insertSchema>;
 
 /**
  * Repository bag backing the `createTest*` helpers below, and the thing a
@@ -26,9 +29,7 @@ type EpicInsert = Infer<typeof epics.insertSchema>;
  *
  * A spec using any `createTest*` helper below should give its own
  * pre-`start()` class every field this class has (or `extends` it), so the
- * whole FK closure gets registered up front. `folios` is deliberately
- * absent: nothing here creates a folio row, and adding an unused table to
- * every spec's schema sync is not free.
+ * whole FK closure gets registered up front.
  */
 export class TestEntityRepositories {
   projects = $repository(projects);
@@ -37,6 +38,10 @@ export class TestEntityRepositories {
   users = $repository(users);
   epics = $repository(epics);
   quests = $repository(quests);
+  folios = $repository(folios);
+  // `folios.directoryId` refs this table — needed pre-`start()` whenever
+  // `folios` is, for the same reason `quests`'s own FK closure is.
+  folioDirectories = $repository(folioDirectories);
 }
 
 /**
@@ -51,6 +56,7 @@ export class TestEntityRepositories {
 let projectSeq = 0;
 let questSeq = 0;
 let epicSeq = 0;
+let folioSeq = 0;
 
 /**
  * Creates a project directly through the repository, bypassing
@@ -132,5 +138,27 @@ export const createTestEpic = async (
     title: overrides.title ?? `Test Epic ${epicSeq}`,
     description: overrides.description ?? "",
     status: overrides.status ?? "planned",
+  });
+};
+
+/**
+ * Creates a folio directly through the repository, bypassing
+ * `FolioController` (auth, `$sequence`-allocated `shortId`, search-text
+ * indexing, link sync). Fine for tests that only need a valid folio row
+ * to attach/detach or hang other assertions off.
+ */
+export const createTestFolio = async (
+  alepha: Alepha,
+  project: Project,
+  overrides: Partial<FolioInsert> = {},
+): Promise<Folio> => {
+  const repo = alepha.inject(TestEntityRepositories);
+  folioSeq += 1;
+  return repo.folios.create({
+    ...overrides,
+    // Spread first, defaults last — see `createTestProject`.
+    projectId: overrides.projectId ?? project.id,
+    shortId: overrides.shortId ?? folioSeq,
+    title: overrides.title ?? `Test Folio ${folioSeq}`,
   });
 };
