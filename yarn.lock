@@ -4513,6 +4513,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"api@workspace:apps/examples/api":
+  version: 0.0.0-use.local
+  resolution: "api@workspace:apps/examples/api"
+  dependencies:
+    alepha: "npm:^0.26.0"
+    vite: "npm:^8.2.1"
+    wrangler: "npm:^4.123.0"
+  languageName: unknown
+  linkType: soft
+
 "argparse@npm:^1.0.7":
   version: 1.0.10
   resolution: "argparse@npm:1.0.10"
@@ -4736,6 +4746,23 @@ __metadata:
   checksum: 10c0/065d90f98099dd0d7b6e1c284f7133d0eaebf571a7ee3e9e0740862dbd64cf040f4447404269bc8b1fd4015dead68c3a026e541a214050375df6bde20706ec8b
   languageName: node
   linkType: hard
+
+"bay-app@workspace:apps/examples/bay-app":
+  version: 0.0.0-use.local
+  resolution: "bay-app@workspace:apps/examples/bay-app"
+  dependencies:
+    "@alepha/sigil": "workspace:*"
+    alepha: "workspace:*"
+    better-sqlite3: "npm:^13.0.3"
+    drizzle-kit: "npm:1.0.0-rc.4"
+    react: "npm:^19.2.8"
+    react-dom: "npm:^19.2.8"
+    vite: "npm:^8.2.1"
+  dependenciesMeta:
+    better-sqlite3:
+      built: true
+  languageName: unknown
+  linkType: soft
 
 "bay@workspace:apps/bay":
   version: 0.0.0-use.local
@@ -5382,20 +5409,6 @@ __metadata:
   checksum: 10c0/a5d4d95599687532ee072bca60170133c24d4e08cd795529e0f22c6ce5fde9409eaf4f26e36e3d671f43270ef858fc68f3c7b0ec28e58fac7ddebda5b7725306
   languageName: node
   linkType: hard
-
-"crash-test@workspace:apps/crash-test":
-  version: 0.0.0-use.local
-  resolution: "crash-test@workspace:apps/crash-test"
-  dependencies:
-    "@types/react": "npm:^19.2.18"
-    "@vitejs/plugin-react": "npm:^6.0.5"
-    alepha: "npm:^0.26.0"
-    drizzle-kit: "npm:1.0.0-rc.4"
-    react: "npm:^19.2.8"
-    react-dom: "npm:^19.2.8"
-    vite: "npm:^8.2.1"
-  languageName: unknown
-  linkType: soft
 
 "create-alepha@workspace:packages/create-alepha":
   version: 0.0.0-use.local
@@ -6255,6 +6268,20 @@ __metadata:
   languageName: node
   linkType: hard
 
+"errors@workspace:apps/examples/errors":
+  version: 0.0.0-use.local
+  resolution: "errors@workspace:apps/examples/errors"
+  dependencies:
+    "@types/react": "npm:^19.2.18"
+    "@vitejs/plugin-react": "npm:^6.0.5"
+    alepha: "npm:^0.26.0"
+    drizzle-kit: "npm:1.0.0-rc.4"
+    react: "npm:^19.2.8"
+    react-dom: "npm:^19.2.8"
+    vite: "npm:^8.2.1"
+  languageName: unknown
+  linkType: soft
+
 "es-abstract@npm:^1.23.2, es-abstract@npm:^1.23.5, es-abstract@npm:^1.23.9":
   version: 1.24.1
   resolution: "es-abstract@npm:1.24.1"
@@ -6753,95 +6780,6 @@ __metadata:
   checksum: 10c0/c48a73c38f300e33e9f11375d4ee969f25cbb0519608a12378a38068055ae8b55b6e0e8a49c3f91c784068434efe1d9f01eb49b6315b04b0da9157879ce2f67d
   languageName: node
   linkType: hard
-
-"example-api@workspace:apps/example-api":
-  version: 0.0.0-use.local
-  resolution: "example-api@workspace:apps/example-api"
-  dependencies:
-    alepha: "npm:^0.26.0"
-    vite: "npm:^8.2.1"
-    wrangler: "npm:^4.123.0"
-  languageName: unknown
-  linkType: soft
-
-"example-bay-app@workspace:apps/example-bay-app":
-  version: 0.0.0-use.local
-  resolution: "example-bay-app@workspace:apps/example-bay-app"
-  dependencies:
-    "@alepha/sigil": "workspace:*"
-    alepha: "workspace:*"
-    better-sqlite3: "npm:^13.0.3"
-    drizzle-kit: "npm:1.0.0-rc.4"
-    react: "npm:^19.2.8"
-    react-dom: "npm:^19.2.8"
-    vite: "npm:^8.2.1"
-  dependenciesMeta:
-    better-sqlite3:
-      built: true
-  languageName: unknown
-  linkType: soft
-
-"example-relations@workspace:apps/example-relations":
-  version: 0.0.0-use.local
-  resolution: "example-relations@workspace:apps/example-relations"
-  dependencies:
-    alepha: "npm:^0.26.0"
-    drizzle-orm: "npm:1.0.0-rc.4"
-    miniflare: "npm:5.20260811.1-alpha"
-  languageName: unknown
-  linkType: soft
-
-"example-shop@workspace:apps/example-shop":
-  version: 0.0.0-use.local
-  resolution: "example-shop@workspace:apps/example-shop"
-  dependencies:
-    "@alepha/commerce": "workspace:*"
-    "@alepha/devtools": "workspace:*"
-    "@alepha/payments-stripe": "workspace:*"
-    "@alepha/sigil": "workspace:*"
-    "@alepha/ui": "workspace:*"
-    "@fontsource-variable/archivo": "npm:^5.3.0"
-    "@playwright/test": "npm:^1.62.1"
-    "@tailwindcss/vite": "npm:^4.3.3"
-    alepha: "workspace:^"
-    better-sqlite3: "npm:^13.0.3"
-    lucide-react: "npm:^1.31.0"
-    react: "npm:^19.2.8"
-    react-dom: "npm:^19.2.8"
-    tailwindcss: "npm:^4.3.3"
-    vite: "npm:^8.2.1"
-    wrangler: "npm:^4.123.0"
-  dependenciesMeta:
-    better-sqlite3:
-      built: true
-  languageName: unknown
-  linkType: soft
-
-"example-ssr@workspace:apps/example-ssr":
-  version: 0.0.0-use.local
-  resolution: "example-ssr@workspace:apps/example-ssr"
-  dependencies:
-    "@playwright/test": "npm:^1.62.1"
-    alepha: "npm:^0.26.0"
-    better-sqlite3: "npm:^13.0.3"
-    react: "npm:^19.2.8"
-    react-dom: "npm:^19.2.8"
-    vite: "npm:^8.2.1"
-    wrangler: "npm:^4.123.0"
-  dependenciesMeta:
-    better-sqlite3:
-      built: true
-  languageName: unknown
-  linkType: soft
-
-"example-ws@workspace:apps/example-ws":
-  version: 0.0.0-use.local
-  resolution: "example-ws@workspace:apps/example-ws"
-  dependencies:
-    alepha: "npm:^0.26.0"
-    react: "npm:^19.2.8"
-  languageName: unknown
-  linkType: soft
 
 "execa@npm:^5.1.1":
   version: 5.1.1
@@ -10495,9 +10433,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"playground@workspace:apps/playground":
+"playground@workspace:apps/examples/playground":
   version: 0.0.0-use.local
-  resolution: "playground@workspace:apps/playground"
+  resolution: "playground@workspace:apps/examples/playground"
   dependencies:
     "@alepha/ui": "workspace:^"
     "@playwright/test": "npm:^1.62.1"
@@ -11089,6 +11027,16 @@ __metadata:
   checksum: 10c0/83ffcd92363acd57feaecfd98819eeeb618a4ebb6db092ee60aafdb592195447648227bf36891c10ccb3959c1fbd0c4fa2cd7cd74460015c664385248c4e0c72
   languageName: node
   linkType: hard
+
+"relations@workspace:apps/examples/relations":
+  version: 0.0.0-use.local
+  resolution: "relations@workspace:apps/examples/relations"
+  dependencies:
+    alepha: "npm:^0.26.0"
+    drizzle-orm: "npm:1.0.0-rc.4"
+    miniflare: "npm:5.20260811.1-alpha"
+  languageName: unknown
+  linkType: soft
 
 "remark-gfm@npm:^4.0.1":
   version: 4.0.1
@@ -11889,6 +11837,32 @@ __metadata:
   languageName: node
   linkType: hard
 
+"shop@workspace:apps/examples/shop":
+  version: 0.0.0-use.local
+  resolution: "shop@workspace:apps/examples/shop"
+  dependencies:
+    "@alepha/commerce": "workspace:*"
+    "@alepha/devtools": "workspace:*"
+    "@alepha/payments-stripe": "workspace:*"
+    "@alepha/sigil": "workspace:*"
+    "@alepha/ui": "workspace:*"
+    "@fontsource-variable/archivo": "npm:^5.3.0"
+    "@playwright/test": "npm:^1.62.1"
+    "@tailwindcss/vite": "npm:^4.3.3"
+    alepha: "workspace:^"
+    better-sqlite3: "npm:^13.0.3"
+    lucide-react: "npm:^1.31.0"
+    react: "npm:^19.2.8"
+    react-dom: "npm:^19.2.8"
+    tailwindcss: "npm:^4.3.3"
+    vite: "npm:^8.2.1"
+    wrangler: "npm:^4.123.0"
+  dependenciesMeta:
+    better-sqlite3:
+      built: true
+  languageName: unknown
+  linkType: soft
+
 "side-channel-list@npm:^1.0.0":
   version: 1.0.0
   resolution: "side-channel-list@npm:1.0.0"
@@ -12105,6 +12079,23 @@ __metadata:
   checksum: 10c0/ecadcfe4c771890140da5023d43e190b7566d9cf8b2d238600f31bec0fc653f328da4450eb04bd59a431771a8e9cc0e118f0aa3974b683a4981b4e07abc2a5bb
   languageName: node
   linkType: hard
+
+"ssr@workspace:apps/examples/ssr":
+  version: 0.0.0-use.local
+  resolution: "ssr@workspace:apps/examples/ssr"
+  dependencies:
+    "@playwright/test": "npm:^1.62.1"
+    alepha: "npm:^0.26.0"
+    better-sqlite3: "npm:^13.0.3"
+    react: "npm:^19.2.8"
+    react-dom: "npm:^19.2.8"
+    vite: "npm:^8.2.1"
+    wrangler: "npm:^4.123.0"
+  dependenciesMeta:
+    better-sqlite3:
+      built: true
+  languageName: unknown
+  linkType: soft
 
 "ssri@npm:^13.0.0":
   version: 13.0.1
@@ -13764,6 +13755,15 @@ __metadata:
   checksum: 10c0/7b28dc2863ea0e2cece68d142a3eee90361021b73f750431e6d8076bb7dede5fdfdb75b3d29534b62f411261147b76b1bc80fb5cc63ab0aabd467280e85b22e0
   languageName: node
   linkType: hard
+
+"ws@workspace:apps/examples/ws":
+  version: 0.0.0-use.local
+  resolution: "ws@workspace:apps/examples/ws"
+  dependencies:
+    alepha: "npm:^0.26.0"
+    react: "npm:^19.2.8"
+  languageName: unknown
+  linkType: soft
 
 "wsl-utils@npm:^0.3.0":
   version: 0.3.1

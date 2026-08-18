@@ -13,7 +13,7 @@ import { $realm, AlephaApiUsers, RealmProvider } from "../index.ts";
  * wires up. The combination used to be reconciled silently — `$realm`
  * overwrote all three with `false` — which meant an application could ask
  * for password resets, ship, and have every reset request rejected with
- * nothing anywhere saying why. `apps/example-shop` did exactly that in production.
+ * nothing anywhere saying why. `apps/examples/shop` did exactly that in production.
  *
  * The check lives in `RealmProvider.register` rather than `$realm`, so both
  * registration paths are held to it.

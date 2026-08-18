@@ -1,0 +1,21 @@
+{
+  "private": true,
+  "type": "module",
+  "name": "api",
+  "scripts": {
+    "dev": "alepha dev",
+    "build": "alepha build",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist",
+    "wrangler": "cd dist && wrangler",
+    "wrangler:dev": "cd dist && wrangler dev",
+    "compile": "cd dist && bun build --compile --minify --bytecode index.js"
+  },
+  "dependencies": {
+    "alepha": "^0.26.0"
+  },
+  "devDependencies": {
+    "vite": "^8.2.1",
+    "wrangler": "^4.123.0"
+  }
+}

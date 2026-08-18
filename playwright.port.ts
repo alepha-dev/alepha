@@ -54,7 +54,7 @@ import { dirname, join } from "node:path";
  */
 export const e2ePort = (app: E2eApp): number => {
   // Memoised through the environment, not a module variable, because
-  // `apps/playground` calls this from BOTH its config and its `global-setup.ts`
+  // `apps/examples/playground` calls this from BOTH its config and its `global-setup.ts`
   // and the two must agree. Under the old fixed port they agreed by arithmetic;
   // now the first call binds the answer and the second reads it back. This also
   // reaches the `webServer` child, which inherits `process.env`.
@@ -98,9 +98,9 @@ export const E2E_SLOTS = {
   docs: 0,
   lore: 1,
   playground: 2,
-  "example-shop": 3,
-  "example-ssr": 4,
-  "example-ssr-dev": 5,
+  shop: 3,
+  ssr: 4,
+  "ssr-dev": 5,
 } as const;
 
 export type E2eApp = keyof typeof E2E_SLOTS;

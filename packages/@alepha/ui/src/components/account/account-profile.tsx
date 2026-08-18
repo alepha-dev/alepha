@@ -71,7 +71,7 @@ const AccountProfile = (props: AccountProfileProps) => {
    * `?? ""` seeded an empty string into a column that is `.optional()` but
    * `minLength: 3`, `FormModel` decodes its initial values on construction,
    * and the whole page died at `useForm` with "Too small: expected string to
-   * have >=3 characters at /username" — before anything rendered. `apps/shop`
+   * have >=3 characters at /username" — before anything rendered. `apps/examples/shop`
    * is such a realm, and `"none"` is also the framework default, so this is
    * what any new app hits first.
    *

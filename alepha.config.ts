@@ -88,11 +88,21 @@ export default (alepha: Alepha) => {
           // it behind and it is not small.
           `.e2e-tmp`,
           `coverage`,
+          // Two levels: apps live at `apps/<app>` and `apps/examples/<app>`.
+          // A single `apps/*/…` silently stopped cleaning everything under
+          // `apps/examples/` the moment the examples moved down a level, and
+          // a stale `dist` there is exactly what makes an e2e run test the
+          // previous build.
           `apps/*/playwright-report`,
           `apps/*/test-results`,
           `apps/*/.playwright`,
           `apps/*/dist`,
           `apps/*/coverage`,
+          `apps/*/*/playwright-report`,
+          `apps/*/*/test-results`,
+          `apps/*/*/.playwright`,
+          `apps/*/*/dist`,
+          `apps/*/*/coverage`,
           `packages/*/dist`,
           `packages/*/node_modules`,
           `packages/*/coverage`,
@@ -245,7 +255,10 @@ export default (alepha: Alepha) => {
         await run(`yarn build`);
 
         // HACK: remove vite cache to prevent stale cache issues in e2e tests
-        await run.rm([`apps/*/node_modules/.vite`]);
+        await run.rm([
+          `apps/*/node_modules/.vite`,
+          `apps/*/*/node_modules/.vite`,
+        ]);
 
         // Both need `build` and neither needs the other. They do not collide:
         // `e2e` serves the playground on its own port (see its

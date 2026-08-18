@@ -1,0 +1,40 @@
+{
+  "private": true,
+  "type": "module",
+  "name": "shop",
+  "scripts": {
+    "dev": "alepha dev",
+    "build": "alepha build --stats",
+    "deploy": "alepha platform up -e production",
+    "typecheck": "tsc --noEmit",
+    "check:migrations": "alepha db migrations check",
+    "db:generate": "alepha db migrations create",
+    "start": "yarn build && LOG_LEVEL=info LOG_FORMAT=pretty node dist",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "@alepha/commerce": "workspace:*",
+    "@alepha/devtools": "workspace:*",
+    "@alepha/payments-stripe": "workspace:*",
+    "@alepha/sigil": "workspace:*",
+    "@alepha/ui": "workspace:*",
+    "@fontsource-variable/archivo": "^5.3.0",
+    "alepha": "workspace:^",
+    "lucide-react": "^1.31.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@tailwindcss/vite": "^4.3.3",
+    "better-sqlite3": "^13.0.3",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.2.1",
+    "wrangler": "^4.123.0"
+  },
+  "dependenciesMeta": {
+    "better-sqlite3": {
+      "built": true
+    }
+  }
+}

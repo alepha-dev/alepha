@@ -18,7 +18,7 @@ export default defineConfig({
     // imported `AppRouter.ts` (the first spec anywhere to do so).
     //
     // ⚠️ Load-bearing, not incidental. `apps/lore` is the only workspace that
-    // currently *writes* `@/` imports, but `apps/playground` and `apps/example-shop`
+    // currently *writes* `@/` imports, but `apps/examples/playground` and `apps/examples/shop`
     // both DECLARE the same `@/* -> ./src/*` mapping in their tsconfig, and
     // shop has specs this config collects. The first `@/` import added in
     // either app would resolve into `apps/lore/src` here — typecheck green,

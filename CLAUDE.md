@@ -106,7 +106,7 @@ Project `1` has a directory tree (browse it with `directory_list`). **Directorie
 | `lore` | `apps/lore` — the app, its data model, its UI, sigils, MCP |
 | `bay` | `apps/bay` — the Go supervisor, its deployment, the VPS |
 | `platform` | the deploy chain — `alepha platform`, its adapters, Cloudflare, SSH, npm release |
-| `commerce` | `@alepha/commerce` and `apps/shop` |
+| `commerce` | `@alepha/commerce` and `apps/examples/shop` |
 | `reviews` | dated audits and security reviews that span everything |
 | `archive` | retired experiments, kept only where a lesson survives (pulse, bay-admin, outposts) |
 | `trash` | superseded folios awaiting real deletion — see below |
@@ -149,12 +149,12 @@ Two disjoint bands, and they must stay disjoint:
 | band | owner |
 |---|---|
 | `3001-3004` | `apps/benchmark` |
-| `3300-3399` | **dev servers** — `dev.port` in each app's `alepha.config.ts` (docs 3302, lore 3303, playground 3304, example-shop 3305, crash-test 3306, example-bay-app 3307, example-ssr 3311) |
+| `3300-3399` | **dev servers** — `dev.port` in each app's `alepha.config.ts` (docs 3302, lore 3303, examples/playground 3304, examples/shop 3305, examples/errors 3306, examples/bay-app 3307, examples/ssr 3311) |
 | `5173+` | dev servers with no `dev.port` (Vite default); also `alepha dev` in multi-app mode, which hands each child `5173 + index` via `SERVER_PORT` and so **overrides `dev.port`** |
 | `4300-4999` | **e2e, and nothing else** |
 | `11883` / `15432` / `16379` / `19090` | `compose.yml` test services (emqx / postgres / redis / s3mock) |
 
-All six Playwright configs (`apps/docs`, `lore`, `playground`, `example-shop`, and `example-ssr` × prod + dev mode) take their port from `e2ePort("<app>")` in the repo-root `playwright.port.ts`, the same way every vitest config takes its browser project from `vitest.jsdom.ts`. Add port logic there, never to a caller; a new suite needs a slot in `E2E_SLOTS` or it will not typecheck.
+All six Playwright configs (`apps/docs`, `apps/lore`, and `apps/examples/{playground,shop,ssr}` — ssr twice, prod + dev mode) take their port from `e2ePort("<app>")` in the repo-root `playwright.port.ts`, the same way every vitest config takes its browser project from `vitest.jsdom.ts`. Add port logic there, never to a caller; a new suite needs a slot in `E2E_SLOTS` or it will not typecheck.
 
 The argument is the **app name, not a port**, because it used to be the port — and it was the app's own *dev* port. `yarn dev` and `yarn e2e` in the same app fought over one socket, and with `reuseExistingServer` on, Playwright adopted the dev server and ran the suite against hot-reloaded sources and the dev database, reporting green.
 

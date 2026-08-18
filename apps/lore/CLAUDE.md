@@ -716,7 +716,7 @@ Both are the same shape as the `ADD COLUMN … NOT NULL` trap below — a check 
 
 **The fix for face 2 was structural, not the missing line.** The browser project now lives in `vitest.jsdom.ts` at the repo root and both configs call `jsdomProject(include)`, each supplying nothing but its own `include`. Add a jsdom setting there, never to a caller. Guarding the spec instead (`window.localStorage?.clear()`) was rejected: it would pass while still running in the wrong environment, so every assertion about persisted pane preferences would be testing nothing.
 
-The `@/` alias is still duplicated in both configs, and the root copy is load-bearing: `apps/playground` and `apps/shop` declare the same `@/* → ./src/*` tsconfig mapping without writing a single `@/` import today, so the first one added in either app resolves into `apps/lore/src` under a root run — typecheck green, wrong file imported. At that point the repo-wide alias has to become per-project, which is why it is not shared the way the jsdom project is.
+The `@/` alias is still duplicated in both configs, and the root copy is load-bearing: `apps/examples/playground` and `apps/examples/shop` declare the same `@/* → ./src/*` tsconfig mapping without writing a single `@/` import today, so the first one added in either app resolves into `apps/lore/src` under a root run — typecheck green, wrong file imported. At that point the repo-wide alias has to become per-project, which is why it is not shared the way the jsdom project is.
 
 57 unit / integration specs in `test/` (Vitest, in-memory SQLite). Notable ones:
 

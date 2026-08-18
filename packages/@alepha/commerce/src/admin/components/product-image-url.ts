@@ -8,7 +8,7 @@
  *
  * `/api/public/files/:id` rather than the authenticated `/api/files/:id`: a
  * catalogue image is by definition public, and the anonymous route is
- * edge-cacheable. It is the same resolution `apps/example-shop` does on its storefront.
+ * edge-cacheable. It is the same resolution `apps/examples/shop` does on its storefront.
  */
 export const productImageUrl = (ref?: string): string | undefined => {
   if (!ref) return undefined;

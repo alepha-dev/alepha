@@ -14,7 +14,7 @@ const APPS = Object.keys(E2E_SLOTS) as E2eApp[];
 /**
  * Every port a dev server can bind, which is the set an e2e port must never
  * intersect. 3300-3399 is the `dev.port` band in each app's `alepha.config.ts`
- * (docs 3302 … example-ssr 3311); 5173+ is what an app WITHOUT a `dev.port`
+ * (docs 3302 … examples/ssr 3311); 5173+ is what an app WITHOUT a `dev.port`
  * gets from Vite, and what `alepha dev` hands each child in multi-app mode
  * (`5173 + index`). 3001-3004 is `apps/benchmark`, and the four high ports are
  * `compose.yml`.
@@ -60,9 +60,9 @@ describe("candidatePorts", () => {
     expect,
   }) => {
     // The old per-app-seeded hash made an intra-worktree collision a 1-in-500
-    // per pair — and one real worktree hit it: shop (3305) and example-ssr
+    // per pair — and one real worktree hit it: shop (3305) and ssr
     // (3312) both derived 3638, so shop's server always held the port when
-    // example-ssr's tried to bind, and `yarn v` failed deterministically while
+    // ssr's tried to bind, and `yarn v` failed deterministically while
     // each suite passed alone. Slots make that unreachable, but only if the
     // busy-port fallback preserves them: each app must step a whole stride, so
     // a suite fleeing a squatter never lands in a sibling's slot.
