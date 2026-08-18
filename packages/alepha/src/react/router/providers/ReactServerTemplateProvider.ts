@@ -51,6 +51,18 @@ export class ReactServerTemplateProvider {
   protected earlyHeadContent = "";
 
   /**
+   * Head content for standalone error documents: the same charset/viewport
+   * prefix and stylesheets, but **no entry script**.
+   *
+   * An error document is not the app. If it shipped the entry module, the
+   * client would boot, find no `#__ssr` payload, and client-render the very
+   * URL the server just refused — replacing a 503 or a guard's refusal with a
+   * working-looking page. Dropping the script is what keeps that from
+   * happening; the cost is that these pages are not interactive.
+   */
+  protected errorHeadContent = "";
+
+  /**
    * Root element ID for React mounting.
    */
   public readonly rootId = "root";
@@ -78,14 +90,35 @@ export class ReactServerTemplateProvider {
     entryAssets: string,
     globalHead?: SimpleHead,
   ): void {
+    this.earlyHeadContent = this.composeHeadContent(entryAssets, globalHead);
+  }
+
+  /**
+   * Set the head content used by standalone error documents.
+   *
+   * Takes stylesheets and the favicon, never the entry script — see
+   * {@link errorHeadContent}.
+   */
+  public setErrorHeadContent(
+    styleAssets: string,
+    globalHead?: SimpleHead,
+  ): void {
+    this.errorHeadContent = this.composeHeadContent(styleAssets, globalHead);
+  }
+
+  protected composeHeadContent(
+    assets: string,
+    globalHead?: SimpleHead,
+  ): string {
     const charset = globalHead?.charset ?? "UTF-8";
     const viewport =
       globalHead?.viewport ?? "width=device-width, initial-scale=1";
 
-    this.earlyHeadContent =
+    return (
       `<meta charset="${this.escapeHtml(charset)}">\n` +
       `<meta name="viewport" content="${this.escapeHtml(viewport)}">\n` +
-      entryAssets;
+      assets
+    );
   }
 
   /**
@@ -490,17 +523,58 @@ export class ReactServerTemplateProvider {
   }
 
   /**
+   * Render a complete, standalone HTML document for an error.
+   *
+   * This is the answer for a failure that happened *before* any React stream
+   * opened — a guard, a hook, a middleware — where the streaming error paths
+   * above have nothing to inject into. Nothing has been flushed yet, so the
+   * whole document is built at once and returned as a string.
+   *
+   * Deliberately not hydrated: see {@link errorHeadContent}.
+   */
+  public async renderErrorDocument(
+    error: Error,
+    options: { element?: ReactNode; head?: SimpleHead } = {},
+  ): Promise<string> {
+    // The error paths below read the renderer synchronously (they normally run
+    // inside a stream controller). Nothing loaded it for us here, so do it now.
+    await this.reactDomServer.load();
+
+    const { head } = options;
+
+    return (
+      "<!DOCTYPE html>\n" +
+      `<html${this.renderAttributes(head?.htmlAttributes)}>\n` +
+      "<head>" +
+      this.errorHeadContent +
+      this.renderHeadContent(head) +
+      "</head>\n" +
+      `<body${this.renderAttributes(head?.bodyAttributes)}>\n` +
+      `<div id="${this.rootId}">` +
+      this.renderErrorToString(error, undefined, options.element) +
+      "</div>\n" +
+      "</body>\n</html>"
+    );
+  }
+
+  /**
    * Render error to HTML string.
+   *
+   * `element` short-circuits the `onError` lookup for callers that already
+   * resolved a custom error component — the pre-stream path does, because it
+   * has to inspect the result for a `Redirection` while a redirect is still
+   * possible.
    */
   protected renderErrorToString(
     error: Error,
     routerState: ReactRouterState | undefined,
+    element?: ReactNode,
   ): string {
     this.log.error("SSR rendering error", error);
 
-    let errorElement: ReactNode;
+    let errorElement: ReactNode = element;
 
-    if (routerState?.onError) {
+    if (!errorElement && routerState?.onError) {
       try {
         const result = routerState.onError(error, routerState);
         if (result instanceof Redirection) {

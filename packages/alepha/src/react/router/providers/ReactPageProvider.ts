@@ -594,7 +594,14 @@ export class ReactPageProvider {
     return { state };
   }
 
-  protected getErrorHandler(route: PageRoute): ErrorHandler | undefined {
+  /**
+   * The nearest `errorHandler` for a page: its own, else the closest parent's.
+   *
+   * Public because the pre-stream error path (`ReactServerErrorProvider`) has
+   * to resolve the same handler from outside `createLayers` — a failure in a
+   * guard or a hook must reach the handler the page already declares.
+   */
+  public getErrorHandler(route: PageRoute): ErrorHandler | undefined {
     if (route.errorHandler) return route.errorHandler;
     let parent = route.parent;
     while (parent) {

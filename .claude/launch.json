@@ -4,8 +4,31 @@
     {
       "name": "lore",
       "runtimeExecutable": "yarn",
-      "runtimeArgs": ["w", "lore", "dev"],
+      "runtimeArgs": [
+        "w",
+        "lore",
+        "dev"
+      ],
       "port": 5173
+    },
+    {
+      "name": "errors",
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": [
+        "w",
+        "errors",
+        "dev"
+      ],
+      "port": 3306
+    },
+    {
+      "name": "docs",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/nfo/git/alepha/.claude/worktrees/docs-dev && exec yarn w docs dev"
+      ],
+      "port": 3302
     }
   ]
 }

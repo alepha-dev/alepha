@@ -39,6 +39,7 @@ This module enables:
 - [`ReactDomServerProvider`](/docs/reference-providers-reactdomserverprovider) — The renderer half of React, loaded only once something actually renders.
 - [`ReactPageProvider`](/docs/reference-providers-reactpageprovider) — Handle page routes for React applications. (Browser and Server)
 - [`ReactPreloadProvider`](/docs/reference-providers-reactpreloadprovider) — Adds HTTP Link headers for preloading entry assets.
+- [`ReactServerErrorProvider`](/docs/reference-providers-reactservererrorprovider) — Answers a browser navigation with an HTML error page instead of JSON.
 - [`ReactServerProvider`](/docs/reference-providers-reactserverprovider) — React server provider responsible for SSR and static file serving.
 - [`ReactServerTemplateProvider`](/docs/reference-providers-reactservertemplateprovider) — Handles HTML streaming for SSR.
 - [`RootComponentsProvider`](/docs/reference-providers-rootcomponentsprovider) — Extension point letting any module contribute root-level React nodes that

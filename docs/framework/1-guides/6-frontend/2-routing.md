@@ -361,6 +361,29 @@ errorHandler: (error) => {
 }
 ```
 
+The same handler also covers failures thrown *around* the render -- a `use:`
+middleware, or a server hook such as the rate limiter or the not-ready guard
+that answers while the app is still booting. Those never run a loader, so there
+is no layer to fail; the router still resolves the nearest `errorHandler` and
+renders its result as a full HTML page.
+
+When no handler applies, the built-in error page answers: the stack overlay in
+development, a plain card carrying the request id in production.
+
+### HTML or JSON
+
+The switch is the request's `Accept` header, and nothing else:
+
+- `Accept: text/html` -- what a browser sends on a hard navigation -- gets a
+  rendered document.
+- Anything else, including the `*/*` that `fetch()` defaults to, keeps the JSON
+  error body. API clients are unaffected.
+
+An error page is server-rendered and deliberately **not** hydrated: it ships no
+entry script, so the client cannot boot and re-render the very URL the server
+just refused. A custom error component is therefore static -- hooks that read
+context (`useRouter`, `useI18n`) work, event handlers do not.
+
 ## Lifecycle Callbacks
 
 - `onEnter` -- called when the user enters the page (browser only)

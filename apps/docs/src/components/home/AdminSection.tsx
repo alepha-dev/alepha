@@ -7,7 +7,6 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import Dialog from "../layout/Dialog.tsx";
 import AdminShot from "./AdminShot.tsx";
-import CopyCommand from "./CopyCommand.tsx";
 
 const SHOTS = [
   {
@@ -86,7 +85,6 @@ const AdminSection = () => {
               Not a template you fork and then maintain, but modules that keep
               getting updates with the framework.
             </p>
-            <CopyCommand command="npx alepha@latest init my-app --preset saas" />
           </div>
 
           {/* Right: segmented control + thumbnail */}
