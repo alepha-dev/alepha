@@ -126,8 +126,15 @@ export class InsightsController {
           since,
           totalViews: 0,
           uniqueVisitors: 0,
+          entries: 0,
+          engagedViews: 0,
+          engagementRate: 0,
           topCountries: [],
           topPaths: [],
+          topEntryPaths: [],
+          topCampaigns: [],
+          topDevices: [],
+          topReferrers: [],
           vitals: { lcp: null, cls: null, inp: null, fcp: null, ttfb: null },
           timeline: this.zeroTimeline(today, days),
           errorGroups: [],
@@ -151,6 +158,10 @@ export class InsightsController {
         viewsTotal,
         topCountryResult,
         topPathResult,
+        topEntryPathResult,
+        topCampaignResult,
+        topDeviceResult,
+        topReferrerResult,
         timelineResult,
         vitalsResult,
       ] = await Promise.all([
@@ -158,7 +169,7 @@ export class InsightsController {
         this.datasets.views.query({
           since,
           where: analyticsWhere,
-          select: { count: "sum" },
+          select: { count: "sum", engaged: "sum", entries: "sum" },
         }),
         this.datasets.views.query({
           since,
@@ -172,6 +183,50 @@ export class InsightsController {
           since,
           where: analyticsWhere,
           groupBy: ["path"],
+          select: { count: "sum" },
+          orderBy: { key: "count", direction: "desc" },
+          limit: TOP_N,
+        }),
+        // Landing pages, which `topPaths` cannot answer: that one sums every
+        // view of a path, so `/` conflates arriving at the site with clicking
+        // Home. `entries` is only ever incremented by a page load.
+        this.datasets.views.query({
+          since,
+          where: analyticsWhere,
+          groupBy: ["path"],
+          select: { entries: "sum" },
+          orderBy: { key: "entries", direction: "desc" },
+          limit: TOP_N,
+        }),
+        // Summed on `entries`, not `count`: a campaign describes how a visit
+        // began, so counting the visitor's later navigations against it would
+        // reward tagged links for how much the visitor happened to read.
+        this.datasets.views.query({
+          since,
+          where: analyticsWhere,
+          groupBy: ["campaign"],
+          select: { entries: "sum" },
+          orderBy: { key: "entries", direction: "desc" },
+          limit: TOP_N,
+        }),
+        this.datasets.views.query({
+          since,
+          where: analyticsWhere,
+          groupBy: ["device"],
+          select: { count: "sum" },
+          orderBy: { key: "count", direction: "desc" },
+          limit: TOP_N,
+        }),
+        // `direct` is not excluded here even though it is never the answer
+        // anyone is looking for. It is the denominator: without it on the
+        // same leaderboard, "12 views from Hacker News" reads as a share of
+        // the referred traffic rather than of the traffic, and on a site
+        // whose visitors mostly arrive unattributed those differ by an order
+        // of magnitude.
+        this.datasets.views.query({
+          since,
+          where: analyticsWhere,
+          groupBy: ["referrer"],
           select: { count: "sum" },
           orderBy: { key: "count", direction: "desc" },
           limit: TOP_N,
@@ -192,6 +247,10 @@ export class InsightsController {
       ]);
 
       const totalViews = Number(viewsTotal.rows[0]?.count ?? 0);
+      const entries = Number(viewsTotal.rows[0]?.entries ?? 0);
+      const engagedViews = Number(viewsTotal.rows[0]?.engaged ?? 0);
+      const engagementRate =
+        totalViews > 0 ? Math.round((engagedViews / totalViews) * 100) : 0;
 
       const topCountries = topCountryResult.rows.map((row) => ({
         country: String(row.country),
@@ -200,6 +259,32 @@ export class InsightsController {
 
       const topPaths = topPathResult.rows.map((row) => ({
         path: String(row.path),
+        count: Number(row.count),
+        percentage:
+          totalViews > 0
+            ? Math.round((Number(row.count) / totalViews) * 100)
+            : 0,
+      }));
+
+      const topEntryPaths = topEntryPathResult.rows.map((row) => ({
+        path: String(row.path),
+        count: Number(row.entries),
+        percentage:
+          entries > 0 ? Math.round((Number(row.entries) / entries) * 100) : 0,
+      }));
+
+      const topCampaigns = topCampaignResult.rows.map((row) => ({
+        campaign: String(row.campaign),
+        count: Number(row.entries),
+      }));
+
+      const topDevices = topDeviceResult.rows.map((row) => ({
+        device: String(row.device),
+        count: Number(row.count),
+      }));
+
+      const topReferrers = topReferrerResult.rows.map((row) => ({
+        referrer: String(row.referrer),
         count: Number(row.count),
         percentage:
           totalViews > 0
@@ -237,8 +322,15 @@ export class InsightsController {
         since,
         totalViews,
         uniqueVisitors,
+        entries,
+        engagedViews,
+        engagementRate,
         topCountries,
         topPaths,
+        topEntryPaths,
+        topCampaigns,
+        topDevices,
+        topReferrers,
         vitals,
         timeline,
         errorGroups,
