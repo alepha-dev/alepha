@@ -27,6 +27,7 @@ import {
   questResourceSchema,
   questStatusSchema,
 } from "../schemas/questResourceSchema.ts";
+import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 import { QuestService, sanitizeHtml } from "../services/QuestService.ts";
@@ -39,6 +40,7 @@ export class QuestController {
   blights = $repository(blights);
   dt = $inject(DateTimeProvider);
   security = $inject(ProjectSecurityService);
+  epicVisibility = $inject(EpicVisibilityService);
   fileService = $inject(FileService);
   questMapper = $inject(QuestResourceMapper);
   questService = $inject(QuestService);
@@ -303,6 +305,8 @@ export class QuestController {
         status: questStatusSchema.optional(),
         search: z.string().optional(),
         milestoneId: z.integer().optional(),
+        epic: z.integer().optional(),
+        includePlanned: z.boolean().optional(),
         area: z.string().optional(),
         tag: z.string().optional(),
       }),
@@ -329,6 +333,10 @@ export class QuestController {
 
       if (query.milestoneId) {
         where.milestoneId = { eq: query.milestoneId };
+      }
+
+      if (query.epic) {
+        where.epicId = { eq: query.epic };
       }
 
       if (query.area) {
@@ -359,6 +367,23 @@ export class QuestController {
         // quests are deliberately out of scope, so they only ever surface
         // through the explicit `shelved` filter.
         where.shelvedAt = { isNull: true };
+      }
+
+      // Quests of a `planned` epic are specified but not released into the
+      // backlog. This FILTERS; it never mutates a quest row.
+      //
+      // Opt-out rather than unconditional, because MCP `quest_list` calls
+      // this same action (`QuestTools.ts:155`) and the spec (§5.3) requires
+      // it to stay ungated: an agent that files a quest into a planned epic
+      // must see it in its own next call, or the tool looks as though it
+      // silently failed.
+      //
+      // `includePlanned` is client-settable and that is fine — every caller
+      // has already passed `security.assertMember`, so it exposes nothing
+      // the caller could not already read. This is a backlog-organisation
+      // affordance, NOT an authorization control. Do not "harden" it into one.
+      if (!query.includePlanned && !query.epic) {
+        await this.epicVisibility.applyBacklogGate(where, params.projectId);
       }
 
       query.sort ??= "-updatedAt";
