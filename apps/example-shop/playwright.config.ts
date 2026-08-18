@@ -2,15 +2,15 @@ import { defineConfig, devices } from "@playwright/test";
 import { e2ePort } from "../../playwright.port.ts";
 
 /*
- * 3305 sits in the same band as the other apps' e2e ports (docs 3302, lore 3303,
- * playground 3304, example-ssr 3311/3312). Never 5173/5174 — Vite's default and
- * its first fallback — because an unrelated dev server squatting the port turns
- * `reuseExistingServer: false` into a hard failure that looks like a regression.
- *
- * `e2ePort` keeps the `E2E_PORT` override this config already had and adds the
- * per-worktree derivation — read it for why a fixed port is not enough.
+ * The e2e port comes from the 4300-4999 band, which is reserved for e2e and
+ * disjoint from every dev port in the repo — see `playwright.port.ts`. Never a
+ * dev port (33xx) and never 5173/5174: those are Vite's default and its first
+ * fallback, so an app running `yarn dev` would be adopted by this suite.
+ * `e2ePort` derives the slot from the checkout (so two worktrees never share a
+ * server), bind-tests it, and moves on if anything is listening. `E2E_PORT`
+ * overrides.
  */
-const port = e2ePort(3305);
+const port = e2ePort("example-shop");
 
 export default defineConfig({
   testDir: "./e2e",

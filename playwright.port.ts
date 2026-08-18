@@ -1,91 +1,173 @@
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, statSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 /**
- * The e2e port for one app, shared by every Playwright config in the repo.
+ * The e2e port for one suite, shared by every Playwright config in the repo.
  *
- * Same reasoning as `vitest.jsdom.ts`: a setting that must hold across five
+ * Same reasoning as `vitest.jsdom.ts`: a setting that must hold across six
  * configs lives in one file, and a caller contributes nothing but its own
- * default. Three of the five had already drifted — `apps/playground` and
- * `apps/example-shop` grew an `E2E_PORT` override that `apps/docs`, `apps/example-ssr`
- * and `apps/lore` never got.
+ * name.
  *
- * ## Why a port needs logic at all
+ * ## The two rules this file exists to enforce
  *
- * `reuseExistingServer` is `!process.env.CI`, so **locally a busy port does not
- * fail — Playwright attaches to whatever answers on it**. That is the fast
- * inner loop working as intended when the server is yours. It is a trap when it
- * is not: several agents run these suites at once, one git worktree each, and
- * they all used to land on the same hard-coded port. The later run then tests
- * the other run's `node dist` against a database already holding that run's
- * rows, and reports green. Nothing in the output says which server answered.
+ * **1. An e2e port is never a dev port.** Until this rewrite the two were
+ * literally the same number — `apps/docs` served dev on 3302 and ran e2e on
+ * 3302, lore on 3303 and 3303, and so on down the band. With
+ * `reuseExistingServer` on, `yarn dev` in one terminal and `yarn e2e` in
+ * another meant Playwright quietly adopted the DEV server and ran the whole
+ * suite against it: hot-reloaded sources instead of `node dist`, the dev
+ * database instead of `:memory:`, and a green report either way. The bands are
+ * now disjoint, so that particular lie is unreachable:
  *
- * So the primary checkout keeps its documented port and a **linked worktree**
- * derives its own, which makes the overlap impossible rather than merely
- * unlikely. Ports land in 3400-3899, clear of every hand-allocated port in the
- * 33xx band (docs 3302, lore 3303, playground 3304, shop 3305, example-ssr
- * 3311/3312).
+ * | band          | who owns it                                            |
+ * |---------------|--------------------------------------------------------|
+ * | 3001-3004     | `apps/benchmark`                                        |
+ * | 3300-3399     | dev servers (`dev.port` in each `alepha.config.ts`)      |
+ * | 5173+         | dev servers with no `dev.port` (Vite default, multi-app) |
+ * | 11883/15432/16379/19090 | `compose.yml` test services                   |
+ * | **4300-4999** | **e2e, and nothing else**                               |
  *
- * ## Why not a random port
+ * **2. The port is verified free before it is handed out.** A band of its own
+ * stops the repo from colliding with itself; it says nothing about the rest of
+ * the machine, or about a stale server left behind by an interrupted run. Every
+ * candidate is bind-tested, and a busy one is skipped.
  *
- * A fresh port never has a server on it, so `reuseExistingServer` would never
- * hit and every local run would pay the full production build + boot that reuse
- * exists to avoid. The isolation wanted here is between *checkouts*, not
- * between consecutive runs in one checkout — and a derived port stays
- * reproducible, so a failing run can still be re-attached to.
+ * ## Why the candidate is derived and not just "the first free port"
  *
- * Two worktrees can in principle hash to the same port (~0.4% for three
- * worktrees over 500 slots). `E2E_PORT` is the escape hatch, and is also what
- * to reach for against a worktree checked out before this landed, which still
- * carries its old fixed port.
+ * Probing is not the thing that separates two agents running e2e at once, one
+ * git worktree each. `yarn start` builds for a minute or more before it binds,
+ * so two runs started in that window both see the same port free and both
+ * choose it. What separates them is the checkout hash: different worktrees get
+ * different starting bases, far apart, before anyone probes anything.
  *
- * @param defaultPort the port this app owns in the primary checkout.
+ * So the derivation stays primary and the probe is the safety net — for a dev
+ * server, an unrelated local service, or a stale process holding the slot. When
+ * the probe does move, it advances a whole STRIDE so the run lands on another
+ * base rather than in a sibling suite's slot.
+ *
+ * A fully random port would defeat the derivation and make concurrent runs
+ * collide by chance instead of never; `E2E_PORT` remains the escape hatch.
+ *
+ * @param app the suite's key in {@link E2E_SLOTS}.
  */
-export const e2ePort = (defaultPort: number): number => {
+export const e2ePort = (app: E2eApp): number => {
+  // Memoised through the environment, not a module variable, because
+  // `apps/playground` calls this from BOTH its config and its `global-setup.ts`
+  // and the two must agree. Under the old fixed port they agreed by arithmetic;
+  // now the first call binds the answer and the second reads it back. This also
+  // reaches the `webServer` child, which inherits `process.env`.
   if (process.env.E2E_PORT) {
     return Number(process.env.E2E_PORT);
   }
 
   const root = checkoutRoot();
-  // `.git` is a directory in the primary checkout and a FILE (holding
-  // `gitdir: …`) in a linked worktree — the cheapest way to tell the two apart
-  // without shelling out to git from a config file.
-  const marker = join(root, ".git");
-  if (!existsSync(marker) || !statSync(marker).isFile()) {
-    return defaultPort;
+  const candidates = candidatePorts(root, app);
+  const port = firstFreePort(candidates) ?? candidates[0];
+
+  if (port !== candidates[0]) {
+    // stderr, not stdout: a `--reporter=json` run writes its payload to stdout
+    // and this would corrupt it.
+    process.stderr.write(
+      `[e2e] ${app}: ${candidates[0]} is busy — using ${port}\n`,
+    );
   }
 
-  const derived = derivePort(root, defaultPort);
-
-  // stderr, not stdout: a `--reporter=json` run writes its payload to stdout
-  // and this would corrupt it.
-  process.stderr.write(
-    `[e2e] linked worktree — port ${derived} instead of ${defaultPort} (${root})\n`,
-  );
-  return derived;
+  process.env.E2E_PORT = String(port);
+  return port;
 };
 
 /**
- * The pure derivation, split from `e2ePort` so it can be unit-tested without
- * the env/filesystem handling.
- *
- * A per-worktree BASE from the root hash plus a per-app OFFSET from the
- * default's last two digits. The offset is what makes an intra-worktree
- * collision impossible rather than unlikely: the previous formula hashed
- * `root:default` into one 500-slot space per app independently, which left
- * each pair a 1-in-500 chance of colliding — and one real worktree drew it
- * (shop 3305 and example-ssr 3312 both derived 3638, so shop's server always
- * held the port when example-ssr's tried to bind, failing `yarn v`
- * deterministically while each suite passed alone).
- *
- * Requires defaults to stay in the 33xx band with unique last-two-digits,
- * which is already the hand-allocation rule above.
+ * The e2e band. Nothing else in the repo may allocate inside it — see the table
+ * above for what owns everything around it.
  */
-export const derivePort = (root: string, defaultPort: number): number => {
+export const E2E_BAND_START = 4300;
+export const E2E_BAND_END = 4999;
+
+/**
+ * One slot per Playwright config, which is what makes an intra-checkout
+ * collision impossible rather than unlikely.
+ *
+ * The previous scheme derived the slot from the app's dev port (`default % 100`)
+ * and so depended on two unrelated numbers staying coordinated by comment. An
+ * explicit registry cannot drift: a new suite either appears here or does not
+ * typecheck. Slots 6-9 are free; past that, raise {@link STRIDE} and the band.
+ */
+export const E2E_SLOTS = {
+  docs: 0,
+  lore: 1,
+  playground: 2,
+  "example-shop": 3,
+  "example-ssr": 4,
+  "example-ssr-dev": 5,
+} as const;
+
+export type E2eApp = keyof typeof E2E_SLOTS;
+
+const STRIDE = 10;
+const BASES = Math.floor((E2E_BAND_END + 1 - E2E_BAND_START) / STRIDE);
+
+/**
+ * Every port this suite would accept, best first: the derived base, then each
+ * subsequent base wrapping through the band.
+ *
+ * Pure, so the whole allocation can be unit-tested without binding a socket.
+ */
+export const candidatePorts = (root: string, app: E2eApp): number[] => {
   const digest = createHash("sha256").update(root).digest();
-  const base = 3400 + (digest.readUInt16BE(0) % 400);
-  return base + (defaultPort % 100);
+  const first = digest.readUInt16BE(0) % BASES;
+  return Array.from(
+    { length: BASES },
+    (_, i) => E2E_BAND_START + ((first + i) % BASES) * STRIDE + E2E_SLOTS[app],
+  );
+};
+
+/**
+ * The first candidate nothing is listening on.
+ *
+ * A child process because Playwright evaluates a config synchronously and node
+ * has no synchronous bind — one spawn scans the whole list rather than one per
+ * candidate. Binding with no host is deliberate: it fails whether the squatter
+ * holds `0.0.0.0` (`node dist`) or `127.0.0.1` (`wrangler dev`), where probing
+ * a single interface would miss one of them.
+ */
+const firstFreePort = (candidates: number[]): number | undefined => {
+  const scan = `
+const net = require("node:net");
+const free = (port) =>
+  new Promise((resolve) => {
+    const server = net.createServer();
+    server.once("error", () => resolve(false));
+    server.once("listening", () => server.close(() => resolve(true)));
+    server.listen(port);
+  });
+(async () => {
+  for (const port of process.argv.slice(1)) {
+    if (await free(Number(port))) {
+      process.stdout.write(port);
+      return;
+    }
+  }
+})();
+`;
+
+  try {
+    const out = execFileSync(
+      process.execPath,
+      ["-e", scan, "--", ...candidates.map(String)],
+      {
+        encoding: "utf8",
+        timeout: 30_000,
+        stdio: ["ignore", "pipe", "ignore"],
+      },
+    ).trim();
+    return out ? Number(out) : undefined;
+  } catch {
+    // Never fail a suite over the probe. Falling back to the derived port is
+    // exactly the behaviour this file had before probing existed.
+    return undefined;
+  }
 };
 
 const checkoutRoot = (): string => {

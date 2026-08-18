@@ -3,12 +3,15 @@ import { join } from "node:path";
 import { type FullConfig, request } from "@playwright/test";
 import { e2ePort } from "../../../playwright.port.ts";
 
-// The same derivation `playwright.config.ts` uses, not a copy of its default.
+// The same call `playwright.config.ts` makes, not a copy of its number.
 // "Keep in sync" was doing the work here and did not: this read `E2E_PORT ??
 // 3304` while the config had grown the per-worktree derivation, so in a linked
 // worktree the server came up on 37xx and setup posted to 3304 — ECONNREFUSED
-// before a single spec ran.
-const port = e2ePort(3304);
+// before a single spec ran. Now that the port is bind-tested rather than
+// computed, agreeing by arithmetic is no longer even possible: the config runs
+// first in this same process and pins its answer in `E2E_PORT`, which this
+// call reads back.
+const port = e2ePort("playground");
 const ADMIN_EMAIL = "admin@alepha.dev";
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "adminadmin";

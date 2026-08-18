@@ -16,8 +16,10 @@ try {
 }
 
 export default defineConfig({
-  // Dev ports mirror the e2e band in playwright.port.ts so there is one
-  // mapping to remember, not two. Every app otherwise binds 5173.
+  // Dev ports live in the 33xx band, which `playwright.port.ts` keeps strictly
+  // DISJOINT from the 4300-4999 e2e band. The two used to be the same number,
+  // and a running `yarn dev` was then adopted by the e2e suite. Every app
+  // without a `dev.port` binds 5173.
   dev: { port: 3303 },
   env: {
     VITE_VERSION: pkg.version,

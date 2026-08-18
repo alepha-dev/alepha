@@ -748,14 +748,14 @@ The `@/` alias is still duplicated in both configs, and the root copy is load-be
 
 ### ⚠️ Running e2e while another agent is running it
 
-`reuseExistingServer` is `!process.env.CI`, so locally a busy port does **not** fail — Playwright attaches to whatever answers on it. Two agents running this suite at once (one per git worktree) therefore both land on 3303, and the later one silently tests the other's `node dist` against an in-memory database already holding that run's rows. A green suite then says nothing about your code.
+This suite used to run on **3303 — the same port as `yarn dev`**. With `reuseExistingServer` on, a dev server left running in another terminal was adopted by Playwright, and the whole suite ran against hot-reloaded sources and the dev database instead of `node dist` and `:memory:`. Two agents in two worktrees hit the same trap through each other's servers.
 
-`e2ePort()` in the repo-root `playwright.port.ts` — shared by all five Playwright configs, same pattern as `vitest.jsdom.ts` — derives the port to make that impossible: the primary checkout keeps **3303**, a **linked worktree** hashes its own path into **3400-3899** (detected by `.git` being a file rather than a directory). The hash is seeded with the app's default port too, so apps stay distinct from each other inside one worktree. Deliberately not a random port — a fresh port never hits reuse, so every local run would pay the full `yarn start` build+boot that reuse exists to avoid.
+`e2ePort("lore")` in the repo-root `playwright.port.ts` — shared by all six Playwright configs, same pattern as `vitest.jsdom.ts` — makes both impossible. E2E allocates from a reserved **4300-4999** band that no dev server may use; within it the slot is derived from the **checkout path**, so two worktrees never meet; and the port is then **bind-tested**, stepping a full stride if anything answers. `reuseExistingServer` is `false` everywhere as a result: a port verified free has nothing legitimate to adopt.
 
-`E2E_PORT` overrides both. Reach for it when the derivation cannot help — most often a worktree checked out *before* this landed, which still carries the old fixed-3303 config:
+`E2E_PORT` overrides the whole thing, probe included. Reach for it when the allocation cannot help — most often a worktree checked out *before* this landed, which still carries the old fixed-3303 config. Pick something inside the e2e band:
 
 ```bash
-E2E_PORT=3999 npx playwright test quest.spec.ts
+E2E_PORT=4999 npx playwright test quest.spec.ts
 ```
 
 Before killing anything on a busy port, check whose it is — `lsof -a -p <pid> -d cwd`. A `node dist` whose cwd sits under `.claude/worktrees/` belongs to another agent's run.

@@ -2,14 +2,15 @@ import { defineConfig, devices } from "@playwright/test";
 import { e2ePort } from "../../playwright.port.ts";
 
 /*
- * 3302 sits in the same band as the other apps' e2e ports (lore 3303,
- * playground 3304, shop 3305, example-ssr 3311/3312). Never 5173/5174 — Vite's
- * default and its first fallback — because an unrelated dev server squatting
- * the port turns `reuseExistingServer: false` into a hard failure that looks
- * like a regression. `e2ePort` adds the `E2E_PORT` override and moves a linked
- * worktree off this port so two agents cannot share a server.
+ * The e2e port comes from the 4300-4999 band, which is reserved for e2e and
+ * disjoint from every dev port in the repo — see `playwright.port.ts`. Never a
+ * dev port (33xx) and never 5173/5174: those are Vite's default and its first
+ * fallback, so an app running `yarn dev` would be adopted by this suite.
+ * `e2ePort` derives the slot from the checkout (so two worktrees never share a
+ * server), bind-tests it, and moves on if anything is listening. `E2E_PORT`
+ * overrides.
  */
-const port = e2ePort(3302);
+const port = e2ePort("docs");
 
 export default defineConfig({
   testDir: "./e2e",
@@ -27,6 +28,10 @@ export default defineConfig({
     },
   ],
   webServer: {
+    // Never reuse a running server. The port is bind-tested free moments before
+    // this starts, so there is nothing legitimate to adopt: anything answering
+    // here raced into the slot during the build and is not this run's build.
+    reuseExistingServer: false,
     command: "yarn start",
     url: `http://localhost:${port}`,
     timeout: 120_000,

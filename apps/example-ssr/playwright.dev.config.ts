@@ -1,6 +1,15 @@
 import { defineConfig, devices } from "@playwright/test";
+import { e2ePort } from "../../playwright.port.ts";
 
-const port = 3311;
+/*
+ * This config was the one that never got migrated: it hardcoded 3311, which is
+ * this app's OWN dev port (`alepha.config.ts`) — so `yarn dev` in one terminal
+ * and this suite in another fought over a single socket, and whichever lost
+ * either failed to bind or silently served the other. It now allocates from the
+ * reserved 4300-4999 e2e band like every other config; `yarn dev` below gets
+ * the chosen port through `SERVER_PORT`, which outranks `dev.port`.
+ */
+const port = e2ePort("example-ssr-dev");
 
 export default defineConfig({
   testDir: "./e2e",
@@ -19,6 +28,9 @@ export default defineConfig({
     },
   ],
   webServer: {
+    // Never reuse a running server: the port is bind-tested free moments before
+    // this starts, so anything answering here is not this run's server.
+    reuseExistingServer: false,
     command: "yarn dev",
     url: `http://localhost:${port}`,
     timeout: 120_000,

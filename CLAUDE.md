@@ -88,7 +88,9 @@ CI auto-deploys Lore to Cloudflare on every push to `main` via the `deploy-lore-
 
 ### Lore MCP — framework planning memory
 
-The Lore MCP (`mcp__claude_ai_Lore__*`) is the long-term planning memory for framework work in this repo. Framework decisions, deferred plans, and bug reports live in the **Alepha project — id `1`** (separate from project `2` which is for the Lore app itself).
+The Lore MCP (`mcp__claude_ai_Lore__*`) is the long-term planning memory for framework work in this repo. Framework decisions, deferred plans, and bug reports live in the **Alepha project — id `1`**, which since 2026-08-18 holds the whole ecosystem: the former `Lore` (project `2`) and `shop` (project `64`) projects were merged into it. Those two ids still exist but are empty shells — never file anything there.
+
+Everything that came from Lore carries a **shortId offset of +1000** (quest `#208` → `#1208`, folio `#12` → `#1012`), and shop's feedback carries +2000. So a reference above 1000 in an older note means "this was a Lore number" — read it as `n - 1000` when comparing against anything written before the merge.
 
 - Before non-trivial framework changes, orient via `project_context` (project `1`) — returns project metadata, active quests, and the folio index in one shot.
 - Read `folio_get` on relevant folios. Folios are how past sessions hand context to future sessions (current examples: #4 Drizzle v1 plan, #5 Stripe-deferred, #6 ui-registry removal).
@@ -140,11 +142,23 @@ Two test environments are configured:
 - **Filtered tests**: `yarn w alepha vitest run <pattern>` (e.g., `yarn w alepha vitest run init.spec`)
 - **With coverage**: `yarn vitest run --coverage`
 
-#### E2E ports — `playwright.port.ts`
+#### Ports — dev vs e2e
 
-All five Playwright configs (`apps/docs`, `lore`, `playground`, `shop`, `example-ssr`) take their port from `e2ePort(default)` in the repo-root `playwright.port.ts`, the same way every vitest config takes its browser project from `vitest.jsdom.ts`. Add port logic there, never to a caller.
+Two disjoint bands, and they must stay disjoint:
 
-It exists because `reuseExistingServer` is `!process.env.CI`: **locally a busy port does not fail, Playwright attaches to whatever answers on it**. Two agents running e2e at once — one git worktree each — would otherwise share a server, and the later run reports green having tested the other's build against a database holding that run's rows. So the primary checkout keeps its documented 33xx port and a linked worktree derives its own in 3400-3899. `E2E_PORT` overrides both.
+| band | owner |
+|---|---|
+| `3001-3004` | `apps/benchmark` |
+| `3300-3399` | **dev servers** — `dev.port` in each app's `alepha.config.ts` (docs 3302, lore 3303, playground 3304, example-shop 3305, crash-test 3306, example-bay-app 3307, example-ssr 3311) |
+| `5173+` | dev servers with no `dev.port` (Vite default); also `alepha dev` in multi-app mode, which hands each child `5173 + index` via `SERVER_PORT` and so **overrides `dev.port`** |
+| `4300-4999` | **e2e, and nothing else** |
+| `11883` / `15432` / `16379` / `19090` | `compose.yml` test services (emqx / postgres / redis / s3mock) |
+
+All six Playwright configs (`apps/docs`, `lore`, `playground`, `example-shop`, and `example-ssr` × prod + dev mode) take their port from `e2ePort("<app>")` in the repo-root `playwright.port.ts`, the same way every vitest config takes its browser project from `vitest.jsdom.ts`. Add port logic there, never to a caller; a new suite needs a slot in `E2E_SLOTS` or it will not typecheck.
+
+The argument is the **app name, not a port**, because it used to be the port — and it was the app's own *dev* port. `yarn dev` and `yarn e2e` in the same app fought over one socket, and with `reuseExistingServer` on, Playwright adopted the dev server and ran the suite against hot-reloaded sources and the dev database, reporting green.
+
+`e2ePort` derives a slot from the **checkout path**, so two worktrees never collide (the probe cannot do this: `yarn start` builds for a minute before binding, so concurrent runs both see the port free), then **bind-tests it and steps a full stride if anything answers**. `reuseExistingServer` is therefore `false` everywhere: a port verified free has no server to reuse, and anything answering on it raced in and is not this run's build. `E2E_PORT` overrides the whole thing.
 
 #### Testing Patterns
 - **Automatic Lifecycle**: `Alepha.create()` automatically handles start/stop in test environments
