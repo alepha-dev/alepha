@@ -39,6 +39,48 @@ class Probe {
  * with two populated buckets comes back as two rows, not one row with two
  * non-zero columns.
  */
+const readReferrers = async (analytics: LoreAnalytics, sigilId: string) => {
+  const result = await analytics.views.query({
+    since: "2000-01-01",
+    where: { sigilId: { inArray: [sigilId] } },
+    groupBy: ["referrer"],
+    select: { count: "sum" },
+  });
+  return (result.rows as unknown as Array<{ referrer: string; count: number }>)
+    .slice()
+    .sort((a, b) => a.referrer.localeCompare(b.referrer));
+};
+
+const readMeasures = async (analytics: LoreAnalytics, sigilId: string) => {
+  const result = await analytics.views.query({
+    since: "2000-01-01",
+    where: { sigilId: { inArray: [sigilId] } },
+    select: { count: "sum", engaged: "sum", entries: "sum" },
+  });
+  const row = result.rows[0] as any;
+  return {
+    count: Number(row?.count ?? 0),
+    engaged: Number(row?.engaged ?? 0),
+    entries: Number(row?.entries ?? 0),
+  };
+};
+
+const readBy = async (
+  analytics: LoreAnalytics,
+  sigilId: string,
+  dimension: "campaign" | "device",
+) => {
+  const result = await analytics.views.query({
+    since: "2000-01-01",
+    where: { sigilId: { inArray: [sigilId] } },
+    groupBy: [dimension],
+    select: { count: "sum" },
+  });
+  return (result.rows as any[])
+    .map((r) => ({ value: String(r[dimension]), count: Number(r.count) }))
+    .sort((a, b) => a.value.localeCompare(b.value));
+};
+
 const readViews = async (analytics: LoreAnalytics, sigilId: string) => {
   const result = await analytics.views.query({
     since: "2000-01-01",
@@ -205,6 +247,183 @@ describe("sigil ingest", () => {
     const rows = await readViews(analytics, sigil.id);
     expect(rows).toHaveLength(1);
     expect(rows[0].count).toBe(5);
+  });
+
+  it("stores the referrer host the browser reported", async () => {
+    const { analytics, sigil, post } = await setup();
+
+    const res = await post({
+      views: [{ path: "/", referrer: "news.ycombinator.com" }],
+    });
+    expect(res.status).toBe(204);
+
+    expect(await readReferrers(analytics, sigil.id)).toEqual([
+      { referrer: "news.ycombinator.com", count: 1 },
+    ]);
+  });
+
+  it("folds a view with no referrer into `direct`", async () => {
+    const { analytics, sigil, post } = await setup();
+
+    // What every client-side navigation looks like, and what an older client
+    // predating the field sends for a landing view too.
+    const res = await post({ views: [{ path: "/" }] });
+    expect(res.status).toBe(204);
+
+    expect(await readReferrers(analytics, sigil.id)).toEqual([
+      { referrer: "direct", count: 1 },
+    ]);
+  });
+
+  it("folds a value that is not a bare host into `direct`", async () => {
+    const { analytics, sigil, post } = await setup();
+
+    // The envelope is accepted from anyone holding the token, so the sink
+    // cannot assume the browser helper produced this. A half-parsed URL in a
+    // leaderboard reads as data; `direct` reads as unknown.
+    const res = await post({
+      views: [
+        { path: "/", referrer: "https://evil.example/path?token=abc" },
+        { path: "/", referrer: "has spaces" },
+      ],
+    });
+    expect(res.status).toBe(204);
+
+    expect(await readReferrers(analytics, sigil.id)).toEqual([
+      { referrer: "direct", count: 2 },
+    ]);
+  });
+
+  it("keeps two different referrers in two buckets", async () => {
+    const { analytics, sigil, post } = await setup();
+
+    const res = await post({
+      views: [
+        { path: "/", referrer: "news.ycombinator.com" },
+        { path: "/", referrer: "news.ycombinator.com" },
+        { path: "/", referrer: "www.google.com" },
+        { path: "/" },
+      ],
+    });
+    expect(res.status).toBe(204);
+
+    expect(await readReferrers(analytics, sigil.id)).toEqual([
+      { referrer: "direct", count: 1 },
+      { referrer: "news.ycombinator.com", count: 2 },
+      { referrer: "www.google.com", count: 1 },
+    ]);
+  });
+
+  it("counts a page load as an entry and a navigation as only a view", async () => {
+    const { analytics, sigil, post } = await setup();
+
+    const res = await post({
+      views: [
+        { path: "/", entry: true },
+        { path: "/docs" },
+        { path: "/docs/guides" },
+      ],
+    });
+    expect(res.status).toBe(204);
+
+    // One arrival, three pages. `entries` is what a landing-page report and a
+    // bounce rate are computed from; `count` cannot answer either.
+    expect(await readMeasures(analytics, sigil.id)).toEqual({
+      count: 3,
+      entries: 1,
+      engaged: 0,
+    });
+  });
+
+  it("records an engagement without inflating the view count", async () => {
+    const { analytics, sigil, post } = await setup();
+
+    const res = await post({
+      views: [{ path: "/", entry: true }],
+      engagements: [{ path: "/" }],
+    });
+    expect(res.status).toBe(204);
+
+    expect(await readMeasures(analytics, sigil.id)).toEqual({
+      count: 1,
+      entries: 1,
+      engaged: 1,
+    });
+  });
+
+  it("accepts an engagement arriving in a later batch than its view", async () => {
+    const { analytics, sigil, post } = await setup();
+
+    // The real sequence: the view flushes at LCP, the engagement lands when
+    // the visitor finally scrolls. Analytics Engine is append-only, so these
+    // are two rows whose measures sum.
+    expect((await post({ views: [{ path: "/", entry: true }] })).status).toBe(
+      204,
+    );
+    expect((await post({ engagements: [{ path: "/" }] })).status).toBe(204);
+
+    expect(await readMeasures(analytics, sigil.id)).toEqual({
+      count: 1,
+      entries: 1,
+      engaged: 1,
+    });
+  });
+
+  it("ignores engagements when the sigil cannot report views", async () => {
+    const { analytics, sigil, post } = await setup({ kinds: ["blights"] });
+
+    const res = await post({ engagements: [{ path: "/" }] });
+    expect(res.status).toBe(204);
+
+    expect(await readMeasures(analytics, sigil.id)).toEqual({
+      count: 0,
+      entries: 0,
+      engaged: 0,
+    });
+  });
+
+  it("stores the campaign tag, and `none` for an untagged view", async () => {
+    const { analytics, sigil, post } = await setup();
+
+    const res = await post({
+      views: [{ path: "/", entry: true, campaign: "hn" }, { path: "/docs" }],
+    });
+    expect(res.status).toBe(204);
+
+    expect(await readBy(analytics, sigil.id, "campaign")).toEqual([
+      { value: "hn", count: 1 },
+      { value: "none", count: 1 },
+    ]);
+  });
+
+  it("folds a campaign that is not a plain slug into `none`", async () => {
+    const { analytics, sigil, post } = await setup();
+
+    // The envelope is accepted from any token holder, so an unbounded or
+    // structured value must not be allowed to mint dimension rows.
+    const res = await post({
+      views: [{ path: "/", entry: true, campaign: "<script>/../x" }],
+    });
+    expect(res.status).toBe(204);
+
+    expect(await readBy(analytics, sigil.id, "campaign")).toEqual([
+      { value: "none", count: 1 },
+    ]);
+  });
+
+  it("stores the device the proxy stamped, defaulting to desktop", async () => {
+    const { analytics, sigil, post } = await setup();
+
+    expect(
+      (await post({ views: [{ path: "/" }], device: "mobile" })).status,
+    ).toBe(204);
+    // An older app's proxy sends no device at all.
+    expect((await post({ views: [{ path: "/about" }] })).status).toBe(204);
+
+    expect(await readBy(analytics, sigil.id, "device")).toEqual([
+      { value: "desktop", count: 1 },
+      { value: "mobile", count: 1 },
+    ]);
   });
 
   it("refuses an unknown token", async () => {

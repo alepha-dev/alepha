@@ -83,9 +83,40 @@ export const insightsReadResultSchema = z.object({
        * on its own.
        */
       totalViews: z.integer(),
+      /**
+       * Page loads only, unlike `totalViews` which also counts every
+       * client-side navigation.
+       */
+      entries: z.integer(),
+      /**
+       * Views the visitor scrolled, clicked, typed on, or stayed ten seconds
+       * on. The one number a scraper does not inflate by accident: an
+       * automated fetch reports the view and then does none of those things.
+       * Read `engagementRate` before believing a spike is people.
+       */
+      engagedViews: z.integer(),
+      /** `engagedViews / totalViews` as a whole percent. */
+      engagementRate: z.number(),
       topPaths: z.array(z.object({ path: z.string(), count: z.number() })),
+      /** Where visits started, by page loads rather than total views. */
+      topEntryPaths: z.array(z.object({ path: z.string(), count: z.number() })),
+      /** `utm_campaign` / `utm_source` on arrivals; `none` is untagged. */
+      topCampaigns: z.array(
+        z.object({ campaign: z.string(), count: z.number() }),
+      ),
+      topDevices: z.array(z.object({ device: z.string(), count: z.number() })),
       topCountries: z.array(
         z.object({ country: z.string(), count: z.number() }),
+      ),
+      /**
+       * Where visits came from, by host. `direct` is the catch-all and is
+       * normally the largest row by far — only a page load's own view carries
+       * a referrer, so every in-app navigation lands there next to genuine
+       * bookmark and typed-URL arrivals. Read the named hosts; treat `direct`
+       * as the denominator rather than as a source.
+       */
+      topReferrers: z.array(
+        z.object({ referrer: z.string(), count: z.number() }),
       ),
       /** Daily views across the window, zero-filled so gaps are visible. */
       timeline: z.array(z.object({ date: z.string(), views: z.number() })),
