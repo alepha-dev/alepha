@@ -33,6 +33,7 @@ import { QuestNotifications } from "./notifications/QuestNotifications.ts";
 import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
 import { BlightRuleService } from "./services/BlightRuleService.ts";
+import { EpicTableRegistration } from "./services/EpicTableRegistration.ts";
 import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 import { FolioBlobService } from "./services/FolioBlobService.ts";
 import { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
@@ -78,6 +79,10 @@ export const LoreApi = $module({
     // snapshot now that nothing else holds a repository on either — see its
     // own doc for why that would otherwise read as a dropped table.
     FrozenSigilAnalyticsTables,
+    // Pins `epics` in the migration snapshot before `EpicController` (a
+    // later task in the same plan) exists to hold a repository on it —
+    // delete this once that controller lands. See its own doc.
+    EpicTableRegistration,
     FolioNameService,
     FolioDirectoryService,
     FolioBlobService,
