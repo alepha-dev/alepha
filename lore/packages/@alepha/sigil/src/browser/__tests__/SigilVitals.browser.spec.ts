@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { SigilVitals } from "../SigilVitals.ts";
 
+/**
+ * Reaches the LCP entry handler without a `PerformanceObserver`, which jsdom
+ * does not dispatch largest-contentful-paint entries through.
+ */
+class TestSigilVitals extends SigilVitals {
+  public testNoteLcp(value: number) {
+    this.noteLcp(value);
+  }
+}
+
 describe("SigilVitals", () => {
   it("reports finalized metrics, ms rounded, CLS scaled to int", () => {
     const got: any[] = [];
@@ -51,5 +61,61 @@ describe("SigilVitals", () => {
     (globalThis as any).PerformanceObserver = undefined;
     expect(() => v.observe()).not.toThrow();
     (globalThis as any).PerformanceObserver = orig;
+  });
+
+  /**
+   * `SigilBrowserProvider` waits on this to decide the page has settled enough
+   * to talk to the server. It has to fire on the *first* entry: LCP is
+   * dispatched again for every larger element, and a signal that re-fires would
+   * keep re-triggering the thing waiting on it.
+   */
+  it("notifies onLcp once, on the first entry", () => {
+    let notified = 0;
+    const v = new TestSigilVitals(
+      () => {},
+      () => notified++,
+    );
+
+    v.testNoteLcp(1200);
+    v.testNoteLcp(2400);
+
+    expect(notified).toBe(1);
+  });
+
+  /**
+   * The callback is a timing signal, not a measurement — the value is still
+   * only final at hidden, and the last entry is the one that counts.
+   */
+  it("still reports the last LCP value, not the one that triggered onLcp", () => {
+    const got: any[] = [];
+    const v = new TestSigilVitals(
+      (m) => got.push(m),
+      () => {},
+    );
+
+    v.testNoteLcp(1200);
+    v.testNoteLcp(2400);
+    v.report("lcp", 2400);
+
+    expect(got).toEqual([{ metric: "lcp", value: 2400 }]);
+  });
+
+  /**
+   * An app that collects no vitals still needs the signal, because it is what
+   * tells it when to go and ask for its config. Gating the callback behind the
+   * metric sink would leave such an app waiting on the fallback timer forever.
+   */
+  it("notifies onLcp even when nothing consumes the metrics", () => {
+    let notified = 0;
+    const v = new TestSigilVitals(
+      () => {
+        throw new Error("sink must not be consulted for the timing signal");
+      },
+      () => notified++,
+    );
+
+    v.testNoteLcp(1500);
+
+    expect(notified).toBe(1);
   });
 });

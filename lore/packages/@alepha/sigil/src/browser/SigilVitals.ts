@@ -13,7 +13,40 @@ export class SigilVitals {
    */
   protected readonly reported = new Set<Metric>();
 
-  constructor(protected readonly sink: Sink) {}
+  /**
+   * The largest contentful paint seen so far, reported at hidden like the
+   * other accumulating metrics.
+   */
+  protected lcp = 0;
+
+  /**
+   * Whether {@link onLcp} has already run. LCP is dispatched once per larger
+   * element, but the signal callers want is "the main content has painted",
+   * which only the first one carries.
+   */
+  protected lcpNotified = false;
+
+  /**
+   * @param sink receives each finalized metric.
+   * @param onLcp runs once, when the first LCP entry arrives. This is a
+   *   *timing* signal, not a measurement — the value still goes to `sink` at
+   *   hidden, where it is final. `SigilBrowserProvider` uses it to decide when
+   *   the page has settled enough to talk to the server.
+   */
+  constructor(
+    protected readonly sink: Sink,
+    protected readonly onLcp?: () => void,
+  ) {}
+
+  /**
+   * Records an LCP candidate and, the first time, fires {@link onLcp}.
+   */
+  protected noteLcp(value: number) {
+    this.lcp = value;
+    if (this.lcpNotified) return;
+    this.lcpNotified = true;
+    this.onLcp?.();
+  }
 
   /**
    * Emits a metric, at most once per page load.
@@ -62,12 +95,12 @@ export class SigilVitals {
     });
 
     // LCP: last largest-contentful-paint entry wins; report on hidden.
-    let lcp = 0;
     this.safeObserve(["largest-contentful-paint"], (entries) => {
       const last = entries[entries.length - 1];
       if (last)
-        lcp =
-          (last as any).renderTime || (last as any).loadTime || last.startTime;
+        this.noteLcp(
+          (last as any).renderTime || (last as any).loadTime || last.startTime,
+        );
     });
 
     // CLS: sum of layout-shift values without recent input.
@@ -97,7 +130,7 @@ export class SigilVitals {
     // Finalize accumulating metrics on hidden.
     const finalize = () => {
       if (document.visibilityState !== "hidden") return;
-      if (lcp) this.report("lcp", lcp);
+      if (this.lcp) this.report("lcp", this.lcp);
       this.report("cls", cls);
       if (inp) this.report("inp", inp);
     };
