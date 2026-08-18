@@ -22,6 +22,7 @@ import { platformOptions } from "../atoms/platformOptions.ts";
 import { PlatformCacheProvider } from "../providers/PlatformCacheProvider.ts";
 import {
   readManifestEnvKeys,
+  readManifestPublicVars,
   EXCLUDED_SECRET_KEYS as SHARED_EXCLUDED_SECRET_KEYS,
   selectSecrets,
 } from "../secretKeys.ts";
@@ -480,6 +481,18 @@ export class CloudflareAdapter extends PlatformAdapter {
     return await readManifestEnvKeys(this.fs, root);
   }
 
+  /**
+   * Read the build manifest's `publicVars` list — the keys the app declassified
+   * with `secret: false`. Everything else on the allowlist is a secret, so an
+   * absent list (older artifact, or an app that annotated nothing) encrypts
+   * everything, which is the pre-existing behaviour.
+   */
+  protected async readManifestPublicVars(
+    root: string,
+  ): Promise<string[] | undefined> {
+    return await readManifestPublicVars(this.fs, root);
+  }
+
   override async secrets(
     ctx: PlatformContext,
     run: RunnerMethod,
@@ -540,6 +553,29 @@ export class CloudflareAdapter extends PlatformAdapter {
       return;
     }
 
+    // Split off the keys the app declassified with `secret: false`. They are
+    // pushed as `plain_text` bindings instead of `secret_text`: readable in the
+    // dashboard, and — the point — editable there, which a write-only secret is
+    // not. Everything not on the list stays encrypted, so a manifest without
+    // the field (older artifact, or an app that annotated nothing) behaves
+    // exactly as before.
+    //
+    // The allowlist is intersected rather than trusted wholesale: `publicVars`
+    // is a subset of the manifest's `env`, but `keys` may come from
+    // `platform.secrets.keys` or `.env.<env>.local` instead, and a key an
+    // orchestrator injected is not something the app vouched for.
+    const publicKeys = new Set([
+      ...CloudflareAdapter.ALWAYS_PUBLIC_KEYS,
+      ...((await this.readManifestPublicVars(ctx.root)) ?? []),
+    ]);
+    const vars: Record<string, string> = {};
+    for (const key of Object.keys(secrets)) {
+      if (publicKeys.has(key)) {
+        vars[key] = secrets[key];
+        delete secrets[key];
+      }
+    }
+
     // Push all secrets for a worker in a single PATCH so each `up` only
     // mints one new deployment for the secrets step (regardless of how many
     // are being updated). Loop-based `putSecret` worked but generated N
@@ -585,7 +621,7 @@ export class CloudflareAdapter extends PlatformAdapter {
           const existing = parseSecretsFingerprint(existingHashBinding?.text);
           if (
             existing &&
-            computeSecretsHash(secrets, existing.salt) === existing.digest
+            computeSecretsHash(secrets, vars, existing.salt) === existing.digest
           ) {
             this.log.info(
               `Secrets for ${workerName} unchanged (${existing.digest.slice(0, 8)}…), skipping push.`,
@@ -594,9 +630,18 @@ export class CloudflareAdapter extends PlatformAdapter {
           }
 
           const salt = randomBytes(16).toString("hex");
-          const fingerprint = `v2:${salt}:${computeSecretsHash(secrets, salt)}`;
+          const fingerprint = `v2:${salt}:${computeSecretsHash(secrets, vars, salt)}`;
 
-          const overwriting = new Set(Object.keys(secrets));
+          // Both sides, because a key MOVING between them has to invalidate the
+          // cache. Declassifying a variable changes no value, so a fingerprint
+          // over the values alone still matches and the PATCH is skipped — the
+          // annotation would land in the manifest and never reach the worker,
+          // and the next value change would quietly fix it, which is the worst
+          // way for this to work.
+          const overwriting = new Set([
+            ...Object.keys(secrets),
+            ...Object.keys(vars),
+          ]);
           const inherit = existingBindings
             .filter(
               (b) =>
@@ -605,18 +650,36 @@ export class CloudflareAdapter extends PlatformAdapter {
                   b.type === "plain_text" &&
                   b.name === CloudflareAdapter.SECRETS_HASH_BINDING
                 ) &&
-                // Drop secret bindings we're about to overwrite. Keep the
-                // rest of the bindings (D1, R2, KV, untouched secrets) as
-                // `{type,name}` only — CF preserves stored values.
-                (b.type !== "secret_text" || !overwriting.has(b.name)),
+                // Drop the value bindings we're about to rewrite, whichever
+                // side they are on today: a key that changed sides must not be
+                // inherited under its old type and then written under the new
+                // one. Keep the rest (D1, R2, KV, untouched secrets).
+                !(
+                  (b.type === "secret_text" || b.type === "plain_text") &&
+                  overwriting.has(b.name)
+                ),
             )
-            .map((b) => ({ type: b.type, name: b.name }));
+            // `{type,name}` for a secret — CF preserves the stored value, which
+            // we could not resend anyway. A plain_text binding is readable, so
+            // carry its text: forwarding one without would blank it.
+            .map((b) =>
+              b.type === "plain_text"
+                ? { type: b.type, name: b.name, text: b.text ?? "" }
+                : { type: b.type, name: b.name },
+            );
 
-          const upsert = Object.entries(secrets).map(([name, text]) => ({
-            type: "secret_text" as const,
-            name,
-            text,
-          }));
+          const upsert = [
+            ...Object.entries(secrets).map(([name, text]) => ({
+              type: "secret_text" as const,
+              name,
+              text,
+            })),
+            ...Object.entries(vars).map(([name, text]) => ({
+              type: "plain_text" as const,
+              name,
+              text,
+            })),
+          ];
 
           await this.api.patchWorkerBindings(workerName, [
             ...inherit,
@@ -644,6 +707,23 @@ export class CloudflareAdapter extends PlatformAdapter {
     }
     return `https://${host}`;
   }
+
+  /**
+   * Keys that are plaintext no matter what the app declared.
+   *
+   * `PUBLIC_URL` cannot go through the `secret: false` route the way every
+   * other declassified key does: core carries it on the ambient `Env`
+   * interface rather than in an `$env` schema, so it is not in `dump().env`
+   * and can never reach the manifest's `publicVars`. It is also injected by
+   * {@link secrets} itself, derived from the configured domain — a value this
+   * adapter made up, which no app schema was ever consulted about.
+   *
+   * It being public is not a judgement call: it is the address the app answers
+   * on, rendered into its own emails, sitemap and OAuth callbacks.
+   */
+  static readonly ALWAYS_PUBLIC_KEYS: ReadonlySet<string> = new Set([
+    "PUBLIC_URL",
+  ]);
 
   /**
    * Plain-text binding used to fingerprint the deployed secret set so the
@@ -1500,18 +1580,29 @@ export class CloudflareAdapter extends PlatformAdapter {
 }
 
 /**
- * Stable SHA-256 of the secret set. Keys are sorted so reordering `.env`
- * lines does not invalidate the cache. Used as a fingerprint by
- * `CloudflareAdapter.secrets` — see the comment block there.
+ * Stable SHA-256 of the pushed variable set — encrypted and declassified alike.
+ * Keys are sorted so reordering `.env` lines does not invalidate the cache.
+ * Used as a fingerprint by `CloudflareAdapter.secrets` — see the comment block
+ * there.
  */
 function computeSecretsHash(
   secrets: Record<string, string>,
+  vars: Record<string, string>,
   salt: string,
 ): string {
-  const sorted = Object.keys(secrets)
-    .sort()
-    .map((k) => `${k}=${secrets[k]}`)
-    .join("\n");
+  // Declassified keys are namespaced rather than merged, so that moving a key
+  // between the two sides changes the digest even though no value did. With no
+  // declassified keys the input is byte-identical to the pre-split one, so an
+  // already-deployed worker's stored fingerprint still matches and the first
+  // deploy after this change does not push a pointless PATCH.
+  const sorted = [
+    ...Object.keys(secrets)
+      .sort()
+      .map((k) => `${k}=${secrets[k]}`),
+    ...Object.keys(vars)
+      .sort()
+      .map((k) => `public:${k}=${vars[k]}`),
+  ].join("\n");
   // Salted + deliberately slow. A plain sha256 of "KEY=VALUE" lines stored in
   // a *readable* binding is an offline brute-force oracle: anyone with
   // worker-settings read access could recover low-entropy secret values,

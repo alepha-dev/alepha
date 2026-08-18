@@ -872,6 +872,7 @@ const envSchema = z.object({
     .describe(
       "Enable or disable server-side rendering (SSR) for React pages. When set to false, pages are rendered client-side only.",
     )
+    .meta({ secret: false })
     .optional(),
 });
 

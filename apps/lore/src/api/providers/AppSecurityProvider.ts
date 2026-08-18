@@ -21,11 +21,15 @@ export class AppSecurityProvider {
       // and the register flow gates on a Turnstile token. When absent, the
       // realm advertises `captchaRequired: false` so the client doesn't try to
       // render a widget it can't satisfy.
-      TURNSTILE_SITE_KEY: z.text().optional(),
+      TURNSTILE_SITE_KEY: z.text({ secret: false }).optional(),
       // Per-IP registration cap. Defaults to the framework default (10).
       // E2E test env bumps this to 1000 so a single localhost IP doesn't
       // burn through the limit while the suite runs.
-      REGISTRATION_IP_MAX_ATTEMPTS: z.integer().min(1).optional(),
+      REGISTRATION_IP_MAX_ATTEMPTS: z
+        .integer()
+        .min(1)
+        .meta({ secret: false })
+        .optional(),
     }),
   );
 

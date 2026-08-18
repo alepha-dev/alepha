@@ -86,6 +86,7 @@ export const AlephaEmail = $module({
 const dataDirEnvSchema = z.object({
   DATA_DIR: z.text({
     default: "",
+    secret: false,
     description:
       "Root directory for local scratch data (emails, sms). Defaults to node_modules/.alepha, which sits inside the deployed bundle — set this to a writable path outside it on any host that unpacks releases read-only.",
   }),

@@ -28,6 +28,8 @@ export const $authGithub = (
     z.object({
       GITHUB_CLIENT_ID: z
         .text({
+          // Public: it travels in the authorize URL the browser is sent to.
+          secret: false,
           description:
             "The OAuth App client ID obtained from GitHub Developer Settings.",
         })

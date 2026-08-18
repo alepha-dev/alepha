@@ -26,6 +26,8 @@ export const SEND_EMAIL_DEFAULT_BINDING = "SEND_EMAIL";
 const envSchema = z.object({
   EMAIL_FROM: z
     .text({
+      // On the From header of every mail this app sends.
+      secret: false,
       description:
         "Default sender (a verified sender address). Accepts a bare address or an RFC 5322 display-name form, e.g. `Lore <noreply@lore.alepha.dev>`.",
     })

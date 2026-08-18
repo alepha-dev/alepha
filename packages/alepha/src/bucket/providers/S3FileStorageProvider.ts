@@ -29,21 +29,21 @@ const envSchema = z.object({
    * - MinIO: `http://localhost:9000`
    * - DigitalOcean Spaces: `https://<region>.digitaloceanspaces.com`
    */
-  S3_ENDPOINT: z.string(),
+  S3_ENDPOINT: z.string().meta({ secret: false }),
 
   /**
    * The one S3 bucket that holds every container.
    *
    * Containers are key prefixes inside it, not separate buckets.
    */
-  S3_BUCKET_NAME: z.string(),
+  S3_BUCKET_NAME: z.string().meta({ secret: false }),
 
   /**
    * AWS region or "auto" for R2.
    *
    * @default "auto"
    */
-  S3_REGION: z.string().optional(),
+  S3_REGION: z.string().meta({ secret: false }).optional(),
 
   /**
    * Access key ID for S3 authentication.
@@ -68,7 +68,7 @@ const envSchema = z.object({
    * @example
    * S3_KEY_PREFIX=apps/lore/production/blobs
    */
-  S3_KEY_PREFIX: z.string().optional(),
+  S3_KEY_PREFIX: z.string().meta({ secret: false }).optional(),
 });
 
 declare module "alepha" {

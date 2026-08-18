@@ -28,6 +28,8 @@ export const $authFacebook = (
     z.object({
       FACEBOOK_CLIENT_ID: z
         .text({
+          // Public: it travels in the authorize URL the browser is sent to.
+          secret: false,
           description: "The App ID obtained from the Meta Developer Console.",
         })
         .optional(),

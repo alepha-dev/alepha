@@ -43,6 +43,7 @@ export interface AnalyticsEngineDataset {
 const envSchema = z.object({
   CLOUDFLARE_ANALYTICS_DATASET: z
     .text({
+      secret: false,
       description:
         "Analytics Engine dataset name — used both as the wrangler.toml binding key (env.<name>) for writes and as the SQL FROM table for reads. Unset means this provider is never selected; see index.workerd.ts.",
     })

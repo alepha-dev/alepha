@@ -13,14 +13,16 @@ import type { ChannelPrimitive, TWSObject } from "../primitives/$channel.ts";
 const envSchema = z.object({
   WEBSOCKET_URL: z.text({
     default: "",
+    secret: false,
     description:
       "WebSocket server URL (e.g., ws://localhost:3001). Leave empty to auto-detect.",
   }),
-  WEBSOCKET_RECONNECT_INTERVAL: z
-    .integer()
-    .default(3000)
-    .meta({ description: "Reconnection interval in milliseconds" }),
+  WEBSOCKET_RECONNECT_INTERVAL: z.integer().default(3000).meta({
+    secret: false,
+    description: "Reconnection interval in milliseconds",
+  }),
   WEBSOCKET_MAX_RECONNECT_ATTEMPTS: z.integer().default(10).meta({
+    secret: false,
     description:
       "Maximum number of reconnection attempts. Set to -1 for infinite.",
   }),

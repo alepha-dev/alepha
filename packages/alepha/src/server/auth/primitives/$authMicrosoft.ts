@@ -39,6 +39,8 @@ export const $authMicrosoft = (
     z.object({
       MICROSOFT_CLIENT_ID: z
         .text({
+          // Public: it travels in the authorize URL the browser is sent to.
+          secret: false,
           description:
             "The application (client) ID obtained from the Azure Portal.",
         })
@@ -51,6 +53,8 @@ export const $authMicrosoft = (
         .optional(),
       MICROSOFT_TENANT_ID: z
         .text({
+          // Public: it is a path segment of the authorize URL.
+          secret: false,
           description:
             "The Azure AD tenant ID or 'common' for multi-tenant. Defaults to 'common'.",
         })

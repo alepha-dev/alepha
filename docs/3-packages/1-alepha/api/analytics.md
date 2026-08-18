@@ -39,3 +39,13 @@ constructed.
 - [`MemoryAnalyticsProvider`](/docs/reference-providers-memoryanalyticsprovider) — An in-memory dataset, and the reference implementation of the seam.
 - [`OrmAnalyticsProvider`](/docs/reference-providers-ormanalyticsprovider) — Two relational tables per dataset: raw hour buckets and rolled day buckets.
 - [`WaeAnalyticsProvider`](/docs/reference-providers-waeanalyticsprovider) — Hot rows on Workers Analytics Engine, rolled rows in a durable store.
+
+### Environment Variables
+
+Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `CLOUDFLARE_ACCOUNT_ID` | text | - | Cloudflare account id, for the Analytics Engine SQL read API (there is no read binding — see AnalyticsEngineSql). |
+| `CLOUDFLARE_ANALYTICS_DATASET` | text | - | Analytics Engine dataset name — used both as the wrangler.toml binding key (env.<name>) for writes and as the SQL FROM table for reads. Unset means this provider is never selected; see index.workerd.ts. |
+| `CLOUDFLARE_ANALYTICS_TOKEN` | text | **Required** |  |

@@ -77,6 +77,7 @@ export class TurnstileCaptchaProvider implements CaptchaProvider {
             "The secret key from the Cloudflare Turnstile dashboard.",
         }),
         TURNSTILE_SITE_KEY: z.text({
+          secret: false,
           description:
             "The public site key from the Cloudflare Turnstile dashboard, rendered on the client.",
         }),

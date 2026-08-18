@@ -23,7 +23,7 @@ export const databaseEnvSchema = z.object({
    * Set to `false` in development to skip automatic schema sync
    * (e.g. when managing migrations manually).
    */
-  DATABASE_SYNC: z.boolean().optional(),
+  DATABASE_SYNC: z.boolean().meta({ secret: false }).optional(),
 });
 
 declare module "alepha" {

@@ -351,7 +351,11 @@ export class DocsCommand {
         // zod-idiomatic syntax: optional is a `.optional()` suffix, the type is
         // `: z.<type>(...)`, and description/default are chained methods.
         const isOptional = field.includes(".optional(");
-        const typeMatch = field.match(/:\s*z\.(\w+)/);
+        // `z\s*\.` rather than `z\.`: biome breaks a long chain after the `z`,
+        // and anchoring on the dot made this whole table vanish whenever a
+        // field grew past the print width. Silently — a missing env-var table
+        // reads exactly like a module that declares none.
+        const typeMatch = field.match(/:\s*z\s*\.\s*(\w+)/);
         if (!typeMatch) continue;
 
         const descMatch =

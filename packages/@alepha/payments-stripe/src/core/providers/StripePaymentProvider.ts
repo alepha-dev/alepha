@@ -21,7 +21,9 @@ const envSchema = z.object({
    * platforms that only use hosted onboarding / server-side charges don't
    * need it, and consumers should fall back to the hosted flow when unset.
    */
-  STRIPE_PUBLISHABLE_KEY: z.string().optional(),
+  // Publishable by name: it is handed to the browser to mount Payment
+  // Element. The secret half is STRIPE_SECRET_KEY.
+  STRIPE_PUBLISHABLE_KEY: z.string().meta({ secret: false }).optional(),
   STRIPE_WEBHOOK_SECRET: z.string(),
   /**
    * Signing secret of the `connect: true` webhook endpoint (events emitted

@@ -14,6 +14,8 @@ const envSchema = z.object({
     description: "Brevo API key for transactional email",
   }),
   EMAIL_FROM: z.text({
+    // On the From header of every mail this app sends.
+    secret: false,
     description: "Default sender email address",
   }),
 });

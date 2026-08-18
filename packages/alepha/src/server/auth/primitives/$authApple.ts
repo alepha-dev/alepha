@@ -48,6 +48,8 @@ export const $authApple = (
     z.object({
       APPLE_CLIENT_ID: z
         .text({
+          // Public: it travels in the authorize URL the browser is sent to.
+          secret: false,
           description:
             "The Service ID obtained from the Apple Developer Console.",
         })

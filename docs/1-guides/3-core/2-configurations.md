@@ -122,7 +122,7 @@ and forgetting it must never be what exposes a value: a missed `secret: false`
 costs you an unnecessarily encrypted log level, while a missed `secret: true`
 under the opposite default would leak a key.
 
-Two things read it today:
+Three things read it:
 
 - **`alepha gen env`** labels the declassified variables in the generated
   template, so whoever fills it in can see at a glance which ones are safe to
@@ -137,8 +137,18 @@ Two things read it today:
   ```
 
 - **`alepha build`** records them as `publicVars` in `dist/manifest.json`,
-  alongside the full `env` key list, for the deploy step to consume. Everything
-  on `env` and not on `publicVars` is a secret.
+  alongside the full `env` key list. Everything on `env` and not on
+  `publicVars` is a secret.
+
+- **`alepha platform up`** pushes a declassified key to Cloudflare as a
+  `plain_text` binding instead of an encrypted `secret_text` one. That makes it
+  readable in the dashboard and — the actual point — **editable** there, which a
+  write-only secret is not. A key the app never declassified is still encrypted,
+  so this only ever loosens what an author asked to loosen.
+
+  Only keys the artifact itself vouched for are eligible: a key injected by an
+  orchestrator through `.env.<env>.local`, or listed in `platform.secrets.keys`,
+  is not on `publicVars` and stays a secret.
 
 ## State Management with $atom
 

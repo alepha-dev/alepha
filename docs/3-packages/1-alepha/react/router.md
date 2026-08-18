@@ -44,3 +44,11 @@ This module enables:
 - [`RootComponentsProvider`](/docs/reference-providers-rootcomponentsprovider) — Extension point letting any module contribute root-level React nodes that
 - [`RouterLocaleProvider`](/docs/reference-providers-routerlocaleprovider) — Generic locale path-prefix mechanism for the router.
 - [`SSRManifestProvider`](/docs/reference-providers-ssrmanifestprovider) — Provider for SSR manifest data used for module preloading.
+
+### Environment Variables
+
+Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `REACT_SSR_ENABLED` | boolean | - | Enable or disable server-side rendering (SSR) for React pages. When set to false, pages are rendered client-side only. |

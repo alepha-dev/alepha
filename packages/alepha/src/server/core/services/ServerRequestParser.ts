@@ -21,6 +21,7 @@ const envSchema = z.object({
   TRUST_PROXY: z
     .boolean()
     .describe("Trust proxy headers for client IP")
+    .meta({ secret: false })
     .default(true),
 });
 

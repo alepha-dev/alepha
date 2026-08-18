@@ -69,7 +69,10 @@ export class R2FileStorageProvider implements FileStorageProvider {
       /**
        * The actual R2 bucket name in Cloudflare.
        */
-      R2_BUCKET_NAME: z.string().describe("R2 bucket name in Cloudflare"),
+      R2_BUCKET_NAME: z
+        .string()
+        .describe("R2 bucket name in Cloudflare")
+        .meta({ secret: false }),
 
       /**
        * Key prefix for every object this app writes, so several apps can share
@@ -82,7 +85,7 @@ export class R2FileStorageProvider implements FileStorageProvider {
        * @example
        * S3_KEY_PREFIX=apps/lore/production/blobs
        */
-      S3_KEY_PREFIX: z.string().optional(),
+      S3_KEY_PREFIX: z.string().meta({ secret: false }).optional(),
     }),
   );
 

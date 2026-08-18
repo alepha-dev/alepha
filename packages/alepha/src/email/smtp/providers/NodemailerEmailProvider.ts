@@ -16,10 +16,15 @@ import nodemailer from "nodemailer";
 const envSchema = z.object({
   EMAIL_HOST: z
     .text({
+      secret: false,
       description: "SMTP server host",
     })
     .optional(),
-  EMAIL_PORT: z.number().describe("SMTP server port").default(587),
+  EMAIL_PORT: z
+    .number()
+    .describe("SMTP server port")
+    .meta({ secret: false })
+    .default(587),
   EMAIL_USER: z
     .text({
       description: "SMTP authentication username",
@@ -32,12 +37,15 @@ const envSchema = z.object({
     .optional(),
   EMAIL_FROM: z
     .text({
+      // On the From header of every mail this app sends.
+      secret: false,
       description: "Default from email address",
     })
     .optional(),
   EMAIL_SECURE: z
     .boolean()
     .describe("Use secure connection (TLS)")
+    .meta({ secret: false })
     .default(false),
 });
 

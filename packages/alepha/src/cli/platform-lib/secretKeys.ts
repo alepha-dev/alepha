@@ -73,6 +73,33 @@ export async function readManifestEnvKeys(
 }
 
 /**
+ * The keys the app declassified with `secret: false`, read from
+ * `dist/manifest.json`.
+ *
+ * The complement is not stored anywhere and must not be reconstructed: a key on
+ * the {@link readManifestEnvKeys} allowlist and NOT on this list is a secret.
+ * That is the direction that fails safe — an artifact built before this field
+ * existed, or by an app that annotated nothing, returns `undefined` and every
+ * key stays encrypted.
+ *
+ * Only a target with a real distinction between the two has any use for it;
+ * `BayAdapter` writes one env file either way, so this has one caller.
+ */
+export async function readManifestPublicVars(
+  fs: FileSystemProvider,
+  root: string,
+): Promise<string[] | undefined> {
+  try {
+    const manifest = await fs.readJsonFile<Partial<BuildManifest>>(
+      fs.join(root, "dist", "manifest.json"),
+    );
+    return Array.isArray(manifest.publicVars) ? manifest.publicVars : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * What one adapter's `secrets()` step actually decided to push.
  */
 export interface SecretSelection {

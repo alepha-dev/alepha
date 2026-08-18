@@ -174,6 +174,7 @@ const envSchema = z.object({
    */
   DEBUG: z
     .text({
+      secret: false,
       description:
         "Enable debug logging for specific modules using the debug package convention. Example: DEBUG=alepha:*",
     })
@@ -197,6 +198,7 @@ const envSchema = z.object({
    */
   LOG_LEVEL: z
     .text({
+      secret: false,
       description: `Application log level on startup.
 Levels are: trace, debug, info, warn, error, silent
 Level can be set for a specific module:
@@ -215,7 +217,7 @@ Level can be set for a specific module:
    */
   LOG_FORMAT: z
     .enum(["json", "pretty", "raw", "cli"])
-    .meta({ lowercase: true })
+    .meta({ lowercase: true, secret: false })
     .describe("Default log format for the application.")
     .optional(),
 });

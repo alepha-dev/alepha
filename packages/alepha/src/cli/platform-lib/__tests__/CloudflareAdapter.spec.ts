@@ -1093,6 +1093,165 @@ describe("CloudflareAdapter", () => {
       expect(secondHash).toBeTruthy();
       expect(secondHash).not.toBe(firstHash);
     });
+
+    test("pushes manifest `publicVars` as plain_text, everything else encrypted", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming, api } = createTestEnv();
+      const ctx = makeCtx(naming, {
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasAnalytics: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
+      });
+
+      await fs.writeFile(
+        "/project/dist/manifest.json",
+        JSON.stringify({
+          env: ["APP_SECRET", "SIGIL_CONFIG", "SIGIL_KEY"],
+          publicVars: ["SIGIL_CONFIG"],
+        }),
+      );
+      await fs.writeFile(
+        "/project/.env.production",
+        [
+          "APP_SECRET=my-secret",
+          'SIGIL_CONFIG={"project":"demo"}',
+          "SIGIL_KEY=sg_123",
+        ].join("\n"),
+      );
+
+      await adapter.secrets(ctx, createMockRun());
+
+      const bindings = api.bindings.get("acme-portal-production") ?? [];
+      const byName = Object.fromEntries(bindings.map((b) => [b.name, b]));
+
+      // Declassified → readable and editable in the dashboard.
+      expect(byName.SIGIL_CONFIG?.type).toBe("plain_text");
+      expect(byName.SIGIL_CONFIG?.text).toBe('{"project":"demo"}');
+
+      // Everything not on the list stays encrypted — including the key that
+      // sits right next to it in the same module.
+      expect(byName.SIGIL_KEY?.type).toBe("secret_text");
+      expect(byName.APP_SECRET?.type).toBe("secret_text");
+    });
+
+    test("does not declassify a key the app never vouched for", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming, api } = createTestEnv();
+      const ctx = makeCtx(naming, {
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasAnalytics: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
+      });
+
+      // No `publicVars` at all: the shape of every artifact built before the
+      // field existed. It must encrypt everything rather than read the absent
+      // list as "nothing is secret".
+      await fs.writeFile(
+        "/project/dist/manifest.json",
+        JSON.stringify({ env: ["APP_SECRET", "SIGIL_CONFIG"] }),
+      );
+      await fs.writeFile(
+        "/project/.env.production",
+        ["APP_SECRET=my-secret", 'SIGIL_CONFIG={"project":"demo"}'].join("\n"),
+      );
+
+      await adapter.secrets(ctx, createMockRun());
+
+      const bindings = api.bindings.get("acme-portal-production") ?? [];
+      expect(
+        bindings
+          .filter((b) => b.name !== "ALEPHA_SECRETS_HASH")
+          .every((b) => b.type === "secret_text"),
+      ).toBe(true);
+    });
+
+    test("re-PATCHes when a key is declassified without its value changing", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming, api } = createTestEnv();
+      const ctx = makeCtx(naming, {
+        entry: { root: "/project", server: "src/main.ts" },
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasAnalytics: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+        },
+      });
+
+      await fs.writeFile(
+        "/project/dist/manifest.json",
+        JSON.stringify({ env: ["SIGIL_CONFIG"] }),
+      );
+      await fs.writeFile(
+        "/project/.env.production",
+        'SIGIL_CONFIG={"project":"demo"}',
+      );
+
+      const run = createMockRun();
+      await adapter.secrets(ctx, run);
+      expect(
+        api.bindings
+          .get("acme-portal-production")
+          ?.find((b) => b.name === "SIGIL_CONFIG")?.type,
+      ).toBe("secret_text");
+
+      // Only the annotation changes — the value is byte-identical. A
+      // fingerprint over values alone would match here and skip the PATCH,
+      // leaving the binding encrypted until some unrelated secret changed.
+      await fs.writeFile(
+        "/project/dist/manifest.json",
+        JSON.stringify({ env: ["SIGIL_CONFIG"], publicVars: ["SIGIL_CONFIG"] }),
+      );
+      await adapter.secrets(ctx, run);
+
+      const after = api.bindings.get("acme-portal-production") ?? [];
+      expect(after.find((b) => b.name === "SIGIL_CONFIG")?.type).toBe(
+        "plain_text",
+      );
+      // And it is written once, not inherited as a secret AND upserted as a var.
+      expect(after.filter((b) => b.name === "SIGIL_CONFIG")).toHaveLength(1);
+    });
+
+    test("pushes the auto-derived PUBLIC_URL as plain_text", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming, api } = createTestEnv();
+      const ctx = makeCtx(naming, {
+        envConfig: { adapter: "cloudflare", domain: "lore.alepha.dev" },
+      });
+
+      // No manifest at all: PUBLIC_URL is invented by the adapter from the
+      // configured domain, so it can never appear on `publicVars`. It is
+      // plaintext regardless — it is the address the app answers on.
+      await fs.writeFile("/project/.env.production", "APP_SECRET=my-secret");
+
+      await adapter.secrets(ctx, createMockRun());
+
+      const bindings = api.bindings.get("acme-portal-production") ?? [];
+      const publicUrl = bindings.find((b) => b.name === "PUBLIC_URL");
+      expect(publicUrl?.type).toBe("plain_text");
+      expect(publicUrl?.text).toBe("https://lore.alepha.dev");
+      expect(bindings.find((b) => b.name === "APP_SECRET")?.type).toBe(
+        "secret_text",
+      );
+    });
   });
 
   describe("inspect", () => {

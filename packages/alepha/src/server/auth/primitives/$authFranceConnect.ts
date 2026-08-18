@@ -44,6 +44,8 @@ export const $authFranceConnect = (
     z.object({
       FRANCECONNECT_CLIENT_ID: z
         .text({
+          // Public: it travels in the authorize URL the browser is sent to.
+          secret: false,
           description:
             "The OAuth 2.0 client ID for your France Connect service provider, obtained from partenaires.franceconnect.gouv.fr.",
         })

@@ -31,10 +31,12 @@ import { ConsoleOutputProvider } from "./ConsoleOutputProvider.ts";
 const envSchema = z.object({
   CLI_NAME: z.text({
     default: "cli",
+    secret: false,
     description: "Name of the CLI application.",
   }),
   CLI_DESCRIPTION: z.text({
     default: "",
+    secret: false,
     description: "Description of the CLI application.",
   }),
 });

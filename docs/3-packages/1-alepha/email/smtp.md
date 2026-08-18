@@ -24,4 +24,9 @@ Environment variables used to configure this module. These can be set in your `.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
+| `EMAIL_FROM` | text | - | Default from email address |
+| `EMAIL_HOST` | text | - | SMTP server host |
+| `EMAIL_PASS` | text | - | SMTP authentication password |
 | `EMAIL_PORT` | number | 587 | SMTP server port |
+| `EMAIL_SECURE` | boolean | false | Use secure connection (TLS) |
+| `EMAIL_USER` | text | - | SMTP authentication username |

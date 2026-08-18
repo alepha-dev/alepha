@@ -96,6 +96,7 @@ const envSchema = z.object({
    */
   DATA_DIR: z.text({
     default: "",
+    secret: false,
     description:
       "Root directory for local scratch data. Blobs land in <DATA_DIR>/buckets unless STORAGE_PATH is set explicitly.",
   }),
@@ -111,6 +112,7 @@ const envSchema = z.object({
    */
   STORAGE_PATH: z.text({
     default: "",
+    secret: false,
     description:
       "Directory where the local file storage provider keeps blobs. Must live outside the deployed bundle to survive a redeploy. Ignored when S3_ENDPOINT is set.",
   }),

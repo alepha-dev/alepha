@@ -24,11 +24,12 @@ const envSchema = z.object({
     .integer()
     // `PORT` is what a host that allocates the port for you injects (Heroku,
     // Cloud Run, Railway, Fly), and it is read only when SERVER_PORT is unset.
-    .meta({ min: 0, max: 65535, aliases: ["PORT"] })
+    .meta({ min: 0, max: 65535, aliases: ["PORT"], secret: false })
     .describe("Set 0 to listen on a random port.")
     .default(3000),
   SERVER_HOST: z.text({
     default: "localhost",
+    secret: false,
     description: "Set 0.0.0.0 to listen on all interfaces.",
   }),
 });

@@ -27,6 +27,8 @@ export const $authGoogle = (
     z.object({
       GOOGLE_CLIENT_ID: z
         .text({
+          // Public: it travels in the authorize URL the browser is sent to.
+          secret: false,
           description:
             "The OAuth 2.0 client ID obtained from the Google Developer Console.",
         })

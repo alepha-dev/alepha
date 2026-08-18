@@ -9,22 +9,22 @@ export const postgresEnvSchema = z.object({
   /**
    * PostgreSQL schema name (defaults to `"public"` when unset).
    */
-  POSTGRES_SCHEMA: z.text().optional(),
+  POSTGRES_SCHEMA: z.text().meta({ secret: false }).optional(),
 
   /**
    * Maximum number of connections in the pool.
    */
-  POOL_MAX: z.integer().optional(),
+  POOL_MAX: z.integer().meta({ secret: false }).optional(),
 
   /**
    * Seconds a connection can be idle before being closed.
    */
-  POOL_IDLE_TIMEOUT: z.integer().optional(),
+  POOL_IDLE_TIMEOUT: z.integer().meta({ secret: false }).optional(),
 
   /**
    * Seconds to wait when establishing a new connection.
    */
-  POOL_CONNECT_TIMEOUT: z.integer().optional(),
+  POOL_CONNECT_TIMEOUT: z.integer().meta({ secret: false }).optional(),
 });
 
 declare module "alepha" {

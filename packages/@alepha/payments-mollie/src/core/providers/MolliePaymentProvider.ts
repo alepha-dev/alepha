@@ -27,7 +27,7 @@ const envSchema = z.object({
    * are created without a webhook and status updates rely on the
    * return-from-checkout fetch only.
    */
-  MOLLIE_WEBHOOK_URL: z.string().optional(),
+  MOLLIE_WEBHOOK_URL: z.string().meta({ secret: false }).optional(),
 });
 
 declare module "alepha" {
