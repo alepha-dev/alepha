@@ -40,8 +40,16 @@ export const sigilEnv = z.object({
    * package is inert without `SIGIL_KEY` anyway. `SigilSinkProvider` fails at
    * boot when a key is present without a config, rather than reporting into a
    * project nobody named.
+   *
+   * Declassified: every field of it is already public. The project slug and
+   * the sink origin are in the feedback URL this package renders into the
+   * page, and the switches describe what the app collects, which it announces
+   * by collecting it. Nothing here authorizes anything — `SIGIL_KEY` does, and
+   * that one is a secret. Being a plaintext binding is what makes it editable
+   * in a deploy dashboard, which is the whole reason it is one variable and
+   * not a fetch from the sink.
    */
-  SIGIL_CONFIG: sigilConfig.optional(),
+  SIGIL_CONFIG: sigilConfig.meta({ secret: false }).optional(),
   SIGIL_KEY: z.text({
     default: "",
     description:
