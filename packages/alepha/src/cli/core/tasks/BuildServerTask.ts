@@ -5,7 +5,6 @@ import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 import type * as vite from "vite";
 import type { UserConfig } from "vite";
-import { analyzer as viteAnalyzer } from "vite-bundle-analyzer";
 import { ViteUtils } from "../services/ViteUtils.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
@@ -107,6 +106,7 @@ export class BuildServerTask extends BuildTask {
     }
 
     if (opts.stats) {
+      const viteAnalyzer = await this.viteUtils.importAnalyzer();
       plugins.push(
         viteAnalyzer({
           analyzerMode: opts.stats === "json" ? "json" : "static",

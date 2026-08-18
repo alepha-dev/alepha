@@ -85,6 +85,30 @@ export class ViteUtils {
   }
 
   /**
+   * Lazy-load vite-bundle-analyzer.
+   *
+   * Required at call time rather than imported at module scope for the same
+   * reason as Vite itself, plus one of its own: the analyzer is reached only
+   * under `--stats`, but a static import put its ~100 kB of report template
+   * into anything that pulls the CLI barrel in — including `create-alepha`,
+   * which bundles this module to scaffold projects and never builds one.
+   */
+  public async importAnalyzer(): Promise<
+    typeof import("vite-bundle-analyzer").analyzer
+  > {
+    try {
+      const { analyzer } = createRequire(import.meta.url)(
+        "vite-bundle-analyzer",
+      );
+      return analyzer;
+    } catch {
+      throw new AlephaError(
+        "vite-bundle-analyzer is not installed. It ships with `alepha`; reinstall your dependencies to run a build with `--stats`.",
+      );
+    }
+  }
+
+  /**
    * Lazy-load @vitejs/plugin-react (optional).
    */
   public async importViteReact(): Promise<any> {

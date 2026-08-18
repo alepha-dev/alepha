@@ -1,7 +1,6 @@
 import { $inject, Alepha } from "alepha";
 import { FileSystemProvider } from "alepha/system";
 import type { UserConfig } from "vite";
-import { analyzer as viteAnalyzer } from "vite-bundle-analyzer";
 import { ViteUtils } from "../services/ViteUtils.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
@@ -73,6 +72,7 @@ export class BuildClientTask extends BuildTask {
     plugins.push(this.viteUtils.createSsrPreloadPlugin());
 
     if (opts.stats) {
+      const viteAnalyzer = await this.viteUtils.importAnalyzer();
       plugins.push(
         viteAnalyzer({
           analyzerMode: opts.stats === "json" ? "json" : "static",

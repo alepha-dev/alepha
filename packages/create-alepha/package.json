@@ -13,10 +13,8 @@
     "dist",
     "src"
   ],
-  "dependencies": {
-    "alepha": "0.26.0"
-  },
   "devDependencies": {
+    "alepha": "0.26.0",
     "tsdown": "^0.22.14",
     "vitest": "^4.1.10"
   },
