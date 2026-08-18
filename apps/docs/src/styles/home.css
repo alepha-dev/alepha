@@ -37,6 +37,12 @@
    ----------------------------------------------------------------------------- */
 
 .footer-link {
+  /* Colour and underline used to come from inline styles on the single call
+     site, so the anchors fell back to UA defaults once that was not the only
+     one. Same fix as `.copy-btn`. */
+  color: var(--color-text-muted);
+  text-decoration: none;
+  font-size: var(--text-base);
   transition: color 0.15s ease;
 }
 
@@ -63,6 +69,14 @@
 
 .copy-btn {
   background: transparent;
+  /* The UA default button border used to be masked by an inline `border:
+     none` on the one call site. It has more than one call site now. */
+  border: none;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: var(--color-text-muted);
   transition: all 0.15s ease;
   border-radius: 4px;
 }

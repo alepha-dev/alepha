@@ -1,25 +1,44 @@
-import FeaturesSection from "./home/FeaturesSection.tsx";
+import AdminSection from "./home/AdminSection.tsx";
+import EcosystemSection from "./home/EcosystemSection.tsx";
+import FoundationSection from "./home/FoundationSection.tsx";
 import HeroSection from "./home/HeroSection.tsx";
-import MoreSection from "./home/MoreSection.tsx";
 import ParticleNetwork from "./home/ParticleNetwork.tsx";
+import ProofSection from "./home/ProofSection.tsx";
+import RuntimeSection from "./home/RuntimeSection.tsx";
+import SeamSection from "./home/SeamSection.tsx";
+import StackSection from "./home/StackSection.tsx";
 import StatusBar from "./layout/StatusBar.tsx";
 
 const Home = () => {
   return (
-    <div className="terminal-page grid-bg">
+    <div className="terminal-page grid-bg home-snap">
       {/* 3D Particle Network Background */}
       <ParticleNetwork />
 
       {/* Main Content */}
       <div className="flex flex-col relative" style={{ paddingBottom: 24 }}>
-        {/* Block 1: Hero */}
+        {/*
+          Backgrounds alternate strictly from here down: the hero is plain, then
+          every even block is `home-section-alt` and every odd block is plain.
+          Adding a block means re-checking its neighbours, which is what put two
+          plain sections back to back once already.
+        */}
+        {/* 1 — the ecosystem, generically (plain) */}
         <HeroSection />
-
-        {/* Block 2: Features */}
-        <FeaturesSection />
-
-        {/* Block 3: More */}
-        <MoreSection />
+        {/* 2 — one definition, both sides (alt) */}
+        <SeamSection />
+        {/* 3 — same code, three targets (plain) */}
+        <RuntimeSection />
+        {/* 4 — one dependency (alt) */}
+        <StackSection />
+        {/* 5 — what it is built on (plain) */}
+        <FoundationSection />
+        {/* 6 — the admin panel you did not build (alt) */}
+        <AdminSection />
+        {/* 7 — the other products (plain) */}
+        <EcosystemSection />
+        {/* 8 — conclusion (alt) */}
+        <ProofSection />
       </div>
 
       {/* Status Bar (docs footer) */}

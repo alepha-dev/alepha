@@ -29,7 +29,7 @@ const Docs = (props: ContentProps) => {
       style={{
         minHeight: "100%",
         background: "var(--color-bg)",
-        fontFamily: '"JetBrains Mono", "Fira Code", monospace',
+        fontFamily: "var(--font-sans)",
       }}
     >
       {/* Main Content */}

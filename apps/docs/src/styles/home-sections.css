@@ -1,0 +1,1656 @@
+/* =============================================================================
+   HOME - Reworked front page sections (PoC)
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   SCROLL SNAP
+
+   `proximity`, deliberately not `mandatory`.
+
+   `mandatory` forces the viewport to a snap point at all times, which traps the
+   reader on any block taller than the viewport: the seam block exceeds 100vh on
+   a short window, and its lower half would become unreachable. `proximity` only
+   pulls to a block when the scroll already ends near one, so long blocks stay
+   scrollable and a deliberate stop mid-block is respected.
+
+   This is CSS, so the browser keeps ownership of the scroll. The bad practice is
+   the JS variant — wheel handlers that animate to the next section — which
+   breaks trackpad momentum, keyboard paging, find-in-page and screen readers.
+
+   Scoped with `:has()` so it applies to the home page only, never to the docs.
+   ----------------------------------------------------------------------------- */
+
+html:has(.home-snap) {
+  scroll-snap-type: y proximity;
+}
+
+.home-snap .home-block {
+  scroll-snap-align: start;
+  /* The header is sticky, so snapping to `start` would tuck each block's top
+     underneath it. */
+  scroll-margin-top: var(--header-height);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:has(.home-snap) {
+    scroll-snap-type: none;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   HERO
+   ----------------------------------------------------------------------------- */
+
+.hero-section {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding-top: 40px;
+  padding-bottom: 40px;
+}
+
+.hero-title {
+  font-size: clamp(30px, 7vw, 46px);
+  font-weight: var(--font-bold);
+  margin: 0;
+  color: var(--color-text-bright);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.02em;
+}
+
+.hero-title-accent {
+  color: var(--color-accent);
+}
+
+.hero-lead {
+  font-size: clamp(14px, 3.5vw, 17px);
+  color: var(--color-text-muted);
+  max-width: 470px;
+  line-height: var(--leading-relaxed);
+  margin: 0;
+}
+
+.hero-lead-strong {
+  color: var(--color-text-bright);
+  font-weight: var(--font-semibold);
+}
+
+/* Dotted rather than solid: these point out at TypeScript and React, and a
+   solid underline in a paragraph this size reads as a call to action. */
+.hero-lead-link {
+  color: inherit;
+  text-decoration: underline dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  text-decoration-color: var(--color-border-focus);
+  transition: all var(--duration-normal) var(--ease-default);
+}
+
+.hero-lead-link:hover {
+  color: var(--color-text-bright);
+  text-decoration-color: var(--color-accent);
+}
+
+.hero-link {
+  text-decoration: none;
+}
+
+.hero-btn-primary {
+  background: var(--color-accent);
+  color: #ffffff;
+  border: none;
+  padding: 14px 32px;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.hero-btn-ghost {
+  background: transparent;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  padding: 14px 32px;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* -----------------------------------------------------------------------------
+   COPY COMMAND
+   ----------------------------------------------------------------------------- */
+
+.copy-command {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 12px 18px;
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.copy-command-prompt {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+}
+
+.copy-command-text {
+  font-size: var(--text-base);
+  font-family: var(--font-mono);
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow-x: auto;
+}
+
+/* -----------------------------------------------------------------------------
+   RUNTIME SWITCHER
+   ----------------------------------------------------------------------------- */
+
+.runtime-switcher {
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  box-shadow: 0px 0px 0px 4px #ffffff14;
+}
+
+.runtime-tabs {
+  display: flex;
+  gap: var(--space-1);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 4px;
+}
+
+.runtime-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-default);
+}
+
+.runtime-tab:hover {
+  color: var(--color-text);
+}
+
+.runtime-tab.is-active {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #ffffff;
+}
+
+.runtime-tagline {
+  margin: var(--space-3) 0 var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: var(--leading-snug);
+  min-height: 34px;
+}
+
+.runtime-table {
+  display: flex;
+  flex-direction: column;
+  /* Opaque: the particle field behind the page showed through the rows and read
+     as noise inside the table. */
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.runtime-row {
+  display: grid;
+  grid-template-columns: 1fr 20px 1fr;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.runtime-row:last-child {
+  border-bottom: none;
+}
+
+.runtime-row-head {
+  background: var(--color-bg);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.runtime-primitive {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-cyan);
+}
+
+.runtime-arrow {
+  color: var(--color-text-muted);
+}
+
+.runtime-impl {
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  animation: runtimeSwap var(--duration-slower) var(--ease-out);
+}
+
+@keyframes runtimeSwap {
+  from {
+    opacity: 0;
+    transform: translateX(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.runtime-command {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding: 10px 14px;
+  background: var(--code-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  overflow-x: auto;
+}
+
+.runtime-command-prompt {
+  color: var(--color-accent);
+}
+
+.runtime-footnote {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: var(--leading-snug);
+}
+
+/* -----------------------------------------------------------------------------
+   GENERIC SECTION SHELL
+   ----------------------------------------------------------------------------- */
+
+/* One block per screen. `min-height` rather than `height`, because two of them
+   (the seam's paired code panes and the 24-line package.json) are taller than a
+   short viewport and must be allowed to grow rather than clip. */
+.home-section {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-top: clamp(48px, 6vw, 72px);
+  padding-bottom: clamp(48px, 6vw, 72px);
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+  position: relative;
+}
+
+/* The flex column above would otherwise shrink the container to its content. */
+.home-section > .container {
+  width: 100%;
+}
+
+.home-section-alt {
+  background: var(--color-bg-elevated);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* A dot grid over the alt bands, so the alternation reads as two surfaces
+   rather than two greys. `--color-dot-grid` is already defined per theme
+   (white-on-dark, black-on-light), so this needs no theme branch of its own —
+   only the opacity is dialled down, because the token is tuned for a 1px dot on
+   the hero's near-black rather than on an elevated panel. */
+.home-section-alt::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    circle,
+    var(--color-dot-grid) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+  opacity: 0.5;
+  pointer-events: none;
+  /* Faded rather than uniform: the grid dissolves through the middle of the
+     band, so it reads as texture at the edges and leaves clean ground under the
+     text. Masked instead of a second gradient layer so the dots themselves
+     fade, not just their backdrop. */
+  mask-image: radial-gradient(
+    ellipse 75% 55% at 50% 50%,
+    transparent 20%,
+    #000 95%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse 75% 55% at 50% 50%,
+    transparent 20%,
+    #000 95%
+  );
+}
+
+/* A little depth at the top of each band. */
+.home-section-alt::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 80% 50% at 50% 0%,
+    rgba(var(--color-accent-rgb), 0.05) 0%,
+    transparent 55%
+  );
+  pointer-events: none;
+}
+
+/* Keep content above the texture. */
+.home-section > .container,
+.home-section > .light-pillar {
+  position: relative;
+  z-index: 1;
+}
+
+.section-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: clamp(24px, 4vw, 40px);
+  text-align: center;
+}
+
+.section-title {
+  font-size: clamp(24px, 5vw, 34px);
+  font-weight: var(--font-semibold);
+  margin: 0;
+  color: var(--color-text-bright);
+  letter-spacing: -0.01em;
+}
+
+.section-sub {
+  color: var(--color-text-muted);
+  font-size: clamp(14px, 3vw, 16px);
+  margin: 0;
+  max-width: 620px;
+  line-height: var(--leading-relaxed);
+}
+
+/* -----------------------------------------------------------------------------
+   SEAM SECTION
+   ----------------------------------------------------------------------------- */
+
+.seam-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  align-items: stretch;
+}
+
+.code-pane {
+  background: var(--code-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+}
+
+.code-pane-label {
+  padding: 8px 14px;
+  background: var(--code-header-bg);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.code-pane .code-demo-content {
+  overflow-x: auto;
+}
+
+.seam-connector {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.seam-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-accent),
+    transparent
+  );
+  max-width: 120px;
+}
+
+.seam-badge {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-accent);
+  background: var(--color-accent-bg);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-full);
+  padding: 4px 14px;
+  white-space: nowrap;
+}
+
+.seam-note {
+  margin: var(--space-4) auto 0;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--text-base);
+  max-width: 640px;
+  line-height: var(--leading-relaxed);
+}
+
+.seam-note code {
+  color: var(--color-cyan);
+  font-family: var(--font-mono);
+}
+
+@media (min-width: 1024px) {
+  .seam-grid {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .seam-connector {
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+
+  .seam-line {
+    width: 1px;
+    height: auto;
+    flex: 1;
+    max-width: none;
+    background: linear-gradient(
+      180deg,
+      transparent,
+      var(--color-accent),
+      transparent
+    );
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   STACK SECTION
+   ----------------------------------------------------------------------------- */
+
+.stack-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.stack-pane {
+  background: var(--code-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.stack-code {
+  margin: 0;
+  padding: var(--space-5);
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  color: var(--color-text);
+  line-height: var(--leading-normal);
+  overflow-x: auto;
+}
+
+.stack-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-4);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-2);
+}
+
+.stack-list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-base);
+  color: var(--color-text);
+  padding: 2px 0;
+}
+
+@media (min-width: 1024px) {
+  .stack-grid {
+    grid-template-columns: 0.8fr 1.2fr;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   SAAS SECTION
+   ----------------------------------------------------------------------------- */
+
+.saas-command {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-10);
+}
+
+.saas-list {
+  list-style: none;
+  margin: 0 auto;
+  padding: 0;
+  max-width: 760px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-3);
+}
+
+.saas-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-base);
+  color: var(--color-text);
+}
+
+.saas-check {
+  color: var(--color-success);
+  flex-shrink: 0;
+}
+
+/* -----------------------------------------------------------------------------
+   PROOF SECTION
+   ----------------------------------------------------------------------------- */
+
+.proof-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: clamp(48px, 8vw, 80px);
+}
+
+.proof-card {
+  padding: var(--space-6);
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.proof-stat {
+  font-size: clamp(28px, 6vw, 38px);
+  font-weight: var(--font-bold);
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  line-height: var(--leading-none);
+}
+
+.proof-label {
+  color: var(--color-text-muted);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+}
+
+.proof-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-cyan);
+  text-decoration: none;
+  font-size: var(--text-base);
+  margin-top: auto;
+}
+
+.proof-link:hover {
+  text-decoration: underline;
+}
+
+.proof-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+  text-align: center;
+}
+
+.proof-links {
+  margin-top: var(--space-2);
+}
+
+/* -----------------------------------------------------------------------------
+   HEADER — PRODUCT NAV
+   ----------------------------------------------------------------------------- */
+
+.product-nav {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}
+
+.product-nav-link {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-4);
+  border-right: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all var(--duration-normal) var(--ease-default);
+}
+
+.product-nav-link:hover {
+  color: var(--color-text-bright);
+  background: var(--color-surface-hover);
+}
+
+/* Colour only. A weight change would re-measure the text and nudge every link
+   beside it, so the nav would shift as you move between pages. */
+.product-nav-link.is-active {
+  color: var(--color-text-bright);
+}
+
+/* -----------------------------------------------------------------------------
+   BLOCK 1 — HERO (centred, generic)
+   ----------------------------------------------------------------------------- */
+
+.hero-centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-6);
+  position: relative;
+  z-index: 1;
+}
+
+.hero-brand {
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  line-height: 1;
+}
+
+.hero-logo {
+  width: clamp(104px, 13vw, 156px);
+  height: auto;
+  display: block;
+}
+
+/* With the logo standing in for a headline, this paragraph IS the page's
+   opening statement, so it is sized and coloured as primary text rather than as
+   a sub-line under a title. */
+.hero-lead-wide {
+  max-width: 720px;
+  font-size: clamp(17px, 2.2vw, 23px);
+  line-height: 1.5;
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+  /* Extra breathing room before the install command, so the statement and the
+     call to action read as two beats rather than one block. */
+  margin-bottom: var(--space-5);
+}
+
+/* -----------------------------------------------------------------------------
+   BLOCK 2 — RUNTIME SECTION
+   ----------------------------------------------------------------------------- */
+
+.container-wide {
+  max-width: 1200px;
+}
+
+.runtime-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-8);
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .runtime-layout {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-12);
+  }
+}
+
+.runtime-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.runtime-headline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-3);
+  font-size: clamp(18px, 4vw, 22px);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-bright);
+}
+
+.runtime-description {
+  margin: 0 0 var(--space-5);
+  color: var(--color-text-muted);
+  font-size: var(--text-md);
+  line-height: var(--leading-relaxed);
+}
+
+.runtime-detail {
+  animation: runtimeSwap var(--duration-slower) var(--ease-out);
+}
+
+/* The build command sits at the very bottom of this column, so it lands in the
+   same place whichever target is selected and whatever length that target's
+   description happens to be. */
+.runtime-right {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  /* Load-bearing with the `auto` below: flex `gap` still applies between items,
+     so `margin-top: auto` adds space on top of it rather than replacing it.
+     Without the gap, a column with no spare height collapsed the command
+     straight onto the footnote. */
+  gap: var(--space-4);
+}
+
+.runtime-right .runtime-command {
+  margin-top: auto;
+}
+
+.runtime-right .runtime-footnote {
+  margin: 0;
+}
+
+/* -----------------------------------------------------------------------------
+   BLOCK 4 — ONE DEPENDENCY (before / after)
+   ----------------------------------------------------------------------------- */
+
+.stack-compare {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+@media (min-width: 1024px) {
+  .stack-compare {
+    grid-template-columns: 1fr auto 1fr;
+    gap: var(--space-6);
+  }
+}
+
+.stack-arrow {
+  text-align: center;
+  font-size: 28px;
+  color: var(--color-accent);
+}
+
+/* package.json panes */
+
+.pkg-pane {
+  background: var(--code-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pkg-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 9px 14px;
+  background: var(--code-header-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.pkg-file {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+
+.pkg-count {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-error);
+}
+
+.pkg-count-good {
+  color: var(--color-success);
+}
+
+.pkg-body {
+  margin: 0;
+  padding: var(--space-4) var(--space-4) var(--space-5);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.65;
+  overflow-x: auto;
+}
+
+.pkg-line {
+  white-space: pre;
+}
+
+.pkg-indent {
+  white-space: pre;
+}
+
+.pkg-key {
+  color: var(--code-tag);
+}
+
+.pkg-value {
+  color: var(--code-string);
+}
+
+.pkg-punct {
+  color: var(--color-text-muted);
+}
+
+/* The "after" pane is a fifth the height of the "before" one; centring its
+   short body is what makes the difference read at a glance. */
+.pkg-pane-after .pkg-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.pkg-pane-after .pkg-key {
+  color: var(--color-accent);
+  font-weight: var(--font-semibold);
+}
+
+.pkg-foot {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border);
+  background: var(--code-header-bg);
+}
+
+.pkg-foot-text {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: var(--leading-snug);
+}
+
+/* -----------------------------------------------------------------------------
+   ASTERISK FOOTNOTE (as after "Everything included." on the live site)
+   ----------------------------------------------------------------------------- */
+
+.asterisk-note {
+  position: relative;
+  display: inline-block;
+}
+
+.asterisk-note-mark {
+  background: none;
+  border: none;
+  padding: 0 0 0 2px;
+  font-family: inherit;
+  font-size: 0.7em;
+  line-height: 1;
+  vertical-align: super;
+  color: var(--color-accent);
+  cursor: help;
+}
+
+.asterisk-note-tip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px;
+  padding: 12px 16px;
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  font-size: var(--text-sm);
+  font-weight: var(--font-normal);
+  letter-spacing: 0;
+  color: var(--color-text-muted);
+  line-height: var(--leading-snug);
+  text-align: left;
+  z-index: var(--z-tooltip);
+}
+
+/* The little pointer under the bubble. */
+.asterisk-note-tip::after {
+  content: "";
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 10px;
+  height: 10px;
+  background: var(--color-bg-panel);
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.asterisk-note-pkg {
+  font-family: var(--font-mono);
+  color: var(--color-cyan);
+}
+
+/* -----------------------------------------------------------------------------
+   BLOCK 5 — FOUNDATION
+   ----------------------------------------------------------------------------- */
+
+/* -----------------------------------------------------------------------------
+   FOUNDATION STACK
+   ----------------------------------------------------------------------------- */
+
+.stack-diagram {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.slab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+}
+
+.slab-label {
+  font-size: var(--text-md);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-bright);
+}
+
+.slab-note {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Your app is the thing you write, so it reads as the lightest layer. */
+.slab-app {
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--color-border-focus);
+}
+
+/* Alepha is the load-bearing middle, and the only accented layer. */
+.slab-alepha {
+  background: var(--color-accent-bg);
+  border-color: var(--color-accent);
+}
+
+.slab-alepha .slab-label {
+  color: var(--color-accent);
+}
+
+.slab-runtime {
+  background: var(--color-surface-subtle);
+}
+
+/* The bricks */
+
+.brick-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+@media (min-width: 768px) {
+  .brick-row {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.brick {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: var(--space-4) var(--space-4) var(--space-5);
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  font-family: inherit;
+  text-align: left;
+  cursor: default;
+  transition: all var(--duration-normal) var(--ease-default);
+}
+
+.brick:hover,
+.brick.is-active {
+  border-color: var(--color-accent);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+}
+
+.brick-logo {
+  display: block;
+}
+
+.brick-name {
+  font-size: var(--text-md);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-bright);
+}
+
+.brick-role {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+/* Fixed height, so hovering a brick never moves the stack above it. */
+.foundation-detail {
+  max-width: 860px;
+  margin: var(--space-5) auto 0;
+  min-height: 76px;
+  display: flex;
+  align-items: flex-start;
+}
+
+.foundation-detail-body {
+  margin: 0;
+  font-size: var(--text-md);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-muted);
+  animation: runtimeSwap var(--duration-normal) var(--ease-out);
+}
+
+.foundation-detail-body strong {
+  color: var(--color-text-bright);
+  font-weight: var(--font-semibold);
+}
+
+.foundation-detail-body code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  color: var(--color-cyan);
+}
+
+.foundation-detail-body.is-idle {
+  color: var(--color-text-muted);
+  opacity: 0.75;
+}
+
+.foundation-role {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.foundation-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.foundation-logo {
+  flex-shrink: 0;
+  display: block;
+}
+
+.foundation-name {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-bright);
+}
+
+.foundation-body {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+}
+
+.foundation-base {
+  padding: var(--space-6);
+  border: 1px dashed var(--color-border-focus);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface-subtle);
+}
+
+.foundation-base-label {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+}
+
+.foundation-base-body {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-md);
+  line-height: var(--leading-relaxed);
+}
+
+.foundation-base-body strong {
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 0.95em;
+  font-weight: var(--font-medium);
+}
+
+/* -----------------------------------------------------------------------------
+   BLOCK 6 — ADMIN PANEL CAROUSEL
+   ----------------------------------------------------------------------------- */
+
+.admin-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-8);
+  align-items: center;
+}
+
+@media (min-width: 1024px) {
+  .admin-layout {
+    grid-template-columns: 0.85fr 1.15fr;
+    gap: var(--space-12);
+  }
+}
+
+.admin-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.admin-lead {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-md);
+  line-height: var(--leading-relaxed);
+}
+
+.admin-lead code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  color: var(--color-cyan);
+}
+
+.admin-right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+/* The thumbnail is a button: clicking it opens the lightbox. */
+.admin-thumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--color-bg-panel);
+  cursor: zoom-in;
+  transition: border-color var(--duration-normal) var(--ease-default);
+}
+
+.admin-thumb:hover {
+  border-color: var(--color-accent);
+}
+
+.admin-thumb-zoom {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.admin-thumb:hover .admin-thumb-zoom {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+/* -----------------------------------------------------------------------------
+   ADMIN LIGHTBOX
+   ----------------------------------------------------------------------------- */
+
+.admin-lightbox {
+  width: min(1500px, 96vw);
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.admin-lightbox-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.admin-lightbox-label {
+  font-size: var(--text-md);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-bright);
+}
+
+.admin-lightbox-count {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-right: auto;
+}
+
+/* Deliberately not `.admin-nav`: that one is absolutely positioned for the
+   frame arrows, and reusing it here floated the close button out of the
+   header. */
+.admin-close {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-default);
+}
+
+.admin-close:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.admin-lightbox-frame {
+  position: relative;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.admin-lightbox-caption {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-base);
+}
+
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  /* Hugs its labels and centres, rather than stretching the column. */
+  width: fit-content;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  gap: var(--space-1);
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 4px;
+}
+
+.admin-tab {
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-default);
+}
+
+.admin-tab:hover {
+  color: var(--color-text);
+}
+
+.admin-tab.is-active {
+  background: var(--color-accent);
+  color: #ffffff;
+}
+
+.admin-shot {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Light is the default so a page rendered before the theme script runs shows
+   the same thing the rest of the page does. `data-theme` is what the header
+   toggle sets, so the swap follows an explicit choice as well as the system
+   preference the boot script derives it from. */
+.admin-shot-dark {
+  display: none;
+}
+
+[data-theme="dark"] .admin-shot-light {
+  display: none;
+}
+
+[data-theme="dark"] .admin-shot-dark {
+  display: block;
+}
+
+.admin-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-panel);
+  color: var(--color-text);
+  cursor: pointer;
+  opacity: 0.85;
+  transition: all var(--duration-normal) var(--ease-default);
+}
+
+.admin-nav:hover {
+  opacity: 1;
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.admin-nav-prev {
+  left: var(--space-3);
+}
+
+.admin-nav-next {
+  right: var(--space-3);
+}
+
+.admin-caption {
+  margin: 0;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--text-base);
+  max-width: 620px;
+}
+
+/* -----------------------------------------------------------------------------
+   BLOCK 7 — ECOSYSTEM
+   ----------------------------------------------------------------------------- */
+
+.ecosystem-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+.ecosystem-card {
+  display: block;
+  padding: var(--space-6);
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  text-decoration: none;
+  transition: all var(--duration-normal) var(--ease-default);
+}
+
+a.ecosystem-card:hover {
+  border-color: var(--color-accent);
+  transform: translateY(-2px);
+}
+
+.ecosystem-card.is-soon {
+  opacity: 0.65;
+}
+
+.ecosystem-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.ecosystem-name {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-bright);
+}
+
+.ecosystem-arrow {
+  color: var(--color-accent);
+}
+
+.ecosystem-badge {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 2px 10px;
+}
+
+.ecosystem-tagline {
+  margin: 0 0 var(--space-3);
+  color: var(--color-accent);
+  font-size: var(--text-base);
+}
+
+.ecosystem-body {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+}
+
+/* -----------------------------------------------------------------------------
+   BLOCK 8 — CONCLUSION
+   ----------------------------------------------------------------------------- */
+
+.proof-license {
+  margin: 0;
+  max-width: 560px;
+  color: var(--color-text-muted);
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+}
+
+/* -----------------------------------------------------------------------------
+   PRODUCT PAGES (Lore, Bay)
+   ----------------------------------------------------------------------------- */
+
+/* A product page is exactly one screen and must not scroll.
+   `.terminal-page` is `min-height: 100vh`, and the header sits above it in flow,
+   so a full-height section pushed the document 40px past the viewport and grew a
+   scrollbar. Subtracting the header is what removes it. */
+.product-page {
+  height: calc(100vh - var(--header-height));
+  min-height: 0;
+  overflow: hidden;
+}
+
+.product-page .hero-section {
+  min-height: calc(100vh - var(--header-height));
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.product-try {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
+.product-try-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-cyan);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.product-try-link:hover {
+  border-bottom-color: currentColor;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-4);
+}
+
+.product-card {
+  padding: var(--space-6);
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+}
+
+.product-card-title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-bright);
+}
+
+.product-card-body {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+}
+
+/* -----------------------------------------------------------------------------
+   REFINEMENTS
+   ----------------------------------------------------------------------------- */
+
+/* Nothing in this panel should wrap: a two-line "Cloudflare Queues" next to a
+   one-line "R2" makes the mapping look ragged rather than tabular. */
+.runtime-tab,
+.runtime-primitive,
+.runtime-impl {
+  white-space: nowrap;
+}
+
+.runtime-row {
+  grid-template-columns: minmax(150px, auto) 16px 1fr;
+}
+
+/* Reserve the tallest tagline so switching tabs does not jog the panel. */
+.runtime-tagline {
+  min-height: 3.6em;
+}
+
+/* Wide enough that every implementation name stays on one line. */
+@media (min-width: 1280px) {
+  .intro-code {
+    max-width: 760px;
+  }
+
+  .intro-grid {
+    gap: 48px;
+  }
+}
+
+/* The seam panes carry two files side by side, so they run smaller than a docs
+   code block: it keeps every line un-clipped AND keeps the block inside one
+   viewport. Needs the full descendant chain — the docs rule is
+   `:where(.code-block pre) code`, whose `:where()` contributes no specificity,
+   but `.code-block-enhanced.has-line-numbers pre code` does. */
+.code-pane .code-block pre code {
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.code-pane .code-block {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+}
+
+.code-pane .code-block-header {
+  border-radius: 0;
+}
+
+/* Two files side by side need more than the 1024px doc column. */
+@media (min-width: 1280px) {
+  #seam .container {
+    max-width: 1240px;
+  }
+}

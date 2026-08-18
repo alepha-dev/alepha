@@ -1,124 +1,84 @@
 export const snippets = {
-  server: {
-    filename: "Build type-safe HTTP APIs with automatic validation and OpenAPI",
+  api: {
+    filename: "src/Api.ts",
     content: `
-import { run } from "alepha";
+import { z } from "alepha";
+import { $entity, $repository, db } from "alepha/orm";
 import { $action } from "alepha/server";
 
-class Api {
-  // accessible via HTTP GET /api/greet?name=John
-  greet = $action({
-    schema: {
-      query: z.object({ name: z.text() }),
-      response: z.object({ greeting: z.string() }),
-    },
-    handler: async ({ query }) => {
-      return {
-        greeting: \`Hello, \${query.name}!\`,
-      };
-    },
-  });
-}
-
-run(Api);
-`,
-  },
-  react: {
-    filename:
-      "Create React apps with built-in Server-Side Rendering and data fetching",
-    content: `
-import { run } from "alepha";
-import { $page } from "alepha/react/router";
-
-const HelloComponent = (props: { message: string }) => {
-  return <h1>{props.message}</h1>;
-}
-
-class App {
-  home = $page({
-    path: '/',
-    // fetch data before rendering the page
-    loader: async () => ({
-      message: "Welcome to Alepha!"
-    }),
-    component: HelloComponent,
-  });
-}
-
-run(App);
-`,
-  },
-  db: {
-    filename:
-      "Define database entities with Drizzle ORM and type-safe repositories",
-    content: `
-import { z, run } from "alepha";
-import { $entity, db, $repository } from "alepha/orm";
-
-// define an entity with a schema
-export const userEntity = $entity({
-  name: "users",
+const taskEntity = $entity({
+  name: "tasks",
   schema: z.object({
     id: db.primaryKey(),
-    name: z.text(),
-    email: z.email(),
-  })
+    title: z.text(),
+    done: z.boolean({ default: false }),
+  }),
 });
 
-class App {
-  userRepository = $repository(userEntity);
-  // userRepository.findMany(), ...
-}
+export class Api {
+  tasks = $repository(taskEntity);
 
-run(App);
+  list = $action({
+    schema: { response: z.array(taskEntity.schema) },
+    handler: () => this.tasks.findMany({ limit: 20 }),
+  });
+}
 `,
   },
-  job: {
-    filename: "Durable background jobs with retries, cron and crash recovery",
+  web: {
+    filename: "src/AppRouter.tsx",
     content: `
-import { z, run, $inject } from "alepha";
-import { $job } from "alepha/api/jobs";
-import { EmailProvider } from "alepha/email";
+import { $page } from "alepha/react/router";
+import { $client } from "alepha/server/links";
+import type { Api } from "./Api.ts";
 
-class App {
-  email = $inject(EmailProvider);
-  // queue-mode: await this.sendEmail.push(payload)
+export class AppRouter {
+  api = $client<Api>();
+
+  home = $page({
+    path: "/",
+    loader: async () => ({
+      tasks: await this.api.list(),
+    }),
+    component: (props) => (
+      <ul>
+        {props.tasks.map((task) => (
+          <li key={task.id}>{task.title}</li>
+        ))}
+      </ul>
+    ),
+  });
+}
+`,
+  },
+  infra: {
+    filename: "src/Jobs.ts",
+    content: `
+import { z } from "alepha";
+import { $job } from "alepha/api/jobs";
+import { $cache } from "alepha/cache";
+import { $storage } from "alepha/orm";
+
+export class Jobs {
+  avatars = $storage({ name: "avatars" });
+
+  stats = $cache({
+    ttl: "5m",
+    handler: async () => this.expensiveQuery(),
+  });
+
+  // queue-mode: await this.sendEmail.push({ to, body })
   sendEmail = $job({
     schema: z.object({ to: z.email(), body: z.text() }),
-    handler: async ({ payload }) =>
-      this.email.send(payload.to, payload.body)
+    handler: async ({ payload }) => this.mailer.send(payload),
   });
+
   // cron-mode: same primitive, "cron" replaces "schema"
   digest = $job({
-    cron: "0 8 * * *", handler: async () => {}
+    cron: "0 8 * * *",
+    handler: async () => this.buildDigest(),
   });
 }
-
-run(App);
-`,
-  },
-  command: {
-    filename: "Create powerful CLI commands with beautiful terminal output",
-    content: `
-import { z, run } from "alepha";
-import { $command } from "alepha/command";
-
-class App {
-  deploy = $command({
-    aliases: ["d"],
-    schema: z.object({
-    	env: z.enum(["staging", "prod"]),
-    }),
-    handler: async ({ run, flags }) => {
-      await run("npx alepha test");
-      await run("npx alepha build");
-      const prod = flags.env === "prod" ? " --prod" : "";
-      await run(\`cd dist && npx vercel$\{prod}\`);
-    }
-  });
-}
-
-run(App);
 `,
   },
 };

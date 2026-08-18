@@ -16,12 +16,24 @@ import { useCallback, useEffect, useState } from "react";
 // HEADER - IDE STYLE
 // =============================================================================
 
+/**
+ * The four products, sitting next to the version chip because they share its
+ * version number and its changelog. Commerce ships as a framework package for
+ * now and so has no page of its own yet.
+ */
+const PRODUCTS = [
+  { href: "/", label: "Framework" },
+  { href: "/lore", label: "Lore" },
+  { href: "/bay", label: "Bay" },
+];
+
 export interface HeaderProps {
   showTabs?: boolean;
 }
 
 const Header = (props: HeaderProps) => {
   const { showTabs = true } = props;
+  const routerState = useRouterState();
 
   return (
     <header
@@ -84,15 +96,48 @@ const Header = (props: HeaderProps) => {
           href="/changelog"
           className="version-btn hidden-mobile flex items-center gap-2 px-4 h-full border-r"
           style={{
-            color: "var(--color-text-muted)",
+            // Set here rather than in CSS because the inline colour on this
+            // element would win over a class. Colour only, like the product
+            // links: a weight change would re-measure the chip.
+            color:
+              routerState.url.pathname === "/changelog"
+                ? "var(--color-text-bright)"
+                : "var(--color-text-muted)",
             fontSize: 12,
             textDecoration: "none",
           }}
+          aria-current={
+            routerState.url.pathname === "/changelog" ? "page" : undefined
+          }
           title="View Changelog"
         >
           <IconGitBranch size={14} />
           <span>v{import.meta.env.VITE_VERSION || "0.0.0"}</span>
         </Link>
+
+        {/* Products. One version number covers all of them, which is why they
+            sit next to it rather than in their own nav. */}
+        <nav className="product-nav hidden-mobile" aria-label="Products">
+          {PRODUCTS.map((it) => {
+            // Framework owns "/" and so has to match exactly, or it would light
+            // up on every page. The others match their prefix, so /lore/docs
+            // still highlights Lore once those routes exist.
+            const path = routerState.url.pathname;
+            const active =
+              it.href === "/" ? path === "/" : path.startsWith(it.href);
+
+            return (
+              <Link
+                key={it.href}
+                href={it.href}
+                className={`product-nav-link${active ? " is-active" : ""}`}
+                aria-current={active ? "page" : undefined}
+              >
+                {it.label}
+              </Link>
+            );
+          })}
+        </nav>
 
         {/* Tabs - Only shown on docs pages, hidden on mobile */}
         {showTabs && (

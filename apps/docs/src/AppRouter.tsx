@@ -7,6 +7,8 @@ import Changelog from "./components/Changelog.tsx";
 import Docs from "./components/Docs.tsx";
 import Home from "./components/Home.tsx";
 import Layout from "./components/layout/Layout.tsx";
+import BayHome from "./components/product/BayHome.tsx";
+import LoreHome from "./components/product/LoreHome.tsx";
 import { changelog, docs } from "./config/docs.ts";
 
 declare module "alepha/react/router" {
@@ -83,11 +85,37 @@ export class AppRouter {
     component: Layout,
     children: () => [
       this.home,
+      this.lore,
+      this.bay,
       this.changelog,
       this.m,
       this.github404,
       this.notFound,
     ],
+  });
+
+  lore = $page({
+    path: "/lore",
+    component: LoreHome,
+    label: "Lore",
+    static: true,
+    head: () => ({
+      title: "Lore. Project management, for agents too.",
+      description:
+        "An open-source project management app built on Alepha. Quests, folios, feedback and crash telemetry, readable and writable over MCP.",
+    }),
+  });
+
+  bay = $page({
+    path: "/bay",
+    component: BayHome,
+    label: "Bay",
+    static: true,
+    head: () => ({
+      title: "Bay. Your own VPS, without the yak shaving.",
+      description:
+        "A self-hosted application server for Alepha apps, with TLS, rollback and process isolation handled for you.",
+    }),
   });
 
   home = $page({

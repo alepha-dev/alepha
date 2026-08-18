@@ -1,24 +1,12 @@
-import { IconArrowRight, IconPackage } from "@tabler/icons-react";
+import { IconArrowRight, IconBook } from "@tabler/icons-react";
 import { Link } from "alepha/react/router";
-import CodeDemo from "./CodeDemo.tsx";
+import CopyCommand from "./CopyCommand.tsx";
 import LightPillar from "./LightPillar.tsx";
 import ScrollButton from "./ScrollButton.tsx";
 
 const HeroSection = () => {
   return (
-    <section
-      id="hero"
-      className="home-block container"
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-        paddingTop: 40,
-        paddingBottom: 40,
-      }}
-    >
+    <section id="hero" className="home-block container hero-section">
       <div className={"light-pillar"}>
         <LightPillar
           intensity={1}
@@ -29,108 +17,70 @@ const HeroSection = () => {
           pillarHeight={1}
         />
       </div>
-      <div className="intro-grid">
-        {/* Left: Hero Text */}
-        <div className="flex flex-col gap-6 intro-hero">
-          <h1
-            style={{
-              fontSize: "clamp(28px, 7vw, 42px)",
-              fontWeight: 700,
-              margin: 0,
-              color: "var(--color-text-bright)",
-              lineHeight: 1.15,
-            }}
+
+      <div className="hero-centered">
+        {/* The logo IS the headline. No wordmark: the name is carried by the
+            image's alt text, so the page still has a real `h1` for search and
+            screen readers without printing it on screen. */}
+        <h1 className="hero-brand">
+          <img
+            src="/logo.svg"
+            alt="Alepha"
+            className="hero-logo"
+            width={280}
+            height={280}
+          />
+        </h1>
+
+        <p className="hero-lead hero-lead-wide">
+          Alepha is a full-stack{" "}
+          <a
+            href="https://www.typescriptlang.org"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hero-lead-link"
           >
-            One Stack.
-            <br />
-            <span style={{ color: "var(--color-accent)" }}>No Glue.</span>
-          </h1>
-
-          <p
-            style={{
-              fontSize: "clamp(14px, 3.5vw, 17px)",
-              color: "var(--color-text-muted)",
-              maxWidth: 440,
-              lineHeight: 1.7,
-              margin: 0,
-            }}
+            TypeScript
+          </a>{" "}
+          ecosystem. One small surface of typed primitives covers the server,
+          the database, auth, background work and{" "}
+          <a
+            href="https://react.dev"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hero-lead-link"
           >
-            A clean rewrite of the full stack — API, database, queues, React SSR
-            — for Node, Bun, and Cloudflare. No library glue.{" "}
-            <span style={{ color: "var(--color-text)" }}>
-              One small, consistent surface AI agents generate predictable code
-              against.
-            </span>
-          </p>
+            React
+          </a>
+          , so a weekend project and a distributed system are the same code with
+          different infrastructure underneath.
+        </p>
 
-          {/* Quick Actions */}
-          <div className="flex gap-4 flex-wrap hero-buttons">
-            <Link
-              href="/docs/guides-introduction"
-              style={{ textDecoration: "none" }}
-            >
-              <button
-                type="button"
-                className="hero-btn"
-                style={{
-                  background: "var(--color-accent)",
-                  color: "#ffffff",
-                  border: "none",
-                  padding: "14px 32px",
-                  borderRadius: 6,
-                  fontFamily: "inherit",
-                  fontSize: 15,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                Get Started
-                <span className="hero-icon hero-icon-arrow">
-                  <IconArrowRight size={18} />
-                </span>
-              </button>
-            </Link>
-            <Link
-              href="/docs/packages-alepha-core"
-              style={{ textDecoration: "none" }}
-            >
-              <button
-                type="button"
-                className="hero-btn"
-                style={{
-                  background: "transparent",
-                  color: "var(--color-text)",
-                  border: "1px solid var(--color-border)",
-                  padding: "14px 32px",
-                  borderRadius: 6,
-                  fontFamily: "inherit",
-                  fontSize: 15,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                Explore Packages
-                <span className="hero-icon hero-icon-package">
-                  <IconPackage size={18} />
-                </span>
-              </button>
-            </Link>
-          </div>
-        </div>
+        <CopyCommand command="npx alepha@latest init my-app" />
 
-        {/* Right: Code Demo - Hidden on mobile */}
-        <div className="intro-code hidden-mobile">
-          <CodeDemo />
+        <div className="flex gap-4 flex-wrap hero-buttons">
+          <Link href="/docs/guides-getting-started" className="hero-link">
+            <button type="button" className="hero-btn hero-btn-primary">
+              Get Started
+              <span className="hero-icon hero-icon-arrow">
+                <IconArrowRight size={18} />
+              </span>
+            </button>
+          </Link>
+          <Link href="/docs/guides-introduction" className="hero-link">
+            <button type="button" className="hero-btn hero-btn-ghost">
+              Why Alepha
+              <span className="hero-icon">
+                <IconBook size={18} />
+              </span>
+            </button>
+          </Link>
         </div>
       </div>
 
-      {/* Scroll to Features */}
-      <ScrollButton targetId="features" label="See What's Included" />
+      {/* Generic label on purpose: it targets whatever block 2 currently is, and
+          a label naming that block goes stale the moment the order changes. */}
+      <ScrollButton targetId="seam" label="Explore" />
     </section>
   );
 };
