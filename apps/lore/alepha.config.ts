@@ -57,6 +57,8 @@ export default defineConfig({
         "insights.range.",
         // tr(`insights.vitals.${key}`) — lcp/cls/inp/fcp/ttfb (Web Vitals p75 cards).
         "insights.vitals.",
+        // tr(`insights.device.${d.device}`) — mobile/tablet/desktop.
+        "insights.device.",
         // tr(`folios.activity.action.${action}`) — create/edit/rename/tag-change/revert.
         "folios.activity.action.",
         // tr(`folios.editor.status.${draft.statusKey}`) — draft/saved/unsaved.

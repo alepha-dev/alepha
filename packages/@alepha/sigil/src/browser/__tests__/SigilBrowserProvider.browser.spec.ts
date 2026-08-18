@@ -15,6 +15,9 @@ class TestSigilBrowserProvider extends SigilBrowserProvider {
   public testLcpArrived() {
     this.onLcpArrived();
   }
+  public testSetDwell(ms: number) {
+    this.dwellMs = ms;
+  }
 }
 
 describe("SigilBrowserProvider", () => {
@@ -40,6 +43,233 @@ describe("SigilBrowserProvider", () => {
       state: { url: { pathname: "/dash" } },
     });
     expect(provider.debugPendingViews()).toContain("/dash");
+  });
+
+  /**
+   * jsdom's `document.referrer` is a getter with no setter, and the value is
+   * fixed at document creation. Redefining the property is the only way to
+   * drive it, and it is done per-test rather than in a shared setup so a test
+   * that does not care keeps jsdom's own empty default.
+   */
+  const withReferrer = (value: string) => {
+    const original = Object.getOwnPropertyDescriptor(
+      Document.prototype,
+      "referrer",
+    );
+    Object.defineProperty(document, "referrer", {
+      configurable: true,
+      get: () => value,
+    });
+    return () => {
+      delete (document as any).referrer;
+      if (original)
+        Object.defineProperty(Document.prototype, "referrer", original);
+    };
+  };
+
+  const prodAlepha = () =>
+    Alepha.create({
+      env: {
+        NODE_ENV: "production",
+        APP_SECRET: "test-secret",
+        SERVER_PORT: 0,
+      },
+    });
+
+  it("attaches the referrer host to the landing pageview", async () => {
+    const restore = withReferrer("https://news.ycombinator.com/item?id=42");
+    try {
+      const alepha = prodAlepha();
+      const provider = alepha.inject(SigilBrowserProvider);
+      await alepha.start();
+
+      await (alepha.events as any).emit("react:browser:render", {});
+
+      expect(provider.debugPendingViews()).toEqual(["/"]);
+      // Host only. The path and query belong to a third-party page.
+      expect(provider.debugPendingViewReferrers()).toEqual([
+        "news.ycombinator.com",
+      ]);
+    } finally {
+      restore();
+    }
+  });
+
+  it("leaves the referrer off every view after the landing one", async () => {
+    const restore = withReferrer("https://news.ycombinator.com/item?id=42");
+    try {
+      const alepha = prodAlepha();
+      const provider = alepha.inject(SigilBrowserProvider);
+      await alepha.start();
+      alepha.store.set(sigilClientAtom, {
+        enabled: { views: true, errors: true, vitals: true },
+        feedbackButtonExcludedPaths: [],
+        configAt: Date.now(),
+      });
+
+      await (alepha.events as any).emit("react:browser:render", {});
+      await (alepha.events as any).emit("react:transition:end", {
+        state: { url: { pathname: "/docs" } },
+      });
+      await (alepha.events as any).emit("react:transition:end", {
+        state: { url: { pathname: "/docs/guides" } },
+      });
+
+      // `document.referrer` does not change across a client-side navigation.
+      // Attaching it to each view would report one arrival from Hacker News
+      // as three.
+      expect(provider.debugPendingViews()).toEqual([
+        "/",
+        "/docs",
+        "/docs/guides",
+      ]);
+      expect(provider.debugPendingViewReferrers()).toEqual([
+        "news.ycombinator.com",
+        undefined,
+        undefined,
+      ]);
+    } finally {
+      restore();
+    }
+  });
+
+  it("drops a same-origin referrer instead of reporting itself", async () => {
+    const restore = withReferrer(`${location.origin}/docs/guides`);
+    try {
+      const alepha = prodAlepha();
+      const provider = alepha.inject(SigilBrowserProvider);
+      await alepha.start();
+
+      await (alepha.events as any).emit("react:browser:render", {});
+
+      expect(provider.debugPendingViewReferrers()).toEqual([undefined]);
+    } finally {
+      restore();
+    }
+  });
+
+  it("marks the landing view as an entry and carries its campaign tag", async () => {
+    const restore = withReferrer("https://news.ycombinator.com/x");
+    const search = Object.getOwnPropertyDescriptor(window, "location");
+    try {
+      const alepha = prodAlepha();
+      const provider = alepha.inject(SigilBrowserProvider);
+      await alepha.start();
+      alepha.store.set(sigilClientAtom, {
+        enabled: { views: true, errors: true, vitals: true },
+        feedbackButtonExcludedPaths: [],
+        configAt: Date.now(),
+      });
+
+      history.replaceState({}, "", "/?utm_source=HN&token=secret");
+      await (alepha.events as any).emit("react:browser:render", {});
+      await (alepha.events as any).emit("react:transition:end", {
+        state: { url: { pathname: "/docs" } },
+      });
+
+      const records = provider.debugPendingViewRecords();
+      expect(records[0]).toMatchObject({
+        path: "/",
+        entry: true,
+        referrer: "news.ycombinator.com",
+        campaign: "hn",
+      });
+      // A client-side navigation is not an arrival, so it carries none of the
+      // three arrival facts — otherwise one visit would report as several.
+      expect(records[1].entry).toBeUndefined();
+      expect(records[1].campaign).toBeUndefined();
+      expect(records[1].referrer).toBeUndefined();
+    } finally {
+      restore();
+      if (search) Object.defineProperty(window, "location", search);
+    }
+  });
+
+  it("records engagement once per path, on the first real signal", async () => {
+    const alepha = prodAlepha();
+    const provider = alepha.inject(SigilBrowserProvider);
+    await alepha.start();
+    alepha.store.set(sigilClientAtom, {
+      enabled: { views: true, errors: true, vitals: true },
+      feedbackButtonExcludedPaths: [],
+      configAt: Date.now(),
+    });
+
+    history.replaceState({}, "", "/");
+    await (alepha.events as any).emit("react:browser:render", {});
+    expect(provider.debugPendingEngagements()).toEqual([]);
+
+    window.dispatchEvent(new Event("scroll"));
+    window.dispatchEvent(new Event("scroll"));
+    window.dispatchEvent(new Event("click"));
+
+    // Three signals, one row: `engaged` is a fraction of `count`, so a page
+    // scrolled twice must not report as engaged twice.
+    expect(provider.debugPendingEngagements()).toEqual(["/"]);
+  });
+
+  it("re-arms engagement for each new path", async () => {
+    const alepha = prodAlepha();
+    const provider = alepha.inject(SigilBrowserProvider);
+    await alepha.start();
+    alepha.store.set(sigilClientAtom, {
+      enabled: { views: true, errors: true, vitals: true },
+      feedbackButtonExcludedPaths: [],
+      configAt: Date.now(),
+    });
+
+    history.replaceState({}, "", "/");
+    await (alepha.events as any).emit("react:browser:render", {});
+    window.dispatchEvent(new Event("scroll"));
+
+    await (alepha.events as any).emit("react:transition:end", {
+      state: { url: { pathname: "/docs" } },
+    });
+    window.dispatchEvent(new Event("scroll"));
+
+    // Without the reset, scrolling the landing page would have marked every
+    // later page engaged too, whether or not the visitor read any of them.
+    expect(provider.debugPendingEngagements()).toEqual(["/", "/docs"]);
+  });
+
+  it("counts dwelling as engagement for a page nobody scrolls", async () => {
+    const alepha = prodAlepha();
+    const provider = alepha.inject(TestSigilBrowserProvider);
+    await alepha.start();
+    alepha.store.set(sigilClientAtom, {
+      enabled: { views: true, errors: true, vitals: true },
+      feedbackButtonExcludedPaths: [],
+      configAt: Date.now(),
+    });
+
+    provider.testSetDwell(5);
+    history.replaceState({}, "", "/");
+    await (alepha.events as any).emit("react:browser:render", {});
+    expect(provider.debugPendingEngagements()).toEqual([]);
+
+    await new Promise((r) => setTimeout(r, 25));
+
+    // The reader who opens a short page, reads it without moving, and leaves.
+    expect(provider.debugPendingEngagements()).toEqual(["/"]);
+  });
+
+  it("records no engagement when the views tracker is off", async () => {
+    const alepha = prodAlepha();
+    const provider = alepha.inject(SigilBrowserProvider);
+    await alepha.start();
+    alepha.store.set(sigilClientAtom, {
+      enabled: { views: false, errors: true, vitals: true },
+      feedbackButtonExcludedPaths: [],
+      configAt: Date.now(),
+    });
+
+    await (alepha.events as any).emit("react:browser:render", {});
+    window.dispatchEvent(new Event("scroll"));
+
+    // An `engaged` total outliving the `count` it divides into would be worse
+    // than collecting nothing.
+    expect(provider.debugPendingViews()).toEqual([]);
+    expect(provider.debugPendingEngagements()).toEqual([]);
   });
 
   it("counts the hydration render once, not twice", async () => {

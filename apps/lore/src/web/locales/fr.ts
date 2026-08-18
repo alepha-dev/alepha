@@ -751,6 +751,28 @@ export default {
     "Les pages vues et les performances sont échantillonnées : ces chiffres sont des estimations. Les visiteurs uniques sont exacts.",
   "insights.topCountries": "Principaux pays",
   "insights.topPaths": "Pages les plus vues",
+  "insights.entries": "Chargements de page",
+  "insights.entries.note":
+    "Les arrivées, hors navigation à l'intérieur de l'application.",
+  "insights.engagement": "Engagement",
+  "insights.engagement.tooltip":
+    "Part des vues où le visiteur a fait défiler, cliqué, tapé au clavier ou est resté dix secondes. Le trafic automatisé déclare la vue puis ne fait rien de tout cela, donc un taux faible sur beaucoup de vues signale généralement des robots.",
+  "insights.engagement.note": "Vues portant un vrai signe de lecture.",
+  "insights.topEntryPaths": "Pages d'entrée",
+  "insights.topEntryPaths.note":
+    "La page sur laquelle chaque visite a commencé.",
+  "insights.topCampaigns": "Campagnes",
+  "insights.topCampaigns.note":
+    "D'après utm_campaign ou utm_source dans l'URL d'arrivée.",
+  "insights.topCampaigns.untagged": "Sans étiquette",
+  "insights.topDevices": "Appareils",
+  "insights.device.mobile": "Mobile",
+  "insights.device.tablet": "Tablette",
+  "insights.device.desktop": "Ordinateur",
+  "insights.topReferrers": "Sources de trafic",
+  "insights.topReferrers.note":
+    "D'où viennent les visites. Seule la première page d'une visite porte un référent, donc Direct couvre aussi la navigation interne.",
+  "insights.topReferrers.direct": "Direct",
   "insights.empty": "Aucune page vue enregistrée sur cette période.",
   "insights.error": "Échec du chargement des statistiques. Réessayez.",
   "insights.vitals.title": "Web Vitals",

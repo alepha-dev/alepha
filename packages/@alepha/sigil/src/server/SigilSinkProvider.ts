@@ -18,7 +18,7 @@ import { SIGIL_DEFAULT_SINK, sigilEnv } from "../sigilEnv.ts";
 const FLUSH_WINDOW_MS = 10_000;
 
 /** Envelope caps, mirroring the schema so a flush never builds a 413. */
-const CAPS = { views: 50, errors: 20, vitals: 50 } as const;
+const CAPS = { views: 50, errors: 20, vitals: 50, engagements: 50 } as const;
 
 /**
  * One error, and how many times it happened since the last flush.
@@ -70,8 +70,13 @@ export class SigilSinkProvider {
   protected readonly pendingErrors = new Map<string, AggregatedError>();
   protected pendingViews: NonNullable<SigilEnvelope["views"]> = [];
   protected pendingVitals: NonNullable<SigilEnvelope["vitals"]> = [];
+  protected pendingEngagements: NonNullable<SigilEnvelope["engagements"]> = [];
   /** Stamps of the batch being built. Last writer wins; they rarely differ. */
-  protected pendingStamp: { country?: string; visitor?: string } = {};
+  protected pendingStamp: {
+    country?: string;
+    visitor?: string;
+    device?: string;
+  } = {};
   protected oldestPendingAt?: number;
 
   /**
@@ -244,7 +249,7 @@ export class SigilSinkProvider {
    */
   public async ingest(
     envelope: SigilEnvelope,
-    stamp: { country?: string; visitor?: string } = {},
+    stamp: { country?: string; visitor?: string; device?: string } = {},
   ): Promise<void> {
     const enabled = this.enabledTrackers();
     const now = this.dateTime.nowMillis();
@@ -255,12 +260,18 @@ export class SigilSinkProvider {
     if (envelope.vitals?.length && enabled.vitals) {
       this.pendingVitals.push(...envelope.vitals);
     }
+    // Behind the views gate, not one of its own: engagement is a fact about a
+    // view, and an `engaged` total that outlived the `count` it divides into
+    // would be worse than not collecting it.
+    if (envelope.engagements?.length && enabled.views) {
+      this.pendingEngagements.push(...envelope.engagements);
+    }
     if (envelope.errors?.length && enabled.errors) {
       for (const error of envelope.errors) {
         this.aggregate(error);
       }
     }
-    if (stamp.country || stamp.visitor) {
+    if (stamp.country || stamp.visitor || stamp.device) {
       this.pendingStamp = stamp;
     }
 
@@ -342,7 +353,8 @@ export class SigilSinkProvider {
     return (
       this.pendingErrors.size > 0 ||
       this.pendingViews.length > 0 ||
-      this.pendingVitals.length > 0
+      this.pendingVitals.length > 0 ||
+      this.pendingEngagements.length > 0
     );
   }
 
@@ -355,6 +367,7 @@ export class SigilSinkProvider {
     if (this.pendingErrors.size >= CAPS.errors) return true;
     if (this.pendingViews.length >= CAPS.views) return true;
     if (this.pendingVitals.length >= CAPS.vitals) return true;
+    if (this.pendingEngagements.length >= CAPS.engagements) return true;
     return now - (this.oldestPendingAt ?? now) >= FLUSH_WINDOW_MS;
   }
 
@@ -384,6 +397,7 @@ export class SigilSinkProvider {
 
     const views = this.pendingViews.splice(0, CAPS.views);
     const vitals = this.pendingVitals.splice(0, CAPS.vitals);
+    const engagements = this.pendingEngagements.splice(0, CAPS.engagements);
     // Entries, so the surviving ones are deleted by the key they were stored
     // under rather than by a recomputed fingerprint.
     const errorEntries = [...this.pendingErrors.entries()].slice(
@@ -395,6 +409,7 @@ export class SigilSinkProvider {
     const envelope: SigilEnvelope = {
       ...(views.length ? { views } : {}),
       ...(vitals.length ? { vitals } : {}),
+      ...(engagements.length ? { engagements } : {}),
       ...(errorEntries.length
         ? { errors: errorEntries.map(([, error]) => error) }
         : {}),
@@ -433,7 +448,11 @@ export class SigilSinkProvider {
    * what to collect. There is no such GET any more.
    */
   protected async deliver(
-    payload: SigilEnvelope & { country?: string; visitor?: string },
+    payload: SigilEnvelope & {
+      country?: string;
+      visitor?: string;
+      device?: string;
+    },
   ): Promise<void> {
     await this.http.fetch(`${this.sinkOrigin()}${SIGIL_INGEST_PATH}`, {
       method: "POST",
@@ -466,6 +485,7 @@ export class SigilSinkProvider {
     this.pendingErrors.clear();
     this.pendingViews = [];
     this.pendingVitals = [];
+    this.pendingEngagements = [];
     this.pendingStamp = {};
     this.oldestPendingAt = undefined;
   }

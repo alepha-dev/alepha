@@ -24,9 +24,11 @@ describe("Lore admin analytics surface", () => {
 
     const views = service.listDatasets().find((d) => d.name === "sigil_views");
     expect(Object.keys(views?.dimensions.properties ?? {}).sort()).toEqual(
-      ["country", "path", "sigilId"].sort(),
+      ["campaign", "country", "device", "path", "referrer", "sigilId"].sort(),
     );
-    expect(Object.keys(views?.measures.properties ?? {})).toEqual(["count"]);
+    expect(Object.keys(views?.measures.properties ?? {}).sort()).toEqual(
+      ["count", "engaged", "entries"].sort(),
+    );
   });
 
   it("answers a recorded view through the admin query path", async () => {

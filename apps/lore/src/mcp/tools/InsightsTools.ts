@@ -66,8 +66,15 @@ export class InsightsTools {
               analytics: {
                 uniqueVisitors: res.uniqueVisitors,
                 totalViews: res.totalViews,
+                entries: res.entries,
+                engagedViews: res.engagedViews,
+                engagementRate: res.engagementRate,
                 topPaths: res.topPaths,
+                topEntryPaths: res.topEntryPaths,
+                topCampaigns: res.topCampaigns,
+                topDevices: res.topDevices,
                 topCountries: res.topCountries,
+                topReferrers: res.topReferrers,
                 timeline: res.timeline,
               },
             }
