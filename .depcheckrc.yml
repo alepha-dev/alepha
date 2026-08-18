@@ -15,6 +15,12 @@ ignores:
     - 'drizzle-kit'
     - 'swagger-ui-dist'
     - 'vite'
+    # Reached through `createRequire(import.meta.url)("vite-bundle-analyzer")`
+    # in `ViteUtils.importAnalyzer`, so depcheck sees no import at all. Lazy
+    # for the same reason as `vite` above: `--stats` is the only path that
+    # touches it, and a static import drags its report template into every
+    # consumer of the CLI barrel.
+    - 'vite-bundle-analyzer'
     - '@types/react'
     - 'animate.css'
     - 'marked-highlight'
