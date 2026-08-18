@@ -34,3 +34,7 @@ assets/docs
 
 # Artifacts produced by `alepha pack` — one per deploy, in the workspace root.
 *.tar.gz
+
+# workerd's cf-metadata cache, written by miniflare v5 the first time a test
+# boots a worker. v4 kept this elsewhere, so it only appeared with the upgrade.
+.wrangler

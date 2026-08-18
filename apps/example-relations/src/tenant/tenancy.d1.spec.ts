@@ -1,7 +1,8 @@
 import { Alepha } from "alepha";
 import { CloudflareD1Provider, DatabaseProvider } from "alepha/orm";
-import { Miniflare } from "miniflare";
+import type { Miniflare } from "miniflare";
 import { afterAll } from "vitest";
+import { d1Miniflare } from "../d1Miniflare.ts";
 import { TenantApp, tenancyTests } from "./tenancyTests.ts";
 
 /**
@@ -48,11 +49,7 @@ const schemaFromPushSync = async (): Promise<Array<string>> => {
 tenancyTests("cloudflare d1", async () => {
   const statements = await schemaFromPushSync();
 
-  const mf = new Miniflare({
-    modules: true,
-    script: "export default {};",
-    d1Databases: { DB: ":memory:" },
-  });
+  const mf = d1Miniflare();
   workers.push(mf);
 
   const alepha = Alepha.create({

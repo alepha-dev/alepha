@@ -154,7 +154,7 @@ __metadata:
     react-dom: "npm:^19.2.8"
     react-is: "npm:^19.2.8"
     react-markdown: "npm:^10.1.0"
-    react-resizable-panels: "npm:^4.12.2"
+    react-resizable-panels: "npm:^4.12.3"
     recharts: "npm:3.10.1"
     rehype-highlight: "npm:^7.0.2"
     remark-gfm: "npm:^4.0.1"
@@ -710,24 +710,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@cloudflare/workerd-darwin-64@npm:1.20260730.1":
-  version: 1.20260730.1
-  resolution: "@cloudflare/workerd-darwin-64@npm:1.20260730.1"
-  conditions: os=darwin & cpu=x64
-  languageName: node
-  linkType: hard
-
 "@cloudflare/workerd-darwin-64@npm:1.20260811.1":
   version: 1.20260811.1
   resolution: "@cloudflare/workerd-darwin-64@npm:1.20260811.1"
   conditions: os=darwin & cpu=x64
-  languageName: node
-  linkType: hard
-
-"@cloudflare/workerd-darwin-arm64@npm:1.20260730.1":
-  version: 1.20260730.1
-  resolution: "@cloudflare/workerd-darwin-arm64@npm:1.20260730.1"
-  conditions: os=darwin & cpu=arm64
   languageName: node
   linkType: hard
 
@@ -738,24 +724,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@cloudflare/workerd-linux-64@npm:1.20260730.1":
-  version: 1.20260730.1
-  resolution: "@cloudflare/workerd-linux-64@npm:1.20260730.1"
-  conditions: os=linux & cpu=x64
-  languageName: node
-  linkType: hard
-
 "@cloudflare/workerd-linux-64@npm:1.20260811.1":
   version: 1.20260811.1
   resolution: "@cloudflare/workerd-linux-64@npm:1.20260811.1"
   conditions: os=linux & cpu=x64
-  languageName: node
-  linkType: hard
-
-"@cloudflare/workerd-linux-arm64@npm:1.20260730.1":
-  version: 1.20260730.1
-  resolution: "@cloudflare/workerd-linux-arm64@npm:1.20260730.1"
-  conditions: os=linux & cpu=arm64
   languageName: node
   linkType: hard
 
@@ -766,13 +738,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@cloudflare/workerd-windows-64@npm:1.20260730.1":
-  version: 1.20260730.1
-  resolution: "@cloudflare/workerd-windows-64@npm:1.20260730.1"
-  conditions: os=win32 & cpu=x64
-  languageName: node
-  linkType: hard
-
 "@cloudflare/workerd-windows-64@npm:1.20260811.1":
   version: 1.20260811.1
   resolution: "@cloudflare/workerd-windows-64@npm:1.20260811.1"
@@ -780,10 +745,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@cloudflare/workers-types@npm:^5.20260814.1":
-  version: 5.20260814.1
-  resolution: "@cloudflare/workers-types@npm:5.20260814.1"
-  checksum: 10c0/a611212f0ca6e227bb07bd2348560fe46e2f73b9517d2658877e6d475e08fd2cdd3d9dcae230bd55a75a83a6605428c055d15a63ef54dba2d89f1358530d5a65
+"@cloudflare/workers-types@npm:^5.20260817.1":
+  version: 5.20260817.1
+  resolution: "@cloudflare/workers-types@npm:5.20260817.1"
+  checksum: 10c0/76e7ec566c8cec699d954596cfe611dc061223c8ddac476c8aa1c55550d5cdc824a187dd0ff24091659c9dc33dd0b440016666bdc19869cd6080f592e2781cb5
   languageName: node
   linkType: hard
 
@@ -799,15 +764,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@codemirror/commands@npm:^6.10.4":
-  version: 6.10.4
-  resolution: "@codemirror/commands@npm:6.10.4"
+"@codemirror/commands@npm:^6.11.0":
+  version: 6.11.0
+  resolution: "@codemirror/commands@npm:6.11.0"
   dependencies:
     "@codemirror/language": "npm:^6.0.0"
     "@codemirror/state": "npm:^6.7.0"
     "@codemirror/view": "npm:^6.27.0"
     "@lezer/common": "npm:^1.1.0"
-  checksum: 10c0/ae47b633afc68b6854111d9749d5f8dde16a13e5053ec72b4a0c5fe0cc553c490040b05c6d8e5d1670e1a2612cc6ef406b9e51578593d030c7f44a0ad46e6f94
+  checksum: 10c0/53754247b71529abddad867dc8195b557bea23642688fd2ef23c536bda3fdf0c5dcd02d447e754b5696d1f09aeb4c15affa146812ba8986d73b3d394b6b79e75
   languageName: node
   linkType: hard
 
@@ -916,15 +881,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@codemirror/view@npm:^6.0.0, @codemirror/view@npm:^6.17.0, @codemirror/view@npm:^6.23.0, @codemirror/view@npm:^6.27.0, @codemirror/view@npm:^6.37.0, @codemirror/view@npm:^6.42.0, @codemirror/view@npm:^6.43.8":
-  version: 6.43.8
-  resolution: "@codemirror/view@npm:6.43.8"
+"@codemirror/view@npm:^6.0.0, @codemirror/view@npm:^6.17.0, @codemirror/view@npm:^6.23.0, @codemirror/view@npm:^6.27.0, @codemirror/view@npm:^6.37.0, @codemirror/view@npm:^6.42.0, @codemirror/view@npm:^6.43.9":
+  version: 6.43.9
+  resolution: "@codemirror/view@npm:6.43.9"
   dependencies:
     "@codemirror/state": "npm:^6.7.0"
     crelt: "npm:^1.0.6"
     style-mod: "npm:^4.1.0"
     w3c-keyname: "npm:^2.2.4"
-  checksum: 10c0/6cbd2254ee31024fa204519602fe916776d8a4952100cc2bcc7a683e69641ef7eaab0a3af754b2204efe9cd4c7f7f4f6e3feeccd703ad483e7aa0138371021da
+  checksum: 10c0/c64b076f2739a9fa8b8c67e01091ddc8d7f653dd66954088fa5837ab30b59152efb959b359b7806662add8cd97011030e0eef8eb77ca71840acd5d824af00b8e
   languageName: node
   linkType: hard
 
@@ -4452,7 +4417,7 @@ __metadata:
   resolution: "alepha@workspace:packages/alepha"
   dependencies:
     "@biomejs/biome": "npm:^2.5.8"
-    "@cloudflare/workers-types": "npm:^5.20260814.1"
+    "@cloudflare/workers-types": "npm:^5.20260817.1"
     "@electric-sql/pglite": "npm:^0.5.5"
     "@faker-js/faker": "npm:^10.6.0"
     "@redis/client": "npm:^6.2.1"
@@ -4467,10 +4432,10 @@ __metadata:
     "@types/ws": "npm:^8.18.1"
     "@vitejs/plugin-react": "npm:^6.0.5"
     cron-schedule: "npm:^6.0.0"
-    dayjs: "npm:^1.11.21"
+    dayjs: "npm:^1.11.22"
     drizzle-kit: "npm:1.0.0-rc.4"
     drizzle-orm: "npm:1.0.0-rc.4"
-    jose: "npm:^6.2.8"
+    jose: "npm:^6.2.9"
     jsdom: "npm:^30.0.1"
     nodemailer: "npm:^9.0.5"
     openid-client: "npm:^6.8.5"
@@ -5710,10 +5675,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dayjs@npm:^1.11.21":
-  version: 1.11.21
-  resolution: "dayjs@npm:1.11.21"
-  checksum: 10c0/bd97dfdc4bfea3c66268635690313828b386faa040fbc1f829ff42a2bd748b72c9d9b3c8f9616ce9e61fcb78923f1461a462c969c54b1084458ae1b715898fb0
+"dayjs@npm:^1.11.22":
+  version: 1.11.22
+  resolution: "dayjs@npm:1.11.22"
+  checksum: 10c0/b9e5a807f21e323359ded3ae28e60d6fa0e760f021a1bb271becb336e11e42d796e00a4c1a690c6d233034a260ef9c72d94d30b02ffa721857d2144b750ca7c6
   languageName: node
   linkType: hard
 
@@ -6822,7 +6787,7 @@ __metadata:
   dependencies:
     alepha: "npm:^0.26.0"
     drizzle-orm: "npm:1.0.0-rc.4"
-    miniflare: "npm:^4.20260730.0"
+    miniflare: "npm:5.20260811.1-alpha"
   languageName: unknown
   linkType: soft
 
@@ -8390,6 +8355,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"jose@npm:^6.2.9":
+  version: 6.2.9
+  resolution: "jose@npm:6.2.9"
+  checksum: 10c0/fc6d79b11fdd5cc1393bccd644533b3e2445fd8eb2468066eb23c01ed7f6b41deca710e8aabe9379a382cca7920740900c7f610bdf0be4ff5e7ee44412730d4c
+  languageName: node
+  linkType: hard
+
 "js-sdsl@npm:4.3.0":
   version: 4.3.0
   resolution: "js-sdsl@npm:4.3.0"
@@ -8887,12 +8859,12 @@ __metadata:
     "@alepha/sigil": "workspace:*"
     "@alepha/ui": "workspace:*"
     "@codemirror/autocomplete": "npm:^6.20.3"
-    "@codemirror/commands": "npm:^6.10.4"
+    "@codemirror/commands": "npm:^6.11.0"
     "@codemirror/lang-markdown": "npm:^6.5.2"
     "@codemirror/language": "npm:^6.12.4"
     "@codemirror/search": "npm:^6.7.1"
     "@codemirror/state": "npm:^6.7.1"
-    "@codemirror/view": "npm:^6.43.8"
+    "@codemirror/view": "npm:^6.43.9"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/utilities": "npm:^3.2.2"
     "@lezer/highlight": "npm:^1.2.3"
@@ -8905,7 +8877,7 @@ __metadata:
     "@types/react-dom": "npm:^19.2.4"
     alepha: "workspace:*"
     drizzle-kit: "npm:1.0.0-rc.4"
-    lucide-react: "npm:^1.28.0"
+    lucide-react: "npm:^1.31.0"
     react: "npm:^19.2.8"
     react-dom: "npm:^19.2.8"
     react-is: "npm:^19.2.8"
@@ -8961,7 +8933,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lucide-react@npm:^1.28.0, lucide-react@npm:^1.31.0":
+"lucide-react@npm:^1.31.0":
   version: 1.31.0
   resolution: "lucide-react@npm:1.31.0"
   peerDependencies:
@@ -9715,22 +9687,6 @@ __metadata:
     ws: "npm:8.21.0"
     youch: "npm:4.1.0-beta.10"
   checksum: 10c0/f3ed9b13fad4e0b555bfbfe7e085ae8548270447f2a1561dfb79181615c851025c5766c941a8f8fa7fe0233670f507f7bc24359c787b98f1af90ba8c3770e5b6
-  languageName: node
-  linkType: hard
-
-"miniflare@npm:^4.20260730.0":
-  version: 4.20260730.0
-  resolution: "miniflare@npm:4.20260730.0"
-  dependencies:
-    "@cspotcode/source-map-support": "npm:0.8.1"
-    sharp: "npm:0.35.2"
-    undici: "npm:7.28.0"
-    workerd: "npm:1.20260730.1"
-    ws: "npm:8.21.0"
-    youch: "npm:4.1.0-beta.10"
-  bin:
-    miniflare: bootstrap.js
-  checksum: 10c0/53d81fc408585b728ceb0ecf0e566a805c8d822ec8bc87f8ba1a4fa9c9acbecf0680a073a6fcecc62303b9464726fc4167a99d99e1fbf659ba946ad096a74a38
   languageName: node
   linkType: hard
 
@@ -10922,13 +10878,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-resizable-panels@npm:^4.12.2":
-  version: 4.12.2
-  resolution: "react-resizable-panels@npm:4.12.2"
+"react-resizable-panels@npm:^4.12.3":
+  version: 4.12.3
+  resolution: "react-resizable-panels@npm:4.12.3"
   peerDependencies:
     react: ^18.0.0 || ^19.0.0
     react-dom: ^18.0.0 || ^19.0.0
-  checksum: 10c0/fb74d5ff113d04f9293f33a244a0201695891bdfcfbb7beeaa3f71708c14c38bf81424dab5972fd9ab84711b6dd2160a73ef7a51a286f5085dabe267418675b5
+  checksum: 10c0/dc3bee8529bdcbd7144a84798931cd02a83ba591fc67cf9e4eea344330c7ad00a3ff9dead0ccf84dc29679091ea153311ceae7739aa05799ce9c4efa4aff1752
   languageName: node
   linkType: hard
 
@@ -12993,17 +12949,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"undici@npm:7.28.0, undici@npm:^7.27.2":
-  version: 7.28.0
-  resolution: "undici@npm:7.28.0"
-  checksum: 10c0/fe781983a26098795e99bb1f64906cbb7d0bcaa029a26baade007b53ea67f2631d189b8f9671a31f4c8d0cb3773b7559608628ba54452fef51fec90e7c78bb0d
-  languageName: node
-  linkType: hard
-
 "undici@npm:7.29.0":
   version: 7.29.0
   resolution: "undici@npm:7.29.0"
   checksum: 10c0/85ea96e91e7f3de24de678cbbc54230fdd641a3b0643005f2aef044af1f1a2db8fbecb88b28e6fa78bb41ffeafda4479b57075b6b6ab92beac4b7b5ab53f9b10
+  languageName: node
+  linkType: hard
+
+"undici@npm:^7.27.2":
+  version: 7.28.0
+  resolution: "undici@npm:7.28.0"
+  checksum: 10c0/fe781983a26098795e99bb1f64906cbb7d0bcaa029a26baade007b53ea67f2631d189b8f9671a31f4c8d0cb3773b7559608628ba54452fef51fec90e7c78bb0d
   languageName: node
   linkType: hard
 
@@ -13688,32 +13644,6 @@ __metadata:
     worker-timers-broker: "npm:^8.0.18"
     worker-timers-worker: "npm:^9.0.15"
   checksum: 10c0/2a7a74f062494e35feec9ee87a3aff9724a99f66f437b452a22866c5534e3dab7f1a323e4e7a7318027aba251a8879d73405486f59c464640c5e1ed2478de8f4
-  languageName: node
-  linkType: hard
-
-"workerd@npm:1.20260730.1":
-  version: 1.20260730.1
-  resolution: "workerd@npm:1.20260730.1"
-  dependencies:
-    "@cloudflare/workerd-darwin-64": "npm:1.20260730.1"
-    "@cloudflare/workerd-darwin-arm64": "npm:1.20260730.1"
-    "@cloudflare/workerd-linux-64": "npm:1.20260730.1"
-    "@cloudflare/workerd-linux-arm64": "npm:1.20260730.1"
-    "@cloudflare/workerd-windows-64": "npm:1.20260730.1"
-  dependenciesMeta:
-    "@cloudflare/workerd-darwin-64":
-      optional: true
-    "@cloudflare/workerd-darwin-arm64":
-      optional: true
-    "@cloudflare/workerd-linux-64":
-      optional: true
-    "@cloudflare/workerd-linux-arm64":
-      optional: true
-    "@cloudflare/workerd-windows-64":
-      optional: true
-  bin:
-    workerd: bin/workerd
-  checksum: 10c0/bb4c1de195f0ec907ddc58f0aa5f87fa96b776abd57737b1468cf51a4761bfacd252cea9b7168d4f2b31d8bd4d014492d058e151e6d7a5f0ba3c700f7991a005
   languageName: node
   linkType: hard
 

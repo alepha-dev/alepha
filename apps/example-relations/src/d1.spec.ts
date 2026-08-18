@@ -4,8 +4,9 @@ import {
   CloudflareD1Provider,
   DatabaseProvider,
 } from "alepha/orm";
-import { Miniflare } from "miniflare";
+import type { Miniflare } from "miniflare";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { d1Miniflare } from "./d1Miniflare.ts";
 import { relations } from "./relations.ts";
 
 /**
@@ -97,11 +98,7 @@ describe("relations on cloudflare d1", () => {
   beforeEach(async () => {
     const statements = await schemaFromPushSync();
 
-    const mf = new Miniflare({
-      modules: true,
-      script: "export default {};",
-      d1Databases: { DB: ":memory:" },
-    });
+    const mf = d1Miniflare();
     workers.push(mf);
 
     alepha = Alepha.create({
