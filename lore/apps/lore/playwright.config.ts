@@ -2,16 +2,15 @@ import { defineConfig, devices } from "@playwright/test";
 import { e2ePort } from "../../playwright.port.ts";
 
 /*
- * 3303 sits in the same band as the other apps' e2e ports (docs 3302,
- * playground 3304, shop 3305, example-ssr 3311/3312). Never 5173/5174 — Vite's
- * default and its first fallback — because an unrelated dev server squatting
- * the port turns `reuseExistingServer: false` into a hard failure that looks
- * like a regression.
- *
- * `e2ePort` moves a linked worktree off this port so two agents cannot land on
- * the same server — read it for why that matters more than it sounds.
+ * The e2e port comes from the 4300-4999 band, which is reserved for e2e and
+ * disjoint from every dev port in the repo — see `playwright.port.ts`. Never a
+ * dev port (33xx) and never 5173/5174: those are Vite's default and its first
+ * fallback, so an app running `yarn dev` would be adopted by this suite.
+ * `e2ePort` derives the slot from the checkout (so two worktrees never share a
+ * server), bind-tests it, and moves on if anything is listening. `E2E_PORT`
+ * overrides.
  */
-const port = e2ePort(3303);
+const port = e2ePort("lore");
 
 export default defineConfig({
   testDir: "./e2e",
@@ -39,11 +38,10 @@ export default defineConfig({
     timeout: 120_000,
     command: "yarn start",
     url: `http://localhost:${port}`,
-    // Reuse a running server locally for a fast inner loop, but never under CI
-    // (`yarn verify` forces CI=true): a server left behind by an interrupted run
-    // still answers on this port, and reusing it silently tests stale code
-    // against an in-memory DB that already holds the previous run's rows.
-    reuseExistingServer: !process.env.CI,
+    // Never reuse a running server. The port is bind-tested free moments before
+    // this starts, so there is nothing legitimate to adopt: anything answering
+    // here raced into the slot during the build and is not this run's build.
+    reuseExistingServer: false,
     env: {
       SERVER_PORT: `${port}`,
       // `yarn start` runs the production build (`node dist`), which now refuses
