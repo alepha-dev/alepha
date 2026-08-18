@@ -7,6 +7,9 @@ import { LlmsCommand } from "./scripts/gen-llms.ts";
 import { TreeCommand } from "./scripts/gen-tree.ts";
 
 export default defineConfig({
+  // Dev ports mirror the e2e band in playwright.port.ts so there is one
+  // mapping to remember, not two. Every app otherwise binds 5173.
+  dev: { port: 3302 },
   services: [DocsCommand, TreeCommand, LlmsCommand, CheckDocsCommand],
   env: {
     VITE_BUILD_DATE: new Date().toISOString(),

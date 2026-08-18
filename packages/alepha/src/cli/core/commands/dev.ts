@@ -115,6 +115,7 @@ export class DevCommand {
       root,
       entry,
       noViteReactPlugin: options.noViteReactPlugin ?? false,
+      port: options.port,
     });
 
     await this.viteDevServer.start();

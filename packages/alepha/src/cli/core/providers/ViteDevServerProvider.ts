@@ -21,6 +21,11 @@ export interface DevServerOptions {
    * Disable Vite React plugin.
    */
   noViteReactPlugin?: boolean;
+
+  /**
+   * Port to bind, from `dev.port` in alepha.config.ts.
+   */
+  port?: number;
 }
 
 /**
@@ -159,10 +164,15 @@ export class ViteDevServerProvider {
     // DEFAULT PORT
     // Dev: 5173
     // Prod: 3000
+    //
+    // `SERVER_PORT` wins so CI and one-off overrides keep working, then
+    // `dev.port` from alepha.config.ts, then Vite's own config, then 5173.
 
     let port: number;
     if (process.env.SERVER_PORT) {
       port = Number(process.env.SERVER_PORT);
+    } else if (this.options.port) {
+      port = this.options.port;
     } else {
       const config = await resolveConfig({}, "serve", "development");
       port = config.server?.port ? Number(config.server.port) : 5173;
@@ -182,6 +192,11 @@ export class ViteDevServerProvider {
       },
       server: {
         port,
+        // Without this Vite silently takes the next free port, so a second
+        // app in the same repository starts on 5174 and every URL pinned to
+        // 5173 (devtools, OAuth redirect URIs) breaks with nothing in the
+        // output naming the cause. Same reasoning as `playwright.port.ts`.
+        strictPort: true,
       },
       optimizeDeps: {
         entries: [
@@ -190,7 +205,32 @@ export class ViteDevServerProvider {
       },
     });
 
+    await this.startClientPluginContainer();
     this.patchServerRestartForEnvReload();
+  }
+
+  /**
+   * Run the client plugin container's `buildStart` before anything is loaded
+   * over SSR.
+   *
+   * `vite:css` keeps its CSS-modules cache in a closure it assigns only in
+   * `buildStart`, and the plugin container filters that hook to the **client**
+   * environment. Vite starts the client container from its own `initServer`,
+   * which does not run until `listen()` — but {@link loadAlepha} calls
+   * `ssrLoadModule` before that, and the SSR container's lazy self-start skips
+   * `vite:css` under the same client-only filter. So the cache stayed
+   * undefined, and any app whose *eager* server graph reached a `.module.css`
+   * died on startup with `Cannot read properties of undefined (reading 'set')`.
+   *
+   * `apps/docs` is one: it uses a single entry for server and browser, so its
+   * component tree is eager. An app that lazy-loads its routes never reaches a
+   * CSS module during the SSR load and never saw this.
+   *
+   * The container guards `buildStart` behind its own `_started` flag, so
+   * Vite's later call is a no-op rather than a second initialisation.
+   */
+  protected async startClientPluginContainer(): Promise<void> {
+    await this.server.environments?.client?.pluginContainer?.buildStart();
   }
 
   /**
