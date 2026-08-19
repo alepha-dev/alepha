@@ -193,8 +193,16 @@ export class AreaService {
       target.name,
     );
 
+    // `areas` carries `deletedAt`, so a plain `deleteById` only stamps the
+    // row and never reaches a physical DELETE — `force: true` is what makes
+    // this a real delete (see `EpicController.deleteEpic` for the same
+    // trap). Without it, the source row keeps occupying its
+    // `(projectId, name)` slot in `areas_project_id_name_idx` — which has
+    // no `WHERE deleted_at IS NULL` clause — so the next `ensureArea` call
+    // for that name finds nothing via `findOne` (which does filter
+    // `deletedAt`) and tries to `create`, hitting the unique constraint.
     for (const source of sources) {
-      await this.areas.deleteById(source.id);
+      await this.areas.deleteById(source.id, { force: true });
     }
 
     return { movedQuests };

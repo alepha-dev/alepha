@@ -173,6 +173,29 @@ describe("AreaService", () => {
     expect(all[0].questCount).toBe(2);
   });
 
+  it("an area merged away can be declared again by a new quest", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const source = await ctx.service.ensureArea(project.id, "cli");
+    const target = await ctx.service.ensureArea(project.id, "alepha/cli");
+
+    await ctx.service.merge(project.id, [source!.id], target!.id);
+
+    // `cli` was soft-deleted by the merge above. If it were merely
+    // stamped `deletedAt` rather than physically removed, it would still
+    // occupy the `(projectId, "cli")` slot in the unique index — which
+    // has no `WHERE deleted_at IS NULL` clause — and this `create` would
+    // throw a unique-constraint error instead of succeeding.
+    const revived = await ctx.service.ensureArea(project.id, "cli");
+    expect(revived).toBeDefined();
+    expect(revived?.name).toBe("cli");
+
+    const all = await ctx.service.listWithStats(project.id);
+    const names = all.map((a) => a.name).sort();
+    expect(names).toEqual(["alepha/cli", "cli"]);
+  });
+
   it("refuses to merge an area into itself", async ({ expect }) => {
     const project = await createTestProject(ctx.alepha);
     const area = await ctx.service.ensureArea(project.id, "docs");
