@@ -1,6 +1,8 @@
+import { $inject } from "alepha";
 import { $repository, $sequence } from "alepha/orm";
-import { type Project, projects } from "../entities/projects.ts";
+import { projects } from "../entities/projects.ts";
 import { normalizeQuestTags, type Quest, quests } from "../entities/quests.ts";
+import { AreaService } from "./AreaService.ts";
 
 /**
  * Quest rich-text fields (`description`, `note`, `completionMessage`) are
@@ -71,6 +73,7 @@ export interface CreateQuestInput {
 export class QuestService {
   protected readonly quests = $repository(quests);
   protected readonly projects = $repository(projects);
+  protected readonly areaService = $inject(AreaService);
 
   /**
    * Per-project sequence for `quests.shortId`. Advances inside the caller's
@@ -137,31 +140,37 @@ export class QuestService {
    * Create a quest. Holds the shared mechanics:
    * 1. allocate the next per-project `shortId`,
    * 2. sanitize the (attacker-controllable) rich-text description,
-   * 3. ensure `area` exists on `project.areas`, persisting it if not,
+   * 3. ensure `area` exists in the `areas` table, persisting it if not,
    * 4. insert the `quests` row with the standard defaults.
    *
-   * The caller passes the already-loaded `project` (it has done the auth
-   * check) so the service does not re-fetch it. Must run inside a
+   * The caller is responsible for its own auth check before calling this —
+   * this service does no permission check of its own. Must run inside a
    * `$transactional()` block — the `shortId` sequence relies on it.
    */
-  async createQuest(project: Project, input: CreateQuestInput): Promise<Quest> {
+  async createQuest(input: CreateQuestInput): Promise<Quest> {
     const shortId = await this.questShortId.next(String(input.projectId));
 
     // Only register non-empty areas — an empty `area` is a valid quest
     // field but must not pollute the project's area list.
-    if (input.area && !project.areas.includes(input.area)) {
-      project.areas.push(input.area);
-      await this.projects.updateById(project.id, {
-        areas: project.areas,
-      });
-    }
+    //
+    // The `areas` table is the sole source of truth for the list.
+    // `projects.areas` is `@deprecated` and nothing reads or writes it.
+    //
+    // Store what `ensureArea` actually persisted (trimmed), not the raw
+    // input — otherwise `area: " foo "` registers the row `foo` while the
+    // quest itself points at `" foo "`, matching no row: invisible in the
+    // settings list, unselectable in the picker, unfilterable on the board.
+    const ensuredArea = await this.areaService.ensureArea(
+      input.projectId,
+      input.area,
+    );
 
     return this.quests.create({
       projectId: input.projectId,
       shortId,
       title: input.title,
       description: input.description,
-      area: input.area,
+      area: ensuredArea?.name ?? "",
       priority: input.priority ?? "medium",
       difficulty: input.difficulty ?? 2,
       estimateMinutes: input.estimateMinutes ?? undefined,

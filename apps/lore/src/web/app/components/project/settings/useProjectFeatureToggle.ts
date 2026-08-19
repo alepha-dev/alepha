@@ -45,8 +45,11 @@ export const useProjectFeatureToggle = (key: FeatureKey): FeatureToggle => {
       if (overview) {
         alepha.store.set(userProjectsAtom, {
           ...overview,
+          // `updateProjectById`'s response has no `areaCount` — only
+          // `getHomeOverview` computes that — so carry the existing one
+          // forward rather than dropping it to 0.
           projects: overview.projects.map((p) =>
-            p.id === updated.id ? updated : p,
+            p.id === updated.id ? { ...updated, areaCount: p.areaCount } : p,
           ),
         });
       }

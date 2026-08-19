@@ -53,6 +53,7 @@ const NAV_ROUTE_NAMES = [
   // Settings nav array — ProjectSettings.tsx. This is the array that broke.
   "projectSettingsMembers",
   "projectSettingsAreas",
+  "projectSettingsArea",
   "projectSettingsKanban",
   "projectSettingsFolios",
   "projectSettingsFeedback",
@@ -148,6 +149,7 @@ describe("AppRouter route table", () => {
       appName,
       shortId: "3",
       epicNumber: "7",
+      areaId: 1,
     };
 
     for (const name of NAV_ROUTE_NAMES) {

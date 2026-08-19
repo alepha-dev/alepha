@@ -10,6 +10,7 @@ import { projects } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
 import { relations } from "../relations.ts";
 import { importResultSchema } from "../schemas/questImportRow.ts";
+import { AreaService } from "../services/AreaService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { QuestCsvFormatter } from "../services/QuestCsvFormatter.ts";
 import { QuestCsvParser } from "../services/QuestCsvParser.ts";
@@ -32,6 +33,7 @@ export class ProjectQuestPortabilityController {
   protected readonly formats = $inject(QuestImportFormatProvider);
   protected readonly realm = $inject(RealmProvider);
   protected readonly quest = $inject(QuestController);
+  protected readonly areaService = $inject(AreaService);
 
   exportQuests = $action({
     use: [$secure()],
@@ -188,93 +190,122 @@ export class ProjectQuestPortabilityController {
         }
         const row = parsed.row;
 
-        // Resolve milestone title → id within this project.
-        let milestoneId: number | undefined;
-        if (row.milestone) {
-          milestoneId = milestoneIdByTitle.get(row.milestone);
-          if (milestoneId === undefined) {
-            warnings.push({
-              row: row.rowIndex,
-              message: `Milestone '${row.milestone}' not found in project; left empty`,
-            });
+        // Every row from here down runs its own writes (area ensure, quest
+        // create/update). Wrapped so a single bad row — e.g. an area name
+        // over `areas.name`'s 48-char cap, rejected by `ensureArea` — is
+        // reported and skipped instead of throwing out of the whole
+        // request and discarding the created/updated counts (and the
+        // already-committed writes) for every row processed so far.
+        try {
+          // Resolve milestone title → id within this project.
+          let milestoneId: number | undefined;
+          if (row.milestone) {
+            milestoneId = milestoneIdByTitle.get(row.milestone);
+            if (milestoneId === undefined) {
+              warnings.push({
+                row: row.rowIndex,
+                message: `Milestone '${row.milestone}' not found in project; left empty`,
+              });
+            }
           }
-        }
 
-        const acceptedBy = await resolveUser(
-          row.acceptedBy,
-          row.rowIndex,
-          "acceptedBy",
-        );
-        const completedBy = await resolveUser(
-          row.completedBy,
-          row.rowIndex,
-          "completedBy",
-        );
+          const acceptedBy = await resolveUser(
+            row.acceptedBy,
+            row.rowIndex,
+            "acceptedBy",
+          );
+          const completedBy = await resolveUser(
+            row.completedBy,
+            row.rowIndex,
+            "completedBy",
+          );
 
-        // Upsert path — only when shortId matches an existing quest.
-        const existingMatch =
-          row.writeMode === "upsert" && row.shortId
-            ? existingByShortId.get(Number.parseInt(row.shortId, 10))
-            : undefined;
+          // Upsert path — only when shortId matches an existing quest.
+          const existingMatch =
+            row.writeMode === "upsert" && row.shortId
+              ? existingByShortId.get(Number.parseInt(row.shortId, 10))
+              : undefined;
 
-        if (existingMatch) {
-          await this.quests.updateById(existingMatch.id, {
-            title: row.title,
-            description: row.description,
-            area: row.area,
-            priority: row.priority,
-            difficulty: row.difficulty,
-            kanbanColumn: row.kanbanColumn || undefined,
-            milestoneId,
-            acceptedBy,
-            completedBy,
-            acceptedAt: parseDate(row.acceptedAt),
-            completedAt: parseDate(row.completedAt),
-            objectives: row.objectives,
-          });
-          updated++;
-          continue;
-        }
+          if (existingMatch) {
+            // The `areas` table is the sole source of truth for the list.
+            // `projects.areas` is `@deprecated` and nothing reads or writes
+            // it. Guarded on a non-blank `row.area` the same way `area` is
+            // guarded on `updateQuestById` — `ensureArea` already no-ops on
+            // blank/whitespace, this just skips the call entirely for the
+            // common case of a row with no area column at all.
+            //
+            // Store what `ensureArea` actually persisted, not `row.area`
+            // directly — same reasoning as `QuestService.createQuest` and
+            // `updateQuestById`: the quest must never point at a name that
+            // doesn't match a row in `areas`.
+            const ensuredArea = row.area
+              ? await this.areaService.ensureArea(params.id, row.area)
+              : undefined;
 
-        // Create path — reuse QuestController.createQuest so we get sequence
-        // allocation, HTML sanitization, transactional wrapping, and history
-        // seeding. Then patch the extras the create body doesn't accept.
-        const createResponse = await this.quest.createQuest.fetch(
-          {
-            body: {
-              projectId: params.id,
+            await this.quests.updateById(existingMatch.id, {
               title: row.title,
               description: row.description,
-              area: row.area,
+              area: ensuredArea?.name ?? row.area,
               priority: row.priority,
               difficulty: row.difficulty,
+              kanbanColumn: row.kanbanColumn || undefined,
+              milestoneId,
+              acceptedBy,
+              completedBy,
+              acceptedAt: parseDate(row.acceptedAt),
+              completedAt: parseDate(row.completedAt),
               objectives: row.objectives,
-            },
-          },
-          { user },
-        );
-        const newQuest = createResponse.data;
+            });
+            updated++;
+            continue;
+          }
 
-        const acceptedAt = parseDate(row.acceptedAt);
-        const completedAt = parseDate(row.completedAt);
-        const needsBackfill =
-          milestoneId !== undefined ||
-          acceptedBy ||
-          completedBy ||
-          acceptedAt ||
-          completedAt ||
-          row.kanbanColumn;
-        if (needsBackfill) {
-          await this.quests.updateById(newQuest.id, {
-            milestoneId,
-            acceptedBy,
-            completedBy,
-            acceptedAt,
-            completedAt,
-            kanbanColumn: row.kanbanColumn || undefined,
+          // Create path — reuse QuestController.createQuest so we get sequence
+          // allocation, HTML sanitization, transactional wrapping, and history
+          // seeding. Then patch the extras the create body doesn't accept.
+          const createResponse = await this.quest.createQuest.fetch(
+            {
+              body: {
+                projectId: params.id,
+                title: row.title,
+                description: row.description,
+                area: row.area,
+                priority: row.priority,
+                difficulty: row.difficulty,
+                objectives: row.objectives,
+              },
+            },
+            { user },
+          );
+          const newQuest = createResponse.data;
+
+          const acceptedAt = parseDate(row.acceptedAt);
+          const completedAt = parseDate(row.completedAt);
+          const needsBackfill =
+            milestoneId !== undefined ||
+            acceptedBy ||
+            completedBy ||
+            acceptedAt ||
+            completedAt ||
+            row.kanbanColumn;
+          if (needsBackfill) {
+            await this.quests.updateById(newQuest.id, {
+              milestoneId,
+              acceptedBy,
+              completedBy,
+              acceptedAt,
+              completedAt,
+              kanbanColumn: row.kanbanColumn || undefined,
+            });
+          }
+          created++;
+        } catch (error) {
+          errors.push({
+            row: row.rowIndex,
+            message: error instanceof Error ? error.message : String(error),
           });
+          skipped++;
         }
-        created++;
       }
 
       return {

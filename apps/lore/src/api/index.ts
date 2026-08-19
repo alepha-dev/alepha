@@ -5,6 +5,7 @@ import {
 } from "alepha/api/analytics";
 import { AdminInvitationController } from "./controllers/AdminInvitationController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
+import { AreaController } from "./controllers/AreaController.ts";
 import { BlightController } from "./controllers/BlightController.ts";
 import { BlobController } from "./controllers/BlobController.ts";
 import { DirectoryController } from "./controllers/DirectoryController.ts";
@@ -33,6 +34,7 @@ import { InvitationNotifications } from "./notifications/InvitationNotifications
 import { QuestNotifications } from "./notifications/QuestNotifications.ts";
 import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
+import { AreaService } from "./services/AreaService.ts";
 import { BlightRuleService } from "./services/BlightRuleService.ts";
 import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 import { FolioBlobService } from "./services/FolioBlobService.ts";
@@ -101,6 +103,7 @@ export const LoreApi = $module({
     QuestImportFormatProvider,
     QuestService,
     ProjectLimits,
+    AreaService,
     BlightRuleService,
     // The sink half: the token an app presents, and what happens to what it
     // sends. `SigilIngestService` itself holds no repository on any of the
@@ -116,6 +119,7 @@ export const LoreApi = $module({
     ProjectController,
     MilestoneController,
     EpicController,
+    AreaController,
     ProjectReportsController,
     ProjectQuestPortabilityController,
     InvitationController,

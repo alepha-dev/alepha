@@ -48,7 +48,12 @@ export const projectInfoResultSchema = z.object({
   id: z.integer(),
   title: z.string(),
   public: z.boolean(),
-  areas: z.array(z.string()),
+  areas: z.array(
+    z.object({
+      name: z.string(),
+      description: z.string(),
+    }),
+  ),
   createdAt: z.datetime(),
   activeQuests: z.array(questOrientationRefSchema),
   /**
@@ -86,7 +91,12 @@ export const projectContextResultSchema = z.object({
   id: z.integer(),
   title: z.string(),
   public: z.boolean(),
-  areas: z.array(z.string()),
+  areas: z.array(
+    z.object({
+      name: z.string(),
+      description: z.string(),
+    }),
+  ),
   createdAt: z.datetime(),
   /**
    * Quests the calling user has accepted and not yet completed. Matches the
