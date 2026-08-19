@@ -68,6 +68,19 @@ const ProjectSettingsAreaPage = (props: ProjectSettingsAreaPageProps) => {
         onRenamed={(areaId) =>
           void router.push("projectSettingsArea", {
             params: { areaId: String(areaId) },
+            // Forced unconditionally, not just on a merge: on a PLAIN
+            // rename the surviving id equals the path id, so an unforced
+            // push targets the URL already on screen and
+            // `ReactPageProvider.createLayers` reuses every layer's props
+            // outright — the heading, stats and description would stay
+            // stale with no error and no toast. `force: true` clears
+            // `ReactBrowserProvider`'s `previous` layer list entirely
+            // (not just this leaf), so it also re-runs the `project`
+            // route's loader and refreshes `currentAreasAtom` for every
+            // picker elsewhere in the app — see AppRouter.ts's `project`
+            // loader. The merge branch re-runs anyway; the redundant
+            // force there costs one loader round-trip.
+            force: true,
           })
         }
       />
