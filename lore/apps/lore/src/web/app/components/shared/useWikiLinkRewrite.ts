@@ -85,7 +85,15 @@ export const useWikiLinkRewrite = (
       hasLinks
         ? questApi.getQuests({
             params: { projectId },
-            query: { size: 100, sort: "-updatedAt" } as never,
+            // Wiki-links are direct addressing (design §5.3, "never
+            // gated") — a `[[quest:#N]]` link into a planned epic must
+            // still resolve, or the reader sees the literal `[[...]]`
+            // token instead of a link.
+            query: {
+              size: 100,
+              sort: "-updatedAt",
+              includePlanned: true,
+            } as never,
           })
         : Promise.resolve({ content: [] } as {
             content: Array<{ shortId: number; title: string }>;

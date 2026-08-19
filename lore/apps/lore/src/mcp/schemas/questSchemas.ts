@@ -1,6 +1,7 @@
 import { z } from "alepha";
 import {
   entityRefSchema,
+  epicStatusSchema,
   objectiveSchema,
   prioritySchema,
   projectParamsSchema,
@@ -19,6 +20,27 @@ const AREA_DESCRIPTION =
   "Functional area or module within the project — analogous to an Epic in Jira, or a module/package in a codebase (e.g. 'auth', 'billing', 'ui'). Required (every quest must have one). Free-form string, NOT constrained to a pre-declared list — passing a new value implicitly registers it on the project on first use. Case-SENSITIVE: 'Auth' and 'auth' are distinct areas, so reuse the exact casing of existing ones. Call project_info to see the project's current areas before picking a value.";
 const DESCRIPTION_DESCRIPTION =
   "Quest description in Markdown. Plain text also works. HTML is not supported and any tags will be stripped.";
+
+/**
+ * The epic a quest is filed under, carried on `quest_list` / `quest_get`
+ * results. Includes the epic's own status (not just its identity) because
+ * `quest_list` stays deliberately ungated over MCP (design §5.3): a mixed
+ * result can interleave a planned epic's quests with released ones, and
+ * the status is what lets an agent tell them apart instead of reading a
+ * flat, undifferentiated list. Absent when the quest is filed under no
+ * epic.
+ */
+const questEpicRefSchema = z.object({
+  number: z
+    .integer()
+    .describe(
+      "Per-project epic number ('Epic 3', from epic_list / epic_create).",
+    ),
+  title: z.string().describe("Epic title."),
+  status: epicStatusSchema.describe(
+    "Epic lifecycle status. A quest under a `planned` epic is specified but not released into the human backlog yet — it is still fully readable and workable over MCP.",
+  ),
+});
 
 // -----------------------------------------------------------------------------
 // quest_list
@@ -73,6 +95,11 @@ export const questListResultSchema = z.object({
       acceptedAt: z.datetime().optional(),
       completedAt: z.datetime().optional(),
       shelvedAt: z.datetime().optional(),
+      epic: questEpicRefSchema
+        .describe(
+          "The epic this quest is filed under, if any. Includes the epic's own status so a quest under a `planned` epic reads as parked rather than as unlabeled noise in this list.",
+        )
+        .optional(),
     }),
   ),
   total: z.integer(),
@@ -106,6 +133,11 @@ export const questGetResultSchema = z.object({
   completionMessageUpdatedAt: z.datetime().optional(),
   tags: z.array(z.string()),
   dependsOn_shortId: z.integer().optional(),
+  epic: questEpicRefSchema
+    .describe(
+      "The epic this quest is filed under, if any. quest_get is direct addressing (design §5.3) so it always resolves regardless of the epic's status.",
+    )
+    .optional(),
 });
 
 // -----------------------------------------------------------------------------
