@@ -23,12 +23,15 @@ import { Textarea } from "@alepha/ui/components/ui/textarea";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { Link, useRouter } from "alepha/react/router";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
+import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+import { STATUS_BADGE_VARIANT, STATUS_LABEL_KEYS } from "./epicStatus.ts";
 
 export interface ProjectEpicsProps {
   epics: EpicResource[];
@@ -40,15 +43,16 @@ export interface ProjectEpicsProps {
  * `planned` (see `EpicController.createEpic`).
  *
  * Status is a read-only badge here. Changing it is the Epic detail page's
- * job (`EpicStatusControl.tsx`, Task 6) — this list intentionally does not
+ * job (`EpicStatusControl.tsx`) — this list intentionally does not
  * duplicate that control or its transition-verb vocabulary.
  *
- * Rows never link anywhere: `projectEpic` (`/epics/:epicNumber`) is Task
- * 6's route, not this one's.
+ * Each row's title links to `projectEpic` (`/epics/:epicNumber`), the
+ * detail page.
  */
 const ProjectEpics = (props: ProjectEpicsProps) => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
+  const router = useRouter<AppRouter>();
   const epicApi = useClient<EpicController>();
   const [project] = useStore(currentProjectAtom);
 
@@ -137,7 +141,14 @@ const ProjectEpics = (props: ProjectEpicsProps) => {
                         #{epic.number}
                       </TableCell>
                       <TableCell className="font-medium">
-                        {epic.title}
+                        <Link
+                          href={router.path("projectEpic", {
+                            params: { epicNumber: epic.number },
+                          })}
+                          className="hover:underline"
+                        >
+                          {epic.title}
+                        </Link>
                       </TableCell>
                       <TableCell>
                         <Badge variant={STATUS_BADGE_VARIANT[epic.status]}>
@@ -213,25 +224,3 @@ const ProjectEpics = (props: ProjectEpicsProps) => {
 };
 
 export default ProjectEpics;
-
-type EpicStatus = EpicResource["status"];
-
-type EpicStatusLabelKey =
-  | "epic.status.planned"
-  | "epic.status.active"
-  | "epic.status.done";
-
-const STATUS_LABEL_KEYS: Record<EpicStatus, EpicStatusLabelKey> = {
-  planned: "epic.status.planned",
-  active: "epic.status.active",
-  done: "epic.status.done",
-};
-
-const STATUS_BADGE_VARIANT: Record<
-  EpicStatus,
-  "outline" | "default" | "secondary"
-> = {
-  planned: "outline",
-  active: "default",
-  done: "secondary",
-};

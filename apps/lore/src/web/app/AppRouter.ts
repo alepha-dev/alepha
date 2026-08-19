@@ -285,6 +285,7 @@ export class AppRouter {
       this.projectQuest,
       this.projectQuestGraph,
       this.projectEpics,
+      this.projectEpic,
       this.projectMilestones,
       this.projectSettings,
       this.projectReports,
@@ -654,6 +655,41 @@ export class AppRouter {
         params: { projectId: project.id },
       });
       return { epics };
+    },
+  });
+
+  projectEpic = $page({
+    name: "projectEpic",
+    // `epicNumber`, NOT `number`: route params must be unique across the
+    // whole route table, or two routes with different param names at the
+    // same path position silently lose the inner value.
+    path: "/epics/:epicNumber",
+    schema: {
+      params: z.object({
+        epicNumber: z.integer(),
+      }),
+    },
+    head: (props, previous) => {
+      const epic = (props as { epic?: { title?: string } } | undefined)?.epic;
+      return {
+        title: `${previous?.title ?? ""} › ${epic?.title ?? "Epic"}`,
+      };
+    },
+    lazy: () => import("./components/project/epics/ProjectEpic.tsx"),
+    loader: async ({ params }) => {
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
+      }
+      const epic = await this.epicApi.getEpicByNumber({
+        params: { projectId: project.id, number: params.epicNumber },
+      });
+      return { epic };
+    },
+    errorHandler: (error) => {
+      if (HttpError.is(error, 404)) {
+        return createElement(NotFound, { style: { height: "100%" } });
+      }
     },
   });
 

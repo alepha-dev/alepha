@@ -65,6 +65,7 @@ const ROUTES_APP = new Set([
 
 const ROUTES_FULL_WIDTH = new Set([
   "projectEpics",
+  "projectEpic",
   "projectMilestones",
   "projectFolios",
   "projectFoliosNew",
@@ -78,6 +79,7 @@ const ROUTES_FULL_WIDTH = new Set([
 const SECTION_LABEL_KEYS: Record<string, string> = {
   projectQuests: "project.menu.quests",
   projectEpics: "project.menu.epics",
+  projectEpic: "project.menu.epics",
   projectMilestones: "project.menu.milestones",
   projectReports: "project.menu.reports",
   projectFolios: "project.menu.folios",
@@ -176,7 +178,7 @@ const ProjectView = () => {
       label: tr("project.menu.epics"),
       icon: Layers,
       href: router.path("projectEpics", { params: { projectSlug } }),
-      active: name === "projectEpics",
+      active: name === "projectEpics" || name === "projectEpic",
     });
   }
   // Blights are reported by apps, so the entry follows the apps: it appears
