@@ -1,6 +1,7 @@
 import type { Alepha, Infer } from "alepha";
 import { users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
+import { type Area, areas } from "@/api/entities/areas.ts";
 import { type Epic, epics } from "@/api/entities/epics.ts";
 import { feedback } from "@/api/entities/feedback.ts";
 import { folioDirectories } from "@/api/entities/folioDirectories.ts";
@@ -36,6 +37,7 @@ export class TestEntityRepositories {
   milestones = $repository(milestones);
   feedback = $repository(feedback);
   users = $repository(users);
+  areas = $repository(areas);
   epics = $repository(epics);
   quests = $repository(quests);
   folios = $repository(folios);
@@ -138,6 +140,25 @@ export const createTestEpic = async (
     title: overrides.title ?? `Test Epic ${epicSeq}`,
     description: overrides.description ?? "",
     status: overrides.status ?? "planned",
+  });
+};
+
+/**
+ * Creates an area directly through the repository, bypassing
+ * `AreaService.ensureArea` (find-or-create, name trimming). Fine for
+ * tests that only need a valid area row to hang quests or assertions off.
+ */
+export const createTestArea = async (
+  alepha: Alepha,
+  overrides: Partial<Area> = {},
+): Promise<Area> => {
+  const repos = alepha.inject(TestEntityRepositories);
+  return repos.areas.create({
+    name: `area-${crypto.randomUUID().slice(0, 8)}`,
+    description: "",
+    // Spread first, defaults last — see `createTestProject`.
+    ...overrides,
+    projectId: overrides.projectId ?? (await createTestProject(alepha)).id,
   });
 };
 
