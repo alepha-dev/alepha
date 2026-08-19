@@ -1033,6 +1033,16 @@ export class QuestController {
         body.description = sanitizeHtml(body.description);
       }
 
+      // `areas` is the source of truth for the list. `projects.areas` is
+      // still written for one release as a rollback net; it is
+      // `@deprecated` and nothing reads it. Task 7 drops this half. Only
+      // fires when this update actually carries an `area` — an update
+      // that leaves the field alone (`undefined`) must not register
+      // anything.
+      if (body.area !== undefined) {
+        await this.areaService.ensureArea(quest.projectId, body.area);
+      }
+
       const patch: Record<string, unknown> = { ...body };
       if (body.tags !== undefined) {
         patch.tags = normalizeQuestTags(body.tags);
