@@ -432,6 +432,9 @@ export default {
   "project.settings.areas.rename.cancel": "Cancel",
   "project.settings.areas.rename.submit": "Rename",
   "project.settings.areas.never": "—",
+  "project.settings.areas.delete.action": "Delete",
+  "project.settings.areas.delete.confirm":
+    "Delete this area? It has no quests, and this cannot be undone.",
   "project.settings.nav.kanban": "Kanban",
   "project.settings.nav.folios": "Folios",
   "project.settings.nav.epics": "Epics",
@@ -681,6 +684,26 @@ export default {
 
   "area.rename.name": "Area Name",
   "area.rename.submit": "Rename",
+
+  "area.detail.rename": "Rename",
+  "area.detail.rename.title": "Rename area",
+  "area.detail.rename.label": "New name",
+  "area.detail.rename.merge":
+    "$1 already exists. $2 quests will move into it, and $3 will disappear along with its description.",
+  "area.detail.rename.submit": "Rename",
+  "area.detail.rename.submitMerge": "Merge",
+  "area.detail.description.title": "Description",
+  "area.detail.description.placeholder":
+    "What part of the system is this? Agents read this when they file a quest.",
+  "area.detail.description.save": "Save",
+  "area.detail.stats.title": "Activity",
+  "area.detail.stats.open": "Open quests",
+  "area.detail.stats.total": "Total quests",
+  "area.detail.stats.first": "First quest",
+  "area.detail.stats.last": "Last activity",
+  "area.detail.stats.never": "Never",
+  "area.detail.back": "Back to areas",
+  "area.detail.quests.title": "Recent quests",
 
   "error.title": "Oh no! Something went wrong.",
   "error.description":
