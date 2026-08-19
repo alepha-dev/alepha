@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { snippets } from "../../config/docs.ts";
 import CodePane from "./CodePane.tsx";
 import DocLink from "./DocLink.tsx";
@@ -7,8 +8,7 @@ import DocLink from "./DocLink.tsx";
  *
  * The stage list replays on a loop rather than sitting still, because the
  * argument is that one invocation does all of this in order and you watch none
- * of it. Timing lives in CSS so the block costs no JavaScript and stops moving
- * under `prefers-reduced-motion`.
+ * of it.
  *
  * The order is the orchestrator's own, not a guess: `PlatformOrchestrator.up()`
  * runs authenticate → provision → build → migrate → deploy → secrets. Secrets
@@ -24,7 +24,44 @@ const STAGES = [
   "pushing secrets",
 ];
 
+/**
+ * How long the summary line holds before the run starts over.
+ */
+const RESULT_MS = 5000;
+
 const PlatformSection = () => {
+  // How many stages have completed. Starts finished so the prerendered HTML
+  // — and anyone without JavaScript — gets a deploy that ran, not one frozen
+  // half way through. The effect resets it and takes over on mount.
+  const [done, setDone] = useState(STAGES.length);
+
+  // Timing lives here rather than in CSS keyframes because each stage should
+  // take its own time. A shared animation-delay gives every row the same
+  // beat, which reads as a progress bar in six pieces instead of six things
+  // that each had to finish before the next could start.
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
+
+    let timer: ReturnType<typeof setTimeout>;
+
+    // A stage takes between one and two seconds; the last one hands over to
+    // the summary, which holds for RESULT_MS before the run clears.
+    const advance = (count: number) => {
+      setDone(count);
+      const wait =
+        count === STAGES.length ? RESULT_MS : 1000 + Math.random() * 1000;
+      timer = setTimeout(
+        () => advance(count === STAGES.length ? 0 : count + 1),
+        wait,
+      );
+    };
+
+    advance(0);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <section id="platform" className="home-block home-section">
       <div className="container container-wide">
@@ -53,14 +90,18 @@ const PlatformSection = () => {
                 <code>alepha platform up --env production</code>
               </div>
 
-              {/* No per-item `animation-delay`: each step carries its own
-                  keyframes so the whole list resets on the same frame.
-                  Staggering one shared animation made them light and clear at
-                  six different moments, which read as blinking rather than a
-                  run. */}
+              {/* Every stage is on screen from the start, dim, and brightens
+                  when it completes. Printing them one at a time would be more
+                  literal, but the panel would grow six times per loop and drag
+                  the section under it along with it. */}
               <ol className="deploy-log">
-                {STAGES.map((stage) => (
-                  <li className="deploy-step" key={stage}>
+                {STAGES.map((stage, index) => (
+                  <li
+                    className={
+                      index < done ? "deploy-step is-done" : "deploy-step"
+                    }
+                    key={stage}
+                  >
                     <span className="deploy-step-mark" aria-hidden="true" />
                     <span className="deploy-step-label">{stage}</span>
                   </li>
@@ -69,8 +110,16 @@ const PlatformSection = () => {
 
               {/* What `printUpSummary` actually prints: a green arrow and the
                   URL in cyan, no label. The host is the `domain` declared in
-                  the config pane beside it. */}
-              <p className="deploy-result">
+                  the config pane beside it. Absent until the run finishes,
+                  rather than dimmed, because a deploy that has not finished
+                  has printed no URL at all. */}
+              <p
+                className={
+                  done === STAGES.length
+                    ? "deploy-result is-visible"
+                    : "deploy-result"
+                }
+              >
                 <span className="deploy-result-arrow" aria-hidden="true">
                   →
                 </span>
@@ -84,14 +133,14 @@ const PlatformSection = () => {
 
         <p className="platform-footnote">
           Missing infrastructure is created during provisioning: D1, KV, R2 and
-          Queues, from the bindings your code already declares.{" "}
-          <DocLink to="guides-persistence-migrations">Migrations</DocLink> run
-          before the new code can see the database, and secrets go last on
-          purpose, after the worker exists, because before that there is nothing
-          to attach them to.{" "}
+          Queues, from the bindings your code already declares, because Alepha
+          knows the topology of your app. The command handles the rest of it
+          too, from pushing{" "}
+          <DocLink to="guides-core-configurations">secrets</DocLink> to running{" "}
+          <DocLink to="guides-persistence-migrations">migrations</DocLink>.{" "}
           <DocLink to="cli-plugins-platform">Alepha Platform</DocLink> targets{" "}
           <DocLink to="guides-deployment-cloudflare">Cloudflare</DocLink> and{" "}
-          <DocLink to="guides-deployment-bay">Bay</DocLink> only.
+          <DocLink to="guides-deployment-bay">Bay (VPS)</DocLink> only.
         </p>
       </div>
     </section>

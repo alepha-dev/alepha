@@ -1816,12 +1816,12 @@ html:has(.home-snap) {
 
    Three steps in a row: config, command, run.
 
-   The run replays on a 7.2s loop, and every step owns its keyframes rather than
-   sharing one animation with a staggered `animation-delay`. The shared version
-   looked wrong: with six delays against one 7.2s cycle, each row also *cleared*
-   at its own offset, so rows lit and dimmed independently and the list read as
-   random blinking. Here each row turns on at its own point and every row clears
-   together at 100%, which is what a progress run actually looks like.
+   The run itself is driven from PlatformSection.tsx, not from keyframes here.
+   It used to be six staggered animations against one shared cycle, which meant
+   every stage lasted exactly as long as every other one and the whole list
+   read as one progress bar cut into six. Timing that varies per stage cannot
+   be written as a fixed keyframe list, so JS owns the clock and CSS owns only
+   the two states a row can be in.
    ----------------------------------------------------------------------------- */
 
 .deploy-flow {
@@ -1892,12 +1892,16 @@ html:has(.home-snap) {
 
 /* -- the run -- */
 
+/* Output hangs under the command, not under the prompt: the `$` is the shell
+   asking, everything below it is the program answering. 16px clears the glyph
+   plus the gap in `.deploy-cmd`, so a stage starts on the same column as
+   `alepha`. */
 .deploy-log {
   display: flex;
   flex-direction: column;
   gap: 7px;
   margin: 0;
-  padding: 0;
+  padding: 0 0 0 16px;
   list-style: none;
 }
 
@@ -1908,8 +1912,18 @@ html:has(.home-snap) {
   color: var(--color-text-muted);
   font-family: var(--font-mono);
   font-size: 11.5px;
-  opacity: 0.22;
-  animation: 7.2s linear infinite;
+  opacity: 0.28;
+  transition:
+    opacity var(--duration-normal) var(--ease-default),
+    color var(--duration-normal) var(--ease-default);
+}
+
+/* A finished stage goes to full strength and to the bright text colour the
+   command above it already uses. Opacity alone left it grey, which reads as
+   "still pending, slightly less so". */
+.deploy-step.is-done {
+  opacity: 1;
+  color: var(--color-text-bright);
 }
 
 .deploy-step-mark {
@@ -1924,129 +1938,22 @@ html:has(.home-snap) {
   content: "...";
 }
 
-/* One sixth of the cycle apart, all clearing on the same frame. */
-.deploy-step:nth-child(1) {
-  animation-name: deployStep1;
-}
-
-.deploy-step:nth-child(2) {
-  animation-name: deployStep2;
-}
-
-.deploy-step:nth-child(3) {
-  animation-name: deployStep3;
-}
-
-.deploy-step:nth-child(4) {
-  animation-name: deployStep4;
-}
-
-.deploy-step:nth-child(5) {
-  animation-name: deployStep5;
-}
-
-.deploy-step:nth-child(6) {
-  animation-name: deployStep6;
-}
-
-/* Seven slots in the 7.2s cycle: six stages, then the summary line, then the
-   whole run clears together at 100%. The stages finish by 63% so the result
-   has ~1.7s on screen before the loop restarts. */
-@keyframes deployStep1 {
-  0%,
-  1% {
-    opacity: 0.22;
-  }
-  3%,
-  95% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0.22;
-  }
-}
-
-@keyframes deployStep2 {
-  0%,
-  13% {
-    opacity: 0.22;
-  }
-  15%,
-  95% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0.22;
-  }
-}
-
-@keyframes deployStep3 {
-  0%,
-  25% {
-    opacity: 0.22;
-  }
-  27%,
-  95% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0.22;
-  }
-}
-
-@keyframes deployStep4 {
-  0%,
-  37% {
-    opacity: 0.22;
-  }
-  39%,
-  95% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0.22;
-  }
-}
-
-@keyframes deployStep5 {
-  0%,
-  49% {
-    opacity: 0.22;
-  }
-  51%,
-  95% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0.22;
-  }
-}
-
-@keyframes deployStep6 {
-  0%,
-  61% {
-    opacity: 0.22;
-  }
-  63%,
-  95% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0.22;
-  }
-}
-
-/* The summary line: absent until the run finishes, rather than dimmed, because
-   a deploy that has not finished has printed no URL at all. */
+/* The summary line: absent until the run finishes, rather than dimmed,
+   because a deploy that has not finished has printed no URL at all. */
 .deploy-result {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   margin: 0;
+  padding-left: 16px;
   font-family: var(--font-mono);
   font-size: 12px;
   opacity: 0;
-  animation: deployResult 7.2s linear infinite;
+  transition: opacity var(--duration-normal) var(--ease-default);
+}
+
+.deploy-result.is-visible {
+  opacity: 1;
 }
 
 .deploy-result-arrow {
@@ -2057,25 +1964,12 @@ html:has(.home-snap) {
   color: var(--color-cyan);
 }
 
-@keyframes deployResult {
-  0%,
-  75% {
-    opacity: 0;
-  }
-  78%,
-  95% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
+/* Reduced motion never starts the loop, so every row keeps the state the
+   server rendered: the finished run, sitting still. */
 @media (prefers-reduced-motion: reduce) {
   .deploy-step,
   .deploy-result {
-    opacity: 1;
-    animation: none;
+    transition: none;
   }
 }
 
