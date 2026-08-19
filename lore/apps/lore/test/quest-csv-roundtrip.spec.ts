@@ -224,4 +224,36 @@ describe("Quest CSV roundtrip", () => {
     const areas = await ctx.areaService.listWithStats(project.id);
     expect(areas.map((a) => a.name)).toContain("alepha/system");
   });
+
+  it("keeps earlier rows' results when a later row fails, instead of losing the whole import", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const project = await createTestProject(ctx, owner);
+
+    // Two create-mode rows (blank shortId). The second row's area is one
+    // character past `areas.name`'s 48-char cap — `questCreateSchema`'s
+    // own `.max(48)` now rejects it as a clean validation error instead of
+    // the row silently succeeding (or throwing an opaque 500 out of
+    // `ensureArea`), but that rejection must not throw the whole import
+    // request away and discard row one's already-committed create.
+    const csv = [
+      "shortId,title,area,priority,difficulty",
+      ",First,short-area,medium,2",
+      `,Second,${"x".repeat(49)},medium,2`,
+    ].join("\n");
+
+    const importResponse = await ctx.portController.importQuests.fetch(
+      {
+        params: { id: project.id },
+        body: { file: new File([csv], "quests.csv", { type: "text/csv" }) },
+      },
+      { user: owner },
+    );
+
+    expect(importResponse.data.created).toBe(1);
+    expect(importResponse.data.skipped).toBe(1);
+    expect(importResponse.data.errors).toHaveLength(1);
+    expect(importResponse.data.errors[0].row).toBe(2);
+  });
 });

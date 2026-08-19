@@ -104,9 +104,11 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
         <div className="bg-muted flex items-center justify-between rounded-md px-3 py-2">
           <span className="text-sm">
             {String(
-              tr("project.settings.areas.selected", {
-                args: [String(selected.size)],
-              }),
+              selected.size === 1
+                ? tr("project.settings.areas.selected.one")
+                : tr("project.settings.areas.selected", {
+                    args: [String(selected.size)],
+                  }),
             )}
           </span>
           <Button size="sm" onClick={() => setMerging(true)}>

@@ -193,9 +193,14 @@ export class AreaController {
       const area = await this.areas.getById(params.id);
       await this.security.assertOwner(area.projectId, user);
 
-      const stats = await this.service.listWithStats(area.projectId);
-      const mine = stats.find((a) => a.id === area.id);
-      if (mine && mine.questCount > 0) {
+      // A direct count, not `listWithStats(area.projectId)` — that rolls
+      // up every area of the project just to read one integer for this
+      // one. `deleteArea` only cares whether THIS area is empty.
+      const questCount = await this.quests.count({
+        projectId: { eq: area.projectId },
+        area: { eq: area.name },
+      });
+      if (questCount > 0) {
         throw new BadRequestError(
           "This area still holds quests. Merge it into another area instead.",
         );

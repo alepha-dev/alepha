@@ -1,5 +1,6 @@
 import { AlephaError } from "alepha";
 import { $repository } from "alepha/orm";
+import { BadRequestError } from "alepha/server";
 import { type Area, areas } from "../entities/areas.ts";
 import { quests } from "../entities/quests.ts";
 
@@ -80,8 +81,11 @@ export class AreaService {
    *
    * One query for the areas and one for the quests, aggregated in
    * memory rather than N `count()` round-trips — a project can carry
-   * dozens of areas and this runs on every settings page load. Same
-   * shape as the `ProjectController.getAreas` it replaces.
+   * dozens of areas and this runs on every settings page load, plus the
+   * `project_context` MCP tool that promises "~2K tokens" and is called
+   * first on every task. `columns` is load-bearing: without it this pulls
+   * every quest whole — rich-text `description`, `history`, `objectives`
+   * — to read four scalar fields.
    */
   async listWithStats(projectId: number): Promise<AreaStats[]> {
     const [rows, projectQuests] = await Promise.all([
@@ -89,7 +93,10 @@ export class AreaService {
         where: { projectId: { eq: projectId } },
         orderBy: [{ column: "name", direction: "asc" }],
       }),
-      this.quests.findMany({ where: { projectId: { eq: projectId } } }),
+      this.quests.findMany({
+        where: { projectId: { eq: projectId } },
+        columns: ["area", "createdAt", "completedAt", "shelvedAt"],
+      }),
     ]);
 
     const stats = new Map<
@@ -145,7 +152,7 @@ export class AreaService {
   ): Promise<{ merged: boolean; movedQuests: number; area: Area }> {
     const trimmed = name.trim();
     if (!trimmed) {
-      throw new AlephaError("An area name cannot be blank");
+      throw new BadRequestError("An area name cannot be blank");
     }
 
     const area = await this.areas.getById(areaId);
@@ -192,7 +199,7 @@ export class AreaService {
     targetId: number,
   ): Promise<{ movedQuests: number }> {
     if (sourceIds.includes(targetId)) {
-      throw new AlephaError("An area cannot be merged into itself");
+      throw new BadRequestError("An area cannot be merged into itself");
     }
     if (sourceIds.length === 0) {
       return { movedQuests: 0 };
@@ -200,7 +207,7 @@ export class AreaService {
 
     const target = await this.areas.getById(targetId);
     if (target.projectId !== projectId) {
-      throw new AlephaError("Target area belongs to a different project");
+      throw new BadRequestError("Target area belongs to a different project");
     }
 
     const sources = await this.areas.findMany({
@@ -211,7 +218,7 @@ export class AreaService {
     }
     for (const source of sources) {
       if (source.projectId !== projectId) {
-        throw new AlephaError("Source area belongs to a different project");
+        throw new BadRequestError("Source area belongs to a different project");
       }
     }
 
@@ -221,17 +228,23 @@ export class AreaService {
       target.name,
     );
 
-    // `areas` carries `deletedAt`, so a plain `deleteById` only stamps the
-    // row and never reaches a physical DELETE — `force: true` is what makes
+    // `areas` carries `deletedAt`, so a plain `deleteMany` only stamps the
+    // rows and never reaches a physical DELETE — `force: true` is what makes
     // this a real delete (see `EpicController.deleteEpic` for the same
-    // trap). Without it, the source row keeps occupying its
+    // trap). Without it, the source rows keep occupying their
     // `(projectId, name)` slot in `areas_project_id_name_idx` — which has
     // no `WHERE deleted_at IS NULL` clause — so the next `ensureArea` call
     // for that name finds nothing via `findOne` (which does filter
     // `deletedAt`) and tries to `create`, hitting the unique constraint.
-    for (const source of sources) {
-      await this.areas.deleteById(source.id, { force: true });
-    }
+    //
+    // One statement, not a per-source loop: D1 gives no transaction here
+    // (see the order note above), so N statements would mean N
+    // partial-failure windows for no benefit — a single `deleteMany`
+    // either drops every source row or none of them.
+    await this.areas.deleteMany(
+      { id: { inArray: sources.map((s) => s.id) } },
+      { force: true },
+    );
 
     return { movedQuests };
   }
@@ -240,24 +253,17 @@ export class AreaService {
    * One `updateMany`, never a per-quest loop. The `renameArea` this
    * replaces issued one round-trip per quest despite `updateMany` being
    * used twenty lines above it in the same controller.
+   *
+   * `updateMany` already returns the ids it touched, so the count comes
+   * from `.length` — a separate `findMany` beforehand would re-scan the
+   * exact rows this is about to update just to count them.
    */
   protected async moveQuests(
     projectId: number,
     fromNames: string[],
     toName: string,
   ): Promise<number> {
-    const affected = await this.quests.findMany({
-      where: {
-        projectId: { eq: projectId },
-        area: { inArray: fromNames },
-      },
-    });
-
-    if (affected.length === 0) {
-      return 0;
-    }
-
-    await this.quests.updateMany(
+    const affected = await this.quests.updateMany(
       { projectId: { eq: projectId }, area: { inArray: fromNames } },
       { area: toName },
     );

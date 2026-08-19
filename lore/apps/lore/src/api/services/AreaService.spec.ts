@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { Alepha, SchemaValidationError } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaOrm } from "alepha/orm";
@@ -242,7 +242,7 @@ describe("AreaService", () => {
     const project = await createTestProject(ctx.alepha);
     const questService = ctx.alepha.inject(QuestService);
 
-    await questService.createQuest(project, {
+    await questService.createQuest({
       projectId: project.id,
       title: "Streaming ZIP writer",
       description: "",
@@ -269,5 +269,103 @@ describe("AreaService", () => {
 
     const all = await ctx.service.listWithStats(project.id);
     expect(all.map((a) => a.name)).toContain("alepha/system");
+  });
+
+  it("trims the area on create, matching the registered row exactly", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const questService = ctx.alepha.inject(QuestService);
+
+    const quest = await questService.createQuest({
+      projectId: project.id,
+      title: "Padded area",
+      description: "",
+      area: " spaced ",
+      createdBy: project.createdBy,
+    });
+
+    const all = await ctx.service.listWithStats(project.id);
+    expect(all).toHaveLength(1);
+    expect(all[0].name).toBe("spaced");
+    // The invariant this whole rework exists for: every quest's `area`
+    // matches exactly one `areas` row. An untrimmed quest.area would match
+    // none — invisible in the settings list, unselectable in the picker.
+    expect(quest.area).toBe("spaced");
+  });
+
+  it("trims the area on update, matching the registered row exactly", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const quest = await createTestQuest(ctx.alepha, project, {
+      area: "alepha/orm",
+    });
+    const questController = ctx.alepha.inject(QuestController);
+
+    const updated = await questController.updateQuestById.fetch(
+      { params: { id: quest.id }, body: { area: " spaced " } },
+      { user: { id: project.createdBy } },
+    );
+
+    expect(updated.data.area).toBe("spaced");
+    const all = await ctx.service.listWithStats(project.id);
+    expect(all.map((a) => a.name)).toContain("spaced");
+    expect(all.some((a) => a.name === " spaced ")).toBe(false);
+  });
+
+  it("rejects a too-long area on create as a schema validation error, never reaching ensureArea", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const questController = ctx.alepha.inject(QuestController);
+
+    // `.fetch()` encodes the request body against `questCreateSchema`
+    // before anything goes out — same validation a real browser client
+    // hits. Mirroring `areas.name`'s `.max(48)` here is what turns this
+    // into a clean validation error instead of an opaque throw from
+    // `ensureArea`, deep inside the handler, after the request was
+    // already accepted.
+    await expect(
+      questController.createQuest.fetch(
+        {
+          body: {
+            projectId: project.id,
+            title: "Overlong area",
+            area: "x".repeat(49),
+            priority: "medium",
+            difficulty: 1,
+          },
+        },
+        { user: { id: project.createdBy } },
+      ),
+    ).rejects.toThrowError(SchemaValidationError);
+
+    // Nothing was written — the row this length only reaches through
+    // `ensureArea` was never created.
+    expect(await ctx.service.listWithStats(project.id)).toHaveLength(0);
+  });
+
+  it("rejects a too-long area on update as a schema validation error, never reaching ensureArea", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const quest = await createTestQuest(ctx.alepha, project, {
+      area: "alepha/orm",
+    });
+    const questController = ctx.alepha.inject(QuestController);
+    const before = await ctx.service.listWithStats(project.id);
+
+    await expect(
+      questController.updateQuestById.fetch(
+        { params: { id: quest.id }, body: { area: "x".repeat(49) } },
+        { user: { id: project.createdBy } },
+      ),
+    ).rejects.toThrowError(SchemaValidationError);
+
+    // The quest's area is untouched, and no stray row was registered.
+    const reloaded = await ctx.repos.quests.getById(quest.id);
+    expect(reloaded.area).toBe("alepha/orm");
+    expect(await ctx.service.listWithStats(project.id)).toEqual(before);
   });
 });

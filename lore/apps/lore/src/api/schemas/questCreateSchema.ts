@@ -6,7 +6,11 @@ export const questCreateSchema = z.object({
   // all). Defaults to "" server-side in createQuest so the NOT-NULL
   // `quests.description` column and `sanitizeHtml` stay happy (no migration).
   description: z.string().meta({ size: "rich" }).optional(),
-  area: z.string(),
+  // Mirrors `areas.name`'s `.max(48)` — without it, a too-long area throws
+  // from inside `ensureArea` (the repository validates on write) instead of
+  // failing this request's own schema validation, turning a clean 400 into
+  // an opaque 500.
+  area: z.string().max(48),
   priority: z.enum(["optional", "low", "medium", "high"]),
   difficulty: z.integer().min(1).max(5),
   /**
