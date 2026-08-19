@@ -10,6 +10,7 @@ import { HttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { createElement } from "react";
 import type { AdminInvitationController } from "../../api/controllers/AdminInvitationController.ts";
+import type { AreaController } from "../../api/controllers/AreaController.ts";
 import type { BlightController } from "../../api/controllers/BlightController.ts";
 import type { DirectoryController } from "../../api/controllers/DirectoryController.ts";
 import type { EpicController } from "../../api/controllers/EpicController.ts";
@@ -22,6 +23,7 @@ import type { ProjectController } from "../../api/controllers/ProjectController.
 import type { ProjectReportsController } from "../../api/controllers/ProjectReportsController.ts";
 import type { QuestController } from "../../api/controllers/QuestController.ts";
 import type { SigilController } from "../../api/controllers/SigilController.ts";
+import { currentAreasAtom } from "./atoms/currentAreasAtom.ts";
 import { currentAssignedQuestsAtom } from "./atoms/currentAssignedQuestsAtom.ts";
 import { currentBlightCountAtom } from "./atoms/currentBlightCountAtom.ts";
 import { currentFeedbackCountAtom } from "./atoms/currentFeedbackCountAtom.ts";
@@ -51,6 +53,7 @@ export class AppRouter {
   invitationApi = $client<InvitationController>();
   feedbackApi = $client<FeedbackController>();
   epicApi = $client<EpicController>();
+  areaApi = $client<AreaController>();
   blightApi = $client<BlightController>();
   insightsApi = $client<InsightsController>();
   milestoneApi = $client<MilestoneController>();
@@ -414,6 +417,14 @@ export class AppRouter {
             .catch(() => 0)
         : 0;
 
+      // The one list every area picker reads. Member-readable, and
+      // `.catch` keeps a transient failure from taking the page down —
+      // an empty picker costs a picker, an unhandled rejection costs the
+      // project.
+      const areas = await this.areaApi
+        .getAreas({ params: { projectId: project.id } })
+        .catch(() => undefined);
+
       this.alepha.store.set(currentProjectAtom, project);
       this.alepha.store.set(currentProjectMemberAtom, member);
       this.alepha.store.set(currentAssignedQuestsAtom, quests);
@@ -424,6 +435,7 @@ export class AppRouter {
       this.alepha.store.set(currentBlightCountAtom, { count: openBlights });
       this.alepha.store.set(currentQuestCountAtom, { count: openQuests });
       this.alepha.store.set(currentSigilsAtom, sigils);
+      this.alepha.store.set(currentAreasAtom, areas);
 
       return {
         project,
@@ -438,6 +450,7 @@ export class AppRouter {
       this.alepha.store.set(currentBlightCountAtom, { count: 0 });
       this.alepha.store.set(currentQuestCountAtom, { count: 0 });
       this.alepha.store.set(currentSigilsAtom, undefined);
+      this.alepha.store.set(currentAreasAtom, undefined);
     },
     errorHandler: (error) => {
       // `/:projectSlug` matches any unclaimed root path, so a typo reaches this
@@ -779,6 +792,7 @@ export class AppRouter {
       this.projectSettingsBanner,
       this.projectSettingsMembers,
       this.projectSettingsAreas,
+      this.projectSettingsArea,
       this.projectSettingsKanban,
       this.projectSettingsFolios,
       this.projectSettingsEpics,
@@ -841,10 +855,39 @@ export class AppRouter {
       if (!project) {
         throw new NotFoundError("Project not found");
       }
-      const areas = await this.projectApi.getAreas({
-        params: { id: project.id },
+      const areas = await this.areaApi.getAreas({
+        params: { projectId: project.id },
       });
       return { areas };
+    },
+  });
+
+  /**
+   * The param is `areaId`, NOT the area's name: area names contain
+   * slashes (`@alepha/ui`, `alepha/api/users`) and a path segment cannot
+   * hold one. Route params must also be unique across the whole route
+   * table — two routes with different param names at the same position
+   * silently lose the inner value.
+   */
+  projectSettingsArea = $page({
+    name: "projectSettingsArea",
+    path: "/areas/:areaId",
+    schema: {
+      params: z.object({ areaId: z.integer() }),
+    },
+    head: (props, previous) => {
+      const area = (props as { area?: { name?: string } } | undefined)?.area;
+      return {
+        title: `${previous?.title ?? ""} › ${area?.name ?? "Area"}`,
+      };
+    },
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsAreaPage.tsx"),
+    loader: async ({ params }) => {
+      const area = await this.areaApi.getArea({
+        params: { id: params.areaId },
+      });
+      return { area };
     },
   });
 

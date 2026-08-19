@@ -26,14 +26,14 @@ import {
   Tent,
 } from "lucide-react";
 import { useRef, useState } from "react";
+import type { AreaController } from "@/api/controllers/AreaController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
 import { questCreateSchema } from "@/api/schemas/questCreateSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
+import { currentAreasAtom } from "@/web/app/atoms/currentAreasAtom.ts";
 import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuestsAtom.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import { kanbanProjectAtom } from "@/web/app/atoms/kanbanProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import QuestCreateObjectives from "./QuestCreateObjectives.tsx";
 import QuestDependencyPicker from "./QuestDependencyPicker.tsx";
@@ -50,11 +50,11 @@ export interface QuestCreateProps {
 
 const QuestCreate = (props: QuestCreateProps) => {
   const questApi = useClient<QuestController>();
+  const areaApi = useClient<AreaController>();
   const alepha = useAlepha();
   const router = useRouter<AppRouter>();
   const { tr } = useI18n<I18n, "en">();
-  const [currentProject, setCurrentProject] = useStore(currentProjectAtom);
-  const [kanbanProject] = useStore(kanbanProjectAtom);
+  const [currentAreas] = useStore(currentAreasAtom);
 
   const update = !!props.quest?.id;
   const acceptAfterCreate = useRef(false);
@@ -104,19 +104,32 @@ const QuestCreate = (props: QuestCreateProps) => {
         },
       });
 
+      // A brand-new area declared right here isn't in `currentAreasAtom`
+      // yet — that atom is filled only by the `project` route loader, and
+      // neither the navigation below nor the kanban `onCreated` callback
+      // re-enters it. Left alone, the area stays missing from every
+      // picker (this form, the quests-table filter, the kanban filter)
+      // for the rest of the session — this is literally how `folio` vs
+      // `Folio` was born. The rename dialog gets this for free via
+      // `force: true` on its post-rename push (see
+      // `ProjectSettingsAreaPage.tsx`); create has no equivalent
+      // navigation to piggyback on, so refetch directly instead.
+      if (
+        quest.area &&
+        !(alepha.store.get(currentAreasAtom) ?? []).some(
+          (a) => a.name === quest.area,
+        )
+      ) {
+        const refreshedAreas = await areaApi.getAreas({
+          params: { projectId: props.project.id },
+        });
+        alepha.store.set(currentAreasAtom, refreshedAreas);
+      }
+
       if (acceptAfterCreate.current) {
         quest = await questApi.acceptQuest({ params: { id: quest.id } });
       }
       acceptAfterCreate.current = false;
-
-      if (
-        data.area &&
-        !props.project.areas?.includes(data.area) &&
-        currentProject
-      ) {
-        const updatedAreas = [...(currentProject.areas || []), data.area];
-        setCurrentProject({ ...currentProject, areas: updatedAreas });
-      }
 
       props.onSubmit(quest);
 
@@ -135,7 +148,7 @@ const QuestCreate = (props: QuestCreateProps) => {
 
   const { loading: submitting } = useFormState(form, ["loading"]);
 
-  const areas = currentProject?.areas || kanbanProject?.project?.areas || [];
+  const areas = (currentAreas ?? []).map((a) => a.name);
 
   return (
     <form {...form.props} className="flex min-h-0 flex-1 flex-col">

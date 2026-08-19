@@ -17,7 +17,10 @@ const PRIORITY_DESCRIPTION =
 const DIFFICULTY_DESCRIPTION =
   "Quest difficulty from 1 (trivial) to 5 (epic). Higher means harder.";
 const AREA_DESCRIPTION =
-  "Functional area or module within the project — analogous to an Epic in Jira, or a module/package in a codebase (e.g. 'auth', 'billing', 'ui'). Required (every quest must have one). Free-form string, NOT constrained to a pre-declared list — passing a new value implicitly registers it on the project on first use. Case-SENSITIVE: 'Auth' and 'auth' are distinct areas, so reuse the exact casing of existing ones. Call project_info to see the project's current areas before picking a value.";
+  "The part of the system this quest touches — a module, a package, a surface (e.g. 'alepha/orm', '@alepha/ui', 'lore/folios'). Required; every quest has exactly one. " +
+  "NOT the same axis as `epic` (a bounded initiative that spans areas and ends) or `tags` (the nature of the work: bug, feat, chore) — a quest carries all three independently. " +
+  "Call `project_context` first and REUSE an existing area with its exact casing: 'Auth' and 'auth' are distinct, and each new value silently registers a new area. " +
+  "Only invent a name when the work genuinely lives in a part of the system none of the existing areas covers; prefer the project's own naming convention (an import path, where one exists).";
 const DESCRIPTION_DESCRIPTION =
   "Quest description in Markdown. Plain text also works. HTML is not supported and any tags will be stripped.";
 

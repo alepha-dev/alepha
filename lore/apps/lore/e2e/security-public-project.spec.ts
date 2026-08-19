@@ -97,7 +97,10 @@ test.describe("Project membership gate", () => {
       await patchApiLinks(b.page, projectId);
 
       // Reads — every one of these used to leak under the old `public`
-      // flag; now they all require membership.
+      // flag; now they all require membership. `getAreas` lives on
+      // `AreaController` now, params `{ projectId }` — `patchApiLinks`
+      // already substitutes `:projectId` generically for every action, so
+      // no special-casing is needed here.
       const reads = [
         "getProjectById",
         "getAreas",
@@ -119,11 +122,17 @@ test.describe("Project membership gate", () => {
       });
       expect(updateResp.status).toBe(403);
 
-      const renameAreaResp = await callAction(b.page, "renameArea", {
-        oldAreaName: "Default",
-        newAreaName: "pwned",
+      // `renameArea` addresses a specific area by id (`params: { id }`), which
+      // a stranger who was never let into the project has no way to know.
+      // `mergeAreas` covers the same write surface (project-scoped,
+      // owner-gated `params: { projectId }`) without needing one — and
+      // `assertOwner` runs before either fabricated id is ever looked up,
+      // so the 403 fires regardless of whether they exist.
+      const mergeAreasResp = await callAction(b.page, "mergeAreas", {
+        sourceIds: [1],
+        targetId: 2,
       });
-      expect(renameAreaResp.status).toBe(403);
+      expect(mergeAreasResp.status).toBe(403);
 
       const addColResp = await callAction(b.page, "addKanbanColumn", {
         name: "pwned-col",

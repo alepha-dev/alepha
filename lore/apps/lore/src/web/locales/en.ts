@@ -418,20 +418,35 @@ export default {
   "project.settings.nav.group.features": "Features",
   "project.settings.areas.title": "Areas",
   "project.settings.areas.description":
-    "Areas of your project. Each quest belongs to one. Rename an area to refactor it across every quest.",
+    "The parts of your system. Every quest belongs to exactly one. Rename an area onto an existing one to merge them.",
   "project.settings.areas.column.name": "Area",
-  "project.settings.areas.column.quests": "Quests",
-  "project.settings.areas.column.firstQuest": "First quest",
+  "project.settings.areas.column.open": "Open",
+  "project.settings.areas.column.total": "Total",
+  "project.settings.areas.column.lastActivity": "Last activity",
+  "project.settings.areas.column.summary": "Description",
+  "project.settings.areas.column.select": "Select",
+  "project.settings.areas.select": "Select $1",
   "project.settings.areas.empty":
     "No areas yet. Forge a quest and pick an area — it appears here.",
-  "project.settings.areas.rename.action": "Rename",
-  "project.settings.areas.rename.title": "Rename area",
-  "project.settings.areas.rename.description":
-    'Rename "$1" — every quest in this area will follow.',
-  "project.settings.areas.rename.label": "New name",
-  "project.settings.areas.rename.cancel": "Cancel",
-  "project.settings.areas.rename.submit": "Rename",
+  "project.settings.areas.selected": "$1 selected",
+  "project.settings.areas.selected.one": "1 selected",
+  "project.settings.areas.merge.action": "Merge into...",
+  "project.settings.areas.merge.title": "Merge areas",
+  "project.settings.areas.merge.target": "Target area",
+  "project.settings.areas.merge.confirm":
+    "$1 quests will move into $2, and $3 areas will disappear along with their descriptions.",
+  // The COMMON case: merging one duplicate into an existing area.
+  "project.settings.areas.merge.confirm.one":
+    "$1 quests will move into $2, and 1 area will disappear along with its description.",
+  "project.settings.areas.merge.submit": "Merge",
+  "project.settings.areas.merge.done": "$1 quests moved.",
+  "project.settings.areas.merge.done.one": "1 quest moved.",
   "project.settings.areas.never": "—",
+  "project.settings.areas.delete.action": "Delete",
+  "project.settings.areas.delete.confirm":
+    "Delete this area? It has no quests, and this cannot be undone.",
+  "project.settings.areas.delete.blocked":
+    "This area still holds quests. Merge it into another area instead.",
   "project.settings.nav.kanban": "Kanban",
   "project.settings.nav.folios": "Folios",
   "project.settings.nav.epics": "Epics",
@@ -670,6 +685,8 @@ export default {
   "quest-log.collapse-panel": "Hide quest log",
   "quest-log.expand-panel": "Show quest log",
   "home.projects.see-all": "See all $1 projects",
+  "home.project.areas": "$1 areas",
+  "home.project.areas.one": "1 area",
   "account.projects.title": "Projects",
   "account.projects.description":
     "Every project you belong to, whether you own it or joined it.",
@@ -679,8 +696,29 @@ export default {
   "account.projects.updated": "Updated $1",
   "account.projects.see-all": "All projects",
 
-  "area.rename.name": "Area Name",
-  "area.rename.submit": "Rename",
+  "area.detail.rename": "Rename",
+  "area.detail.rename.title": "Rename area",
+  "area.detail.rename.label": "New name",
+  "area.detail.rename.merge":
+    "$1 already exists. $2 quests will move into it, and $3 will disappear along with its description.",
+  // The COMMON case: this dialog's whole point is renaming one area onto
+  // another, and a lone quest is the typical size of that area.
+  "area.detail.rename.merge.one":
+    "$1 already exists. 1 quest will move into it, and $2 will disappear along with its description.",
+  "area.detail.rename.submit": "Rename",
+  "area.detail.rename.submitMerge": "Merge",
+  "area.detail.description.title": "Description",
+  "area.detail.description.placeholder":
+    "What part of the system is this? Agents read this when they file a quest.",
+  "area.detail.description.save": "Save",
+  "area.detail.stats.title": "Activity",
+  "area.detail.stats.open": "Open quests",
+  "area.detail.stats.total": "Total quests",
+  "area.detail.stats.first": "First quest",
+  "area.detail.stats.last": "Last activity",
+  "area.detail.stats.never": "Never",
+  "area.detail.back": "Back to areas",
+  "area.detail.quests.title": "Recent quests",
 
   "error.title": "Oh no! Something went wrong.",
   "error.description":

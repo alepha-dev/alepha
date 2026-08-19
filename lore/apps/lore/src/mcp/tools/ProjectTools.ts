@@ -5,6 +5,7 @@ import { pinnedContentAtom } from "../../api/atoms/pinnedContentAtom.ts";
 import { EpicController } from "../../api/controllers/EpicController.ts";
 import { FolioController } from "../../api/controllers/FolioController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
+import { AreaService } from "../../api/services/AreaService.ts";
 import { foldPinnedFolios } from "../../api/services/PinnedFolioFolder.ts";
 import {
   projectContextParamsSchema,
@@ -23,12 +24,30 @@ import {
 const FOLIO_INDEX_CAP = 30;
 
 /**
+ * Cap on each area's `description` as it crosses the MCP boundary.
+ *
+ * Deliberately the OPPOSITE shape from `FOLIO_INDEX_CAP` above: that one
+ * bounds the NUMBER of folios and flags when entries are dropped, because
+ * an agent that needs more can always follow up with `folio_get`. The
+ * area LIST is never capped — an agent that cannot see an existing area
+ * name is exactly the agent that invents a new one, which is the
+ * regrowth this task exists to stop, so every area must stay visible in
+ * full. Only each entry's `description` is bounded here, to keep the
+ * payload predictable while the list itself stays whole.
+ * `areas.description` carries no length limit at the entity level
+ * (`meta({ size: "rich" })`), so this is the only thing standing between
+ * a verbose write on the settings page and an unbounded MCP payload.
+ */
+const AREA_DESCRIPTION_MAX_CHARS = 160;
+
+/**
  * MCP tools for project operations.
  */
 export class ProjectTools {
   protected readonly projectController = $inject(ProjectController);
   protected readonly folioController = $inject(FolioController);
   protected readonly epicController = $inject(EpicController);
+  protected readonly areaService = $inject(AreaService);
   protected readonly alepha = $inject(Alepha);
 
   /**
@@ -69,6 +88,25 @@ export class ProjectTools {
   }
 
   /**
+   * `{ name, description }` mapping shared by `project_info` and
+   * `project_context` so the two call sites cannot drift. Truncates
+   * `description` to `AREA_DESCRIPTION_MAX_CHARS`, appending an ellipsis
+   * when clipped — see that constant's own comment for why the area
+   * LIST itself is never capped the same way.
+   */
+  protected toAreaSummaries(
+    areas: Array<{ name: string; description: string }>,
+  ): Array<{ name: string; description: string }> {
+    return areas.map((area) => ({
+      name: area.name,
+      description:
+        area.description.length > AREA_DESCRIPTION_MAX_CHARS
+          ? `${area.description.slice(0, AREA_DESCRIPTION_MAX_CHARS)}…`
+          : area.description,
+    }));
+  }
+
+  /**
    * List all projects (projects) the user has access to.
    */
   project_list = $tool({
@@ -102,7 +140,7 @@ export class ProjectTools {
    */
   project_info = $tool({
     description:
-      "Get lightweight metadata about a project — areas, currently-active quests for the calling user, membership info. Call this before `quest_create` to see existing areas and reuse them with correct casing. For a richer orientation that also includes the folio index, prefer `project_context`.",
+      "Get lightweight metadata about a project — areas (each with a `name` and a `description` of what it covers), currently-active quests for the calling user, membership info. Call this before `quest_create` and REUSE an existing area's exact name rather than inventing a new one; read each area's `description` to pick the right one. For a richer orientation that also includes the folio index, prefer `project_context`.",
     title: "Project info",
     annotations: {
       readOnlyHint: true,
@@ -122,11 +160,13 @@ export class ProjectTools {
         params: { id: projectId },
       });
 
+      const areas = await this.areaService.listWithStats(projectId);
+
       return {
         id: result.id,
         title: result.title,
         public: result.public ?? false,
-        areas: result.areas,
+        areas: this.toAreaSummaries(areas),
         createdAt: result.createdAt,
         activeQuests: result.quests.map((quest) => ({
           id: quest.id,
@@ -149,7 +189,7 @@ export class ProjectTools {
    */
   project_context = $tool({
     description:
-      "ORIENTATION TOOL — call FIRST on any project-scoped task. Returns project metadata, areas, the calling user's currently-active quests, the epic index (number, title, status, questCount; every epic, planned/active/done alike), the folio index (titles + summaries + updatedAt, NO content bodies), AND the full content of any pinned folios (the per-project CLAUDE.md / AGENTS.md — read these first, they're the project rules). A quest belonging to a planned epic (see `epics`) still appears in `quest_list` (MCP is not gated), so check the epic index before treating a cluster of related-looking quests as unrelated noise. Folios are this project's shared memory for AI agents — read the index here, then call `folio_get` only on the ones that look relevant. ~2K tokens of complete situational awareness in one round-trip; the folio index is capped at 30 entries (sorted by pinned DESC, updatedAt DESC) — when `folios.capped` is true, use `folio_list` with a higher `limit` to fetch the rest. Pinned-folio total content is capped at ~8K chars; when `pinnedFoliosTruncated` is true some pinned bodies were dropped — `folio_get` them by id. When `preferredLanguage` is set (ISO 639-1 — e.g. `fr`, `ja`), generated content (quest titles, descriptions, folio bodies) MUST be written in that language unless the user explicitly asks for another.",
+      "ORIENTATION TOOL — call FIRST on any project-scoped task. Returns project metadata, areas (each with a `name` and a `description` of what it covers — read these before filing a quest, and REUSE an existing area's exact name rather than registering a new one), the calling user's currently-active quests, the epic index (number, title, status, questCount; every epic, planned/active/done alike), the folio index (titles + summaries + updatedAt, NO content bodies), AND the full content of any pinned folios (the per-project CLAUDE.md / AGENTS.md — read these first, they're the project rules). A quest belonging to a planned epic (see `epics`) still appears in `quest_list` (MCP is not gated), so check the epic index before treating a cluster of related-looking quests as unrelated noise. Folios are this project's shared memory for AI agents — read the index here, then call `folio_get` only on the ones that look relevant. ~2K tokens of complete situational awareness in one round-trip; the folio index is capped at 30 entries (sorted by pinned DESC, updatedAt DESC) — when `folios.capped` is true, use `folio_list` with a higher `limit` to fetch the rest. Pinned-folio total content is capped at ~8K chars; when `pinnedFoliosTruncated` is true some pinned bodies were dropped — `folio_get` them by id. When `preferredLanguage` is set (ISO 639-1 — e.g. `fr`, `ja`), generated content (quest titles, descriptions, folio bodies) MUST be written in that language unless the user explicitly asks for another.",
     title: "Project context (orientation)",
     annotations: {
       readOnlyHint: true,
@@ -171,6 +211,14 @@ export class ProjectTools {
       const result = await this.projectController.getProjectById({
         params: { id: projectId },
       });
+
+      // `areas` table is the source of truth for the list (`projects.areas`
+      // is a deprecated rollback net nothing else reads — see
+      // `QuestService.createQuest`). Only `name` + `description` cross the
+      // MCP boundary: this call is paid for on every `project_context`
+      // round-trip, and the stats (`questCount`, dates) are a settings-page
+      // concern, not an orientation one.
+      const areaStats = await this.areaService.listWithStats(projectId);
 
       // The epic index. Never gated (same as an epic's own view of
       // itself) — orientation is exactly what failed for the work that
@@ -223,7 +271,7 @@ export class ProjectTools {
         id: result.id,
         title: result.title,
         public: result.public ?? false,
-        areas: result.areas,
+        areas: this.toAreaSummaries(areaStats),
         createdAt: result.createdAt,
         activeQuests: result.quests.map((quest) => ({
           id: quest.id,
