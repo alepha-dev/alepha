@@ -24,6 +24,23 @@ import {
 const FOLIO_INDEX_CAP = 30;
 
 /**
+ * Cap on each area's `description` as it crosses the MCP boundary.
+ *
+ * Deliberately the OPPOSITE shape from `FOLIO_INDEX_CAP` above: that one
+ * bounds the NUMBER of folios and flags when entries are dropped, because
+ * an agent that needs more can always follow up with `folio_get`. The
+ * area LIST is never capped — an agent that cannot see an existing area
+ * name is exactly the agent that invents a new one, which is the
+ * regrowth this task exists to stop, so every area must stay visible in
+ * full. Only each entry's `description` is bounded here, to keep the
+ * payload predictable while the list itself stays whole.
+ * `areas.description` carries no length limit at the entity level
+ * (`meta({ size: "rich" })`), so this is the only thing standing between
+ * a verbose write on the settings page and an unbounded MCP payload.
+ */
+const AREA_DESCRIPTION_MAX_CHARS = 160;
+
+/**
  * MCP tools for project operations.
  */
 export class ProjectTools {
@@ -68,6 +85,25 @@ export class ProjectTools {
     throw new BadRequestError(
       "Project is required. Specify project ID or project_name.",
     );
+  }
+
+  /**
+   * `{ name, description }` mapping shared by `project_info` and
+   * `project_context` so the two call sites cannot drift. Truncates
+   * `description` to `AREA_DESCRIPTION_MAX_CHARS`, appending an ellipsis
+   * when clipped — see that constant's own comment for why the area
+   * LIST itself is never capped the same way.
+   */
+  protected toAreaSummaries(
+    areas: Array<{ name: string; description: string }>,
+  ): Array<{ name: string; description: string }> {
+    return areas.map((area) => ({
+      name: area.name,
+      description:
+        area.description.length > AREA_DESCRIPTION_MAX_CHARS
+          ? `${area.description.slice(0, AREA_DESCRIPTION_MAX_CHARS)}…`
+          : area.description,
+    }));
   }
 
   /**
@@ -130,10 +166,7 @@ export class ProjectTools {
         id: result.id,
         title: result.title,
         public: result.public ?? false,
-        areas: areas.map((area) => ({
-          name: area.name,
-          description: area.description,
-        })),
+        areas: this.toAreaSummaries(areas),
         createdAt: result.createdAt,
         activeQuests: result.quests.map((quest) => ({
           id: quest.id,
@@ -238,10 +271,7 @@ export class ProjectTools {
         id: result.id,
         title: result.title,
         public: result.public ?? false,
-        areas: areaStats.map((area) => ({
-          name: area.name,
-          description: area.description,
-        })),
+        areas: this.toAreaSummaries(areaStats),
         createdAt: result.createdAt,
         activeQuests: result.quests.map((quest) => ({
           id: quest.id,
