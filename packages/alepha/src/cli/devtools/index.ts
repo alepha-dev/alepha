@@ -118,7 +118,7 @@ export const resolveDevtoolsAssetsPath = (
 /**
  * CLI plugin that integrates @alepha/devtools into the Vite dev server.
  *
- * This module is intentionally lightweight — it does NOT statically import
+ * This module is intentionally lightweight - it does NOT statically import
  * `@alepha/devtools` (which pulls in `alepha/react` and `.tsx` files).
  * Instead, it lazy-loads devtools via Vite's SSR module loader at runtime.
  *

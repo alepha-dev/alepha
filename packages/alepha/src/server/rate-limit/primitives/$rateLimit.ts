@@ -15,9 +15,9 @@ export interface RateLimitMiddlewareOptions extends RateLimitOptions {
  * Middleware that enforces rate limiting.
  *
  * **Key resolution** (in order):
- * 1. Explicit `key` function — user controls the key. Works anywhere (`$action`, `$job`, `$pipeline`).
- * 2. Auto-detect `request.ip` from ALS — default for `$action` context.
- * 3. `"global"` fallback — when no request context and no `key`. All calls share one bucket.
+ * 1. Explicit `key` function - user controls the key. Works anywhere (`$action`, `$job`, `$pipeline`).
+ * 2. Auto-detect `request.ip` from ALS - default for `$action` context.
+ * 3. `"global"` fallback - when no request context and no `key`. All calls share one bucket.
  *
  * Sets `X-RateLimit-*` response headers when a request context is available.
  * Throws `HttpError(429)` when the limit is exceeded.

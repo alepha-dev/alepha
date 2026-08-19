@@ -1,6 +1,6 @@
 # Pack Command
 
-Pack a built workspace into a deployable `tar.gz`. The archive contains everything a remote runner needs to deploy the app with `alepha platform ... --prebuilt` — and nothing else.
+Pack a built workspace into a deployable `tar.gz`. The archive contains everything a remote runner needs to deploy the app with `alepha platform ... --prebuilt` - and nothing else.
 
 ## Quick Start
 
@@ -17,7 +17,7 @@ dist/          pre-built output, including manifest.json
 migrations/    SQL migration files (if present)
 ```
 
-No source, no `alepha.config.ts`, no `package.json` — the deploy side reads everything it needs from `dist/manifest.json` (detected resources, declared env keys, platform options) and never touches source. Excluded: `node_modules`, `.alepha` build cache, `e2e`, `playwright-report`, `coverage`, and OS junk files.
+No source, no `alepha.config.ts`, no `package.json` - the deploy side reads everything it needs from `dist/manifest.json` (detected resources, declared env keys, platform options) and never touches source. Excluded: `node_modules`, `.alepha` build cache, `e2e`, `playwright-report`, `coverage`, and OS junk files.
 
 ## Options
 
@@ -37,6 +37,6 @@ tar -xzf my-app-0.0.2.tar.gz
 alepha p up --prebuilt
 ```
 
-`--prebuilt` skips the Vite bundle steps — only the deploy config (`wrangler.jsonc`) is regenerated from the manifest, so a bare artifact deploys without the app's source tree or its `node_modules`.
+`--prebuilt` skips the Vite bundle steps - only the deploy config (`wrangler.jsonc`) is regenerated from the manifest, so a bare artifact deploys without the app's source tree or its `node_modules`.
 
 This is the workflow external orchestrators (like Alepha Rocket) use: build once, pack once, deploy the same artifact to many environments or tenants.

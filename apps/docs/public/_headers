@@ -4,8 +4,8 @@
 # what makes it safe to land while both hosts are live.
 #
 # It exists because Workers Static Assets defaults every asset to
-# `cache-control: public, max-age=0, must-revalidate`. That is right for HTML —
-# a docs page must not be stale — and wrong for everything whose URL contains
+# `cache-control: public, max-age=0, must-revalidate`. That is right for HTML -
+# a docs page must not be stale - and wrong for everything whose URL contains
 # its own content hash, where revalidating asks "has the immutable file
 # changed?" once per page load, forever.
 
@@ -21,7 +21,7 @@
 /asset.*
   Cache-Control: public, max-age=31536000, immutable
 
-# Not content-hashed, so not immutable — but a logo that changes twice a year
+# Not content-hashed, so not immutable - but a logo that changes twice a year
 # has no business being revalidated on every navigation. A day is the honest
 # trade between staleness and traffic.
 /*.png
@@ -35,7 +35,7 @@
 
 # The Bay installer. Anyone sensible reads a script before piping it into a
 # root shell, so it is pinned to `text/plain` rather than left to whatever a
-# `.sh` extension resolves to — browsers download that instead of showing it.
+# `.sh` extension resolves to - browsers download that instead of showing it.
 #
 # Deliberately no cache rule: the default `max-age=0, must-revalidate` is
 # exactly right for an installer, so a fix to it is picked up on the next run

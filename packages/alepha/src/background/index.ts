@@ -27,7 +27,7 @@ export * from "./providers/WorkerdBackgroundTaskProvider.ts";
  * On Node/Vercel the event loop keeps the task alive. On Cloudflare Workers the
  * `workerd` build swaps in {@link WorkerdBackgroundTaskProvider}, which wraps
  * the task in `executionCtx.waitUntil` so the isolate isn't frozen at response
- * time — the call site is identical either way.
+ * time - the call site is identical either way.
  *
  * @module alepha.background
  */

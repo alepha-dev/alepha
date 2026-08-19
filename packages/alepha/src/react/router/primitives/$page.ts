@@ -235,7 +235,7 @@ export interface PagePrimitiveOptions<
   parent?: PagePrimitive<PageConfigSchema, TPropsParent, any>;
 
   /**
-   * UI-affordance predicate for this page's navigation entry — **NOT security**.
+   * UI-affordance predicate for this page's navigation entry - **NOT security**.
    * For real access control, gate the route with `use: [$secure({ permissions })]`
    * (server-enforced); `can` is only consulted by navigation surfaces (sidebar,
    * breadcrumbs, command palette), never by the router.
@@ -254,7 +254,7 @@ export interface PagePrimitiveOptions<
   can?: (ctx: PageCanContext) => boolean | "disabled";
 
   /**
-   * Navigation metadata — declares this page's presence in navigation
+   * Navigation metadata - declares this page's presence in navigation
    * surfaces: the sidebar, the breadcrumb trail, and a command palette
    * (Spotlight). A page WITHOUT `nav` is route-only (reachable by URL but not
    * listed).

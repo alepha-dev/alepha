@@ -22,7 +22,7 @@ If any command fails, fix the issue before committing. Do not skip these steps.
 clean -> lint -> typecheck -> test -> db migrations check -> build -> clean
 ```
 
-The `test` step is skipped when the project has no tests, and `build` is skipped for Expo projects. `db migrations check` always runs: it returns cleanly when the app has no database, so a project with entities and no migrations fails here instead of in production — that is deliberate. This is the same pipeline you should use in CI. Run it before opening a pull request:
+The `test` step is skipped when the project has no tests, and `build` is skipped for Expo projects. `db migrations check` always runs: it returns cleanly when the app has no database, so a project with entities and no migrations fails here instead of in production - that is deliberate. This is the same pipeline you should use in CI. Run it before opening a pull request:
 
 ```bash
 npx alepha verify
@@ -44,7 +44,7 @@ Runs [Vitest](https://vitest.dev/). Specs live in `test/` or co-located as `*.sp
 
 ### yarn build
 
-Part of `alepha verify` rather than the per-commit trio. Builds the project for production; build failures are verification failures — if it can't build, it can't ship.
+Part of `alepha verify` rather than the per-commit trio. Builds the project for production; build failures are verification failures - if it can't build, it can't ship.
 
 ## Verbose Output
 

@@ -66,11 +66,11 @@ Runs `tsc --noEmit`. Your types must be correct. No `any` sneaking through, no m
 alepha test
 ```
 
-Runs Vitest (embedded in `alepha` — nothing to install). Your tests must pass. All of them.
+Runs Vitest (embedded in `alepha` - nothing to install). Your tests must pass. All of them.
 
 > **Optional Step**
 >
-> This step is skipped if the project has no tests — no `test/` directory and no `*.spec.{ts,tsx,js,jsx}` files under `src/`.
+> This step is skipped if the project has no tests - no `test/` directory and no `*.spec.{ts,tsx,js,jsx}` files under `src/`.
 
 ### 5. Database Migrations Check
 
@@ -82,7 +82,7 @@ Verifies your Drizzle migrations are in sync with your schema.
 
 > **Always Runs**
 >
-> This step is deliberately unconditional. It returns cleanly when the app has no database — but an app with entities and zero migrations now fails here, which is the point: that is the state that ships a server which boots green and 500s on its first query.
+> This step is deliberately unconditional. It returns cleanly when the app has no database - but an app with entities and zero migrations now fails here, which is the point: that is the state that ships a server which boots green and 500s on its first query.
 
 ### 6. Build
 
@@ -90,7 +90,7 @@ Verifies your Drizzle migrations are in sync with your schema.
 alepha build
 ```
 
-Builds your project for production using Vite. For React apps, this runs twice — once for the frontend (browser bundle) and once for the backend (server bundle). The server build is optimized to be serverless-friendly, bundling everything into a single file.
+Builds your project for production using Vite. For React apps, this runs twice - once for the frontend (browser bundle) and once for the backend (server bundle). The server build is optimized to be serverless-friendly, bundling everything into a single file.
 
 If it can't build, it can't ship. See the [Build Command](/docs/cli-commands-build) documentation for deployment options.
 
@@ -110,11 +110,11 @@ Removes build artifacts. Leaves your working directory clean.
 
 The order matters:
 
-1. **Lint first** — Format and catch issues early
-2. **Typecheck second** — Types depend on clean, linted code
-3. **Test third** — Tests depend on correct types
-4. **Migrations fourth** — Verify schema consistency
-5. **Build last** — Only build if everything else passes
+1. **Lint first**: Format and catch issues early
+2. **Typecheck second**: Types depend on clean, linted code
+3. **Test third**: Tests depend on correct types
+4. **Migrations fourth**: Verify schema consistency
+5. **Build last**: Only build if everything else passes
 
 > **Fail Fast**
 >
@@ -198,7 +198,7 @@ alepha build
 
 > **Full Pipeline Recommended**
 >
-> For final validation, always run the full `verify`. It's comprehensive for a reason — individual commands might miss issues that the full pipeline catches.
+> For final validation, always run the full `verify`. It's comprehensive for a reason - individual commands might miss issues that the full pipeline catches.
 
 ## Handling Failures
 
@@ -247,7 +247,7 @@ Check your imports. Make sure all referenced files exist.
 
 ## Speed
 
-The full `verify` is fast — Biome and Vite are blazing quick:
+The full `verify` is fast - Biome and Vite are blazing quick:
 
 - Format: <1s (Biome is written in Rust)
 - Lint: <1s (even on large codebases)

@@ -3,7 +3,7 @@ import { e2ePort } from "../../playwright.port.ts";
 
 /*
  * The e2e port comes from the 4300-4999 band, which is reserved for e2e and
- * disjoint from every dev port in the repo — see `playwright.port.ts`. Never a
+ * disjoint from every dev port in the repo - see `playwright.port.ts`. Never a
  * dev port (33xx) and never 5173/5174: those are Vite's default and its first
  * fallback, so an app running `yarn dev` would be adopted by this suite.
  * `e2ePort` derives the slot from the checkout (so two worktrees never share a
@@ -38,7 +38,7 @@ export default defineConfig({
     env: {
       SERVER_PORT: `${port}`,
       // `yarn start` runs the production build (`node dist`), which now refuses
-      // to boot on the default APP_SECRET — inject a test one.
+      // to boot on the default APP_SECRET - inject a test one.
       APP_SECRET: "e2e-test-secret",
     },
     stdout: "pipe",

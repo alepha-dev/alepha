@@ -10,9 +10,9 @@ Create a new project:
 npm create alepha my-app
 ```
 
-`create-alepha` is the standalone starter built for this job — `yarn create`, `pnpm create` and `bun create` all work, and each picks its own package manager. It runs an interactive wizard for anything you don't pass on the command line. Already inside a project (or want to fill in missing pieces)? `npx alepha init` does the same scaffolding in place, and takes `--force` to overwrite.
+`create-alepha` is the standalone starter built for this job - `yarn create`, `pnpm create` and `bun create` all work, and each picks its own package manager. It runs an interactive wizard for anything you don't pass on the command line. Already inside a project (or want to fill in missing pieces)? `npx alepha init` does the same scaffolding in place, and takes `--force` to overwrite.
 
-Either way, this scaffolds a full-stack project — API, React web module, and Tailwind — and adds `alepha` as a dependency.
+Either way, this scaffolds a full-stack project - API, React web module, and Tailwind - and adds `alepha` as a dependency.
 
 Building something that needs accounts? Add `--preset=saas` and you also get sign-in, an account area and an admin console, wired and running on first boot. See [init](/docs/cli-commands-init#the-saas-preset).
 
@@ -54,7 +54,7 @@ npm run dev
 
 ## Requirements
 
-- **Node.js 22+** — Alepha uses modern JavaScript features
+- **Node.js 22+**: Alepha uses modern JavaScript features
 - or **Bun 1.3+**, if Bun is your runtime
 
 Check your version:

@@ -16,7 +16,7 @@ Plugin for Alepha Email that provides SMTP capabilities via Nodemailer.
 
 ### Providers
 
-- [`NodemailerEmailProvider`](/docs/reference-providers-nodemaileremailprovider) — Email provider using Nodemailer for SMTP transport.
+- [`NodemailerEmailProvider`](/docs/reference-providers-nodemaileremailprovider) - Email provider using Nodemailer for SMTP transport.
 
 ### Environment Variables
 

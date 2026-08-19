@@ -19,4 +19,4 @@ Request rate limiting on actions.
 
 ### Primitives
 
-- [`$rateLimit`](/docs/reference-primitives-$ratelimit) — Middleware that enforces rate limiting.
+- [`$rateLimit`](/docs/reference-primitives-$ratelimit) - Middleware that enforces rate limiting.

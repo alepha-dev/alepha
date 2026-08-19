@@ -7,15 +7,15 @@ import { $context } from "./$context.ts";
 /**
  * Reads a value out of the application store from a class property.
  *
- * The declarative counterpart of `alepha.store.get(target)` — same store, same
+ * The declarative counterpart of `alepha.store.get(target)` - same store, same
  * operation, expressed as a class member instead of an imperative call. The
  * property is reactive: it re-reads on every access, so a mutation made
  * elsewhere is visible immediately.
  *
  * Accepts either side of the state model:
- * - an {@link Atom} — read from the store, and registered on first use if it
+ * - an {@link Atom} - read from the store, and registered on first use if it
  *   was not already
- * - a {@link Computed} — derived from its dependencies on every read. Computed
+ * - a {@link Computed} - derived from its dependencies on every read. Computed
  *   values are never stored, so nothing is registered.
  *
  * **Use cases**: global state, configuration, sharing data between services,

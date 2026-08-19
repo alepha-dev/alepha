@@ -60,8 +60,8 @@ class Config {
 ### Reading a variable under another name
 
 `aliases` lets a variable be read from other names when it is not set itself.
-Hosts hand values over under names of their choosing — a port they allocated
-arrives as `PORT`, a database they provisioned as `POSTGRES_URL` — and this is
+Hosts hand values over under names of their choosing - a port they allocated
+arrives as `PORT`, a database they provisioned as `POSTGRES_URL` - and this is
 how an app accepts them without renaming its own configuration:
 
 ```typescript check
@@ -77,14 +77,14 @@ class Config {
 
 The declared key always wins. Aliases are tried in order and only when the key
 itself is absent from the environment, and the value found is coerced and
-validated as the key it stands in for — so `PORT=8080` yields the number `8080`
+validated as the key it stands in for - so `PORT=8080` yields the number `8080`
 on `SERVER_PORT`, and `PORT=nonsense` fails validation the same way
 `SERVER_PORT=nonsense` would. Defaults still apply when neither is set.
 
 An alias is only ever read. It is not a key of its own: it stays out of the
 parsed result, out of `alepha gen env`'s variable list (it is mentioned against
 the key it feeds) and out of the deploy manifest, so the declared name remains
-the single one the rest of the app — and the deploy target — refers to.
+the single one the rest of the app - and the deploy target - refers to.
 
 `alepha/server` uses this for `SERVER_PORT`, which is why an app deployed to a
 host that injects `PORT` binds the right port with no configuration.
@@ -96,8 +96,8 @@ Alepha caches parsed env results per schema. Multiple services using the same `z
 ### Declassifying a variable that is not secret
 
 **Every environment variable is treated as a secret.** That is already what
-happens on deploy — every declared key is pushed to the target as an encrypted
-binding — so there is nothing to do for a `DATABASE_URL` or an API key.
+happens on deploy - every declared key is pushed to the target as an encrypted
+binding - so there is nothing to do for a `DATABASE_URL` or an API key.
 
 The annotation is the opt-out, for the handful of variables that genuinely are
 not sensitive:
@@ -115,7 +115,7 @@ class Payments {
 
 `secret: true` is accepted and is the default, so writing it documents intent
 without changing behaviour. `.meta({ secret: false })` is equivalent to the
-option — `z.text({ ... })` forwards unknown options to `.meta()`.
+option - `z.text({ ... })` forwards unknown options to `.meta()`.
 
 The default runs this way round on purpose. The annotation is easy to forget,
 and forgetting it must never be what exposes a value: a missed `secret: false`
@@ -126,7 +126,7 @@ Three things read it:
 
 - **`alepha gen env`** labels the declassified variables in the generated
   template, so whoever fills it in can see at a glance which ones are safe to
-  commit — everything unlabelled belongs in a secret store:
+  commit - everything unlabelled belongs in a secret store:
 
   ```txt
   # (public)
@@ -142,7 +142,7 @@ Three things read it:
 
 - **`alepha platform up`** pushes a declassified key to Cloudflare as a
   `plain_text` binding instead of an encrypted `secret_text` one. That makes it
-  readable in the dashboard and — the actual point — **editable** there, which a
+  readable in the dashboard and - the actual point - **editable** there, which a
   write-only secret is not. A key the app never declassified is still encrypted,
   so this only ever loosens what an author asked to loosen.
 
@@ -173,13 +173,13 @@ The `name` uniquely identifies the atom in the state store. The `schema` defines
 
 Recommended naming convention for `name` is dot-separated, e.g. `"app.config"`, `"user.settings"`, etc.
 
-If the schema itself is optional (wrapped with `.optional()`, e.g. `z.object({...}).optional()`), the `default` is optional too. Otherwise — even when every field inside the object is optional — `default` is required.
+If the schema itself is optional (wrapped with `.optional()`, e.g. `z.object({...}).optional()`), the `default` is optional too. Otherwise - even when every field inside the object is optional - `default` is required.
 
 Beyond `name` / `schema` / `default`, an atom also takes `description`, `serverOnly`, and
 `persist: "cookie" | "localStorage" | "sessionStorage"`. Two things to know before reaching
 for them:
 
-- `serverOnly` and `persist` cannot be combined — `$atom()` throws at call time.
+- `serverOnly` and `persist` cannot be combined - `$atom()` throws at call time.
 - Cookie persistence is unsigned and unencrypted, and anything client-persisted is
   attacker-writable. Never persist roles, permissions, or entitlements in an atom; treat a
   persisted value as user input.

@@ -84,7 +84,7 @@ export interface CloudflareEmailSendResult {
  * `EMAIL_FROM` domain.
  *
  * Two transports, picked automatically:
- * - **Workers binding** (`SEND_EMAIL`) when running on Workers. Preferred —
+ * - **Workers binding** (`SEND_EMAIL`) when running on Workers. Preferred -
  *   no egress and no token to rotate.
  * - **REST API** otherwise, so the same provider keeps working on Node
  *   (`yarn start`, a container, a cron box). Needs

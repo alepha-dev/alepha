@@ -9,7 +9,7 @@ import type { Atom, AtomStatic } from "./$atom.ts";
  * Dependencies are declared statically, which keeps the data flow explicit
  * and lets subscribers know exactly which mutations invalidate the value.
  *
- * Computed values are never stored, serialized, hydrated, or persisted —
+ * Computed values are never stored, serialized, hydrated, or persisted -
  * they are recomputed from their dependencies on every read, so they are
  * always correct inside request-scoped (fork) state on the server.
  *
@@ -28,7 +28,7 @@ import type { Atom, AtomStatic } from "./$atom.ts";
  * A computed whose deps include a `serverOnly` atom will NOT agree across the
  * SSR boundary. `serverOnly` keeps the atom out of the hydration payload, so
  * the server derives the value from the atom's real value while the browser
- * re-derives it from the atom's *default* — React then hydrates a DOM that
+ * re-derives it from the atom's *default* - React then hydrates a DOM that
  * does not match the markup it received (a hydration mismatch, and a
  * silently wrong value afterwards).
  *

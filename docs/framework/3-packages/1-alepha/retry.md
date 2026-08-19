@@ -22,8 +22,8 @@ Automatic retry with backoff.
 
 ### Primitives
 
-- [`$retry`](/docs/reference-primitives-$retry) — Retry middleware for `use` arrays in `$action`, `$job`, `$page`, `$pipeline`.
+- [`$retry`](/docs/reference-primitives-$retry) - Retry middleware for `use` arrays in `$action`, `$job`, `$page`, `$pipeline`.
 
 ### Providers
 
-- [`RetryProvider`](/docs/reference-providers-retryprovider) — Service for executing functions with automatic retry logic.
+- [`RetryProvider`](/docs/reference-providers-retryprovider) - Service for executing functions with automatic retry logic.

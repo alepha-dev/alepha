@@ -1,6 +1,6 @@
 # Db Command
 
-Manage your database schema from the CLI. The `db` command generates migrations from your `$entity` definitions, checks for drift, applies migrations, and opens a database browser — all powered by the embedded drizzle-kit.
+Manage your database schema from the CLI. The `db` command generates migrations from your `$entity` definitions, checks for drift, applies migrations, and opens a database browser - all powered by the embedded drizzle-kit.
 
 ## Quick Start
 
@@ -12,7 +12,7 @@ alepha db migrations create
 alepha db migrations apply
 ```
 
-Migrations are written to `migrations/<provider>/` — one directory per database provider (e.g. `migrations/postgres/`, `migrations/sqlite/`).
+Migrations are written to `migrations/<provider>/` - one directory per database provider (e.g. `migrations/postgres/`, `migrations/sqlite/`).
 
 ## Common Flags
 
@@ -32,7 +32,7 @@ Compare the last migration snapshot against your current `$entity` schemas. Fail
 alepha db migrations check
 ```
 
-Drift is reported across **all** providers before failing, so a clean Postgres never masks a drifted SQLite migration set. This is the check that `alepha verify` always runs — it returns cleanly when the app has no database.
+Drift is reported across **all** providers before failing, so a clean Postgres never masks a drifted SQLite migration set. This is the check that `alepha verify` always runs - it returns cleanly when the app has no database.
 
 Alias: `alepha db m check`.
 
@@ -50,7 +50,7 @@ alepha db migrations create --custom          # empty migration for hand-written
 |------|-------------|
 | `--name` | Name for the generated migration file |
 | `--custom` | Generate an empty migration file for custom SQL (data migrations, manual adjustments) |
-| `--hints` | JSON array of drizzle-kit hints resolving ambiguous diffs (rename-vs-create). When a hint is required, drizzle-kit exits with code 2 and prints the exact JSON to pass — without it, a table rename becomes CREATE+DROP, which is data loss |
+| `--hints` | JSON array of drizzle-kit hints resolving ambiguous diffs (rename-vs-create). When a hint is required, drizzle-kit exits with code 2 and prints the exact JSON to pass - without it, a table rename becomes CREATE+DROP, which is data loss |
 
 ### migrations apply
 
@@ -60,11 +60,11 @@ Apply pending migrations to the database. Boots your app in production mode with
 alepha db migrations apply
 ```
 
-For a *deployed* database (Cloudflare D1, Hyperdrive), use `alepha platform db migrate` instead — it resolves the environment, adapter, and resource naming.
+For a *deployed* database (Cloudflare D1, Hyperdrive), use `alepha platform db migrate` instead - it resolves the environment, adapter, and resource naming.
 
 ### push
 
-Push schema changes directly to the database, skipping migration files. Useful for rapid prototyping — not for production databases.
+Push schema changes directly to the database, skipping migration files. Useful for rapid prototyping - not for production databases.
 
 ```bash
 alepha db push
@@ -90,7 +90,7 @@ alepha db baseline mark
 
 > **Cloudflare D1**
 >
-> `alepha db baseline mark` does not support D1 — its deploy path uses wrangler's filename-based bookkeeping table. Use `alepha platform db baseline mark` instead.
+> `alepha db baseline mark` does not support D1 - its deploy path uses wrangler's filename-based bookkeeping table. Use `alepha platform db baseline mark` instead.
 
 ### studio
 
@@ -108,7 +108,7 @@ The `alepha db` commands operate on the database your app connects to locally (`
 |-------|----------|
 | `alepha db migrations apply` | `alepha p db migrate` |
 | `alepha db baseline mark` | `alepha p db baseline mark` |
-| — | `alepha p db export` (pull remote DB into a local snapshot) |
+| - | `alepha p db export` (pull remote DB into a local snapshot) |
 
 ## Workflow
 

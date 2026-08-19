@@ -4,7 +4,7 @@ import { PrettyFormatterProvider } from "./PrettyFormatterProvider.ts";
 /**
  * Compact formatter for CLI output.
  *
- * Renders `HH:MM:SS L message {json}` — a short clock time, a single-letter
+ * Renders `HH:MM:SS L message {json}` - a short clock time, a single-letter
  * level colored by severity, the message, and any structured data appended
  * dim. Deliberately drops the `<module.service>`, app name and context UUID
  * that {@link PrettyFormatterProvider} prints: in an interactive CLI session

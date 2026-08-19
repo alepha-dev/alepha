@@ -15,7 +15,7 @@ import { I18nCheckService } from "./services/I18nCheckService.ts";
  * pile up unnoticed when a feature is removed.
  *
  * Commands:
- * - `alepha i18n check` — report unused translation keys
+ * - `alepha i18n check`: report unused translation keys
  *
  * Configuration in `alepha.config.ts`:
  *

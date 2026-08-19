@@ -20,10 +20,10 @@ export interface DebounceOptions {
 /**
  * Middleware that coalesces concurrent calls with the same key into a single handler execution.
  *
- * All callers within the delay window receive the same result. No storage —
+ * All callers within the delay window receive the same result. No storage -
  * once the handler finishes, the next call starts fresh. Process-local.
  *
- * **Use case**: thundering herd protection — cache expires, 100 requests
+ * **Use case**: thundering herd protection - cache expires, 100 requests
  * hit the same endpoint, debounce ensures one rebuild.
  *
  * ```typescript

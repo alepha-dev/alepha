@@ -23,10 +23,10 @@ Type-safe caching with TTL support.
 
 ### Primitives
 
-- [`$cache`](/docs/reference-primitives-$cache) — Creates a cache primitive for caching with automatic management.
+- [`$cache`](/docs/reference-primitives-$cache) - Creates a cache primitive for caching with automatic management.
 
 ### Providers
 
-- [`CacheProvider`](/docs/reference-providers-cacheprovider) — Cache provider interface.
-- [`CloudflareKVProvider`](/docs/reference-providers-cloudflarekvprovider) — Cloudflare KV cache provider.
-- [`MemoryCacheProvider`](/docs/reference-providers-memorycacheprovider) — In-memory implementation of CacheProvider for testing.
+- [`CacheProvider`](/docs/reference-providers-cacheprovider) - Cache provider interface.
+- [`CloudflareKVProvider`](/docs/reference-providers-cloudflarekvprovider) - Cloudflare KV cache provider.
+- [`MemoryCacheProvider`](/docs/reference-providers-memorycacheprovider) - In-memory implementation of CacheProvider for testing.

@@ -13,7 +13,7 @@ Durable Object that hosts one room's WebSocket connections on Cloudflare.
 This class is intentionally a thin adapter: every entry point forwards
 straight to a `WebSocketRoom` instance, which holds all the actual logic
 and has zero dependency on `cloudflare:workers`. That module does not exist
-under Vitest, so this file must never be imported from a `.spec.ts` — it is
+under Vitest, so this file must never be imported from a `.spec.ts` - it is
 only reached via the generated workerd entry point
 (`index.workerd.ts`).
 

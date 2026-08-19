@@ -2,7 +2,7 @@
 
 Alepha provides a provider-agnostic payments layer through `alepha/api/payments`. The framework owns the data model and lifecycle (intents, captures, refunds, payment methods); concrete payment service providers (PSPs) like Stripe or Mollie plug in via the `PaymentProvider` abstract class.
 
-The same application code works against any provider — swap implementations without touching controllers, services, or hooks.
+The same application code works against any provider - swap implementations without touching controllers, services, or hooks.
 
 ## The model
 
@@ -22,9 +22,9 @@ Every state transition emits a hook on Alepha's event bus:
 "payments:expired"
 ```
 
-`payments:expired` is emitted by the stale-intent sweep described above — wire it if your fulfilment or notification code needs to release a reservation when a checkout is abandoned.
+`payments:expired` is emitted by the stale-intent sweep described above - wire it if your fulfilment or notification code needs to release a reservation when a checkout is abandoned.
 
-Your own modules (accounting, notifications, fulfilment) listen via `$hook` — they never call the PSP directly.
+Your own modules (accounting, notifications, fulfilment) listen via `$hook` - they never call the PSP directly.
 
 > **Recurring billing** is deliberately out of scope: let your PSP own it. Create
 > the subscription with the provider (e.g. a Stripe Checkout in
@@ -43,13 +43,13 @@ const alepha = Alepha.create().with(AlephaApiPayments);
 
 Out of the box this gives you:
 
-- `POST /api/payments/checkout` — create a checkout session, returns redirect URL.
-- `GET/POST/DELETE/PATCH /api/payments/payment-methods/...` — list, add, remove, set default.
-- `POST /api/payments/webhook` — PSP webhook ingress (no `$secure` middleware; the provider verifies authenticity).
-- `/api/admin/payments/...` — capture, void, refund, cancel, list intents, record cash payments.
+- `POST /api/payments/checkout`: create a checkout session, returns redirect URL.
+- `GET/POST/DELETE/PATCH /api/payments/payment-methods/...`: list, add, remove, set default.
+- `POST /api/payments/webhook`: PSP webhook ingress (no `$secure` middleware; the provider verifies authenticity).
+- `/api/admin/payments/...`: capture, void, refund, cancel, list intents, record cash payments.
 - A cron running every 15 minutes (`api:payments:expireStaleIntents`, configurable via the `paymentsConfig` atom's `expireStaleIntentsCron`) that expires intents stuck in `processing` for more than 30 minutes.
 
-`AlephaApiPayments` registers `MemoryPaymentProvider` as the default provider — you can boot the module with no PSP configured and exercise the full flow end-to-end via the mock checkout page at `/payments/mock-checkout/:id`. The page is gated on `MemoryPaymentProvider` outside production; `mockCheckoutOptions.allowInProduction` is the documented escape hatch if you truly need it live.
+`AlephaApiPayments` registers `MemoryPaymentProvider` as the default provider - you can boot the module with no PSP configured and exercise the full flow end-to-end via the mock checkout page at `/payments/mock-checkout/:id`. The page is gated on `MemoryPaymentProvider` outside production; `mockCheckoutOptions.allowInProduction` is the documented escape hatch if you truly need it live.
 
 ## Creating a payment
 
@@ -145,7 +145,7 @@ await this.payments.recordCashPayment(2500, "EUR", { invoice: "INV-001" });
 
 ## Local development
 
-With no provider configured, the `MemoryPaymentProvider` is wired in. `createSession` returns a URL to the bundled mock checkout page where you can confirm or cancel the payment manually — both cases drive the same hooks the real PSP would trigger.
+With no provider configured, the `MemoryPaymentProvider` is wired in. `createSession` returns a URL to the bundled mock checkout page where you can confirm or cancel the payment manually - both cases drive the same hooks the real PSP would trigger.
 
 In tests, inject a fresh memory provider and assert against its in-memory state:
 

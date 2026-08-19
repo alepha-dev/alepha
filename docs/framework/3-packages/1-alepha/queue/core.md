@@ -18,7 +18,7 @@ dispatch to travel through a broker instead of running in-process.
 
 Delivery at this layer is **at-most-once**: a message is popped from the
 backend before the handler runs, so a handler error or a process crash
-loses it. There is no retry and no dead-letter queue here — `$job` supplies
+loses it. There is no retry and no dead-letter queue here - `$job` supplies
 those with a DB-backed outbox and a reconciliation sweep. (Cloudflare
 Queues adds broker-level retry/DLQ, configured on the binding.)
 
@@ -32,7 +32,7 @@ Queues adds broker-level retry/DLQ, configured on the binding.)
 
 ### Providers
 
-- [`CloudflareQueueProvider`](/docs/reference-providers-cloudflarequeueprovider) — Cloudflare Queue provider.
-- [`QueueCodec`](/docs/reference-providers-queuecodec) — Owns the on-the-wire shape of a queue message.
-- [`QueueProvider`](/docs/reference-providers-queueprovider) — Minimalist Queue interface.
-- [`WorkerdWorkerProvider`](/docs/reference-providers-workerdworkerprovider) — Cloudflare Workers queue consumer provider.
+- [`CloudflareQueueProvider`](/docs/reference-providers-cloudflarequeueprovider) - Cloudflare Queue provider.
+- [`QueueCodec`](/docs/reference-providers-queuecodec) - Owns the on-the-wire shape of a queue message.
+- [`QueueProvider`](/docs/reference-providers-queueprovider) - Minimalist Queue interface.
+- [`WorkerdWorkerProvider`](/docs/reference-providers-workerdworkerprovider) - Cloudflare Workers queue consumer provider.

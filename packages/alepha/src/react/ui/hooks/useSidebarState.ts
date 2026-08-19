@@ -3,7 +3,7 @@ import { uiAtom } from "../atoms/uiAtom.ts";
 
 /**
  * Read and update the sidebar collapsed state. The value is persisted via the
- * `alepha-ui` cookie so it survives reloads and is available during SSR — no
+ * `alepha-ui` cookie so it survives reloads and is available during SSR - no
  * flash of expanded-then-collapsed when the user prefers a collapsed shell.
  *
  * @example

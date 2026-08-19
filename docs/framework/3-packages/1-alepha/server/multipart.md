@@ -13,10 +13,10 @@ npm install alepha
 The multipart upload seam: `MultipartStreamParser` (streaming form-data
 parsing with per-part caps) and `MultipartCapProvider` (dynamic, per-request
 size caps resolved before the first body byte). Most apps never import this
-directly — `z.file()` / `z.stream()` route schemas drive it.
+directly - `z.file()` / `z.stream()` route schemas drive it.
 
 ## API Reference
 
 ### Providers
 
-- [`MultipartCapProvider`](/docs/reference-providers-multipartcapprovider) — Decides how many bytes a given request is allowed to carry.
+- [`MultipartCapProvider`](/docs/reference-providers-multipartcapprovider) - Decides how many bytes a given request is allowed to carry.

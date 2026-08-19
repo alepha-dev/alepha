@@ -8,7 +8,7 @@ The default deployment target. `alepha build` produces a self-contained `dist/` 
 alepha build
 ```
 
-This bundles both server and client code into a single optimized output. The server bundle includes all dependencies — no `npm install` is needed in production.
+This bundles both server and client code into a single optimized output. The server bundle includes all dependencies - no `npm install` is needed in production.
 
 ## Run
 
@@ -35,7 +35,7 @@ dist/
   public/        # Client assets (if React frontend exists)
 ```
 
-Database migrations stay in your project's `migrations/` directory — run them with `alepha db migrations apply` against the target database (the docker target copies them into the image for you).
+Database migrations stay in your project's `migrations/` directory - run them with `alepha db migrations apply` against the target database (the docker target copies them into the image for you).
 
 If no React frontend is present, only `index.js` is generated.
 
@@ -78,7 +78,7 @@ Works on:
 
 ## Multi-replica `$job` cron jobs
 
-When you run more than one replica (e.g. 10 Docker instances behind a load balancer), `$job({ cron, ... })` acquires a per-job distributed lock by default so the handler runs **once per tick across the fleet**, not once per replica. The default `MemoryLockProvider` is per-process — to get cross-replica coordination, register a real lock provider:
+When you run more than one replica (e.g. 10 Docker instances behind a load balancer), `$job({ cron, ... })` acquires a per-job distributed lock by default so the handler runs **once per tick across the fleet**, not once per replica. The default `MemoryLockProvider` is per-process - to get cross-replica coordination, register a real lock provider:
 
 ```ts
 import { AlephaLockRedis } from "alepha/lock/redis";

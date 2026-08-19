@@ -21,7 +21,7 @@ import { ReactServerTemplateProvider } from "./ReactServerTemplateProvider.ts";
  * favicon and no way back.
  *
  * The router already renders a real error page for anything a *loader* or a
- * *component* throws — that path runs inside `createLayers`, which owns
+ * *component* throws - that path runs inside `createLayers`, which owns
  * `errorHandler`. What never reached it is everything thrown *around* the
  * render: `use:` middleware, and every `server:onRequest` hook. Those are not
  * exotic. `ServerNotReadyProvider` throws 503 while the app is still booting,
@@ -39,7 +39,7 @@ import { ReactServerTemplateProvider } from "./ReactServerTemplateProvider.ts";
  *
  * - **`Accept: text/html`.** A browser navigation asks for HTML; `fetch`,
  *   `$action` sub-requests, curl and health checks send a wildcard or
- *   `application/json` and keep getting JSON. A bare wildcard never counts —
+ *   `application/json` and keep getting JSON. A bare wildcard never counts -
  *   that is what every programmatic client sends.
  * - **React is loaded.** Guaranteed by construction: this provider ships with
  *   `alepha/react/router`, so an API-only app has no such listener.

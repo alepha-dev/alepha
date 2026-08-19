@@ -13,7 +13,7 @@ npm install alepha
 SMS delivery with multiple provider support.
 
 **Features:**
-- Send SMS (pre-rendered message strings — no template rendering)
+- Send SMS (pre-rendered message strings - no template rendering)
 - Multiple recipients
 - Provider abstraction
 
@@ -21,8 +21,8 @@ SMS delivery with multiple provider support.
 
 ### Primitives
 
-- [`$sms`](/docs/reference-primitives-$sms) — Declares an SMS channel for sending text messages through the configured
+- [`$sms`](/docs/reference-primitives-$sms) - Declares an SMS channel for sending text messages through the configured
 
 ### Providers
 
-- [`SmsProvider`](/docs/reference-providers-smsprovider) — SMS provider interface.
+- [`SmsProvider`](/docs/reference-providers-smsprovider) - SMS provider interface.

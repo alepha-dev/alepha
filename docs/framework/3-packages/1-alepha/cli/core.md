@@ -19,5 +19,5 @@ docs site.
 
 ### Providers
 
-- [`AppEntryProvider`](/docs/reference-providers-appentryprovider) — Service for locating entry files in Alepha projects.
-- [`ViteDevServerProvider`](/docs/reference-providers-vitedevserverprovider) — Vite development server with Alepha integration.
+- [`AppEntryProvider`](/docs/reference-providers-appentryprovider) - Service for locating entry files in Alepha projects.
+- [`ViteDevServerProvider`](/docs/reference-providers-vitedevserverprovider) - Vite development server with Alepha integration.

@@ -63,8 +63,8 @@ interface FileLike {
 ```
 
 **A `z.file()` field is materialised before your handler runs.** `FileLike`
-promises to be readable more than once — you can call `text()` and then
-`arrayBuffer()` — and honouring that means keeping the bytes. They are held in
+promises to be readable more than once - you can call `text()` and then
+`arrayBuffer()` - and honouring that means keeping the bytes. They are held in
 memory, not written to a temporary file, and they are released when the request
 ends. Nothing persists unless you store it; see [Permanent Storage](#permanent-storage).
 
@@ -110,13 +110,13 @@ Three consequences worth knowing before you reach for it:
 - **`size` is `0`.** The length is not known until the stream has been read, and
   it is not guessed.
 - **Parsing stops at the streamed part.** Whatever follows it in the message is
-  never read, because the handler — not the parser — is driving. A client that
+  never read, because the handler - not the parser - is driving. A client that
   wants other fields honoured must send them *before* the file. This is inherent
   to streaming, not a limitation of the parser.
 
 Because the handler pulls the bytes, nothing is consumed before
 [`$secure`](/docs/guides-server-authentication) has run. On the `z.file()` path
-the body is read first, so an unauthenticated caller can spend the budget — see
+the body is read first, so an unauthenticated caller can spend the budget - see
 [Multipart](/docs/guides-server-multipart) for what that means when raising a
 limit.
 
@@ -128,7 +128,7 @@ Defaults, applied to every route:
 |---|---|---|
 | One file | 5 MB | that part's content |
 | Whole request | 10 MB | every part's content, **plus** the preamble and every part's headers |
-| Parts per request | 10 | every part — text fields as well as files |
+| Parts per request | 10 | every part - text fields as well as files |
 
 The last two columns are the ones that surprise. The request budget bounds
 *reading*, not delivering: a sender that never emits a boundary costs exactly as
@@ -144,7 +144,7 @@ body: z.object({
 ```
 
 And the framework's own upload route takes its ceiling from the `$storage`
-bucket the bytes are headed for — which is declared in **megabytes**:
+bucket the bytes are headed for - which is declared in **megabytes**:
 
 ```typescript
 uploads = $storage({ maxSize: 100 });
@@ -155,12 +155,12 @@ in the docs. [Multipart](/docs/guides-server-multipart) explains how the three
 levels resolve and how to add your own.
 
 A bucket that declares no `maxSize` gets **10 MB**, the documented `$storage`
-default — the transport honours it rather than falling back to the 5 MB
+default - the transport honours it rather than falling back to the 5 MB
 application-wide figure.
 
 A file refused for its size answers **413**, whichever layer notices: the
 transport before the bytes land, or the bucket while they stream past. A file
-refused for its MIME type answers **400** — it would not be accepted at any
+refused for its MIME type answers **400** - it would not be accepted at any
 size.
 
 ## Mixed Fields
@@ -201,7 +201,7 @@ class FileService {
 }
 ```
 
-`upload()` returns the `files` row — hand `.id` to `GET /api/files/:id`, and
+`upload()` returns the `files` row - hand `.id` to `GET /api/files/:id`, and
 persist it in your own tables. Backends: local filesystem, S3-compatible
 services and Cloudflare R2. See [File Storage](/docs/guides-persistence-storage)
 for constraints, TTL and querying.

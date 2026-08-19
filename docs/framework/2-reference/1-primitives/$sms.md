@@ -9,7 +9,7 @@ import { $sms } from "alepha/sms";
 ## Overview
 
 Declares an SMS channel for sending text messages through the configured
-provider — the in-memory provider under test, a real gateway in production.
+provider - the in-memory provider under test, a real gateway in production.
 
 ## Options
 

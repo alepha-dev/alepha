@@ -21,7 +21,7 @@ Email delivery over pluggable providers.
 - Memory provider for testing
 
 There is **no template rendering**: `send()` takes an already-rendered
-`subject` and `body` — bring your own templating if you need it.
+`subject` and `body` - bring your own templating if you need it.
 
 For SMTP support, use `AlephaEmailSmtp` from `alepha/email/smtp`.
 For Brevo support, use `AlephaEmailBrevo` from `alepha/email/brevo`.
@@ -30,8 +30,8 @@ For Brevo support, use `AlephaEmailBrevo` from `alepha/email/brevo`.
 
 ### Primitives
 
-- [`$email`](/docs/reference-primitives-$email) — Declares an email channel for sending mail through the configured provider.
+- [`$email`](/docs/reference-primitives-$email) - Declares an email channel for sending mail through the configured provider.
 
 ### Providers
 
-- [`EmailProvider`](/docs/reference-providers-emailprovider) — Email provider interface.
+- [`EmailProvider`](/docs/reference-providers-emailprovider) - Email provider interface.

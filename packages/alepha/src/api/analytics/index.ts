@@ -33,15 +33,15 @@ export * from "./services/AnalyticsRetentionGuard.ts";
  * Portable analytics datasets.
  *
  * Binds the relational provider under Node, and the memory provider under
- * test. `WaeAnalyticsProvider` is exported here too, and — unlike its first
- * design — it is now DI-constructible like any other provider (see its class
+ * test. `WaeAnalyticsProvider` is exported here too, and - unlike its first
+ * design - it is now DI-constructible like any other provider (see its class
  * doc). It is still never auto-wired by *this* module's `register()`, though:
  * its write path reads a `cloudflare.env` binding that only exists inside a
  * Worker, so selecting it under Node would mean every `record()` call throws.
  * `index.workerd.ts` is the entry that selects it, gated on
  * `CLOUDFLARE_ANALYTICS_DATASET`.
  *
- * `AnalyticsRollupJobs` is deliberately **not** wired here — see
+ * `AnalyticsRollupJobs` is deliberately **not** wired here - see
  * {@link AlephaApiAnalyticsRollup} just below for why it is a separate module.
  * `AnalyticsRetentionGuard` *is* wired here, unconditionally, precisely to
  * catch an app that forgets the split: it `log.warn`s at boot if any

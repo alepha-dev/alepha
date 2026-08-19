@@ -1,6 +1,6 @@
 # Docker Deployment
 
-The `docker` build target packages your app for containerized deployment — a generated `Dockerfile` next to the bundled server, and optionally the image itself, built in the same command.
+The `docker` build target packages your app for containerized deployment - a generated `Dockerfile` next to the bundled server, and optionally the image itself, built in the same command.
 
 ## Build
 
@@ -15,7 +15,7 @@ dist/
   index.js       # Bundled server (single file)
   public/        # Client assets (if React frontend exists)
   migrations/    # Copied from your project (if present)
-  Dockerfile     # Generated — do not edit
+  Dockerfile     # Generated - do not edit
 ```
 
 The generated Dockerfile is minimal because the app is already bundled:
@@ -28,7 +28,7 @@ ENV SERVER_HOST=0.0.0.0
 CMD ["node", "index.js"]
 ```
 
-With `--runtime=bun`, the base image becomes `oven/bun:alpine` and the command `bun`. An `npm install` / `bun install` layer is added only when `dist/package.json` declares runtime dependencies — Alepha apps normally bundle everything via Vite, so there's usually nothing to install.
+With `--runtime=bun`, the base image becomes `oven/bun:alpine` and the command `bun`. An `npm install` / `bun install` layer is added only when `dist/package.json` declares runtime dependencies - Alepha apps normally bundle everything via Vite, so there's usually nothing to install.
 
 ## Build the Image Too
 
@@ -66,8 +66,8 @@ export default defineConfig({
 | `docker.from` | `node:24-alpine` / `oven/bun:alpine` | Base image for the `FROM` instruction |
 | `docker.command` | `node` / `bun` | Command that runs the server |
 | `docker.install` | `[]` | Extra packages installed into the image (e.g. `["wrangler"]` for an app that shells out to a CLI) |
-| `docker.image` | — | Image tag, extra `docker build` args, OCI labels (used with `--image`) |
-| `docker.compile` | — | Single-binary compile mode, see below |
+| `docker.image` | - | Image tag, extra `docker build` args, OCI labels (used with `--image`) |
+| `docker.compile` | - | Single-binary compile mode, see below |
 
 ## Compile Mode (Single Static Binary)
 
@@ -86,10 +86,10 @@ ENTRYPOINT ["/app/app"]
 ```
 
 - The binary lands at `dist/app`; `dist/index.js` and `dist/package.json` are removed.
-- No package manager runs inside the image (distroless has no `npm`), so `docker.install` is ignored and any non-empty runtime `dependencies` fail the build loudly — compile requires fully-bundled output.
+- No package manager runs inside the image (distroless has no `npm`), so `docker.install` is ignored and any non-empty runtime `dependencies` fail the build loudly - compile requires fully-bundled output.
 - `compile` accepts an object to override the Bun target triple (`bun-linux-arm64-musl`, ...), the base image, and minification.
 
-The result is a minimal image with no shell, no package manager, and no interpreter — a small attack surface and a fast cold start.
+The result is a minimal image with no shell, no package manager, and no interpreter - a small attack surface and a fast cold start.
 
 ## Running
 
@@ -97,12 +97,12 @@ The result is a minimal image with no shell, no package manager, and no interpre
 docker run -p 3000:3000 --env-file .env.production ghcr.io/myorg/myapp:latest
 ```
 
-`SERVER_HOST=0.0.0.0` is baked into the image so the server binds correctly inside the container; set `SERVER_PORT` if you need a port other than 3000 — or let a host that injects `PORT` (Cloud Run, Fly) decide, which the server reads as a fallback when `SERVER_PORT` is unset. Migrations ship in the image under `/app/migrations` — run them on startup via your orchestration, or from a release step with `alepha db migrations apply` pointed at the same `DATABASE_URL`.
+`SERVER_HOST=0.0.0.0` is baked into the image so the server binds correctly inside the container; set `SERVER_PORT` if you need a port other than 3000 - or let a host that injects `PORT` (Cloud Run, Fly) decide, which the server reads as a fallback when `SERVER_PORT` is unset. Migrations ship in the image under `/app/migrations` - run them on startup via your orchestration, or from a release step with `alepha db migrations apply` pointed at the same `DATABASE_URL`.
 
 ## Tips
 
-**Use OCI labels in CI.** `image.oci: true` stamps the git revision and build time on the image — invaluable when you're staring at a registry full of `latest` tags.
+**Use OCI labels in CI.** `image.oci: true` stamps the git revision and build time on the image - invaluable when you're staring at a registry full of `latest` tags.
 
 **Prefer compile mode for public-facing services.** Distroless plus a static binary removes whole vulnerability classes from the image.
 
-**Keep secrets out of the image.** Nothing in `dist/` should contain secrets — inject them at runtime via `--env-file` or your orchestrator's secret store.
+**Keep secrets out of the image.** Nothing in `dist/` should contain secrets - inject them at runtime via `--env-file` or your orchestrator's secret store.

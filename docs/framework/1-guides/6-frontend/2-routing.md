@@ -119,11 +119,11 @@ Every page gets a `<link rel="canonical">`, plus `og:url` and `twitter:url`, wit
 PUBLIC_URL=https://example.com   →   <link rel="canonical" href="https://example.com/docs/routing">
 ```
 
-It is built from the **route path**, not the request URL, so `?utm_source=newsletter` and a trailing slash never reach the tag — collapsing those duplicates is the entire job of a canonical, and one built from `location.href` would certify them instead.
+It is built from the **route path**, not the request URL, so `?utm_source=newsletter` and a trailing slash never reach the tag - collapsing those duplicates is the entire job of a canonical, and one built from `location.href` would certify them instead.
 
-Nothing is emitted when there is no `PUBLIC_URL` to build on, for wildcard and `/404` routes, or when a layer errored — in each case there is no single URL the page could honestly name, and a relative canonical resolves against whichever host served it, which is exactly the ambiguity being removed.
+Nothing is emitted when there is no `PUBLIC_URL` to build on, for wildcard and `/404` routes, or when a layer errored - in each case there is no single URL the page could honestly name, and a relative canonical resolves against whichever host served it, which is exactly the ambiguity being removed.
 
-To point a page somewhere else — a duplicate that should defer to the original — set `url` yourself:
+To point a page somewhere else - a duplicate that should defer to the original - set `url` yourself:
 
 ```typescript
 head: { url: "https://example.com/docs/routing" }
@@ -150,7 +150,7 @@ static: {
 
 ### ssr
 
-Disable server-side rendering for the page component (`@default true`). With `ssr: false` the component renders client-side only (wrapped in `<ClientOnly />` internally), but the **loader still runs on the server** — data fetching is unaffected. The value is decided at the leaf and inherited as a default by descendants: `ssr: false` on a parent acts as the default for its children, and a child can override with `ssr: true`.
+Disable server-side rendering for the page component (`@default true`). With `ssr: false` the component renders client-side only (wrapped in `<ClientOnly />` internally), but the **loader still runs on the server** - data fetching is unaffected. The value is decided at the leaf and inherited as a default by descendants: `ssr: false` on a parent acts as the default for its children, and a child can override with `ssr: true`.
 
 ```typescript
 ssr: false
@@ -160,7 +160,7 @@ ssr: false
 
 Buffer the HTML instead of streaming it, so the page can choose its status code (`@default true`).
 
-A page is streamed with an early `<head>` flush by default: the head leaves before the loader runs, which is what makes the first paint fast. The cost is that the HTTP status is committed by then, so a page whose existence depends on data cannot answer `404` — a missing product renders the error boundary with a `200`, which a crawler indexes as a real page.
+A page is streamed with an early `<head>` flush by default: the head leaves before the loader runs, which is what makes the first paint fast. The cost is that the HTTP status is committed by then, so a page whose existence depends on data cannot answer `404` - a missing product renders the error boundary with a `200`, which a crawler indexes as a real page.
 
 With `stream: false` the page renders to a string first and only then replies, so `onServerResponse` sees the finished render and can set `reply.status`.
 
@@ -179,18 +179,18 @@ product = $page({
 });
 ```
 
-Use it for the handful of routes that can legitimately not exist — a product, an article, a profile. Leave it alone everywhere else: buffering delays the first byte by the whole render.
+Use it for the handful of routes that can legitimately not exist - a product, an article, a profile. Leave it alone everywhere else: buffering delays the first byte by the whole render.
 
 ### use
 
-Attach middlewares to the page — this is how you add server-side caching:
+Attach middlewares to the page - this is how you add server-side caching:
 
 ```typescript
 use: [$cache({ ttl: [1, "hour"] })]
 ```
 
 > [!NOTE]
-> **`$secure` on a page is a real guard.** An anonymous visitor is refused at the router: with a `login` route declared, the result is a redirect to `/login?redirect=<path>`, and the loader's data never reaches the HTML; with no login route, the server answers 401. The two `$secure` variants refuse differently under the hood (the browser returns, the server throws), and the router normalises both into the redirect — which also means a page's own `errorHandler` cannot catch the refusal, because on the server the middleware chain wraps the render.
+> **`$secure` on a page is a real guard.** An anonymous visitor is refused at the router: with a `login` route declared, the result is a redirect to `/login?redirect=<path>`, and the loader's data never reaches the HTML; with no login route, the server answers 401. The two `$secure` variants refuse differently under the hood (the browser returns, the server throws), and the router normalises both into the redirect - which also means a page's own `errorHandler` cannot catch the refusal, because on the server the middleware chain wraps the render.
 >
 > Keep `$secure` on the endpoints underneath as well. Defense in depth: the API answers 401 whatever the interface does.
 
@@ -198,7 +198,7 @@ When `static: true` is set, the framework automatically applies `$cache({ provid
 
 ### can
 
-UI-affordance predicate for the page's navigation entry — **not security**. Navigation surfaces (sidebar, breadcrumbs, command palette) consult it to hide or disable the entry; the router never does, and nothing returns a 403. For real access control, gate the page with `use: [$secure({ permissions })]`, which is server-enforced.
+UI-affordance predicate for the page's navigation entry - **not security**. Navigation surfaces (sidebar, breadcrumbs, command palette) consult it to hide or disable the entry; the router never does, and nothing returns a 403. For real access control, gate the page with `use: [$secure({ permissions })]`, which is server-enforced.
 
 ```typescript
 can: ({ has }) => has("admin")          // hide the nav entry
@@ -207,7 +207,7 @@ can: ({ has }) => has("admin") || "disabled"  // show it greyed out
 
 ### redirect
 
-Redirect to another path when this page is matched — shorthand for throwing a `Redirection` in the loader. The redirect happens before any loader or component rendering.
+Redirect to another path when this page is matched - shorthand for throwing a `Redirection` in the loader. The redirect happens before any loader or component rendering.
 
 ```typescript
 home = $page({
@@ -218,7 +218,7 @@ home = $page({
 
 ### nav
 
-Navigation metadata — declares the page's presence in navigation surfaces (sidebar, breadcrumbs, command palette). A page without `nav` is route-only: reachable by URL but not listed. `label`, `icon`, `description`, and `badge` accept any `ReactNode`. Visibility is UI-only — an entry hides when `nav.hidden` is set, when `nav.permission` isn't fully granted, or when `can()` returns `false`.
+Navigation metadata - declares the page's presence in navigation surfaces (sidebar, breadcrumbs, command palette). A page without `nav` is route-only: reachable by URL but not listed. `label`, `icon`, `description`, and `badge` accept any `ReactNode`. Visibility is UI-only - an entry hides when `nav.hidden` is set, when `nav.permission` isn't fully granted, or when `can()` returns `false`.
 
 ```typescript
 users = $page({
@@ -242,12 +242,12 @@ Define parent-child relationships between pages using `parent` on the child or `
 
 ### Which option to use
 
-The choice is not stylistic — it depends on **who owns the child page**:
+The choice is not stylistic - it depends on **who owns the child page**:
 
 - **You own the child** (you wrote the `$page` and can edit it) → set `parent` on the child. The child declares its own place in the tree.
 - **You don't own the child** (it comes from another package or an injected router you can't modify) → add it to `children` on your parent. The parent adopts pages it doesn't control.
 
-The second case is the reason `children` exists. When you `$inject` a router from another package, its `$page` definitions are frozen — you can't reach in and set `parent` on them. `children` is how you mount those external pages under one of your own layouts:
+The second case is the reason `children` exists. When you `$inject` a router from another package, its `$page` definitions are frozen - you can't reach in and set `parent` on them. `children` is how you mount those external pages under one of your own layouts:
 
 ```typescript
 class AppRouter {
@@ -264,7 +264,7 @@ class AppRouter {
 }
 ```
 
-When you do own the child, prefer `parent` — it keeps parents free of forward references to their own descendants and reads top-down:
+When you do own the child, prefer `parent` - it keeps parents free of forward references to their own descendants and reads top-down:
 
 ```typescript
 import { $page } from "alepha/react/router";
@@ -307,12 +307,12 @@ Three routers ship whole surfaces you can mount instead of rebuilding:
 
 | Router | Surface | Extend with |
 |---|---|---|
-| `AuthRouter` | `/auth/{login,register,reset-password,verify-email}` | — (write your own to change the URLs) |
-| `AdminRouter` | `/admin` — users, sessions, keys, jobs, audits, … | `$pageAdmin` |
-| `AccountRouter` | `/account` — profile, security, sessions, API keys, connected apps | `$pageAccount` |
+| `AuthRouter` | `/auth/{login,register,reset-password,verify-email}` | - (write your own to change the URLs) |
+| `AdminRouter` | `/admin` - users, sessions, keys, jobs, audits, … | `$pageAdmin` |
+| `AccountRouter` | `/account` - profile, security, sessions, API keys, connected apps | `$pageAccount` |
 
 `$pageAdmin` and `$pageAccount` are `$pageNav` already parented to their shell,
-so one call adds a page to the shared sidebar with no separate registration —
+so one call adds a page to the shared sidebar with no separate registration -
 the shell reads each page's own `nav` metadata. Both follow the same rules:
 take `order: 100` or above (or your own `nav.group`) so you don't reshuffle the
 built-in entries, and gate with `can: () => this.someApi.someAction.can()`
@@ -320,7 +320,7 @@ rather than `permission` alone, because a permission is self-declaring and
 stays granted over an API that was never mounted.
 
 `AdminRouter` stands alone at the root by design. `AccountRouter` goes either
-way — mount it and `/account` is a root route, or adopt its layout into your
+way - mount it and `/account` is a root route, or adopt its layout into your
 own shell with `children`, which is the `children` case above:
 
 ```typescript
@@ -351,7 +351,7 @@ errorHandler: (error) => {
 }
 ```
 
-The same handler also covers failures thrown *around* the render — a `use:`
+The same handler also covers failures thrown *around* the render - a `use:`
 middleware, or a server hook such as the rate limiter or the not-ready guard
 that answers while the app is still booting. Those never run a loader, so there
 is no layer to fail; the router still resolves the nearest `errorHandler` and
@@ -364,20 +364,20 @@ development, a plain card carrying the request id in production.
 
 The switch is the request's `Accept` header, and nothing else:
 
-- `Accept: text/html` — what a browser sends on a hard navigation — gets a
+- `Accept: text/html`: what a browser sends on a hard navigation - gets a
   rendered document.
 - Anything else, including the `*/*` that `fetch()` defaults to, keeps the JSON
   error body. API clients are unaffected.
 
 An error page is server-rendered and deliberately **not** hydrated: it ships no
 entry script, so the client cannot boot and re-render the very URL the server
-just refused. A custom error component is therefore static — hooks that read
+just refused. A custom error component is therefore static - hooks that read
 context (`useRouter`, `useI18n`) work, event handlers do not.
 
 ## Lifecycle Callbacks
 
-- `onEnter` — called when the user enters the page (browser only)
-- `onLeave` — called when the user leaves the page (browser only)
+- `onEnter`: called when the user enters the page (browser only)
+- `onLeave`: called when the user leaves the page (browser only)
 
 ```typescript
 onEnter: () => {
@@ -386,7 +386,7 @@ onEnter: () => {
 }
 ```
 
-- `onServerResponse` — called before the server sends the response (server only)
+- `onServerResponse`: called before the server sends the response (server only)
 
 ## Page Animations
 
@@ -528,7 +528,7 @@ and values are coerced back to their declared types on read (e.g. a
 ## Links and Anchor Interception
 
 Plain `<a href="/...">` anchors are intercepted automatically and routed
-through the SPA router — no `<Link>` wrapper required. This works inside
+through the SPA router - no `<Link>` wrapper required. This works inside
 React JSX as well as in raw HTML injected into the page (e.g. Markdown
 content rendered from a CMS).
 
@@ -577,7 +577,7 @@ intend to extend it with prefetching/active-state logic later.
 
 Route transitions emit events on the Alepha event system:
 
-- `react:transition:begin` — navigation started (includes previous and new state)
-- `react:transition:success` — navigation completed
-- `react:transition:error` — navigation failed
-- `react:transition:end` — always emitted after transition completes
+- `react:transition:begin`: navigation started (includes previous and new state)
+- `react:transition:success`: navigation completed
+- `react:transition:error`: navigation failed
+- `react:transition:end`: always emitted after transition completes

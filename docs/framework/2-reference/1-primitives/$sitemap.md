@@ -12,7 +12,7 @@ Expose a `sitemap.xml` generated from the application's `$page` primitives.
 
 Registers a `GET /sitemap.xml` route that reads every registered page at
 request time and emits a standard XML sitemap. Marked `static` by default, so
-the build prerenders it to `dist/public/sitemap.xml` for static deployments —
+the build prerenders it to `dist/public/sitemap.xml` for static deployments -
 while SSR runtimes also serve it live.
 
 The hostname comes from `options.hostname`, falling back to `PUBLIC_URL`, then

@@ -19,7 +19,7 @@ Required for deployment:
 | `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare account ID |
 | `CLOUDFLARE_API_TOKEN` | API token with Workers permissions (or run `wrangler login` interactively) |
 
-`CLOUDFLARE_ANALYTICS_TOKEN` is **not** a deploy credential — it is the optional, app-runtime Analytics Engine read token (scope: Account Analytics · Read). It is deliberately named differently from `CLOUDFLARE_API_TOKEN`: wrangler treats that name as its own credential, so putting a read-only token there makes every provisioning call fail with an authentication error.
+`CLOUDFLARE_ANALYTICS_TOKEN` is **not** a deploy credential - it is the optional, app-runtime Analytics Engine read token (scope: Account Analytics · Read). It is deliberately named differently from `CLOUDFLARE_API_TOKEN`: wrangler treats that name as its own credential, so putting a read-only token there makes every provisioning call fail with an authentication error.
 
 ## Deploy
 
@@ -48,8 +48,8 @@ wrangler dev --config=dist/wrangler.jsonc
 
 The build produces:
 
-- `dist/wrangler.jsonc` — Wrangler configuration with worker name, compatibility flags, and bindings
-- `dist/main.cloudflare.js` — Worker entry point that bootstraps Alepha and handles `fetch`, `scheduled`, and `queue` events
+- `dist/wrangler.jsonc`: Wrangler configuration with worker name, compatibility flags, and bindings
+- `dist/main.cloudflare.js`: Worker entry point that bootstraps Alepha and handles `fetch`, `scheduled`, and `queue` events
 
 The `wrangler.jsonc` includes `nodejs_compat` compatibility flag and `no_bundle: true` (Alepha bundles the code itself).
 
@@ -78,7 +78,7 @@ The build automatically adds the D1 binding to `wrangler.jsonc` (the binding is 
 
 ## R2 Buckets
 
-The R2 binding is added to `wrangler.jsonc` when `R2_BUCKET_NAME` is set at build time — the platform plugin sets it automatically when your app declares any `$storage`; for a manual build, set it yourself in the environment. R2 keys every object as `{prefix}/{tenantId}/{storage}/{fileId}` inside that one bucket — a storage is a prefix, not a bucket of its own. The leading prefix comes from `S3_KEY_PREFIX`, falling back to `APP_NAME`.
+The R2 binding is added to `wrangler.jsonc` when `R2_BUCKET_NAME` is set at build time - the platform plugin sets it automatically when your app declares any `$storage`; for a manual build, set it yourself in the environment. R2 keys every object as `{prefix}/{tenantId}/{storage}/{fileId}` inside that one bucket - a storage is a prefix, not a bucket of its own. The leading prefix comes from `S3_KEY_PREFIX`, falling back to `APP_NAME`.
 
 ## Cron Triggers
 
@@ -97,7 +97,7 @@ The Worker's `scheduled` handler dispatches the `cloudflare:scheduled` event, wh
 Expressions are **deduplicated**, so what costs you a Cron Trigger is the number
 of *distinct* expressions, not the number of jobs. Jobs sharing an expression
 all run in the same invocation. The framework's own sweeps default to
-`*/15 * * * *` for this reason — see
+`*/15 * * * *` for this reason - see
 [Sweeps owned by other modules](/docs/guides-server-background-jobs) for the atoms
 that tune them, and prefer aligning a new `$job` with an expression already in
 use over introducing a sixth one.
@@ -114,7 +114,7 @@ This loads `.env` and `.env.production` before building.
 
 ## WebSockets and Rooms
 
-Apps registering `$websocket` or `$room` primitives get their realtime wiring automatically — the two are treated identically, so a rooms-only app needs no extra configuration:
+Apps registering `$websocket` or `$room` primitives get their realtime wiring automatically - the two are treated identically, so a rooms-only app needs no extra configuration:
 
 - the worker entry gets a WebSocket upgrade branch routing each registered channel path to a Durable Object
 - `wrangler.jsonc` gets the `ALEPHA_WEBSOCKET` Durable Object binding and its SQLite migration (skipped if your own `cloudflare.config.migrations` already declares `AlephaWebSocketDurableObject`; otherwise the first free `v<n>` tag is used)
@@ -131,7 +131,7 @@ If your project has a React frontend, the built client assets are placed in `dis
 
 At runtime, `CloudflareQueueProvider` replaces the default queue provider and `WorkerdWorkerProvider` handles message consumption via push-based `queue` events (no polling). Messages are sent in batches of up to 100 per `sendBatch` call, so a `pushMany()` of 500 jobs costs 5 subrequests rather than 500.
 
-A `$job` handler that throws is caught and recorded by `JobProvider`, so it acks and retries through the outbox sweep. Only infrastructure failures — an undecodable message, an unreachable backend — propagate to `msg.retry()` and eventually land in the dead-letter queue.
+A `$job` handler that throws is caught and recorded by `JobProvider`, so it acks and retries through the outbox sweep. Only infrastructure failures - an undecodable message, an unreachable backend - propagate to `msg.retry()` and eventually land in the dead-letter queue.
 
 ## Jobs without a queue (direct mode)
 
@@ -144,7 +144,7 @@ This is the recommended default on Cloudflare Workers when you don't want a Queu
 
 ## Retry granularity
 
-`$job` retries are **sweep-driven** on every platform — there's no exponential backoff. When a handler fails, the row is marked `scheduled` with `scheduledAt = now`, and the next sweep tick (configured by `jobConfig.sweepCron`, default `*/15 * * * *`) picks it up.
+`$job` retries are **sweep-driven** on every platform - there's no exponential backoff. When a handler fails, the row is marked `scheduled` with `scheduledAt = now`, and the next sweep tick (configured by `jobConfig.sweepCron`, default `*/15 * * * *`) picks it up.
 
 Practically this means:
 
@@ -152,7 +152,7 @@ Practically this means:
 - The first retry can happen anywhere between a few seconds and ~15 minutes after the failure, depending on when the next sweep tick fires.
 - If you need tighter retry latency, lower `sweepCron` in your `jobConfig` atom.
 
-This is identical on Node, Docker, and Cloudflare — no platform-specific timing surprises.
+This is identical on Node, Docker, and Cloudflare - no platform-specific timing surprises.
 
 ## Limitations
 

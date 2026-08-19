@@ -10,15 +10,15 @@ import { $store } from "alepha";
 
 Reads a value out of the application store from a class property.
 
-The declarative counterpart of `alepha.store.get(target)` — same store, same
+The declarative counterpart of `alepha.store.get(target)` - same store, same
 operation, expressed as a class member instead of an imperative call. The
 property is reactive: it re-reads on every access, so a mutation made
 elsewhere is visible immediately.
 
 Accepts either side of the state model:
-- an `Atom` — read from the store, and registered on first use if it
+- an `Atom` - read from the store, and registered on first use if it
   was not already
-- a `Computed` — derived from its dependencies on every read. Computed
+- a `Computed` - derived from its dependencies on every read. Computed
   values are never stored, so nothing is registered.
 
 **Use cases**: global state, configuration, sharing data between services,

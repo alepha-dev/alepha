@@ -81,12 +81,12 @@ docs = $swagger({
 
 Each `$action` with a schema becomes an OpenAPI operation:
 
-- **Operation ID** — The action name (property key or explicit `name`).
-- **Tag** — The action group (class name or explicit `group`). Colons render as separators: group `admin:files` becomes tag `admin / files`, while `excludeTags` still matches the raw `admin:files`.
-- **Summary/Description** — From the `summary` and `description` options on `$action`. Registering `$swagger` also adds `hide` and `deprecated` options to `$action` — `hide: true` drops the operation from the document.
-- **Parameters** — Generated from `schema.params` (path) and `schema.query` (query).
-- **Request Body** — Generated from `schema.body`. Objects become `application/json`, file schemas become `multipart/form-data`.
-- **Response** — Generated from `schema.response`.
+- **Operation ID**: The action name (property key or explicit `name`).
+- **Tag**: The action group (class name or explicit `group`). Colons render as separators: group `admin:files` becomes tag `admin / files`, while `excludeTags` still matches the raw `admin:files`.
+- **Summary/Description**: From the `summary` and `description` options on `$action`. Registering `$swagger` also adds `hide` and `deprecated` options to `$action` - `hide: true` drops the operation from the document.
+- **Parameters**: Generated from `schema.params` (path) and `schema.query` (query).
+- **Request Body**: Generated from `schema.body`. Objects become `application/json`, file schemas become `multipart/form-data`.
+- **Response**: Generated from `schema.response`.
 
 Schema descriptions propagate to OpenAPI field descriptions:
 

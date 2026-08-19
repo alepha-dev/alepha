@@ -27,9 +27,9 @@ Configurable logging with multiple outputs.
 
 ### Primitives
 
-- [`$logger`](/docs/reference-primitives-$logger) — Create a logger.
+- [`$logger`](/docs/reference-primitives-$logger) - Create a logger.
 
 ### Providers
 
-- [`CliFormatterProvider`](/docs/reference-providers-cliformatterprovider) — Compact formatter for CLI output.
-- [`LogBufferProvider`](/docs/reference-providers-logbufferprovider) — Access to the log buffer of the current execution context.
+- [`CliFormatterProvider`](/docs/reference-providers-cliformatterprovider) - Compact formatter for CLI output.
+- [`LogBufferProvider`](/docs/reference-providers-logbufferprovider) - Access to the log buffer of the current execution context.

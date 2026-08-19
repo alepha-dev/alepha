@@ -31,8 +31,8 @@ export default defineConfig({
 
 The `webServer` option starts the production server before tests run and tears it down after. Two lines in it earn their place:
 
-- `env.APP_SECRET` — the built server runs in production mode, and `SecretProvider` refuses to boot on the built-in default secret in production. Without a value here the server never starts.
-- `reuseExistingServer: false` — Playwright's default (`!process.env.CI`) will happily adopt a running `alepha dev` server, and the suite then reports green against hot-reloaded sources and the dev database instead of the build.
+- `env.APP_SECRET`: the built server runs in production mode, and `SecretProvider` refuses to boot on the built-in default secret in production. Without a value here the server never starts.
+- `reuseExistingServer: false`: Playwright's default (`!process.env.CI`) will happily adopt a running `alepha dev` server, and the suite then reports green against hot-reloaded sources and the dev database instead of the build.
 
 ## Build and Test
 

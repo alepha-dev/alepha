@@ -22,4 +22,4 @@ not with wrapper components.
 
 ### React Hooks
 
-- [`useAuth`](/docs/reference-react-hooks-useauth) — Reads the current user and exposes `login()` / `logout()`.
+- [`useAuth`](/docs/reference-react-hooks-useauth) - Reads the current user and exposes `login()` / `logout()`.

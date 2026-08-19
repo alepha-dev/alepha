@@ -24,8 +24,8 @@ import {
  *   returned at login and pass it to the logout endpoint when the session ends.
  *
  * **Environment Variables** (obtain from partenaires.franceconnect.gouv.fr):
- * - `FRANCECONNECT_CLIENT_ID` — OAuth 2.0 client ID for your France Connect service provider.
- * - `FRANCECONNECT_CLIENT_SECRET` — OAuth 2.0 client secret for your France Connect service provider.
+ * - `FRANCECONNECT_CLIENT_ID`: OAuth 2.0 client ID for your France Connect service provider.
+ * - `FRANCECONNECT_CLIENT_SECRET`: OAuth 2.0 client secret for your France Connect service provider.
  *
  * @example
  * ```ts

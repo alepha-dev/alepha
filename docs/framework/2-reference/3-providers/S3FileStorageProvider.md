@@ -14,7 +14,7 @@ Backed by `s3mini` (zero-dep, ~20 KB). Works with AWS S3, Cloudflare R2,
 MinIO, DigitalOcean Spaces, Backblaze B2, and any other S3-compatible service.
 
 Uses path-style addressing (`<endpoint>/<S3_BUCKET_NAME>`), and keys every
-object as `{prefix}/{tenantId}/{container}/{fileId}` — the same scheme as
+object as `{prefix}/{tenantId}/{container}/{fileId}` - the same scheme as
 `R2FileStorageProvider`.
 
 **Required environment variables:**

@@ -107,13 +107,13 @@ The `error` field is the class name (e.g. `NotFoundError`, `ConflictError`). For
 
 ## Production Sanitization
 
-In production (`NODE_ENV=production`), **5xx responses are stripped before they reach the client**: `message` becomes `"Internal Server Error"`, and `cause` and `details` are dropped. A 5xx message is internal — it routinely carries DB connection strings, upstream hostnames, and credentials — so it belongs in your logs, not in the response. The `requestId` is always preserved, which is how you correlate the sanitized response with the full error in your logs.
+In production (`NODE_ENV=production`), **5xx responses are stripped before they reach the client**: `message` becomes `"Internal Server Error"`, and `cause` and `details` are dropped. A 5xx message is internal - it routinely carries DB connection strings, upstream hostnames, and credentials - so it belongs in your logs, not in the response. The `requestId` is always preserved, which is how you correlate the sanitized response with the full error in your logs.
 
 **4xx responses are never sanitized.** A `BadRequestError("age must be a positive integer")` is deliberate, client-facing context and is passed through verbatim, `cause` included.
 
 Outside production nothing is stripped, so local debugging shows the real error.
 
-This rule applies to every path an error can take to a client, including batched actions (`POST /api/_batch`) — a sub-action that fails with a 5xx reports `"Internal Server Error"` in its `error` field, while a 4xx sub-action keeps its message:
+This rule applies to every path an error can take to a client, including batched actions (`POST /api/_batch`) - a sub-action that fails with a 5xx reports `"Internal Server Error"` in its `error` field, while a 4xx sub-action keeps its message:
 
 ```json
 [
@@ -144,7 +144,7 @@ Use the `server:onError` hook below to ship the unsanitized error to your logger
 
 Less common codes map too: 405 `MethodNotAllowedError`, 410 `GoneError`, 415 `UnsupportedMediaTypeError`, 501 `NotImplementedError`, 504 `GatewayTimeoutError`.
 
-> Outside production, a handler that throws a bare `Error` triggers an explicit dev warning telling you it will surface as `"Internal Server Error"` once deployed — the sanitization above is invisible locally, so the warning is the only signal you get before production.
+> Outside production, a handler that throws a bare `Error` triggers an explicit dev warning telling you it will surface as `"Internal Server Error"` once deployed - the sanitization above is invisible locally, so the warning is the only signal you get before production.
 
 ## Global Error Handling
 

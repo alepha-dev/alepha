@@ -93,7 +93,7 @@ export class DocsCommand {
 
   /**
    * Rewrite JSDoc `{@link X}` / `{@link X|label}` inline tags to backticked
-   * names. Markdown renders the raw tag as literal text otherwise — the
+   * names. Markdown renders the raw tag as literal text otherwise - the
    * 2026-08 audit found 46 of them leaking into the reference pages.
    */
   stripLinkTags(text: string): string {
@@ -174,7 +174,7 @@ export class DocsCommand {
     const fields: OptionField[] = [];
     let jsDocLines: string[] = [];
     let inJsDoc = false;
-    // Brace/paren depth — only treat lines as fields when at top level (depth 0).
+    // Brace/paren depth - only treat lines as fields when at top level (depth 0).
     let depth = 0;
 
     const countBalance = (s: string) => {
@@ -370,7 +370,7 @@ export class DocsCommand {
         const isOptional = field.includes(".optional(");
         // `z\s*\.` rather than `z\.`: biome breaks a long chain after the `z`,
         // and anchoring on the dot made this whole table vanish whenever a
-        // field grew past the print width. Silently — a missing env-var table
+        // field grew past the print width. Silently - a missing env-var table
         // reads exactly like a module that declares none.
         const typeMatch = field.match(/:\s*z\s*\.\s*(\w+)/);
         if (!typeMatch) continue;
@@ -605,21 +605,21 @@ export class DocsCommand {
     if (data.primitives.length > 0) {
       out += `\n### Primitives\n\n`;
       for (const p of data.primitives) {
-        out += `- [\`${p.name}\`](${urls.primitives}${p.name.toLowerCase()}) — ${p.summary}\n`;
+        out += `- [\`${p.name}\`](${urls.primitives}${p.name.toLowerCase()}) - ${p.summary}\n`;
       }
     }
 
     if (data.hooks.length > 0) {
       out += `\n### React Hooks\n\n`;
       for (const h of data.hooks) {
-        out += `- [\`${h.name}\`](${urls.hooks}${h.name.toLowerCase()}) — ${h.summary}\n`;
+        out += `- [\`${h.name}\`](${urls.hooks}${h.name.toLowerCase()}) - ${h.summary}\n`;
       }
     }
 
     if (data.providers.length > 0) {
       out += `\n### Providers\n\n`;
       for (const p of data.providers) {
-        out += `- [\`${p.name}\`](${urls.providers}${p.name.toLowerCase()}) — ${p.summary}\n`;
+        out += `- [\`${p.name}\`](${urls.providers}${p.name.toLowerCase()}) - ${p.summary}\n`;
       }
     }
 
@@ -646,7 +646,7 @@ export class DocsCommand {
       packageName === "alepha"
         ? "Alepha"
         : `@alepha/${packageName.replace("@alepha/", "")}`;
-    // A single-module package passes its own name as the module name — don't
+    // A single-module package passes its own name as the module name - don't
     // render "# @alepha/devtools - @alepha/devtools".
     const title =
       moduleName === packageName || formatted === prefix
@@ -691,7 +691,7 @@ export class DocsCommand {
    * registering a `$module`, so there is nothing for {@link collectModuleData}
    * to read. A `DOC.md` at the package root fills that gap: it becomes the
    * package page on the docs site, the `## Overview` of the generated README,
-   * and — through both — an entry in `llms.txt`.
+   * and - through both - an entry in `llms.txt`.
    */
   async readPackageDoc(packagePath: string): Promise<string | null> {
     try {
@@ -720,7 +720,7 @@ export class DocsCommand {
     doc: string | null = null,
   ): string {
     // "create-alepha" already contains the brand and is never `npm install`ed
-    // — it is run through `npm create`.
+    // - it is run through `npm create`.
     const isCreatePackage = pkgJson.name.startsWith("create-");
     const title = isCreatePackage
       ? pkgJson.name
@@ -778,7 +778,7 @@ export class DocsCommand {
       for (const d of dirents) {
         if (!d.isDirectory()) continue;
         if (d.name.startsWith("@")) {
-          // Scoped directory — recurse one level
+          // Scoped directory - recurse one level
           const scopeDir = join(packagesDir, d.name);
           const scopeEntries = await fs.readdir(scopeDir, {
             withFileTypes: true,
@@ -875,7 +875,7 @@ export class DocsCommand {
                 // shipped with no docs page (2026-08 audit). Add an `@module`
                 // JSDoc block to the module's index.ts to publish it.
                 this.log.warn(
-                  `no @module block: ${realPkgName} › ${mod.name} — no docs page generated`,
+                  `no @module block: ${realPkgName} › ${mod.name} - no docs page generated`,
                 );
                 continue;
               }
@@ -918,7 +918,7 @@ export class DocsCommand {
             }
           } else {
             // A single "." export may point below src/ (payments-stripe uses
-            // ./src/core/index.ts) — read the @module block where the export
+            // ./src/core/index.ts) - read the @module block where the export
             // actually lives, not at an src/index.ts that may not exist.
             const dotExport = pkgJson.exports?.["."];
             const dotTypes =
@@ -935,7 +935,7 @@ export class DocsCommand {
             );
             if (!data.description && !doc) {
               this.log.warn(
-                `no @module block and no DOC.md: ${realPkgName} — no docs page generated`,
+                `no @module block and no DOC.md: ${realPkgName} - no docs page generated`,
               );
               return;
             }

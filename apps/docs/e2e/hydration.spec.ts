@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * Hydration patterns to treat as failures — React/SSR mismatch warnings.
+ * Hydration patterns to treat as failures - React/SSR mismatch warnings.
  */
 const isHydrationError = (text: string) =>
   text.includes("Hydration") ||
@@ -21,7 +21,7 @@ test.describe("Hydration", () => {
     await page.waitForTimeout(500);
 
     // The app rendered (SSR + hydration produced a working page).
-    // Note: we no longer assert the "Hydrated root element" log — it is an
+    // Note: we no longer assert the "Hydrated root element" log - it is an
     // `info` log that the production logger correctly suppresses, and the
     // docs e2e runs against the production build.
     await expect(page.locator("#root")).not.toBeEmpty();

@@ -23,13 +23,13 @@ Declarative CLI command framework.
 
 ### Primitives
 
-- [`$command`](/docs/reference-primitives-$command) — Declares a CLI command.
+- [`$command`](/docs/reference-primitives-$command) - Declares a CLI command.
 
 ### Providers
 
-- [`CliProvider`](/docs/reference-providers-cliprovider) — CLI provider for parsing and executing commands.
-- [`ConsoleOutputProvider`](/docs/reference-providers-consoleoutputprovider) — What a command *produces*, as opposed to what it *reports*.
-- [`MemoryOutputProvider`](/docs/reference-providers-memoryoutputprovider) — Captures command output instead of writing it to stdout.
+- [`CliProvider`](/docs/reference-providers-cliprovider) - CLI provider for parsing and executing commands.
+- [`ConsoleOutputProvider`](/docs/reference-providers-consoleoutputprovider) - What a command *produces*, as opposed to what it *reports*.
+- [`MemoryOutputProvider`](/docs/reference-providers-memoryoutputprovider) - Captures command output instead of writing it to stdout.
 
 ### Environment Variables
 

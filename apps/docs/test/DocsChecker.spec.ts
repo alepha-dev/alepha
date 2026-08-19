@@ -17,7 +17,7 @@ describe("DocsChecker", () => {
 
   describe("parseFences", () => {
     it("should record the language, the marker and the 1-based start line", () => {
-      // The line number is what makes a violation actionable — a report that
+      // The line number is what makes a violation actionable - a report that
       // says "somewhere in this file" is a report nobody acts on.
       const { checker } = boot();
 
@@ -114,7 +114,7 @@ describe("DocsChecker", () => {
 
     it("should allow a banned token when it is part of a longer identifier", async () => {
       // `toTypeBoxSchema` in devtools is an internal name, not a claim about
-      // the framework — and `t` appears inside every English sentence.
+      // the framework - and `t` appears inside every English sentence.
       const { checker, fs } = boot();
       await fs.writeFile(
         "/docs/a.md",

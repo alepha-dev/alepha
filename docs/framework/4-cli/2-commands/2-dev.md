@@ -1,6 +1,6 @@
 # Dev Command
 
-Start your development server with a single command. Hot reloading, fast refresh, environment variables — it all just works.
+Start your development server with a single command. Hot reloading, fast refresh, environment variables - it all just works.
 
 ## Quick Start
 
@@ -27,7 +27,7 @@ alepha dev
 
 ### Port
 
-The port is resolved in this order: the `SERVER_PORT` environment variable, then `dev.port` in `alepha.config.ts`, then Vite's `server.port`, then `5173`. The chosen port is bound strictly — a second dev server on the same port fails loudly instead of drifting to `5174`:
+The port is resolved in this order: the `SERVER_PORT` environment variable, then `dev.port` in `alepha.config.ts`, then Vite's `server.port`, then `5173`. The chosen port is bound strictly - a second dev server on the same port fails loudly instead of drifting to `5174`:
 
 ```typescript
 export default defineConfig({
@@ -36,12 +36,12 @@ export default defineConfig({
 ```
 
 You get:
-- **Hot Module Replacement** — Changes appear instantly without full page reload
-- **Fast Refresh** — React state preserved during edits
-- **SSR in development** — Same rendering behavior as production
-- **Source maps** — Debug your actual TypeScript code
+- **Hot Module Replacement**: Changes appear instantly without full page reload
+- **Fast Refresh**: React state preserved during edits
+- **SSR in development**: Same rendering behavior as production
+- **Source maps**: Debug your actual TypeScript code
 
-Backend-only projects (no browser entry) run through the same Vite server — you still get instant reload on save, without a bundler/watcher setup of your own.
+Backend-only projects (no browser entry) run through the same Vite server - you still get instant reload on save, without a bundler/watcher setup of your own.
 
 ### Workspace Mode
 
@@ -88,7 +88,7 @@ export default defineConfig({
 
 > **Automatic .env Loading**
 >
-> The `dev` command automatically loads `.env` files — no extra setup required.
+> The `dev` command automatically loads `.env` files - no extra setup required.
 
 Environment variables from `.env` are available immediately:
 
@@ -118,12 +118,12 @@ class MyService {
 
 Under the hood, the dev server is Vite, fully configured by the Alepha CLI:
 
-- **React Fast Refresh** — Edit components without losing state
-- **Server-Side Rendering** — Your pages render on the server during development
-- **API Routes** — Define `$action` endpoints that work seamlessly
-- **Static Assets** — Import images, fonts, and other assets directly
+- **React Fast Refresh**: Edit components without losing state
+- **Server-Side Rendering**: Your pages render on the server during development
+- **API Routes**: Define `$action` endpoints that work seamlessly
+- **Static Assets**: Import images, fonts, and other assets directly
 
-Your `vite.config.ts` stays minimal because the CLI does the heavy lifting — the file exists so extra Vite plugins (like Tailwind) can hook in, and so Vitest has its `test` block:
+Your `vite.config.ts` stays minimal because the CLI does the heavy lifting - the file exists so extra Vite plugins (like Tailwind) can hook in, and so Vitest has its `test` block:
 
 ```typescript
 import tailwindcss from "@tailwindcss/vite";
@@ -142,7 +142,7 @@ export default defineConfig({
 
 ### Server-Side Code
 
-Your server code runs in Node.js. Use standard debugging — `--inspect` on the CLI process, or VS Code's debugger with a `launch.json` config.
+Your server code runs in Node.js. Use standard debugging - `--inspect` on the CLI process, or VS Code's debugger with a `launch.json` config.
 
 ### Client-Side Code
 
@@ -171,7 +171,7 @@ await alepha.start();
 
 > **Zero Config Start**
 >
-> You don't need to run `alepha init` first — just start coding. `init` gives you the full scaffold; `dev` only needs an entry file.
+> You don't need to run `alepha init` first - just start coding. `init` gives you the full scaffold; `dev` only needs an entry file.
 
 ## Tips
 

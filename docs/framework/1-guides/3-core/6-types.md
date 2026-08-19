@@ -2,7 +2,7 @@
 
 Alepha provides schema validation through the `z` singleton from `"alepha"`. It wraps [Zod 4](https://zod.dev) with opinionated defaults: `z.text()` strings carry length limits and trimming, format types are tagged for the ORM and OpenAPI, and objects strip unknown keys.
 
-Import `z` from `alepha`, not from `zod` — a schema built with the raw library carries none of those defaults.
+Import `z` from `alepha`, not from `zod` - a schema built with the raw library carries none of those defaults.
 
 ## Basic Usage
 
@@ -17,7 +17,7 @@ const userSchema = z.object({
 });
 ```
 
-`z` returns plain Zod schemas, so anything that accepts a Zod type accepts them — `.parse()`, `.safeParse()`, `.optional()`, and the rest of the Zod surface all work as usual.
+`z` returns plain Zod schemas, so anything that accepts a Zod type accepts them - `.parse()`, `.safeParse()`, `.optional()`, and the rest of the Zod surface all work as usual.
 
 ## Strings
 
@@ -47,9 +47,9 @@ z.text({ trim: true, lowercase: true })  // trim + lowercase
 Shorthand methods for common text sizes:
 
 ```typescript
-z.shortText()   // same as z.text({ size: "short" })  — 64 chars
-z.longText()    // same as z.text({ size: "long" })   — 1024 chars
-z.richText()    // same as z.text({ size: "rich" })   — 65535 chars
+z.shortText()   // same as z.text({ size: "short" })  - 64 chars
+z.longText()    // same as z.text({ size: "long" })   - 1024 chars
+z.richText()    // same as z.text({ size: "rich" })   - 65535 chars
 ```
 
 ### Length Limits
@@ -186,7 +186,7 @@ z.stream()                      // experimental streaming type
 z.stream({ maxBytes: 1_048_576 }) // same cap, applied to the streamed part
 ```
 
-`maxBytes` is runtime-enforced — the multipart parser reads it and refuses larger uploads
+`maxBytes` is runtime-enforced - the multipart parser reads it and refuses larger uploads
 with a 413. Careful with the neighbouring `$storage({ maxSize })`, which is declared in
 **megabytes**; mixing the two units up is silent in both directions.
 
@@ -195,7 +195,7 @@ with a 413. Careful with the neighbouring `$storage({ maxSize })`, which is decl
 ### Email
 
 ```typescript
-z.email()   // validates email format (no trimming or lowercasing — whitespace is rejected)
+z.email()   // validates email format (no trimming or lowercasing - whitespace is rejected)
 ```
 
 ### Phone (E.164)
@@ -240,7 +240,7 @@ z.undefined()       // undefined
 z.union([...])      // union of schemas
 z.tuple([...])      // fixed-length array
 z.record(k, v)      // Record<K, V>
-z.json()            // Record<string, any> — convenience for JSON blobs
+z.json()            // Record<string, any> - convenience for JSON blobs
 ```
 
 ## Validation
@@ -263,7 +263,7 @@ const result = alepha.codec.validate(schema, {
 // result: { name: "Alice", email: "alice@example.com" }
 ```
 
-Validation is a thin wrapper over `schema.safeParse` — everything beyond type checking lives **in the schema itself**:
+Validation is a thin wrapper over `schema.safeParse` - everything beyond type checking lives **in the schema itself**:
 
 - **Trimming**: strings created with `z.text()` are trimmed by default (`trim: false` opts out).
 - **Lowercase**: strings created with `z.text({ lowercase: true })` are lowercased.
@@ -339,6 +339,6 @@ wrap, the fluent API works on them directly:
 schemaA.and(schemaB);
 ```
 
-Do not import the `zod` package directly for this — a second zod copy makes
+Do not import the `zod` package directly for this - a second zod copy makes
 schemas structurally incompatible with every Alepha primitive. Stay on the
 instances `z` hands you.

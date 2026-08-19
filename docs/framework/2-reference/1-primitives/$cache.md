@@ -10,7 +10,7 @@ import { $cache } from "alepha/cache";
 
 Creates a cache primitive for caching with automatic management.
 
-**Middleware mode** (no `handler`) — usable in `use` arrays AND as a store:
+**Middleware mode** (no `handler`) - usable in `use` arrays AND as a store:
 ```ts
 class UserService {
   userCache = $cache({ name: "users", ttl: [10, "minutes"] });
@@ -26,7 +26,7 @@ class UserService {
 }
 ```
 
-**Primitive mode** (with `handler`) — standalone callable:
+**Primitive mode** (with `handler`) - standalone callable:
 ```ts
 getUserData = $cache({
   name: "user-data",

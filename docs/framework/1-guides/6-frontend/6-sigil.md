@@ -1,7 +1,7 @@
 # Sigil (analytics, vitals & errors)
 
 `@alepha/sigil` makes an Alepha app report what it is doing: page views,
-Web Vitals, and client and server errors — to the **sink** the app names. A
+Web Vitals, and client and server errors - to the **sink** the app names. A
 sink is anything serving the two sigil endpoints; Lore is one.
 
 ```typescript
@@ -18,11 +18,11 @@ Then the server-side variables:
 
 | Variable | Required | |
 |---|---|---|
-| `SIGIL_KEY` | **yes** | the sigil token the sink minted for this app — **secret, server-only** |
+| `SIGIL_KEY` | **yes** | the sigil token the sink minted for this app - **secret, server-only** |
 | `SIGIL_CONFIG` | **yes** | JSON: what this app reports, and where |
 | `SIGIL_SALT` | no | overrides the secret salting the daily visitor hash. Falls back to `APP_SECRET` |
 
-`SIGIL_KEY` and `SIGIL_CONFIG` go together — both or neither. With one missing
+`SIGIL_KEY` and `SIGIL_CONFIG` go together - both or neither. With one missing
 the module is **inert**: it still captures and still collapses a crash loop into
 one logged warning, but nothing leaves the machine. It logs which half is
 missing and boots anyway: telemetry is not worth an outage.
@@ -33,17 +33,17 @@ SIGIL_CONFIG={"project":"alepha","vitals":false}
 
 | Field | Default | |
 |---|---|---|
-| `project` | — | **required.** The sink-side project this reports into |
+| `project` | - | **required.** The sink-side project this reports into |
 | `analytics` | `true` | page views |
 | `blights` | `true` | client and server errors |
 | `vitals` | `true` | web-vitals samples |
 | `feedback` | `true` | whether there is a feedback link at all |
 | `feedbackButton` | `"bottom-right"` | `"hidden"`, `"bottom-left"` or `"bottom-right"` |
-| `feedbackButtonExcludedPaths` | `[]` | path globs the button stays off — `*` within a segment, `**` across them |
+| `feedbackButtonExcludedPaths` | `[]` | path globs the button stays off - `*` within a segment, `**` across them |
 | `sink` | `https://lore.alepha.dev` | origin of the sink; set it to self-host |
 
 `sink` defaults to the public Lore instance the way `npm` defaults to
-`registry.npmjs.org` — a commons that is there if you want it and one field
+`registry.npmjs.org` - a commons that is there if you want it and one field
 away if you do not. The default is inert on its own: nothing is sent without a
 key, so an app that sets neither variable still captures locally and hands
 aggregated errors to its own logger, phoning home to nothing. That is the
@@ -86,21 +86,21 @@ and the next request reads the new value. No CI, no rebuild.
 
 It used to be fetched from the sink instead, and that failed in two opposite
 ways. On a serverless runtime the isolate is discarded between requests, so the
-cached answer was gone on nearly every one and fetched again — awaited in front
+cached answer was gone on nearly every one and fetched again - awaited in front
 of the first byte of every cold page. On a prerendered app the same code ran
 during the *build*, so the answer was baked into the HTML and could not change
 until the next deploy: a kill-switch that needs a redeploy, which is the thing
 the fetch existed to avoid.
 
-**A page can still outlive its config** — a prerendered file, a cached
+**A page can still outlive its config** - a prerendered file, a cached
 response, a restored document. The config sent to the browser carries the time
 it was resolved, and a page whose stamp has aged asks for the current one on its
 first ingest call, which is a call it was making anyway. Until that returns it
 acts on what it was served with, so at most one envelope goes out under an old
 config, and the server drops what it should not have accepted.
 
-That first call waits for the page to settle — the largest contentful paint, or
-two seconds, whichever comes first — rather than going out the moment the app
+That first call waits for the page to settle - the largest contentful paint, or
+two seconds, whichever comes first - rather than going out the moment the app
 hydrates. It then carries the vitals collected by then instead of leaving them
 for a second request. The visible consequence is that a feedback button on a
 prerendered page appears a moment after the content rather than with it.
@@ -123,7 +123,7 @@ by how much traffic you have.
 
 Importing the module is the whole integration: `<SigilRoot />` is pushed into
 the root components automatically, so the floating feedback button appears with
-no JSX to place. Control it from `SIGIL_CONFIG` — `feedbackButton: "hidden"`
+no JSX to place. Control it from `SIGIL_CONFIG` - `feedbackButton: "hidden"`
 keeps it out of the tree, `feedbackButtonExcludedPaths` keeps it off specific
 routes.
 

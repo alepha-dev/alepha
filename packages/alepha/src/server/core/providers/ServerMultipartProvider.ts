@@ -77,7 +77,7 @@ declare module "alepha" {
 /**
  * Parses `multipart/form-data` request bodies into route handler input.
  *
- * **Each `z.file()` field is still materialised** — a `FileLike` promises to be
+ * **Each `z.file()` field is still materialised** - a `FileLike` promises to be
  * readable more than once, and honouring that means keeping the bytes. What
  * changed is that the ceiling is now decided per request instead of once for
  * the whole application, and that it is enforced by counting bytes as they
@@ -85,9 +85,9 @@ declare module "alepha" {
  *
  * The budget is resolved at three levels, most specific last:
  *
- * 1. {@link multipartOptions} — the application-wide default.
+ * 1. {@link multipartOptions}: the application-wide default.
  * 2. `z.file({ maxBytes })` on the route's own body schema.
- * 3. {@link MultipartCapProvider} — the only level that knows where the bytes
+ * 3. {@link MultipartCapProvider}: the only level that knows where the bytes
  *    are actually going, which is why it wins.
  *
  * A level can *raise* the ceiling, not merely lower it. That inversion was the
@@ -96,7 +96,7 @@ declare module "alepha" {
  * promise the framework could not keep.
  *
  * ⚠️ Raising a ceiling on this path is not free. `$secure` runs *after* this
- * hook, so whatever budget is granted here is reachable before authentication —
+ * hook, so whatever budget is granted here is reachable before authentication -
  * a bigger number is a cheaper denial of service until the bytes stop being
  * buffered.
  *

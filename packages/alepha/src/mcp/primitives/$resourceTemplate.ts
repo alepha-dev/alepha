@@ -22,7 +22,7 @@ import { McpServerProvider } from "../providers/McpServerProvider.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Creates an MCP resource template — a resource addressed by a *pattern*
+ * Creates an MCP resource template - a resource addressed by a *pattern*
  * rather than a fixed URI.
  *
  * {@link $resource} covers data that lives at one known address. A template
@@ -35,9 +35,9 @@ import { McpServerProvider } from "../providers/McpServerProvider.ts";
  *
  * Two forms are supported, which is what MCP servers use in practice:
  *
- * - `{var}` — simple expansion. Matches one segment; will not span `/`.
+ * - `{var}`: simple expansion. Matches one segment; will not span `/`.
  *   The captured value is percent-decoded.
- * - `{+var}` — reserved expansion. Matches greedily, `/` included. Use it for
+ * - `{+var}`: reserved expansion. Matches greedily, `/` included. Use it for
  *   trailing paths (`file:///{+path}`).
  *
  * Any other operator (`#`, `.`, `/`, `;`, `?`, `&`) or modifier (`*`, `:3`)

@@ -26,7 +26,7 @@ import { LockTopicProvider } from "../providers/LockTopicProvider.ts";
  * Distributed lock middleware for `use` arrays in `$action`, `$job`, `$page`, `$pipeline`.
  *
  * Acquires a distributed lock before the handler runs and releases it after completion.
- * Throws `LockAcquireError` if the lock cannot be acquired — with `wait: true`
+ * Throws `LockAcquireError` if the lock cannot be acquired - with `wait: true`
  * it polls first, but still throws when the wait times out.
  *
  * ```ts

@@ -54,10 +54,10 @@ The second argument to `useForm` is a dependency array (defaults to `[]`). When 
 
 Spread on the `<form>` element. Includes:
 
-- `id` — unique form identifier
-- `noValidate` — set to `true` (validation is handled by the schema)
-- `onSubmit` — calls `form.submit()` with `preventDefault`
-- `onReset` — calls `form.reset()`
+- `id`: unique form identifier
+- `noValidate`: set to `true` (validation is handled by the schema)
+- `onSubmit`: calls `form.submit()` with `preventDefault`
+- `onReset`: calls `form.reset()`
 
 ### form.input
 
@@ -71,7 +71,7 @@ A proxy object where each key corresponds to a schema property. Each field has:
 | `schema`   | `ZType`                     | The Zod schema for this field.          |
 | `set`      | `(value: any) => void`      | Programmatically set the field value.       |
 | `initialValue` | `any`                   | The field's initial value (from `initialValues` or schema defaults). |
-| `items`    | `Record<string, InputField>` | Child fields, for object-typed properties — see [Nested Object Fields](#nested-object-fields). |
+| `items`    | `Record<string, InputField>` | Child fields, for object-typed properties - see [Nested Object Fields](#nested-object-fields). |
 | `form`     | `FormModel`                 | Reference back to the parent form.          |
 
 ### form.submit()
@@ -112,7 +112,7 @@ Input types are automatically inferred from the schema:
 | `z.datetime()`   | `datetime-local` |
 | `z.binary()`     | `file`           |
 
-Note that `email`/`password`/`url` are detected from the **field name**, not the schema — a `z.email()` schema on a field named `contact` renders as plain `text`.
+Note that `email`/`password`/`url` are detected from the **field name**, not the schema - a `z.email()` schema on a field named `contact` renders as plain `text`.
 
 String constraints like `maxLength` and `minLength` are also applied to the input attributes.
 

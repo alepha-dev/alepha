@@ -21,12 +21,12 @@ Redis client wrapper.
 
 ### Providers
 
-- [`BunRedisProvider`](/docs/reference-providers-bunredisprovider) — Bun Redis client provider using Bun's native Redis client.
-- [`BunRedisSubscriberProvider`](/docs/reference-providers-bunredissubscriberprovider) — Bun Redis subscriber provider for pub/sub operations.
-- [`NodeRedisProvider`](/docs/reference-providers-noderedisprovider) — Node.js Redis client provider using `@redis/client`.
-- [`NodeRedisSubscriberProvider`](/docs/reference-providers-noderedissubscriberprovider) — Node.js Redis subscriber provider using `@redis/client`.
-- [`RedisProvider`](/docs/reference-providers-redisprovider) — Abstract Redis provider interface.
-- [`RedisSubscriberProvider`](/docs/reference-providers-redissubscriberprovider) — Abstract Redis subscriber provider interface.
+- [`BunRedisProvider`](/docs/reference-providers-bunredisprovider) - Bun Redis client provider using Bun's native Redis client.
+- [`BunRedisSubscriberProvider`](/docs/reference-providers-bunredissubscriberprovider) - Bun Redis subscriber provider for pub/sub operations.
+- [`NodeRedisProvider`](/docs/reference-providers-noderedisprovider) - Node.js Redis client provider using `@redis/client`.
+- [`NodeRedisSubscriberProvider`](/docs/reference-providers-noderedissubscriberprovider) - Node.js Redis subscriber provider using `@redis/client`.
+- [`RedisProvider`](/docs/reference-providers-redisprovider) - Abstract Redis provider interface.
+- [`RedisSubscriberProvider`](/docs/reference-providers-redissubscriberprovider) - Abstract Redis subscriber provider interface.
 
 ### Environment Variables
 

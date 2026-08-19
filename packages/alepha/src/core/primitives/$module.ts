@@ -26,16 +26,16 @@ import type { Atom } from "./$atom.ts";
  *
  * ### Slots
  *
- * - `services[]` — always auto-injected. Module metadata attached.
- * - `variants[]` — module metadata attached but NOT auto-injected. Two typical uses:
+ * - `services[]`: always auto-injected. Module metadata attached.
+ * - `variants[]`: module metadata attached but NOT auto-injected. Two typical uses:
  *   (1) alternative implementations picked at register-time via `alepha.with({ provide, use })`;
  *   (2) services whose instantiation is driven externally (e.g., the framework core).
- * - `imports[]` — other modules this one depends on. Wired after `register()`
+ * - `imports[]`: other modules this one depends on. Wired after `register()`
  *   runs and before `services[]` are injected.
- * - `atoms[]` — registered on the store, first.
- * - `primitives[]` — tagged with module metadata.
- * - `register(alepha)` — purely additive side-effect hook. Runs after `atoms[]`
- *   and BEFORE `imports[]` are wired and `services[]` are auto-injected — so
+ * - `atoms[]`: registered on the store, first.
+ * - `primitives[]`: tagged with module metadata.
+ * - `register(alepha)`: purely additive side-effect hook. Runs after `atoms[]`
+ *   and BEFORE `imports[]` are wired and `services[]` are auto-injected - so
  *   substitutions it records (e.g. `alepha.with({ provide, use })`) apply to
  *   the subsequent auto-injection. It can never suppress auto-registration.
  *
@@ -56,7 +56,7 @@ import type { Atom } from "./$atom.ts";
  * ### When not to use Modules?
  *
  * Small applications do not need modules. Modules earn their keep when the application
- * grows — as a rule of thumb, once a module has 30+ `$actions`, consider splitting it.
+ * grows - as a rule of thumb, once a module has 30+ `$actions`, consider splitting it.
  */
 export const $module = (options: ModulePrimitiveOptions): Service<Module> => {
   const {

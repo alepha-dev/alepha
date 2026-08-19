@@ -34,7 +34,7 @@ All services listed in `services` are automatically instantiated and registered 
 
 ## Module Names
 
-Module names must follow the pattern `project.module.submodule` — lowercase letters, hyphens, and dots:
+Module names must follow the pattern `project.module.submodule` - lowercase letters, hyphens, and dots:
 
 ```txt
 core                    // valid
@@ -82,7 +82,7 @@ const mod = $module({
 });
 ```
 
-A `register` function adds custom logic — conditional providers, atom seeding, environment checks — but it never suppresses auto-registration: `services` are always injected. The ordering guarantee is: `atoms` are registered, then `register()` runs, then `imports` are wired, then `services` are injected — so substitutions recorded in `register()` (e.g. `alepha.with({ provide, use })`) apply to the subsequent auto-injection.
+A `register` function adds custom logic - conditional providers, atom seeding, environment checks - but it never suppresses auto-registration: `services` are always injected. The ordering guarantee is: `atoms` are registered, then `register()` runs, then `imports` are wired, then `services` are injected - so substitutions recorded in `register()` (e.g. `alepha.with({ provide, use })`) apply to the subsequent auto-injection.
 
 ```typescript
 const mod = $module({
@@ -96,11 +96,11 @@ const mod = $module({
 });
 ```
 
-Services listed in `variants` are *not* auto-registered — they're opt-in implementations the user wires explicitly with `alepha.with(...)` (e.g. a transport choice).
+Services listed in `variants` are *not* auto-registered - they're opt-in implementations the user wires explicitly with `alepha.with(...)` (e.g. a transport choice).
 
 ## Module Dependencies
 
-Declare dependencies on other modules with `imports` — preferred over nesting modules in `services`:
+Declare dependencies on other modules with `imports` - preferred over nesting modules in `services`:
 
 ```typescript
 const ServerModule = $module({

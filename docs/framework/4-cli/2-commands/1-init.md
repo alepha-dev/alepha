@@ -1,6 +1,6 @@
 # Init Command
 
-Start a new Alepha project in seconds. The `init` command sets up everything you need — configuration files, dependencies, and project structure — so you can focus on building, not configuring.
+Start a new Alepha project in seconds. The `init` command sets up everything you need - configuration files, dependencies, and project structure - so you can focus on building, not configuring.
 
 ## Quick Start
 
@@ -14,7 +14,7 @@ That's it. You now have a working full-stack Alepha project.
 
 ## One Shape, Two Presets
 
-Every Alepha project gets the same structure: an API module, a React web module with SSR, and Tailwind CSS. That part is not configurable, and deliberately so. A single canonical layout means anyone opening an Alepha project — a teammate, a contributor, or an AI assistant — already knows where everything lives. Scaffolding that lets you move the furniture buys a little convenience up front and costs you a code base that looks different in every repository.
+Every Alepha project gets the same structure: an API module, a React web module with SSR, and Tailwind CSS. That part is not configurable, and deliberately so. A single canonical layout means anyone opening an Alepha project - a teammate, a contributor, or an AI assistant - already knows where everything lives. Scaffolding that lets you move the furniture buys a little convenience up front and costs you a code base that looks different in every repository.
 
 A preset does not move the furniture. It decides what is mounted on top of it:
 
@@ -27,19 +27,19 @@ A preset does not move the furniture. It decides what is mounted on top of it:
 alepha init my-app --preset=saas
 ```
 
-Both produce the same `src/api/`, `src/web/`, `src/main.server.ts` and `src/main.css`. Nothing is renamed or relocated between them, so the "which flags did I pass six months ago?" question has no purchase — you can see the answer by looking at `src/web/index.ts`.
+Both produce the same `src/api/`, `src/web/`, `src/main.server.ts` and `src/main.css`. Nothing is renamed or relocated between them, so the "which flags did I pass six months ago?" question has no purchase - you can see the answer by looking at `src/web/index.ts`.
 
 This is the one axis worth branching on because it is the one you cannot easily add later by deleting something. Going the other way is trivial: if you don't need the web module, delete `src/web/`.
 
 ## What It Does
 
-1. **Creates configuration files** — `tsconfig.json`, `biome.json`, `alepha.config.ts`, `.editorconfig`, `.vscode/settings.json`
-2. **Sets up package.json** — Adds Alepha dependencies and standard scripts
-3. **Configures your package manager** — Works with Yarn, pnpm, npm, or Bun
-4. **Installs dependencies** — Gets everything ready to run
-5. **Scaffolds the project** — `src/api/`, `src/web/`, both entry points, and a starter test
-6. **Initializes git** — Runs `git init` and writes a `.gitignore` if you're not already in a repo
-7. **Writes agent docs** — `AGENTS.md` plus a `CLAUDE.md` that imports it, so coding agents understand the project
+1. **Creates configuration files**: `tsconfig.json`, `biome.json`, `alepha.config.ts`, `.editorconfig`, `.vscode/settings.json`
+2. **Sets up package.json**: Adds Alepha dependencies and standard scripts
+3. **Configures your package manager**: Works with Yarn, pnpm, npm, or Bun
+4. **Installs dependencies**: Gets everything ready to run
+5. **Scaffolds the project**: `src/api/`, `src/web/`, both entry points, and a starter test
+6. **Initializes git**: Runs `git init` and writes a `.gitignore` if you're not already in a repo
+7. **Writes agent docs**: `AGENTS.md` plus a `CLAUDE.md` that imports it, so coding agents understand the project
 
 ## Options
 
@@ -64,7 +64,7 @@ With no argument, `init` picks its target from what the current directory holds:
 
 | Current directory | Result |
 |---|---|
-| Empty | Scaffolds **in place** — `mkdir my-app && cd my-app && alepha init` does what you expect |
+| Empty | Scaffolds **in place** - `mkdir my-app && cd my-app && alepha init` does what you expect |
 | Has a `package.json` | Fills in whatever is missing, in place |
 | Non-empty, no `package.json` | Creates `./my-app/`, so a stray `init` can't scatter files over unrelated work |
 
@@ -98,11 +98,11 @@ my-app/
 └── CLAUDE.md                        # @AGENTS.md
 ```
 
-The router is wired to the API out of the box — `AppRouter.ts` calls `HelloController` through `$client`, giving you an end-to-end type-safe request on the first run.
+The router is wired to the API out of the box - `AppRouter.ts` calls `HelloController` through `$client`, giving you an end-to-end type-safe request on the first run.
 
 **Dependencies:** `alepha`, `react`, `react-dom` and, as dev dependencies, `@types/react`, `tailwindcss`, `@tailwindcss/vite`, `@alepha/devtools`.
 
-The toolchain — TypeScript, Vite, Vitest, Biome, drizzle-kit — ships embedded in `alepha` and never appears in your `package.json`. Upgrading `alepha` moves the whole toolchain at once.
+The toolchain - TypeScript, Vite, Vitest, Biome, drizzle-kit - ships embedded in `alepha` and never appears in your `package.json`. Upgrading `alepha` moves the whole toolchain at once.
 
 ## The `saas` Preset
 
@@ -116,7 +116,7 @@ Everything above, plus a working identity surface on first run:
 |---|---|
 | `/auth/*` | Login, register, password reset, email verification |
 | `/account/*` | Profile, security, sessions, API keys, connected apps |
-| `/admin/*` | Users, sessions, keys, audit log — and any other console page whose module you mount |
+| `/admin/*` | Users, sessions, keys, audit log - and any other console page whose module you mount |
 
 It adds one dependency, `@alepha/ui`, and three files' worth of difference:
 
@@ -133,17 +133,17 @@ Note what is *not* there: no chrome file, and no changes to `main.server.ts` or 
 
 ### Your first admin
 
-`src/api/Realm.ts` reads the admin list from the `ADMIN_EMAIL` environment variable via `$env` — and `init` already wrote a gitignored `.env` with the address from `git config user.email`, so a fresh project has a working admin without editing anything. Register with that address and you are promoted to admin, which is what gets you into `/admin`.
+`src/api/Realm.ts` reads the admin list from the `ADMIN_EMAIL` environment variable via `$env` - and `init` already wrote a gitignored `.env` with the address from `git config user.email`, so a fresh project has a working admin without editing anything. Register with that address and you are promoted to admin, which is what gets you into `/admin`.
 
 Per deployed environment, set `ADMIN_EMAIL` where that environment's variables live (`.env.production`, your platform's dashboard). The address lives in an environment variable rather than the scaffolded source because a committed placeholder address is a real address someone else could register, and the promotion is automatic.
 
 ### What's on, and what isn't
 
-`Realm.ts` enables only what the database alone can back — `audits` and `apiKeys`. Everything else (`jobs`, `notifications`, `avatars`, `parameters`, `oauth`) needs a queue, a mailer or a bucket, so it stays off until you have wired the provider.
+`Realm.ts` enables only what the database alone can back - `audits` and `apiKeys`. Everything else (`jobs`, `notifications`, `avatars`, `parameters`, `oauth`) needs a queue, a mailer or a bucket, so it stays off until you have wired the provider.
 
 That is also why `verifyEmailRequired` and `resetPasswordAllowed` are `false`: both can only complete by sending a code, and a realm that asks for either while `notifications` is off is refused at boot. Turn on `notifications`, configure a mail provider, then turn them on.
 
-Admin and account pages follow the same rule automatically. Each one resolves its action against `/api/_links` and hides when it is absent, so turning on a feature makes its screens appear and removing a module takes its screens away — you never get a nav entry pointing at a 404.
+Admin and account pages follow the same rule automatically. Each one resolves its action against `/api/_links` and hides when it is absent, so turning on a feature makes its screens appear and removing a module takes its screens away - you never get a nav entry pointing at a 404.
 
 ### Database
 
@@ -157,19 +157,19 @@ alepha db migrations create
 
 ### Not available for Expo
 
-Expo brings its own client runtime, so `init` skips the web module for it — and all three routers are React pages. `--preset=saas` in an Expo project fails rather than quietly scaffolding an API with no UI.
+Expo brings its own client runtime, so `init` skips the web module for it - and all three routers are React pages. `--preset=saas` in an Expo project fails rather than quietly scaffolding an API with no UI.
 
 ## Empty Directory Check
 
 When you name a target path, the directory must be empty (a lone `package.json` is allowed, since that's normal for a workspace package). Use `--force` to scaffold over existing files.
 
-A bare `alepha init` is the fill-in-the-gaps mode and is always safe to run — it only adds missing files and never overwrites without `--force`.
+A bare `alepha init` is the fill-in-the-gaps mode and is always safe to run - it only adds missing files and never overwrites without `--force`.
 
 ## Package Manager Detection
 
 If you don't specify `--pm`, `init` figures it out automatically, strongest evidence first:
 
-1. A lockfile in the target directory — `yarn.lock`, `pnpm-lock.yaml`, `bun.lock` or `package-lock.json`
+1. A lockfile in the target directory - `yarn.lock`, `pnpm-lock.yaml`, `bun.lock` or `package-lock.json`
 2. Inside a workspace → inherits the workspace's package manager
 3. How you invoked the CLI → `bunx alepha init` gives you Bun, `pnpm dlx` gives you pnpm, `npx` gives you npm
 4. Running under Bun → uses Bun
@@ -181,8 +181,8 @@ Step 3 reads `npm_config_user_agent`, which every package manager sets when it s
 
 Vitest ships embedded in `alepha`, so `alepha test` works with nothing to install.
 
-- `vite.config.ts` — Carries the `test` block, including the `test.root` that stops a parent monorepo's vitest config taking over. One file, so plugins and aliases can't drift between the build and the tests
-- `test/dummy.spec.ts` — A starter test, also a worked example
+- `vite.config.ts`: Carries the `test` block, including the `test.root` that stops a parent monorepo's vitest config taking over. One file, so plugins and aliases can't drift between the build and the tests
+- `test/dummy.spec.ts`: A starter test, also a worked example
 - a `"test": "alepha test"` script
 
 ## Generated Files
@@ -212,7 +212,7 @@ export default defineConfig({
 });
 ```
 
-Everything else about the Vite setup is handled internally by the Alepha CLI — this file exists so Tailwind can hook in and so Vitest has its config (`test.root` stops Vitest walking up into a parent monorepo's config; there is no separate Vitest config file).
+Everything else about the Vite setup is handled internally by the Alepha CLI - this file exists so Tailwind can hook in and so Vitest has its config (`test.root` stops Vitest walking up into a parent monorepo's config; there is no separate Vitest config file).
 
 ### biome.json
 
@@ -221,7 +221,7 @@ Linting and formatting rules that make sense:
 - Consistent code style across your team
 - Import organization
 - TypeScript-aware rules
-- Fast — Biome is written in Rust
+- Fast - Biome is written in Rust
 
 ### package.json Scripts
 
@@ -240,7 +240,7 @@ Your package.json gets these scripts:
 }
 ```
 
-Every script delegates to the `alepha` CLI — there are no raw `tsc` / `vite` / `vitest` / `biome` invocations, because the toolchain is embedded in `alepha`.
+Every script delegates to the `alepha` CLI - there are no raw `tsc` / `vite` / `vitest` / `biome` invocations, because the toolchain is embedded in `alepha`.
 
 ## Workspace Awareness
 
@@ -254,7 +254,7 @@ If you run `alepha init` inside a monorepo workspace package (i.e. there's a wor
 
 ## Expo Detection
 
-If your project has Expo in its dependencies, `init` skips the web scaffolding (browser entry, `src/web/`, Tailwind, public assets) — Expo owns that part of the toolchain. The server and API scaffolding still applies.
+If your project has Expo in its dependencies, `init` skips the web scaffolding (browser entry, `src/web/`, Tailwind, public assets) - Expo owns that part of the toolchain. The server and API scaffolding still applies.
 
 ## Running Init on Existing Projects
 

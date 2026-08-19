@@ -14,7 +14,7 @@ import { Alepha } from "alepha";
 const alepha = Alepha.create();
 ```
 
-`create()` automatically merges `process.env` with any custom configuration you provide. In test environments (Vitest with `globals: true`), it hooks into `beforeAll`, `afterAll`, `afterEach` and `onTestFinished` to manage the app lifecycle automatically — the latter two are what make per-test cleanup and failed-test log dumping work.
+`create()` automatically merges `process.env` with any custom configuration you provide. In test environments (Vitest with `globals: true`), it hooks into `beforeAll`, `afterAll`, `afterEach` and `onTestFinished` to manage the app lifecycle automatically - the latter two are what make per-test cleanup and failed-test log dumping work.
 
 ### Configuration
 
@@ -139,7 +139,7 @@ test("MyService", async () => {
 
 ## Providers
 
-Providers separate infrastructure logic (the "how") from business logic (the "what"). A provider wraps external systems — databases, email services, storage — behind a clean API.
+Providers separate infrastructure logic (the "how") from business logic (the "what"). A provider wraps external systems - databases, email services, storage - behind a clean API.
 
 ```typescript
 import { $env, $hook, z } from "alepha";

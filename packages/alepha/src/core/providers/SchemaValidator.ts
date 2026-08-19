@@ -6,7 +6,7 @@ import type { Infer, ZType } from "./ZodProvider.ts";
  *
  * Trimming / lowercasing / defaults / unknown-key stripping all live in the
  * schema itself now (zod), so this is a thin wrapper over `schema.parse`.
- * No compile step, no `eval` — safe inside Cloudflare Workers.
+ * No compile step, no `eval` - safe inside Cloudflare Workers.
  */
 export class SchemaValidator {
   public validate<T extends ZType>(schema: T, value: unknown): Infer<T> {

@@ -110,11 +110,11 @@ For per-action CORS, attach the `$cors` middleware instead: `use: [$cors({ origi
 | `credentials` | `false` | Allow credentials (cookies, auth headers) |
 | `maxAge` | - | Preflight cache duration in seconds |
 
-Alepha automatically creates an `OPTIONS` preflight route for every path when the CORS module is active — including `GET`-only paths, which browsers preflight as soon as the request carries a non-simple header such as `Authorization`.
+Alepha automatically creates an `OPTIONS` preflight route for every path when the CORS module is active - including `GET`-only paths, which browsers preflight as soon as the request carries a non-simple header such as `Authorization`.
 
 Responses always carry `Vary: Origin`, since the allowed origin is reflected from the request.
 
-**`credentials` requires an explicit origin.** With `origin: "*"` the allowed origin is reflected back, so pairing it with `credentials: true` would let *any* site read authenticated responses — the exact thing the browser's own ban on `Access-Control-Allow-Origin: *` plus credentials prevents. Alepha refuses that combination: `Access-Control-Allow-Credentials` is omitted and a warning is logged at startup. List the origins you trust to enable credentials.
+**`credentials` requires an explicit origin.** With `origin: "*"` the allowed origin is reflected back, so pairing it with `credentials: true` would let *any* site read authenticated responses - the exact thing the browser's own ban on `Access-Control-Allow-Origin: *` plus credentials prevents. Alepha refuses that combination: `Access-Control-Allow-Credentials` is omitted and a warning is logged at startup. List the origins you trust to enable credentials.
 
 ### Rate Limiting
 
@@ -143,7 +143,7 @@ class App {
 #### Per-Action Rate Limiting
 
 Apply rate limits directly on an action. The `rateLimit` route option is enforced by
-`AlephaServerRateLimit` — it is not part of the base `AlephaServer`, so without the module
+`AlephaServerRateLimit` - it is not part of the base `AlephaServer`, so without the module
 registered the option is silently ignored:
 
 ```typescript check
@@ -168,20 +168,20 @@ Alepha.create().with(AlephaServerRateLimit).with(App);
 
 ### Health Check
 
-`GET /health` and `GET /healthz` are part of `AlephaServer` — every server has them, with nothing to import.
+`GET /health` and `GET /healthz` are part of `AlephaServer` - every server has them, with nothing to import.
 
 ```json
 { "message": "OK", "uptime": 42, "date": "2026-07-31T17:26:36Z", "ready": true }
 ```
 
-`ready` is the field that matters. It follows the container's lifecycle, so it is `false` for exactly as long as the app is still starting — which is longer than you might expect, because a process binds its port *before* it runs its migrations.
+`ready` is the field that matters. It follows the container's lifecycle, so it is `false` for exactly as long as the app is still starting - which is longer than you might expect, because a process binds its port *before* it runs its migrations.
 
 That gap is why this is not opt-in. A supervisor or load balancer starting your app cannot ask it to expose a readiness endpoint; without one, the best it can do is open a TCP connection, which succeeds while the app is still building its database. It then sends traffic the app cannot serve. Alepha exposes `/health` universally so the caller can tell *listening* from *working*.
 
 Put your reverse proxy in front of it: `/health` describes your internals and belongs on loopback, not on the public host. [Bay](https://github.com/feunard/alepha/tree/main/apps/bay) returns 404 for it on the public interface.
 
 <!-- docs-check-ignore: migration note about a removed symbol -->
-`AlephaServerHealth` has been removed — delete the import if you still have one; `/health` ships with `AlephaServer` itself.
+`AlephaServerHealth` has been removed - delete the import if you still have one; `/health` ships with `AlephaServer` itself.
 
 ### Metrics
 
@@ -201,7 +201,7 @@ Serves metrics in Prometheus text format at `/metrics`.
 
 Opt-in, unlike `/health`: it pulls in `prom-client`, and an app that nothing scrapes should not carry it.
 
-Set `METRICS_TOKEN` if the app itself is reachable from the network. Alepha warns at startup when it is — production, no token, and `SERVER_HOST` bound to something other than loopback. An app on loopback behind a proxy gets no warning: the proxy decides what the internet sees.
+Set `METRICS_TOKEN` if the app itself is reachable from the network. Alepha warns at startup when it is - production, no token, and `SERVER_HOST` bound to something other than loopback. An app on loopback behind a proxy gets no warning: the proxy decides what the internet sees.
 
 ## Combining Middlewares
 

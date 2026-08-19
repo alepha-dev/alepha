@@ -22,7 +22,7 @@ export * from "./providers/DatabaseCacheProvider.ts";
  *   (configurable via {@link databaseCacheOptions}).
  *
  * **Module is opt-in.** Importing this module does not change the default
- * `CacheProvider` binding — pass `provider: DatabaseCacheProvider` explicitly
+ * `CacheProvider` binding - pass `provider: DatabaseCacheProvider` explicitly
  * to the relevant `$cache(...)` calls, or rebind globally via
  * `alepha.with({ provide: CacheProvider, use: DatabaseCacheProvider })`.
  *

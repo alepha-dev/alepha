@@ -11,7 +11,7 @@ import { $repository } from "./$repository.ts";
  *
  * `$repository(relations, "campaigns")` is the explicit form for one entity;
  * this is the ergonomic one for a service that touches several. Plural name,
- * plural result — `$repository` always hands back exactly one repository.
+ * plural result - `$repository` always hands back exactly one repository.
  *
  * It also removes a footgun: binding every entity at once means each one is
  * registered with the database provider before any schema is built, so a

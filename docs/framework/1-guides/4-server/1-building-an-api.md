@@ -10,7 +10,7 @@ Scaffold a new project:
 alepha init my-api
 ```
 
-Every Alepha project ships with `src/api/` — a server entry point, a sample controller, and Zod schemas. Building an API-only service? Delete `src/web/` and the `WebModule` line from `main.server.ts`.
+Every Alepha project ships with `src/api/` - a server entry point, a sample controller, and Zod schemas. Building an API-only service? Delete `src/web/` and the `WebModule` line from `main.server.ts`.
 
 ## Defining Actions
 
@@ -216,7 +216,7 @@ class AiController {
 }
 ```
 
-The handler receives `emit()` to push typed events and `close()` to end the stream early. The stream closes automatically when the handler returns. It also receives `signal`, an `AbortSignal` that fires when the client disconnects — check it in any long-running loop, or the handler keeps running for a reader that is gone.
+The handler receives `emit()` to push typed events and `close()` to end the stream early. The stream closes automatically when the handler returns. It also receives `signal`, an `AbortSignal` that fires when the client disconnects - check it in any long-running loop, or the handler keeps running for a reader that is gone.
 
 On the client, SSE endpoints are consumed through the same `$client` proxy as actions:
 

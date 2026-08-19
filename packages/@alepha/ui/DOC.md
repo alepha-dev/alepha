@@ -29,34 +29,34 @@ import "@alepha/ui/styles.css";
 
 ## What's inside
 
-**`components/ui/*`** — the shadcn primitives, unmodified in spirit: `button`,
+**`components/ui/*`** - the shadcn primitives, unmodified in spirit: `button`,
 `input`, `card`, `badge`, `dialog`, `sheet`, `tooltip`, `label`, `accordion`,
 `avatar`, and the rest. Reach for these first.
 
-**Schema-driven forms** — `auto-form` renders a complete form from a `z.object()`
+**Schema-driven forms** - `auto-form` renders a complete form from a `z.object()`
 schema, driven by the `$control` metadata on each field. `control`,
 `control-array`, `control-object`, `control-date`, `control-number`,
 `control-select`, `control-password`, and `control-upload` are the per-type
 field renderers it dispatches to; use them directly when you want to lay a form
 out by hand.
 
-**`alepha-table`** — data table wired for server-side pagination, sorting and
+**`alepha-table`** - data table wired for server-side pagination, sorting and
 filtering.
 
-**Application shells** — `app-shell` and `nav-shell` for page scaffolding,
+**Application shells** - `app-shell` and `nav-shell` for page scaffolding,
 `app-actions` for toolbars, plus ready-made `auth`, `account`, `settings`, and
 `admin` screens.
 
-**Hooks** — `use-toast` and `use-dialog` (imperative toasts and modals) live
+**Hooks** - `use-toast` and `use-dialog` (imperative toasts and modals) live
 under `components/`; `use-mobile` lives under `hooks/`.
 
-**`lib/*`** — `utils` exports `cn()`, the `clsx` + `tailwind-merge` helper every
+**`lib/*`** - `utils` exports `cn()`, the `clsx` + `tailwind-merge` helper every
 component uses. Also `resize-image` and `i18n-fr`.
 
 ## Example
 
 `AutoForm` pairs with `useForm` from `alepha/react/form`. The schema is the
-single source of truth — field types, validation, and layout hints all come
+single source of truth - field types, validation, and layout hints all come
 from it:
 
 ```tsx
@@ -116,7 +116,7 @@ bar is the card's own last row. Each group carries its own `title` and
 ```
 
 So a settings card whose rows are all form fields should be an `AutoForm`.
-Reach for `SettingsSection` directly for the rows that are *not* fields — an
+Reach for `SettingsSection` directly for the rows that are *not* fields - an
 avatar picker, a read-only value, a lone button.
 
 Add `autoSave` to commit on change instead, which hides the action bar. Text
@@ -137,7 +137,7 @@ npx shadcn@latest add <component>
 `yarn w @alepha/ui sync` re-fetches the stock `components/ui/*` primitives from
 the public `ui.shadcn.com/r/styles/base-nova` registry and rewrites their
 `@/registry/...` imports to `@alepha/ui/...`. It touches only the stock
-primitives — the hand-maintained blocks (controls, admin, auth, app-shell,
+primitives - the hand-maintained blocks (controls, admin, auth, app-shell,
 alepha-table, …) are never overwritten. After a sync, diff for removed
 `from "alepha/` imports before committing: the registry copy does not know
 about local patches.

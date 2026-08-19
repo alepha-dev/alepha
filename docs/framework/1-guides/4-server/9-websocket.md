@@ -1,6 +1,6 @@
 # WebSocket
 
-Alepha provides real-time, bidirectional messaging through the `$channel` and `$websocket` primitives. You define a typed message schema once, write a single handler, and the same application code runs unchanged on a long-lived Node process (a VPS, backed by `ws`) or on Cloudflare Workers (backed by Durable Objects). The browser client — `useRoom` — is identical on both.
+Alepha provides real-time, bidirectional messaging through the `$channel` and `$websocket` primitives. You define a typed message schema once, write a single handler, and the same application code runs unchanged on a long-lived Node process (a VPS, backed by `ws`) or on Cloudflare Workers (backed by Durable Objects). The browser client - `useRoom` - is identical on both.
 
 > Need **in-memory state and a server-side tick loop** (a game world, a live simulation) rather than a stateless per-message handler? See [Stateful Rooms (`$room`)](/docs/guides-server-rooms).
 
@@ -98,7 +98,7 @@ export function Chat() {
 
 ## Defining a Channel
 
-`$channel` declares the "vocabulary" for a WebSocket endpoint — its path and the message shapes flowing in both directions. Channels are just schema definitions; they must be defined as a class property so Alepha can register them.
+`$channel` declares the "vocabulary" for a WebSocket endpoint - its path and the message shapes flowing in both directions. Channels are just schema definitions; they must be defined as a class property so Alepha can register them.
 
 ```typescript check
 import { z } from "alepha";
@@ -131,7 +131,7 @@ class ChatChannels {
 | `schema.out` | `ZObject \| ZodUnion` | Messages sent from client to server. |
 | `schema.roomId` | `ZodString` | Optional room ID validation (e.g. `z.uuid()`). Defaults to any string. |
 
-Schemas use the `z` builder — the same one used by `$action`.
+Schemas use the `z` builder - the same one used by `$action`.
 
 ## Server Handler
 
@@ -177,11 +177,11 @@ The handler context:
 | `roomId` | `string` | Target room. Defaults to the sender's room. |
 | `exceptSelf` | `boolean` | Exclude the sender's own connection. |
 | `exceptConnectionIds` | `string[]` | Exclude specific connections. |
-| `exceptUserIds` | `string[]` | Exclude specific users. Requires `alepha/security`. **Not honored on the Cloudflare provider** — see below. |
+| `exceptUserIds` | `string[]` | Exclude specific users. Requires `alepha/security`. **Not honored on the Cloudflare provider** - see below. |
 
 ## Server-Initiated Messages
 
-Beyond replying to an incoming message, a `$websocket` instance exposes `emit()` to push messages from anywhere in your app — a cron job, an `$action`, a database hook:
+Beyond replying to an incoming message, a `$websocket` instance exposes `emit()` to push messages from anywhere in your app - a cron job, an `$action`, a database hook:
 
 ```typescript
 class NotificationService {
@@ -202,8 +202,8 @@ class NotificationService {
 |--------|--------------|
 | `message` | Required. |
 | `roomId` / `roomIds` | Target one or more rooms. |
-| `userId` / `userIds` | Target a user's connections (Node only — see below). |
-| `connectionId` / `connectionIds` | Target specific connections (Node only — see below). |
+| `userId` / `userIds` | Target a user's connections (Node only - see below). |
+| `connectionId` / `connectionIds` | Target specific connections (Node only - see below). |
 | `exceptConnectionIds` / `exceptUserIds` | Exclusions. |
 
 ## Client
@@ -227,7 +227,7 @@ function Chat() {
         }
       },
     },
-    ["lobby"], // deps — reconnects when these change
+    ["lobby"], // deps - reconnects when these change
   );
 
   return (
@@ -264,13 +264,13 @@ chat = $websocket({
 Identity is resolved from the WebSocket handshake through `alepha/security`'s usual resolver chain, fed with the handshake's URL and headers (including `cookie`). Browsers cannot set custom headers on a WebSocket handshake, so in practice this means:
 
 - A session **cookie** is sent automatically by the browser and works out of the box.
-- Any other credential (e.g. a bearer token) must travel as a query parameter — `?token=` or `?api_key=` — since it can't go in an `Authorization` header.
+- Any other credential (e.g. a bearer token) must travel as a query parameter - `?token=` or `?api_key=` - since it can't go in an `Authorization` header.
 
 An unauthenticated connection to a `secure: true` endpoint is rejected before the upgrade completes. This works identically on both the Node and Cloudflare providers.
 
 ## Node / VPS
 
-On Node, `alepha/websocket` runs on top of the `ws` package, attached to the same HTTP server as the rest of your app. A connection can join multiple rooms at once (e.g. `?roomIds=room-1,room-2`) — `useRoom`/`WebSocketClient` sends all active room subscriptions as query params when it connects.
+On Node, `alepha/websocket` runs on top of the `ws` package, attached to the same HTTP server as the rest of your app. A connection can join multiple rooms at once (e.g. `?roomIds=room-1,room-2`) - `useRoom`/`WebSocketClient` sends all active room subscriptions as query params when it connects.
 
 For horizontal scaling across multiple Node instances, server-initiated messages (`reply()`, `emit()`) are distributed via `alepha/topic` (in-memory locally, Redis in production via `alepha/topic/redis`): one instance publishes, every instance receives, and each forwards to its own local connections that match.
 
@@ -278,17 +278,17 @@ Because Cloudflare allows only one room per connection (see below), joining mult
 
 ## Cloudflare (Durable Objects)
 
-On Cloudflare, `alepha/websocket` is backed by one **Durable Object per `channelPath:roomId`**, using the WebSocket Hibernation API so idle rooms cost nothing and survive isolate eviction. Your `$websocket` handler runs *inside* that Durable Object, so `reply()` is a local fan-out over the DO's own sockets — there is no cross-isolate hop, and no Redis or `alepha/topic` bus is needed. The Durable Object *is* the topic bus.
+On Cloudflare, `alepha/websocket` is backed by one **Durable Object per `channelPath:roomId`**, using the WebSocket Hibernation API so idle rooms cost nothing and survive isolate eviction. Your `$websocket` handler runs *inside* that Durable Object, so `reply()` is a local fan-out over the DO's own sockets - there is no cross-isolate hop, and no Redis or `alepha/topic` bus is needed. The Durable Object *is* the topic bus.
 
 This gives the same channel/handler code as Node, with a few v1 limitations worth knowing:
 
-**`emit` is room-scoped only.** `emit({ roomId })` and `emit({ roomIds })` work — each resolves to a Durable Object stub and calls its broadcast RPC. Targeting a `userId`/`connectionId`, or a channel-wide broadcast (no target at all), throws an `AlephaError` instead of silently doing nothing.
+**`emit` is room-scoped only.** `emit({ roomId })` and `emit({ roomIds })` work - each resolves to a Durable Object stub and calls its broadcast RPC. Targeting a `userId`/`connectionId`, or a channel-wide broadcast (no target at all), throws an `AlephaError` instead of silently doing nothing.
 
-**One room per connection.** A client socket is accepted by exactly one Durable Object, so a connection belongs to exactly one room — there is no equivalent of Node's multi-room connections. This is the *portable contract*: code that only ever joins a single room per connection behaves identically on both providers. If you rely on Node's multi-room support, watch for its dev-mode warning before deploying to Cloudflare.
+**One room per connection.** A client socket is accepted by exactly one Durable Object, so a connection belongs to exactly one room - there is no equivalent of Node's multi-room connections. This is the *portable contract*: code that only ever joins a single room per connection behaves identically on both providers. If you rely on Node's multi-room support, watch for its dev-mode warning before deploying to Cloudflare.
 
 **`exceptUserIds` is not honored on Cloudflare.** `reply()`'s and `emit()`'s `exceptConnectionIds` work as expected; `exceptUserIds` is silently ignored by the Cloudflare provider (it only tracks connections, not the user index Node maintains). Use `exceptConnectionIds` if you need to exclude specific clients.
 
-**Deployment is automatic.** `alepha build -t cloudflare` detects `$websocket` usage and generates the Durable Object binding and its SQLite migration into `wrangler.jsonc` — no manual wrangler configuration needed:
+**Deployment is automatic.** `alepha build -t cloudflare` detects `$websocket` usage and generates the Durable Object binding and its SQLite migration into `wrangler.jsonc` - no manual wrangler configuration needed:
 
 ```jsonc
 {

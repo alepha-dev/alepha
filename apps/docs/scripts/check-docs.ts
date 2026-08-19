@@ -10,7 +10,7 @@ import { DocsChecker, type DocUnit } from "./DocsChecker.ts";
  *
  * Two layers, deliberately unequal in ambition:
  *
- * 1. **Banned symbols** — a whole-word scan of every line of every doc,
+ * 1. **Banned symbols**: a whole-word scan of every line of every doc,
  *    prose included. Milliseconds, 100% coverage, catches the failure that
  *    motivated this command: the docs told every AI to import `t` from
  *    `alepha` for months after `t` was deleted.
@@ -21,12 +21,12 @@ import { DocsChecker, type DocUnit } from "./DocsChecker.ts";
  *    the API in the first place. A scan that stops at `docs/` misses the
  *    three files most likely to be read.
  *
- * 2. **Compiled fences** — TypeScript blocks that opt in with a `check`
+ * 2. **Compiled fences**: TypeScript blocks that opt in with a `check`
  *    marker (```ts check) are compiled against the real framework types.
  *    Opt-in rather than blanket, because two thirds of the fences in
  *    `docs/1-guides` deliberately omit imports and build on symbols defined
  *    in an earlier block on the page; compiling those would be all noise.
- *    A fence earns the marker by becoming self-contained — which also makes
+ *    A fence earns the marker by becoming self-contained - which also makes
  *    it copy-pasteable, so the incentive points the right way.
  */
 export class CheckDocsCommand {
@@ -36,7 +36,7 @@ export class CheckDocsCommand {
   protected readonly checker = $inject(DocsChecker);
 
   /**
-   * `docs/superpowers/` is an archive of past plans — a record of what was
+   * `docs/superpowers/` is an archive of past plans - a record of what was
    * true when it was written, not a claim about the framework today.
    */
   protected readonly excluded = ["superpowers"];
@@ -44,7 +44,7 @@ export class CheckDocsCommand {
   /**
    * Documentation that lives outside `docs/`, in reach order: the repository
    * front page, the page npm renders, and the framework brief an AI assistant
-   * reads out of `node_modules` — `release.yml` copies that last one to
+   * reads out of `node_modules` - `release.yml` copies that last one to
    * `packages/alepha/AGENTS.md` and `CLAUDE.md` on the way to the registry.
    *
    * Not to be confused with `cli/core/templates/agentMd.ts`, which is the
@@ -85,7 +85,7 @@ export class CheckDocsCommand {
         const violations = await this.checker.check(files);
         for (const it of violations) {
           this.log.error(
-            `${it.file.replace(`${root}/`, "")}:${it.line} — ${it.message}`,
+            `${it.file.replace(`${root}/`, "")}:${it.line} - ${it.message}`,
           );
         }
         failures += violations.length;
@@ -116,7 +116,7 @@ export class CheckDocsCommand {
   /**
    * Compile every opted-in fence in ONE `tsc` pass.
    *
-   * Each fence becomes its own file — they are independent examples, and a
+   * Each fence becomes its own file - they are independent examples, and a
    * shared module would make one fence's `const alepha` collide with the
    * next. Files land inside the app's own `node_modules/.alepha` so that
    * `import ... from "alepha"` resolves exactly as it does for a real
@@ -136,14 +136,14 @@ export class CheckDocsCommand {
       const unit = units[i];
       // Always `.tsx`, whatever the fence is labelled. Plenty of blocks are
       // tagged ```typescript and contain JSX, and in a `.ts` file that is a
-      // syntax error before any type is checked (TS1005 "'>' expected") —
+      // syntax error before any type is checked (TS1005 "'>' expected") -
       // which reads as "the example is broken" when it is only mislabelled.
       // TSX is a superset apart from `<T>value` assertions, which this
       // codebase does not use.
       const name = `example-${String(i).padStart(4, "0")}.tsx`;
       byFileName.set(name, unit);
       // `export {}` guarantees module scope even for a fence that declares
-      // nothing — without it two fences sharing a `const` name collide in
+      // nothing - without it two fences sharing a `const` name collide in
       // the global scope.
       await this.fs.writeFile(
         join(workDir, name),
@@ -203,7 +203,7 @@ export class CheckDocsCommand {
       // +1: the fence body starts on the line after the opening delimiter.
       const docLine = unit.line + Number(match[2]);
       errors.push(
-        `${unit.file.replace(`${root}/`, "")}:${docLine} — ${match[4]}`,
+        `${unit.file.replace(`${root}/`, "")}:${docLine} - ${match[4]}`,
       );
     }
 

@@ -8,7 +8,7 @@ import { $resourceTemplate } from "alepha/mcp";
 
 ## Overview
 
-Creates an MCP resource template — a resource addressed by a *pattern*
+Creates an MCP resource template - a resource addressed by a *pattern*
 rather than a fixed URI.
 
 `$resource` covers data that lives at one known address. A template
@@ -21,9 +21,9 @@ client loses the ability to address it by URI or embed it as a
 
 Two forms are supported, which is what MCP servers use in practice:
 
-- `{var}` — simple expansion. Matches one segment; will not span `/`.
+- `{var}`: simple expansion. Matches one segment; will not span `/`.
   The captured value is percent-decoded.
-- `{+var}` — reserved expansion. Matches greedily, `/` included. Use it for
+- `{+var}`: reserved expansion. Matches greedily, `/` included. Use it for
   trailing paths (`file:///{+path}`).
 
 Any other operator (`#`, `.`, `/`, `;`, `?`, `&`) or modifier (`*`, `:3`)

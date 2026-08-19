@@ -20,9 +20,9 @@ db.primaryKey(z.integer()) // integer with identity (auto-increment)
 db.primaryKey(z.bigint())  // bigint with identity
 ```
 
-Calling `db.primaryKey()` with no argument creates a UUID column. Ids are generated in the application as [UUIDv7](https://www.rfc-editor.org/rfc/rfc9562) — time-ordered, so `ORDER BY id` matches insertion order and index locality stays as good as an integer key — and work identically on PostgreSQL, SQLite, and Cloudflare D1, on any database version. Unlike integer keys, they never leak row counts, can be generated before the row is inserted, and merge safely across databases.
+Calling `db.primaryKey()` with no argument creates a UUID column. Ids are generated in the application as [UUIDv7](https://www.rfc-editor.org/rfc/rfc9562) - time-ordered, so `ORDER BY id` matches insertion order and index locality stays as good as an integer key - and work identically on PostgreSQL, SQLite, and Cloudflare D1, on any database version. Unlike integer keys, they never leak row counts, can be generated before the row is inserted, and merge safely across databases.
 
-Note that a UUIDv7 embeds its creation timestamp: anyone holding an id can read when the row was created. If that matters — or when humans need to read the ids — use an integer identity key instead, with a `$sequence` for display numbers.
+Note that a UUIDv7 embeds its creation timestamp: anyone holding an id can read when the row was created. If that matters - or when humans need to read the ids - use an integer identity key instead, with a `$sequence` for display numbers.
 
 There are also explicit shortcut methods:
 
@@ -153,7 +153,7 @@ Available actions: `"cascade"`, `"restrict"`, `"no action"`, `"set null"`, `"set
 
 ## Organization (Multi-Tenancy)
 
-`db.organization()` marks the column that scopes a row to a tenant. The repository then filters every read by the resolved tenant and stamps it on every write — you never write the predicate yourself.
+`db.organization()` marks the column that scopes a row to a tenant. The repository then filters every read by the resolved tenant and stamps it on every write - you never write the predicate yourself.
 
 ```typescript
 const invoice = $entity({
@@ -181,10 +181,10 @@ alepha.set(tenancyAtom, { mode: "multi" });
 
 | Mode | Behaviour with no resolved tenant |
 |------|-----------------------------------|
-| `"single"` (default) | No predicate — every row is visible. Correct when the app has one tenant, or none. |
+| `"single"` (default) | No predicate - every row is visible. Correct when the app has one tenant, or none. |
 | `"multi"` | **Throws.** Reads and writes are refused rather than run unscoped, and rows with a `NULL` organization are hidden from a scoped tenant. |
 
-Set it once, at the composition root. Without it, a `$job` or an admin script that forgets to resolve a tenant reads and writes across all of them — including on the framework's own tables (`users`, `files`, `audits`, `parameters`, API keys, payments).
+Set it once, at the composition root. Without it, a `$job` or an admin script that forgets to resolve a tenant reads and writes across all of them - including on the framework's own tables (`users`, `files`, `audits`, `parameters`, API keys, payments).
 
 ### Overriding per entity
 
@@ -194,14 +194,14 @@ Set it once, at the composition root. Without it, a `$job` or an admin script th
 // Always fail closed, even in a single-tenant app.
 organizationId: db.organization({ strict: true }),
 
-// Never fail closed, even in "multi" — a shared reference table.
+// Never fail closed, even in "multi" - a shared reference table.
 organizationId: db.organization({ strict: false }),
 ```
 
 Leave it out unless you mean it: an entity that says nothing follows the application, which is where the decision belongs.
 
 ::: warning `strict` and `nullable` are different questions
-`nullable` is a schema fact — it is written into your migration. `mode` is a runtime policy and never changes generated SQL. An entity that fails closed *because the app is in `multi` mode* still has a nullable column; only an explicit `strict: true` implies `NOT NULL`, because such a table has no "global row" concept.
+`nullable` is a schema fact - it is written into your migration. `mode` is a runtime policy and never changes generated SQL. An entity that fails closed *because the app is in `multi` mode* still has a nullable column; only an explicit `strict: true` implies `NOT NULL`, because such a table has no "global row" concept.
 :::
 
 ## Full Example

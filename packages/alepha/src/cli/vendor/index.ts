@@ -13,8 +13,8 @@ import { VendorService } from "./services/VendorService.ts";
  * copy of Alepha for AI tooling, audits, documentation, or quick fixes.
  *
  * Commands:
- * - `alepha vendor sync`  — replace local packages with remote source
- * - `alepha vendor diff`  — compare local packages against remote HEAD
+ * - `alepha vendor sync`  - replace local packages with remote source
+ * - `alepha vendor diff`  - compare local packages against remote HEAD
  *
  * Configuration in `alepha.config.ts`:
  *

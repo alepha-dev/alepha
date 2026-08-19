@@ -23,9 +23,9 @@ Resource locking for distributed systems.
 
 ### Primitives
 
-- [`$lock`](/docs/reference-primitives-$lock) — Distributed lock middleware for `use` arrays in `$action`, `$job`, `$page`, `$pipeline`.
+- [`$lock`](/docs/reference-primitives-$lock) - Distributed lock middleware for `use` arrays in `$action`, `$job`, `$page`, `$pipeline`.
 
 ### Providers
 
-- [`LockProvider`](/docs/reference-providers-lockprovider) — Store Provider Interface
-- [`MemoryLockProvider`](/docs/reference-providers-memorylockprovider) — A simple in-memory store provider.
+- [`LockProvider`](/docs/reference-providers-lockprovider) - Store Provider Interface
+- [`MemoryLockProvider`](/docs/reference-providers-memorylockprovider) - A simple in-memory store provider.

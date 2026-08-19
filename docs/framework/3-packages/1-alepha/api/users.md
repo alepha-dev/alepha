@@ -26,4 +26,4 @@ Complete user management with multi-realm support for multi-tenant applications.
 
 ### Primitives
 
-- [`$realm`](/docs/reference-primitives-$realm) — Already configured realm for user management.
+- [`$realm`](/docs/reference-primitives-$realm) - Already configured realm for user management.

@@ -34,7 +34,7 @@ export type MultipartCapResolver = (
  *
  * **It has no opinion of its own**, and that is deliberate: a framework-wide
  * ceiling that anything could raise would be a ceiling in name only. Modules
- * add a resolver for the routes they own — `alepha/api/files` does exactly
+ * add a resolver for the routes they own - `alepha/api/files` does exactly
  * that, mapping the targeted `$storage` bucket to its `maxSize`.
  *
  * ```ts
@@ -54,7 +54,7 @@ export type MultipartCapResolver = (
  *
  * ⚠️ And a raised limit is only safe on a path that streams. `$secure` runs
  * after the body hook, so on a buffering path the budget is reachable before
- * authentication — a bigger number there is a cheaper denial of service, not a
+ * authentication - a bigger number there is a cheaper denial of service, not a
  * feature.
  */
 export class MultipartCapProvider {

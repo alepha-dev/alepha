@@ -14,7 +14,7 @@
    scrollable and a deliberate stop mid-block is respected.
 
    This is CSS, so the browser keeps ownership of the scroll. The bad practice is
-   the JS variant — wheel handlers that animate to the next section — which
+   the JS variant - wheel handlers that animate to the next section - which
    breaks trackpad momentum, keyboard paging, find-in-page and screen readers.
 
    Scoped with `:has()` so it applies to the home page only, never to the docs.
@@ -336,7 +336,7 @@ html:has(.home-snap) {
 
 /* A dot grid over the alt bands, so the alternation reads as two surfaces
    rather than two greys. `--color-dot-grid` is already defined per theme
-   (white-on-dark, black-on-light), so this needs no theme branch of its own —
+   (white-on-dark, black-on-light), so this needs no theme branch of its own -
    only the opacity is dialled down, because the token is tuned for a 1px dot on
    the hero's near-black rather than on an elevated panel. */
 .home-section-alt::before {
@@ -667,7 +667,7 @@ html:has(.home-snap) {
 }
 
 /* -----------------------------------------------------------------------------
-   HEADER — PRODUCT NAV
+   HEADER - PRODUCT NAV
    ----------------------------------------------------------------------------- */
 
 .product-nav {
@@ -700,7 +700,7 @@ html:has(.home-snap) {
 }
 
 /* -----------------------------------------------------------------------------
-   BLOCK 1 — HERO (centred, generic)
+   BLOCK 1 - HERO (centred, generic)
    ----------------------------------------------------------------------------- */
 
 .hero-centered {
@@ -741,7 +741,7 @@ html:has(.home-snap) {
 }
 
 /* -----------------------------------------------------------------------------
-   BLOCK 2 — RUNTIME SECTION
+   BLOCK 2 - RUNTIME SECTION
    ----------------------------------------------------------------------------- */
 
 .container-wide {
@@ -812,7 +812,7 @@ html:has(.home-snap) {
 }
 
 /* -----------------------------------------------------------------------------
-   BLOCK 4 — ONE DEPENDENCY (before / after)
+   BLOCK 4 - ONE DEPENDENCY (before / after)
    ----------------------------------------------------------------------------- */
 
 .stack-compare {
@@ -993,7 +993,7 @@ html:has(.home-snap) {
 }
 
 /* -----------------------------------------------------------------------------
-   BLOCK 5 — FOUNDATION
+   BLOCK 5 - FOUNDATION
    ----------------------------------------------------------------------------- */
 
 /* -----------------------------------------------------------------------------
@@ -1211,7 +1211,7 @@ html:has(.home-snap) {
 }
 
 /* -----------------------------------------------------------------------------
-   BLOCK 6 — WRITTEN FOR AN AGENT
+   BLOCK 6 - WRITTEN FOR AN AGENT
 
    Four panels sharing their borders so the group reads as one object rather
    than four cards. The borders are drawn per panel and then cancelled on the
@@ -1434,7 +1434,7 @@ html:has(.home-snap) {
 
 /* -----------------------------------------------------------------------------
 /* -----------------------------------------------------------------------------
-   BLOCK 7 — SWAP ANYTHING, EVEN TIME
+   BLOCK 7 - SWAP ANYTHING, EVEN TIME
 
    The test on the left, the run on the right. The timeline is a real list
    (`ol`), so the order survives with styles off and reads correctly to a
@@ -1561,7 +1561,7 @@ html:has(.home-snap) {
 }
 
 /* -----------------------------------------------------------------------------
-   BLOCK 8 — ADMIN PANEL CAROUSEL
+   BLOCK 8 - ADMIN PANEL CAROUSEL
    ----------------------------------------------------------------------------- */
 
 .admin-layout {
@@ -1812,7 +1812,7 @@ html:has(.home-snap) {
   max-width: 620px;
 }
 /* -----------------------------------------------------------------------------
-   BLOCK 9 — DEPLOY WITH ONE COMMAND
+   BLOCK 9 - DEPLOY WITH ONE COMMAND
 
    Three steps in a row: config, command, run.
 
@@ -1980,7 +1980,7 @@ html:has(.home-snap) {
 }
 
 /* -----------------------------------------------------------------------------
-   BLOCK 10 — CONCLUSION
+   BLOCK 10 - CONCLUSION
    ----------------------------------------------------------------------------- */
 
 .proof-license {
@@ -2091,7 +2091,7 @@ html:has(.home-snap) {
 
 /* The seam panes carry two files side by side, so they run smaller than a docs
    code block: it keeps every line un-clipped AND keeps the block inside one
-   viewport. Needs the full descendant chain — the docs rule is
+   viewport. Needs the full descendant chain - the docs rule is
    `:where(.code-block pre) code`, whose `:where()` contributes no specificity,
    but `.code-block-enhanced.has-line-numbers pre code` does. */
 .code-pane .code-block pre code {

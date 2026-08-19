@@ -9,7 +9,7 @@ export * from "./providers/ProtobufSchemaCodec.ts";
  * Protocol Buffers support.
  *
  * Registers a `protobuf` codec, so any Alepha schema can be encoded to the
- * binary wire format — or to base64, for text transports:
+ * binary wire format - or to base64, for text transports:
  *
  * ```ts
  * const schema = z.object({ name: z.text(), age: z.integer() });

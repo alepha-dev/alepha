@@ -17,7 +17,7 @@ alive, so the only job here is to detach the task from the caller and never
 leak an unhandled rejection. On serverless/edge runtimes that freeze the
 isolate once the response is returned (Cloudflare Workers) the
 `WorkerdBackgroundTaskProvider` variant additionally wraps the task in
-`executionCtx.waitUntil` — call sites stay platform-agnostic and only ever
+`executionCtx.waitUntil` - call sites stay platform-agnostic and only ever
 call `defer`.
 
 In-flight tasks are tracked and awaited on shutdown (`flush`), so graceful

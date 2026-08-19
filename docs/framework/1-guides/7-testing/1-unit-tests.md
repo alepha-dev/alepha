@@ -1,16 +1,16 @@
 # Unit Tests
 
-Alepha uses Vitest as the test runner. Every `alepha init` scaffolds a Vitest config and a sample test file — Vitest ships embedded in `alepha`, so there is nothing to install. All tests run with `globals: true`, so you do not need to import `test`, `expect`, or `describe`.
+Alepha uses Vitest as the test runner. Every `alepha init` scaffolds a Vitest config and a sample test file - Vitest ships embedded in `alepha`, so there is nothing to install. All tests run with `globals: true`, so you do not need to import `test`, `expect`, or `describe`.
 
 ## Setup
 
-Every Alepha project is scaffolded with test support — no flag needed:
+Every Alepha project is scaffolded with test support - no flag needed:
 
 ```bash
 alepha init my-app
 ```
 
-`init` writes the Vitest `test` block into `vite.config.ts` (it pins `test.root` so a parent monorepo config can't take over) and a starter `test/dummy.spec.ts` — there is no separate Vitest config file. Specs live in `test/`, named `*.spec.ts`.
+`init` writes the Vitest `test` block into `vite.config.ts` (it pins `test.root` so a parent monorepo config can't take over) and a starter `test/dummy.spec.ts` - there is no separate Vitest config file. Specs live in `test/`, named `*.spec.ts`.
 
 Run tests with `alepha test`. Positional arguments are forwarded to Vitest as filename/test filters:
 
@@ -94,7 +94,7 @@ Alepha ships memory implementations for all I/O-bound services. These run in-pro
 | `MemorySmsProvider` | `alepha/sms` | SMS sending |
 
 In test environments, `FileSystemProvider` and `ShellProvider` both default to
-their memory implementations automatically — file writes and shell commands
+their memory implementations automatically - file writes and shell commands
 stay inside the container unless a test opts back into the real thing:
 
 ```typescript
@@ -154,13 +154,13 @@ dateTime.pause();               // freeze the clock
 await dateTime.travel([2, "hours"]); // jump forward
 ```
 
-`travel()` also resolves `CronProvider` waits — **every `$job` cron in the container fires**, not just the one you are testing. Assert end state, not call counts, or a second cron firing will fail an otherwise-correct test.
+`travel()` also resolves `CronProvider` waits - **every `$job` cron in the container fires**, not just the one you are testing. Assert end state, not call counts, or a second cron firing will fail an otherwise-correct test.
 
 ## Database Testing
 
 Alepha can run tests against real Postgres. Each test file gets its own schema. Migrations run automatically before tests and the schema is dropped after tests complete.
 
-Point `DATABASE_URL` at your test database via the `env` block of `vite.config.ts`'s `test` section (the scaffolded config doesn't set one — without it, tests use the default embedded SQLite database):
+Point `DATABASE_URL` at your test database via the `env` block of `vite.config.ts`'s `test` section (the scaffolded config doesn't set one - without it, tests use the default embedded SQLite database):
 
 ```typescript
 env: {

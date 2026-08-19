@@ -11,7 +11,7 @@ import { QueueCodec } from "alepha/queue";
 Owns the on-the-wire shape of a queue message.
 
 Producers (`QueueProvider` callers) encode, the worker loop decodes.
-Keeping both halves here means the envelope has exactly one definition —
+Keeping both halves here means the envelope has exactly one definition -
 it used to be split between the `$queue` primitive and `WorkerProvider`,
 so a change to one side could silently corrupt payloads.
 

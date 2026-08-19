@@ -220,7 +220,7 @@ export class ParameterPrimitive<T extends ZObject> extends Primitive<
 }
 
 /**
- * Declares a named, schema-validated runtime parameter — configuration that
+ * Declares a named, schema-validated runtime parameter - configuration that
  * lives in the database, is editable from the admin UI, and is versioned with
  * `rollback()`. Read it with `get()`; every change records who made it.
  *

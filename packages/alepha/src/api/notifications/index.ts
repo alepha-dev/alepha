@@ -27,7 +27,7 @@ export * from "./services/NotificationSenderService.ts";
  * **Features:**
  * - Notification definitions (email/SMS templates)
  * - Delivery via `$job` with retry and audit trail (`record: "all"` + no ring buffer trim)
- * - Runtime-editable retention window via `$parameter` — purge cron respects it live
+ * - Runtime-editable retention window via `$parameter` - purge cron respects it live
  * - Admin API for inspecting sent notifications
  *
  * **Delivery mode** is decided at runtime by the `$job` system:
@@ -38,7 +38,7 @@ export * from "./services/NotificationSenderService.ts";
  *   The reconciliation sweep is the safety net for crashes / retries.
  *
  * Direct mode is the recommended default for small / cheap deployments
- * (Cloudflare Workers, single-instance Node) — no queue infrastructure required.
+ * (Cloudflare Workers, single-instance Node) - no queue infrastructure required.
  *
  * @module alepha.api.notifications
  */

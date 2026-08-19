@@ -22,7 +22,7 @@ implementation of `CacheProvider` that:
   (configurable via `databaseCacheOptions`).
 
 **Module is opt-in.** Importing this module does not change the default
-`CacheProvider` binding — pass `provider: DatabaseCacheProvider` explicitly
+`CacheProvider` binding - pass `provider: DatabaseCacheProvider` explicitly
 to the relevant `$cache(...)` calls, or rebind globally via
 `alepha.with({ provide: CacheProvider, use: DatabaseCacheProvider })`.
 
@@ -30,4 +30,4 @@ to the relevant `$cache(...)` calls, or rebind globally via
 
 ### Providers
 
-- [`DatabaseCacheProvider`](/docs/reference-providers-databasecacheprovider) — Cache provider backed by the application's SQL database.
+- [`DatabaseCacheProvider`](/docs/reference-providers-databasecacheprovider) - Cache provider backed by the application's SQL database.

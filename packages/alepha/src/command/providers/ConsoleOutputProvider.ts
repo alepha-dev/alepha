@@ -6,12 +6,12 @@ import { ConsoleColorProvider } from "alepha/logger";
  *
  * Two different things shared one stream: `ConsoleDestinationProvider` logs
  * through `console.log`, so `alepha --version` came back as a timestamped,
- * coloured, two-line log entry — 112 bytes where a script wanted `0.24.0`.
+ * coloured, two-line log entry - 112 bytes where a script wanted `0.24.0`.
  * Worse, its shape followed `LOG_FORMAT`, an environment variable the script
  * does not control, so a parser written against one format broke under another.
  *
  * `printHelp` had already hit this and worked around it by flipping
- * `alepha.logger.format` to `raw` and restoring it afterwards — a global
+ * `alepha.logger.format` to `raw` and restoring it afterwards - a global
  * mutation whose own comment records the bug it caused ("flipping the format
  * permanently made every later log lose its timestamp and level"). That
  * workaround also cannot fix scripting: changing the format changes how a line

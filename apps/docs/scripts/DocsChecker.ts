@@ -45,7 +45,7 @@ export interface DocUnit {
  *
  * This list is the cheap half of `check:docs`. It exists because the docs
  * spent months instructing every AI that read them to
- * `import { t } from "alepha"` — an export deleted in the Zod migration —
+ * `import { t } from "alepha"` - an export deleted in the Zod migration -
  * and nothing in the pipeline noticed. Matching is whole-word, so
  * `toTypeBoxSchema` (an internal devtools identifier) and the English word
  * "the" do not trip it.
@@ -61,81 +61,81 @@ export const BANNED_DOC_SYMBOLS: Array<{ pattern: string; reason: string }> = [
   },
   {
     pattern: "t\\.object",
-    reason: "`t` is not exported from `alepha` — use `z.object`",
+    reason: "`t` is not exported from `alepha` - use `z.object`",
   },
   {
     pattern: "pg\\.createdAt",
-    reason: "`pg` is not exported from `alepha/orm` — use `db.createdAt`",
+    reason: "`pg` is not exported from `alepha/orm` - use `db.createdAt`",
   },
   {
     pattern: "pg\\.updatedAt",
-    reason: "`pg` is not exported from `alepha/orm` — use `db.updatedAt`",
+    reason: "`pg` is not exported from `alepha/orm` - use `db.updatedAt`",
   },
   {
     pattern: "pg\\.deletedAt",
-    reason: "`pg` is not exported from `alepha/orm` — use `db.deletedAt`",
+    reason: "`pg` is not exported from `alepha/orm` - use `db.deletedAt`",
   },
   {
     pattern: 'import \\{ t \\} from "alepha"',
-    reason: "`t` is not exported from `alepha` — use `z`",
+    reason: "`t` is not exported from `alepha` - use `z`",
   },
   // --- symbols removed or renamed before v1; every entry below was found ---
   // --- stale in the docs during the 2026-07 pre-v1 audit                 ---
   {
     pattern: "\\$use",
-    reason: "`$use` was renamed — the atom-injection primitive is `$store`",
+    reason: "`$use` was renamed - the atom-injection primitive is `$store`",
   },
   {
     pattern: "\\$transaction",
     reason:
-      "`$transaction` does not exist — use the `$transactional` middleware in `use: [...]`",
+      "`$transaction` does not exist - use the `$transactional` middleware in `use: [...]`",
   },
   {
     pattern: "alepha deploy",
     reason:
-      "there is no top-level `alepha deploy` command — use `alepha p up` / `alepha p deploy`, or the target CLI (wrangler/vercel/surge) directly",
+      "there is no top-level `alepha deploy` command - use `alepha p up` / `alepha p deploy`, or the target CLI (wrangler/vercel/surge) directly",
   },
   {
     pattern: "SERVER_API_PREFIX",
     reason:
-      "no code reads `SERVER_API_PREFIX` — the /api prefix is the `serverApiOptions` atom",
+      "no code reads `SERVER_API_PREFIX` - the /api prefix is the `serverApiOptions` atom",
   },
   {
     pattern: "mcpSseOptions",
-    reason: "deprecated alias — use `mcpStreamableHttpOptions`",
+    reason: "deprecated alias - use `mcpStreamableHttpOptions`",
   },
   {
     pattern: "SseMcpTransport",
-    reason: "deprecated alias — use `StreamableHttpMcpTransport`",
+    reason: "deprecated alias - use `StreamableHttpMcpTransport`",
   },
   {
     pattern: "\\.schema\\(\\)",
     reason:
-      "actions expose no `schema()` method — schemas are served over the `_links` route",
+      "actions expose no `schema()` method - schemas are served over the `_links` route",
   },
   {
     pattern: "AlephaCliPlatform",
     reason:
-      "`AlephaCliPlatform` does not exist — use the `platform({...})` helper in `plugins: [...]` (module: `AlephaCliPlatformPlugin`)",
+      "`AlephaCliPlatform` does not exist - use the `platform({...})` helper in `plugins: [...]` (module: `AlephaCliPlatformPlugin`)",
   },
   {
     pattern: "AlephaCliVendor",
     reason:
-      "`AlephaCliVendor` does not exist — use the `vendor({...})` helper in `plugins: [...]` (module: `AlephaCliVendorPlugin`)",
+      "`AlephaCliVendor` does not exist - use the `vendor({...})` helper in `plugins: [...]` (module: `AlephaCliVendorPlugin`)",
   },
   {
     pattern: "page\\.data",
-    reason: "paginate results carry `content`, not `data` — use `page.content`",
+    reason: "paginate results carry `content`, not `data` - use `page.content`",
   },
   {
     pattern: "form\\.submitting",
     reason:
-      '`form.submitting` was removed — use `useFormState(form, ["loading"])`',
+      '`form.submitting` was removed - use `useFormState(form, ["loading"])`',
   },
   {
     pattern: "router\\.navigate",
     reason:
-      "`router.navigate` does not exist — use `router.push(name, { params })`",
+      "`router.navigate` does not exist - use `router.push(name, { params })`",
   },
   {
     pattern: "cloudflare-d1:",
@@ -143,38 +143,38 @@ export const BANNED_DOC_SYMBOLS: Array<{ pattern: string; reason: string }> = [
   },
   {
     pattern: "db migrations generate",
-    reason: "the subcommand is `create` — `alepha db migrations create`",
+    reason: "the subcommand is `create` - `alepha db migrations create`",
   },
   // --- entries below were found stale in the docs during the 2026-08 audit ---
   {
     pattern: "TObject",
-    reason: "TypeBox type name — the Zod object type is `ZObject`",
+    reason: "TypeBox type name - the Zod object type is `ZObject`",
   },
   {
     pattern: "TSchema",
-    reason: "TypeBox type name — the Zod schema type is `ZType`",
+    reason: "TypeBox type name - the Zod schema type is `ZType`",
   },
   {
     pattern: "TString",
-    reason: "TypeBox type name — use `ZodString`",
+    reason: "TypeBox type name - use `ZodString`",
   },
   {
     pattern: "TUnion",
-    reason: "TypeBox type name — use `ZodUnion`",
+    reason: "TypeBox type name - use `ZodUnion`",
   },
   {
     pattern: "Static<",
     reason:
-      "`Static<T>` was removed with TypeBox — the inference helper is `Infer<T>`",
+      "`Static<T>` was removed with TypeBox - the inference helper is `Infer<T>`",
   },
   {
     pattern: 'import \\{ Type \\} from "alepha"',
     reason:
-      "`Type` is no longer exported — schemas built by `z` are ordinary Zod schemas; use their fluent API",
+      "`Type` is no longer exported - schemas built by `z` are ordinary Zod schemas; use their fluent API",
   },
   {
     pattern: "usePetitionUrl",
-    reason: "renamed in the Petitions→Feedback rename — use `useFeedbackUrl`",
+    reason: "renamed in the Petitions→Feedback rename - use `useFeedbackUrl`",
   },
   {
     pattern: "z\\.file\\(\\{ maxSize",
@@ -184,19 +184,19 @@ export const BANNED_DOC_SYMBOLS: Array<{ pattern: string; reason: string }> = [
   {
     pattern: "vitest\\.config\\.ts",
     reason:
-      "init no longer writes `vitest.config.ts` — the `test` block lives in `vite.config.ts`",
+      "init no longer writes `vitest.config.ts` - the `test` block lives in `vite.config.ts`",
   },
   {
     pattern: "AlephaServerHealth",
-    reason: "removed — `/health` ships with `AlephaServer` itself",
+    reason: "removed - `/health` ships with `AlephaServer` itself",
   },
   {
     pattern: "\\$uiAdmin",
-    reason: "removed with mantine — the admin surface is `$pageAdmin`",
+    reason: "removed with mantine - the admin surface is `$pageAdmin`",
   },
   {
     pattern: "\\$uiAuth",
-    reason: "removed with mantine — mount `AuthRouter` from `@alepha/ui`",
+    reason: "removed with mantine - mount `AuthRouter` from `@alepha/ui`",
   },
   {
     pattern: "SIGIL_SINK",
@@ -208,24 +208,24 @@ export const BANNED_DOC_SYMBOLS: Array<{ pattern: string; reason: string }> = [
  * Link styles the docs must not use. The site's renderer emits hrefs verbatim
  * and its route table is a single flat `/docs/:slug` segment, so a relative
  * `.md` link or a nested `/docs/a/b` path renders fine on GitHub and 404s for
- * every site visitor — the 2026-08 audit found 16 of them.
+ * every site visitor - the 2026-08 audit found 16 of them.
  */
 export const BANNED_LINK_PATTERNS: Array<{ pattern: string; reason: string }> =
   [
     {
       pattern: "\\]\\((?:\\./|\\.\\./)[^)]*\\.md",
       reason:
-        "relative .md links 404 on the docs site — use the flat slug form, e.g. `/docs/guides-persistence-relations`",
+        "relative .md links 404 on the docs site - use the flat slug form, e.g. `/docs/guides-persistence-relations`",
     },
     {
       pattern: "\\]\\(/docs/[^)#]*/[^)]*\\)",
       reason:
-        "nested /docs/a/b paths 404 — the route is a single flat slug, e.g. `/docs/cli-commands-init`",
+        "nested /docs/a/b paths 404 - the route is a single flat slug, e.g. `/docs/cli-commands-init`",
     },
   ];
 
 /**
- * A line carrying this marker, or the line before it, is exempt — for docs
+ * A line carrying this marker, or the line before it, is exempt - for docs
  * that legitimately describe the old world (migration notes, changelogs).
  */
 export const IGNORE_MARKER = "docs-check-ignore";
@@ -332,7 +332,7 @@ export class DocsChecker {
           violations.push({
             file,
             line: i + 1,
-            message: `"${banned.pattern.replaceAll("\\", "")}" — ${banned.reason}`,
+            message: `"${banned.pattern.replaceAll("\\", "")}" - ${banned.reason}`,
           });
         }
 
@@ -343,7 +343,7 @@ export class DocsChecker {
           violations.push({
             file,
             line: i + 1,
-            message: `broken link style — ${banned.reason}`,
+            message: `broken link style - ${banned.reason}`,
           });
         }
       }

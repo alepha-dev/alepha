@@ -70,7 +70,7 @@ class SessionService {
 
 ### L1 Memory Tier
 
-`memory: true` puts a process-local memory cache in front of the provider. Reads check memory first and fall back to the provider on miss; writes go to both tiers, so your own writes are immediately visible. Each process/isolate has its own L1 — `invalidate()` clears the local L1 plus the remote provider, but other processes keep their L1 until its TTL expires, so use a short L1 TTL to bound the staleness window.
+`memory: true` puts a process-local memory cache in front of the provider. Reads check memory first and fall back to the provider on miss; writes go to both tiers, so your own writes are immediately visible. Each process/isolate has its own L1 - `invalidate()` clears the local L1 plus the remote provider, but other processes keep their L1 until its TTL expires, so use a short L1 TTL to bound the staleness window.
 
 ### Stale-While-Revalidate
 
@@ -202,7 +202,7 @@ Compression adds CPU overhead but reduces storage by 60-80% for typical JSON dat
 
 By default, caching uses in-memory storage (`MemoryCacheProvider`). For distributed caching across multiple instances, switch to Redis.
 
-Memory and Redis are not the only backends: on Cloudflare Workers the default is `CloudflareKVProvider` (backed by Workers KV), and `DatabaseCacheProvider` stores entries in the app's own database — useful when you want durable caching with no extra infrastructure.
+Memory and Redis are not the only backends: on Cloudflare Workers the default is `CloudflareKVProvider` (backed by Workers KV), and `DatabaseCacheProvider` stores entries in the app's own database - useful when you want durable caching with no extra infrastructure.
 
 ### Module Registration
 
@@ -227,7 +227,7 @@ const alepha = Alepha.create()
 
 ### Redis Key Prefix
 
-Set a prefix for all Redis cache keys via the `redisCacheOptions` atom — useful for multi-tenant applications or isolating test environments:
+Set a prefix for all Redis cache keys via the `redisCacheOptions` atom - useful for multi-tenant applications or isolating test environments:
 
 ```typescript
 import { redisCacheOptions } from "alepha/cache/redis";

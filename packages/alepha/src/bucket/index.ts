@@ -29,14 +29,14 @@ export * from "./providers/S3FileStorageProvider.ts";
  * HTTP endpoints.
  *
  * Inject `FileStorageProvider` directly only when you need blobs *without* a
- * database — you get `upload` / `download` / `delete` / `deleteMany` /
+ * database - you get `upload` / `download` / `delete` / `deleteMany` /
  * `exists` / `list`, keyed by a container name you manage yourself, and
  * nothing else.
  *
  * All backends treat the container name as a **key prefix inside one bucket**
- * (`{prefix}/{tenantId}/{container}/{fileId}` — the leading prefix comes from
+ * (`{prefix}/{tenantId}/{container}/{fileId}` - the leading prefix comes from
  * `S3_KEY_PREFIX`, or `APP_NAME` as a fallback, and the tenant segment appears
- * when a tenant is active) or one directory on disk — never a separate cloud
+ * when a tenant is active) or one directory on disk - never a separate cloud
  * bucket per container.
  *
  * **Providers:** Memory (testing), Local filesystem, S3-compatible

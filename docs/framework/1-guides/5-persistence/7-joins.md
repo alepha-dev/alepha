@@ -2,7 +2,7 @@
 
 The `with` option performs a SQL join at query time, written per query.
 
-> **Most reads want [Relations](/docs/guides-persistence-relations) instead.** `$relations` declares the graph once and reads it with `include`, which handles one-to-many, many-to-many and nesting — all of which `with` cannot. Reach for `with` when you want a flat one-to-one join written inline, or a SQL join condition that is not a foreign key.
+> **Most reads want [Relations](/docs/guides-persistence-relations) instead.** `$relations` declares the graph once and reads it with `include`, which handles one-to-many, many-to-many and nesting - all of which `with` cannot. Reach for `with` when you want a flat one-to-one join written inline, or a SQL join condition that is not a foreign key.
 
 ```typescript check
 import { z } from "alepha";
@@ -63,7 +63,7 @@ class PlayerService {
 
 The `on` tuple maps `[localColumn, foreignEntity.cols.foreignColumn]`.
 
-### By primary key — `findById` / `getById`
+### By primary key: `findById` / `getById`
 
 For detail views, `findById(id, { with })` and `getById(id, { with })` are
 the shortest path: they take an optional `with` map and skip the
@@ -97,7 +97,7 @@ const player = await this.players.getById(id, { with: withTeam });
 const page = await this.players.paginate({ page: 0 }, { with: withTeam });
 ```
 
-`as const` is fine on the `on` tuple — the relation map type accepts
+`as const` is fine on the `on` tuple - the relation map type accepts
 readonly tuples.
 
 ## Join Types
@@ -107,7 +107,7 @@ Three join types are supported. The default is `"left"`.
 ```typescript
 with: {
   team: {
-    type: "left",   // default — include rows even if no match (team will be undefined)
+    type: "left",   // default - include rows even if no match (team will be undefined)
     join: teams,
     on: ["teamId", teams.cols.id],
   },
@@ -404,7 +404,7 @@ const page = await this.players.paginate(
 
 ## Limitations
 
-These are limitations of `with`, not of relations — [Relations](/docs/guides-persistence-relations) covers every one of the first three.
+These are limitations of `with`, not of relations - [Relations](/docs/guides-persistence-relations) covers every one of the first three.
 
 - **No one-to-many joins.** The `with` option produces one-to-one joins (each row gets one joined object). For one-to-many relationships (e.g. a user's posts), use `include`.
 - **No `orderBy` on joined columns.** Sorting is limited to columns on the base table. `include` orders each relation independently.

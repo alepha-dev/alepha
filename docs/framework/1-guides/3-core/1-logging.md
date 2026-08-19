@@ -108,7 +108,7 @@ and the framework's internal logs. An agent session (Claude Code sets the
 
 CLI tasks that shell out (`yarn lint`, `vite build`, nested `alepha`
 subcommands, …) only stream their output live when `DEBUG` or a more verbose
-level is enabled — i.e. under `--verbose`, `CLAUDECODE`, or `LOG_LEVEL=debug`.
+level is enabled - i.e. under `--verbose`, `CLAUDECODE`, or `LOG_LEVEL=debug`.
 Below `DEBUG` (the default), that output is captured instead of streamed, so a
 quiet run such as `alepha verify` is not buried under thousands of sub-process
 lines. Captured output is still surfaced (stdout **and** stderr) if the task
@@ -144,7 +144,7 @@ alepha.events.on("log", (event) => {
 
 ## Per-request breadcrumbs
 
-Every HTTP request and every job run keeps its own bounded ring of log entries, so that when something throws you can ship the lines that led to it — not just the stack.
+Every HTTP request and every job run keeps its own bounded ring of log entries, so that when something throws you can ship the lines that led to it - not just the stack.
 
 ```typescript
 import { $hook, $inject } from "alepha";
@@ -170,7 +170,7 @@ class ErrorReporter {
 - **Entries below the active `LOG_LEVEL` are captured.** Running at `info`, the `debug` and `trace` calls that explain the failure are still in the buffer even though they were never printed.
 - **Values are already redacted.** Credential-bearing keys are masked before the entry reaches the buffer, so a snapshot is safe to send off-box.
 
-The ring keeps the **last** `size` entries. When it discards older ones, the snapshot opens with a `WARN` saying how many — a truncated buffer never passes itself off as complete.
+The ring keeps the **last** `size` entries. When it discards older ones, the snapshot opens with a `WARN` saying how many - a truncated buffer never passes itself off as complete.
 
 Size is controlled by the `alepha.logger.buffer` atom:
 
@@ -180,7 +180,7 @@ alepha.store.set("alepha.logger.buffer", { size: 200 }); // default: 50
 
 Set `size` to `0` to disable capture entirely: no buffer is created and the write path becomes a no-op. Job runs use `alepha.jobs.logMaxEntries` instead, and persist their breadcrumbs onto the execution row when they fail.
 
-To read the buffer somewhere other than an error hook — inside a handler, a middleware, another hook — inject `LogBufferProvider` and call `snapshot()` the same way. Outside any request or job, it returns `undefined`.
+To read the buffer somewhere other than an error hook - inside a handler, a middleware, another hook - inject `LogBufferProvider` and call `snapshot()` the same way. Outside any request or job, it returns `undefined`.
 
 ### Correlating with the client
 

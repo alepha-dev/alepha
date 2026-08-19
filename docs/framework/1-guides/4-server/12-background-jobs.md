@@ -2,8 +2,8 @@
 
 `$job` is the primitive for work that happens outside a request. It is backed by
 a database table (the *outbox*), which is what makes it durable: a push writes a
-row before anything runs, so a handler that throws — or a process that dies
-mid-flight — leaves a record that a reconciliation sweep picks back up.
+row before anything runs, so a handler that throws - or a process that dies
+mid-flight - leaves a record that a reconciliation sweep picks back up.
 
 ```typescript check
 import { $job } from "alepha/api/jobs";
@@ -28,7 +28,7 @@ import { z } from "alepha";
 import { $job } from "alepha/api/jobs";
 
 class Emails {
-  // queue-mode — call push() to enqueue work
+  // queue-mode - call push() to enqueue work
   welcome = $job({
     schema: z.object({ userId: z.text() }),
     retry: { retries: 3 },
@@ -37,7 +37,7 @@ class Emails {
     },
   });
 
-  // cron-mode — fires on a schedule, no payload
+  // cron-mode - fires on a schedule, no payload
   digest = $job({
     cron: "0 8 * * *",
     handler: async () => {
@@ -79,7 +79,7 @@ const executionId = await this.welcome.push({ userId: "u1" });
 |--------|------|-------------|
 | `delay` | `DurationLike` | Run no earlier than now + delay |
 | `scheduledAt` | `Date` | Run no earlier than this instant |
-| `key` | `string` | Deduplication key — see the caveat below |
+| `key` | `string` | Deduplication key - see the caveat below |
 | `priority` | `"critical" \| "high" \| "normal" \| "low"` | Sweep dispatch order when there is a backlog |
 | `organizationId` | `string` | Owning tenant, persisted on the row for tenant-scoped admin views |
 
@@ -89,12 +89,12 @@ and writes them in a batched INSERT.
 ### `key` dedups in-flight work, not completed work
 
 A push with a `key` returns the existing execution id instead of enqueueing a
-second row — but only while a row with that key still exists. On success the row
+second row - but only while a row with that key still exists. On success the row
 is either deleted (`record: "error"`, the queue-mode default) or updated with
 `key` set to `null`. Either way **the key is released once the job succeeds**.
 
 So `key` means *"don't enqueue this twice while it's still pending, running, or
-failing"* — it is not *"run this at most once ever"*. If you need the stronger
+failing"* - it is not *"run this at most once ever"*. If you need the stronger
 guarantee, enforce it in the handler against your own data.
 
 ## Retries
@@ -108,13 +108,13 @@ That means retry latency is bounded by `sweepCron` (default `*/15 * * * *`). The
 first retry lands anywhere from a few seconds to ~15 minutes later, depending on
 where the tick falls. Lower `sweepCron` if you need tighter latency.
 
-Cron-mode jobs without `retry` do not retry — the next tick is the retry. Cron
+Cron-mode jobs without `retry` do not retry - the next tick is the retry. Cron
 jobs that *declare* `retry` go through the same sweep path, which is useful for
 once-daily jobs where waiting a full day is not acceptable.
 
 ## Timeouts and cancellation
 
-`timeout` caps a single attempt. The handler receives an `AbortSignal` — pass it
+`timeout` caps a single attempt. The handler receives an `AbortSignal` - pass it
 to anything that supports one, since Alepha cannot interrupt synchronous work:
 
 ```typescript
@@ -133,11 +133,11 @@ report = $job({
 
 How a pushed execution reaches its handler depends on which modules are loaded:
 
-- **direct** (default) — the handler runs in-process right after `push()`
+- **direct** (default): the handler runs in-process right after `push()`
   returns. The outbox row is the durability guarantee: if the process dies, the
   sweep re-dispatches. Best for single-instance Node and Cloudflare Workers,
   where standing up a broker is overkill.
-- **queue** — add `AlephaApiJobsQueue` and dispatch goes through a real broker
+- **queue**: add `AlephaApiJobsQueue` and dispatch goes through a real broker
   (Cloudflare Queues, Redis) so a worker pool consumes the work.
 
 ```typescript
@@ -150,7 +150,7 @@ Both modes are at-least-once. Write handlers to be idempotent.
 
 ## Retention
 
-Queue-mode jobs default to `record: "error"` — the pending row is written at
+Queue-mode jobs default to `record: "error"` - the pending row is written at
 push time and removed on success, so a healthy queue leaves no rows behind.
 Cron jobs default to `record: "all"` with one retained success so the admin
 "Last run" column is accurate.
@@ -178,10 +178,10 @@ alepha.store.mut(jobConfig, (c) => ({ ...c, sweepCron: "*/5 * * * *" }));
 **Mutate before you wire the module.** A cron expression is read once, when the
 `$job` field initializes, and wiring a module injects its services immediately.
 A mut applied after the module is wired lands in the store but never reaches the
-already-registered cron — no error, no effect:
+already-registered cron - no error, no effect:
 
 ```typescript
-// Works — the store is set before anything reads it.
+// Works - the store is set before anything reads it.
 const alepha = Alepha.create();
 alepha.store.mut(jobConfig, (c) => ({ ...c, sweepCron: "*/5 * * * *" }));
 alepha.with(MyApp);
@@ -196,7 +196,7 @@ Inside a `$module`, the `register()` hook runs before `imports[]` and
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `sweepCron` | `*/15 * * * *` | Reconciliation sweep — bounds retry latency |
+| `sweepCron` | `*/15 * * * *` | Reconciliation sweep - bounds retry latency |
 | `trimCron` | `0 * * * *` | Ring-buffer trim tick |
 | `staleThreshold` | `300000` | Pending age (ms) before the sweep re-dispatches |
 | `runTimeout` | `1800000` | Running age (ms) before a crash is assumed |
@@ -204,13 +204,13 @@ Inside a `$module`, the `register()` hook runs before `imports[]` and
 | `keepLastError` | `10` | Error rows kept per job |
 | `drainTimeout` | `30000` | Time (ms) to wait for in-flight jobs on shutdown |
 | `logMaxEntries` | `100` | Log lines captured per run |
-| `directMaxConcurrency` | `10` | Concurrent handlers in direct mode — what keeps a `pushMany` of thousands from exhausting the DB pool |
+| `directMaxConcurrency` | `10` | Concurrent handlers in direct mode - what keeps a `pushMany` of thousands from exhausting the DB pool |
 
 ### Sweeps owned by other modules
 
 Modules that ship their own crons expose them the same way. All default to
 `*/15 * * * *` so they collapse onto the jobs sweep's trigger instead of adding
-their own — which matters on Cloudflare, where each distinct expression costs a
+their own - which matters on Cloudflare, where each distinct expression costs a
 Cron Trigger.
 
 | Atom | Key | Default | Bounded by |
@@ -219,7 +219,7 @@ Cron Trigger.
 | | `recoveryCron` | `*/15 * * * *` | `recovery.staleThreshold` (30 min) |
 | | `purgeCron` | `0 3 * * *` | `retentionDays` |
 | `paymentsConfig` (`alepha/api/payments`) | `expireStaleIntentsCron` | `*/15 * * * *` | The 30-minute intent cutoff |
-| `checkoutConfig` (`@alepha/commerce/checkout`) | `stockSweepCron` | `*/15 * * * *` | Nothing — `reserved()` excludes holds by `expiresAt` |
+| `checkoutConfig` (`@alepha/commerce/checkout`) | `stockSweepCron` | `*/15 * * * *` | Nothing - `reserved()` excludes holds by `expiresAt` |
 
 `timeoutCron` is the one to reconsider if you rely on tight workflow deadlines:
 a workflow past its deadline keeps running until the next tick, so a 15-minute
@@ -230,7 +230,7 @@ tick can let a workflow with a 5-minute timeout run for 20. Set it to
 
 Cron-mode jobs take a distributed lock per tick (`lock: true` by default), so a
 fleet of replicas fires the handler once, not once per replica. This needs a
-real `LockProvider` — the default `MemoryLockProvider` is per-process. See
+real `LockProvider` - the default `MemoryLockProvider` is per-process. See
 [Bare metal deployment](/docs/guides-deployment-bare) for the setup.
 
 `lock` has no effect on queue-mode and direct-mode jobs. Those serialize through
@@ -270,8 +270,8 @@ the outbox `claim()` UPDATE-guard instead, which is always on.
   }
   ```
 
-  You get the tick, but no distributed lock — on multiple replicas every
-  replica fires — no run history, no retry and
+  You get the tick, but no distributed lock - on multiple replicas every
+  replica fires - no run history, no retry and
   nothing in the admin UI. Reach for it only when a database is genuinely
   unavailable.
 - **Fan-out to many subscribers.** Use `$topic` / `$subscriber`, which is

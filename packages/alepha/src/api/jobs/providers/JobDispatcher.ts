@@ -2,7 +2,7 @@
  * Abstract dispatcher for queued/direct job executions.
  *
  * The default implementation, {@link DirectJobDispatcher}, runs the handler
- * in-process after the caller's `push()` returns — fast and dependency-free.
+ * in-process after the caller's `push()` returns - fast and dependency-free.
  *
  * `AlephaApiJobsQueue` substitutes this with `JobQueueProvider`, which
  * publishes the executionId to `AlephaQueue` so a worker pool can consume

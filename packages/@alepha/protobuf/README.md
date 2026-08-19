@@ -15,7 +15,7 @@ npm install @alepha/protobuf
 Protocol Buffers support.
 
 Registers a `protobuf` codec, so any Alepha schema can be encoded to the
-binary wire format — or to base64, for text transports:
+binary wire format - or to base64, for text transports:
 
 ```ts
 const schema = z.object({ name: z.text(), age: z.integer() });
@@ -35,5 +35,5 @@ const back = alepha.codec.decode(schema, bytes, { encoder: "protobuf" });
 
 ### Providers
 
-- [`ProtobufProvider`](https://alepha.dev/docs/reference-providers-protobufprovider) — Converts Alepha schemas to Protobuf definitions, and encodes/decodes against
-- [`ProtobufSchemaCodec`](https://alepha.dev/docs/reference-providers-protobufschemacodec) — ProtobufSchemaCodec handles encoding/decoding for Protobuf format.
+- [`ProtobufProvider`](https://alepha.dev/docs/reference-providers-protobufprovider) - Converts Alepha schemas to Protobuf definitions, and encodes/decodes against
+- [`ProtobufSchemaCodec`](https://alepha.dev/docs/reference-providers-protobufschemacodec) - ProtobufSchemaCodec handles encoding/decoding for Protobuf format.

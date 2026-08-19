@@ -20,7 +20,7 @@ declare module "alepha/react/router" {
 export class AppRouter {
   env = $env(
     z.object({
-      // `secret: false` because this is the site's address — without it the
+      // `secret: false` because this is the site's address - without it the
       // deploy pushes it to the worker as an encrypted secret, which is silly
       // for a value printed in every page's `<head>`.
       PUBLIC_URL: z.text({ secret: false }).default("https://alepha.dev"),
@@ -80,7 +80,7 @@ export class AppRouter {
       // `theme_color` in `public/manifest.json`, which has no light variant to
       // give it. Keep all three in step.
       //
-      // These were a single `#1a1a2e` for a long time — a colour from a
+      // These were a single `#1a1a2e` for a long time - a colour from a
       // palette this site no longer uses, which appears in no stylesheet.
       meta: [
         {

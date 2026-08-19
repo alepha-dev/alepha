@@ -14,7 +14,7 @@ import {
  * For OPTIONS preflight requests, the middleware short-circuits with a 204 response
  * and skips the handler entirely.
  *
- * **Route middleware** — requires a request context (`$action`). Throws if used outside one.
+ * **Route middleware** - requires a request context (`$action`). Throws if used outside one.
  *
  * ```typescript
  * class ApiController {

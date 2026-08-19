@@ -1,6 +1,6 @@
 # Build Command
 
-Build your project for production. The `build` command compiles, optimizes, and prepares your app for deployment — whether that's a Node.js server, Docker, Cloudflare Workers, or a static site.
+Build your project for production. The `build` command compiles, optimizes, and prepares your app for deployment - whether that's a Node.js server, Docker, Cloudflare Workers, or a static site.
 
 ## Quick Start
 
@@ -14,14 +14,14 @@ Your production-ready app is now in the `dist/` folder.
 
 The build runs a fixed pipeline of tasks:
 
-1. **Cleans the dist folder** — Fresh start, no stale files
-2. **Builds the client** — Compiles React, bundles assets, optimizes for browsers
-3. **Builds the server** — Compiles your backend code for the target runtime
-4. **Copies assets** — Moves static files to the right places
-5. **Generates the PWA manifest** — If `pwa` is configured
-6. **Prerenders pages** — Sitemap and static pages, when applicable
-7. **Generates deployment configs** — Cloudflare, Docker, static (if requested)
-8. **Pre-compresses assets** — Writes `.br` (Brotli) copies of client assets
+1. **Cleans the dist folder**: Fresh start, no stale files
+2. **Builds the client**: Compiles React, bundles assets, optimizes for browsers
+3. **Builds the server**: Compiles your backend code for the target runtime
+4. **Copies assets**: Moves static files to the right places
+5. **Generates the PWA manifest**: If `pwa` is configured
+6. **Prerenders pages**: Sitemap and static pages, when applicable
+7. **Generates deployment configs**: Cloudflare, Docker, static (if requested)
+8. **Pre-compresses assets**: Writes `.br` (Brotli) copies of client assets
 
 ## Output Structure
 
@@ -117,7 +117,7 @@ Then deploy:
 cd dist && wrangler deploy
 ```
 
-Or let `alepha p up` drive the whole pipeline — provisioning, build, migrations, deploy, and secrets.
+Or let `alepha p up` drive the whole pipeline - provisioning, build, migrations, deploy, and secrets.
 
 ### Static Site
 
@@ -132,7 +132,7 @@ Prerenders your pages to plain HTML/CSS/JS for any static host. Not compatible w
 ### Sitemap Generation
 
 Add the [`$sitemap`](/docs/packages-alepha-react-sitemap) primitive to a router. It
-serves `sitemap.xml` from your `$page` primitives — live at request time, and
+serves `sitemap.xml` from your `$page` primitives - live at request time, and
 prerendered to `dist/public/sitemap.xml` at build time (so static deployments get
 the file too):
 
@@ -238,24 +238,24 @@ Available options mirror the flags (`stats`, `target`, `runtime`) plus per-targe
 
 The build automatically:
 
-- **Minifies JavaScript** — Removes whitespace, shortens variable names
-- **Minifies CSS** — Combines and compresses styles
-- **Tree shakes** — Removes unused code
-- **Code splits** — Creates separate chunks for routes
-- **Hashes filenames** — Enables aggressive caching
-- **Pre-compresses assets** — Writes Brotli (`.br`) copies of JS/CSS/SVG/HTML
+- **Minifies JavaScript**: Removes whitespace, shortens variable names
+- **Minifies CSS**: Combines and compresses styles
+- **Tree shakes**: Removes unused code
+- **Code splits**: Creates separate chunks for routes
+- **Hashes filenames**: Enables aggressive caching
+- **Pre-compresses assets**: Writes Brotli (`.br`) copies of JS/CSS/SVG/HTML
 
 ## Server-Side Optimization
 
 The server build:
 
-- **Bundles dependencies** — Single file, no `node_modules` needed in production
-- **Externalizes Node built-ins** — Uses native `fs`, `path`, etc.
-- **Preserves source maps** — Debug production issues when needed
+- **Bundles dependencies**: Single file, no `node_modules` needed in production
+- **Externalizes Node built-ins**: Uses native `fs`, `path`, etc.
+- **Preserves source maps**: Debug production issues when needed
 
 > **Single File Deploy**
 >
-> Your production server is a single `index.js` file. No need to deploy `node_modules` — everything is bundled.
+> Your production server is a single `index.js` file. No need to deploy `node_modules` - everything is bundled.
 
 ## Backend-Only Projects
 

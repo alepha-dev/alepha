@@ -8,7 +8,7 @@ import { $room } from "alepha/websocket";
 
 ## Overview
 
-Defines a **stateful** WebSocket room — the home for an authoritative,
+Defines a **stateful** WebSocket room - the home for an authoritative,
 optionally tick-driven simulation.
 
 Where `$websocket` is a stateless, per-message pub/sub handler, `$room`

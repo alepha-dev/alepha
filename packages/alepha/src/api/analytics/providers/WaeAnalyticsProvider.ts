@@ -45,13 +45,13 @@ const envSchema = z.object({
     .text({
       secret: false,
       description:
-        "Analytics Engine dataset name — used both as the wrangler.toml binding key (env.<name>) for writes and as the SQL FROM table for reads. Unset means this provider is never selected; see index.workerd.ts.",
+        "Analytics Engine dataset name - used both as the wrangler.toml binding key (env.<name>) for writes and as the SQL FROM table for reads. Unset means this provider is never selected; see index.workerd.ts.",
     })
     .optional(),
   CLOUDFLARE_ACCOUNT_ID: z
     .text({
       description:
-        "Cloudflare account id, for the Analytics Engine SQL read API (there is no read binding — see AnalyticsEngineSql).",
+        "Cloudflare account id, for the Analytics Engine SQL read API (there is no read binding - see AnalyticsEngineSql).",
     })
     .optional(),
   // Deliberately NOT named CLOUDFLARE_API_TOKEN: wrangler treats that name as
@@ -69,12 +69,12 @@ const envSchema = z.object({
 /**
  * Hot rows on Workers Analytics Engine, rolled rows in a durable store.
  *
- * A DI-injectable provider, not a plain constructor-options class — this is
+ * A DI-injectable provider, not a plain constructor-options class - this is
  * the second design of this class. The first took `dataset` / `sql` / `cold`
  * as constructor options, which made it easy to unit test but impossible for
  * `index.workerd.ts` to select automatically: `alepha.with({ provide, use })`
  * constructs `use` via `alepha.inject(use)`, which needs a class DI can build
- * on its own. Follows `CloudflareEmailProvider` closely — the closest
+ * on its own. Follows `CloudflareEmailProvider` closely - the closest
  * existing analogue, combining a **write-only Workers binding** with an
  * **account-scoped REST API** gated by `CLOUDFLARE_ACCOUNT_ID` /
  * `CLOUDFLARE_ANALYTICS_TOKEN`:
@@ -86,10 +86,10 @@ const envSchema = z.object({
  * - `cold = $inject(OrmAnalyticsProvider)` is the **concrete** class, not
  *   `$inject(AnalyticsProvider)`. Injecting the abstract seam here would be
  *   circular the moment `index.workerd.ts`'s `register()` substitutes this
- *   very class in for that seam — this provider would try to inject itself.
+ *   very class in for that seam - this provider would try to inject itself.
  * - `AnalyticsEngineSql` is still a plain constructor-options class (nothing
  *   about it needs DI), just built internally by {@link sql} rather than
- *   passed in — the same relationship `CloudflareEmailProvider.sendViaRest`
+ *   passed in - the same relationship `CloudflareEmailProvider.sendViaRest`
  *   has with `fetch`.
  *
  * Testability does not regress: `alepha.set("cloudflare.env", { NAME: fake })`
@@ -100,10 +100,10 @@ const envSchema = z.object({
  *
  * ## Every number read back is an estimate
  *
- * Analytics Engine samples, and `_sample_interval` — how many real events each
- * stored row stands for — varies per row, so a constant multiplier is wrong.
- * Every measure comes back as `sum(double * _sample_interval)` — the
- * sample-interval-corrected sum, never a raw stored double — and the result
+ * Analytics Engine samples, and `_sample_interval` - how many real events each
+ * stored row stands for - varies per row, so a constant multiplier is wrong.
+ * Every measure comes back as `sum(double * _sample_interval)` - the
+ * sample-interval-corrected sum, never a raw stored double - and the result
  * carries `estimated: true` so a UI cannot present them as measurements by
  * accident.
  *
@@ -113,10 +113,10 @@ const envSchema = z.object({
  * clock, re-sample already-sampled data, and require a discriminator to keep
  * rolled rows from being counted alongside the raw ones they summarise. So a
  * Cloudflare deployment needs a relational store for anything older than the
- * hot window — the same compromise unique visitors already forced on
+ * hot window - the same compromise unique visitors already forced on
  * `WaeAnalyticsStore` in `@alepha/sigil`.
  *
- * `record()` never writes to `cold` — only to Analytics Engine — so `cold`'s
+ * `record()` never writes to `cold` - only to Analytics Engine - so `cold`'s
  * raw tier starts every dataset's life with zero rows for it. Left alone,
  * `cold.rollup()` would fold a table nothing ever populated: a structural
  * no-op, not a race, and it would silently lose every hour past Analytics
@@ -124,7 +124,7 @@ const envSchema = z.object({
  * exists to prevent. {@link rollup} closes that gap itself, immediately
  * before delegating: it tops up `cold`'s raw tier with Analytics Engine rows
  * older than `before` (hour granularity, matching what `record()` would have
- * written directly), *then* calls `cold.rollup()` to fold them — see
+ * written directly), *then* calls `cold.rollup()` to fold them - see
  * {@link forwardToCold}. What crosses over is the sample-corrected total
  * `query()` already computed, not a raw stored double, so `cold`'s own
  * arithmetic (the upsert accumulate, the day fold) can add and fold it
@@ -140,16 +140,16 @@ const envSchema = z.object({
  * ## `prune()` cannot rely on deletion alone
  *
  * Analytics Engine has no delete API, so `cold.prune(dataset, before)` alone
- * cannot make Analytics Engine's own copy of `[..., before)` stop existing —
+ * cannot make Analytics Engine's own copy of `[..., before)` stop existing -
  * it only removes `cold`'s copy. Left at that, `AnalyticsProvider.prune`'s
  * own contract ("deletes every row older than `before`, **on whichever tier
  * it lives**") would be silently broken on this backend: a query for an
  * already-pruned window would fall out of `cold` and fall back to Analytics
  * Engine, which still has it and always will until its own ~90-day
  * retention eventually, invisibly, ages it out. {@link prune} therefore also
- * durably records `before` as a prune floor — via
+ * durably records `before` as a prune floor - via
  * `OrmAnalyticsProvider.recordPruneFloor`, kept in `cold` because it is the
- * one piece of this provider's state that already survives a restart — and
+ * one piece of this provider's state that already survives a restart - and
  * {@link query}/{@link forwardToCold} both clamp their effective `since` to
  * it, on every read, regardless of what either tier currently holds. That is
  * what makes `prune()` mean the same thing here as it does on
@@ -162,12 +162,12 @@ const envSchema = z.object({
  * ## The read side has to merge too
  *
  * Forwarding rows into `cold` is pointless if `query()` never reads them
- * back — a window older than Analytics Engine's retention would still
+ * back - a window older than Analytics Engine's retention would still
  * silently return nothing, and the worst case is a window straddling the
  * boundary returning only the Analytics Engine portion with no sign anything
  * is missing. So {@link query} queries both sources and merges, the same way
  * `OrmAnalyticsProvider.query()` already merges its own raw and rolled
- * tiers — same merge key (`JSON.stringify` of the grouped dimension values),
+ * tiers - same merge key (`JSON.stringify` of the grouped dimension values),
  * the same mergeable aggregate (`sum`, added across sources), ordering and
  * `limit` applied once to the merged set rather than per source. Two things
  * are specific to a *composite* of two different backends rather than two
@@ -175,7 +175,7 @@ const envSchema = z.object({
  *
  * - **Skipping `cold` when it cannot matter.** A window entirely within
  *   `dataset`'s declared hot retention cannot have anything forwarded into
- *   it yet in a correctly-running system — see {@link mightNeedCold} — so
+ *   it yet in a correctly-running system - see {@link mightNeedCold} - so
  *   `query()` skips `cold` for that case with zero calls to it, the same
  *   structural argument that makes {@link forwardToCold} safe rather than a
  *   speed hack.
@@ -183,13 +183,13 @@ const envSchema = z.object({
  *   forwarded.** Analytics Engine has no delete API, so a forwarded hour
  *   keeps existing on both sides forever. `query()` re-derives the same
  *   watermark {@link forwardToCold} uses and narrows the Analytics Engine
- *   side's `since` to exclude whatever `cold` already covers — see
- *   {@link nextBucket} — rather than trusting the two sources to be disjoint.
+ *   side's `since` to exclude whatever `cold` already covers - see
+ *   {@link nextBucket} - rather than trusting the two sources to be disjoint.
  * - **`estimated` is unconditionally `true`.** Not just because Analytics
  *   Engine samples, but because a row `cold` holds only ever got there
  *   through `forwardToCold`, which itself read it out of Analytics Engine as
  *   a sample-corrected estimate. Landing in a relational table does not
- *   retroactively make it a measurement — so a merge where every
+ *   retroactively make it a measurement - so a merge where every
  *   contributing row came from `cold` is *not* exact either, and does not
  *   report `estimated: false`. Nothing this provider can return was ever
  *   measured directly; only `OrmAnalyticsProvider` running on its own

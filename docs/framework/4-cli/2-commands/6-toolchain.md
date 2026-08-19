@@ -1,6 +1,6 @@
 # Toolchain Commands
 
-Test, lint, typecheck, clean. The everyday commands, each backed by a tool that ships embedded in `alepha` — your project never declares Vitest, Biome, or TypeScript as dependencies, and upgrading `alepha` moves the whole toolchain at once.
+Test, lint, typecheck, clean. The everyday commands, each backed by a tool that ships embedded in `alepha` - your project never declares Vitest, Biome, or TypeScript as dependencies, and upgrading `alepha` moves the whole toolchain at once.
 
 ## test
 
@@ -22,7 +22,7 @@ Extra Vitest arguments go through the `VITEST_ARGS` environment variable:
 VITEST_ARGS="--coverage" alepha test
 ```
 
-Write specs in `test/` or co-locate them as `*.spec.ts` next to your source — both are picked up.
+Write specs in `test/` or co-locate them as `*.spec.ts` next to your source - both are picked up.
 
 ## lint
 

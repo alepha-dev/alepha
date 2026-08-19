@@ -152,7 +152,7 @@ export interface WorkflowPrimitiveOptions<TInput extends ZType = ZType> {
 
   /**
    * Atoms whose current values are captured when an execution starts and
-   * restored around every step, `when()` and compensation handler — on
+   * restored around every step, `when()` and compensation handler - on
    * whatever process ends up running them, including recovery-sweep
    * dispatches after a crash. The canonical use is tenancy:
    * `context: [currentTenantAtom]` makes each step run under the tenant

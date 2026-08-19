@@ -37,7 +37,7 @@ declare module "alepha" {
  * SMS delivery with multiple provider support.
  *
  * **Features:**
- * - Send SMS (pre-rendered message strings — no template rendering)
+ * - Send SMS (pre-rendered message strings - no template rendering)
  * - Multiple recipients
  * - Provider abstraction
  *

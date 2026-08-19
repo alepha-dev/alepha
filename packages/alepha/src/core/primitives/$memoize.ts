@@ -3,7 +3,7 @@ import { createMiddleware, type Middleware } from "./$pipeline.ts";
 /**
  * Lightweight in-process memoization middleware.
  *
- * Caches handler results in a plain `Map` — no external store, no serialization,
+ * Caches handler results in a plain `Map` - no external store, no serialization,
  * no provider dependency. Process-local only. Entries live until eviction by capacity.
  *
  * ```typescript
@@ -15,7 +15,7 @@ import { createMiddleware, type Middleware } from "./$pipeline.ts";
  * }
  * ```
  *
- * > For more advanced caching, use `$cache` from "alepha/cache" instead — it supports TTL, invalidation, external stores (Redis).
+ * > For more advanced caching, use `$cache` from "alepha/cache" instead - it supports TTL, invalidation, external stores (Redis).
  */
 export const $memoize = (options?: MemoizeOptions): Middleware => {
   return createMiddleware({

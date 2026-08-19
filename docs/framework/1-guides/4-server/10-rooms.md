@@ -11,7 +11,7 @@ lifecycle:
 - it comes to life on the first join (running its `state` factory once),
 - while a socket is connected and `tickHz > 0`, a loop calls `onTick(room, dt)`
   every `1000/tickHz` ms,
-- when the last socket leaves, `onEmpty` runs and the state is discarded — an
+- when the last socket leaves, `onEmpty` runs and the state is discarded - an
   empty room costs nothing.
 
 The **same code runs on both runtimes.** On a Node VPS the room is a plain
@@ -50,14 +50,14 @@ class GameServer {
 
 Key points:
 
-- **`room.state`** is your world — created by the factory, never serialized by
+- **`room.state`** is your world - created by the factory, never serialized by
   the framework. Keep authoritative collections (players, monsters, loot) here.
 - **`room.send(id, msg)`** targets one connection. This is what a per-recipient
   area-of-interest stream needs: each client gets a *different* frame every tick.
   **`room.broadcast(msg, { exceptConnectionIds })`** fans out to all.
 - **`conn.data`** is a per-connection bag you own (last acked input seq, hero id,
   AOI cursor…).
-- **`onTick` never throws out of the loop** — an error is logged and the room
+- **`onTick` never throws out of the loop**: an error is logged and the room
   keeps ticking. The tick loop is the speed limit; flooding messages buys no
   extra ticks.
 
@@ -65,7 +65,7 @@ Key points:
 
 Omit `tickHz` and the room is **headless**: no loop, no sockets required,
 addressed by id and reached through server-side `methods`. This models
-cross-room shared state and single-owner leases — reached from another room, an
+cross-room shared state and single-owner leases - reached from another room, an
 HTTP action, or anywhere on the server.
 
 ```typescript
@@ -104,7 +104,7 @@ three are one `$room`:
 | **Presence lease** (single-owner hero connection + epoch) | headless, `methods` acquire/renew/release | `heroId` |
 
 The pure simulation (`step()`, reconciliation, the wire protocol) stays in your
-own runtime-free package and is called from `onTick`/`onMessage` — Alepha never
+own runtime-free package and is called from `onTick`/`onMessage` - Alepha never
 touches it.
 
 ## Node vs Cloudflare: what differs
@@ -119,7 +119,7 @@ touches it.
 
 On a single VPS you have shared memory and real timers, so a coordinator/lease is
 just a headless room in the same process. On Cloudflare the same headless room is
-a Durable Object — durable state that outlives an isolate must be persisted
+a Durable Object - durable state that outlives an isolate must be persisted
 inside a `method`/`onEmpty` (its `state` is in-memory and lost if the DO is
 evicted while idle). An actively-ticking world room stays warm and keeps its
 state for as long as it ticks.

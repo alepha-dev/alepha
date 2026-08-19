@@ -5,7 +5,7 @@ import { alephaSequences } from "../entities/alephaSequences.ts";
 import { $repository } from "../primitives/$repository.ts";
 
 /**
- * Portable, scoped numeric sequence provider — works identically on Postgres,
+ * Portable, scoped numeric sequence provider - works identically on Postgres,
  * SQLite, and Cloudflare D1.
  *
  * Implementation: a single `alepha_sequences` table holds one row per
@@ -16,11 +16,11 @@ import { $repository } from "../primitives/$repository.ts";
  * - **Postgres**: row-level lock on `ON CONFLICT DO UPDATE`.
  * - **SQLite / D1**: writes are serialized, atomic by construction.
  *
- * The repository pattern is the same one used by `DatabaseCacheProvider.incr()`
- * — see that file for the proof-of-design.
+ * The repository pattern is the same one used by `DatabaseCacheProvider.incr()`;
+ * see that file for the proof-of-design.
  *
  * Callers never instantiate this directly. They declare a {@link SequencePrimitive}
- * via `$sequence()` and call `.next(scope?)` on the primitive — this provider is
+ * via `$sequence()` and call `.next(scope?)` on the primitive - this provider is
  * the engine behind that call.
  */
 export class SequenceProvider {

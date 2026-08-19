@@ -19,4 +19,4 @@ Reverse proxy routing.
 
 ### Primitives
 
-- [`$proxy`](/docs/reference-primitives-$proxy) — Creates a proxy primitive to forward requests to another server.
+- [`$proxy`](/docs/reference-primitives-$proxy) - Creates a proxy primitive to forward requests to another server.

@@ -43,13 +43,13 @@ run(
 );
 ```
 
-Your MCP server is now available at `POST /mcp` (Streamable HTTP, JSON-RPC). Transports are opt-in — `AlephaMcp` provides the server; wiring `StreamableHttpMcpTransport` exposes it over HTTP.
+Your MCP server is now available at `POST /mcp` (Streamable HTTP, JSON-RPC). Transports are opt-in - `AlephaMcp` provides the server; wiring `StreamableHttpMcpTransport` exposes it over HTTP.
 
 ## Three Primitives
 
 MCP defines three types of capabilities. Each maps to an Alepha primitive.
 
-### $tool — Callable Functions
+### $tool: Callable Functions
 
 Tools let an AI assistant perform actions: query a database, create records, call external APIs.
 
@@ -120,12 +120,12 @@ class TaskTools {
 
 Parameters and results are validated automatically. If validation fails, the client receives a JSON-RPC error.
 
-**Returning images or binary content:** when a tool needs to hand the client a screenshot, a chart, or any non-JSON payload, omit `schema.result` and return raw MCP content blocks instead — `{ content: [...] }`, where each block is `{ type: "text", text }`, `{ type: "image", data, mimeType }` (base64), `{ type: "audio", data, mimeType }`, or a resource link. The blocks are passed through to the client verbatim, so an image block renders inline in clients that support it.
+**Returning images or binary content:** when a tool needs to hand the client a screenshot, a chart, or any non-JSON payload, omit `schema.result` and return raw MCP content blocks instead - `{ content: [...] }`, where each block is `{ type: "text", text }`, `{ type: "image", data, mimeType }` (base64), `{ type: "audio", data, mimeType }`, or a resource link. The blocks are passed through to the client verbatim, so an image block renders inline in clients that support it.
 
 ```typescript
 screenshot = $tool({
   description: "Capture the current page as a PNG.",
-  // No `schema.result` — the handler returns content blocks directly.
+  // No `schema.result` - the handler returns content blocks directly.
   handler: async ({ params }) => {
     const png = await this.capture(params.url); // Buffer
     return {
@@ -139,7 +139,7 @@ screenshot = $tool({
 
 A tool that declares `schema.result` always goes through the structured/JSON path, so a JSON result that happens to contain a `content` array is never mistaken for raw content.
 
-### $resource — Read-Only Data
+### $resource: Read-Only Data
 
 Resources expose data that an AI can read but not modify: configuration, documentation, database snapshots.
 
@@ -179,7 +179,7 @@ class Resources {
 | `handler` | `function` | Returns `{ text }` for text content or `{ blob }` for binary. |
 | `name` | `string` | Display name. Defaults to the property key. |
 
-### $resourceTemplate — Parameterized Resources
+### $resourceTemplate: Parameterized Resources
 
 `$resource` addresses one thing at a fixed URI. `$resourceTemplate` addresses a
 *family* of them, so an AI can read `folio://1/86` without you registering every
@@ -208,7 +208,7 @@ class FolioResources {
 
 Templates are advertised on `resources/templates/list`, and `resources/read`
 falls through to them when no fixed resource matches the URI exactly. A concrete
-`$resource` always wins over a template that also matches — registering
+`$resource` always wins over a template that also matches - registering
 `db://users/me` alongside `db://users/{id}` does what you would expect.
 
 **URI templates.** Two RFC 6570 forms are supported:
@@ -233,7 +233,7 @@ matches.
 | `mimeType` | `string` | Content type. Defaults to `text/plain`. |
 | `name` | `string` | Display name. Defaults to the property key. |
 
-### $prompt — Message Templates
+### $prompt: Message Templates
 
 Prompts define reusable conversation templates with typed arguments.
 
@@ -286,7 +286,7 @@ run(
 );
 ```
 
-Primitives auto-register with the MCP server when instantiated — only the transport needs explicit wiring.
+Primitives auto-register with the MCP server when instantiated - only the transport needs explicit wiring.
 
 For larger apps, group MCP classes into a module:
 
@@ -346,8 +346,8 @@ class PostTools {
 
 Zod schemas on tools serve double duty:
 
-1. **Runtime validation** — params are validated before your handler runs, results are validated before being sent back
-2. **JSON Schema generation** — the MCP protocol advertises your tool's input schema so AI clients know what to send
+1. **Runtime validation**: params are validated before your handler runs, results are validated before being sent back
+2. **JSON Schema generation**: the MCP protocol advertises your tool's input schema so AI clients know what to send
 
 Add `description` to individual fields to help the AI understand what each parameter does:
 
@@ -422,7 +422,7 @@ task_list = $tool({
 });
 ```
 
-To carry anything else — a tenant, a project scope, a request id — override
+To carry anything else - a tenant, a project scope, a request id - override
 `buildContext` on the transport and register the subclass:
 
 ```typescript
@@ -461,7 +461,7 @@ handler: async ({ params, context }) => {
 
 An ordinary `Error` becomes a **tool execution error** (`isError: true` with the
 message as text) so the model can read it and self-correct. An `McpError`
-subclass is a **JSON-RPC protocol error** instead, carrying its code — use one
+subclass is a **JSON-RPC protocol error** instead, carrying its code - use one
 when the caller cannot fix the problem by changing its arguments.
 
 Available error classes:
@@ -480,7 +480,7 @@ Unknown names are `-32602 Invalid params`, not `-32601 Method not found`:
 `-32601` says the *method* `tools/call` does not exist, which a client can read
 as "this server has no tools at all".
 
-Input validation stays a tool execution error — the model sent bad arguments and
+Input validation stays a tool execution error - the model sent bad arguments and
 can retry. Output validation does not: a handler that breaks its own
 `schema.result` is a server bug, so it is logged and returned as `-32603`,
 never as a validation error pointing at an input path the caller never sent.
@@ -493,8 +493,8 @@ Transports are opt-in: wire the one you need.
 
 **Streamable HTTP** (MCP spec 2025-03-26+), a single endpoint:
 
-- `POST /mcp` — JSON-RPC endpoint; single responses return `application/json`
-- `GET /mcp` — returns `405 Method Not Allowed` (the legacy two-endpoint SSE pattern is deliberately not served)
+- `POST /mcp`: JSON-RPC endpoint; single responses return `application/json`
+- `GET /mcp`: returns `405 Method Not Allowed` (the legacy two-endpoint SSE pattern is deliberately not served)
 
 The path is configurable (keep it outside `/api`, which belongs to the `$action` dispatcher):
 
@@ -504,7 +504,7 @@ import { mcpStreamableHttpOptions } from "alepha/mcp";
 alepha.store.mut(mcpStreamableHttpOptions, (o) => ({ ...o, path: "/my-mcp" }));
 ```
 
-### stdio — local servers
+### stdio: local servers
 
 Claude Desktop, Claude Code and every other *local* client launch the server as
 a subprocess and speak newline-delimited JSON-RPC over its pipes:
@@ -530,21 +530,21 @@ Then point the client at the built binary:
 }
 ```
 
-**stdout belongs to the protocol.** A single stray `console.log` — yours,
-Alepha's, or a dependency's — lands inside a JSON-RPC message and corrupts the
+**stdout belongs to the protocol.** A single stray `console.log` - yours,
+Alepha's, or a dependency's - lands inside a JSON-RPC message and corrupts the
 stream permanently. While this transport runs it redirects `process.stdout` to
 stderr and keeps the real stdout for protocol messages only, so your logs still
 appear (on stderr, where the spec wants them) and cannot break the stream.
 
 A stdio server takes credentials from its environment rather than the HTTP
-authorization framework, so `requireAuth` has no meaning there — whoever
+authorization framework, so `requireAuth` has no meaning there - whoever
 launched the process is the caller.
 
 ### Progress on long calls
 
 When a client attaches a `_meta.progressToken` to a request, the HTTP response
 upgrades to `text/event-stream`: progress notifications as they happen, then the
-final response. Without a token, nothing changes — the response is plain JSON.
+final response. Without a token, nothing changes - the response is plain JSON.
 
 ```typescript
 index_repo = $tool({
@@ -562,7 +562,7 @@ index_repo = $tool({
 
 `reportProgress` is absent when the client did not ask for progress, so call it
 through `?.`. The same context carries a `signal` that aborts when the client
-cancels — pass it to `fetch`, DB queries and anything else that accepts one,
+cancels - pass it to `fetch`, DB queries and anything else that accepts one,
 or a tool nobody is waiting for keeps running to completion.
 
 ### Paginated lists

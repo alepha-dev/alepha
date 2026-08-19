@@ -22,7 +22,7 @@ import { useSelector } from "./useSelector.ts";
  * Thin wrapper over {@link useAction}: it pre-applies `runOnInit: true`,
  * exposes the last result as `data`, and provides a stable `refetch()` to
  * re-run the query on demand. For optimistic mutations and side-effects,
- * use {@link useAction} directly — `useQuery` is for the read path.
+ * use {@link useAction} directly - `useQuery` is for the read path.
  *
  * Request deduplication and AbortSignal cancellation come from `useAction` +
  * `HttpClient`.
@@ -35,7 +35,7 @@ import { useSelector } from "./useSelector.ts";
  * server-rendered results hydrate on the client for free.
  *
  * Without a `key`, none of that applies and the hook behaves exactly as it
- * always has — no cache reads, no cache writes, no shared state.
+ * always has - no cache reads, no cache writes, no shared state.
  *
  * @example Basic
  * ```tsx

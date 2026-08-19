@@ -44,7 +44,7 @@ declare module "alepha" {
  * - Memory provider for testing
  *
  * There is **no template rendering**: `send()` takes an already-rendered
- * `subject` and `body` — bring your own templating if you need it.
+ * `subject` and `body` - bring your own templating if you need it.
  *
  * For SMTP support, use `AlephaEmailSmtp` from `alepha/email/smtp`.
  * For Brevo support, use `AlephaEmailBrevo` from `alepha/email/brevo`.

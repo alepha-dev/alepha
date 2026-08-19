@@ -13,7 +13,7 @@ import { $secure, type SecureOptions } from "./$secure.ts";
  *
  * Roles and permissions answer "what kind of user is this?". They cannot
  * answer "does this user own row 42?", so that check ends up inline in every
- * handler — where nothing enforces its presence and a forgotten call is a
+ * handler - where nothing enforces its presence and a forgotten call is a
  * silent authorization hole.
  *
  * `$owns` loads the row named by a route param, checks the caller against it,
@@ -22,13 +22,13 @@ import { $secure, type SecureOptions } from "./$secure.ts";
  *
  * Two checks, applied in order:
  *
- * 1. **Owner** — `row[owner] === user.id`.
- * 2. **Membership** — when `via` is set, a row in the join entity links the
+ * 1. **Owner**: `row[owner] === user.id`.
+ * 2. **Membership**: when `via` is set, a row in the join entity links the
  *    caller to this resource.
  *
  * A privileged identity (`user.ownership === false`) bypasses both, matching
  * the `ownership` semantics `$secure` already applies: an admin whose grant is
- * not narrowed to rows they own. Note this is deliberately strict — an
+ * not narrowed to rows they own. Note this is deliberately strict - an
  * `undefined` ownership does **not** bypass, because `undefined` only means
  * "no permission check ran", not "this caller is privileged".
  *
@@ -187,7 +187,7 @@ export interface OwnsOptions {
   message?: string;
 
   /**
-   * Additional `$secure` checks layered on top — roles, permissions, issuers.
+   * Additional `$secure` checks layered on top - roles, permissions, issuers.
    */
   secure?: Omit<SecureOptions, "guard">;
 }

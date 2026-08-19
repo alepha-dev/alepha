@@ -17,7 +17,7 @@ to generate ETags, handle 304s, and optionally store responses.
 When `store` is enabled, the middleware also checks the cache before
 calling the handler, short-circuiting on cache hits.
 
-**Route middleware** — works inside `$action`, `$page`, or any pipeline.
+**Route middleware** - works inside `$action`, `$page`, or any pipeline.
 
 ```typescript
 class UserController {

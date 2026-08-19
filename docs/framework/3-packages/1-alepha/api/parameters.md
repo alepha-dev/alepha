@@ -23,4 +23,4 @@ Application parameter management.
 
 ### Primitives
 
-- [`$parameter`](/docs/reference-primitives-$parameter) — Declares a named, schema-validated runtime parameter — configuration that
+- [`$parameter`](/docs/reference-primitives-$parameter) - Declares a named, schema-validated runtime parameter - configuration that

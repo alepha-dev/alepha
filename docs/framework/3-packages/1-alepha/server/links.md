@@ -23,9 +23,9 @@ Type-safe API client with request deduplication.
 
 ### Primitives
 
-- [`$client`](/docs/reference-primitives-$client) — Create a new client.
-- [`$remote`](/docs/reference-primitives-$remote) — $remote is a primitive that allows you to define remote service access.
+- [`$client`](/docs/reference-primitives-$client) - Create a new client.
+- [`$remote`](/docs/reference-primitives-$remote) - $remote is a primitive that allows you to define remote service access.
 
 ### Providers
 
-- [`LinkProvider`](/docs/reference-providers-linkprovider) — Browser, SSR friendly, service to handle links.
+- [`LinkProvider`](/docs/reference-providers-linkprovider) - Browser, SSR friendly, service to handle links.

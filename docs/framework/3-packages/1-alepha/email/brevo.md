@@ -16,7 +16,7 @@ Plugin for Alepha Email that provides Brevo transactional email capabilities.
 
 ### Providers
 
-- [`BrevoEmailProvider`](/docs/reference-providers-brevoemailprovider) — Email provider using Brevo (formerly Sendinblue) transactional email API.
+- [`BrevoEmailProvider`](/docs/reference-providers-brevoemailprovider) - Email provider using Brevo (formerly Sendinblue) transactional email API.
 
 ### Environment Variables
 

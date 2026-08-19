@@ -22,7 +22,7 @@ import type {
 /**
  * Web-standard implementation of FileSystemProvider for Cloudflare Workers and other edge runtimes.
  *
- * Uses only Web APIs (ReadableStream, TextEncoder, etc.) — no Node.js-specific APIs.
+ * Uses only Web APIs (ReadableStream, TextEncoder, etc.) - no Node.js-specific APIs.
  * Provides working `createFile` with proper streaming support.
  * Filesystem operations (rm, cp, stat, etc.) are not available in edge runtimes and will throw.
  *

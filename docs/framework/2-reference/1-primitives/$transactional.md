@@ -11,7 +11,7 @@ import { $transactional } from "alepha/orm";
 Middleware that wraps handler execution in a database transaction.
 
 All Repository operations inside the handler automatically participate in
-the transaction — no explicit `{ tx }` drilling required.
+the transaction - no explicit `{ tx }` drilling required.
 
 Nesting is safe: if the handler is already inside a `transactional()` block,
 the outer transaction is reused.

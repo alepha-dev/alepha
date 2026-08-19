@@ -17,11 +17,11 @@ import {
 ## The Parser
 
 `MultipartStreamParser` is written against RFC 2046 §5.1 and RFC 7578, on Web
-streams only — one implementation for node, bun and workerd rather than three
+streams only - one implementation for node, bun and workerd rather than three
 that drift apart.
 
 **Its memory is flat.** It holds one source chunk plus, at most, the length of a
-delimiter — a delimiter can straddle two chunks, so the tail is kept until the
+delimiter - a delimiter can straddle two chunks, so the tail is kept until the
 next chunk proves it was content. The bytes of a part are handed out and
 forgotten.
 
@@ -42,7 +42,7 @@ interface MultipartPart {
 }
 ```
 
-A part's `data` must be consumed — fully or not at all — before advancing to the
+A part's `data` must be consumed - fully or not at all - before advancing to the
 next one. The parser drains whatever is left behind, because the delimiter of
 the next part can only be found by walking past this one's content.
 
@@ -50,24 +50,24 @@ the next part can only be found by walking past this one's content.
 
 Three levels, most specific last:
 
-1. **`multipartOptions`** — the application-wide default (5 MB per file, 10 MB
+1. **`multipartOptions`**: the application-wide default (5 MB per file, 10 MB
    per request, 10 parts).
-2. **`z.file({ maxBytes })` / `z.stream({ maxBytes })`** — what the route itself
+2. **`z.file({ maxBytes })` / `z.stream({ maxBytes })`**: what the route itself
    declares, in bytes.
-3. **`MultipartCapProvider`** — a resolver, which is the only level that knows
+3. **`MultipartCapProvider`**: a resolver, which is the only level that knows
    where the bytes are actually going. That is why it wins.
 
 **A level can raise the ceiling, not merely lower it.** That inversion was the
 original defect: a `$storage({ maxSize: 100 })` bucket was silently held at the
 5 MB global it knew nothing about, so the declaration read like a promise the
-framework could not keep — and nothing reported the gap.
+framework could not keep - and nothing reported the gap.
 
 Raising `maxFileBytes` lifts `maxTotalBytes` to match, so a route does not have
 to state the same number twice.
 
 ## Adding a Resolver
 
-A resolver is called **before a single byte of the body is read** — the URL, the
+A resolver is called **before a single byte of the body is read** - the URL, the
 route and the headers are all known by then, which is what makes a
 per-destination budget possible at all. Return `undefined` to defer.
 
@@ -98,7 +98,7 @@ it imports without having to load before it.
 Register through a `configure` hook rather than by substituting the provider.
 Substitution has an ordering constraint this cannot satisfy: the server resolves
 `MultipartCapProvider` while registering, and whoever wants to answer usually
-loads *after* — the container refuses the late substitution, loudly and
+loads *after* - the container refuses the late substitution, loudly and
 correctly. Adding to a list works whenever it happens.
 
 This is what `alepha/api/files` does, mapping the targeted `$storage` bucket to
@@ -115,7 +115,7 @@ request claim the largest budget the application declares anywhere. Answer
 
 **A raised limit is only safe on a path that streams.** `$secure` runs *after*
 the body hook, so on the `z.file()` path the budget is reachable before
-authentication — a bigger number there is a cheaper denial of service, not a
+authentication - a bigger number there is a cheaper denial of service, not a
 feature. On the `z.stream()` path the handler pulls the bytes, so nothing is
 consumed before the guard has run.
 

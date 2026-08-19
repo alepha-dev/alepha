@@ -70,7 +70,7 @@ Both sides of every join are typed. Swap `r.teams.id` for `r.teams.name` in the 
 
 They cannot be inferred from `db.ref`, and they cannot be nested inside `$entity`. `players.mentorId` is the reason: a self-reference makes the entity's own type depend on itself, and TypeScript gives up with `TS7022`. The `() => any` inside `db.ref` is what keeps that from happening, which also means the reference carries no type information for anything else to read.
 
-Declaring relations separately sidesteps it entirely — by the time `$relations` runs, every entity is already a complete type.
+Declaring relations separately sidesteps it entirely - by the time `$relations` runs, every entity is already a complete type.
 
 ### The graph can be partial
 
@@ -90,7 +90,7 @@ class TeamService {
 }
 ```
 
-`$repository(entity)` — the plain form — is unchanged. The two-argument form takes the relations and the key of the entity within its schema. The examples below use `repos` from that first binding.
+`$repository(entity)` - the plain form - is unchanged. The two-argument form takes the relations and the key of the entity within its schema. The examples below use `repos` from that first binding.
 
 ## Reading
 
@@ -107,7 +107,7 @@ team?.players[0]?.name; // fully inferred
 
 A `many` relation yields an array; a `one` yields `T | undefined`. A relation you did not include is absent from the type, so reading it is a compile error rather than `undefined` at runtime.
 
-An empty to-many is `[]`, never `undefined` — which is the case a `LEFT JOIN` gets wrong.
+An empty to-many is `[]`, never `undefined` - which is the case a `LEFT JOIN` gets wrong.
 
 ### Nesting
 
@@ -143,9 +143,9 @@ const relations = $relations(schema, (r) => ({
 }));
 ```
 
-The junction never appears in the result — a row reached through it is a plain target row, with no link columns bolted on. Hopping only one side throws at declaration time, because there would be nothing to match on the other.
+The junction never appears in the result - a row reached through it is a plain target row, with no link columns bolted on. Hopping only one side throws at declaration time, because there would be nothing to match on the other.
 
-> **A many-to-many de-duplicates only if the junction does.** `include` returns what the join returns. If a team could hold two `entries` rows for the same tournament, that tournament comes back twice and nothing in the response type would catch it. The unique index on `(teamId, tournamentId)` above is what makes the relation safe — worth a test of its own next to the endpoints that rely on it.
+> **A many-to-many de-duplicates only if the junction does.** `include` returns what the join returns. If a team could hold two `entries` rows for the same tournament, that tournament comes back twice and nothing in the response type would catch it. The unique index on `(teamId, tournamentId)` above is what makes the relation safe - worth a test of its own next to the endpoints that rely on it.
 
 ### Shaping a relation
 
@@ -165,7 +165,7 @@ const team = await repos.teams.findOne({
 });
 ```
 
-`limit` caps rows **per parent**, not across the result — which is the other thing a plain join cannot do without truncating children instead of parents.
+`limit` caps rows **per parent**, not across the result - which is the other thing a plain join cannot do without truncating children instead of parents.
 
 ### Projection
 
@@ -178,7 +178,7 @@ const teams = await repos.teams.findMany({
 });
 
 teams[0]?.name;
-// teams[0].id is a compile error — it was projected away
+// teams[0].id is a compile error - it was projected away
 ```
 
 Projecting the parent does not break its relations: the join key is still read internally and does not resurface in the result.
@@ -210,7 +210,7 @@ await repos.players.findMany({
 });
 ```
 
-`{}` is meaningful — the join condition alone is a presence check:
+`{}` is meaningful - the join condition alone is a presence check:
 
 ```typescript
 // Teams with at least one player.
@@ -221,13 +221,13 @@ Every operator works at any depth: `inArray`, `like`, `between`, all of them.
 
 ## Soft delete and tenancy
 
-Both apply automatically, at every level of the tree, including a relation included with a bare `true`. The predicate is the one the repository itself would use — so an entity marked `db.organization({ strict: true })` still refuses a read with no resolved tenant, rather than returning every tenant's rows.
+Both apply automatically, at every level of the tree, including a relation included with a bare `true`. The predicate is the one the repository itself would use - so an entity marked `db.organization({ strict: true })` still refuses a read with no resolved tenant, rather than returning every tenant's rows.
 
 A relation filter inherits the same rule: a soft-deleted player does not make its team match.
 
 ### force
 
-Some views want the history a soft delete hides — a crash inbox still shows reports from a source that has since been revoked. `force` is the same flag the plain repository takes:
+Some views want the history a soft delete hides - a crash inbox still shows reports from a source that has since been revoked. `force` is the same flag the plain repository takes:
 
 ```typescript
 await repos.teams.findMany({
@@ -265,7 +265,7 @@ await repos.teams.update({
 });
 ```
 
-`createMany`, `save`, `aggregate` and raw `query` are on the relational repository too — they just ignore relations. `.base` is the fully typed plain repository when you need the rest (`count`, `findById`, `updateMany`, `deleteMany`, `transaction`, …):
+`createMany`, `save`, `aggregate` and raw `query` are on the relational repository too - they just ignore relations. `.base` is the fully typed plain repository when you need the rest (`count`, `findById`, `updateMany`, `deleteMany`, `transaction`, …):
 
 ```typescript
 await repos.teams.aggregate({ select: { id: { count: true } } });
@@ -279,7 +279,7 @@ One statement, whatever the shape. Each included relation becomes a subquery, us
 |---|---|
 | PostgreSQL | `LEFT JOIN LATERAL` with `json_agg` |
 | SQLite | correlated subqueries with `json_object` / `json_group_array` |
-| Cloudflare D1 | the same, restricted to `json_*` — D1's SQLite has no `jsonb` |
+| Cloudflare D1 | the same, restricted to `json_*` - D1's SQLite has no `jsonb` |
 
 `toSQL()` returns the statement without running it, which is how you get it in front of `EXPLAIN`:
 
@@ -290,7 +290,7 @@ const { sql, params } = repos.teams.toSQL({
 });
 ```
 
-It needs a query with relations — without them the read goes through the plain repository and there is no gap to inspect.
+It needs a query with relations - without them the read goes through the plain repository and there is no gap to inspect.
 
 Every table a read touched is announced on `repository:read:before`, root first, so a cache keyed per table sees the whole tree rather than only its root.
 
@@ -298,6 +298,6 @@ Every table a read touched is announced on `repository:read:before`, root first,
 
 - **A relation filter cannot go inside `and` / `or` / `not`.** Those compile to one SQL expression, and an `EXISTS` cannot be folded into it. Lift the relation filter to the top level of the `where`; anything else is refused with an explanatory error rather than quietly matching nothing.
 - **`count` cannot carry a relation filter.** There is no count on the relational engine, so the predicate cannot reach a `COUNT(*)`. It is refused rather than returning a number that ignored the filter. The same applies to `paginate(..., { count: true })`.
-- **Only foreign keys are relations.** A `uuid[]` column of ids, or a polymorphic id column told apart by a discriminator, is not a foreign key — those lookups stay explicit.
+- **Only foreign keys are relations.** A `uuid[]` column of ids, or a polymorphic id column told apart by a discriminator, is not a foreign key - those lookups stay explicit.
 - **No aggregates through relations.** Use `.base.aggregate()` or raw SQL.
 - **`paginate` pages the root only.** Relations are resolved in full for the rows on that page, which is the point: page size bounds the work.

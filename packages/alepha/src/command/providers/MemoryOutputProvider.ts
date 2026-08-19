@@ -13,7 +13,7 @@ import { ConsoleOutputProvider } from "./ConsoleOutputProvider.ts";
  * expect(output.text).toContain("0.24.0");
  * ```
  *
- * Colour is stripped, matching what a caller piping the command would see —
+ * Colour is stripped, matching what a caller piping the command would see -
  * the interesting case, and the one worth asserting against. Assertions do not
  * have to know which escape sequences a `ConsoleColorProvider` happened to
  * emit.

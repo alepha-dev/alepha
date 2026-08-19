@@ -10,11 +10,11 @@ import { $scope } from "alepha";
 
 Middleware that wraps the handler in an ALS (AsyncLocalStorage) context.
 
-Gives the handler its own isolated scope — `alepha.context.get()` / `.set()` are scoped
+Gives the handler its own isolated scope - `alepha.context.get()` / `.set()` are scoped
 to this execution. Useful for `$pipeline` where no host primitive provides a scope.
 
 Host primitives (`$action`, `$job`, `$page`) include `$scope` by default.
-Adding `$scope()` to their `use` array will throw — you're already in a scope.
+Adding `$scope()` to their `use` array will throw - you're already in a scope.
 
 ```typescript
 class OrderService {

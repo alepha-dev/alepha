@@ -21,4 +21,4 @@ Test data generation with Faker.js.
 
 ### Providers
 
-- [`FakeProvider`](/docs/reference-providers-fakeprovider) — Generate fake data from Zod schemas using faker.js.
+- [`FakeProvider`](/docs/reference-providers-fakeprovider) - Generate fake data from Zod schemas using faker.js.

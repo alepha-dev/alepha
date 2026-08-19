@@ -100,7 +100,7 @@ export * from "./services/FileService.ts";
  * - TTL-based expiration swept by `api:files:purgeFiles`
  * - Storage statistics for the admin UI
  *
- * Blobs *without* a database are a `FileStorageProvider` concern — see
+ * Blobs *without* a database are a `FileStorageProvider` concern - see
  * `alepha/bucket`.
  *
  * @module alepha.api.files

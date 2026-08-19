@@ -99,7 +99,7 @@ class ProductService {
 }
 ```
 
-Relations between tables are NOT handled by `$entity`. Declare them separately with `$relations` and read them with `include` — see [Relations](/docs/guides-persistence-relations). For a one-off SQL join written per query, the `with` option is still there; see [Joins](/docs/guides-persistence-joins).
+Relations between tables are NOT handled by `$entity`. Declare them separately with `$relations` and read them with `include` - see [Relations](/docs/guides-persistence-relations). For a one-off SQL join written per query, the `with` option is still there; see [Joins](/docs/guides-persistence-joins).
 
 ## Query Methods
 
@@ -186,7 +186,7 @@ const results = await this.repo.query(
 
 ### aggregate
 
-Grouped aggregations (`sum`, `avg`, `min`, `max`, count) without writing raw SQL —
+Grouped aggregations (`sum`, `avg`, `min`, `max`, count) without writing raw SQL -
 see [Joins](/docs/guides-persistence-joins) for the aggregation pipeline it powers.
 
 ## Create Methods
@@ -238,8 +238,8 @@ const product = await this.repo.upsert(
 );
 ```
 
-- `target` — column(s) to detect conflicts on. Defaults to the primary key.
-- `set` — fields to update on conflict. Defaults to the insert data minus the target and primary key columns.
+- `target`: column(s) to detect conflicts on. Defaults to the primary key.
+- `set`: fields to update on conflict. Defaults to the insert data minus the target and primary key columns.
 
 If the entity has an `updatedAt` column, it is automatically set on conflict.
 
@@ -366,7 +366,7 @@ Where clauses accept either a direct value (shorthand for `eq`) or an object wit
 ```
 
 **Never pass `undefined` into a where-filter.** `where: { col: undefined }` throws
-`AlephaError` — it used to be dropped silently, which produced a query with no
+`AlephaError` - it used to be dropped silently, which produced a query with no
 `WHERE` clause at all. For optional filters, omit the key entirely:
 
 ```typescript
@@ -458,7 +458,7 @@ await this.repo.transaction(async (tx) => {
 
 All repository methods accept `{ tx }` in their options parameter to participate in the transaction. Beyond `tx`, that options parameter also takes `force` (skip optimistic locking), `for` (row locks, e.g. `{ for: "update" }`), `now` (override the timestamp used for `updatedAt`), and `cache` (per-statement cache control).
 
-On drivers without interactive transaction support — Cloudflare D1 — `transaction()` throws and tells you to use `$transactional()` instead.
+On drivers without interactive transaction support - Cloudflare D1 - `transaction()` throws and tells you to use `$transactional()` instead.
 
 To wrap a whole handler in a transaction without drilling `{ tx }` through every call, use the `$transactional` middleware:
 
@@ -478,13 +478,13 @@ class OrderService {
 }
 ```
 
-Every repository operation inside the handler automatically participates in the transaction. Nesting is safe — a nested `$transactional` reuses the outer transaction.
+Every repository operation inside the handler automatically participates in the transaction. Nesting is safe - a nested `$transactional` reuses the outer transaction.
 
-Concurrency is safe too: each `transactional()` call runs in its own context, so two blocks started at the same time — `Promise.all`, two requests, a job racing a handler — never read or write through each other's transaction.
+Concurrency is safe too: each `transactional()` call runs in its own context, so two blocks started at the same time - `Promise.all`, two requests, a job racing a handler - never read or write through each other's transaction.
 
 ### After the commit
 
-Side effects that must only happen once the data is durable — emitting a domain event, sending an email — do not belong inside the transaction: subscribers would read uncommitted rows and every lock the transaction holds stays held while they run. Register them with `DatabaseProvider.afterCommit()` instead:
+Side effects that must only happen once the data is durable - emitting a domain event, sending an email - do not belong inside the transaction: subscribers would read uncommitted rows and every lock the transaction holds stays held while they run. Register them with `DatabaseProvider.afterCommit()` instead:
 
 ```typescript
 import { $inject } from "alepha";
@@ -507,7 +507,7 @@ class OrderService {
 }
 ```
 
-Because nested `transactional()` blocks join the outermost transaction, the callback waits for the *outermost* commit — even when the method is called from inside someone else's transaction. Callbacks run in registration order and are discarded if the transaction rolls back. Outside any transaction, `afterCommit` runs its callback immediately.
+Because nested `transactional()` blocks join the outermost transaction, the callback waits for the *outermost* commit - even when the method is called from inside someone else's transaction. Callbacks run in registration order and are discarded if the transaction rolls back. Outside any transaction, `afterCommit` runs its callback immediately.
 
 ## Repository.of
 

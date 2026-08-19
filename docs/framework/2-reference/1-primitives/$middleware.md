@@ -11,7 +11,7 @@ import { $middleware } from "alepha/server";
 Applies middleware functions to every route whose path starts with a prefix.
 
 Use it for cross-cutting behavior (auth headers, logging, shaping) that
-should cover a whole path family rather than one action — per-action
+should cover a whole path family rather than one action - per-action
 middleware belongs in the action's own `use: [...]`.
 
 ## Options

@@ -91,8 +91,8 @@ class App {
 
 `$realm` ships with two default roles:
 
-- **admin** — Full access to all resources and permissions.
-- **user** — Access to owned resources only.
+- **admin**: Full access to all resources and permissions.
+- **user**: Access to owned resources only.
 
 ### Settings That Send a Code Need `features.notifications`
 
@@ -109,7 +109,7 @@ class App {
 }
 ```
 
-The feature flag is all it takes — it registers the notifications module
+The feature flag is all it takes - it registers the notifications module
 itself, so there is no separate import to remember:
 
 ```typescript check
@@ -133,18 +133,18 @@ address, read the error, learn whether that person has an account here.
 
 The behavior depends on `verifyEmailRequired`:
 
-- **Verification on** — an address already on file gets the *same* response a
+- **Verification on**: an address already on file gets the *same* response a
   fresh one gets: an intent id and "check your inbox". No verification code is
   minted, so the intent can never be completed. The real owner is emailed a
   `registrationAttempt` notice instead, which carries no code and asks for no
   action.
-- **Verification off** — a taken username, email or phone all produce one
+- **Verification off**: a taken username, email or phone all produce one
   identical error. It never names the field that collided.
 
 Server logs still record which identifier it was, at `debug` level.
 
 If you present registration errors in your own UI, do not try to map the
-generic conflict back to a specific field — there is nothing to map it to,
+generic conflict back to a specific field - there is nothing to map it to,
 and re-deriving it client-side would reopen the hole.
 
 ### Identity Providers
@@ -164,8 +164,8 @@ realm = $realm({
 ## Self-Service Account Endpoints
 
 `alepha/api/users` ships the endpoints an account area needs, all under
-`/users/me`. Every one carries a bare `$secure()` — a session and no permission
-— and resolves the row from `user.id`. None of them takes an id parameter,
+`/users/me`. Every one carries a bare `$secure()` (a session and no permission)
+and resolves the row from `user.id`. None of them takes an id parameter,
 which is what makes it safe to leave them un-permissioned: a caller can only
 ever ask about themselves. Operators go through the `Admin*` controllers, which
 have their own permissions.
@@ -191,10 +191,10 @@ Two rules are worth knowing before you wire a UI to them:
   every other session. Using the first to change a password would make an
   unattended signed-in browser a full account takeover.
 - **Unlinking the last identity is refused.** An account with no sign-in method
-  is not locked, it is unreachable — and password reset cannot recover it,
+  is not locked, it is unreachable - and password reset cannot recover it,
   because that needs a `credentials` identity to reset.
 
-`@alepha/ui` provides the matching UI as `AccountRouter` — see the
+`@alepha/ui` provides the matching UI as `AccountRouter` - see the
 [frontend routing guide](/docs/guides-frontend-routing).
 
 ### Deleting an Account: the `user:delete:before` Hook
@@ -207,7 +207,7 @@ confirmation stands alone.
 The framework only knows about users, identities and sessions. It cannot know
 what your application hangs off a user id, so it emits `user:delete:before`
 first and **awaits** it. A handler that throws aborts the deletion, and the
-error reaches the caller unwrapped — with its own status and message:
+error reaches the caller unwrapped - with its own status and message:
 
 ```typescript
 class UserDeletionHook {
@@ -278,9 +278,9 @@ managersOnly = $action({
 
 `$secure()` resolves the authenticated user using atom-first resolution, which works across all transports:
 
-1. **`currentUserAtom`** — checked first. Set by `$action.run()` fork, MCP transports, pipelines, and jobs.
-2. **`request.user`** — HTTP request user set by previous middleware.
-3. **HTTP headers** — JWT or API key resolved from `Authorization` header.
+1. **`currentUserAtom`**: checked first. Set by `$action.run()` fork, MCP transports, pipelines, and jobs.
+2. **`request.user`**: HTTP request user set by previous middleware.
+3. **HTTP headers**: JWT or API key resolved from `Authorization` header.
 
 ### Local Action Calls
 
@@ -297,7 +297,7 @@ await controller.action.run({}, { user: "system" });
 await controller.action.run({}, { user: "context" });
 ```
 
-The user is scoped to the action call using ALS fork isolation — it does not leak to subsequent calls.
+The user is scoped to the action call using ALS fork isolation - it does not leak to subsequent calls.
 
 In test mode, `.fetch()` automatically creates a JWT token from the user option:
 
@@ -343,11 +343,11 @@ Permissions use a colon-separated hierarchy. The `*` wildcard matches everything
 
 | Pattern | Matches | Does not match |
 |---------|---------|----------------|
-| `*` | Everything (admin access) | — |
+| `*` | Everything (admin access) | - |
 | `articles:*` | `articles:list`, `articles:get`, `articles:delete` | `media:upload` |
 | `admin:articles:*` | `admin:articles:list`, `admin:articles:update` | `admin:users:list` |
 
-Permissions declared in `$secure({ permissions: [...] })` are **auto-created** in the permission registry at definition time — no separate registration step is needed.
+Permissions declared in `$secure({ permissions: [...] })` are **auto-created** in the permission registry at definition time - no separate registration step is needed.
 
 ### Ownership
 
@@ -366,11 +366,11 @@ The `ownership` flag restricts a permission to resources owned by the user:
 }
 ```
 
-This grants access to all actions, but only for the user's own resources. The `exclude` array removes specific permission patterns — here, all admin-namespaced actions are excluded entirely.
+This grants access to all actions, but only for the user's own resources. The `exclude` array removes specific permission patterns - here, all admin-namespaced actions are excluded entirely.
 
 ## $secure Options
 
-`$secure()` accepts four options. All are optional — when none are provided, it only checks authentication.
+`$secure()` accepts four options. All are optional - when none are provided, it only checks authentication.
 
 ```typescript
 $secure({
@@ -381,7 +381,7 @@ $secure({
 })
 ```
 
-The `guard` receives a context object — `{ user, params, query, body, request?, alepha }` — and may be async:
+The `guard` receives a context object - `{ user, params, query, body, request?, alepha }` - and may be async:
 
 ```typescript
 guard: ({ user, params }) => user.id === params.id
@@ -391,35 +391,35 @@ guard: ({ user, params }) => user.id === params.id
 
 When multiple options are provided, checks run in this fixed order. Each check must pass before the next runs:
 
-1. **Authentication** — Is there a valid user? → `UnauthorizedError` (401) if not.
-2. **Issuers** — Does the user's realm match one of the listed issuers? → `ForbiddenError` (403) if not.
-3. **Roles** — Does the user have at least one of the listed roles? → `ForbiddenError` (403) if not.
-4. **Permissions** — Does the user's role grant all listed permissions? → `ForbiddenError` (403) if not.
-5. **Guard** — Does the custom function return `true`? → `ForbiddenError` (403) if not.
+1. **Authentication**: Is there a valid user? → `UnauthorizedError` (401) if not.
+2. **Issuers**: Does the user's realm match one of the listed issuers? → `ForbiddenError` (403) if not.
+3. **Roles**: Does the user have at least one of the listed roles? → `ForbiddenError` (403) if not.
+4. **Permissions**: Does the user's role grant all listed permissions? → `ForbiddenError` (403) if not.
+5. **Guard**: Does the custom function return `true`? → `ForbiddenError` (403) if not.
 
 ### AND vs OR Logic
 
-- **Issuers** — OR: user must match **at least one** of the listed issuers.
-- **Roles** — OR: user must have **at least one** of the listed roles.
-- **Permissions** — AND: user must have **all** listed permissions.
-- **Options** — AND: all provided options must pass.
+- **Issuers**: OR: user must match **at least one** of the listed issuers.
+- **Roles**: OR: user must have **at least one** of the listed roles.
+- **Permissions**: AND: user must have **all** listed permissions.
+- **Options**: AND: all provided options must pass.
 
 ### Examples
 
 ```typescript
-// Auth only — any authenticated user
+// Auth only - any authenticated user
 profile = $action({
   use: [$secure()],
   handler: ({ user }) => user,
 });
 
-// Role check (OR) — admin or manager
+// Role check (OR) - admin or manager
 dashboard = $action({
   use: [$secure({ roles: ["admin", "manager"] })],
   handler: () => { /* ... */ },
 });
 
-// Permission check (AND) — must have both
+// Permission check (AND) - must have both
 publish = $action({
   use: [$secure({ permissions: ["articles:create", "articles:publish"] })],
   handler: () => { /* ... */ },
@@ -431,13 +431,13 @@ adminPanel = $action({
   handler: () => { /* ... */ },
 });
 
-// Custom guard — runs after all other checks
+// Custom guard - runs after all other checks
 ownProfile = $action({
   use: [$secure({ guard: ({ user, params }) => user.id === params.id })],
   handler: () => { /* ... */ },
 });
 
-// Combining options — all must pass
+// Combining options - all must pass
 adminManage = $action({
   use: [$secure({
     issuers: ["main"],
@@ -451,7 +451,7 @@ adminManage = $action({
 
 ### Browser Behavior
 
-On the server, `$secure` throws errors (401/403). In the browser, it returns `undefined` instead — the handler is never called. On `$client` virtual actions, `can()` checks authorization without calling:
+On the server, `$secure` throws errors (401/403). In the browser, it returns `undefined` instead - the handler is never called. On `$client` virtual actions, `can()` checks authorization without calling:
 
 ```typescript
 // Browser: returns undefined if unauthorized, "ok" if authorized

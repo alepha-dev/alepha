@@ -12,7 +12,7 @@ import DocLink from "./DocLink.tsx";
  *
  * The order is the orchestrator's own, not a guess: `PlatformOrchestrator.up()`
  * runs authenticate → provision → build → migrate → deploy → secrets. Secrets
- * really are last — `secret put` needs the worker to exist, so on a first
+ * really are last - `secret put` needs the worker to exist, so on a first
  * deploy there is nothing to attach them to.
  */
 const STAGES = [
@@ -31,7 +31,7 @@ const RESULT_MS = 5000;
 
 const PlatformSection = () => {
   // How many stages have completed. Starts finished so the prerendered HTML
-  // — and anyone without JavaScript — gets a deploy that ran, not one frozen
+  // - and anyone without JavaScript - gets a deploy that ran, not one frozen
   // half way through. The effect resets it and takes over on mount.
   const [done, setDone] = useState(STAGES.length);
 

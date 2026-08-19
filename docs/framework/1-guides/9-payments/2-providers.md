@@ -17,7 +17,7 @@ abstract class PaymentProvider {
   // PaymentService.supportsEmbeddedPayment() dispatches on its presence
   createElementSession?(intent, options): Promise<ElementSession>;
 
-  // non-abstract, returns null by default — but providers SHOULD override it:
+  // non-abstract, returns null by default - but providers SHOULD override it:
   // it is the reconciliation path when a webhook goes missing. Both shipped
   // providers do.
   retrieveSessionStatus(providerRef): Promise<SessionStatus | null>;
@@ -41,7 +41,7 @@ const alepha = Alepha.create()
   .with(AlephaPaymentsStripe);
 ```
 
-The provider module declares `register: alepha.with({ provide: PaymentProvider, use: ... })` — the `MemoryPaymentProvider` default is overridden automatically.
+The provider module declares `register: alepha.with({ provide: PaymentProvider, use: ... })` - the `MemoryPaymentProvider` default is overridden automatically.
 
 ## Stripe
 
@@ -55,18 +55,18 @@ yarn add @alepha/payments-stripe
 |---|---|
 | `STRIPE_SECRET_KEY` | API key (`sk_test_...` / `sk_live_...`). |
 | `STRIPE_WEBHOOK_SECRET` | Signing secret returned by `webhookEndpoints.create`. |
-| `STRIPE_PUBLISHABLE_KEY` | Required for the embedded Payment Element — `createElementSession` throws without it. |
+| `STRIPE_PUBLISHABLE_KEY` | Required for the embedded Payment Element - `createElementSession` throws without it. |
 | `STRIPE_CONNECT_WEBHOOK_SECRET` | Signing secret for Connect webhooks; gates `parseConnectWebhook`. |
 
 ### Webhook security
 
-Stripe signs webhook payloads with HMAC-SHA256. `StripePaymentProvider.parseWebhook` calls `stripe.webhooks.constructEventAsync(body, signature, secret)` (the async variant — the sync one relies on Node's synchronous crypto, which doesn't exist on workerd) and throws if the signature is missing or invalid. This is the only authentication on `/api/payments/webhook`.
+Stripe signs webhook payloads with HMAC-SHA256. `StripePaymentProvider.parseWebhook` calls `stripe.webhooks.constructEventAsync(body, signature, secret)` (the async variant - the sync one relies on Node's synchronous crypto, which doesn't exist on workerd) and throws if the signature is missing or invalid. This is the only authentication on `/api/payments/webhook`.
 
 ### Webhook provisioning
 
-Provision the webhook endpoint yourself using the Stripe SDK — `stripe.webhookEndpoints.create({ url, enabled_events })` where `url` is `${baseUrl}/api/payments/webhook`. Store the returned signing secret as `STRIPE_WEBHOOK_SECRET` on the deployed worker so `StripePaymentProvider.parseWebhook` can verify incoming payloads.
+Provision the webhook endpoint yourself using the Stripe SDK - `stripe.webhookEndpoints.create({ url, enabled_events })` where `url` is `${baseUrl}/api/payments/webhook`. Store the returned signing secret as `STRIPE_WEBHOOK_SECRET` on the deployed worker so `StripePaymentProvider.parseWebhook` can verify incoming payloads.
 
-Earlier versions shipped an `AlephaCliPlatformStripePlugin` that registered a `PlatformHook` to do this during `alepha platform up`. That mechanism was removed: deploy frequency and webhook lifetime are different concerns. Webhook setup happens once per environment, not on every deploy — handle it from your provisioning code.
+Earlier versions shipped an `AlephaCliPlatformStripePlugin` that registered a `PlatformHook` to do this during `alepha platform up`. That mechanism was removed: deploy frequency and webhook lifetime are different concerns. Webhook setup happens once per environment, not on every deploy - handle it from your provisioning code.
 
 ### Customer mapping
 
@@ -91,7 +91,7 @@ yarn add @alepha/payments-mollie
 
 ### Webhook security
 
-Mollie does not sign webhook payloads. The body carries only `id=tr_xxx`. `MolliePaymentProvider.parseWebhook` re-fetches the payment via the authenticated SDK client — the fetch itself is the authentication boundary. An attacker can POST a fake id, but the lookup either misses or returns a payment whose state we already trust (because it came from Mollie's API, not the request body).
+Mollie does not sign webhook payloads. The body carries only `id=tr_xxx`. `MolliePaymentProvider.parseWebhook` re-fetches the payment via the authenticated SDK client - the fetch itself is the authentication boundary. An attacker can POST a fake id, but the lookup either misses or returns a payment whose state we already trust (because it came from Mollie's API, not the request body).
 
 ### Per-payment webhook URLs
 
@@ -99,7 +99,7 @@ Unlike Stripe (one global endpoint), Mollie's webhook URL is attached to each pa
 
 ### Limitations
 
-- **`createPaymentMethod` throws.** Mollie creates mandates implicitly via a `sequenceType: "first"` checkout payment — there is no tokenize-then-attach flow. For recurring billing, route the first payment through the checkout flow with a customer attached; subsequent off-session charges then use the mandate.
+- **`createPaymentMethod` throws.** Mollie creates mandates implicitly via a `sequenceType: "first"` checkout payment - there is no tokenize-then-attach flow. For recurring billing, route the first payment through the checkout flow with a customer attached; subsequent off-session charges then use the mandate.
 - **`deletePaymentMethod` is a no-op.** Mandates are tied to customers; the entity does not yet track the customer↔mandate relationship needed to revoke safely. A future iteration will call `customers.mandates.revoke`.
 - **Manual capture (`authorize: true`)** is supported for cards only. Other methods (iDEAL, SEPA, Bancontact) reject the option at create time.
 
@@ -118,7 +118,7 @@ For most EU SaaS apps either works; for marketplaces with US sellers, Stripe is 
 
 ## Writing your own provider
 
-Implement the contract and register it the same way. Both shipped providers use `implements` rather than `extends` — note that with `implements`, the normally-optional `retrieveSessionStatus` becomes required, which is a feature: it forces the reconciliation path to exist.
+Implement the contract and register it the same way. Both shipped providers use `implements` rather than `extends` - note that with `implements`, the normally-optional `retrieveSessionStatus` becomes required, which is a feature: it forces the reconciliation path to exist.
 
 ```typescript
 import { $module } from "alepha";
@@ -139,6 +139,6 @@ export const AlephaPaymentsAdyen = $module({
 
 Three things to get right:
 
-1. **`parseWebhook` must establish authenticity** — either signature verification or re-fetch. The webhook endpoint has no other auth.
-2. **Status mapping is your contract with `PaymentService`.** The service understands `authorized`, `captured`, `failed`. Anything else is logged and ignored — use that to silently drop transient states (`open`, `pending`).
+1. **`parseWebhook` must establish authenticity**: either signature verification or re-fetch. The webhook endpoint has no other auth.
+2. **Status mapping is your contract with `PaymentService`.** The service understands `authorized`, `captured`, `failed`. Anything else is logged and ignored - use that to silently drop transient states (`open`, `pending`).
 3. **Amounts are integers** in Alepha's storage (minor units / cents). PSPs that want decimal strings (Mollie) need a converter.

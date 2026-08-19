@@ -82,7 +82,7 @@ class App {
 run(App);
 ```
 
-That `$route` call is a **Primitive** — a factory function that registers an HTTP endpoint
+That `$route` call is a **Primitive** - a factory function that registers an HTTP endpoint
 directly on your class. No separate router file, no middleware chain.
 
 `run(App)` creates an Alepha container, registers `App`, starts the server, and handles
@@ -109,13 +109,13 @@ Open [http://localhost:5173](http://localhost:5173) in your browser. You will se
 
 Development mode gives you:
 
-1. **Hot Module Replacement (HMR)** — change code, server updates instantly.
-2. **TypeScript support** — no build step required.
-3. **Pretty logs** — readable, structured output.
+1. **Hot Module Replacement (HMR)**: change code, server updates instantly.
+2. **TypeScript support**: no build step required.
+3. **Pretty logs**: readable, structured output.
 
 ## Add a Typed API Endpoint
 
-`$route` is low-level. For real APIs, use `$action` — it adds schema validation, automatic
+`$route` is low-level. For real APIs, use `$action` - it adds schema validation, automatic
 OpenAPI documentation, and type-safe client calls.
 
 ```typescript filename="src/main.server.ts"
@@ -234,7 +234,7 @@ Then deploy:
 npx alepha p up
 ```
 
-Alepha scans your code for primitives (`$entity`, `$storage`, `$job`, etc.), provisions the matching Cloudflare resources (D1, R2, Queue), builds for Workers, runs migrations, and deploys — all in one step.
+Alepha scans your code for primitives (`$entity`, `$storage`, `$job`, etc.), provisions the matching Cloudflare resources (D1, R2, Queue), builds for Workers, runs migrations, and deploys - all in one step.
 
 Preview what will be created before deploying:
 
@@ -280,8 +280,8 @@ The layout above is fixed. A preset only decides what is mounted on top of it:
 npx alepha init my-app --preset=saas
 ```
 
-`saas` adds `@alepha/ui` and three routers — sign-in at `/auth/*`, an account
-area at `/account/*`, an admin console at `/admin/*` — plus the `$realm` in
+`saas` adds `@alepha/ui` and three routers - sign-in at `/auth/*`, an account
+area at `/account/*`, an admin console at `/admin/*` - plus the `$realm` in
 `src/api/Realm.ts` that configures them. Nothing moves; you get one extra file
 and a longer `src/web/index.ts`.
 
@@ -291,7 +291,7 @@ Full details in the [init command reference](/docs/cli-commands-init).
 
 `alepha init` registers the devtools plugin in `alepha.config.ts` and adds
 `@alepha/devtools` to `devDependencies`, so `npm run dev` gives you the inspection
-UI straight away — a floating cog at the bottom-left, or `/__devtools/`
+UI straight away - a floating cog at the bottom-left, or `/__devtools/`
 directly. It covers atoms, modules, database contents, configuration and logs.
 
 It is dev-only (a Vite plugin that lazy-loads the UI), so it adds nothing to a
@@ -301,7 +301,7 @@ production build.
 npx alepha init --no-devtools   # leave it out entirely
 ```
 
-Workspace packages never get it — a library has no dev server for it to attach
+Workspace packages never get it - a library has no dev server for it to attach
 to. To keep the route but drop the floating button, pass
 `devtools({ hideButton: true })` in your config. Removing the dependency later
 turns the plugin into a no-op with a warning rather than breaking config load.

@@ -25,25 +25,25 @@ const Home = () => {
           Adding a block means re-checking its neighbours, which is what put two
           plain sections back to back once already.
         */}
-        {/* 1 — the ecosystem, generically (plain) */}
+        {/* 1 - the ecosystem, generically (plain) */}
         <HeroSection />
-        {/* 2 — one definition, both sides (alt) */}
+        {/* 2 - one definition, both sides (alt) */}
         <SeamSection />
-        {/* 3 — same code, three targets (plain) */}
+        {/* 3 - same code, three targets (plain) */}
         <RuntimeSection />
-        {/* 4 — one dependency (alt) */}
+        {/* 4 - one dependency (alt) */}
         <StackSection />
-        {/* 5 — what it is built on (plain) */}
+        {/* 5 - what it is built on (plain) */}
         <FoundationSection />
-        {/* 6 — written for an agent (alt) */}
+        {/* 6 - written for an agent (alt) */}
         <AgentSection />
-        {/* 7 — substitution and testing (plain) */}
+        {/* 7 - substitution and testing (plain) */}
         <SwapSection />
-        {/* 8 — the admin panel you did not build (alt) */}
+        {/* 8 - the admin panel you did not build (alt) */}
         <AdminSection />
-        {/* 9 — one command to production (plain) */}
+        {/* 9 - one command to production (plain) */}
         <PlatformSection />
-        {/* 10 — conclusion (alt) */}
+        {/* 10 - conclusion (alt) */}
         <ProofSection />
       </div>
 

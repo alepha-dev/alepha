@@ -8,7 +8,7 @@ import { LogBuffer } from "../services/LogBuffer.ts";
  *
  * An entry point (the HTTP router, the job runner) seeds a buffer into the
  * context it already opens; every log emitted inside that context is then
- * captured, **including entries suppressed by the active `LOG_LEVEL`** — those
+ * captured, **including entries suppressed by the active `LOG_LEVEL`** - those
  * are precisely the breadcrumbs worth having when something fails in
  * production.
  *

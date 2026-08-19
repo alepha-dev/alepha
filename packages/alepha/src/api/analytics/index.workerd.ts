@@ -47,7 +47,7 @@ export * from "./services/AnalyticsRetentionGuard.ts";
  * rather than taking it as a constructor argument nothing here could supply.
  * See its class doc for the full design.
  *
- * `AnalyticsRollupJobs` is deliberately **not** wired here — see
+ * `AnalyticsRollupJobs` is deliberately **not** wired here - see
  * {@link AlephaApiAnalyticsRollup} just below for why it is a separate module.
  * `AnalyticsRetentionGuard` *is* wired here, unconditionally — see
  * `index.ts` for why.

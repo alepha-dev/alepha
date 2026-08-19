@@ -17,9 +17,9 @@ export interface CircuitBreakerOptions {
  * Middleware that implements the circuit breaker pattern.
  *
  * Three states:
- * - **Closed** (normal) — calls pass through. Failures are counted.
- * - **Open** (tripped) — calls are immediately rejected. No handler execution.
- * - **Half-open** (probing) — one call is allowed. Success closes, failure re-opens.
+ * - **Closed** (normal): calls pass through. Failures are counted.
+ * - **Open** (tripped): calls are immediately rejected. No handler execution.
+ * - **Half-open** (probing): one call is allowed. Success closes, failure re-opens.
  *
  * ```typescript
  * class PaymentController {

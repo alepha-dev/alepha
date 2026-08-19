@@ -26,7 +26,7 @@ export { OAuthClientService } from "./services/OAuthClientService.ts";
  * - Refresh tokens bound to the client they were issued to
  *
  * **The `refresh_token` grant requires `client_id`.** The client is looked up
- * and — when confidential — must present its secret, exactly as on the
+ * and - when confidential - must present its secret, exactly as on the
  * `authorization_code` grant; the refresh token must then belong to a session
  * minted for that same client. A session with no recorded client (an ordinary
  * password login) is not an OAuth grant and cannot be refreshed here.

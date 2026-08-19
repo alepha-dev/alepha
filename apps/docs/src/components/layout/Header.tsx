@@ -77,7 +77,7 @@ const Header = (props: HeaderProps) => {
         >
           {/*
             `logo.svg`, not `favicon.png`: the favicon is a 192x192 PNG, and
-            rendering it at 32x32 shipped 31 KB to draw 1 KB of logo — three
+            rendering it at 32x32 shipped 31 KB to draw 1 KB of logo - three
             times over, because the browser fetches it once as the icon, once
             for React's hoisted `<link rel="preload" as="image">`, and once as
             this image, each in a different cache bucket.

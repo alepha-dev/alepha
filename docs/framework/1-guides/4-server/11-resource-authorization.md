@@ -1,6 +1,6 @@
 # Resource Authorization
 
-`$secure` answers *what kind of user is this?* — issuer, roles, permissions. It cannot answer *does this user own row 42?*, because ownership is a property of the data, not of the token.
+`$secure` answers *what kind of user is this?* - issuer, roles, permissions. It cannot answer *does this user own row 42?*, because ownership is a property of the data, not of the token.
 
 ```typescript check
 import { $inject } from "alepha";
@@ -54,13 +54,13 @@ class CampaignController {
 }
 ```
 
-`cast` coerces the route param before querying — route params are always strings, so integer primary keys need `Number`.
+`cast` coerces the route param before querying - route params are always strings, so integer primary keys need `Number`.
 
 `repository` is a thunk rather than the repository itself. `$owns()` runs during class-field initialization, so a `$repository()` field declared *after* it would not exist yet; deferring the lookup to request time makes field order irrelevant.
 
 ## The loaded row is handed to you
 
-`$owns` has to read the row to make its decision, so it publishes it rather than throwing it away. Inject `OwnedResourceProvider` and read it back — no second query:
+`$owns` has to read the row to make its decision, so it publishes it rather than throwing it away. Inject `OwnedResourceProvider` and read it back - no second query:
 
 ```typescript
 handler: async () => {
@@ -89,13 +89,13 @@ $owns({
 })
 ```
 
-Checks run in order: owner first, then membership. When you supply the `message` option, it's used for **both** denials on purpose — a different message per branch tells an attacker whether the resource exists and who owns it. (Without a custom `message`, the defaults differ; set one for endpoints where that distinction matters.)
+Checks run in order: owner first, then membership. When you supply the `message` option, it's used for **both** denials on purpose - a different message per branch tells an attacker whether the resource exists and who owns it. (Without a custom `message`, the defaults differ; set one for endpoints where that distinction matters.)
 
 ## Privileged identities
 
 A caller with `ownership === false` bypasses both checks. That is the same `ownership` flag `$secure` sets from the permission registry: `false` means an admin whose grant is *not* narrowed to their own rows.
 
-This is deliberately strict — `undefined` does **not** bypass. `undefined` only means no permission check ran, which is not the same as "this caller is privileged". If you are migrating hand-written authz that treated `!user.ownership` as the bypass, note that `undefined` used to pass and now does not.
+This is deliberately strict - `undefined` does **not** bypass. `undefined` only means no permission check ran, which is not the same as "this caller is privileged". If you are migrating hand-written authz that treated `!user.ownership` as the bypass, note that `undefined` used to pass and now does not.
 
 ## Raw guards
 
@@ -110,10 +110,10 @@ $secure({
 })
 ```
 
-Guards may be async and run after all other `$secure` checks. `params`, `query`, and `body` come from the action request when there is one, falling back to the raw HTTP request — so the same guard works over HTTP, over `action.run()`, and over MCP.
+Guards may be async and run after all other `$secure` checks. `params`, `query`, and `body` come from the action request when there is one, falling back to the raw HTTP request - so the same guard works over HTTP, over `action.run()`, and over MCP.
 
 ## Browser Behavior
 
-On the client, `$secure` returns `undefined` instead of throwing, and the guard sees empty `params`. A guard that reads request data therefore denies in the browser and is re-evaluated for real on the server. `$owns` goes further: ownership lives in database rows the browser can't load, so its browser variant always returns `undefined` — the server-side gate is what actually enforces it.
+On the client, `$secure` returns `undefined` instead of throwing, and the guard sees empty `params`. A guard that reads request data therefore denies in the browser and is re-evaluated for real on the server. `$owns` goes further: ownership lives in database rows the browser can't load, so its browser variant always returns `undefined` - the server-side gate is what actually enforces it.
 
 That is the safe direction: the UI hides the action, and the API is what actually enforces it. Never treat a client-side pass as authorization.

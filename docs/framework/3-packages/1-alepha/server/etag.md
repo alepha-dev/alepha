@@ -22,4 +22,4 @@ ETag-based response caching.
 
 ### Primitives
 
-- [`$etag`](/docs/reference-primitives-$etag) — Middleware that enables ETag-based response caching per-route.
+- [`$etag`](/docs/reference-primitives-$etag) - Middleware that enables ETag-based response caching per-route.

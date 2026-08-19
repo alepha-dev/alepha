@@ -21,14 +21,14 @@ HTML head element management.
 
 ### Primitives
 
-- [`$head`](/docs/reference-primitives-$head) — Set global `<head>` options for the application.
+- [`$head`](/docs/reference-primitives-$head) - Set global `<head>` options for the application.
 
 ### React Hooks
 
-- [`useHead`](/docs/reference-react-hooks-usehead) — Read and update the document head (title, meta, …) from a component.
+- [`useHead`](/docs/reference-react-hooks-usehead) - Read and update the document head (title, meta, …) from a component.
 
 ### Providers
 
-- [`BrowserHeadProvider`](/docs/reference-providers-browserheadprovider) — Browser-side head provider that manages document head elements.
-- [`HeadProvider`](/docs/reference-providers-headprovider) — Provides methods to fill and merge head information into the application state.
-- [`ServerHeadProvider`](/docs/reference-providers-serverheadprovider) — Server-side head provider that fills head content from route configurations.
+- [`BrowserHeadProvider`](/docs/reference-providers-browserheadprovider) - Browser-side head provider that manages document head elements.
+- [`HeadProvider`](/docs/reference-providers-headprovider) - Provides methods to fill and merge head information into the application state.
+- [`ServerHeadProvider`](/docs/reference-providers-serverheadprovider) - Server-side head provider that fills head content from route configurations.

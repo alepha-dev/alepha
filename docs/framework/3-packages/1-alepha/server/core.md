@@ -30,20 +30,20 @@ Convention-driven HTTP server with automatic validation and type inference.
 
 ### Primitives
 
-- [`$action`](/docs/reference-primitives-$action) — Creates a server action primitive for defining type-safe HTTP endpoints.
-- [`$circuit`](/docs/reference-primitives-$circuit) — Middleware that implements the circuit breaker pattern.
-- [`$middleware`](/docs/reference-primitives-$middleware) — Applies middleware functions to every route whose path starts with a prefix.
-- [`$route`](/docs/reference-primitives-$route) — Create a basic endpoint.
-- [`$sse`](/docs/reference-primitives-$sse) — Creates a Server-Sent Events (SSE) primitive for streaming typed events to clients.
+- [`$action`](/docs/reference-primitives-$action) - Creates a server action primitive for defining type-safe HTTP endpoints.
+- [`$circuit`](/docs/reference-primitives-$circuit) - Middleware that implements the circuit breaker pattern.
+- [`$middleware`](/docs/reference-primitives-$middleware) - Applies middleware functions to every route whose path starts with a prefix.
+- [`$route`](/docs/reference-primitives-$route) - Create a basic endpoint.
+- [`$sse`](/docs/reference-primitives-$sse) - Creates a Server-Sent Events (SSE) primitive for streaming typed events to clients.
 
 ### Providers
 
-- [`ServerHealthProvider`](/docs/reference-providers-serverhealthprovider) — Registers `GET /health` and `GET /healthz`.
-- [`ServerHelmetProvider`](/docs/reference-providers-serverhelmetprovider) — Provides a configurable way to apply essential HTTP security headers
-- [`ServerMultipartProvider`](/docs/reference-providers-servermultipartprovider) — Parses `multipart/form-data` request bodies into route handler input.
-- [`ServerNotReadyProvider`](/docs/reference-providers-servernotreadyprovider) — On every request, this provider checks if the server is ready.
-- [`ServerProvider`](/docs/reference-providers-serverprovider) — Base server provider to handle incoming requests and route them.
-- [`ServerRouterProvider`](/docs/reference-providers-serverrouterprovider) — Main router for all routes server side.
+- [`ServerHealthProvider`](/docs/reference-providers-serverhealthprovider) - Registers `GET /health` and `GET /healthz`.
+- [`ServerHelmetProvider`](/docs/reference-providers-serverhelmetprovider) - Provides a configurable way to apply essential HTTP security headers
+- [`ServerMultipartProvider`](/docs/reference-providers-servermultipartprovider) - Parses `multipart/form-data` request bodies into route handler input.
+- [`ServerNotReadyProvider`](/docs/reference-providers-servernotreadyprovider) - On every request, this provider checks if the server is ready.
+- [`ServerProvider`](/docs/reference-providers-serverprovider) - Base server provider to handle incoming requests and route them.
+- [`ServerRouterProvider`](/docs/reference-providers-serverrouterprovider) - Main router for all routes server side.
 
 ### Environment Variables
 

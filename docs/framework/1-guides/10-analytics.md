@@ -3,7 +3,7 @@
 `$analytics` gives your app a portable, aggregate-on-read analytics dataset. You declare the
 dimensions you group and filter by and the measures you aggregate once, and the same
 declaration runs unchanged on a relational database, in memory for tests, and on Cloudflare
-Workers Analytics Engine in production. Application code never names a backend — which one is
+Workers Analytics Engine in production. Application code never names a backend - which one is
 bound is a runtime decision made by the `alepha/api/analytics` module.
 
 It ships inside the `alepha` package as an `api/*` sub-module, with the retention sweep
@@ -50,14 +50,14 @@ class PageViews {
 ```
 
 `dimensions` are the low-cardinality strings you group and filter by. `measures` are the numbers
-you aggregate. Both read exactly like an entity schema because that is the point — a dataset
+you aggregate. Both read exactly like an entity schema because that is the point - a dataset
 should not require learning a second schema language.
 
 ### Dataset names must be snake_case
 
 A dataset defaults its storage-facing name to the property key it is declared on (`views`
 above), the same way `$storage` names a bucket from its property key. That name has to match
-`/^[a-z][a-z0-9_]*$/` — lowercase letters, digits and underscores, starting with a letter —
+`/^[a-z][a-z0-9_]*$/` - lowercase letters, digits and underscores, starting with a letter -
 because it becomes a relational table name fragment **and** the Analytics Engine `blob1`
 discriminator (Analytics Engine has no table concept, so several datasets share one binding and
 need something to tell their rows apart). A camelCase property key, which is the normal Alepha
@@ -77,7 +77,7 @@ pageViews = $analytics({
 
 `time_bucket` is the reserved column name the relational backend uses to store the bucket
 itself, so it cannot be declared as a dimension or a measure. `day` and `hour` are reserved as
-*dimension* names for the same reason — they are the pseudo-dimensions `query()` exposes for
+*dimension* names for the same reason - they are the pseudo-dimensions `query()` exposes for
 grouping by time (see [Querying](#querying) below), and a real dimension with either name would
 be permanently shadowed by them.
 
@@ -112,38 +112,38 @@ const result = await this.views.query({
 });
 ```
 
-`where` supports equality and `{ inArray: [...] }` — the same operator name the ORM's
+`where` supports equality and `{ inArray: [...] }` - the same operator name the ORM's
 [repository filters](/docs/guides-persistence-repository) use, no ranges. `groupBy` takes any
-declared dimension, plus the pseudo-dimensions `"hour"` and `"day"` — grouping by `"day"` folds
+declared dimension, plus the pseudo-dimensions `"hour"` and `"day"` - grouping by `"day"` folds
 hour buckets into a daily timeline with no date arithmetic on the caller's side, whichever
 backend answers the query.
 
 ## The aggregate set is deliberately small
 
-`select` only accepts `"sum"` as an aggregate. That is not a temporary gap — `sum` is the
+`select` only accepts `"sum"` as an aggregate. That is not a temporary gap - `sum` is the
 complete set of aggregates that are simultaneously:
 
 - **Mergeable across a rollup boundary.** When the hourly rollup folds a day's worth of hour
   buckets into one day bucket (see [Retention and rollup](#retention-and-rollup)), the fold
   itself has to be an aggregate: summing eight `sum`s produces the correct day-level `sum`. There
-  is no equivalent fold for an average or a percentile — the mean of several means is wrong the
+  is no equivalent fold for an average or a percentile - the mean of several means is wrong the
   moment the buckets differ in size, and the p75 of several distributions is not the mean of
   their p75s.
 - **Exactly correctable under sampling.** Analytics Engine samples, and every stored row carries
   a `_sample_interval`. `sum(x * _sample_interval)` reconstructs the true total from a sampled
   window, exactly. Nothing about `min` or `max` survives that reconstruction the same way: both
   merge across buckets by construction (the max of several maxes is the true max), but neither is
-  sample-correctable — if the sampler happens to drop the one row holding the true extreme, no
+  sample-correctable - if the sampler happens to drop the one row holding the true extreme, no
   `_sample_interval` weighting recovers it, and the query silently returns the extreme of
   whatever survived. That is the same failure mode that keeps distinct-counts out of this seam
   (see [What analytics cannot do](#what-analytics-cannot-do) below), and admitting `min`/`max` despite it
   would be inconsistent with excluding those.
 
-### There is no `count` aggregate — declare a count measure and sum it
+### There is no `count` aggregate: declare a count measure and sum it
 
 An earlier version of this package also accepted `"count"`, meaning "the number of stored rows"
 rather than a sum of any measure. That number is not portable: relationally it was `COUNT(*)`,
-and in memory it was one increment per recorded array entry — not the same number on identical
+and in memory it was one increment per recorded array entry - not the same number on identical
 writes (a relational upsert accumulates repeated writes into one row; an in-memory record pushes
 a new one), and it does not survive a rollup on **either** backend, because folding rows into a
 day bucket collapses the very thing a row count was measuring. Summing eight `sum`s across a
@@ -179,17 +179,17 @@ caller-side and obvious rather than needing a merge-rule enforcement layer insid
 
 ### What analytics cannot do
 
-A dataset cannot answer "how many *distinct* visitors" — a distinct count cannot survive
+A dataset cannot answer "how many *distinct* visitors" - a distinct count cannot survive
 sampling (a sampled window drops rows, so a naive `COUNT(DISTINCT ...)` under-counts) or a
 rollup (once hour buckets fold into a day bucket, which visitor hashes contributed to which hour
 is gone). `apps/lore` keeps unique-visitor counts on its own table
-(`LoreAnalyticsStore`/`sigil_uniques_daily`) for exactly this reason — see that class's doc for
+(`LoreAnalyticsStore`/`sigil_uniques_daily`) for exactly this reason - see that class's doc for
 the full argument. If your app needs distinct counts, they need their own storage; `$analytics`
 is not the tool for them.
 
 ## The histogram pattern
 
-A percentile does not merge across buckets, but a histogram does — so a percentile is modelled
+A percentile does not merge across buckets, but a histogram does - so a percentile is modelled
 as an ordinary dimension holding the bucket index, with `count` (or whatever you call the
 measure) as the thing you sum. This is exactly how `apps/lore` tracks Web Vitals:
 
@@ -213,11 +213,11 @@ class WebVitals {
 }
 ```
 
-`bucket` is not special machinery — it is the histogram's bucket index, declared as an ordinary
+`bucket` is not special machinery - it is the histogram's bucket index, declared as an ordinary
 `z.number()` dimension. Recording one vital sample means bucketing the raw value yourself (a CLS
 score, an LCP duration in milliseconds) into a bucket index and incrementing that bucket's
 `samples` count. To read a percentile back, `query()` grouped by `["metric", "bucket"]` returns
-the whole histogram as flat `(metric, bucket, samples)` rows, and the caller walks it — sums
+the whole histogram as flat `(metric, bucket, samples)` rows, and the caller walks it - sums
 `samples` from the bottom until the running total passes the target percentile of the overall
 count, and that bucket's midpoint is the estimate. The walk (and any un-scaling a particular
 metric's buckets need) belongs entirely to caller-side code; `$analytics` only ever stores and
@@ -229,16 +229,16 @@ returns counts per bucket.
 retention: { hot: "60d", rollup: "day", cold: "400d" }
 ```
 
-- `hot` — how long raw, hour-bucketed rows are kept, as a day count (`"60d"`).
-- `rollup` — the granularity past the hot window. Only `"day"` exists today.
-- `cold` — how long rolled (day-bucketed) rows are kept before deletion, also a day count. Must
-  be at least as long as `hot` when both are set — `$analytics()` rejects a shorter `cold` at
+- `hot`: how long raw, hour-bucketed rows are kept, as a day count (`"60d"`).
+- `rollup`: the granularity past the hot window. Only `"day"` exists today.
+- `cold`: how long rolled (day-bucketed) rows are kept before deletion, also a day count. Must
+  be at least as long as `hot` when both are set - `$analytics()` rejects a shorter `cold` at
   declaration time, because the sweep only ever folds up to the hot cutoff, and a `cold`
   boundary more recent than that would prune hour-precision rows the hot window still promises,
   before they are ever rolled up.
 
 Both passes **collapse rather than delete**: folding hour buckets into a day bucket groups by
-every declared dimension exactly as before and sums the measures within each group — no
+every declared dimension exactly as before and sums the measures within each group - no
 dimension is dropped or merged away, and no total your UI shows ever changes. Only the
 resolution of the time axis does, from hourly to daily. Deletion only ever happens past `cold`,
 and only to already-rolled rows.
@@ -247,15 +247,15 @@ and only to already-rolled rows.
 
 Cloudflare's own Analytics Engine keeps data for approximately 90 days regardless of what you
 declare. A dataset declaring a longer `hot` window is **rejected at registration** on that
-backend — the provider throws an `AlephaError` at boot rather than letting a report quietly
+backend - the provider throws an `AlephaError` at boot rather than letting a report quietly
 come up short months later. The relational and memory backends honour the longer window, so
 the same declaration is only portable when `retention.hot` stays at 90 days or under.
 
 ### Declaring `retention` does nothing on its own
 
 This is the sharpest edge in the whole primitive, worth stating plainly: **nothing in
-`alepha/api/analytics` enforces `retention` automatically.** Registering `$analytics()` datasets —
-importing `AlephaApiAnalytics` — wires the provider and lets you `record()`/`query()`, full stop.
+`alepha/api/analytics` enforces `retention` automatically.** Registering `$analytics()` datasets -
+importing `AlephaApiAnalytics` - wires the provider and lets you `record()`/`query()`, full stop.
 The hourly sweep that actually folds and prunes rows lives in a **separate module**,
 `AlephaApiAnalyticsRollup`, which your app has to import explicitly alongside `AlephaApiAnalytics`:
 
@@ -270,15 +270,15 @@ const alepha = Alepha.create()
 
 Forgetting `AlephaApiAnalyticsRollup` is silent in the sense that nothing throws: `record()` and
 `query()` keep working normally, and the raw table simply grows forever. It is not *completely*
-silent, though — a boot-time `log.warn` from the retention guard names every dataset that
+silent, though - a boot-time `log.warn` from the retention guard names every dataset that
 declares `retention.hot` while no rollup job was ever constructed, specifically so this mistake
 does not stay invisible once the app is actually running.
 
 The split exists because `AnalyticsRollupJobs` is built on `$job`, and `$job` always needs a
 real database connection (it holds a `$repository` on its own job-execution table), in every
 environment including tests. Folding the rollup job into `AlephaApiAnalytics` directly would mean
-merely declaring one `$analytics()` field — the one thing this package promises works with no
-database at all — starts requiring a live database connection to boot.
+merely declaring one `$analytics()` field - the one thing this package promises works with no
+database at all - starts requiring a live database connection to boot.
 
 ## Result epistemics: `estimated` and `sampleInterval`
 
@@ -292,11 +292,11 @@ export interface AnalyticsResult {
 }
 ```
 
-- **`estimated`** is `false` on the relational and memory backends — they never sample, so their
+- **`estimated`** is `false` on the relational and memory backends - they never sample, so their
   numbers are exact by construction. It is `true` on Analytics Engine, which samples under load.
 - **`sampleInterval`** is the largest `_sample_interval` seen in the window, when the backend
   samples. A value of `1` means no sampling actually occurred in that window, so the numbers are
-  exact despite `estimated` being `true` — the common case at low traffic. A UI should not
+  exact despite `estimated` being `true` - the common case at low traffic. A UI should not
   qualify the numbers ("approximate") when `sampleInterval === 1`; it should when it is greater.
 
 The result carries this rather than a UI having to know which backend answered it, so ignoring
@@ -315,21 +315,21 @@ chooses:
 | Cloudflare Worker with a dataset binding | `WaeAnalyticsProvider` | Workers Analytics Engine, samples under load |
 
 `AlephaApiAnalytics` and most other Alepha modules ship a memory implementation as the
-substitutable default — see [Unit Tests](/docs/guides-testing-unit-tests) for the general
+substitutable default - see [Unit Tests](/docs/guides-testing-unit-tests) for the general
 shape.
 
 ### The Analytics Engine slot map is a wire format
 
 Analytics Engine has no columns, only 20 positional `blob` slots and 20 positional `double`
-slots per data point — and two blob slots are reserved, so a dataset can declare at most
+slots per data point - and two blob slots are reserved, so a dataset can declare at most
 18 dimensions and 20 measures before `AnalyticsSlotMap` throws at boot. It assigns each
 declared dimension a `blob` slot and each
-measure a `double` slot, derived from the dimension/measure names **sorted alphabetically** —
+measure a `double` slot, derived from the dimension/measure names **sorted alphabetically** -
 never from declaration order. That has one direct consequence worth internalizing before a
 dataset ships to production: **reordering the fields in your `dimensions`/`measures` object
 literal is a safe no-op, but renaming a dimension is a breaking change to already-stored data.**
 Once rows exist under the old slot assignment, changing which name maps to which slot does not
-fail — it silently misreads history, because Analytics Engine has no way to know the shape
+fail - it silently misreads history, because Analytics Engine has no way to know the shape
 changed.
 
 ## Registering the module
@@ -344,7 +344,7 @@ import { LoreAnalytics } from "./entities/loreAnalytics.ts";
 export const LoreApi = $module({
   name: "lore.api",
   // `$analytics()` (used by `LoreAnalytics`) auto-wires `AlephaApiAnalytics` itself
-  // the moment a dataset is injected — the same module-tagging mechanism
+  // the moment a dataset is injected - the same module-tagging mechanism
   // `$repository` uses for `AlephaOrm`. The retention sweep does not auto-wire:
   // it needs its own explicit import, or retention silently does nothing.
   imports: [AlephaApiAnalyticsRollup],
@@ -352,7 +352,7 @@ export const LoreApi = $module({
 });
 ```
 
-`LoreAnalytics` itself just declares two datasets — this is close to the real
+`LoreAnalytics` itself just declares two datasets - this is close to the real
 `apps/lore/src/api/entities/loreAnalytics.ts`:
 
 ```typescript
@@ -382,7 +382,7 @@ export class LoreAnalytics {
 
 ## Testing
 
-`MemoryAnalyticsProvider` is bound automatically under `alepha.isTest()` — no substitution
+`MemoryAnalyticsProvider` is bound automatically under `alepha.isTest()` - no substitution
 needed, and no sampling to account for in assertions:
 
 ```typescript

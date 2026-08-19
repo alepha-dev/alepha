@@ -1,6 +1,6 @@
 # Portable SQL
 
-Repository methods cover most queries, but analytics work — grouping by day, measuring elapsed time, bounding a rolling window — needs raw SQL. Written by hand, that SQL is not portable.
+Repository methods cover most queries, but analytics work - grouping by day, measuring elapsed time, bounding a rolling window - needs raw SQL. Written by hand, that SQL is not portable.
 
 ```typescript check
 import { $inject, z } from "alepha";
@@ -56,7 +56,7 @@ Text on both dialects is deliberate. Postgres `DATE(col)` decodes to a `Date` wh
 
 A sortable ISO year-week label, e.g. `'2026-W11'`.
 
-ISO on both dialects, also deliberate. Postgres `IYYY-IW` and SQLite `%Y-%W` are *different numbering schemes* — `%W` counts Monday-started weeks from the first Monday of the year (`00`–`53`), ISO weeks run `01`–`53` with different year-boundary rules. Hand-written code that pairs them produces different labels for the same row depending on where it runs.
+ISO on both dialects, also deliberate. Postgres `IYYY-IW` and SQLite `%Y-%W` are *different numbering schemes* - `%W` counts Monday-started weeks from the first Monday of the year (`00`–`53`), ISO weeks run `01`–`53` with different year-boundary rules. Hand-written code that pairs them produces different labels for the same row depending on where it runs.
 
 SQLite has no ISO week function, so this uses the Thursday rule: the ISO week of a date is the week containing the Thursday of that date's Monday-started week, and the ISO year is that Thursday's calendar year.
 
@@ -75,7 +75,7 @@ const weekly = await this.database.run(
 
 Elapsed time between two timestamp columns, as a floating-point count of `"seconds" | "minutes" | "hours" | "days"`.
 
-`NULL` on either side propagates rather than collapsing to zero, so it composes with `AVG` over partially-complete rows — an unfinished row is skipped, not averaged in as `0`.
+`NULL` on either side propagates rather than collapsing to zero, so it composes with `AVG` over partially-complete rows - an unfinished row is skipped, not averaged in as `0`.
 
 ```typescript
 const [cycle] = await this.database.run(
@@ -89,7 +89,7 @@ const [cycle] = await this.database.run(
 );
 ```
 
-The Postgres form is cast to `double precision`. Without it, `EXTRACT(EPOCH …)` yields `numeric`, which the Postgres driver returns as a **string** to protect precision — so the same query would decode as a number on SQLite and a string on Postgres. The cast makes both a JS number, which is why the schema above is `z.number()` and not `z.coerce.number()`.
+The Postgres form is cast to `double precision`. Without it, `EXTRACT(EPOCH …)` yields `numeric`, which the Postgres driver returns as a **string** to protect precision - so the same query would decode as a number on SQLite and a string on Postgres. The cast makes both a JS number, which is why the schema above is `z.number()` and not `z.coerce.number()`.
 
 ### `ago(amount, unit)`
 
@@ -103,7 +103,7 @@ const recent = await this.database.run(
 );
 ```
 
-Instant-aligned on both dialects, not midnight-aligned. If you want calendar-day boundaries, bucket with `dateDay` instead of reaching for `ago` — mixing the two is how a "last 7 days" window comes to mean different things on different databases.
+Instant-aligned on both dialects, not midnight-aligned. If you want calendar-day boundaries, bucket with `dateDay` instead of reaching for `ago` - mixing the two is how a "last 7 days" window comes to mean different things on different databases.
 
 ## `COUNT` and `AVG` still need coercion
 
@@ -113,7 +113,7 @@ The helpers cover their own output, not yours. Postgres returns `COUNT(*)` (bigi
 z.object({ total: z.coerce.number() })
 ```
 
-`dateDiff` is the exception — it casts, so `z.number()` is correct there.
+`dateDiff` is the exception - it casts, so `z.number()` is correct there.
 
 ## When to keep writing raw SQL
 

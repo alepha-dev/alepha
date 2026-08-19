@@ -22,8 +22,8 @@ Batch accumulation and processing.
 
 ### Primitives
 
-- [`$batch`](/docs/reference-primitives-$batch) — Creates a batch processing primitive for efficient grouping and processing of multiple operations.
+- [`$batch`](/docs/reference-primitives-$batch) - Creates a batch processing primitive for efficient grouping and processing of multiple operations.
 
 ### Providers
 
-- [`BatchProvider`](/docs/reference-providers-batchprovider) — Service for batch processing operations.
+- [`BatchProvider`](/docs/reference-providers-batchprovider) - Service for batch processing operations.

@@ -4,7 +4,7 @@ An inspection UI for your running app, one click away during development. The de
 
 ## Quick Start
 
-Projects scaffolded by `alepha init` already have it — the dependency and the config line are generated for you (opt out with `alepha init --no-devtools`). To add it manually:
+Projects scaffolded by `alepha init` already have it - the dependency and the config line are generated for you (opt out with `alepha init --no-devtools`). To add it manually:
 
 ```bash
 npm install --save-dev @alepha/devtools
@@ -39,6 +39,6 @@ devtools({ hideButton: true })
 
 ## Dev-Only by Design
 
-The plugin only attaches to the Vite dev server — nothing devtools-related ships in your production build, and `@alepha/devtools` belongs in `devDependencies`.
+The plugin only attaches to the Vite dev server - nothing devtools-related ships in your production build, and `@alepha/devtools` belongs in `devDependencies`.
 
-If the config references `devtools()` but the package isn't installed, the plugin degrades to a no-op with a warning instead of breaking config load — so removing the dependency without touching `alepha.config.ts` is safe.
+If the config references `devtools()` but the package isn't installed, the plugin degrades to a no-op with a warning instead of breaking config load - so removing the dependency without touching `alepha.config.ts` is safe.

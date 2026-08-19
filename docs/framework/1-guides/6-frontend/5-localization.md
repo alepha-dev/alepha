@@ -67,7 +67,7 @@ All dictionaries for the same language are merged. Key lookups search all dictio
 
 ### Translating `@alepha/ui`
 
-The components in `@alepha/ui` call `tr()` with English defaults — dialogs say "Cancel / Confirm", tables announce "Open row actions". A default is *not* a translation: until you define the key, a French application shows English there, and setting the browser locale changes nothing because the browser language was never the problem.
+The components in `@alepha/ui` call `tr()` with English defaults - dialogs say "Cancel / Confirm", tables announce "Open row actions". A default is *not* a translation: until you define the key, a French application shows English there, and setting the browser locale changes nothing because the browser language was never the problem.
 
 `@alepha/ui` ships a French record you spread into your own catalogue:
 
@@ -87,9 +87,9 @@ class AppI18n {
 }
 ```
 
-It is a plain object rather than a `$dictionary` because `@alepha/ui` is a component library with no module of its own — nothing to register into.
+It is a plain object rather than a `$dictionary` because `@alepha/ui` is a component library with no module of its own - nothing to register into.
 
-`uiFr` covers **every** `tr()` key in the package — dialogs, tables, generated forms and controls, the auth screens, and the whole `@alepha/ui/admin` back office. A test asserts that parity in both directions, so a component that gains a key fails the suite until the translation lands: a missing key would otherwise fall back to its English default, which looks deliberate and is how an entire back office once stayed in English inside a French application.
+`uiFr` covers **every** `tr()` key in the package - dialogs, tables, generated forms and controls, the auth screens, and the whole `@alepha/ui/admin` back office. A test asserts that parity in both directions, so a component that gains a key fails the suite until the translation lands: a missing key would otherwise fall back to its English default, which looks deliberate and is how an entire back office once stayed in English inside a French application.
 
 There is no `uiEn`, since the components already default to English. For any other language, copy `uiFr` as a starting point.
 
@@ -151,7 +151,7 @@ Fallback behavior: if the key is not found in the current language, the fallback
 
 ### l(value, options?)
 
-Localize a value (date, number, or error) according to the current locale. Its return type is `string | number` — wrap in `String()` when assigning to a string-typed field or TSX attribute.
+Localize a value (date, number, or error) according to the current locale. Its return type is `string | number` - wrap in `String()` when assigning to a string-typed field or TSX attribute.
 
 **Number formatting:**
 
@@ -248,9 +248,9 @@ import { Localize } from "alepha/react/i18n";
 On the server, the language is resolved on each request via a server hook, so
 SSR renders use the correct language. The priority is:
 
-1. The `lang` cookie value (set by `setLang`) — a manually-selected language
+1. The `lang` cookie value (set by `setLang`) - a manually-selected language
    always wins.
-2. The `Accept-Language` request header — used only for first-time visitors
+2. The `Accept-Language` request header - used only for first-time visitors
    (no cookie), and only when the detected language is actually registered. A
    region-qualified header like `fr-FR` matches an exact registration first,
    then its base language (`fr`).
@@ -280,7 +280,7 @@ i18n.options.autoDetect = false;
 ## Locale-prefix routing (SEO)
 
 By default the active language lives in a cookie and the URL is the same for
-every language. That is invisible to search-engine crawlers — Googlebot does not
+every language. That is invisible to search-engine crawlers - Googlebot does not
 vary `Accept-Language` or keep cookies, so it only ever sees one language and
 cannot index the others.
 
@@ -304,7 +304,7 @@ language gets a `/<lang>` path prefix. With prefix routing on:
 - **The URL is the source of truth for language.** `/fr/about` always renders in
   French, regardless of cookie or `Accept-Language`. This is what makes each
   language a stable, shareable, indexable URL.
-- **Every generated link carries the active prefix automatically** — `router.path`,
+- **Every generated link carries the active prefix automatically**: `router.path`,
   `router.push`, and `<Link>` all stay within the current language. No app code
   changes are needed.
 - **`setLang(code)` navigates** to the same page under the new prefix (instead of
@@ -319,11 +319,11 @@ language gets a `/<lang>` path prefix. With prefix routing on:
   <link rel="alternate" hreflang="x-default" href="https://site.com/about" />
   ```
 - **There is no automatic redirect.** An unprefixed path (`/about`) is the default
-  language by definition — visiting it never bounces a French browser to `/fr`.
+  language by definition - visiting it never bounces a French browser to `/fr`.
   Google's guidance discourages auto-redirecting by perceived language, and it
   would hide content from crawlers. Use a soft "View in Français?" banner if you
   want to nudge first-time visitors.
 
 Prefix routing requires the router module (`alepha/react/router`). Apps that are
-fully behind authentication (not indexed) generally do not need it — the
+fully behind authentication (not indexed) generally do not need it - the
 cookie-based default is simpler there.

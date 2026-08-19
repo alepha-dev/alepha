@@ -9,7 +9,7 @@ import { $storage } from "alepha/api/files";
 ```
 
 Every upload writes a row to the `files` table next to the blob. That row is
-what makes listing, TTL expiry, tags, checksums and creator tracking possible —
+what makes listing, TTL expiry, tags, checksums and creator tracking possible -
 so `$storage` lives in `alepha/api/files` and needs a database.
 
 ## Declaring a storage
@@ -40,14 +40,14 @@ class MediaService {
 | `description` | `string` | - | Shown in devtools and the admin UI |
 | `provider` | `Service` or `"memory"` | injected default | Override the backend for this storage |
 
-> `maxSize` is in megabytes. `maxSize: 5 * 1024 * 1024` is not "5 MB" — it is
+> `maxSize` is in megabytes. `maxSize: 5 * 1024 * 1024` is not "5 MB" - it is
 > five million megabytes, i.e. no limit at all.
 
 ## A storage is a prefix, not a bucket
 
 Every backend keys objects as `{prefix}/{tenantId}/{storage}/{fileId}` inside
 **one** bucket (or one directory, on disk). Declaring twenty storages costs
-nothing and provisions nothing — there is no per-storage cloud bucket and no
+nothing and provisions nothing - there is no per-storage cloud bucket and no
 account bucket limit to worry about.
 
 You create that one bucket yourself and point the provider at it
@@ -63,7 +63,7 @@ S3_KEY_PREFIX=apps/myapp/production/blobs
 ```
 
 `APP_NAME` is the fallback when it is unset, which is how this worked before
-`S3_KEY_PREFIX` existed — already-deployed objects stay exactly where they are.
+`S3_KEY_PREFIX` existed - already-deployed objects stay exactly where they are.
 
 Prefer `S3_KEY_PREFIX` when a deployment platform sets the value for you.
 `APP_NAME` also namespaces **cookies** and the `Server-Timing` header, so
@@ -80,8 +80,8 @@ stored.id; // ← the `files` row id: persist this, and use it in URLs
 ```
 
 Returns the created `files` row. Validates MIME type and size first, then
-writes the blob and the row. Not atomic — the blob is written before the row
-because the row needs its id — so if the insert fails the blob is deleted
+writes the blob and the row. Not atomic - the blob is written before the row
+because the row needs its id - so if the insert fails the blob is deleted
 again, leaving nothing behind.
 
 Per-upload options: `user`, `tags`, `ttl`, `expirationDate`.
@@ -102,7 +102,7 @@ page.content;            // FileEntity[]
 page.page.totalElements; // total across all pages
 ```
 
-A real paginated, filterable query against `files` — filter by `tags`, `name`,
+A real paginated, filterable query against `files` - filter by `tags`, `name`,
 `mimeType`, `creator` and a `createdAt` range. This is the thing raw blob
 storage cannot do: a provider's `list()` is a flat, unfiltered, uncounted
 listing capped at the backend's page size.
@@ -127,7 +127,7 @@ rows and deletes their blobs. Override per upload with `ttl`, or set an exact
 
 The default depends on the environment:
 
-- **Cloudflare Workers**: `R2FileStorageProvider` (`MemoryFileStorageProvider` under test) — the workerd bundle decides this first, so the rules below never apply there
+- **Cloudflare Workers**: `R2FileStorageProvider` (`MemoryFileStorageProvider` under test) - the workerd bundle decides this first, so the rules below never apply there
 - **Test**: `MemoryFileStorageProvider` (in-memory, lost on restart)
 - **Otherwise**: `S3FileStorageProvider` when `S3_ENDPOINT` is set, else `LocalFileStorageProvider`
 
@@ -172,7 +172,7 @@ class Exports {
 ```
 
 You get `upload` / `download` / `exists` / `delete` / `deleteMany` / `list`
-against a container name you manage yourself — and no metadata, no expiry, no
+against a container name you manage yourself - and no metadata, no expiry, no
 querying, no HTTP endpoints. Reach for it only when a database is genuinely
 unavailable.
 

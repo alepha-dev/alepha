@@ -19,8 +19,8 @@ Registers `MqttJsClientProvider` as the default implementation of `MqttClientPro
 
 ### Providers
 
-- [`MqttClientProvider`](/docs/reference-providers-mqttclientprovider) — Abstract MQTT client provider.
-- [`MqttJsClientProvider`](/docs/reference-providers-mqttjsclientprovider) — MQTT client provider backed by the `mqtt` npm package (mqtt.js).
+- [`MqttClientProvider`](/docs/reference-providers-mqttclientprovider) - Abstract MQTT client provider.
+- [`MqttJsClientProvider`](/docs/reference-providers-mqttjsclientprovider) - MQTT client provider backed by the `mqtt` npm package (mqtt.js).
 
 ### Environment Variables
 
