@@ -81,4 +81,43 @@ describe("Area over MCP", () => {
 
     await ctx.alepha.stop();
   });
+
+  it("truncates a long area description but leaves a short one untouched", async () => {
+    const ctx = await setup();
+
+    const project = await ctx.asUser(ctx.owner.id, () =>
+      ctx.projectApi.createProject({ body: { title: "AreaMcpTruncate" } }),
+    );
+
+    const longArea = await ctx.areaService.ensureArea(project.id, "long");
+    const shortArea = await ctx.areaService.ensureArea(project.id, "short");
+
+    const longDescription = "x".repeat(200);
+    const shortDescription = "Entities and migrations.";
+
+    await ctx.asUser(ctx.owner.id, () =>
+      ctx.areaApi.updateArea({
+        params: { id: longArea!.id },
+        body: { description: longDescription },
+      }),
+    );
+    await ctx.asUser(ctx.owner.id, () =>
+      ctx.areaApi.updateArea({
+        params: { id: shortArea!.id },
+        body: { description: shortDescription },
+      }),
+    );
+
+    const result = await ctx.asUser(ctx.owner.id, () =>
+      ctx.projectTools.project_context.execute({ project: project.id }),
+    );
+
+    const long = result.areas.find((a) => a.name === "long");
+    const short = result.areas.find((a) => a.name === "short");
+
+    expect(long?.description).toBe(`${"x".repeat(160)}…`);
+    expect(short?.description).toBe(shortDescription);
+
+    await ctx.alepha.stop();
+  });
 });
