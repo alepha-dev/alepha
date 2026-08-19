@@ -11,9 +11,10 @@ import type { AdminProjectController } from "@/api/controllers/AdminProjectContr
  * page to a sidebar `@alepha/ui` owns without either side importing the
  * other's routes.
  *
- * `order: 100` and a group of Lore's own keep these clear of the built-ins,
- * which occupy `Identity` (1-3) and `Operations` (4-9); `useNavEntries` sorts
- * groups by their smallest member, so a lower order would reshuffle them.
+ * `order: 100` and a group of Lore's own put these **above** the built-ins,
+ * which are parked in a reserved high band — `Identity` (1000-1003) and
+ * `System` (1010-1016); `useNavEntries` sorts groups by their smallest member,
+ * so anything below 1000 leads.
  */
 export class LoreAdminRouter {
   protected readonly projectApi = $client<AdminProjectController>();
