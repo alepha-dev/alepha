@@ -153,8 +153,11 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
       if (overview) {
         alepha.store.set(userProjectsAtom, {
           ...overview,
+          // `updateProjectById`'s response has no `areaCount` — only
+          // `getHomeOverview` computes that — so carry the existing one
+          // forward rather than dropping it to 0.
           projects: overview.projects.map((p) =>
-            p.id === project.id ? project : p,
+            p.id === project.id ? { ...project, areaCount: p.areaCount } : p,
           ),
         });
       }

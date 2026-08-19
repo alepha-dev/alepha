@@ -29,9 +29,11 @@ import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { User } from "@/api/entities/users.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "../../AppRouter.ts";
+import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
 import { currentAssignedQuestsAtom } from "../../atoms/currentAssignedQuestsAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { currentQuestCountAtom } from "../../atoms/currentQuestCountAtom.ts";
+import { descriptionSnippet } from "../../services/descriptionSnippet.ts";
 import { displayName } from "../../services/displayName.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { UserAvatar } from "../shared/UserAvatar.tsx";
@@ -50,38 +52,6 @@ const getPriorityColor = (priority: string) => {
   }
 };
 
-const removeHtmlTags = (text: string) => text.replace(/<[^>]*>/g, "");
-
-/**
- * Turn a markdown description into a one-line snippet.
- *
- * Descriptions are markdown, so the raw first line is often `## Symptom`
- * or a fence rather than a sentence. Take the first line that carries
- * prose, then strip the inline syntax so the row reads as text and not
- * as source. Truncation itself is left to CSS — see the `title` column.
- */
-const descriptionSnippet = (description: string) => {
-  const line = removeHtmlTags(description)
-    .split("\n")
-    .map((l) => l.trim())
-    .find(
-      (l) =>
-        l.length > 0 &&
-        !l.startsWith("#") &&
-        !l.startsWith("```") &&
-        !l.startsWith("---") &&
-        !l.startsWith("|"),
-    );
-
-  return (line ?? "")
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/\[\[([^\]]*)\]\]/g, "$1")
-    .replace(/^[>*+-]\s+/, "")
-    .replace(/^\d+\.\s+/, "")
-    .replace(/[*_`~]/g, "");
-};
-
 /**
  * Board filter shape. Empty by default → "All statuses", which means
  * everything still in scope: shelved quests are excluded server-side
@@ -98,6 +68,7 @@ const boardFiltersSchema = z.object({
 const ProjectQuestsTable = () => {
   const alepha = useAlepha();
   const [project] = useStore(currentProjectAtom);
+  const [currentAreas] = useStore(currentAreasAtom);
   const questApi = useClient<QuestController>();
   const projectApi = useClient<ProjectController>();
   const dateFormatter = useInject(DateTimeProvider);
@@ -146,9 +117,9 @@ const ProjectQuestsTable = () => {
 
   if (!project) return null;
 
-  const areaOptions = (project.areas ?? []).map((p) => ({
-    label: p,
-    value: p,
+  const areaOptions = (currentAreas ?? []).map((a) => ({
+    value: a.name,
+    label: a.name,
   }));
 
   return (

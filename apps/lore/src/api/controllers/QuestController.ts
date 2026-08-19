@@ -27,6 +27,7 @@ import {
   questResourceSchema,
   questStatusSchema,
 } from "../schemas/questResourceSchema.ts";
+import { AreaService } from "../services/AreaService.ts";
 import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
@@ -44,6 +45,7 @@ export class QuestController {
   fileService = $inject(FileService);
   questMapper = $inject(QuestResourceMapper);
   questService = $inject(QuestService);
+  areaService = $inject(AreaService);
 
   attachments = $storage({
     description: "Quest attachments",
@@ -182,7 +184,7 @@ export class QuestController {
       // Quest-creation mechanics (shortId sequence, area-ensure, HTML
       // sanitization, defaults) live in QuestService — the single path
       // shared with BlightController.forwardBlightToQuest.
-      const quest = await this.questService.createQuest(project, {
+      const quest = await this.questService.createQuest({
         projectId: body.projectId,
         title: body.title,
         // Title-only quests are allowed; default the optional description to
@@ -992,6 +994,10 @@ export class QuestController {
           // integer sets it; the generic `patch = { ...body }` spread below
           // applies it as-is (set / clear / leave-unchanged).
           estimateMinutes: z.integer().min(1).nullable().optional(),
+          // Overrides the bare `z.string()` picked from `quests.schema` —
+          // mirrors `areas.name`'s `.max(48)` so a too-long area is a clean
+          // 400 from THIS schema, not a 500 thrown out of `ensureArea`.
+          area: z.string().max(48).optional(),
         }),
       response: questResourceSchema,
     },
@@ -1026,7 +1032,38 @@ export class QuestController {
         }
       }
 
+      // The `areas` table is the sole source of truth for the list.
+      // `projects.areas` is `@deprecated` and nothing reads or writes it.
+      // Only fires when this update actually carries an `area` — an
+      // update that leaves the field alone (`undefined`) must not
+      // register anything.
+      //
+      // Deliberately NOT wrapped in `$transactional()`, unlike
+      // `QuestService.createQuest` (whose JSDoc requires one for its
+      // `shortId` sequence allocation). If a later validation below this
+      // point throws — `dependsOn` pointing at itself, an unaccepted
+      // feedback link — the area row this call created stays committed
+      // even though the quest patch never lands. That's a fine state to
+      // be in, not a bug: a zero-quest area is a legal row (an owner can
+      // rename or delete it from the areas settings page), not a
+      // dangling reference the way an orphaned quest FK would be.
+      // Store what `ensureArea` actually persisted (trimmed), not the raw
+      // body value — otherwise `area: " foo "` registers the row `foo`
+      // while the quest keeps pointing at `" foo "`, matching no row. A
+      // blank/whitespace-only value clears the field (ensureArea no-ops on
+      // it) rather than leaving stray whitespace on the quest.
+      let ensuredArea: Awaited<ReturnType<typeof this.areaService.ensureArea>>;
+      if (body.area !== undefined) {
+        ensuredArea = await this.areaService.ensureArea(
+          quest.projectId,
+          body.area,
+        );
+      }
+
       const patch: Record<string, unknown> = { ...body };
+      if (body.area !== undefined) {
+        patch.area = ensuredArea?.name ?? body.area.trim();
+      }
       if (body.tags !== undefined) {
         patch.tags = normalizeQuestTags(body.tags);
       }
@@ -1293,51 +1330,6 @@ export class QuestController {
       await this.quests.deleteById(params.id);
 
       return { ok: true };
-    },
-  });
-
-  moveQuestToArea = $action({
-    use: [$secure({ permissions: ["quest:update"] })],
-    schema: {
-      params: z.object({
-        id: z.integer(),
-      }),
-      body: z.object({
-        newArea: z.string(),
-      }),
-      response: questResourceSchema,
-    },
-    handler: async ({ params, body, user }) => {
-      const quest = await this.quests.getOne({
-        where: {
-          id: { eq: params.id },
-        },
-      });
-
-      await this.security.assertMember(quest.projectId, user);
-
-      // Update the quest's area (area)
-      const updatedQuest = await this.quests.updateById(params.id, {
-        area: body.newArea,
-        history: [
-          ...quest.history,
-          {
-            at: this.dt.nowISOString(),
-            by: user.id,
-            action: "updated",
-          },
-        ],
-      });
-
-      // Ensure the new area exists in the project's areas list
-      const project = await this.projects.getById(quest.projectId);
-      if (!project.areas.includes(body.newArea)) {
-        await this.projects.updateById(project.id, {
-          areas: [...project.areas, body.newArea],
-        });
-      }
-
-      return this.mapQuestToResource(updatedQuest);
     },
   });
 

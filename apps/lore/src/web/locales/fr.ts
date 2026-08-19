@@ -425,20 +425,35 @@ export default {
   "project.settings.nav.group.features": "Fonctionnalités",
   "project.settings.areas.title": "Domaines",
   "project.settings.areas.description":
-    "Les domaines de votre projet. Chaque quête appartient à un domaine. Renommer un domaine met à jour toutes ses quêtes.",
+    "Les parties de votre système. Chaque quête appartient à exactement une. Renommez un domaine vers un domaine existant pour les fusionner.",
   "project.settings.areas.column.name": "Domaine",
-  "project.settings.areas.column.quests": "Quêtes",
-  "project.settings.areas.column.firstQuest": "Première quête",
+  "project.settings.areas.column.open": "Ouvertes",
+  "project.settings.areas.column.total": "Total",
+  "project.settings.areas.column.lastActivity": "Dernière activité",
+  "project.settings.areas.column.summary": "Description",
+  "project.settings.areas.column.select": "Sélection",
+  "project.settings.areas.select": "Sélectionner $1",
   "project.settings.areas.empty":
     "Aucun domaine pour l'instant. Créez une quête et choisissez un domaine — il apparaîtra ici.",
-  "project.settings.areas.rename.action": "Renommer",
-  "project.settings.areas.rename.title": "Renommer le domaine",
-  "project.settings.areas.rename.description":
-    "Renommer « $1 » — toutes les quêtes de ce domaine suivront.",
-  "project.settings.areas.rename.label": "Nouveau nom",
-  "project.settings.areas.rename.cancel": "Annuler",
-  "project.settings.areas.rename.submit": "Renommer",
+  "project.settings.areas.selected": "$1 sélectionnées",
+  "project.settings.areas.selected.one": "1 sélectionnée",
+  "project.settings.areas.merge.action": "Fusionner vers...",
+  "project.settings.areas.merge.title": "Fusionner des domaines",
+  "project.settings.areas.merge.target": "Domaine cible",
+  "project.settings.areas.merge.confirm":
+    "$1 quêtes seront déplacées vers $2, et $3 domaines disparaîtront avec leurs descriptions.",
+  // Le cas courant : fusionner un doublon vers un domaine existant.
+  "project.settings.areas.merge.confirm.one":
+    "$1 quêtes seront déplacées vers $2, et 1 domaine disparaîtra avec sa description.",
+  "project.settings.areas.merge.submit": "Fusionner",
+  "project.settings.areas.merge.done": "$1 quêtes déplacées.",
+  "project.settings.areas.merge.done.one": "1 quête déplacée.",
   "project.settings.areas.never": "—",
+  "project.settings.areas.delete.action": "Supprimer",
+  "project.settings.areas.delete.confirm":
+    "Supprimer ce domaine ? Il ne contient aucune quête, et cette action est irréversible.",
+  "project.settings.areas.delete.blocked":
+    "Ce domaine contient encore des quêtes. Fusionnez-le vers un autre domaine.",
   "project.settings.nav.kanban": "Kanban",
   "project.settings.nav.folios": "Folios",
   "project.settings.nav.epics": "Épopées",
@@ -681,6 +696,8 @@ export default {
   "quest-log.collapse-panel": "Masquer le journal",
   "quest-log.expand-panel": "Afficher le journal",
   "home.projects.see-all": "Voir les $1 projets",
+  "home.project.areas": "$1 domaines",
+  "home.project.areas.one": "1 domaine",
   "account.projects.title": "Projets",
   "account.projects.description":
     "Tous les projets dont vous faites partie, que vous en soyez le propriétaire ou un membre.",
@@ -690,8 +707,28 @@ export default {
   "account.projects.updated": "Mis à jour $1",
   "account.projects.see-all": "Tous les projets",
 
-  "area.rename.name": "Nom du domaine",
-  "area.rename.submit": "Renommer",
+  "area.detail.rename": "Renommer",
+  "area.detail.rename.title": "Renommer le domaine",
+  "area.detail.rename.label": "Nouveau nom",
+  "area.detail.rename.merge":
+    "$1 existe déjà. $2 quêtes y seront déplacées, et $3 disparaîtra avec sa description.",
+  // Le cas courant : renommer un domaine vers un autre.
+  "area.detail.rename.merge.one":
+    "$1 existe déjà. 1 quête y sera déplacée, et $2 disparaîtra avec sa description.",
+  "area.detail.rename.submit": "Renommer",
+  "area.detail.rename.submitMerge": "Fusionner",
+  "area.detail.description.title": "Description",
+  "area.detail.description.placeholder":
+    "Quelle partie du système est-ce ? Les agents la lisent lorsqu'ils créent une quête.",
+  "area.detail.description.save": "Enregistrer",
+  "area.detail.stats.title": "Activité",
+  "area.detail.stats.open": "Quêtes ouvertes",
+  "area.detail.stats.total": "Quêtes totales",
+  "area.detail.stats.first": "Première quête",
+  "area.detail.stats.last": "Dernière activité",
+  "area.detail.stats.never": "Jamais",
+  "area.detail.back": "Retour aux domaines",
+  "area.detail.quests.title": "Quêtes récentes",
 
   "error.title": "Oups ! Quelque chose s'est mal passé.",
   "error.description":

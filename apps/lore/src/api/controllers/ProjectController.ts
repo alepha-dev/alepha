@@ -29,9 +29,13 @@ import {
 import { quests } from "../entities/quests.ts";
 import type { User } from "../entities/users.ts";
 import { relations } from "../relations.ts";
-import { projectResourceSchema } from "../schemas/projectResourceSchema.ts";
+import {
+  projectOverviewResourceSchema,
+  projectResourceSchema,
+} from "../schemas/projectResourceSchema.ts";
 import { projectTitleSchema } from "../schemas/projectTitleSchema.ts";
 import { questResourceSchema } from "../schemas/questResourceSchema.ts";
+import { AreaService } from "../services/AreaService.ts";
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
 import { ProjectResourceMapper } from "../services/ProjectResourceMapper.ts";
@@ -94,6 +98,7 @@ export class ProjectController {
   limits = $inject(ProjectLimits);
   slugs = $inject(ProjectSlugService);
   projectSecurity = $inject(ProjectSecurityService);
+  areaService = $inject(AreaService);
 
   /**
    * Reserve-and-collision gate for a project slug.
@@ -267,7 +272,7 @@ export class ProjectController {
     use: [$secure({ permissions: ["project:read"] })],
     schema: {
       response: z.object({
-        projects: z.array(projectResourceSchema),
+        projects: z.array(projectOverviewResourceSchema),
         totalCount: z.integer(),
         ownedCount: z.integer(),
         maxProjects: z.integer(),
@@ -290,8 +295,18 @@ export class ProjectController {
 
       const result = me?.projects ?? [];
 
+      // `areas` (the `projects.areas` column) is `@deprecated` and frozen —
+      // the Home page's "N areas" stat is re-sourced from the `areas` table
+      // here instead, one batched query rather than one per card.
+      const areaCounts = await this.areaService.countByProjectIds(
+        result.map((it) => it.id),
+      );
+
       return {
-        projects: result.map((it) => this.projectMapper.toResource(it)),
+        projects: result.map((it) => ({
+          ...this.projectMapper.toResource(it),
+          areaCount: areaCounts.get(it.id) ?? 0,
+        })),
         totalCount: result.length,
         ownedCount,
         maxProjects: maxProjectsPerUser,
@@ -661,104 +676,6 @@ export class ProjectController {
       );
 
       await this.members.deleteById(member.id);
-
-      return { ok: true };
-    },
-  });
-
-  getAreas = $action({
-    use: [$secure({ permissions: ["project:read"] }), this.ownsAsMember()],
-    schema: {
-      params: z.object({
-        id: z.integer(),
-      }),
-      response: z.array(
-        z.object({
-          name: z.string(),
-          questCount: z.integer(),
-          firstQuestAt: z.string().optional(),
-        }),
-      ),
-    },
-    handler: async ({ params, user }) => {
-      const project = this.owned.get<Project>();
-
-      const projectQuests = await this.quests.findMany({
-        where: { projectId: { eq: params.id } },
-      });
-
-      // Aggregate per area: union of project.areas + areas found on quests so
-      // empty areas (no quests) still appear, and orphan areas (quest with a
-      // area the project forgot) aren't lost.
-      const stats = new Map<
-        string,
-        { questCount: number; firstQuestAt?: string }
-      >();
-      for (const name of project.areas ?? []) {
-        stats.set(name, { questCount: 0 });
-      }
-      for (const quest of projectQuests) {
-        const prev = stats.get(quest.area) ?? { questCount: 0 };
-        const ts =
-          typeof quest.createdAt === "string"
-            ? quest.createdAt
-            : new Date(quest.createdAt as never).toISOString();
-        const firstQuestAt =
-          prev.firstQuestAt && prev.firstQuestAt < ts ? prev.firstQuestAt : ts;
-        stats.set(quest.area, {
-          questCount: prev.questCount + 1,
-          firstQuestAt,
-        });
-      }
-
-      return [...stats.entries()]
-        .map(([name, s]) => ({
-          name,
-          questCount: s.questCount,
-          firstQuestAt: s.firstQuestAt,
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-    },
-  });
-
-  renameArea = $action({
-    use: [$secure({ permissions: ["project:update"] }), this.ownsAsOwner()],
-    schema: {
-      params: z.object({
-        id: z.integer(),
-      }),
-      body: z.object({
-        oldAreaName: z.string(),
-        newAreaName: z.string().min(1),
-      }),
-      response: okSchema,
-    },
-    handler: async ({ params, body, user }) => {
-      const project = this.owned.get<Project>();
-
-      // Update all quests with the old area name to the new one
-      const questsToUpdate = await this.quests.findMany({
-        where: {
-          projectId: { eq: params.id },
-          area: { eq: body.oldAreaName },
-        },
-      });
-
-      // Update each quest's area field
-      for (const quest of questsToUpdate) {
-        await this.quests.updateById(quest.id, {
-          area: body.newAreaName,
-        });
-      }
-
-      // Update the project's areas array
-      const updatedAreas = project.areas.map((pkg) =>
-        pkg === body.oldAreaName ? body.newAreaName : pkg,
-      );
-
-      await this.projects.updateById(params.id, {
-        areas: updatedAreas,
-      });
 
       return { ok: true };
     },
