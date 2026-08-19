@@ -147,11 +147,23 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
               <TableBody>
                 {props.areas.map((area) => (
                   <TableRow key={area.id}>
-                    <TableCell>
+                    {/* `aria-label` on the cell itself, not just the checkbox:
+                        without it, the checkbox's own accessible name (needed
+                        so a screen reader announces which row a Tab lands on)
+                        flattens into the enclosing `<td>`'s computed name too
+                        ("Select Donjon" still *contains* "Donjon"), leaving it
+                        indistinguishable from the name cell next to it for
+                        anything that queries by cell name. Setting the cell's
+                        own `aria-label` short-circuits that flattening. */}
+                    <TableCell
+                      aria-label={tr("project.settings.areas.column.select")}
+                    >
                       <Checkbox
                         checked={selected.has(area.id)}
                         onCheckedChange={() => toggle(area.id)}
-                        aria-label={area.name}
+                        aria-label={tr("project.settings.areas.select", {
+                          args: [area.name],
+                        })}
                       />
                     </TableCell>
                     <TableCell className="font-medium">

@@ -431,6 +431,8 @@ export default {
   "project.settings.areas.column.total": "Total",
   "project.settings.areas.column.lastActivity": "Dernière activité",
   "project.settings.areas.column.summary": "Description",
+  "project.settings.areas.column.select": "Sélection",
+  "project.settings.areas.select": "Sélectionner $1",
   "project.settings.areas.empty":
     "Aucun domaine pour l'instant. Créez une quête et choisissez un domaine — il apparaîtra ici.",
   "project.settings.areas.selected": "$1 sélectionnées",
