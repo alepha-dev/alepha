@@ -28,7 +28,17 @@ export type { RouterPushOptions } from "../services/ReactRouter.ts";
 export const reactBrowserOptions = $atom({
   name: "alepha.react.browser.options",
   schema: z.object({
-    scrollRestoration: z.enum(["top", "manual"]), // TODO: must be per page?
+    /**
+     * What the router does with scroll position after a navigation.
+     *
+     * - `auto` (default): what a browser does. A new navigation goes to the
+     *   top, or to the `#hash` target when the URL has one; back and forward
+     *   restore the position that entry was left at.
+     * - `top`: always jump to the top, including on back/forward. This was the
+     *   only behaviour before, and it is why Back appeared to "scroll up".
+     * - `manual`: the router never touches scroll.
+     */
+    scrollRestoration: z.enum(["auto", "top", "manual"]),
     /**
      * Intercept clicks on plain `<a href="/...">` anchors and route them
      * through the SPA router, so authors don't need `<Link>` everywhere
@@ -41,7 +51,7 @@ export const reactBrowserOptions = $atom({
     interceptAnchorClicks: z.boolean().default(true),
   }),
   default: {
-    scrollRestoration: "top" as const,
+    scrollRestoration: "auto" as const,
     interceptAnchorClicks: true,
   },
 });
@@ -68,6 +78,32 @@ export class ReactBrowserProvider {
   protected readonly validator = $inject(SchemaValidator);
 
   protected readonly options = $store(reactBrowserOptions);
+
+  /**
+   * Scroll offset of every history entry we have visited, keyed by the id
+   * stamped into `history.state`.
+   *
+   * A Map rather than `history.state` itself: the position has to be written
+   * for the entry we are *leaving*, and by the time `popstate` fires the
+   * browser has already swapped `history.state` to the entry we are arriving
+   * at, so there is nowhere left to put it.
+   */
+  protected readonly scrollPositions = new Map<number, number>();
+
+  /** Id of the entry currently on screen. */
+  protected historyKey = 0;
+
+  protected nextHistoryKey = 1;
+
+  /**
+   * How the navigation being rendered was started. Read once the transition
+   * ends, to decide between restoring, anchoring and going to the top.
+   *
+   * Kept on the provider rather than threaded through `react:transition:end`
+   * because the provider both starts every navigation and owns the hook, and
+   * `transitionId` already serialises them.
+   */
+  protected navigationKind: "push" | "replace" | "pop" = "push";
 
   public get rootId() {
     return "root";
@@ -150,10 +186,55 @@ export class ReactBrowserProvider {
     const url = this.base + path;
 
     if (replace) {
-      this.history.replaceState({}, "", url);
+      // Same entry, same id: a replace does not create a place to come back to.
+      this.history.replaceState({ alephaKey: this.historyKey }, "", url);
     } else {
-      this.history.pushState({}, "", url);
+      this.historyKey = this.nextHistoryKey++;
+      this.history.pushState({ alephaKey: this.historyKey }, "", url);
     }
+  }
+
+  /**
+   * The element that actually scrolls.
+   *
+   * Two layouts are in play: pages that let the document scroll, and shells
+   * that keep the header fixed and scroll an inner pane instead. For the
+   * second kind `window.scrollTo` is a no-op, so a layout marks its pane with
+   * `data-scroll-container` and the router drives that instead.
+   */
+  protected getScroller(): HTMLElement | Window | undefined {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+    const marked = this.document.querySelector<HTMLElement>(
+      "[data-scroll-container]",
+    );
+    if (marked && marked.scrollHeight > marked.clientHeight) {
+      return marked;
+    }
+    return window;
+  }
+
+  protected getScroll(): number {
+    const el = this.getScroller();
+    if (!el) return 0;
+    return el instanceof Window ? el.scrollY : el.scrollTop;
+  }
+
+  protected setScroll(top: number): void {
+    const el = this.getScroller();
+    if (!el) return;
+    if (el instanceof Window) {
+      el.scrollTo({ top, behavior: "instant" as ScrollBehavior });
+    } else {
+      el.scrollTop = top;
+    }
+  }
+
+  /** Remember where the entry on screen is, before we leave it. */
+  protected saveScroll(): void {
+    if (typeof window === "undefined" || this.alepha.isTest()) return;
+    this.scrollPositions.set(this.historyKey, this.getScroll());
   }
 
   public async invalidate(props?: Record<string, any>) {
@@ -191,6 +272,11 @@ export class ReactBrowserProvider {
       url,
       options,
     });
+
+    // Before anything renders: the offset belongs to the entry we are on, and
+    // it is gone the moment the new view paints.
+    this.saveScroll();
+    this.navigationKind = options.replace ? "replace" : "push";
 
     const myTransitionId = ++this.transitionId;
 
@@ -403,19 +489,144 @@ export class ReactBrowserProvider {
 
   // -------------------------------------------------------------------------------------------------------------------
 
+  /**
+   * What should happen to the scroll offset for the navigation that just
+   * finished. Split out from the hook so it can be tested without a DOM: the
+   * hook itself is skipped under `isTest()`, which is exactly the branch the
+   * "Back scrolls to top" bug lived in.
+   */
+  public resolveScrollAction(hash?: string): ScrollAction {
+    const mode = this.options.scrollRestoration;
+
+    if (mode === "manual") {
+      return { type: "none" };
+    }
+
+    // `top` keeps the old behaviour for anyone who wants it, back included.
+    if (mode === "top") {
+      return { type: "top" };
+    }
+
+    if (this.navigationKind === "pop") {
+      return {
+        type: "restore",
+        top: this.scrollPositions.get(this.historyKey) ?? 0,
+      };
+    }
+
+    // A new entry. An anchor in the URL wins over the top, which is also what
+    // makes cross-page `/docs/page#section` links land on the section.
+    if (hash) {
+      return { type: "hash", hash };
+    }
+
+    return { type: "top" };
+  }
+
   protected readonly onTransitionEnd = $hook({
     on: "react:transition:end",
-    handler: () => {
-      if (
-        this.options.scrollRestoration === "top" &&
-        typeof window !== "undefined" &&
-        !this.alepha.isTest()
-      ) {
-        this.log.trace("Restoring scroll position to top");
-        window.scrollTo(0, 0);
+    handler: ({ state }) => {
+      if (typeof window === "undefined" || this.alepha.isTest()) {
+        return;
+      }
+
+      const action = this.resolveScrollAction(state.url.hash?.slice(1));
+      this.log.trace("Scroll action", action);
+
+      switch (action.type) {
+        case "none":
+          return;
+        case "top":
+          // Synchronous: the top is reachable at any height, so it needs no
+          // wait for layout and avoids a visible jump.
+          this.setScroll(0);
+          return;
+        case "restore":
+          this.restoreScroll(action.top);
+          return;
+        case "hash":
+          this.restoreScroll(0, action.hash);
+          return;
       }
     },
   });
+
+  /**
+   * Apply a scroll offset once the new view is tall enough to hold it.
+   *
+   * Setting it synchronously is too early: the layers have committed but the
+   * browser has not laid the new content out, so the container is still short
+   * and the offset clamps — restoring 4200px into a page that is momentarily
+   * 900px tall silently lands at 0. A fixed one- or two-frame delay is no
+   * better, because how long the real height takes depends on the page.
+   *
+   * So retry per frame until the offset sticks, giving up after
+   * `maxScrollRestoreFrames` (~half a second) so a target that is genuinely
+   * unreachable — the page really is shorter now — cannot spin forever.
+   * A newer navigation also cancels it: that one owns the scroll position now.
+   */
+  protected readonly maxScrollRestoreFrames = 30;
+
+  /**
+   * Run `fn` on the next frame.
+   *
+   * `requestAnimationFrame` does not fire at all while the document is
+   * hidden — a background tab, or a restored session — so a restore scheduled
+   * that way would simply never happen and the page would be left at the top
+   * when the reader came back to it. Fall back to a timer in that case.
+   */
+  protected get documentHidden(): boolean {
+    return typeof document !== "undefined" && document.hidden;
+  }
+
+  protected scheduleTimeout(fn: () => void): void {
+    setTimeout(fn, 16);
+  }
+
+  protected scheduleFrame(fn: () => void): void {
+    requestAnimationFrame(fn);
+  }
+
+  protected nextFrame(fn: () => void): void {
+    if (this.documentHidden) {
+      this.scheduleTimeout(fn);
+      return;
+    }
+    this.scheduleFrame(fn);
+  }
+
+  protected restoreScroll(top: number, hash?: string): void {
+    const ownTransitionId = this.transitionId;
+    let frames = 0;
+
+    const step = () => {
+      // Superseded: the user navigated again while we were still settling.
+      if (this.transitionId !== ownTransitionId) {
+        return;
+      }
+
+      if (hash) {
+        const target = this.document.getElementById(hash);
+        if (target) {
+          target.scrollIntoView();
+          return;
+        }
+      } else {
+        this.setScroll(top);
+        if (Math.abs(this.getScroll() - top) <= 1) {
+          return;
+        }
+      }
+
+      if (++frames < this.maxScrollRestoreFrames) {
+        this.nextFrame(step);
+      }
+    };
+
+    // Try straight away: when the view is already laid out (a cached page, a
+    // short one) this lands in the same frame and there is no visible jump.
+    step();
+  }
 
   public readonly ready = $hook({
     on: "ready",
@@ -437,7 +648,34 @@ export class ReactBrowserProvider {
         state: this.state,
       });
 
+      // The browser would otherwise restore scroll itself on back/forward,
+      // and then this router would immediately overwrite it. Own it instead.
+      if (this.options.scrollRestoration !== "manual") {
+        try {
+          this.history.scrollRestoration = "manual";
+        } catch {
+          // Not supported (or blocked); the router's own restore still works.
+        }
+      }
+
+      // Stamp the entry the app booted on, so returning to it can be restored
+      // like any other.
+      this.history.replaceState(
+        { ...(this.history.state ?? {}), alephaKey: this.historyKey },
+        "",
+        this.location.href,
+      );
+
       window.addEventListener("popstate", () => {
+        // `popstate` fires while the outgoing view is still on screen, so the
+        // offset now on the page belongs to the entry we are leaving. Save it
+        // under the id we were on, before adopting the one we arrived at.
+        this.saveScroll();
+        this.navigationKind = "pop";
+        const key = (this.history.state as { alephaKey?: number } | null)
+          ?.alephaKey;
+        this.historyKey = typeof key === "number" ? key : 0;
+
         // Skip rendering only if the entire URL (path + search) is
         // unchanged from current state. Comparing pathname alone misses
         // back/forward between two URLs that share a path but differ
@@ -532,6 +770,15 @@ export type ReactHydrationState = {
 } & {
   [key: string]: any;
 };
+
+/**
+ * Outcome of {@link ReactBrowserProvider.resolveScrollAction}.
+ */
+export type ScrollAction =
+  | { type: "none" }
+  | { type: "top" }
+  | { type: "restore"; top: number }
+  | { type: "hash"; hash: string };
 
 export interface RouterRenderOptions {
   url?: string;
