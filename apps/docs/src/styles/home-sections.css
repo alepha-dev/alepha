@@ -77,9 +77,13 @@ html:has(.home-snap) {
   font-weight: var(--font-semibold);
 }
 
-/* Dotted rather than solid: these point out at TypeScript and React, and a
-   solid underline in a paragraph this size reads as a call to action. */
-.hero-lead-link {
+/* Dotted rather than solid: these sit inside lead paragraphs, and a solid
+   underline at this size reads as a call to action competing with the real
+   buttons. `.doc-link` is the shared in-prose link into the docs; it inherits
+   colour so a link inside a mono list keeps that list's colour. */
+.hero-lead-link,
+.doc-link,
+.admin-lead a {
   color: inherit;
   text-decoration: underline dotted;
   text-decoration-thickness: 1px;
@@ -88,7 +92,9 @@ html:has(.home-snap) {
   transition: all var(--duration-normal) var(--ease-default);
 }
 
-.hero-lead-link:hover {
+.hero-lead-link:hover,
+.doc-link:hover,
+.admin-lead a:hover {
   color: var(--color-text-bright);
   text-decoration-color: var(--color-accent);
 }
@@ -1014,9 +1020,18 @@ html:has(.home-snap) {
 }
 
 .slab-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: var(--text-md);
   font-weight: var(--font-semibold);
   color: var(--color-text-bright);
+}
+
+.slab-logo {
+  display: block;
+  width: 20px;
+  height: 20px;
 }
 
 .slab-note {
@@ -1196,7 +1211,357 @@ html:has(.home-snap) {
 }
 
 /* -----------------------------------------------------------------------------
-   BLOCK 6 — ADMIN PANEL CAROUSEL
+   BLOCK 6 — WRITTEN FOR AN AGENT
+
+   Four panels sharing their borders so the group reads as one object rather
+   than four cards. The borders are drawn per panel and then cancelled on the
+   last column and last row, which keeps a single hairline between neighbours
+   instead of the doubled 2px a plain `border` on every panel would give.
+   ----------------------------------------------------------------------------- */
+
+.agent-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-panel);
+  overflow: hidden;
+}
+
+@media (min-width: 900px) {
+  .agent-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.agent-station {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.agent-station:last-child {
+  border-bottom: none;
+}
+
+@media (min-width: 900px) {
+  .agent-station {
+    border-right: 1px solid var(--color-border);
+  }
+
+  .agent-station:nth-child(2n) {
+    border-right: none;
+  }
+
+  /* Two per row, so the final pair carries no bottom rule. */
+  .agent-station:nth-last-child(-n + 2) {
+    border-bottom: none;
+  }
+}
+
+.agent-station-name {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.agent-station-title {
+  margin: 0;
+  color: var(--color-text-bright);
+  font-size: var(--text-lg);
+  line-height: 1.3;
+}
+
+.agent-station-note {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+}
+
+.agent-station-note code {
+  color: var(--color-cyan);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+/* -- artifacts: a real file, a real completion list, real output -- */
+
+.agent-artifact {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.agent-file {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  overflow: hidden;
+}
+
+.agent-file-name {
+  display: block;
+  padding: 5px var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.agent-file-body,
+.agent-term {
+  margin: 0;
+  padding: var(--space-3);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.agent-term {
+  flex: 1;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+}
+
+.agent-term-cmd {
+  color: var(--color-success);
+}
+
+.agent-term-fail {
+  color: var(--color-error);
+}
+
+.agent-complete {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  overflow: hidden;
+}
+
+.agent-complete-input {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.agent-dollar {
+  color: var(--color-cyan);
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+}
+
+.agent-caret {
+  width: 7px;
+  height: 15px;
+  background: var(--color-accent);
+  animation: agentCaret 1.1s steps(1) infinite;
+}
+
+@keyframes agentCaret {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.agent-complete-list {
+  margin: 0;
+  padding: var(--space-1) 0;
+  list-style: none;
+}
+
+.agent-complete-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 2px var(--space-3);
+}
+
+/* The first row reads as the one under the caret. */
+.agent-complete-item:first-child {
+  background: var(--color-accent-bg);
+}
+
+.agent-complete-name {
+  color: var(--color-cyan);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+.agent-complete-role {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.agent-complete-more {
+  padding: 5px var(--space-3);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.agent-complete-more code {
+  color: var(--color-cyan);
+  font-family: var(--font-mono);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-caret {
+    animation: none;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+/* -----------------------------------------------------------------------------
+   BLOCK 7 — SWAP ANYTHING, EVEN TIME
+
+   The test on the left, the run on the right. The timeline is a real list
+   (`ol`), so the order survives with styles off and reads correctly to a
+   screen reader; the dots and the rail are drawn from the list items.
+   ----------------------------------------------------------------------------- */
+
+.swap-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .swap-layout {
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: var(--space-10);
+  }
+}
+
+/* No border of its own: `.code-pane` inside already draws one, and nesting a
+   second box around it doubled the rule. */
+.swap-code {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.swap-code-note {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+}
+
+/* -- the run -- */
+
+.swap-timeline {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.swap-step {
+  display: grid;
+  grid-template-columns: 62px 16px 1fr;
+  align-items: start;
+  gap: var(--space-3);
+  padding-bottom: var(--space-5);
+  position: relative;
+}
+
+/* The rail is drawn by each step except the last, so it stops at the final
+   dot instead of running into the footnote. */
+.swap-step:not(:last-child) .swap-step-dot::after {
+  content: "";
+  position: absolute;
+  top: 13px;
+  left: 50%;
+  width: 1px;
+  height: calc(100% + var(--space-5) - 13px);
+  transform: translateX(-50%);
+  background: var(--color-border);
+}
+
+.swap-step-at {
+  padding-top: 1px;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-align: right;
+}
+
+.swap-step-dot {
+  position: relative;
+  width: 9px;
+  height: 9px;
+  margin-top: 4px;
+  margin-left: 3px;
+  border: 1px solid var(--color-border-focus);
+  border-radius: var(--radius-full);
+  background: var(--color-bg);
+}
+
+.swap-step.is-accent .swap-step-dot {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+.swap-step-label {
+  display: block;
+  color: var(--color-cyan);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.swap-step.is-accent .swap-step-label {
+  color: var(--color-accent);
+}
+
+.swap-step-body {
+  margin: 4px 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+}
+
+.swap-footnote,
+.platform-footnote {
+  margin: var(--space-8) 0 0;
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+}
+
+.platform-footnote code {
+  color: var(--color-cyan);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+/* -----------------------------------------------------------------------------
+   BLOCK 8 — ADMIN PANEL CAROUSEL
    ----------------------------------------------------------------------------- */
 
 .admin-layout {
@@ -1446,80 +1811,282 @@ html:has(.home-snap) {
   font-size: var(--text-base);
   max-width: 620px;
 }
-
 /* -----------------------------------------------------------------------------
-   BLOCK 7 — ECOSYSTEM
+   BLOCK 9 — DEPLOY WITH ONE COMMAND
+
+   Three steps in a row: config, command, run.
+
+   The run replays on a 7.2s loop, and every step owns its keyframes rather than
+   sharing one animation with a staggered `animation-delay`. The shared version
+   looked wrong: with six delays against one 7.2s cycle, each row also *cleared*
+   at its own offset, so rows lit and dimmed independently and the list read as
+   random blinking. Here each row turns on at its own point and every row clears
+   together at 100%, which is what a progress run actually looks like.
    ----------------------------------------------------------------------------- */
 
-.ecosystem-grid {
+.deploy-flow {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--space-4);
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+  align-items: stretch;
 }
 
-.ecosystem-card {
-  display: block;
-  padding: var(--space-6);
-  background: var(--color-bg-panel);
+@media (min-width: 1024px) {
+  /* Two equal tracks. `minmax(0, 1fr)` rather than a bare `1fr`, because
+     `.code-pane` sizes to its content and would otherwise widen its own
+     column past the other. */
+  .deploy-flow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Built like the code pane beside it: a labelled bar over a darker body, so
+   the two read as a pair rather than a panel and a loose list. */
+.deploy-term {
+  display: flex;
+  flex-direction: column;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  text-decoration: none;
-  transition: all var(--duration-normal) var(--ease-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-panel);
+  overflow: hidden;
 }
 
-a.ecosystem-card:hover {
-  border-color: var(--color-accent);
-  transform: translateY(-2px);
+.deploy-term-head {
+  padding: 8px var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
 }
 
-.ecosystem-card.is-soon {
-  opacity: 0.65;
+.deploy-term-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-bg);
 }
 
-.ecosystem-head {
+.deploy-cmd {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-2);
+  gap: var(--space-2);
+  min-width: 0;
 }
 
-.ecosystem-name {
-  margin: 0;
-  font-size: var(--text-xl);
-  font-weight: var(--font-semibold);
+.deploy-prompt {
+  flex: none;
+  color: var(--color-success);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+
+.deploy-cmd code {
   color: var(--color-text-bright);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow-x: auto;
 }
 
-.ecosystem-arrow {
-  color: var(--color-accent);
-}
+/* -- the run -- */
 
-.ecosystem-badge {
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--color-text-muted);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
-  padding: 2px 10px;
-}
-
-.ecosystem-tagline {
-  margin: 0 0 var(--space-3);
-  color: var(--color-accent);
-  font-size: var(--text-base);
-}
-
-.ecosystem-body {
+.deploy-log {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
   margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.deploy-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   color: var(--color-text-muted);
-  font-size: var(--text-base);
-  line-height: var(--leading-normal);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  opacity: 0.22;
+  animation: 7.2s linear infinite;
+}
+
+.deploy-step-mark {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: var(--color-success);
+}
+
+.deploy-step-label::after {
+  content: "...";
+}
+
+/* One sixth of the cycle apart, all clearing on the same frame. */
+.deploy-step:nth-child(1) {
+  animation-name: deployStep1;
+}
+
+.deploy-step:nth-child(2) {
+  animation-name: deployStep2;
+}
+
+.deploy-step:nth-child(3) {
+  animation-name: deployStep3;
+}
+
+.deploy-step:nth-child(4) {
+  animation-name: deployStep4;
+}
+
+.deploy-step:nth-child(5) {
+  animation-name: deployStep5;
+}
+
+.deploy-step:nth-child(6) {
+  animation-name: deployStep6;
+}
+
+/* Seven slots in the 7.2s cycle: six stages, then the summary line, then the
+   whole run clears together at 100%. The stages finish by 63% so the result
+   has ~1.7s on screen before the loop restarts. */
+@keyframes deployStep1 {
+  0%,
+  1% {
+    opacity: 0.22;
+  }
+  3%,
+  95% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.22;
+  }
+}
+
+@keyframes deployStep2 {
+  0%,
+  13% {
+    opacity: 0.22;
+  }
+  15%,
+  95% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.22;
+  }
+}
+
+@keyframes deployStep3 {
+  0%,
+  25% {
+    opacity: 0.22;
+  }
+  27%,
+  95% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.22;
+  }
+}
+
+@keyframes deployStep4 {
+  0%,
+  37% {
+    opacity: 0.22;
+  }
+  39%,
+  95% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.22;
+  }
+}
+
+@keyframes deployStep5 {
+  0%,
+  49% {
+    opacity: 0.22;
+  }
+  51%,
+  95% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.22;
+  }
+}
+
+@keyframes deployStep6 {
+  0%,
+  61% {
+    opacity: 0.22;
+  }
+  63%,
+  95% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.22;
+  }
+}
+
+/* The summary line: absent until the run finishes, rather than dimmed, because
+   a deploy that has not finished has printed no URL at all. */
+.deploy-result {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  opacity: 0;
+  animation: deployResult 7.2s linear infinite;
+}
+
+.deploy-result-arrow {
+  color: var(--color-success);
+}
+
+.deploy-result-url {
+  color: var(--color-cyan);
+}
+
+@keyframes deployResult {
+  0%,
+  75% {
+    opacity: 0;
+  }
+  78%,
+  95% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deploy-step,
+  .deploy-result {
+    opacity: 1;
+    animation: none;
+  }
+}
+
+.platform-footnote code {
+  color: var(--color-cyan);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
 }
 
 /* -----------------------------------------------------------------------------
-   BLOCK 8 — CONCLUSION
+   BLOCK 10 — CONCLUSION
    ----------------------------------------------------------------------------- */
 
 .proof-license {

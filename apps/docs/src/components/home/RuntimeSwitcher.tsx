@@ -1,6 +1,24 @@
 import { IconArrowRight } from "@tabler/icons-react";
 import { useState } from "react";
 import { runtimeTargets } from "../../config/runtimes.ts";
+import DocLink from "./DocLink.tsx";
+
+/**
+ * Docs page per primitive shown in the table.
+ *
+ * Kept here rather than on every binding because the same seven primitives
+ * repeat across all three targets. `$email` is the odd one out: it has no
+ * generated `reference-primitives-` page, so it points at its module instead.
+ */
+const PRIMITIVE_DOCS: Record<string, string> = {
+  $entity: "reference-primitives-$entity",
+  $cache: "reference-primitives-$cache",
+  "$job({ cron })": "reference-primitives-$job",
+  "$job.push()": "reference-primitives-$job",
+  $storage: "reference-primitives-$storage",
+  $topic: "reference-primitives-$topic",
+  $email: "packages-alepha-email-core",
+};
 
 const RuntimeSwitcher = () => {
   const [active, setActive] = useState(0);
@@ -49,7 +67,15 @@ const RuntimeSwitcher = () => {
           </div>
           {target.bindings.map((binding) => (
             <div className="runtime-row" key={binding.primitive}>
-              <code className="runtime-primitive">{binding.primitive}</code>
+              <code className="runtime-primitive">
+                {PRIMITIVE_DOCS[binding.primitive] ? (
+                  <DocLink to={PRIMITIVE_DOCS[binding.primitive]}>
+                    {binding.primitive}
+                  </DocLink>
+                ) : (
+                  binding.primitive
+                )}
+              </code>
               <IconArrowRight size={14} className="runtime-arrow" />
               <span className="runtime-impl" key={target.key}>
                 {binding.impl}

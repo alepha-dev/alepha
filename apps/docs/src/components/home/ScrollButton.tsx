@@ -6,7 +6,8 @@ interface ScrollButtonProps {
   label?: string;
 }
 
-const ScrollButton = ({ targetId, label }: ScrollButtonProps) => {
+const ScrollButton = (props: ScrollButtonProps) => {
+  const { targetId, label } = props;
   const handleScroll = useCallback(() => {
     const target = document.getElementById(targetId);
     if (target) {
@@ -19,6 +20,7 @@ const ScrollButton = ({ targetId, label }: ScrollButtonProps) => {
       type="button"
       onClick={handleScroll}
       className="scroll-down-btn"
+      aria-label="Scroll down"
       style={{
         display: "flex",
         flexDirection: "column",

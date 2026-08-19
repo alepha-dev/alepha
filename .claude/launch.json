@@ -2,10 +2,28 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "docs",
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": ["w", "docs", "dev"],
+      "port": 3302
+    },
+    {
       "name": "lore",
       "runtimeExecutable": "yarn",
       "runtimeArgs": ["w", "lore", "dev"],
-      "port": 5173
+      "port": 3303
+    },
+    {
+      "name": "shop",
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": ["w", "shop", "dev"],
+      "port": 3305
+    },
+    {
+      "name": "errors",
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": ["w", "errors", "dev"],
+      "port": 3306
     }
   ]
 }

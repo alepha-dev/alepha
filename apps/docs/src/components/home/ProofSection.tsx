@@ -11,8 +11,9 @@ const ProofSection = () => {
 
         <p className="proof-license">
           100% open source, 100% MIT. The framework, Lore and Bay all live in
-          one public repository, and nothing here is a paid tier of something
-          else.
+          one public repository and ship on the same version, so every release
+          is proved by applications that use it. Nothing here is a paid tier of
+          something else.
         </p>
 
         <div className="flex gap-6 proof-links">

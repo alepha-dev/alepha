@@ -1,4 +1,5 @@
 import { useState } from "react";
+import DocLink from "./DocLink.tsx";
 
 /**
  * The foundation, drawn as a stack rather than a card grid.
@@ -61,14 +62,38 @@ const FoundationSection = () => {
           {/* What you write */}
           <div className="slab slab-app">
             <span className="slab-label">Your app</span>
-            <span className="slab-note">$entity · $action · $page · $job</span>
+            <span className="slab-note">
+              <DocLink to="reference-primitives-$entity">$entity</DocLink> ·{" "}
+              <DocLink to="reference-primitives-$action">$action</DocLink> ·{" "}
+              <DocLink to="reference-primitives-$page">$page</DocLink> ·{" "}
+              <DocLink to="reference-primitives-$job">$job</DocLink>
+            </span>
           </div>
 
           {/* The framework */}
           <div className="slab slab-alepha">
-            <span className="slab-label">Alepha</span>
+            <span className="slab-label">
+              {/* Decorative: the word beside it already names the slab, so an
+                  alt here would have a screen reader say "Alepha Alepha". */}
+              <img
+                src="/logo.svg"
+                alt=""
+                aria-hidden="true"
+                className="slab-logo"
+                width={20}
+                height={20}
+                loading="lazy"
+              />
+              Alepha
+            </span>
             <span className="slab-note">
-              server · orm · auth · queues · cron · storage · SSR
+              <DocLink to="packages-alepha-server-core">server</DocLink> ·{" "}
+              <DocLink to="packages-alepha-orm-core">orm</DocLink> ·{" "}
+              <DocLink to="guides-server-authentication">auth</DocLink> ·{" "}
+              <DocLink to="packages-alepha-queue-core">queues</DocLink> ·{" "}
+              <DocLink to="guides-server-background-jobs">cron</DocLink> ·{" "}
+              <DocLink to="guides-persistence-storage">storage</DocLink> ·{" "}
+              <DocLink to="guides-frontend-react">SSR</DocLink>
             </span>
           </div>
 

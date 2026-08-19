@@ -4,10 +4,11 @@ import {
   IconMaximize,
   IconX,
 } from "@tabler/icons-react";
+import { Link } from "alepha/react/router";
 import { useCallback, useEffect, useState } from "react";
 import Dialog from "../layout/Dialog.tsx";
 import AdminShot from "./AdminShot.tsx";
-import CopyCommand from "./CopyCommand.tsx";
+import DocLink from "./DocLink.tsx";
 
 const SHOTS = [
   {
@@ -77,16 +78,28 @@ const AdminSection = () => {
           <div className="admin-left">
             <h2 className="section-title">An admin panel you did not build</h2>
             <p className="admin-lead">
-              One flag on <code>init</code> and this is already there. Turn on a
-              module and its screens appear on their own: users, sessions, API
-              keys, jobs, notifications, audits, files, parameters, payments and
-              workflows.
+              <Link href="/docs/cli-commands-init#the-saas-preset">
+                One flag
+              </Link>{" "}
+              on <code>init</code> and this is already there. Turn on a module
+              and its screens appear on their own:{" "}
+              <DocLink to="packages-alepha-api-users">users</DocLink>,{" "}
+              <DocLink to="guides-server-authentication">sessions</DocLink>,{" "}
+              <DocLink to="packages-alepha-api-keys">API keys</DocLink>,{" "}
+              <DocLink to="packages-alepha-api-jobs">jobs</DocLink>,{" "}
+              <DocLink to="packages-alepha-api-notifications">
+                notifications
+              </DocLink>
+              , <DocLink to="packages-alepha-api-audits">audits</DocLink>,{" "}
+              <DocLink to="packages-alepha-api-files">files</DocLink>,{" "}
+              <DocLink to="packages-alepha-api-parameters">parameters</DocLink>,{" "}
+              <DocLink to="packages-alepha-api-payments">payments</DocLink> and{" "}
+              <DocLink to="packages-alepha-api-workflows">workflows</DocLink>.
             </p>
             <p className="admin-lead">
               Not a template you fork and then maintain, but modules that keep
               getting updates with the framework.
             </p>
-            <CopyCommand command="npx alepha@latest init my-app --preset saas" />
           </div>
 
           {/* Right: segmented control + thumbnail */}

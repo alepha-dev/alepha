@@ -78,9 +78,11 @@ const HeroSection = () => {
         </div>
       </div>
 
-      {/* Generic label on purpose: it targets whatever block 2 currently is, and
-          a label naming that block goes stale the moment the order changes. */}
-      <ScrollButton targetId="seam" label="Explore" />
+      {/* Unlabelled on purpose: the bouncing chevron is the affordance, and any
+          word here either names block 2 (stale the moment the order changes) or
+          repeats the two CTAs above. Its accessible name comes from the
+          component's aria-label, so dropping the text costs nothing. */}
+      <ScrollButton targetId="seam" />
     </section>
   );
 };

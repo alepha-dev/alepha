@@ -1,5 +1,6 @@
 import { snippets } from "../../config/docs.ts";
 import CodePane from "./CodePane.tsx";
+import DocLink from "./DocLink.tsx";
 
 const SeamSection = () => {
   return (
@@ -16,10 +17,18 @@ const SeamSection = () => {
 
         <div className="seam-grid">
           <CodePane html={snippets.api} label="Backend" />
-          <div className="seam-connector" aria-hidden="true">
-            <div className="seam-line" />
-            <span className="seam-badge">$client&lt;Api&gt;()</span>
-            <div className="seam-line" />
+          {/* The rules are decorative and hidden individually; the wrapper is
+              not, because the badge now holds a real link and a focusable
+              element inside `aria-hidden` is reachable by keyboard but
+              invisible to a screen reader. */}
+          <div className="seam-connector">
+            <div className="seam-line" aria-hidden="true" />
+            <span className="seam-badge">
+              <DocLink to="reference-primitives-$client">
+                $client&lt;Api&gt;()
+              </DocLink>
+            </span>
+            <div className="seam-line" aria-hidden="true" />
           </div>
           <CodePane html={snippets.web} label="Frontend" />
         </div>

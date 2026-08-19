@@ -1,12 +1,14 @@
 import AdminSection from "./home/AdminSection.tsx";
-import EcosystemSection from "./home/EcosystemSection.tsx";
+import AgentSection from "./home/AgentSection.tsx";
 import FoundationSection from "./home/FoundationSection.tsx";
 import HeroSection from "./home/HeroSection.tsx";
 import ParticleNetwork from "./home/ParticleNetwork.tsx";
+import PlatformSection from "./home/PlatformSection.tsx";
 import ProofSection from "./home/ProofSection.tsx";
 import RuntimeSection from "./home/RuntimeSection.tsx";
 import SeamSection from "./home/SeamSection.tsx";
 import StackSection from "./home/StackSection.tsx";
+import SwapSection from "./home/SwapSection.tsx";
 import StatusBar from "./layout/StatusBar.tsx";
 
 const Home = () => {
@@ -33,11 +35,15 @@ const Home = () => {
         <StackSection />
         {/* 5 — what it is built on (plain) */}
         <FoundationSection />
-        {/* 6 — the admin panel you did not build (alt) */}
+        {/* 6 — written for an agent (alt) */}
+        <AgentSection />
+        {/* 7 — substitution and testing (plain) */}
+        <SwapSection />
+        {/* 8 — the admin panel you did not build (alt) */}
         <AdminSection />
-        {/* 7 — the other products (plain) */}
-        <EcosystemSection />
-        {/* 8 — conclusion (alt) */}
+        {/* 9 — one command to production (plain) */}
+        <PlatformSection />
+        {/* 10 — conclusion (alt) */}
         <ProofSection />
       </div>
 

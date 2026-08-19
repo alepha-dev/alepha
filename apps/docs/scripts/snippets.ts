@@ -81,4 +81,40 @@ export class Jobs {
 }
 `,
   },
+  platform: {
+    filename: "alepha.config.ts",
+    content: `
+export default defineConfig({
+  plugins: [
+    platform({
+      environments: {
+        production: {
+          adapter: "cloudflare",
+          domain: "lore.alepha.dev",
+        },
+        staging: {
+          adapter: "bay",
+          host: "deploy@bay.example.com",
+        },
+      },
+    }),
+  ],
+});
+`,
+  },
+  test: {
+    filename: "tasks.spec.ts",
+    content: `
+const alepha = Alepha.create()
+  .with({ provide: EmailProvider, use: MemoryEmailProvider });
+
+const email = alepha.inject(MemoryEmailProvider);
+const time = alepha.inject(DateTimeProvider);
+await alepha.start();
+
+await time.travel([1, "day"]);
+
+expect(email.records).toHaveLength(1);
+`,
+  },
 };
