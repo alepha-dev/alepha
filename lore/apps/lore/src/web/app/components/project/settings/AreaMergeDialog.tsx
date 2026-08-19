@@ -68,9 +68,9 @@ const AreaMergeDialog = (props: AreaMergeDialogProps) => {
       });
       toaster.success(
         String(
-          tr("project.settings.areas.merge.done", [
-            String(result.movedQuests),
-          ] as never),
+          tr("project.settings.areas.merge.done", {
+            args: [String(result.movedQuests)],
+          }),
         ),
       );
       setTargetId(undefined);
@@ -124,11 +124,13 @@ const AreaMergeDialog = (props: AreaMergeDialogProps) => {
         {target && (
           <DialogDescription>
             {String(
-              tr("project.settings.areas.merge.confirm", [
-                String(movingQuests),
-                target.name,
-                String(props.sources.length),
-              ] as never),
+              tr("project.settings.areas.merge.confirm", {
+                args: [
+                  String(movingQuests),
+                  target.name,
+                  String(props.sources.length),
+                ],
+              }),
             )}
           </DialogDescription>
         )}

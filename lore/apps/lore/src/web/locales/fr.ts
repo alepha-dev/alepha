@@ -698,9 +698,6 @@ export default {
   "account.projects.updated": "Mis à jour $1",
   "account.projects.see-all": "Tous les projets",
 
-  "area.rename.name": "Nom du domaine",
-  "area.rename.submit": "Renommer",
-
   "area.detail.rename": "Renommer",
   "area.detail.rename.title": "Renommer le domaine",
   "area.detail.rename.label": "Nouveau nom",
