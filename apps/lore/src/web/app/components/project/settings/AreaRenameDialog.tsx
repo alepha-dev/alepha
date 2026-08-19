@@ -74,11 +74,13 @@ const AreaRenameDialog = (props: AreaRenameDialogProps) => {
           {collision && (
             <DialogDescription>
               {String(
-                tr("area.detail.rename.merge", [
-                  collision.name,
-                  String(props.area.questCount),
-                  props.area.name,
-                ] as never),
+                tr("area.detail.rename.merge", {
+                  args: [
+                    collision.name,
+                    String(props.area.questCount),
+                    props.area.name,
+                  ],
+                }),
               )}
             </DialogDescription>
           )}

@@ -22,6 +22,7 @@ import { useState } from "react";
 import type { AreaController } from "@/api/controllers/AreaController.ts";
 import type { AreaResource } from "@/api/schemas/areaResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
+import { descriptionSnippet } from "@/web/app/services/descriptionSnippet.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import AreaMergeDialog from "./AreaMergeDialog.tsx";
 
@@ -103,9 +104,9 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
         <div className="bg-muted flex items-center justify-between rounded-md px-3 py-2">
           <span className="text-sm">
             {String(
-              tr("project.settings.areas.selected", [
-                String(selected.size),
-              ] as never),
+              tr("project.settings.areas.selected", {
+                args: [String(selected.size)],
+              }),
             )}
           </span>
           <Button size="sm" onClick={() => setMerging(true)}>
@@ -164,7 +165,7 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
                       </Link>
                     </TableCell>
                     <TableCell className="text-muted-foreground max-w-64 truncate text-xs">
-                      {area.description}
+                      {descriptionSnippet(area.description)}
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge variant="outline">{area.openQuestCount}</Badge>

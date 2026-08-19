@@ -33,15 +33,6 @@ export class AreaController {
   security = $inject(ProjectSecurityService);
 
   getAreas = $action({
-    // Explicit `name` needed: `$action` names are ONE global namespace
-    // (`LinkProvider.registerLink` throws "Duplicate action name" at
-    // boot), keyed on the property name unless overridden here. The
-    // legacy `ProjectController.getAreas` — the old `project.areas`
-    // string-array model this rework replaces — already claims the bare
-    // "getAreas" name and stays live (still consumed by
-    // `ProjectSettingsAreasPage.tsx`, `AppRouter.ts`) until a later task
-    // migrates its callers onto this controller and deletes it.
-    name: "listProjectAreas",
     use: [$secure({ permissions: ["quest:read"] })],
     schema: {
       params: z.object({ projectId: z.integer() }),
@@ -137,10 +128,6 @@ export class AreaController {
    * navigates to it.
    */
   renameArea = $action({
-    // See `getAreas` above — `ProjectController.renameArea` (also still
-    // live, also `project.areas`-based) already claims the bare
-    // "renameArea" name.
-    name: "renameAreaEntity",
     use: [$secure({ permissions: ["quest:create"] })],
     schema: {
       params: z.object({ id: z.integer() }),

@@ -109,7 +109,17 @@ test.describe("Areas", () => {
     // Describe it, reload, and confirm it persisted.
     await page.getByRole("link", { name: "folio", exact: true }).click();
     await page.getByRole("textbox").first().fill("The folio workspace.");
+    // Armed BEFORE the click, like the folio-workspace autosave wait: a
+    // lone `updateArea` call is a single entry in `BatchCollector`'s 10ms
+    // window, so it skips `/api/_batch` and goes out as a direct
+    // `/api/updateArea/:id` call (see `BatchCollector.flush`) — reloading
+    // before it resolves races the save and the reload wins, so the
+    // assertion below would measure the reload instead of the persist.
+    const saved = page.waitForResponse(
+      (r) => /\/api\/updateArea\//.test(r.url()) && r.status() === 200,
+    );
     await page.getByRole("button", { name: "Save" }).click();
+    await saved;
     await page.reload();
     await expect(page.getByRole("textbox").first()).toHaveValue(
       "The folio workspace.",
@@ -120,7 +130,15 @@ test.describe("Areas", () => {
     await page.getByRole("button", { name: "Rename" }).click();
     await page.getByLabel("New name").fill("Folio");
     await expect(page.getByText(/1 quests will move into it/)).toBeVisible();
+    // Same hazard as the description Save above: `renameArea` is a lone
+    // call, so it skips `/api/_batch` and goes out directly. The
+    // `page.goto` right after would otherwise race it and cancel the
+    // merge mid-flight, leaving "folio" un-merged for the assertions below.
+    const merged = page.waitForResponse(
+      (r) => /\/api\/renameArea\//.test(r.url()) && r.status() === 200,
+    );
     await page.getByRole("button", { name: "Merge" }).click();
+    await merged;
 
     // One area survives, holding both quests.
     await page.goto(`/${slug}/settings/areas`);

@@ -687,9 +687,6 @@ export default {
   "account.projects.updated": "Updated $1",
   "account.projects.see-all": "All projects",
 
-  "area.rename.name": "Area Name",
-  "area.rename.submit": "Rename",
-
   "area.detail.rename": "Rename",
   "area.detail.rename.title": "Rename area",
   "area.detail.rename.label": "New name",
