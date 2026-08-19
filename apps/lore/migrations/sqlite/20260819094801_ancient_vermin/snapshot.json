@@ -1,8 +1,8 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "631284d7-4614-4500-aef7-c09498335f3d",
-  "prevIds": ["7186f461-3254-4565-b29d-eefee668fa0e"],
+  "id": "c43d850d-3fa2-4273-a8bf-caa46974551a",
+  "prevIds": ["458a043e-80a0-48df-a856-d384f6d8f005"],
   "ddl": [
     {
       "name": "alepha_sequences",
@@ -273,12 +273,62 @@
       "table": "analytics_sigil_views_raw"
     },
     {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "'direct'",
+      "generated": null,
+      "name": "referrer",
+      "entityType": "columns",
+      "table": "analytics_sigil_views_raw"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "'none'",
+      "generated": null,
+      "name": "campaign",
+      "entityType": "columns",
+      "table": "analytics_sigil_views_raw"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "'desktop'",
+      "generated": null,
+      "name": "device",
+      "entityType": "columns",
+      "table": "analytics_sigil_views_raw"
+    },
+    {
       "type": "real",
       "notNull": true,
       "autoincrement": false,
       "default": null,
       "generated": null,
       "name": "count",
+      "entityType": "columns",
+      "table": "analytics_sigil_views_raw"
+    },
+    {
+      "type": "real",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "name": "engaged",
+      "entityType": "columns",
+      "table": "analytics_sigil_views_raw"
+    },
+    {
+      "type": "real",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "name": "entries",
       "entityType": "columns",
       "table": "analytics_sigil_views_raw"
     },
@@ -323,12 +373,62 @@
       "table": "analytics_sigil_views_rolled"
     },
     {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "'direct'",
+      "generated": null,
+      "name": "referrer",
+      "entityType": "columns",
+      "table": "analytics_sigil_views_rolled"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "'none'",
+      "generated": null,
+      "name": "campaign",
+      "entityType": "columns",
+      "table": "analytics_sigil_views_rolled"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "'desktop'",
+      "generated": null,
+      "name": "device",
+      "entityType": "columns",
+      "table": "analytics_sigil_views_rolled"
+    },
+    {
       "type": "real",
       "notNull": true,
       "autoincrement": false,
       "default": null,
       "generated": null,
       "name": "count",
+      "entityType": "columns",
+      "table": "analytics_sigil_views_rolled"
+    },
+    {
+      "type": "real",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "name": "engaged",
+      "entityType": "columns",
+      "table": "analytics_sigil_views_rolled"
+    },
+    {
+      "type": "real",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "name": "entries",
       "entityType": "columns",
       "table": "analytics_sigil_views_rolled"
     },
@@ -4931,11 +5031,23 @@
           "isExpression": false
         },
         {
+          "value": "campaign",
+          "isExpression": false
+        },
+        {
           "value": "country",
           "isExpression": false
         },
         {
+          "value": "device",
+          "isExpression": false
+        },
+        {
           "value": "path",
+          "isExpression": false
+        },
+        {
+          "value": "referrer",
           "isExpression": false
         },
         {
@@ -4946,7 +5058,7 @@
       "isUnique": true,
       "where": null,
       "origin": "manual",
-      "name": "analytics_sigil_views_raw_time_bucket_country_path_sigil_id_idx",
+      "name": "analytics_sigil_views_raw_time_bucket_campaign_country_device_path_referrer_sigil_id_idx",
       "entityType": "indexes",
       "table": "analytics_sigil_views_raw"
     },
@@ -4957,11 +5069,23 @@
           "isExpression": false
         },
         {
+          "value": "campaign",
+          "isExpression": false
+        },
+        {
           "value": "country",
           "isExpression": false
         },
         {
+          "value": "device",
+          "isExpression": false
+        },
+        {
           "value": "path",
+          "isExpression": false
+        },
+        {
+          "value": "referrer",
           "isExpression": false
         },
         {
@@ -4972,7 +5096,7 @@
       "isUnique": true,
       "where": null,
       "origin": "manual",
-      "name": "analytics_sigil_views_rolled_time_bucket_country_path_sigil_id_idx",
+      "name": "analytics_sigil_views_rolled_time_bucket_campaign_country_device_path_referrer_sigil_id_idx",
       "entityType": "indexes",
       "table": "analytics_sigil_views_rolled"
     },
