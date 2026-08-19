@@ -10,6 +10,7 @@ import { projects } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
 import { relations } from "../relations.ts";
 import { importResultSchema } from "../schemas/questImportRow.ts";
+import { AreaService } from "../services/AreaService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { QuestCsvFormatter } from "../services/QuestCsvFormatter.ts";
 import { QuestCsvParser } from "../services/QuestCsvParser.ts";
@@ -32,6 +33,7 @@ export class ProjectQuestPortabilityController {
   protected readonly formats = $inject(QuestImportFormatProvider);
   protected readonly realm = $inject(RealmProvider);
   protected readonly quest = $inject(QuestController);
+  protected readonly areaService = $inject(AreaService);
 
   exportQuests = $action({
     use: [$secure()],
@@ -218,6 +220,17 @@ export class ProjectQuestPortabilityController {
             : undefined;
 
         if (existingMatch) {
+          // `areas` is the source of truth for the list. `projects.areas`
+          // is still written for one release as a rollback net; it is
+          // `@deprecated` and nothing reads it. Task 7 drops this half.
+          // Guarded on a non-blank `row.area` the same way `area` is
+          // guarded on `updateQuestById` — `ensureArea` already no-ops on
+          // blank/whitespace, this just skips the call entirely for the
+          // common case of a row with no area column at all.
+          if (row.area) {
+            await this.areaService.ensureArea(params.id, row.area);
+          }
+
           await this.quests.updateById(existingMatch.id, {
             title: row.title,
             description: row.description,

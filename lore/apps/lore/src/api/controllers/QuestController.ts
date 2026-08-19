@@ -1039,6 +1039,16 @@ export class QuestController {
       // fires when this update actually carries an `area` — an update
       // that leaves the field alone (`undefined`) must not register
       // anything.
+      //
+      // Deliberately NOT wrapped in `$transactional()`, unlike
+      // `QuestService.createQuest` (whose JSDoc requires one for its
+      // `shortId` sequence allocation). If a later validation below this
+      // point throws — `dependsOn` pointing at itself, an unaccepted
+      // feedback link — the area row this call created stays committed
+      // even though the quest patch never lands. That's a fine state to
+      // be in, not a bug: a zero-quest area is a legal row (an owner can
+      // rename or delete it from the areas settings page), not a
+      // dangling reference the way an orphaned quest FK would be.
       if (body.area !== undefined) {
         await this.areaService.ensureArea(quest.projectId, body.area);
       }
