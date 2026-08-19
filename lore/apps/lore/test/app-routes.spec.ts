@@ -35,6 +35,7 @@ const NAV_ROUTE_NAMES = [
   // Sidebar + breadcrumbs — ProjectView.tsx
   "project",
   "projectQuests",
+  "projectEpics",
   "projectBlights",
   "projectFeedback",
   "projectMilestones",
