@@ -33,7 +33,7 @@ platform({
 Then `alepha platform up -e production`.
 
 One more field matters on a non-default install: if Bay's root is not
-`$HOME/bay-data`, set `socket` to the absolute path of the control socket —
+`$HOME/bay-data`, set `socket` to the absolute path of the control socket -
 without it, every command the adapter sends fails to find the server.
 
 ## Installing Bay
