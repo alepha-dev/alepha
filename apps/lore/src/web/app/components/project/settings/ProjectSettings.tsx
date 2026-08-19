@@ -13,6 +13,7 @@ import {
   Flag,
   Inbox,
   KanbanSquare,
+  Layers,
   type LucideIcon,
   MapPin,
   Stamp,
@@ -22,8 +23,6 @@ import {
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
-import ProjectSettingsFeatureSection from "./ProjectSettingsFeatureSection.tsx";
-import { useProjectFeatureToggle } from "./useProjectFeatureToggle.ts";
 
 type RouteName =
   | "projectSettingsBanner"
@@ -31,6 +30,7 @@ type RouteName =
   | "projectSettingsAreas"
   | "projectSettingsKanban"
   | "projectSettingsFolios"
+  | "projectSettingsEpics"
   | "projectSettingsFeedback"
   | "projectSettingsSigils"
   | "projectSettingsMilestones"
@@ -42,6 +42,7 @@ type NavLabelKey =
   | "project.settings.nav.areas"
   | "project.settings.nav.kanban"
   | "project.settings.nav.folios"
+  | "project.settings.nav.epics"
   | "project.settings.nav.feedback"
   | "project.settings.nav.sigils"
   | "project.settings.nav.milestones"
@@ -99,6 +100,11 @@ const NAV_GROUPS: NavGroup[] = [
         icon: BookOpen,
       },
       {
+        route: "projectSettingsEpics",
+        labelKey: "project.settings.nav.epics",
+        icon: Layers,
+      },
+      {
         route: "projectSettingsFeedback",
         labelKey: "project.settings.nav.feedback",
         icon: Inbox,
@@ -122,13 +128,6 @@ const ProjectSettings = () => {
   const router = useRouter<AppRouter>();
   const routerState = useRouterState();
   const [project] = useStore(currentProjectAtom);
-  // Epics has no dedicated settings sub-page yet, so its `ProjectSettingsFeatureSection`
-  // renders right here on the shell instead of on a sub-page reached via a nav
-  // link of its own — same shared section the other five modules use, just a
-  // different host.
-  const { enabled: epicsEnabled, toggle: epicsToggle } =
-    useProjectFeatureToggle("epics");
-
   if (!project) {
     return null;
   }
@@ -172,13 +171,6 @@ const ProjectSettings = () => {
                   </Link>
                 );
               })}
-              {group.labelKey === "project.settings.nav.group.features" && (
-                <ProjectSettingsFeatureSection
-                  featureKey="epics"
-                  enabled={epicsEnabled}
-                  onToggle={epicsToggle}
-                />
-              )}
             </div>
           ))}
         </nav>

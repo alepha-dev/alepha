@@ -781,6 +781,7 @@ export class AppRouter {
       this.projectSettingsAreas,
       this.projectSettingsKanban,
       this.projectSettingsFolios,
+      this.projectSettingsEpics,
       this.projectSettingsFeedback,
       this.projectSettingsSigils,
       this.projectSettingsMilestones,
@@ -865,6 +866,16 @@ export class AppRouter {
     }),
     lazy: () =>
       import("./components/project/settings/ProjectSettingsFoliosPage.tsx"),
+  });
+
+  projectSettingsEpics = $page({
+    name: "projectSettingsEpics",
+    path: "/epics",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Epics`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsEpicsPage.tsx"),
   });
 
   projectSettingsFeedback = $page({

@@ -441,6 +441,7 @@ export default {
   "project.settings.areas.never": "—",
   "project.settings.nav.kanban": "Kanban",
   "project.settings.nav.folios": "Folios",
+  "project.settings.nav.epics": "Épopées",
   "project.settings.nav.feedback": "Retours",
   "project.settings.nav.sigils": "Sigils",
   "project.settings.nav.milestones": "Jalons",
