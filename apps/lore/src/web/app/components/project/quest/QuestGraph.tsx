@@ -21,21 +21,50 @@ interface ChainQuest {
   step: number;
 }
 
+type ChainInput = {
+  id: number;
+  shortId: number;
+  title: string;
+  status: Status;
+  dependsOn?: number;
+};
+
+/**
+ * Longest-path depth (best-effort topo): each node's step = max(step of
+ * any predecessor within `subset`) + 1. Roots (no dependsOn within the
+ * subset) sit at step 1. Iterate until stable — bounded by subset size.
+ *
+ * Shared by `collectChain` and `collectSubset`, whose only difference is
+ * how `subset`'s membership is decided — the layering itself does not
+ * care.
+ */
+const computeSteps = (subset: ChainInput[]): Map<number, number> => {
+  const inSubset = new Set(subset.map((q) => q.id));
+  const stepOf = new Map<number, number>();
+  for (const q of subset) stepOf.set(q.id, 1);
+  let changed = true;
+  let guard = subset.length + 1;
+  while (changed && guard-- > 0) {
+    changed = false;
+    for (const q of subset) {
+      if (q.dependsOn != null && inSubset.has(q.dependsOn)) {
+        const next = (stepOf.get(q.dependsOn) ?? 1) + 1;
+        if (next !== stepOf.get(q.id)) {
+          stepOf.set(q.id, next);
+          changed = true;
+        }
+      }
+    }
+  }
+  return stepOf;
+};
+
 /**
  * BFS the connected `dependsOn` component reachable from `focusedId`
  * (transitive predecessors + dependents). Returns the filtered quest
  * list and edge maps for the caller.
  */
-const collectChain = (
-  quests: {
-    id: number;
-    shortId: number;
-    title: string;
-    status: Status;
-    dependsOn?: number;
-  }[],
-  focusedId: number,
-) => {
+const collectChain = (quests: ChainInput[], focusedId: number) => {
   const byId = new Map(quests.map((q) => [q.id, q]));
   const dependentsOf = new Map<number, number[]>();
   for (const q of quests) {
@@ -63,33 +92,51 @@ const collectChain = (
     }
   }
   const subset = quests.filter((q) => seen.has(q.id));
-
-  // Longest-path depth (best-effort topo): each node's step = max(step
-  // of any predecessor) + 1. Roots (no dependsOn within the subset)
-  // sit at step 1. Iterate until stable — bounded by subset size.
-  const inSubset = new Set(subset.map((q) => q.id));
-  const stepOf = new Map<number, number>();
-  for (const q of subset) stepOf.set(q.id, 1);
-  let changed = true;
-  let guard = subset.length + 1;
-  while (changed && guard-- > 0) {
-    changed = false;
-    for (const q of subset) {
-      if (q.dependsOn != null && inSubset.has(q.dependsOn)) {
-        const next = (stepOf.get(q.dependsOn) ?? 1) + 1;
-        if (next !== stepOf.get(q.id)) {
-          stepOf.set(q.id, next);
-          changed = true;
-        }
-      }
-    }
-  }
+  const stepOf = computeSteps(subset);
 
   const chain: ChainQuest[] = subset.map((q) => ({
     ...q,
     step: stepOf.get(q.id) ?? 1,
   }));
   return chain;
+};
+
+/**
+ * Layer an explicit quest subset — the Epic view's entry point.
+ *
+ * Unlike `collectChain`, membership is given rather than discovered: an
+ * epic's quests are its quests whether or not they are connected by
+ * `dependsOn`. A predecessor OUTSIDE the subset is kept as a stub node so
+ * a blocked quest never renders as unblocked merely because its blocker
+ * lives in another epic.
+ */
+export const collectSubset = (quests: ChainInput[], questIds: Set<number>) => {
+  const byId = new Map(quests.map((q) => [q.id, q]));
+  const members = quests.filter((q) => questIds.has(q.id));
+
+  // A member's direct predecessor, when that predecessor sits OUTSIDE the
+  // subset, is kept as a stub node purely so the step layering below sees
+  // a real predecessor instead of treating the member as a root.
+  const stubIds = new Set<number>();
+  for (const q of members) {
+    if (
+      q.dependsOn != null &&
+      !questIds.has(q.dependsOn) &&
+      byId.has(q.dependsOn)
+    ) {
+      stubIds.add(q.dependsOn);
+    }
+  }
+  const stubs = quests.filter((q) => stubIds.has(q.id));
+
+  const subset = [...members, ...stubs];
+  const stepOf = computeSteps(subset);
+
+  const chain: ChainQuest[] = subset.map((q) => ({
+    ...q,
+    step: stepOf.get(q.id) ?? 1,
+  }));
+  return { chain };
 };
 
 const statusDot = (status: Status): string => {
@@ -107,9 +154,20 @@ interface DescriptionState {
   description: string;
 }
 
-const QuestGraph = () => {
+export interface QuestGraphProps {
+  /**
+   * Subset mode: explicit quest-id membership for the flow — the Epic
+   * view's entry point (`collectSubset`). Omit to keep the default
+   * route-driven "focused" mode, which discovers its subset via
+   * `collectChain` from the URL's `:shortId`.
+   */
+  questIds?: Set<number>;
+}
+
+const QuestGraph = (props: QuestGraphProps) => {
   const { tr } = useI18n<I18n, "en">();
   const routerState = useRouterState();
+  const subsetMode = props.questIds != null;
   const shortId = Number(routerState.params.shortId);
   const [project] = useStore(currentProjectAtom);
   const questApi = useClient<QuestController>();
@@ -146,17 +204,31 @@ const QuestGraph = () => {
   }, []);
 
   const chain = useMemo(() => {
+    if (subsetMode) {
+      return collectSubset(allQuests, props.questIds ?? new Set()).chain;
+    }
     const focused = allQuests.find((q) => q.shortId === shortId);
     if (!focused) return [] as ChainQuest[];
     return collectChain(allQuests, focused.id);
-  }, [allQuests, shortId]);
+  }, [allQuests, shortId, subsetMode, props.questIds]);
 
-  // Default selection: the focused quest (the URL one).
+  // Default selection: the focused quest (the URL one) in focused mode.
+  // Subset mode has no URL to read a target from, so it falls back to the
+  // first quest in step/shortId order instead.
   useEffect(() => {
     if (selectedId != null) return;
     const focused = chain.find((q) => q.shortId === shortId);
-    if (focused) setSelectedId(focused.id);
-  }, [chain, shortId, selectedId]);
+    if (focused) {
+      setSelectedId(focused.id);
+      return;
+    }
+    if (subsetMode) {
+      const first = [...chain].sort(
+        (a, b) => a.step - b.step || a.shortId - b.shortId,
+      )[0];
+      if (first) setSelectedId(first.id);
+    }
+  }, [chain, shortId, selectedId, subsetMode]);
 
   // Fetch the full description when selection changes. The chain
   // endpoint only carries the title/status/dependsOn — pull the body
@@ -235,16 +307,20 @@ const QuestGraph = () => {
       {/* Left rail — back button + flat ordered list of every quest in
           the chain. Click any to re-center the timeline. */}
       <aside className="border-border bg-card/30 flex w-64 shrink-0 flex-col border-r">
-        <div className="p-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-            render={<Link href={`/${project.slug}/quests/${shortId}`} />}
-          >
-            <ArrowLeft className="size-4" />
-          </Button>
-        </div>
+        {/* No natural "back" target in subset mode — this rail is embedded
+            in the Epic page, not standing in as its own route. */}
+        {!subsetMode && (
+          <div className="p-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              render={<Link href={`/${project.slug}/quests/${shortId}`} />}
+            >
+              <ArrowLeft className="size-4" />
+            </Button>
+          </div>
+        )}
         <ol className="flex flex-col gap-0.5 overflow-y-auto px-3 pb-4">
           {ordered.map((q, idx) => {
             const isSelected = q.id === selectedId;

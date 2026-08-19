@@ -10,6 +10,7 @@ import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { ProjectReportsController } from "../src/api/controllers/ProjectReportsController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";
+import { TestEntityRepositories } from "./fixtures/entities.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
@@ -25,6 +26,7 @@ interface TestContext {
   questController: QuestController;
   reportsController: ProjectReportsController;
   fakeProvider: FakeProvider;
+  repos: TestEntityRepositories;
 }
 
 const setup = async (): Promise<TestContext> => {
@@ -44,6 +46,10 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(AlephaFake);
   alepha.with(LoreApi);
 
+  // Registered before `start()` so the backlog-gate tests below can write
+  // `epics` rows directly — there is no EpicController yet.
+  const repos = alepha.inject(TestEntityRepositories);
+
   await alepha.start();
 
   return {
@@ -53,6 +59,7 @@ const setup = async (): Promise<TestContext> => {
     questController: alepha.inject(QuestController),
     reportsController: alepha.inject(ProjectReportsController),
     fakeProvider: alepha.inject(FakeProvider),
+    repos,
   };
 };
 
@@ -207,6 +214,140 @@ describe("ProjectReportsController", () => {
       expect(Array.isArray(res.data.leaderboard)).toBe(true);
       expect(Array.isArray(res.data.contributors)).toBe(true);
       expect(Array.isArray(res.data.contribution)).toBe(true);
+    });
+  });
+
+  /**
+   * The Reports gate is hand-written SQL (`questInScope`), not the
+   * repository where-object every other surface uses, so it re-implements
+   * both traps by hand and gets neither for free. Every other spec in this
+   * file runs with zero epics, which exercises only the branch that emits
+   * no clause at all — these two cover the branch that does.
+   */
+  describe("the backlog gate", () => {
+    const setupEpicProject = async () => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+
+      const unfiled = await createTestQuest(ctx, owner, project.id, {
+        title: "Unfiled Quest",
+      });
+      const parked = await createTestQuest(ctx, owner, project.id, {
+        title: "Parked Quest",
+      });
+      const released = await createTestQuest(ctx, owner, project.id, {
+        title: "Released Quest",
+      });
+
+      const plannedEpic = await ctx.repos.epics.create({
+        projectId: project.id,
+        number: 1,
+        title: "Planned Epic",
+        description: "",
+        status: "planned",
+      });
+      const activeEpic = await ctx.repos.epics.create({
+        projectId: project.id,
+        number: 2,
+        title: "Active Epic",
+        description: "",
+        status: "active",
+      });
+
+      await ctx.repos.quests.updateById(parked.id, { epicId: plannedEpic.id });
+      await ctx.repos.quests.updateById(released.id, { epicId: activeEpic.id });
+
+      return { projectId: project.id, owner, unfiled, released };
+    };
+
+    it("excludes planned-epic quests from the KPI totals without hiding unfiled ones", async ({
+      expect,
+    }) => {
+      const c = await setupEpicProject();
+
+      const res = await ctx.reportsController.getReportsOverview.fetch(
+        { params: { id: c.projectId } },
+        { user: c.owner },
+      );
+
+      // Three quests exist; exactly one sits in a planned epic. The unfiled
+      // one is the trap: `epic_id NOT IN (1)` is SQL NULL for it, and a NULL
+      // predicate excludes the row — a bare NOT IN would report 1, not 2.
+      expect(res.data.kpis.totalQuests).toBe(2);
+    });
+
+    it("still counts a completed quest whose epic was parked back to planned", async ({
+      expect,
+    }) => {
+      // Completed work is history. Nothing stops an owner flipping a `done`
+      // epic back to `planned`, and if the gate applied to finished quests
+      // that flip would retroactively erase them from member credit and from
+      // the burn-up — rewriting the record of work that actually happened.
+      //
+      // The shelved-quest exemption `liveQuest` relies on does NOT carry
+      // over here: only a `new` quest can be shelved, so a shelved quest is
+      // never a completed one, whereas a completed quest can sit in a
+      // planned epic quite happily.
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+
+      const done = await createTestQuest(ctx, owner, project.id, {
+        title: "Finished Quest",
+      });
+      await ctx.questController.acceptQuest.fetch(
+        { params: { id: done.id } },
+        { user: owner },
+      );
+      await ctx.questController.completeQuest.fetch(
+        { params: { id: done.id }, body: {} },
+        { user: owner },
+      );
+
+      const parkedEpic = await ctx.repos.epics.create({
+        projectId: project.id,
+        number: 1,
+        title: "Re-planned Epic",
+        description: "",
+        status: "planned",
+      });
+      await ctx.repos.quests.updateById(done.id, { epicId: parkedEpic.id });
+
+      const overview = await ctx.reportsController.getReportsOverview.fetch(
+        { params: { id: project.id } },
+        { user: owner },
+      );
+
+      expect(overview.data.kpis.completedQuests).toBe(1);
+      // The burn-up is cumulative, so the last point carries the total.
+      const last = overview.data.burnup[overview.data.burnup.length - 1];
+      expect(last?.completed).toBe(1);
+
+      const members = await ctx.reportsController.getReportsMembers.fetch(
+        { params: { id: project.id } },
+        { user: owner },
+      );
+
+      const credit = members.data.leaderboard.find(
+        (row) => row.userId === owner.id,
+      );
+      expect(credit?.questsCompleted).toBe(1);
+    });
+
+    it("keeps the funnel consistent with the KPI totals", async ({
+      expect,
+    }) => {
+      const c = await setupEpicProject();
+
+      const res = await ctx.reportsController.getReportsQuests.fetch(
+        { params: { id: c.projectId } },
+        { user: c.owner },
+      );
+
+      // Same two quests, both still `new` — the gate filters, it never
+      // touches a quest's lifecycle state.
+      expect(res.data.funnel.new).toBe(2);
+      expect(res.data.funnel.accepted).toBe(0);
+      expect(res.data.funnel.completed).toBe(0);
     });
   });
 });

@@ -2,6 +2,7 @@ import { type Infer, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $entity, db } from "alepha/orm";
 import { questSourceSchema } from "../schemas/questSourceSchema.ts";
+import { epics } from "./epics.ts";
 import { feedback } from "./feedback.ts";
 import { milestones } from "./milestones.ts";
 import { projects } from "./projects.ts";
@@ -183,6 +184,17 @@ export const quests = $entity({
      * dependents (those keep going as standalone quests).
      */
     dependsOn: db.ref(z.integer().optional(), () => quests.cols.id, {
+      onDelete: "set null",
+    }),
+    /**
+     * Optional owning epic. `SET NULL` on delete: removing an epic orphans
+     * its quests, it never deletes them.
+     *
+     * ⚠️ Declared optional with NO `db.default(...)` so the migration is a
+     * plain additive `ALTER TABLE ADD COLUMN`. A column DEFAULT triggers a
+     * table rebuild on D1.
+     */
+    epicId: db.ref(z.integer().optional(), () => epics.cols.id, {
       onDelete: "set null",
     }),
     /**

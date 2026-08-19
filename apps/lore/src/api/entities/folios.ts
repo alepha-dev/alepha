@@ -1,5 +1,6 @@
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
+import { epics } from "./epics.ts";
 import { folioDirectories } from "./folioDirectories.ts";
 import { projects } from "./projects.ts";
 
@@ -60,6 +61,19 @@ export const folios = $entity({
      */
     directoryId: db.ref(z.uuid().optional(), () => folioDirectories.cols.id, {
       onDelete: "cascade",
+    }),
+    /**
+     * Optional owning epic. `SET NULL` on delete: removing an epic orphans
+     * its folios, it never deletes them.
+     *
+     * ⚠️ Declared optional with NO `db.default(...)` so the migration is a
+     * plain additive `ALTER TABLE ADD COLUMN`. A column DEFAULT triggers a
+     * table rebuild on D1 — worse here than on `quests`, since `folios` is
+     * the CASCADE parent of `folio_revisions` / `folio_links` /
+     * `folio_blobs`.
+     */
+    epicId: db.ref(z.integer().optional(), () => epics.cols.id, {
+      onDelete: "set null",
     }),
     /**
      * 1-2 sentence agent-readable summary (~200 chars). Filled by MCP tools

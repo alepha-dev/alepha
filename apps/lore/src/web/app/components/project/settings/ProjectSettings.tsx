@@ -13,6 +13,7 @@ import {
   Flag,
   Inbox,
   KanbanSquare,
+  Layers,
   type LucideIcon,
   MapPin,
   Stamp,
@@ -29,6 +30,7 @@ type RouteName =
   | "projectSettingsAreas"
   | "projectSettingsKanban"
   | "projectSettingsFolios"
+  | "projectSettingsEpics"
   | "projectSettingsFeedback"
   | "projectSettingsSigils"
   | "projectSettingsMilestones"
@@ -40,6 +42,7 @@ type NavLabelKey =
   | "project.settings.nav.areas"
   | "project.settings.nav.kanban"
   | "project.settings.nav.folios"
+  | "project.settings.nav.epics"
   | "project.settings.nav.feedback"
   | "project.settings.nav.sigils"
   | "project.settings.nav.milestones"
@@ -97,6 +100,11 @@ const NAV_GROUPS: NavGroup[] = [
         icon: BookOpen,
       },
       {
+        route: "projectSettingsEpics",
+        labelKey: "project.settings.nav.epics",
+        icon: Layers,
+      },
+      {
         route: "projectSettingsFeedback",
         labelKey: "project.settings.nav.feedback",
         icon: Inbox,
@@ -120,7 +128,6 @@ const ProjectSettings = () => {
   const router = useRouter<AppRouter>();
   const routerState = useRouterState();
   const [project] = useStore(currentProjectAtom);
-
   if (!project) {
     return null;
   }

@@ -1,6 +1,7 @@
 import { users } from "alepha/api/users";
 import { $relations } from "alepha/orm";
 import { blightIgnoreRules } from "./entities/blightIgnoreRules.ts";
+import { epics } from "./entities/epics.ts";
 import { feedback } from "./entities/feedback.ts";
 import { folioBlobs } from "./entities/folioBlobs.ts";
 import { folioDirectories } from "./entities/folioDirectories.ts";
@@ -33,6 +34,7 @@ export const schema = {
   projects,
   members,
   milestones,
+  epics,
   quests,
   feedback,
   folios,
@@ -122,6 +124,12 @@ export const relations = $relations(schema, (r) => ({
     quests: r.many.quests({ from: r.milestones.id, to: r.quests.milestoneId }),
   },
 
+  epics: {
+    project: r.one.projects({ from: r.epics.projectId, to: r.projects.id }),
+    quests: r.many.quests({ from: r.epics.id, to: r.quests.epicId }),
+    folios: r.many.folios({ from: r.epics.id, to: r.folios.epicId }),
+  },
+
   quests: {
     project: r.one.projects({
       from: r.quests.projectId,
@@ -131,6 +139,7 @@ export const relations = $relations(schema, (r) => ({
       from: r.quests.milestoneId,
       to: r.milestones.id,
     }),
+    epic: r.one.epics({ from: r.quests.epicId, to: r.epics.id }),
     feedback: r.one.feedback({
       from: r.quests.feedbackId,
       to: r.feedback.id,
@@ -175,6 +184,7 @@ export const relations = $relations(schema, (r) => ({
       from: r.folios.directoryId,
       to: r.folioDirectories.id,
     }),
+    epic: r.one.epics({ from: r.folios.epicId, to: r.epics.id }),
     revisions: r.many.folioRevisions({
       from: r.folios.id,
       to: r.folioRevisions.folioId,

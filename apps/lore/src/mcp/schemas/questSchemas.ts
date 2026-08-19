@@ -1,6 +1,7 @@
 import { z } from "alepha";
 import {
   entityRefSchema,
+  epicStatusSchema,
   objectiveSchema,
   prioritySchema,
   projectParamsSchema,
@@ -20,6 +21,27 @@ const AREA_DESCRIPTION =
 const DESCRIPTION_DESCRIPTION =
   "Quest description in Markdown. Plain text also works. HTML is not supported and any tags will be stripped.";
 
+/**
+ * The epic a quest is filed under, carried on `quest_list` / `quest_get`
+ * results. Includes the epic's own status (not just its identity) because
+ * `quest_list` stays deliberately ungated over MCP (design §5.3): a mixed
+ * result can interleave a planned epic's quests with released ones, and
+ * the status is what lets an agent tell them apart instead of reading a
+ * flat, undifferentiated list. Absent when the quest is filed under no
+ * epic.
+ */
+const questEpicRefSchema = z.object({
+  number: z
+    .integer()
+    .describe(
+      "Per-project epic number ('Epic 3', from epic_list / epic_create).",
+    ),
+  title: z.string().describe("Epic title."),
+  status: epicStatusSchema.describe(
+    "Epic lifecycle status. A quest under a `planned` epic is specified but not released into the human backlog yet — it is still fully readable and workable over MCP.",
+  ),
+});
+
 // -----------------------------------------------------------------------------
 // quest_list
 // -----------------------------------------------------------------------------
@@ -35,6 +57,12 @@ export const questListParamsSchema = projectParamsSchema.extend({
     .string()
     .describe(
       "Filter by a single tag (exact match against normalized — trimmed/lowercased — values). Call `quest_tags` first to discover what tags exist in the project.",
+    )
+    .optional(),
+  epic: z
+    .integer()
+    .describe(
+      "Filter to quests filed under a single epic, by its global id (the `id` field from epic_list / epic_get / epic_create, not the per-project `number`). This tool never hides a planned epic's quests regardless of this filter; see the tool description.",
     )
     .optional(),
   limit: z
@@ -67,6 +95,11 @@ export const questListResultSchema = z.object({
       acceptedAt: z.datetime().optional(),
       completedAt: z.datetime().optional(),
       shelvedAt: z.datetime().optional(),
+      epic: questEpicRefSchema
+        .describe(
+          "The epic this quest is filed under, if any. Includes the epic's own status so a quest under a `planned` epic reads as parked rather than as unlabeled noise in this list.",
+        )
+        .optional(),
     }),
   ),
   total: z.integer(),
@@ -100,6 +133,11 @@ export const questGetResultSchema = z.object({
   completionMessageUpdatedAt: z.datetime().optional(),
   tags: z.array(z.string()),
   dependsOn_shortId: z.integer().optional(),
+  epic: questEpicRefSchema
+    .describe(
+      "The epic this quest is filed under, if any. quest_get is direct addressing (design §5.3) so it always resolves regardless of the epic's status.",
+    )
+    .optional(),
 });
 
 // -----------------------------------------------------------------------------
@@ -134,6 +172,12 @@ export const questCreateParamsSchema = projectParamsSchema.extend({
     .integer()
     .describe(
       "Per-project shortId of an ACCEPTED feedback item to link this quest to (it then shows under that item's 'linked quests'). Owner-only; the feedback must already be accepted (accept it first via feedback_accept).",
+    )
+    .optional(),
+  epic_number: z
+    .integer()
+    .describe(
+      "Per-project number of an epic to file this quest under (see epic_list / epic_create). Filing into a `planned` epic keeps the quest out of the human-facing backlog/kanban/reports until the epic is activated; quest_list still returns it, since MCP is deliberately not gated. Owner-only (same gate as every other epic mutation).",
     )
     .optional(),
   accept: z
@@ -259,6 +303,12 @@ export const questUpdateParamsSchema = entityRefSchema.extend({
     .integer()
     .describe(
       "Link this quest to the ACCEPTED feedback item with this per-project shortId (shows under that item's 'linked quests'). Pass 0 to clear the link. Owner-only; the feedback must already be accepted.",
+    )
+    .optional(),
+  epic_number: z
+    .integer()
+    .describe(
+      "Reparent the quest to the epic with this per-project number (see epic_list). Pass 0 to remove it from its current epic. Owner-only (same gate as every other epic mutation).",
     )
     .optional(),
 });
