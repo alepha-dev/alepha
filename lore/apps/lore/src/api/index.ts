@@ -5,6 +5,7 @@ import {
 } from "alepha/api/analytics";
 import { AdminInvitationController } from "./controllers/AdminInvitationController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
+import { AreaController } from "./controllers/AreaController.ts";
 import { BlightController } from "./controllers/BlightController.ts";
 import { BlobController } from "./controllers/BlobController.ts";
 import { DirectoryController } from "./controllers/DirectoryController.ts";
@@ -118,6 +119,7 @@ export const LoreApi = $module({
     ProjectController,
     MilestoneController,
     EpicController,
+    AreaController,
     ProjectReportsController,
     ProjectQuestPortabilityController,
     InvitationController,
