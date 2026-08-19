@@ -425,11 +425,19 @@ export class QuestController {
     handler: async ({ params, user }) => {
       await this.security.assertMember(params.projectId, user);
 
-      const count = await this.quests.count({
-        projectId: { eq: params.projectId },
-        completedAt: { isNull: true },
-        shelvedAt: { isNull: true },
-      });
+      const where = this.quests.createQueryWhere();
+      where.projectId = { eq: params.projectId };
+      where.completedAt = { isNull: true };
+      where.shelvedAt = { isNull: true };
+
+      // Quests inside a `planned` epic are not in the backlog, so they must
+      // not be counted here either. This badge links to the quest list, and
+      // the list applies the same gate — an ungated count reproduces exactly
+      // the disagreement the shelved exclusion above exists to prevent, and
+      // an e2e run caught it doing so (badge said 2, list showed none).
+      await this.epicVisibility.applyBacklogGate(where, params.projectId);
+
+      const count = await this.quests.count(where);
 
       return { count };
     },
