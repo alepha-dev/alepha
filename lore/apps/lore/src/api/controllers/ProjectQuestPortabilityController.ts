@@ -220,10 +220,9 @@ export class ProjectQuestPortabilityController {
             : undefined;
 
         if (existingMatch) {
-          // `areas` is the source of truth for the list. `projects.areas`
-          // is still written for one release as a rollback net; it is
-          // `@deprecated` and nothing reads it. Task 7 drops this half.
-          // Guarded on a non-blank `row.area` the same way `area` is
+          // The `areas` table is the sole source of truth for the list.
+          // `projects.areas` is `@deprecated` and nothing reads or writes
+          // it. Guarded on a non-blank `row.area` the same way `area` is
           // guarded on `updateQuestById` — `ensureArea` already no-ops on
           // blank/whitespace, this just skips the call entirely for the
           // common case of a row with no area column at all.

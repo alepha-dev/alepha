@@ -28,3 +28,19 @@ export const projectResourceSchema = projects.schema.extend({
  * anything that builds a URL — it is the type that guarantees `slug`.
  */
 export type ProjectResource = Infer<typeof projectResourceSchema>;
+
+/**
+ * `projectResourceSchema` plus an area count sourced from the `areas`
+ * table (`AreaService.countByProjectIds`). Scoped to `getHomeOverview` —
+ * the endpoint that fills `userProjectsAtom` for the Home page's project
+ * cards — rather than folded into `projectResourceSchema` itself, since
+ * every other action returning a project (create/update/get) would then
+ * need to compute a count nothing there reads.
+ */
+export const projectOverviewResourceSchema = projectResourceSchema.extend({
+  areaCount: z.integer(),
+});
+
+export type ProjectOverviewResource = Infer<
+  typeof projectOverviewResourceSchema
+>;

@@ -22,7 +22,7 @@ type Project = {
   title: string;
   updatedAt: string;
   public?: boolean;
-  areas: string[];
+  areaCount: number;
   icon?: string;
 };
 
@@ -253,7 +253,12 @@ interface ProjectCardProps {
 }
 
 const ProjectCard = (props: ProjectCardProps) => {
-  const areas = props.project.areas.length;
+  const { tr } = useI18n<I18n, "en">();
+  const areaCount = props.project.areaCount;
+  const areaLabel =
+    areaCount === 1
+      ? tr("home.project.areas.one")
+      : tr("home.project.areas", { args: [String(areaCount)] });
   return (
     <Link
       href={props.href}
@@ -269,10 +274,10 @@ const ProjectCard = (props: ProjectCardProps) => {
             mismatches between the server render and client hydration (clock
             drift / unit boundary) → React #418. Render it client-only. */}
         Updated <ClientOnly>{props.relativeTime}</ClientOnly>
-        {areas > 0 && (
+        {areaCount > 0 && (
           <>
             {" · "}
-            {areas} area{areas === 1 ? "" : "s"}
+            {areaLabel}
           </>
         )}
       </span>

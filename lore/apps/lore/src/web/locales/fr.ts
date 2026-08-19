@@ -689,6 +689,8 @@ export default {
   "quest-log.collapse-panel": "Masquer le journal",
   "quest-log.expand-panel": "Afficher le journal",
   "home.projects.see-all": "Voir les $1 projets",
+  "home.project.areas": "$1 domaines",
+  "home.project.areas.one": "1 domaine",
   "account.projects.title": "Projets",
   "account.projects.description":
     "Tous les projets dont vous faites partie, que vous en soyez le propriétaire ou un membre.",
