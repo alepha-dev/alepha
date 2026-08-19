@@ -5,6 +5,7 @@ import { pinnedContentAtom } from "../../api/atoms/pinnedContentAtom.ts";
 import { EpicController } from "../../api/controllers/EpicController.ts";
 import { FolioController } from "../../api/controllers/FolioController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
+import { AreaService } from "../../api/services/AreaService.ts";
 import { foldPinnedFolios } from "../../api/services/PinnedFolioFolder.ts";
 import {
   projectContextParamsSchema,
@@ -29,6 +30,7 @@ export class ProjectTools {
   protected readonly projectController = $inject(ProjectController);
   protected readonly folioController = $inject(FolioController);
   protected readonly epicController = $inject(EpicController);
+  protected readonly areaService = $inject(AreaService);
   protected readonly alepha = $inject(Alepha);
 
   /**
@@ -102,7 +104,7 @@ export class ProjectTools {
    */
   project_info = $tool({
     description:
-      "Get lightweight metadata about a project — areas, currently-active quests for the calling user, membership info. Call this before `quest_create` to see existing areas and reuse them with correct casing. For a richer orientation that also includes the folio index, prefer `project_context`.",
+      "Get lightweight metadata about a project — areas (each with a `name` and a `description` of what it covers), currently-active quests for the calling user, membership info. Call this before `quest_create` and REUSE an existing area's exact name rather than inventing a new one; read each area's `description` to pick the right one. For a richer orientation that also includes the folio index, prefer `project_context`.",
     title: "Project info",
     annotations: {
       readOnlyHint: true,
@@ -122,11 +124,16 @@ export class ProjectTools {
         params: { id: projectId },
       });
 
+      const areas = await this.areaService.listWithStats(projectId);
+
       return {
         id: result.id,
         title: result.title,
         public: result.public ?? false,
-        areas: result.areas,
+        areas: areas.map((area) => ({
+          name: area.name,
+          description: area.description,
+        })),
         createdAt: result.createdAt,
         activeQuests: result.quests.map((quest) => ({
           id: quest.id,
@@ -149,7 +156,7 @@ export class ProjectTools {
    */
   project_context = $tool({
     description:
-      "ORIENTATION TOOL — call FIRST on any project-scoped task. Returns project metadata, areas, the calling user's currently-active quests, the epic index (number, title, status, questCount; every epic, planned/active/done alike), the folio index (titles + summaries + updatedAt, NO content bodies), AND the full content of any pinned folios (the per-project CLAUDE.md / AGENTS.md — read these first, they're the project rules). A quest belonging to a planned epic (see `epics`) still appears in `quest_list` (MCP is not gated), so check the epic index before treating a cluster of related-looking quests as unrelated noise. Folios are this project's shared memory for AI agents — read the index here, then call `folio_get` only on the ones that look relevant. ~2K tokens of complete situational awareness in one round-trip; the folio index is capped at 30 entries (sorted by pinned DESC, updatedAt DESC) — when `folios.capped` is true, use `folio_list` with a higher `limit` to fetch the rest. Pinned-folio total content is capped at ~8K chars; when `pinnedFoliosTruncated` is true some pinned bodies were dropped — `folio_get` them by id. When `preferredLanguage` is set (ISO 639-1 — e.g. `fr`, `ja`), generated content (quest titles, descriptions, folio bodies) MUST be written in that language unless the user explicitly asks for another.",
+      "ORIENTATION TOOL — call FIRST on any project-scoped task. Returns project metadata, areas (each with a `name` and a `description` of what it covers — read these before filing a quest, and REUSE an existing area's exact name rather than registering a new one), the calling user's currently-active quests, the epic index (number, title, status, questCount; every epic, planned/active/done alike), the folio index (titles + summaries + updatedAt, NO content bodies), AND the full content of any pinned folios (the per-project CLAUDE.md / AGENTS.md — read these first, they're the project rules). A quest belonging to a planned epic (see `epics`) still appears in `quest_list` (MCP is not gated), so check the epic index before treating a cluster of related-looking quests as unrelated noise. Folios are this project's shared memory for AI agents — read the index here, then call `folio_get` only on the ones that look relevant. ~2K tokens of complete situational awareness in one round-trip; the folio index is capped at 30 entries (sorted by pinned DESC, updatedAt DESC) — when `folios.capped` is true, use `folio_list` with a higher `limit` to fetch the rest. Pinned-folio total content is capped at ~8K chars; when `pinnedFoliosTruncated` is true some pinned bodies were dropped — `folio_get` them by id. When `preferredLanguage` is set (ISO 639-1 — e.g. `fr`, `ja`), generated content (quest titles, descriptions, folio bodies) MUST be written in that language unless the user explicitly asks for another.",
     title: "Project context (orientation)",
     annotations: {
       readOnlyHint: true,
@@ -171,6 +178,14 @@ export class ProjectTools {
       const result = await this.projectController.getProjectById({
         params: { id: projectId },
       });
+
+      // `areas` table is the source of truth for the list (`projects.areas`
+      // is a deprecated rollback net nothing else reads — see
+      // `QuestService.createQuest`). Only `name` + `description` cross the
+      // MCP boundary: this call is paid for on every `project_context`
+      // round-trip, and the stats (`questCount`, dates) are a settings-page
+      // concern, not an orientation one.
+      const areaStats = await this.areaService.listWithStats(projectId);
 
       // The epic index. Never gated (same as an epic's own view of
       // itself) — orientation is exactly what failed for the work that
@@ -223,7 +238,10 @@ export class ProjectTools {
         id: result.id,
         title: result.title,
         public: result.public ?? false,
-        areas: result.areas,
+        areas: areaStats.map((area) => ({
+          name: area.name,
+          description: area.description,
+        })),
         createdAt: result.createdAt,
         activeQuests: result.quests.map((quest) => ({
           id: quest.id,
