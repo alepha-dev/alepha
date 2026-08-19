@@ -513,6 +513,8 @@ export default {
     "Enroll your applications so they can report crashes, page views and web vitals here — one token per app.",
   "project.settings.feature.feedback.description":
     "Let any signed-in user send this project a bug report or feature request, and give the owner an inbox to triage them in.",
+  "project.settings.feature.epics.description":
+    "Group quests and folios under a bounded initiative, kept out of the backlog until you begin it.",
   "project.settings.delete.modal.title": "Delete Project",
   "project.settings.delete.modal.description":
     "This action cannot be undone. This will permanently destroy the project and all its quests.",
@@ -939,10 +941,6 @@ export default {
   "epic.status.planned": "Planned",
   "epic.status.active": "Active",
   "epic.status.done": "Done",
-  "epic.action.begin": "Begin the Epic",
-  "epic.action.conclude": "Conclude the Epic",
-  "epic.action.returnToPlanning": "Return to Planning",
-  "epic.action.reopen": "Reopen the Epic",
   "epic.list.empty": "No epics yet.",
   "epic.list.column.number": "#",
   "epic.list.column.title": "Title",

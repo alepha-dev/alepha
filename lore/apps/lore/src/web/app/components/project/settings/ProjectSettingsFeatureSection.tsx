@@ -5,15 +5,17 @@ import type { ProjectFeatures } from "@/api/entities/projects.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 // Limited to the legacy module-level toggles that drive a dedicated
-// settings sub-page. Per-quest toggles (questNote / questReminder /
-// questChrono) live on the Quests settings page and render via a
-// dedicated row component, not this section.
+// settings sub-page, plus Epics — which has no sub-page of its own yet and
+// renders this section directly on the settings shell instead. Per-quest
+// toggles (questNote / questReminder / questChrono) live on the Quests
+// settings page and render via a dedicated row component, not this section.
 type ModuleFeatureKey =
   | "kanban"
   | "folios"
   | "milestones"
   | "sigils"
-  | "feedback";
+  | "feedback"
+  | "epics";
 
 // Compile-time guarantee that ModuleFeatureKey stays a subset of
 // ProjectFeatures keys — if a key gets renamed in the entity, the
@@ -35,12 +37,14 @@ const DESCRIPTION_KEYS: Record<
   | "project.settings.feature.milestones.description"
   | "project.settings.feature.sigils.description"
   | "project.settings.feature.feedback.description"
+  | "project.settings.feature.epics.description"
 > = {
   kanban: "project.settings.feature.kanban.description",
   folios: "project.settings.feature.folios.description",
   milestones: "project.settings.feature.milestones.description",
   sigils: "project.settings.feature.sigils.description",
   feedback: "project.settings.feature.feedback.description",
+  epics: "project.settings.feature.epics.description",
 };
 
 const NAV_KEYS: Record<
@@ -50,12 +54,14 @@ const NAV_KEYS: Record<
   | "project.settings.nav.milestones"
   | "project.settings.nav.sigils"
   | "project.settings.nav.feedback"
+  | "project.menu.epics"
 > = {
   kanban: "project.settings.nav.kanban",
   folios: "project.settings.nav.folios",
   milestones: "project.settings.nav.milestones",
   sigils: "project.settings.nav.sigils",
   feedback: "project.settings.nav.feedback",
+  epics: "project.menu.epics",
 };
 
 const ProjectSettingsFeatureSection = (
