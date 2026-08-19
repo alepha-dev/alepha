@@ -71,7 +71,14 @@ export const useFolioWikiLinks = (
         if (projectId === undefined) return [];
         const page = await questApi.getQuests({
           params: { projectId },
-          query: { size: 100, sort: "-updatedAt" } as never,
+          // Direct addressing (design §5.3, "never gated") — the `[[quest:`
+          // picker must offer a quest filed under a planned epic, or the
+          // author cannot even create the link while the epic is planned.
+          query: {
+            size: 100,
+            sort: "-updatedAt",
+            includePlanned: true,
+          } as never,
         });
         return (page.content as Array<{ shortId: number; title: string }>).map(
           (q) => ({ shortId: q.shortId, title: q.title }),

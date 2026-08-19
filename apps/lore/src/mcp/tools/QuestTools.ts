@@ -5,6 +5,7 @@ import { EpicController } from "../../api/controllers/EpicController.ts";
 import { FeedbackController } from "../../api/controllers/FeedbackController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import { QuestController } from "../../api/controllers/QuestController.ts";
+import type { EpicResource } from "../../api/schemas/epicResourceSchema.ts";
 import type { QuestStatus } from "../../api/schemas/questResourceSchema.ts";
 import { QuestResourceMapper } from "../../api/services/QuestResourceMapper.ts";
 import {
@@ -95,6 +96,33 @@ export class QuestTools {
   }
 
   /**
+   * Build an `epicId -> { number, title, status }` lookup for every epic
+   * in a project, so `quest_list` can stamp up to 100 returned quests with
+   * their epic in one extra call instead of one per quest. `quest_list` is
+   * deliberately not gated over MCP (design §5.3), so a result can mix a
+   * planned epic's quests with released ones — the epic's status is what
+   * lets a caller tell them apart.
+   */
+  protected async buildEpicRefMap(
+    projectId: number,
+  ): Promise<
+    Map<
+      number,
+      { number: number; title: string; status: EpicResource["status"] }
+    >
+  > {
+    const projectEpics = await this.epicController.getEpics({
+      params: { projectId },
+    });
+    return new Map(
+      projectEpics.map((epic) => [
+        epic.id,
+        { number: epic.number, title: epic.title, status: epic.status },
+      ]),
+    );
+  }
+
+  /**
    * Get quest status from quest data. Delegates so the MCP surface cannot
    * drift from the status the REST resource and the controller's transition
    * guards report — this used to be a third, independently-ordered copy.
@@ -171,6 +199,11 @@ export class QuestTools {
         },
       });
 
+      // One extra call for the whole page rather than one per quest —
+      // `quest_list` can return up to 100 quests, and every one of them
+      // needs its epic stamped (design §5.3).
+      const epicRefs = await this.buildEpicRefMap(projectId);
+
       return {
         quests: result.content.map((quest) => ({
           id: quest.id,
@@ -187,6 +220,7 @@ export class QuestTools {
           acceptedAt: quest.acceptedAt,
           completedAt: quest.completedAt,
           shelvedAt: quest.shelvedAt,
+          epic: quest.epicId != null ? epicRefs.get(quest.epicId) : undefined,
         })),
         total: result.page.totalElements ?? 0,
         hasMore: !result.page.isLast,
@@ -460,6 +494,17 @@ export class QuestTools {
         dependsOn_shortId = pred.shortId;
       }
 
+      // `quest_get` is direct addressing, so it never gates on the epic's
+      // status (design §5.3) — this is purely enrichment. Skip the extra
+      // call entirely when the quest has no epic, the common case.
+      let epic:
+        | { number: number; title: string; status: EpicResource["status"] }
+        | undefined;
+      if (quest.epicId != null) {
+        const epicRefs = await this.buildEpicRefMap(quest.projectId);
+        epic = epicRefs.get(quest.epicId);
+      }
+
       return {
         id: quest.id,
         shortId: quest.shortId,
@@ -481,6 +526,7 @@ export class QuestTools {
         completionMessageUpdatedAt: quest.completionMessageUpdatedAt,
         tags: quest.tags,
         dependsOn_shortId,
+        epic,
       };
     },
   });
