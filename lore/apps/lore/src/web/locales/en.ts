@@ -960,6 +960,7 @@ export default {
   "epic.description.empty": "No description yet.",
   "epic.folios.title": "Folios",
   "epic.folios.empty": "No folios attached yet.",
+  "epic.folios.loading": "Loading folios…",
   "epic.folios.attach": "Attach Folio",
   "epic.folios.attach.search": "Search folios…",
   "epic.folios.detach": "Detach",
@@ -968,6 +969,7 @@ export default {
     '"$1" will no longer be linked to this epic. The folio itself is not deleted.',
   "epic.quests.title": "Quests",
   "epic.quests.empty": "No quests in this epic yet.",
+  "epic.quests.loading": "Loading quests…",
   "epic.quests.attach": "Attach Quest",
   "epic.quests.attach.search": "Search quests…",
   "epic.quests.detach": "Detach",
@@ -977,4 +979,7 @@ export default {
   "epic.quests.status.accepted": "Accepted",
   "epic.quests.status.completed": "Completed",
   "epic.quests.status.shelved": "Shelved",
+  "epic.quests.column.number": "#",
+  "epic.quests.column.title": "Title",
+  "epic.quests.column.status": "Status",
 };

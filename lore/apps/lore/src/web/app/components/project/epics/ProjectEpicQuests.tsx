@@ -15,17 +15,22 @@ import {
   TableRow,
 } from "@alepha/ui/components/ui/table";
 import { useI18n } from "alepha/react/i18n";
-import { Link } from "alepha/react/router";
+import { Link, useRouter } from "alepha/react/router";
 import { X } from "lucide-react";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
+import type { AppRouter } from "@/web/app/AppRouter.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import QuestGraph from "../quest/QuestGraph.tsx";
 import EpicQuestPicker from "./EpicQuestPicker.tsx";
 
 export interface ProjectEpicQuestsProps {
   projectId: number;
-  projectSlug: string;
-  quests: QuestResource[];
+  /**
+   * `null` means "not loaded yet" (in flight, or the last fetch failed) —
+   * distinct from a successfully resolved `[]`, so a failed reload never
+   * renders as "no quests in this epic".
+   */
+  quests: QuestResource[] | null;
   onAttach: (questId: number) => void;
   onDetach: (quest: QuestResource) => void;
 }
@@ -42,7 +47,9 @@ export interface ProjectEpicQuestsProps {
  */
 const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const attachedIds = new Set(props.quests.map((q) => q.id));
+  const router = useRouter<AppRouter>();
+  const quests = props.quests;
+  const attachedIds = new Set((quests ?? []).map((q) => q.id));
 
   return (
     <Card className="py-0 shadow">
@@ -55,7 +62,11 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
         />
       </CardHeader>
       <CardContent className="p-0">
-        {props.quests.length === 0 ? (
+        {quests === null ? (
+          <div className="text-muted-foreground p-6 text-center text-sm">
+            {tr("epic.quests.loading")}
+          </div>
+        ) : quests.length === 0 ? (
           <div className="text-muted-foreground p-6 text-center text-sm">
             {tr("epic.quests.empty")}
           </div>
@@ -64,24 +75,26 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-16">
-                  {tr("epic.list.column.number")}
+                  {tr("epic.quests.column.number")}
                 </TableHead>
-                <TableHead>{tr("epic.list.column.title")}</TableHead>
+                <TableHead>{tr("epic.quests.column.title")}</TableHead>
                 <TableHead className="w-32">
-                  {tr("epic.list.column.status")}
+                  {tr("epic.quests.column.status")}
                 </TableHead>
                 <TableHead className="w-16" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {props.quests.map((quest) => (
+              {quests.map((quest) => (
                 <TableRow key={quest.id}>
                   <TableCell className="text-muted-foreground">
                     #{quest.shortId}
                   </TableCell>
                   <TableCell className="font-medium">
                     <Link
-                      href={`/${props.projectSlug}/quests/${quest.shortId}`}
+                      href={router.path("projectQuest", {
+                        params: { shortId: quest.shortId },
+                      })}
                       className="hover:underline"
                     >
                       {quest.title}
@@ -114,7 +127,7 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
           </Table>
         )}
       </CardContent>
-      {props.quests.length > 0 && (
+      {quests != null && quests.length > 0 && (
         <div className="border-border h-[480px] border-t">
           <QuestGraph questIds={attachedIds} />
         </div>

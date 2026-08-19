@@ -6,16 +6,21 @@ import {
   CardTitle,
 } from "@alepha/ui/components/ui/card";
 import { useI18n } from "alepha/react/i18n";
-import { Link } from "alepha/react/router";
+import { Link, useRouter } from "alepha/react/router";
 import { X } from "lucide-react";
 import type { Folio } from "@/api/entities/folios.ts";
+import type { AppRouter } from "@/web/app/AppRouter.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import EpicFolioPicker from "./EpicFolioPicker.tsx";
 
 export interface ProjectEpicFoliosProps {
   projectId: number;
-  projectSlug: string;
-  folios: Folio[];
+  /**
+   * `null` means "not loaded yet" (in flight, or the last fetch failed) —
+   * distinct from a successfully resolved `[]`, so a failed reload never
+   * renders as "no folios attached".
+   */
+  folios: Folio[] | null;
   onAttach: (folioId: string) => void;
   onDetach: (folio: Folio) => void;
 }
@@ -27,7 +32,8 @@ export interface ProjectEpicFoliosProps {
  */
 const ProjectEpicFolios = (props: ProjectEpicFoliosProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const attachedIds = new Set(props.folios.map((f) => f.id));
+  const router = useRouter<AppRouter>();
+  const attachedIds = new Set((props.folios ?? []).map((f) => f.id));
 
   return (
     <Card>
@@ -40,7 +46,11 @@ const ProjectEpicFolios = (props: ProjectEpicFoliosProps) => {
         />
       </CardHeader>
       <CardContent>
-        {props.folios.length === 0 ? (
+        {props.folios === null ? (
+          <p className="text-muted-foreground text-sm italic">
+            {tr("epic.folios.loading")}
+          </p>
+        ) : props.folios.length === 0 ? (
           <p className="text-muted-foreground text-sm italic">
             {tr("epic.folios.empty")}
           </p>
@@ -52,7 +62,9 @@ const ProjectEpicFolios = (props: ProjectEpicFoliosProps) => {
                 className="hover:bg-muted/40 flex items-center justify-between gap-2 rounded px-2 py-1"
               >
                 <Link
-                  href={`/${props.projectSlug}/folios/${folio.shortId}`}
+                  href={router.path("projectFoliosFolio", {
+                    params: { shortId: folio.shortId },
+                  })}
                   className="min-w-0 flex-1 truncate text-sm hover:underline"
                 >
                   {folio.title}

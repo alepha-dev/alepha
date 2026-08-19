@@ -39,8 +39,12 @@ const ProjectEpic = (props: ProjectEpicProps) => {
   const [project] = useStore(currentProjectAtom);
 
   const [epic, setEpic] = useState<EpicResource>(props.epic);
-  const [quests, setQuests] = useState<QuestResource[]>([]);
-  const [folios, setFolios] = useState<Folio[]>([]);
+  // `null` means "not loaded yet" — either still in flight or the last
+  // fetch failed. Only a successfully resolved `[]` means "confirmed
+  // empty": the zone components must not render an empty state on `null`,
+  // or a failed reload reads as an epic with nothing in it.
+  const [quests, setQuests] = useState<QuestResource[] | null>(null);
+  const [folios, setFolios] = useState<Folio[] | null>(null);
 
   // The epic's own quest set: shelved and planned-gated quests included.
   // `epic: epic.id` on `getQuests` both scopes to this epic AND bypasses
@@ -49,29 +53,39 @@ const ProjectEpic = (props: ProjectEpicProps) => {
   // `status: "shelved"` fills the rest.
   const reloadQuests = useCallback(async () => {
     if (!project?.id) return;
-    const [rest, shelved] = await Promise.all([
-      questApi.getQuests({
-        params: { projectId: project.id },
-        query: { epic: epic.id, size: 100 },
-      }),
-      questApi.getQuests({
-        params: { projectId: project.id },
-        query: { epic: epic.id, status: "shelved", size: 100 },
-      }),
-    ]);
-    setQuests([...rest.content, ...shelved.content]);
-  }, [project?.id, epic.id, questApi]);
+    try {
+      const [rest, shelved] = await Promise.all([
+        questApi.getQuests({
+          params: { projectId: project.id },
+          query: { epic: epic.id, size: 100 },
+        }),
+        questApi.getQuests({
+          params: { projectId: project.id },
+          query: { epic: epic.id, status: "shelved", size: 100 },
+        }),
+      ]);
+      setQuests([...rest.content, ...shelved.content]);
+    } catch (error) {
+      toaster.error(error instanceof Error ? error.message : String(error));
+    }
+  }, [project?.id, epic.id, questApi, toaster]);
 
-  // No epic filter on the folio list endpoint — fetch the project's folios
-  // (capped at 100, same known limitation as `QuestDependencyPicker`) and
-  // filter to this epic client-side.
+  // `epicId` filters server-side (`FolioController.list`) rather than
+  // fetching the project's folios and filtering client-side: a client-side
+  // filter over a `limit`-capped, epic-blind page can drop an attached
+  // folio entirely once the project holds more than the page size, with no
+  // signal that anything was hidden.
   const reloadFolios = useCallback(async () => {
     if (!project?.id) return;
-    const all = await folioApi.list({
-      query: { projectId: project.id, limit: 100 },
-    });
-    setFolios(all.filter((f) => f.epicId === epic.id));
-  }, [project?.id, epic.id, folioApi]);
+    try {
+      const all = await folioApi.list({
+        query: { projectId: project.id, epicId: epic.id, limit: 100 },
+      });
+      setFolios(all);
+    } catch (error) {
+      toaster.error(error instanceof Error ? error.message : String(error));
+    }
+  }, [project?.id, epic.id, folioApi, toaster]);
 
   useEffect(() => {
     void reloadQuests();
@@ -154,14 +168,12 @@ const ProjectEpic = (props: ProjectEpicProps) => {
       <ProjectEpicDescription epic={epic} />
       <ProjectEpicFolios
         projectId={project.id}
-        projectSlug={project.slug}
         folios={folios}
         onAttach={handleAttachFolio}
         onDetach={handleDetachFolio}
       />
       <ProjectEpicQuests
         projectId={project.id}
-        projectSlug={project.slug}
         quests={quests}
         onAttach={handleAttachQuest}
         onDetach={handleDetachQuest}

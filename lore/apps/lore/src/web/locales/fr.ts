@@ -978,6 +978,7 @@ export default {
   "epic.description.empty": "Aucune description pour le moment.",
   "epic.folios.title": "Folios",
   "epic.folios.empty": "Aucun folio associé pour le moment.",
+  "epic.folios.loading": "Chargement des folios…",
   "epic.folios.attach": "Associer un folio",
   "epic.folios.attach.search": "Rechercher un folio…",
   "epic.folios.detach": "Détacher",
@@ -986,6 +987,7 @@ export default {
     "« $1 » ne sera plus lié à cette épopée. Le folio lui-même n'est pas supprimé.",
   "epic.quests.title": "Quêtes",
   "epic.quests.empty": "Aucune quête dans cette épopée pour le moment.",
+  "epic.quests.loading": "Chargement des quêtes…",
   "epic.quests.attach": "Associer une quête",
   "epic.quests.attach.search": "Rechercher une quête…",
   "epic.quests.detach": "Détacher",
@@ -995,4 +997,7 @@ export default {
   "epic.quests.status.accepted": "Acceptée",
   "epic.quests.status.completed": "Terminée",
   "epic.quests.status.shelved": "Mise de côté",
+  "epic.quests.column.number": "N°",
+  "epic.quests.column.title": "Titre",
+  "epic.quests.column.status": "Statut",
 };
