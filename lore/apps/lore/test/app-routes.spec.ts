@@ -36,6 +36,7 @@ const NAV_ROUTE_NAMES = [
   "project",
   "projectQuests",
   "projectEpics",
+  "projectEpic",
   "projectBlights",
   "projectFeedback",
   "projectMilestones",
@@ -142,7 +143,12 @@ describe("AppRouter route table", () => {
     // A superset of the params any of these routes declares, so a surviving
     // `:segment` in the result means the route's shape changed — not that this
     // test forgot to supply something.
-    const params = { projectSlug: "sds", appName, shortId: "3" };
+    const params = {
+      projectSlug: "sds",
+      appName,
+      shortId: "3",
+      epicNumber: "7",
+    };
 
     for (const name of NAV_ROUTE_NAMES) {
       const path = router.path(name, { params });
