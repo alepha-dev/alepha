@@ -3,9 +3,9 @@ import * as React from "react";
 void React;
 
 import {
-  AdminDetailAside,
-  type AdminDetailAsideRow,
-} from "@alepha/ui/components/admin/admin-detail-aside";
+  DetailAside,
+  type DetailAsideRow,
+} from "@alepha/ui/components/detail/detail-aside";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import type { UserResource } from "alepha/api/users";
 import { useI18n } from "alepha/react/i18n";
@@ -19,7 +19,7 @@ export interface AdminUserDetailIdentityAsideProps {
  * Identity sheet shown alongside the user detail tabs.
  *
  * Everything here is *which* facts a user has and how they read; the chrome
- * around them belongs to {@link AdminDetailAside}. Only fields with a value are
+ * around them belongs to {@link DetailAside}. Only fields with a value are
  * listed; ID and Status always show. Display order is ID → username → email →
  * (phone) → status → name → roles → dates.
  */
@@ -36,7 +36,7 @@ export const AdminUserDetailIdentityAside = (
     user.id.slice(0, 8);
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
 
-  const rows: AdminDetailAsideRow[] = [];
+  const rows: DetailAsideRow[] = [];
 
   rows.push({
     label: String(tr("admin.userDetail.id", { default: "ID" })),
@@ -131,7 +131,7 @@ export const AdminUserDetailIdentityAside = (
   });
 
   return (
-    <AdminDetailAside
+    <DetailAside
       title={String(displayName)}
       image={user.picture}
       fallback={user.email || user.username || user.firstName || "?"}

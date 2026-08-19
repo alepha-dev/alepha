@@ -5,7 +5,7 @@ import { AlephaReactRouter } from "alepha/react/router";
 import { setupJsdomMocks } from "alepha/react/testing";
 import { User } from "lucide-react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { AdminDetailLayout } from "../admin-detail-layout.tsx";
+import { DetailLayout } from "../detail-layout.tsx";
 
 /**
  * The shell every admin detail page composes, so what it pins is the contract
@@ -13,7 +13,7 @@ import { AdminDetailLayout } from "../admin-detail-layout.tsx";
  * (a page must never render half a shell over missing data), the aside and
  * actions reach the DOM, and only the selected tab's body is mounted.
  */
-describe("AdminDetailLayout", () => {
+describe("DetailLayout", () => {
   let alepha: Alepha | undefined;
 
   beforeAll(() => {
@@ -40,7 +40,7 @@ describe("AdminDetailLayout", () => {
 
   it("renders the aside, the tabs and the actions", async () => {
     await mount(
-      <AdminDetailLayout
+      <DetailLayout
         aside={<p>identity panel</p>}
         tabs={tabs}
         tab="overview"
@@ -48,7 +48,7 @@ describe("AdminDetailLayout", () => {
         actions={<button type="button">Publish</button>}
       >
         <p>overview body</p>
-      </AdminDetailLayout>,
+      </DetailLayout>,
     );
 
     expect(screen.getByText("identity panel")).toBeTruthy();
@@ -61,7 +61,7 @@ describe("AdminDetailLayout", () => {
   it("reports the picked tab's value to onTabChange", async () => {
     const onTabChange = vi.fn();
     await mount(
-      <AdminDetailLayout
+      <DetailLayout
         aside={null}
         tabs={tabs}
         tab="overview"
@@ -81,7 +81,7 @@ describe("AdminDetailLayout", () => {
    */
   it("replaces the entire shell while loading", async () => {
     await mount(
-      <AdminDetailLayout
+      <DetailLayout
         loading
         aside={<p>identity panel</p>}
         tabs={tabs}
@@ -90,7 +90,7 @@ describe("AdminDetailLayout", () => {
         actions={<button type="button">Publish</button>}
       >
         <p>overview body</p>
-      </AdminDetailLayout>,
+      </DetailLayout>,
     );
 
     expect(screen.queryByText("identity panel")).toBeNull();
@@ -101,7 +101,7 @@ describe("AdminDetailLayout", () => {
   it("replaces the entire shell when not found, and offers the way back", async () => {
     const onBack = vi.fn();
     await mount(
-      <AdminDetailLayout
+      <DetailLayout
         notFound={{
           message: "Product not found.",
           backLabel: "Back to catalogue",
@@ -113,7 +113,7 @@ describe("AdminDetailLayout", () => {
         onTabChange={() => {}}
       >
         <p>overview body</p>
-      </AdminDetailLayout>,
+      </DetailLayout>,
     );
 
     expect(screen.queryByText("identity panel")).toBeNull();
@@ -131,7 +131,7 @@ describe("AdminDetailLayout", () => {
    */
   it("prefers the loading state over not-found", async () => {
     await mount(
-      <AdminDetailLayout
+      <DetailLayout
         loading
         notFound={{
           message: "Product not found.",

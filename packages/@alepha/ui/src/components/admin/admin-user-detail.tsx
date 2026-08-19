@@ -2,17 +2,17 @@ import * as React from "react";
 
 void React;
 
-import {
-  AdminDetailLayout,
-  type AdminDetailTab,
-} from "@alepha/ui/components/admin/admin-detail-layout";
 import { AdminUserDetailAuditsTab } from "@alepha/ui/components/admin/admin-user-detail-audits-tab";
 import { AdminUserDetailIdentityAside } from "@alepha/ui/components/admin/admin-user-detail-identity-aside";
 import { AdminUserDetailOverviewTab } from "@alepha/ui/components/admin/admin-user-detail-overview-tab";
 import { AdminUserDetailPasswordDialog } from "@alepha/ui/components/admin/admin-user-detail-password-dialog";
 import { AdminUserDetailSecurityTab } from "@alepha/ui/components/admin/admin-user-detail-security-tab";
 import { AdminUserDetailSessionsTab } from "@alepha/ui/components/admin/admin-user-detail-sessions-tab";
-import { useDetailTab } from "@alepha/ui/components/admin/use-detail-tab";
+import {
+  DetailLayout,
+  type DetailTab,
+} from "@alepha/ui/components/detail/detail-layout";
+import { useDetailTab } from "@alepha/ui/components/detail/use-detail-tab";
 import { Button } from "@alepha/ui/components/ui/button";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
@@ -488,7 +488,7 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
     (id) => id.provider !== "credentials",
   );
 
-  const tabs: AdminDetailTab[] = [
+  const tabs: DetailTab[] = [
     {
       value: "overview",
       icon: User,
@@ -513,7 +513,7 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
 
   return (
     <>
-      <AdminDetailLayout
+      <DetailLayout
         loading={userQuery.loading && !user}
         notFound={
           user
@@ -597,7 +597,7 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
         {tab === "audits" && (
           <AdminUserDetailAuditsTab userId={userId} fetch={auditsFetcher} />
         )}
-      </AdminDetailLayout>
+      </DetailLayout>
 
       <AdminUserDetailPasswordDialog
         open={passwordOpen}

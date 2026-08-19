@@ -5,7 +5,7 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
 import { setupJsdomMocks } from "alepha/react/testing";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { AdminDetailAside } from "../admin-detail-aside.tsx";
+import { DetailAside } from "../detail-aside.tsx";
 
 /**
  * The identity panel shared by every detail page. What it pins is the row
@@ -14,7 +14,7 @@ import { AdminDetailAside } from "../admin-detail-aside.tsx";
  * the row it belongs to — a page with several copyable rows would otherwise
  * offer a screen reader several buttons all called "Copy".
  */
-describe("AdminDetailAside", () => {
+describe("DetailAside", () => {
   let alepha: Alepha | undefined;
 
   beforeAll(() => {
@@ -36,7 +36,7 @@ describe("AdminDetailAside", () => {
 
   it("renders the title and each row's label and value", async () => {
     await mount(
-      <AdminDetailAside
+      <DetailAside
         title="Bague Aurore"
         rows={[
           { label: "Reference", value: <span>bague-aurore</span> },
@@ -53,7 +53,7 @@ describe("AdminDetailAside", () => {
 
   it("renders a copy row's text as its own value", async () => {
     await mount(
-      <AdminDetailAside
+      <DetailAside
         title="Bague Aurore"
         rows={[{ label: "ID", copy: "0192aaaa-0000-7000-8000-000000000001" }]}
       />,
@@ -66,7 +66,7 @@ describe("AdminDetailAside", () => {
 
   it("names the copy button after its row", async () => {
     await mount(
-      <AdminDetailAside
+      <DetailAside
         title="Bague Aurore"
         rows={[
           { label: "ID", copy: "id-1" },
@@ -87,7 +87,7 @@ describe("AdminDetailAside", () => {
     });
 
     await mount(
-      <AdminDetailAside
+      <DetailAside
         title="Bague Aurore"
         rows={[
           { label: "ID", copy: "id-1" },
@@ -102,8 +102,33 @@ describe("AdminDetailAside", () => {
   });
 
   it("falls back to the title's initial when there is no image", async () => {
-    await mount(<AdminDetailAside title="bague aurore" rows={[]} />);
+    await mount(<DetailAside title="bague aurore" rows={[]} />);
 
     expect(screen.getByText("B")).toBeTruthy();
+  });
+
+  it("renders no header at all with neither title nor avatar", async () => {
+    await mount(
+      <DetailAside
+        avatar={false}
+        rows={[{ label: "Reference", value: "bague-aurore" }]}
+      />,
+    );
+
+    // The row survives; nothing above it does. Guards the case a caller
+    // reaches for when a breadcrumb already names the thing.
+    expect(screen.getByText("Reference")).toBeTruthy();
+    expect(screen.queryAllByText("?")).toHaveLength(0);
+  });
+
+  it("drops the avatar entirely on avatar={false}", async () => {
+    await mount(<DetailAside avatar={false} title="bague aurore" rows={[]} />);
+
+    // The initial and nothing else — asserted as the ABSENCE of the "B",
+    // because the title is still rendered and starts with the same letter.
+    // `queryAllByText` on the exact string is what separates the avatar's
+    // lone initial from the title beside it.
+    expect(screen.queryAllByText("B")).toHaveLength(0);
+    expect(screen.getByText("bague aurore")).toBeTruthy();
   });
 });

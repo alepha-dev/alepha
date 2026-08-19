@@ -3,9 +3,9 @@ import * as React from "react";
 void React;
 
 import {
-  AdminDetailAside,
-  type AdminDetailAsideRow,
-} from "@alepha/ui/components/admin/admin-detail-aside";
+  DetailAside,
+  type DetailAsideRow,
+} from "@alepha/ui/components/detail/detail-aside";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useI18n } from "alepha/react/i18n";
 import type { AdminProductResource } from "../controllers/AdminProductController.ts";
@@ -35,7 +35,7 @@ export const AdminProductDetailAside = (
     currency: product.currency,
   }).format((product.price ?? 0) / 100);
 
-  const rows: AdminDetailAsideRow[] = [
+  const rows: DetailAsideRow[] = [
     {
       label: String(tr("commerce.admin.detail.id", { default: "ID" })),
       copy: product.id,
@@ -126,7 +126,7 @@ export const AdminProductDetailAside = (
   ];
 
   return (
-    <AdminDetailAside
+    <DetailAside
       title={product.name}
       image={productImageUrl(product.images?.[0])}
       rows={rows}

@@ -10,7 +10,7 @@ import type { ComponentType, SVGProps } from "react";
 
 type IconType = ComponentType<SVGProps<SVGSVGElement>>;
 
-export interface AdminDetailTab {
+export interface DetailTab {
   value: string;
   label: React.ReactNode;
   /**
@@ -21,16 +21,16 @@ export interface AdminDetailTab {
   icon?: IconType;
 }
 
-export interface AdminDetailNotFound {
+export interface DetailNotFound {
   message: string;
   backLabel: string;
   onBack: () => void;
 }
 
-export interface AdminDetailLayoutProps {
-  /** The identity panel. Usually an {@link AdminDetailAside}. */
+export interface DetailLayoutProps {
+  /** The identity panel. Usually an {@link DetailAside}. */
   aside: React.ReactNode;
-  tabs: AdminDetailTab[];
+  tabs: DetailTab[];
   tab: string;
   onTabChange: (value: string) => void;
   /** Buttons for the right end of the toolbar. */
@@ -42,14 +42,22 @@ export interface AdminDetailLayoutProps {
    */
   loading?: boolean;
   /** Replaces the whole shell with a message and a way back. */
-  notFound?: AdminDetailNotFound;
+  notFound?: DetailNotFound;
   children?: React.ReactNode;
 }
 
 /**
- * The shell every admin detail page shares: a full-height identity aside, and
- * a right column whose toolbar carries tab selection on the left and actions
- * on the right.
+ * The shell every detail page shares: a full-height identity aside, and a
+ * right column whose toolbar carries tab selection on the left and actions on
+ * the right.
+ *
+ * It lived at `components/admin/admin-detail-layout` while admin pages were
+ * its only consumers, and moved here when Lore's Epic page became the first
+ * one outside admin. Nothing about it was ever admin-specific — it imports a
+ * button, a segmented control and a skeleton — so the old name described the
+ * callers rather than the component. There is deliberately **no re-export
+ * left behind at the old path**: an alias nobody is forced to notice is an
+ * alias nobody removes.
  *
  * It owns the chrome and nothing else. Data, forms and mutations stay in the
  * page that composes it, and each tab body is its own component that renders
@@ -63,21 +71,21 @@ export interface AdminDetailLayoutProps {
  * ```tsx
  * const [tab, setTab] = useDetailTab<"overview" | "stock">("overview");
  *
- * <AdminDetailLayout
- *   aside={<AdminDetailAside title={product.name} rows={rows} />}
+ * <DetailLayout
+ *   aside={<DetailAside title={product.name} rows={rows} />}
  *   tabs={[{ value: "overview", label: "Overview", icon: Package }]}
  *   tab={tab}
  *   onTabChange={(v) => setTab(v as typeof tab)}
  *   actions={<Button size="sm">Publish</Button>}
  * >
  *   {tab === "overview" && <OverviewTab product={product} />}
- * </AdminDetailLayout>
+ * </DetailLayout>
  * ```
  *
  * Dialogs belong beside it, not inside `children` — they portal out anyway,
  * and nesting them in the tab body unmounts them on a tab switch.
  */
-export const AdminDetailLayout = (props: AdminDetailLayoutProps) => {
+export const DetailLayout = (props: DetailLayoutProps) => {
   if (props.loading) {
     return (
       <div className="flex flex-col gap-4 p-6">

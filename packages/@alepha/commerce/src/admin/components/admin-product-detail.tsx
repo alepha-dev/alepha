@@ -3,10 +3,10 @@ import * as React from "react";
 void React;
 
 import {
-  AdminDetailLayout,
-  type AdminDetailTab,
-} from "@alepha/ui/components/admin/admin-detail-layout";
-import { useDetailTab } from "@alepha/ui/components/admin/use-detail-tab";
+  DetailLayout,
+  type DetailTab,
+} from "@alepha/ui/components/detail/detail-layout";
+import { useDetailTab } from "@alepha/ui/components/detail/use-detail-tab";
 import { Button } from "@alepha/ui/components/ui/button";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
@@ -451,7 +451,7 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
 
   // -- Render ----------------------------------------------------------------
 
-  const tabs: AdminDetailTab[] = [
+  const tabs: DetailTab[] = [
     {
       value: "overview",
       icon: Package,
@@ -480,7 +480,7 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
   ];
 
   return (
-    <AdminDetailLayout
+    <DetailLayout
       loading={productQuery.loading && !product}
       notFound={
         product
@@ -576,7 +576,7 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
           fetch={ordersFetcher}
         />
       )}
-    </AdminDetailLayout>
+    </DetailLayout>
   );
 };
 
