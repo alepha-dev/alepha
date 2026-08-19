@@ -26,6 +26,7 @@ import type { SigilController } from "../../api/controllers/SigilController.ts";
 import { currentAreasAtom } from "./atoms/currentAreasAtom.ts";
 import { currentAssignedQuestsAtom } from "./atoms/currentAssignedQuestsAtom.ts";
 import { currentBlightCountAtom } from "./atoms/currentBlightCountAtom.ts";
+import { currentEpicAtom } from "./atoms/currentEpicAtom.ts";
 import { currentFeedbackCountAtom } from "./atoms/currentFeedbackCountAtom.ts";
 import { currentFolioAtom } from "./atoms/currentFolioAtom.ts";
 import { currentFolioBlobsAtom } from "./atoms/currentFolioBlobsAtom.ts";
@@ -658,17 +659,11 @@ export class AppRouter {
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Epics`,
     }),
+    // No loader: `ProjectEpics` is an AlephaTable, which owns its own
+    // fetch (filters, sort and page are its state, not the route's). A
+    // loader here would fetch the list a second time and then have it
+    // discarded on mount. Same arrangement as `projectBlights`.
     lazy: () => import("./components/project/epics/ProjectEpics.tsx"),
-    loader: async () => {
-      const project = this.alepha.store.get(currentProjectAtom);
-      if (!project) {
-        throw new NotFoundError("Project not found");
-      }
-      const epics = await this.epicApi.getEpics({
-        params: { projectId: project.id },
-      });
-      return { epics };
-    },
   });
 
   projectEpic = $page({
@@ -697,7 +692,13 @@ export class AppRouter {
       const epic = await this.epicApi.getEpicByNumber({
         params: { projectId: project.id, number: params.epicNumber },
       });
+      // The breadcrumb leaf lives in `ProjectView`, the layout above this
+      // route, which can only see `epicNumber`. See `currentEpicAtom`.
+      this.alepha.store.set(currentEpicAtom, epic);
       return { epic };
+    },
+    onLeave: () => {
+      this.alepha.store.set(currentEpicAtom, undefined);
     },
     errorHandler: (error) => {
       if (HttpError.is(error, 404)) {

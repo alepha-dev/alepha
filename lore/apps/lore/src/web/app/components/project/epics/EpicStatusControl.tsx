@@ -1,4 +1,3 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient } from "alepha/react";
@@ -7,19 +6,23 @@ import { useState } from "react";
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
-import { STATUS_BADGE_VARIANT, STATUS_LABEL_KEYS } from "./epicStatus.ts";
-
 export interface EpicStatusControlProps {
   epic: EpicResource;
   onChange: (epic: EpicResource) => void;
 }
 
 /**
- * The status badge plus the lifecycle-verb buttons for the current status,
- * following the vocabulary table in the design doc: `planned` only offers
- * "Begin", `active` offers both "Conclude" and "Return to Planning", `done`
- * only offers "Reopen". There is no direct `planned <-> done` button — that
- * always goes through `active`, matching the four named transitions.
+ * The lifecycle-verb buttons for the epic's current status, following the
+ * vocabulary table in the design doc: `planned` only offers "Begin", `active`
+ * offers both "Conclude" and "Return to Planning", `done` only offers
+ * "Reopen". There is no direct `planned <-> done` button — that always goes
+ * through `active`, matching the four named transitions.
+ *
+ * It renders the verbs and NOT the status badge. The badge moved to
+ * `ProjectEpicAside` when the page went to a `DetailLayout`: the aside states
+ * what the epic currently is, and this toolbar control changes it. Keeping a
+ * badge here too would have put the same fact on screen twice, a hand's width
+ * apart.
  *
  * `submitting` guards against a double-click firing two overlapping
  * `setEpicStatus` calls, the same way `ProjectEpics.tsx`'s `submitCreate`
@@ -49,9 +52,6 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
 
   return (
     <div className="flex items-center gap-2">
-      <Badge variant={STATUS_BADGE_VARIANT[props.epic.status]}>
-        {tr(STATUS_LABEL_KEYS[props.epic.status])}
-      </Badge>
       {props.epic.status === "planned" && (
         <Button
           type="button"

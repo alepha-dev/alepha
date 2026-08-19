@@ -4,6 +4,7 @@ import {
   BROKEN_HREF_PREFIX,
   createFolioWikiLinkResolver,
   type DirectoryRef,
+  type EpicRef,
   formatBlobBytes,
   isImageBlob,
   type QuestRef,
@@ -13,6 +14,7 @@ export {
   type BlobRef,
   BROKEN_HREF_PREFIX,
   type DirectoryRef,
+  type EpicRef,
 } from "./folioWikiLinkResolver.ts";
 
 /**
@@ -40,6 +42,7 @@ export const rewriteFolioWikiLinks = (
   quests: QuestRef[],
   directories: DirectoryRef[] = [],
   blobs: BlobRef[] = [],
+  epics: EpicRef[] = [],
 ): string => {
   if (!content) return content;
   const hasWiki = content.includes("[[");
@@ -51,6 +54,7 @@ export const rewriteFolioWikiLinks = (
     projectSlug,
     folios,
     quests,
+    epics,
     directories,
     blobs,
   });

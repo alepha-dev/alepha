@@ -7,7 +7,8 @@ import type { Folio } from "@/api/entities/folios.ts";
 import { currentFolioBlobsAtom } from "../../../../atoms/currentFolioBlobsAtom.ts";
 import { currentProjectAtom } from "../../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
-import MarkdownEditor from "../../../shared/markdown-editor/MarkdownEditor.tsx";
+import type { ElementRef } from "../../../shared/element/elementRef.ts";
+import LoreEditor from "../../../shared/element/LoreEditor.tsx";
 import type { MarkdownEditorMode } from "../../../shared/markdown-editor/MarkdownEditorInner.tsx";
 import FolioPassphraseDialog from "../../FolioPassphraseDialog.tsx";
 import WikiLinkHoverProvider from "../../WikiLinkHoverProvider.tsx";
@@ -15,7 +16,6 @@ import FolioMenubar from "../menubar/FolioMenubar.tsx";
 import { useFolioShortcuts } from "../menubar/useFolioShortcuts.ts";
 import type { UseFolioActionsResult } from "../useFolioActions.ts";
 import type { FolioDraft } from "../useFolioDraft.ts";
-import type { FolioWikiLinks } from "../wikilink/useFolioWikiLinks.ts";
 import FolioLockedPanel from "./FolioLockedPanel.tsx";
 import FolioMoveDialog from "./FolioMoveDialog.tsx";
 import FolioSummaryField from "./FolioSummaryField.tsx";
@@ -60,8 +60,16 @@ export interface FolioDocumentProps {
    * Computed one level up because find-in-folio has to key on the rendered
    * string — see `FolioWorkspaceContent`.
    */
-  wikiLinks: FolioWikiLinks;
-  imageUploadHandler?: (file: File) => Promise<string>;
+  element: ElementRef;
+  /**
+   * The rewritten markdown, computed by the workspace because
+   * `useFolioFind` needs it too. `LoreEditor` would derive the same value
+   * on its own; it is passed so both halves of the pane search and render
+   * the identical string.
+   */
+  rendered: string;
+  /** `false` for a protected folio — see `LoreEditor.imageUpload`. */
+  imageUpload?: boolean;
   /**
    * Receives the live CodeMirror view so the workspace can dispatch
    * formatting commands into it. `null` on unmount.
@@ -208,16 +216,21 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
             projectSlug={project?.slug ?? ""}
             blobs={hoverBlobs}
           >
-            <MarkdownEditor
+            <LoreEditor
+              element={props.element}
+              // `"document"` is what turns on the line-number gutter and the
+              // taller default: a folio body is long enough for "the table
+              // around line 40" to be a usable coordinate. The quest and
+              // epic description fields are `"field"` and get neither.
+              variant="document"
+              bare
               value={values.content}
               onChange={(v) => props.draft.form.input.content.set(v)}
               placeholder={tr("folios.content-placeholder")}
-              imageUploadHandler={props.imageUploadHandler}
-              wikiLinkSuggestions={props.wikiLinks.suggestions}
-              viewContent={props.wikiLinks.rendered}
+              imageUpload={props.imageUpload}
+              // CONTROLLED: the menubar and ⌘E own the mode here, so the
+              // editor must not render its own toggle or hold its own state.
               mode={props.mode}
-              minHeight={420}
-              variant="bare"
               onViewReady={props.onEditorViewReady}
             />
           </WikiLinkHoverProvider>

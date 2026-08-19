@@ -1,8 +1,7 @@
-import { MarkdownView } from "@alepha/ui/components/markdown-view/markdown-view";
 import { useStore } from "alepha/react";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import { useWikiLinkRewrite } from "../../shared/useWikiLinkRewrite.ts";
+import LoreViewer from "../../shared/element/LoreViewer.tsx";
 
 export interface QuestDescriptionProps {
   quest: QuestResource;
@@ -14,18 +13,19 @@ const QuestDescription = (props: QuestDescriptionProps) => {
   // The quest row carries the project's integer id; the links this produces
   // need its slug, which the surrounding project layout has already loaded.
   const [project] = useStore(currentProjectAtom);
-  // Resolve `[[#N]]` / `[[quest:#N]]` wiki-links into clickable links —
-  // same syntax the folio view renders.
-  const { content: rendered } = useWikiLinkRewrite(
-    content,
-    props.quest.projectId,
-    project?.slug,
-  );
 
   return (
     <div className="bg-muted border-border rounded-md border p-3 px-4">
       {content ? (
-        <MarkdownView content={rendered} />
+        <LoreViewer
+          element={{
+            kind: "quest",
+            projectId: props.quest.projectId,
+            projectSlug: project?.slug ?? "",
+            id: props.quest.id,
+          }}
+          content={content}
+        />
       ) : (
         <button
           type="button"

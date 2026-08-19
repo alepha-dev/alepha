@@ -33,10 +33,21 @@ export interface QuestRef {
   title: string;
 }
 
+/**
+ * An epic, keyed by the per-project `number` it is addressed by. Named
+ * `shortId` to match {@link QuestRef} so one map-building shape serves both
+ * — epics have no `shortId` column of their own.
+ */
+export interface EpicRef {
+  shortId: number;
+  title: string;
+}
+
 export type BrokenWikiLinkReason =
   | "folio-not-found"
   | "ambiguous-title"
   | "quest-not-found"
+  | "epic-not-found"
   | "blob-not-found"
   /**
    * `[[#N]]` matched no folio, but quest #N exists — almost certainly a quest
@@ -76,6 +87,7 @@ export const BROKEN_HREF_PREFIX = "lore-broken:";
 export type WikiLinkTarget =
   | { kind: "folio"; href: string; label: string }
   | { kind: "quest"; href: string; label: string }
+  | { kind: "epic"; href: string; label: string }
   | { kind: "blob"; href: string; label: string }
   | {
       kind: "broken";
@@ -88,6 +100,12 @@ export interface FolioWikiLinkResolverInput {
   projectSlug: string;
   folios: Folio[];
   quests: QuestRef[];
+  /**
+   * Optional so a caller that never renders epic refs (or predates them)
+   * keeps working — an `[[epic:…]]` then resolves to `epic-not-found`
+   * rather than throwing, which is the same outcome as a real miss.
+   */
+  epics?: EpicRef[];
   directories?: DirectoryRef[];
   blobs?: BlobRef[];
 }
@@ -166,6 +184,7 @@ export const createFolioWikiLinkResolver = (
   input: FolioWikiLinkResolverInput,
 ): FolioWikiLinkResolver => {
   const { projectSlug, folios, quests } = input;
+  const epics = input.epics ?? [];
   const directories = input.directories ?? [];
   const blobs = input.blobs ?? [];
 
@@ -187,6 +206,16 @@ export const createFolioWikiLinkResolver = (
     const existing = questByTitle.get(key);
     if (existing) existing.count++;
     else questByTitle.set(key, { quest: q, count: 1 });
+  }
+
+  const epicByNumber = new Map<number, EpicRef>();
+  const epicByTitle = new Map<string, { epic: EpicRef; count: number }>();
+  for (const e of epics) {
+    epicByNumber.set(e.shortId, e);
+    const key = e.title.toLowerCase().trim();
+    const existing = epicByTitle.get(key);
+    if (existing) existing.count++;
+    else epicByTitle.set(key, { epic: e, count: 1 });
   }
 
   const blobByShort = new Map<number, BlobRef>();
@@ -256,13 +285,18 @@ export const createFolioWikiLinkResolver = (
     const trimmed = body.trim();
     if (!trimmed) return undefined;
 
-    // Type prefix (folio | quest | blob). Bare token = folio.
-    let type: "folio" | "quest" | "blob" = "folio";
+    // Type prefix (folio | quest | epic | blob). Bare token = folio.
+    let type: "folio" | "quest" | "epic" | "blob" = "folio";
     let rest = trimmed;
     const colonIdx = rest.indexOf(":");
     if (colonIdx > 0) {
       const prefix = rest.slice(0, colonIdx).trim().toLowerCase();
-      if (prefix === "quest" || prefix === "folio" || prefix === "blob") {
+      if (
+        prefix === "quest" ||
+        prefix === "folio" ||
+        prefix === "epic" ||
+        prefix === "blob"
+      ) {
         type = prefix;
         rest = rest.slice(colonIdx + 1).trim();
       }
@@ -317,6 +351,31 @@ export const createFolioWikiLinkResolver = (
         kind: "quest",
         href: `/${projectSlug}/quests/${quest.shortId}`,
         label: quest.title,
+      };
+    }
+
+    if (type === "epic") {
+      let epic: EpicRef | undefined;
+      let epicAmbiguous = false;
+      if (rest.startsWith("#")) {
+        const n = Number.parseInt(rest.slice(1), 10);
+        epic = Number.isFinite(n) ? epicByNumber.get(n) : undefined;
+      } else {
+        const hit = epicByTitle.get(rest.toLowerCase().trim());
+        if (hit && hit.count === 1) epic = hit.epic;
+        else if (hit && hit.count > 1) epicAmbiguous = true;
+      }
+      if (!epic) {
+        return brokenTarget(
+          body,
+          epicAmbiguous ? "ambiguous-title" : "epic-not-found",
+        );
+      }
+      return {
+        kind: "epic",
+        // `shortId` here IS the epic's `number` — see `EpicRef`.
+        href: `/${projectSlug}/epics/${epic.shortId}`,
+        label: epic.title,
       };
     }
 

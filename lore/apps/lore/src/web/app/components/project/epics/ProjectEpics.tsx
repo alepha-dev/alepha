@@ -1,226 +1,328 @@
+import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
+import { Control } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
-import { Card, CardContent } from "@alepha/ui/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
-import { Input } from "@alepha/ui/components/ui/input";
-import { Label } from "@alepha/ui/components/ui/label";
-import { Progress } from "@alepha/ui/components/ui/progress";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@alepha/ui/components/ui/table";
-import { Textarea } from "@alepha/ui/components/ui/textarea";
+import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { useClient, useStore } from "alepha/react";
+import { type Page, z } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
+import { useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { Plus } from "lucide-react";
+import {
+  CircleDot,
+  Plus,
+  Search,
+  SquareArrowOutUpRight,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+import EpicCreateSheet from "./EpicCreateSheet.tsx";
 import { STATUS_BADGE_VARIANT, STATUS_LABEL_KEYS } from "./epicStatus.ts";
-
-export interface ProjectEpicsProps {
-  epics: EpicResource[];
-}
+import ProjectEpicsProgress from "./ProjectEpicsProgress.tsx";
 
 /**
- * The Epics list — number, title, status and progress. A Create button
- * opens a dialog for title + description; new epics always start
- * `planned` (see `EpicController.createEpic`).
+ * Filter form, owned by AlephaTable: free-text over title + description,
+ * and a status select whose cleared state means "all".
+ */
+const epicsFiltersSchema = z.object({
+  search: z.string().optional(),
+  status: z.enum(["planned", "active", "done"]).optional(),
+});
+
+/**
+ * The Epics list, built on {@link AlephaTable}.
+ *
+ * `getEpics` returns the project's whole list in one response — an epic is
+ * a bounded initiative, so a project has tens of them, not thousands — so
+ * search, status filter, sort and paging are all applied client-side here
+ * rather than round-tripping. Same shape as `ProjectBlights`, and the
+ * reason neither needed a paginated endpoint.
  *
  * Status is a read-only badge here. Changing it is the Epic detail page's
  * job (`EpicStatusControl.tsx`) — this list intentionally does not
- * duplicate that control or its transition-verb vocabulary.
+ * duplicate that control or its transition-verb vocabulary, which is why
+ * the row menu offers Open and Delete and nothing between them.
  *
- * Each row's title links to `projectEpic` (`/epics/:epicNumber`), the
- * detail page.
+ * Each row's title links to `projectEpic` (`/epics/:epicNumber`).
  */
-const ProjectEpics = (props: ProjectEpicsProps) => {
+const ProjectEpics = () => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
+  const dialog = useDialog();
   const router = useRouter<AppRouter>();
   const epicApi = useClient<EpicController>();
+  const dt = useInject(DateTimeProvider);
   const [project] = useStore(currentProjectAtom);
 
-  const [epics, setEpics] = useState<EpicResource[]>(props.epics);
   const [createOpen, setCreateOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  // Bumped after a create, which happens outside the table and so has no
+  // `ctx.refresh()` of its own to call.
+  const [reload, setReload] = useState(0);
 
   if (!project) {
     return null;
   }
 
-  const openCreate = () => {
-    setTitle("");
-    setDescription("");
-    setCreateOpen(true);
-  };
+  const fetchEpics = async ({
+    page,
+    size,
+    sort,
+    filters,
+  }: {
+    page: number;
+    size: number;
+    sort?: string;
+    filters?: Record<string, any>;
+  }): Promise<Page<EpicResource>> => {
+    const all = await epicApi.getEpics({ params: { projectId: project.id } });
 
-  const submitCreate = async () => {
-    const trimmed = title.trim();
-    if (!trimmed) return;
-    setSubmitting(true);
-    try {
-      const created = await epicApi.createEpic({
-        params: { projectId: project.id },
-        body: {
-          title: trimmed,
-          description: description.trim() || undefined,
-        },
-      });
-      setEpics((prev) =>
-        [...prev, created].sort((a, b) => a.number - b.number),
-      );
-      setCreateOpen(false);
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setSubmitting(false);
-    }
+    const status = filters?.status as EpicResource["status"] | undefined;
+    const needle = String(filters?.search ?? "")
+      .trim()
+      .toLowerCase();
+    const rows = sortEpics(
+      all.filter((epic) => {
+        if (status && epic.status !== status) return false;
+        if (!needle) return true;
+        return (
+          epic.title.toLowerCase().includes(needle) ||
+          epic.description.toLowerCase().includes(needle) ||
+          String(epic.number) === needle.replace(/^#/, "")
+        );
+      }),
+      sort,
+    );
+
+    const offset = page * size;
+    const content = rows.slice(offset, offset + size);
+    return {
+      content,
+      page: {
+        number: page,
+        size,
+        offset,
+        numberOfElements: content.length,
+        totalElements: rows.length,
+        totalPages: Math.max(1, Math.ceil(rows.length / size)),
+        isEmpty: content.length === 0,
+        isFirst: page === 0,
+        isLast: offset + size >= rows.length,
+      },
+    };
   };
 
   return (
-    <div className="flex flex-col gap-4 p-4">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-base font-semibold">{tr("project.menu.epics")}</h2>
-        <Button onClick={openCreate}>
-          <Plus className="size-4" />
-          {tr("epic.create")}
-        </Button>
-      </div>
+    <div className="flex min-h-0 flex-1 flex-col p-4">
+      <AlephaTable<EpicResource>
+        className="min-h-0 flex-1"
+        defaultSize={20}
+        persistenceKey={`lor.epics.${project.id}`}
+        defaultSort={{ field: "updatedAt", direction: "desc" }}
+        emptyMessage={tr("epic.list.empty")}
+        refreshSignal={reload}
+        filters={{
+          schema: epicsFiltersSchema,
+          render: (form) => (
+            <>
+              <div className="w-56">
+                <Control
+                  input={form.input.search}
+                  label=""
+                  icon={Search}
+                  placeholder={tr("epic.filter.search")}
+                  inputProps={{ "aria-label": tr("epic.filter.search") }}
+                />
+              </div>
+              <div className="w-44">
+                <Control
+                  input={form.input.status}
+                  label=""
+                  clearable
+                  icon={CircleDot}
+                  clearLabel={tr("epic.filter.allStatuses")}
+                  triggerClassName="w-full"
+                  items={[
+                    { label: tr("epic.status.planned"), value: "planned" },
+                    { label: tr("epic.status.active"), value: "active" },
+                    { label: tr("epic.status.done"), value: "done" },
+                  ]}
+                  inputProps={{ "aria-label": tr("epic.filter.status") }}
+                />
+              </div>
+            </>
+          ),
+        }}
+        fetch={fetchEpics}
+        actions={[
+          {
+            icon: Plus,
+            label: tr("epic.create"),
+            onClick: () => setCreateOpen(true),
+          },
+        ]}
+        columns={{
+          number: {
+            label: tr("epic.list.column.number"),
+            sortable: true,
+            className: "w-16",
+            cell: (epic) => (
+              <span className="text-muted-foreground tabular-nums">
+                #{epic.number}
+              </span>
+            ),
+          },
+          title: {
+            label: tr("epic.list.column.title"),
+            sortable: true,
+            className: "max-w-[520px]",
+            cell: (epic) => (
+              <div className="flex flex-col gap-0.5">
+                <Link
+                  href={router.path("projectEpic", {
+                    params: { epicNumber: epic.number },
+                  })}
+                  className="font-medium hover:underline"
+                >
+                  {epic.title}
+                </Link>
+                {epic.description ? (
+                  <p className="text-muted-foreground line-clamp-1 text-xs break-words">
+                    {epic.description}
+                  </p>
+                ) : null}
+              </div>
+            ),
+          },
+          status: {
+            label: tr("epic.list.column.status"),
+            sortable: true,
+            className: "w-32",
+            cell: (epic) => (
+              <Badge variant={STATUS_BADGE_VARIANT[epic.status]}>
+                {tr(STATUS_LABEL_KEYS[epic.status])}
+              </Badge>
+            ),
+          },
+          progress: {
+            label: tr("epic.list.column.progress"),
+            className: "w-56",
+            cell: (epic) => <ProjectEpicsProgress epic={epic} />,
+          },
+          updatedAt: {
+            label: tr("epic.list.column.updated"),
+            sortable: true,
+            className: "w-32",
+            cell: (epic) => (
+              <span className="text-muted-foreground whitespace-nowrap">
+                {dt.of(epic.updatedAt).fromNow()}
+              </span>
+            ),
+          },
+        }}
+        rowActions={(_epic) => [
+          {
+            icon: SquareArrowOutUpRight,
+            label: tr("epic.action.open"),
+            onClick: (epic: EpicResource) => {
+              router.push("projectEpic", {
+                params: { epicNumber: String(epic.number) },
+              });
+            },
+          },
+          {
+            icon: Trash2,
+            label: tr("epic.action.delete"),
+            destructive: true,
+            onClick: async (
+              epic: EpicResource,
+              { refresh }: { refresh: () => void },
+            ) => {
+              const ok = await dialog.confirm({
+                title: tr("epic.delete.title"),
+                description: tr("epic.delete.confirm", {
+                  args: [epic.title],
+                }) as string,
+                confirmLabel: tr("epic.action.delete"),
+                cancelLabel: tr("common.cancel"),
+                destructive: true,
+              });
+              if (!ok) return;
+              try {
+                await epicApi.deleteEpic({ params: { id: epic.id } });
+                toaster.success(tr("epic.toast.deleted"));
+                refresh();
+              } catch (error) {
+                toaster.error(
+                  error instanceof Error ? error.message : String(error),
+                );
+              }
+            },
+          },
+        ]}
+      />
 
-      <Card className="py-0 shadow">
-        <CardContent className="p-0">
-          {epics.length === 0 ? (
-            <div className="text-muted-foreground p-6 text-center text-sm">
-              {tr("epic.list.empty")}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-16">
-                    {tr("epic.list.column.number")}
-                  </TableHead>
-                  <TableHead>{tr("epic.list.column.title")}</TableHead>
-                  <TableHead className="w-32">
-                    {tr("epic.list.column.status")}
-                  </TableHead>
-                  <TableHead className="w-48">
-                    {tr("epic.list.column.progress")}
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {epics.map((epic) => {
-                  const pct =
-                    epic.progress.total > 0
-                      ? Math.round(
-                          (epic.progress.completed / epic.progress.total) * 100,
-                        )
-                      : 0;
-                  return (
-                    <TableRow key={epic.id}>
-                      <TableCell className="text-muted-foreground">
-                        #{epic.number}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        <Link
-                          href={router.path("projectEpic", {
-                            params: { epicNumber: epic.number },
-                          })}
-                          className="hover:underline"
-                        >
-                          {epic.title}
-                        </Link>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={STATUS_BADGE_VARIANT[epic.status]}>
-                          {tr(STATUS_LABEL_KEYS[epic.status])}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Progress value={pct} className="w-24" />
-                          <span className="text-muted-foreground text-xs tabular-nums">
-                            {epic.progress.completed}/{epic.progress.total}
-                          </span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{tr("epic.create")}</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="epic-create-title">
-                {tr("epic.create.title.label")}
-              </Label>
-              <Input
-                id="epic-create-title"
-                value={title}
-                onChange={(e) => setTitle(e.currentTarget.value)}
-                placeholder={tr("epic.create.title.placeholder")}
-                autoFocus
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="epic-create-description">
-                {tr("epic.create.description.label")}
-              </Label>
-              <Textarea
-                id="epic-create-description"
-                rows={4}
-                value={description}
-                onChange={(e) => setDescription(e.currentTarget.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setCreateOpen(false)}
-              disabled={submitting}
-            >
-              {tr("epic.create.cancel")}
-            </Button>
-            <Button
-              onClick={() => void submitCreate()}
-              disabled={submitting || !title.trim()}
-            >
-              {tr("epic.create.submit")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EpicCreateSheet
+        projectId={project.id}
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onSubmit={() => {
+          setCreateOpen(false);
+          // Refetch rather than splicing the new row in: `progress` is
+          // computed server-side, and the table is sorted, filtered and
+          // paged, so there is no position a client-side insert could
+          // honestly claim.
+          setReload((n) => n + 1);
+        }}
+      />
     </div>
   );
 };
 
 export default ProjectEpics;
+
+/**
+ * Client-side sort over the full epic list. Supports the four sortable
+ * columns; anything else (including no sort at all) falls back to epic
+ * number ascending, which is the order `getEpics` already returns and the
+ * order the numbers themselves imply.
+ */
+const sortEpics = (items: EpicResource[], sort?: string): EpicResource[] => {
+  const field = sort?.replace(/^-/, "");
+  const dir = sort?.startsWith("-") ? -1 : 1;
+  const rows = [...items];
+  rows.sort((a, b) => {
+    if (field === "updatedAt") {
+      return (
+        (new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()) *
+        dir
+      );
+    }
+    if (field === "title") {
+      return a.title.localeCompare(b.title) * dir;
+    }
+    if (field === "status") {
+      return (STATUS_ORDER[a.status] - STATUS_ORDER[b.status]) * dir;
+    }
+    if (field === "number") {
+      return (a.number - b.number) * dir;
+    }
+    return a.number - b.number;
+  });
+  return rows;
+};
+
+/**
+ * Sorting `status` alphabetically would read as arbitrary (active, done,
+ * planned). This orders it along the lifecycle instead, so ascending walks
+ * an epic's life from specified to finished.
+ */
+const STATUS_ORDER: Record<EpicResource["status"], number> = {
+  planned: 0,
+  active: 1,
+  done: 2,
+};

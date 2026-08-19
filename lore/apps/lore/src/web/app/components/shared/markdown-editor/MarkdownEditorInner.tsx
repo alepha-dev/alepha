@@ -14,6 +14,15 @@ export interface MarkdownEditorInnerProps {
   placeholder?: string;
   minHeight?: number;
   /**
+   * Show the numbered gutter in EDIT mode. View mode renders through
+   * `MarkdownView` and has no gutter to show.
+   *
+   * Off by default and opted into per surface: a folio body is a long
+   * document where a line number is a usable coordinate, while a quest or
+   * epic description is a form field, and numbering one reads as an IDE.
+   */
+  lineNumbers?: boolean;
+  /**
    * `"view"` renders through `MarkdownView`; `"edit"` mounts CodeMirror.
    *
    * Controlled by the caller rather than held here, so the folio workspace
@@ -103,6 +112,7 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
           onChange={props.onChange}
           placeholder={props.placeholder}
           minHeight={props.minHeight}
+          lineNumbers={props.lineNumbers}
           imageUploadHandler={props.imageUploadHandler}
           // Presence, not identity: an editor with no suggestions must not
           // mount autocompletion at all, or a popup appears over prose.

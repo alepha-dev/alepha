@@ -3,13 +3,13 @@ import { useStore } from "alepha/react";
 import { type ReactElement, useRef, useState } from "react";
 import type { FolioResource } from "@/api/schemas/folioResourceSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import { useElementLinks } from "../../shared/element/useElementLinks.ts";
 import type { MarkdownEditorMode } from "../../shared/markdown-editor/MarkdownEditorInner.tsx";
 import MarkdownModeToggle from "../../shared/markdown-editor/MarkdownModeToggle.tsx";
 import {
   type MarkdownCommandId,
   markdownCommands,
 } from "../../shared/markdown-editor/markdownCommands.ts";
-import { useFolioImageUpload } from "../../shared/markdown-editor/useFolioImageUpload.ts";
 import FolioDocument from "./document/FolioDocument.tsx";
 import FolioFindBar from "./document/FolioFindBar.tsx";
 import { useFolioFind } from "./document/useFolioFind.ts";
@@ -20,7 +20,6 @@ import FolioInspectorRail from "./inspector/FolioInspectorRail.tsx";
 import { useFolioActions } from "./useFolioActions.ts";
 import { useFolioAutoSave } from "./useFolioAutoSave.ts";
 import { useFolioDraft } from "./useFolioDraft.ts";
-import { useFolioWikiLinks } from "./wikilink/useFolioWikiLinks.ts";
 
 export interface FolioWorkspaceContentProps {
   /**
@@ -153,11 +152,17 @@ const FolioWorkspaceContent = (
   // popup both dispatch into it.
   const editorViewRef = useRef<EditorView | null>(null);
 
-  const wikiLinks = useFolioWikiLinks(
-    project?.id,
-    project?.slug,
-    draft.values.content,
-  );
+  // The element this workspace is showing. `LoreEditor` derives its own
+  // links and upload target from it; the copy computed here exists only
+  // because `useFolioFind` below needs `rendered` OUTSIDE the editor. Both
+  // calls hit the same `useQuery` keys, so the lookups are fetched once.
+  const element = {
+    kind: "folio" as const,
+    projectId: project?.id ?? 0,
+    projectSlug: project?.slug ?? "",
+    id: props.folio?.id,
+  };
+  const wikiLinks = useElementLinks(element, draft.values.content);
 
   // Find-in-folio searches the RENDERED pane, which is why it is wired
   // here — `contentElement` above is the same DOM handle the Outline tab
@@ -214,12 +219,6 @@ const FolioWorkspaceContent = (
     save: () => actions.handlers["folio.save"](),
   });
 
-  const imageUploadHandler = useFolioImageUpload(
-    project?.id,
-    props.folio?.id,
-    !actions.actionState.isProtected,
-  );
-
   return (
     <div className="bg-card flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       {/* `relative` is the containing block for the inspector's drawer
@@ -249,11 +248,12 @@ const FolioWorkspaceContent = (
                 actions={actions}
                 chromeSlot={props.chromeSlot}
                 mode={mode}
-                wikiLinks={wikiLinks}
+                element={element}
+                rendered={wikiLinks.rendered}
+                imageUpload={!actions.actionState.isProtected}
                 onEditorViewReady={(v) => {
                   editorViewRef.current = v;
                 }}
-                imageUploadHandler={imageUploadHandler}
               />
             </div>
           </div>

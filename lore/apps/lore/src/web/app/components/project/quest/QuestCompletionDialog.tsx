@@ -7,14 +7,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@alepha/ui/components/ui/dialog";
+import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Swords } from "lucide-react";
 import { useState } from "react";
+import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
-import MarkdownEditor from "../../shared/markdown-editor/MarkdownEditor.tsx";
-import type { MarkdownEditorMode } from "../../shared/markdown-editor/MarkdownEditorInner.tsx";
-import MarkdownModeToggle from "../../shared/markdown-editor/MarkdownModeToggle.tsx";
-import { useQuestImageUpload } from "../../shared/markdown-editor/useQuestImageUpload.ts";
+import LoreEditor from "../../shared/element/LoreEditor.tsx";
 
 export interface QuestCompletionDialogProps {
   open: boolean;
@@ -24,10 +23,10 @@ export interface QuestCompletionDialogProps {
 }
 
 const QuestCompletionDialog = (props: QuestCompletionDialogProps) => {
+  // The links the editor's View mode produces are URLs, so it needs the slug.
+  const [project] = useStore(currentProjectAtom);
   const { tr } = useI18n<I18n, "en">();
-  const imageUploadHandler = useQuestImageUpload();
   const [message, setMessage] = useState("");
-  const [mode, setMode] = useState<MarkdownEditorMode>("edit");
 
   const handleClose = (open: boolean) => {
     if (!open) {
@@ -61,15 +60,15 @@ const QuestCompletionDialog = (props: QuestCompletionDialogProps) => {
             {tr("quest.view.complete.description")}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex justify-end">
-          <MarkdownModeToggle mode={mode} onChange={setMode} />
-        </div>
-        <MarkdownEditor
+        <LoreEditor
+          element={{
+            kind: "quest",
+            projectId: project?.id ?? 0,
+            projectSlug: project?.slug ?? "",
+          }}
           value={message}
           onChange={setMessage}
           placeholder={tr("quest.view.complete.placeholder")}
-          imageUploadHandler={imageUploadHandler}
-          mode={mode}
           minHeight={200}
         />
         <DialogFooter className="gap-2">

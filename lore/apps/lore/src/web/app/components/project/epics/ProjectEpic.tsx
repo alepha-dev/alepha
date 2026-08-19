@@ -1,33 +1,58 @@
+import {
+  DetailLayout,
+  type DetailTab,
+} from "@alepha/ui/components/detail/detail-layout";
+import { useDetailTab } from "@alepha/ui/components/detail/use-detail-tab";
+import { Button } from "@alepha/ui/components/ui/button";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { useClient, useStore } from "alepha/react";
+import { useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useCallback, useEffect, useState } from "react";
+import { BookOpen, FileText, Pencil, Swords, Workflow } from "lucide-react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
+import { currentEpicAtom } from "@/web/app/atoms/currentEpicAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+import EpicCreateSheet from "./EpicCreateSheet.tsx";
+import EpicStatusControl from "./EpicStatusControl.tsx";
+import ProjectEpicAside from "./ProjectEpicAside.tsx";
 import ProjectEpicDescription from "./ProjectEpicDescription.tsx";
+import ProjectEpicFlow from "./ProjectEpicFlow.tsx";
 import ProjectEpicFolios from "./ProjectEpicFolios.tsx";
-import ProjectEpicHeader from "./ProjectEpicHeader.tsx";
 import ProjectEpicQuests from "./ProjectEpicQuests.tsx";
 
 export interface ProjectEpicProps {
   epic: EpicResource;
 }
 
+type TabKey = "overview" | "quests" | "flow" | "folios";
+
 /**
- * The Epic detail page (route `projectEpic`, `/epics/:epicNumber`). Four
- * zones, one component per file: header (title, status, progress),
- * description, folios, and the full quest set plus the dependency flow.
+ * The Epic detail page (route `projectEpic`, `/epics/:epicNumber`), composed
+ * on `@alepha/ui`'s shared `DetailLayout`: an identity aside beside a tabbed
+ * right column.
+ *
+ * It was four zones stacked in one scrolling column until the shell was
+ * shared. The four survive as the four tabs, but two of them changed shape
+ * in the move: the status BADGE went to the aside while its transition verbs
+ * went to the toolbar (`EpicStatusControl` renders only the verbs now), and
+ * the dependency flow left the bottom of the Quests card for a tab of its
+ * own.
+ *
+ * `useDetailTab` binds the selection to `?tab=`, so "that epic's flow" is a
+ * shareable link, and it writes with `replaceState` so walking the tabs does
+ * not bury the page the reader arrived from.
  *
  * Quests and folios are not part of `epicResourceSchema` — they're fetched
  * separately on mount and kept in local state, refreshed after every
- * attach/detach so the picker and the table never show stale membership.
+ * attach/detach so the picker, the tables and the aside's derived rows never
+ * show stale membership.
  */
 const ProjectEpic = (props: ProjectEpicProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -37,12 +62,15 @@ const ProjectEpic = (props: ProjectEpicProps) => {
   const questApi = useClient<QuestController>();
   const folioApi = useClient<FolioController>();
   const [project] = useStore(currentProjectAtom);
+  const [tab, setTab] = useDetailTab<TabKey>("overview");
+  const alepha = useAlepha();
 
   const [epic, setEpic] = useState<EpicResource>(props.epic);
+  const [editOpen, setEditOpen] = useState(false);
   // `null` means "not loaded yet" — either still in flight or the last
   // fetch failed. Only a successfully resolved `[]` means "confirmed
-  // empty": the zone components must not render an empty state on `null`,
-  // or a failed reload reads as an epic with nothing in it.
+  // empty": the tab bodies must not render an empty state on `null`, or a
+  // failed reload reads as an epic with nothing in it.
   const [quests, setQuests] = useState<QuestResource[] | null>(null);
   const [folios, setFolios] = useState<Folio[] | null>(null);
 
@@ -162,23 +190,96 @@ const ProjectEpic = (props: ProjectEpicProps) => {
     }
   };
 
+  // A count is shown only once its collection has actually resolved —
+  // `null` renders the bare label rather than a confident "0".
+  const withCount = (label: ReactNode, count: number | undefined): ReactNode =>
+    count === undefined ? (
+      label
+    ) : (
+      <>
+        {label}
+        <span className="text-muted-foreground ml-1 tabular-nums">{count}</span>
+      </>
+    );
+
+  const tabs: DetailTab[] = [
+    {
+      value: "overview",
+      icon: FileText,
+      label: tr("epic.tab.overview"),
+    },
+    {
+      value: "quests",
+      icon: Swords,
+      label: withCount(tr("epic.tab.quests"), quests?.length),
+    },
+    {
+      value: "flow",
+      icon: Workflow,
+      label: tr("epic.tab.flow"),
+    },
+    {
+      value: "folios",
+      icon: BookOpen,
+      label: withCount(tr("epic.tab.folios"), folios?.length),
+    },
+  ];
+
   return (
-    <div className="flex flex-col gap-6 p-4">
-      <ProjectEpicHeader epic={epic} onStatusChange={setEpic} />
-      <ProjectEpicDescription epic={epic} />
-      <ProjectEpicFolios
+    <DetailLayout
+      aside={<ProjectEpicAside epic={epic} quests={quests} />}
+      tabs={tabs}
+      tab={tab}
+      onTabChange={(v) => setTab(v as TabKey)}
+      actions={
+        <>
+          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+            <Pencil className="size-4" />
+            {tr("epic.edit")}
+          </Button>
+          <EpicStatusControl epic={epic} onChange={setEpic} />
+        </>
+      }
+    >
+      {tab === "overview" && <ProjectEpicDescription epic={epic} />}
+
+      {tab === "quests" && (
+        <ProjectEpicQuests
+          projectId={project.id}
+          quests={quests}
+          onAttach={handleAttachQuest}
+          onDetach={handleDetachQuest}
+        />
+      )}
+
+      {tab === "flow" && <ProjectEpicFlow quests={quests} />}
+
+      {tab === "folios" && (
+        <ProjectEpicFolios
+          projectId={project.id}
+          folios={folios}
+          onAttach={handleAttachFolio}
+          onDetach={handleDetachFolio}
+        />
+      )}
+
+      {/* Beside the tab bodies, not inside one: a Sheet portals out anyway,
+          and nesting it in `children` would unmount it on a tab switch. */}
+      <EpicCreateSheet
         projectId={project.id}
-        folios={folios}
-        onAttach={handleAttachFolio}
-        onDetach={handleDetachFolio}
+        epic={epic}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onSubmit={(saved) => {
+          setEditOpen(false);
+          setEpic(saved);
+          // The breadcrumb leaf reads the atom, not this component's state,
+          // so a rename has to be written back or the header keeps the old
+          // title until the next navigation.
+          alepha.store.set(currentEpicAtom, saved);
+        }}
       />
-      <ProjectEpicQuests
-        projectId={project.id}
-        quests={quests}
-        onAttach={handleAttachQuest}
-        onDetach={handleDetachQuest}
-      />
-    </div>
+    </DetailLayout>
   );
 };
 

@@ -1,6 +1,8 @@
 import { type Infer, z } from "alepha";
 import { folios } from "../entities/folios.ts";
 import { hydratedBlobSchema } from "./hydratedBlobSchema.ts";
+import { linkSourceKindSchema } from "./linkSourceKindSchema.ts";
+import { linkTargetKindSchema } from "./linkTargetKindSchema.ts";
 
 /**
  * Resolved outbound + inbound `[[wiki-link]]` refs for a folio.
@@ -22,18 +24,23 @@ const folioRefPathSchema = z.array(
 export const folioLinksSchema = z.object({
   outbound: z.array(
     z.object({
-      kind: z.enum(["folio", "quest", "blob"]),
+      kind: linkTargetKindSchema,
+      // The number an entity is addressed by: a folio's / quest's
+      // `shortId`, an epic's `number`. One field across every kind so the
+      // Links tab renders one row shape.
       shortId: z.integer(),
-      // For folios and quests this is the entity title. For blobs it's
-      // the blob's display name (e.g. "diagram.png").
+      // For elements this is the entity title. For blobs it's the blob's
+      // display name (e.g. "diagram.png").
       title: z.string(),
       path: folioRefPathSchema.optional(),
     }),
   ),
-  // Inbound is always folio→folio (only folios contain `[[...]]`).
+  // Inbound can come from any element that carries a body — a folio, a
+  // quest, an epic (and comments once they exist). `blob` is absent by
+  // construction: it has bytes, not content, so nothing inside it links.
   inbound: z.array(
     z.object({
-      kind: z.enum(["folio"]),
+      kind: linkSourceKindSchema,
       shortId: z.integer(),
       title: z.string(),
       path: folioRefPathSchema.optional(),

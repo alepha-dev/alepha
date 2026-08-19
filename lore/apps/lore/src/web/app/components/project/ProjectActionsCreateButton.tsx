@@ -28,6 +28,7 @@ import { useRouter, useRouterState } from "alepha/react/router";
 import {
   BookOpen,
   ChevronDown,
+  Layers,
   Mail,
   MessageSquarePlus,
   Plus,
@@ -41,10 +42,12 @@ import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { kanbanReloadAtom } from "../../atoms/kanbanProjectAtom.ts";
 import { questsViewAtom } from "../../atoms/questsViewAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
+import EpicCreateSheet from "./epics/EpicCreateSheet.tsx";
 import QuestCreate from "./quest/QuestCreate.tsx";
 
 const ProjectActionsCreateButton = () => {
   const [showDialog, setShowDialog] = useState(false);
+  const [showEpic, setShowEpic] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteLoading, setInviteLoading] = useState(false);
@@ -72,8 +75,10 @@ const ProjectActionsCreateButton = () => {
   const features = project.features;
   const folioEnabled = features.folios;
   const feedbackEnabled = features.feedback;
+  const epicsEnabled = features.epics;
   const isOwner = project.createdBy === auth.user?.id;
-  const hasSecondaryAction = folioEnabled || feedbackEnabled || isOwner;
+  const hasSecondaryAction =
+    epicsEnabled || folioEnabled || feedbackEnabled || isOwner;
 
   const handleInvite = async () => {
     if (!inviteEmail.trim()) {
@@ -136,6 +141,12 @@ const ProjectActionsCreateButton = () => {
               <ChevronDown className="size-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-44">
+              {epicsEnabled && (
+                <DropdownMenuItem onClick={() => setShowEpic(true)}>
+                  <Layers className="size-4" />
+                  {tr("project.menu.create-epic")}
+                </DropdownMenuItem>
+              )}
               {folioEnabled && (
                 <DropdownMenuItem
                   onClick={() =>
@@ -192,6 +203,20 @@ const ProjectActionsCreateButton = () => {
           />
         </SheetContent>
       </Sheet>
+      <EpicCreateSheet
+        projectId={project.id}
+        open={showEpic}
+        onOpenChange={setShowEpic}
+        onSubmit={(epic) => {
+          setShowEpic(false);
+          void router.push("projectEpic", {
+            params: {
+              projectSlug: project.slug,
+              epicNumber: String(epic.number),
+            },
+          });
+        }}
+      />
       <Dialog open={showInvite} onOpenChange={setShowInvite}>
         <DialogContent>
           <DialogHeader>

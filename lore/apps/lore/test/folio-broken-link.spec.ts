@@ -149,3 +149,66 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
     expect(out).toBe("Cf. [[ ]].");
   });
 });
+
+/**
+ * Epics as a link target. The `epic:` prefix resolves against the epic's
+ * per-project `number` — the field it is addressed by everywhere else — and
+ * the rewrite emits a `/epics/:number` href, not a `/quests/` one.
+ */
+describe("rewriteFolioWikiLinks — epic targets", () => {
+  const epics = [{ shortId: 3, title: "Lore Deploy" }];
+
+  it("[[epic:#3]] → a link to the epic", () => {
+    const out = rewriteFolioWikiLinks(
+      "See [[epic:#3]].",
+      PROJECT_SLUG,
+      [],
+      [],
+      [],
+      [],
+      epics,
+    );
+    expect(out).toBe("See [Lore Deploy](/sds/epics/3).");
+  });
+
+  it("[[epic:Title]] resolves by title when unique", () => {
+    const out = rewriteFolioWikiLinks(
+      "See [[epic:Lore Deploy]].",
+      PROJECT_SLUG,
+      [],
+      [],
+      [],
+      [],
+      epics,
+    );
+    expect(out).toBe("See [Lore Deploy](/sds/epics/3).");
+  });
+
+  it("an unknown epic gets its own broken reason, not the folio one", () => {
+    const out = rewriteFolioWikiLinks(
+      "See [[epic:#99]].",
+      PROJECT_SLUG,
+      [],
+      [],
+      [],
+      [],
+      epics,
+    );
+    expect(out).toBe("See [\\[\\[epic:#99\\]\\]](lore-broken:epic-not-found).");
+  });
+
+  it("a bare [[#3]] stays a FOLIO ref even when epic 3 exists", () => {
+    // Same rule the quest form follows: inferring across kinds would make a
+    // link's destination depend on which folios happen to exist.
+    const out = rewriteFolioWikiLinks(
+      "See [[#3]].",
+      PROJECT_SLUG,
+      [],
+      [],
+      [],
+      [],
+      epics,
+    );
+    expect(out).toBe("See [\\[\\[#3\\]\\]](lore-broken:folio-not-found).");
+  });
+});

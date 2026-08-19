@@ -1,4 +1,6 @@
 import { z } from "alepha";
+import { linkSourceKindSchema } from "../../api/schemas/linkSourceKindSchema.ts";
+import { linkTargetKindSchema } from "../../api/schemas/linkTargetKindSchema.ts";
 
 /**
  * Lightweight folio reference returned by list/search tools.
@@ -19,7 +21,7 @@ export const folioRefSchema = z.object({
  * blob's bytes live at `/api/files/<uuid>` (no MCP-side fetch tool yet).
  */
 const folioLinkRefSchema = z.object({
-  kind: z.enum(["folio", "quest", "blob"]),
+  kind: linkTargetKindSchema,
   shortId: z.integer(),
   title: z.string(),
 });
@@ -30,7 +32,7 @@ const folioLinkRefSchema = z.object({
  * content).
  */
 const folioInboundLinkRefSchema = z.object({
-  kind: z.enum(["folio"]),
+  kind: linkSourceKindSchema,
   shortId: z.integer(),
   title: z.string(),
 });
