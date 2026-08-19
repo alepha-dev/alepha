@@ -31,6 +31,55 @@ test.describe("Areas", () => {
       `Ar${t}`.slice(0, 20),
     );
 
+    // A disposable area, used only for the plain-rename regression below:
+    // a rename with no collision. The surviving id there is the SAME id
+    // as the one already in the URL, so a push that omits `force: true`
+    // would target the URL the user is already on and
+    // `ReactPageProvider.createLayers` would silently reuse the previous
+    // layer's cached props — no error, no toast, just a page that never
+    // updates. The merge case below can't catch that: it always
+    // navigates to a DIFFERENT id, which is a real navigation either way.
+    const soloArea = `solo${t}`;
+    await apiPost(page, "createQuest", {
+      projectId,
+      title: `Solo${t}`,
+      description: "Seeded for the plain-rename regression",
+      area: soloArea,
+      priority: "medium",
+      difficulty: 2,
+      objectives: [],
+      attachments: [],
+    });
+
+    await test.step("a plain rename (no collision) updates the page in place, with no reload or navigation", async () => {
+      await page.goto(`/${slug}/settings/areas`);
+      await page.getByRole("link", { name: soloArea, exact: true }).click();
+      await expect(page.getByRole("heading", { name: soloArea })).toBeVisible();
+
+      const renamedTo = `Renamed${t}`;
+      await page.getByRole("button", { name: "Rename" }).click();
+      await page.getByLabel("New name").fill(renamedTo);
+
+      // No collision: the submit stays "Rename", not "Merge". Scoped to
+      // the dialog because the header behind it also has a button named
+      // "Rename" (the one that opened this dialog in the first place).
+      const dialog = page.getByRole("dialog");
+      await expect(dialog.getByRole("button", { name: "Merge" })).toHaveCount(
+        0,
+      );
+      await dialog.getByRole("button", { name: "Rename" }).click();
+
+      // The whole point of this test: no `goto`, no reload — and yet the
+      // heading must already read the new name. This is what a missing
+      // `force: true` on the post-rename push would silently fail.
+      await expect(
+        page.getByRole("heading", { name: renamedTo }),
+      ).toBeVisible();
+      await expect(page.getByRole("heading", { name: soloArea })).toHaveCount(
+        0,
+      );
+    });
+
     // Two areas differing only in case — the production duplicate that
     // motivated the feature (`folio` vs `Folio`).
     for (const [title, area] of [
