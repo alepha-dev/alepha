@@ -35,6 +35,9 @@ bucket per container.
 
 ### Providers
 
+- [`FileStorageProvider`](/docs/reference-providers-filestorageprovider) — Abstract contract for raw blob storage.
+- [`LocalFileStorageProvider`](/docs/reference-providers-localfilestorageprovider) — Filesystem-backed blob storage — the Node default when `S3_ENDPOINT` is
+- [`MemoryFileStorageProvider`](/docs/reference-providers-memoryfilestorageprovider) — In-memory blob storage, bound automatically under test. The `files` map is
 - [`R2FileStorageProvider`](/docs/reference-providers-r2filestorageprovider) — Cloudflare R2 storage provider.
 - [`S3FileStorageProvider`](/docs/reference-providers-s3filestorageprovider) — S3-compatible file storage provider for Node.js.
 

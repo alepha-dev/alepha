@@ -8,7 +8,7 @@ import { useEvents } from "alepha/react";
 
 ## Overview
 
-Allow subscribing to multiple Alepha events. See {@link Hooks} for available events.
+Allow subscribing to multiple Alepha events. See `Hooks` for available events.
 
 useEvents is fully typed to ensure correct event callback signatures.
 

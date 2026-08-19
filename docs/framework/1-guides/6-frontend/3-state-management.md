@@ -25,8 +25,8 @@ Atoms must contain only serializable data. Avoid storing class instances, functi
 | Option        | Type       | Description                                |
 |---------------|------------|--------------------------------------------|
 | `name`        | `string`   | Unique identifier for the atom.            |
-| `schema`      | `ZodType`  | Zod schema for validation.                 |
-| `default`     | `Static<T>` | Default value. Required unless schema is fully optional. |
+| `schema`      | `ZType`    | Zod schema for validation.                 |
+| `default`     | `Infer<T>` | Default value. Required unless schema is fully optional. |
 | `description` | `string`   | Optional description for documentation.    |
 
 ## useStore Hook
@@ -36,7 +36,7 @@ The `useStore` hook connects React components to Alepha state. It returns a `[va
 ```typescript
 import { useStore } from "alepha/react";
 
-function Counter() {
+const Counter = () => {
   const [state, setState] = useStore(counter);
 
   return (
@@ -90,20 +90,20 @@ const prefs = $atom({
   default: { theme: "light", sidebar: { collapsed: false } },
 });
 
-function ThemeLabel() {
+const ThemeLabel = () => {
   const theme = useSelector(prefs, (s) => s.theme);
   return <span>{theme}</span>;
 }
 ```
 
-`ThemeLabel` only re-renders when `theme` changes. Toggling `sidebar.collapsed` elsewhere in the app leaves it alone -- `useStore(prefs)` would re-render on both.
+`ThemeLabel` only re-renders when `theme` changes. Toggling `sidebar.collapsed` elsewhere in the app leaves it alone — `useStore(prefs)` would re-render on both.
 
 By default, the selected value is compared with `Object.is`. If your selector builds a new object or array on every call, `Object.is` never considers two calls equal, so the component would re-render on every mutation regardless of whether the slice actually changed. Pass `shallowEqual` as the third argument to compare the result key by key instead:
 
 ```typescript
 import { useSelector, shallowEqual } from "alepha/react";
 
-function Sidebar() {
+const Sidebar = () => {
   const sidebar = useSelector(
     prefs,
     (s) => ({ collapsed: s.sidebar.collapsed }),
@@ -115,8 +115,8 @@ function Sidebar() {
 
 **When to use which:**
 
-- `useStore(atom)` returns `[value, setValue]` -- use it when a component reads *and* writes the whole atom, or genuinely needs every field.
-- `useSelector(atom, select, equality?)` is read-only and re-renders only on changes to the selected slice -- use it for components that only care about part of a larger, frequently-changing atom. To write, call `alepha.store.set(atom, ...)` or use `useStore` elsewhere in the tree.
+- `useStore(atom)` returns `[value, setValue]` — use it when a component reads *and* writes the whole atom, or genuinely needs every field.
+- `useSelector(atom, select, equality?)` is read-only and re-renders only on changes to the selected slice — use it for components that only care about part of a larger, frequently-changing atom. To write, call `alepha.store.set(atom, ...)` or use `useStore` elsewhere in the tree.
 
 ## Non-React Access
 
@@ -150,7 +150,7 @@ alepha.store.set(settings, { theme: "dark", count: 1, extra: true } as any);
 alepha.store.get(settings); // { theme: "dark", count: 1 } -- `extra` is gone
 ```
 
-This applies to every write path -- `useStore`'s setter, `alepha.store.set`, and raw string-key writes once the atom has registered.
+This applies to every write path — `useStore`'s setter, `alepha.store.set`, and raw string-key writes once the atom has registered.
 
 Validation also runs the other direction, for a value that arrives from *outside* a normal `set` call: the SSR hydration payload, or a value passed to `Alepha.create(seed)`. If that value doesn't match the schema, the atom falls back to its declared default (and a warning is logged) instead of storing something invalid.
 
@@ -186,15 +186,15 @@ import { AlephaServerCookies } from "alepha/server/cookies";
 const alepha = Alepha.create().with(AlephaServerCookies);
 ```
 
-`alepha/server/cookies` resolves to the server adapter or the browser adapter automatically depending on the build target, so this single `.with(...)` call wires up both sides. `localStorage` and `sessionStorage` need no extra module -- they're wired up automatically per atom.
+`alepha/server/cookies` resolves to the server adapter or the browser adapter automatically depending on the build target, so this single `.with(...)` call wires up both sides. `localStorage` and `sessionStorage` need no extra module — they're wired up automatically per atom.
 
-Corrupted or invalid stored values -- a hand-edited cookie, a schema that changed since the value was written, `localStorage` filled with garbage -- are discarded, and the atom's declared default is used instead. This happens silently; persistence never throws.
+Corrupted or invalid stored values — a hand-edited cookie, a schema that changed since the value was written, `localStorage` filled with garbage — are discarded, and the atom's declared default is used instead. This happens silently; persistence never throws.
 
-**Security:** `persist: "cookie"` atoms are unsigned, unencrypted, and can be overwritten by any client-side script or a hand-crafted request -- never persist trust-bearing state (user ids, roles, entitlements) in one. If you need a signed, encrypted, or `httpOnly` cookie, use the `$cookie` primitive directly instead of `persist`.
+**Security:** `persist: "cookie"` atoms are unsigned, unencrypted, and can be overwritten by any client-side script or a hand-crafted request — never persist trust-bearing state (user ids, roles, entitlements) in one. If you need a signed, encrypted, or `httpOnly` cookie, use the `$cookie` primitive directly instead of `persist`.
 
 ## Derived State with $computed
 
-Some values aren't state on their own -- they're computed from other state. `$computed` defines a read-only value derived from one or more atoms (or other computed values), with a static list of dependencies:
+Some values aren't state on their own — they're computed from other state. `$computed` defines a read-only value derived from one or more atoms (or other computed values), with a static list of dependencies:
 
 ```typescript check
 import { $atom, $computed, z } from "alepha";
@@ -220,7 +220,7 @@ const cartTotal = $computed({
 ```typescript
 import { useComputed } from "alepha/react";
 
-function CartSummary() {
+const CartSummary = () => {
   const total = useComputed(cartTotal);
   return <p>Total: ${total.toFixed(2)}</p>;
 }
@@ -232,9 +232,9 @@ or outside of React:
 alepha.store.get(cartTotal); // number
 ```
 
-`deps` can mix atoms and other `Computed` values, as long as they don't form a cycle -- a computed that depends on itself, even transitively through another computed, throws an `AlephaError` instead of recursing forever.
+`deps` can mix atoms and other `Computed` values, as long as they don't form a cycle — a computed that depends on itself, even transitively through another computed, throws an `AlephaError` instead of recursing forever.
 
-Computed values are **read-only**: `alepha.store.set(cartTotal, ...)` throws. Change the atoms it depends on instead. They are also never stored, serialized into the SSR hydration payload, or persisted -- the value is recomputed from its dependencies on every read, which is what keeps it correct for request-scoped state on the server (each request/fork gets its own derived value, never a stale one cached from a different request).
+Computed values are **read-only**: `alepha.store.set(cartTotal, ...)` throws. Change the atoms it depends on instead. They are also never stored, serialized into the SSR hydration payload, or persisted — the value is recomputed from its dependencies on every read, which is what keeps it correct for request-scoped state on the server (each request/fork gets its own derived value, never a stale one cached from a different request).
 
 Declare a `$computed` at module scope, next to the atoms it depends on, the same way you declare atoms. Constructing one inline inside a component body creates a new instance on every render, which forces `useComputed` to resubscribe unnecessarily.
 
@@ -248,7 +248,7 @@ alepha.events.on("state:mutate", ({ key, value }) => {
 });
 ```
 
-This is how `useStore` knows when to re-render -- it listens for mutations matching its atom key.
+This is how `useStore` knows when to re-render — it listens for mutations matching its atom key.
 
 ## Utilities
 
@@ -273,7 +273,7 @@ const unsubscribe = alepha.store.watch(counter, (value, prevValue) => {
 unsubscribe();
 ```
 
-Watching a `$computed` works the same way -- the callback fires whenever any of its transitive dependencies mutate.
+Watching a `$computed` works the same way — the callback fires whenever any of its transitive dependencies mutate.
 
 **`serverOnly: true`** excludes an atom from the SSR hydration payload, so its value never ships to the browser:
 
@@ -286,13 +286,13 @@ const sessionSecret = $atom({
 });
 ```
 
-Use it for state that must never leave the server -- internal request-scoped data, secrets touched during rendering. The guarantee reaches further than just the hydration payload: `serverOnly` also withholds the value from the devtools mutation log and metadata endpoints, so it can't leak through those channels either.
+Use it for state that must never leave the server — internal request-scoped data, secrets touched during rendering. The guarantee reaches further than just the hydration payload: `serverOnly` also withholds the value from the devtools mutation log and metadata endpoints, so it can't leak through those channels either.
 
-**Which atoms need it.** The hydration payload is built from the current request's state layer only -- not from the app-level store. An atom you configure once at boot (`alepha.store.set(myOptions, ...)` in your entry file, a `configure` hook, an env read) was therefore never going to ship in the first place. So on a config atom, `serverOnly` is free: it changes nothing at runtime, it documents the intent, it redacts the value in devtools, and it means a later `store.set` from inside a request handler can't silently start leaking it. The flag genuinely changes behaviour only for atoms you write *during* a request -- resolved tenant, resolved row, anything a middleware stamps per call. Those are exactly the ones worth auditing.
+**Which atoms need it.** The hydration payload is built from the current request's state layer only — not from the app-level store. An atom you configure once at boot (`alepha.store.set(myOptions, ...)` in your entry file, a `configure` hook, an env read) was therefore never going to ship in the first place. So on a config atom, `serverOnly` is free: it changes nothing at runtime, it documents the intent, it redacts the value in devtools, and it means a later `store.set` from inside a request handler can't silently start leaking it. The flag genuinely changes behaviour only for atoms you write *during* a request — resolved tenant, resolved row, anything a middleware stamps per call. Those are exactly the ones worth auditing.
 
 Conversely, do not set it on an atom the browser is meant to read: anything a page loader fills for the client to pick up, anything behind `useStore` (the hook seeds its default into the request layer during SSR, so that value does ship by design), and anything a client-side service reads back after render.
 
-`serverOnly` cannot be combined with `persist` -- every persistence adapter targets the browser by definition, so declaring both throws an `AlephaError` at `$atom()` call time. Pick one.
+`serverOnly` cannot be combined with `persist` — every persistence adapter targets the browser by definition, so declaring both throws an `AlephaError` at `$atom()` call time. Pick one.
 
 ## Example: Feature Flags
 
@@ -312,7 +312,7 @@ const featureFlags = $atom({
   },
 });
 
-function FeatureToggle() {
+const FeatureToggle = () => {
   const [flags, setFlags] = useStore(featureFlags);
 
   return (

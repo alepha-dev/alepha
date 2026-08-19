@@ -8,6 +8,8 @@ import { useHead } from "alepha/react/head";
 
 ## Overview
 
+Read and update the document head (title, meta, …) from a component.
+
 ```tsx
 const App = () => {
   const [head, setHead] = useHead({

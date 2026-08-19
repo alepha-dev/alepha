@@ -12,14 +12,14 @@ npm install alepha
 
 Plugin for Alepha Cache that stores entries in the application's SQL database.
 
-Adds a `cache_entries` table and a {@link DatabaseCacheProvider}
-implementation of {@link CacheProvider} that:
+Adds a `cache_entries` table and a `DatabaseCacheProvider`
+implementation of `CacheProvider` that:
 
 - reads/writes through the framework's ORM (Postgres, SQLite, D1, Bun);
 - exposes an **atomic** `incr()` via `INSERT ... ON CONFLICT DO UPDATE`;
 - filters expired rows on every read (lazy expiration);
 - opportunistically sweeps a small batch of expired rows on writes
-  (configurable via {@link databaseCacheOptions}).
+  (configurable via `databaseCacheOptions`).
 
 **Module is opt-in.** Importing this module does not change the default
 `CacheProvider` binding — pass `provider: DatabaseCacheProvider` explicitly

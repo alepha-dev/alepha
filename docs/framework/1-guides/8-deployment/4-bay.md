@@ -20,7 +20,7 @@ it needs is already in the build manifest. `alepha platform up` runs this for yo
 One exception: a workspace that declares `target: "static"` is built as static instead. Bay hosts a
 site with no process behind it — no port, no `.env`, no database, no health probe, because there is
 nothing to give them to — and the deploy commands below are otherwise identical. See
-[Static Deployment](./2-static.md), including `static.source` for a site Alepha did not render
+[Static Deployment](/docs/guides-deployment-static), including `static.source` for a site Alepha did not render
 itself. Every other target is overridden to `bare`: a workerd bundle has no entry point node can
 run, so one reaching Bay would deploy, never boot, and report only "never became ready".
 
@@ -44,7 +44,7 @@ export `BAY_HOST`.
 
 It is handed to your own `ssh` binary verbatim, so it can be an alias from `~/.ssh/config`:
 
-```
+```txt
 Host bay-prod
   HostName 203.0.113.10
   User deploy
@@ -189,7 +189,7 @@ merge only touches the keys it was sent — a redeploy that carries no secrets c
 Two classes of key are dropped even when the app declares them, each with a line in the deploy log
 saying so:
 
-- **Keys Bay writes itself** — `APP_SECRET`, `DATABASE_URL`, `SERVER_PORT`, `APP_NAME`, `DATA_DIR`,
+- **Keys Bay writes itself** — `APP_SECRET`, `DATABASE_URL`, `SERVER_HOST`, `SERVER_PORT`, `APP_NAME`, `DATA_DIR`,
   `STORAGE_PATH` and the `S3_*` family. Bay generates `APP_SECRET` once per instance and never
   regenerates it: a new value signs every user out, and the one it replaced is gone. Bay refuses
   these on its own side too, naming the key.

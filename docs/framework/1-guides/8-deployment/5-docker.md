@@ -10,7 +10,7 @@ alepha build --target=docker
 
 Produces:
 
-```
+```txt
 dist/
   index.js       # Bundled server (single file)
   public/        # Client assets (if React frontend exists)
@@ -66,8 +66,8 @@ export default defineConfig({
 | `docker.from` | `node:24-alpine` / `oven/bun:alpine` | Base image for the `FROM` instruction |
 | `docker.command` | `node` / `bun` | Command that runs the server |
 | `docker.install` | `[]` | Extra packages installed into the image (e.g. `["wrangler"]` for an app that shells out to a CLI) |
-| `docker.image` | -- | Image tag, extra `docker build` args, OCI labels (used with `--image`) |
-| `docker.compile` | -- | Single-binary compile mode, see below |
+| `docker.image` | — | Image tag, extra `docker build` args, OCI labels (used with `--image`) |
+| `docker.compile` | — | Single-binary compile mode, see below |
 
 ## Compile Mode (Single Static Binary)
 

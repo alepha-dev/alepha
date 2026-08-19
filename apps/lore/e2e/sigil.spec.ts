@@ -301,9 +301,23 @@ test.describe("Sigils", () => {
           authorization: `Bearer ${token}`,
         },
         data: {
-          views: [{ path: "/checkout" }, { path: "/checkout" }],
+          // One arrival carrying its three arrival facts, then a second view
+          // from the same visit carrying none — the shape the browser really
+          // sends, and the only shape that proves `entries` is not just
+          // `count` under another name.
+          views: [
+            {
+              path: "/checkout",
+              entry: true,
+              referrer: "news.ycombinator.com",
+              campaign: "hn",
+            },
+            { path: "/checkout" },
+          ],
+          engagements: [{ path: "/checkout" }],
           vitals: [{ path: "/checkout", metric: "lcp", value: 2100 }],
           country: "FR",
+          device: "mobile",
           visitor: `v-${t}`,
           ...errorBatch(blightMessage, 3),
         },
@@ -436,13 +450,44 @@ test.describe("Sigils", () => {
       // Two views of /checkout from one visitor. The numbers are asserted, not
       // just the headings — a page that renders zeros proves only that it does
       // not throw.
-      await expect(page.getByText("Top pages")).toBeVisible({
-        timeout: 15_000,
-      });
+      //
+      // Every count is scoped to its own card. A page-wide `2 · 100%` used to
+      // be unique and is not any more: several leaderboards render the same
+      // `count · percentage` markup, so an unscoped match is a strict-mode
+      // violation the moment another card agrees with this one.
+      const topPaths = page.getByTestId("insights-top-paths");
+      await expect(topPaths).toBeVisible({ timeout: 15_000 });
       await expect(page.getByText("Unique visitors")).toBeVisible();
-      await expect(page.getByText("/checkout").first()).toBeVisible();
+      await expect(topPaths.getByText("/checkout")).toBeVisible();
       // The only page reported, so its two views are 100% of the total.
-      await expect(page.getByText(/2\s*·\s*100%/)).toBeVisible();
+      await expect(topPaths.getByText(/2\s*·\s*100%/)).toBeVisible();
+
+      // One of those two views was the arrival, which is the whole point of
+      // `entries` being a separate measure from `count`.
+      await expect(
+        page.getByTestId("insights-entries").getByText("1", { exact: true }),
+      ).toBeVisible();
+      const entryPaths = page.getByTestId("insights-entry-paths");
+      await expect(entryPaths.getByText(/1\s*·\s*100%/)).toBeVisible();
+
+      // One engagement against two views.
+      await expect(
+        page.getByTestId("insights-engagement").getByText("50%"),
+      ).toBeVisible();
+
+      // The arrival's referrer, and the second view which had none.
+      const referrers = page.getByTestId("insights-referrers");
+      await expect(referrers.getByText("news.ycombinator.com")).toBeVisible();
+      // `exact`, because the card's own description text also says "Direct".
+      await expect(
+        referrers.getByText("Direct", { exact: true }),
+      ).toBeVisible();
+
+      // The campaign tag and the device the proxy stamped.
+      const campaigns = page.getByTestId("insights-campaigns");
+      await expect(campaigns.getByText("hn", { exact: true })).toBeVisible();
+      await expect(campaigns.getByText("Mobile")).toBeVisible();
+
       // This deployment runs the relational backend, where `estimated` is
       // always false — the qualifier must not appear. Pins "no false
       // qualifier" as deliberate rather than an untested absence.

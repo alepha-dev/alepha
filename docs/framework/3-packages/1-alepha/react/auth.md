@@ -18,3 +18,8 @@ Auth-related React components and hooks.
 Route protection is done with `use: [$secure(...)]` on the page or action,
 not with wrapper components.
 
+## API Reference
+
+### React Hooks
+
+- [`useAuth`](/docs/reference-react-hooks-useauth) — Reads the current user and exposes `login()` / `logout()`.

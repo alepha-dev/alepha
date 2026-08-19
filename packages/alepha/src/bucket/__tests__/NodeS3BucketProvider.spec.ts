@@ -1,12 +1,14 @@
 import { Alepha } from "alepha";
 import { FileSystemProvider } from "alepha/system";
-import { beforeAll, describe, expect, test } from "vitest";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import {
   AlephaBucket,
   FileStorageProvider,
   S3FileStorageProvider,
 } from "../index.ts";
 import {
+  emptyBuckets,
+  TEST_DOCUMENTS_BUCKET,
   TEST_IMAGES_BUCKET,
   testCustomFileId,
   testDeleteFile,
@@ -36,6 +38,13 @@ describe("NodeS3BucketProvider", () => {
     await fetch(`${process.env.S3_ENDPOINT}/${process.env.S3_BUCKET_NAME}`, {
       method: "PUT",
     });
+  });
+
+  // The store is a shared tmpfs that outlives the run — leave it the way a
+  // fresh container starts. Containers are disjoint per spec file, so this
+  // cannot race the streamed-upload suite.
+  afterAll(async () => {
+    await emptyBuckets(provider, [TEST_IMAGES_BUCKET, TEST_DOCUMENTS_BUCKET]);
   });
 
   test("should upload a file and return a fileId", async () => {

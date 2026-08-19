@@ -22,7 +22,7 @@ Worker, so selecting it under Node would mean every `record()` call throws.
 `CLOUDFLARE_ANALYTICS_DATASET`.
 
 `AnalyticsRollupJobs` is deliberately **not** wired here — see
-{@link AlephaApiAnalyticsRollup} just below for why it is a separate module.
+`AlephaApiAnalyticsRollup` just below for why it is a separate module.
 `AnalyticsRetentionGuard` *is* wired here, unconditionally, precisely to
 catch an app that forgets the split: it `log.warn`s at boot if any
 dataset declares `retention.hot` while no `AnalyticsRollupJobs` was ever
@@ -36,6 +36,7 @@ constructed.
 
 ### Providers
 
+- [`AnalyticsProvider`](/docs/reference-providers-analyticsprovider) — Where a dataset's rows live.
 - [`MemoryAnalyticsProvider`](/docs/reference-providers-memoryanalyticsprovider) — An in-memory dataset, and the reference implementation of the seam.
 - [`OrmAnalyticsProvider`](/docs/reference-providers-ormanalyticsprovider) — Two relational tables per dataset: raw hour buckets and rolled day buckets.
 - [`WaeAnalyticsProvider`](/docs/reference-providers-waeanalyticsprovider) — Hot rows on Workers Analytics Engine, rolled rows in a durable store.
@@ -48,4 +49,4 @@ Environment variables used to configure this module. These can be set in your `.
 |----------|------|---------|-------------|
 | `CLOUDFLARE_ACCOUNT_ID` | text | - | Cloudflare account id, for the Analytics Engine SQL read API (there is no read binding — see AnalyticsEngineSql). |
 | `CLOUDFLARE_ANALYTICS_DATASET` | text | - | Analytics Engine dataset name — used both as the wrangler.toml binding key (env.<name>) for writes and as the SQL FROM table for reads. Unset means this provider is never selected; see index.workerd.ts. |
-| `CLOUDFLARE_ANALYTICS_TOKEN` | text | **Required** |  |
+| `CLOUDFLARE_ANALYTICS_TOKEN` | text | - | API token scoped to Account Analytics Read, for the Analytics Engine SQL read API. Never a deploy credential. |

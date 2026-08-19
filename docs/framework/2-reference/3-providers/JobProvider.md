@@ -10,7 +10,7 @@ import { JobProvider } from "alepha/api/jobs";
 
 Coordinates cron and push jobs with a durable outbox table and a single
 reconciliation sweep. The actual delivery channel (queue / direct) is
-abstracted behind {@link JobDispatcher}, substituted by DI:
+abstracted behind `JobDispatcher`, substituted by DI:
 
 - **DirectJobDispatcher** (default, registered by `AlephaApiJobs`) —
   runs the handler in-process right after `push()` returns.

@@ -127,8 +127,8 @@ rows and deletes their blobs. Override per upload with `ttl`, or set an exact
 
 The default depends on the environment:
 
-- **Test / serverless**: `MemoryFileStorageProvider` (in-memory, lost on restart)
-- **Cloudflare Workers**: `R2FileStorageProvider`
+- **Cloudflare Workers**: `R2FileStorageProvider` (`MemoryFileStorageProvider` under test) — the workerd bundle decides this first, so the rules below never apply there
+- **Test**: `MemoryFileStorageProvider` (in-memory, lost on restart)
 - **Otherwise**: `S3FileStorageProvider` when `S3_ENDPOINT` is set, else `LocalFileStorageProvider`
 
 | Provider | Description |

@@ -57,6 +57,8 @@ export default defineConfig({
         "insights.range.",
         // tr(`insights.vitals.${key}`) — lcp/cls/inp/fcp/ttfb (Web Vitals p75 cards).
         "insights.vitals.",
+        // tr(`insights.device.${d.device}`) — mobile/tablet/desktop.
+        "insights.device.",
         // tr(`folios.activity.action.${action}`) — create/edit/rename/tag-change/revert.
         "folios.activity.action.",
         // tr(`folios.editor.status.${draft.statusKey}`) — draft/saved/unsaved.
@@ -70,7 +72,7 @@ export default defineConfig({
     () => ({
       // Pulling the production D1 into the local dev SQLite is now a
       // baseline command: `alepha platform db export [--env] [--tenant]
-      // [--output] [--keep-sql]`. The old app-local `export:db` was
+      // [--output] [--keepSql]`. The old app-local `export:db` was
       // promoted upstream (CloudflareAdapter.exportDb) — see Alepha quest
       // #220.
       // `icons:backfill` lived here on 2026-08-10 and was deleted once it had

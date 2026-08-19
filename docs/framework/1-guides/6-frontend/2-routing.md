@@ -115,7 +115,7 @@ head: (props) => ({
 
 Every page gets a `<link rel="canonical">`, plus `og:url` and `twitter:url`, without declaring anything. Set `PUBLIC_URL` and they are built from it and the page's matched route path:
 
-```
+```txt
 PUBLIC_URL=https://example.com   →   <link rel="canonical" href="https://example.com/docs/routing">
 ```
 
@@ -189,20 +189,10 @@ Attach middlewares to the page — this is how you add server-side caching:
 use: [$cache({ ttl: [1, "hour"] })]
 ```
 
-> [!WARNING]
-> **`$secure` on a page is not access control.** It is a handler middleware, so on a page it wraps the *loader*, and its browser implementation short-circuits by returning `undefined` rather than throwing. The loader is skipped and **the page renders anyway** — on a back office that means the whole shell, navigation and all, over empty tables whose requests each answer 401. The framework warns about this at boot.
+> [!NOTE]
+> **`$secure` on a page is a real guard.** An anonymous visitor is refused at the router: with a `login` route declared, the result is a redirect to `/login?redirect=<path>`, and the loader's data never reaches the HTML; with no login route, the server answers 401. The two `$secure` variants refuse differently under the hood (the browser returns, the server throws), and the router normalises both into the redirect — which also means a page's own `errorHandler` cannot catch the refusal, because on the server the middleware chain wraps the render.
 >
-> To turn a visitor away, redirect from the loader:
->
-> ```typescript
-> loader: async ({ user }) => {
->   if (!user?.roles?.includes("admin")) {
->     throw new Redirection("/login?redirect=/admin");
->   }
-> }
-> ```
->
-> Keep `$secure` on the endpoints underneath. That is what actually enforces the permission, and it answers 401 whatever the interface does.
+> Keep `$secure` on the endpoints underneath as well. Defense in depth: the API answers 401 whatever the interface does.
 
 When `static: true` is set, the framework automatically applies `$cache({ provider: "memory", ttl: [1, "week"] })` to the page.
 
@@ -317,7 +307,7 @@ Three routers ship whole surfaces you can mount instead of rebuilding:
 
 | Router | Surface | Extend with |
 |---|---|---|
-| `AuthRouter` | `/auth/login`, `/register`, `/reset-password`, `/verify-email` | — (write your own to change the URLs) |
+| `AuthRouter` | `/auth/{login,register,reset-password,verify-email}` | — (write your own to change the URLs) |
 | `AdminRouter` | `/admin` — users, sessions, keys, jobs, audits, … | `$pageAdmin` |
 | `AccountRouter` | `/account` — profile, security, sessions, API keys, connected apps | `$pageAccount` |
 
@@ -361,10 +351,33 @@ errorHandler: (error) => {
 }
 ```
 
+The same handler also covers failures thrown *around* the render — a `use:`
+middleware, or a server hook such as the rate limiter or the not-ready guard
+that answers while the app is still booting. Those never run a loader, so there
+is no layer to fail; the router still resolves the nearest `errorHandler` and
+renders its result as a full HTML page.
+
+When no handler applies, the built-in error page answers: the stack overlay in
+development, a plain card carrying the request id in production.
+
+### HTML or JSON
+
+The switch is the request's `Accept` header, and nothing else:
+
+- `Accept: text/html` — what a browser sends on a hard navigation — gets a
+  rendered document.
+- Anything else, including the `*/*` that `fetch()` defaults to, keeps the JSON
+  error body. API clients are unaffected.
+
+An error page is server-rendered and deliberately **not** hydrated: it ships no
+entry script, so the client cannot boot and re-render the very URL the server
+just refused. A custom error component is therefore static — hooks that read
+context (`useRouter`, `useI18n`) work, event handlers do not.
+
 ## Lifecycle Callbacks
 
-- `onEnter` -- called when the user enters the page (browser only)
-- `onLeave` -- called when the user leaves the page (browser only)
+- `onEnter` — called when the user enters the page (browser only)
+- `onLeave` — called when the user leaves the page (browser only)
 
 ```typescript
 onEnter: () => {
@@ -373,7 +386,7 @@ onEnter: () => {
 }
 ```
 
-- `onServerResponse` -- called before the server sends the response (server only)
+- `onServerResponse` — called before the server sends the response (server only)
 
 ## Page Animations
 
@@ -414,7 +427,7 @@ Access the router for navigation. Accepts a type parameter for type-safe page na
 ```typescript
 import { useRouter } from "alepha/react/router";
 
-function Nav() {
+const Nav = () => {
   const router = useRouter<AppRouter>();
 
   return (
@@ -452,15 +465,20 @@ Determine if a route is active and get anchor props for navigation links.
 ```typescript check
 import { useActive } from "alepha/react/router";
 
-function NavLink({ href, label }: { href: string; label: string }) {
-  const { isActive, isPending, anchorProps } = useActive(href);
+interface NavLinkProps {
+  href: string;
+  label: string;
+}
+
+const NavLink = (props: NavLinkProps) => {
+  const { isActive, isPending, anchorProps } = useActive(props.href);
 
   return (
     <a {...anchorProps} className={isActive ? "active" : ""}>
-      {isPending ? "Loading..." : label}
+      {isPending ? "Loading..." : props.label}
     </a>
   );
-}
+};
 ```
 
 Accepts a string or an options object:
@@ -478,7 +496,7 @@ Manage typed query parameters with a schema.
 import { useQueryParams } from "alepha/react/router";
 import { z } from "alepha";
 
-function SearchPage() {
+const SearchPage = () => {
   const [params, setParams] = useQueryParams(
     z.object({
       search: z.text().optional(),
@@ -559,7 +577,7 @@ intend to extend it with prefetching/active-state logic later.
 
 Route transitions emit events on the Alepha event system:
 
-- `react:transition:begin` -- navigation started (includes previous and new state)
-- `react:transition:success` -- navigation completed
-- `react:transition:error` -- navigation failed
-- `react:transition:end` -- always emitted after transition completes
+- `react:transition:begin` — navigation started (includes previous and new state)
+- `react:transition:success` — navigation completed
+- `react:transition:error` — navigation failed
+- `react:transition:end` — always emitted after transition completes

@@ -26,11 +26,13 @@ import { I18nCheckService } from "./services/I18nCheckService.ts";
  *   plugins: [
  *     i18n({
  *       scan: ["src", ".vendor/@alepha/ui"],
- *       dynamicPrefixes: ["archive.type.", "petitions.filter."],
+ *       dynamicPrefixes: ["folio.type.", "feedback.filter."],
  *     }),
  *   ],
  * });
  * ```
+ *
+ * @module alepha.cli.i18n
  */
 export const AlephaCliI18nPlugin = $module({
   name: "alepha.cli.plugins.i18n",

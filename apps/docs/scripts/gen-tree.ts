@@ -435,12 +435,19 @@ export class TreeCommand {
 
     const renderer = {
       heading: ({ text, depth }: Tokens.Heading) => {
-        const slug = text
+        const baseSlug = text
           .replace(/\//g, "-")
           .replace(/[()`:/@"]/g, "")
           .trim()
           .replace(/ /g, "-")
           .toLowerCase();
+
+        // De-duplicate ids GitHub-style: the second "## Secrets" on a page
+        // becomes #secrets-1. Without this, duplicate headings emit the same
+        // id and an anchor can only ever reach the first one.
+        const count = this.headingSlugsSeen.get(baseSlug) ?? 0;
+        this.headingSlugsSeen.set(baseSlug, count + 1);
+        const slug = count === 0 ? baseSlug : `${baseSlug}-${count}`;
 
         // Escape quotes for HTML attribute (strip backticks for clean data attribute)
         const escapedText = text.replace(/"/g, "&quot;").replace(/`/g, "");
@@ -773,8 +780,15 @@ export class TreeCommand {
     return pretty;
   }
 
+  /**
+   * Heading-id occurrences for the document currently being rendered.
+   * Reset per document in renderContent().
+   */
+  protected headingSlugsSeen = new Map<string, number>();
+
   renderContent(content: string) {
     this.log.trace(`Rendering ${content.length} chars of markdown`);
+    this.headingSlugsSeen = new Map();
     return this.marked.parse(content);
   }
 

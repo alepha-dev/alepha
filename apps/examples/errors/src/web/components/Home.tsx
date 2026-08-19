@@ -57,6 +57,44 @@ const Home = () => {
     },
   ];
 
+  /**
+   * Failures thrown around the render rather than inside a loader.
+   *
+   * These only happen on the server, so they need a hard navigation — a
+   * `router.push` never leaves the client and would never reach them.
+   */
+  const hardLoads = [
+    {
+      href: "/middleware-error",
+      label: "Middleware Error (500)",
+      desc: "use: throws before the render",
+    },
+    {
+      href: "/middleware-503",
+      label: "Middleware Not Ready (503)",
+      desc: "the shape a boot / rate-limit hook takes",
+    },
+    {
+      href: "/middleware-429",
+      label: "Middleware Rate Limit (429)",
+      desc: "answered by the page's own errorHandler",
+    },
+  ];
+
+  const cardStyle = {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "12px 16px",
+    border: "1px solid #333",
+    borderRadius: 8,
+    background: "#1a1a1a",
+    color: "#eee",
+    cursor: "pointer",
+    textAlign: "left" as const,
+    textDecoration: "none",
+  };
+
   return (
     <div
       style={{
@@ -71,26 +109,24 @@ const Home = () => {
       </p>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {pages.map((p) => (
-          <button
-            key={p.label}
-            type="button"
-            onClick={p.go}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              padding: "12px 16px",
-              border: "1px solid #333",
-              borderRadius: 8,
-              background: "#1a1a1a",
-              color: "#eee",
-              cursor: "pointer",
-              textAlign: "left",
-            }}
-          >
+          <button key={p.label} type="button" onClick={p.go} style={cardStyle}>
             <span style={{ fontWeight: 600 }}>{p.label}</span>
             <span style={{ color: "#888", fontSize: 13 }}>{p.desc}</span>
           </button>
+        ))}
+      </div>
+
+      <h2 style={{ fontSize: 18, margin: "32px 0 8px" }}>Server-side only</h2>
+      <p style={{ color: "#888", marginBottom: 16, fontSize: 13 }}>
+        Thrown around the render, so they need a full page load. Fetch the same
+        URLs without an HTML Accept header and they answer JSON instead.
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {hardLoads.map((p) => (
+          <a key={p.label} href={p.href} style={cardStyle}>
+            <span style={{ fontWeight: 600 }}>{p.label}</span>
+            <span style={{ color: "#888", fontSize: 13 }}>{p.desc}</span>
+          </a>
         ))}
       </div>
     </div>

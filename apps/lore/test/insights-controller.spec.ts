@@ -46,16 +46,25 @@ class Probe {
 
   views = {
     /**
-     * One `sigil_views` row: the dimension triple (`sigilId`, `path`,
-     * `country`) plus the `count` measure, stamped at `hour` rather than the
+     * One `sigil_views` row: the dimensions (`sigilId`, `path`, `country`,
+     * `referrer`) plus the `count` measure, stamped at `hour` rather than the
      * clock — every fixture in this file backdates into a specific window.
+     *
+     * `referrer` is optional here and defaults on the dataset, so the fixtures
+     * that predate it keep reading as they did: they are about paths and
+     * countries, and spelling `referrer: "direct"` in each would be noise.
      */
     create: async (sample: {
       sigilId: string;
       hour: string;
       path: string;
       country: string;
-      count: number;
+      referrer?: string;
+      campaign?: string;
+      device?: string;
+      count?: number;
+      engaged?: number;
+      entries?: number;
     }): Promise<void> => {
       await this.datasets.views.record(sample);
     },
@@ -403,6 +412,197 @@ describe("InsightsController", () => {
     expect(res.data.topPaths[1].percentage).toBe(25);
   });
 
+  it("ranks referrer hosts and keeps `direct` on the same leaderboard", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const projectId = await createProject(ctx, owner);
+    const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
+
+    await ctx.probe.views.create({
+      sigilId,
+      hour: hourUtc(ctx, 0, 8),
+      path: "/",
+      country: "FR",
+      referrer: "direct",
+      count: 60,
+    });
+    await ctx.probe.views.create({
+      sigilId,
+      hour: hourUtc(ctx, 0, 8),
+      path: "/",
+      country: "US",
+      referrer: "news.ycombinator.com",
+      count: 30,
+    });
+    await ctx.probe.views.create({
+      sigilId,
+      hour: hourUtc(ctx, 0, 8),
+      path: "/",
+      country: "US",
+      referrer: "www.google.com",
+      count: 10,
+    });
+
+    const res = await ctx.insightsController.getInsights.fetch(
+      { params: { projectId }, query: { range: "30d" } },
+      { user: owner },
+    );
+
+    // `direct` stays in, and stays first. It is the denominator: dropping it
+    // would make Hacker News read as 75% of traffic instead of 30%.
+    expect(res.data.topReferrers).toEqual([
+      { referrer: "direct", count: 60, percentage: 60 },
+      { referrer: "news.ycombinator.com", count: 30, percentage: 30 },
+      { referrer: "www.google.com", count: 10, percentage: 10 },
+    ]);
+  });
+
+  it("separates arrivals from total views, and ranks landing pages", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const projectId = await createProject(ctx, owner);
+    const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
+
+    await ctx.probe.views.create({
+      sigilId,
+      hour: hourUtc(ctx, 0, 8),
+      path: "/",
+      country: "FR",
+      count: 30,
+      entries: 8,
+    });
+    await ctx.probe.views.create({
+      sigilId,
+      hour: hourUtc(ctx, 0, 8),
+      path: "/docs",
+      country: "FR",
+      count: 20,
+      entries: 2,
+    });
+
+    const res = await ctx.insightsController.getInsights.fetch(
+      { params: { projectId }, query: { range: "30d" } },
+      { user: owner },
+    );
+
+    expect(res.data.totalViews).toBe(50);
+    expect(res.data.entries).toBe(10);
+    // `/docs` is 40% of views but only 20% of arrivals — the distinction
+    // `topPaths` alone cannot make.
+    expect(res.data.topEntryPaths).toEqual([
+      { path: "/", count: 8, percentage: 80 },
+      { path: "/docs", count: 2, percentage: 20 },
+    ]);
+  });
+
+  it("reports engagement as a share of views", async ({ expect }) => {
+    const owner = await createTestUser(ctx);
+    const projectId = await createProject(ctx, owner);
+    const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
+
+    await ctx.probe.views.create({
+      sigilId,
+      hour: hourUtc(ctx, 0, 8),
+      path: "/",
+      country: "FR",
+      count: 200,
+      entries: 200,
+    });
+    // Engagement arrives on its own row with `count: 0` — append-only.
+    await ctx.probe.views.create({
+      sigilId,
+      hour: hourUtc(ctx, 0, 9),
+      path: "/",
+      country: "FR",
+      count: 0,
+      engaged: 20,
+    });
+
+    const res = await ctx.insightsController.getInsights.fetch(
+      { params: { projectId }, query: { range: "30d" } },
+      { user: owner },
+    );
+
+    // The engagement row must not be counted as traffic.
+    expect(res.data.totalViews).toBe(200);
+    expect(res.data.engagedViews).toBe(20);
+    expect(res.data.engagementRate).toBe(10);
+  });
+
+  it("ranks campaigns by arrivals, not by how much each visitor read", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const projectId = await createProject(ctx, owner);
+    const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
+
+    // One visitor from HN who read ten pages, five who arrived untagged and
+    // bounced. Summing `count` would rank HN first and say nothing true.
+    await ctx.probe.views.create({
+      sigilId,
+      hour: hourUtc(ctx, 0, 8),
+      path: "/",
+      country: "FR",
+      campaign: "hn",
+      count: 10,
+      entries: 1,
+    });
+    await ctx.probe.views.create({
+      sigilId,
+      hour: hourUtc(ctx, 0, 8),
+      path: "/",
+      country: "FR",
+      campaign: "none",
+      count: 5,
+      entries: 5,
+    });
+
+    const res = await ctx.insightsController.getInsights.fetch(
+      { params: { projectId }, query: { range: "30d" } },
+      { user: owner },
+    );
+
+    expect(res.data.topCampaigns).toEqual([
+      { campaign: "none", count: 5 },
+      { campaign: "hn", count: 1 },
+    ]);
+  });
+
+  it("breaks views down by device", async ({ expect }) => {
+    const owner = await createTestUser(ctx);
+    const projectId = await createProject(ctx, owner);
+    const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
+
+    await ctx.probe.views.create({
+      sigilId,
+      hour: hourUtc(ctx, 0, 8),
+      path: "/",
+      country: "FR",
+      device: "desktop",
+      count: 12,
+    });
+    await ctx.probe.views.create({
+      sigilId,
+      hour: hourUtc(ctx, 0, 8),
+      path: "/",
+      country: "FR",
+      device: "mobile",
+      count: 7,
+    });
+
+    const res = await ctx.insightsController.getInsights.fetch(
+      { params: { projectId }, query: { range: "30d" } },
+      { user: owner },
+    );
+
+    expect(res.data.topDevices).toEqual([
+      { device: "desktop", count: 12 },
+      { device: "mobile", count: 7 },
+    ]);
+  });
+
   it("folds hour buckets into a zero-filled daily timeline", async ({
     expect,
   }) => {
@@ -491,6 +691,13 @@ describe("InsightsController", () => {
 
     expect(res.data.totalViews).toBe(0);
     expect(res.data.topPaths).toEqual([]);
+    expect(res.data.topReferrers).toEqual([]);
+    expect(res.data.entries).toBe(0);
+    expect(res.data.engagedViews).toBe(0);
+    expect(res.data.engagementRate).toBe(0);
+    expect(res.data.topEntryPaths).toEqual([]);
+    expect(res.data.topCampaigns).toEqual([]);
+    expect(res.data.topDevices).toEqual([]);
     expect(res.data.timeline).toHaveLength(7);
     expect(res.data.vitals.lcp).toBeNull();
     expect(res.data.errorGroups).toEqual([]);

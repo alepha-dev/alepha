@@ -1,7 +1,7 @@
 import { Alepha, type FileLike } from "alepha";
-import { beforeAll, describe, it } from "vitest";
+import { afterAll, beforeAll, describe, it } from "vitest";
 import { S3FileStorageProvider } from "../providers/S3FileStorageProvider.ts";
-import { testKeepsTheStatusOfAStreamRefusal } from "./shared.ts";
+import { emptyBuckets, testKeepsTheStatusOfAStreamRefusal } from "./shared.ts";
 
 /**
  * A file whose size is not known until it has been read.
@@ -70,6 +70,13 @@ describe("S3 streamed upload", () => {
     });
   });
 
+  // These uploads are the store's whole disk budget: ~70 MB of UUID-named
+  // objects per run, into a 4 GB tmpfs that only empties on container
+  // restart. Drain the container so consecutive runs start level.
+  afterAll(async () => {
+    await emptyBuckets(await setup(), [bucket]);
+  });
+
   it("uploads a file whose size is unknown, without ever materialising it", async ({
     expect,
   }) => {
@@ -131,7 +138,7 @@ describe("S3 streamed upload", () => {
     expect(large).toBeLessThan(small + 24 * 1024 * 1024);
   });
 
-  it("keeps the status of a refusal raised mid-stream", async ({ expect }) => {
+  it("keeps the status of a refusal raised mid-stream", async () => {
     const provider = await setup();
 
     await testKeepsTheStatusOfAStreamRefusal(provider, bucket);

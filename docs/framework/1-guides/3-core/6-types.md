@@ -180,10 +180,15 @@ z.url()   // validates URL format
 ### File and Stream
 
 ```typescript
-z.file()                      // file-like object (browser File API compatible)
-z.file({ maxSize: 1048576 })  // maxSize is metadata (OpenAPI docs), not runtime-enforced
-z.stream()                    // experimental streaming type
+z.file()                        // file-like object (browser File API compatible)
+z.file({ maxBytes: 1_048_576 }) // caps what the multipart parser accepts for this route
+z.stream()                      // experimental streaming type
+z.stream({ maxBytes: 1_048_576 }) // same cap, applied to the streamed part
 ```
+
+`maxBytes` is runtime-enforced — the multipart parser reads it and refuses larger uploads
+with a 413. Careful with the neighbouring `$storage({ maxSize })`, which is declared in
+**megabytes**; mixing the two units up is silent in both directions.
 
 ## Domain Types
 
@@ -208,8 +213,8 @@ z.bcp47()   // validates BCP 47 tags, e.g. "en", "en-US", "fr-CA"
 ### Date and Time
 
 ```typescript
-z.datetime()   // ISO 8601 date-time, e.g. "2024-01-15T10:30:00Z"
-z.date()       // ISO 8601 date, e.g. "2024-01-15"
+z.datetime()   // ISO 8601 date-time, e.g. "2026-01-15T10:30:00Z"
+z.date()       // ISO 8601 date, e.g. "2026-01-15"
 z.time()       // ISO 8601 time, e.g. "10:30:00"
 z.duration()   // string tagged with the ISO 8601 duration format (not runtime-validated)
 ```
@@ -314,7 +319,7 @@ alepha.codec.encode(schema, data, { encoder: "protobuf", as: "binary" });
 
 ```typescript
 const result = alepha.codec.decode(schema, jsonString);
-// result is validated and typed as Static<typeof schema>
+// result is validated and typed as Infer<typeof schema>
 ```
 
 Specify a codec if the data isn't standard JSON:
@@ -327,18 +332,13 @@ Validation runs automatically after decoding. Disable it with `validation: false
 
 ## Accessing Zod Directly
 
-`z` covers what Alepha needs. For anything it does not wrap, `Type` is the raw
-Zod namespace:
-
-```typescript
-import { Type } from "alepha";
-
-Type.intersection(schemaA, schemaB);
-```
-
-Schemas built by `z` are ordinary Zod schemas, so the fluent API works on them
-directly too:
+Schemas built by `z` are ordinary Zod schemas, so for anything `z` does not
+wrap, the fluent API works on them directly:
 
 ```typescript
 schemaA.and(schemaB);
 ```
+
+Do not import the `zod` package directly for this — a second zod copy makes
+schemas structurally incompatible with every Alepha primitive. Stay on the
+instances `z` hands you.

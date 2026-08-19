@@ -26,6 +26,8 @@ import {
  * @example
  * ```ts
  * class NotificationService {
+ *   dateTime = $inject(DateTimeProvider);
+ *
  *   userActivity = $topic({
  *     name: "user-activity",
  *     schema: {
@@ -41,7 +43,7 @@ import {
  *   });
  *
  *   async trackLogin(userId: string) {
- *     await this.userActivity.publish({ userId, action: "login", timestamp: Date.now() });
+ *     await this.userActivity.publish({ userId, action: "login", timestamp: this.dateTime.nowMillis() });
  *   }
  *
  *   async subscribeToEvents() {

@@ -9,7 +9,7 @@ import { VendorService } from "./services/VendorService.ts";
  * CLI plugin for vendoring Alepha packages into external projects.
  *
  * Copies package source code from a git remote into the current project's
- * `packages/` directory. Useful for corporate projects that need a local
+ * vendor directory (`.vendor/` by default). Useful for corporate projects that need a local
  * copy of Alepha for AI tooling, audits, documentation, or quick fixes.
  *
  * Commands:
@@ -30,6 +30,8 @@ import { VendorService } from "./services/VendorService.ts";
  *   ],
  * });
  * ```
+ *
+ * @module alepha.cli.vendor
  */
 export const AlephaCliVendorPlugin = $module({
   name: "alepha.cli.plugins.vendor",

@@ -202,6 +202,8 @@ Compression adds CPU overhead but reduces storage by 60-80% for typical JSON dat
 
 By default, caching uses in-memory storage (`MemoryCacheProvider`). For distributed caching across multiple instances, switch to Redis.
 
+Memory and Redis are not the only backends: on Cloudflare Workers the default is `CloudflareKVProvider` (backed by Workers KV), and `DatabaseCacheProvider` stores entries in the app's own database — useful when you want durable caching with no extra infrastructure.
+
 ### Module Registration
 
 ```typescript

@@ -22,7 +22,17 @@ The `dev` command runs your app through a Vite dev server:
 
 ```bash
 alepha dev
-# → http://localhost:5173
+# → http://localhost:5173 (the default when no port is configured)
+```
+
+### Port
+
+The port is resolved in this order: the `SERVER_PORT` environment variable, then `dev.port` in `alepha.config.ts`, then Vite's `server.port`, then `5173`. The chosen port is bound strictly — a second dev server on the same port fails loudly instead of drifting to `5174`:
+
+```typescript
+export default defineConfig({
+  dev: { port: 3303 },
+});
 ```
 
 You get:
@@ -113,14 +123,18 @@ Under the hood, the dev server is Vite, fully configured by the Alepha CLI:
 - **API Routes** — Define `$action` endpoints that work seamlessly
 - **Static Assets** — Import images, fonts, and other assets directly
 
-Your `vite.config.ts` stays minimal because the CLI does the heavy lifting — the file exists only so extra Vite plugins (like Tailwind) can hook in:
+Your `vite.config.ts` stays minimal because the CLI does the heavy lifting — the file exists so extra Vite plugins (like Tailwind) can hook in, and so Vitest has its `test` block:
 
 ```typescript
 import tailwindcss from "@tailwindcss/vite";
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [tailwindcss()],
+  test: {
+    root: ".",
+    globals: true,
+  },
 });
 ```
 

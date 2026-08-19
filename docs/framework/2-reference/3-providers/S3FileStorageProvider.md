@@ -15,7 +15,7 @@ MinIO, DigitalOcean Spaces, Backblaze B2, and any other S3-compatible service.
 
 Uses path-style addressing (`<endpoint>/<S3_BUCKET_NAME>`), and keys every
 object as `{prefix}/{tenantId}/{container}/{fileId}` — the same scheme as
-{@link R2FileStorageProvider}.
+`R2FileStorageProvider`.
 
 **Required environment variables:**
 - `S3_ENDPOINT`, `S3_BUCKET_NAME`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`

@@ -1,4 +1,4 @@
-import { Alepha, type FileLike } from "alepha";
+import { Alepha, AlephaError, type FileLike } from "alepha";
 import { FileSystemProvider } from "alepha/system";
 import { expect } from "vitest";
 import {
@@ -6,6 +6,39 @@ import {
   type FileStorageProvider,
   InvalidFileError,
 } from "../index.ts";
+
+/**
+ * Drains every object under the given containers.
+ *
+ * The s3mock store from `compose.yml` is shared across runs and bounded (a
+ * 4 GB tmpfs): the streamed-upload suite alone leaves ~70 MB of UUID-named
+ * objects per run, so without teardown the tmpfs fills after a few dozen runs
+ * and every bucket test fails until the container restarts. Suites that write
+ * to s3mock call this from `afterAll` — draining by container prefix also
+ * removes whatever earlier, less tidy runs left behind.
+ */
+export const emptyBuckets = async (
+  provider: FileStorageProvider,
+  bucketNames: string[],
+): Promise<void> => {
+  for (const bucketName of bucketNames) {
+    // `list()` returns one flat page (~1000 keys), so keep going until the
+    // store reports the container empty. Bounded, so a delete that silently
+    // fails surfaces as an error instead of an infinite loop.
+    for (let pass = 0; ; pass++) {
+      const ids = await provider.list(bucketName);
+      if (ids.length === 0) {
+        break;
+      }
+      if (pass >= 100) {
+        throw new AlephaError(
+          `Container '${bucketName}' still holds ${ids.length} objects after ${pass} delete passes`,
+        );
+      }
+      await provider.deleteMany(bucketName, ids);
+    }
+  }
+};
 
 // Container names are just key prefixes now — no primitive declares them and
 // no provider pre-creates them, so these are plain strings.

@@ -349,6 +349,7 @@ export class DbCommand {
       dryRun: z
         .boolean()
         .describe("Preview SQL statements without executing them")
+        .meta({ aliases: ["dry-run"] })
         .optional(),
     }),
     handler: async ({ root, args, flags }) => {

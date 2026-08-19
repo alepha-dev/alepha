@@ -5,6 +5,8 @@ import type { Head } from "../interfaces/Head.ts";
 import { BrowserHeadProvider } from "../providers/BrowserHeadProvider.ts";
 
 /**
+ * Read and update the document head (title, meta, …) from a component.
+ *
  * ```tsx
  * const App = () => {
  *   const [head, setHead] = useHead({

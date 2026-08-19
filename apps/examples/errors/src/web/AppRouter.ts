@@ -1,6 +1,21 @@
-import { AlephaError } from "alepha";
+import { AlephaError, createMiddleware, type Middleware } from "alepha";
 import { $page } from "alepha/react/router";
 import { HttpError } from "alepha/server";
+import { createElement } from "react";
+import TooManyRequests from "./components/TooManyRequests.tsx";
+
+/**
+ * Fails the way a guard, a rate limiter or the not-ready hook fails: around
+ * the render, never inside a loader. Those never reach `createLayers`, so they
+ * exercise the pre-stream error path rather than the layer one.
+ */
+const $throwing = (error: Error): Middleware =>
+  createMiddleware({
+    name: "$throwing",
+    handler: () => async () => {
+      throw error;
+    },
+  });
 
 export class AppRouter {
   home = $page({
@@ -98,5 +113,40 @@ export class AppRouter {
         message: "Something broke on the server",
       });
     },
+  });
+
+  middlewareError = $page({
+    path: "/middleware-error",
+    lazy: () => import("./components/MiddlewareError.tsx"),
+    use: [
+      $throwing(new AlephaError("Middleware crash: thrown before the render")),
+    ],
+  });
+
+  middlewareNotReady = $page({
+    path: "/middleware-503",
+    lazy: () => import("./components/MiddlewareError.tsx"),
+    use: [
+      $throwing(
+        new HttpError({
+          status: 503,
+          message: "Server is not ready yet. Please try again later.",
+        }),
+      ),
+    ],
+  });
+
+  /**
+   * The same kind of failure, answered by the page's own `errorHandler`.
+   */
+  middlewareRateLimited = $page({
+    path: "/middleware-429",
+    lazy: () => import("./components/MiddlewareError.tsx"),
+    use: [
+      $throwing(new HttpError({ status: 429, message: "Too Many Requests" })),
+    ],
+    // `createElement` rather than JSX: this file stays `.ts`.
+    errorHandler: (error) =>
+      HttpError.is(error, 429) ? createElement(TooManyRequests) : undefined,
   });
 }

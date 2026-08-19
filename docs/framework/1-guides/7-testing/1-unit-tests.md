@@ -10,7 +10,7 @@ Every Alepha project is scaffolded with test support — no flag needed:
 alepha init my-app
 ```
 
-`init` writes a `vitest.config.ts` (it pins `test.root` so a parent monorepo config can't take over) and a starter `test/dummy.spec.ts`. Specs live in `test/`, named `*.spec.ts`.
+`init` writes the Vitest `test` block into `vite.config.ts` (it pins `test.root` so a parent monorepo config can't take over) and a starter `test/dummy.spec.ts` — there is no separate Vitest config file. Specs live in `test/`, named `*.spec.ts`.
 
 Run tests with `alepha test`. Positional arguments are forwarded to Vitest as filename/test filters:
 
@@ -144,11 +144,23 @@ const result = await shell.capture("git diff --quiet");
 expect(result.exitCode).toBe(1);
 ```
 
+## Time Travel
+
+Code that reads time through the injected `DateTimeProvider` (never `Date.now()`) is testable by moving the clock:
+
+```typescript
+const dateTime = alepha.inject(DateTimeProvider);
+dateTime.pause();               // freeze the clock
+await dateTime.travel([2, "hours"]); // jump forward
+```
+
+`travel()` also resolves `CronProvider` waits — **every `$job` cron in the container fires**, not just the one you are testing. Assert end state, not call counts, or a second cron firing will fail an otherwise-correct test.
+
 ## Database Testing
 
 Alepha can run tests against real Postgres. Each test file gets its own schema. Migrations run automatically before tests and the schema is dropped after tests complete.
 
-Point `DATABASE_URL` at your test database via the `env` block of `vitest.config.ts` (the scaffolded config doesn't set one — without it, tests use the default embedded SQLite database):
+Point `DATABASE_URL` at your test database via the `env` block of `vite.config.ts`'s `test` section (the scaffolded config doesn't set one — without it, tests use the default embedded SQLite database):
 
 ```typescript
 env: {

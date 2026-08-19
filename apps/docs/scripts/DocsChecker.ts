@@ -145,7 +145,84 @@ export const BANNED_DOC_SYMBOLS: Array<{ pattern: string; reason: string }> = [
     pattern: "db migrations generate",
     reason: "the subcommand is `create` — `alepha db migrations create`",
   },
+  // --- entries below were found stale in the docs during the 2026-08 audit ---
+  {
+    pattern: "TObject",
+    reason: "TypeBox type name — the Zod object type is `ZObject`",
+  },
+  {
+    pattern: "TSchema",
+    reason: "TypeBox type name — the Zod schema type is `ZType`",
+  },
+  {
+    pattern: "TString",
+    reason: "TypeBox type name — use `ZodString`",
+  },
+  {
+    pattern: "TUnion",
+    reason: "TypeBox type name — use `ZodUnion`",
+  },
+  {
+    pattern: "Static<",
+    reason:
+      "`Static<T>` was removed with TypeBox — the inference helper is `Infer<T>`",
+  },
+  {
+    pattern: 'import \\{ Type \\} from "alepha"',
+    reason:
+      "`Type` is no longer exported — schemas built by `z` are ordinary Zod schemas; use their fluent API",
+  },
+  {
+    pattern: "usePetitionUrl",
+    reason: "renamed in the Petitions→Feedback rename — use `useFeedbackUrl`",
+  },
+  {
+    pattern: "z\\.file\\(\\{ maxSize",
+    reason:
+      "the option is `maxBytes` (runtime-enforced by the multipart parser); `maxSize` would be silently ignored",
+  },
+  {
+    pattern: "vitest\\.config\\.ts",
+    reason:
+      "init no longer writes `vitest.config.ts` — the `test` block lives in `vite.config.ts`",
+  },
+  {
+    pattern: "AlephaServerHealth",
+    reason: "removed — `/health` ships with `AlephaServer` itself",
+  },
+  {
+    pattern: "\\$uiAdmin",
+    reason: "removed with mantine — the admin surface is `$pageAdmin`",
+  },
+  {
+    pattern: "\\$uiAuth",
+    reason: "removed with mantine — mount `AuthRouter` from `@alepha/ui`",
+  },
+  {
+    pattern: "SIGIL_SINK",
+    reason: "replaced by the `sink` field inside `SIGIL_CONFIG`",
+  },
 ];
+
+/**
+ * Link styles the docs must not use. The site's renderer emits hrefs verbatim
+ * and its route table is a single flat `/docs/:slug` segment, so a relative
+ * `.md` link or a nested `/docs/a/b` path renders fine on GitHub and 404s for
+ * every site visitor — the 2026-08 audit found 16 of them.
+ */
+export const BANNED_LINK_PATTERNS: Array<{ pattern: string; reason: string }> =
+  [
+    {
+      pattern: "\\]\\((?:\\./|\\.\\./)[^)]*\\.md",
+      reason:
+        "relative .md links 404 on the docs site — use the flat slug form, e.g. `/docs/guides-persistence-relations`",
+    },
+    {
+      pattern: "\\]\\(/docs/[^)#]*/[^)]*\\)",
+      reason:
+        "nested /docs/a/b paths 404 — the route is a single flat slug, e.g. `/docs/cli-commands-init`",
+    },
+  ];
 
 /**
  * A line carrying this marker, or the line before it, is exempt — for docs
@@ -256,6 +333,17 @@ export class DocsChecker {
             file,
             line: i + 1,
             message: `"${banned.pattern.replaceAll("\\", "")}" — ${banned.reason}`,
+          });
+        }
+
+        for (const banned of BANNED_LINK_PATTERNS) {
+          if (!new RegExp(banned.pattern).test(lines[i])) {
+            continue;
+          }
+          violations.push({
+            file,
+            line: i + 1,
+            message: `broken link style — ${banned.reason}`,
           });
         }
       }

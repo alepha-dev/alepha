@@ -13,7 +13,7 @@ npm install alepha
 Fire-and-forget background work that should outlive the request that
 scheduled it, without blocking the response.
 
-Inject {@link BackgroundTaskProvider} and call `defer(() => …)`:
+Inject `BackgroundTaskProvider` and call `defer(() => …)`:
 
 ```ts
 protected readonly background = $inject(BackgroundTaskProvider);
@@ -26,7 +26,7 @@ createUser = $action({ handler: async ({ body }) => {
 ```
 
 On Node/Vercel the event loop keeps the task alive. On Cloudflare Workers the
-`workerd` build swaps in {@link WorkerdBackgroundTaskProvider}, which wraps
+`workerd` build swaps in `WorkerdBackgroundTaskProvider`, which wraps
 the task in `executionCtx.waitUntil` so the isolate isn't frozen at response
 time — the call site is identical either way.
 
@@ -35,4 +35,4 @@ time — the call site is identical either way.
 ### Providers
 
 - [`BackgroundTaskProvider`](/docs/reference-providers-backgroundtaskprovider) — Runs fire-and-forget work that should outlive the request that scheduled it
-- [`WorkerdBackgroundTaskProvider`](/docs/reference-providers-workerdbackgroundtaskprovider) — Cloudflare Workers variant of {@link BackgroundTaskProvider}.
+- [`WorkerdBackgroundTaskProvider`](/docs/reference-providers-workerdbackgroundtaskprovider) — Cloudflare Workers variant of `BackgroundTaskProvider`.

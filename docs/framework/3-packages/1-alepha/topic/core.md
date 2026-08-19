@@ -25,3 +25,7 @@ Publish/subscribe messaging for event-driven architectures.
 
 - [`$subscriber`](/docs/reference-primitives-$subscriber) — Creates a subscriber primitive to listen for messages from a specific topic.
 - [`$topic`](/docs/reference-primitives-$topic) — Creates a topic primitive for publish/subscribe messaging and event-driven architecture.
+
+### Providers
+
+- [`TopicProvider`](/docs/reference-providers-topicprovider) — Base class for topic providers.

@@ -27,14 +27,15 @@ The build runs a fixed pipeline of tasks:
 
 After building, your `dist/` folder looks like this:
 
-```
+```txt
 dist/
 ├── index.js          # Server entry point
 ├── public/           # Static assets (CSS, JS, images)
 │   ├── assets/
 │   │   ├── index-abc123.js
 │   │   └── index-def456.css
-│   └── favicon.ico
+│   └── favicon.svg
+├── manifest.json     # Build manifest (every target; `alepha pack` requires it)
 └── package.json      # Production dependencies
 ```
 
@@ -98,7 +99,7 @@ alepha build --target=cloudflare    # or -t cf
 
 Creates Cloudflare Workers configuration:
 
-```
+```txt
 dist/
 ├── main.cloudflare.js  # Worker entry point
 ├── wrangler.jsonc      # Wrangler configuration
@@ -230,7 +231,7 @@ Available options mirror the flags (`stats`, `target`, `runtime`) plus per-targe
 | `output` | Override `dist` and `public` directory names |
 | `cloudflare` | Extra `wrangler.jsonc` config merged into the generated file |
 | `docker` | Base image, run command, global installs, image tag/args/OCI labels, `compile` mode |
-| `static` | Surge domain for the generated `CNAME` file |
+| `static` | Surge domain for the `CNAME` file; `source` to adopt a client directory the workspace built itself (must live outside `dist/`) |
 | `pwa` | Web app manifest: name, short name, colors, display mode |
 
 ## Client-Side Optimization

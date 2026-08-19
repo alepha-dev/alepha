@@ -203,6 +203,8 @@ Inside a `$module`, the `register()` hook runs before `imports[]` and
 | `keepLastSuccess` | `10` | Successful rows kept per job |
 | `keepLastError` | `10` | Error rows kept per job |
 | `drainTimeout` | `30000` | Time (ms) to wait for in-flight jobs on shutdown |
+| `logMaxEntries` | `100` | Log lines captured per run |
+| `directMaxConcurrency` | `10` | Concurrent handlers in direct mode — what keeps a `pushMany` of thousands from exhausting the DB pool |
 
 ### Sweeps owned by other modules
 
@@ -268,7 +270,8 @@ the outbox `claim()` UPDATE-guard instead, which is always on.
   }
   ```
 
-  You get the tick and the distributed lock, but no run history, no retry and
+  You get the tick, but no distributed lock — on multiple replicas every
+  replica fires — no run history, no retry and
   nothing in the admin UI. Reach for it only when a database is genuinely
   unavailable.
 - **Fan-out to many subscribers.** Use `$topic` / `$subscriber`, which is

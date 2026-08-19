@@ -49,7 +49,7 @@ Your MCP server is now available at `POST /mcp` (Streamable HTTP, JSON-RPC). Tra
 
 MCP defines three types of capabilities. Each maps to an Alepha primitive.
 
-### $tool -- Callable Functions
+### $tool — Callable Functions
 
 Tools let an AI assistant perform actions: query a database, create records, call external APIs.
 
@@ -57,7 +57,9 @@ Tools let an AI assistant perform actions: query a database, create records, cal
 import { $tool } from "alepha/mcp";
 
 class TaskTools {
-  protected readonly tasks = $inject(TaskController);
+  // a plain service with its own list() contract - to expose an existing
+  // $action instead, call it with { query: { ... } } and map its page shape
+  protected readonly tasks = $inject(TaskService);
 
   task_list = $tool({
     description: "List tasks. Filter by status or search by title.",
@@ -111,8 +113,8 @@ class TaskTools {
 | Option | Type | Description |
 |--------|------|-------------|
 | `description` | `string` | Required. Tells the AI what the tool does. |
-| `schema.params` | `TObject` | Zod schema for input parameters. |
-| `schema.result` | `TSchema` | Zod schema for the return value. |
+| `schema.params` | `ZObject` | Zod schema for input parameters. |
+| `schema.result` | `ZType` | Zod schema for the return value. |
 | `handler` | `function` | Receives `{ params, context }`. Returns the result. |
 | `name` | `string` | Override the tool name. Defaults to the property key. |
 
@@ -137,7 +139,7 @@ screenshot = $tool({
 
 A tool that declares `schema.result` always goes through the structured/JSON path, so a JSON result that happens to contain a `content` array is never mistaken for raw content.
 
-### $resource -- Read-Only Data
+### $resource — Read-Only Data
 
 Resources expose data that an AI can read but not modify: configuration, documentation, database snapshots.
 
@@ -177,7 +179,7 @@ class Resources {
 | `handler` | `function` | Returns `{ text }` for text content or `{ blob }` for binary. |
 | `name` | `string` | Display name. Defaults to the property key. |
 
-### $resourceTemplate -- Parameterized Resources
+### $resourceTemplate — Parameterized Resources
 
 `$resource` addresses one thing at a fixed URI. `$resourceTemplate` addresses a
 *family* of them, so an AI can read `folio://1/86` without you registering every
@@ -231,7 +233,7 @@ matches.
 | `mimeType` | `string` | Content type. Defaults to `text/plain`. |
 | `name` | `string` | Display name. Defaults to the property key. |
 
-### $prompt -- Message Templates
+### $prompt — Message Templates
 
 Prompts define reusable conversation templates with typed arguments.
 
@@ -260,7 +262,7 @@ class Prompts {
 | Option | Type | Description |
 |--------|------|-------------|
 | `description` | `string` | What this prompt does. |
-| `args` | `TObject` | Zod schema for template arguments. |
+| `args` | `ZObject` | Zod schema for template arguments. |
 | `handler` | `function` | Returns an array of `{ role, content }` messages. |
 | `name` | `string` | Override the prompt name. Defaults to the property key. |
 
@@ -344,8 +346,8 @@ class PostTools {
 
 Zod schemas on tools serve double duty:
 
-1. **Runtime validation** -- params are validated before your handler runs, results are validated before being sent back
-2. **JSON Schema generation** -- the MCP protocol advertises your tool's input schema so AI clients know what to send
+1. **Runtime validation** — params are validated before your handler runs, results are validated before being sent back
+2. **JSON Schema generation** — the MCP protocol advertises your tool's input schema so AI clients know what to send
 
 Add `description` to individual fields to help the AI understand what each parameter does:
 
@@ -412,7 +414,10 @@ task_list = $tool({
   description: "List the caller's tasks.",
   handler: async ({ context }) => {
     const user = context?.data as UserAccountToken | undefined;
-    return this.tasks.findMany({ where: { ownerId: user?.id } });
+    if (!user) {
+      throw new McpUnauthorizedError("Authentication required.");
+    }
+    return this.tasks.findMany({ where: { ownerId: user.id } });
   },
 });
 ```
@@ -488,8 +493,8 @@ Transports are opt-in: wire the one you need.
 
 **Streamable HTTP** (MCP spec 2025-03-26+), a single endpoint:
 
-- `POST /mcp` -- JSON-RPC endpoint; single responses return `application/json`
-- `GET /mcp` -- returns `405 Method Not Allowed` (the legacy two-endpoint SSE pattern is deliberately not served)
+- `POST /mcp` — JSON-RPC endpoint; single responses return `application/json`
+- `GET /mcp` — returns `405 Method Not Allowed` (the legacy two-endpoint SSE pattern is deliberately not served)
 
 The path is configurable (keep it outside `/api`, which belongs to the `$action` dispatcher):
 
@@ -499,7 +504,7 @@ import { mcpStreamableHttpOptions } from "alepha/mcp";
 alepha.store.mut(mcpStreamableHttpOptions, (o) => ({ ...o, path: "/my-mcp" }));
 ```
 
-### stdio -- local servers
+### stdio — local servers
 
 Claude Desktop, Claude Code and every other *local* client launch the server as
 a subprocess and speak newline-delimited JSON-RPC over its pipes:
@@ -525,21 +530,21 @@ Then point the client at the built binary:
 }
 ```
 
-**stdout belongs to the protocol.** A single stray `console.log` -- yours,
-Alepha's, or a dependency's -- lands inside a JSON-RPC message and corrupts the
+**stdout belongs to the protocol.** A single stray `console.log` — yours,
+Alepha's, or a dependency's — lands inside a JSON-RPC message and corrupts the
 stream permanently. While this transport runs it redirects `process.stdout` to
 stderr and keeps the real stdout for protocol messages only, so your logs still
 appear (on stderr, where the spec wants them) and cannot break the stream.
 
 A stdio server takes credentials from its environment rather than the HTTP
-authorization framework, so `requireAuth` has no meaning there -- whoever
+authorization framework, so `requireAuth` has no meaning there — whoever
 launched the process is the caller.
 
 ### Progress on long calls
 
 When a client attaches a `_meta.progressToken` to a request, the HTTP response
 upgrades to `text/event-stream`: progress notifications as they happen, then the
-final response. Without a token, nothing changes -- the response is plain JSON.
+final response. Without a token, nothing changes — the response is plain JSON.
 
 ```typescript
 index_repo = $tool({
@@ -557,7 +562,7 @@ index_repo = $tool({
 
 `reportProgress` is absent when the client did not ask for progress, so call it
 through `?.`. The same context carries a `signal` that aborts when the client
-cancels -- pass it to `fetch`, DB queries and anything else that accepts one,
+cancels — pass it to `fetch`, DB queries and anything else that accepts one,
 or a tool nobody is waiting for keeps running to completion.
 
 ### Paginated lists
@@ -574,7 +579,7 @@ alepha.inject(McpServerProvider).pageSize = 25;
 
 Use `entity_action` for tool names (snake_case with underscore separator):
 
-```
+```txt
 project_list, project_info
 task_create, task_update, task_complete
 chapter_start, chapter_close, chapter_changelog
@@ -586,7 +591,7 @@ This groups related tools together and reads naturally in AI conversations.
 
 For apps with multiple MCP tools, organize by domain:
 
-```
+```txt
 src/
   mcp/
     index.ts              # $module definition

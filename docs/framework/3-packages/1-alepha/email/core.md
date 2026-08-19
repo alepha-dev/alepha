@@ -26,3 +26,12 @@ There is **no template rendering**: `send()` takes an already-rendered
 For SMTP support, use `AlephaEmailSmtp` from `alepha/email/smtp`.
 For Brevo support, use `AlephaEmailBrevo` from `alepha/email/brevo`.
 
+## API Reference
+
+### Primitives
+
+- [`$email`](/docs/reference-primitives-$email) — Declares an email channel for sending mail through the configured provider.
+
+### Providers
+
+- [`EmailProvider`](/docs/reference-providers-emailprovider) — Email provider interface.

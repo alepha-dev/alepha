@@ -17,3 +17,12 @@ SMS delivery with multiple provider support.
 - Multiple recipients
 - Provider abstraction
 
+## API Reference
+
+### Primitives
+
+- [`$sms`](/docs/reference-primitives-$sms) — Declares an SMS channel for sending text messages through the configured
+
+### Providers
+
+- [`SmsProvider`](/docs/reference-providers-smsprovider) — SMS provider interface.

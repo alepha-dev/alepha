@@ -19,15 +19,20 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
-  baseURL: "http://localhost:3000",
+  use: { baseURL: "http://localhost:3000" },
   webServer: {
     command: "node dist",
     url: "http://localhost:3000",
+    reuseExistingServer: false,
+    env: { APP_SECRET: "e2e-test-secret" },
   },
 });
 ```
 
-The `webServer` option starts the production server before tests run and tears it down after.
+The `webServer` option starts the production server before tests run and tears it down after. Two lines in it earn their place:
+
+- `env.APP_SECRET` — the built server runs in production mode, and `SecretProvider` refuses to boot on the built-in default secret in production. Without a value here the server never starts.
+- `reuseExistingServer: false` — Playwright's default (`!process.env.CI`) will happily adopt a running `alepha dev` server, and the suite then reports green against hot-reloaded sources and the dev database instead of the build.
 
 ## Build and Test
 
@@ -67,10 +72,12 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
-  baseURL: "http://localhost:3000",
+  use: { baseURL: "http://localhost:3000" },
   webServer: {
     command: "bun dist",
     url: "http://localhost:3000",
+    reuseExistingServer: false,
+    env: { APP_SECRET: "e2e-test-secret" },
   },
 });
 ```

@@ -4,8 +4,7 @@ Repository methods cover most queries, but analytics work — grouping by day, m
 
 ```typescript check
 import { $inject, z } from "alepha";
-import { $repository, DatabaseProvider, SqlExpressionProvider } from "alepha/orm";
-import { sql } from "drizzle-orm";
+import { $repository, DatabaseProvider, sql, SqlExpressionProvider } from "alepha/orm";
 ```
 
 ## Why dates diverge

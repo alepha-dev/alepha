@@ -1,5 +1,5 @@
 import { type Dirent, promises as fs } from "node:fs";
-import { join, relative } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import type { EnvVarInfo, ModuleInfo } from "./interfaces.ts";
@@ -85,7 +85,22 @@ export class DocsCommand {
       examples.push(currentExample.join("\n").trim());
     }
 
-    return { description: descLines.join("\n").trim(), examples };
+    return {
+      description: this.stripLinkTags(descLines.join("\n").trim()),
+      examples,
+    };
+  }
+
+  /**
+   * Rewrite JSDoc `{@link X}` / `{@link X|label}` inline tags to backticked
+   * names. Markdown renders the raw tag as literal text otherwise — the
+   * 2026-08 audit found 46 of them leaking into the reference pages.
+   */
+  stripLinkTags(text: string): string {
+    return text.replace(
+      /\{@link\s+([^}|\s]+)(?:\s*\|\s*([^}]+))?\}/g,
+      (_, target, label) => `\`${(label ?? target).trim()}\``,
+    );
   }
 
   formatPackageName(name: string): string {
@@ -224,11 +239,13 @@ export class DocsCommand {
           name: fm[1],
           type: typeStr,
           required: fm[2] !== "?",
-          description: jsDocLines
-            .filter((l) => !l.startsWith("@"))
-            .join(" ")
-            .split(". ")[0]
-            .trim(),
+          description: this.stripLinkTags(
+            jsDocLines
+              .filter((l) => !l.startsWith("@"))
+              .join(" ")
+              .split(". ")[0]
+              .trim(),
+          ),
         });
         jsDocLines = [];
       }
@@ -291,7 +308,7 @@ export class DocsCommand {
     try {
       const content = await fs.readFile(filePath, "utf-8");
       const regex =
-        /\/\*\*\s*\n((?:(?!\/\*\*)[\s\S])*?)\s*\*\/\s+export class (\w+)/g;
+        /\/\*\*\s*\n((?:(?!\/\*\*)[\s\S])*?)\s*\*\/\s+export (?:abstract )?class (\w+)/g;
       const fileName =
         filePath
           .split("/")
@@ -407,7 +424,8 @@ export class DocsCommand {
       const entries = await fs.readdir(dir, { withFileTypes: true });
       const results = await Promise.all(
         entries
-          .filter((e) => e.isFile() && e.name.endsWith(".ts") && filter(e.name))
+          // .tsx included so hooks rendering JSX (useRoom) still get a page
+          .filter((e) => e.isFile() && /\.tsx?$/.test(e.name) && filter(e.name))
           .map((e) => extract(join(dir, e.name))),
       );
       return results.filter((r) => r !== null);
@@ -457,7 +475,7 @@ export class DocsCommand {
     importMap: Map<string, string>,
   ): Promise<ModuleData> {
     const notSpec = (n: string) =>
-      !n.endsWith(".spec.ts") && !n.endsWith(".browser.ts");
+      !/\.(spec|browser)\.tsx?$/.test(n) && !n.endsWith(".browser.ts");
     const [description, primitives, hooks, providers, envVars] =
       await Promise.all([
         // Try index.ts then Alepha.ts for @module description
@@ -628,9 +646,15 @@ export class DocsCommand {
       packageName === "alepha"
         ? "Alepha"
         : `@alepha/${packageName.replace("@alepha/", "")}`;
-    let md = `# ${prefix} - ${formatted}\n\n`;
+    // A single-module package passes its own name as the module name — don't
+    // render "# @alepha/devtools - @alepha/devtools".
+    const title =
+      moduleName === packageName || formatted === prefix
+        ? prefix
+        : `${prefix} - ${formatted}`;
+    let md = `# ${title}\n\n`;
 
-    if (pkgJson.description && moduleName === "core")
+    if (pkgJson.description && (moduleName === "core" || title === prefix))
       md += `${pkgJson.description}\n\n`;
 
     md += `## Installation\n\n`;
@@ -680,9 +704,12 @@ export class DocsCommand {
 
   /** Docs-site page for a package documented by `DOC.md` rather than `@module`. */
   generatePackagePage(pkgJson: any, packageName: string, doc: string): string {
-    let md = `# ${this.formatPackageName(packageName)}\n\n`;
+    const isCreatePackage = pkgJson.name.startsWith("create-");
+    let md = `# ${isCreatePackage ? pkgJson.name : this.formatPackageName(packageName)}\n\n`;
     if (pkgJson.description) md += `${pkgJson.description}\n\n`;
-    md += `## Installation\n\n\`\`\`bash\nnpm install ${pkgJson.name}\n\`\`\`\n\n`;
+    md += isCreatePackage
+      ? `## Usage\n\n\`\`\`bash\nnpm create alepha my-app\n\`\`\`\n\n`
+      : `## Installation\n\n\`\`\`bash\nnpm install ${pkgJson.name}\n\`\`\`\n\n`;
     return `${md}${doc}\n`;
   }
 
@@ -692,9 +719,17 @@ export class DocsCommand {
     data: ModuleData,
     doc: string | null = null,
   ): string {
-    let md = `# Alepha ${this.formatPackageName(packageName)}\n\n`;
+    // "create-alepha" already contains the brand and is never `npm install`ed
+    // — it is run through `npm create`.
+    const isCreatePackage = pkgJson.name.startsWith("create-");
+    const title = isCreatePackage
+      ? pkgJson.name
+      : `Alepha ${this.formatPackageName(packageName)}`;
+    let md = `# ${title}\n\n`;
     if (pkgJson.description) md += `${pkgJson.description}\n\n`;
-    md += `## Installation\n\nPart of the Alepha framework, published on its own:\n\n\`\`\`bash\nnpm install ${pkgJson.name}\n\`\`\`\n\n`;
+    md += isCreatePackage
+      ? `## Usage\n\nPart of the Alepha framework, published on its own:\n\n\`\`\`bash\nnpm create alepha my-app\n\`\`\`\n\n`
+      : `## Installation\n\nPart of the Alepha framework, published on its own:\n\n\`\`\`bash\nnpm install ${pkgJson.name}\n\`\`\`\n\n`;
     if (doc) md += `${doc}\n\n`;
     if (data.description) md += `## Module\n\n${data.description}\n\n`;
     md += this.generateApiReference(
@@ -835,7 +870,15 @@ export class DocsCommand {
                 srcDir,
                 importMap,
               );
-              if (!data.description) continue;
+              if (!data.description) {
+                // Loud on purpose: a silent skip here is how 9 public modules
+                // shipped with no docs page (2026-08 audit). Add an `@module`
+                // JSDoc block to the module's index.ts to publish it.
+                this.log.warn(
+                  `no @module block: ${realPkgName} › ${mod.name} — no docs page generated`,
+                );
+                continue;
+              }
 
               allPrimitiveDocs.push(...data.primitives);
               allHookDocs.push(...data.hooks);
@@ -874,12 +917,28 @@ export class DocsCommand {
               }
             }
           } else {
+            // A single "." export may point below src/ (payments-stripe uses
+            // ./src/core/index.ts) — read the @module block where the export
+            // actually lives, not at an src/index.ts that may not exist.
+            const dotExport = pkgJson.exports?.["."];
+            const dotTypes =
+              typeof dotExport === "string"
+                ? dotExport
+                : dotExport?.types || dotExport?.import;
+            const moduleDir = dotTypes?.startsWith("./src/")
+              ? join(packagePath, dirname(dotTypes.replace("./", "")))
+              : srcDir;
             const data = await this.collectModuleData(
-              srcDir,
+              moduleDir,
               srcDir,
               importMap,
             );
-            if (!data.description && !doc) return;
+            if (!data.description && !doc) {
+              this.log.warn(
+                `no @module block and no DOC.md: ${realPkgName} — no docs page generated`,
+              );
+              return;
+            }
             allPrimitiveDocs.push(...data.primitives);
             allHookDocs.push(...data.hooks);
             allProviderDocs.push(...data.providers);
@@ -905,8 +964,16 @@ export class DocsCommand {
               join(packagePath, "README.md"),
             );
           } else {
+            const dotExport = pkgJson.exports?.["."];
+            const dotTypes =
+              typeof dotExport === "string"
+                ? dotExport
+                : dotExport?.types || dotExport?.import;
+            const readmeModuleDir = dotTypes?.startsWith("./src/")
+              ? join(packagePath, dirname(dotTypes.replace("./", "")))
+              : srcDir;
             const data = await this.collectModuleData(
-              srcDir,
+              readmeModuleDir,
               srcDir,
               importMap,
             );

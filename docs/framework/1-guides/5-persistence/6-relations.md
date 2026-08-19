@@ -7,7 +7,7 @@ import { z } from "alepha";
 import { $entity, $relations, $repositories, $repository, db } from "alepha/orm";
 ```
 
-Relations are the layer above [joins](./7-joins.md). A join is a SQL join you write per query; a relation is a name you declare once and reuse. Relations also do what a join cannot: one-to-many without multiplying rows, many-to-many without exposing the junction, and arbitrary nesting.
+Relations are the layer above [joins](/docs/guides-persistence-joins). A join is a SQL join you write per query; a relation is a name you declare once and reuse. Relations also do what a join cannot: one-to-many without multiplying rows, many-to-many without exposing the junction, and arbitrary nesting.
 
 ## Declaring the graph
 
@@ -83,21 +83,21 @@ Two shapes, same object underneath.
 ```typescript
 class TeamService {
   /** One binding for every entity in the schema. */
-  db = $repositories(relations);
+  repos = $repositories(relations);
 
   /** ...or just the one this class needs. */
   teams = $repository(relations, "teams");
 }
 ```
 
-`$repository(entity)` — the plain form — is unchanged. The two-argument form takes the relations and the key of the entity within its schema.
+`$repository(entity)` — the plain form — is unchanged. The two-argument form takes the relations and the key of the entity within its schema. The examples below use `repos` from that first binding.
 
 ## Reading
 
 ### include
 
 ```typescript
-const team = await db.teams.findOne({
+const team = await repos.teams.findOne({
   where: { name: { eq: "Rovers" } },
   include: { players: true },
 });
@@ -112,8 +112,8 @@ An empty to-many is `[]`, never `undefined` — which is the case a `LEFT JOIN` 
 ### Nesting
 
 ```typescript
-const team = await db.teams.findOne({
-  where: { id: { eq: 1 } },
+const team = await repos.teams.findOne({
+  where: { id: { eq: teamId } },
   include: { players: { include: { mentor: true } } },
 });
 
@@ -136,7 +136,7 @@ const relations = $relations(schema, (r) => ({
   },
   tournaments: {
     teams: r.many.teams({
-      from: r.tournaments.id.through(r.entries.teamId),
+      from: r.tournaments.id.through(r.entries.tournamentId),
       to: r.teams.id.through(r.entries.teamId),
     }),
   },
@@ -152,8 +152,8 @@ The junction never appears in the result — a row reached through it is a plain
 A relation is a query, so it takes the same vocabulary as the root:
 
 ```typescript
-const team = await db.teams.findOne({
-  where: { id: { eq: 1 } },
+const team = await repos.teams.findOne({
+  where: { id: { eq: teamId } },
   include: {
     players: {
       where: { name: { like: "A%" } },
@@ -172,7 +172,7 @@ const team = await db.teams.findOne({
 `select` narrows the row and its type:
 
 ```typescript
-const teams = await db.teams.findMany({
+const teams = await repos.teams.findMany({
   select: ["name"],
   include: { players: true },
 });
@@ -189,7 +189,7 @@ A `where` key that names a declared relation takes a nested `where` describing t
 
 ```typescript
 // Teams that have a player called Ana.
-const found = await db.teams.findMany({
+const found = await repos.teams.findMany({
   where: { players: { name: { eq: "Ana" } } },
 });
 ```
@@ -197,7 +197,7 @@ const found = await db.teams.findMany({
 Because it is an `EXISTS`, the root rows are not multiplied and nothing needs de-duplicating afterwards. Column filters and relation filters combine, and relation filters nest:
 
 ```typescript
-await db.players.findMany({
+await repos.players.findMany({
   where: {
     name: { like: "A%" },
     team: { name: { eq: "Rovers" } },
@@ -205,7 +205,7 @@ await db.players.findMany({
 });
 
 // Two levels deep.
-await db.players.findMany({
+await repos.players.findMany({
   where: { team: { players: { name: { eq: "Ana" } } } },
 });
 ```
@@ -214,7 +214,7 @@ await db.players.findMany({
 
 ```typescript
 // Teams with at least one player.
-await db.teams.findMany({ where: { players: {} } });
+await repos.teams.findMany({ where: { players: {} } });
 ```
 
 Every operator works at any depth: `inArray`, `like`, `between`, all of them.
@@ -230,7 +230,7 @@ A relation filter inherits the same rule: a soft-deleted player does not make it
 Some views want the history a soft delete hides — a crash inbox still shows reports from a source that has since been revoked. `force` is the same flag the plain repository takes:
 
 ```typescript
-await db.teams.findMany({
+await repos.teams.findMany({
   include: { players: { force: true } },
 });
 ```
@@ -242,7 +242,7 @@ It applies to the level that asked for it, so a forced parent does not quietly u
 `create` understands nested data and runs the whole graph in one transaction:
 
 ```typescript
-const team = await db.teams.create({
+const team = await repos.teams.create({
   data: {
     name: "Rovers",
     players: {
@@ -255,20 +255,20 @@ const team = await db.teams.create({
 
 Ordering is forced by where each foreign key lives: a **to-one** related row is created first, because this row's key points at it; a **to-many** child is created after, because its key points back. A failure part-way through leaves no half-built graph behind.
 
-`update` and `upsert` take `where` / `data` as an options object and accept `include` on the result:
+`update` takes `where` / `data` as an options object; `upsert` takes `create` / `update` / `target`. Both accept `include` on the result:
 
 ```typescript
-await db.teams.update({
-  where: { id: { eq: 1 } },
+await repos.teams.update({
+  where: { id: { eq: teamId } },
   data: { name: "Rovers FC" },
   include: { players: true },
 });
 ```
 
-Everything else — `createMany`, `save`, `aggregate`, raw `query` — is reached through `.base`, which is the fully typed plain repository:
+`createMany`, `save`, `aggregate` and raw `query` are on the relational repository too — they just ignore relations. `.base` is the fully typed plain repository when you need the rest (`count`, `findById`, `updateMany`, `deleteMany`, `transaction`, …):
 
 ```typescript
-await db.teams.base.aggregate({ select: { id: { count: true } } });
+await repos.teams.aggregate({ select: { id: { count: true } } });
 ```
 
 ## What it costs
@@ -284,8 +284,8 @@ One statement, whatever the shape. Each included relation becomes a subquery, us
 `toSQL()` returns the statement without running it, which is how you get it in front of `EXPLAIN`:
 
 ```typescript
-const { sql, params } = db.teams.toSQL({
-  where: { id: { eq: 1 } },
+const { sql, params } = repos.teams.toSQL({
+  where: { id: { eq: teamId } },
   include: { players: true },
 });
 ```

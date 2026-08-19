@@ -12,6 +12,10 @@ interface StoredFile {
   size: number;
 }
 
+/**
+ * In-memory blob storage, bound automatically under test. The `files` map is
+ * public so specs can assert on what was stored without round-tripping.
+ */
 export class MemoryFileStorageProvider implements FileStorageProvider {
   public readonly files: Record<string, StoredFile> = {};
   protected readonly alepha = $inject(Alepha);

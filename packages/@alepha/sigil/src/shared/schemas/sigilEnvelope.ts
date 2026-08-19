@@ -36,6 +36,73 @@ export const sigilEventTime = z.integer().min(0).optional();
 
 export const sigilEnvelope = z.object({
   views: z
+    .array(
+      z.object({
+        path: z.string().max(1024),
+        ts: sigilEventTime,
+        /**
+         * The **host** the visit arrived from, cross-origin only.
+         *
+         * Set on a page load's own view and on nothing else: `document.referrer`
+         * does not change across a client-side navigation, so attaching it to
+         * every view in a session would report one arrival as five. Absent
+         * therefore means either "no external referrer" or "not the landing
+         * view", and the sink cannot tell those apart — it folds both into
+         * `direct`, which is the honest name for that union.
+         *
+         * Never a full URL. See {@link sigilReferrerHost} for why the path and
+         * query of a *third-party* page are not this app's to record.
+         */
+        referrer: z.string().max(253).optional(),
+        /**
+         * `true` on the view a page load produces, absent on every view a
+         * client-side navigation produces.
+         *
+         * Explicit rather than inferred from {@link referrer} being present:
+         * a landing view with no external referrer is the common case, so
+         * "has a referrer" and "is an arrival" are different questions and
+         * only one of them can be answered by the same field.
+         *
+         * This is what makes a landing-page report and a bounce rate possible
+         * at all. Without it `/` is one number mixing arrivals with everyone
+         * who clicked Home.
+         */
+        entry: z.boolean().optional(),
+        /**
+         * `utm_campaign`, falling back to `utm_source`, from the landing URL.
+         *
+         * Only ever set alongside {@link entry}: a campaign describes how a
+         * visit began, and `location.search` on a later client-side
+         * navigation has nothing to do with how the visitor arrived.
+         *
+         * Carried separately rather than left in `path` because
+         * `SigilIngestService.normalizePath` splits on `?` — which is
+         * deliberate, and is why a tagged link is invisible today.
+         */
+        campaign: z.string().max(64).optional(),
+      }),
+    )
+    .max(50)
+    .optional(),
+  /**
+   * Paths the visitor actually engaged with: scrolled, clicked, or stayed on
+   * past a few seconds.
+   *
+   * A separate array rather than a flag on the view because the two are known
+   * at different times. A view is queued the moment the page renders;
+   * engagement is by definition not knowable then, and holding the view back
+   * until it were would mean losing views whose beacon never flushes.
+   *
+   * Analytics Engine is append-only, so the sink records this as a row with
+   * `count: 0, engaged: 1` — measures sum independently, and the engagement
+   * rate falls out as `engaged / count` without either number needing to be
+   * rewritten.
+   *
+   * Behavioural rather than a user-agent guess, which is the point: a scraper
+   * driving a real headless browser sends a perfectly ordinary Chrome UA, and
+   * still never scrolls.
+   */
+  engagements: z
     .array(z.object({ path: z.string().max(1024), ts: sigilEventTime }))
     .max(50)
     .optional(),
@@ -82,6 +149,16 @@ export type SigilEnvelope = Infer<typeof sigilEnvelope>;
 export const sigilForwarded = sigilEnvelope.extend({
   country: z.string().max(8).optional(),
   visitor: z.string().max(128).optional(),
+  /**
+   * `mobile` | `tablet` | `desktop`, classified from the user-agent.
+   *
+   * Stamped by the proxy next to `country` rather than sent by the browser,
+   * for the same reason: the app's own server already has the header, so
+   * there is no call to spend bytes in the envelope on something it can read
+   * for free. It stamps the whole batch, which is correct — a device does not
+   * change between two views of one session.
+   */
+  device: z.string().max(16).optional(),
 });
 
 export type SigilForwarded = Infer<typeof sigilForwarded>;

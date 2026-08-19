@@ -34,4 +34,5 @@ Queues adds broker-level retry/DLQ, configured on the binding.)
 
 - [`CloudflareQueueProvider`](/docs/reference-providers-cloudflarequeueprovider) — Cloudflare Queue provider.
 - [`QueueCodec`](/docs/reference-providers-queuecodec) — Owns the on-the-wire shape of a queue message.
+- [`QueueProvider`](/docs/reference-providers-queueprovider) — Minimalist Queue interface.
 - [`WorkerdWorkerProvider`](/docs/reference-providers-workerdworkerprovider) — Cloudflare Workers queue consumer provider.

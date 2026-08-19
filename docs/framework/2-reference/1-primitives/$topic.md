@@ -31,6 +31,8 @@ event filtering, and pluggable backends (memory, Redis, custom providers).
 
 ```ts
 class NotificationService {
+  dateTime = $inject(DateTimeProvider);
+
   userActivity = $topic({
     name: "user-activity",
     schema: {
@@ -46,7 +48,7 @@ class NotificationService {
   });
 
   async trackLogin(userId: string) {
-    await this.userActivity.publish({ userId, action: "login", timestamp: Date.now() });
+    await this.userActivity.publish({ userId, action: "login", timestamp: this.dateTime.nowMillis() });
   }
 
   async subscribeToEvents() {
