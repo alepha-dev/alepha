@@ -10,6 +10,7 @@ import {
   createTestQuest,
   TestEntityRepositories,
 } from "../../../test/fixtures/entities.ts";
+import { QuestController } from "../controllers/QuestController.ts";
 import { LoreApi } from "../index.ts";
 import { AreaService } from "./AreaService.ts";
 import { QuestService } from "./QuestService.ts";
@@ -252,5 +253,21 @@ describe("AreaService", () => {
     const all = await ctx.service.listWithStats(project.id);
     expect(all.map((a) => a.name)).toContain("alepha/system");
     expect(all.find((a) => a.name === "alepha/system")?.questCount).toBe(1);
+  });
+
+  it("editing a quest onto a new area registers it", async ({ expect }) => {
+    const project = await createTestProject(ctx.alepha);
+    const quest = await createTestQuest(ctx.alepha, project, {
+      area: "alepha/orm",
+    });
+    const questController = ctx.alepha.inject(QuestController);
+
+    await questController.updateQuestById.fetch(
+      { params: { id: quest.id }, body: { area: "alepha/system" } },
+      { user: { id: project.createdBy } },
+    );
+
+    const all = await ctx.service.listWithStats(project.id);
+    expect(all.map((a) => a.name)).toContain("alepha/system");
   });
 });
