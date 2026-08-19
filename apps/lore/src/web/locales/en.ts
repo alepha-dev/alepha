@@ -424,6 +424,8 @@ export default {
   "project.settings.areas.column.total": "Total",
   "project.settings.areas.column.lastActivity": "Last activity",
   "project.settings.areas.column.summary": "Description",
+  "project.settings.areas.column.select": "Select",
+  "project.settings.areas.select": "Select $1",
   "project.settings.areas.empty":
     "No areas yet. Forge a quest and pick an area — it appears here.",
   "project.settings.areas.selected": "$1 selected",
