@@ -172,17 +172,9 @@ export class QuestService {
     // Only register non-empty areas — an empty `area` is a valid quest
     // field but must not pollute the project's area list.
     //
-    // `areas` is the source of truth for the list. `projects.areas` is
-    // still written for one release as a rollback net; it is
-    // `@deprecated` and nothing reads it. Task 7 drops this half.
+    // The `areas` table is the sole source of truth for the list.
+    // `projects.areas` is `@deprecated` and nothing reads or writes it.
     await this.areaService.ensureArea(input.projectId, input.area);
-
-    if (input.area && !project.areas.includes(input.area)) {
-      project.areas.push(input.area);
-      await this.projects.updateById(project.id, {
-        areas: project.areas,
-      });
-    }
 
     return this.quests.create({
       projectId: input.projectId,

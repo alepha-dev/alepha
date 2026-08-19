@@ -29,9 +29,13 @@ import {
 import { quests } from "../entities/quests.ts";
 import type { User } from "../entities/users.ts";
 import { relations } from "../relations.ts";
-import { projectResourceSchema } from "../schemas/projectResourceSchema.ts";
+import {
+  projectOverviewResourceSchema,
+  projectResourceSchema,
+} from "../schemas/projectResourceSchema.ts";
 import { projectTitleSchema } from "../schemas/projectTitleSchema.ts";
 import { questResourceSchema } from "../schemas/questResourceSchema.ts";
+import { AreaService } from "../services/AreaService.ts";
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
 import { ProjectResourceMapper } from "../services/ProjectResourceMapper.ts";
@@ -94,6 +98,7 @@ export class ProjectController {
   limits = $inject(ProjectLimits);
   slugs = $inject(ProjectSlugService);
   projectSecurity = $inject(ProjectSecurityService);
+  areaService = $inject(AreaService);
 
   /**
    * Reserve-and-collision gate for a project slug.
@@ -267,7 +272,7 @@ export class ProjectController {
     use: [$secure({ permissions: ["project:read"] })],
     schema: {
       response: z.object({
-        projects: z.array(projectResourceSchema),
+        projects: z.array(projectOverviewResourceSchema),
         totalCount: z.integer(),
         ownedCount: z.integer(),
         maxProjects: z.integer(),
@@ -290,8 +295,18 @@ export class ProjectController {
 
       const result = me?.projects ?? [];
 
+      // `areas` (the `projects.areas` column) is `@deprecated` and frozen —
+      // the Home page's "N areas" stat is re-sourced from the `areas` table
+      // here instead, one batched query rather than one per card.
+      const areaCounts = await this.areaService.countByProjectIds(
+        result.map((it) => it.id),
+      );
+
       return {
-        projects: result.map((it) => this.projectMapper.toResource(it)),
+        projects: result.map((it) => ({
+          ...this.projectMapper.toResource(it),
+          areaCount: areaCounts.get(it.id) ?? 0,
+        })),
         totalCount: result.length,
         ownedCount,
         maxProjects: maxProjectsPerUser,

@@ -1033,12 +1033,11 @@ export class QuestController {
         body.description = sanitizeHtml(body.description);
       }
 
-      // `areas` is the source of truth for the list. `projects.areas` is
-      // still written for one release as a rollback net; it is
-      // `@deprecated` and nothing reads it. Task 7 drops this half. Only
-      // fires when this update actually carries an `area` — an update
-      // that leaves the field alone (`undefined`) must not register
-      // anything.
+      // The `areas` table is the sole source of truth for the list.
+      // `projects.areas` is `@deprecated` and nothing reads or writes it.
+      // Only fires when this update actually carries an `area` — an
+      // update that leaves the field alone (`undefined`) must not
+      // register anything.
       //
       // Deliberately NOT wrapped in `$transactional()`, unlike
       // `QuestService.createQuest` (whose JSDoc requires one for its
@@ -1320,56 +1319,6 @@ export class QuestController {
       await this.quests.deleteById(params.id);
 
       return { ok: true };
-    },
-  });
-
-  moveQuestToArea = $action({
-    use: [$secure({ permissions: ["quest:update"] })],
-    schema: {
-      params: z.object({
-        id: z.integer(),
-      }),
-      body: z.object({
-        newArea: z.string(),
-      }),
-      response: questResourceSchema,
-    },
-    handler: async ({ params, body, user }) => {
-      const quest = await this.quests.getOne({
-        where: {
-          id: { eq: params.id },
-        },
-      });
-
-      await this.security.assertMember(quest.projectId, user);
-
-      // Update the quest's area (area)
-      const updatedQuest = await this.quests.updateById(params.id, {
-        area: body.newArea,
-        history: [
-          ...quest.history,
-          {
-            at: this.dt.nowISOString(),
-            by: user.id,
-            action: "updated",
-          },
-        ],
-      });
-
-      // `areas` is the source of truth for the list. `projects.areas` is
-      // still written for one release as a rollback net; it is
-      // `@deprecated` and nothing reads it. Task 7 drops this half.
-      await this.areaService.ensureArea(quest.projectId, body.newArea);
-
-      // Ensure the new area exists in the project's areas list
-      const project = await this.projects.getById(quest.projectId);
-      if (!project.areas.includes(body.newArea)) {
-        await this.projects.updateById(project.id, {
-          areas: [...project.areas, body.newArea],
-        });
-      }
-
-      return this.mapQuestToResource(updatedQuest);
     },
   });
 

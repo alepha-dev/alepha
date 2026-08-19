@@ -678,6 +678,8 @@ export default {
   "quest-log.collapse-panel": "Hide quest log",
   "quest-log.expand-panel": "Show quest log",
   "home.projects.see-all": "See all $1 projects",
+  "home.project.areas": "$1 areas",
+  "home.project.areas.one": "1 area",
   "account.projects.title": "Projects",
   "account.projects.description":
     "Every project you belong to, whether you own it or joined it.",

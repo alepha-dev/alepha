@@ -135,6 +135,13 @@ export const projects = $entity({
      */
     public: z.boolean().optional(),
     icon: z.uuid().optional(),
+    /**
+     * @deprecated Superseded by the `areas` table (2026-08-19). Nothing
+     * reads or writes this. It stays in the schema because dropping a
+     * `projects` column risks the D1 rebuild path, and `projects` is the
+     * CASCADE parent that wiped production in 2026-05. Same treatment as
+     * `public` / `unlockedFeatures` / `unlockHistory`.
+     */
     areas: db.default(z.array(z.string()), []),
     features: db.default(projectFeaturesSchema, defaultProjectFeatures),
     /**

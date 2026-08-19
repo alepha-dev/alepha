@@ -24,6 +24,34 @@ export class AreaService {
   quests = $repository(quests);
 
   /**
+   * Area count per project, for a batch of projects at once — the Home
+   * page's project cards need "how many areas" for every project the
+   * viewer belongs to, and none of them can afford a query per row.
+   *
+   * Aggregated in memory from one `IN` query rather than a per-project
+   * `count()`, same reasoning as `listWithStats`. Caller is trusted to
+   * have already scoped `projectIds` to what the viewer may see; this
+   * returns nothing more sensitive than a number.
+   */
+  async countByProjectIds(projectIds: number[]): Promise<Map<number, number>> {
+    const counts = new Map<number, number>();
+    if (projectIds.length === 0) {
+      return counts;
+    }
+
+    const rows = await this.areas.findMany({
+      where: { projectId: { inArray: projectIds } },
+      columns: ["projectId"],
+    });
+
+    for (const row of rows) {
+      counts.set(row.projectId, (counts.get(row.projectId) ?? 0) + 1);
+    }
+
+    return counts;
+  }
+
+  /**
    * Find-or-create by name. This is what keeps "declare a new area by
    * writing a quest" working — `QuestService.createQuest` calls it, so
    * the picker's list and the quests' actual values can never diverge.
