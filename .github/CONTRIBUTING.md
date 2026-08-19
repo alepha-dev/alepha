@@ -22,7 +22,17 @@ yarn install
 yarn v
 ```
 
-The `yarn v` command runs: clean → lint → typecheck → test → build. If this passes, you're good.
+`yarn v` runs: clean → lint → typecheck → test → check:deps → check:i18n →
+check:migrations → build → e2e → clean. If it passes, you're good. It needs
+[Docker](https://www.docker.com/) running, for the Postgres, Redis, S3 and MQTT
+containers the integration tests use, and it should finish inside 10 minutes.
+
+Two narrower entry points, for when the full run is more than you need:
+
+| | |
+|---|---|
+| `yarn v --fast` | lint, then typecheck / test / the three audits in parallel. Skips the build and e2e. The one to use while iterating |
+| `yarn v:go` | the Go suite for `apps/bay`, in a container. **`yarn v` does not run it**, and the tests for the systemd half are `//go:build linux`, so a native `go test` on macOS compiles them and runs none. Run this if you touched `apps/bay` |
 
 ## Making Changes
 

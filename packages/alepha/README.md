@@ -9,7 +9,7 @@
 />
 Alepha
 </h1>
-<p>One full-stack TypeScript framework. No glue.</p>
+<p>A full-stack TypeScript ecosystem. No glue.</p>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/v/alepha.svg" alt="npm version"/></a>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/l/alepha.svg" alt="license"/></a>
 <a href="https://codecov.io/gh/feunard/alepha"><img src="https://codecov.io/gh/feunard/alepha/graph/badge.svg?token=ZDLWI514CP" alt="coverage"/></a>
@@ -18,20 +18,30 @@ Alepha
 
 ## What is Alepha?
 
-Alepha is a full-stack TypeScript framework built for the agentic era.
+Alepha is a full-stack TypeScript ecosystem built for the agentic era.
 
 Everything between your code and the runtime (HTTP server, routing, auth, queues, storage, jobs, SSR) is rewritten clean and integrated for Node, Bun, and Cloudflare Workers. Two load-bearing layers are deliberately *not* reinvented: **React** for UI and **Drizzle** for SQL. No library glue, no config sprawl: one small, consistent surface of typed primitives.
 
-That small surface is the point. AI coding agents (Claude Code, Codex) work best against a narrow, predictable API, so they generate predictable, consistent code you can actually review.
+One small surface covers the server, the database, auth, background work and React, so a weekend project and a distributed system are the same code with different infrastructure underneath.
 
 - **One schema, everywhere**: database, API validation, TypeScript types and React forms, all from one definition
 - **One surface**: every feature is a typed `$primitive`. No third-party glue to wire up or keep in sync
 - **Multi-runtime**: the same code runs on Node, Bun, and Cloudflare Workers
 - **Deploy anywhere**: Cloudflare, Vercel, Docker, bare metal
 
+## Three products, one repository
+
+Everything below is MIT, and all of it is developed in this repository. Lore and Bay are not demos: they are the applications that keep the framework honest, and a fix that surfaces while building them lands in the same commit.
+
+| | | |
+|---|---|---|
+| **Alepha Framework** | The framework itself, on npm as [`alepha`](https://www.npmjs.com/package/alepha) | [alepha.dev](https://alepha.dev) |
+| **Alepha Lore** | Project management, for agents too: quests, folios, feedback and crash telemetry, every one of them readable and writable over MCP | [alepha.dev/lore](https://alepha.dev/lore) |
+| **Alepha Bay** | A self-hosted application server. One small Go binary that gives an Alepha app TLS, backups and process isolation on a machine you own | [alepha.dev/bay](https://alepha.dev/bay) |
+
 ## Architecture
 
-Each layer builds on the previous. Use only what you need.
+Each layer builds on the previous. Use only what you need: Foundation alone is enough for a CLI tool.
 
 | Layer          | Description | Primitives                                              |
 |----------------|-------------|---------------------------------------------------------|
@@ -39,6 +49,7 @@ Each layer builds on the previous. Use only what you need.
 | **Backend**    | Database, storage, API | `$entity`, `$relations`, `$repository`, `$action`, `$storage` |
 | **Frontend**   | React with SSR, routing, i18n | `$page`, `$head`, `$atom`, `$dictionary`                |
 | **Platform**   | Users, auth, jobs, audits | `$realm`, `$job`, `$audit`, `$notification`             |
+| **Admin**      | Admin panel and auth UI | `$pageAdmin`, `$pageAccount`, `$pageNav`                |
 
 ## Built for agents
 
@@ -101,6 +112,59 @@ export class AppRouter {
 
 The `Api` class is the only contract. `$client<Api>()` derives every call site from it. Change a handler's return type and the page stops compiling.
 
+## The admin panel you did not build
+
+Users, roles, sessions, API keys, connected apps, an audit trail, every `$job` with its schedule and its last run, and runtime configuration editable from the browser with history and a factory reset. Sign-in, registration and password reset are generated from the realm settings.
+
+It comes from declaring `$realm` and mounting the admin pages, in both light and dark. Screenshots on [alepha.dev](https://alepha.dev/#admin).
+
+## Swap anything, even time
+
+Nothing in the framework is sealed. Every provider is a class in the container, so a test replaces the one it does not want and leaves the rest running for real. There are 14 `Memory*Provider` classes for the I/O-bound ones, and the clock is one of them.
+
+```ts
+const alepha = Alepha.create()
+  .with({ provide: EmailProvider, use: MemoryEmailProvider });
+
+const email = alepha.inject(MemoryEmailProvider);
+const time = alepha.inject(DateTimeProvider);
+await alepha.start();
+
+await time.travel([1, "day"]);
+
+expect(email.records).toHaveLength(1);
+```
+
+Cron is anchored to the same clock, so the scheduled `$job` runs during the jump. The test does not wait, and the mail never left the process.
+
+## Deploy with one command
+
+Declare an environment, and `alepha platform up` authenticates, provisions what does not exist yet, builds, runs migrations, deploys and pushes secrets, in that order. The database, the bucket and the queue are not yours to create, and neither is the pipeline that would have created them.
+
+```ts
+// alepha.config.ts
+export default defineConfig({
+  plugins: [
+    platform({
+      environments: {
+        production: {
+          adapter: "cloudflare",
+          domain: "lore.alepha.dev",
+        },
+        staging: {
+          adapter: "bay",
+          host: "deploy@bay.example.com",
+        },
+      },
+    }),
+  ],
+});
+```
+
+```bash
+alepha platform up --env production
+```
+
 ## Getting Started
 
 Requirements: [Node.js](https://nodejs.org/) 22+ or [Bun](https://bun.sh/) 1.3+
@@ -116,4 +180,5 @@ Every project gets the same structure, with no flavours to choose between.
 
 - [Documentation](https://alepha.dev)
 - [llms.txt](https://alepha.dev/llms.txt) for AI assistants
+- [Contributing](https://github.com/feunard/alepha/blob/main/.github/CONTRIBUTING.md)
 - [GitHub](https://github.com/feunard/alepha)

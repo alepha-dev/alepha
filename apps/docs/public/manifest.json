@@ -1,12 +1,11 @@
 {
-  "name": "Alepha Documentation",
-  "short_name": "Alepha Docs",
-  "description": "Documentation for Alepha - TypeScript Framework Made Easy",
+  "name": "Alepha",
+  "short_name": "Alepha",
+  "description": "A full-stack TypeScript ecosystem: the Alepha framework, Alepha Lore and Alepha Bay.",
   "display": "standalone",
   "start_url": "/",
-  "background_color": "#1a1a2e",
-  "theme_color": "#1a1a2e",
-  "orientation": "portrait",
+  "background_color": "#010409",
+  "theme_color": "#010409",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -17,6 +16,29 @@
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/home-wide.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "The Alepha home page"
+    },
+    {
+      "src": "/screenshots/docs-wide.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "The documentation, with the file tree and the page outline"
+    },
+    {
+      "src": "/screenshots/home-narrow.png",
+      "sizes": "412x915",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "The Alepha home page on a phone"
     }
   ]
 }

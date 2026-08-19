@@ -1,6 +1,6 @@
 # Alepha - Core
 
-Easy-to-use modern TypeScript framework for building many kind of applications.
+A full-stack TypeScript ecosystem. No glue.
 
 ## Installation
 

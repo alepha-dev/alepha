@@ -43,8 +43,14 @@ export class CheckDocsCommand {
 
   /**
    * Documentation that lives outside `docs/`, in reach order: the repository
-   * front page, the page npm renders, and the template an AI assistant is
-   * handed when a project is scaffolded.
+   * front page, the page npm renders, and the framework brief an AI assistant
+   * reads out of `node_modules` — `release.yml` copies that last one to
+   * `packages/alepha/AGENTS.md` and `CLAUDE.md` on the way to the registry.
+   *
+   * Not to be confused with `cli/core/templates/agentMd.ts`, which is the
+   * per-project brief `alepha init` writes into a scaffolded app. Different
+   * document, different audience, and being a `.ts` file it is out of reach
+   * of this check.
    */
   protected readonly extraDocs = [
     "README.md",

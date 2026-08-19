@@ -30,12 +30,16 @@ export class AppRouter {
   sitemap = $sitemap({ hostname: this.env.PUBLIC_URL });
 
   head = $head(() => {
-    const ogTitle = "Alepha — One full-stack TypeScript framework. No glue.";
+    // "ecosystem", not "framework": the nav has three products under it, and
+    // the hero says the same word. This string is the one social unfurlers and
+    // search results show, so it is the tagline that has to agree with the
+    // README, the npm description and the repository description.
+    const ogTitle = "Alepha | A full-stack TypeScript ecosystem. No glue.";
     const head: Head = {
       title: "Alepha",
       titleSeparator: " | ",
       description:
-        "Alepha is a full-stack TypeScript framework built for the agentic era — a clean rewrite of server, ORM, auth, queues, and React SSR for Node, Bun, and Cloudflare. No library glue.",
+        "Alepha is a full-stack TypeScript ecosystem built for the agentic era: a clean rewrite of server, ORM, auth, queues, and React SSR for Node, Bun, and Cloudflare. No library glue.",
       image: `${this.env.PUBLIC_URL}/og-image.png`,
       siteName: "Alepha",
       locale: "en_US",
@@ -70,10 +74,24 @@ export class AppRouter {
           href: "/apple-touch-icon.png",
         },
       ],
+      // One `theme-color` per scheme, so the phone's address bar matches the
+      // page it is framing instead of guessing. Both values are `--color-bg`
+      // from `variables.css`; the dark one is also `background_color` /
+      // `theme_color` in `public/manifest.json`, which has no light variant to
+      // give it. Keep all three in step.
+      //
+      // These were a single `#1a1a2e` for a long time — a colour from a
+      // palette this site no longer uses, which appears in no stylesheet.
       meta: [
         {
           name: "theme-color",
-          content: "#1a1a2e",
+          content: "#ffffff",
+          media: "(prefers-color-scheme: light)",
+        },
+        {
+          name: "theme-color",
+          content: "#010409",
+          media: "(prefers-color-scheme: dark)",
         },
       ],
     };
@@ -124,7 +142,7 @@ export class AppRouter {
     label: "Home",
     static: true,
     head: () => ({
-      title: "One full-stack TypeScript framework. No glue.",
+      title: "A full-stack TypeScript ecosystem. No glue.",
     }),
   });
 

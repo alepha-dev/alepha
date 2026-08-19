@@ -4,10 +4,12 @@
 
 Start here: [alepha.dev](https://alepha.dev)
 
-- [Getting Started](https://alepha.dev/guides/getting-started) — First steps
-- [Guides](https://alepha.dev/guides) — How to build things
-- [Concepts](https://alepha.dev/concepts) — How Alepha works
-- [API Reference](https://alepha.dev/packages) — Package documentation
+- [Getting Started](https://alepha.dev/docs/guides-getting-started) — First steps
+- [Introduction](https://alepha.dev/docs/guides-introduction) — What Alepha is, and why
+- [CLI](https://alepha.dev/docs/cli-installation) — The `alepha` command
+- [Primitives Reference](https://alepha.dev/docs/reference-primitives-%24action) — Every `$primitive`
+- [Packages](https://alepha.dev/docs/packages-alepha-server-core) — Module documentation
+- [llms.txt](https://alepha.dev/llms.txt) — The machine-readable index, for AI assistants
 
 ## Asking Questions
 

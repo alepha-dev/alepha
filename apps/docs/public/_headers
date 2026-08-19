@@ -33,6 +33,16 @@
 /*.ico
   Cache-Control: public, max-age=86400
 
+# The Bay installer. Anyone sensible reads a script before piping it into a
+# root shell, so it is pinned to `text/plain` rather than left to whatever a
+# `.sh` extension resolves to — browsers download that instead of showing it.
+#
+# Deliberately no cache rule: the default `max-age=0, must-revalidate` is
+# exactly right for an installer, so a fix to it is picked up on the next run
+# rather than a day later.
+/bay/install.sh
+  Content-Type: text/plain; charset=utf-8
+
 # HSTS is the one security header worth setting here: `alepha.dev` is the
 # registrable domain, so `includeSubDomains` covers every app under it. The rest
 # (CSP, frame-options) would guard against nothing on a site with no auth, no
