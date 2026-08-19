@@ -18,6 +18,7 @@ import type { KanbanController } from "@/api/controllers/KanbanController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
+import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
 import { currentAssignedQuestsAtom } from "../../atoms/currentAssignedQuestsAtom.ts";
 import {
   kanbanProjectAtom,
@@ -50,9 +51,10 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   const alepha = useAlepha();
   const [quests, setQuests] = useState<QuestResource[]>(initialQuests);
   const [loading, setLoading] = useState(false);
+  const [currentAreas] = useStore(currentAreasAtom);
   const areaOptions = useMemo(
-    () => (project.areas ?? []).map((z) => ({ value: z, label: z })),
-    [project.areas],
+    () => (currentAreas ?? []).map((a) => ({ value: a.name, label: a.name })),
+    [currentAreas],
   );
   const filterForm = useForm({
     schema: z.object({

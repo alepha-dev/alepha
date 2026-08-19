@@ -29,6 +29,7 @@ import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { User } from "@/api/entities/users.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "../../AppRouter.ts";
+import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
 import { currentAssignedQuestsAtom } from "../../atoms/currentAssignedQuestsAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { currentQuestCountAtom } from "../../atoms/currentQuestCountAtom.ts";
@@ -98,6 +99,7 @@ const boardFiltersSchema = z.object({
 const ProjectQuestsTable = () => {
   const alepha = useAlepha();
   const [project] = useStore(currentProjectAtom);
+  const [currentAreas] = useStore(currentAreasAtom);
   const questApi = useClient<QuestController>();
   const projectApi = useClient<ProjectController>();
   const dateFormatter = useInject(DateTimeProvider);
@@ -146,9 +148,9 @@ const ProjectQuestsTable = () => {
 
   if (!project) return null;
 
-  const areaOptions = (project.areas ?? []).map((p) => ({
-    label: p,
-    value: p,
+  const areaOptions = (currentAreas ?? []).map((a) => ({
+    value: a.name,
+    label: a.name,
   }));
 
   return (
