@@ -18,7 +18,7 @@ Convention-driven TypeScript framework for type-safe full-stack applications.
 
 ## Rules
 
-- Use `z` from `alepha` for schemas — never import from `zod` directly
+- Use `z` from `alepha` for schemas - never import from `zod` directly
 - Use `protected` instead of `private` for class members
 - Import with file extensions: `import { User } from "./User.ts"`
 - Primitives are class properties (except `$entity`, `$atom`)
@@ -62,7 +62,7 @@ src/
 | `$action` | REST API endpoints (auto GET/POST) |
 | `$route` | Low-level HTTP routes |
 
-`$client` — the type-safe cross-module HTTP client — is imported from
+`$client` - the type-safe cross-module HTTP client - is imported from
 `alepha/server/links`, not `alepha/server`.
 
 ### Database (`alepha/orm`)
@@ -78,7 +78,7 @@ src/
 | Primitive | Import | Purpose |
 |-----------|--------|---------|
 | `$logger` | `alepha/logger` | Structured logging |
-| `$job` | `alepha/api/jobs` | Background jobs AND cron — durable, retried, crash-safe |
+| `$job` | `alepha/api/jobs` | Background jobs AND cron - durable, retried, crash-safe |
 | `$cache` | `alepha/cache` | Cached computations |
 | `$storage` | `alepha/api/files` | File storage with metadata, TTL, querying |
 | `$email` | `alepha/email` | Email sending |
@@ -87,7 +87,7 @@ src/
 | `$retry` | `alepha/retry` | Retry with backoff |
 
 **Background work: always reach for `$job`.** It is the only primitive with a
-durable outbox — at-least-once delivery, retries, idempotency keys, priorities,
+durable outbox - at-least-once delivery, retries, idempotency keys, priorities,
 crash recovery via a reconciliation sweep, and failure records in the database.
 
 ```ts
@@ -107,7 +107,7 @@ class Emails {
 ```
 
 `$job` needs a database (it writes to the `jobExecution` table) and registers
-an admin controller — that is why it lives under `alepha/api/`. Register
+an admin controller - that is why it lives under `alepha/api/`. Register
 `AlephaApiJobs`; add `AlephaApiJobsQueue` only if you want dispatch to go
 through a real broker instead of in-process.
 
@@ -124,14 +124,14 @@ class Media {
 
   async save(file: FileLike, user: UserAccountToken) {
     const stored = await this.avatars.upload(file, { user });
-    return stored.id; // the `files` row id — use it in your own tables
+    return stored.id; // the `files` row id - use it in your own tables
   }
 }
 ```
 
 `upload()` returns the row, not a blob id. `list()` is a real paginated query.
 A storage is a **key prefix inside one bucket** (`{APP_NAME}/{storage}/{fileId}`),
-never a cloud bucket of its own — so declaring many is free.
+never a cloud bucket of its own - so declaring many is free.
 
 Register `AlephaApiFiles`; it needs a database. For blobs *without* one, inject
 `FileStorageProvider` from `alepha/bucket` directly and give up metadata,
@@ -309,7 +309,7 @@ z.string().nullable()   // Nullable: likewise
 ## Going deeper
 
 `src/` here is *this project's* code, not the framework's. To read how a
-primitive is actually implemented, open it in `node_modules/alepha/src/` — the
+primitive is actually implemented, open it in `node_modules/alepha/src/` - the
 published package ships its sources alongside `dist/`, so the implementation is
 always on disk next to the app using it.
 

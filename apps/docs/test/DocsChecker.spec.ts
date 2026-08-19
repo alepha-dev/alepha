@@ -126,6 +126,22 @@ describe("DocsChecker", () => {
       expect(violations).toEqual([]);
     });
 
+    it("should reject an em dash anywhere in the docs", async () => {
+      // docs/ and apps/docs were swept free of em dashes on 2026-08-19; this
+      // entry keeps them from creeping back in.
+      const { checker, fs } = boot();
+      await fs.writeFile(
+        "/docs/a.md",
+        "Alepha is convention-driven — almost no configuration.",
+      );
+
+      const violations = await checker.check(["/docs/a.md"]);
+
+      expect(violations).toHaveLength(1);
+      expect(violations[0]).toMatchObject({ file: "/docs/a.md", line: 1 });
+      expect(violations[0].message).toMatch(/em dash/);
+    });
+
     it("should not flag a banned word inside a fenced code sample that is quoting history", async () => {
       // An explicit escape hatch, because some docs legitimately describe the
       // old world (migration notes, changelogs).

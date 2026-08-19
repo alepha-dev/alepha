@@ -202,6 +202,12 @@ export const BANNED_DOC_SYMBOLS: Array<{ pattern: string; reason: string }> = [
     pattern: "SIGIL_SINK",
     reason: "replaced by the `sink` field inside `SIGIL_CONFIG`",
   },
+  // --- style rules; the docs were swept free of em dashes on 2026-08-19 ---
+  {
+    pattern: "—",
+    reason:
+      "em dash - use ' - ' in prose or ':' after a bullet term (in docs/framework/2-reference and 3-packages, fix the source JSDoc - `yarn copy` regenerates those files)",
+  },
 ];
 
 /**
