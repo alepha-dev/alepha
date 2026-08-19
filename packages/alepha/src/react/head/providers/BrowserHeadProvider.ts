@@ -76,20 +76,28 @@ export class BrowserHeadProvider {
       },
       get meta() {
         const metas: HeadMeta[] = [];
+        // `media` is added only when the tag carries one: a plain tag reads
+        // back as `{ name, content }`, never `{ name, content, media:
+        // undefined }`. The two are not the same to `toContainEqual`, nor to
+        // anything else comparing these by value.
         // Get meta tags with name attribute
         for (const meta of document.head.querySelectorAll("meta[name]")) {
           const name = meta.getAttribute("name");
           const content = meta.getAttribute("content");
+          const media = meta.getAttribute("media");
           if (name && content) {
-            metas.push({ name, content });
+            metas.push(media ? { name, content, media } : { name, content });
           }
         }
         // Get meta tags with property attribute (OpenGraph)
         for (const meta of document.head.querySelectorAll("meta[property]")) {
           const property = meta.getAttribute("property");
           const content = meta.getAttribute("content");
+          const media = meta.getAttribute("media");
           if (property && content) {
-            metas.push({ property, content });
+            metas.push(
+              media ? { property, content, media } : { property, content },
+            );
           }
         }
         return metas;
@@ -278,37 +286,47 @@ export class BrowserHeadProvider {
   ): Element | undefined {
     const { content } = meta;
 
-    // Handle OpenGraph tags (property attribute)
+    const key = meta.property
+      ? `property="${meta.property}"`
+      : meta.name
+        ? `name="${meta.name}"`
+        : undefined;
+
+    if (!key) {
+      return undefined;
+    }
+
+    // The identity of a meta tag is its name/property AND its media query, not
+    // the name alone. Two `theme-color` tags differing only by
+    // `prefers-color-scheme` are two tags, and matching on the name would make
+    // the second overwrite the first — leaving one tag whose media query no
+    // longer matches the colour it carries.
+    //
+    // `:not([media])` on the unqualified side is the other half of that: a
+    // plain tag must not adopt a media-qualified one it happens to find first.
+    const existing = document.querySelector(
+      meta.media
+        ? `meta[${key}][media="${meta.media}"]`
+        : `meta[${key}]:not([media])`,
+    );
+
+    if (existing) {
+      existing.setAttribute("content", content);
+      return existing;
+    }
+
+    const newMeta = document.createElement("meta");
     if (meta.property) {
-      const existing = document.querySelector(
-        `meta[property="${meta.property}"]`,
-      );
-      if (existing) {
-        existing.setAttribute("content", content);
-        return existing;
-      }
-      const newMeta = document.createElement("meta");
       newMeta.setAttribute("property", meta.property);
-      newMeta.setAttribute("content", content);
-      document.head.appendChild(newMeta);
-      return newMeta;
-    }
-
-    // Handle standard meta tags (name attribute)
-    if (meta.name) {
-      const existing = document.querySelector(`meta[name="${meta.name}"]`);
-      if (existing) {
-        existing.setAttribute("content", content);
-        return existing;
-      }
-      const newMeta = document.createElement("meta");
+    } else if (meta.name) {
       newMeta.setAttribute("name", meta.name);
-      newMeta.setAttribute("content", content);
-      document.head.appendChild(newMeta);
-      return newMeta;
     }
-
-    return undefined;
+    newMeta.setAttribute("content", content);
+    if (meta.media) {
+      newMeta.setAttribute("media", meta.media);
+    }
+    document.head.appendChild(newMeta);
+    return newMeta;
   }
 }
 

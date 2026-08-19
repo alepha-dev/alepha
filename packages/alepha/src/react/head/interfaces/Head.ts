@@ -175,4 +175,16 @@ export interface HeadMeta {
    * Meta content value
    */
   content: string;
+  /**
+   * Media query the tag applies to (e.g., "(prefers-color-scheme: dark)").
+   *
+   * Only `theme-color` uses this in practice, and it is the reason the field
+   * exists: a site with a light and a dark palette declares one tag per scheme
+   * and lets the browser pick, rather than painting the address bar and the
+   * PWA splash screen a single colour that is wrong half the time.
+   *
+   * Two tags sharing a `name` are kept apart by this value, so a
+   * media-qualified tag and an unqualified one can coexist.
+   */
+  media?: string;
 }

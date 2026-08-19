@@ -158,6 +158,99 @@ describe("BrowserHeadProvider", () => {
       ).toHaveLength(1);
     });
 
+    describe("media", () => {
+      it("should render a media attribute when one is given", () => {
+        provider.renderHead(document, {
+          meta: [
+            {
+              name: "theme-color",
+              content: "#ffffff",
+              media: "(prefers-color-scheme: light)",
+            },
+          ],
+        });
+
+        const el = document.querySelector('meta[name="theme-color"]');
+        expect(el?.getAttribute("media")).toBe("(prefers-color-scheme: light)");
+        expect(el?.getAttribute("content")).toBe("#ffffff");
+      });
+
+      it("should keep two tags of the same name apart by their media", () => {
+        // The whole point of `media` on a meta: a light and a dark
+        // `theme-color` coexist, and the browser picks. Deduping on the name
+        // alone would let the second overwrite the first, leaving one tag
+        // whose media query is wrong for the colour it carries.
+        provider.renderHead(document, {
+          meta: [
+            {
+              name: "theme-color",
+              content: "#ffffff",
+              media: "(prefers-color-scheme: light)",
+            },
+            {
+              name: "theme-color",
+              content: "#010409",
+              media: "(prefers-color-scheme: dark)",
+            },
+          ],
+        });
+
+        const tags = document.querySelectorAll('meta[name="theme-color"]');
+        expect(tags).toHaveLength(2);
+        expect(tags[0].getAttribute("content")).toBe("#ffffff");
+        expect(tags[1].getAttribute("content")).toBe("#010409");
+      });
+
+      it("should not let an unqualified tag overwrite a media-qualified one", () => {
+        provider.renderHead(document, {
+          meta: [
+            {
+              name: "theme-color",
+              content: "#010409",
+              media: "(prefers-color-scheme: dark)",
+            },
+            { name: "theme-color", content: "#888888" },
+          ],
+        });
+
+        const qualified = document.querySelector(
+          'meta[name="theme-color"][media]',
+        );
+        const plain = document.querySelector(
+          'meta[name="theme-color"]:not([media])',
+        );
+        expect(qualified?.getAttribute("content")).toBe("#010409");
+        expect(plain?.getAttribute("content")).toBe("#888888");
+      });
+
+      it("should update in place rather than duplicate on a second render", () => {
+        const head: Head = {
+          meta: [
+            {
+              name: "theme-color",
+              content: "#ffffff",
+              media: "(prefers-color-scheme: light)",
+            },
+          ],
+        };
+
+        provider.renderHead(document, head);
+        provider.renderHead(document, {
+          meta: [
+            {
+              name: "theme-color",
+              content: "#eeeeee",
+              media: "(prefers-color-scheme: light)",
+            },
+          ],
+        });
+
+        const tags = document.querySelectorAll('meta[name="theme-color"]');
+        expect(tags).toHaveLength(1);
+        expect(tags[0].getAttribute("content")).toBe("#eeeeee");
+      });
+    });
+
     describe("reconcile", () => {
       it("should drop a meta tag the next page does not declare", () => {
         // renderHead only ever added or updated. Navigating from a page with a

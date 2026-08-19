@@ -211,4 +211,58 @@ describe("ReactServerTemplateProvider", () => {
       await alepha.stop();
     });
   });
+
+  describe("meta media", () => {
+    class MediaApp {
+      home = $page({
+        path: "/",
+        head: {
+          title: "Themed",
+          meta: [
+            {
+              name: "theme-color",
+              content: "#ffffff",
+              media: "(prefers-color-scheme: light)",
+            },
+            {
+              name: "theme-color",
+              content: "#010409",
+              media: "(prefers-color-scheme: dark)",
+            },
+            { name: "description", content: "No media here" },
+          ],
+        },
+        component: () => "Hello",
+      });
+    }
+
+    it("should serialize the media attribute, and omit it when absent", async ({
+      expect,
+    }) => {
+      const alepha = Alepha.create({
+        env: { LOG_LEVEL: "error", SERVER_PORT: 0 },
+      }).with(MediaApp);
+
+      await alepha.start();
+
+      const server = alepha.inject(ServerProvider);
+      const http = alepha.inject(HttpClient);
+
+      const response = await http.fetch(`${server.hostname}/`);
+      const html = response.data as string;
+
+      expect(html).toContain(
+        '<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">',
+      );
+      expect(html).toContain(
+        '<meta name="theme-color" content="#010409" media="(prefers-color-scheme: dark)">',
+      );
+      // A meta without `media` must not grow an empty attribute.
+      expect(html).toContain(
+        '<meta name="description" content="No media here">',
+      );
+
+      await alepha.stop();
+    });
+  });
 });

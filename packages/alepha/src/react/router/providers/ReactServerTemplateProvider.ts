@@ -147,10 +147,13 @@ export class ReactServerTemplateProvider {
 
     if (head.meta) {
       for (const meta of head.meta) {
+        const media = meta.media
+          ? ` media="${this.escapeHtml(meta.media)}"`
+          : "";
         if (meta.property) {
-          content += `<meta property="${this.escapeHtml(meta.property)}" content="${this.escapeHtml(meta.content)}">\n`;
+          content += `<meta property="${this.escapeHtml(meta.property)}" content="${this.escapeHtml(meta.content)}"${media}>\n`;
         } else if (meta.name) {
-          content += `<meta name="${this.escapeHtml(meta.name)}" content="${this.escapeHtml(meta.content)}">\n`;
+          content += `<meta name="${this.escapeHtml(meta.name)}" content="${this.escapeHtml(meta.content)}"${media}>\n`;
         }
       }
     }
