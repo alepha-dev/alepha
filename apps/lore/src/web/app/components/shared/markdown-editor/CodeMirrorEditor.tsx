@@ -12,6 +12,15 @@ export interface CodeMirrorEditorProps {
   minHeight?: number;
   readOnly?: boolean;
   /**
+   * Show the numbered gutter. See `MarkdownExtensionOptions.lineNumbers`.
+   *
+   * ⚠️ Read at MOUNT ONLY — the extension list is built inside the
+   * create-once effect below. Fine for a per-surface constant, which is all
+   * it is used for; wiring it to a live toggle would need the extension
+   * reconfigured through a compartment, which it is not.
+   */
+  lineNumbers?: boolean;
+  /**
    * Completion sources for the `[[` picker. Presence, not identity, decides
    * whether autocompletion is mounted — the sources themselves read their
    * data through a getter, so a new array every render is harmless.
@@ -78,6 +87,7 @@ const CodeMirrorEditor = (props: CodeMirrorEditorProps) => {
           ...createMarkdownExtensions({
             placeholder: props.placeholder,
             readOnly: props.readOnly,
+            lineNumbers: props.lineNumbers,
             // One stable source that delegates to whatever the latest
             // sources are, so the extension list — and therefore the
             // editor — is never rebuilt when they change identity.

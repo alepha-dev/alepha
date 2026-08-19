@@ -11,6 +11,7 @@ import {
   type EpicResource,
   epicResourceSchema,
 } from "../schemas/epicResourceSchema.ts";
+import { FolioLinkService } from "../services/FolioLinkService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
@@ -41,6 +42,7 @@ export class EpicController {
   folios = $repository(folios);
   dt = $inject(DateTimeProvider);
   security = $inject(ProjectSecurityService);
+  linkService = $inject(FolioLinkService);
 
   /**
    * Per-project sequence for `epics.number`. `$sequence` keys its counter
@@ -119,6 +121,8 @@ export class EpicController {
         description: body.description ?? "",
         status: "planned",
       });
+      await this.syncEpicLinks(epic);
+
       return await this.buildEpicResource(epic);
     },
   });
@@ -143,6 +147,7 @@ export class EpicController {
           ? { description: body.description }
           : {}),
       });
+      await this.syncEpicLinks(updated);
 
       return await this.buildEpicResource(updated);
     },
@@ -209,6 +214,10 @@ export class EpicController {
       const epic = await this.epics.getById(params.id);
       await this.security.assertOwner(epic.projectId, user);
 
+      // `folio_links.from_id` is not a foreign key, so the FK cascade this
+      // delete relies on for quests and folios does not reach the link
+      // graph — see `FolioLinkService.deleteLinksFrom`.
+      await this.linkService.deleteLinksFrom({ kind: "epic", id: params.id });
       await this.epics.deleteById(params.id, { force: true });
 
       return { ok: true };
@@ -306,6 +315,21 @@ export class EpicController {
   });
 
   /**
+   * Re-sync this epic's outbound `[[...]]` links.
+   *
+   * An epic has one markdown field, so unlike the quest equivalent there
+   * is nothing to concatenate — but it is a named method for the same
+   * reason: the discriminator and the id shape are decided in one place
+   * rather than at each call site.
+   */
+  protected async syncEpicLinks(epic: Epic): Promise<void> {
+    await this.linkService.syncLinks(
+      { kind: "epic", id: epic.id, projectId: epic.projectId },
+      epic.description ?? "",
+    );
+  }
+
+  /**
    * Attaches the server-computed rollup to an epic row. Counts EVERY
    * quest belonging to the epic — deliberately NOT gated through
    * `EpicVisibilityService`. That gate hides a `planned` epic's quests
@@ -319,17 +343,38 @@ export class EpicController {
     return { ...epic, progress, questCount: progress.total };
   }
 
-  protected async computeProgress(
-    epic: Epic,
-  ): Promise<{ completed: number; total: number }> {
-    const [total, completed] = await Promise.all([
+  /**
+   * The four buckets are disjoint by construction, so the list row can
+   * derive the untouched remainder as
+   * `total - completed - inProgress - shelved` without a fifth count:
+   * `shelvedAt` is only ever set on a quest still in `new` status (see
+   * `quests.shelvedAt`), so it never coexists with `acceptedAt` or
+   * `completedAt`, and `inProgress` explicitly excludes both of the
+   * others.
+   */
+  protected async computeProgress(epic: Epic): Promise<{
+    completed: number;
+    inProgress: number;
+    shelved: number;
+    total: number;
+  }> {
+    const [total, completed, inProgress, shelved] = await Promise.all([
       this.quests.count({ epicId: { eq: epic.id } }),
       this.quests.count({
         epicId: { eq: epic.id },
         completedAt: { isNotNull: true },
       }),
+      this.quests.count({
+        epicId: { eq: epic.id },
+        acceptedAt: { isNotNull: true },
+        completedAt: { isNull: true },
+      }),
+      this.quests.count({
+        epicId: { eq: epic.id },
+        shelvedAt: { isNotNull: true },
+      }),
     ]);
 
-    return { completed, total };
+    return { completed, inProgress, shelved, total };
   }
 }

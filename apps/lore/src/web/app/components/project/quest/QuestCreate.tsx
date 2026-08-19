@@ -35,9 +35,9 @@ import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentAreasAtom } from "@/web/app/atoms/currentAreasAtom.ts";
 import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuestsAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+import { useLoreEditorControl } from "../../shared/element/useLoreEditorControl.ts";
 import QuestCreateObjectives from "./QuestCreateObjectives.tsx";
 import QuestDependencyPicker from "./QuestDependencyPicker.tsx";
-import QuestDescriptionEditor from "./QuestDescriptionEditor.tsx";
 import QuestEstimateInput from "./QuestEstimateInput.tsx";
 import QuestTagInput from "./QuestTagInput.tsx";
 
@@ -148,6 +148,15 @@ const QuestCreate = (props: QuestCreateProps) => {
 
   const { loading: submitting } = useFormState(form, ["loading"]);
 
+  // Bound once so the editor keeps its identity across the form's renders —
+  // see `useLoreEditorControl`, which exists for exactly that.
+  const DescriptionEditor = useLoreEditorControl({
+    kind: "quest",
+    projectId: props.project.id,
+    projectSlug: props.project.slug,
+    id: props.quest?.id,
+  });
+
   const areas = (currentAreas ?? []).map((a) => a.name);
 
   return (
@@ -176,7 +185,7 @@ const QuestCreate = (props: QuestCreateProps) => {
           description={tr("quest.create.description.helper")}
           input={form.input.description}
           icon={FileText}
-          custom={QuestDescriptionEditor as never}
+          custom={DescriptionEditor as never}
         />
 
         <Separator />

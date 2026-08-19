@@ -7,13 +7,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@alepha/ui/components/ui/dialog";
+import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useEffect, useState } from "react";
+import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
-import MarkdownEditor from "../../shared/markdown-editor/MarkdownEditor.tsx";
-import type { MarkdownEditorMode } from "../../shared/markdown-editor/MarkdownEditorInner.tsx";
-import MarkdownModeToggle from "../../shared/markdown-editor/MarkdownModeToggle.tsx";
-import { useQuestImageUpload } from "../../shared/markdown-editor/useQuestImageUpload.ts";
+import LoreEditor from "../../shared/element/LoreEditor.tsx";
 
 export interface QuestSummaryEditDialogProps {
   open: boolean;
@@ -25,10 +24,10 @@ export interface QuestSummaryEditDialogProps {
 }
 
 const QuestSummaryEditDialog = (props: QuestSummaryEditDialogProps) => {
+  // The links the editor's View mode produces are URLs, so it needs the slug.
+  const [project] = useStore(currentProjectAtom);
   const { tr } = useI18n<I18n, "en">();
-  const imageUploadHandler = useQuestImageUpload();
   const [value, setValue] = useState(props.initialValue ?? "");
-  const [mode, setMode] = useState<MarkdownEditorMode>("edit");
 
   // Re-prime when the dialog re-opens against a different quest / value.
   useEffect(() => {
@@ -49,15 +48,15 @@ const QuestSummaryEditDialog = (props: QuestSummaryEditDialogProps) => {
             {tr("quest.view.editSummary.description")}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex justify-end">
-          <MarkdownModeToggle mode={mode} onChange={setMode} />
-        </div>
-        <MarkdownEditor
+        <LoreEditor
+          element={{
+            kind: "quest",
+            projectId: project?.id ?? 0,
+            projectSlug: project?.slug ?? "",
+          }}
           value={value}
           onChange={setValue}
           placeholder={tr("quest.view.complete.placeholder")}
-          imageUploadHandler={imageUploadHandler}
-          mode={mode}
           minHeight={200}
         />
         <DialogFooter className="gap-2">

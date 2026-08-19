@@ -15,6 +15,7 @@ import { EditorState, type Extension } from "@codemirror/state";
 import {
   EditorView,
   keymap,
+  lineNumbers,
   placeholder as placeholderExtension,
 } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
@@ -28,6 +29,17 @@ export interface MarkdownExtensionOptions {
    * at all, so nothing pops up while typing prose.
    */
   completionSources?: CompletionSource[];
+  /**
+   * Show the numbered gutter. Off by default: it earns its place on a long
+   * document, where "the table in the middle" needs a coordinate, and reads
+   * as an IDE affordance on a three-line description field.
+   *
+   * Numbers count SOURCE lines, not visual rows — `EditorView.lineWrapping`
+   * is mounted, so a wrapped paragraph shows one number and blank gutter
+   * space for each continuation row. That is the honest mapping: the number
+   * is what a `[[folio#L12]]`-style reference or an error would name.
+   */
+  lineNumbers?: boolean;
 }
 
 /**
@@ -106,6 +118,32 @@ const loreTheme = EditorView.theme({
     backgroundColor: "var(--color-accent)",
     color: "var(--color-accent-foreground)",
   },
+  // The gutter is only ever mounted behind `options.lineNumbers`, but it is
+  // themed unconditionally — a theme is a stylesheet, not an extension, and
+  // rules for an absent element cost nothing.
+  //
+  // Transparent rather than the muted fill CodeMirror ships: this sits
+  // inside a document, and a filled column down the left reads as a code
+  // block. The numbers are dimmed to `muted-foreground` at the same 0.6 the
+  // syntax markers use, so they recede the way `#` and `*` do.
+  ".cm-gutters": {
+    backgroundColor: "transparent",
+    borderRight: "1px solid var(--color-border)",
+    color: "var(--color-muted-foreground)",
+    fontFamily: "var(--font-mono)",
+    fontSize: "0.85em",
+    opacity: "0.6",
+    userSelect: "none",
+  },
+  ".cm-lineNumbers .cm-gutterElement": {
+    padding: "0 0.5rem 0 0.25rem",
+    minWidth: "2.25rem",
+  },
+  // `highlightActiveLine()` is not mounted (see the extension list), and its
+  // gutter twin is not either — there is no active-line marker to tint, so
+  // the numbers stay uniform rather than one of them lighting up with
+  // nothing beside it to explain why.
+  ".cm-activeLineGutter": { backgroundColor: "transparent" },
 });
 
 /**
@@ -152,6 +190,10 @@ export const createMarkdownExtensions = (
       ...completionKeymap,
     ]),
   ];
+
+  if (options.lineNumbers) {
+    extensions.push(lineNumbers());
+  }
 
   if (options.placeholder) {
     extensions.push(placeholderExtension(options.placeholder));

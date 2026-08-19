@@ -135,10 +135,16 @@ test.describe("Epics — the backlog gate", () => {
     });
 
     await test.step("but the epic itself shows every one of them", async () => {
-      // No `networkidle` here: the Epic page embeds the dependency flow, which
-      // polls every 60s, so the network is never idle and the wait can only
-      // time out. The visibility assertions below carry their own timeouts.
-      await page.goto(`/${slug}/epics/${epic.number}`);
+      // `?tab=quests` is load-bearing since the page moved onto
+      // `DetailLayout`: the epic's quests live behind a tab now, and the
+      // default landing tab is the description. Without it this step passes
+      // or fails on whether Overview happens to mention a quest title.
+      //
+      // No `networkidle` here: the Flow tab embeds the dependency graph,
+      // which polls every 60s, so the network is never idle and the wait can
+      // only time out. The visibility assertions below carry their own
+      // timeouts.
+      await page.goto(`/${slug}/epics/${epic.number}?tab=quests`);
 
       await expect(page.getByText(gatedTitle).first()).toBeVisible({
         timeout: 15_000,
@@ -198,15 +204,176 @@ test.describe("Epics — the backlog gate", () => {
     });
 
     await test.step("the epic still shows the shelved quest, because hidden is not unreachable", async () => {
-      // No `networkidle` here: the Epic page embeds the dependency flow, which
-      // polls every 60s, so the network is never idle and the wait can only
-      // time out. The visibility assertions below carry their own timeouts.
-      await page.goto(`/${slug}/epics/${epic.number}`);
+      // Again `?tab=quests` — see the note in the step above.
+      await page.goto(`/${slug}/epics/${epic.number}?tab=quests`);
 
       await expect(page.getByText(gatedTitle).first()).toBeVisible({
         timeout: 15_000,
       });
       await expect(page.getByText(releasedTitle).first()).toBeVisible();
+    });
+  });
+});
+
+/**
+ * The Epics LIST, which the gate test above never visits — it goes straight
+ * to `/epics/:number`. Since the list moved onto `AlephaTable` it owns its
+ * own fetch (the route loader was removed), so "the page renders rows at
+ * all" is now a client-side path with nothing server-rendered behind it to
+ * mask a failure.
+ *
+ * The progress caption is asserted rather than the tick bar: the bar is
+ * `aria-hidden` decoration, and the caption is the part that carries the
+ * meaning — including "specified, none released", which is the list's only
+ * statement of the backlog gate the test above proves.
+ */
+test.describe("Epics — the list", () => {
+  test("renders, filters by search, and creates from the toolbar", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `epiclist${t}@example.com`, "GoodPassw0rd");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `El${t}`.slice(0, 20),
+    );
+    await setProjectFeature(page, projectId, "epics", true);
+
+    const withQuest = `Alpha${t}`;
+    const empty = `Beta${t}`;
+
+    for (const title of [withQuest, empty]) {
+      await page.evaluate(
+        async ({ projectId, title }) => {
+          const r = await fetch(`/api/createEpic/${projectId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ title }),
+          });
+          if (!r.ok)
+            throw new Error(`createEpic ${r.status} ${await r.text()}`);
+        },
+        { projectId, title },
+      );
+    }
+
+    // One quest on the first epic only, so the two rows must render two
+    // different captions — an assertion a single-epic fixture cannot make.
+    const epics = await page.evaluate(async (projectId) => {
+      const r = await fetch(`/api/getEpics/${projectId}`, {
+        credentials: "include",
+      });
+      if (!r.ok) throw new Error(`getEpics ${r.status} ${await r.text()}`);
+      return (await r.json()) as { id: number; title: string }[];
+    }, projectId);
+    const target = epics.find((e) => e.title === withQuest);
+    expect(target).toBeDefined();
+
+    const { id: questId } = await apiPost<{ id: number }>(page, "createQuest", {
+      projectId,
+      title: `Q${t}`,
+      description: "Seeded for the list",
+      area: "orm",
+      priority: "high",
+      difficulty: 2,
+      objectives: [],
+      attachments: [],
+    });
+    await page.evaluate(
+      async ({ epicId, questId }) => {
+        const r = await fetch(`/api/attachQuest/${epicId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ questId }),
+        });
+        if (!r.ok) throw new Error(`attachQuest ${r.status} ${await r.text()}`);
+      },
+      { epicId: target!.id, questId },
+    );
+
+    await test.step("both epics render, each with its own progress caption", async () => {
+      await page.goto(`/${slug}/epics`);
+
+      await expect(page.getByRole("link", { name: withQuest })).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(page.getByRole("link", { name: empty })).toBeVisible();
+
+      // Freshly created epics are `planned`, so the one holding a quest
+      // reports it as specified-not-released and the other as having none.
+      await expect(page.getByText("1 specified, none released")).toBeVisible();
+      await expect(page.getByText("No quests yet")).toBeVisible();
+    });
+
+    await test.step("the toolbar search narrows the table", async () => {
+      await page.getByRole("textbox", { name: "Search" }).fill(withQuest);
+
+      await expect(page.getByRole("link", { name: empty })).toHaveCount(0, {
+        timeout: 15_000,
+      });
+      await expect(page.getByRole("link", { name: withQuest })).toBeVisible();
+
+      await page.getByRole("button", { name: "Reset filters" }).click();
+      await expect(page.getByRole("link", { name: empty })).toBeVisible({
+        timeout: 15_000,
+      });
+    });
+
+    await test.step("the [[ picker works in an epic description", async () => {
+      // The capability this whole `LoreEditor` unification was for. The
+      // picker used to be wired by exactly ONE caller — the folio body — so
+      // `[[` autocomplete existed on one screen while the syntax it inserts
+      // resolved on three. Asserted on an EPIC because that is the surface
+      // that had neither the picker nor the rewrite before.
+      await page.getByRole("link", { name: withQuest }).click();
+      await page.getByRole("button", { name: /^Edit$/ }).click();
+
+      const modal = page.getByRole("dialog");
+      await expect(modal).toBeVisible();
+      const editor = modal.locator(".cm-content");
+      await expect(editor).toBeVisible({ timeout: 15_000 });
+      await editor.click();
+      await page.keyboard.press("ControlOrMeta+End");
+      await page.keyboard.type("[[Q");
+
+      // CodeMirror renders completions as `option`-role entries. The quest
+      // seeded above proves the picker is reading the same project-wide
+      // lookups the folio one does.
+      const option = page.getByRole("option", { name: `Q${t}` }).first();
+      await expect(option).toBeVisible({ timeout: 15_000 });
+      await option.click();
+      await expect(editor).toContainText("[[quest#", { timeout: 10_000 });
+
+      // This step navigated to the epic's own page; the steps after it act
+      // on the LIST's toolbar, which does not exist here.
+      await page.goto(`/${slug}/epics`);
+      await expect(page.getByRole("link", { name: withQuest })).toBeVisible({
+        timeout: 15_000,
+      });
+    });
+
+    await test.step("the toolbar create button adds a row without a reload", async () => {
+      // The `+` action and the dialog's submit share the "Create Epic" label,
+      // so the toolbar one is addressed through the table's own toolbar and
+      // the submit through the dialog.
+      const created = `Gamma${t}`;
+      await page.getByRole("button", { name: "Create Epic" }).first().click();
+
+      const modal = page.getByRole("dialog");
+      await expect(modal).toBeVisible();
+      await modal.getByRole("textbox").first().fill(created);
+      await modal.getByRole("button", { name: "Create Epic" }).click();
+
+      // No `page.goto` here on purpose: the row may only appear because the
+      // create bumped the table's `refreshSignal`, which is the wiring this
+      // step exists to pin.
+      await expect(page.getByRole("link", { name: created })).toBeVisible({
+        timeout: 15_000,
+      });
     });
   });
 });

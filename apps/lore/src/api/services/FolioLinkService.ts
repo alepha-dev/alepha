@@ -1,9 +1,12 @@
 import { $repository } from "alepha/orm";
+import { epics } from "../entities/epics.ts";
 import { folioBlobs } from "../entities/folioBlobs.ts";
 import { folioDirectories } from "../entities/folioDirectories.ts";
 import { type FolioLink, folioLinks } from "../entities/folioLinks.ts";
-import { type Folio, folios } from "../entities/folios.ts";
+import { folios } from "../entities/folios.ts";
 import { quests } from "../entities/quests.ts";
+import type { LinkSourceKind } from "../schemas/linkSourceKindSchema.ts";
+import type { LinkTargetKind } from "../schemas/linkTargetKindSchema.ts";
 
 /**
  * Structured token parsed out of a `[[...]]` wiki-link. The optional
@@ -12,8 +15,8 @@ import { quests } from "../entities/quests.ts";
  * the renderer.
  */
 export interface ParsedToken {
-  /** Target table — `folio` (default), `quest`, or `blob`. */
-  type: "folio" | "quest" | "blob";
+  /** Target table — `folio` (default), `quest`, `epic` or `blob`. */
+  type: LinkTargetKind;
   /**
    * The reference body. `#N` means lookup by shortId; for blobs, a bare
    * value (no `#`) is a UUID lookup. Anything else (folio only) means
@@ -25,6 +28,37 @@ export interface ParsedToken {
   anchor?: string;
   /** Original token (between the `[[` and `]]`) for debugging / rendering. */
   raw: string;
+}
+
+/**
+ * What a `[[...]]` reference was found IN. `id` is stringified into
+ * `folio_links.from_id`, which holds ids from four different tables.
+ */
+export interface LinkSource {
+  kind: LinkSourceKind;
+  id: string | number;
+  projectId: number;
+}
+
+/**
+ * Everything {@link FolioLinkService.resolveParsedToken} needs to answer a
+ * token without touching the database, precomputed once per sync.
+ *
+ * An object rather than positional parameters because the list grows every
+ * time a target type is added — it was already eight arguments before
+ * `epic`, and two more positional maps of the same shape is how a call site
+ * silently passes quests where epics belong.
+ */
+interface TokenLookupMaps {
+  folioById: Map<number, string>;
+  folioByTitle: Map<string, { id: string; count: number }>;
+  questById: Map<number, number>;
+  questByTitle: Map<string, { id: number; count: number }>;
+  epicByNumber: Map<number, number>;
+  epicByTitle: Map<string, { id: number; count: number }>;
+  pathContext?: PathContext;
+  blobByShort?: Map<number, string>;
+  blobUuids?: Set<string>;
 }
 
 /**
@@ -88,6 +122,7 @@ export class FolioLinkService {
   protected readonly folios = $repository(folios);
   protected readonly links = $repository(folioLinks);
   protected readonly quests = $repository(quests);
+  protected readonly epics = $repository(epics);
   protected readonly directories = $repository(folioDirectories);
   protected readonly blobs = $repository(folioBlobs);
 
@@ -133,7 +168,7 @@ export class FolioLinkService {
     const trimmed = raw.trim();
     if (!trimmed) return undefined;
 
-    let type: "folio" | "quest" | "blob" = "folio";
+    let type: LinkTargetKind = "folio";
     let body = trimmed;
     const colonIdx = body.indexOf(":");
     // A leading `#N` is a folio shortId — the `#` is NOT a type
@@ -141,14 +176,19 @@ export class FolioLinkService {
     // is a known prefix.
     if (colonIdx > 0) {
       const prefix = body.slice(0, colonIdx).trim().toLowerCase();
-      if (prefix === "quest" || prefix === "folio" || prefix === "blob") {
+      if (
+        prefix === "quest" ||
+        prefix === "folio" ||
+        prefix === "epic" ||
+        prefix === "blob"
+      ) {
         type = prefix;
         body = body.slice(colonIdx + 1).trim();
       }
     }
 
-    // Anchors are folio-only for v1. On a quest token, an embedded `#`
-    // is the shortId separator (e.g. `quest#32`), NOT an anchor.
+    // Anchors are folio-only. On a quest or epic token an embedded `#` is
+    // the number separator (`quest:#32`, `epic:#3`), NOT an anchor.
     let anchor: string | undefined;
     if (type === "folio") {
       // For `[[#42#areas]]` (shortId + anchor) the FIRST `#` is part of
@@ -184,11 +224,12 @@ export class FolioLinkService {
     tokens: ParsedToken[],
     projectId: number,
     sourceFolioId: string,
-  ): Promise<Array<{ targetType: "folio" | "quest" | "blob"; toId: string }>> {
+  ): Promise<Array<{ targetType: LinkTargetKind; toId: string }>> {
     if (tokens.length === 0) return [];
 
     const needsFolios = tokens.some((t) => t.type === "folio");
     const needsQuests = tokens.some((t) => t.type === "quest");
+    const needsEpics = tokens.some((t) => t.type === "epic");
     const needsBlobs = tokens.some((t) => t.type === "blob");
     const needsPaths = tokens.some(
       (t) =>
@@ -269,6 +310,25 @@ export class FolioLinkService {
       }
     }
 
+    // Epics are addressed by their per-project `number`, NOT a `shortId` —
+    // that is the column epics actually carry, and it is what `[[epic:#3]]`
+    // and the `/epics/:epicNumber` route both mean.
+    const epicByNumber = new Map<number, number>();
+    const epicByTitle = new Map<string, { id: number; count: number }>();
+    if (needsEpics) {
+      const candidates = await this.epics.findMany({
+        where: { projectId: { eq: projectId } },
+        columns: ["id", "number", "title"],
+      });
+      for (const c of candidates) {
+        epicByNumber.set(c.number, c.id);
+        const key = c.title.toLowerCase().trim();
+        const existing = epicByTitle.get(key);
+        if (existing) existing.count++;
+        else epicByTitle.set(key, { id: c.id, count: 1 });
+      }
+    }
+
     // Blob refs only resolve by shortId (`#N`) or direct UUID — no
     // title lookup. Blob names aren't unique within a project (only
     // within a parent directory), so a title-style lookup would
@@ -288,20 +348,21 @@ export class FolioLinkService {
 
     const seen = new Set<string>();
     const resolved: Array<{
-      targetType: "folio" | "quest" | "blob";
+      targetType: LinkTargetKind;
       toId: string;
     }> = [];
     for (const token of tokens) {
-      const targetId = this.resolveParsedToken(
-        token,
+      const targetId = this.resolveParsedToken(token, {
         folioById,
         folioByTitle,
         questById,
         questByTitle,
+        epicByNumber,
+        epicByTitle,
         pathContext,
         blobByShort,
         blobUuids,
-      );
+      });
       if (!targetId) continue;
       if (token.type === "folio" && targetId === sourceFolioId) continue;
       const dedupKey = `${token.type}:${targetId}`;
@@ -319,14 +380,19 @@ export class FolioLinkService {
    */
   protected resolveParsedToken(
     token: ParsedToken,
-    folioById: Map<number, string>,
-    folioByTitle: Map<string, { id: string; count: number }>,
-    questById: Map<number, number>,
-    questByTitle: Map<string, { id: number; count: number }>,
-    pathContext?: PathContext,
-    blobByShort?: Map<number, string>,
-    blobUuids?: Set<string>,
+    maps: TokenLookupMaps,
   ): string | undefined {
+    const {
+      folioById,
+      folioByTitle,
+      questById,
+      questByTitle,
+      epicByNumber,
+      epicByTitle,
+      pathContext,
+      blobByShort,
+      blobUuids,
+    } = maps;
     if (token.type === "blob") {
       // `blob#42` → shortId 42 in this project. Bare `blob:<uuid>` →
       // UUID lookup (validate it belongs to this project via the
@@ -348,6 +414,20 @@ export class FolioLinkService {
         return id != null ? String(id) : undefined;
       }
       const hit = questByTitle.get(token.ref.toLowerCase().trim());
+      if (!hit || hit.count > 1) return undefined;
+      return String(hit.id);
+    }
+    if (token.type === "epic") {
+      // `epic:#3` → the per-project `number` (an epic has no `shortId`).
+      // `epic:Title` → title lookup, refused when ambiguous, exactly as
+      // quests and folios treat a duplicated title.
+      if (token.ref.startsWith("#")) {
+        const n = Number.parseInt(token.ref.slice(1), 10);
+        if (!Number.isFinite(n)) return undefined;
+        const id = epicByNumber.get(n);
+        return id != null ? String(id) : undefined;
+      }
+      const hit = epicByTitle.get(token.ref.toLowerCase().trim());
       if (!hit || hit.count > 1) return undefined;
       return String(hit.id);
     }
@@ -470,23 +550,31 @@ export class FolioLinkService {
    * `FolioController` already wraps create/update with `$transactional()`)
    * so a partial sync never leaks orphan rows.
    */
-  public async syncLinks(fromFolio: Folio, content: string): Promise<void> {
+  public async syncLinks(source: LinkSource, content: string): Promise<void> {
+    const fromId = String(source.id);
     const tokens = this.parseTokens(content);
     const targets = await this.resolveTokenIds(
       tokens,
-      fromFolio.projectId,
-      fromFolio.id,
+      source.projectId,
+      // Self-link suppression is folio-only because `toId` for a folio is a
+      // UUID: comparing a quest's stringified integer against it can never
+      // match anyway, so passing it would be noise rather than a filter.
+      source.kind === "folio" ? fromId : "",
     );
 
-    await this.links.deleteMany({ fromId: { eq: fromFolio.id } });
+    await this.links.deleteMany({
+      fromType: { eq: source.kind },
+      fromId: { eq: fromId },
+    });
 
     if (targets.length === 0) return;
 
     // One insert per target. Repository doesn't expose bulk insert in
-    // a single call, and per-folio caps keep this loop small.
+    // a single call, and the per-source cap keeps this loop small.
     for (const target of targets) {
       await this.links.create({
-        fromId: fromFolio.id,
+        fromType: source.kind,
+        fromId,
         toId: target.toId,
         targetType: target.targetType,
       });
@@ -494,18 +582,49 @@ export class FolioLinkService {
   }
 
   /**
-   * Outbound links: folios this one points TO (parsed from its content).
+   * Drop every outbound link from one source.
+   *
+   * ⚠️ This is what replaced `from_id`'s `ON DELETE CASCADE`, which went
+   * when the column stopped being a foreign key. A delete handler that
+   * forgets to call it leaves orphan rows, and nothing in the schema will
+   * say so — the rows are simply never read again, and `findInbound` on a
+   * recycled id would surface them. Called from `FolioController.delete`;
+   * quest and epic delete must call it too.
    */
-  public async findOutbound(fromId: string): Promise<FolioLink[]> {
-    return this.links.findMany({
-      where: { fromId: { eq: fromId } },
+  public async deleteLinksFrom(source: {
+    kind: LinkSourceKind;
+    id: string | number;
+  }): Promise<void> {
+    await this.links.deleteMany({
+      fromType: { eq: source.kind },
+      fromId: { eq: String(source.id) },
     });
   }
 
   /**
-   * Inbound links: folios that point TO this folio (their content
-   * contains a `[[...]]` that resolved here). Inbound resolution is
-   * folio-only — quests don't have a `content` field that we scan.
+   * Outbound links: what this source points TO (parsed from its content).
+   */
+  public async findOutbound(source: {
+    kind: LinkSourceKind;
+    id: string | number;
+  }): Promise<FolioLink[]> {
+    return this.links.findMany({
+      where: {
+        fromType: { eq: source.kind },
+        fromId: { eq: String(source.id) },
+      },
+    });
+  }
+
+  /**
+   * Inbound links: everything that points TO this folio, whatever kind of
+   * element the reference lives in.
+   *
+   * Still filtered to `targetType: "folio"` — the id space is per-table, so
+   * without it a folio whose UUID happens to equal a stringified quest id
+   * would collect that quest's backlinks. (It cannot today, UUIDs and
+   * integers do not collide, but the filter is what makes that a fact
+   * about the query rather than about the id format.)
    */
   public async findInbound(toId: string): Promise<FolioLink[]> {
     return this.links.findMany({
@@ -526,6 +645,173 @@ export class FolioLinkService {
     return this.quests.findMany({
       where: { id: { inArray: ids } },
       columns: ["id", "shortId", "title"],
+    });
+  }
+
+  /**
+   * Resolve epic target ids (integers) to display refs. Sibling of
+   * {@link findQuestRefs}, and it returns the epic's `number` under the
+   * name `shortId` on purpose: the links payload has one row shape across
+   * every kind, and `number` is the field an epic is addressed by
+   * (`/epics/:epicNumber`), so it is what a link row has to carry.
+   */
+  public async findEpicRefs(
+    ids: number[],
+  ): Promise<Array<{ id: number; shortId: number; title: string }>> {
+    if (ids.length === 0) return [];
+    const rows = await this.epics.findMany({
+      where: { id: { inArray: ids } },
+      columns: ["id", "number", "title"],
+    });
+    return rows.map((r) => ({ id: r.id, shortId: r.number, title: r.title }));
+  }
+
+  /**
+   * Rewrite every stored `[[...]]` reference that names this folio BY
+   * TITLE, after the folio has been renamed.
+   *
+   * ## Why this exists at all, and only for folios
+   *
+   * The two reference forms age differently, and the `[[` picker chooses
+   * between them deliberately:
+   *
+   * - A quest or epic is inserted as `quest#N` / `epic:#N`, because work
+   *   gets retitled as it is understood. Those refs survive a rename
+   *   untouched, which is why there is no quest/epic equivalent of this.
+   * - A folio is inserted BY TITLE, because a folio's title is its
+   *   identity and a title-keyed ref survives an export/import into
+   *   another project.
+   *
+   * The cost of that choice is this method: rename a folio and every
+   * reference to it silently stops resolving. The markdown still says the
+   * old title, the reader gets a broken link, and nothing anywhere says
+   * why.
+   *
+   * ## Driven by the link table, not a project scan
+   *
+   * `findInbound` names the exact sources to touch, across every element
+   * kind — which is only possible because the source side went
+   * polymorphic. `tidyStalePaths` predates that and still walks every
+   * folio in the project; this does not, and it reaches quests and epics
+   * that a folio-only walk never could.
+   *
+   * ## Conservative on purpose — it rewrites what a person wrote
+   *
+   * - Only `folio`-typed tokens whose ref matches the OLD title
+   *   case-insensitively. `#N` refs are already rename-proof and are left
+   *   alone.
+   * - A `folio:` prefix and a trailing `#anchor` are preserved exactly.
+   * - **Protected folios are skipped.** Their `content` is a ciphertext
+   *   envelope the server cannot read, and must never try to: rewriting
+   *   it would corrupt the folio. Their references stay stale, which is
+   *   the same trade the protection domain makes everywhere else.
+   * - A source whose text does not actually change is not saved, so this
+   *   never bumps `updatedAt` for nothing.
+   */
+  public async rewriteTitleRefs(
+    target: { id: string; projectId: number },
+    oldTitle: string,
+    newTitle: string,
+  ): Promise<number> {
+    const from = oldTitle.trim();
+    const to = newTitle.trim();
+    if (!from || !to || from.toLowerCase() === to.toLowerCase()) return 0;
+
+    const inbound = await this.findInbound(target.id);
+    if (inbound.length === 0) return 0;
+
+    let rewritten = 0;
+    for (const link of inbound) {
+      if (link.fromType === "folio") {
+        const folio = await this.folios.findById(link.fromId);
+        if (!folio) continue;
+        // See the note above: never touch a protected folio's ciphertext.
+        if ((folio as unknown as { protected?: boolean }).protected) continue;
+        const next = this.replaceTitleToken(folio.content ?? "", from, to);
+        if (next === (folio.content ?? "")) continue;
+        await this.folios.updateById(folio.id, { content: next });
+        await this.syncLinks(
+          { kind: "folio", id: folio.id, projectId: folio.projectId },
+          next,
+        );
+        rewritten++;
+        continue;
+      }
+
+      if (link.fromType === "quest") {
+        const id = Number.parseInt(link.fromId, 10);
+        if (!Number.isFinite(id)) continue;
+        const quest = await this.quests.findById(id);
+        if (!quest) continue;
+        // All three markdown fields, because any of them could carry the
+        // reference and `syncQuestLinks` scans all three.
+        const patch: Record<string, string> = {};
+        for (const field of [
+          "description",
+          "note",
+          "completionMessage",
+        ] as const) {
+          const before = (quest as Record<string, unknown>)[field];
+          if (typeof before !== "string" || !before) continue;
+          const after = this.replaceTitleToken(before, from, to);
+          if (after !== before) patch[field] = after;
+        }
+        if (Object.keys(patch).length === 0) continue;
+        const updated = await this.quests.updateById(id, patch as never);
+        await this.syncLinks(
+          { kind: "quest", id, projectId: quest.projectId },
+          [updated.description, updated.note, updated.completionMessage]
+            .filter(Boolean)
+            .join("\n\n"),
+        );
+        rewritten++;
+        continue;
+      }
+
+      if (link.fromType === "epic") {
+        const id = Number.parseInt(link.fromId, 10);
+        if (!Number.isFinite(id)) continue;
+        const epic = await this.epics.findById(id);
+        if (!epic) continue;
+        const next = this.replaceTitleToken(epic.description ?? "", from, to);
+        if (next === (epic.description ?? "")) continue;
+        await this.epics.updateById(id, { description: next });
+        await this.syncLinks(
+          { kind: "epic", id, projectId: epic.projectId },
+          next,
+        );
+        rewritten++;
+      }
+      // `comment` falls through: comments do not exist yet. When they do,
+      // this is the one place that has to learn about them.
+    }
+    return rewritten;
+  }
+
+  /**
+   * Swap the title inside every `[[...]]` token that names `from`,
+   * leaving the rest of the markdown byte-identical.
+   *
+   * Parses tokens rather than running a global string replace: a bare
+   * `oldTitle` occurring in prose is not a reference and must not be
+   * touched, and a `[[quest:Old Title]]` names a different entity that
+   * happens to share the name.
+   */
+  protected replaceTitleToken(
+    content: string,
+    from: string,
+    to: string,
+  ): string {
+    if (!content.includes("[[")) return content;
+    const needle = from.toLowerCase();
+    return content.replace(/\[\[([^\]\n]+)\]\]/g, (whole, body: string) => {
+      const token = this.parseToken(body);
+      if (!token || token.type !== "folio") return whole;
+      if (token.ref.trim().toLowerCase() !== needle) return whole;
+      // Preserve exactly what the author wrote around the title.
+      const prefix = /^\s*folio:/i.test(body) ? "folio:" : "";
+      const anchor = token.anchor ? `#${token.anchor}` : "";
+      return `[[${prefix}${to}${anchor}]]`;
     });
   }
 
@@ -701,14 +987,17 @@ export class FolioLinkService {
         if (token.type !== "folio") continue;
         if (token.ref.startsWith("#")) continue;
         if (!token.ref.includes("/")) continue;
-        let targetId = this.resolveParsedToken(
-          token,
+        // Empty quest/epic maps are safe: the loop above skips every token
+        // whose type is not `folio`, so no other resolver branch runs.
+        let targetId = this.resolveParsedToken(token, {
           folioById,
           folioByTitle,
-          new Map(),
-          new Map(),
+          questById: new Map(),
+          questByTitle: new Map(),
+          epicByNumber: new Map(),
+          epicByTitle: new Map(),
           pathContext,
-        );
+        });
         // Tidy-specific fallback: when the path resolver fails (the
         // target moved out of the chain in the ref), look up the last
         // segment as a bare title. Accept only when unique — ambiguous

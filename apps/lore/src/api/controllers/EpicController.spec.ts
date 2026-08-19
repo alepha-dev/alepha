@@ -159,8 +159,51 @@ describe("EpicController", () => {
       { user },
     );
 
-    expect(resource.progress).toEqual({ completed: 1, total: 2 });
+    expect(resource.progress).toEqual({
+      completed: 1,
+      inProgress: 0,
+      shelved: 0,
+      total: 2,
+    });
     expect(resource.questCount).toBe(2);
+  });
+
+  it("splits progress into completed, in-progress and shelved buckets", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    const epic = await createTestEpic(ctx.alepha, project);
+    // One of each: untouched, accepted, completed, shelved.
+    await createTestQuest(ctx.alepha, project, { epicId: epic.id });
+    await createTestQuest(ctx.alepha, project, {
+      epicId: epic.id,
+      acceptedAt: ctx.dt.nowISOString(),
+    });
+    await createTestQuest(ctx.alepha, project, {
+      epicId: epic.id,
+      acceptedAt: ctx.dt.nowISOString(),
+      completedAt: ctx.dt.nowISOString(),
+    });
+    await createTestQuest(ctx.alepha, project, {
+      epicId: epic.id,
+      shelvedAt: ctx.dt.nowISOString(),
+    });
+
+    const [resource] = await ctx.controller.getEpics(
+      { params: { projectId: project.id } },
+      { user },
+    );
+
+    // `inProgress` must exclude the completed quest even though it also
+    // carries `acceptedAt` — the buckets are disjoint, so the untouched
+    // remainder the list row derives (total - the three) is exactly 1.
+    expect(resource.progress).toEqual({
+      completed: 1,
+      inProgress: 1,
+      shelved: 1,
+      total: 4,
+    });
   });
 
   it("gets an epic by its per-project number", async ({ expect }) => {

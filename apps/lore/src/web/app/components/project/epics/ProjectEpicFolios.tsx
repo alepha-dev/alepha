@@ -26,9 +26,9 @@ export interface ProjectEpicFoliosProps {
 }
 
 /**
- * Zone 3 of the Epic page: the attached folios, with a picker to attach
- * more. Detach goes through the parent's `useDialog().confirm(...)` — this
- * component only reports the intent.
+ * The Folios tab of the Epic page: the attached folios, with a picker to
+ * attach more. Detach goes through the parent's `useDialog().confirm(...)` —
+ * this component only reports the intent.
  */
 const ProjectEpicFolios = (props: ProjectEpicFoliosProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -36,55 +36,57 @@ const ProjectEpicFolios = (props: ProjectEpicFoliosProps) => {
   const attachedIds = new Set((props.folios ?? []).map((f) => f.id));
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-2">
-        <CardTitle>{tr("epic.folios.title")}</CardTitle>
-        <EpicFolioPicker
-          projectId={props.projectId}
-          attachedIds={attachedIds}
-          onAttach={props.onAttach}
-        />
-      </CardHeader>
-      <CardContent>
-        {props.folios === null ? (
-          <p className="text-muted-foreground text-sm italic">
-            {tr("epic.folios.loading")}
-          </p>
-        ) : props.folios.length === 0 ? (
-          <p className="text-muted-foreground text-sm italic">
-            {tr("epic.folios.empty")}
-          </p>
-        ) : (
-          <ul className="flex flex-col gap-1">
-            {props.folios.map((folio) => (
-              <li
-                key={folio.id}
-                className="hover:bg-muted/40 flex items-center justify-between gap-2 rounded px-2 py-1"
-              >
-                <Link
-                  href={router.path("projectFoliosFolio", {
-                    params: { shortId: folio.shortId },
-                  })}
-                  className="min-w-0 flex-1 truncate text-sm hover:underline"
+    <div className="min-h-0 flex-1 overflow-auto p-4">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardTitle>{tr("epic.folios.title")}</CardTitle>
+          <EpicFolioPicker
+            projectId={props.projectId}
+            attachedIds={attachedIds}
+            onAttach={props.onAttach}
+          />
+        </CardHeader>
+        <CardContent>
+          {props.folios === null ? (
+            <p className="text-muted-foreground text-sm italic">
+              {tr("epic.folios.loading")}
+            </p>
+          ) : props.folios.length === 0 ? (
+            <p className="text-muted-foreground text-sm italic">
+              {tr("epic.folios.empty")}
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-1">
+              {props.folios.map((folio) => (
+                <li
+                  key={folio.id}
+                  className="hover:bg-muted/40 flex items-center justify-between gap-2 rounded px-2 py-1"
                 >
-                  {folio.title}
-                </Link>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 shrink-0 p-0"
-                  aria-label={tr("epic.folios.detach")}
-                  onClick={() => props.onDetach(folio)}
-                >
-                  <X className="size-4" />
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
+                  <Link
+                    href={router.path("projectFoliosFolio", {
+                      params: { shortId: folio.shortId },
+                    })}
+                    className="min-w-0 flex-1 truncate text-sm hover:underline"
+                  >
+                    {folio.title}
+                  </Link>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 shrink-0 p-0"
+                    aria-label={tr("epic.folios.detach")}
+                    onClick={() => props.onDetach(folio)}
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

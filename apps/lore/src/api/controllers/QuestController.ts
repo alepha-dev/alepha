@@ -29,6 +29,7 @@ import {
 } from "../schemas/questResourceSchema.ts";
 import { AreaService } from "../services/AreaService.ts";
 import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
+import { FolioLinkService } from "../services/FolioLinkService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 import { QuestService } from "../services/QuestService.ts";
@@ -46,6 +47,7 @@ export class QuestController {
   questMapper = $inject(QuestResourceMapper);
   questService = $inject(QuestService);
   areaService = $inject(AreaService);
+  linkService = $inject(FolioLinkService);
 
   attachments = $storage({
     description: "Quest attachments",
@@ -207,9 +209,37 @@ export class QuestController {
         createdBy: user.id,
       });
 
+      await this.syncQuestLinks(quest);
+
       return this.mapQuestToResource(quest);
     },
   });
+
+  /**
+   * Re-sync this quest's outbound `[[...]]` links.
+   *
+   * Scans all three of a quest's markdown fields together — `description`,
+   * `note`, `completionMessage` — because a link row records only that
+   * quest #N references X, with no column for WHICH field it was written
+   * in. Syncing from one field would silently drop the references in the
+   * other two the moment that field was saved.
+   *
+   * Takes the stored row rather than the request body for the same reason:
+   * a handler that only touches `note` still has to sync against the
+   * description it did not send.
+   *
+   * Called from every path that writes one of those fields. Nothing
+   * enforces that — a new write path that forgets simply leaves the graph
+   * stale.
+   */
+  protected async syncQuestLinks(quest: Quest): Promise<void> {
+    await this.linkService.syncLinks(
+      { kind: "quest", id: quest.id, projectId: quest.projectId },
+      [quest.description, quest.note, quest.completionMessage]
+        .filter(Boolean)
+        .join("\n\n"),
+    );
+  }
 
   uploadAttachment = $action({
     use: [$secure({ permissions: ["quest:create"] })],
@@ -911,6 +941,7 @@ export class QuestController {
       }
 
       await this.quests.save(quest);
+      await this.syncQuestLinks(quest);
 
       return this.mapQuestToResource(quest);
     },
@@ -1145,6 +1176,7 @@ export class QuestController {
       }
 
       const updated = await this.quests.updateById(params.id, patch);
+      await this.syncQuestLinks(updated);
 
       return this.mapQuestToResource(updated);
     },
@@ -1327,6 +1359,12 @@ export class QuestController {
         }
       }
 
+      // `folio_links.from_id` is not a foreign key, so nothing in the
+      // database clears this quest's outbound links — see
+      // `FolioLinkService.deleteLinksFrom`. Inbound rows are left alone on
+      // purpose: a reference to a deleted quest is a broken link, which is
+      // what the reader should see.
+      await this.linkService.deleteLinksFrom({ kind: "quest", id: params.id });
       await this.quests.deleteById(params.id);
 
       return { ok: true };
@@ -1362,6 +1400,7 @@ export class QuestController {
           quest.attachments,
         ),
       });
+      await this.syncQuestLinks(updated);
 
       return this.mapQuestToResource(updated);
     },

@@ -506,6 +506,37 @@ test.describe("Folio workspace", () => {
     await expect(toggle).not.toHaveAttribute("data-mode", before ?? "");
   });
 
+  /**
+   * The numbered gutter, which only the folio BODY opts into.
+   *
+   * Asserted here rather than in `codeMirrorSetup.browser.spec.ts` because a
+   * gutter is DOM: that spec builds a bare `EditorState` on purpose (a view
+   * measures layout, and jsdom has no `Range.getClientRects`), so it can see
+   * the extension list but never what the extension renders.
+   */
+  test("08d — the folio body shows line numbers, and only in edit mode", async () => {
+    await page.goto(folioUrl);
+    const toggle = page.getByTestId("markdown-mode-toggle");
+    await expect(toggle).toBeVisible({ timeout: 15_000 });
+
+    // View mode renders through `MarkdownView`, which has no editor at all.
+    if ((await toggle.getAttribute("data-mode")) !== "edit") {
+      await toggle.click();
+    }
+    await expect(toggle).toHaveAttribute("data-mode", "edit");
+
+    const gutter = page.locator(".cm-lineNumbers");
+    await expect(gutter).toBeVisible({ timeout: 15_000 });
+    // A real number, not just the element: `lineNumbers()` mounted with no
+    // document would render an empty gutter and still match the locator.
+    await expect(gutter.getByText("1", { exact: true })).toBeVisible();
+
+    // Back to view and it goes away with the whole editor.
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("data-mode", "view");
+    await expect(page.locator(".cm-lineNumbers")).toHaveCount(0);
+  });
+
   test("09b — the empty-state menubar keeps its shape, only its enablement changes", async () => {
     await page.goto(`/${projectSlug}/folios`);
     await expect(page.locator('[data-slot="folio-menubar"]')).toBeVisible({

@@ -24,6 +24,7 @@ import {
 } from "@/api/entities/projects.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentBlightCountAtom } from "../../atoms/currentBlightCountAtom.ts";
+import { currentEpicAtom } from "../../atoms/currentEpicAtom.ts";
 import { currentFeedbackCountAtom } from "../../atoms/currentFeedbackCountAtom.ts";
 import { currentFolioPathAtom } from "../../atoms/currentFolioPathAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
@@ -133,6 +134,7 @@ const ProjectView = () => {
   const [folioPath] = useStore(currentFolioPathAtom);
   const [sigils] = useStore(currentSigilsAtom);
   const [sigil] = useStore(currentSigilAtom);
+  const [epic] = useStore(currentEpicAtom);
 
   if (!project) {
     return null;
@@ -372,6 +374,12 @@ const ProjectView = () => {
         params: { projectSlug, appName: sigil.name },
       }),
     });
+  }
+  // The epic detail page contributes the epic's own title as a leaf, so the
+  // header reads "Project › Epics › Lore Deploy" rather than stopping at the
+  // section. No `href`: the leaf is the page already open.
+  if (name === "projectEpic" && epic) {
+    breadcrumbs.push({ label: epic.title });
   }
   // Folio routes contribute their directory chain (and the folio
   // title leaf) via `currentFolioPathAtom` — written by

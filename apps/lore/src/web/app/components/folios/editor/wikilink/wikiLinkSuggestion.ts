@@ -8,7 +8,7 @@
  */
 export interface WikiLinkSuggestion {
   key: string;
-  kind: "folio" | "quest" | "blob";
+  kind: "folio" | "quest" | "epic" | "blob";
   /**
    * What is written INTO the document, between the brackets.
    *
@@ -17,6 +17,8 @@ export interface WikiLinkSuggestion {
    * goes by `quest#N` instead, because quest titles get rewritten as the
    * work is understood and a title-keyed reference silently breaks when they
    * do — whereas a folio's title IS its identity and is renamed far less.
+   * An epic goes by `epic:#N` for the same reason as a quest: it is work,
+   * and work gets renamed as it is understood.
    */
   token: string;
   label: string;

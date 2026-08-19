@@ -18,6 +18,21 @@ import { epics } from "../entities/epics.ts";
 export const epicResourceSchema = epics.schema.extend({
   progress: z.object({
     completed: z.integer(),
+    /**
+     * Accepted but not yet completed. Disjoint from `completed` and from
+     * `shelved` — a shelved quest is by definition still `new` (see
+     * `quests.shelvedAt`), so the three buckets never overlap and
+     * `total - completed - inProgress - shelved` is the count still open
+     * and untouched.
+     */
+    inProgress: z.integer(),
+    /**
+     * Deliberately set aside as out of scope. Counted here rather than
+     * folded into the open remainder because a list row that shows six
+     * shelved quests as "not done yet" reads as work outstanding when it
+     * is work declined.
+     */
+    shelved: z.integer(),
     total: z.integer(),
   }),
   questCount: z.integer(),

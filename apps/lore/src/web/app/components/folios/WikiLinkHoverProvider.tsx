@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
@@ -25,6 +26,7 @@ import { type BlobRef, BROKEN_HREF_PREFIX } from "./rewriteFolioWikiLinks.ts";
  *
  * - `/<projectSlug>/folios/<shortId>` → folio preview
  * - `/<projectSlug>/quests/<shortId>` → quest preview
+ * - `/<projectSlug>/epics/<number>` → epic preview
  * - `/api/files/<uuid>` → blob preview (the rewriter only emits this
  *   URL for resolved blob refs, so the false-positive risk on a
  *   user-typed link is negligible)
@@ -56,6 +58,9 @@ export type BrokenReason = BrokenWikiLinkReason;
 type HoverTarget =
   | { kind: "folio"; shortId: number }
   | { kind: "quest"; shortId: number }
+  // `shortId` on an epic is its per-project `number` — one field name
+  // across the union so `targetKey` and the fetch switch stay uniform.
+  | { kind: "epic"; shortId: number }
   | { kind: "blob"; fileId: string }
   | { kind: "broken"; reason: BrokenReason; hint?: string };
 
@@ -70,6 +75,7 @@ interface HoverState {
 // a slug cannot be told from any other first segment by shape alone.
 const FOLIO_RE = /^\/([^/]+)\/folios\/(\d+)(?:[#?]|$)/;
 const QUEST_RE = /^\/([^/]+)\/quests\/(\d+)(?:[#?]|$)/;
+const EPIC_RE = /^\/([^/]+)\/epics\/(\d+)(?:[#?]|$)/;
 const BLOB_RE = /^\/api\/files\/([a-f0-9-]{36})(?:[#?]|$)/i;
 
 const parseHref = (
@@ -98,6 +104,10 @@ const parseHref = (
   if (folio && folio[1] === projectSlug) {
     return { kind: "folio", shortId: Number(folio[2]) };
   }
+  const epic = EPIC_RE.exec(path);
+  if (epic && epic[1] === projectSlug) {
+    return { kind: "epic", shortId: Number(epic[2]) };
+  }
   const quest = QUEST_RE.exec(path);
   if (quest && quest[1] === projectSlug) {
     return { kind: "quest", shortId: Number(quest[2]) };
@@ -117,6 +127,7 @@ const BROKEN_REASON_KEY: Record<BrokenReason, string> = {
   "folio-not-found": "folios.wikilink.broken.folioNotFound",
   "ambiguous-title": "folios.wikilink.broken.ambiguous",
   "quest-not-found": "folios.wikilink.broken.questNotFound",
+  "epic-not-found": "folios.wikilink.broken.epicNotFound",
   "blob-not-found": "folios.wikilink.broken.blobNotFound",
   "folio-not-found-quest-exists": "folios.wikilink.broken.questFormWanted",
 };
@@ -141,10 +152,11 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
   const { projectId, projectSlug, blobs } = props;
   const folioApi = useClient<FolioController>();
   const questApi = useClient<QuestController>();
+  const epicApi = useClient<EpicController>();
 
   const [hover, setHover] = useState<HoverState | null>(null);
   const cache = useRef(
-    new Map<string, FolioPreview | QuestPreview | BlobPreview>(),
+    new Map<string, FolioPreview | QuestPreview | EpicPreview | BlobPreview>(),
   );
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
@@ -256,6 +268,7 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
           cache={cache.current}
           folioApi={folioApi}
           questApi={questApi}
+          epicApi={epicApi}
           cardRef={cardRef}
           onEnter={cancelClose}
           onLeave={scheduleClose}
@@ -283,6 +296,16 @@ interface QuestPreview {
   status?: string;
   shortId: number;
 }
+interface EpicPreview {
+  kind: "epic";
+  title: string;
+  /** The epic's per-project `number`, which is how it is addressed. */
+  number: number;
+  status: string;
+  /** `completed / total` quests, the same rollup the Epics list shows. */
+  progress: { completed: number; total: number };
+}
+
 interface BlobPreview {
   kind: "blob";
   name: string;
@@ -295,9 +318,10 @@ interface HoverCardPopoverProps {
   state: HoverState;
   projectId: number;
   blobByUuid: Map<string, BlobRef>;
-  cache: Map<string, FolioPreview | QuestPreview | BlobPreview>;
+  cache: Map<string, FolioPreview | QuestPreview | EpicPreview | BlobPreview>;
   folioApi: ReturnType<typeof useClient<FolioController>>;
   questApi: ReturnType<typeof useClient<QuestController>>;
+  epicApi: ReturnType<typeof useClient<EpicController>>;
   /**
    * Handed up so the delegated leave check can exempt the card: it is rendered
    * inside the pane but positioned `fixed` over it, and crossing into it must
@@ -309,11 +333,12 @@ interface HoverCardPopoverProps {
 }
 
 const HoverCardPopover = (props: HoverCardPopoverProps) => {
-  const { state, projectId, blobByUuid, cache, folioApi, questApi } = props;
+  const { state, projectId, blobByUuid, cache, folioApi, questApi, epicApi } =
+    props;
   const { tr } = useI18n<I18n, "en">();
   const key = targetKey(state.target);
   const [data, setData] = useState<
-    FolioPreview | QuestPreview | BlobPreview | null
+    FolioPreview | QuestPreview | EpicPreview | BlobPreview | null
   >(() => cache.get(key) ?? null);
   const [loading, setLoading] = useState(!cache.has(key));
 
@@ -351,6 +376,23 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
             priority: quest.priority,
             status: quest.metadata.status,
             shortId: quest.shortId,
+          };
+          cache.set(key, preview);
+          if (alive) setData(preview);
+        } else if (state.target.kind === "epic") {
+          // `shortId` on an epic target IS its `number` — see `EpicRef`.
+          const epic = await epicApi.getEpicByNumber({
+            params: { projectId, number: state.target.shortId },
+          });
+          const preview: EpicPreview = {
+            kind: "epic",
+            title: epic.title,
+            number: epic.number,
+            status: epic.status,
+            progress: {
+              completed: epic.progress.completed,
+              total: epic.progress.total,
+            },
           };
           cache.set(key, preview);
           if (alive) setData(preview);
@@ -454,6 +496,22 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
             {data.area && <span>{data.area}</span>}
             {data.priority && <span>· {data.priority}</span>}
             {data.status && <span>· {data.status}</span>}
+          </div>
+        </div>
+      )}
+      {data?.kind === "epic" && (
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-baseline gap-2">
+            <span className="text-muted-foreground font-mono text-xs">
+              #{data.number}
+            </span>
+            <span className="text-sm font-semibold">{data.title}</span>
+          </div>
+          <div className="text-muted-foreground flex flex-wrap gap-2 text-xs">
+            <span>{data.status}</span>
+            <span>
+              · {data.progress.completed}/{data.progress.total}
+            </span>
           </div>
         </div>
       )}

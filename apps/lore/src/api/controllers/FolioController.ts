@@ -19,6 +19,8 @@ import {
   folioLinksSchema,
   folioResourceSchema,
 } from "../schemas/folioResourceSchema.ts";
+import type { LinkSourceKind } from "../schemas/linkSourceKindSchema.ts";
+import type { LinkTargetKind } from "../schemas/linkTargetKindSchema.ts";
 import { FolioBlobService } from "../services/FolioBlobService.ts";
 import {
   decideRevisionAction,
@@ -298,7 +300,7 @@ export class FolioController {
     loadDirectories: DirectoryMapLoader,
   ) {
     const [out, inb] = await Promise.all([
-      this.linkService.findOutbound(folioId),
+      this.linkService.findOutbound({ kind: "folio", id: folioId }),
       this.linkService.findInbound(folioId),
     ]);
 
@@ -312,11 +314,38 @@ export class FolioController {
       .filter((l) => l.targetType === "quest")
       .map((l) => Number.parseInt(l.toId, 10))
       .filter((n) => Number.isFinite(n));
+    const outEpicIds = out
+      .filter((l) => l.targetType === "epic")
+      .map((l) => Number.parseInt(l.toId, 10))
+      .filter((n) => Number.isFinite(n));
     const outBlobIds = out
       .filter((l) => l.targetType === "blob")
       .map((l) => l.toId);
 
-    const [folioRefs, questRefs, blobRefs, inboundRefs] = await Promise.all([
+    // Inbound rows are grouped by the kind of element that CONTAINS the
+    // reference. `comment` is not resolved — comments do not exist yet, and
+    // an unresolved row is dropped below rather than rendered blank.
+    const inboundFolioIds = inb
+      .filter((l) => l.fromType === "folio")
+      .map((l) => l.fromId);
+    const inboundQuestIds = inb
+      .filter((l) => l.fromType === "quest")
+      .map((l) => Number.parseInt(l.fromId, 10))
+      .filter((n) => Number.isFinite(n));
+    const inboundEpicIds = inb
+      .filter((l) => l.fromType === "epic")
+      .map((l) => Number.parseInt(l.fromId, 10))
+      .filter((n) => Number.isFinite(n));
+
+    const [
+      folioRefs,
+      questRefs,
+      epicRefs,
+      blobRefs,
+      inboundRefs,
+      inboundQuestRefs,
+      inboundEpicRefs,
+    ] = await Promise.all([
       outFolioIds.length > 0
         ? this.folios.findMany({
             where: { id: { inArray: outFolioIds } },
@@ -326,17 +355,29 @@ export class FolioController {
       outQuestIds.length > 0
         ? this.linkService.findQuestRefs(outQuestIds)
         : Promise.resolve([]),
+      outEpicIds.length > 0
+        ? this.linkService.findEpicRefs(outEpicIds)
+        : Promise.resolve([]),
       outBlobIds.length > 0
         ? this.blobs.findMany({
             where: { fileId: { inArray: outBlobIds } },
             columns: ["fileId", "shortId", "name", "folioId", "projectId"],
           })
         : Promise.resolve([]),
-      inb.length > 0
+      // Folio SOURCES only. Since links went polymorphic an inbound row
+      // can come from a quest or an epic, whose stringified integer ids
+      // must never be handed to the folios repository as UUIDs.
+      inboundFolioIds.length > 0
         ? this.folios.findMany({
-            where: { id: { inArray: inb.map((l) => l.fromId) } },
+            where: { id: { inArray: inboundFolioIds } },
             columns: ["id", "shortId", "title", "directoryId", "projectId"],
           })
+        : Promise.resolve([]),
+      inboundQuestIds.length > 0
+        ? this.linkService.findQuestRefs(inboundQuestIds)
+        : Promise.resolve([]),
+      inboundEpicIds.length > 0
+        ? this.linkService.findEpicRefs(inboundEpicIds)
         : Promise.resolve([]),
     ]);
 
@@ -387,11 +428,21 @@ export class FolioController {
 
     const folioById = new Map(folioRefs.map((r) => [r.id, r]));
     const questById = new Map(questRefs.map((r) => [r.id, r]));
+    const epicById = new Map(epicRefs.map((r) => [r.id, r]));
     const blobById = new Map(blobRefs.map((r) => [r.fileId, r]));
     const inboundById = new Map(inboundRefs.map((r) => [r.id, r]));
+    const inboundQuestById = new Map(inboundQuestRefs.map((r) => [r.id, r]));
+    const inboundEpicById = new Map(inboundEpicRefs.map((r) => [r.id, r]));
 
+    /** One inbound row: the element that CONTAINS a reference to this folio. */
+    type InRef = {
+      kind: LinkSourceKind;
+      shortId: number;
+      title: string;
+      path?: { shortId: number; name: string }[];
+    };
     type OutRef = {
-      kind: "folio" | "quest" | "blob";
+      kind: LinkTargetKind;
       shortId: number;
       title: string;
       path?: { shortId: number; name: string }[];
@@ -405,6 +456,17 @@ export class FolioController {
             kind: "quest",
             shortId: ref.shortId,
             title: ref.title,
+          });
+      } else if (l.targetType === "epic") {
+        const ref = epicById.get(Number.parseInt(l.toId, 10));
+        if (ref)
+          outbound.push({
+            kind: "epic",
+            // `findEpicRefs` already maps `number` onto `shortId`.
+            shortId: ref.shortId,
+            title: ref.title,
+            // No folder chain: epics do not live in the folio tree.
+            path: undefined,
           });
       } else if (l.targetType === "blob") {
         const ref = blobById.get(l.toId);
@@ -432,7 +494,32 @@ export class FolioController {
     }
     return {
       outbound,
-      inbound: inb.flatMap((l) => {
+      inbound: inb.flatMap((l): InRef[] => {
+        if (l.fromType === "quest") {
+          const ref = inboundQuestById.get(Number.parseInt(l.fromId, 10));
+          return ref
+            ? [
+                {
+                  kind: "quest" as const,
+                  shortId: ref.shortId,
+                  title: ref.title,
+                },
+              ]
+            : [];
+        }
+        if (l.fromType === "epic") {
+          const ref = inboundEpicById.get(Number.parseInt(l.fromId, 10));
+          // `findEpicRefs` already maps `number` onto `shortId`.
+          return ref
+            ? [
+                {
+                  kind: "epic" as const,
+                  shortId: ref.shortId,
+                  title: ref.title,
+                },
+              ]
+            : [];
+        }
         const ref = inboundById.get(l.fromId);
         return ref
           ? [
@@ -538,7 +625,7 @@ export class FolioController {
       // since `content` is ciphertext — scanning it for `[[...]]` would
       // generate noisy junk links from base64 chars.
       if (!isProtected) {
-        await this.linkService.syncLinks(folio, content);
+        await this.linkService.syncLinks(this.folioSource(folio), content);
       }
       // Seed the revision log with a `create` entry. Snapshot is the
       // folio as it stands right after insert — gives the History tab a
@@ -645,19 +732,32 @@ export class FolioController {
           ? ""
           : buildFolioSearchText({ title, summary, content }),
       });
-      // Re-sync outbound links whenever content changed. We re-sync even
-      // when the content arg was omitted — title changes can render an
-      // existing inbound `[[Old Title]]` from a *different* folio stale,
-      // but those are owned by the other folio's row in folio_links so
-      // they're picked up the next time THAT folio is edited. Cheap.
+      // A rename invalidates every reference that named this folio BY
+      // TITLE — and folios are referenced by title on purpose (see
+      // `rewriteTitleRefs`). Re-syncing the OTHER sources would not save
+      // them: the re-sync re-resolves `[[Old Title]]`, finds nothing, and
+      // drops the row, leaving the markdown permanently broken. So the
+      // markdown itself is rewritten, driven by the link table.
+      //
+      // After the row above, so the sources re-resolve against the NEW
+      // title. Unconditional on `isProtected`: that flag describes THIS
+      // folio's content, and what is being rewritten is other elements'.
+      if (title !== existing.title) {
+        await this.linkService.rewriteTitleRefs(
+          { id: updated.id, projectId: updated.projectId },
+          existing.title,
+          title,
+        );
+      }
+      // Re-sync this folio's own outbound links whenever content changed.
       if (!isProtected) {
-        await this.linkService.syncLinks(updated, content);
+        await this.linkService.syncLinks(this.folioSource(updated), content);
       } else if (!existing.protected) {
         // clear → protected (the view's Encrypt action): the plaintext —
         // and the `[[links]]` parsed from it — is now ciphertext. Wipe the
         // outbound links so the graph doesn't leak what the folio used to
         // reference. `searchText` is already blanked above.
-        await this.linkService.syncLinks(updated, "");
+        await this.linkService.syncLinks(this.folioSource(updated), "");
       }
       // Crossing the protection boundary invalidates every stored snapshot:
       // they belong to the previous cryptographic domain. Purge BEFORE
@@ -702,12 +802,30 @@ export class FolioController {
       if (!existing) throw new NotFoundError("Folio not found");
       await this.security.assertMember(existing.projectId, user);
       // Folios no longer have folio children since quest #66 — they're
-      // leaves under folio directories. So a plain delete is enough;
-      // folio_links + folio_revisions cascade via their FKs.
+      // leaves under folio directories. `folio_revisions` still cascades
+      // via its FK.
+      //
+      // ⚠️ `folio_links` does NOT cascade any more: `from_id` stopped being
+      // a foreign key when links became polymorphic, so its outbound rows
+      // have to be deleted here. Inbound rows are deliberately left — a
+      // link FROM a folio that still exists TO one that no longer does is
+      // a broken reference, which the reader renders as such; deleting it
+      // would silently rewrite what the author wrote.
+      await this.linkService.deleteLinksFrom({ kind: "folio", id: params.id });
       await this.folios.deleteById(params.id);
       return { ok: true };
     },
   });
+
+  /**
+   * A folio as a link SOURCE. Exists so the four `syncLinks` call sites in
+   * this controller cannot disagree about the discriminator — passing
+   * `"quest"` here would file a folio's links under a quest id and they
+   * would simply never be found again.
+   */
+  protected folioSource(folio: { id: string; projectId: number }) {
+    return { kind: "folio" as const, id: folio.id, projectId: folio.projectId };
+  }
 
   // ---------------------------------------------------------------------------
   // History — the folio's revision history (#63)
@@ -864,7 +982,10 @@ export class FolioController {
       });
 
       if (!isProtected) {
-        await this.linkService.syncLinks(updated, revision.contentSnapshot);
+        await this.linkService.syncLinks(
+          this.folioSource(updated),
+          revision.contentSnapshot,
+        );
       }
       await this.historyService.appendRevision(updated, user.id, "revert");
       return updated;
