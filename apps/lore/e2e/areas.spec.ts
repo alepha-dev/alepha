@@ -129,7 +129,7 @@ test.describe("Areas", () => {
     // name the quest count, and the submit verb must change.
     await page.getByRole("button", { name: "Rename" }).click();
     await page.getByLabel("New name").fill("Folio");
-    await expect(page.getByText(/1 quests will move into it/)).toBeVisible();
+    await expect(page.getByText(/1 quest will move into it/)).toBeVisible();
     // Same hazard as the description Save above: `renameArea` is a lone
     // call, so it skips `/api/_batch` and goes out directly. The
     // `page.goto` right after would otherwise race it and cancel the

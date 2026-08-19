@@ -184,7 +184,7 @@ export class QuestController {
       // Quest-creation mechanics (shortId sequence, area-ensure, HTML
       // sanitization, defaults) live in QuestService — the single path
       // shared with BlightController.forwardBlightToQuest.
-      const quest = await this.questService.createQuest(project, {
+      const quest = await this.questService.createQuest({
         projectId: body.projectId,
         title: body.title,
         // Title-only quests are allowed; default the optional description to
@@ -994,6 +994,10 @@ export class QuestController {
           // integer sets it; the generic `patch = { ...body }` spread below
           // applies it as-is (set / clear / leave-unchanged).
           estimateMinutes: z.integer().min(1).nullable().optional(),
+          // Overrides the bare `z.string()` picked from `quests.schema` —
+          // mirrors `areas.name`'s `.max(48)` so a too-long area is a clean
+          // 400 from THIS schema, not a 500 thrown out of `ensureArea`.
+          area: z.string().max(48).optional(),
         }),
       response: questResourceSchema,
     },
@@ -1048,11 +1052,23 @@ export class QuestController {
       // be in, not a bug: a zero-quest area is a legal row (an owner can
       // rename or delete it from the areas settings page), not a
       // dangling reference the way an orphaned quest FK would be.
+      // Store what `ensureArea` actually persisted (trimmed), not the raw
+      // body value — otherwise `area: " foo "` registers the row `foo`
+      // while the quest keeps pointing at `" foo "`, matching no row. A
+      // blank/whitespace-only value clears the field (ensureArea no-ops on
+      // it) rather than leaving stray whitespace on the quest.
+      let ensuredArea: Awaited<ReturnType<typeof this.areaService.ensureArea>>;
       if (body.area !== undefined) {
-        await this.areaService.ensureArea(quest.projectId, body.area);
+        ensuredArea = await this.areaService.ensureArea(
+          quest.projectId,
+          body.area,
+        );
       }
 
       const patch: Record<string, unknown> = { ...body };
+      if (body.area !== undefined) {
+        patch.area = ensuredArea?.name ?? body.area.trim();
+      }
       if (body.tags !== undefined) {
         patch.tags = normalizeQuestTags(body.tags);
       }

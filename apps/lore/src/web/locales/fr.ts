@@ -436,13 +436,18 @@ export default {
   "project.settings.areas.empty":
     "Aucun domaine pour l'instant. Créez une quête et choisissez un domaine — il apparaîtra ici.",
   "project.settings.areas.selected": "$1 sélectionnées",
+  "project.settings.areas.selected.one": "1 sélectionnée",
   "project.settings.areas.merge.action": "Fusionner vers...",
   "project.settings.areas.merge.title": "Fusionner des domaines",
   "project.settings.areas.merge.target": "Domaine cible",
   "project.settings.areas.merge.confirm":
     "$1 quêtes seront déplacées vers $2, et $3 domaines disparaîtront avec leurs descriptions.",
+  // Le cas courant : fusionner un doublon vers un domaine existant.
+  "project.settings.areas.merge.confirm.one":
+    "$1 quêtes seront déplacées vers $2, et 1 domaine disparaîtra avec sa description.",
   "project.settings.areas.merge.submit": "Fusionner",
   "project.settings.areas.merge.done": "$1 quêtes déplacées.",
+  "project.settings.areas.merge.done.one": "1 quête déplacée.",
   "project.settings.areas.never": "—",
   "project.settings.areas.delete.action": "Supprimer",
   "project.settings.areas.delete.confirm":
@@ -707,6 +712,9 @@ export default {
   "area.detail.rename.label": "Nouveau nom",
   "area.detail.rename.merge":
     "$1 existe déjà. $2 quêtes y seront déplacées, et $3 disparaîtra avec sa description.",
+  // Le cas courant : renommer un domaine vers un autre.
+  "area.detail.rename.merge.one":
+    "$1 existe déjà. 1 quête y sera déplacée, et $2 disparaîtra avec sa description.",
   "area.detail.rename.submit": "Renommer",
   "area.detail.rename.submitMerge": "Fusionner",
   "area.detail.description.title": "Description",

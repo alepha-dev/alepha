@@ -1,6 +1,6 @@
 import { $inject } from "alepha";
 import { $repository, $sequence } from "alepha/orm";
-import { type Project, projects } from "../entities/projects.ts";
+import { projects } from "../entities/projects.ts";
 import { normalizeQuestTags, type Quest, quests } from "../entities/quests.ts";
 import { AreaService } from "./AreaService.ts";
 
@@ -162,11 +162,11 @@ export class QuestService {
    * 3. ensure `area` exists in the `areas` table, persisting it if not,
    * 4. insert the `quests` row with the standard defaults.
    *
-   * The caller passes the already-loaded `project` (it has done the auth
-   * check) so the service does not re-fetch it. Must run inside a
+   * The caller is responsible for its own auth check before calling this —
+   * this service does no permission check of its own. Must run inside a
    * `$transactional()` block — the `shortId` sequence relies on it.
    */
-  async createQuest(project: Project, input: CreateQuestInput): Promise<Quest> {
+  async createQuest(input: CreateQuestInput): Promise<Quest> {
     const shortId = await this.questShortId.next(String(input.projectId));
 
     // Only register non-empty areas — an empty `area` is a valid quest
@@ -174,14 +174,22 @@ export class QuestService {
     //
     // The `areas` table is the sole source of truth for the list.
     // `projects.areas` is `@deprecated` and nothing reads or writes it.
-    await this.areaService.ensureArea(input.projectId, input.area);
+    //
+    // Store what `ensureArea` actually persisted (trimmed), not the raw
+    // input — otherwise `area: " foo "` registers the row `foo` while the
+    // quest itself points at `" foo "`, matching no row: invisible in the
+    // settings list, unselectable in the picker, unfilterable on the board.
+    const ensuredArea = await this.areaService.ensureArea(
+      input.projectId,
+      input.area,
+    );
 
     return this.quests.create({
       projectId: input.projectId,
       shortId,
       title: input.title,
       description: sanitizeHtml(input.description),
-      area: input.area,
+      area: ensuredArea?.name ?? "",
       priority: input.priority ?? "medium",
       difficulty: input.difficulty ?? 2,
       estimateMinutes: input.estimateMinutes ?? undefined,

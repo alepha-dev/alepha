@@ -429,13 +429,18 @@ export default {
   "project.settings.areas.empty":
     "No areas yet. Forge a quest and pick an area — it appears here.",
   "project.settings.areas.selected": "$1 selected",
+  "project.settings.areas.selected.one": "1 selected",
   "project.settings.areas.merge.action": "Merge into...",
   "project.settings.areas.merge.title": "Merge areas",
   "project.settings.areas.merge.target": "Target area",
   "project.settings.areas.merge.confirm":
     "$1 quests will move into $2, and $3 areas will disappear along with their descriptions.",
+  // The COMMON case: merging one duplicate into an existing area.
+  "project.settings.areas.merge.confirm.one":
+    "$1 quests will move into $2, and 1 area will disappear along with its description.",
   "project.settings.areas.merge.submit": "Merge",
   "project.settings.areas.merge.done": "$1 quests moved.",
+  "project.settings.areas.merge.done.one": "1 quest moved.",
   "project.settings.areas.never": "—",
   "project.settings.areas.delete.action": "Delete",
   "project.settings.areas.delete.confirm":
@@ -696,6 +701,10 @@ export default {
   "area.detail.rename.label": "New name",
   "area.detail.rename.merge":
     "$1 already exists. $2 quests will move into it, and $3 will disappear along with its description.",
+  // The COMMON case: this dialog's whole point is renaming one area onto
+  // another, and a lone quest is the typical size of that area.
+  "area.detail.rename.merge.one":
+    "$1 already exists. 1 quest will move into it, and $2 will disappear along with its description.",
   "area.detail.rename.submit": "Rename",
   "area.detail.rename.submitMerge": "Merge",
   "area.detail.description.title": "Description",
