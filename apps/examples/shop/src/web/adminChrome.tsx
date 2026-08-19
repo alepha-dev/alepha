@@ -1,14 +1,19 @@
 import type { AdminRouterOptions } from "@alepha/ui/components/admin/admin-router-options";
 import { Tr } from "alepha/react/i18n";
+import { AdminCarteCommandes } from "./components/AdminCarteCommandes.tsx";
+import { AdminCartePieces } from "./components/AdminCartePieces.tsx";
 import { Poincon } from "./components/Poincon.tsx";
 
 /**
  * Shop's admin chrome.
  *
  * The Poinçon-plus-title cluster is what the deleted `AdminLayout.tsx`
- * carried as its `brand`. `indexPath` sends a bare `/admin` to the
- * catalogue rather than the built-in users list: the atelier's back office
- * is a catalogue, and Users is incidental to it.
+ * carried as its `brand`.
+ *
+ * A bare `/admin` is the built-in dashboard itself, whose first two tiles are
+ * this shop's own. This object used to carry an `indexPath` pointing at the
+ * catalogue, for want of anything better to land on than the users list; the
+ * dashboard replaced both the override and the option behind it.
  *
  * The brand text goes through `<Tr>` rather than a hardcoded French string,
  * the same reason the nav labels in `AppRouter.tsx` do — this object is
@@ -44,5 +49,13 @@ export const shopAdminOptions: AdminRouterOptions = {
   // `accueil`, not the default "home" — shop's storefront root page carries
   // no explicit `name:`, so its route name is its property key.
   homeRouteName: "accueil",
-  indexPath: "/admin/produits",
+  /*
+   * Neither card declares `order`, so both sort at 0 and lead the built-ins,
+   * which sit at 1000 and up — the same reserved band that keeps `Commerce`
+   * above `Identity` in the sidebar.
+   */
+  dashboardCards: [
+    { id: "shop-pieces", render: () => <AdminCartePieces /> },
+    { id: "shop-commandes", render: () => <AdminCarteCommandes /> },
+  ],
 };

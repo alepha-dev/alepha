@@ -110,8 +110,9 @@ export class AccountRouter {
    * right gate (nothing here means anything to an anonymous visitor) and what
    * puts the subtree in CSR.
    *
-   * Unlike `/admin` there is no index redirect: {@link profile} sits at
-   * `path: "/"`, so a bare `/account` resolves to it directly.
+   * No index redirect: {@link profile} sits at `path: "/"`, so a bare
+   * `/account` resolves to it directly. `AdminRouter` now anchors its
+   * dashboard the same way.
    */
   layout = $page({
     name: "account",

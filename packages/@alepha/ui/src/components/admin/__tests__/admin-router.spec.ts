@@ -62,12 +62,13 @@ describe("AdminRouter", () => {
       .map((page) => ({ path: page.options.path, name: page.name }));
   };
 
-  it("mounts the shell and its eleven pages", async () => {
+  it("mounts the shell and its twelve pages", async () => {
     const pages = await mount();
 
     expect(pages).toEqual(
       expect.arrayContaining([
         { path: "/admin", name: "admin" },
+        { path: "/", name: "dashboard" },
         { path: "/users", name: "users" },
         { path: "/users/:userId", name: "userDetail" },
         { path: "/sessions", name: "sessions" },
@@ -204,5 +205,59 @@ describe("AdminRouter", () => {
         false,
       );
     }
+  });
+
+  /**
+   * The band is the whole mechanism behind "an application's own pages come
+   * first". `useNavEntries` sorts groups by their smallest member, so the
+   * built-ins staying at 1000 and up is what lets a `Commerce` or `Lore`
+   * group at the conventional `order: 100` lead without configuring
+   * anything. Renumber one entry down into the low hundreds and every
+   * consumer's sidebar silently reshuffles.
+   */
+  it("parks every built-in nav entry in the reserved 1000+ band", async () => {
+    const alepha = Alepha.create().with(AlephaReactRouter);
+    alepha.inject(AdminRouter);
+    await alepha.start();
+
+    const grouped = alepha
+      .primitives($page)
+      .map((page) => page.options.nav)
+      .filter((nav) => nav?.group !== undefined);
+
+    expect(grouped.length).toBeGreaterThan(0);
+    for (const nav of grouped) {
+      expect(nav!.order).toBeGreaterThanOrEqual(1000);
+      expect(["Identity", "System"]).toContain(nav!.group);
+    }
+  });
+
+  it("leads with an ungrouped dashboard", async () => {
+    const alepha = Alepha.create().with(AlephaReactRouter);
+    const router = alepha.inject(AdminRouter);
+    await alepha.start();
+
+    // The shell root itself, not a child URL: a bare `/admin` resolves to
+    // the dashboard rather than redirecting to a second one. Same arrangement
+    // `AccountRouter` uses for `/account`, and the reason the `indexPath`
+    // option no longer exists.
+    expect(router.dashboard.options.path).toBe("/");
+    expect(router.dashboard.options.parent).toBe(router.layout);
+    // Nothing may reintroduce an index redirect behind its back.
+    expect(router.layout.options.loader).toBeUndefined();
+
+    const nav = router.dashboard.options.nav;
+    // No group puts it in `useNavEntries`' `""` bucket, whose groupOrder is
+    // its smallest member — 0, ahead of every real group.
+    expect(nav?.group).toBeUndefined();
+    expect(nav?.order).toBe(0);
+
+    // The one page deliberately exempt from the action gate asserted above.
+    // It has no backing action of its own: reaching it already means holding
+    // the layout's `admin:ui`, and it renders only cards that pass their own
+    // `can`, so an administrator with nothing to read gets an empty state
+    // rather than a locked door. Listed here so the exemption reads as a
+    // decision rather than an omission.
+    expect(router.dashboard.options.can).toBeUndefined();
   });
 });

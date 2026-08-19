@@ -370,3 +370,83 @@ test.describe("the header's way in", () => {
     await expect(page).toHaveURL(/\/admin\/produits/);
   });
 });
+
+/**
+ * The sidebar, asserted as one ordered list.
+ *
+ * Ordering is the entire point of the reserved band — the built-ins sit at
+ * `order` 1000+ so this shop's `Commerce` group at the conventional 100 leads
+ * — and a per-item assertion cannot see a wrong order at all. Reading the
+ * whole list is the only assertion that can fail when the numbering slips.
+ *
+ * Scoped to `[data-slot="sidebar-menu-item"]` rather than filtered by href:
+ * the dashboard's link is `/admin` itself, which the shell's breadcrumb also
+ * points at, so no href filter can separate them.
+ *
+ * Parameters is here despite nothing importing `alepha/api/parameters`:
+ * `$realm`, which `ShopRealm` uses, registers it. Its presence is the `can()`
+ * gate working, not a leak.
+ */
+test.describe("the admin sidebar", () => {
+  test("leads with the dashboard, then the shop's own group", async ({
+    page,
+  }) => {
+    await signInAsAdmin(page);
+    await page.goto("/admin/produits");
+
+    const entries = await page
+      .locator('[data-slot="sidebar-menu-item"] a')
+      .evaluateAll((links) =>
+        links.map(
+          (a) => `${a.getAttribute("href")} ${(a.textContent ?? "").trim()}`,
+        ),
+      );
+
+    expect(entries).toEqual([
+      "/admin Dashboard",
+      "/admin/produits Produits",
+      "/admin/commandes Commandes",
+      "/admin/livraison Livraison",
+      "/admin/users Users",
+      "/admin/sessions Sessions",
+      "/admin/audits Audit log",
+      "/admin/jobs Jobs",
+      "/admin/notifications Notifications",
+      "/admin/files Files",
+      "/admin/payments Payments",
+      "/admin/workflows Workflows",
+      "/admin/parameters Parameters",
+    ]);
+  });
+
+  test("a bare /admin IS the dashboard, showing the shop's tiles first", async ({
+    page,
+  }) => {
+    await signInAsAdmin(page);
+    await page.goto("/admin");
+
+    // Stays put. The dashboard is the shell's index child, so there is no
+    // redirect to a second URL — asserting the URL is unchanged is what
+    // would catch an index redirect creeping back in.
+    await expect(page).toHaveURL(/\/admin$/);
+    /*
+     * The whole tile set, in order.
+     *
+     * The shop's two cards carry no `order`, so they sort at 0 and lead the
+     * single built-in parked at 1000. Asserted as an exact list rather than
+     * per-tile visibility because both halves of the decision are
+     * load-bearing and invisible to a looser check: that an application's
+     * cards come first, and that the framework ships exactly ONE baseline
+     * tile rather than a dashboard of its own plumbing.
+     */
+    const tiles = await page
+      .locator('[data-slot="card-title"]')
+      .allInnerTexts();
+
+    expect(tiles.map((tile) => tile.trim())).toEqual([
+      "Produits",
+      "Commandes",
+      "Users",
+    ]);
+  });
+});

@@ -1,3 +1,4 @@
+import type { AdminDashboardCard } from "@alepha/ui/components/admin/admin-dashboard-card";
 import type { NavGroup } from "@alepha/ui/components/app-shell/app-shell";
 import { $atom, z } from "alepha";
 import type { ReactNode } from "react";
@@ -83,22 +84,24 @@ export interface AdminRouterOptions {
   extraNav?: NavGroup[];
 
   /**
+   * Cards appended to the dashboard after the built-in ones.
+   *
+   * Each carries its own `can` gate, so a card is responsible for saying when
+   * it should not render — the dashboard never guesses on a card's behalf.
+   *
+   * There is exactly one built-in card (Users, at `order` 1000), so a card
+   * declaring no `order` leads and an application's dashboard is mostly its
+   * own — which is the intended shape. The framework ships the contract, not
+   * the content.
+   */
+  dashboardCards?: AdminDashboardCard[];
+
+  /**
    * Route name the shell's "leave admin" affordance pushes.
    *
    * @default "home"
    */
   homeRouteName?: string;
-
-  /**
-   * Where a bare `/admin` redirects.
-   *
-   * Defaults to the users list, which is the first entry of the built-in
-   * sidebar. An application whose back office is mostly its own pages will
-   * want one of those instead.
-   *
-   * @default "/admin/users"
-   */
-  indexPath?: string;
 
   /**
    * Route name the shell's sign-in affordance pushes.

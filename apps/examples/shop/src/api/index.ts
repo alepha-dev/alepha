@@ -6,8 +6,12 @@ import { AlephaCommerceRecovery } from "@alepha/commerce/recovery";
 import { AlephaCommerceSettlement } from "@alepha/commerce/settlement";
 import { AlephaCommerceShipping } from "@alepha/commerce/shipping";
 import { $module } from "alepha";
+import { AlephaApiAudits } from "alepha/api/audits";
 import { AlephaApiFiles, FileAccessProvider } from "alepha/api/files";
+import { AlephaApiJobs } from "alepha/api/jobs";
+import { AlephaApiNotifications } from "alepha/api/notifications";
 import { AlephaApiUsers } from "alepha/api/users";
+import { AlephaApiWorkflows } from "alepha/api/workflows";
 import { AlephaOrm } from "alepha/orm";
 import { EngravedKindHandler } from "./EngravedKindHandler.ts";
 import { FactureController } from "./FactureController.ts";
@@ -45,6 +49,20 @@ export const ShopApi = $module({
     // Abandoned-cart reminders, riding the same workflow engine.
     AlephaCommerceRecovery,
     AlephaCommerceAdmin,
+    /*
+     * Back-office modules, registered for their admin surface rather than for
+     * anything the storefront calls.
+     *
+     * Each admin page hides itself when the action behind it is absent from
+     * `/api/_links`, so before this the shop's sidebar simply had no Jobs,
+     * Notifications, Audit log or Workflows entry — the pages have always
+     * existed in `@alepha/ui`, they had no backend here to read. Registering
+     * the modules is the whole of "adding" those screens.
+     */
+    AlephaApiAudits,
+    AlephaApiJobs,
+    AlephaApiNotifications,
+    AlephaApiWorkflows,
   ],
   /*
    * `FactureController` is listed here, and forgetting to list it is why the

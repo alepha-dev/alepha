@@ -32,10 +32,12 @@ import { AdminRouter } from "./admin-router.tsx";
  * of the built-ins, must build its own layout page instead of reaching for
  * this helper.
  *
- * **Take `order: 100` or above, or declare your own `nav.group`.** The
- * built-ins occupy `Identity` (orders 1-3) and `Operations` (orders 4-9),
- * and `useNavEntries` sorts groups by their smallest member — a page at a
- * lower order silently reshuffles the shared sidebar.
+ * **Stay below `order: 1000`, or declare your own `nav.group`.** The
+ * built-ins are parked in a reserved high band — `Identity` (1000-1003) and
+ * `System` (1010-1016) — precisely so an application's own pages come first:
+ * the conventional `order: 100` sorts above them. `useNavEntries` sorts groups
+ * by their smallest member, so only an order of 1000 or more sinks a page in
+ * among the built-ins.
  *
  * **Gate with `can: () => this.someApi.someAction.can()`, not with
  * `permission` alone.** A permission named by this page's own `$secure` is

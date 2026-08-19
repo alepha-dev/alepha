@@ -147,7 +147,8 @@ describe("AccountRouter", () => {
   });
 
   it("puts the profile at the shell root so bare /account resolves", async () => {
-    // Why there is no `indexPath` option, unlike admin.
+    // The shell-root convention, shared with `/admin`'s dashboard: an index
+    // child at `path: "/"` rather than a redirect picking a first page.
     const alepha = Alepha.create().with(AlephaReactRouter);
     const router = alepha.inject(AccountRouter);
     await alepha.start();

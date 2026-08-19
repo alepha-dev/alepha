@@ -1,3 +1,5 @@
+import type { AdminDashboardCard } from "@alepha/ui/components/admin/admin-dashboard-card";
+import { AdminDashboardCountCard } from "@alepha/ui/components/admin/admin-dashboard-count-card";
 import { $pageNav } from "@alepha/ui/components/nav-shell/nav-page";
 import { $store, z } from "alepha";
 import type { AdminAnalyticsController } from "alepha/api/analytics";
@@ -13,7 +15,7 @@ import type {
   AdminUserController,
 } from "alepha/api/users";
 import type { AdminWorkflowController } from "alepha/api/workflows";
-import { $page, Redirection } from "alepha/react/router";
+import { $page } from "alepha/react/router";
 import { $secure } from "alepha/security";
 import { $client } from "alepha/server/links";
 import {
@@ -22,6 +24,7 @@ import {
   CreditCard,
   Files,
   KeyRound,
+  LayoutDashboard,
   ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
@@ -114,20 +117,22 @@ import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
  *
  * ### Group order is a contract
  *
- * The built-in pages occupy `Identity` (orders 1-3) and `Operations`
- * (orders 4-11). An application's page should either join one of those with an
- * `order` of 100 or more, or declare a group of its own. `useNavEntries` sorts
- * groups by their smallest member, so a custom page at `order: 2` would
- * silently reshuffle the built-in sidebar.
+ * The built-in pages are parked in a reserved high band: `Identity`
+ * (1000-1003) and `System` (1010-1016). Everything below 1000 belongs to the
+ * application, so a page declaring its own group at the conventional
+ * `order: 100` sorts **above** the built-ins without having to ask — an
+ * application's own domain outranks Users and Jobs. `useNavEntries` sorts
+ * groups by their smallest member, so only an `order` of 1000 or more sinks a
+ * page in among them.
  *
- * ### These twelve route names are claimed globally
+ * ### These thirteen route names are claimed globally
  *
- * `users`, `userDetail`, `sessions`, `keys`, `jobs`, `notifications`,
- * `audits`, `files`, `parameters`, `payments`, `analytics` and `workflows`
- * each carry an
- * explicit `name:` so a future rename of the field itself (done for
- * readability, without touching the string) never silently changes the public
- * route name — the same reason `AuthRouter`'s pages all carry one too.
+ * `dashboard`, `users`, `userDetail`, `sessions`, `keys`, `jobs`,
+ * `notifications`, `audits`, `files`, `parameters`, `payments`, `analytics`
+ * and `workflows` each carry an explicit `name:` so a future rename of the
+ * field itself (done for readability, without touching the string) never
+ * silently changes the public route name — the same reason `AuthRouter`'s
+ * pages all carry one too.
  *
  * Route names live in one process-wide namespace, and a duplicate does not
  * throw: `ReactPageProvider.page()` returns the first match. An adopter that
@@ -156,20 +161,86 @@ export class AdminRouter {
    *
    * Named `admin` because `NavShell root="admin"` and `Spotlight root="admin"`
    * both resolve the subtree by this name.
+   *
+   * No index redirect: {@link dashboard} sits at `path: "/"`, so a bare
+   * `/admin` resolves to it directly — the same arrangement `AccountRouter`
+   * uses for `/account`. This used to throw a `Redirection` to an
+   * `indexPath` option because the shell had no index child and something had
+   * to choose a first page; the dashboard is that page, so both the hop and
+   * the option are gone. An application that wants different content at
+   * `/admin` contributes `dashboardCards` rather than redirecting away from
+   * it.
    */
   layout = $page({
     name: "admin",
     path: "/admin",
     use: [$secure({ permissions: ["admin:ui"] })],
     nav: { label: "Admin" },
-    loader: async ({ url }) => {
-      if (url.pathname === "/admin" || url.pathname === "/admin/") {
-        throw new Redirection(this.options.indexPath ?? "/admin/users");
-      }
-      return {};
-    },
     lazy: () => import("./admin-layout.tsx"),
   });
+
+  /**
+   * The landing page: `/admin` itself, and the only ungrouped entry.
+   *
+   * No `nav.group` plus `order: 0` puts it above every group without a
+   * special case: `useNavEntries` keys groups by `nav.group ?? ""` and sorts
+   * them by their smallest member, so the ungrouped bucket leads at 0 while
+   * the built-ins sit at 1000+ and an application's own group conventionally
+   * at 100.
+   *
+   * It declares no `permission` and no `can`. Reaching it already means
+   * passing the layout's `admin:ui`, and it renders only the cards that pass
+   * their own gate — so an administrator with nothing to see gets the empty
+   * state rather than a locked door.
+   */
+  dashboard = $pageNav({
+    parent: this.layout,
+    path: "/",
+    name: "dashboard",
+    head: { title: "Dashboard" },
+    nav: {
+      label: "Dashboard",
+      icon: createElement(LayoutDashboard),
+      order: 0,
+    },
+    lazy: () => import("./admin-dashboard.tsx"),
+    props: () => ({ cards: this.dashboardCards() }),
+  });
+
+  /**
+   * Exactly one built-in card, then the application's.
+   *
+   * One is deliberate. The framework's job here is the contract, not the
+   * content: `users` exists to show what a card looks like — gated on an
+   * action so it disappears with its module, parked in the reserved 1000
+   * band so an application's own cards lead — and nothing more. A dashboard
+   * of framework tiles would decide what every admin's landing page says,
+   * which is the application's call, and it would be the wrong call for most
+   * of them: Sessions and Jobs are plumbing, not headlines.
+   *
+   * An application says what matters by contributing
+   * `AdminRouterOptions.dashboardCards`; see `apps/examples/shop`, which adds
+   * its catalogue and orders and so leads with them.
+   */
+  protected dashboardCards(): AdminDashboardCard[] {
+    return [
+      {
+        id: "users",
+        order: 1000,
+        can: () => this.userApi.findUsers.can(),
+        render: () =>
+          createElement(AdminDashboardCountCard, {
+            label: "Users",
+            href: "/admin/users",
+            icon: createElement(UsersIcon, { className: "size-4" }),
+            load: async () =>
+              (await this.userApi.findUsers({ query: { size: 1 } })).page
+                .totalElements ?? 0,
+          }),
+      },
+      ...(this.options.dashboardCards ?? []),
+    ];
+  }
 
   users = $pageNav({
     parent: this.layout,
@@ -182,7 +253,7 @@ export class AdminRouter {
       label: "Users",
       icon: createElement(UsersIcon),
       group: "Identity",
-      order: 1,
+      order: 1000,
     },
     lazy: () => import("./admin-users.tsx"),
     props: () => this.options.pages?.users ?? {},
@@ -219,7 +290,7 @@ export class AdminRouter {
       label: "Sessions",
       icon: createElement(ShieldCheck),
       group: "Identity",
-      order: 2,
+      order: 1001,
     },
     lazy: () => import("./admin-sessions.tsx"),
   });
@@ -235,7 +306,7 @@ export class AdminRouter {
       label: "API keys",
       icon: createElement(KeyRound),
       group: "Identity",
-      order: 3,
+      order: 1003,
       keywords: ["tokens", "credentials"],
     },
     lazy: () => import("./admin-keys.tsx"),
@@ -251,8 +322,8 @@ export class AdminRouter {
     nav: {
       label: "Jobs",
       icon: createElement(Timer),
-      group: "Operations",
-      order: 4,
+      group: "System",
+      order: 1010,
     },
     lazy: () => import("./admin-jobs.tsx"),
   });
@@ -267,8 +338,8 @@ export class AdminRouter {
     nav: {
       label: "Notifications",
       icon: createElement(Bell),
-      group: "Operations",
-      order: 5,
+      group: "System",
+      order: 1011,
     },
     lazy: () => import("./admin-notifications.tsx"),
   });
@@ -283,8 +354,8 @@ export class AdminRouter {
     nav: {
       label: "Audit log",
       icon: createElement(ShieldAlert),
-      group: "Operations",
-      order: 6,
+      group: "Identity",
+      order: 1002,
     },
     lazy: () => import("./admin-audits.tsx"),
   });
@@ -299,8 +370,8 @@ export class AdminRouter {
     nav: {
       label: "Files",
       icon: createElement(Files),
-      group: "Operations",
-      order: 7,
+      group: "System",
+      order: 1012,
     },
     lazy: () => import("./admin-files.tsx"),
   });
@@ -315,8 +386,8 @@ export class AdminRouter {
     nav: {
       label: "Parameters",
       icon: createElement(SlidersHorizontal),
-      group: "Operations",
-      order: 8,
+      group: "System",
+      order: 1015,
       keywords: ["settings", "config", "configuration"],
     },
     lazy: () => import("./admin-parameters.tsx"),
@@ -338,8 +409,8 @@ export class AdminRouter {
     nav: {
       label: "Payments",
       icon: createElement(CreditCard),
-      group: "Operations",
-      order: 9,
+      group: "System",
+      order: 1013,
     },
     lazy: () => import("./admin-payments.tsx"),
   });
@@ -354,8 +425,8 @@ export class AdminRouter {
     nav: {
       label: "Analytics",
       icon: createElement(ChartLine),
-      group: "Operations",
-      order: 10,
+      group: "System",
+      order: 1016,
     },
     lazy: () => import("./admin-analytics.tsx"),
   });
@@ -370,8 +441,8 @@ export class AdminRouter {
     nav: {
       label: "Workflows",
       icon: createElement(Workflow),
-      group: "Operations",
-      order: 11,
+      group: "System",
+      order: 1014,
       keywords: ["saga", "steps", "executions"],
     },
     lazy: () => import("./admin-workflows.tsx"),
