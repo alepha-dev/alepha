@@ -439,6 +439,9 @@ export default {
   "project.settings.areas.rename.cancel": "Annuler",
   "project.settings.areas.rename.submit": "Renommer",
   "project.settings.areas.never": "—",
+  "project.settings.areas.delete.action": "Supprimer",
+  "project.settings.areas.delete.confirm":
+    "Supprimer ce domaine ? Il ne contient aucune quête, et cette action est irréversible.",
   "project.settings.nav.kanban": "Kanban",
   "project.settings.nav.folios": "Folios",
   "project.settings.nav.epics": "Épopées",
@@ -692,6 +695,26 @@ export default {
 
   "area.rename.name": "Nom du domaine",
   "area.rename.submit": "Renommer",
+
+  "area.detail.rename": "Renommer",
+  "area.detail.rename.title": "Renommer le domaine",
+  "area.detail.rename.label": "Nouveau nom",
+  "area.detail.rename.merge":
+    "$1 existe déjà. $2 quêtes y seront déplacées, et $3 disparaîtra avec sa description.",
+  "area.detail.rename.submit": "Renommer",
+  "area.detail.rename.submitMerge": "Fusionner",
+  "area.detail.description.title": "Description",
+  "area.detail.description.placeholder":
+    "Quelle partie du système est-ce ? Les agents la lisent lorsqu'ils créent une quête.",
+  "area.detail.description.save": "Enregistrer",
+  "area.detail.stats.title": "Activité",
+  "area.detail.stats.open": "Quêtes ouvertes",
+  "area.detail.stats.total": "Quêtes totales",
+  "area.detail.stats.first": "Première quête",
+  "area.detail.stats.last": "Dernière activité",
+  "area.detail.stats.never": "Jamais",
+  "area.detail.back": "Retour aux domaines",
+  "area.detail.quests.title": "Quêtes récentes",
 
   "error.title": "Oups ! Quelque chose s'est mal passé.",
   "error.description":

@@ -792,6 +792,7 @@ export class AppRouter {
       this.projectSettingsBanner,
       this.projectSettingsMembers,
       this.projectSettingsAreas,
+      this.projectSettingsArea,
       this.projectSettingsKanban,
       this.projectSettingsFolios,
       this.projectSettingsEpics,
@@ -858,6 +859,35 @@ export class AppRouter {
         params: { id: project.id },
       });
       return { areas };
+    },
+  });
+
+  /**
+   * The param is `areaId`, NOT the area's name: area names contain
+   * slashes (`@alepha/ui`, `alepha/api/users`) and a path segment cannot
+   * hold one. Route params must also be unique across the whole route
+   * table — two routes with different param names at the same position
+   * silently lose the inner value.
+   */
+  projectSettingsArea = $page({
+    name: "projectSettingsArea",
+    path: "/areas/:areaId",
+    schema: {
+      params: z.object({ areaId: z.integer() }),
+    },
+    head: (props, previous) => {
+      const area = (props as { area?: { name?: string } } | undefined)?.area;
+      return {
+        title: `${previous?.title ?? ""} › ${area?.name ?? "Area"}`,
+      };
+    },
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsAreaPage.tsx"),
+    loader: async ({ params }) => {
+      const area = await this.areaApi.getArea({
+        params: { id: params.areaId },
+      });
+      return { area };
     },
   });
 
