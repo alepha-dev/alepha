@@ -1,2 +1,10 @@
 assets/swagger-ui
 assets/devtools-ui
+
+# Materialised by the "Copy package docs" step in release.yml, listed in
+# `files`, and shipped in the tarball. Never tracked: CHANGELOG.md is a copy of
+# the root one, so a committed copy here would only go stale. `files` takes
+# precedence over this ignore, so npm still packs them.
+AGENTS.md
+CHANGELOG.md
+CLAUDE.md

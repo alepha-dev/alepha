@@ -181,10 +181,20 @@ jobs:
       - name: Build
         run: yarn build
 
-      - name: Copy agent templates
+      # Files that ship inside the npm tarball but are not tracked in the
+      # package directory. They are listed in `files` and materialised here,
+      # after the release commit, so `git add -A` above never picks them up.
+      #
+      # CHANGELOG.md is the root one, copied in: `packages/alepha` has no
+      # changelog of its own, and the root file is outside the package
+      # directory, so npm pack could never see it. The copy sits after the
+      # "Update CHANGELOG.md" step, so the tarball carries the entry for the
+      # version being released, not the previous one.
+      - name: Copy package docs
         run: |
           cp packages/alepha/assets/agents-template.md packages/alepha/CLAUDE.md
           cp packages/alepha/assets/agents-template.md packages/alepha/AGENTS.md
+          cp CHANGELOG.md packages/alepha/CHANGELOG.md
 
       # ──────────────────────────────────────────────────────────────────
       # Bay binaries.

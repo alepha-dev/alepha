@@ -18,6 +18,7 @@
     "assets",
     "tsconfig.base.json",
     "AGENTS.md",
+    "CHANGELOG.md",
     "CLAUDE.md"
   ],
   "dependencies": {
