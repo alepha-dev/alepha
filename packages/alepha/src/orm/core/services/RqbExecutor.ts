@@ -106,7 +106,21 @@ export class RqbExecutor {
     } catch (error) {
       // Classified by the repository, so an `include` does not change which
       // error a caller has to catch.
-      throw repository.wrapError(error, "Relational query select has failed");
+      //
+      // The entity and the relations it pulled are named in the message
+      // because this is often the only line a caller ever sees: a boundary
+      // that logs `error.message` and drops `cause` (an MCP tool result, an
+      // HTTP error body) turns a bare "Relational query select has failed"
+      // into something nobody can act on — not which table, not which
+      // relation, not what the driver actually said. Both names are the
+      // caller's own query, so nothing here widens what a message reveals.
+      const included = Object.keys(query.include ?? {});
+      throw repository.wrapError(
+        error,
+        `Relational query select has failed on '${entityKey}'${
+          included.length ? ` (include: ${included.join(", ")})` : ""
+        }`,
+      );
     }
 
     const decoded = this.decode(rows, relations, entityKey, query);

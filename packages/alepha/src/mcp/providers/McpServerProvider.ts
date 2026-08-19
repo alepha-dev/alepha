@@ -626,6 +626,16 @@ export class McpServerProvider {
         };
       }
 
+      // Log before answering. The result below carries `error.message` and
+      // nothing else — no `cause`, no stack — because the framework cannot
+      // know who is on the other end of a tool call, and a driver error can
+      // carry SQL text, column names and connection details. That is the
+      // right payload for the model and a dead end for the operator: a tool
+      // that failed once and succeeded on retry left no trail at all to say
+      // what broke. The log is operator-only, so it can hold the whole chain
+      // at no disclosure cost.
+      this.log.error(`MCP tool "${name}" failed`, error as Error);
+
       return {
         content: [
           {
