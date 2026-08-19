@@ -1,16 +1,7 @@
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@alepha/ui/components/ui/dialog";
-import { Input } from "@alepha/ui/components/ui/input";
-import { Label } from "@alepha/ui/components/ui/label";
+import { Checkbox } from "@alepha/ui/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -19,85 +10,82 @@ import {
   TableHeader,
   TableRow,
 } from "@alepha/ui/components/ui/table";
+import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { DateTimeProvider } from "alepha/datetime";
-import { useAlepha, useClient, useInject, useStore } from "alepha/react";
+import { useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { MapPin, Pencil } from "lucide-react";
+import { Link, useRouter } from "alepha/react/router";
+import { HttpError } from "alepha/server";
+import { MapPin } from "lucide-react";
 import { useState } from "react";
-import type { ProjectController } from "@/api/controllers/ProjectController.ts";
-import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuestsAtom.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import type { AreaController } from "@/api/controllers/AreaController.ts";
+import type { AreaResource } from "@/api/schemas/areaResourceSchema.ts";
+import type { AppRouter } from "@/web/app/AppRouter.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+import AreaMergeDialog from "./AreaMergeDialog.tsx";
 
 export interface ProjectSettingsAreasPageProps {
-  areas: AreaRow[];
+  areas: AreaResource[];
 }
 
-interface AreaRow {
-  name: string;
-  questCount: number;
-  firstQuestAt?: string;
-}
-
+/**
+ * Areas settings list: real per-area stats, multi-select, and the bulk
+ * merge toolbar that is the whole point of this rework. Renaming a
+ * single area (and merging by rename-onto-collision) lives on the
+ * detail page (`projectSettingsArea`) now; this page's job is
+ * navigation, stats, bulk merge, and deleting areas that hold no quests.
+ */
 const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
+  const dialog = useDialog();
   const dt = useInject(DateTimeProvider);
-  const alepha = useAlepha();
-  const projectApi = useClient<ProjectController>();
-  const [project] = useStore(currentProjectAtom);
-  const [areas, setAreas] = useState<AreaRow[]>(props.areas);
-  const [renaming, setRenaming] = useState<AreaRow | null>(null);
-  const [renameValue, setRenameValue] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const router = useRouter<AppRouter>();
+  const areaApi = useClient<AreaController>();
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [merging, setMerging] = useState(false);
 
-  if (!project) {
-    return null;
-  }
-
-  const openRename = (row: AreaRow) => {
-    setRenaming(row);
-    setRenameValue(row.name);
+  const reload = async () => {
+    setSelected(new Set());
+    await router.push(router.pathname, { force: true });
   };
 
-  const submitRename = async () => {
-    if (!renaming) return;
-    const newName = renameValue.trim();
-    if (!newName || newName === renaming.name) {
-      setRenaming(null);
-      return;
-    }
-    setSubmitting(true);
+  const toggle = (id: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const remove = async (area: AreaResource) => {
+    const ok = await dialog.confirm({
+      title: String(tr("project.settings.areas.delete.confirm")),
+      destructive: true,
+    });
+    if (!ok) return;
     try {
-      await projectApi.renameArea({
-        params: { id: project.id },
-        body: { oldAreaName: renaming.name, newAreaName: newName },
-      });
-      setAreas((prev) =>
-        prev
-          .map((z) => (z.name === renaming.name ? { ...z, name: newName } : z))
-          .sort((a, b) => a.name.localeCompare(b.name)),
-      );
-      alepha.store.set(currentProjectAtom, {
-        ...project,
-        areas: project.areas.map((z) => (z === renaming.name ? newName : z)),
-      });
-      // Keep the QuestLog (and anything else reading assigned quests) in sync:
-      // rewrite the area on every cached quest that matched the old name.
-      alepha.store.set(
-        currentAssignedQuestsAtom,
-        (alepha.store.get(currentAssignedQuestsAtom) ?? []).map((q) =>
-          q.area === renaming.name ? { ...q, area: newName } : q,
-        ),
-      );
-      setRenaming(null);
+      await areaApi.deleteArea({ params: { id: area.id } });
+      await reload();
     } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setSubmitting(false);
+      // The row only offers this button when the loader's snapshot showed
+      // `questCount === 0`, but a quest can land here between that read
+      // and this click (another tab, another member). The server's own
+      // refusal is authoritative; show its friendlier localized wording
+      // instead of the raw `BadRequestError` message.
+      toaster.error(
+        HttpError.is(error, 400)
+          ? String(tr("project.settings.areas.delete.blocked"))
+          : error instanceof Error
+            ? error.message
+            : String(error),
+      );
     }
   };
+
+  const sources = props.areas.filter((a) => selected.has(a.id));
+  const candidates = props.areas.filter((a) => !selected.has(a.id));
 
   return (
     <div className="flex flex-col gap-4">
@@ -111,9 +99,24 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
         {tr("project.settings.areas.description")}
       </p>
 
-      <Card className="py-0 shadow">
+      {selected.size > 0 && (
+        <div className="bg-muted flex items-center justify-between rounded-md px-3 py-2">
+          <span className="text-sm">
+            {String(
+              tr("project.settings.areas.selected", [
+                String(selected.size),
+              ] as never),
+            )}
+          </span>
+          <Button size="sm" onClick={() => setMerging(true)}>
+            {tr("project.settings.areas.merge.action")}
+          </Button>
+        </div>
+      )}
+
+      <Card className="shadow">
         <CardContent className="p-0">
-          {areas.length === 0 ? (
+          {props.areas.length === 0 ? (
             <div className="text-muted-foreground p-6 text-center text-sm">
               {tr("project.settings.areas.empty")}
             </div>
@@ -121,39 +124,69 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10" />
                   <TableHead>
                     {tr("project.settings.areas.column.name")}
                   </TableHead>
-                  <TableHead className="w-24 text-center">
-                    {tr("project.settings.areas.column.quests")}
+                  <TableHead className="max-w-64">
+                    {tr("project.settings.areas.column.summary")}
+                  </TableHead>
+                  <TableHead className="w-20 text-center">
+                    {tr("project.settings.areas.column.open")}
+                  </TableHead>
+                  <TableHead className="w-20 text-center">
+                    {tr("project.settings.areas.column.total")}
                   </TableHead>
                   <TableHead className="w-40">
-                    {tr("project.settings.areas.column.firstQuest")}
+                    {tr("project.settings.areas.column.lastActivity")}
                   </TableHead>
                   <TableHead className="w-20" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {areas.map((z) => (
-                  <TableRow key={z.name}>
-                    <TableCell className="font-medium">{z.name}</TableCell>
+                {props.areas.map((area) => (
+                  <TableRow key={area.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selected.has(area.id)}
+                        onCheckedChange={() => toggle(area.id)}
+                        aria-label={area.name}
+                      />
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      <Link
+                        href={router.path("projectSettingsArea", {
+                          params: { areaId: area.id },
+                        })}
+                        className="hover:underline"
+                      >
+                        {area.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground max-w-64 truncate text-xs">
+                      {area.description}
+                    </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant="outline">{z.questCount}</Badge>
+                      <Badge variant="outline">{area.openQuestCount}</Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-center text-xs">
+                      {area.questCount}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs">
-                      {z.firstQuestAt
-                        ? dt.of(z.firstQuestAt).fromNow()
+                      {area.lastQuestAt
+                        ? dt.of(area.lastQuestAt).fromNow()
                         : tr("project.settings.areas.never")}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openRename(z)}
-                      >
-                        <Pencil className="size-3.5" />
-                        {tr("project.settings.areas.rename.action")}
-                      </Button>
+                      {area.questCount === 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => void remove(area)}
+                        >
+                          {tr("project.settings.areas.delete.action")}
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -163,54 +196,13 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
         </CardContent>
       </Card>
 
-      <Dialog
-        open={renaming !== null}
-        onOpenChange={(open) => !open && setRenaming(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {tr("project.settings.areas.rename.title")}
-            </DialogTitle>
-            <DialogDescription>
-              {String(
-                tr("project.settings.areas.rename.description", [
-                  renaming?.name ?? "",
-                ] as never),
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="area-rename-input">
-              {tr("project.settings.areas.rename.label")}
-            </Label>
-            <Input
-              id="area-rename-input"
-              value={renameValue}
-              onChange={(e) => setRenameValue(e.currentTarget.value)}
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void submitRename();
-                }
-              }}
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => setRenaming(null)}
-              disabled={submitting}
-            >
-              {tr("project.settings.areas.rename.cancel")}
-            </Button>
-            <Button onClick={() => void submitRename()} disabled={submitting}>
-              {tr("project.settings.areas.rename.submit")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AreaMergeDialog
+        open={merging}
+        sources={sources}
+        candidates={candidates}
+        onClose={() => setMerging(false)}
+        onMerged={() => void reload()}
+      />
     </div>
   );
 };

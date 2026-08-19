@@ -425,23 +425,28 @@ export default {
   "project.settings.nav.group.features": "Fonctionnalités",
   "project.settings.areas.title": "Domaines",
   "project.settings.areas.description":
-    "Les domaines de votre projet. Chaque quête appartient à un domaine. Renommer un domaine met à jour toutes ses quêtes.",
+    "Les parties de votre système. Chaque quête appartient à exactement une. Renommez un domaine vers un domaine existant pour les fusionner.",
   "project.settings.areas.column.name": "Domaine",
-  "project.settings.areas.column.quests": "Quêtes",
-  "project.settings.areas.column.firstQuest": "Première quête",
+  "project.settings.areas.column.open": "Ouvertes",
+  "project.settings.areas.column.total": "Total",
+  "project.settings.areas.column.lastActivity": "Dernière activité",
+  "project.settings.areas.column.summary": "Description",
   "project.settings.areas.empty":
     "Aucun domaine pour l'instant. Créez une quête et choisissez un domaine — il apparaîtra ici.",
-  "project.settings.areas.rename.action": "Renommer",
-  "project.settings.areas.rename.title": "Renommer le domaine",
-  "project.settings.areas.rename.description":
-    "Renommer « $1 » — toutes les quêtes de ce domaine suivront.",
-  "project.settings.areas.rename.label": "Nouveau nom",
-  "project.settings.areas.rename.cancel": "Annuler",
-  "project.settings.areas.rename.submit": "Renommer",
+  "project.settings.areas.selected": "$1 sélectionnées",
+  "project.settings.areas.merge.action": "Fusionner vers...",
+  "project.settings.areas.merge.title": "Fusionner des domaines",
+  "project.settings.areas.merge.target": "Domaine cible",
+  "project.settings.areas.merge.confirm":
+    "$1 quêtes seront déplacées vers $2, et $3 domaines disparaîtront avec leurs descriptions.",
+  "project.settings.areas.merge.submit": "Fusionner",
+  "project.settings.areas.merge.done": "$1 quêtes déplacées.",
   "project.settings.areas.never": "—",
   "project.settings.areas.delete.action": "Supprimer",
   "project.settings.areas.delete.confirm":
     "Supprimer ce domaine ? Il ne contient aucune quête, et cette action est irréversible.",
+  "project.settings.areas.delete.blocked":
+    "Ce domaine contient encore des quêtes. Fusionnez-le vers un autre domaine.",
   "project.settings.nav.kanban": "Kanban",
   "project.settings.nav.folios": "Folios",
   "project.settings.nav.epics": "Épopées",

@@ -418,23 +418,28 @@ export default {
   "project.settings.nav.group.features": "Features",
   "project.settings.areas.title": "Areas",
   "project.settings.areas.description":
-    "Areas of your project. Each quest belongs to one. Rename an area to refactor it across every quest.",
+    "The parts of your system. Every quest belongs to exactly one. Rename an area onto an existing one to merge them.",
   "project.settings.areas.column.name": "Area",
-  "project.settings.areas.column.quests": "Quests",
-  "project.settings.areas.column.firstQuest": "First quest",
+  "project.settings.areas.column.open": "Open",
+  "project.settings.areas.column.total": "Total",
+  "project.settings.areas.column.lastActivity": "Last activity",
+  "project.settings.areas.column.summary": "Description",
   "project.settings.areas.empty":
     "No areas yet. Forge a quest and pick an area — it appears here.",
-  "project.settings.areas.rename.action": "Rename",
-  "project.settings.areas.rename.title": "Rename area",
-  "project.settings.areas.rename.description":
-    'Rename "$1" — every quest in this area will follow.',
-  "project.settings.areas.rename.label": "New name",
-  "project.settings.areas.rename.cancel": "Cancel",
-  "project.settings.areas.rename.submit": "Rename",
+  "project.settings.areas.selected": "$1 selected",
+  "project.settings.areas.merge.action": "Merge into...",
+  "project.settings.areas.merge.title": "Merge areas",
+  "project.settings.areas.merge.target": "Target area",
+  "project.settings.areas.merge.confirm":
+    "$1 quests will move into $2, and $3 areas will disappear along with their descriptions.",
+  "project.settings.areas.merge.submit": "Merge",
+  "project.settings.areas.merge.done": "$1 quests moved.",
   "project.settings.areas.never": "—",
   "project.settings.areas.delete.action": "Delete",
   "project.settings.areas.delete.confirm":
     "Delete this area? It has no quests, and this cannot be undone.",
+  "project.settings.areas.delete.blocked":
+    "This area still holds quests. Merge it into another area instead.",
   "project.settings.nav.kanban": "Kanban",
   "project.settings.nav.folios": "Folios",
   "project.settings.nav.epics": "Epics",

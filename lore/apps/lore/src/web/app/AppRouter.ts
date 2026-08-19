@@ -855,8 +855,8 @@ export class AppRouter {
       if (!project) {
         throw new NotFoundError("Project not found");
       }
-      const areas = await this.projectApi.getAreas({
-        params: { id: project.id },
+      const areas = await this.areaApi.getAreas({
+        params: { projectId: project.id },
       });
       return { areas };
     },
