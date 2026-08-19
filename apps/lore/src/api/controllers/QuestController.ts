@@ -30,7 +30,7 @@ import {
 import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
-import { QuestService, sanitizeHtml } from "../services/QuestService.ts";
+import { QuestService } from "../services/QuestService.ts";
 
 export class QuestController {
   log = $logger();
@@ -186,7 +186,7 @@ export class QuestController {
         projectId: body.projectId,
         title: body.title,
         // Title-only quests are allowed; default the optional description to
-        // "" so the NOT-NULL column + sanitizeHtml never see undefined.
+        // "" so the NOT-NULL column never sees undefined.
         description: body.description ?? "",
         area: body.area,
         priority: body.priority,
@@ -1026,11 +1026,6 @@ export class QuestController {
         }
       }
 
-      if (body.description) {
-        // sanitize HTML content
-        body.description = sanitizeHtml(body.description);
-      }
-
       const patch: Record<string, unknown> = { ...body };
       if (body.tags !== undefined) {
         patch.tags = normalizeQuestTags(body.tags);
@@ -1366,15 +1361,12 @@ export class QuestController {
 
       await this.security.assertMember(quest.projectId, user);
 
-      // sanitize HTML content
-      const sanitizedNote = sanitizeHtml(body.note);
-
       const updated = await this.quests.updateById(params.id, {
-        note: sanitizedNote,
+        note: body.note,
         // Embedded editor images become quest attachments so every
         // member can read them (see mergeEmbeddedAttachments).
         attachments: this.questService.mergeEmbeddedAttachments(
-          [sanitizedNote],
+          [body.note],
           quest.attachments,
         ),
       });

@@ -4,7 +4,7 @@ export const questCreateSchema = z.object({
   title: z.string(),
   // Optional — a title-only quest is allowed (sometimes the title says it
   // all). Defaults to "" server-side in createQuest so the NOT-NULL
-  // `quests.description` column and `sanitizeHtml` stay happy (no migration).
+  // `quests.description` column stays happy (no migration).
   description: z.string().meta({ size: "rich" }).optional(),
   area: z.string(),
   priority: z.enum(["optional", "low", "medium", "high"]),

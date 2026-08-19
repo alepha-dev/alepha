@@ -275,7 +275,7 @@ export class BlightController {
       // Blight-forwarded quests always land in a dedicated "Blights" area
       // (created on the project if absent) — predictable triage, not
       // whatever the project's arbitrary first area happens to be.
-      // Creation mechanics (shortId, area-ensure, sanitizeHtml, defaults)
+      // Creation mechanics (shortId, area-ensure, defaults)
       // are shared with QuestController.createQuest via QuestService.
       const quest = await this.questService.createQuest(project, {
         projectId: params.projectId,
