@@ -27,6 +27,7 @@ import {
   questResourceSchema,
   questStatusSchema,
 } from "../schemas/questResourceSchema.ts";
+import { AreaService } from "../services/AreaService.ts";
 import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
@@ -44,6 +45,7 @@ export class QuestController {
   fileService = $inject(FileService);
   questMapper = $inject(QuestResourceMapper);
   questService = $inject(QuestService);
+  areaService = $inject(AreaService);
 
   attachments = $storage({
     description: "Quest attachments",
@@ -1333,6 +1335,11 @@ export class QuestController {
           },
         ],
       });
+
+      // `areas` is the source of truth for the list. `projects.areas` is
+      // still written for one release as a rollback net; it is
+      // `@deprecated` and nothing reads it. Task 7 drops this half.
+      await this.areaService.ensureArea(quest.projectId, body.newArea);
 
       // Ensure the new area exists in the project's areas list
       const project = await this.projects.getById(quest.projectId);

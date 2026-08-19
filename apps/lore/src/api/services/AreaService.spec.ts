@@ -12,6 +12,7 @@ import {
 } from "../../../test/fixtures/entities.ts";
 import { LoreApi } from "../index.ts";
 import { AreaService } from "./AreaService.ts";
+import { QuestService } from "./QuestService.ts";
 
 interface TestContext {
   alepha: Alepha;
@@ -234,5 +235,22 @@ describe("AreaService", () => {
 
     const reloaded = await ctx.repos.quests.getById(foreign.id);
     expect(reloaded.area).toBe("ui");
+  });
+
+  it("registers a new area when a quest declares one", async ({ expect }) => {
+    const project = await createTestProject(ctx.alepha);
+    const questService = ctx.alepha.inject(QuestService);
+
+    await questService.createQuest(project, {
+      projectId: project.id,
+      title: "Streaming ZIP writer",
+      description: "",
+      area: "alepha/system",
+      createdBy: project.createdBy,
+    });
+
+    const all = await ctx.service.listWithStats(project.id);
+    expect(all.map((a) => a.name)).toContain("alepha/system");
+    expect(all.find((a) => a.name === "alepha/system")?.questCount).toBe(1);
   });
 });

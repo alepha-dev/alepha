@@ -1,6 +1,8 @@
+import { $inject } from "alepha";
 import { $repository, $sequence } from "alepha/orm";
 import { type Project, projects } from "../entities/projects.ts";
 import { normalizeQuestTags, type Quest, quests } from "../entities/quests.ts";
+import { AreaService } from "./AreaService.ts";
 
 /**
  * Tags matching what TipTap StarterKit + Mantine controls produce.
@@ -90,6 +92,7 @@ export interface CreateQuestInput {
 export class QuestService {
   protected readonly quests = $repository(quests);
   protected readonly projects = $repository(projects);
+  protected readonly areaService = $inject(AreaService);
 
   /**
    * Per-project sequence for `quests.shortId`. Advances inside the caller's
@@ -156,7 +159,7 @@ export class QuestService {
    * Create a quest. Holds the shared mechanics:
    * 1. allocate the next per-project `shortId`,
    * 2. sanitize the (attacker-controllable) rich-text description,
-   * 3. ensure `area` exists on `project.areas`, persisting it if not,
+   * 3. ensure `area` exists in the `areas` table, persisting it if not,
    * 4. insert the `quests` row with the standard defaults.
    *
    * The caller passes the already-loaded `project` (it has done the auth
@@ -168,6 +171,12 @@ export class QuestService {
 
     // Only register non-empty areas — an empty `area` is a valid quest
     // field but must not pollute the project's area list.
+    //
+    // `areas` is the source of truth for the list. `projects.areas` is
+    // still written for one release as a rollback net; it is
+    // `@deprecated` and nothing reads it. Task 7 drops this half.
+    await this.areaService.ensureArea(input.projectId, input.area);
+
     if (input.area && !project.areas.includes(input.area)) {
       project.areas.push(input.area);
       await this.projects.updateById(project.id, {

@@ -31,9 +31,8 @@ import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
 import { questCreateSchema } from "@/api/schemas/questCreateSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
+import { currentAreasAtom } from "@/web/app/atoms/currentAreasAtom.ts";
 import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuestsAtom.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import { kanbanProjectAtom } from "@/web/app/atoms/kanbanProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import QuestCreateObjectives from "./QuestCreateObjectives.tsx";
 import QuestDependencyPicker from "./QuestDependencyPicker.tsx";
@@ -53,8 +52,7 @@ const QuestCreate = (props: QuestCreateProps) => {
   const alepha = useAlepha();
   const router = useRouter<AppRouter>();
   const { tr } = useI18n<I18n, "en">();
-  const [currentProject, setCurrentProject] = useStore(currentProjectAtom);
-  const [kanbanProject] = useStore(kanbanProjectAtom);
+  const [currentAreas] = useStore(currentAreasAtom);
 
   const update = !!props.quest?.id;
   const acceptAfterCreate = useRef(false);
@@ -109,15 +107,6 @@ const QuestCreate = (props: QuestCreateProps) => {
       }
       acceptAfterCreate.current = false;
 
-      if (
-        data.area &&
-        !props.project.areas?.includes(data.area) &&
-        currentProject
-      ) {
-        const updatedAreas = [...(currentProject.areas || []), data.area];
-        setCurrentProject({ ...currentProject, areas: updatedAreas });
-      }
-
       props.onSubmit(quest);
 
       if (props.onCreated) {
@@ -135,7 +124,7 @@ const QuestCreate = (props: QuestCreateProps) => {
 
   const { loading: submitting } = useFormState(form, ["loading"]);
 
-  const areas = currentProject?.areas || kanbanProject?.project?.areas || [];
+  const areas = (currentAreas ?? []).map((a) => a.name);
 
   return (
     <form {...form.props} className="flex min-h-0 flex-1 flex-col">
