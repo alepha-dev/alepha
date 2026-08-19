@@ -118,6 +118,18 @@ describe("AreaController", () => {
     ).rejects.toThrowError(ForbiddenError);
   });
 
+  it("refuses to get an area's detail for a non-member", async ({ expect }) => {
+    const project = await createTestProject(ctx.alepha);
+    const area = await ctx.service.ensureArea(project.id, "alepha/orm");
+
+    await expect(
+      ctx.controller.getArea(
+        { params: { id: area!.id } },
+        { user: strangerToken() },
+      ),
+    ).rejects.toThrowError(ForbiddenError);
+  });
+
   it("saves a description", async ({ expect }) => {
     const project = await createTestProject(ctx.alepha);
     const user = ownerToken(project);
@@ -159,6 +171,21 @@ describe("AreaController", () => {
     );
 
     expect(result.merged).toBe(false);
+    // Without a merge, the surviving area IS the one addressed in the
+    // path — the detail page must navigate right back to itself.
+    expect(result.areaId).toBe(area!.id);
+  });
+
+  it("refuses a rename from a non-owner", async ({ expect }) => {
+    const project = await createTestProject(ctx.alepha);
+    const area = await ctx.service.ensureArea(project.id, "ui");
+
+    await expect(
+      ctx.controller.renameArea(
+        { params: { id: area!.id }, body: { name: "@alepha/ui" } },
+        { user: strangerToken() },
+      ),
+    ).rejects.toThrowError(ForbiddenError);
   });
 
   it("reports a rename onto an existing name as a merge, with the count", async ({
@@ -167,7 +194,7 @@ describe("AreaController", () => {
     const project = await createTestProject(ctx.alepha);
     const user = ownerToken(project);
     const source = await ctx.service.ensureArea(project.id, "folio");
-    await ctx.service.ensureArea(project.id, "Folio");
+    const target = await ctx.service.ensureArea(project.id, "Folio");
     await createTestQuest(ctx.alepha, project, {
       area: "folio",
     });
@@ -179,6 +206,10 @@ describe("AreaController", () => {
 
     expect(result.merged).toBe(true);
     expect(result.movedQuests).toBe(1);
+    // After a merge the survivor is the TARGET, not the area addressed
+    // in the path — the detail page navigates to `result.areaId`, and a
+    // regression here would land it on a deleted row.
+    expect(result.areaId).toBe(target!.id);
   });
 
   it("deletes an area that holds no quest", async ({ expect }) => {
@@ -204,6 +235,34 @@ describe("AreaController", () => {
     await expect(
       ctx.controller.deleteArea({ params: { id: area!.id } }, { user }),
     ).rejects.toThrowError(BadRequestError);
+  });
+
+  it("refuses to delete an area for a non-owner", async ({ expect }) => {
+    const project = await createTestProject(ctx.alepha);
+    const area = await ctx.service.ensureArea(project.id, "deck");
+
+    await expect(
+      ctx.controller.deleteArea(
+        { params: { id: area!.id } },
+        { user: strangerToken() },
+      ),
+    ).rejects.toThrowError(ForbiddenError);
+  });
+
+  it("refuses to bulk-merge areas for a non-owner", async ({ expect }) => {
+    const project = await createTestProject(ctx.alepha);
+    const a = await ctx.service.ensureArea(project.id, "cli");
+    const target = await ctx.service.ensureArea(project.id, "alepha/cli");
+
+    await expect(
+      ctx.controller.mergeAreas(
+        {
+          params: { projectId: project.id },
+          body: { sourceIds: [a!.id], targetId: target!.id },
+        },
+        { user: strangerToken() },
+      ),
+    ).rejects.toThrowError(ForbiddenError);
   });
 
   it("bulk-merges several areas into one", async ({ expect }) => {
