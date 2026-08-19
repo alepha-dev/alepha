@@ -14,6 +14,7 @@ import {
   Flag,
   Grid3x2,
   Inbox,
+  Layers,
   TriangleAlert,
 } from "lucide-react";
 import { useEffect } from "react";
@@ -63,6 +64,7 @@ const ROUTES_APP = new Set([
 ]);
 
 const ROUTES_FULL_WIDTH = new Set([
+  "projectEpics",
   "projectMilestones",
   "projectFolios",
   "projectFoliosNew",
@@ -75,6 +77,7 @@ const ROUTES_FULL_WIDTH = new Set([
 
 const SECTION_LABEL_KEYS: Record<string, string> = {
   projectQuests: "project.menu.quests",
+  projectEpics: "project.menu.epics",
   projectMilestones: "project.menu.milestones",
   projectReports: "project.menu.reports",
   projectFolios: "project.menu.folios",
@@ -167,6 +170,15 @@ const ProjectView = () => {
       badge: questCount?.count ? questCount.count : undefined,
     },
   ];
+  // A lens on quests, so it sits right after them — scope precedes schedule.
+  if (features.epics) {
+    workItems.push({
+      label: tr("project.menu.epics"),
+      icon: Layers,
+      href: router.path("projectEpics", { params: { projectSlug } }),
+      active: name === "projectEpics",
+    });
+  }
   // Blights are reported by apps, so the entry follows the apps: it appears
   // once some enrolled app carries the capability, and goes when the last one
   // drops it. `?? []` means a failed sigil read hides the entry — the same

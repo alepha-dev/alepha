@@ -1,0 +1,292 @@
+import { Badge } from "@alepha/ui/components/ui/badge";
+import { Button } from "@alepha/ui/components/ui/button";
+import { Card, CardContent } from "@alepha/ui/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@alepha/ui/components/ui/dialog";
+import { Input } from "@alepha/ui/components/ui/input";
+import { Label } from "@alepha/ui/components/ui/label";
+import { Progress } from "@alepha/ui/components/ui/progress";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@alepha/ui/components/ui/table";
+import { Textarea } from "@alepha/ui/components/ui/textarea";
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { useClient, useStore } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
+import { Plus } from "lucide-react";
+import { useState } from "react";
+import type { EpicController } from "@/api/controllers/EpicController.ts";
+import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
+import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import type { I18n } from "@/web/app/services/I18n.ts";
+
+export interface ProjectEpicsProps {
+  epics: EpicResource[];
+}
+
+type EpicStatus = EpicResource["status"];
+
+type EpicStatusLabelKey =
+  | "epic.status.planned"
+  | "epic.status.active"
+  | "epic.status.done";
+
+const STATUS_LABEL_KEYS: Record<EpicStatus, EpicStatusLabelKey> = {
+  planned: "epic.status.planned",
+  active: "epic.status.active",
+  done: "epic.status.done",
+};
+
+const STATUS_BADGE_VARIANT: Record<
+  EpicStatus,
+  "outline" | "default" | "secondary"
+> = {
+  planned: "outline",
+  active: "default",
+  done: "secondary",
+};
+
+type EpicActionVerbKey =
+  | "epic.action.begin"
+  | "epic.action.conclude"
+  | "epic.action.returnToPlanning"
+  | "epic.action.reopen";
+
+interface EpicStatusTransition {
+  next: EpicStatus;
+  verbKey: EpicActionVerbKey;
+}
+
+/**
+ * Every legal status change, keyed by the CURRENT status — there is no
+ * forbidden edge (see `EpicController.setEpicStatus`). Verbs follow the
+ * quest pattern (*Accept the Quest* / *Complete Quest*) and the exact
+ * wording landed in the vocabulary folio: Begin / Conclude / Return to
+ * Planning / Reopen.
+ */
+const STATUS_TRANSITIONS: Record<EpicStatus, EpicStatusTransition[]> = {
+  planned: [{ next: "active", verbKey: "epic.action.begin" }],
+  active: [
+    { next: "done", verbKey: "epic.action.conclude" },
+    { next: "planned", verbKey: "epic.action.returnToPlanning" },
+  ],
+  done: [{ next: "active", verbKey: "epic.action.reopen" }],
+};
+
+/**
+ * The Epics list — number, title, status and progress, plus a quick status
+ * action per row so a planned epic can be begun (and an active one
+ * concluded) without a detail page, which does not exist yet (Task 6).
+ *
+ * Rows never link anywhere: `projectEpic` (`/epics/:epicNumber`) is Task
+ * 6's route, not this one's.
+ */
+const ProjectEpics = (props: ProjectEpicsProps) => {
+  const { tr } = useI18n<I18n, "en">();
+  const toaster = useToast();
+  const epicApi = useClient<EpicController>();
+  const [project] = useStore(currentProjectAtom);
+
+  const [epics, setEpics] = useState<EpicResource[]>(props.epics);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  if (!project) {
+    return null;
+  }
+
+  const openCreate = () => {
+    setTitle("");
+    setDescription("");
+    setCreateOpen(true);
+  };
+
+  const submitCreate = async () => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    setSubmitting(true);
+    try {
+      const created = await epicApi.createEpic({
+        params: { projectId: project.id },
+        body: {
+          title: trimmed,
+          description: description.trim() || undefined,
+        },
+      });
+      setEpics((prev) =>
+        [...prev, created].sort((a, b) => a.number - b.number),
+      );
+      setCreateOpen(false);
+    } catch (error) {
+      toaster.error(error instanceof Error ? error.message : String(error));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const changeStatus = async (epic: EpicResource, next: EpicStatus) => {
+    try {
+      const updated = await epicApi.setEpicStatus({
+        params: { id: epic.id },
+        body: { status: next },
+      });
+      setEpics((prev) =>
+        prev.map((it) => (it.id === updated.id ? { ...it, ...updated } : it)),
+      );
+    } catch (error) {
+      toaster.error(error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-4 p-4">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-base font-semibold">{tr("project.menu.epics")}</h2>
+        <Button onClick={openCreate}>
+          <Plus className="size-4" />
+          {tr("epic.create")}
+        </Button>
+      </div>
+
+      <Card className="py-0 shadow">
+        <CardContent className="p-0">
+          {epics.length === 0 ? (
+            <div className="text-muted-foreground p-6 text-center text-sm">
+              {tr("epic.list.empty")}
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-16">
+                    {tr("epic.list.column.number")}
+                  </TableHead>
+                  <TableHead>{tr("epic.list.column.title")}</TableHead>
+                  <TableHead className="w-32">
+                    {tr("epic.list.column.status")}
+                  </TableHead>
+                  <TableHead className="w-48">
+                    {tr("epic.list.column.progress")}
+                  </TableHead>
+                  <TableHead className="w-56" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {epics.map((epic) => {
+                  const pct =
+                    epic.progress.total > 0
+                      ? Math.round(
+                          (epic.progress.completed / epic.progress.total) * 100,
+                        )
+                      : 0;
+                  const transitions = STATUS_TRANSITIONS[epic.status];
+                  return (
+                    <TableRow key={epic.id}>
+                      <TableCell className="text-muted-foreground">
+                        #{epic.number}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {epic.title}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={STATUS_BADGE_VARIANT[epic.status]}>
+                          {tr(STATUS_LABEL_KEYS[epic.status])}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Progress value={pct} className="w-24" />
+                          <span className="text-muted-foreground text-xs tabular-nums">
+                            {epic.progress.completed}/{epic.progress.total}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex flex-wrap justify-end gap-1">
+                          {transitions.map((transition) => (
+                            <Button
+                              key={transition.next}
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                void changeStatus(epic, transition.next)
+                              }
+                            >
+                              {tr(transition.verbKey)}
+                            </Button>
+                          ))}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{tr("epic.create")}</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="epic-create-title">
+                {tr("epic.create.title.label")}
+              </Label>
+              <Input
+                id="epic-create-title"
+                value={title}
+                onChange={(e) => setTitle(e.currentTarget.value)}
+                placeholder={tr("epic.create.title.placeholder")}
+                autoFocus
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="epic-create-description">
+                {tr("epic.create.description.label")}
+              </Label>
+              <Textarea
+                id="epic-create-description"
+                rows={4}
+                value={description}
+                onChange={(e) => setDescription(e.currentTarget.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setCreateOpen(false)}
+              disabled={submitting}
+            >
+              {tr("epic.create.cancel")}
+            </Button>
+            <Button
+              onClick={() => void submitCreate()}
+              disabled={submitting || !title.trim()}
+            >
+              {tr("epic.create.submit")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default ProjectEpics;
