@@ -27,6 +27,7 @@ import {
   questResourceSchema,
   questStatusSchema,
 } from "../schemas/questResourceSchema.ts";
+import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 import { QuestService, sanitizeHtml } from "../services/QuestService.ts";
@@ -39,6 +40,7 @@ export class QuestController {
   blights = $repository(blights);
   dt = $inject(DateTimeProvider);
   security = $inject(ProjectSecurityService);
+  epicVisibility = $inject(EpicVisibilityService);
   fileService = $inject(FileService);
   questMapper = $inject(QuestResourceMapper);
   questService = $inject(QuestService);
@@ -303,6 +305,8 @@ export class QuestController {
         status: questStatusSchema.optional(),
         search: z.string().optional(),
         milestoneId: z.integer().optional(),
+        epic: z.integer().optional(),
+        includePlanned: z.boolean().optional(),
         area: z.string().optional(),
         tag: z.string().optional(),
       }),
@@ -329,6 +333,10 @@ export class QuestController {
 
       if (query.milestoneId) {
         where.milestoneId = { eq: query.milestoneId };
+      }
+
+      if (query.epic) {
+        where.epicId = { eq: query.epic };
       }
 
       if (query.area) {
@@ -359,6 +367,24 @@ export class QuestController {
         // quests are deliberately out of scope, so they only ever surface
         // through the explicit `shelved` filter.
         where.shelvedAt = { isNull: true };
+      }
+
+      // Quests of a `planned` epic are specified but not released into the
+      // backlog. This FILTERS; it never mutates a quest row.
+      //
+      // Opt-out rather than unconditional, because MCP `quest_list`
+      // (`QuestTools.ts`) calls this same action with `includePlanned: true`
+      // — the spec (§5.3) requires it to stay ungated: an agent that files a
+      // quest into a planned epic must see it in its own next call, or the
+      // tool looks as though it silently failed. The UI never sets it, so
+      // its listing surfaces stay gated.
+      //
+      // `includePlanned` is client-settable and that is fine — every caller
+      // has already passed `security.assertMember`, so it exposes nothing
+      // the caller could not already read. This is a backlog-organisation
+      // affordance, NOT an authorization control. Do not "harden" it into one.
+      if (!query.includePlanned && !query.epic) {
+        await this.epicVisibility.applyBacklogGate(where, params.projectId);
       }
 
       query.sort ??= "-updatedAt";
@@ -399,11 +425,19 @@ export class QuestController {
     handler: async ({ params, user }) => {
       await this.security.assertMember(params.projectId, user);
 
-      const count = await this.quests.count({
-        projectId: { eq: params.projectId },
-        completedAt: { isNull: true },
-        shelvedAt: { isNull: true },
-      });
+      const where = this.quests.createQueryWhere();
+      where.projectId = { eq: params.projectId };
+      where.completedAt = { isNull: true };
+      where.shelvedAt = { isNull: true };
+
+      // Quests inside a `planned` epic are not in the backlog, so they must
+      // not be counted here either. This badge links to the quest list, and
+      // the list applies the same gate — an ungated count reproduces exactly
+      // the disagreement the shelved exclusion above exists to prevent, and
+      // an e2e run caught it doing so (badge said 2, list showed none).
+      await this.epicVisibility.applyBacklogGate(where, params.projectId);
+
+      const count = await this.quests.count(where);
 
       return { count };
     },

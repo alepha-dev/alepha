@@ -1,5 +1,9 @@
 import { z } from "alepha";
-import { prioritySchema, projectParamsSchema } from "./commonSchemas.ts";
+import {
+  epicStatusSchema,
+  prioritySchema,
+  projectParamsSchema,
+} from "./commonSchemas.ts";
 
 // -----------------------------------------------------------------------------
 // Shared sub-schemas
@@ -90,6 +94,23 @@ export const projectContextResultSchema = z.object({
    * agents pick up the same signal humans see in the project board.
    */
   activeQuests: z.array(questOrientationRefSchema),
+  /**
+   * The project's epic index — every epic, planned/active/done alike (this
+   * is never gated, same as an epic's own view of itself). Kept to number,
+   * title, status and questCount deliberately: this is paid for on every
+   * `project_context` call, and its whole job is to make a parked subject
+   * legible in one round-trip, not to replace `epic_list` / `epic_get`.
+   * Without it, a project with thirteen quests parked under one epic shows
+   * up as thirteen unrelated quests, with no signal they are one subject.
+   */
+  epics: z.array(
+    z.object({
+      number: z.integer(),
+      title: z.string(),
+      status: epicStatusSchema,
+      questCount: z.integer(),
+    }),
+  ),
   /**
    * The calling user's folios in this project, newest-updated first. Bodies
    * are intentionally omitted — call `folio_get` only after deciding what's

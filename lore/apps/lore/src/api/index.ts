@@ -8,6 +8,7 @@ import { AdminProjectController } from "./controllers/AdminProjectController.ts"
 import { BlightController } from "./controllers/BlightController.ts";
 import { BlobController } from "./controllers/BlobController.ts";
 import { DirectoryController } from "./controllers/DirectoryController.ts";
+import { EpicController } from "./controllers/EpicController.ts";
 import { FeedbackController } from "./controllers/FeedbackController.ts";
 import { FolioController } from "./controllers/FolioController.ts";
 import { InsightsController } from "./controllers/InsightsController.ts";
@@ -114,6 +115,7 @@ export const LoreApi = $module({
     QuestController,
     ProjectController,
     MilestoneController,
+    EpicController,
     ProjectReportsController,
     ProjectQuestPortabilityController,
     InvitationController,

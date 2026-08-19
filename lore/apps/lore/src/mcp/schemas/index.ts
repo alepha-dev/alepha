@@ -1,5 +1,6 @@
 export * from "./blightSchemas.ts";
 export * from "./commonSchemas.ts";
+export * from "./epicSchemas.ts";
 export * from "./feedbackSchemas.ts";
 export * from "./folioSchemas.ts";
 export * from "./insightsSchemas.ts";
