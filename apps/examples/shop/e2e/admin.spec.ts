@@ -347,3 +347,26 @@ const togglePublication = async (
     page.getByRole("row", { name: /Carte cadeau/ }).getByText(becomes),
   ).toBeVisible();
 };
+
+/**
+ * The way an administrator actually gets in.
+ *
+ * Every other spec here reaches the back office with `page.goto`, and that is
+ * precisely how a dead menu item survived: the entry point a real
+ * administrator uses had no coverage at all. `Layout.tsx` passes
+ * `onAdminClick`, which takes `AdminMenuItem`'s escape hatch — and that branch
+ * skips the route-existence guard the `routeName` branch runs, so a stale route
+ * name renders a visible item that silently does nothing instead of hiding
+ * itself. A URL-driven suite cannot see that.
+ */
+test.describe("the header's way in", () => {
+  test("the Admin Panel menu item lands on the catalogue", async ({ page }) => {
+    await signInAsAdmin(page);
+    await page.goto("/");
+
+    await page.getByRole("button", { name: "Mon compte" }).click();
+    await page.getByRole("menuitem", { name: "Admin Panel" }).click();
+
+    await expect(page).toHaveURL(/\/admin\/produits/);
+  });
+});
