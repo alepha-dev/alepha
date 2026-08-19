@@ -3,47 +3,27 @@ import { type Project, projects } from "../entities/projects.ts";
 import { normalizeQuestTags, type Quest, quests } from "../entities/quests.ts";
 
 /**
- * Tags matching what TipTap StarterKit + Mantine controls produce.
+ * Quest rich-text fields (`description`, `note`, `completionMessage`) are
+ * **Markdown**, not HTML: they are authored by `MarkdownEditor` and rendered
+ * by `MarkdownView`, which mounts no `rehype-raw` and leaves react-markdown's
+ * default in place — every raw node is escaped to text. That posture is
+ * pinned by `markdown-view-raw-html.browser.spec.tsx`, whose whole purpose is
+ * to turn red if someone reaches for `rehype-raw` later.
+ *
+ * So there is deliberately **no sanitizer here.** A `sanitizeHtml` helper
+ * used to run on `description` and `note` — a leftover from the TipTap
+ * rich-text editor `MarkdownEditor` replaced, allow-listing the tags TipTap
+ * emitted. Against Markdown it was not a defence but a corrupter: it deleted
+ * any `<word…>` whose name was not allow-listed, code spans and fenced
+ * blocks included, silently eating TypeScript generics, JSX snippets and
+ * `<placeholder>` text out of quest bodies (quest #1231).
+ *
+ * Do not reintroduce one. There is no correct storage-level HTML
+ * sanitization for a Markdown field: deleting loses content, and escaping to
+ * `&lt;` renders literally inside a code span. The renderer is the defence,
+ * and `completionMessage` has always been stored unsanitized on exactly that
+ * basis. If a surface ever needs to render these as HTML, sanitize *there*.
  */
-const ALLOWED_TAGS = new Set([
-  "p",
-  "br",
-  "strong",
-  "em",
-  "u",
-  "s",
-  "mark",
-  "h1",
-  "h2",
-  "h3",
-  "h4",
-  "ul",
-  "ol",
-  "li",
-  "blockquote",
-  "pre",
-  "code",
-  "hr",
-]);
-
-/**
- * Strip every tag not in `ALLOWED_TAGS` (plus `<script>` / `<style>` /
- * comments) from a rich-text quest field. Attacker-controlled HTML must
- * pass through here before it is persisted.
- */
-export const sanitizeHtml = (html: string): string => {
-  return html
-    .replace(/<script[\s>][\s\S]*?<\/script>/gi, "")
-    .replace(/<style[\s>][\s\S]*?<\/style>/gi, "")
-    .replace(/<!--[\s\S]*?-->/g, "")
-    .replace(/<\/?([a-z][a-z0-9]*)\b[^>]*\/?>/gi, (match, tag: string) => {
-      const lower = tag.toLowerCase();
-      if (!ALLOWED_TAGS.has(lower)) return "";
-      if (match.startsWith("</")) return `</${lower}>`;
-      if (lower === "br" || lower === "hr") return `<${lower}>`;
-      return `<${lower}>`;
-    });
-};
 
 /**
  * Input for {@link QuestService.createQuest} — the common shape every quest
@@ -75,12 +55,13 @@ export interface CreateQuestInput {
 
 /**
  * The single owner of quest-creation mechanics — the `quests.shortId`
- * sequence, the project area-ensure step, HTML sanitization of the
- * description, and the `quests.create({...})` payload with defaults.
+ * sequence, the project area-ensure step, and the `quests.create({...})`
+ * payload with defaults.
  *
  * Both `QuestController.createQuest` and
  * `BlightController.forwardBlightToQuest` delegate here so the two paths can
- * never diverge again (the blight path historically skipped `sanitizeHtml`).
+ * never diverge again (the blight path historically skipped sanitization,
+ * back when there was any).
  * Controllers keep ownership of auth / permission checks; only the creation
  * mechanics live here.
  *
@@ -179,7 +160,7 @@ export class QuestService {
       projectId: input.projectId,
       shortId,
       title: input.title,
-      description: sanitizeHtml(input.description),
+      description: input.description,
       area: input.area,
       priority: input.priority ?? "medium",
       difficulty: input.difficulty ?? 2,
