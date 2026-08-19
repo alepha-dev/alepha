@@ -1,4 +1,3 @@
-import { Switch } from "@alepha/ui/components/ui/switch";
 import { cn } from "@alepha/ui/lib/utils";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -14,7 +13,6 @@ import {
   Flag,
   Inbox,
   KanbanSquare,
-  Layers,
   type LucideIcon,
   MapPin,
   Stamp,
@@ -24,6 +22,7 @@ import {
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+import ProjectSettingsFeatureSection from "./ProjectSettingsFeatureSection.tsx";
 import { useProjectFeatureToggle } from "./useProjectFeatureToggle.ts";
 
 type RouteName =
@@ -123,9 +122,10 @@ const ProjectSettings = () => {
   const router = useRouter<AppRouter>();
   const routerState = useRouterState();
   const [project] = useStore(currentProjectAtom);
-  // Epics has no dedicated settings sub-page yet, so its master switch lives
-  // right here on the shell rather than behind a nav entry of its own — see
-  // the other module toggles for the pattern this deviates from.
+  // Epics has no dedicated settings sub-page yet, so its `ProjectSettingsFeatureSection`
+  // renders right here on the shell instead of on a sub-page reached via a nav
+  // link of its own — same shared section the other five modules use, just a
+  // different host.
   const { enabled: epicsEnabled, toggle: epicsToggle } =
     useProjectFeatureToggle("epics");
 
@@ -173,19 +173,11 @@ const ProjectSettings = () => {
                 );
               })}
               {group.labelKey === "project.settings.nav.group.features" && (
-                <div className="flex items-center justify-between gap-2 rounded-md px-3 py-2 text-sm">
-                  <span className="text-muted-foreground flex items-center gap-2">
-                    <Layers className="size-4" />
-                    {tr("project.menu.epics")}
-                  </span>
-                  <Switch
-                    checked={epicsEnabled}
-                    onCheckedChange={(value) => {
-                      void epicsToggle(value);
-                    }}
-                    aria-label={tr("project.menu.epics")}
-                  />
-                </div>
+                <ProjectSettingsFeatureSection
+                  featureKey="epics"
+                  enabled={epicsEnabled}
+                  onToggle={epicsToggle}
+                />
               )}
             </div>
           ))}

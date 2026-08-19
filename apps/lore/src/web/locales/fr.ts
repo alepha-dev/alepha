@@ -521,6 +521,8 @@ export default {
     "Enrôlez vos applications pour qu’elles remontent ici plantages, pages vues et Web Vitals — un jeton par application.",
   "project.settings.feature.feedback.description":
     "Autorisez tout utilisateur connecté à envoyer un rapport de bug ou une demande de fonctionnalité à ce projet, et donnez au propriétaire une boîte de réception pour les trier.",
+  "project.settings.feature.epics.description":
+    "Regroupez quêtes et folios sous une initiative bornée, tenue hors du backlog tant qu'elle n'est pas commencée.",
   "project.settings.delete.modal.title": "Détruire le projet",
   "project.settings.delete.modal.description":
     "Cette action est irréversible. Le projet et toutes ses quêtes seront définitivement perdus.",
@@ -957,10 +959,6 @@ export default {
   "epic.status.planned": "Planifiée",
   "epic.status.active": "Active",
   "epic.status.done": "Terminée",
-  "epic.action.begin": "Commencer l'épopée",
-  "epic.action.conclude": "Conclure l'épopée",
-  "epic.action.returnToPlanning": "Revenir à la planification",
-  "epic.action.reopen": "Rouvrir l'épopée",
   "epic.list.empty": "Aucune épopée pour le moment.",
   "epic.list.column.number": "N°",
   "epic.list.column.title": "Titre",
