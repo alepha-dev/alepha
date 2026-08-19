@@ -225,8 +225,51 @@ jobs:
       - name: Build Project
         run: yarn build
 
+      # The browsers, keyed on the exact Playwright version rather than on the
+      # lockfile: the lockfile churns constantly in a monorepo this size, and a
+      # miss that only costs a re-download is not worth taking on every
+      # dependency bump.
+      - name: Resolve Playwright version
+        id: playwright-version
+        run: |
+          version="$(yarn playwright --version | tr -d '\n' | sed 's/.* //')"
+          [ -n "$version" ] || { echo "could not resolve the Playwright version"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
+
+      # `--with-deps` is deliberately absent, and this is the whole point of
+      # the block. On `ubuntu-latest` every shared library chromium actually
+      # needs is already on the image; the only thing the flag adds is nine
+      # font packages — CJK, Cyrillic, Thai — and it pays for them by putting
+      # `apt-get update` against `azure.archive.ubuntu.com` on the critical
+      # path.
+      #
+      # On 2026-08-19 that mirror flapped for an afternoon and took the e2e job
+      # of three consecutive pushes with it. The apt fetch alone ran 19s at
+      # best and 12min at worst; at 12min the 15min job cap fired before the
+      # suite had started, so the run was reported `cancelled` with no test
+      # output, and every cancelled run skipped `deploy-lore-production`. Lore
+      # sat two commits behind production for five hours because of a Ubuntu
+      # mirror. The browser download itself was never the problem: it is ~9s
+      # from `cdn.playwright.dev`, and it is what the cache above covers.
+      #
+      # The fonts bought nothing here. The suites render Latin text only, and
+      # there is no `toHaveScreenshot`/`toMatchSnapshot` anywhere, so nothing
+      # can observe a glyph. If a future runner image ever does drop a real
+      # chromium dependency the failure is a missing `.so` at browser launch —
+      # restore `--with-deps` then, but keep it off the critical path.
+      #
+      # Bounded so that if this ever stalls again it is reported as this step
+      # failing, with the budget for the suite below still intact, instead of
+      # silently eating the job.
       - name: Install Playwright
-        run: yarn playwright install chromium --with-deps
+        timeout-minutes: 4
+        run: yarn playwright install chromium
 
       # Bounded on the step, not just the job. Playwright's `globalTimeout`
       # covers the tests; it does not cover teardown, and teardown is where
