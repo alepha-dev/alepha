@@ -44,10 +44,15 @@ export const sigilConfig = z.object({
    * a feedback link: the URL is `{sink}/{project}/request`, which the sink used
    * to have to hand back because only it knew the slug.
    *
-   * It is a second name for something the credential already identifies, so the
-   * sink is expected to reject an envelope whose declared project disagrees
-   * with its token. Silently accepting the mismatch would send telemetry to one
-   * project while pointing readers at another's feedback form.
+   * It is a second name for something `SIGIL_KEY` already identifies, and only
+   * the key is authoritative. The slug is never sent: the envelope carries no
+   * project, so the sink resolves one from the token alone.
+   *
+   * Which makes a wrong slug quiet rather than harmless. Telemetry keeps
+   * arriving where the key says it should, so nothing looks broken, while every
+   * reader who follows the feedback link is handed another project's form.
+   * Nothing on either end can catch that today, because the two ends never
+   * compare notes.
    */
   project: z.text({
     description: "Sink-side project slug this app reports into.",
