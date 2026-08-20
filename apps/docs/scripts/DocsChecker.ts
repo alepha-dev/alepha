@@ -198,10 +198,16 @@ export const BANNED_DOC_SYMBOLS: Array<{ pattern: string; reason: string }> = [
     pattern: "\\$uiAuth",
     reason: "removed with mantine - mount `AuthRouter` from `@alepha/ui`",
   },
-  {
-    pattern: "SIGIL_SINK",
-    reason: "replaced by the `sink` field inside `SIGIL_CONFIG`",
-  },
+  /*
+   * `SIGIL_SINK` was banned here for a while, as "replaced by the `sink` field
+   * inside `SIGIL_CONFIG`". The variable came back, so the rule is gone.
+   *
+   * Worth remembering how little the ban achieved while it stood. The three
+   * documents that kept saying `SIGIL_SINK` were the sink's own enrolment copy
+   * (a `.ts` locale, out of reach), and the package README, which this command
+   * did not scan until `packageReadmes` was added. A banned-symbol rule only
+   * bans the symbol where the scan reaches.
+   */
   // --- style rules; the docs were swept free of em dashes on 2026-08-19 ---
   {
     pattern: "—",

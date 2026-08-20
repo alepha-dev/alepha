@@ -184,7 +184,7 @@ const setup = async (over: { kinds?: string[]; features?: unknown } = {}) => {
     features: over.features ?? allOn,
   } as any);
 
-  const minted = tokens.mint();
+  const minted = await tokens.mint(project.id);
   const sigil = await probe.sigils.create({
     projectId: project.id,
     name: "demo",
@@ -814,7 +814,7 @@ describe("sigil ingest", () => {
     const { alepha, probe, project, sigil, post } = await setup();
 
     const tokens = alepha.inject(SigilTokenService);
-    const staging = tokens.mint();
+    const staging = await tokens.mint(project.id);
     const other = await probe.sigils.create({
       projectId: project.id,
       name: "demo-staging",

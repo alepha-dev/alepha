@@ -14,40 +14,66 @@ Alepha.create()
   .start();
 ```
 
-Then the server-side variables:
+Then one server-side variable:
+
+```bash
+SIGIL_KEY=sg_alepha_…
+```
+
+That is the whole enrolment. The key is the only secret and the only required
+variable: it authorises the reporting *and* names the project reported into.
 
 | Variable | Required | |
 |---|---|---|
 | `SIGIL_KEY` | **yes** | the sigil token the sink minted for this app - **secret, server-only** |
-| `SIGIL_CONFIG` | **yes** | JSON: what this app reports, and where |
+| `SIGIL_SINK` | no | origin of the sink. Defaults to `https://lore.alepha.dev`; set it to self-host |
+| `SIGIL_CONFIG` | no | JSON: switches over what this app reports |
 | `SIGIL_SALT` | no | overrides the secret salting the daily visitor hash. Falls back to `APP_SECRET` |
 
-`SIGIL_KEY` and `SIGIL_CONFIG` go together - both or neither. With one missing
-the module is **inert**: it still captures and still collapses a crash loop into
-one logged warning, but nothing leaves the machine. It logs which half is
-missing and boots anyway: telemetry is not worth an outage.
+Without a key the module is **inert**: it still captures and still collapses a
+crash loop into one logged warning, but nothing leaves the machine. It says so
+at boot and carries on, because telemetry is not worth an outage. That is the
+headless case, for an app that must not phone home to anything.
+
+`SIGIL_SINK` defaults to the public Lore instance the way `npm` defaults to
+`registry.npmjs.org` - a commons that is there if you want it and one variable
+away if you do not. The default is inert on its own: nothing is sent without a
+key, and a key minted by your own instance simply 401s against the public one
+rather than leaking into it. A missing scheme is filled in, so
+`lore.example.com` and `https://lore.example.com` both work.
+
+## The key names the project
+
+A token is shaped `sg_<project>_<secret>`. The slug is not a second credential
+and protects nothing - it is already public, printed into the feedback link on
+every page the app renders. What it buys is that the app can address its own
+project without asking the sink first, which is what removes the last round
+trip from a cold render.
+
+Nothing on the wire carries it. The envelope has no project field, and the sink
+resolves one from the token alone, so an app cannot report into a project its
+credential does not name.
+
+A key minted before this format keeps working: it reports normally and loses
+only the feedback link, since the link is the one thing the slug was ever for.
+Rotate it on the sink to get one back.
+
+## Turning things off
+
+`SIGIL_CONFIG` is optional, and every field in it turns something **off**:
 
 ```bash
-SIGIL_CONFIG={"project":"alepha","vitals":false}
+SIGIL_CONFIG={"vitals":false,"feedbackButton":"hidden"}
 ```
 
 | Field | Default | |
 |---|---|---|
-| `project` | - | **required.** The sink-side project this reports into |
 | `analytics` | `true` | page views |
 | `blights` | `true` | client and server errors |
 | `vitals` | `true` | web-vitals samples |
 | `feedback` | `true` | whether there is a feedback link at all |
 | `feedbackButton` | `"bottom-right"` | `"hidden"`, `"bottom-left"` or `"bottom-right"` |
 | `feedbackButtonExcludedPaths` | `[]` | path globs the button stays off - `*` within a segment, `**` across them |
-| `sink` | `https://lore.alepha.dev` | origin of the sink; set it to self-host |
-
-`sink` defaults to the public Lore instance the way `npm` defaults to
-`registry.npmjs.org` - a commons that is there if you want it and one field
-away if you do not. The default is inert on its own: nothing is sent without a
-key, so an app that sets neither variable still captures locally and hands
-aggregated errors to its own logger, phoning home to nothing. That is the
-headless case, for an app that must not.
 
 `feedback` and `feedbackButton` are separate on purpose: `feedback: false` means
 there is no URL at all, while `feedback: true` with the button `hidden` gives

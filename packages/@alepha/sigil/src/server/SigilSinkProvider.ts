@@ -11,6 +11,7 @@ import {
 } from "../shared/sigilClientAtom.ts";
 import type { SigilTracker } from "../shared/sigilFeatures.ts";
 import { sigilFingerprintSource } from "../shared/sigilFingerprint.ts";
+import { sigilKeyProject } from "../shared/sigilKey.ts";
 import { SIGIL_INGEST_PATH } from "../shared/sigilPaths.ts";
 import { SIGIL_DEFAULT_SINK, sigilEnv } from "../sigilEnv.ts";
 
@@ -46,8 +47,9 @@ interface AggregatedError {
  * request on workerd, and an app that only flushes when it is already busy is
  * exactly the app whose last errors before a crash are the ones worth having.
  *
- * **Works with no sink at all.** `sink` carries a default, but a key does not:
- * without `SIGIL_KEY` nothing leaves the machine. The same aggregation happens
+ * **Works with no sink at all.** The origin carries a default, but a key does
+ * not: without `SIGIL_KEY` nothing leaves the machine. The same aggregation
+ * happens
  * and the result goes to the logger, so an app that must not phone home still
  * gets its crash loop collapsed into one warning — and gets it by doing
  * nothing, which is the only default worth having here.
@@ -82,11 +84,25 @@ export class SigilSinkProvider {
   /**
    * What this app collects, straight from `SIGIL_CONFIG`.
    *
-   * `undefined` when the variable is unset, which leaves the module inert —
-   * `hasSink()` needs both this and a key.
+   * `undefined` when the variable is unset, which is the ordinary case rather
+   * than a broken one: every field is a switch with the answer an unconfigured
+   * app wants, so an absent config reads as "collect everything". Whether
+   * anything is SENT is a separate question, and only `SIGIL_KEY` answers it.
    */
   public get config(): SigilConfig | undefined {
     return this.env.SIGIL_CONFIG;
+  }
+
+  /**
+   * The project this app reports into, read out of its own key.
+   *
+   * `undefined` for a key minted before the slug moved into the token, and for
+   * no key at all. Both mean the same thing here: no feedback URL can be built.
+   * Neither stops a single event from being reported, because the sink resolves
+   * the project from the credential and never from anything the app says.
+   */
+  public project(): string | undefined {
+    return sigilKeyProject(this.env.SIGIL_KEY);
   }
 
   protected readonly init = $hook({
@@ -94,50 +110,42 @@ export class SigilSinkProvider {
     handler: () => {
       if (this.alepha.isBrowser()) return;
 
-      // Reporting needs both halves: the credential, and the project it reports
-      // into. Either one missing means inert — captured locally, sent nowhere.
-      //
-      // Inert rather than fatal, deliberately. Half-configured is a real
-      // mistake and the log says so at `warn`, but telemetry is not worth an
-      // outage: an app whose observability is misconfigured should still serve
-      // its users. Throwing here would also make the variable's own rollout the
-      // riskiest kind of deploy, where the app that fails to boot is the one
-      // that was about to start reporting correctly.
+      // One variable decides this: the key. Everything else has a default, so
+      // there is no half-configured state left to warn about - an app either
+      // was given a credential or was not.
       if (!this.hasSink()) {
-        const key = !!this.env.SIGIL_KEY;
-        const config = !!this.config;
-
-        if (key !== config) {
-          this.log.warn(
-            key
-              ? "SIGIL_KEY is set but SIGIL_CONFIG is not — sigil is inert. Set " +
-                  'SIGIL_CONFIG to at least {"project":"<slug>"}, naming the project ' +
-                  "this app reports into."
-              : "SIGIL_CONFIG is set but SIGIL_KEY is not — sigil is inert. The key " +
-                  "is minted by the sink and is what authorises reporting.",
-          );
-        } else {
-          this.log.info(
-            "Sigil not configured — capturing locally, sending nothing.",
-          );
-        }
+        this.log.info(
+          "Sigil not configured - capturing locally, sending nothing.",
+        );
         return;
       }
 
       // The sink carries a default, and a default nobody can see is how an app
       // ends up reporting somewhere its operator never chose. Naming the
       // resolved origin AND where it came from is the whole mitigation: a
-      // self-hoster who forgot the field reads one line instead of debugging
+      // self-hoster who forgot the variable reads one line instead of debugging
       // why their own Lore stayed empty while the public instance answered 401
       // to a key it has never heard of.
-      const config = this.config!;
+      const project = this.project();
       this.log.info(
         `Sigil sink: ${this.sinkOrigin()} (${
-          config.sink === SIGIL_DEFAULT_SINK
-            ? "default — set SIGIL_CONFIG.sink to self-host"
-            : "from SIGIL_CONFIG.sink"
-        }), project ${config.project}`,
+          this.env.SIGIL_SINK === SIGIL_DEFAULT_SINK
+            ? "default - set SIGIL_SINK to self-host"
+            : "from SIGIL_SINK"
+        }), project ${project ?? "unnamed"}`,
       );
+
+      // Worth a warning rather than silence, because everything else keeps
+      // working: views, vitals and errors all arrive, so the only symptom is a
+      // feedback button that never appears, which reads as a UI bug rather than
+      // a stale credential.
+      if (!project) {
+        this.log.warn(
+          "SIGIL_KEY names no project - reporting normally, but there is no " +
+            "feedback link to offer. Rotate the key on the sink to get one " +
+            "shaped sg_<project>_<secret>.",
+        );
+      }
     },
   });
 
@@ -197,12 +205,34 @@ export class SigilSinkProvider {
     },
   });
 
+  /**
+   * Whether anything may leave this machine.
+   *
+   * The key alone, now that the sink has a default and the project rides in the
+   * key. This used to require a config as well, which made a variable that
+   * carries nothing but switches load-bearing for whether reporting happened at
+   * all - an app with a perfectly good credential stayed silent because its
+   * JSON was missing.
+   */
   public hasSink(): boolean {
-    return !!(this.config?.sink && this.env.SIGIL_KEY);
+    return !!this.env.SIGIL_KEY;
   }
 
+  /**
+   * The origin to report to, normalized.
+   *
+   * A missing scheme is filled in rather than rejected, because the value is
+   * pasted by a human from a browser's address bar as often as it is typed. A
+   * bare `lore.example.com` is concatenated into a fetch URL and into the
+   * feedback link, where it silently becomes a RELATIVE path: the flush hits
+   * the app's own origin and 404s into the fail-open warning, and the feedback
+   * link points at a page of the app itself. Both failures look like anything
+   * other than a missing `https://`.
+   */
   public sinkOrigin(): string {
-    return (this.config?.sink ?? "").replace(/\/$/, "");
+    const raw = (this.env.SIGIL_SINK || SIGIL_DEFAULT_SINK).trim();
+    const origin = /^https?:\/\//.test(raw) ? raw : `https://${raw}`;
+    return origin.replace(/\/+$/, "");
   }
 
   /**
@@ -213,9 +243,11 @@ export class SigilSinkProvider {
    * `views`, `errors`. Translating in one place is what lets either vocabulary
    * change without the other following.
    *
-   * Everything on when there is no config, which only happens when there is no
-   * key either: the module is inert then, and inert should still mean "captures
-   * locally", not "captures nothing".
+   * Everything on when there is no config, which is the ordinary shape of an
+   * enrolled app: the variable exists to turn things OFF. An app that never
+   * sets it collects the lot, and an app with no key collects the lot into its
+   * own logger, because inert should still mean "captures locally" rather than
+   * "captures nothing".
    */
   public enabledTrackers(): Record<SigilTracker, boolean> {
     const config = this.config;
@@ -229,16 +261,21 @@ export class SigilSinkProvider {
   /**
    * Where a reader goes to file feedback, derived rather than fetched.
    *
-   * The sink used to hand this back, because the slug lived only there. Naming
-   * the project in `SIGIL_CONFIG` moved it to where the app can build it, which
-   * is what let the config round trip disappear entirely.
+   * The sink used to hand this back, because the slug lived only there. That
+   * round trip is what the slug-in-the-key removes: an app can address its own
+   * project the moment it has a credential, with nothing to ask and nothing to
+   * wait for before the first byte of a cold page.
+   *
+   * `undefined` in three cases, and only the first is a decision: the operator
+   * turned feedback off, there is no key, or the key predates the format and
+   * names no project. All three render the same nothing.
    */
   public feedbackUrl(): string | undefined {
-    const config = this.config;
-    if (!config?.feedback || !this.hasSink()) {
+    if (this.config?.feedback === false || !this.hasSink()) {
       return undefined;
     }
-    return `${this.sinkOrigin()}/${config.project}/request`;
+    const project = this.project();
+    return project ? `${this.sinkOrigin()}/${project}/request` : undefined;
   }
 
   /**

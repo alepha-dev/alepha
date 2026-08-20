@@ -104,7 +104,7 @@ const setup = async (
     },
   } as any);
 
-  const minted = tokens.mint();
+  const minted = await tokens.mint(project.id);
   const sigil = await probe.sigils.create({
     projectId: project.id,
     name: "demo",

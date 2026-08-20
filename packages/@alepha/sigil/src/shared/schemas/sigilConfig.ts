@@ -1,63 +1,45 @@
 import { type Infer, z } from "alepha";
 import { SIGIL_FEEDBACK_POSITIONS } from "../sigilFeedbackPosition.ts";
 
-/** The commons an app reports to when it names no other. */
-export const SIGIL_DEFAULT_SINK = "https://lore.alepha.dev";
-
 /**
- * What an app collects, and where it sends it.
+ * What an app collects.
  *
- * One structured environment variable rather than a set of flat ones, and
- * rather than something fetched from the sink at runtime. Both of those were
- * tried:
+ * Only that. Where it reports is `SIGIL_SINK`, and which project it reports
+ * into is carried by `SIGIL_KEY` itself, so everything left here is a switch
+ * with a working default and the whole variable is optional. An app enrols by
+ * setting one secret.
  *
- * Flat variables cannot express `project`, a button position and a set of
- * switches without turning into eight names that must be edited together.
+ * ## Why the switches are one variable and not eight
  *
- * A runtime fetch was worse in a way that took longer to see. It made the sink
- * the control plane, which reads well — until the two runtimes are considered.
- * On a serverless host the isolate is discarded between requests, so the cached
- * config is unset on nearly every one and the fetch happens again; and because
- * it was awaited before rendering, the first byte of every cold page waited on
- * a round trip to the sink. On a prerendered app the same hook runs during the
- * *build*, so the answer was baked into the HTML and could not change until the
- * next deploy — a kill-switch that needs a redeploy, which is the exact thing
- * the fetch existed to avoid.
+ * They are edited together or not at all, and flat names cannot express the
+ * button position and the excluded paths without turning into a family that
+ * has to be kept in sync by hand. The two fields that left were the two that
+ * broke the pattern: a sink origin and a project slug are not switches, they
+ * are identity, and identity was being asked of an operator twice.
+ *
+ * ## Why not fetched from the sink
+ *
+ * That was tried, and it made the sink the control plane, which reads well
+ * until the two runtimes are considered. On a serverless host the isolate is
+ * discarded between requests, so the cached config is unset on nearly every one
+ * and the fetch happens again; and because it was awaited before rendering, the
+ * first byte of every cold page waited on a round trip to the sink. On a
+ * prerendered app the same hook runs during the *build*, so the answer was
+ * baked into the HTML and could not change until the next deploy, which is a
+ * kill-switch that needs a redeploy and therefore the exact thing the fetch
+ * existed to avoid.
  *
  * An environment variable has neither problem and keeps what mattered: on a
  * platform with a dashboard it is editable in seconds, without CI, which is all
- * "change it in production" ever meant. It also collapses two control planes
- * into one — the deploy already owns every other setting, and a sink that grows
- * a deploy feature governs this the same way it governs the rest, instead of
- * through a protocol only this package speaks.
+ * "change it in production" ever meant.
  *
- * Every field is single-typed on purpose. A `boolean | number` would read
- * naturally here (`analytics: 0.25` for a sampling rate) and would then have to
- * be narrowed at every use. If sampling is wanted, it arrives as its own
- * numeric field.
+ * ## Every field is single-typed on purpose
+ *
+ * A `boolean | number` would read naturally here (`analytics: 0.25` for a
+ * sampling rate) and would then have to be narrowed at every use. If sampling
+ * is wanted, it arrives as its own numeric field.
  */
 export const sigilConfig = z.object({
-  /**
-   * The sink-side project this app reports into.
-   *
-   * Required, and the reason the app needs no round trip before it can render
-   * a feedback link: the URL is `{sink}/{project}/request`, which the sink used
-   * to have to hand back because only it knew the slug.
-   *
-   * It is a second name for something `SIGIL_KEY` already identifies, and only
-   * the key is authoritative. The slug is never sent: the envelope carries no
-   * project, so the sink resolves one from the token alone.
-   *
-   * Which makes a wrong slug quiet rather than harmless. Telemetry keeps
-   * arriving where the key says it should, so nothing looks broken, while every
-   * reader who follows the feedback link is handed another project's form.
-   * Nothing on either end can catch that today, because the two ends never
-   * compare notes.
-   */
-  project: z.text({
-    description: "Sink-side project slug this app reports into.",
-  }),
-
   /** Page views. */
   analytics: z.boolean().default(true),
 
@@ -68,12 +50,15 @@ export const sigilConfig = z.object({
   vitals: z.boolean().default(true),
 
   /**
-   * Whether the sink offers this app a feedback link at all.
+   * Whether the app offers a feedback link at all.
    *
    * Distinct from {@link feedbackButton}: this decides whether there is a URL,
    * that decides whether this package renders a control for it. An app that
    * wants the link in its own header sets `feedback: true` with the button
    * `hidden` and reads `useFeedbackUrl()`.
+   *
+   * On by default, and still silent on an app whose key names no project:
+   * there is no URL to build then, so there is nothing to render.
    */
   feedback: z.boolean().default(true),
 
@@ -83,7 +68,7 @@ export const sigilConfig = z.object({
     .default("bottom-right"),
 
   /**
-   * Pages the button stays off, as path globs — `*` within a segment, `**`
+   * Pages the button stays off, as path globs: `*` within a segment, `**`
    * across them, anchored at both ends.
    *
    * The obvious entry is the feedback page itself, where the button would
@@ -95,18 +80,6 @@ export const sigilConfig = z.object({
    * the site rather than building it.
    */
   feedbackButtonExcludedPaths: z.array(z.text()).default([]),
-
-  /**
-   * Origin of the sink.
-   *
-   * Defaults to the public instance the way `npm` defaults to
-   * `registry.npmjs.org`: a commons that is there if you want it and one field
-   * away if you do not. Safe to carry as a default precisely because it does
-   * nothing alone — a key is still minted deliberately by whichever instance
-   * you chose, and a key from a self-hosted sink simply 401s against the public
-   * one rather than leaking into it.
-   */
-  sink: z.text({ default: SIGIL_DEFAULT_SINK }),
 });
 
 export type SigilConfig = Infer<typeof sigilConfig>;

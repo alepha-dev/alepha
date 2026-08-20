@@ -58,6 +58,21 @@ export class CheckDocsCommand {
     "packages/alepha/assets/agents-template.md",
   ];
 
+  /**
+   * Where the per-package READMEs live, scanned as a group.
+   *
+   * `packages/alepha/README.md` was listed by hand above and every OTHER
+   * package README was not, which is a distinction npm does not make: each of
+   * these is the page a package renders on the registry. `@alepha/sigil`'s
+   * spent weeks documenting a `SIGIL_SINK` variable that had been folded into
+   * a config field, while this command carried a rule banning that exact
+   * string and never looked at the file.
+   *
+   * A directory rather than more hand-listed paths, so a new package is
+   * covered by existing.
+   */
+  protected readonly packageDocsRoot = "packages/@alepha";
+
   check = $command({
     name: "check:docs",
     description: "Check the docs for stale symbols and compile marked examples",
@@ -75,6 +90,8 @@ export class CheckDocsCommand {
             files.push(path);
           }
         }
+
+        files.push(...(await this.packageReadmes(root)));
 
         this.log.info(`Scanning ${files.length} markdown files`);
       });
@@ -220,5 +237,29 @@ export class CheckDocsCommand {
       )
       .map((entry) => join(dir, entry))
       .sort();
+  }
+
+  /**
+   * The README of every package under `packages/@alepha`, and only those.
+   *
+   * One level deep on purpose. A recursive walk would pull in whatever README
+   * happens to sit in a fixture or a template directory inside a package,
+   * which is a document with a different audience and no reason to obey the
+   * registry's rules.
+   */
+  protected async packageReadmes(root: string): Promise<string[]> {
+    const dir = join(root, this.packageDocsRoot);
+    if (!(await this.fs.exists(dir))) {
+      return [];
+    }
+
+    const found: string[] = [];
+    for (const entry of await this.fs.ls(dir)) {
+      const path = join(dir, entry, "README.md");
+      if (await this.fs.exists(path)) {
+        found.push(path);
+      }
+    }
+    return found.sort();
   }
 }
