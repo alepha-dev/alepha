@@ -3,7 +3,6 @@ export interface ExportRow {
   title: string;
   status: "new" | "accepted" | "completed";
   priority: "optional" | "low" | "medium" | "high";
-  difficulty: number;
   area: string;
   kanbanColumn: string;
   milestone: string;
@@ -22,7 +21,6 @@ export const QUEST_CSV_HEADER: ReadonlyArray<keyof ExportRow> = [
   "title",
   "status",
   "priority",
-  "difficulty",
   "area",
   "kanbanColumn",
   "milestone",

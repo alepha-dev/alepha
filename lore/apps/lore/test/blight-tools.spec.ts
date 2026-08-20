@@ -256,7 +256,6 @@ describe("Lore MCP — blights", () => {
       description: "Nothing to do with the blight",
       area: "misc",
       priority: "low",
-      difficulty: 1,
     });
     await call(questTools.quest_delete, {
       project: project.id,

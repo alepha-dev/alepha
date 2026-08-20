@@ -81,7 +81,6 @@ const createQuest = async (
         description: "",
         area: "ops",
         priority: "low",
-        difficulty: 1,
         ...extra,
       },
     },

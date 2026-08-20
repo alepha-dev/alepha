@@ -41,7 +41,6 @@ export interface CreateQuestInput {
   /** Target area. Created on the project if it does not exist yet. */
   area: string;
   priority?: Quest["priority"];
-  difficulty?: number;
   /** Optional glanceable time estimate in minutes; `null`/`undefined` = none. */
   estimateMinutes?: number | null;
   objectives?: Array<{ id?: number; title: string; completed: boolean }>;
@@ -172,7 +171,6 @@ export class QuestService {
       description: input.description,
       area: ensuredArea?.name ?? "",
       priority: input.priority ?? "medium",
-      difficulty: input.difficulty ?? 2,
       estimateMinutes: input.estimateMinutes ?? undefined,
       objectives: this.ensureObjectiveIds(input.objectives ?? []),
       attachments: this.mergeEmbeddedAttachments(

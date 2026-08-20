@@ -64,17 +64,6 @@ export class AlephaLoreParser {
     }
 
     const priority = (at("priority") || "medium") as ImportRow["priority"];
-    const difficultyRaw = at("difficulty");
-    const difficulty = Number.parseInt(difficultyRaw || "1", 10);
-    if (Number.isNaN(difficulty) || difficulty < 1 || difficulty > 5) {
-      return {
-        ok: false,
-        error: {
-          row: rowIndex,
-          message: `Invalid difficulty: ${difficultyRaw} (must be 1-5)`,
-        },
-      };
-    }
 
     const row: ImportRow = {
       rowIndex,
@@ -90,7 +79,9 @@ export class AlephaLoreParser {
       // circulation.
       area: at("area") || at("zone"),
       priority,
-      difficulty,
+      // A `difficulty` header is accepted and ignored: the mechanic was
+      // erased, but a CSV exported before that must still round-trip.
+      // Same one-way ramp as the retired `zone` header above.
       kanbanColumn: at("kanbanColumn"),
       milestone: at("milestone"),
       createdBy: at("createdBy"),

@@ -94,7 +94,6 @@ async function createTestQuest(
     title: string;
     area: string;
     priority: "optional" | "low" | "medium" | "high";
-    difficulty: number;
   }> = {},
 ) {
   const response = await ctx.questController.createQuest.fetch(
@@ -104,7 +103,6 @@ async function createTestQuest(
         description: "<p>Test description</p>",
         area: overrides.area ?? "core",
         priority: overrides.priority ?? "medium",
-        difficulty: overrides.difficulty ?? 3,
         projectId,
         objectives: [],
       },

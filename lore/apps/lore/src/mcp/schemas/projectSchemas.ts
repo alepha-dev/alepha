@@ -20,7 +20,6 @@ const questOrientationRefSchema = z.object({
   title: z.string(),
   area: z.string(),
   priority: prioritySchema,
-  difficulty: z.integer(),
 });
 
 // -----------------------------------------------------------------------------

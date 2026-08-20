@@ -35,7 +35,6 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 import AttachmentBadge from "./AttachmentBadge.tsx";
 import QuestCompletionDialog from "./QuestCompletionDialog.tsx";
 import QuestDescription from "./QuestDescription.tsx";
-import QuestDifficulty from "./QuestDifficulty.tsx";
 import QuestHistory from "./QuestHistory.tsx";
 import QuestSummaryEditDialog from "./QuestSummaryEditDialog.tsx";
 import QuestViewCollapsibleBlock from "./QuestViewCollapsibleBlock.tsx";
@@ -236,17 +235,9 @@ const QuestView = (props: QuestViewProps) => {
               drawer share this same scroll container.
               `-mx-5 -mt-4` cancels the parent's padding so the header
               spans the full width and sits flush with the top edge.
-              Carries title (prefixed with #shortId), priority + difficulty
-              badges, the edit/duplicate/timer/close affordances. The old prose
-              "priority · rank" summary line is absorbed into the badges. */}
+              Carries title (prefixed with #shortId), the priority badge
+              and the edit/duplicate/timer/close affordances. */}
           <header className="bg-background border-border sticky top-0 z-10 -mx-5 -mt-4 flex items-center gap-3 border-b px-5 py-3">
-            {/* The rank box is the only leading glyph: #shortId reads as part
-                of the quest's name, so it moved into the title, and the Tag
-                icon that anchored the pair went with it. Alone in an
-                `items-center` row the box is vertically centered against the
-                title column — stacked under #shortId it never was. */}
-            <QuestDifficulty difficulty={quest.difficulty} />
-
             {/* Title column: title + tag chips stacked, takes remaining
                 width. leading-tight compresses the title so the chips sit
                 close underneath instead of orphaning a half-line gap. */}

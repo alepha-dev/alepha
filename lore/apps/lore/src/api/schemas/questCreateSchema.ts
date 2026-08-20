@@ -12,7 +12,6 @@ export const questCreateSchema = z.object({
   // an opaque 500.
   area: z.string().max(48),
   priority: z.enum(["optional", "low", "medium", "high"]),
-  difficulty: z.integer().min(1).max(5),
   /**
    * Optional, glanceable time estimate in minutes (motivation aid, surfaced
    * as a `~15m` pill in the questlog). `null` clears it on update, a positive

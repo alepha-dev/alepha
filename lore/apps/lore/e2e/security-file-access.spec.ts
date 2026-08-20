@@ -86,7 +86,6 @@ const attachToQuest = async (
           title: "Attach test",
           description: "<p>test</p>",
           area: "Default",
-          difficulty: 1,
           priority: "medium",
           attachments: [fileId],
         }),

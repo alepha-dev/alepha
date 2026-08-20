@@ -83,7 +83,6 @@ const seedAcceptedQuest = async (
         description: "<p>x</p>",
         area: "test",
         priority: "low",
-        difficulty: 1,
         objectives,
       },
     },

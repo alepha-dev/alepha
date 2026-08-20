@@ -20,7 +20,6 @@ export const importRowSchema = z.object({
   priority: z
     .enum(["optional", "low", "medium", "high"])
     .meta({ mode: "text" }),
-  difficulty: z.integer().min(1).max(5),
   /** Empty when null/unset. */
   kanbanColumn: z.string(),
   /** Milestone title (exact match). Empty when null/unset. */

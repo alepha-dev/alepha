@@ -95,7 +95,6 @@ describe("the backlog gate on the listing surfaces", () => {
             description: "<p>x</p>",
             area: "core",
             priority: "medium",
-            difficulty: 3,
             projectId,
             objectives: [],
           },

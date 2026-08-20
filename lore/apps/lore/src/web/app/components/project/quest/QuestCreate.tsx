@@ -6,7 +6,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@alepha/ui/components/ui/dropdown-menu";
-import { Segmented } from "@alepha/ui/components/ui/segmented";
 import { Separator } from "@alepha/ui/components/ui/separator";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { useForm, useFormState } from "alepha/react/form";
@@ -79,7 +78,6 @@ const QuestCreate = (props: QuestCreateProps) => {
     initialValues: {
       ...(props.quest as QuestResource),
       priority: props.quest?.priority ?? "optional",
-      difficulty: props.quest?.difficulty ?? 1,
     },
     handler: async (data) => {
       if (props.quest?.id) {
@@ -192,33 +190,12 @@ const QuestCreate = (props: QuestCreateProps) => {
 
         <Separator />
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <Control
-            input={form.input.priority}
-            label={tr("quest.create.priority")}
-            description={tr("quest.create.priority.helper")}
-            segmented
-          />
-          <Control
-            input={form.input.difficulty}
-            label={tr("quest.create.difficulty")}
-            description={tr("quest.create.difficulty.helper")}
-            custom={({ value, onChange }) => (
-              <Segmented
-                value={value != null ? String(value) : undefined}
-                onChange={(v) => onChange(Number(v))}
-                options={[
-                  { value: "1", label: "F" },
-                  { value: "2", label: "C" },
-                  { value: "3", label: "B" },
-                  { value: "4", label: "A" },
-                  { value: "5", label: "S" },
-                ]}
-                fullWidth
-              />
-            )}
-          />
-        </div>
+        <Control
+          input={form.input.priority}
+          label={tr("quest.create.priority")}
+          description={tr("quest.create.priority.helper")}
+          segmented
+        />
 
         {/* Estimation is a methodology, not a default — see
             `projectFeaturesSchema.questEstimate`. With the switch off the

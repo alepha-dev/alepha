@@ -37,7 +37,6 @@ import { descriptionSnippet } from "../../services/descriptionSnippet.ts";
 import { displayName } from "../../services/displayName.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { UserAvatar } from "../shared/UserAvatar.tsx";
-import QuestDifficulty from "./quest/QuestDifficulty.tsx";
 
 const getPriorityColor = (priority: string) => {
   switch (priority) {
@@ -343,13 +342,6 @@ const ProjectQuestsTable = () => {
               >
                 {quest.priority}
               </Badge>
-            ),
-          },
-          difficulty: {
-            label: tr("board.table.rank"),
-            sortable: true,
-            cell: (quest: QuestResource) => (
-              <QuestDifficulty difficulty={quest.difficulty} />
             ),
           },
           area: {

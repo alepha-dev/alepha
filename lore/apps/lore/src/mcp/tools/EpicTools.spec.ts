@@ -161,7 +161,6 @@ describe("Lore MCP — epics", () => {
       description: "",
       area: "Deploy",
       priority: "medium",
-      difficulty: 2,
       epic_number: epic.number,
     });
 
@@ -381,7 +380,6 @@ describe("Lore MCP — epics", () => {
             description: "",
             area: "Deploy",
             priority: "medium",
-            difficulty: 2,
             epic_number: epic.number,
           },
           memberId,
@@ -415,7 +413,6 @@ describe("Lore MCP — epics", () => {
           description: "",
           area: "Deploy",
           priority: "medium",
-          difficulty: 2,
         },
         memberId,
       );

@@ -798,7 +798,6 @@ export class FeedbackController {
           : q.acceptedAt
             ? ("accepted" as const)
             : ("new" as const),
-        difficulty: q.difficulty,
         priority: q.priority,
         area: q.area,
         acceptedAt: q.acceptedAt ?? undefined,

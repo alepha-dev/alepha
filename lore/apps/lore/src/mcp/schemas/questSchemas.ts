@@ -14,8 +14,6 @@ import {
 
 const PRIORITY_DESCRIPTION =
   "Quest priority. Ordered low → high: optional < low < medium < high. `optional` is below `low`.";
-const DIFFICULTY_DESCRIPTION =
-  "Quest difficulty from 1 (trivial) to 5 (epic). Higher means harder.";
 const AREA_DESCRIPTION =
   "The part of the system this quest touches — a module, a package, a surface (e.g. 'alepha/orm', '@alepha/ui', 'lore/folios'). Required; every quest has exactly one. " +
   "NOT the same axis as `epic` (a bounded initiative that spans areas and ends) or `tags` (the nature of the work: bug, feat, chore) — a quest carries all three independently. " +
@@ -90,7 +88,6 @@ export const questListResultSchema = z.object({
       description: z.string(),
       area: z.string(),
       priority: prioritySchema,
-      difficulty: z.integer(),
       status: questStatusSchema,
       objectives: z.array(objectiveSchema),
       tags: z.array(z.string()),
@@ -122,7 +119,6 @@ export const questGetResultSchema = z.object({
   description: z.string(),
   area: z.string(),
   priority: prioritySchema,
-  difficulty: z.integer(),
   status: questStatusSchema,
   objectives: z.array(objectiveSchema),
   projectId: z.integer(),
@@ -154,7 +150,6 @@ export const questCreateParamsSchema = projectParamsSchema.extend({
   priority: z
     .enum(["optional", "low", "medium", "high"])
     .describe(PRIORITY_DESCRIPTION),
-  difficulty: z.integer().min(1).max(5).describe(DIFFICULTY_DESCRIPTION),
   objectives: z
     .array(objectiveSchema)
     .describe("List of objectives/subquests")
@@ -271,12 +266,6 @@ export const questUpdateParamsSchema = entityRefSchema.extend({
   priority: z
     .enum(["optional", "low", "medium", "high"])
     .describe(`New ${PRIORITY_DESCRIPTION}`)
-    .optional(),
-  difficulty: z
-    .integer()
-    .min(1)
-    .max(5)
-    .describe(`New ${DIFFICULTY_DESCRIPTION}`)
     .optional(),
   objectives: z
     .array(objectiveSchema)

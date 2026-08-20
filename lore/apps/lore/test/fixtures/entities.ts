@@ -114,7 +114,6 @@ export const createTestQuest = async (
     description: overrides.description ?? "",
     area: overrides.area ?? "general",
     priority: overrides.priority ?? "medium",
-    difficulty: overrides.difficulty ?? 1,
     projectId: overrides.projectId ?? project.id,
     createdBy: overrides.createdBy ?? project.createdBy,
     history: overrides.history ?? [],

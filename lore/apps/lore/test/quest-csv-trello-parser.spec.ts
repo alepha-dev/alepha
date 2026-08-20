@@ -35,7 +35,6 @@ describe("TrelloParser", () => {
     expect(result.row.writeMode).toBe("create");
     expect(result.row.shortId).toBe("");
     expect(result.row.priority).toBe("medium");
-    expect(result.row.difficulty).toBe(2);
   });
 
   it("errors when Card Name is empty", ({ expect }) => {
