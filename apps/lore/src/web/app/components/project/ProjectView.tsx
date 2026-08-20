@@ -28,6 +28,7 @@ import { currentEpicAtom } from "../../atoms/currentEpicAtom.ts";
 import { currentFeedbackCountAtom } from "../../atoms/currentFeedbackCountAtom.ts";
 import { currentFolioPathAtom } from "../../atoms/currentFolioPathAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
+import { currentQuestAtom } from "../../atoms/currentQuestAtom.ts";
 import { currentQuestCountAtom } from "../../atoms/currentQuestCountAtom.ts";
 import { currentSigilAtom } from "../../atoms/currentSigilAtom.ts";
 import { currentSigilsAtom } from "../../atoms/currentSigilsAtom.ts";
@@ -46,7 +47,12 @@ import ProjectQuestsViewSwitcher from "./ProjectQuestsViewSwitcher.tsx";
 import ProjectSwitcher from "./ProjectSwitcher.tsx";
 import QuestLog from "./QuestLog.tsx";
 
-const ROUTES_WITH_QUEST_LOG = new Set(["projectQuests", "projectQuest"]);
+/**
+ * The quest LIST only. The detail route used to be in here too, which pinned
+ * the log at 25% beside the open quest; it is a full-width page of its own
+ * now (see `ROUTES_FULL_WIDTH`), so the quest owns the viewport.
+ */
+const ROUTES_WITH_QUEST_LOG = new Set(["projectQuests"]);
 
 /**
  * The per-app page and its tabs.
@@ -65,6 +71,7 @@ const ROUTES_APP = new Set([
 ]);
 
 const ROUTES_FULL_WIDTH = new Set([
+  "projectQuest",
   "projectEpics",
   "projectEpic",
   "projectMilestones",
@@ -94,15 +101,20 @@ const ROUTES_FULL_WIDTH = new Set([
  * Apps have no entry because they have no list route at all: `/apps/:appName`
  * is the only way to address one, and the inventory lives under Settings.
  */
-const SECTION_HREF_ROUTES: Record<string, "projectFolios" | "projectEpics"> = {
+const SECTION_HREF_ROUTES: Record<
+  string,
+  "projectFolios" | "projectEpics" | "projectQuests"
+> = {
   projectFolios: "projectFolios",
   projectFoliosNew: "projectFolios",
   projectFoliosFolio: "projectFolios",
   projectEpic: "projectEpics",
+  projectQuest: "projectQuests",
 };
 
 const SECTION_LABEL_KEYS: Record<string, string> = {
   projectQuests: "project.menu.quests",
+  projectQuest: "project.menu.quests",
   projectEpics: "project.menu.epics",
   projectEpic: "project.menu.epics",
   projectMilestones: "project.menu.milestones",
@@ -143,12 +155,12 @@ const ProjectView = () => {
   const kanbanView = name === "projectQuests" && questsView.view === "kanban";
   const showQuestLog = ROUTES_WITH_QUEST_LOG.has(name) && !kanbanView;
   const fullWidth = ROUTES_FULL_WIDTH.has(name) || kanbanView;
-  // The view bar belongs to the whole quests surface, so it renders on the
-  // same routes as the quest log — including the quest DETAIL route, where
-  // the log is also shown. Dropping it there would slide the log (and every
-  // pixel below it) up by the bar's height the moment a quest opens, which is
-  // exactly the jump hoisting the switcher out of the content area was meant
-  // to remove. From detail, picking a view navigates back to the list.
+  // The view bar belongs to the quest LIST, which is now the only route in
+  // that set. It used to render on the detail route as well, to stop the log
+  // jumping up by the bar's height the moment a quest opened — with the log
+  // gone from detail there is nothing left to keep in place, and a bar that
+  // switches between two views the page does not have is chrome without a
+  // job.
   const showViewBar = ROUTES_WITH_QUEST_LOG.has(name);
 
   const [project] = useStore(currentProjectAtom);
@@ -159,6 +171,7 @@ const ProjectView = () => {
   const [sigils] = useStore(currentSigilsAtom);
   const [sigil] = useStore(currentSigilAtom);
   const [epic] = useStore(currentEpicAtom);
+  const [quest] = useStore(currentQuestAtom);
 
   if (!project) {
     return null;
@@ -173,14 +186,11 @@ const ProjectView = () => {
 
   // The view is state, not a destination, so picking one is a plain write —
   // no navigation, no history entry, and nothing for a later render to undo.
-  // The one case that still navigates is the quest DETAIL route: the bar
-  // renders there too (see `showViewBar`), and a view means nothing on a
-  // single quest, so picking one goes back to the list to show it.
+  // (There used to be a branch here that navigated back to the list when the
+  // bar was picked from the quest detail route. The bar no longer renders
+  // there, so the only caller is the list itself.)
   const selectView = (view: QuestsView) => {
     setQuestsView({ view });
-    if (name !== "projectQuests") {
-      router.push("projectQuests", { params: { projectSlug } });
-    }
   };
 
   // Four unlabelled groups (`NavGroup.label` omitted on purpose — see the
@@ -403,6 +413,12 @@ const ProjectView = () => {
   if (name === "projectEpic" && epic) {
     breadcrumbs.push({ label: epic.title });
   }
+  // Same shape for the quest detail page: `#1208` as an inert leaf. The
+  // number, not the title — the title is already the first thing on the page,
+  // and a long one would push the crumbs off the bar.
+  if (name === "projectQuest" && quest) {
+    breadcrumbs.push({ label: `#${quest.shortId}` });
+  }
   // Folio routes contribute their directory chain (and the folio
   // title leaf) via `currentFolioPathAtom` — written by
   // FolioBrowser on every refresh and by the folio loader on view.
@@ -487,18 +503,12 @@ const ProjectView = () => {
                     />
                   </div>
                 )}
-                {/* QuestView owns its own scroll (`overflow-y-auto` on its
-                  body), so this wrapper must NOT also scroll — a nested
-                  `overflow-auto` here showed a spurious scrollbar even on
-                  short quests. Matches the `fullWidth` branch's no-scroll
-                  intent.
-                  The quest DETAIL view is flush: it dropped its card, so the
-                  padding that used to sit between the two surfaces has nothing
-                  left to separate. The list still needs it — it has no padding
-                  of its own. */}
-                <div
-                  className={`flex min-h-0 flex-1 flex-col overflow-hidden ${name === "projectQuest" ? "" : "p-2"}`}
-                >
+                {/* The list owns its own scroll, so this wrapper must NOT
+                  also scroll — a nested `overflow-auto` here showed a spurious
+                  scrollbar. The `p-2` is for the list, which has no padding of
+                  its own; the flush exception the quest detail route needed
+                  went with the route. */}
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
                   <NestedView />
                 </div>
               </div>

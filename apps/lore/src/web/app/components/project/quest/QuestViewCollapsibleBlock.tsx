@@ -31,10 +31,14 @@ const QuestViewCollapsibleBlock = (props: QuestViewCollapsibleBlockProps) => {
         aria-expanded={open}
         data-testid={`quest-collapsible-${props.label.toLowerCase()}`}
       >
-        <span className="text-muted-foreground group-hover:text-foreground shrink-0 transition-colors">
+        <span className="text-muted-foreground group-hover:text-foreground shrink-0 transition-colors [&>svg]:size-4">
           {props.icon}
         </span>
-        <span className="text-muted-foreground group-hover:text-foreground text-lg font-bold whitespace-nowrap transition-colors">
+        {/* The section-label face: 12px, 600, uppercase, +0.84px tracking,
+            muted. `SectionHeader` in QuestView mirrors it exactly — the two
+            shapes have to read as one family or collapsible and static
+            sections look like different kinds of thing. */}
+        <span className="text-muted-foreground group-hover:text-foreground text-xs font-semibold tracking-[0.84px] whitespace-nowrap uppercase transition-colors">
           {props.label}
         </span>
         <div className="bg-border h-px flex-1 opacity-40" />

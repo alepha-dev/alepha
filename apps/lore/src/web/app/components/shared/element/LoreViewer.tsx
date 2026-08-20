@@ -6,6 +6,8 @@ export interface LoreViewerProps {
   element: ElementRef;
   /** The element's stored markdown, exactly as saved. */
   content: string;
+  /** Extra classes for the prose root — a per-surface reading face. */
+  className?: string;
 }
 
 /**
@@ -27,7 +29,7 @@ const LoreViewer = (props: LoreViewerProps) => {
 
   if (!props.content) return null;
 
-  return <MarkdownView content={rendered} />;
+  return <MarkdownView content={rendered} className={props.className} />;
 };
 
 export default LoreViewer;

@@ -9,6 +9,14 @@ import remarkGfm from "remark-gfm";
 
 export interface MarkdownViewProps {
   content: string;
+  /**
+   * Extra classes for the prose root, merged after the defaults so a caller
+   * can set its own reading face or measure. The defaults it overrides are
+   * `text-sm leading-relaxed` — a surface that sets prose in a display serif
+   * needs both, and no parent wrapper can supply them, since they sit on
+   * this element rather than being inherited.
+   */
+  className?: string;
 }
 
 /**
@@ -27,7 +35,9 @@ export interface MarkdownViewProps {
  */
 export const MarkdownView = (props: MarkdownViewProps) => {
   return (
-    <div className="max-w-none text-sm leading-relaxed">
+    <div
+      className={`max-w-none text-sm leading-relaxed ${props.className ?? ""}`}
+    >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[

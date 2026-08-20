@@ -862,6 +862,35 @@ test.describe("Quest", () => {
       },
     );
 
+    await test.step("the description is set in the reading face", async () => {
+      await page.goto(`/${projectSlug}/quests/${shortId}`);
+      await page.waitForLoadState("networkidle");
+
+      // Literata is lazy-loaded and the stack falls back silently, so the
+      // failure mode this guards is the class never reaching the prose root
+      // — which looks like "close enough" rather than like a bug.
+      const family = await page
+        .getByText("Seeded for the back arrow")
+        .evaluate((el) => getComputedStyle(el).fontFamily);
+      expect(family).toContain("Literata");
+    });
+
+    await test.step("the breadcrumb reads Project > Quests > #shortId", async () => {
+      await page.goto(`/${projectSlug}/quests/${shortId}`);
+      await page.waitForLoadState("networkidle");
+
+      const crumbs = page.getByRole("navigation", { name: "breadcrumb" });
+      // Assert the anchor, not just the label: `BreadcrumbPage` also carries
+      // `role="link"`, so a dead crumb matches the locator and only the href
+      // separates the two. The detail route had no Quests crumb at all until
+      // now — `SECTION_LABEL_KEYS` simply had no entry for it.
+      await expect(
+        crumbs.getByRole("link", { name: "Quests" }),
+      ).toHaveAttribute("href", `/${projectSlug}/`, { timeout: 15_000 });
+      // The leaf is the number, and it is inert — it is the open page.
+      await expect(crumbs.getByText(`#${shortId}`)).toBeVisible();
+    });
+
     await test.step("a deep link has no in-app history, so it lands on the list", async () => {
       // `page.goto` is a real load: this entry IS the one the app booted
       // into, which is exactly the case the fallback exists for.
@@ -1136,8 +1165,11 @@ test.describe("Quest", () => {
       if (!barInKanban) throw new Error("missing bounding box");
       expect(barInKanban.y).toBe(barInList.y);
 
-      // And it survives opening a quest: the log is shown on the detail
-      // route too, so a bar that vanished there would slide the log up.
+      // The detail route keeps neither. It used to hold the log at 25% and
+      // the bar above it, which made opening a quest feel like a pane inside
+      // the list rather than a page; the quest owns the viewport now, and a
+      // bar switching between two views the page does not have is chrome
+      // without a job. (This step used to assert the opposite of both.)
       await page.goto(`/${projectSlug}/`);
       const { shortId } = await apiPost<{ shortId: number }>(
         page,
@@ -1153,14 +1185,12 @@ test.describe("Quest", () => {
         },
       );
       await page.goto(`/${projectSlug}/quests/${shortId}`);
-      await expect(page.getByTestId("quest-log")).toBeVisible({
+      await expect(page.getByText(`RailProbe${t}`).first()).toBeVisible({
         timeout: 10_000,
       });
-      const barInDetail = await page
-        .getByTestId("quests-view-switcher")
-        .boundingBox();
-      if (!barInDetail) throw new Error("missing bounding box");
-      expect(barInDetail.y).toBe(barInList.y);
+      await expect(page.getByTestId("quest-log")).toHaveCount(0);
+      await expect(page.getByTestId("quest-log-rail")).toHaveCount(0);
+      await expect(page.getByTestId("quests-view-switcher")).toHaveCount(0);
     });
 
     await test.step("the view bar disappears when kanban is off", async () => {

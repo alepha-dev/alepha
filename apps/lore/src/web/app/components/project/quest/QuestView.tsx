@@ -90,11 +90,13 @@ const getPriorityColor = (priority: string): string => {
 const SectionHeader = (props: SectionHeaderProps) => (
   <div className="flex items-center gap-2 px-1 py-1">
     {/* Mirrors QuestViewCollapsibleBlock's header — same paddings,
-        icon/label color, and divider — minus the chevron and the
+        icon/label face, and hairline rule — minus the chevron and the
         clickable hover state. Keeping them visually aligned makes
         collapsible vs. static sections feel like one family. */}
-    <span className="text-muted-foreground shrink-0">{props.icon}</span>
-    <span className="text-muted-foreground text-lg font-bold whitespace-nowrap">
+    <span className="text-muted-foreground shrink-0 [&>svg]:size-4">
+      {props.icon}
+    </span>
+    <span className="text-muted-foreground text-xs font-semibold tracking-[0.84px] whitespace-nowrap uppercase">
       {props.label}
     </span>
     <div className="bg-border h-px flex-1 opacity-40" />
@@ -329,7 +331,17 @@ const QuestView = (props: QuestViewProps) => {
                 width. leading-tight compresses the title so the chips sit
                 close underneath instead of orphaning a half-line gap. */}
             <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <span className="cinzel-400 truncate text-lg leading-tight font-bold">
+              {/* Inter, not Cinzel: the RPG surface is vocabulary, not
+                  lettering. The page mount takes the mockup's 30px/600; the
+                  card back stays at 18px, where 30px would eat a half-width
+                  sheet. */}
+              <span
+                className={`truncate leading-tight font-semibold ${
+                  context === "page"
+                    ? "text-3xl tracking-[-0.6px]"
+                    : "text-lg font-bold"
+                }`}
+              >
                 <span className="text-muted-foreground font-mono text-sm">
                   #{quest.shortId}
                 </span>{" "}
