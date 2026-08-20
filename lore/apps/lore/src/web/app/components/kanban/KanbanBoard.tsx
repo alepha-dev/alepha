@@ -319,6 +319,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
           {selectedQuest && (
             <QuestView
               quest={selectedQuest}
+              context="card"
               onClose={closeDrawer}
               onQuestChange={(updated) => {
                 setSelectedQuest(updated);

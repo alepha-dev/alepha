@@ -96,10 +96,12 @@ test.describe("Quest", () => {
       await page
         .getByRole("button", { name: /complete without summary/i })
         .click();
-      // Either stays on the quest view with a completed indicator or animates
-      // back to the board — both leave us inside the project URL space.
+      // Completing keeps the page mount where it is — it used to push back
+      // to the quest list.
       await page.waitForLoadState("networkidle");
-      expect(page.url()).toContain(`/${projectSlug}`);
+      await expect(page).toHaveURL(
+        new RegExp(`/${projectSlug}/quests/${shortId}$`),
+      );
     });
   });
 
@@ -451,18 +453,14 @@ test.describe("Quest", () => {
       await page.waitForLoadState("networkidle");
     });
 
-    await test.step("summary section + history preview render the message", async () => {
-      // Completion handler navigates back to the board. Re-open the quest
-      // view by clicking its row instead of `page.goto` so we exercise
-      // the SPA router (goto would force a hard reload + Turnstile
-      // polling delays).
-      await page.waitForURL(new RegExp(`/${projectSlug}/?$`), {
-        timeout: 15_000,
-      });
-      await page.goto(`/${projectSlug}/quests/${shortId}`);
-      await page.waitForLoadState("domcontentloaded");
-      // First make sure the quest view actually loaded — the title is
-      // always rendered for a valid shortId.
+    await test.step("the page stays put and renders the summary in place", async () => {
+      // Completing used to push back to the quest list, throwing the summary
+      // away at the exact moment its writer wants to see it rendered. The
+      // page mount now stays on the quest — no navigation, no re-open.
+      await expect(page).toHaveURL(
+        new RegExp(`/${projectSlug}/quests/${shortId}$`),
+        { timeout: 15_000 },
+      );
       await expect(page.getByText(`Summary${t}`).first()).toBeVisible({
         timeout: 15_000,
       });
@@ -824,6 +822,75 @@ test.describe("Quest", () => {
    * loses its `persist` or moves to localStorage — where `ProjectView`, which
    * picks this layout during SSR, cannot read it.
    */
+  /**
+   * The header's back arrow (quest #1221). It replaced a close cross that
+   * read as a dialog affordance on a page that is not a dialog.
+   *
+   * Two branches, and the second is the one worth a test: `router.back()`
+   * alone cannot tell whether there is anywhere to go, so a deep link would
+   * either do nothing or walk out of the app. `canGoBack` answers that from
+   * the `alephaKey` history stamp, and the arrow falls back to the quest
+   * list when the answer is no.
+   */
+  test("the header arrow goes back, and falls back to the list on a deep link", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+
+    const t = Date.now();
+    const email = `back${t}@example.com`;
+    const password = "BackArrow123!";
+    const projectTitle = `BA${t}`.slice(0, 20);
+
+    await registerAndVerify(page, email, password);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
+
+    const { shortId } = await apiPost<{ id: number; shortId: number }>(
+      page,
+      "createQuest",
+      {
+        projectId,
+        title: `Back${t}`,
+        description: "Seeded for the back arrow",
+        area: "Main",
+        priority: "medium",
+        objectives: [],
+        attachments: [],
+      },
+    );
+
+    await test.step("a deep link has no in-app history, so it lands on the list", async () => {
+      // `page.goto` is a real load: this entry IS the one the app booted
+      // into, which is exactly the case the fallback exists for.
+      await page.goto(`/${projectSlug}/quests/${shortId}`);
+      await page.waitForLoadState("networkidle");
+
+      await page.getByRole("button", { name: /^back$/i }).click();
+      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/?$`), {
+        timeout: 10_000,
+      });
+    });
+
+    await test.step("arriving from inside the app walks back one entry", async () => {
+      // Continues from the list the step above landed on. Clicking a table
+      // row is a real `router.push`, so this entry carries an alephaKey > 0
+      // and the arrow takes the history branch rather than the fallback.
+      await page.getByText(`Back${t}`).first().click();
+      await expect(page).toHaveURL(
+        new RegExp(`/${projectSlug}/quests/${shortId}$`),
+        { timeout: 10_000 },
+      );
+
+      await page.getByRole("button", { name: /^back$/i }).click();
+      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/?$`), {
+        timeout: 10_000,
+      });
+    });
+  });
+
   test("the quest log collapses to a rail and remembers it", async ({
     page,
   }) => {
@@ -875,6 +942,77 @@ test.describe("Quest", () => {
    * come back, remember the choice across a reload, and — since #156 —
    * do all of that without touching the URL.
    */
+  /**
+   * The card mount (quest #1221). `QuestView` is one component with two
+   * mounts: this route page, and the same file inside the board's sheet at
+   * half the width. `context="card"` is what tells them apart — there, the
+   * reminder controls fold behind the header's overflow so the description
+   * and the objectives are what a card back opens on.
+   */
+  test("the card back folds the reminder section behind the overflow", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+
+    const t = Date.now();
+    const email = `card${t}@example.com`;
+    const password = "CardBack123!";
+    const projectTitle = `CB${t}`.slice(0, 20);
+    const questTitle = `Carded${t}`;
+
+    await registerAndVerify(page, email, password);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
+
+    await apiPost<{ id: number; shortId: number }>(page, "createQuest", {
+      projectId,
+      title: questTitle,
+      description: "Seeded for the card back",
+      area: "Main",
+      priority: "medium",
+      objectives: [],
+      attachments: [],
+    });
+
+    // The reminder block is the foldable section that does not need a
+    // completed quest, so it is the cheap one to drive.
+    await setProjectFeature(page, projectId, "questReminder");
+
+    await test.step("the page mount shows it inline", async () => {
+      await page.goto(`/${projectSlug}/`);
+      await page.getByText(questTitle).first().click();
+      // Testid, not the label: the sidebar also says "Settings".
+      await expect(page.getByTestId("quest-collapsible-settings")).toBeVisible({
+        timeout: 10_000,
+      });
+    });
+
+    await test.step("the card mount folds it away, and the overflow brings it back", async () => {
+      await page.goto(`/${projectSlug}/`);
+      await page.getByTestId("quests-view-kanban").click();
+      await expect(page.getByTestId("kanban-board")).toBeVisible({
+        timeout: 10_000,
+      });
+
+      await page.getByText(questTitle).first().click();
+      // The sheet renders the same component, so the description is there.
+      await expect(page.getByText("Seeded for the card back")).toBeVisible({
+        timeout: 10_000,
+      });
+      await expect(page.getByTestId("quest-collapsible-settings")).toHaveCount(
+        0,
+      );
+
+      await page.getByRole("button", { name: /^more$/i }).click();
+      await page.getByRole("menuitem", { name: /settings/i }).click();
+      await expect(page.getByTestId("quest-collapsible-settings")).toBeVisible({
+        timeout: 10_000,
+      });
+    });
+  });
+
   test("view switcher reaches the kanban board and remembers the choice", async ({
     page,
   }) => {
