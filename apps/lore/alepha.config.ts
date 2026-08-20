@@ -20,7 +20,14 @@ export default defineConfig({
   // DISJOINT from the 4300-4999 e2e band. The two used to be the same number,
   // and a running `yarn dev` was then adopted by the e2e suite. Every app
   // without a `dev.port` binds 5173.
-  dev: { port: 3303 },
+  dev: { port: 3303, reactCompiler: true },
+  build: {
+    // React Compiler trial run: every component in the repo passes the
+    // compiler healthcheck (603/603 on 2026-08-20), so Lore dogfoods the
+    // compiled client bundle first. Client-only; the SSR bundle is not
+    // compiled.
+    reactCompiler: true,
+  },
   env: {
     VITE_VERSION: pkg.version,
     VITE_GIT_COMMIT: gitCommit,

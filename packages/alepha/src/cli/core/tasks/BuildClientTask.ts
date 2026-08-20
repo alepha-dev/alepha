@@ -28,6 +28,7 @@ export class BuildClientTask extends BuildTask {
     const distDir = ctx.options.output?.dist ?? "dist";
     const publicDir = ctx.options.output?.public ?? "public";
     const stats = ctx.options.stats ?? false;
+    const reactCompiler = ctx.options.reactCompiler ?? false;
     const isCI = this.alepha.isCI();
 
     // Write index.html template for Vite to consume
@@ -48,6 +49,7 @@ export class BuildClientTask extends BuildTask {
           await this.buildClient({
             dist: `${distDir}/${publicDir}`,
             stats,
+            reactCompiler,
             silent: !isCI,
           });
         },
@@ -60,13 +62,19 @@ export class BuildClientTask extends BuildTask {
   protected async buildClient(opts: {
     dist: string;
     stats?: boolean | "json";
+    reactCompiler?: boolean;
     silent?: boolean;
   }): Promise<void> {
     const { build: viteBuild } = await this.viteUtils.importVite();
     const plugins: any[] = [];
 
     const viteReact = await this.viteUtils.importViteReact();
-    if (viteReact) plugins.push(viteReact());
+    if (viteReact) {
+      plugins.push(viteReact());
+      if (opts.reactCompiler) {
+        plugins.push(await this.viteUtils.importReactCompilerPlugin());
+      }
+    }
 
     plugins.push(this.viteUtils.createTsconfigPathsPlugin());
     plugins.push(this.viteUtils.createSsrPreloadPlugin());

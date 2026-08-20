@@ -36,6 +36,20 @@ export const buildOptions = $atom({
     stats: z.union([z.boolean(), z.enum(["json"])]).optional(),
 
     /**
+     * Compile the client bundle with React Compiler.
+     *
+     * Adds a Babel pass (via `@rolldown/plugin-babel`) running
+     * `babel-plugin-react-compiler`, which memoizes components and hooks
+     * automatically. Applies to the client bundle only: memoization caches
+     * are dead weight in a one-shot SSR render, and the server bundle is
+     * size-constrained on Workers.
+     *
+     * Requires React 19. Expect a slower client build and a slightly
+     * larger bundle in exchange for fewer re-renders at runtime.
+     */
+    reactCompiler: z.boolean().optional(),
+
+    /**
      * Deployment target for the build output.
      *
      * - `docker` - Generate Dockerfile for containerized deployment

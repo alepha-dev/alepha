@@ -115,6 +115,7 @@ export class DevCommand {
       root,
       entry,
       noViteReactPlugin: options.noViteReactPlugin ?? false,
+      reactCompiler: options.reactCompiler ?? false,
       port: options.port,
     });
 

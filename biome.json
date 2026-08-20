@@ -48,6 +48,9 @@
         "noUnusedVariables": "off",
         "useExhaustiveDependencies": "off"
       },
+      "nursery": {
+        "useReactCompiler": "warn"
+      },
       "complexity": {
         "noBannedTypes": "off",
         "noImportantStyles": "off"

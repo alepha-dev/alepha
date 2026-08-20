@@ -22,9 +22,12 @@
     "CLAUDE.md"
   ],
   "dependencies": {
+    "@babel/core": "^7.29.0",
     "@biomejs/biome": "^2.5.8",
     "@redis/client": "^6.2.1",
+    "@rolldown/plugin-babel": "^0.2.3",
     "@vitejs/plugin-react": "^6.0.5",
+    "babel-plugin-react-compiler": "^1.0.0",
     "dayjs": "^1.11.22",
     "drizzle-kit": "1.0.0-rc.4",
     "drizzle-orm": "1.0.0-rc.4",

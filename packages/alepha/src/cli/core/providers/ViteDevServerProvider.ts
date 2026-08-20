@@ -23,6 +23,11 @@ export interface DevServerOptions {
   noViteReactPlugin?: boolean;
 
   /**
+   * Compile served modules with React Compiler.
+   */
+  reactCompiler?: boolean;
+
+  /**
    * Port to bind, from `dev.port` in alepha.config.ts.
    */
   port?: number;
@@ -155,7 +160,12 @@ export class ViteDevServerProvider {
     const viteReact = await this.viteUtils.importViteReact();
 
     const plugins: Plugin[] = [];
-    if (viteReact && !this.options.noViteReactPlugin) plugins.push(viteReact());
+    if (viteReact && !this.options.noViteReactPlugin) {
+      plugins.push(viteReact());
+      if (this.options.reactCompiler) {
+        plugins.push(await this.viteUtils.importReactCompilerPlugin());
+      }
+    }
     plugins.push(this.viteUtils.createTsconfigPathsPlugin());
     plugins.push(this.viteUtils.createSsrPreloadPlugin());
     plugins.push(...this.extraVitePlugins);

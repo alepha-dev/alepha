@@ -16,6 +16,16 @@ export const devOptions = $atom({
     noViteReactPlugin: z.boolean().default(false).optional(),
 
     /**
+     * Compile served modules with React Compiler.
+     *
+     * Same transform as `build.reactCompiler`, applied by the dev server so
+     * development exercises the compiled components. Ignored when
+     * `noViteReactPlugin` is set. Expect slightly slower transforms on
+     * React files.
+     */
+    reactCompiler: z.boolean().optional(),
+
+    /**
      * Port the dev server binds to.
      *
      * Ranks below `SERVER_PORT`, so CI and one-off overrides still win, and

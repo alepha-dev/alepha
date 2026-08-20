@@ -11,6 +11,7 @@ import type { BuildTaskContext } from "../tasks/BuildTask.ts";
  */
 class FakeViteUtils extends ViteUtils {
   public configs: any[] = [];
+  public withReact = false;
 
   public async importVite(): Promise<any> {
     return {
@@ -21,7 +22,11 @@ class FakeViteUtils extends ViteUtils {
   }
 
   public async importViteReact(): Promise<any> {
-    return undefined;
+    return this.withReact ? () => ({ name: "fake:react" }) : undefined;
+  }
+
+  public async importReactCompilerPlugin(): Promise<any> {
+    return { name: "fake:react-compiler" };
   }
 
   public createTsconfigPathsPlugin(): any {
@@ -52,10 +57,11 @@ describe("BuildClientTask", () => {
 
   const createContext = (
     output: { dist?: string; public?: string } | undefined,
+    options: { reactCompiler?: boolean } = {},
   ): BuildTaskContext =>
     ({
       alepha: Alepha.create(),
-      options: { output } as any,
+      options: { output, ...options } as any,
       run: (task: any) => task.handler(),
       root: "/project",
       entry: {} as any,
@@ -134,5 +140,49 @@ describe("BuildClientTask", () => {
     await task.run(createContext(undefined));
 
     expect(vite.configs[0].publicDir).toBeUndefined();
+  });
+
+  it("should add the React Compiler plugin only when the build option asks for it", async ({
+    expect,
+  }) => {
+    const { task, fs, vite } = setup();
+    vite.withReact = true;
+
+    await fs.mkdir("dist/public/node_modules/.alepha", { recursive: true });
+    await fs.writeFile(
+      "dist/public/.vite/manifest.json",
+      JSON.stringify({ "node_modules/.alepha/index.html": { file: "e.js" } }),
+    );
+    await fs.writeFile(
+      "dist/public/node_modules/.alepha/index.html",
+      "<html></html>",
+    );
+
+    await task.run(createContext(undefined, { reactCompiler: true }));
+
+    const names = vite.configs[0].plugins.map((p: any) => p?.name);
+    expect(names).toContain("fake:react-compiler");
+  });
+
+  it("should not add the React Compiler plugin by default", async ({
+    expect,
+  }) => {
+    const { task, fs, vite } = setup();
+    vite.withReact = true;
+
+    await fs.mkdir("dist/public/node_modules/.alepha", { recursive: true });
+    await fs.writeFile(
+      "dist/public/.vite/manifest.json",
+      JSON.stringify({ "node_modules/.alepha/index.html": { file: "e.js" } }),
+    );
+    await fs.writeFile(
+      "dist/public/node_modules/.alepha/index.html",
+      "<html></html>",
+    );
+
+    await task.run(createContext(undefined));
+
+    const names = vite.configs[0].plugins.map((p: any) => p?.name);
+    expect(names).not.toContain("fake:react-compiler");
   });
 });

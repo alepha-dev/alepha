@@ -10,6 +10,14 @@ ignores:
     # workspace packages above.
     - '@alepha/sigil'
     - '@vitejs/plugin-react'
+    # The React Compiler pipeline, reached only through
+    # `createRequire(import.meta.url)(...)` in `ViteUtils.importReactCompilerPlugin`
+    # when `reactCompiler` is enabled, so depcheck sees no import for any of the
+    # three. `@babel/core` is additionally a peer dependency the other two load
+    # themselves.
+    - '@rolldown/plugin-babel'
+    - 'babel-plugin-react-compiler'
+    - '@babel/core'
     - 'jsdom'
     - '@vitest/coverage-v8'
     - 'drizzle-kit'

@@ -122,6 +122,31 @@ export class ViteUtils {
     }
   }
 
+  /**
+   * Lazy-load the React Compiler pipeline.
+   *
+   * Returns a `@rolldown/plugin-babel` instance preconfigured with the
+   * `reactCompilerPreset` from `@vitejs/plugin-react`, whose file filter
+   * keeps non-React modules on Vite's native transform path.
+   *
+   * Unlike `importViteReact`, a load failure throws instead of skipping:
+   * this is only reached when `reactCompiler` was explicitly enabled, and
+   * silently building without the compiler would misreport every
+   * measurement made against that build.
+   */
+  public async importReactCompilerPlugin(): Promise<any> {
+    try {
+      const require_ = createRequire(import.meta.url);
+      const { reactCompilerPreset } = require_("@vitejs/plugin-react");
+      const { default: babel } = require_("@rolldown/plugin-babel");
+      return babel({ presets: [reactCompilerPreset()] });
+    } catch {
+      throw new AlephaError(
+        "React Compiler requires @vitejs/plugin-react, @rolldown/plugin-babel, @babel/core and babel-plugin-react-compiler. They ship with `alepha`; reinstall your dependencies to use `reactCompiler`.",
+      );
+    }
+  }
+
   // ---------------------------------------------------------------------------------------------------------------
   // Buffered logger
   // ---------------------------------------------------------------------------------------------------------------
