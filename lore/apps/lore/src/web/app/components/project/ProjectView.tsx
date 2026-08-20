@@ -432,11 +432,17 @@ const ProjectView = () => {
       }),
     });
   }
-  // The epic detail page contributes the epic's own title as a leaf, so the
-  // header reads "Project › Epics › Lore Deploy" rather than stopping at the
-  // section. No `href`: the leaf is the page already open.
+  // The epic detail page contributes the epic's own `#number` as a leaf, so
+  // the header reads "Project › Epics › #2". No `href`: the leaf is the page
+  // already open.
+  //
+  // The number, not the title, for the reason the quest leaf below gives and
+  // one more: the title now heads `ProjectEpicAside`, immediately under this
+  // bar, so a crumb repeating it would put the same words twice on screen a
+  // few pixels apart. The identifier and the name are split across the two,
+  // one each.
   if (name === "projectEpic" && epic) {
-    breadcrumbs.push({ label: epic.title });
+    breadcrumbs.push({ label: `#${epic.number}` });
   }
   // Same shape for the quest detail page: `#1208` as an inert leaf. The
   // number, not the title — the title is already the first thing on the page,
