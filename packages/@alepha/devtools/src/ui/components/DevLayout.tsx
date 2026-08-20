@@ -13,21 +13,20 @@ import {
   KeyRound,
   LayoutDashboard,
   List,
-  Lock,
   LockOpen,
   Network,
   Radio,
   RotateCw,
   ShieldCheck,
   Table2,
+  UserRound,
   Variable,
   Zap,
 } from "lucide-react";
 import type { ComponentType } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useDevAuth } from "../hooks/useDevAuth.ts";
+import { useDevSession } from "../hooks/useDevSession.ts";
 import { useMetadata } from "../hooks/useMetadata.ts";
-import { AuthorizeSheet } from "./shared/AuthorizeSheet.tsx";
 import { CommandPalette } from "./shared/CommandPalette.tsx";
 import { DevNavItem } from "./shared/DevNavItem.tsx";
 
@@ -50,9 +49,8 @@ const DevLayout = () => {
   const state = useRouterState();
   const router = useRouter();
   const meta = useMetadata();
-  const auth = useDevAuth();
+  const session = useDevSession();
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [authOpen, setAuthOpen] = useState(false);
 
   /**
    * DevTools v1 is dark-only by design. Screens still on the shadcn stack read
@@ -212,6 +210,31 @@ const DevLayout = () => {
     [state.url.pathname],
   );
 
+  /**
+   * The chip's own copy. `loading` gets its own word so the topbar never
+   * flashes "Not signed in" during the round-trip, which would read as a
+   * verdict rather than as "not known yet".
+   */
+  const sessionLabel = session.loading
+    ? "Session…"
+    : (session.user?.name ??
+      session.user?.username ??
+      session.user?.email ??
+      session.user?.id ??
+      "Not signed in");
+
+  const sessionTitle = session.user
+    ? [
+        "Try It requests run as this session.",
+        session.user.realm ? `Realm: ${session.user.realm}` : undefined,
+        session.user.roles?.length
+          ? `Roles: ${session.user.roles.join(", ")}`
+          : "No roles",
+      ]
+        .filter(Boolean)
+        .join("\n")
+    : "Try It requests run unauthenticated. Sign in to the application itself, then come back.";
+
   return (
     <TooltipProvider>
       <DialogProvider>
@@ -239,15 +262,26 @@ const DevLayout = () => {
 
             <span style={{ marginLeft: "auto" }} />
 
+            {/*
+             * A status chip, not a login. Devtools presents no credential of
+             * its own: Try It rides the application's own session cookie, so
+             * the only useful thing this can do is report who that is.
+             * Signed out, it opens the application so you can go and log in;
+             * signed in, it re-reads the session.
+             */}
             <button
               type="button"
               className="dt-btn"
-              data-on={auth.authorized || undefined}
-              onClick={() => setAuthOpen(true)}
-              title="Credentials applied to Try It requests"
+              data-on={session.user ? true : undefined}
+              onClick={() =>
+                session.user
+                  ? session.reload()
+                  : window.open("/", "_blank", "noopener")
+              }
+              title={sessionTitle}
             >
-              {auth.authorized ? <Lock size={11} /> : <LockOpen size={11} />}
-              {auth.authorized ? "Authorized" : "Authorize"}
+              {session.user ? <UserRound size={11} /> : <LockOpen size={11} />}
+              {sessionLabel}
             </button>
 
             <button
@@ -298,7 +332,6 @@ const DevLayout = () => {
             }}
           />
         )}
-        {authOpen && <AuthorizeSheet onClose={() => setAuthOpen(false)} />}
         <Toaster />
       </DialogProvider>
     </TooltipProvider>

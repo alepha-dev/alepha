@@ -247,6 +247,37 @@ for (const impl of implementations) {
         await expect(fs.readFile(join(base, "nope.txt"))).rejects.toThrow();
       });
 
+      it("appends to an existing file instead of replacing it", async () => {
+        const { fs, base } = await setup();
+        const path = join(base, "log.jsonl");
+
+        await fs.writeFile(path, "first\n");
+        await fs.appendFile(path, "second\n");
+        await fs.appendFile(path, "third\n");
+
+        expect(await fs.readTextFile(path)).toBe("first\nsecond\nthird\n");
+      });
+
+      it("creates the file when appending to a path that does not exist", async () => {
+        const { fs, base } = await setup();
+        const path = join(base, "fresh.jsonl");
+
+        await fs.appendFile(path, "line\n");
+
+        expect(await fs.exists(path)).toBe(true);
+        expect(await fs.readTextFile(path)).toBe("line\n");
+      });
+
+      it("appends binary payloads byte for byte", async () => {
+        const { fs, base } = await setup();
+        const path = join(base, "b.bin");
+
+        await fs.appendFile(path, Buffer.from([1, 2]));
+        await fs.appendFile(path, Buffer.from([3]));
+
+        expect([...(await fs.readFile(path))]).toEqual([1, 2, 3]);
+      });
+
       it("round-trips JSON through writeJsonFile/readJsonFile", async () => {
         const { fs, base } = await setup();
         const value = { name: "alepha", nested: { n: 1 } };

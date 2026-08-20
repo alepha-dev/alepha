@@ -1,7 +1,7 @@
 import { $hook, $inject, $store, Alepha, z } from "alepha";
 import { JobService } from "alepha/api/jobs";
 import { localEmailOptions } from "alepha/email";
-import { $logger, MemoryDestinationProvider } from "alepha/logger";
+import { $logger } from "alepha/logger";
 import { RepositoryProvider } from "alepha/orm";
 import { $route, ServerProvider } from "alepha/server";
 import { $serve } from "alepha/server/static";
@@ -9,6 +9,7 @@ import { FileSystemProvider } from "alepha/system";
 import { devtoolsAssets } from "../assets.ts";
 import { devMetadataSchema } from "../schemas/DevMetadata.ts";
 import { DevAtomLogProvider } from "./DevAtomLogProvider.ts";
+import { DevLogStoreProvider } from "./DevLogStoreProvider.ts";
 import { DevToolsMetadataProvider } from "./DevToolsMetadataProvider.ts";
 
 export class DevToolsProvider {
@@ -16,7 +17,7 @@ export class DevToolsProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly serverProvider = $inject(ServerProvider);
   protected readonly devCollectorProvider = $inject(DevToolsMetadataProvider);
-  protected readonly memoryDestination = $inject(MemoryDestinationProvider);
+  protected readonly logStore = $inject(DevLogStoreProvider);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly emailOptions = $store(localEmailOptions);
   protected readonly atomLog = $inject(DevAtomLogProvider);
@@ -27,18 +28,6 @@ export class DevToolsProvider {
       this.log.info("Devtools OK", {
         url: `${this.serverProvider.hostname}/__devtools/`,
       });
-    },
-  });
-
-  /**
-   * Capture all logs into memory so the devtools UI can display them.
-   * In dev mode, LogDestinationProvider is bound to ConsoleDestinationProvider,
-   * so MemoryDestinationProvider would otherwise never receive writes.
-   */
-  protected readonly onLog = $hook({
-    on: "log",
-    handler: ({ entry }) => {
-      this.memoryDestination.write("", entry);
     },
   });
 
@@ -58,6 +47,61 @@ export class DevToolsProvider {
     },
     handler: () => {
       return this.devCollectorProvider.getMetadata();
+    },
+  });
+
+  // -------------------------------------------------------------------------------------------------------------------
+  // Session endpoint
+  //
+  // Whoever the *inspected application* currently considers the caller to be.
+  // `ServerSecurityProvider` resolves `request.user` on every route, from
+  // whichever channel authenticated it: the encrypted `tokens` cookie an
+  // interactive login writes, a bearer header, or an API key. So devtools
+  // needs no credential of its own. Logging in happens in the app; this only
+  // reports the result.
+  //
+  // The response deliberately omits `token`. `schema.response` is what
+  // serializes, so declaring the fields is also what stops the access token
+  // reaching the browser.
+  // -------------------------------------------------------------------------------------------------------------------
+
+  protected readonly sessionRoute = $route({
+    method: "GET",
+    path: "/__devtools/api/session",
+    silent: true,
+    schema: {
+      response: z.object({
+        user: z
+          .object({
+            id: z.text(),
+            name: z.text().optional(),
+            email: z.text().optional(),
+            username: z.text().optional(),
+            picture: z.text().optional(),
+            roles: z.array(z.text()).optional(),
+            realm: z.text().optional(),
+          })
+          .optional(),
+      }),
+    },
+    handler: ({ user }) => {
+      if (!user) {
+        // No security module loaded, or nobody signed in. Both are the same
+        // answer to the only question the UI asks.
+        return {};
+      }
+
+      return {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          username: user.username,
+          picture: user.picture,
+          roles: user.roles,
+          realm: user.realm,
+        },
+      };
     },
   });
 
@@ -146,7 +190,10 @@ export class DevToolsProvider {
     },
     handler: ({ query }) => {
       const levelOrder = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"];
-      let entries = this.memoryDestination.logs;
+      // The previous run's restored tail, then this one's. See
+      // `DevLogStoreProvider`: the two are kept apart so a busy session cannot
+      // evict the crash you restarted in order to read.
+      let entries = this.logStore.entries();
 
       if (query.level) {
         const minIndex = levelOrder.indexOf(query.level.toUpperCase());

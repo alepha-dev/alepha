@@ -4,6 +4,7 @@ export * from "./schemas/DevCacheMetadata.ts";
 export * from "./schemas/DevEntityMetadata.ts";
 export * from "./schemas/DevEnvMetadata.ts";
 export * from "./schemas/DevJobMetadata.ts";
+export * from "./schemas/DevLogMarker.ts";
 export * from "./schemas/DevMetadata.ts";
 export * from "./schemas/DevModuleMetadata.ts";
 export * from "./schemas/DevPageMetadata.ts";

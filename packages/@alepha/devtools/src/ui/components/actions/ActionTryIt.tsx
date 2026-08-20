@@ -6,7 +6,6 @@ import { HttpClient } from "alepha/server";
 import { useCallback, useMemo, useState } from "react";
 import type { DevActionMetadata } from "../../../schemas/DevActionMetadata.ts";
 import { useActionHistory } from "../../hooks/useActionHistory.ts";
-import { useDevAuth } from "../../hooks/useDevAuth.ts";
 
 const EMPTY_SCHEMA = z.object({});
 
@@ -32,7 +31,6 @@ interface TryItResponse {
 export const ActionTryIt = (props: ActionTryItProps) => {
   const action = props.action;
   const http = useInject(HttpClient);
-  const auth = useDevAuth();
   const history = useActionHistory(`${action.method}:${action.fullPath}`);
   const [response, setResponse] = useState<TryItResponse | null>(null);
   const [sending, setSending] = useState(false);
@@ -98,14 +96,17 @@ export const ActionTryIt = (props: ActionTryItProps) => {
       const isGet = action.method.toUpperCase() === "GET";
       const res = await http.fetch(buildUrl(), {
         method: action.method,
+        // Devtools is served from the application's own origin, so the session
+        // cookie is the credential. Stated rather than left to the browser
+        // default, because the whole point of the request is to run as whoever
+        // is signed in: an implicit default is not something the next reader
+        // should have to look up.
+        credentials: "include",
         body:
           !isGet && bodySchema
             ? JSON.stringify(bodyForm.currentValues)
             : undefined,
-        headers: {
-          ...(isGet ? {} : { "Content-Type": "application/json" }),
-          ...auth.toHeaders(),
-        },
+        headers: isGet ? {} : { "Content-Type": "application/json" },
       });
       const ms = Math.round(performance.now() - started);
       setResponse({ status: res.status, data: res.data, ms });
@@ -142,7 +143,6 @@ export const ActionTryIt = (props: ActionTryItProps) => {
     paramsForm,
     queryForm,
     history,
-    auth,
   ]);
 
   return (

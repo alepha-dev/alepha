@@ -2,6 +2,7 @@ import { z } from "alepha";
 import { useQueryParams } from "alepha/react/router";
 import { Pause, Play, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
+import { DEV_LOG_RESTART_TYPE } from "../../../schemas/DevLogMarker.ts";
 import { type LogEntry, useLogTail } from "../../hooks/useLogTail.ts";
 import { DevEmpty } from "../shared/DevEmpty.tsx";
 import { DevError } from "../shared/DevError.tsx";
@@ -32,6 +33,15 @@ export const detectEventType = (data: any): string | undefined => {
   if (data.type === "db:query") return "db";
   return undefined;
 };
+
+/**
+ * The synthetic entry devtools writes when it restores a previous run's logs.
+ *
+ * Read off the structure, never the message, so an application that happens to
+ * log the same words cannot draw a divider through its own output.
+ */
+const isRestartMarker = (entry: LogEntry): boolean =>
+  entry.data?.type === DEV_LOG_RESTART_TYPE;
 
 const formatTime = (ts: number): string => {
   const d = new Date(ts);
@@ -155,6 +165,49 @@ export const DevLogs = () => {
               <tbody>
                 {tail.entries.map((entry, i) => {
                   const kind = detectEventType(entry.data);
+
+                  if (isRestartMarker(entry)) {
+                    return (
+                      <tr key={`${entry.timestamp}-${i}`}>
+                        <td
+                          colSpan={6}
+                          style={{
+                            padding: "10px 14px",
+                            color: "var(--dt-fg-faint)",
+                            fontSize: 10,
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          <span
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 10,
+                            }}
+                          >
+                            <span
+                              style={{
+                                flex: 1,
+                                height: 1,
+                                background: "var(--dt-border)",
+                              }}
+                            />
+                            App restarted · {formatTime(entry.timestamp)}
+                            <span
+                              style={{
+                                flex: 1,
+                                height: 1,
+                                background: "var(--dt-border)",
+                              }}
+                            />
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  }
+
                   return (
                     <tr
                       key={`${entry.timestamp}-${i}`}
