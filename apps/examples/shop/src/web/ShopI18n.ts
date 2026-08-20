@@ -7,7 +7,7 @@ import { $dictionary } from "alepha/react/i18n";
  * The shop's interface, in French and English.
  *
  * French is the atelier's own language and reads as the original; the English is
- * a translation, written to be plain rather than clever — "Add to basket", not
+ * a translation, written to be plain rather than clever: "Add to basket", not
  * "Make it yours".
  *
  * ### What is *not* translated, and why it matters
@@ -26,7 +26,7 @@ export class ShopI18n {
     lazy: async () => ({
       default: {
         /*
-         * `@alepha/ui`'s own French strings — dialogs, tables, the auth screens.
+         * `@alepha/ui`'s own French strings: dialogs, tables, the auth screens.
          *
          * Spread first so anything the shop redefines below wins. Without it the
          * confirmation dialogs said "Cancel / Confirm" and the back-office table
@@ -35,7 +35,7 @@ export class ShopI18n {
          * indistinguishable from a deliberate one.
          *
          * ⚠️ **This has a mirror-image bug that is still open.** `tr()` falls
-         * back to `fallbackLang` — French here — before it reaches a
+         * back to `fallbackLang` (French here) before it reaches a
          * component's `default:`, so all 454 keys below now resolve to FRENCH
          * for an English visitor. `/admin/jobs` in English shows a column
          * headed "Nom". `@alepha/ui` ships no `uiEn` to spread into the English
@@ -126,7 +126,7 @@ export class ShopI18n {
         "checkout.back": "Retour",
         "checkout.shippingTitle": "Comment livrons-nous ?",
         "checkout.noShipping":
-          "Rien à expédier — votre commande est dématérialisée.",
+          "Rien à expédier : votre commande est dématérialisée.",
         "checkout.oneDay": "$1 jour ouvré",
         "checkout.days": "$1 à $2 jours ouvrés",
         "checkout.free": "Offerte",
@@ -185,7 +185,7 @@ export class ShopI18n {
         "atelier.silver": "Argent sterling",
         "atelier.silverSub": "925 millièmes d'argent fin",
         "atelier.marksLede":
-          "Chaque pièce est frappée à l'intérieur : le titre du métal, puis notre losange. C'est cette marque que vous voyez partout sur ce site — elle dit de quoi la pièce est faite, rien d'autre.",
+          "Chaque pièce est frappée à l'intérieur : le titre du métal, puis notre losange. C'est cette marque que vous voyez partout sur ce site : elle dit de quoi la pièce est faite, rien d'autre.",
         "atelier.drawingsTitle": "Les dessins",
         "atelier.drawingsLede":
           "Les images du catalogue sont les dessins d'atelier, pas des photographies. C'est sous cette forme que la pièce existe d'abord : un tracé coté, une cire, une fonte, puis la lime et le poli. Nous préférons vous montrer l'intention que la lumière d'un studio.",
@@ -213,10 +213,10 @@ export class ShopI18n {
          * Not optional even though the components already default to English:
          * `tr()` tries this dictionary, then `fallbackLang` (`fr`), and only
          * then the component's `default:`. Without it, every key `commerceFr`
-         * defines resolves to French here — which is exactly how the English
+         * defines resolves to French here, which is exactly how the English
          * back office ended up with a French table.
          *
-         * The same trap still applies to `uiFr`, which has no English twin —
+         * The same trap still applies to `uiFr`, which has no English twin:
          * see the note above it in the `fr` block.
          */
         ...commerceEn,
@@ -249,7 +249,7 @@ export class ShopI18n {
         "produit.soldOut": "Sold out",
         "produit.added": "$1 is in your basket.",
         "produit.addFailedStock":
-          "That one has just gone. Write to us — we make them again.",
+          "That one has just gone. Write to us, we make them again.",
         "produit.addFailed": "This piece cannot be added right now.",
         "produit.instant": "Sent by email immediately",
         "produit.engraved": "Engraved to order",
@@ -284,7 +284,7 @@ export class ShopI18n {
         "checkout.continue": "Continue",
         "checkout.back": "Back",
         "checkout.shippingTitle": "How are we sending it?",
-        "checkout.noShipping": "Nothing to ship — your order is digital.",
+        "checkout.noShipping": "Nothing to ship: your order is digital.",
         "checkout.oneDay": "$1 working day",
         "checkout.days": "$1 to $2 working days",
         "checkout.free": "Free",
@@ -339,7 +339,7 @@ export class ShopI18n {
         "atelier.silver": "Sterling silver",
         "atelier.silverSub": "925 parts per thousand fine silver",
         "atelier.marksLede":
-          "Every piece is struck on the inside: the metal's fineness, then our lozenge. That mark is what you see all over this site — it says what the piece is made of, and nothing else.",
+          "Every piece is struck on the inside: the metal's fineness, then our lozenge. That mark is what you see all over this site: it says what the piece is made of, and nothing else.",
         "atelier.drawingsTitle": "The drawings",
         "atelier.drawingsLede":
           "The catalogue images are workshop drawings, not photographs. That is the form a piece exists in first: a dimensioned line, a wax, a casting, then the file and the polish. We would rather show you the intent than a studio light.",
