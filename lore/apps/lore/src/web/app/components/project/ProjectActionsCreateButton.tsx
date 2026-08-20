@@ -10,6 +10,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@alepha/ui/components/ui/dropdown-menu";
 import { Input } from "@alepha/ui/components/ui/input";
@@ -77,8 +78,8 @@ const ProjectActionsCreateButton = () => {
   const feedbackEnabled = features.feedback;
   const epicsEnabled = features.epics;
   const isOwner = project.createdBy === auth.user?.id;
-  const hasSecondaryAction =
-    epicsEnabled || folioEnabled || feedbackEnabled || isOwner;
+  const hasCreateAction = epicsEnabled || folioEnabled || feedbackEnabled;
+  const hasSecondaryAction = hasCreateAction || isOwner;
 
   const handleInvite = async () => {
     if (!inviteEmail.trim()) {
@@ -121,7 +122,7 @@ const ProjectActionsCreateButton = () => {
           disabled={!canCreateQuest}
           onClick={() => setShowDialog(true)}
           aria-label={mainLabel}
-          className={`${mainClass} md:w-auto md:px-4`}
+          className={`${mainClass} md:w-auto md:gap-1.5 md:px-4`}
         >
           <Plus className="size-4" />
           <span className="hidden md:inline">{mainLabel}</span>
@@ -171,6 +172,7 @@ const ProjectActionsCreateButton = () => {
                   {tr("project.menu.create-feedback")}
                 </DropdownMenuItem>
               )}
+              {isOwner && hasCreateAction && <DropdownMenuSeparator />}
               {isOwner && (
                 <DropdownMenuItem onClick={() => setShowInvite(true)}>
                   <UserPlus className="size-4" />

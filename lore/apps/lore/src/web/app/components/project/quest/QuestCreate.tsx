@@ -17,6 +17,7 @@ import {
   Hourglass,
   Link2,
   ListChecks,
+  Paperclip,
   Plus,
   Save,
   Signature,
@@ -24,7 +25,7 @@ import {
   Tags as TagsIcon,
   Tent,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { AreaController } from "@/api/controllers/AreaController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
@@ -35,6 +36,7 @@ import { currentAreasAtom } from "@/web/app/atoms/currentAreasAtom.ts";
 import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuestsAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import { useLoreEditorControl } from "../../shared/element/useLoreEditorControl.ts";
+import QuestAttachments from "./QuestAttachments.tsx";
 import QuestCreateObjectives from "./QuestCreateObjectives.tsx";
 import QuestDependencyPicker from "./QuestDependencyPicker.tsx";
 import QuestEstimateInput from "./QuestEstimateInput.tsx";
@@ -157,6 +159,21 @@ const QuestCreate = (props: QuestCreateProps) => {
     id: props.quest?.id,
   });
 
+  // No `questId` on create: the quest does not exist yet, so the chips run
+  // on the metadata seeded at upload time. On edit it is passed, and the
+  // server fills in names for attachments from earlier sessions.
+  const AttachmentsField = useMemo(
+    () =>
+      (fieldProps: { value?: string[]; onChange?: (v: string[]) => void }) => (
+        <QuestAttachments
+          questId={props.quest?.id}
+          value={fieldProps.value ?? []}
+          onChange={(next) => fieldProps.onChange?.(next)}
+        />
+      ),
+    [props.quest?.id],
+  );
+
   const areas = (currentAreas ?? []).map((a) => a.name);
 
   return (
@@ -188,29 +205,56 @@ const QuestCreate = (props: QuestCreateProps) => {
           custom={DescriptionEditor as never}
         />
 
-        <Separator />
-
+        {/* Below the description, because that is what an attachment is
+            attached TO: a screenshot of the bug the description describes.
+            Bound once for the same reason the editor above is — a component
+            rebuilt each render remounts its file input and loses the drag
+            state mid-drop. */}
         <Control
-          input={form.input.priority}
-          label={tr("quest.create.priority")}
-          description={tr("quest.create.priority.helper")}
-          segmented
+          label={tr("quest.view.attachments")}
+          input={form.input.attachments}
+          icon={Paperclip}
+          custom={AttachmentsField as never}
         />
 
-        {/* Estimation is a methodology, not a default — see
-            `projectFeaturesSchema.questEstimate`. With the switch off the
-            field is not rendered, but a stored estimate still rides along
-            in `initialValues` and is submitted untouched, so turning the
-            switch back on shows the old value rather than a blank. */}
-        {questEstimateEnabled && (
+        <Separator />
+
+        {/* Priority and Estimate share a row, the same 50/50 the Name and
+            Area pair above uses. They answer the two halves of "how does
+            this rank": how urgent, and how big.
+
+            The grid is applied only when Estimate actually renders. Left on
+            unconditionally, a project with estimation switched off would sit
+            Priority in a half-width column with dead space beside it. */}
+        <div
+          className={
+            questEstimateEnabled
+              ? "grid grid-cols-1 gap-3 md:grid-cols-2"
+              : undefined
+          }
+        >
           <Control
-            label={tr("quest.create.estimate")}
-            description={tr("quest.create.estimate.helper")}
-            input={form.input.estimateMinutes}
-            icon={Hourglass}
-            custom={QuestEstimateInput as never}
+            input={form.input.priority}
+            label={tr("quest.create.priority")}
+            description={tr("quest.create.priority.helper")}
+            segmented
           />
-        )}
+
+          {/* Estimation is a methodology, not a default — see
+              `projectFeaturesSchema.questEstimate`. With the switch off the
+              field is not rendered, but a stored estimate still rides along
+              in `initialValues` and is submitted untouched, so turning the
+              switch back on shows the old value rather than a blank. */}
+          {questEstimateEnabled && (
+            <Control
+              label={tr("quest.create.estimate")}
+              description={tr("quest.create.estimate.helper")}
+              input={form.input.estimateMinutes}
+              icon={Hourglass}
+              custom={QuestEstimateInput as never}
+            />
+          )}
+        </div>
 
         <Control
           label={tr("quest.create.tags")}
