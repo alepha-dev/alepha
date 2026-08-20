@@ -883,7 +883,7 @@ export default {
   "sigils.create.submit": "Enroll",
   "sigils.create.ownerOnly": "Only the project owner can enroll an app.",
   "sigils.token.title":
-    "Copy this token now — it is stored hashed and will never be shown again. Set it as SIGIL_KEY in the app, alongside SIGIL_SINK pointing at this instance.",
+    "Copy this token now: it is stored hashed and will never be shown again. Set it as SIGIL_KEY in the app, which is the only variable an app needs. Add SIGIL_SINK pointing at this instance if it is not the app's default sink.",
   "sigils.token.copy": "Copy token",
   "sigils.token.done": "Done",
   "sigils.lastSeen": "last reported $1",

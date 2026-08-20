@@ -34,7 +34,7 @@ const alepha = Alepha.create()
 Unlike Stripe, Mollie does not sign webhook payloads. The body only carries
 the payment id; `MolliePaymentProvider.parseWebhook` re-fetches the payment
 through the authenticated SDK client. The fetch itself is the authentication
-boundary — an attacker can POST a fake id but cannot forge a payment state.
+boundary: an attacker can POST a fake id but cannot forge a payment state.
 
 ### Limitations
 

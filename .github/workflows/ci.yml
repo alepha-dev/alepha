@@ -365,10 +365,11 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      # Sigil reads both from env now — the appetite used to be fetched from the
-      # sink, which on this runtime meant refetching it on nearly every request.
-      # Absent, the module goes inert rather than failing, so a missing one here
-      # costs telemetry and nothing else.
+      # The key is the whole enrolment: it authorises the reporting and names
+      # the project, so nothing has to be kept in sync with it. SIGIL_CONFIG is
+      # optional switches, and SIGIL_SINK is unset because Lore reports to the
+      # default sink, which is itself. Absent, the module goes inert rather
+      # than failing, so a missing one here costs telemetry and nothing else.
       SIGIL_KEY: ${{ secrets.SIGIL_KEY }}
       SIGIL_CONFIG: ${{ secrets.SIGIL_CONFIG }}
 
@@ -391,7 +392,8 @@ jobs:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
           TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
-          # No SIGIL_SINK / SIGIL_KEY here on purpose. Lore is the sink, and a
-          # Cloudflare Worker cannot fetch its own hostname — pointing Lore at
-          # itself would make every flush a failed subrequest. It reports
-          # nothing; other apps report to it.
+          # No SIGIL_SINK here on purpose. Lore IS the sink, and a Cloudflare
+          # Worker cannot fetch its own hostname, so pointing Lore at an origin
+          # would make every flush a failed subrequest. It still reports: the
+          # key above enrols it, and `LoreSigilSinkProvider` routes its own
+          # batches in process instead of over HTTP.

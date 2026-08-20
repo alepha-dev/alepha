@@ -57,6 +57,19 @@ export const coerceScalar = (schema: unknown, value: unknown): unknown => {
   // stray comma in a dashboard textarea into a validation error naming the
   // variable, instead of an exception thrown from a parser nobody called.
   if (z.schema.isObject(base) || z.schema.isArray(base)) {
+    // Empty means absent, which for a structured field is the only reading
+    // that can be right: `""` is not a document, so it could otherwise do
+    // nothing but fail validation.
+    //
+    // It is also the shape every CI system produces for a secret that is not
+    // set. `${{ secrets.MISSING }}` interpolates to the empty string, so
+    // deleting a secret while its workflow line stands used to turn a variable
+    // that had been optional all along into a boot-time SchemaValidationError.
+    // Removing an optional variable should not be able to take an app down.
+    if (value.trim() === "") {
+      return undefined;
+    }
+
     const first = value.trimStart()[0];
     if (first === "{" || first === "[") {
       try {

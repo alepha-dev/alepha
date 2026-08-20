@@ -1,3 +1,4 @@
+import { sigilKeyPrefix, sigilKeyProject } from "@alepha/sigil/key";
 import { expect, type Page, test } from "@playwright/test";
 import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
 
@@ -246,9 +247,15 @@ test.describe("Sigils", () => {
       // app has not reported — the two facts the list exists to carry. Asserted
       // *on the row* rather than on the page, so "the list shows this" cannot be
       // satisfied by a toast that happens to say the same thing.
+      // The minted token names the project it reports into, which is what
+      // spares the app a second variable saying so. Asserted here rather than
+      // only in the unit specs because this is the one place the whole chain
+      // runs: a real project, its real slug, and the token an operator copies.
+      expect(sigilKeyProject(token)).toBeTruthy();
+
       const row = sigilRows(page, appName);
       await expect(row).toHaveCount(1, { timeout: 15_000 });
-      await expect(row.getByText(`${token.slice(0, 11)}…`)).toBeVisible();
+      await expect(row.getByText(`${sigilKeyPrefix(token)}…`)).toBeVisible();
       await expect(row.getByText(/never reported/i)).toBeVisible();
     });
 

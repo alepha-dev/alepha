@@ -1,6 +1,8 @@
+import { sigilKeyBuild, sigilKeyPrefix } from "@alepha/sigil/key";
 import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { $repository } from "alepha/orm";
+import { projects } from "../entities/projects.ts";
 import { type Sigil, sigils } from "../entities/sigils.ts";
 
 /**
@@ -21,6 +23,7 @@ import { type Sigil, sigils } from "../entities/sigils.ts";
 export class SigilTokenService {
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly sigils = $repository(sigils);
+  protected readonly projects = $repository(projects);
 
   /**
    * Mints a token, returning the only cleartext copy that will ever exist.
@@ -28,13 +31,33 @@ export class SigilTokenService {
    * Stored hashed for the same reason a password is: a database that leaks
    * should not be a fleet that leaks. The prefix is kept so the UI can name a
    * token without being able to reconstruct it.
+   *
+   * **The project slug rides in the token**, so an enrolled app can address its
+   * own project without asking. It is not a second credential and protects
+   * nothing: the slug is already printed into the feedback link on every page
+   * the app renders. What it buys is that the app no longer has to be TOLD its
+   * own project in a second variable that could disagree with this one.
+   *
+   * A project with no slug mints the older shape, with no namespace. Every live
+   * row has one and every write path sets it, so this is the theoretical case
+   * rather than the expected one - and a key with no slug is a working
+   * credential that merely offers no feedback link, which beats baking a
+   * guessed slug into a URL readers will follow.
    */
-  mint(): { token: string; hash: string; prefix: string } {
-    const token = `sg_${this.crypto.randomText(32)}`;
+  async mint(
+    projectId: number,
+  ): Promise<{ token: string; hash: string; prefix: string }> {
+    const project = await this.projects.findOne({
+      where: { id: { eq: projectId } },
+    });
+    const secret = this.crypto.randomText(32);
+    const token = project?.slug
+      ? sigilKeyBuild(project.slug, secret)
+      : `sg_${secret}`;
     return {
       token,
       hash: this.crypto.hash(token),
-      prefix: token.slice(0, 11),
+      prefix: sigilKeyPrefix(token),
     };
   }
 
