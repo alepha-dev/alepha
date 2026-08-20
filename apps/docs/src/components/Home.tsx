@@ -25,7 +25,7 @@ const Home = () => {
           Adding a block means re-checking its neighbours, which is what put two
           plain sections back to back once already.
         */}
-        {/* 1 - the ecosystem, generically (plain) */}
+        {/* 1 - the framework, generically (plain) */}
         <HeroSection />
         {/* 2 - one definition, both sides (alt) */}
         <SeamSection />

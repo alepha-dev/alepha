@@ -70,7 +70,7 @@ const StackSection = () => {
           </h2>
           <p className="section-sub">
             Twenty packages means twenty changelogs, twenty release cadences and
-            every breaking change landing on a different Tuesday. The glue
+            every breaking change landing on a different Tuesday. The wiring
             between them is yours to keep working.
           </p>
         </div>

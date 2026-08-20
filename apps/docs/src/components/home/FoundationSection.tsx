@@ -53,8 +53,8 @@ const FoundationSection = () => {
           <h2 className="section-title">Built on what already works</h2>
           <p className="section-sub">
             Alepha does not reinvent the load-bearing parts. It rewrites
-            everything between them, so the pieces you already trust stop
-            needing glue.
+            everything between them, so the pieces you already trust fit
+            together with nothing left to wire.
           </p>
         </div>
 

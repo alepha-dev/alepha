@@ -1,6 +1,6 @@
 {
   "name": "alepha",
-  "description": "A full-stack TypeScript ecosystem. No glue.",
+  "description": "A full-stack TypeScript framework. One schema, everywhere.",
   "author": "Nicolas Foures",
   "version": "0.26.0",
   "type": "module",

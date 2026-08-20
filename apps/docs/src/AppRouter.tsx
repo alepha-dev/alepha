@@ -30,16 +30,16 @@ export class AppRouter {
   sitemap = $sitemap({ hostname: this.env.PUBLIC_URL });
 
   head = $head(() => {
-    // "ecosystem", not "framework": the nav has three products under it, and
-    // the hero says the same word. This string is the one social unfurlers and
-    // search results show, so it is the tagline that has to agree with the
-    // README, the npm description and the repository description.
-    const ogTitle = "Alepha | A full-stack TypeScript ecosystem. No glue.";
+    // This string is the one social unfurlers and search results show, so it
+    // is the tagline that has to agree with the README, the npm description
+    // and the repository description.
+    const ogTitle =
+      "Alepha | A full-stack TypeScript framework. One schema, everywhere.";
     const head: Head = {
       title: "Alepha",
       titleSeparator: " | ",
       description:
-        "Alepha is a full-stack TypeScript ecosystem built for the agentic era: a clean rewrite of server, ORM, auth, queues, and React SSR for Node, Bun, and Cloudflare. No library glue.",
+        "Alepha is a full-stack TypeScript framework: a clean rewrite of server, ORM, auth, queues, and React SSR for Node, Bun, and Cloudflare. One schema, everywhere.",
       image: `${this.env.PUBLIC_URL}/og-image.png`,
       siteName: "Alepha",
       locale: "en_US",
@@ -142,7 +142,7 @@ export class AppRouter {
     label: "Home",
     static: true,
     head: () => ({
-      title: "A full-stack TypeScript ecosystem. No glue.",
+      title: "A full-stack TypeScript framework. One schema, everywhere.",
     }),
   });
 

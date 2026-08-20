@@ -9,7 +9,7 @@
 />
 Alepha
 </h1>
-<p>A full-stack TypeScript ecosystem. No glue.</p>
+<p>A full-stack TypeScript framework. One schema, everywhere.</p>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/v/alepha.svg" alt="npm version"/></a>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/l/alepha.svg" alt="license"/></a>
 <a href="https://codecov.io/gh/feunard/alepha"><img src="https://codecov.io/gh/feunard/alepha/graph/badge.svg?token=ZDLWI514CP" alt="coverage"/></a>
@@ -18,14 +18,14 @@ Alepha
 
 ## What is Alepha?
 
-Alepha is a full-stack TypeScript ecosystem built for the agentic era.
+Alepha is a full-stack TypeScript framework. Define a schema once and it is your database table, your API validation, your TypeScript types and your React form.
 
-Everything between your code and the runtime (HTTP server, routing, auth, queues, storage, jobs, SSR) is rewritten clean and integrated for Node, Bun, and Cloudflare Workers. Two load-bearing layers are deliberately *not* reinvented: **React** for UI and **Drizzle** for SQL. No library glue, no config sprawl: one small, consistent surface of typed primitives.
+Everything between your code and the runtime (HTTP server, routing, auth, queues, storage, jobs, SSR) is rewritten clean and integrated for Node, Bun, and Cloudflare Workers. Two load-bearing layers are deliberately *not* reinvented: **React** for UI and **Drizzle** for SQL. Nothing to wire up, no config sprawl: one small, consistent surface of typed primitives.
 
 One small surface covers the server, the database, auth, background work and React, so a weekend project and a distributed system are the same code with different infrastructure underneath.
 
 - **One schema, everywhere**: database, API validation, TypeScript types and React forms, all from one definition
-- **One surface**: every feature is a typed `$primitive`. No third-party glue to wire up or keep in sync
+- **One surface**: every feature is a typed `$primitive`. Nothing third-party to wire up or keep in sync
 - **Multi-runtime**: the same code runs on Node, Bun, and Cloudflare Workers
 - **Deploy anywhere**: Cloudflare, Vercel, Docker, bare metal
 
@@ -51,7 +51,7 @@ Each layer builds on the previous. Use only what you need: Foundation alone is e
 | **Platform**   | Users, auth, jobs, audits | `$realm`, `$job`, `$audit`, `$notification`             |
 | **Admin**      | Admin panel and auth UI | `$pageAdmin`, `$pageAccount`, `$pageNav`                |
 
-## Built for agents
+## Why so small?
 
 Every feature is one typed `$primitive`: no decorators, no file-system magic, no runtime metadata. An agent reading the code sees exactly what it does, in one place.
 
@@ -61,7 +61,7 @@ The smaller and more consistent the surface, the more reliably an agent generate
 
 ## Example
 
-Define an API, call it from a React page. Typed end-to-end, no codegen, no glue.
+Define an API, call it from a React page. Typed end-to-end, no codegen, nothing to wire.
 
 ```tsx
 // src/Api.ts

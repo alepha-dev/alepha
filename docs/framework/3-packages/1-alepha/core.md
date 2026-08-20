@@ -1,6 +1,6 @@
 # Alepha - Core
 
-A full-stack TypeScript ecosystem. No glue.
+A full-stack TypeScript framework. One schema, everywhere.
 
 ## Installation
 

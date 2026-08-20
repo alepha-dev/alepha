@@ -42,7 +42,7 @@ const HeroSection = () => {
           >
             TypeScript
           </a>{" "}
-          ecosystem. One small surface of typed primitives covers the server,
+          framework. One small surface of typed primitives covers the server,
           the database, auth, background work and{" "}
           <a
             href="https://react.dev"
