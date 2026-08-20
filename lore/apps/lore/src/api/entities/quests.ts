@@ -40,6 +40,15 @@ export const quests = $entity({
     acceptedAt: z.datetime().optional(),
     completedAt: z.datetime().optional(),
     /**
+     * Optional deadline, shown as a chip on the quest and a row in its rail.
+     *
+     * Distinct from `reminderInterval` / `reminderNextAt`, which are a
+     * recurring nudge to the assignee and say nothing about when the work is
+     * wanted. Nullable and never backfilled: a quest without a deadline is
+     * the normal case, not a missing value.
+     */
+    dueAt: z.datetime().optional(),
+    /**
      * Set when the quest is shelved — deliberately set aside as out of
      * scope for now, without deleting it. Only quests still in `new`
      * status can be shelved, so this is never set alongside `acceptedAt`

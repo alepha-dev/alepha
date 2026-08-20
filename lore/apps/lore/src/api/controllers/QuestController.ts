@@ -251,6 +251,9 @@ export class QuestController {
           body.estimateMinutes && body.estimateMinutes > 0
             ? body.estimateMinutes
             : undefined,
+        // `null` and `undefined` both mean "no deadline" on create; the
+        // three-way clear only matters on update.
+        dueAt: body.dueAt ?? undefined,
         objectives: body.objectives,
         attachments: body.attachments,
         tags: body.tags,
@@ -1133,6 +1136,11 @@ export class QuestController {
           // integer sets it; the generic `patch = { ...body }` spread below
           // applies it as-is (set / clear / leave-unchanged).
           estimateMinutes: z.integer().min(1).nullable().optional(),
+          // Optional deadline. Same three-way shape as `estimateMinutes`:
+          // `null` clears the column, a datetime sets it, omitted leaves it
+          // alone. Picking from the entity schema would collapse that to
+          // set-or-leave and there would be no way to remove a due date.
+          dueAt: z.datetime().nullable().optional(),
           // Overrides the bare `z.string()` picked from `quests.schema` —
           // mirrors `areas.name`'s `.max(48)` so a too-long area is a clean
           // 400 from THIS schema, not a 500 thrown out of `ensureArea`.
