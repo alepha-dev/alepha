@@ -1,7 +1,7 @@
 import { useI18n } from "alepha/react/i18n";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
-import QuestGraph from "../quest/QuestGraph.tsx";
+import Questline from "../quest/questline/Questline.tsx";
 
 export interface ProjectEpicFlowProps {
   /**
@@ -9,18 +9,17 @@ export interface ProjectEpicFlowProps {
    * so a failed reload never renders as "this epic has no dependencies".
    */
   quests: QuestResource[] | null;
+  onQuestChange: (quest: QuestResource) => void;
 }
 
 /**
- * The Flow tab: `QuestGraph` in subset mode over the epic's own quests.
+ * The Flow tab: the epic's own quests, as the questlines they form.
  *
- * The graph renders them even when they carry no `dependsOn` edges at all,
- * and keeps an out-of-epic predecessor as a stub node so a blocked quest
- * never looks ready just because its blocker lives in another epic.
- *
- * It fills the tab rather than sitting in a fixed-height band, which is the
- * whole reason it left the Quests card: a dependency graph is the one thing
- * on this page that gets better with more room.
+ * It hands `Questline` the quests the page has **already fetched** rather
+ * than letting it fetch its own copy. The surface this replaced kept a
+ * second, poorer copy of the whole project's graph and polled it every
+ * minute, which is how one browser tab once spent 51 minutes at one request
+ * per second (folio #1057). The page owns the data; this tab draws it.
  */
 const ProjectEpicFlow = (props: ProjectEpicFlowProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -42,9 +41,7 @@ const ProjectEpicFlow = (props: ProjectEpicFlowProps) => {
   }
 
   return (
-    <div className="min-h-0 flex-1">
-      <QuestGraph questIds={new Set(props.quests.map((q) => q.id))} />
-    </div>
+    <Questline quests={props.quests} onQuestChange={props.onQuestChange} />
   );
 };
 
