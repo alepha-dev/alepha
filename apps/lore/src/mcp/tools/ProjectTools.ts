@@ -174,7 +174,6 @@ export class ProjectTools {
           title: quest.title,
           area: quest.area,
           priority: quest.priority,
-          difficulty: quest.difficulty,
         })),
         isOwner: result.member?.owner ?? false,
       };
@@ -279,7 +278,6 @@ export class ProjectTools {
           title: quest.title,
           area: quest.area,
           priority: quest.priority,
-          difficulty: quest.difficulty,
         })),
         epics: epics.map((epic) => ({
           number: epic.number,

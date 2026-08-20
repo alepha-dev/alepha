@@ -22,7 +22,6 @@ describe("QuestCsvFormatter", () => {
         title: "Build the wall",
         status: "new",
         priority: "medium",
-        difficulty: 3,
         area: "North",
         kanbanColumn: "",
         milestone: "",
@@ -42,7 +41,6 @@ describe("QuestCsvFormatter", () => {
       "title",
       "status",
       "priority",
-      "difficulty",
       "area",
       "kanbanColumn",
       "milestone",
@@ -57,7 +55,7 @@ describe("QuestCsvFormatter", () => {
     ]);
     expect(rows[1][0]).toBe("1");
     expect(rows[1][1]).toBe("Build the wall");
-    expect(rows[1][14]).toBe("[]");
+    expect(rows[1][13]).toBe("[]");
   });
 
   it("escapes embedded quotes and preserves newlines", ({ expect }) => {
@@ -68,7 +66,6 @@ describe("QuestCsvFormatter", () => {
         title: 'He said "hi"',
         status: "completed",
         priority: "low",
-        difficulty: 1,
         area: "Inn",
         kanbanColumn: "",
         milestone: "",
@@ -84,7 +81,7 @@ describe("QuestCsvFormatter", () => {
     ]);
     const rows = parser.parse(text);
     expect(rows[1][1]).toBe('He said "hi"');
-    expect(rows[1][15]).toBe("line one\nline two");
+    expect(rows[1][14]).toBe("line one\nline two");
   });
 
   it("serializes objectives as JSON", ({ expect }) => {
@@ -95,7 +92,6 @@ describe("QuestCsvFormatter", () => {
         title: "Quest",
         status: "new",
         priority: "medium",
-        difficulty: 1,
         area: "",
         kanbanColumn: "",
         milestone: "",
@@ -113,7 +109,7 @@ describe("QuestCsvFormatter", () => {
       },
     ]);
     const rows = parser.parse(text);
-    expect(JSON.parse(rows[1][14])).toEqual([
+    expect(JSON.parse(rows[1][13])).toEqual([
       { title: "Step 1", completed: true },
       { title: "Step 2", completed: false },
     ]);

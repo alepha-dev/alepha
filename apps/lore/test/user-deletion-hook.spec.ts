@@ -206,7 +206,6 @@ describe("UserDeletionHook", () => {
           description: "d",
           area: "general",
           priority: "medium",
-          difficulty: 1,
         },
       } as never,
       { user },

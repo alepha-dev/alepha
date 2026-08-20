@@ -103,7 +103,6 @@ const createQuest = async (
         description: "Investigate and fix",
         area: "Bugs",
         priority: "medium",
-        difficulty: 2,
         feedbackId,
       },
     },

@@ -14,7 +14,7 @@ import type { ParseRowResult } from "./AlephaLoreParser.ts";
  * `Due Date`, `Position`, `Board ID`, `Voters`, `Comments`, `Checklists`.
  *
  * Defaults for fields Trello does not carry: `priority="medium"`,
- * `difficulty=2`, `kanbanColumn=""`, `milestone=""`, `createdBy=""` (the
+ * `kanbanColumn=""`, `milestone=""`, `createdBy=""` (the
  * controller backfills with the importing user), `objectives=[]`,
  * `acceptedAt/completedAt=""` (status will be `"new"` once derived).
  *
@@ -57,7 +57,6 @@ export class TrelloParser {
       description: at("Card Description"),
       area: at("List"),
       priority: "medium",
-      difficulty: 2,
       kanbanColumn: "",
       milestone: "",
       createdBy: "",

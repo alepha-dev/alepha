@@ -72,7 +72,6 @@ describe("AlephaLoreParser", () => {
       description: "Some <b>html</b>",
       area: "North",
       priority: "high",
-      difficulty: 4,
       kanbanColumn: "doing",
       milestone: "Milestone 1",
       createdBy: "alice@example.com",
@@ -106,6 +105,24 @@ describe("AlephaLoreParser", () => {
     if (result.ok) throw new Error("unreachable");
     expect(result.error.row).toBe(3);
     expect(result.error.message).toMatch(/title/i);
+  });
+
+  it("accepts and ignores a difficulty header from a pre-erasure export", ({
+    expect,
+  }) => {
+    const parser = setup();
+    // The difficulty mechanic was erased, but a CSV exported before that
+    // must still import — including a value the old 1-5 validation would
+    // have rejected, since nothing reads the column anymore.
+    const result = parser.parseRow(
+      ["shortId", "title", "priority", "difficulty"],
+      ["", "Quest", "medium", "9"],
+      1,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("unreachable");
+    expect(result.row).not.toHaveProperty("difficulty");
+    expect(result.row.title).toBe("Quest");
   });
 
   it("errors when objectives JSON is malformed", ({ expect }) => {

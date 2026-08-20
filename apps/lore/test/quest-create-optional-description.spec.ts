@@ -96,7 +96,6 @@ describe("quest creation — optional description", () => {
           // description intentionally omitted
           area: "Bugs",
           priority: "low",
-          difficulty: 1,
         },
       },
       { user: owner },
@@ -120,7 +119,6 @@ describe("quest creation — optional description", () => {
           description: "Plain description text",
           area: "Bugs",
           priority: "low",
-          difficulty: 1,
         },
       },
       { user: owner },

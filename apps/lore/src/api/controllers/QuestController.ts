@@ -194,7 +194,6 @@ export class QuestController {
         description: body.description ?? "",
         area: body.area,
         priority: body.priority,
-        difficulty: body.difficulty,
         // `z.nullable` skips the schema's `minimum: 1`, so guard here: a
         // non-positive estimate is stored as none (the UI can't produce it).
         estimateMinutes:
@@ -1009,7 +1008,6 @@ export class QuestController {
           title: true,
           description: true,
           area: true,
-          difficulty: true,
           priority: true,
           objectives: true,
           attachments: true,

@@ -46,7 +46,6 @@ test.describe("Areas", () => {
       description: "Seeded for the plain-rename regression",
       area: soloArea,
       priority: "medium",
-      difficulty: 2,
       objectives: [],
       attachments: [],
     });
@@ -92,7 +91,6 @@ test.describe("Areas", () => {
         description: "Seeded for the area merge",
         area,
         priority: "medium",
-        difficulty: 2,
         objectives: [],
         attachments: [],
       });

@@ -334,7 +334,6 @@ describe("AreaService", () => {
             title: "Overlong area",
             area: "x".repeat(49),
             priority: "medium",
-            difficulty: 1,
           },
         },
         { user: { id: project.createdBy } },

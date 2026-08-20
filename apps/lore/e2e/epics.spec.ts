@@ -83,7 +83,6 @@ test.describe("Epics — the backlog gate", () => {
         description: "Seeded for the backlog gate",
         area: "orm",
         priority: "high",
-        difficulty: 2,
         objectives: [],
         attachments: [],
       });
@@ -278,7 +277,6 @@ test.describe("Epics — the list", () => {
       description: "Seeded for the list",
       area: "orm",
       priority: "high",
-      difficulty: 2,
       objectives: [],
       attachments: [],
     });

@@ -246,8 +246,6 @@ export default {
   "quest.create.submit": "Ajouter la quête au projet",
   "quest.create.submitAndAccept": "Créer & accepter",
   "quest.create.update": "Modifier la quête",
-  "quest.create.difficulty": "Difficulté",
-  "quest.create.difficulty.helper": "Estimez le niveau de défi de cette quête",
   "quest.create.priority": "Priorité",
   "quest.create.priority.helper":
     "À quelle vitesse cette quête doit être accomplie",
@@ -273,7 +271,6 @@ export default {
   "board.table.linked": "Liée",
   "board.table.linked.tooltip": "Bloquée par la quête #$1",
   "board.table.priority": "Priorité",
-  "board.table.rank": "Rang",
   "board.table.area": "Domaine",
   "board.table.created": "Créée",
   "board.table.updated": "Mise à jour",

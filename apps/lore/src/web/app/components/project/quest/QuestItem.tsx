@@ -11,7 +11,6 @@ import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
-import QuestDifficulty from "./QuestDifficulty.tsx";
 import { formatEstimate } from "./questEstimate.ts";
 
 export interface QuestItemProps {
@@ -47,7 +46,6 @@ const QuestItem = (props: QuestItemProps) => {
       ].join(" ")}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2">
-        <QuestDifficulty difficulty={quest.difficulty} />
         {questEstimateEnabled && quest.estimateMinutes != null && (
           <span
             className="bg-muted text-muted-foreground shrink-0 rounded-sm px-1 py-0.5 font-mono text-[10px] leading-none"

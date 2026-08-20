@@ -77,7 +77,6 @@ const setup = async () => {
     description: "x",
     area: "core",
     priority: "medium",
-    difficulty: 2,
     epic_number: plannedEpic.number,
   });
 
@@ -122,7 +121,6 @@ describe("Lore MCP — quest_list / quest_get carry the quest's epic", () => {
       description: "x",
       area: "core",
       priority: "medium",
-      difficulty: 1,
     });
 
     const listRes = await call(questTools.quest_list, { project: project.id });

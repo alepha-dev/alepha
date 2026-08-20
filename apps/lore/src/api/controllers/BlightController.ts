@@ -280,7 +280,6 @@ export class BlightController {
         description,
         area: BLIGHT_AREA,
         priority: "medium",
-        difficulty: 2,
         tags: ["bug", "blight"],
         createdBy: user.id,
         source: { sigilBlightId: blight.id },

@@ -27,13 +27,12 @@ export const quests = $entity({
     priority: z
       .enum(["optional", "low", "medium", "high"])
       .meta({ mode: "text" }),
-    difficulty: z.integer().min(1).max(5),
     /**
      * Optional, glanceable time estimate in minutes — "how long might this
      * take". A motivation aid surfaced in the questlog as a small `~15m`
      * pill, so a viewer can pick a quest that fits the time they have.
-     * Deliberately NOT tied to XP/gold (difficulty drives rewards) and NOT
-     * estimate-vs-actual (that role belongs to `timerSessions`). `undefined`
+     * Deliberately NOT estimate-vs-actual — that role belongs to
+     * `timerSessions`. `undefined`
      * means no estimate. Stored as raw minutes; the UI offers coarse presets
      * (5m…1d, where 1d = one 480-minute workday) plus a custom input.
      */

@@ -92,7 +92,6 @@ test.describe("Milestones", () => {
           description: "Seeded for the milestone changelog",
           area: "orm",
           priority: "high",
-          difficulty: 2,
           objectives: [],
           attachments: [],
         },

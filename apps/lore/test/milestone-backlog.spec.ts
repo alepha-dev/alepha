@@ -102,7 +102,6 @@ const completeQuest = async (
         title,
         area: "orm",
         priority: "medium",
-        difficulty: 1,
       },
     },
     { user },

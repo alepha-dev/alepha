@@ -88,7 +88,6 @@ const seedAcceptedQuest = async (
         description: "<p>standup</p>",
         area: "ops",
         priority: "low",
-        difficulty: 1,
       },
     },
     { user },

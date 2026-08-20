@@ -168,7 +168,6 @@ describe("quest_create — accept flag", () => {
       description: "do it",
       area: "core",
       priority: "medium",
-      difficulty: 2,
       accept: true,
     });
 
@@ -193,7 +192,6 @@ describe("quest_create — accept flag", () => {
       description: "later",
       area: "core",
       priority: "low",
-      difficulty: 1,
     });
 
     expect(isError(res)).toBe(false);
@@ -216,7 +214,6 @@ describe("quest_create — accept flag", () => {
       description: "must finish before the follow-up",
       area: "core",
       priority: "medium",
-      difficulty: 2,
     });
     const predShortId = payload<QuestCreateResult>(predecessor).shortId;
 
@@ -226,7 +223,6 @@ describe("quest_create — accept flag", () => {
       description: "depends on setup",
       area: "core",
       priority: "medium",
-      difficulty: 2,
       dependsOn_shortId: predShortId,
       accept: true,
     });
