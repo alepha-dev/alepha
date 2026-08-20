@@ -17,6 +17,7 @@ import type { Folio } from "@/api/entities/folios.ts";
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { currentEpicAtom } from "@/web/app/atoms/currentEpicAtom.ts";
+import { currentEpicCountAtom } from "@/web/app/atoms/currentEpicCountAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
@@ -67,6 +68,30 @@ const ProjectEpic = (props: ProjectEpicProps) => {
 
   const [epic, setEpic] = useState<EpicResource>(props.epic);
   const [editOpen, setEditOpen] = useState(false);
+
+  /**
+   * Keep the sidebar's planned-epic badge honest when the status changes
+   * here rather than on the list.
+   *
+   * Releasing an epic is the main way that badge goes DOWN, and it happens
+   * on this page. `ProjectEpics` recounts from `getEpics` on every fetch,
+   * but that only helps once the user navigates back to the list.
+   *
+   * A delta, not a count: this page knows one epic, never the project total.
+   * Read through `store.get` instead of `useStore` so the badge stays
+   * write-only here, exactly as it is in the list.
+   */
+  const applyStatusChange = (updated: EpicResource) => {
+    const wasPlanned = epic.status === "planned";
+    const isPlanned = updated.status === "planned";
+    if (wasPlanned !== isPlanned) {
+      const current = alepha.store.get(currentEpicCountAtom)?.count ?? 0;
+      alepha.store.set(currentEpicCountAtom, {
+        count: Math.max(0, current + (isPlanned ? 1 : -1)),
+      });
+    }
+    setEpic(updated);
+  };
   // `null` means "not loaded yet" — either still in flight or the last
   // fetch failed. Only a successfully resolved `[]` means "confirmed
   // empty": the tab bodies must not render an empty state on `null`, or a
@@ -237,7 +262,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
             <Pencil className="size-4" />
             {tr("epic.edit")}
           </Button>
-          <EpicStatusControl epic={epic} onChange={setEpic} />
+          <EpicStatusControl epic={epic} onChange={applyStatusChange} />
         </>
       }
     >

@@ -5,7 +5,7 @@ import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { type Page, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { useClient, useInject, useStore } from "alepha/react";
+import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
@@ -19,6 +19,7 @@ import { useState } from "react";
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
+import { currentEpicCountAtom } from "@/web/app/atoms/currentEpicCountAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
@@ -58,6 +59,7 @@ const ProjectEpics = () => {
   const epicApi = useClient<EpicController>();
   const dt = useInject(DateTimeProvider);
   const [project] = useStore(currentProjectAtom);
+  const alepha = useAlepha();
 
   const [createOpen, setCreateOpen] = useState(false);
   // Bumped after a create, which happens outside the table and so has no
@@ -80,6 +82,22 @@ const ProjectEpics = () => {
     filters?: Record<string, any>;
   }): Promise<Page<EpicResource>> => {
     const all = await epicApi.getEpics({ params: { projectId: project.id } });
+
+    // Push the freshest planned count to the sidebar badge, the same way
+    // `ProjectBlights` pushes `openCount`. Free: `getEpics` already returns
+    // the project's whole list, so no second request is needed, and counting
+    // `all` rather than `rows` keeps the badge project-wide when the toolbar
+    // search has narrowed the table to one row.
+    //
+    // Write-only through `store.set`, never `useStore`: subscribing here
+    // would re-render this component on every fetch and, with an inline
+    // `fetch` prop, spin the table into an infinite refetch loop.
+    //
+    // This is what refreshes the badge after a create or a delete: both bump
+    // the table, and the table lands back here.
+    alepha.store.set(currentEpicCountAtom, {
+      count: all.filter((epic) => epic.status === "planned").length,
+    });
 
     const status = filters?.status as EpicResource["status"] | undefined;
     const needle = String(filters?.search ?? "")
