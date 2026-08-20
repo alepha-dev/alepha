@@ -39,20 +39,23 @@ const QuestViewEditButton = (props: QuestViewEditButtonProps) => {
 
   return (
     <>
+      {/* Labelled and full size, per the mockup. It was a 28px icon-only
+          ghost button, which read as a hint next to the lifecycle button
+          rather than its peer. The label hides on narrow screens, the same
+          way the lifecycle button's does, so the pair shrinks together. */}
       <Tooltip>
         <TooltipTrigger
           render={
             <Button
               type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0"
+              variant="outline"
               aria-label={tr("quest.view.edit")}
               onClick={() => setShowDialog(true)}
             />
           }
         >
           <Pencil className="size-4" />
+          <span className="hidden sm:inline">{tr("quest.view.edit")}</span>
         </TooltipTrigger>
         <TooltipContent>{tr("quest.view.edit")}</TooltipContent>
       </Tooltip>
