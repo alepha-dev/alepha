@@ -43,7 +43,7 @@
 
   <script>
     
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', async () => {
   const loading = document.getElementById('__bundler_loading');
   function setStatus(msg) { if (loading) loading.textContent = msg; }
 
@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 
   // Error sink persists across replaceWith since it's on window, not the DOM.
-  window.addEventListener('error', function(e) {
+  window.addEventListener('error', (e) => {
     // Failed resource loads (CSP-blocked links, scripts, images) fire plain
     // events at the element — warn only; real JS errors carry message/error.
     if (!e.message && !e.error && e.target && e.target !== window) {
@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     const OWN_TARGET = /^https?:[/][/]/.test(window.origin || '')
       ? window.origin
       : '*';
-    function trustedOrigin(e) {
+    const trustedOrigin = (e) => {
       if (e.origin === window.origin) return true; // https chains; opaque==opaque
       // file:// trees: Chrome serializes the file document's origin as
       // 'file://' while the blob: documents it mints serialize as 'null',
@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             window.location.protocol === 'file:')) ||
         (/^file:/.test(e.origin) && window.origin === 'null')
       );
-    }
+    };
     // Non-empty only in the root document (nested bundles ship an empty
     // island), so it doubles as the root marker: the root answers from
     // local text and treats a miss as authoritative — never relaying to
@@ -156,13 +156,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
     const pendingFrames = {}; // uuid -> [{el, frag}] awaiting text for own frames
     const pendingRelays = {}; // uuid -> [childWindow] awaiting text to pass down
-    function mountPage(el, frag, text) {
+    const mountPage = (el, frag, text) => {
       const pageBlob = new Blob([text], { type: 'text/html' });
       const u = URL.createObjectURL(pageBlob);
       resourceBlobs[u] = pageBlob;
       el.src = u + frag;
-    }
-    function deliverPage(uuid, text) {
+    };
+    const deliverPage = (uuid, text) => {
       const frames = pendingFrames[uuid];
       delete pendingFrames[uuid];
       if (frames) for (const f of frames) mountPage(f.el, f.frag, text);
@@ -173,15 +173,15 @@ document.addEventListener('DOMContentLoaded', async function() {
           try { cw.postMessage({ __bundler_page: uuid, __bundler_text: text }, OWN_TARGET); } catch (err) { /* gone */ }
         }
       }
-    }
-    function ownFrameWindows() {
+    };
+    const ownFrameWindows = () => {
       const out = [];
       for (const f of Array.from(document.querySelectorAll('iframe'))) {
         try { if (f.contentWindow) out.push(f.contentWindow); } catch (err) { /* detached */ }
       }
       return out;
-    }
-    window.addEventListener('message', function (e) {
+    };
+    window.addEventListener('message', (e) => {
       const d = e.data;
       if (!d || typeof d !== 'object' || !e.source) return;
       // Origin gate first; the structural checks below (own-child-frames
@@ -345,7 +345,9 @@ document.addEventListener('DOMContentLoaded', async function() {
           mountPage(el, m[2] || '', text);
         } else if (window.parent !== window && !isPageRoot) {
           const had = pendingFrames[m[1]];
-          (pendingFrames[m[1]] = had || []).push({ el: el, frag: m[2] || '' });
+          const list = had || [];
+          pendingFrames[m[1]] = list;
+          list.push({ el: el, frag: m[2] || '' });
           if (!had) needed.push(m[1]);
         }
       }
@@ -368,7 +370,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         s.textContent = pre ? await pre.text() : await (await fetch(s.src)).text();
         s.removeAttribute('src');
       }
-      const p = s.src ? new Promise(function(r) { s.onload = s.onerror = r; }) : null;
+      const p = s.src ? new Promise((r) => { s.onload = s.onerror = r; }) : null;
       old.replaceWith(s);
       if (p) await p;
     }
