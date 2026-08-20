@@ -51,8 +51,11 @@ export default defineConfig({
         "folio.type.",
         // tr(`header.connections.state.${state}`) — live/stale/empty.
         "header.connections.state.",
-        // tr(`feedback.filter.${status}`) — pending/accepted/rejected/all.
+        // tr(`feedback.filter.${status}`) - pending/accepted/rejected.
         "feedback.filter.",
+        // tr(`feedback.empty.detail.${status}.title` / `.body`) - the detail
+        // pane's per-filter empty state. Constructed, never written out.
+        "feedback.empty.detail.",
         // tr(`insights.range.${r}`) — 1d/7d/30d.
         "insights.range.",
         // tr(`insights.vitals.${key}`) — lcp/cls/inp/fcp/ttfb (Web Vitals p75 cards).
@@ -67,6 +70,9 @@ export default defineConfig({
         "blights.origin.",
         // tr(`language.${code}`) — @alepha/ui button-language picker labels.
         "language.",
+        // tr(`quest.create.estimate.unit.${unit}`) and its `.one` singular —
+        // minutes/hours/days, chosen in the custom estimate popover.
+        "quest.create.estimate.unit.",
       ],
     }),
     () => ({
