@@ -15,9 +15,14 @@ import { Link, useRouter } from "alepha/react/router";
 import {
   Archive,
   ArchiveRestore,
+  ChevronDown,
+  ChevronsUp,
+  ChevronUp,
   CircleDot,
   Link2,
+  type LucideIcon,
   MapPin,
+  Minus,
   Search,
   Signature,
   Tag,
@@ -37,18 +42,18 @@ import { descriptionSnippet } from "../../services/descriptionSnippet.ts";
 import { displayName } from "../../services/displayName.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { UserAvatar } from "../shared/UserAvatar.tsx";
+import { QUEST_PRIORITY_TONE } from "./quest/questChips.ts";
 
-const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case "high":
-      return "bg-red-500/15 text-red-600";
-    case "medium":
-      return "bg-orange-500/15 text-orange-600";
-    case "low":
-      return "bg-muted text-muted-foreground";
-    default:
-      return "bg-muted text-muted-foreground";
-  }
+/**
+ * The priority glyph. An arrow idiom rather than four differently-coloured
+ * dots: the shape says which way the priority points even before the tone
+ * registers, which is what makes the column scannable in monochrome.
+ */
+const PRIORITY_ICONS: Record<QuestResource["priority"], LucideIcon> = {
+  high: ChevronsUp,
+  medium: ChevronUp,
+  low: ChevronDown,
+  optional: Minus,
 };
 
 /**
@@ -299,10 +304,11 @@ const ProjectQuestsTable = () => {
                   className={`truncate text-sm font-medium ${quest.completedAt ? "text-muted-foreground line-through" : ""}`}
                   title={`#${quest.shortId} - ${quest.title}`}
                 >
-                  <span className="text-muted-foreground font-mono">
-                    #{quest.shortId}
-                  </span>{" "}
-                  - {quest.title}
+                  {/* The id carries the title's own colour: it is part of
+                      the name, not an annotation on it. Only the separator
+                      is muted, same treatment as the quest header. */}
+                  #{quest.shortId}{" "}
+                  <span className="text-muted-foreground">-</span> {quest.title}
                 </Link>
                 {quest.description && (
                   <span className="text-muted-foreground truncate text-xs">
@@ -314,15 +320,24 @@ const ProjectQuestsTable = () => {
           },
           tags: {
             label: tr("board.table.tags"),
+            // One line, always. As wrapping chips this column set the row
+            // height: a quest with five tags stood three rows tall and threw
+            // the whole table's rhythm out, and the tallest row won.
+            //
+            // `max-w-0` + `truncate` is what actually holds the line. Without
+            // the pair the cell claims its content width and the text never
+            // reaches the ellipsis, so a long tag list would still push the
+            // table wide instead of tall. Same trick the title column uses,
+            // and `min-w-24` keeps it from collapsing to nothing.
+            className: "max-w-0 min-w-24",
             cell: (quest: QuestResource) =>
               quest.tags && quest.tags.length > 0 ? (
-                <div className="flex flex-wrap gap-1">
-                  {quest.tags.map((tag: string) => (
-                    <Badge key={tag} variant="outline" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
+                <span
+                  className="text-muted-foreground block truncate text-xs"
+                  title={quest.tags.join(", ")}
+                >
+                  {quest.tags.join(", ")}
+                </span>
               ) : (
                 <span className="text-muted-foreground">-</span>
               ),
@@ -354,14 +369,19 @@ const ProjectQuestsTable = () => {
           priority: {
             label: tr("board.table.priority"),
             sortable: true,
-            cell: (quest: QuestResource) => (
-              <Badge
-                variant="secondary"
-                className={getPriorityColor(quest.priority)}
-              >
-                {quest.priority}
-              </Badge>
-            ),
+            cell: (quest: QuestResource) => {
+              const Icon = PRIORITY_ICONS[quest.priority];
+              return (
+                <Badge
+                  variant="tint"
+                  tone={QUEST_PRIORITY_TONE[quest.priority]}
+                  className="capitalize"
+                >
+                  <Icon className="size-3" />
+                  {quest.priority}
+                </Badge>
+              );
+            },
           },
           area: {
             label: tr("board.table.area"),
