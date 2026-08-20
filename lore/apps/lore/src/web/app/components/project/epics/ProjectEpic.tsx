@@ -277,7 +277,21 @@ const ProjectEpic = (props: ProjectEpicProps) => {
         />
       )}
 
-      {tab === "flow" && <ProjectEpicFlow quests={quests} />}
+      {tab === "flow" && (
+        <ProjectEpicFlow
+          quests={quests}
+          // Editing a quest from the flow's dialog has to land in the same
+          // list the board is drawn from, or the card behind the dialog keeps
+          // showing the version it was opened with.
+          onQuestChange={(updated) =>
+            setQuests((prev) =>
+              prev
+                ? prev.map((q) => (q.id === updated.id ? updated : q))
+                : prev,
+            )
+          }
+        />
+      )}
 
       {tab === "folios" && (
         <ProjectEpicFolios

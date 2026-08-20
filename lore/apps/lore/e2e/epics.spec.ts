@@ -139,10 +139,10 @@ test.describe("Epics — the backlog gate", () => {
       // default landing tab is the description. Without it this step passes
       // or fails on whether Overview happens to mention a quest title.
       //
-      // No `networkidle` here: the Flow tab embeds the dependency graph,
-      // which polls every 60s, so the network is never idle and the wait can
-      // only time out. The visibility assertions below carry their own
-      // timeouts.
+      // No `networkidle` here. That used to be because the Flow tab polled
+      // every 60s, so the network was never idle and the wait could only time
+      // out. The poll went with the questline rewrite, but the wait is still
+      // the wrong tool: the visibility assertions carry their own timeouts.
       await page.goto(`/${slug}/epics/${epic.number}?tab=quests`);
 
       await expect(page.getByText(gatedTitle).first()).toBeVisible({
@@ -439,3 +439,138 @@ const epicsBadge = (page: Page) =>
     .locator('[data-slot="sidebar"]')
     .locator('[data-slot="sidebar-menu-item"]', { hasText: "Epics" })
     .locator('[data-slot="sidebar-menu-badge"]');
+
+/**
+ * The Flow tab, which is the questline map.
+ *
+ * The layout itself is unit-tested in `questlineLayout.spec.ts`; what only an
+ * e2e can check is that a fork the DATA describes reaches the screen, and
+ * that opening a quest from it offers the right ways onward. Those two are
+ * the whole point of the surface: seeing the shape, and moving along it.
+ */
+test.describe("Epics — the questline", () => {
+  test("draws the fork, and walks it from inside the quest", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `flow${t}@example.com`, "GoodPassw0rd");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `Fl${t}`.slice(0, 20),
+    );
+    await setProjectFeature(page, projectId, "epics", true);
+
+    // `createEpic` and `attachQuest` take a path param, which `apiPath` does
+    // not substitute, so they go through a raw fetch the way the gate test
+    // above does. `createQuest` has none and can use the helper.
+    const epic = await page.evaluate(
+      async ({ projectId, title }) => {
+        const r = await fetch(`/api/createEpic/${projectId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ title }),
+        });
+        if (!r.ok) throw new Error(`createEpic ${r.status} ${await r.text()}`);
+        return r.json() as Promise<{ id: number; number: number }>;
+      },
+      { projectId, title: `Flow${t}` },
+    );
+
+    const seed = async (title: string, dependsOn?: number) => {
+      const quest = await apiPost<{ id: number; shortId: number }>(
+        page,
+        "createQuest",
+        {
+          projectId,
+          title,
+          description: "Seeded for the questline",
+          area: "orm",
+          priority: "high",
+          objectives: [],
+          attachments: [],
+          ...(dependsOn != null ? { dependsOn } : {}),
+        },
+      );
+      await page.evaluate(
+        async ({ epicId, questId }) => {
+          const r = await fetch(`/api/attachQuest/${epicId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ questId }),
+          });
+          if (!r.ok)
+            throw new Error(`attachQuest ${r.status} ${await r.text()}`);
+        },
+        { epicId: epic.id, questId: quest.id },
+      );
+      return { ...quest, title };
+    };
+
+    // A root that forks into two, plus a quest depending on nothing at all.
+    const root = await seed(`Root${t}`);
+    const left = await seed(`Left${t}`, root.id);
+    const right = await seed(`Right${t}`, root.id);
+    const loose = await seed(`Loose${t}`);
+
+    const card = (q: { shortId: number; title: string }) =>
+      page.getByRole("button", { name: `#${q.shortId} ${q.title}` });
+
+    await test.step("every quest is on the board at once", async () => {
+      await page.goto(`/${slug}/epics/${epic.number}?tab=flow`);
+
+      for (const quest of [root, left, right, loose]) {
+        await expect(card(quest)).toBeVisible({ timeout: 15_000 });
+      }
+    });
+
+    await test.step("the header counts what the board is showing", async () => {
+      // Two roots are ready; the two behind the fork are waiting on it.
+      await expect(page.getByText("4", { exact: true }).first()).toBeVisible();
+      await expect(page.getByText("2 ready")).toBeVisible();
+      await expect(page.getByText("2 waiting")).toBeVisible();
+    });
+
+    await test.step("opening the fork offers both ways onward", async () => {
+      await card(root).click();
+
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toBeVisible({ timeout: 15_000 });
+
+      // The neighbours are deliberately withheld until the dialog has landed,
+      // so this waits for them rather than asserting straight away.
+      await expect(
+        dialog.getByRole("button", { name: new RegExp(left.title) }),
+      ).toBeVisible({ timeout: 10_000 });
+      await expect(
+        dialog.getByRole("button", { name: new RegExp(right.title) }),
+      ).toBeVisible();
+    });
+
+    await test.step("a neighbour walks the questline without closing it", async () => {
+      const dialog = page.getByRole("dialog");
+      await dialog
+        .getByRole("button", { name: new RegExp(left.title) })
+        .click();
+
+      // Now on a leaf: the way back exists, the way onward does not.
+      await expect(
+        dialog.getByRole("button", { name: new RegExp(root.title) }),
+      ).toBeVisible({ timeout: 10_000 });
+      await expect(
+        dialog.getByRole("button", { name: new RegExp(right.title) }),
+      ).toHaveCount(0);
+    });
+
+    await test.step("escape returns to the board", async () => {
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("dialog")).toHaveCount(0, {
+        timeout: 10_000,
+      });
+      await expect(card(root)).toBeVisible();
+    });
+  });
+});
