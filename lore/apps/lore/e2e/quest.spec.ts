@@ -160,13 +160,12 @@ test.describe("Quest", () => {
       ).toBeVisible({ timeout: 10_000 });
     });
 
-    await test.step("expand the Settings block", async () => {
-      // Settings is the only collapsible block that defaults to closed.
-      // Target via data-testid — the sidebar also has a "Settings" link
-      // and accessible-name matching is ambiguous.
-      await page.getByTestId("quest-collapsible-settings").click();
+    await test.step("the reminder control is in the rail, already open", async () => {
+      // It used to live in a Settings block that defaulted to collapsed, so
+      // this step had to expand it first. The metadata rail absorbed the
+      // control, so there is nothing left to open.
       await expect(page.getByRole("radio", { name: /^daily$/i })).toBeVisible({
-        timeout: 5_000,
+        timeout: 10_000,
       });
     });
 
@@ -380,8 +379,12 @@ test.describe("Quest", () => {
     await test.step("follower view now shows it is blocked by the predecessor", async () => {
       await page.goto(`/${projectSlug}/quests/${follower.shortId}`);
       await page.waitForLoadState("networkidle");
+      // Said twice on purpose: the amber banner above the description, and
+      // the rail's Questline row.
       await expect(
-        page.getByText(new RegExp(`blocked by.*#${predecessor.shortId}`, "i")),
+        page
+          .getByText(new RegExp(`blocked by.*#${predecessor.shortId}`, "i"))
+          .first(),
       ).toBeVisible({ timeout: 10_000 });
     });
   });
@@ -972,13 +975,98 @@ test.describe("Quest", () => {
    * do all of that without touching the URL.
    */
   /**
+   * The metadata rail (quest #1240). Body left, rail right: what the quest
+   * *is*, beside what it says. The sticky bottom action bar it replaced held
+   * Accept / Complete opposite Shelve and Abandon; the lifecycle verbs moved
+   * up into the title row and the rest moved in here.
+   */
+  test("the rail states the quest, and Unassign sends it back to the backlog", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+
+    const t = Date.now();
+    const email = `rail${t}@example.com`;
+    const password = "RailTest123!";
+    const projectTitle = `RL${t}`.slice(0, 20);
+
+    await registerAndVerify(page, email, password);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
+
+    const { shortId } = await apiPost<{ id: number; shortId: number }>(
+      page,
+      "createQuest",
+      {
+        projectId,
+        title: `Railed${t}`,
+        description: "Seeded for the rail",
+        area: "lore/quests",
+        priority: "high",
+        objectives: [],
+        attachments: [],
+      },
+    );
+
+    await page.goto(`/${projectSlug}/quests/${shortId}`);
+    await page.waitForLoadState("networkidle");
+
+    await test.step("rows the data can fill are stated; the rest render nothing", async () => {
+      const rail = page.getByRole("complementary");
+      await expect(rail.getByText("New")).toBeVisible({ timeout: 10_000 });
+      await expect(rail.getByText("high")).toBeVisible();
+      await expect(rail.getByText("lore/quests")).toBeVisible();
+      // No milestone, no epic module, no estimate module, no questline: the
+      // rail shows no label waiting for data that is not coming.
+      await expect(rail.getByText(/^milestone$/i)).toHaveCount(0);
+      await expect(rail.getByText(/^epic$/i)).toHaveCount(0);
+      await expect(rail.getByText(/^questline$/i)).toHaveCount(0);
+    });
+
+    await test.step("Unassign, not Abandon, and it only appears once assigned", async () => {
+      // The server clears the assignee and pushes an `unassigned` event; it
+      // has never deleted anything, so neither the old label nor its trash
+      // icon was true.
+      await expect(page.getByRole("button", { name: /abandon/i })).toHaveCount(
+        0,
+      );
+      await expect(
+        page.getByRole("button", { name: /^unassign$/i }),
+      ).toHaveCount(0);
+
+      await page
+        .getByRole("button", { name: /sign and accept|accept.*quest/i })
+        .click();
+      await expect(
+        page.getByRole("complementary").getByText(/in progress/i),
+      ).toBeVisible({ timeout: 10_000 });
+
+      const unassign = page.getByRole("button", { name: /^unassign$/i });
+      await expect(unassign).toBeVisible({ timeout: 10_000 });
+      await unassign.click();
+      await page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: /^unassign$/i })
+        .click();
+
+      // Unassign PUSHES back to the list rather than going back: the list it
+      // would return to still showed the quest as assigned.
+      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/?$`), {
+        timeout: 10_000,
+      });
+    });
+  });
+
+  /**
    * The card mount (quest #1221). `QuestView` is one component with two
    * mounts: this route page, and the same file inside the board's sheet at
    * half the width. `context="card"` is what tells them apart — there, the
-   * reminder controls fold behind the header's overflow so the description
+   * completion summary folds behind the header's overflow so the description
    * and the objectives are what a card back opens on.
    */
-  test("the card back folds the reminder section behind the overflow", async ({
+  test("the card back folds the completion summary behind the overflow", async ({
     page,
   }) => {
     test.setTimeout(60_000);
@@ -995,25 +1083,36 @@ test.describe("Quest", () => {
       projectTitle,
     );
 
-    await apiPost<{ id: number; shortId: number }>(page, "createQuest", {
-      projectId,
-      title: questTitle,
-      description: "Seeded for the card back",
-      area: "Main",
-      priority: "medium",
-      objectives: [],
-      attachments: [],
-    });
+    const { shortId } = await apiPost<{ id: number; shortId: number }>(
+      page,
+      "createQuest",
+      {
+        projectId,
+        title: questTitle,
+        description: "Seeded for the card back",
+        area: "Main",
+        priority: "medium",
+        objectives: [],
+        attachments: [],
+      },
+    );
 
-    // The reminder block is the foldable section that does not need a
-    // completed quest, so it is the cheap one to drive.
-    await setProjectFeature(page, projectId, "questReminder");
+    await test.step("complete it, and the page mount shows the summary inline", async () => {
+      await page.goto(`/${projectSlug}/quests/${shortId}`);
+      await page.waitForLoadState("networkidle");
 
-    await test.step("the page mount shows it inline", async () => {
-      await page.goto(`/${projectSlug}/`);
-      await page.getByText(questTitle).first().click();
-      // Testid, not the label: the sidebar also says "Settings".
-      await expect(page.getByTestId("quest-collapsible-settings")).toBeVisible({
+      await page
+        .getByRole("button", { name: /sign and accept|accept.*quest/i })
+        .click();
+      await page
+        .getByRole("button", { name: /^complete quest$/i })
+        .first()
+        .click();
+      await page
+        .getByRole("button", { name: /complete without summary/i })
+        .click();
+
+      await expect(page.getByText(/completion summary/i).first()).toBeVisible({
         timeout: 10_000,
       });
     });
@@ -1030,13 +1129,11 @@ test.describe("Quest", () => {
       await expect(page.getByText("Seeded for the card back")).toBeVisible({
         timeout: 10_000,
       });
-      await expect(page.getByTestId("quest-collapsible-settings")).toHaveCount(
-        0,
-      );
+      await expect(page.getByText(/completion summary/i)).toHaveCount(0);
 
       await page.getByRole("button", { name: /^more$/i }).click();
-      await page.getByRole("menuitem", { name: /settings/i }).click();
-      await expect(page.getByTestId("quest-collapsible-settings")).toBeVisible({
+      await page.getByRole("menuitem", { name: /completion summary/i }).click();
+      await expect(page.getByText(/completion summary/i).first()).toBeVisible({
         timeout: 10_000,
       });
     });

@@ -308,7 +308,15 @@ export default {
   "quest.view.questline.blockedByShelved": "Bloquée par #$1, mise de côté",
   "quest.view.questline.unblocked": "Débloquée — #$1 faite",
   "quest.view.questline.unlocks": "Débloque #$1",
+  "quest.status.new": "Nouvelle",
+  "quest.status.accepted": "En cours",
+  "quest.status.completed": "Terminée",
   "quest.status.shelved": "Mise de côté",
+  "quest.rail.estimate": "Estimation",
+  "quest.rail.epic": "Epic",
+  "quest.rail.milestone": "Jalon",
+  "quest.rail.questline": "Chaîne de quêtes",
+  "quest.rail.addTag": "tag",
 
   "project.create.name": "Nom",
   "project.create.name.helper": "Un nom marquant pour votre épopée.",
@@ -348,7 +356,7 @@ export default {
   "quest.graph.pickAQuest":
     "Sélectionnez une quête sur la timeline pour voir sa description.",
   "quest.view.actions.complete": "Marquer comme accomplie",
-  "quest.view.actions.abandon": "Abandonner la quête",
+  "quest.view.actions.unassign": "Se désassigner",
   "quest.view.actions.shelve": "Mettre de côté",
   "quest.view.actions.unshelve": "Remettre en jeu",
   "quest.view.complete.title": "Terminer cette quête",
@@ -648,10 +656,10 @@ export default {
     "Vous devez d'abord accepter la quête avant de la terminer",
   "kanban.error.actionFailed": "L'action a échoué",
 
-  "quest.view.abandon.title": "Abandonner la quête",
-  "quest.view.abandon.confirm":
-    "Êtes-vous sûr de vouloir abandonner cette quête ? Vous perdrez toute progression.",
-  "quest.view.abandon.confirmButton": "Abandonner la quête",
+  "quest.view.unassign.title": "Se désassigner de cette quête",
+  "quest.view.unassign.confirm":
+    "La quête retourne au backlog et ses rappels s'arrêtent. Rien de ce qui y a été écrit n'est supprimé.",
+  "quest.view.unassign.confirmButton": "Se désassigner",
   "quest.view.shelve.title": "Mettre la quête de côté",
   "quest.view.shelve.confirm":
     "Mettre cette quête de côté ? Elle conserve tout son contenu et quitte le backlog — filtrez sur « Mise de côté » pour la retrouver.",
@@ -661,7 +669,6 @@ export default {
   "quest.view.edit": "Modifier",
   "quest.view.back": "Retour",
   "quest.view.more": "Plus",
-  "quest.view.settings": "Paramètres",
   "quest.view.reminder.title": "Rappel",
   "quest.view.reminder.off": "Désactivé",
   "quest.view.reminder.daily": "Quotidien",

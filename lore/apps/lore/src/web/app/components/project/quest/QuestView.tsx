@@ -14,22 +14,18 @@ import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
   Archive,
-  ArchiveRestore,
   ArrowLeft,
   FileText,
   History,
-  Hourglass,
   Link2,
   ListChecks,
   MoreHorizontal,
   Paperclip,
   Pencil,
   ScrollText,
-  Settings as SettingsIcon,
   Signature,
   SquareCheck,
   Swords,
-  Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
@@ -45,12 +41,9 @@ import QuestDescription from "./QuestDescription.tsx";
 import QuestHistory from "./QuestHistory.tsx";
 import QuestSummaryEditDialog from "./QuestSummaryEditDialog.tsx";
 import QuestViewCollapsibleBlock from "./QuestViewCollapsibleBlock.tsx";
-import QuestViewDuplicateButton from "./QuestViewDuplicateButton.tsx";
 import QuestViewEditButton from "./QuestViewEditButton.tsx";
 import QuestViewObjectives from "./QuestViewObjectives.tsx";
-import QuestViewSettings from "./QuestViewSettings.tsx";
-import QuestViewTimer from "./QuestViewTimer.tsx";
-import { formatEstimate } from "./questEstimate.ts";
+import QuestViewRail from "./QuestViewRail.tsx";
 
 export interface QuestViewProps {
   quest: QuestResource;
@@ -157,9 +150,8 @@ const QuestView = (props: QuestViewProps) => {
   // Per-quest feature toggles live on the project. Undefined → off
   // (the new toggles default off for old projects until the owner
   // opts in via Settings → Quests).
-  const questEstimateEnabled = project?.features?.questEstimate === true;
-  const questReminderEnabled = project?.features?.questReminder === true;
-  const questChronoEnabled = project?.features?.questChrono === true;
+  // The per-quest module gates now live where their controls do — the rail
+  // reads `questChrono`, `questReminder` and `questEstimate` itself.
 
   const context: QuestViewContext = props.context ?? "page";
 
@@ -177,11 +169,7 @@ const QuestView = (props: QuestViewProps) => {
   // show — an overflow listing "Completion summary" on an unfinished quest is
   // a dead entry.
   const foldedSections = FOLDABLE_SECTIONS.filter(
-    (section) =>
-      !rendersInline(section) &&
-      (section === "completionSummary"
-        ? !!quest.completedAt
-        : questReminderEnabled && !quest.completedAt),
+    (section) => !rendersInline(section) && !!quest.completedAt,
   );
 
   const updateQuest = (updated: QuestResource) => {
@@ -229,13 +217,20 @@ const QuestView = (props: QuestViewProps) => {
     }
   };
 
-  const abandonQuest = {
+  /**
+   * Unassign. The server method is still called `abandonQuest`, but it
+   * clears `acceptedAt` / `acceptedBy` / the kanban column / the reminders
+   * and pushes an `unassigned` history event — it has never deleted
+   * anything, so the label and the trash icon both promised the wrong
+   * thing. Deletion lives in the quest table's row actions.
+   */
+  const unassignQuest = {
     disabled: !questApi.abandonQuest.can(),
     onClick: async () => {
       const ok = await dialog.confirm({
-        title: tr("quest.view.abandon.title"),
-        description: tr("quest.view.abandon.confirm"),
-        confirmLabel: tr("quest.view.abandon.confirmButton"),
+        title: tr("quest.view.unassign.title"),
+        description: tr("quest.view.unassign.confirm"),
+        confirmLabel: tr("quest.view.unassign.confirmButton"),
         cancelLabel: tr("common.cancel"),
         destructive: true,
       });
@@ -365,17 +360,6 @@ const QuestView = (props: QuestViewProps) => {
               )}
             </div>
 
-            {questEstimateEnabled && quest.estimateMinutes != null && (
-              <Badge
-                variant="secondary"
-                className="text-muted-foreground shrink-0 gap-1"
-                title={tr("quest.item.estimate")}
-              >
-                <Hourglass className="size-3" />~
-                {formatEstimate(quest.estimateMinutes)}
-              </Badge>
-            )}
-
             <Badge
               variant="secondary"
               className={`${getPriorityColor(quest.priority)} shrink-0`}
@@ -393,40 +377,63 @@ const QuestView = (props: QuestViewProps) => {
               </Badge>
             )}
 
-            {/* Action cluster — tight gap-0.5 so edit/dup/timer read as
-                one unit instead of three drifting items. */}
-            {((!quest.completedAt && project) || questChronoEnabled) && (
-              <div className="flex shrink-0 items-center gap-0.5">
-                {!quest.completedAt && project && (
-                  <>
-                    <QuestViewEditButton
-                      quest={quest}
-                      onUpdate={(it) => {
-                        updateQuest(it);
-                        alepha.store.set(currentQuestAtom, it);
-                      }}
-                      showDialog={showDialog}
-                      setShowDialog={setShowDialog}
-                    />
-                    {/* Reminder moved into the Settings block at the
-                        bottom of the view (Lore quest #42). */}
-                    <QuestViewDuplicateButton quest={quest} />
-                  </>
-                )}
-                {questChronoEnabled && (
-                  <QuestViewTimer
-                    quest={quest}
-                    onUpdate={(it) => {
-                      updateQuest(it);
-                      alepha.store.set(currentQuestAtom, it);
-                      const quests =
-                        alepha.store.get(currentAssignedQuestsAtom) ?? [];
-                      alepha.store.set(
-                        currentAssignedQuestsAtom,
-                        quests.map((t) => (t.id === it.id ? it : t)),
-                      );
+            {/* Edit, then the lifecycle primary. The sticky bottom action
+                bar this replaces held Accept / Complete opposite Shelve and
+                Abandon; the mockup has no bar, so the two lifecycle verbs
+                come up here — where the reader already is — and the rest
+                moves into the rail. The primary slot is state-dependent:
+                Accept on a `new` quest, Complete on an accepted one, nothing
+                once it is done. */}
+            {!quest.completedAt && project && (
+              <div className="flex shrink-0 items-center gap-1">
+                <QuestViewEditButton
+                  quest={quest}
+                  onUpdate={(it) => {
+                    updateQuest(it);
+                    alepha.store.set(currentQuestAtom, it);
+                  }}
+                  showDialog={showDialog}
+                  setShowDialog={setShowDialog}
+                />
+                {quest.acceptedAt ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="bg-green-600 text-white hover:bg-green-700"
+                    disabled={
+                      !questApi.completeQuest.can() ||
+                      quest.objectives.some((o) => !o.completed)
+                    }
+                    onClick={() => setShowCompleteDialog(true)}
+                  >
+                    <Swords className="size-4" />
+                    <span className="hidden sm:inline">
+                      {tr("quest.view.actions.complete")}
+                    </span>
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="bg-blue-600 text-white hover:bg-blue-700"
+                    disabled={!questApi.acceptQuest.can()}
+                    onClick={async () => {
+                      const updatedQuest = await questApi.acceptQuest({
+                        params: { id: quest.id },
+                      });
+                      updateQuest(updatedQuest);
+                      alepha.store.set(currentQuestAtom, updatedQuest);
+                      alepha.store.set(currentAssignedQuestsAtom, [
+                        ...(alepha.store.get(currentAssignedQuestsAtom) ?? []),
+                        updatedQuest,
+                      ]);
                     }}
-                  />
+                  >
+                    <Signature className="size-4" />
+                    <span className="hidden sm:inline">
+                      {tr("quest.view.actions.accept")}
+                    </span>
+                  </Button>
                 )}
               </div>
             )}
@@ -459,14 +466,8 @@ const QuestView = (props: QuestViewProps) => {
                           setRevealed((prev) => [...prev, section])
                         }
                       >
-                        {section === "completionSummary" ? (
-                          <ScrollText className="size-4" />
-                        ) : (
-                          <SettingsIcon className="size-4" />
-                        )}
-                        {section === "completionSummary"
-                          ? tr("quest.view.completionSummary")
-                          : tr("quest.view.settings")}
+                        <ScrollText className="size-4" />
+                        {tr("quest.view.completionSummary")}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
@@ -475,258 +476,217 @@ const QuestView = (props: QuestViewProps) => {
             )}
           </header>
 
-          {/* Questline (Lore #32) — predecessor + dependents.
+          {/* Body left, metadata rail right, scrolling together — the rail is
+              not independently sticky. The split is driven by `context`, not
+              by a media query alone: Tailwind breakpoints read the VIEWPORT,
+              and the card mount is a 50vw sheet on what is usually a wide
+              screen, so `lg:` would put a 308px rail beside a ~360px body
+              there. The card always stacks; the page stacks below `lg`. */}
+          <div
+            className={
+              context === "card"
+                ? "flex flex-col gap-6"
+                : "flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8"
+            }
+          >
+            <div className="flex min-w-0 flex-1 flex-col gap-6">
+              {/* Questline (Lore #32) — predecessor + dependents.
               Blocked-by flips to Unblocked once the predecessor closes;
               dependents are surfaced as a backlink list. */}
-          {(questline.predecessor || questline.dependents.length > 0) && (
-            <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs">
-              {questline.predecessor && (
-                <Link
-                  href={router.path("projectQuestGraph", {
-                    params: {
-                      projectSlug: project?.slug ?? "",
-                      shortId: String(quest.shortId),
-                    },
-                  })}
-                  className={`inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 ${
-                    questline.predecessor.completedAt
-                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600"
-                      : "border-amber-500/40 bg-amber-500/10 text-amber-600"
-                  }`}
-                >
-                  {questline.predecessor.completedAt ? (
-                    <SquareCheck className="size-3" />
-                  ) : (
-                    <Link2 className="size-3" />
+              {(questline.predecessor || questline.dependents.length > 0) && (
+                <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs">
+                  {questline.predecessor && (
+                    <Link
+                      href={router.path("projectQuestGraph", {
+                        params: {
+                          projectSlug: project?.slug ?? "",
+                          shortId: String(quest.shortId),
+                        },
+                      })}
+                      className={`inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 ${
+                        questline.predecessor.completedAt
+                          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600"
+                          : "border-amber-500/40 bg-amber-500/10 text-amber-600"
+                      }`}
+                    >
+                      {questline.predecessor.completedAt ? (
+                        <SquareCheck className="size-3" />
+                      ) : (
+                        <Link2 className="size-3" />
+                      )}
+                      {questline.predecessor.completedAt
+                        ? tr("quest.view.questline.unblocked", {
+                            args: [String(questline.predecessor.shortId)],
+                          })
+                        : questline.predecessor.shelvedAt
+                          ? // A shelved predecessor never completes on its own,
+                            // so say so rather than implying the block will
+                            // clear by itself.
+                            tr("quest.view.questline.blockedByShelved", {
+                              args: [String(questline.predecessor.shortId)],
+                            })
+                          : tr("quest.view.questline.blockedBy", {
+                              args: [String(questline.predecessor.shortId)],
+                            })}
+                      <span className="text-muted-foreground">
+                        {questline.predecessor.title}
+                      </span>
+                    </Link>
                   )}
-                  {questline.predecessor.completedAt
-                    ? tr("quest.view.questline.unblocked", {
-                        args: [String(questline.predecessor.shortId)],
-                      })
-                    : questline.predecessor.shelvedAt
-                      ? // A shelved predecessor never completes on its own,
-                        // so say so rather than implying the block will
-                        // clear by itself.
-                        tr("quest.view.questline.blockedByShelved", {
-                          args: [String(questline.predecessor.shortId)],
-                        })
-                      : tr("quest.view.questline.blockedBy", {
-                          args: [String(questline.predecessor.shortId)],
-                        })}
-                  <span className="text-muted-foreground">
-                    {questline.predecessor.title}
-                  </span>
-                </Link>
+                  {questline.dependents.map((dep) => (
+                    <Link
+                      key={dep.id}
+                      href={router.path("projectQuestGraph", {
+                        params: {
+                          projectSlug: project?.slug ?? "",
+                          shortId: String(quest.shortId),
+                        },
+                      })}
+                      className="bg-muted hover:bg-muted/70 inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5"
+                    >
+                      <Link2 className="size-3 rotate-90" />
+                      {tr("quest.view.questline.unlocks", {
+                        args: [String(dep.shortId)],
+                      })}
+                      <span className="text-muted-foreground">{dep.title}</span>
+                    </Link>
+                  ))}
+                </div>
               )}
-              {questline.dependents.map((dep) => (
-                <Link
-                  key={dep.id}
-                  href={router.path("projectQuestGraph", {
-                    params: {
-                      projectSlug: project?.slug ?? "",
-                      shortId: String(quest.shortId),
-                    },
-                  })}
-                  className="bg-muted hover:bg-muted/70 inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5"
-                >
-                  <Link2 className="size-3 rotate-90" />
-                  {tr("quest.view.questline.unlocks", {
-                    args: [String(dep.shortId)],
-                  })}
-                  <span className="text-muted-foreground">{dep.title}</span>
-                </Link>
-              ))}
-            </div>
-          )}
 
-          {/* Description (collapsible, default expanded) */}
-          <QuestViewCollapsibleBlock
-            icon={<FileText className="size-5" />}
-            label={tr("quest.view.description")}
-            defaultOpen
-          >
-            <QuestDescription
-              quest={quest}
-              onEdit={() => setShowDialog(true)}
-            />
-          </QuestViewCollapsibleBlock>
+              {/* Description (collapsible, default expanded) */}
+              <QuestViewCollapsibleBlock
+                icon={<FileText className="size-5" />}
+                label={tr("quest.view.description")}
+                defaultOpen
+              >
+                <QuestDescription
+                  quest={quest}
+                  onEdit={() => setShowDialog(true)}
+                />
+              </QuestViewCollapsibleBlock>
 
-          {/* Completion summary — visible on completed quests. Owners /
+              {/* Completion summary — visible on completed quests. Owners /
               creators (the only allowed editors server-side) can amend
               the message; the data model carries an `editedAt` stamp so
               the UI can surface "edited X ago" honestly. */}
-          {quest.completedAt && rendersInline("completionSummary") && (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between gap-2">
-                <SectionHeader
-                  icon={<ScrollText className="size-5" />}
-                  label={tr("quest.view.completionSummary")}
-                />
-                {questApi.updateQuestById.can() && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    aria-label={tr("quest.view.editSummary.title")}
-                    onClick={() => setShowEditSummary(true)}
-                  >
-                    <Pencil className="size-4" />
-                  </Button>
-                )}
-              </div>
-              {quest.completionMessage ? (
-                <div className="bg-muted border-border flex flex-col gap-2 rounded-md border p-3 px-4">
-                  <MarkdownView content={quest.completionMessage} />
-                  {quest.completionMessageUpdatedAt &&
-                    quest.completedAt &&
-                    quest.completionMessageUpdatedAt !== quest.completedAt && (
-                      <span className="text-muted-foreground text-xs italic">
-                        {tr("quest.view.completionSummary.edited", {
-                          args: [
-                            dt.of(quest.completionMessageUpdatedAt).fromNow(),
-                          ],
-                        })}
-                      </span>
+              {quest.completedAt && rendersInline("completionSummary") && (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <SectionHeader
+                      icon={<ScrollText className="size-5" />}
+                      label={tr("quest.view.completionSummary")}
+                    />
+                    {questApi.updateQuestById.can() && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        aria-label={tr("quest.view.editSummary.title")}
+                        onClick={() => setShowEditSummary(true)}
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
                     )}
+                  </div>
+                  {quest.completionMessage ? (
+                    <div className="bg-muted border-border flex flex-col gap-2 rounded-md border p-3 px-4">
+                      <MarkdownView content={quest.completionMessage} />
+                      {quest.completionMessageUpdatedAt &&
+                        quest.completedAt &&
+                        quest.completionMessageUpdatedAt !==
+                          quest.completedAt && (
+                          <span className="text-muted-foreground text-xs italic">
+                            {tr("quest.view.completionSummary.edited", {
+                              args: [
+                                dt
+                                  .of(quest.completionMessageUpdatedAt)
+                                  .fromNow(),
+                              ],
+                            })}
+                          </span>
+                        )}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowEditSummary(true)}
+                      className="bg-muted border-border text-muted-foreground rounded-md border p-3 px-4 text-left text-sm italic hover:underline"
+                    >
+                      {tr("quest.view.completionSummary.empty")}
+                    </button>
+                  )}
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowEditSummary(true)}
-                  className="bg-muted border-border text-muted-foreground rounded-md border p-3 px-4 text-left text-sm italic hover:underline"
-                >
-                  {tr("quest.view.completionSummary.empty")}
-                </button>
               )}
-            </div>
-          )}
 
-          {/* Objectives (collapsible, default expanded) */}
-          {quest.objectives.length > 0 && (
-            <QuestViewCollapsibleBlock
-              icon={<ListChecks className="size-5" />}
-              label={tr("quest.view.objectives")}
-              defaultOpen
-            >
-              <QuestViewObjectives
-                quest={quest}
-                onQuestUpdate={(updatedQuest) => {
-                  updateQuest(updatedQuest);
-                  alepha.store.set(currentQuestAtom, updatedQuest);
-                }}
-              />
-            </QuestViewCollapsibleBlock>
-          )}
+              {/* Objectives (collapsible, default expanded) */}
+              {quest.objectives.length > 0 && (
+                <QuestViewCollapsibleBlock
+                  icon={<ListChecks className="size-5" />}
+                  label={tr("quest.view.objectives")}
+                  defaultOpen
+                >
+                  <QuestViewObjectives
+                    quest={quest}
+                    onQuestUpdate={(updatedQuest) => {
+                      updateQuest(updatedQuest);
+                      alepha.store.set(currentQuestAtom, updatedQuest);
+                    }}
+                  />
+                </QuestViewCollapsibleBlock>
+              )}
 
-          {/* Attachments — kept non-collapsible; only shown when present */}
-          {quest.attachments && quest.attachments.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <SectionHeader
-                icon={<Paperclip className="size-5" />}
-                label={tr("quest.view.attachments")}
-              />
-              <div className="flex flex-wrap gap-2">
-                {quest.attachments.map((fileId) => (
-                  <AttachmentBadge key={fileId} fileId={fileId} disabled />
-                ))}
-              </div>
-            </div>
-          )}
+              {/* Attachments — kept non-collapsible; only shown when present */}
+              {quest.attachments && quest.attachments.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <SectionHeader
+                    icon={<Paperclip className="size-5" />}
+                    label={tr("quest.view.attachments")}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    {quest.attachments.map((fileId) => (
+                      <AttachmentBadge key={fileId} fileId={fileId} disabled />
+                    ))}
+                  </div>
+                </div>
+              )}
 
-          {/* History (collapsible, default collapsed) */}
-          <QuestViewCollapsibleBlock
-            icon={<History className="size-5" />}
-            label={tr("quest.view.history")}
-          >
-            <QuestHistory quest={quest} />
-          </QuestViewCollapsibleBlock>
-
-          {/* Settings — Reminder lives here. Hidden when the per-project
-              Quest Reminder toggle is off. */}
-          {questReminderEnabled &&
-            !quest.completedAt &&
-            rendersInline("settings") && (
+              {/* History (collapsible, default collapsed) */}
               <QuestViewCollapsibleBlock
-                icon={<SettingsIcon className="size-5" />}
-                label={tr("quest.view.settings")}
+                icon={<History className="size-5" />}
+                label={tr("quest.view.history")}
               >
-                <QuestViewSettings
-                  quest={quest}
-                  onUpdate={(it) => {
-                    updateQuest(it);
-                    alepha.store.set(currentQuestAtom, it);
-                  }}
-                />
+                <QuestHistory quest={quest} />
               </QuestViewCollapsibleBlock>
-            )}
-        </div>
+            </div>
 
-        {!quest.completedAt && (
-          <div className="bg-muted border-border sticky bottom-0 z-10 -mx-5 -mb-4 border-t px-8 py-3">
-            {!quest.acceptedAt && (
-              <div className="flex items-center justify-between gap-2">
-                {/* Shelve sits opposite Accept: both are ways of answering
-                    "am I doing this?", so they belong on the same bar. */}
-                {quest.shelvedAt ? (
-                  <Button type="button" variant="outline" {...unshelveQuest}>
-                    <ArchiveRestore className="size-4" />
-                    <span className="hidden sm:inline">
-                      {tr("quest.view.actions.unshelve")}
-                    </span>
-                  </Button>
-                ) : (
-                  <Button type="button" variant="outline" {...shelveQuest}>
-                    <Archive className="size-4" />
-                    <span className="hidden sm:inline">
-                      {tr("quest.view.actions.shelve")}
-                    </span>
-                  </Button>
-                )}
-                <Button
-                  type="button"
-                  className="bg-blue-600 text-white hover:bg-blue-700"
-                  disabled={!questApi.acceptQuest.can()}
-                  onClick={async () => {
-                    const updatedQuest = await questApi.acceptQuest({
-                      params: { id: quest.id },
-                    });
-                    updateQuest(updatedQuest);
-                    alepha.store.set(currentQuestAtom, updatedQuest);
-                    alepha.store.set(currentAssignedQuestsAtom, [
-                      ...(alepha.store.get(currentAssignedQuestsAtom) ?? []),
-                      updatedQuest,
-                    ]);
-                  }}
-                >
-                  <Signature className="size-4" />
-                  {tr("quest.view.actions.accept")}
-                </Button>
-              </div>
-            )}
-            {quest.acceptedAt && (
-              <div className="flex justify-between gap-2">
-                <Button type="button" variant="destructive" {...abandonQuest}>
-                  <Trash2 className="size-4" />
-                  <span className="hidden sm:inline">
-                    {tr("quest.view.actions.abandon")}
-                  </span>
-                </Button>
-                <Button
-                  type="button"
-                  className="bg-green-600 text-white hover:bg-green-700"
-                  disabled={
-                    !questApi.completeQuest.can() ||
-                    quest.objectives.some((o) => !o.completed)
-                  }
-                  onClick={() => setShowCompleteDialog(true)}
-                >
-                  <Swords className="size-4" />
-                  {tr("quest.view.actions.complete")}
-                </Button>
-              </div>
-            )}
+            {/* The rule is what makes two columns read as two regions. It
+                turns horizontal when the rail stacks, which is always on the
+                card mount and below `lg` on the page. */}
+            <aside
+              className={
+                context === "card"
+                  ? "border-border w-full border-t pt-4"
+                  : "border-border w-full border-t pt-4 lg:w-[308px] lg:shrink-0 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6"
+              }
+            >
+              <QuestViewRail
+                quest={quest}
+                questline={questline}
+                onUpdate={(it) => {
+                  updateQuest(it);
+                  alepha.store.set(currentQuestAtom, it);
+                }}
+                onShelve={shelveQuest.onClick}
+                onUnshelve={unshelveQuest.onClick}
+                onUnassign={unassignQuest.onClick}
+                shelveDisabled={shelveQuest.disabled}
+                unshelveDisabled={unshelveQuest.disabled}
+                unassignDisabled={unassignQuest.disabled}
+              />
+            </aside>
           </div>
-        )}
+        </div>
       </div>
       <QuestSummaryEditDialog
         open={showEditSummary}
@@ -801,12 +761,16 @@ export type QuestViewContext = "page" | "card";
  * Sections that can fold behind the header's overflow menu.
  *
  * Only the card mount folds them: at half the viewport width, the completion
- * summary and the reminder controls push the description and the objectives
- * (what a card back is opened for) below the fold. On the page there is room
- * for everything, so nothing folds and the overflow never renders.
+ * summary pushes the description and the objectives (what a card back is
+ * opened for) below the fold. On the page there is room for everything, so
+ * nothing folds and the overflow never renders.
+ *
+ * The reminder controls were the second entry until the metadata rail
+ * absorbed them — on the card the rail stacks under the body, so they are
+ * reachable there without an overflow.
  */
-export type QuestViewSection = "completionSummary" | "settings";
+export type QuestViewSection = "completionSummary";
 
-const FOLDABLE_SECTIONS: QuestViewSection[] = ["completionSummary", "settings"];
+const FOLDABLE_SECTIONS: QuestViewSection[] = ["completionSummary"];
 
 export default QuestView;
