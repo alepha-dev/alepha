@@ -510,6 +510,9 @@ export default {
   "project.settings.quests.title": "Fonctionnalités des quêtes",
   "project.settings.quests.subtitle":
     "Activez les fonctionnalités par-quête disponibles dans ce projet.",
+  "project.settings.quests.estimate.label": "Estimation de quête",
+  "project.settings.quests.estimate.description":
+    "Planifiez la durée prévue d'une quête, affichée sur la quête et dans la liste.",
   "project.settings.quests.reminder.label": "Rappel de quête",
   "project.settings.quests.reminder.description":
     "Rappels e-mail périodiques pour les quêtes acceptées.",

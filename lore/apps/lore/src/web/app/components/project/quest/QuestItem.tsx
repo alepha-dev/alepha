@@ -3,11 +3,13 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@alepha/ui/components/ui/tooltip";
+import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useActive, useRouter } from "alepha/react/router";
 import { Clock, Sparkles, TriangleAlert } from "lucide-react";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
+import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import QuestDifficulty from "./QuestDifficulty.tsx";
 import { formatEstimate } from "./questEstimate.ts";
@@ -22,6 +24,8 @@ const QuestItem = (props: QuestItemProps) => {
 
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
+  const [project] = useStore(currentProjectAtom);
+  const questEstimateEnabled = project?.features?.questEstimate === true;
   const { isActive, anchorProps } = useActive(
     router.path("projectQuest", { params: { shortId: quest.shortId } }),
   );
@@ -44,7 +48,7 @@ const QuestItem = (props: QuestItemProps) => {
     >
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <QuestDifficulty difficulty={quest.difficulty} />
-        {quest.estimateMinutes != null && (
+        {questEstimateEnabled && quest.estimateMinutes != null && (
           <span
             className="bg-muted text-muted-foreground shrink-0 rounded-sm px-1 py-0.5 font-mono text-[10px] leading-none"
             title={tr("quest.item.estimate")}
