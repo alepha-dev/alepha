@@ -83,6 +83,12 @@ remote shell profile at all - it is appended as `--control-socket <path>` to eve
 adapter runs. Leave it unset when the Bay genuinely runs with its default root under the deploy user's
 home.
 
+One caveat on that default root: a Bay running as root supervises each app with systemd, and the
+generated units set `ProtectHome=yes`, which hides `/home`, `/root` and `/run/user` from the app.
+A root under a home directory therefore holds apps that cannot see their own working directory, and
+Bay refuses to start them rather than letting them fail as a readiness timeout. Production installs
+put the root somewhere else, which is what `/opt/bay/data` is in the install guide.
+
 ## Prerequisites on the host
 
 Two, both outside Alepha:

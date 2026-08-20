@@ -38,6 +38,18 @@ The layout the rest of this guide assumes:
 `/opt/bay/data` is the only directory that must survive an upgrade. It holds every app's releases
 and durable state.
 
+Two constraints on where it goes, because each app runs as its own unix user and has to reach its
+own subtree:
+
+- **Every directory above it needs its execute bit.** `0700` on the data root blocks traversal, not
+  only listing, so each app dies at CHDIR before running a line. `0711` is the mode to want: nobody
+  but root can list the directory, and each app user can still pass through. The installer sets it.
+- **Keep it out of `/home`, `/root` and `/run/user`.** Generated units set `ProtectHome=yes`, which
+  replaces those trees with an empty one, so an app cannot see a data root inside them whatever the
+  permissions say. This is why the guide uses `/opt/bay/data` rather than the `./bay-data` default.
+
+Bay refuses to start an app it can see is unreachable, and names the directory in the way.
+
 ## 3. Run it under systemd
 
 ```ini

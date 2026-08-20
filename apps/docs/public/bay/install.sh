@@ -94,7 +94,15 @@ echo "==> Installing to $BAY_PREFIX"
 mkdir -p "$BAY_PREFIX/bin" "$BAY_PREFIX/data" "$BAY_PREFIX/runtimes"
 chmod 0755 "$BAY_PREFIX/bin" "$BAY_PREFIX/runtimes"
 # Holds every app's `.env` and SQLite file, so it is not world-readable.
-chmod 0700 "$BAY_PREFIX/data"
+#
+# `0711`, not `0700`: Bay runs each app as its own user, whose WorkingDirectory
+# lives under this directory. `0700` blocks traversal as well as listing, so
+# every app died at CHDIR before executing a line, and Bay reported it upstream
+# as a readiness timeout. `rwx--x--x` keeps the stated intent (nobody but root
+# can list or enumerate this directory) while letting each app user pass
+# through to its own subtree. Confidentiality never rested on this mode anyway:
+# each app's `.env` is written `0600` owned by that app's user.
+chmod 0711 "$BAY_PREFIX/data"
 
 chmod 0755 "$TMP/bay"
 # `mv` over a running executable, never `cp` into it: replacing the inode by
