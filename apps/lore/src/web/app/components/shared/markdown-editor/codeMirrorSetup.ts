@@ -102,7 +102,17 @@ const loreTheme = EditorView.theme({
   // Native selection. `drawSelection()` is deliberately NOT mounted (see
   // the extension list), so this is the real `::selection`, not
   // CodeMirror's painted stand-in.
-  "::selection": { backgroundColor: "var(--color-accent)" },
+  //
+  // A translucent PRIMARY, not `--color-accent`. Accent worked only while
+  // the field was `--color-background`: it is one step off the page in each
+  // theme, so once the frame moved to the same surface every other input
+  // uses (`input/30` in dark), selection and field landed within a hair of
+  // each other and the highlight vanished. A mix against the primary keeps
+  // contrast whatever the field sits on.
+  "::selection": {
+    backgroundColor:
+      "color-mix(in oklch, var(--color-primary) 35%, transparent)",
+  },
   ".cm-panels": {
     backgroundColor: "var(--color-popover)",
     color: "var(--color-popover-foreground)",

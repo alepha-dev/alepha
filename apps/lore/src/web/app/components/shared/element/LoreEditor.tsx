@@ -79,11 +79,22 @@ const LoreEditor = (props: LoreEditorProps) => {
   const { suggestions, rendered } = useElementLinks(props.element, props.value);
 
   return (
-    <div className="flex flex-col gap-1">
+    // `relative`, so the toggle floats INSIDE the field's top-right corner.
+    // It used to sit in a row of its own above the editor, which cost a line
+    // of vertical space on every form and read as a label for the field
+    // rather than a control on it. Same treatment the folio workspace
+    // already gives it, which is why `iconOnly` and `className` exist.
+    <div className="relative">
       {!controlled && !props.hideModeToggle && (
-        <div className="flex justify-end">
-          <MarkdownModeToggle mode={mode ?? "edit"} onChange={setMode} />
-        </div>
+        <MarkdownModeToggle
+          mode={mode ?? "edit"}
+          onChange={setMode}
+          iconOnly
+          // Transparent with a border, not a filled chip: it sits inside the
+          // field, and a solid block in the corner read as a separate
+          // control pasted on top of the input rather than part of it.
+          className="absolute top-1.5 right-1.5 z-10 border bg-transparent"
+        />
       )}
       <MarkdownEditor
         value={props.value}

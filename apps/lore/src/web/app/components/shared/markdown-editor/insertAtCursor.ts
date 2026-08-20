@@ -41,3 +41,18 @@ export const insertAtCursor = (view: EditorView, text: string): void => {
   view.dispatch(buildInsertion(view.state, text));
   view.focus();
 };
+
+/**
+ * Wrap an uploaded reference as a markdown image.
+ *
+ * The upload handlers return a bare reference (`/api/files/<uuid>` for a
+ * quest, `assets/<name>` for a folio) and that is what used to be inserted,
+ * so pasting a screenshot dropped a naked URL into the prose instead of the
+ * picture.
+ *
+ * The alt text is the filename with the four characters that would end the
+ * markdown early stripped out: an unescaped `]` in a name truncates the alt,
+ * and a `)` truncates the link.
+ */
+export const imageMarkdown = (name: string, reference: string): string =>
+  `![${name.replace(/[[\]()]/g, "")}](${reference})`;

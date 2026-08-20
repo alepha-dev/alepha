@@ -97,7 +97,13 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
   const [view, setView] = useState<EditorView | null>(null);
 
   const bare = props.variant === "bare";
-  const frame = bare ? "" : "border-input bg-background rounded-md border p-3";
+  // Same surface as `Textarea` and `Input`: transparent in light, `input/30`
+  // in dark, `rounded-lg`. It was `bg-background rounded-md`, which read as a
+  // different KIND of control sitting next to the fields it shares a form
+  // with.
+  const frame = bare
+    ? ""
+    : "border-input dark:bg-input/30 rounded-lg border bg-transparent p-3";
 
   if (props.mode === "edit") {
     return (
