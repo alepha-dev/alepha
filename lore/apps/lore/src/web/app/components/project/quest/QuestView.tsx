@@ -20,7 +20,6 @@ import {
   Settings as SettingsIcon,
   Signature,
   SquareCheck,
-  StickyNote,
   Swords,
   Trash2,
   X,
@@ -42,7 +41,6 @@ import QuestSummaryEditDialog from "./QuestSummaryEditDialog.tsx";
 import QuestViewCollapsibleBlock from "./QuestViewCollapsibleBlock.tsx";
 import QuestViewDuplicateButton from "./QuestViewDuplicateButton.tsx";
 import QuestViewEditButton from "./QuestViewEditButton.tsx";
-import QuestViewNotes from "./QuestViewNotes.tsx";
 import QuestViewObjectives from "./QuestViewObjectives.tsx";
 import QuestViewSettings from "./QuestViewSettings.tsx";
 import QuestViewTimer from "./QuestViewTimer.tsx";
@@ -140,7 +138,6 @@ const QuestView = (props: QuestViewProps) => {
   // Per-quest feature toggles live on the project. Undefined → off
   // (the new toggles default off for old projects until the owner
   // opts in via Settings → Quests).
-  const questNoteEnabled = project?.features?.questNote === true;
   const questReminderEnabled = project?.features?.questReminder === true;
   const questChronoEnabled = project?.features?.questChrono === true;
 
@@ -320,8 +317,8 @@ const QuestView = (props: QuestViewProps) => {
                       showDialog={showDialog}
                       setShowDialog={setShowDialog}
                     />
-                    {/* Note + Reminder moved into the Settings block at
-                        the bottom of the view (Lore quest #42). */}
+                    {/* Reminder moved into the Settings block at the
+                        bottom of the view (Lore quest #42). */}
                     <QuestViewDuplicateButton quest={quest} />
                   </>
                 )}
@@ -533,26 +530,6 @@ const QuestView = (props: QuestViewProps) => {
               </div>
             </div>
           )}
-
-          {/* Notes — first-class quest field (was buried under Settings).
-              Hidden when the per-project Quest Note toggle is off. */}
-          {questNoteEnabled &&
-            !quest.completedAt &&
-            questApi.updateQuestNote.can() && (
-              <QuestViewCollapsibleBlock
-                icon={<StickyNote className="size-5" />}
-                label={tr("quest.view.notes")}
-                defaultOpen={!!quest.note}
-              >
-                <QuestViewNotes
-                  quest={quest}
-                  onUpdate={(it) => {
-                    updateQuest(it);
-                    alepha.store.set(currentQuestAtom, it);
-                  }}
-                />
-              </QuestViewCollapsibleBlock>
-            )}
 
           {/* History (collapsible, default collapsed) */}
           <QuestViewCollapsibleBlock

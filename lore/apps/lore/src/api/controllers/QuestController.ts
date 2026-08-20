@@ -224,9 +224,15 @@ export class QuestController {
    * in. Syncing from one field would silently drop the references in the
    * other two the moment that field was saved.
    *
+   * `note` is a frozen dead column since the note feature was deleted
+   * (2026-08-20): nothing writes it anymore. It stays in this scan for
+   * that exact reason — a quest whose only reference to a folio was
+   * written in its note would otherwise lose that link on the next
+   * description save.
+   *
    * Takes the stored row rather than the request body for the same reason:
-   * a handler that only touches `note` still has to sync against the
-   * description it did not send.
+   * a handler that only touches one field still has to sync against the
+   * ones it did not send.
    *
    * Called from every path that writes one of those fields. Nothing
    * enforces that — a new write path that forgets simply leaves the graph
@@ -1368,41 +1374,6 @@ export class QuestController {
       await this.quests.deleteById(params.id);
 
       return { ok: true };
-    },
-  });
-
-  updateQuestNote = $action({
-    use: [$secure({ permissions: ["quest:update"] })],
-    schema: {
-      params: z.object({
-        id: z.integer(),
-      }),
-      body: z.object({
-        note: z.string().meta({ size: "rich" }),
-      }),
-      response: questResourceSchema,
-    },
-    handler: async ({ params, body, user }) => {
-      const quest = await this.quests.getOne({
-        where: {
-          id: { eq: params.id },
-        },
-      });
-
-      await this.security.assertMember(quest.projectId, user);
-
-      const updated = await this.quests.updateById(params.id, {
-        note: body.note,
-        // Embedded editor images become quest attachments so every
-        // member can read them (see mergeEmbeddedAttachments).
-        attachments: this.questService.mergeEmbeddedAttachments(
-          [body.note],
-          quest.attachments,
-        ),
-      });
-      await this.syncQuestLinks(updated);
-
-      return this.mapQuestToResource(updated);
     },
   });
 

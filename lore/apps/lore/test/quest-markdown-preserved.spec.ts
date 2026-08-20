@@ -152,34 +152,4 @@ describe("quest markdown is stored verbatim", () => {
 
     expect(updated.data.description).toBe(CODE_HEAVY);
   });
-
-  it("keeps angle brackets in a note", async () => {
-    const user = await owner();
-    const projectId = await project(user);
-
-    const created = await ctx.quests.createQuest.fetch(
-      {
-        body: {
-          title: "Notes take code too",
-          description: "",
-          area: "core",
-          priority: "medium",
-          difficulty: 2,
-          projectId,
-          objectives: [],
-        },
-      },
-      { user },
-    );
-
-    const updated = await ctx.quests.updateQuestNote.fetch(
-      {
-        params: { id: created.data.id },
-        body: { note: CODE_HEAVY },
-      },
-      { user },
-    );
-
-    expect(updated.data.note).toBe(CODE_HEAVY);
-  });
 });

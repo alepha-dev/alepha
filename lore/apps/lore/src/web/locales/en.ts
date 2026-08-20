@@ -501,9 +501,6 @@ export default {
   "project.settings.quests.title": "Quest features",
   "project.settings.quests.subtitle":
     "Toggle the per-quest features visible across this project.",
-  "project.settings.quests.note.label": "Quest note",
-  "project.settings.quests.note.description":
-    "Free-text scratch pad on each quest, only the assignee sees the editor.",
   "project.settings.quests.reminder.label": "Quest reminder",
   "project.settings.quests.reminder.description":
     "Periodic email reminders for accepted quests.",
@@ -651,9 +648,6 @@ export default {
     "Set this quest aside as out of scope? It leaves the backlog, but $1 depends on it and will stay blocked until you unshelve and complete it.",
   "quest.view.shelve.confirmButton": "Shelve Quest",
   "quest.view.edit": "Edit",
-  "quest.view.notes": "Notes",
-  "quest.view.notes.placeholder": "Add your notes here...",
-  "quest.view.notes.save": "Save",
   "quest.view.settings": "Settings",
   "quest.view.reminder.title": "Reminder",
   "quest.view.reminder.off": "Off",

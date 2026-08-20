@@ -137,6 +137,17 @@ export const quests = $entity({
         }),
       )
       .default([]),
+    /**
+     * @deprecated The quest note feature was deleted (2026-08-20). Nothing
+     * reads or writes this column anymore.
+     *
+     * It stays declared on purpose: dropping it is a `quests` table
+     * rebuild, and on D1 the `DROP TABLE quests` step fires
+     * `dependsOn`'s `ON DELETE SET NULL` against the freshly copied rows,
+     * erasing every questline link. Removing it from this schema instead
+     * of deleting the column would make `check:migrations` propose exactly
+     * that rebuild. Precedent: `projects.public`, `folios.tags`.
+     */
     note: db.default(z.string().meta({ size: "rich" }), ""),
     /**
      * Opt-in periodic reminder for the quest's assignee
