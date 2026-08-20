@@ -301,7 +301,15 @@ export default {
   "quest.view.questline.blockedByShelved": "Blocked by shelved #$1",
   "quest.view.questline.unblocked": "Unblocked — #$1 done",
   "quest.view.questline.unlocks": "Unlocks #$1",
+  "quest.status.new": "New",
+  "quest.status.accepted": "In progress",
+  "quest.status.completed": "Completed",
   "quest.status.shelved": "Shelved",
+  "quest.rail.estimate": "Estimate",
+  "quest.rail.epic": "Epic",
+  "quest.rail.milestone": "Milestone",
+  "quest.rail.questline": "Questline",
+  "quest.rail.addTag": "tag",
 
   "project.create.name": "Name",
   "project.create.name.helper":
@@ -342,7 +350,7 @@ export default {
   "quest.graph.pickAQuest":
     "Pick a quest on the timeline to see its description.",
   "quest.view.actions.complete": "Complete Quest",
-  "quest.view.actions.abandon": "Abandon Quest",
+  "quest.view.actions.unassign": "Unassign",
   "quest.view.actions.shelve": "Shelve",
   "quest.view.actions.unshelve": "Unshelve",
   "quest.view.complete.title": "Complete this quest",
@@ -637,10 +645,10 @@ export default {
   "kanban.error.acceptFirst": "You must accept the quest before completing it",
   "kanban.error.actionFailed": "Action failed",
 
-  "quest.view.abandon.title": "Abandon the quest",
-  "quest.view.abandon.confirm":
-    "Are you sure you want to abandon this quest? You will lose all progress on this quest.",
-  "quest.view.abandon.confirmButton": "Abandon Quest",
+  "quest.view.unassign.title": "Unassign this quest",
+  "quest.view.unassign.confirm":
+    "The quest goes back to the backlog and its reminders stop. Nothing you have written on it is deleted.",
+  "quest.view.unassign.confirmButton": "Unassign",
   "quest.view.shelve.title": "Shelve this quest",
   "quest.view.shelve.confirm":
     "Set this quest aside as out of scope? It keeps everything it has and leaves the backlog — filter by Shelved to find it again.",
@@ -650,7 +658,6 @@ export default {
   "quest.view.edit": "Edit",
   "quest.view.back": "Back",
   "quest.view.more": "More",
-  "quest.view.settings": "Settings",
   "quest.view.reminder.title": "Reminder",
   "quest.view.reminder.off": "Off",
   "quest.view.reminder.daily": "Daily",

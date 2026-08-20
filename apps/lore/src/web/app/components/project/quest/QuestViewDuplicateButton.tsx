@@ -22,6 +22,13 @@ import QuestCreate from "./QuestCreate.tsx";
 
 export interface QuestViewDuplicateButtonProps {
   quest: QuestResource;
+  /**
+   * `icon` is the bare square button the quest header used to carry.
+   * `row` is the labelled, left-aligned shape the metadata rail's action
+   * list wants. The dialog is the same either way, which is why this is a
+   * variant rather than a second component wrapping this one.
+   */
+  variant?: "icon" | "row";
 }
 
 const QuestViewDuplicateButton = (props: QuestViewDuplicateButtonProps) => {
@@ -46,22 +53,35 @@ const QuestViewDuplicateButton = (props: QuestViewDuplicateButtonProps) => {
 
   return (
     <>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0"
-              onClick={() => setShowDialog(true)}
-            />
-          }
+      {props.variant === "row" ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="justify-start"
+          onClick={() => setShowDialog(true)}
         >
           <Copy className="size-4" />
-        </TooltipTrigger>
-        <TooltipContent>{tr("quest.view.duplicate")}</TooltipContent>
-      </Tooltip>
+          {tr("quest.view.duplicate")}
+        </Button>
+      ) : (
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() => setShowDialog(true)}
+              />
+            }
+          >
+            <Copy className="size-4" />
+          </TooltipTrigger>
+          <TooltipContent>{tr("quest.view.duplicate")}</TooltipContent>
+        </Tooltip>
+      )}
 
       <Sheet open={showDialog} onOpenChange={setShowDialog}>
         <SheetContent
