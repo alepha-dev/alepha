@@ -166,6 +166,14 @@ func (s *Systemd) Start(spec Spec) error {
 		return err
 	}
 
+	// Checked here rather than left to systemd: it answers an unreachable
+	// WorkingDirectory with `status=200/CHDIR`, Bay turns that into "never
+	// became ready", and neither sentence mentions a directory mode. The app
+	// logs nothing either, because it never ran.
+	if err := AssertReachable(user, spec.Dir); err != nil {
+		return err
+	}
+
 	unit := s.render(spec, sandbox, user)
 	path := filepath.Join(s.UnitDir, unitName(spec.Key)+".service")
 	if err := writeFileAtomic(path, unit, 0o644); err != nil {
