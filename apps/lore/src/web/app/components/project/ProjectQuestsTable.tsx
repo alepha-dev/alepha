@@ -11,7 +11,7 @@ import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useRouter } from "alepha/react/router";
+import { Link, useRouter } from "alepha/react/router";
 import {
   Archive,
   ArchiveRestore,
@@ -279,12 +279,31 @@ const ProjectQuestsTable = () => {
             className: "w-full max-w-0 min-w-48",
             cell: (quest: QuestResource) => (
               <div className="flex flex-col overflow-hidden whitespace-nowrap">
-                <span
+                {/* A real anchor, not a span inside the clickable row: that
+                    way the browser owns shift / cmd / middle click, shows the
+                    target URL on hover, and offers "copy link address". The
+                    router bails on modified clicks without preventDefault, so
+                    a new tab opens natively while a plain click still routes
+                    in place. Same reasoning as the project switcher's rows
+                    (Lore feedback #61).
+
+                    `stopPropagation` because the row carries `onRowClick`
+                    too, and without it a plain click navigates twice: once
+                    through the anchor, once through the row. It is the guard
+                    the table's own checkbox cell already uses. */}
+                <Link
+                  href={router.path("projectQuest", {
+                    params: { shortId: String(quest.shortId) },
+                  })}
+                  onClick={(e) => e.stopPropagation()}
                   className={`truncate text-sm font-medium ${quest.completedAt ? "text-muted-foreground line-through" : ""}`}
-                  title={quest.title}
+                  title={`#${quest.shortId} - ${quest.title}`}
                 >
-                  {quest.title}
-                </span>
+                  <span className="text-muted-foreground font-mono">
+                    #{quest.shortId}
+                  </span>{" "}
+                  - {quest.title}
+                </Link>
                 {quest.description && (
                   <span className="text-muted-foreground truncate text-xs">
                     {descriptionSnippet(quest.description)}
