@@ -67,7 +67,7 @@ apps/lore/                # This app
 
 **Services (18)** — `BlightRuleService`, `FeedbackRateLimiter`, `FolioBlobService`, `FolioDirectoryService`, `FolioHistoryService`, `FolioLinkService`, `FolioNameService`, `InvitationService`, `PinnedFolioFolder`, `ProjectLimits`, `ProjectSecurityService`, `QuestCsvFormatter`, `QuestCsvParser`, `QuestImportFormatProvider`, `QuestResourceMapper`, `QuestService`, `SigilIngestService`, `SigilTokenService`, plus `parsers/`.
 
-**MCP tools (8)** — `BlightTools`, `FeedbackTools`, `FolioTools` (absorbed the old `ArchiveTools`: `directory_*` / `blob_*` live here now), `InsightsTools`, `MilestoneTools`, `ProjectTools`, `QuestTools`, `SigilTools`.
+**MCP tools (8)** — `BlightTools`, `FeedbackTools`, `FolioTools` (absorbed the old `ArchiveTools`: `directory_*` / `blob_*` live here now), `InsightsTools`, `MilestoneTools`, `ProjectTools`, `QuestTools` (including `quest_comment_add`, and the discussion inlined on `quest_get`), `SigilTools`.
 
 ## Routes
 

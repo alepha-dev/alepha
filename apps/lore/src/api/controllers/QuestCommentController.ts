@@ -50,7 +50,14 @@ export class QuestCommentController {
 
       const rows = await this.comments.findMany({
         where: { questId: { eq: params.id } },
-        orderBy: [{ column: "createdAt", direction: "desc" }],
+        // `id` breaks the tie, and it is not decoration: `createdAt` has
+        // millisecond resolution, so a burst of comments (an agent posting
+        // several in a loop, most obviously) lands several rows on the same
+        // stamp and the tail this takes would be an arbitrary subset of them.
+        orderBy: [
+          { column: "createdAt", direction: "desc" },
+          { column: "id", direction: "desc" },
+        ],
         limit: query?.limit ?? 200,
       });
 
