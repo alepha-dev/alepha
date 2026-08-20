@@ -21,6 +21,27 @@ export type QuestDiscussionEntry =
       subject?: string;
       /** The feedback item a quest was promoted from, for `created`. */
       feedbackId?: number;
+      /**
+       * Markdown the event carries as its own body, rendered under the
+       * header line the way a comment's body is. Only `completed` has one
+       * today: the completion summary is what the person said on their way
+       * out, so it belongs in the conversation rather than in a section of
+       * its own further up the page.
+       */
+      body?: string;
+      /**
+       * The quest the body belongs to. Only set alongside `body`, because it
+       * exists solely so the viewer can resolve `[[...]]` references against
+       * the right project.
+       */
+      questId?: number;
+      /**
+       * Set when the body was amended after the event happened. The old
+       * standalone section said "edited X ago"; in the feed that becomes the
+       * same "edited" marker a comment carries, so one vocabulary covers
+       * both kinds of written entry.
+       */
+      bodyEdited?: boolean;
     }
   | {
       kind: "comment";
@@ -89,6 +110,15 @@ export const buildQuestDiscussionEntries = (
       at: quest.completedAt,
       by: quest.completedBy,
       action: "completed",
+      // The completion summary rides on this event rather than standing as
+      // its own section. It is dated, authored and about the quest ending,
+      // which is exactly the event it now hangs under.
+      body: quest.completionMessage || undefined,
+      questId: quest.id,
+      bodyEdited:
+        !!quest.completionMessage &&
+        !!quest.completionMessageUpdatedAt &&
+        quest.completionMessageUpdatedAt !== quest.completedAt,
     });
   }
 

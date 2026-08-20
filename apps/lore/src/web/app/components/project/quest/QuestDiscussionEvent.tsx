@@ -1,5 +1,5 @@
 import { DateTimeProvider } from "alepha/datetime";
-import { useInject } from "alepha/react";
+import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
   Archive,
@@ -13,9 +13,10 @@ import {
   Swords,
   UserMinus,
 } from "lucide-react";
+import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { displayName } from "@/web/app/services/displayName.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
-import { UserAvatar } from "../../shared/UserAvatar.tsx";
+import LoreViewer from "../../shared/element/LoreViewer.tsx";
 import type { ProjectUser } from "../../shared/useProjectUsers.ts";
 import type { QuestDiscussionEntry } from "./questDiscussionEntries.ts";
 
@@ -25,9 +26,14 @@ export interface QuestDiscussionEventProps {
 }
 
 /**
- * One system event in the Discussion: avatar, actor, a plain-text predicate,
- * relative time right-aligned. One line, no bubble — the shape is what
- * separates an event from a comment at a glance.
+ * One system event in the Discussion, in the feed's two-column shape: a
+ * round glyph in the gutter, then actor, a plain-text predicate and the
+ * relative time right-aligned.
+ *
+ * The gutter carries the ICON, not the actor's avatar. A comment puts a face
+ * there and an event puts the thing that happened, so the two are told apart
+ * from the gutter alone, before any text is read. Showing both, as this did,
+ * made every row start with a face and left the icon as decoration.
  *
  * The predicates go through `tr()`. The timeline this replaces hardcoded
  * English RPG titles ("Courageous Choice", "A New Dawn") that shipped
@@ -38,6 +44,7 @@ const QuestDiscussionEvent = (props: QuestDiscussionEventProps) => {
   const { entry } = props;
   const { tr } = useI18n<I18n, "en">();
   const dt = useInject(DateTimeProvider);
+  const [project] = useStore(currentProjectAtom);
 
   const user = entry.by
     ? props.users.find((u) => u.id === entry.by)
@@ -49,16 +56,50 @@ const QuestDiscussionEvent = (props: QuestDiscussionEventProps) => {
   const Icon = ICONS[entry.action] ?? Pencil;
 
   return (
-    <li className="flex items-center gap-2 py-1.5 text-sm">
-      <UserAvatar fileId={user?.picture} className="size-5" alt="" />
-      <Icon className="text-muted-foreground size-3.5 shrink-0" />
-      <span className="min-w-0 truncate">
-        <span className="font-medium">{actor}</span>{" "}
-        <span className="text-muted-foreground">{predicate(tr, entry)}</span>
+    <li className="flex gap-3 py-3">
+      <span className="border-border text-muted-foreground flex size-7 shrink-0 items-center justify-center rounded-full border">
+        <Icon className="size-3.5" />
       </span>
-      <span className="text-muted-foreground ml-auto shrink-0 text-xs">
-        {dt.of(entry.at).fromNow()}
-      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        {/* `min-h-7` matches the circle and `items-center` centres against
+            it, so the actor line sits on the circle's midline rather than on
+            its text baseline. A baseline sits the text high, which reads as
+            misaligned the moment the glyph beside it is round. */}
+        <div className="flex min-h-7 items-center gap-2 text-sm">
+          <span className="min-w-0 truncate">
+            <span className="font-medium">{actor}</span>{" "}
+            <span className="text-muted-foreground">
+              {predicate(tr, entry)}
+            </span>
+          </span>
+          <span className="text-muted-foreground ml-auto shrink-0 text-xs">
+            {entry.bodyEdited && (
+              <span className="mr-1 italic">
+                {tr("quest.discussion.edited")}
+              </span>
+            )}
+            {dt.of(entry.at).fromNow()}
+          </span>
+        </div>
+
+        {/* An event with a body reads as a comment, because that is what it
+            is: the completion summary is what the person said as they closed
+            the quest. Same bubble as a comment so the feed has one shape for
+            "somebody wrote this". */}
+        {entry.body && (
+          <div className="border-border bg-muted/40 rounded-md border px-3 py-3">
+            <LoreViewer
+              element={{
+                kind: "quest",
+                projectId: project?.id ?? 0,
+                projectSlug: project?.slug ?? "",
+                id: entry.questId ?? 0,
+              }}
+              content={entry.body}
+            />
+          </div>
+        )}
+      </div>
     </li>
   );
 };
