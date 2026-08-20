@@ -1,6 +1,9 @@
 import { useStore } from "alepha/react";
 import { sigilClientAtom } from "../../shared/sigilClientAtom.ts";
-import { sigilFeedbackPositionOf } from "../../shared/sigilFeedbackPosition.ts";
+import {
+  SIGIL_FEEDBACK_HIDDEN,
+  sigilFeedbackPositionOf,
+} from "../../shared/sigilFeedbackPosition.ts";
 import { sigilAnyGlobMatch } from "../../shared/sigilGlobMatch.ts";
 import { useCurrentPath } from "../useCurrentPath.ts";
 import { useFeedbackUrl } from "../useFeedbackUrl.ts";
@@ -25,6 +28,15 @@ export const SigilRoot = () => {
   const path = useCurrentPath();
 
   if (!feedbackUrl) {
+    return null;
+  }
+
+  // The one position that is not a position. `sigilFeedbackPositionOf` cannot
+  // express it - it narrows to a corner and falls back to the default, so
+  // asking it about "hidden" answers "bottom-right" - which is exactly how this
+  // shipped: the config accepted the value, the docs described it as the way to
+  // keep the URL without the control, and the button rendered anyway.
+  if (config.feedbackButton === SIGIL_FEEDBACK_HIDDEN) {
     return null;
   }
 
