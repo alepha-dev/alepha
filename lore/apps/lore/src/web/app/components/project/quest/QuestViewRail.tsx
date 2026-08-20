@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { EpicController } from "@/api/controllers/EpicController.ts";
-import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentMilestonesAtom } from "@/web/app/atoms/currentMilestonesAtom.ts";
@@ -25,6 +24,7 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { displayName } from "@/web/app/services/displayName.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import { UserAvatar } from "../../shared/UserAvatar.tsx";
+import { useProjectUsers } from "../../shared/useProjectUsers.ts";
 import QuestViewDuplicateButton from "./QuestViewDuplicateButton.tsx";
 import QuestViewRailRow from "./QuestViewRailRow.tsx";
 import QuestViewRailTags from "./QuestViewRailTags.tsx";
@@ -58,11 +58,9 @@ const QuestViewRail = (props: QuestViewRailProps) => {
   const { quest } = props;
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
-  const projectApi = useClient<ProjectController>();
   const epicApi = useClient<EpicController>();
   const [project] = useStore(currentProjectAtom);
   const [milestones] = useStore(currentMilestonesAtom);
-  const [assignee, setAssignee] = useState<ProjectUser | undefined>(undefined);
   const [epic, setEpic] = useState<EpicSummary | undefined>(undefined);
 
   const features = project?.features;
@@ -73,23 +71,12 @@ const QuestViewRail = (props: QuestViewRailProps) => {
   const milestonesEnabled = features?.milestones === true;
 
   // Only fetched when there is a uuid to resolve — the majority of quests in
-  // a backlog are unassigned, and the rail must not cost a request each.
-  useEffect(() => {
-    if (!project?.id || !quest.acceptedBy) {
-      setAssignee(undefined);
-      return;
-    }
-    let alive = true;
-    projectApi
-      .getProjectUsers({ params: { id: project.id } })
-      .then((users) => {
-        if (alive) setAssignee(users.find((u) => u.id === quest.acceptedBy));
-      })
-      .catch(() => null);
-    return () => {
-      alive = false;
-    };
-  }, [project?.id, quest.acceptedBy]);
+  // a backlog are unassigned, and the rail must not cost a request each. The
+  // Discussion reads the same hook, and `HttpClient` dedupes the two calls.
+  const users = useProjectUsers(!!quest.acceptedBy);
+  const assignee = quest.acceptedBy
+    ? users.find((u) => u.id === quest.acceptedBy)
+    : undefined;
 
   // Same rule for the epic: `quests.epicId` is a global id and the row wants
   // the per-project number and title, which only the epic list carries.
@@ -271,13 +258,6 @@ const QuestViewRail = (props: QuestViewRailProps) => {
 export interface QuestlineSummary {
   predecessor?: { id: number; shortId: number; title: string };
   dependents: Array<{ id: number; shortId: number; title: string }>;
-}
-
-interface ProjectUser {
-  id: string;
-  picture?: string;
-  username?: string | null;
-  email?: string | null;
 }
 
 interface EpicSummary {
