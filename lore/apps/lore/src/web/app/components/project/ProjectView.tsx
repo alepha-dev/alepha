@@ -25,6 +25,7 @@ import {
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentBlightCountAtom } from "../../atoms/currentBlightCountAtom.ts";
 import { currentEpicAtom } from "../../atoms/currentEpicAtom.ts";
+import { currentEpicCountAtom } from "../../atoms/currentEpicCountAtom.ts";
 import { currentFeedbackCountAtom } from "../../atoms/currentFeedbackCountAtom.ts";
 import { currentFolioPathAtom } from "../../atoms/currentFolioPathAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
@@ -159,6 +160,7 @@ const ProjectView = () => {
   const [sigils] = useStore(currentSigilsAtom);
   const [sigil] = useStore(currentSigilAtom);
   const [epic] = useStore(currentEpicAtom);
+  const [epicCount] = useStore(currentEpicCountAtom);
 
   if (!project) {
     return null;
@@ -205,6 +207,10 @@ const ProjectView = () => {
       icon: Layers,
       href: router.path("projectEpics", { params: { projectSlug } }),
       active: name === "projectEpics" || name === "projectEpic",
+      // Planned epics only, and hidden at zero like every other badge here.
+      // A planned epic is a gate holding its quests out of the Quests count
+      // beside it, so this is the sidebar's only trace of that work.
+      badge: epicCount?.count ? epicCount.count : undefined,
     });
   }
   // Blights are reported by apps, so the entry follows the apps: it appears

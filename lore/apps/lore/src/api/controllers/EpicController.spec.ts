@@ -402,6 +402,39 @@ describe("EpicController", () => {
     ).rejects.toThrowError(ForbiddenError);
   });
 
+  it("counts only planned epics, and only this project's", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+
+    await createTestEpic(ctx.alepha, project, { status: "planned" });
+    await createTestEpic(ctx.alepha, project, { status: "active" });
+    await createTestEpic(ctx.alepha, project, { status: "done" });
+
+    // A neighbouring project's planned epic must not leak into the badge.
+    const other = await createTestProject(ctx.alepha);
+    await createTestEpic(ctx.alepha, other, { status: "planned" });
+
+    expect(
+      await ctx.controller.countPlannedEpics(
+        { params: { projectId: project.id } },
+        { user },
+      ),
+    ).toEqual({ count: 1 });
+  });
+
+  it("refuses to count planned epics for a non-member", async ({ expect }) => {
+    const project = await createTestProject(ctx.alepha);
+
+    await expect(
+      ctx.controller.countPlannedEpics(
+        { params: { projectId: project.id } },
+        { user: strangerToken() },
+      ),
+    ).rejects.toThrowError(ForbiddenError);
+  });
+
   it("refuses to read a project's epics for a non-member", async ({
     expect,
   }) => {

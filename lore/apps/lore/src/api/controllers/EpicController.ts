@@ -77,6 +77,40 @@ export class EpicController {
     },
   });
 
+  /**
+   * How many epics are still `planned`, for the sidebar's Epics badge.
+   *
+   * Counts the gate itself rather than the work behind it. `countOpenQuests`
+   * runs `applyBacklogGate`, so every quest inside a planned epic is absent
+   * from the Quests badge by design; with no badge here at all, that work had
+   * no representation in the sidebar whatsoever. This number is what says it
+   * exists.
+   *
+   * `planned` and not `active`: an active epic's quests are already counted
+   * next to Quests, so badging those would double-report them.
+   *
+   * Covered by `epics_project_id_status_idx` on `(project_id, status)`.
+   */
+  countPlannedEpics = $action({
+    use: [$secure({ permissions: ["quest:read"] })],
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+      }),
+      response: z.object({ count: z.integer() }),
+    },
+    handler: async ({ params, user }) => {
+      await this.security.assertMember(params.projectId, user);
+
+      const count = await this.epics.count({
+        projectId: { eq: params.projectId },
+        status: { eq: "planned" },
+      });
+
+      return { count };
+    },
+  });
+
   getEpicByNumber = $action({
     use: [$secure({ permissions: ["quest:read"] })],
     path: "/projects/:projectId/epics/:number",

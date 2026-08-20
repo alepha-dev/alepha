@@ -309,6 +309,22 @@ test.describe("Epics — the list", () => {
       await expect(page.getByText("No quests yet")).toBeVisible();
     });
 
+    await test.step("the sidebar badges the planned epics", async () => {
+      // Both seeded epics are `planned`, and the badge counts exactly that.
+      // It matters because `countOpenQuests` runs the backlog gate: the quest
+      // attached above is inside a planned epic, so it is absent from the
+      // Quests badge on purpose. This number is the sidebar's only trace of
+      // it. Read off the nav link so a stray "2" elsewhere cannot satisfy it.
+      // Scoped to `[data-slot="sidebar"]`: the BREADCRUMB is also a
+      // `navigation` landmark carrying an "Epics" link, and a bare role
+      // lookup resolves to that one instead.
+      const epicsBadge = page
+        .locator('[data-slot="sidebar"]')
+        .locator('[data-slot="sidebar-menu-item"]', { hasText: "Epics" })
+        .locator('[data-slot="sidebar-menu-badge"]');
+      await expect(epicsBadge).toHaveText("2", { timeout: 15_000 });
+    });
+
     await test.step("the toolbar search narrows the table", async () => {
       await page.getByRole("textbox", { name: "Search" }).fill(withQuest);
 

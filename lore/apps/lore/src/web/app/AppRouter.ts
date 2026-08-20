@@ -27,6 +27,7 @@ import { currentAreasAtom } from "./atoms/currentAreasAtom.ts";
 import { currentAssignedQuestsAtom } from "./atoms/currentAssignedQuestsAtom.ts";
 import { currentBlightCountAtom } from "./atoms/currentBlightCountAtom.ts";
 import { currentEpicAtom } from "./atoms/currentEpicAtom.ts";
+import { currentEpicCountAtom } from "./atoms/currentEpicCountAtom.ts";
 import { currentFeedbackCountAtom } from "./atoms/currentFeedbackCountAtom.ts";
 import { currentFolioAtom } from "./atoms/currentFolioAtom.ts";
 import { currentFolioBlobsAtom } from "./atoms/currentFolioBlobsAtom.ts";
@@ -358,73 +359,110 @@ export class AppRouter {
           },
         });
 
-      const milestones = await this.milestoneApi.getMilestones({
-        params: { projectId: project.id },
-      });
-
-      // Pending-feedback count for the sidebar badge. Fetched once per
-      // project navigation instead of polled — accept/reject/remove
-      // actions adjust the atom locally, so within-session math stays
-      // correct. Errors leave the count undefined (badge hides).
-      const pendingFeedback = await this.feedbackApi
-        .listFeedback({
+      // Everything below needs only `project.id`, so it is issued together
+      // rather than awaited in turn. That is not just parallelism: the
+      // browser's `BatchCollector` coalesces action calls raised within a
+      // 10ms window into ONE `POST /api/_batch`, and sequential awaits can
+      // never share a window because each blocks on a full round trip. As a
+      // chain these were six requests deep on every project navigation; as
+      // one `Promise.all` they are a single batched request, which is also
+      // why adding the epic count below costs nothing.
+      //
+      // Rejection behaviour is unchanged: `getMilestones` still has no
+      // `.catch`, so a failure there rejects the loader exactly as it did
+      // when it was awaited first.
+      const [
+        milestones,
+        pendingFeedback,
+        openQuests,
+        plannedEpics,
+        sigils,
+        openBlights,
+        areas,
+      ] = await Promise.all([
+        this.milestoneApi.getMilestones({
           params: { projectId: project.id },
-          query: { status: "pending" },
-        })
-        .then((r) => r.items.length)
-        .catch(() => 0);
+        }),
 
-      // Open-quest count for the sidebar badge. Always on (unlike Blights /
-      // Feedback, Quests has no feature gate) and member-readable; `.catch`
-      // keeps a transient error from blocking the whole project load
-      // (badge just hides).
-      const openQuests = await this.questApi
-        .countOpenQuests({ params: { projectId: project.id } })
-        .then((r) => r.count)
-        .catch(() => 0);
+        // Pending-feedback count for the sidebar badge. Fetched once per
+        // project navigation instead of polled: accept/reject/remove
+        // actions adjust the atom locally, so within-session math stays
+        // correct. Errors leave the count undefined (badge hides).
+        this.feedbackApi
+          .listFeedback({
+            params: { projectId: project.id },
+            query: { status: "pending" },
+          })
+          .then((r) => r.items.length)
+          .catch(() => 0),
 
-      // The sidebar's Apps section. Member-readable — `listSigils` is gated on
-      // `project:read`, unlike every sigil mutation, which is owner-only — but
-      // `.catch` keeps a transient failure from taking the whole project down
-      // with it: a degraded section costs a section, an unhandled rejection
-      // costs the page.
-      //
-      // `undefined` on failure, NOT `[]`: the sidebar and the Blights
-      // derivation below both need to tell "no apps" apart from "could not
-      // read the apps" — see `currentSigilsAtom`.
-      const sigils = project.features?.sigils
-        ? await this.sigilApi
-            .listSigils({ params: { projectId: project.id } })
-            .then((r) => r.items)
-            .catch(() => undefined)
-        : [];
+        // Open-quest count for the sidebar badge. Always on (unlike Blights /
+        // Feedback, Quests has no feature gate) and member-readable; `.catch`
+        // keeps a transient error from blocking the whole project load
+        // (badge just hides).
+        this.questApi
+          .countOpenQuests({ params: { projectId: project.id } })
+          .then((r) => r.count)
+          .catch(() => 0),
 
-      // Open-blight count for the sidebar badge. Member-readable; `.catch`
-      // keeps a transient error from blocking the whole project load
-      // (badge just hides).
-      //
-      // Counted under the module's master switch alone, deliberately *not*
-      // narrowed to "some enrolled app still carries the `blights` kind". A
-      // blight outlives the credential that filed it — `blights.sigilId` is
-      // `ON DELETE SET NULL` and rows survive for `retentionDays` — so an
-      // owner who deletes their last app, or just switches Blights off on it,
-      // still has an inbox full of open crashes. Deriving the count from the
-      // apps would zero it in the same instant the sidebar entry vanished,
-      // and `ProjectView` reads this count to keep that entry reachable.
-      const openBlights = project.features?.sigils
-        ? await this.blightApi
-            .countOpenBlights({ params: { projectId: project.id } })
-            .then((r) => r.count)
-            .catch(() => 0)
-        : 0;
+        // Planned-epic count for the sidebar badge. Gated on the same
+        // `features.epics` switch that decides whether the entry renders at
+        // all, so a project with epics off pays nothing for it.
+        //
+        // This is the counterweight to the quest count above: that one runs
+        // the backlog gate, so quests parked inside a planned epic are
+        // excluded from it on purpose. Without this number the sidebar
+        // reported none of that work.
+        project.features?.epics
+          ? this.epicApi
+              .countPlannedEpics({ params: { projectId: project.id } })
+              .then((r) => r.count)
+              .catch(() => 0)
+          : Promise.resolve(0),
 
-      // The one list every area picker reads. Member-readable, and
-      // `.catch` keeps a transient failure from taking the page down —
-      // an empty picker costs a picker, an unhandled rejection costs the
-      // project.
-      const areas = await this.areaApi
-        .getAreas({ params: { projectId: project.id } })
-        .catch(() => undefined);
+        // The sidebar's Apps section. Member-readable (`listSigils` is gated
+        // on `project:read`, unlike every sigil mutation, which is owner-only)
+        // but `.catch` keeps a transient failure from taking the whole
+        // project down with it: a degraded section costs a section, an
+        // unhandled rejection costs the page.
+        //
+        // `undefined` on failure, NOT `[]`: the sidebar and the Blights
+        // derivation below both need to tell "no apps" apart from "could not
+        // read the apps": see `currentSigilsAtom`.
+        project.features?.sigils
+          ? this.sigilApi
+              .listSigils({ params: { projectId: project.id } })
+              .then((r) => r.items)
+              .catch(() => undefined)
+          : Promise.resolve([]),
+
+        // Open-blight count for the sidebar badge. Member-readable; `.catch`
+        // keeps a transient error from blocking the whole project load
+        // (badge just hides).
+        //
+        // Counted under the module's master switch alone, deliberately *not*
+        // narrowed to "some enrolled app still carries the `blights` kind". A
+        // blight outlives the credential that filed it: `blights.sigilId` is
+        // `ON DELETE SET NULL` and rows survive for `retentionDays`, so an
+        // owner who deletes their last app, or just switches Blights off on it,
+        // still has an inbox full of open crashes. Deriving the count from the
+        // apps would zero it in the same instant the sidebar entry vanished,
+        // and `ProjectView` reads this count to keep that entry reachable.
+        project.features?.sigils
+          ? this.blightApi
+              .countOpenBlights({ params: { projectId: project.id } })
+              .then((r) => r.count)
+              .catch(() => 0)
+          : Promise.resolve(0),
+
+        // The one list every area picker reads. Member-readable, and
+        // `.catch` keeps a transient failure from taking the page down:
+        // an empty picker costs a picker, an unhandled rejection costs the
+        // project.
+        this.areaApi
+          .getAreas({ params: { projectId: project.id } })
+          .catch(() => undefined),
+      ]);
 
       this.alepha.store.set(currentProjectAtom, project);
       this.alepha.store.set(currentProjectMemberAtom, member);
@@ -435,6 +473,7 @@ export class AppRouter {
       });
       this.alepha.store.set(currentBlightCountAtom, { count: openBlights });
       this.alepha.store.set(currentQuestCountAtom, { count: openQuests });
+      this.alepha.store.set(currentEpicCountAtom, { count: plannedEpics });
       this.alepha.store.set(currentSigilsAtom, sigils);
       this.alepha.store.set(currentAreasAtom, areas);
 
@@ -450,6 +489,7 @@ export class AppRouter {
       this.alepha.store.set(currentFeedbackCountAtom, { count: 0 });
       this.alepha.store.set(currentBlightCountAtom, { count: 0 });
       this.alepha.store.set(currentQuestCountAtom, { count: 0 });
+      this.alepha.store.set(currentEpicCountAtom, { count: 0 });
       this.alepha.store.set(currentSigilsAtom, undefined);
       this.alepha.store.set(currentAreasAtom, undefined);
     },
