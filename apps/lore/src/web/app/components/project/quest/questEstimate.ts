@@ -55,3 +55,41 @@ export const formatEstimate = (minutes: number): string => {
   }
   return out;
 };
+
+/**
+ * The units the custom picker offers, in minutes.
+ *
+ * A "day" is {@link WORKDAY_MINUTES}, not 24 hours: the estimate answers
+ * "how much of my working time does this take", and `formatEstimate` already
+ * rolls up against the same number. Two different day-lengths in one feature
+ * would make `1d` mean one thing in the picker and another in the badge.
+ */
+export const ESTIMATE_UNITS = {
+  minutes: 1,
+  hours: 60,
+  days: WORKDAY_MINUTES,
+} as const;
+
+export type EstimateUnit = keyof typeof ESTIMATE_UNITS;
+
+/**
+ * Split a minute count back into the coarsest unit that divides it exactly,
+ * so the picker reopens on what was entered rather than on a raw minute
+ * count: 145440 comes back as `{ count: 303, unit: "days" }`, not 145440
+ * minutes.
+ *
+ * Exactness is the whole rule. 500 minutes is not a whole number of hours,
+ * so it stays minutes rather than being rounded into a value the user never
+ * chose.
+ */
+export const splitEstimate = (
+  minutes: number,
+): { count: number; unit: EstimateUnit } => {
+  if (minutes > 0 && minutes % ESTIMATE_UNITS.days === 0) {
+    return { count: minutes / ESTIMATE_UNITS.days, unit: "days" };
+  }
+  if (minutes > 0 && minutes % ESTIMATE_UNITS.hours === 0) {
+    return { count: minutes / ESTIMATE_UNITS.hours, unit: "hours" };
+  }
+  return { count: minutes, unit: "minutes" };
+};
