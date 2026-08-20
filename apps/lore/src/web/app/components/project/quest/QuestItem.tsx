@@ -1,23 +1,13 @@
-import { Button } from "@alepha/ui/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@alepha/ui/components/ui/tooltip";
-import { useAlepha, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useActive, useRouter } from "alepha/react/router";
-import {
-  Clock,
-  NotebookText,
-  Sparkles,
-  Trash2,
-  TriangleAlert,
-} from "lucide-react";
-import type { QuestController } from "@/api/controllers/QuestController.ts";
+import { Clock, Sparkles, TriangleAlert } from "lucide-react";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
-import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuestsAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import QuestDifficulty from "./QuestDifficulty.tsx";
 import { formatEstimate } from "./questEstimate.ts";
@@ -27,35 +17,14 @@ export interface QuestItemProps {
   index: number;
 }
 
-const stripHtml = (html: string) => {
-  if (!html) return "";
-  return html.replace(/<[^>]+>/g, "").trim();
-};
-
 const QuestItem = (props: QuestItemProps) => {
   const { quest } = props;
 
-  const alepha = useAlepha();
   const { tr } = useI18n<I18n, "en">();
-  const client = useClient<QuestController>();
   const router = useRouter<AppRouter>();
   const { isActive, anchorProps } = useActive(
     router.path("projectQuest", { params: { shortId: quest.shortId } }),
   );
-
-  const clearNote = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const updatedQuest = await client.updateQuestNote({
-      params: { id: quest.id },
-      body: { note: "" },
-    });
-    const currentQuests = alepha.store.get(currentAssignedQuestsAtom) || [];
-    const updatedQuests = currentQuests.map((t) =>
-      t.id === updatedQuest.id ? updatedQuest : t,
-    );
-    alepha.store.set(currentAssignedQuestsAtom, updatedQuests);
-  };
 
   const isTimerRunning = () => {
     if (!quest.timerSessions || quest.timerSessions.length === 0) return false;
@@ -112,30 +81,6 @@ const QuestItem = (props: QuestItemProps) => {
               <span className="text-xs">
                 {tr("quest.view.timer.description")}
               </span>
-            </TooltipContent>
-          </Tooltip>
-        )}
-
-        {quest.note?.trim() && (
-          <Tooltip>
-            <TooltipTrigger
-              render={<NotebookText className="size-4 text-amber-500" />}
-            />
-            <TooltipContent className="max-w-xs whitespace-pre-wrap bg-amber-500 text-black">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-bold">{stripHtml(quest.note)}</span>
-                {client.updateQuestNote.can() && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 w-5 p-0 text-black hover:bg-black/10"
-                    onClick={clearNote}
-                  >
-                    <Trash2 className="size-3" />
-                  </Button>
-                )}
-              </div>
             </TooltipContent>
           </Tooltip>
         )}

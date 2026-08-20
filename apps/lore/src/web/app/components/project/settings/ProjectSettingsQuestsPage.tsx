@@ -7,7 +7,7 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import { useProjectFeatureToggle } from "./useProjectFeatureToggle.ts";
 
-type QuestFeatureKey = "questNote" | "questReminder" | "questChrono";
+type QuestFeatureKey = "questReminder" | "questChrono";
 
 /**
  * Compile-time guard — if a key gets renamed in the entity the
@@ -20,21 +20,14 @@ void _questFeatureKeyCheck;
 export interface QuestFeatureRow {
   key: QuestFeatureKey;
   labelKey:
-    | "project.settings.quests.note.label"
     | "project.settings.quests.reminder.label"
     | "project.settings.quests.chrono.label";
   descriptionKey:
-    | "project.settings.quests.note.description"
     | "project.settings.quests.reminder.description"
     | "project.settings.quests.chrono.description";
 }
 
 const ROWS: QuestFeatureRow[] = [
-  {
-    key: "questNote",
-    labelKey: "project.settings.quests.note.label",
-    descriptionKey: "project.settings.quests.note.description",
-  },
   {
     key: "questChrono",
     labelKey: "project.settings.quests.chrono.label",

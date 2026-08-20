@@ -23,7 +23,6 @@ export const projectFeaturesSchema = z.object({
    * was removed along with the gold economy, so the toggle is now the
    * only gate.
    */
-  questNote: z.boolean().optional(),
   questReminder: z.boolean().optional(),
   questChrono: z.boolean().optional(),
   /**
@@ -78,8 +77,8 @@ export const projectFeaturesSchema = z.object({
 export type ProjectFeatures = Infer<typeof projectFeaturesSchema>;
 
 /**
- * Default feature flags. NB: the per-quest toggles (`questNote`,
- * `questReminder`, `questChrono`) are intentionally
+ * Default feature flags. NB: the per-quest toggles (`questReminder`,
+ * `questChrono`) are intentionally
  * absent from this object. Including them here changes the column's
  * Drizzle DEFAULT — and on D1 that triggers a table rebuild
  * (`DROP TABLE projects`) which cascade-wipes members, quests,

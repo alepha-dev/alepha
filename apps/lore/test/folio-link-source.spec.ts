@@ -250,7 +250,7 @@ describe("quests and epics as link sources, through their controllers", () => {
     expect(inbound[0].fromType).toBe("quest");
   });
 
-  it("a link in a quest NOTE counts too, and does not evict the description's", async () => {
+  it("a link in a completion summary counts too, and does not evict the description's", async () => {
     const { owner, projectId, target } = await seedTarget();
     const second = await ctx.folioController.create.fetch(
       { body: { projectId, title: "Second Folio", content: "x" } },
@@ -273,15 +273,15 @@ describe("quests and epics as link sources, through their controllers", () => {
       { user: owner },
     );
 
-    await ctx.questController.updateQuestNote.fetch(
+    await ctx.questController.updateQuestById.fetch(
       {
         params: { id: quest.data.id },
-        body: { note: `Also [[${second.data.title}]].` },
+        body: { completionMessage: `Also [[${second.data.title}]].` },
       },
       { user: owner },
     );
 
-    // The note handler does not send the description, so syncing from the
+    // This patch does not send the description, so syncing from the
     // request body alone would have dropped the description's link here.
     const outbound = await ctx.folioLinkService.findOutbound({
       kind: "quest",

@@ -510,9 +510,6 @@ export default {
   "project.settings.quests.title": "Fonctionnalités des quêtes",
   "project.settings.quests.subtitle":
     "Activez les fonctionnalités par-quête disponibles dans ce projet.",
-  "project.settings.quests.note.label": "Note de quête",
-  "project.settings.quests.note.description":
-    "Bloc-notes libre attaché à une quête, visible uniquement par l'assigné.",
   "project.settings.quests.reminder.label": "Rappel de quête",
   "project.settings.quests.reminder.description":
     "Rappels e-mail périodiques pour les quêtes acceptées.",
@@ -662,9 +659,6 @@ export default {
     "Mettre cette quête de côté ? Elle quitte le backlog, mais $1 en dépend et restera bloquée tant que vous ne l'aurez pas remise en jeu puis terminée.",
   "quest.view.shelve.confirmButton": "Mettre de côté",
   "quest.view.edit": "Modifier",
-  "quest.view.notes": "Notes",
-  "quest.view.notes.placeholder": "Ajoutez vos notes ici...",
-  "quest.view.notes.save": "Enregistrer",
   "quest.view.settings": "Paramètres",
   "quest.view.reminder.title": "Rappel",
   "quest.view.reminder.off": "Désactivé",

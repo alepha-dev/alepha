@@ -99,7 +99,7 @@ export const apiPost = async <T>(
  *
  * Replaces the old `unlockShopFeature`, which had to farm gold from a
  * throwaway quest and POST a purchase. The gold Shop is gone — the
- * per-quest modules (`questNote`, `questReminder`, `questChrono`) are
+ * per-quest modules (`questReminder`, `questChrono`) are
  * plain owner-controlled switches now, so the e2e just flips the flag.
  */
 export const setProjectFeature = async (

@@ -7,7 +7,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 // Limited to the legacy module-level toggles that drive a dedicated
 // settings sub-page, plus Epics — which has no sub-page of its own yet and
 // renders this section directly on the settings shell instead. Per-quest
-// toggles (questNote / questReminder / questChrono) live on the Quests
+// toggles (questReminder / questChrono) live on the Quests
 // settings page and render via a dedicated row component, not this section.
 type ModuleFeatureKey =
   | "kanban"

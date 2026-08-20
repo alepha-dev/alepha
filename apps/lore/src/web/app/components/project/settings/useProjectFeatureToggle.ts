@@ -27,7 +27,7 @@ export const useProjectFeatureToggle = (key: FeatureKey): FeatureToggle => {
     ...defaultProjectFeatures,
     ...project?.features,
   };
-  // Optional schema keys (questNote/questReminder/...) read as
+  // Optional schema keys (questReminder/questChrono/...) read as
   // `undefined` for old rows that don't carry them yet — coerce to
   // false so the Switch never receives undefined.
   const enabled = pending ?? persisted[key] ?? false;
