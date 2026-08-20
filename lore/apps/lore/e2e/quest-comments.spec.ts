@@ -168,7 +168,7 @@ test.describe("Quest comments", () => {
    * interleave into ONE list — two stacked feeds read as bolted on, and the
    * interleaving is what makes a quest read as something that happened.
    */
-  test("the Discussion shows events and comments in one feed, with a filter", async ({
+  test("the Discussion shows events and comments in one feed", async ({
     page,
   }) => {
     test.setTimeout(60_000);
@@ -221,17 +221,10 @@ test.describe("Quest comments", () => {
       await expect(page.getByText(/by You/)).toHaveCount(0);
     });
 
-    await test.step("Comments only drops the system events", async () => {
-      await page.getByRole("radio", { name: /comments only/i }).click();
-
-      await expect(
-        page.getByText("A comment that has to show up in the feed."),
-      ).toBeVisible();
-      await expect(page.getByText(/created the quest/)).toHaveCount(0);
-
-      await page.getByRole("radio", { name: /everything/i }).click();
-      await expect(page.getByText(/created the quest/)).toBeVisible();
-    });
+    // The Everything / Comments-only filter that used to be asserted here is
+    // gone: it sat permanently in the section header, defaulted to
+    // everything, and was a standing control for a view almost nobody
+    // switched to. One feed, no filter.
   });
 
   /**

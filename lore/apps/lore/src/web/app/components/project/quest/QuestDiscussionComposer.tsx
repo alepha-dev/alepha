@@ -68,10 +68,12 @@ const QuestDiscussionComposer = (props: QuestDiscussionComposerProps) => {
   };
 
   return (
-    <div className="flex gap-2 px-1 pt-2">
+    // Same gutter as the rows above, so the composer reads as the next entry
+    // in the feed rather than a form bolted under it.
+    <div className="flex gap-3 px-1 pt-3">
       <UserAvatar
         fileId={(auth.user as { picture?: string } | undefined)?.picture}
-        className="mt-1 size-5 shrink-0"
+        className="mt-1 size-7 shrink-0"
         alt=""
       />
       <div className="flex min-w-0 flex-1 flex-col gap-2">

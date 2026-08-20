@@ -1,11 +1,11 @@
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { MessageSquare } from "lucide-react";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { displayName } from "@/web/app/services/displayName.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import LoreViewer from "../../shared/element/LoreViewer.tsx";
-import { UserAvatar } from "../../shared/UserAvatar.tsx";
 import type { ProjectUser } from "../../shared/useProjectUsers.ts";
 import { expandCommentReferences } from "./commentReferences.ts";
 import type { QuestDiscussionEntry } from "./questDiscussionEntries.ts";
@@ -16,11 +16,12 @@ export interface QuestDiscussionCommentProps {
 }
 
 /**
- * One comment in the Discussion: the same header line as a system event,
- * with the word "commented", then the body in a bordered bubble underneath.
+ * One comment in the Discussion, in the feed's two-column shape: the
+ * author's avatar in the gutter, then the same header line a system event
+ * uses with the word "commented", then the body underneath.
  *
- * The bubble is the whole distinction. Events are one line and comments have
- * a body, so a reader can tell what a row is before reading it.
+ * Two things separate a comment from an event without reading either: the
+ * gutter holds a face rather than a glyph, and only a comment has a body.
  */
 const QuestDiscussionComment = (props: QuestDiscussionCommentProps) => {
   const { entry } = props;
@@ -39,45 +40,58 @@ const QuestDiscussionComment = (props: QuestDiscussionCommentProps) => {
     : tr("quest.discussion.author.unknown");
 
   return (
-    <li className="flex flex-col gap-1 py-1.5">
-      <div className="flex items-center gap-2 text-sm">
-        <UserAvatar fileId={user?.picture} className="size-5" alt="" />
-        <span className="min-w-0 truncate">
-          <span className="font-medium">{author}</span>{" "}
-          <span className="text-muted-foreground">
-            {tr("quest.discussion.commented")}
+    <li className="flex gap-3 py-3">
+      {/* The same bordered circle every event uses, carrying a chat glyph.
+          A comment is an entry in the feed like any other, so the gutter
+          keeps one shape: an avatar there made comments the only rows with
+          a face, at a size that broke the column's rhythm. Who wrote it is
+          already the first thing on the line beside it. */}
+      <span className="border-border text-muted-foreground flex size-7 shrink-0 items-center justify-center rounded-full border">
+        <MessageSquare className="size-3.5" />
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        {/* `min-h-7` matches the circle so the header line is centred on it
+            rather than sitting on its text baseline. */}
+        <div className="flex min-h-7 items-center gap-2 text-sm">
+          <span className="min-w-0 truncate">
+            <span className="font-medium">{author}</span>{" "}
+            <span className="text-muted-foreground">
+              {tr("quest.discussion.commented")}
+            </span>
           </span>
-        </span>
-        <span className="text-muted-foreground ml-auto shrink-0 text-xs">
-          {entry.comment.editedAt && (
-            <span className="mr-1 italic">{tr("quest.discussion.edited")}</span>
-          )}
-          {dt.of(entry.at).fromNow()}
-        </span>
-      </div>
-      <div className="border-border bg-muted/40 ml-7 rounded-md border px-3 py-2">
-        {/* Through the shared viewer, so `[[folio]]` and `[[quest:#N]]`
+          <span className="text-muted-foreground ml-auto shrink-0 text-xs">
+            {entry.comment.editedAt && (
+              <span className="mr-1 italic">
+                {tr("quest.discussion.edited")}
+              </span>
+            )}
+            {dt.of(entry.at).fromNow()}
+          </span>
+        </div>
+        <div className="border-border bg-muted/40 rounded-md border px-3 py-3">
+          {/* Through the shared viewer, so `[[folio]]` and `[[quest:#N]]`
             resolve exactly as they do in a description — with the two
             conversation-only shapes (`#1204`, `@member`) expanded into it
             first. The stored body is never rewritten. */}
-        <LoreViewer
-          element={{
-            // `projectId` addresses the API, `projectSlug` the links the
-            // rewrite produces, and `id` is the element itself. Passing the
-            // quest id as the project id resolves every reference against an
-            // empty quest list, so every link comes back broken.
-            kind: "quest",
-            projectId: project?.id ?? 0,
-            projectSlug: project?.slug ?? "",
-            id: entry.comment.questId,
-          }}
-          content={expandCommentReferences(entry.comment.body, {
-            projectSlug: project?.slug ?? "",
-            members: props.users.map((u) => ({
-              name: displayName(u, ""),
-            })),
-          })}
-        />
+          <LoreViewer
+            element={{
+              // `projectId` addresses the API, `projectSlug` the links the
+              // rewrite produces, and `id` is the element itself. Passing the
+              // quest id as the project id resolves every reference against an
+              // empty quest list, so every link comes back broken.
+              kind: "quest",
+              projectId: project?.id ?? 0,
+              projectSlug: project?.slug ?? "",
+              id: entry.comment.questId,
+            }}
+            content={expandCommentReferences(entry.comment.body, {
+              projectSlug: project?.slug ?? "",
+              members: props.users.map((u) => ({
+                name: displayName(u, ""),
+              })),
+            })}
+          />
+        </div>
       </div>
     </li>
   );
