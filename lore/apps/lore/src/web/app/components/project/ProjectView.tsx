@@ -77,6 +77,30 @@ const ROUTES_FULL_WIDTH = new Set([
   ...ROUTES_APP,
 ]);
 
+/**
+ * The list route a section's breadcrumb crumb climbs back to, keyed by the
+ * route currently open. A section whose crumb has no entry here renders as
+ * plain text, which is why "Epics" used to be a dead label on an epic page.
+ *
+ * The three folio routes all map to the folio root, and `projectFolios` maps
+ * to itself on purpose: a deep directory is that same route carrying a `?dir=`
+ * query, so treating it as "the page you are already on" and dropping the link
+ * would strand the user inside the tree, the opposite of what the link is for.
+ *
+ * `projectEpics` is deliberately absent for the mirror-image reason: the epic
+ * list has no such nested state, so on the list itself the crumb is the open
+ * page and should stay inert.
+ *
+ * Apps have no entry because they have no list route at all: `/apps/:appName`
+ * is the only way to address one, and the inventory lives under Settings.
+ */
+const SECTION_HREF_ROUTES: Record<string, "projectFolios" | "projectEpics"> = {
+  projectFolios: "projectFolios",
+  projectFoliosNew: "projectFolios",
+  projectFoliosFolio: "projectFolios",
+  projectEpic: "projectEpics",
+};
+
 const SECTION_LABEL_KEYS: Record<string, string> = {
   projectQuests: "project.menu.quests",
   projectEpics: "project.menu.epics",
@@ -354,11 +378,9 @@ const ProjectView = () => {
   // same as the sidebar's single Quests entry.
   const sectionKey = SECTION_LABEL_KEYS[name];
   if (sectionKey) {
-    // For folio routes, the "Folios" section label links back to
-    // the folio root so the user can climb out of a deep folio with
-    // one click.
-    const sectionHref = name.startsWith("projectFolios")
-      ? router.path("projectFolios", { params: { projectSlug } })
+    const sectionRoute = SECTION_HREF_ROUTES[name];
+    const sectionHref = sectionRoute
+      ? router.path(sectionRoute, { params: { projectSlug } })
       : undefined;
     breadcrumbs.push({
       label: tr(sectionKey as never),
