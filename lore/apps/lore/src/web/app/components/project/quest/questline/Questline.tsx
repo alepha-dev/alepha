@@ -84,8 +84,6 @@ const Questline = (props: QuestlineProps) => {
 
       <QuestlineDialog
         node={current}
-        nodesById={nodesById}
-        onNavigate={setOpen}
         onClose={() => setOpen(null)}
         onQuestChange={props.onQuestChange}
       />

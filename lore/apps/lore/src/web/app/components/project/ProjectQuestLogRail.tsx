@@ -39,7 +39,12 @@ const ProjectQuestLogRail = (props: ProjectQuestLogRailProps): ReactElement => {
       onClick={props.onExpand}
       aria-label={label}
       title={label}
-      className="border-border text-muted-foreground hover:text-foreground hover:bg-accent flex w-8 flex-none flex-col items-center gap-2 border-r pt-3 transition-colors"
+      // Same EXPERIMENT as the open pane (`main.css`), so collapsing the log
+      // does not change what it is made of. The `-rail` half only rescales
+      // the tile to fit 32px. `hover:bg-accent` still works under it: the
+      // lattice is a `z-index: -1` pseudo, so it sits above the button's own
+      // background and below its icons.
+      className="lore-quest-log-facets lore-quest-log-facets-rail border-border text-muted-foreground hover:text-foreground hover:bg-accent flex w-8 flex-none flex-col items-center gap-2 border-r pt-3 transition-colors"
     >
       <BookOpen className="size-4 shrink-0" />
       {/* The count is the one thing worth keeping visible while the pane is

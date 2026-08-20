@@ -2,7 +2,13 @@ import { Segmented } from "@alepha/ui/components/ui/segmented";
 import { cn } from "@alepha/ui/lib/utils";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Inbox } from "lucide-react";
+import {
+  Circle,
+  CircleCheck,
+  CircleX,
+  Inbox,
+  type LucideIcon,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
@@ -11,8 +17,16 @@ import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import ProjectFeedbackCard from "./ProjectFeedbackCard.tsx";
 import ProjectFeedbackDetail from "./ProjectFeedbackDetail.tsx";
+import ProjectFeedbackEmptyState from "./ProjectFeedbackEmptyState.tsx";
 
-type StatusFilter = "pending" | "accepted" | "rejected" | "all";
+/*
+ * Exactly the entity's own three states, and deliberately derived rather than
+ * retyped: a fourth "all" segment used to sit alongside them. "all" is still a
+ * value the endpoint accepts (`listFeedback`'s enum, and `/account/feedback`
+ * still asks for it), so this is about what the inbox offers, not about what
+ * the API can answer.
+ */
+type StatusFilter = FeedbackResource["status"];
 
 export interface ProjectFeedbackProps {
   items: FeedbackResource[];
@@ -82,21 +96,25 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
             <Segmented
               value={status}
               onChange={(v) => setStatus(v as StatusFilter)}
-              options={[
-                {
-                  value: "pending",
-                  label: tr("feedback.filter.pending"),
-                },
-                {
-                  value: "accepted",
-                  label: tr("feedback.filter.accepted"),
-                },
-                {
-                  value: "rejected",
-                  label: tr("feedback.filter.rejected"),
-                },
-                { value: "all", label: tr("feedback.filter.all") },
-              ]}
+              options={FILTERS.map((value) => {
+                const Icon = FILTER_ICONS[value];
+                return {
+                  value,
+                  label: (
+                    <span className="inline-flex items-center gap-1.5">
+                      {/*
+                        No colour of its own: the segment sets the text colour,
+                        and the active one is `text-primary-foreground` over
+                        the thumb. An emerald tick like the card's would be the
+                        one thing on the control not reading as selected when
+                        it is.
+                      */}
+                      <Icon className="size-3.5 shrink-0" />
+                      {tr(`feedback.filter.${value}` as const)}
+                    </span>
+                  ),
+                };
+              })}
               size="lg"
               fullWidth
             />
@@ -138,10 +156,10 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
               onBack={() => setActiveId(null)}
             />
           ) : (
-            <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
-              <Inbox className="size-10 opacity-50" />
-              <p className="text-sm">{tr("feedback.empty.selectOne")}</p>
-            </div>
+            <ProjectFeedbackEmptyState
+              status={status}
+              hasItems={items.length > 0}
+            />
           )}
         </section>
       </div>
@@ -150,3 +168,21 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
 };
 
 export default ProjectFeedback;
+
+/*
+ * Order is the triage order, which is also why "all" is gone: the inbox is a
+ * queue, and a segment that mixes the three states back together answers a
+ * reporting question on a screen built for acting on one item at a time.
+ */
+const FILTERS = ["pending", "accepted", "rejected"] as const;
+
+/*
+ * The same three glyphs `ProjectFeedbackCard.statusIcon` puts on each row and
+ * `ProjectFeedbackEmptyState` puts in its tile, so the segment, the rows it
+ * filters to and the pane beside them are one vocabulary rather than three.
+ */
+const FILTER_ICONS: Record<StatusFilter, LucideIcon> = {
+  pending: Circle,
+  accepted: CircleCheck,
+  rejected: CircleX,
+};

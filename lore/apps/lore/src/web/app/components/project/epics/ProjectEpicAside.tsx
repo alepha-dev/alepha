@@ -10,7 +10,7 @@ import { useI18n } from "alepha/react/i18n";
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
-import { STATUS_BADGE_VARIANT, STATUS_LABEL_KEYS } from "./epicStatus.ts";
+import { STATUS_ICONS, STATUS_LABEL_KEYS, STATUS_TONE } from "./epicStatus.ts";
 
 export interface ProjectEpicAsideProps {
   epic: EpicResource;
@@ -37,6 +37,7 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
   const dt = useInject(DateTimeProvider);
   const { completed, total } = props.epic.progress;
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const StatusIcon = STATUS_ICONS[props.epic.status];
 
   const rows: DetailAsideRow[] = [
     {
@@ -45,8 +46,14 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
     },
     {
       label: String(tr("epic.aside.status")),
+      /*
+        The same chip the list renders, from the same two tables. Whatever
+        an epic looks like in `ProjectEpics` it looks like here, which is
+        the reason `epicStatus.ts` exists at all.
+      */
       value: (
-        <Badge variant={STATUS_BADGE_VARIANT[props.epic.status]}>
+        <Badge variant="tint" tone={STATUS_TONE[props.epic.status]}>
+          <StatusIcon className="size-3" />
           {tr(STATUS_LABEL_KEYS[props.epic.status])}
         </Badge>
       ),
@@ -116,12 +123,24 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
     ),
   });
 
-  // No title and no avatar: the breadcrumb's last segment already names this
-  // epic, directly above and a few pixels away, so a heading here printed the
-  // same words twice. (An epic has no picture either, which is what made the
-  // duplication obvious — dropping the avatar only closed the gap between the
-  // two copies.) The rows start at the top edge instead.
-  return <DetailAside avatar={false} rows={rows} />;
+  /*
+   * The epic's name, at the top of the panel, through `DetailAside`'s own
+   * `title` slot rather than a heading rendered here: the component owns the
+   * type, the truncation and the spacing above its list, and a second way of
+   * printing a name is a second way for two asides to disagree.
+   *
+   * This used to be omitted, on the grounds that the breadcrumb leaf already
+   * named the epic a few pixels above and a heading here printed the same
+   * words twice. That was true of the old breadcrumb; the leaf is now the
+   * epic's `#number`, so the two say different things and neither is
+   * redundant. The number stays as a row as well, because that row is not a
+   * label but the copy-to-clipboard affordance.
+   *
+   * `avatar={false}` still: an epic has no picture concept at all, and the
+   * letter fallback is for something that HAS one and is missing it, not for
+   * printing a title's first character beside the title.
+   */
+  return <DetailAside avatar={false} title={props.epic.title} rows={rows} />;
 };
 
 export default ProjectEpicAside;

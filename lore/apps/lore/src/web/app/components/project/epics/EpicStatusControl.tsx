@@ -55,7 +55,7 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
       {props.epic.status === "planned" && (
         <Button
           type="button"
-          size="sm"
+          size="lg"
           disabled={submitting}
           onClick={() => void changeStatus("active")}
         >
@@ -66,7 +66,7 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
         <>
           <Button
             type="button"
-            size="sm"
+            size="lg"
             variant="outline"
             disabled={submitting}
             onClick={() => void changeStatus("planned")}
@@ -75,7 +75,7 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
           </Button>
           <Button
             type="button"
-            size="sm"
+            size="lg"
             disabled={submitting}
             onClick={() => void changeStatus("done")}
           >
@@ -86,7 +86,7 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
       {props.epic.status === "done" && (
         <Button
           type="button"
-          size="sm"
+          size="lg"
           variant="outline"
           disabled={submitting}
           onClick={() => void changeStatus("active")}

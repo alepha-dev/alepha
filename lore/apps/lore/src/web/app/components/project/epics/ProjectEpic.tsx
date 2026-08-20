@@ -258,7 +258,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
       onTabChange={(v) => setTab(v as TabKey)}
       actions={
         <>
-          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+          <Button variant="outline" size="lg" onClick={() => setEditOpen(true)}>
             <Pencil className="size-4" />
             {tr("epic.edit")}
           </Button>
