@@ -54,15 +54,66 @@ export class QuestController {
     // Megabytes. This read `10 * 1024 * 1024`, i.e. a ten-million-megabyte
     // cap — no cap at all.
     maxSize: 10,
+    // Any format a quest might reasonably carry, and `application/octet-stream`
+    // as the catch-all so an unrecognised binary still uploads.
+    //
+    // NOT an open list, and the exclusions are the point. `/api/files/:id`
+    // serves a file INLINE, from this origin, with the content type it was
+    // stored under, and nothing sets `Content-Disposition: attachment`. So
+    // the type accepted here is the type the browser will execute: allowing
+    // `text/html` or `image/svg+xml` would turn an attachment into stored XSS
+    // against the project members who open it, with their session attached.
+    //
+    // `$storage` calls this "a usability guard, not a security control"
+    // because the type is client-supplied and spoofable. True for the file's
+    // CONTENT: an attacker can upload HTML declaring `image/png`. It is then
+    // served as `image/png`, which is exactly why that does not execute. The
+    // guard is on the served type, and that is the half that matters here.
     mimeTypes: [
       "image/jpeg",
       "image/png",
       "image/gif",
       "image/webp",
+      "image/avif",
+      "image/bmp",
+      "image/tiff",
+      "image/heic",
       "application/pdf",
       "text/plain",
+      "text/csv",
+      "text/markdown",
+      "application/json",
+      // YAML in all three spellings browsers use. `.yml` only slipped
+      // through the `application/octet-stream` catch-all on machines whose
+      // OS has no mapping for it; anywhere the browser DOES recognise the
+      // extension it sent a real type and the upload was refused. Neither
+      // renders as markup, so none of them reopens the inline-serving hole
+      // the exclusions below guard.
+      "text/yaml",
+      "text/x-yaml",
+      "application/x-yaml",
+      "application/yaml",
+      "text/tab-separated-values",
       "application/msword",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-powerpoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "application/vnd.oasis.opendocument.text",
+      "application/vnd.oasis.opendocument.spreadsheet",
+      "application/zip",
+      "application/gzip",
+      "application/x-tar",
+      "application/x-7z-compressed",
+      "application/vnd.rar",
+      "audio/mpeg",
+      "audio/wav",
+      "audio/ogg",
+      "video/mp4",
+      "video/webm",
+      "video/quicktime",
+      "application/octet-stream",
     ],
   });
 
@@ -295,6 +346,59 @@ export class QuestController {
       });
 
       return this.mapQuestToResource(updated);
+    },
+  });
+
+  /**
+   * Name and type for each of a quest's attachments, so the UI can label a
+   * chip with the real filename instead of a truncated uuid.
+   *
+   * A quest-scoped read rather than a general file lookup: `findFiles` is
+   * `admin:file:read`, and membership on the quest's project is the right
+   * gate for the files hanging off it. Ids not present on the quest are
+   * ignored rather than fetched, so this cannot be used to probe for
+   * arbitrary files by id.
+   */
+  listQuestAttachments = $action({
+    use: [$secure({ permissions: ["quest:read"] })],
+    schema: {
+      params: z.object({
+        id: z.integer(),
+      }),
+      response: z.array(
+        z.object({
+          fileId: z.uuid(),
+          name: z.string(),
+          mimeType: z.string(),
+          size: z.integer(),
+        }),
+      ),
+    },
+    handler: async ({ params, user }) => {
+      const quest = await this.quests.getOne({
+        where: { id: { eq: params.id } },
+      });
+      await this.security.assertMember(quest.projectId, user);
+
+      const files = await Promise.all(
+        (quest.attachments ?? []).map(async (fileId) => {
+          try {
+            const file = await this.fileService.getFileById(fileId);
+            return {
+              fileId,
+              name: file.name,
+              mimeType: file.mimeType,
+              size: file.size,
+            };
+          } catch {
+            // A row can outlive its blob (purge job, manual delete). One
+            // missing file must not take the whole row down with it.
+            return undefined;
+          }
+        }),
+      );
+
+      return files.filter((it) => it !== undefined);
     },
   });
 
