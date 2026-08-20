@@ -9,6 +9,7 @@ import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import { useProjectUsers } from "../../shared/useProjectUsers.ts";
 import QuestDiscussionComment from "./QuestDiscussionComment.tsx";
+import QuestDiscussionComposer from "./QuestDiscussionComposer.tsx";
 import QuestDiscussionEvent from "./QuestDiscussionEvent.tsx";
 import { buildQuestDiscussionEntries } from "./questDiscussionEntries.ts";
 
@@ -108,6 +109,15 @@ const QuestDiscussion = (props: QuestDiscussionProps) => {
             ),
           )}
         </ol>
+      )}
+
+      {/* Never on a completed quest: its body is frozen as an audit record,
+          and the API refuses the write anyway. */}
+      {!props.quest.completedAt && (
+        <QuestDiscussionComposer
+          quest={props.quest}
+          onPosted={(comment) => setComments((prev) => [...prev, comment])}
+        />
       )}
     </div>
   );

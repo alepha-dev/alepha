@@ -233,4 +233,92 @@ test.describe("Quest comments", () => {
       await expect(page.getByText(/created the quest/)).toBeVisible();
     });
   });
+
+  /**
+   * The composer (quest #1237). Writing a comment from the page is the half
+   * that closes the loop the MCP tools open.
+   */
+  test("the composer posts a comment and resolves a #quest reference", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+
+    const t = Date.now();
+    const email = `composer${t}@example.com`;
+    const password = "ComposeTest123!";
+    const projectTitle = `CP${t}`.slice(0, 20);
+
+    await registerAndVerify(page, email, password);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
+
+    const other = await apiPost<{ id: number; shortId: number }>(
+      page,
+      "createQuest",
+      {
+        projectId,
+        title: `Referenced${t}`,
+        description: "The quest a comment points at",
+        area: "Main",
+        priority: "low",
+        objectives: [],
+        attachments: [],
+      },
+    );
+    const { shortId } = await apiPost<{ id: number; shortId: number }>(
+      page,
+      "createQuest",
+      {
+        projectId,
+        title: `Composed${t}`,
+        description: "Seeded for the composer",
+        area: "Main",
+        priority: "medium",
+        objectives: [],
+        attachments: [],
+      },
+    );
+
+    await page.goto(`/${projectSlug}/quests/${shortId}`);
+    await page.waitForLoadState("networkidle");
+
+    await test.step("type and send", async () => {
+      const box = page.getByRole("textbox", { name: /leave a comment/i });
+      await expect(box).toBeVisible({ timeout: 10_000 });
+      await box.fill(`Blocked by #${other.shortId}, see there.`);
+      await page.getByRole("button", { name: /^comment$/i }).click();
+
+      // The feed takes the posted comment without a reload. Assert on the
+      // tail, not the `#N`: once the reference resolves it is replaced by a
+      // link carrying the target quest's title, so the `#` is gone.
+      await expect(page.getByText(/see there/)).toBeVisible({
+        timeout: 10_000,
+      });
+      // The box empties, so a second comment does not start from the first.
+      await expect(box).toHaveValue("");
+    });
+
+    await test.step("the bare #N became a real link to that quest", async () => {
+      // Expanded into `[[quest:#N]]` on the way into the shared resolver —
+      // the same one that renders a description's wiki links.
+      const link = page.getByRole("link", {
+        name: new RegExp(`Referenced${t}`),
+      });
+      await expect(link).toHaveAttribute(
+        "href",
+        `/${projectSlug}/quests/${other.shortId}`,
+        { timeout: 10_000 },
+      );
+    });
+
+    await test.step("it survives a reload, so it was really stored", async () => {
+      await page.reload();
+      await page.waitForLoadState("networkidle");
+      await expect(page.getByText(/see there/)).toBeVisible({
+        timeout: 10_000,
+      });
+    });
+  });
 });
