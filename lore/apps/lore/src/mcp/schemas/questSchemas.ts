@@ -110,7 +110,34 @@ export const questListResultSchema = z.object({
 // quest_get
 // -----------------------------------------------------------------------------
 
+/**
+ * One row of a quest's discussion, as MCP hands it out.
+ *
+ * `author` is the display name rather than the uuid: an agent reading a
+ * discussion needs to know who said something, and a uuid answers nothing.
+ * Absent when the author deleted their account (`authorId` is set-null, so
+ * the comment survives the account).
+ */
+export const questCommentSchema = z.object({
+  id: z.integer(),
+  author: z.string().optional(),
+  body: z.string(),
+  createdAt: z.datetime(),
+  editedAt: z.datetime().optional(),
+});
+
 export const questGetParamsSchema = entityRefSchema;
+
+export const questCommentAddParamsSchema = entityRefSchema.extend({
+  body: z
+    .string()
+    .min(1)
+    .describe(
+      "The comment, in Markdown. `[[folio title]]`, `[[quest:#12]]` and a bare `#12` all resolve to links when Lore renders it.",
+    ),
+});
+
+export const questCommentAddResultSchema = questCommentSchema;
 
 export const questGetResultSchema = z.object({
   id: z.integer(),
@@ -132,6 +159,16 @@ export const questGetResultSchema = z.object({
   completionMessageUpdatedAt: z.datetime().optional(),
   tags: z.array(z.string()),
   dependsOn_shortId: z.integer().optional(),
+  discussion: z
+    .array(questCommentSchema)
+    .describe(
+      "The quest's discussion, oldest first. Human comments only — the quest's own history events are not included. Capped at the most recent 50; `discussionTruncated` says whether older ones were dropped.",
+    ),
+  discussionTruncated: z
+    .boolean()
+    .describe(
+      "True when the discussion above is only the most recent slice. Nothing here fetches the rest: reopen the quest in Lore to read the full thread.",
+    ),
   epic: questEpicRefSchema
     .describe(
       "The epic this quest is filed under, if any. quest_get is direct addressing (design §5.3) so it always resolves regardless of the epic's status.",

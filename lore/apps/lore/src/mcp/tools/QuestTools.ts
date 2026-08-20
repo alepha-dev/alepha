@@ -4,13 +4,21 @@ import { BadRequestError, NotFoundError } from "alepha/server";
 import { EpicController } from "../../api/controllers/EpicController.ts";
 import { FeedbackController } from "../../api/controllers/FeedbackController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
+import { QuestCommentController } from "../../api/controllers/QuestCommentController.ts";
 import { QuestController } from "../../api/controllers/QuestController.ts";
 import type { EpicResource } from "../../api/schemas/epicResourceSchema.ts";
 import type { QuestStatus } from "../../api/schemas/questResourceSchema.ts";
 import { QuestResourceMapper } from "../../api/services/QuestResourceMapper.ts";
+// Same helper the UI labels a user with, so a name reads identically over
+// MCP and on the page. Precedent for reaching across: `FolioBlobService`
+// imports `folioAssetPath` from the same tree. It is a pure function with no
+// imports of its own.
+import { displayName } from "../../web/app/services/displayName.ts";
 import {
   questAcceptParamsSchema,
   questAcceptResultSchema,
+  questCommentAddParamsSchema,
+  questCommentAddResultSchema,
   questCompleteParamsSchema,
   questCompleteResultSchema,
   questCreateParamsSchema,
@@ -39,7 +47,67 @@ export class QuestTools {
   protected readonly projectController = $inject(ProjectController);
   protected readonly feedbackController = $inject(FeedbackController);
   protected readonly epicController = $inject(EpicController);
+  protected readonly commentController = $inject(QuestCommentController);
   protected readonly questMapper = $inject(QuestResourceMapper);
+
+  /**
+   * How many comments `quest_get` inlines. A quest that ever carries more
+   * than this is the day this grows a cursor; until then a second list tool
+   * would be a surface with no readers.
+   */
+  protected readonly discussionCap = 50;
+
+  /**
+   * A quest's discussion, with authors resolved to names.
+   *
+   * `getProjectUsers` is one call for the whole thread, not one per comment,
+   * and it is skipped entirely when the thread is empty — the common case
+   * for a freshly filed quest.
+   */
+  protected async loadDiscussion(
+    questId: number,
+    projectId: number,
+  ): Promise<{
+    discussion: Array<{
+      id: number;
+      author?: string;
+      body: string;
+      createdAt: string;
+      editedAt?: string;
+    }>;
+    discussionTruncated: boolean;
+  }> {
+    const rows = await this.commentController.listQuestComments({
+      params: { id: questId },
+      query: { limit: this.discussionCap + 1 },
+    });
+    if (rows.length === 0) {
+      return { discussion: [], discussionTruncated: false };
+    }
+
+    const discussionTruncated = rows.length > this.discussionCap;
+    const kept = discussionTruncated ? rows.slice(-this.discussionCap) : rows;
+
+    const users = await this.projectController.getProjectUsers({
+      params: { id: projectId },
+    });
+
+    return {
+      discussion: kept.map((comment) => ({
+        id: comment.id,
+        author: comment.authorId
+          ? displayName(
+              users.find((u) => u.id === comment.authorId),
+              comment.authorId,
+            )
+          : undefined,
+        body: comment.body,
+        createdAt: comment.createdAt,
+        editedAt: comment.editedAt,
+      })),
+      discussionTruncated,
+    };
+  }
 
   /**
    * Resolve a per-project feedback `shortId` to its global feedback id, so a
@@ -160,6 +228,37 @@ export class QuestTools {
       "Quest reference required: pass `id` (global) or `shortId` (per-project — also requires `project` or `project_name`).",
     );
   }
+
+  /**
+   * Leave a comment on a quest.
+   */
+  quest_comment_add = $tool({
+    description:
+      "Leave a comment on a quest, as yourself. Comments interleave with the quest's own history into its Discussion, and are what an agent uses to report what it decided, what it could not do, or what the next session should know. Read them back with `quest_get`.",
+    title: "Comment on a quest",
+    annotations: { readOnlyHint: false, idempotentHint: false },
+    schema: {
+      params: questCommentAddParamsSchema,
+      result: questCommentAddResultSchema,
+    },
+    handler: async ({ params }) => {
+      const id = await this.resolveQuestId(params);
+      const comment = await this.commentController.createQuestComment({
+        params: { id },
+        body: { body: params.body },
+      });
+
+      // The author is the session user, so it is whoever the caller is —
+      // resolving the name here would cost a round-trip to tell them
+      // something they already know.
+      return {
+        id: comment.id,
+        body: comment.body,
+        createdAt: comment.createdAt,
+        editedAt: comment.editedAt,
+      };
+    },
+  });
 
   /**
    * List quests for a project.
@@ -471,7 +570,7 @@ export class QuestTools {
    */
   quest_get = $tool({
     description:
-      "Fetch a single quest by ID, including its current objectives, description, status, and timestamps. Use this before quest_update to see current state.",
+      "Fetch a single quest by ID, including its current objectives, description, status, timestamps AND its discussion — the comments people have left on it, oldest first. Use this before quest_update to see current state, and to read what was said about the quest before working on it.",
     title: "Get quest",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -503,6 +602,14 @@ export class QuestTools {
         epic = epicRefs.get(quest.epicId);
       }
 
+      // Read as well as write: an agent that can comment but cannot see the
+      // owner's reply has half the loop, and "do X differently" left on a
+      // quest is exactly what the next session must find.
+      const { discussion, discussionTruncated } = await this.loadDiscussion(
+        quest.id,
+        quest.projectId,
+      );
+
       return {
         id: quest.id,
         shortId: quest.shortId,
@@ -514,6 +621,8 @@ export class QuestTools {
         objectives: quest.objectives,
         projectId: quest.projectId,
         milestoneId: quest.milestoneId,
+        discussion,
+        discussionTruncated,
         createdAt: quest.createdAt,
         updatedAt: quest.updatedAt,
         acceptedAt: quest.acceptedAt,
