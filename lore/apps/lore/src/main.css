@@ -527,3 +527,33 @@ body::before {
   background-color: oklch(0.696 0.17 162.48);
   color: oklch(0.16 0 0);
 }
+
+/*
+ * The page surface: a 16px dot grid, taken from the quest-view mockup
+ * (`assets/mockups/quest-view.html`), which paints
+ * `radial-gradient(oklch(0.985 0 0 / 5%) 1px, transparent 1px)` at
+ * `background-size: 16px 16px`.
+ *
+ * Applied to the shell's scrolling <main> via AppShell's `mainClassName`,
+ * so it covers the whole content area of every page rather than being
+ * re-stamped per screen, and so no other app using the shared shell
+ * inherits Lore's texture.
+ *
+ * Two literals rather than one token: the mockup's near-white dot is a
+ * dark-mode value, and at 5% over a light page it is invisible. Light mode
+ * inverts to a dark dot, and takes a lower alpha because dark-on-light
+ * reads considerably stronger than light-on-dark at the same opacity.
+ *
+ * `background-attachment: local` so the dots scroll with the content. Left
+ * to the default they stay pinned to the viewport and the texture appears
+ * to slide under the text.
+ */
+.lore-page-dots {
+  background-image: radial-gradient(oklch(0.145 0 0 / 4%) 1px, transparent 1px);
+  background-size: 16px 16px;
+  background-attachment: local;
+}
+
+.dark .lore-page-dots {
+  background-image: radial-gradient(oklch(0.985 0 0 / 5%) 1px, transparent 1px);
+}

@@ -464,6 +464,10 @@ const ProjectView = () => {
       embedded
       fill
       variant="inset"
+      // The page surface. Defined in `main.css` rather than inline because
+      // it needs a `.dark` variant: the mockup's dot is near-white, which is
+      // invisible over a light page.
+      mainClassName="lore-page-dots"
       brand={<ProjectSwitcher />}
       nav={nav}
       breadcrumbs={breadcrumbs}
