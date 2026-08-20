@@ -304,6 +304,10 @@ export default {
   "quest.discussion.title": "Discussion",
   "quest.discussion.filter.all": "Everything",
   "quest.discussion.filter.comments": "Comments only",
+  "quest.discussion.composer.placeholder":
+    "Leave a comment. Mention a member with @, link a folio with [[…]], or point at another quest with #1204.",
+  "quest.discussion.composer.markdown": "Markdown supported",
+  "quest.discussion.composer.submit": "Comment",
   "quest.discussion.commented": "commented",
   "quest.discussion.edited": "edited",
   "quest.discussion.author.unknown": "A former member",

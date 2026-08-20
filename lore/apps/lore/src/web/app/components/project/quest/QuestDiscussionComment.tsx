@@ -1,11 +1,13 @@
-import { MarkdownView } from "@alepha/ui/components/markdown-view/markdown-view";
 import { DateTimeProvider } from "alepha/datetime";
-import { useInject } from "alepha/react";
+import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { displayName } from "@/web/app/services/displayName.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+import LoreViewer from "../../shared/element/LoreViewer.tsx";
 import { UserAvatar } from "../../shared/UserAvatar.tsx";
 import type { ProjectUser } from "../../shared/useProjectUsers.ts";
+import { expandCommentReferences } from "./commentReferences.ts";
 import type { QuestDiscussionEntry } from "./questDiscussionEntries.ts";
 
 export interface QuestDiscussionCommentProps {
@@ -24,6 +26,7 @@ const QuestDiscussionComment = (props: QuestDiscussionCommentProps) => {
   const { entry } = props;
   const { tr } = useI18n<I18n, "en">();
   const dt = useInject(DateTimeProvider);
+  const [project] = useStore(currentProjectAtom);
 
   const user = entry.by
     ? props.users.find((u) => u.id === entry.by)
@@ -53,7 +56,28 @@ const QuestDiscussionComment = (props: QuestDiscussionCommentProps) => {
         </span>
       </div>
       <div className="border-border bg-muted/40 ml-7 rounded-md border px-3 py-2">
-        <MarkdownView content={entry.comment.body} />
+        {/* Through the shared viewer, so `[[folio]]` and `[[quest:#N]]`
+            resolve exactly as they do in a description — with the two
+            conversation-only shapes (`#1204`, `@member`) expanded into it
+            first. The stored body is never rewritten. */}
+        <LoreViewer
+          element={{
+            // `projectId` addresses the API, `projectSlug` the links the
+            // rewrite produces, and `id` is the element itself. Passing the
+            // quest id as the project id resolves every reference against an
+            // empty quest list, so every link comes back broken.
+            kind: "quest",
+            projectId: project?.id ?? 0,
+            projectSlug: project?.slug ?? "",
+            id: entry.comment.questId,
+          }}
+          content={expandCommentReferences(entry.comment.body, {
+            projectSlug: project?.slug ?? "",
+            members: props.users.map((u) => ({
+              name: displayName(u, ""),
+            })),
+          })}
+        />
       </div>
     </li>
   );
