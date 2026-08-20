@@ -254,11 +254,19 @@ export default (alepha: Alepha) => {
         await run(`yarn test:bun`);
         await run(`yarn build`);
 
-        // HACK: remove vite cache to prevent stale cache issues in e2e tests
-        await run.rm([
-          `apps/*/node_modules/.vite`,
-          `apps/*/*/node_modules/.vite`,
-        ]);
+        // Give the one dev-mode e2e suite a cold Vite cache. Only
+        // `apps/examples/ssr/playwright.dev.config.ts` runs `yarn dev` — every
+        // other suite serves a built app and never reads `node_modules/.vite`.
+        //
+        // Deliberately scoped to that single app. The previous
+        // `apps/*/node_modules/.vite` sweep deleted the dep-optimizer cache
+        // out from under any dev server running during `yarn v`: the server's
+        // in-memory metadata still listed the prebundled chunks, so every
+        // cold `/node_modules/.vite/deps/*` request 504'd (Outdated Optimize
+        // Dep) until restart, surfacing in the browser as "Failed to fetch
+        // dynamically imported module" on whatever page was opened next.
+        // A dev server on examples/ssr itself can still be hit; nothing else.
+        await run.rm([`apps/examples/ssr/node_modules/.vite`]);
 
         // Both need `build` and neither needs the other. They do not collide:
         // `e2e` serves the playground on its own port (see its
