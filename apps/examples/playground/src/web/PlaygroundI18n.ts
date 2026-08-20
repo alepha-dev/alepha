@@ -1,7 +1,7 @@
 import { $dictionary } from "alepha/react/i18n";
 
 /**
- * Two dictionaries — `en` (default) and `fr`. The English keys document
+ * Two dictionaries: `en` (default) and `fr`. The English keys document
  * the contract; the French keys override the registry components'
  * built-in `default` strings via the global `tr()` lookup.
  */

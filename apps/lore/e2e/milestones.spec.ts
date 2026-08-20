@@ -170,7 +170,7 @@ test.describe("Milestones", () => {
       // The folio lands in the project root, titled after the milestone.
       await page.goto(`/${projectSlug}/folios`);
       await page.waitForLoadState("networkidle");
-      await expect(page.getByText(/Milestone #1 —/).first()).toBeVisible({
+      await expect(page.getByText(/Milestone #1:/).first()).toBeVisible({
         timeout: 15_000,
       });
     });
