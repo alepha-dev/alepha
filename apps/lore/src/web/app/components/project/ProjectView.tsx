@@ -49,11 +49,15 @@ import ProjectSwitcher from "./ProjectSwitcher.tsx";
 import QuestLog from "./QuestLog.tsx";
 
 /**
- * The quest LIST only. The detail route used to be in here too, which pinned
- * the log at 25% beside the open quest; it is a full-width page of its own
- * now (see `ROUTES_FULL_WIDTH`), so the quest owns the viewport.
+ * The quest list AND the quest detail. The log is how you move between
+ * quests without going back to the list first, which is exactly what the
+ * detail route wants; the collapse rail is what keeps it from costing the
+ * quest its width when a reader does not want it.
+ *
+ * This set also drives the view bar, so both routes get it. Dropping it on
+ * the detail route would shift the log up the moment a quest opened.
  */
-const ROUTES_WITH_QUEST_LOG = new Set(["projectQuests"]);
+const ROUTES_WITH_QUEST_LOG = new Set(["projectQuests", "projectQuest"]);
 
 /**
  * The per-app page and its tabs.
@@ -221,7 +225,16 @@ const ProjectView = () => {
       label: tr("project.menu.quests"),
       icon: Grid3x2,
       href: router.path("projectQuests", { params: { projectSlug } }),
-      active: name === "projectQuests" || name === "project",
+      // Highlighted from anywhere under Quests, not just the list: opening a
+      // quest used to clear the sidebar entirely, so the one page you were
+      // deepest inside was the one page that said where you were not. Epics
+      // already did this for `projectEpic`, and the breadcrumb has always
+      // treated these as the Quests section (see `SECTION_LABEL_KEYS`).
+      active:
+        name === "projectQuests" ||
+        name === "project" ||
+        name === "projectQuest" ||
+        name === "projectQuestGraph",
       badge: questCount?.count ? questCount.count : undefined,
     },
   ];
@@ -540,10 +553,19 @@ const ProjectView = () => {
                 )}
                 {/* The list owns its own scroll, so this wrapper must NOT
                   also scroll — a nested `overflow-auto` here showed a spurious
-                  scrollbar. The `p-2` is for the list, which has no padding of
-                  its own; the flush exception the quest detail route needed
-                  went with the route. */}
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
+                  scrollbar.
+
+                  `p-2` for the list, which has no padding of its own, and
+                  none for the quest detail, which carries the mockup's own
+                  28/40/56 and whose sticky header spans the full width by
+                  cancelling it with a negative margin. Padding here would
+                  inset that header and leave a gutter down both sides of a
+                  page designed to be flush. */}
+                <div
+                  className={`flex min-h-0 flex-1 flex-col overflow-hidden ${
+                    fullWidth ? "" : "p-2"
+                  }`}
+                >
                   <NestedView />
                 </div>
               </div>
