@@ -356,6 +356,33 @@ test.describe("Epics — the list", () => {
       });
     });
 
+    await test.step("the Epics breadcrumb climbs back to the list", async () => {
+      // A section crumb is a link only when `SECTION_HREF_ROUTES` in
+      // `ProjectView` maps the open route to a list route. That map was a
+      // folio-only ternary, so on an epic the "Epics" crumb fell through to
+      // `href: undefined` and `AppShell` rendered it as a `BreadcrumbPage`:
+      // plain text, with no way back to the list from the header.
+      await page.getByRole("link", { name: withQuest }).click();
+      await expect(page).toHaveURL(/\/epics\/\d+$/);
+
+      const crumb = page
+        .getByRole("navigation", { name: "breadcrumb" })
+        .getByRole("link", { name: "Epics" });
+      // Assert the anchor, not just visibility: `BreadcrumbPage` also carries
+      // `role="link"`, so a dead crumb still matches the locator and the only
+      // thing separating the two is a real `href`. Without this the test only
+      // failed on the click, 120s later, via `element is not enabled`.
+      await expect(crumb).toHaveAttribute("href", `/${slug}/epics`, {
+        timeout: 15_000,
+      });
+      await crumb.click();
+
+      await expect(page).toHaveURL(new RegExp(`/${slug}/epics$`));
+      await expect(page.getByRole("link", { name: empty })).toBeVisible({
+        timeout: 15_000,
+      });
+    });
+
     await test.step("the toolbar create button adds a row without a reload", async () => {
       // The `+` action and the dialog's submit share the "Create Epic" label,
       // so the toolbar one is addressed through the table's own toolbar and
