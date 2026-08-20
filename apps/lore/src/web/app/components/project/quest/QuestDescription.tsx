@@ -19,8 +19,12 @@ const QuestDescription = (props: QuestDescriptionProps) => {
   // Iowan/Georgia and the description looks like a near-miss of the design.
   useReadingFonts();
 
+  // No card around the description. The mockup sets it as body copy on the
+  // page, and a filled panel made the quest's own words read like a quoted
+  // block: the section header and the hairline rule above already say where
+  // it starts.
   return (
-    <div className="bg-muted border-border rounded-md border p-3 px-4">
+    <div className="px-1">
       {content ? (
         <LoreViewer
           className="folio-prose text-[15.5px] leading-[1.7]"

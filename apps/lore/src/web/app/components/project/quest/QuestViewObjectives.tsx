@@ -57,10 +57,14 @@ const QuestViewObjectives = (props: QuestViewObjectivesProps) => {
             }
             disabled={disabled || objective.id == null}
           />
+          {/* Done is muted and struck through, not green. Green reads as a
+              status worth noticing, and a ticked objective is the opposite:
+              the strike already says it is handled, so the row should recede
+              and leave the unticked ones as the ones that stand out. */}
           <span
             className={
               objective.completed
-                ? "text-sm text-green-600 line-through"
+                ? "text-muted-foreground text-sm line-through"
                 : "text-sm"
             }
           >
