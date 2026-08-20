@@ -59,6 +59,10 @@ export const uiFr: Record<string, string> = {
   "alephaTable.selectRow": "Sélectionner la ligne",
   "alephaTable.selected": "$1 sélectionné(s)",
   "alephaTable.toggleColumns": "Afficher ou masquer des colonnes",
+  // Same table, different prefix: the page-size select calls `table.pageSize`
+  // rather than `alephaTable.pageSize`. Filed under the component it belongs
+  // to, not under a `t` of its own.
+  "table.pageSize": "Lignes par page",
 
   // Schema-generated forms.
   "autoForm.cancel": "Annuler",

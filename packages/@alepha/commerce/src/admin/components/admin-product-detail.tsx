@@ -507,7 +507,7 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
         <>
           <Button
             variant="outline"
-            size="sm"
+            size="lg"
             loading={togglePublished.loading}
             onClick={() => togglePublished.run()}
           >
@@ -527,7 +527,7 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
           </Button>
           <Button
             variant="destructive"
-            size="sm"
+            size="lg"
             loading={deleteProduct.loading}
             onClick={() => deleteProduct.run()}
           >

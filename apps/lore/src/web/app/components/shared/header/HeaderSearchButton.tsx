@@ -1,4 +1,10 @@
 import { Button } from "@alepha/ui/components/ui/button";
+import { Kbd } from "@alepha/ui/components/ui/kbd";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@alepha/ui/components/ui/tooltip";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Search } from "lucide-react";
@@ -21,6 +27,15 @@ import type { I18n } from "../../../services/I18n.ts";
  * lives in `Spotlight`, app-wide — but nothing on screen says so, and the
  * tooltip is the only place left that mentions it. That is the real cost of
  * this shape, and it is deliberate rather than overlooked.
+ *
+ * Which is why the hint is in a real `Tooltip` rather than a `title`
+ * attribute. `title` renders the browser's own tooltip: it takes about a
+ * second to appear, is styled by the OS rather than the app, and sits
+ * unstyled beside three neighbours that all use the shared popup. Every other
+ * button in this cluster (language, theme, dark mode, account) wraps itself
+ * in `Tooltip`/`TooltipTrigger`, so the one that did not was the one that
+ * looked broken. `TooltipTrigger`'s `render` prop keeps the `Button` as the
+ * rendered element instead of nesting a second one inside it.
  *
  * Still a button, never an input: typing happens in the palette's own
  * `CommandInput`, and a real `<input>` here would either hand its query over on
@@ -52,19 +67,28 @@ const HeaderSearchButton = (): ReactElement | null => {
   }
 
   return (
-    // `ghost` + `icon`, matching `AppActions`'s own four buttons exactly — it
-    // sits among them, so any other variant would read as a different kind of
-    // control wedged into the cluster.
-    <Button
-      variant="ghost"
-      size="icon"
-      aria-label={label}
-      // The only remaining mention of the shortcut anywhere on screen.
-      title={`${label} (⌘K)`}
-      onClick={open}
-    >
-      <Search className="size-4 shrink-0" />
-    </Button>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          // `ghost` + `icon`, matching `AppActions`'s own four buttons
+          // exactly: it sits among them, so any other variant would read as
+          // a different kind of control wedged into the cluster.
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={label}
+            onClick={open}
+          />
+        }
+      >
+        <Search className="size-4 shrink-0" />
+      </TooltipTrigger>
+      {/* The only remaining mention of the shortcut anywhere on screen. */}
+      <TooltipContent>
+        {label}
+        <Kbd>⌘K</Kbd>
+      </TooltipContent>
+    </Tooltip>
   );
 };
 

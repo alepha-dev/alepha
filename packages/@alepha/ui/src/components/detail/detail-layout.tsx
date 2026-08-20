@@ -33,7 +33,15 @@ export interface DetailLayoutProps {
   tabs: DetailTab[];
   tab: string;
   onTabChange: (value: string) => void;
-  /** Buttons for the right end of the toolbar. */
+  /**
+   * Buttons for the right end of the toolbar.
+   *
+   * Size them `lg`. `Segmented`'s size tokens are cut to match a `<Button>`
+   * of the same token exactly, the tab selector on the left of this bar is
+   * `lg`, and nothing here can size what a caller passes: a `sm` button
+   * beside it is 28px against 36px, both centred in a 56px bar, and the two
+   * ends of the toolbar stop lining up.
+   */
   actions?: React.ReactNode;
   /**
    * Replaces the whole shell with a skeleton. Pass it only for the first load —
@@ -127,14 +135,31 @@ export const DetailLayout = (props: DetailLayoutProps) => {
 
   return (
     <div className="flex h-full min-h-0 flex-1 overflow-hidden">
-      <aside className="border-border bg-background hidden w-72 shrink-0 flex-col gap-4 overflow-auto border-r p-6 md:flex">
+      {/* `p-4`, not `p-6`. The aside is a fixed 288px, so its padding comes
+          straight out of the identity panel's width: at 24px a side the
+          `DetailAside` card had 240px to fit a label, a value and sometimes
+          a copy button, and read as undersized in a column that had room to
+          spare. 16px gives it back 16px of card without letting the content
+          touch the border. */}
+      <aside className="border-border bg-background hidden w-72 shrink-0 flex-col gap-4 overflow-auto border-r p-4 md:flex">
         {props.aside}
       </aside>
 
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="bg-background flex h-14 shrink-0 items-center gap-2 border-b px-4">
+          {/* `lg` (h-9), not the `sm` (h-7) this started on. The toolbar is
+              `h-14`, so at 28px the control filled exactly half of it and
+              read as a small thing floating in a tall bar.
+
+              This does give up the pixel-for-pixel match with the toolbar's
+              action buttons: all three consumers pass `size="sm"`, so the
+              two were the same 28px before and are 28 vs 36 now. The match
+              only ever held because both happened to pick the same token,
+              and `actions` is caller JSX this component cannot size, so any
+              increase here breaks it. Both are centred in a 56px bar, which
+              is why 8px of difference does not show. */}
           <Segmented
-            size="sm"
+            size="lg"
             options={options}
             value={props.tab}
             onChange={props.onTabChange}

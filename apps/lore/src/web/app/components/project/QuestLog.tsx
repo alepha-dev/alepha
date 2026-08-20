@@ -68,7 +68,11 @@ const QuestLog = (props: QuestLogProps) => {
   };
 
   return (
-    <div className="relative flex h-full w-full flex-1 flex-col gap-2">
+    // `lore-quest-log-facets` is an EXPERIMENT: a faint argyle diamond
+    // lattice tinted with the active theme's primary, defined in `main.css`.
+    // It is decoration and nothing depends on it: drop the class and delete
+    // the matching block in `main.css` and the pane is exactly what it was.
+    <div className="lore-quest-log-facets relative flex h-full w-full flex-1 flex-col gap-2">
       {/* Top bar: full-width, no nested card. Title + count on the left,
           action buttons clustered tight on the right. */}
       <div className="flex items-center gap-2 px-3 pt-3">

@@ -123,18 +123,31 @@ export const DetailAside = (props: DetailAsideProps) => {
           ) : null}
         </div>
       ) : null}
-      {/* The rule keeps the list separated FROM the header, so with no
-          header there is nothing to separate it from — a top border with
-          empty space above it reads as a clipped element. */}
-      <dl
-        className={
-          header
-            ? "flex flex-col gap-3 border-t pt-4 text-sm"
-            : "flex flex-col gap-3 text-sm"
-        }
-      >
+      {/* The list is a bordered card whose rows are divided from each other,
+          rather than a run of rows separated by whitespace.
+
+          It replaced a single `border-t` above the list, which existed only
+          to separate it from the header and had to be dropped when there was
+          no header to separate it from (a top border with empty space above
+          it reads as a clipped element). The card's own border does that job
+          on every side, so the conditional is gone: the panel looks the same
+          whether or not a title sits above it.
+
+          `divide-y` instead of a border on each row: a border-bottom on all
+          of them doubles up against the card's own bottom edge, and skipping
+          the last one by hand is the rule `divide-y` already encodes.
+
+          `gap-3` had to go with it. Rows that are spaced apart AND ruled show
+          the rule floating in the gap rather than meeting the rows it
+          divides; `py-2.5` inside each row is what carries the rhythm now.
+
+          `overflow-hidden` for the corners: with nothing painting a
+          background today the radius is only on the border, but the first
+          and last rows sit in the rounded corners and anything they gain
+          later (a hover tint, a status band) would square them off. */}
+      <dl className="flex flex-col divide-y overflow-hidden rounded-lg border text-sm">
         {props.rows.map((row) => (
-          <div key={row.label} className="flex flex-col gap-0.5">
+          <div key={row.label} className="flex flex-col gap-0.5 px-3 py-2.5">
             <dt className="text-muted-foreground text-[11px] font-medium uppercase tracking-wide">
               {row.label}
             </dt>

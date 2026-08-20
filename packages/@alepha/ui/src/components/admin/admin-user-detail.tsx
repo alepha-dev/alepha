@@ -538,7 +538,7 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
           <>
             <Button
               variant="outline"
-              size="sm"
+              size="lg"
               loading={toggleEnabled.loading}
               disabled={isSelf}
               onClick={() => toggleEnabled.run()}
@@ -557,7 +557,7 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
             </Button>
             <Button
               variant="destructive"
-              size="sm"
+              size="lg"
               loading={deleteUser.loading}
               disabled={isSelf}
               onClick={() => deleteUser.run()}

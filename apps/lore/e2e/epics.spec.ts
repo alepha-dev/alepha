@@ -534,35 +534,58 @@ test.describe("Epics — the questline", () => {
       await expect(page.getByText("2 waiting")).toBeVisible();
     });
 
-    await test.step("opening the fork offers both ways onward", async () => {
+    await test.step("opening the fork names both ways onward", async () => {
       await card(root).click();
 
       const dialog = page.getByRole("dialog");
       await expect(dialog).toBeVisible({ timeout: 15_000 });
 
-      // The neighbours are deliberately withheld until the dialog has landed,
-      // so this waits for them rather than asserting straight away.
+      // Two columns of neighbour cards used to flank the panel, faded in
+      // after it landed. They are gone: they capped the dialog at
+      // `calc(100vw-32rem)` to reserve their own room, so the quest got
+      // narrower as the screen got wider. The links they carried were never
+      // theirs alone: the quest's own questline rows, inside the panel, name
+      // the same neighbours, and unlike the columns they survive below `xl`.
+      await expect(dialog.getByText(left.title)).toBeVisible({
+        timeout: 10_000,
+      });
+      await expect(dialog.getByText(right.title)).toBeVisible();
+    });
+
+    await test.step("the dialog is a preview, not the quest page", async () => {
+      const dialog = page.getByRole("dialog");
+
+      // The title is an anchor to the quest's own page: this is the one
+      // mount whose subject has a page a click away, which is also why the
+      // lifecycle verb is withheld. Accepting a quest is a decision that
+      // wants the quest in front of you, not a popup over a map.
       await expect(
-        dialog.getByRole("button", { name: new RegExp(left.title) }),
-      ).toBeVisible({ timeout: 10_000 });
+        dialog.getByRole("link", { name: new RegExp(root.title) }),
+      ).toHaveAttribute("href", new RegExp(`/quests/${root.shortId}$`));
       await expect(
-        dialog.getByRole("button", { name: new RegExp(right.title) }),
+        dialog.getByRole("button", { name: /accept.*quest/i }),
+      ).toHaveCount(0);
+      await expect(
+        dialog.getByRole("button", { name: /^edit$/i }),
       ).toBeVisible();
     });
 
-    await test.step("a neighbour walks the questline without closing it", async () => {
+    await test.step("a neighbour link leaves the map for that quest", async () => {
       const dialog = page.getByRole("dialog");
+      // The questline row's own `#id` anchor, not the title's: both are
+      // links in this panel, and only this one points at the neighbour.
       await dialog
-        .getByRole("button", { name: new RegExp(left.title) })
+        .getByRole("link", { name: `#${left.shortId}`, exact: true })
         .click();
 
-      // Now on a leaf: the way back exists, the way onward does not.
-      await expect(
-        dialog.getByRole("button", { name: new RegExp(root.title) }),
-      ).toBeVisible({ timeout: 10_000 });
-      await expect(
-        dialog.getByRole("button", { name: new RegExp(right.title) }),
-      ).toHaveCount(0);
+      await expect(page).toHaveURL(new RegExp(`/quests/${left.shortId}$`), {
+        timeout: 10_000,
+      });
+
+      // Back to the board for the step below, which still expects it open.
+      await page.goBack();
+      await card(root).click();
+      await expect(page.getByRole("dialog")).toBeVisible({ timeout: 15_000 });
     });
 
     await test.step("escape returns to the board", async () => {

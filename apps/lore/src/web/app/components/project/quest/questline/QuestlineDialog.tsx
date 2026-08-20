@@ -3,7 +3,6 @@ import {
   DialogContent,
   DialogTitle,
 } from "@alepha/ui/components/ui/dialog";
-import { useEffect, useState } from "react";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import QuestView from "../QuestView.tsx";
 import type { QuestlineNode } from "./questlineLayout.ts";
@@ -11,9 +10,6 @@ import type { QuestlineNode } from "./questlineLayout.ts";
 export interface QuestlineDialogProps {
   /** The quest on show, or `null` when the dialog is closed. */
   node: QuestlineNode | null;
-  /** Every node on the board, so a neighbour can be resolved by id. */
-  nodesById: Map<number, QuestlineNode>;
-  onNavigate: (node: QuestlineNode) => void;
   onClose: () => void;
   onQuestChange: (quest: QuestResource) => void;
 }
@@ -25,71 +21,81 @@ export interface QuestlineDialogProps {
  * component the kanban board's sheet uses, so this surface inherits every
  * improvement made there rather than growing a second quest renderer.
  *
- * Flanking it are the quest's neighbours, named rather than arrowed. One
- * button per link: nothing on a side with no link, a stack on a fork.
+ * ### It used to be flanked by its neighbours
+ *
+ * Two columns of named cards sat outside the panel, one per incoming and
+ * outgoing link, faded in 180ms after the dialog landed so they did not fly
+ * in with it. They are gone, and with them `nodesById`, `onNavigate`, the
+ * `landed` timer and the `overflow-visible` that let them bleed past the
+ * panel edge.
+ *
+ * What they cost was the panel itself. Reserving room for a 216px column on
+ * each side meant the dialog capped at `calc(100vw-32rem)` from `xl` up, so
+ * the quest got NARROWER exactly as the screen got wider, and at that width
+ * `QuestView` had no room to stand its rail beside the body. The links they
+ * offered were never unique to them either: the quest's own questline row,
+ * rendered inside the panel by `QuestViewQuestline`, carries the same
+ * neighbours and stays reachable below `xl`, where the columns were hidden
+ * outright.
+ *
+ * So the dialog is now the full width it can be, and `QuestView` splits
+ * body-from-rail on its own once it has the room.
+ *
+ * ### Why `context="dialog"` and not `card`
+ *
+ * It mounted as `card` first, which was wrong in four ways at once: a back
+ * arrow where a popup wants an X, a lifecycle verb ("Accept the Quest") on a
+ * surface you opened to glance at, a title that went nowhere though its page
+ * is one click away, and a rail that scrolled off with the body. `QuestView`
+ * carries three of the four as its own `dialog` branch, so this file stays
+ * a mount point rather than a second quest renderer. The fourth, the close,
+ * belongs to `DialogContent` and is left to it.
  */
 const QuestlineDialog = (props: QuestlineDialogProps) => {
   const node = props.node;
-  // The neighbours belong to a dialog that has finished arriving. Rendering
-  // them with it makes them fly in alongside the panel, which reads as three
-  // things appearing rather than one thing opening.
-  const [landed, setLanded] = useState(false);
-
-  useEffect(() => {
-    if (!node) {
-      setLanded(false);
-      return;
-    }
-    const timer = window.setTimeout(() => setLanded(true), OPEN_MS);
-    return () => window.clearTimeout(timer);
-  }, [node]);
-
-  const neighbours = (ids: number[]): QuestlineNode[] =>
-    ids
-      .map((id) => props.nodesById.get(id))
-      .filter((next): next is QuestlineNode => next != null);
-
-  const prev = node?.prevId != null ? neighbours([node.prevId]) : [];
-  const next = node ? neighbours(node.nextIds) : [];
 
   return (
     <Dialog
       open={node != null}
       onOpenChange={(open) => !open && props.onClose()}
     >
-      <DialogContent
-        showCloseButton={false}
-        className="h-[90vh] w-[min(1060px,calc(100vw-2rem))] max-w-none gap-0 overflow-visible p-0 sm:max-w-none xl:w-[min(1060px,calc(100vw-32rem))]"
-      >
+      {/*
+        `overflow-hidden`, not the `overflow-visible` the flanking columns
+        needed: nothing is meant to escape the panel now, and the rounded
+        corners should clip what fills it. Menus opened inside still escape,
+        because Base UI portals them out rather than overflowing.
+
+        `showCloseButton` is left at its default. `DialogContent`'s own close
+        is `absolute top-2 right-2` on the popup, which is the corner this
+        wants, and it is a `Dialog.Close` so it needs no handler of its own.
+        The header inside carried an X for one iteration; it sat at the end of
+        the LEFT column, a third of the way across a 1400px panel, which is
+        not where anyone reaches for a popup's close. `QuestView` keeps its
+        `dialog` branch clear of that corner from both sides: the rail
+        reserves it at `lg`, the chips row below `lg`.
+      */}
+      <DialogContent className="h-[90vh] w-[min(1400px,calc(100vw-4rem))] max-w-none gap-0 overflow-hidden p-0 sm:max-w-none">
         {node && (
           <>
             <DialogTitle className="sr-only">
               #{node.quest.shortId} {node.quest.title}
             </DialogTitle>
 
-            <div className="min-h-0 overflow-y-auto rounded-xl">
+            {/*
+              `overflow-hidden`, not `overflow-y-auto`: in the `dialog`
+              context `QuestView` owns its own scrolling, splitting into a
+              scrolling body and a standing rail. A scroll container here
+              would scroll the two together and the header would have nothing
+              to stick to.
+            */}
+            <div className="flex min-h-0 overflow-hidden rounded-xl">
               <QuestView
                 quest={node.quest}
-                context="card"
+                context="dialog"
                 onClose={props.onClose}
                 onQuestChange={props.onQuestChange}
               />
             </div>
-
-            {landed && (
-              <>
-                <NeighbourGroup
-                  side="prev"
-                  nodes={prev}
-                  onPick={props.onNavigate}
-                />
-                <NeighbourGroup
-                  side="next"
-                  nodes={next}
-                  onPick={props.onNavigate}
-                />
-              </>
-            )}
           </>
         )}
       </DialogContent>
@@ -98,42 +104,3 @@ const QuestlineDialog = (props: QuestlineDialogProps) => {
 };
 
 export default QuestlineDialog;
-
-/** Matches the popup's own open animation, so the two land together. */
-const OPEN_MS = 180;
-
-interface NeighbourGroupProps {
-  side: "prev" | "next";
-  nodes: QuestlineNode[];
-  onPick: (node: QuestlineNode) => void;
-}
-
-/**
- * Hidden below `xl`, where there is no room beside the panel for a column
- * of names. The quest's own questline row still carries the same links.
- */
-const NeighbourGroup = (props: NeighbourGroupProps) => {
-  if (props.nodes.length === 0) return null;
-
-  return (
-    <div
-      className={`animate-in fade-in absolute top-1/2 hidden w-52 -translate-y-1/2 flex-col gap-2 duration-200 xl:flex ${props.side === "prev" ? "-left-[13.5rem]" : "-right-[13.5rem]"}`}
-    >
-      {props.nodes.map((node) => (
-        <button
-          key={node.quest.id}
-          type="button"
-          onClick={() => props.onPick(node)}
-          className="bg-popover/95 border-border hover:border-foreground/25 hover:bg-accent focus-visible:outline-primary flex flex-col gap-1.5 rounded-lg border px-3.5 py-3 text-left backdrop-blur transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
-        >
-          <span className="text-muted-foreground font-mono text-[10.5px]">
-            #{node.quest.shortId}
-          </span>
-          <span className="line-clamp-3 text-[12.5px] leading-[1.35] font-medium">
-            {node.quest.title}
-          </span>
-        </button>
-      ))}
-    </div>
-  );
-};
