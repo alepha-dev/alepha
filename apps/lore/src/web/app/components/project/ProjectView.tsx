@@ -185,16 +185,18 @@ const ProjectView = () => {
     }
   };
 
-  // Five unlabelled groups (`NavGroup.label` omitted on purpose, see the great
-  // rename Task 9), split by what the user DOES on each surface rather than by
-  // subject matter:
+  // Four unlabelled groups (`NavGroup.label` omitted on purpose, see the great
+  // rename Task 9), split by whether you ACT on a surface or READ it:
   //
-  //   Act     Quests, Epics          you decide what goes in
-  //   Triage  Feedback, Blights      arrives without asking, needs a verdict
-  //   Record  Folios, Milestones,    you read it, you never fill it in
-  //           Reports
-  //   Ops     Apps
+  //   Work      Quests, Epics, Feedback, Blights
+  //   Record    Folios, Milestones, Reports
+  //   Ops       Apps
   //   Settings
+  //
+  // Work is ordered chosen-then-arrived: Quests and Epics are what you put in,
+  // Feedback and Blights turn up on their own and need a verdict. They share
+  // one group rather than two, so the separator falls only where the mode
+  // changes from acting to reading.
   //
   // Milestones sits in Record, not beside Quests, because it plans nothing:
   // the entity carries no objective or target, membership is a time window
@@ -202,13 +204,9 @@ const ProjectView = () => {
   // surface can even set `milestoneId`, and it auto-closes on a cron into a
   // rich-markdown `changelog`. It is a folio the app fills in for you.
   //
-  // The split also stops one badge style carrying two meanings: the counts in
-  // Act are backlog sizes to feel nothing about, the ones in Triage are unread
-  // counts asking for attention today.
-  //
   // Groups with no items are dropped by the `.filter` below, so an
   // all-gates-off project still renders a clean sidebar.
-  const actItems: NavGroup["items"] = [
+  const workItems: NavGroup["items"] = [
     {
       label: tr("project.menu.quests"),
       icon: Grid3x2,
@@ -219,7 +217,7 @@ const ProjectView = () => {
   ];
   // A lens on quests, so it sits right after them: scope, then the items.
   if (features.epics) {
-    actItems.push({
+    workItems.push({
       label: tr("project.menu.epics"),
       icon: Layers,
       href: router.path("projectEpics", { params: { projectSlug } }),
@@ -230,11 +228,10 @@ const ProjectView = () => {
       badge: epicCount?.count ? epicCount.count : undefined,
     });
   }
-  // Triage: work that arrived rather than work that was chosen. Feedback
-  // leads because a human wrote it; a blight is filed by a machine.
-  const triageItems: NavGroup["items"] = [];
+  // Arrived rather than chosen. Feedback leads because a human wrote it; a
+  // blight is filed by a machine.
   if (features.feedback) {
-    triageItems.push({
+    workItems.push({
       label: tr("project.menu.feedback"),
       icon: Inbox,
       href: router.path("projectFeedback", { params: { projectSlug } }),
@@ -258,7 +255,7 @@ const ProjectView = () => {
   );
   const hasOpenBlights = (blightCount?.count ?? 0) > 0;
   if (features.sigils && (collectsBlights || hasOpenBlights)) {
-    triageItems.push({
+    workItems.push({
       label: tr("project.menu.blights"),
       icon: Bug,
       href: router.path("projectBlights", { params: { projectSlug } }),
@@ -342,8 +339,7 @@ const ProjectView = () => {
   }
 
   const nav: NavGroup[] = [
-    { items: actItems },
-    { items: triageItems },
+    { items: workItems },
     { items: recordItems },
     { items: opsItems },
     {
