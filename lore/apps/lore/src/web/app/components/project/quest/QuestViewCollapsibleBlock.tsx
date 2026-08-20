@@ -11,6 +11,12 @@ export interface QuestViewCollapsibleBlockProps {
    * Persistence is in-memory only.
    */
   defaultOpen?: boolean;
+  /**
+   * Optional content between the label and the hairline rule, for a
+   * section's own summary (Objectives puts its progress there). Sits inside
+   * the toggle button, so keep it non-interactive.
+   */
+  aside?: ReactNode;
   children: ReactNode;
 }
 
@@ -41,6 +47,7 @@ const QuestViewCollapsibleBlock = (props: QuestViewCollapsibleBlockProps) => {
         <span className="text-muted-foreground group-hover:text-foreground text-xs font-semibold tracking-[0.84px] whitespace-nowrap uppercase transition-colors">
           {props.label}
         </span>
+        {props.aside}
         <div className="bg-border h-px flex-1 opacity-40" />
         <ChevronDown
           className={cn(
