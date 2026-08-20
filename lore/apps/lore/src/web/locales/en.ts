@@ -959,6 +959,12 @@ export default {
   "feedback.request.myFeedbackLink": "See my previous reports",
   "feedback.request.submittingAs": "Submitting as",
   "feedback.request.forProject": "for project",
+  "feedback.request.closedTitle": "Feedback is closed",
+  "feedback.request.closedBody":
+    "This project is not accepting feedback right now.",
+  "feedback.request.unavailableTitle": "Feedback form unavailable",
+  "feedback.request.unavailableBody":
+    "This form couldn't load. Please try again later.",
   "feedback.request.loginRequiredTitle": "Sign in to submit feedback",
   "feedback.request.loginRequiredBody":
     "Feedback is tied to your account so we can follow up if needed.",

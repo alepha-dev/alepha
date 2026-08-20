@@ -233,4 +233,34 @@ test.describe("Feedback", () => {
       await reporter.ctx.close();
     }
   });
+
+  test("the request form says feedback is closed when the module is off", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `closed${t}@example.com`, "ClosedTest123!");
+    // The wizard defaults the feedback module OFF — this test deliberately
+    // leaves it off. Regression guard for the silent-no-op form: the page used
+    // to render the full form (paste hint, attach button, submit) while every
+    // action died on the unresolved project id from the 403'd context fetch.
+    const { slug: projectSlug } = await createProjectViaWizard(
+      page,
+      `Closed${t}`.slice(0, 20),
+    );
+
+    await page.goto(`/${projectSlug}/request`);
+
+    await expect(page.getByText(/feedback is closed/i)).toBeVisible({
+      timeout: 15_000,
+    });
+    // The dead form must not render: no message box, no paste hint, no
+    // submit button.
+    await expect(page.locator("textarea")).toHaveCount(0);
+    await expect(page.getByText(/paste a screenshot/i)).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: /^submit feedback$/i }),
+    ).toHaveCount(0);
+  });
 });

@@ -10,6 +10,7 @@ import { useAuth } from "alepha/react/auth";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
+import { HttpError } from "alepha/server";
 import { Loader2, Paperclip, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
@@ -233,16 +234,31 @@ const ProjectFeedbackRequest = () => {
   liveRef.current.projectId = projectId;
   const maxFiles = project?.maxAttachments ?? DEFAULT_MAX_FILES;
   const maxFileSizeMb = project?.maxFileSizeMb ?? DEFAULT_MAX_FILE_SIZE_MB;
+  // The context fetch is the form's only source of the integer project id, so
+  // its failure must not leave the form rendered: every action would funnel
+  // into the `projectId === undefined` guards and die silently — Cmd+V, the
+  // Attach button, drag-drop, submit, all no-ops with no feedback. "closed"
+  // (the module is off, or the slug is stale) and "error" (transient) render
+  // different messages because they call for different user reactions.
+  const [contextState, setContextState] = useState<
+    "loading" | "ready" | "closed" | "error"
+  >("loading");
   useEffect(() => {
     if (!auth.user || !projectSlug) return;
     let cancelled = false;
     feedbackApi
       .feedbackContext({ params: { slug: projectSlug } })
       .then((res) => {
-        if (!cancelled) setProject(res);
+        if (cancelled) return;
+        setProject(res);
+        setContextState("ready");
       })
-      .catch(() => {
-        if (!cancelled) setProject(null);
+      .catch((err) => {
+        if (cancelled) return;
+        setProject(null);
+        setContextState(
+          HttpError.is(err, 403) || HttpError.is(err, 404) ? "closed" : "error",
+        );
       });
     return () => {
       cancelled = true;
@@ -371,8 +387,10 @@ const ProjectFeedbackRequest = () => {
 
   // Ctrl+V / Cmd+V on the page uploads any pasted image (e.g. screenshots).
   // Bound to window so the user doesn't have to focus a specific element.
+  // Not bound before the context resolves: without a project id the handler
+  // could only preventDefault the paste and then drop it on the floor.
   useEffect(() => {
-    if (!auth.user) return;
+    if (!auth.user || projectId === undefined) return;
     const onPaste = (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
       if (!items) return;
@@ -434,6 +452,45 @@ const ProjectFeedbackRequest = () => {
                 </Button>
               </CardContent>
             </Card>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (contextState !== "ready") {
+    // No project id, no form: rendering it anyway is the bug this branch
+    // fixes — every action (paste, attach, drop, submit) funnels into a
+    // `projectId === undefined` guard and dies with no feedback at all.
+    return (
+      <>
+        <PageHeader />
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4 pt-16">
+            {contextState === "loading" ? (
+              <div className="flex justify-center py-16">
+                <Loader2 className="text-muted-foreground size-6 animate-spin" />
+              </div>
+            ) : (
+              <Card className="shadow">
+                <CardContent className="flex flex-col gap-4">
+                  <h1 className="text-xl font-semibold">
+                    {tr(
+                      contextState === "closed"
+                        ? "feedback.request.closedTitle"
+                        : "feedback.request.unavailableTitle",
+                    )}
+                  </h1>
+                  <p className="text-muted-foreground text-sm">
+                    {tr(
+                      contextState === "closed"
+                        ? "feedback.request.closedBody"
+                        : "feedback.request.unavailableBody",
+                    )}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </>
