@@ -1,3 +1,4 @@
+import { cn } from "@alepha/ui/lib/utils";
 import * as React from "react";
 
 void React;
@@ -529,6 +530,15 @@ export interface AppShellProps {
    * sticky footer sits below the shell).
    */
   fill?: boolean;
+  /**
+   * Extra classes for the scrolling `<main>` element.
+   *
+   * Exists so an app can paint its own page surface (Lore stamps a dot
+   * texture there) without every other consumer of the shell inheriting it.
+   * Layout classes are applied after this, so a caller cannot break the
+   * flex/overflow contract described above.
+   */
+  mainClassName?: string;
 }
 
 /**
@@ -591,11 +601,12 @@ export function AppShell(props: AppShellProps) {
     //   - For non-fill pages there's no height bound, so this collapses
     //     to "scroll whatever overflows" without further config.
     <main
-      className={
+      className={cn(
+        props.mainClassName,
         props.fill
           ? "flex min-h-0 flex-1 flex-col overflow-hidden"
-          : "flex-1 overflow-auto"
-      }
+          : "flex-1 overflow-auto",
+      )}
     >
       {props.children ?? <NestedView />}
     </main>
