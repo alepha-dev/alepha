@@ -23,6 +23,13 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@alepha/ui/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@alepha/ui/components/ui/select";
 import { Skeleton } from "@alepha/ui/components/ui/skeleton";
 import {
   Table,
@@ -44,6 +51,9 @@ import { ClientOnly, useAlepha } from "alepha/react";
 import { type FormModel, useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import {
+  ArrowDown,
+  ArrowUp,
+  ChevronsUpDown,
   Columns3,
   FunnelX,
   Inbox,
@@ -176,9 +186,17 @@ export interface AlephaTableProps<T> {
    */
   bulkActions?: BulkAction<T>[];
   /**
-   * Default page size.
+   * Page size the table opens on. The reader can change it from the footer;
+   * with `persistenceKey` set, their choice is remembered and wins over this.
    */
   defaultSize?: number;
+  /**
+   * Sizes offered in the footer picker. Defaults to {@link PAGE_SIZES}.
+   *
+   * Pass `[]` to hide the picker entirely, for a table whose page size is
+   * not the reader's business.
+   */
+  pageSizes?: number[];
   /**
    * Stable row identifier. Defaults to `item.id`.
    */
@@ -326,9 +344,31 @@ const writePersisted = (key: string, suffix: string, value: unknown): void => {
   }
 };
 
+/**
+ * Page sizes the footer offers.
+ *
+ * No "all". Pagination here is server-side, so an unbounded fetch is a query
+ * whose cost grows with the biggest table in the product and is paid by the
+ * reader who can least afford it. 100 covers "let me scan the lot" without
+ * that.
+ */
+export const PAGE_SIZES = [10, 20, 50, 100];
+
 export function AlephaTable<T>(props: AlephaTableProps<T>) {
   const rowKey = props.rowKey ?? defaultRowKey;
-  const size = props.defaultSize ?? 20;
+
+  // State, not a constant. It was `props.defaultSize ?? 20` read once, so a
+  // reader had no way to see more rows than the call site had decided for
+  // them. Already in `load`'s dependency array, so changing it refetches.
+  const [size, setSize] = useState<number>(
+    () =>
+      (props.persistenceKey
+        ? readPersisted<number>(props.persistenceKey, "size")
+        : undefined) ??
+      props.defaultSize ??
+      20,
+  );
+  const pageSizes = props.pageSizes ?? PAGE_SIZES;
   const alepha = useAlepha();
   const { tr } = useI18n();
 
@@ -367,6 +407,22 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   // -- Paging / sort / data --------------------------------------------------
 
   const [page, setPage] = useState(0);
+
+  /**
+   * Change the page size and go back to the first page.
+   *
+   * The reset is the whole point: raising the size while on page 5 can put
+   * the reader past the last page, which renders an empty table with no
+   * visible cause. Persisted so the choice survives a reload, alongside the
+   * filters, sort and columns this table already remembers.
+   */
+  const changeSize = (next: number) => {
+    setSize(next);
+    setPage(0);
+    if (props.persistenceKey) {
+      writePersisted(props.persistenceKey, "size", next);
+    }
+  };
   const [sort, setSort] = useState<SortState | null>(() => {
     if (props.persistenceKey) {
       const persisted = readPersisted<SortState>(props.persistenceKey, "sort");
@@ -864,7 +920,11 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
           )}
         >
           <Table>
-            <TableHeader className="bg-background sticky top-0 z-10 shadow-[inset_0_-1px_0_0_var(--border)]">
+            {/* `bg-muted`, fully opaque, NOT the base header's `bg-muted/50`:
+                this header is sticky, so anything translucent lets the rows
+                scroll visibly through the column labels. Same tint, no
+                transparency. */}
+            <TableHeader className="bg-muted sticky top-0 z-10 shadow-[inset_0_-1px_0_0_var(--border)]">
               <TableRow>
                 {hasCheckbox && (
                   <TableHead className="w-10">
@@ -903,13 +963,35 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                         <button
                           type="button"
                           onClick={() => toggleSort(key, def)}
-                          className="hover:text-foreground inline-flex cursor-pointer select-none items-center gap-1"
+                          className="group/sort hover:text-foreground inline-flex cursor-pointer select-none items-center gap-1"
                         >
                           {def.label}
-                          {sorted && (
-                            <span aria-hidden>
-                              {sort?.direction === "asc" ? "↑" : "↓"}
-                            </span>
+                          {/* A sortable column says so at rest. The arrow
+                              used to appear only once a column WAS sorted,
+                              so an unsorted sortable header and a dead one
+                              were indistinguishable until you happened to
+                              hover one. The neutral glyph is dimmed so a row
+                              of them does not shout, and brightens under the
+                              cursor.
+
+                              Lucide, not the `↑` / `↓` characters this
+                              replaced: those render in the text font at text
+                              weight and sat visibly apart from every other
+                              icon in the table.
+
+                              `aria-hidden` throughout: `aria-sort` on the
+                              `th` already states this to assistive tech. */}
+                          {sorted ? (
+                            sort?.direction === "asc" ? (
+                              <ArrowUp className="size-3.5" aria-hidden />
+                            ) : (
+                              <ArrowDown className="size-3.5" aria-hidden />
+                            )
+                          ) : (
+                            <ChevronsUpDown
+                              className="size-3.5 opacity-40 transition-opacity group-hover/sort:opacity-100"
+                              aria-hidden
+                            />
                           )}
                         </button>
                       ) : (
@@ -1016,11 +1098,51 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
 
         {/* `bg-muted`, paired with the filter bar above — see the note there. */}
         <div className="bg-muted -mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md rounded-t-none border p-2">
-          <p className="text-muted-foreground text-xs">
-            {meta
-              ? `Page ${meta.number + 1}${meta.totalPages ? ` of ${meta.totalPages}` : ""} · ${meta.numberOfElements} of ${meta.totalElements ?? "?"}`
-              : "—"}
-          </p>
+          {/* The size picker sits with the count, not in the toolbar above:
+              this line already answers "how many, where am I", while the
+              toolbar answers "which rows". Mixing the two turns the toolbar
+              into a junk drawer. */}
+          <div className="flex items-center gap-2">
+            {pageSizes.length > 0 && (
+              // The same Select the filter bar's controls are built on, not
+              // a bare `<select>`: a native control renders in the OS widget
+              // set and sat visibly apart from every other trigger in this
+              // table. `Control` itself is form-bound, so the picker uses the
+              // component underneath it.
+              <Select
+                value={String(size)}
+                onValueChange={(value) => changeSize(Number(value))}
+              >
+                <SelectTrigger
+                  // `bg-background`, because this bar is `bg-muted` and the
+                  // trigger is `bg-transparent` by default: on a plain form
+                  // surface that blending is right, on a tinted bar it made
+                  // the picker read as part of the bar while the pagination
+                  // buttons beside it sat on their own plane. Overridden here
+                  // rather than in `SelectTrigger`, which every form still
+                  // wants transparent.
+                  className="bg-background h-7 w-auto gap-1 text-xs"
+                  aria-label={String(
+                    tr("table.pageSize", { default: "Rows per page" }),
+                  )}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {pageSizes.map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <p className="text-muted-foreground text-xs">
+              {meta
+                ? `Page ${meta.number + 1}${meta.totalPages ? ` of ${meta.totalPages}` : ""} · ${meta.numberOfElements} of ${meta.totalElements ?? "?"}`
+                : "—"}
+            </p>
+          </div>
           {meta && meta.totalPages && meta.totalPages > 1 ? (
             <Pagination className="mx-0 w-auto justify-end">
               <PaginationContent>

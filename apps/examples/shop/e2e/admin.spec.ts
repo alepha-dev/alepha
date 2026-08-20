@@ -268,10 +268,18 @@ test.describe("order management", () => {
     await signInAsAdmin(page);
     await page.goto("/admin/commandes");
 
-    // By role, not by label: the toolbar filter has no label any more. It sat
-    // directly above a column header that already said "Statut", and its
-    // height was what pushed the toolbar's buttons off-centre.
-    await page.getByRole("combobox").click();
+    // By role AND by the value it shows: the toolbar filter has no label any
+    // more (it sat directly above a column header that already said
+    // "Statut", and its height pushed the toolbar's buttons off-centre), so
+    // there is no accessible name to match on.
+    //
+    // Filtered rather than bare, because the table footer now carries a
+    // rows-per-page select of its own and a bare `getByRole("combobox")`
+    // resolves to both.
+    await page
+      .getByRole("combobox")
+      .filter({ hasText: "Tous les statuts" })
+      .click();
     await page.getByRole("option", { name: "En attente" }).click();
     // No pending orders survive a completed funnel, so the table is empty and
     // says so rather than showing a spinner forever.

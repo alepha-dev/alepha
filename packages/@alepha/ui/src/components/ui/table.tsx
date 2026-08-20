@@ -22,7 +22,12 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("[&_tr]:border-b", className)}
+      // The header keeps the tint a row only borrows on hover. It is not a
+      // row you can act on, so lighting up under the cursor promised an
+      // interaction it does not have; as a permanent fill the same colour
+      // does useful work instead, separating the column labels from the
+      // data without adding a second border.
+      className={cn("bg-muted/50 [&_tr]:border-b", className)}
       {...props}
     />
   );
