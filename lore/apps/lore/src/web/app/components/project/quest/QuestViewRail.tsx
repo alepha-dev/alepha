@@ -1,10 +1,12 @@
 import { Button } from "@alepha/ui/components/ui/button";
-import { useClient, useStore } from "alepha/react";
+import { DateTimeProvider } from "alepha/datetime";
+import { useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
   Archive,
   ArchiveRestore,
+  CalendarClock,
   CircleDot,
   Flag,
   Flame,
@@ -56,7 +58,8 @@ export interface QuestViewRailProps {
  */
 const QuestViewRail = (props: QuestViewRailProps) => {
   const { quest } = props;
-  const { tr } = useI18n<I18n, "en">();
+  const { tr, l } = useI18n<I18n, "en">();
+  const dt = useInject(DateTimeProvider);
   const router = useRouter<AppRouter>();
   const epicApi = useClient<EpicController>();
   const [project] = useStore(currentProjectAtom);
@@ -149,7 +152,7 @@ const QuestViewRail = (props: QuestViewRailProps) => {
         </QuestViewRailRow>
 
         <QuestViewRailRow icon={Flame} label={tr("board.table.priority")}>
-          {quest.priority}
+          <span className="capitalize">{quest.priority}</span>
         </QuestViewRailRow>
 
         {questEstimateEnabled && (
@@ -159,6 +162,15 @@ const QuestViewRail = (props: QuestViewRailProps) => {
               : undefined}
           </QuestViewRailRow>
         )}
+
+        <QuestViewRailRow icon={CalendarClock} label={tr("quest.rail.due")}>
+          {quest.dueAt
+            ? `${l(quest.dueAt, {
+                date:
+                  dt.of(quest.dueAt).diff(dt.now(), "day") < 7 ? "dddd" : "ll",
+              })} · ${dt.of(quest.dueAt).fromNow()}`
+            : undefined}
+        </QuestViewRailRow>
 
         <QuestViewRailRow icon={MapPin} label={tr("quest.create.area")}>
           {quest.area || undefined}
@@ -193,22 +205,30 @@ const QuestViewRail = (props: QuestViewRailProps) => {
         </QuestViewRailRow>
       </div>
 
-      <QuestViewRailTags quest={quest} onUpdate={props.onUpdate} />
+      <QuestViewRailTags quest={quest} />
 
+      {/* Ruled off from the tags above, the same way the action rows below
+          are. Reminder is a control and tags are a readout, so without the
+          rule the two blocks ran together as one list. */}
       {questReminderEnabled && !quest.completedAt && (
-        <QuestViewSettings quest={quest} onUpdate={props.onUpdate} />
+        <div className="border-t pt-4">
+          <QuestViewSettings quest={quest} onUpdate={props.onUpdate} />
+        </div>
       )}
 
+      {/* Action rows: the icon is muted and the label is body text, so the
+          column reads as a list of verbs rather than a stack of coloured
+          glyphs. The destructive row is the exception and tints both, which
+          is what makes it the only one that stands out. */}
       {!quest.completedAt && (
-        <div className="flex flex-col gap-1 border-t pt-3">
+        <div className="flex flex-col gap-1.5 border-t pt-4">
           <QuestViewDuplicateButton quest={quest} variant="row" />
 
           {quest.shelvedAt ? (
             <Button
               type="button"
               variant="ghost"
-              size="sm"
-              className="justify-start"
+              className="justify-start gap-3 [&_svg]:text-muted-foreground"
               disabled={props.unshelveDisabled}
               onClick={props.onUnshelve}
             >
@@ -219,8 +239,7 @@ const QuestViewRail = (props: QuestViewRailProps) => {
             <Button
               type="button"
               variant="ghost"
-              size="sm"
-              className="justify-start"
+              className="justify-start gap-3 [&_svg]:text-muted-foreground"
               disabled={props.shelveDisabled}
               onClick={props.onShelve}
             >
@@ -233,8 +252,7 @@ const QuestViewRail = (props: QuestViewRailProps) => {
             <Button
               type="button"
               variant="ghost"
-              size="sm"
-              className="text-destructive hover:text-destructive justify-start"
+              className="text-destructive hover:text-destructive justify-start gap-3"
               disabled={props.unassignDisabled}
               onClick={props.onUnassign}
             >
@@ -256,8 +274,24 @@ const QuestViewRail = (props: QuestViewRailProps) => {
  * re-fetched, so opening a quest still costs one `getQuestLine`.
  */
 export interface QuestlineSummary {
-  predecessor?: { id: number; shortId: number; title: string };
-  dependents: Array<{ id: number; shortId: number; title: string }>;
+  predecessor?: QuestlineNode;
+  dependents: QuestlineNode[];
+}
+
+/**
+ * One end of a questline link.
+ *
+ * `completedAt` / `shelvedAt` are what let a reader tell "blocked" from
+ * "unblocked" and from "blocked by something parked". They were missing
+ * here while `QuestView`'s own state carried them, so anything typed
+ * against this interface could not see the difference.
+ */
+export interface QuestlineNode {
+  id: number;
+  shortId: number;
+  title: string;
+  completedAt?: string;
+  shelvedAt?: string;
 }
 
 interface EpicSummary {

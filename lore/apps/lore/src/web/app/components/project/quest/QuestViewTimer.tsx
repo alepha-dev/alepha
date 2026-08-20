@@ -92,39 +92,39 @@ const QuestViewTimer = (props: QuestViewTimerProps) => {
   const running = isTimerRunning();
 
   return (
-    <div className="flex items-center">
-      <div className="border-border flex min-w-[150px] items-center justify-end gap-2 rounded-md border px-2 py-0.5 shadow-sm">
-        <Clock className="size-4 opacity-60" />
-        <ClientOnly>
-          <span className="text-sm font-medium">{formatTime(currentTime)}</span>
-        </ClientOnly>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-6 px-1"
-                onClick={toggleTimer}
-                disabled={!client.startTimer.can() && !client.stopTimer.can()}
-              />
-            }
-          >
-            {running ? (
-              <Pause className="size-4" />
-            ) : (
-              <Play className="size-4" />
-            )}
-          </TooltipTrigger>
-          <TooltipContent>
-            {running
-              ? tr("quest.view.timer.pause")
-              : tr("quest.view.timer.start")}
-          </TooltipContent>
-        </Tooltip>
-      </div>
-      <div className="bg-border ml-2 h-px w-8 opacity-40" />
+    // Spans the rail rather than sitting in a centred pill: it is the first
+    // thing in the panel and the mockup gives it the full width, with the
+    // elapsed time leading and the control pinned to the far edge. The
+    // trailing hairline the old pill needed to bridge to the panel edge goes
+    // with it.
+    <div className="border-border bg-background flex items-center gap-2 rounded-md border px-3 py-2">
+      <Clock className="size-4 opacity-60" />
+      <ClientOnly>
+        <span className="flex-1 text-base font-medium">
+          {formatTime(currentTime)}
+        </span>
+      </ClientOnly>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-1"
+              onClick={toggleTimer}
+              disabled={!client.startTimer.can() && !client.stopTimer.can()}
+            />
+          }
+        >
+          {running ? <Pause className="size-4" /> : <Play className="size-4" />}
+        </TooltipTrigger>
+        <TooltipContent>
+          {running
+            ? tr("quest.view.timer.pause")
+            : tr("quest.view.timer.start")}
+        </TooltipContent>
+      </Tooltip>
     </div>
   );
 };
