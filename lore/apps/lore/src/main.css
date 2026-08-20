@@ -465,7 +465,7 @@ body::before {
 
 /* ────────────────────────────────────────────────────────────────────────
  * Folio workspace typography + find highlighting.
- * The font files are lazy-loaded by `useFolioFonts`; these vars always
+ * The font files are lazy-loaded by `useReadingFonts`; these vars always
  * resolve thanks to the fallback stacks, so a failed load degrades
  * silently instead of leaving the document unstyled.
  * ──────────────────────────────────────────────────────────────────────── */

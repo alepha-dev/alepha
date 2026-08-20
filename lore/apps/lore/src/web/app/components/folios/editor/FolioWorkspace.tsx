@@ -6,6 +6,7 @@ import type { FolioResource } from "@/api/schemas/folioResourceSchema.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { preloadMarkdownEditor } from "../../shared/markdown-editor/MarkdownEditor.tsx";
+import { useReadingFonts } from "../../shared/useReadingFonts.ts";
 import FolioEmptyState from "./document/FolioEmptyState.tsx";
 import FolioWorkspaceContent from "./FolioWorkspaceContent.tsx";
 import type { FolioInspectorTab } from "./inspector/FolioInspector.tsx";
@@ -17,7 +18,6 @@ import {
 import FolioTree, { type FolioTreeActions } from "./tree/FolioTree.tsx";
 import FolioTreeResizer from "./tree/FolioTreeResizer.tsx";
 import type { FolioActionHandlers } from "./useFolioActions.ts";
-import { useFolioFonts } from "./useFolioFonts.ts";
 import { useFolioPanes } from "./useFolioPanes.ts";
 
 /**
@@ -120,7 +120,7 @@ export interface FolioWorkspaceProps {
  * OUTSIDE that key, is exactly what the tree pane must avoid.
  */
 const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
-  useFolioFonts();
+  useReadingFonts();
   const [project] = useStore(currentProjectAtom);
   const router = useRouter<AppRouter>();
   const panes = useFolioPanes();
