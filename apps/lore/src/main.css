@@ -557,3 +557,91 @@ body::before {
 .dark .lore-page-dots {
   background-image: radial-gradient(oklch(0.985 0 0 / 5%) 1px, transparent 1px);
 }
+
+/* ────────────────────────────────────────────────────────────────────────
+ * EXPERIMENT (#quest-log-facets): an argyle diamond lattice on the quest
+ * log pane. Kept behind its own class so removing it is deleting this block
+ * and one class name in `QuestLog.tsx`, with nothing else to unpick.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+/*
+ * The lattice follows the sidebar's idiom exactly: `background-color:
+ * var(--primary)` shown through a `mask-image` SVG, so the shape is fixed
+ * and the colour is whatever the active theme's primary is. Twilight gets a
+ * blue quilt, sylvan a green one, and none of them need a rule here. Doing
+ * it the other way round, with the colour inside the SVG, would have meant
+ * one encoded data URI per theme.
+ *
+ * The tile is a diamond touching all four midpoints of a 28px square, so
+ * neighbouring tiles continue each other's edges and the seams disappear
+ * into a single continuous lattice. The 4px pip at each diamond's centre is
+ * the argyle part, and the first thing to drop if this reads as busy.
+ *
+ * There was a second layer, a wash of primary fading down from the top of
+ * the pane. It is gone: the lattice is the experiment, and the wash turned
+ * out to be the part that read as decoration for its own sake. The texture
+ * is now a single flat layer at one opacity.
+ *
+ * `isolation` is what keeps it visible. `z-index: -1` puts the pseudo behind
+ * the pane's content, and without a stacking context here that -1 escapes
+ * outward and can land behind an ancestor's own background instead. Making
+ * this element the stacking context bounds it: behind the content, in front
+ * of everything outside the pane.
+ *
+ * The page's 16px dot grid still shows through, on purpose: the pane is
+ * transparent, so the texture continues under the lattice rather than the
+ * pane cutting a hole in it.
+ *
+ * The collapsed rail carries the same texture, so the pane keeps its
+ * material when it shuts instead of turning into a different surface. What
+ * it does not keep is the tile size: the rail is 32px wide, and a 28px tile
+ * there shows one column of diamonds plus a sliver, which reads as a crop
+ * rather than a pattern. `lore-quest-log-facets-rail` scales the mask to
+ * 16px so exactly two columns fit the strip.
+ */
+.lore-quest-log-facets {
+  position: relative;
+  isolation: isolate;
+}
+
+.lore-quest-log-facets::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--primary);
+  /*
+   * Lower than the sidebar's 0.05: that texture is sparse dots, this one is
+   * continuous line work, so the same alpha carries noticeably more ink.
+   */
+  opacity: 0.045;
+  mask-image: url("data:image/svg+xml,%3Csvg width='28' height='28' viewBox='0 0 28 28' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M14 0 L28 14 L14 28 L0 14 Z' fill='none' stroke='black' stroke-width='1'/%3E%3Cpath d='M14 12 L16 14 L14 16 L12 14 Z' fill='black'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg width='28' height='28' viewBox='0 0 28 28' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M14 0 L28 14 L14 28 L0 14 Z' fill='none' stroke='black' stroke-width='1'/%3E%3Cpath d='M14 12 L16 14 L14 16 L12 14 Z' fill='black'/%3E%3C/svg%3E");
+  mask-repeat: repeat;
+  -webkit-mask-repeat: repeat;
+}
+
+/*
+ * Light-on-dark reads weaker than dark-on-light at the same alpha, and the
+ * dark canvas is where a quilted panel is worth having at all.
+ */
+.dark .lore-quest-log-facets::before {
+  opacity: 0.06;
+}
+
+/*
+ * The rail's tile is scaled down rather than redrawn, so one data URI still
+ * serves both. That scaling is also why the alpha goes up: the hairline is
+ * 1px in a 28-unit viewBox, so at 16px it rasterises to well under a device
+ * pixel and antialiases away to almost nothing at the pane's opacity.
+ */
+.lore-quest-log-facets-rail::before {
+  mask-size: 16px 16px;
+  -webkit-mask-size: 16px 16px;
+  opacity: 0.06;
+}
+
+.dark .lore-quest-log-facets-rail::before {
+  opacity: 0.08;
+}
