@@ -1,9 +1,9 @@
 import type { CompletionSource } from "@codemirror/autocomplete";
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import { useEffect, useRef } from "react";
+import { type MouseEvent as ReactMouseEvent, useEffect, useRef } from "react";
 import { createMarkdownExtensions } from "./codeMirrorSetup.ts";
-import { insertAtCursor } from "./insertAtCursor.ts";
+import { imageMarkdown, insertAtCursor } from "./insertAtCursor.ts";
 
 export interface CodeMirrorEditorProps {
   value: string;
@@ -121,7 +121,7 @@ const CodeMirrorEditor = (props: CodeMirrorEditorProps) => {
               if (!file) return false;
               event.preventDefault();
               void upload(file).then((reference) => {
-                insertAtCursor(view, reference);
+                insertAtCursor(view, imageMarkdown(file.name, reference));
               });
               return true;
             },
@@ -134,7 +134,7 @@ const CodeMirrorEditor = (props: CodeMirrorEditorProps) => {
               if (!file) return false;
               event.preventDefault();
               void upload(file).then((reference) => {
-                insertAtCursor(view, reference);
+                insertAtCursor(view, imageMarkdown(file.name, reference));
               });
               return true;
             },
@@ -165,13 +165,44 @@ const CodeMirrorEditor = (props: CodeMirrorEditorProps) => {
     });
   }, [props.value]);
 
+  /**
+   * Put the caret at the end when the click lands in the box but outside the
+   * text, the way every textarea behaves.
+   *
+   * `.cm-editor` is stretched to the host below, but CodeMirror only
+   * hit-tests inside `.cm-content`, so the gap under a short document
+   * swallowed the click and the field looked dead everywhere but its first
+   * line. Guarded on the target so a click ON the text still goes to CM and
+   * lands where the reader aimed.
+   */
+  const focusEnd = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const view = viewRef.current;
+    if (!view || (event.target as HTMLElement).closest(".cm-content")) return;
+    event.preventDefault();
+    view.focus();
+    view.dispatch({ selection: { anchor: view.state.doc.length } });
+  };
+
   return (
     <div
       ref={hostRef}
+      onMouseDown={focusEnd}
       // `min-w-0` because grid and flex items default to `min-width: auto`,
       // which forbids shrinking below min-content width. Two quest dialogs
       // embed this and had exactly that overflow bug once.
-      className="min-w-0"
+      // `min-height: inherit` on `.cm-editor`: `minHeight` below sits on THIS host,
+      // while CodeMirror sizes itself to its content, so a short document
+      // left the rest of the box as dead space no click reached. Every
+      // textarea on earth puts the caret at the end when you click its
+      // empty lower half. Stretching CM to the host is half of that; the
+      // `onMouseDown` above is the other half, because CM hit-tests only
+      // inside `.cm-content`.
+      //
+      // `inherit`, not `min-h-full`: a percentage min-height resolves
+      // against the parent's HEIGHT, and the host only sets `min-height`,
+      // so `100%` collapsed to nothing and CodeMirror stayed 20px tall in a
+      // 246px box.
+      className="min-w-0 [&>.cm-editor]:[min-height:inherit]"
       style={props.minHeight ? { minHeight: props.minHeight } : undefined}
     />
   );
