@@ -19,6 +19,7 @@ import { MilestoneController } from "./controllers/MilestoneController.ts";
 import { ProjectController } from "./controllers/ProjectController.ts";
 import { ProjectQuestPortabilityController } from "./controllers/ProjectQuestPortabilityController.ts";
 import { ProjectReportsController } from "./controllers/ProjectReportsController.ts";
+import { QuestCommentController } from "./controllers/QuestCommentController.ts";
 import { QuestController } from "./controllers/QuestController.ts";
 import { SearchController } from "./controllers/SearchController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
@@ -116,6 +117,7 @@ export const LoreApi = $module({
     SigilIngestService,
     // Controllers
     QuestController,
+    QuestCommentController,
     ProjectController,
     MilestoneController,
     EpicController,
