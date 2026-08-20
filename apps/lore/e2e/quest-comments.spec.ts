@@ -162,4 +162,75 @@ test.describe("Quest comments", () => {
       timeout: 10_000,
     });
   });
+
+  /**
+   * The feed (quest #1236). Comments and the quest's own history events
+   * interleave into ONE list — two stacked feeds read as bolted on, and the
+   * interleaving is what makes a quest read as something that happened.
+   */
+  test("the Discussion shows events and comments in one feed, with a filter", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+
+    const t = Date.now();
+    const email = `feed${t}@example.com`;
+    const password = "FeedTest123!";
+    const projectTitle = `FD${t}`.slice(0, 20);
+
+    await registerAndVerify(page, email, password);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
+
+    const { id: questId, shortId } = await apiPost<{
+      id: number;
+      shortId: number;
+    }>(page, "createQuest", {
+      projectId,
+      title: `Talked${t}`,
+      description: "Seeded for the feed",
+      area: "Main",
+      priority: "medium",
+      objectives: [],
+      attachments: [],
+    });
+
+    await callWithId(page, "createQuestComment", questId, {
+      body: "A comment that has to show up in the feed.",
+    });
+
+    await page.goto(`/${projectSlug}/quests/${shortId}`);
+    await page.waitForLoadState("networkidle");
+
+    await test.step("both kinds of row are there, and the RPG titles are not", async () => {
+      const feed = page
+        .getByRole("list")
+        .filter({ hasText: "created the quest" });
+      await expect(feed).toBeVisible({ timeout: 10_000 });
+      await expect(
+        page.getByText("A comment that has to show up in the feed."),
+      ).toBeVisible();
+
+      // The timeline this replaces hardcoded these, untranslated, and said
+      // "by You" for every actor.
+      await expect(page.getByText(/A New Dawn|Courageous Choice/)).toHaveCount(
+        0,
+      );
+      await expect(page.getByText(/by You/)).toHaveCount(0);
+    });
+
+    await test.step("Comments only drops the system events", async () => {
+      await page.getByRole("radio", { name: /comments only/i }).click();
+
+      await expect(
+        page.getByText("A comment that has to show up in the feed."),
+      ).toBeVisible();
+      await expect(page.getByText(/created the quest/)).toHaveCount(0);
+
+      await page.getByRole("radio", { name: /everything/i }).click();
+      await expect(page.getByText(/created the quest/)).toBeVisible();
+    });
+  });
 });

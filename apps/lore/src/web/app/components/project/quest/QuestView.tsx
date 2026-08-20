@@ -16,7 +16,6 @@ import {
   Archive,
   ArrowLeft,
   FileText,
-  History,
   Link2,
   ListChecks,
   MoreHorizontal,
@@ -38,7 +37,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 import AttachmentBadge from "./AttachmentBadge.tsx";
 import QuestCompletionDialog from "./QuestCompletionDialog.tsx";
 import QuestDescription from "./QuestDescription.tsx";
-import QuestHistory from "./QuestHistory.tsx";
+import QuestDiscussion from "./QuestDiscussion.tsx";
 import QuestSummaryEditDialog from "./QuestSummaryEditDialog.tsx";
 import QuestViewCollapsibleBlock from "./QuestViewCollapsibleBlock.tsx";
 import QuestViewEditButton from "./QuestViewEditButton.tsx";
@@ -651,13 +650,11 @@ const QuestView = (props: QuestViewProps) => {
                 </div>
               )}
 
-              {/* History (collapsible, default collapsed) */}
-              <QuestViewCollapsibleBlock
-                icon={<History className="size-5" />}
-                label={tr("quest.view.history")}
-              >
-                <QuestHistory quest={quest} />
-              </QuestViewCollapsibleBlock>
+              {/* Discussion — the quest's history events and its comments
+                  in one feed. Always open: it is the section a returning
+                  reader comes back for, which the collapsed History block it
+                  replaces never was. */}
+              <QuestDiscussion quest={quest} />
             </div>
 
             {/* The rule is what makes two columns read as two regions. It
