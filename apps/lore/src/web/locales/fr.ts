@@ -978,6 +978,12 @@ export default {
   "feedback.request.myFeedbackLink": "Voir mes retours précédents",
   "feedback.request.submittingAs": "En tant que",
   "feedback.request.forProject": "pour le projet",
+  "feedback.request.closedTitle": "Les retours sont fermés",
+  "feedback.request.closedBody":
+    "Ce projet n'accepte pas de retours pour le moment.",
+  "feedback.request.unavailableTitle": "Formulaire de retour indisponible",
+  "feedback.request.unavailableBody":
+    "Le formulaire n'a pas pu se charger. Veuillez réessayer plus tard.",
   "feedback.request.loginRequiredTitle":
     "Connectez-vous pour soumettre un retour",
   "feedback.request.loginRequiredBody":
