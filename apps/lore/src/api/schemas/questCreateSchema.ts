@@ -22,6 +22,10 @@ export const questCreateSchema = z.object({
    * to none rather than rejected.
    */
   estimateMinutes: z.integer().nullable().optional(),
+  /**
+   * Optional deadline. Omit for the normal case of a quest with no date.
+   */
+  dueAt: z.datetime().nullable().optional(),
   projectId: z.integer(),
   objectives: z
     .array(

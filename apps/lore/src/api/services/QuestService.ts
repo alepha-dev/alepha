@@ -43,6 +43,8 @@ export interface CreateQuestInput {
   priority?: Quest["priority"];
   /** Optional glanceable time estimate in minutes; `null`/`undefined` = none. */
   estimateMinutes?: number | null;
+  /** Optional deadline; `undefined` = none. */
+  dueAt?: string;
   objectives?: Array<{ id?: number; title: string; completed: boolean }>;
   attachments?: string[];
   tags?: string[];
@@ -172,6 +174,7 @@ export class QuestService {
       area: ensuredArea?.name ?? "",
       priority: input.priority ?? "medium",
       estimateMinutes: input.estimateMinutes ?? undefined,
+      dueAt: input.dueAt,
       objectives: this.ensureObjectiveIds(input.objectives ?? []),
       attachments: this.mergeEmbeddedAttachments(
         [input.description],
