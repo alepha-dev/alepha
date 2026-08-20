@@ -74,7 +74,7 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
         {/* Left list */}
         <aside
           className={cn(
-            "flex w-full flex-col border-r md:w-[300px] md:shrink-0",
+            "flex w-full flex-col border-r md:w-[380px] md:shrink-0",
             active && "hidden md:flex",
           )}
         >
