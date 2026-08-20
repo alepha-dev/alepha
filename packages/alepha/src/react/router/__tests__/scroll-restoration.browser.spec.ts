@@ -217,4 +217,34 @@ describe("scroll restoration", () => {
       expect(after).toBe(before);
     });
   });
+
+  describe("canGoBack", () => {
+    it("should be false on the entry the app was loaded into", () => {
+      // A deep link, a refresh, or an arrival from another site: going back
+      // here leaves the app, which is exactly what a caller needs to know so
+      // it can fall back to an explicit destination instead.
+      expect(provider.canGoBack).toBe(false);
+    });
+
+    it("should be true once the app has pushed an entry of its own", () => {
+      provider.testPushState("/a");
+
+      expect(provider.canGoBack).toBe(true);
+    });
+
+    it("should stay false after a replace, which creates nowhere to return to", () => {
+      provider.testPushState("/a", true);
+
+      expect(provider.canGoBack).toBe(false);
+    });
+
+    it("should be false again after popping back to the first entry", () => {
+      provider.testPushState("/a");
+      // What the popstate listener does when the user goes back: adopt the
+      // id stamped on the entry being arrived at.
+      provider.setEntry(0);
+
+      expect(provider.canGoBack).toBe(false);
+    });
+  });
 });

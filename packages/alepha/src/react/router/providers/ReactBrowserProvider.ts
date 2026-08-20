@@ -182,6 +182,24 @@ export class ReactBrowserProvider {
     return url;
   }
 
+  /**
+   * Whether there is an in-app entry to go back to.
+   *
+   * `history.back()` cannot answer this — it silently does nothing at the
+   * start of the session, or walks out of the app entirely. `historyKey`
+   * can: it is `0` for the entry the app was loaded into and increments on
+   * every push, so `> 0` means "we navigated here from inside the app" and
+   * `0` covers exactly the deep-link / refresh / arrived-from-outside cases
+   * a caller needs a fallback destination for. A `replace` deliberately
+   * keeps the current id, since it creates no place to come back to.
+   *
+   * Read it when the user acts, never during render: the same component
+   * renders on the server, where there is no history at all.
+   */
+  public get canGoBack(): boolean {
+    return this.historyKey > 0;
+  }
+
   public pushState(path: string, replace?: boolean) {
     const url = this.base + path;
 

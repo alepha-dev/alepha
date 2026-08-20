@@ -648,6 +648,8 @@ export default {
     "Set this quest aside as out of scope? It leaves the backlog, but $1 depends on it and will stay blocked until you unshelve and complete it.",
   "quest.view.shelve.confirmButton": "Shelve Quest",
   "quest.view.edit": "Edit",
+  "quest.view.back": "Back",
+  "quest.view.more": "More",
   "quest.view.settings": "Settings",
   "quest.view.reminder.title": "Reminder",
   "quest.view.reminder.off": "Off",

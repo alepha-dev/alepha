@@ -1,6 +1,12 @@
 import { MarkdownView } from "@alepha/ui/components/markdown-view/markdown-view";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@alepha/ui/components/ui/dropdown-menu";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
@@ -9,11 +15,13 @@ import { Link, useRouter } from "alepha/react/router";
 import {
   Archive,
   ArchiveRestore,
+  ArrowLeft,
   FileText,
   History,
   Hourglass,
   Link2,
   ListChecks,
+  MoreHorizontal,
   Paperclip,
   Pencil,
   ScrollText,
@@ -22,7 +30,6 @@ import {
   SquareCheck,
   Swords,
   Trash2,
-  X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
@@ -47,6 +54,17 @@ import { formatEstimate } from "./questEstimate.ts";
 
 export interface QuestViewProps {
   quest: QuestResource;
+  /**
+   * Which mount this is. `page` is the quest route at
+   * `/:projectSlug/quests/:shortId`; `card` is the same component inside the
+   * kanban board's sheet, at half the width.
+   *
+   * It chooses which sections render inline and which fold behind the
+   * header's overflow menu — see {@link FOLDABLE_SECTIONS}. Defaults to
+   * `page` because the route loader hands this component its props and has
+   * nowhere to pass a context; only the card mount is explicit.
+   */
+  context?: QuestViewContext;
   onClose?: () => void;
   onQuestChange?: (quest: QuestResource) => void;
 }
@@ -141,16 +159,71 @@ const QuestView = (props: QuestViewProps) => {
   const questReminderEnabled = project?.features?.questReminder === true;
   const questChronoEnabled = project?.features?.questChrono === true;
 
+  const context: QuestViewContext = props.context ?? "page";
+
+  // Sections the card mount folds away, until the reader asks for one from
+  // the overflow menu. Revealing is per-mount and deliberately not
+  // remembered: a card back is opened to read the quest, not to resume a
+  // layout.
+  const [revealed, setRevealed] = useState<QuestViewSection[]>([]);
+  const rendersInline = (section: QuestViewSection) =>
+    context === "page" ||
+    !FOLDABLE_SECTIONS.includes(section) ||
+    revealed.includes(section);
+
+  // A folded section only earns a menu entry when it would have something to
+  // show — an overflow listing "Completion summary" on an unfinished quest is
+  // a dead entry.
+  const foldedSections = FOLDABLE_SECTIONS.filter(
+    (section) =>
+      !rendersInline(section) &&
+      (section === "completionSummary"
+        ? !!quest.completedAt
+        : questReminderEnabled && !quest.completedAt),
+  );
+
   const updateQuest = (updated: QuestResource) => {
     setQuest(updated);
     props.onQuestChange?.(updated);
   };
 
+  /**
+   * Leave the quest because it is no longer the thing being worked on.
+   *
+   * Unassign uses this and pushes rather than going back on purpose: the
+   * list it would return to still shows this quest as assigned.
+   */
   const handleClose = () => {
     if (props.onClose) {
       props.onClose();
     } else if (project) {
       router.push("projectQuests", { meta: { deleted: true } });
+    }
+  };
+
+  /**
+   * The header arrow. The breadcrumb walks *up*; this walks *back*.
+   *
+   * On the card mount closing the sheet is the back: the board is still
+   * behind it, and pushing a route would navigate the page out from under
+   * the board. On the page mount `canGoBack` is read here rather than during
+   * render — this component renders on the server too, where there is no
+   * history — and falls back to the quest list for a deep link, a refresh,
+   * or an arrival from outside.
+   */
+  const handleBack = () => {
+    if (props.onClose) {
+      props.onClose();
+      return;
+    }
+    if (router.canGoBack) {
+      void router.back();
+      return;
+    }
+    if (project) {
+      router.push("projectQuests", {
+        params: { projectSlug: project.slug },
+      });
     }
   };
 
@@ -235,9 +308,23 @@ const QuestView = (props: QuestViewProps) => {
               drawer share this same scroll container.
               `-mx-5 -mt-4` cancels the parent's padding so the header
               spans the full width and sits flush with the top edge.
-              Carries title (prefixed with #shortId), the priority badge
-              and the edit/duplicate/timer/close affordances. */}
+              Carries the back arrow, the title (prefixed with #shortId),
+              the priority badge and the edit/duplicate/timer affordances. */}
           <header className="bg-background border-border sticky top-0 z-10 -mx-5 -mt-4 flex items-center gap-3 border-b px-5 py-3">
+            {/* The arrow leads the header on both mounts. It replaces the
+                close cross that used to sit on the right: a cross says "this
+                is a dialog", and on the route page it was not one. */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 shrink-0 p-0"
+              aria-label={tr("quest.view.back")}
+              onClick={handleBack}
+            >
+              <ArrowLeft className="size-4" />
+            </Button>
+
             {/* Title column: title + tag chips stacked, takes remaining
                 width. leading-tight compresses the title so the chips sit
                 close underneath instead of orphaning a half-line gap. */}
@@ -332,37 +419,48 @@ const QuestView = (props: QuestViewProps) => {
               </div>
             )}
 
-            {/* Visible 1px divider before the close button — reads as
-                intentional structure, not an arbitrary ml-4 gap. */}
-            {(props.onClose || project) && (
-              <div className="bg-border h-6 w-px shrink-0" />
+            {/* Overflow — the way back to a section this mount folded
+                away. Only rendered when it would have an entry, so the page
+                mount (which folds nothing) never shows an empty menu. */}
+            {foldedSections.length > 0 && (
+              <>
+                <div className="bg-border h-6 w-px shrink-0" />
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 shrink-0 p-0"
+                        aria-label={tr("quest.view.more")}
+                      />
+                    }
+                  >
+                    <MoreHorizontal className="size-4" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {foldedSections.map((section) => (
+                      <DropdownMenuItem
+                        key={section}
+                        onClick={() =>
+                          setRevealed((prev) => [...prev, section])
+                        }
+                      >
+                        {section === "completionSummary" ? (
+                          <ScrollText className="size-4" />
+                        ) : (
+                          <SettingsIcon className="size-4" />
+                        )}
+                        {section === "completionSummary"
+                          ? tr("quest.view.completionSummary")
+                          : tr("quest.view.settings")}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
             )}
-            {props.onClose ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 shrink-0 p-0"
-                onClick={props.onClose}
-              >
-                <X className="size-4" />
-              </Button>
-            ) : project ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 shrink-0 p-0"
-                render={
-                  <Link
-                    href={router.path("projectQuests", {
-                      params: { projectSlug: project.slug },
-                    })}
-                  />
-                }
-              >
-                <X className="size-4" />
-              </Button>
-            ) : null}
           </header>
 
           {/* Questline (Lore #32) — predecessor + dependents.
@@ -445,7 +543,7 @@ const QuestView = (props: QuestViewProps) => {
               creators (the only allowed editors server-side) can amend
               the message; the data model carries an `editedAt` stamp so
               the UI can surface "edited X ago" honestly. */}
-          {quest.completedAt && (
+          {quest.completedAt && rendersInline("completionSummary") && (
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between gap-2">
                 <SectionHeader
@@ -533,20 +631,22 @@ const QuestView = (props: QuestViewProps) => {
 
           {/* Settings — Reminder lives here. Hidden when the per-project
               Quest Reminder toggle is off. */}
-          {questReminderEnabled && !quest.completedAt && (
-            <QuestViewCollapsibleBlock
-              icon={<SettingsIcon className="size-5" />}
-              label={tr("quest.view.settings")}
-            >
-              <QuestViewSettings
-                quest={quest}
-                onUpdate={(it) => {
-                  updateQuest(it);
-                  alepha.store.set(currentQuestAtom, it);
-                }}
-              />
-            </QuestViewCollapsibleBlock>
-          )}
+          {questReminderEnabled &&
+            !quest.completedAt &&
+            rendersInline("settings") && (
+              <QuestViewCollapsibleBlock
+                icon={<SettingsIcon className="size-5" />}
+                label={tr("quest.view.settings")}
+              >
+                <QuestViewSettings
+                  quest={quest}
+                  onUpdate={(it) => {
+                    updateQuest(it);
+                    alepha.store.set(currentQuestAtom, it);
+                  }}
+                />
+              </QuestViewCollapsibleBlock>
+            )}
         </div>
 
         {!quest.completedAt && (
@@ -652,6 +752,7 @@ const QuestView = (props: QuestViewProps) => {
               body: { message },
             });
             updateQuest(updatedQuest);
+            alepha.store.set(currentQuestAtom, updatedQuest);
             alepha.store.set(
               currentAssignedQuestsAtom,
               (alepha.store.get(currentAssignedQuestsAtom) ?? []).filter(
@@ -659,7 +760,13 @@ const QuestView = (props: QuestViewProps) => {
               ),
             );
             setShowCompleteDialog(false);
-            handleClose();
+            // The page mount STAYS. Completing used to push back to the
+            // list, which threw away the summary that was just written —
+            // the one moment the reader most wants to see it rendered. The
+            // card mount still closes: the board behind it is the thing
+            // being worked, and its column has already been updated through
+            // `onQuestChange`.
+            props.onClose?.();
           } finally {
             setCompleting(false);
           }
@@ -668,5 +775,26 @@ const QuestView = (props: QuestViewProps) => {
     </div>
   );
 };
+
+/**
+ * Which mount `QuestView` is rendering as.
+ *
+ * One component, two mounts: `AppRouter`'s `projectQuest` lazy-loads this
+ * exact file, and the kanban board mounts it inside a `Sheet`. Every change
+ * here therefore pays twice, which is why this is a prop over a fork.
+ */
+export type QuestViewContext = "page" | "card";
+
+/**
+ * Sections that can fold behind the header's overflow menu.
+ *
+ * Only the card mount folds them: at half the viewport width, the completion
+ * summary and the reminder controls push the description and the objectives
+ * (what a card back is opened for) below the fold. On the page there is room
+ * for everything, so nothing folds and the overflow never renders.
+ */
+export type QuestViewSection = "completionSummary" | "settings";
+
+const FOLDABLE_SECTIONS: QuestViewSection[] = ["completionSummary", "settings"];
 
 export default QuestView;

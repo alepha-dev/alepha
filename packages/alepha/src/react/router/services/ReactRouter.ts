@@ -160,6 +160,18 @@ export class ReactRouter<T extends object> {
     return query;
   }
 
+  /**
+   * Whether {@link back} has somewhere to go inside this app.
+   *
+   * `false` on the server and on the first entry of a session (a deep link,
+   * a refresh, an arrival from another site), so a back affordance can fall
+   * back to an explicit destination instead of doing nothing or leaving the
+   * app. Read it in the event handler, not during render.
+   */
+  public get canGoBack(): boolean {
+    return this.browser?.canGoBack ?? false;
+  }
+
   public async back() {
     this.browser?.history.back();
   }

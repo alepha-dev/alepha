@@ -659,6 +659,8 @@ export default {
     "Mettre cette quête de côté ? Elle quitte le backlog, mais $1 en dépend et restera bloquée tant que vous ne l'aurez pas remise en jeu puis terminée.",
   "quest.view.shelve.confirmButton": "Mettre de côté",
   "quest.view.edit": "Modifier",
+  "quest.view.back": "Retour",
+  "quest.view.more": "Plus",
   "quest.view.settings": "Paramètres",
   "quest.view.reminder.title": "Rappel",
   "quest.view.reminder.off": "Désactivé",
