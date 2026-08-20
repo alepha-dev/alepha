@@ -138,6 +138,7 @@ const QuestView = (props: QuestViewProps) => {
   // Per-quest feature toggles live on the project. Undefined → off
   // (the new toggles default off for old projects until the owner
   // opts in via Settings → Quests).
+  const questEstimateEnabled = project?.features?.questEstimate === true;
   const questReminderEnabled = project?.features?.questReminder === true;
   const questChronoEnabled = project?.features?.questChrono === true;
 
@@ -274,7 +275,7 @@ const QuestView = (props: QuestViewProps) => {
               )}
             </div>
 
-            {quest.estimateMinutes != null && (
+            {questEstimateEnabled && quest.estimateMinutes != null && (
               <Badge
                 variant="secondary"
                 className="text-muted-foreground shrink-0 gap-1"

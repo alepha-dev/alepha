@@ -56,6 +56,8 @@ const QuestCreate = (props: QuestCreateProps) => {
   const { tr } = useI18n<I18n, "en">();
   const [currentAreas] = useStore(currentAreasAtom);
 
+  const questEstimateEnabled = props.project.features?.questEstimate === true;
+
   const update = !!props.quest?.id;
   const acceptAfterCreate = useRef(false);
 
@@ -218,13 +220,20 @@ const QuestCreate = (props: QuestCreateProps) => {
           />
         </div>
 
-        <Control
-          label={tr("quest.create.estimate")}
-          description={tr("quest.create.estimate.helper")}
-          input={form.input.estimateMinutes}
-          icon={Hourglass}
-          custom={QuestEstimateInput as never}
-        />
+        {/* Estimation is a methodology, not a default — see
+            `projectFeaturesSchema.questEstimate`. With the switch off the
+            field is not rendered, but a stored estimate still rides along
+            in `initialValues` and is submitted untouched, so turning the
+            switch back on shows the old value rather than a blank. */}
+        {questEstimateEnabled && (
+          <Control
+            label={tr("quest.create.estimate")}
+            description={tr("quest.create.estimate.helper")}
+            input={form.input.estimateMinutes}
+            icon={Hourglass}
+            custom={QuestEstimateInput as never}
+          />
+        )}
 
         <Control
           label={tr("quest.create.tags")}

@@ -501,6 +501,9 @@ export default {
   "project.settings.quests.title": "Quest features",
   "project.settings.quests.subtitle":
     "Toggle the per-quest features visible across this project.",
+  "project.settings.quests.estimate.label": "Quest estimate",
+  "project.settings.quests.estimate.description":
+    "Plan how long a quest should take, shown as a badge on the quest and in the list.",
   "project.settings.quests.reminder.label": "Quest reminder",
   "project.settings.quests.reminder.description":
     "Periodic email reminders for accepted quests.",

@@ -22,7 +22,16 @@ export const projectFeaturesSchema = z.object({
    * owner-controlled switches: the Shop that used to sell `questReminder`
    * was removed along with the gold economy, so the toggle is now the
    * only gate.
+   *
+   * The three are one family: `questEstimate` plans time, `questChrono`
+   * tracks it, `questReminder` nudges about it. Each is a methodology a
+   * project may or may not practise, so none is on by default.
+   *
+   * These gate the UI only. `quests.estimateMinutes` and the timer
+   * columns keep being accepted, stored and returned whatever the switch
+   * says — flipping one off hides existing data, it never deletes it.
    */
+  questEstimate: z.boolean().optional(),
   questReminder: z.boolean().optional(),
   questChrono: z.boolean().optional(),
   /**
@@ -77,8 +86,8 @@ export const projectFeaturesSchema = z.object({
 export type ProjectFeatures = Infer<typeof projectFeaturesSchema>;
 
 /**
- * Default feature flags. NB: the per-quest toggles (`questReminder`,
- * `questChrono`) are intentionally
+ * Default feature flags. NB: the per-quest toggles (`questEstimate`,
+ * `questReminder`, `questChrono`) are intentionally
  * absent from this object. Including them here changes the column's
  * Drizzle DEFAULT — and on D1 that triggers a table rebuild
  * (`DROP TABLE projects`) which cascade-wipes members, quests,

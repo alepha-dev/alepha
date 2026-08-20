@@ -54,8 +54,21 @@ test.describe("Quest", () => {
       await expect(page.getByText(questTitle).first()).toBeVisible({
         timeout: 10_000,
       });
-      // The optional time estimate (30m) renders as a glanceable `~30m`
-      // badge in the quest view header.
+    });
+
+    await test.step("the estimate is hidden until the project opts in", async () => {
+      // `questEstimate` is off by default — estimation is a methodology, not
+      // a default. The quest above was seeded WITH `estimateMinutes: 30`, so
+      // this also pins that the switch hides stored data rather than the API
+      // refusing to keep it.
+      await expect(page.getByText(/~30m/)).toHaveCount(0);
+
+      await setProjectFeature(page, projectId, "questEstimate");
+      await page.reload();
+      await page.waitForLoadState("networkidle");
+
+      // With the switch on, the stored 30m surfaces as a `~30m` badge in the
+      // quest view header — the same value, never re-entered.
       await expect(page.getByText(/~30m/).first()).toBeVisible({
         timeout: 10_000,
       });

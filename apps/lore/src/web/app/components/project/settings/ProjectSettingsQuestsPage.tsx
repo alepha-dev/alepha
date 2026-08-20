@@ -7,7 +7,7 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import { useProjectFeatureToggle } from "./useProjectFeatureToggle.ts";
 
-type QuestFeatureKey = "questReminder" | "questChrono";
+type QuestFeatureKey = "questEstimate" | "questReminder" | "questChrono";
 
 /**
  * Compile-time guard — if a key gets renamed in the entity the
@@ -20,14 +20,22 @@ void _questFeatureKeyCheck;
 export interface QuestFeatureRow {
   key: QuestFeatureKey;
   labelKey:
+    | "project.settings.quests.estimate.label"
     | "project.settings.quests.reminder.label"
     | "project.settings.quests.chrono.label";
   descriptionKey:
+    | "project.settings.quests.estimate.description"
     | "project.settings.quests.reminder.description"
     | "project.settings.quests.chrono.description";
 }
 
+// Planning, then tracking, then nudging — the order the three read in.
 const ROWS: QuestFeatureRow[] = [
+  {
+    key: "questEstimate",
+    labelKey: "project.settings.quests.estimate.label",
+    descriptionKey: "project.settings.quests.estimate.description",
+  },
   {
     key: "questChrono",
     labelKey: "project.settings.quests.chrono.label",
