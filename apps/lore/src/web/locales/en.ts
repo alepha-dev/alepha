@@ -51,7 +51,7 @@ export default {
   "folios.protected.encrypt": "Encrypt",
   "folios.protected.encrypt-title": "Encrypt this folio",
   "folios.protected.encrypt-description":
-    "Set a passphrase. The content is encrypted in your browser — the server only ever stores ciphertext, and there is no recovery if you forget it. Title, tags and summary stay visible to other project members; share the passphrase out-of-band with whoever should decrypt.",
+    "Set a passphrase. The content is encrypted in your browser: the server only ever stores ciphertext, and there is no recovery if you forget it. Title, tags and summary stay visible to other project members; share the passphrase out-of-band with whoever should decrypt.",
   "folios.protected.encrypt-failed": "Encryption failed.",
   "folios.protected.remove-confirm-title": "Remove protection from this folio?",
   "folios.protected.remove-confirm-body":
@@ -108,15 +108,15 @@ export default {
 
   "folios.wikilink.broken.title": "Broken link",
   "folios.wikilink.broken.folioNotFound":
-    "No folio matches this reference. Inside [[…]], #N means a folio — a quest is [[quest:#N]].",
+    "No folio matches this reference. Inside [[…]], #N means a folio; a quest is [[quest:#N]].",
   "folios.wikilink.broken.ambiguous":
-    "Several entries share this title — use the explicit #N form to disambiguate.",
+    "Several entries share this title. Use the explicit #N form to disambiguate.",
   "folios.wikilink.broken.questNotFound": "No quest matches this reference.",
   "folios.wikilink.broken.epicNotFound": "No epic matches this reference.",
   "folios.wikilink.broken.blobNotFound":
     "No folio blob matches this reference.",
   "folios.wikilink.broken.questFormWanted":
-    "There is no folio #$1, but quest #$1 exists. Inside [[…]], #N means a folio — write [[quest:#$1]] instead.",
+    "There is no folio #$1, but quest #$1 exists. Inside [[…]], #N means a folio; write [[quest:#$1]] instead.",
 
   "folios.editor.menu.folio": "Folio",
   "folios.editor.menu.edit": "Edit",
@@ -191,7 +191,7 @@ export default {
   "folios.editor.tree.copy-wiki-link": "Copy wiki-link",
   "folios.editor.tree.confirm-delete-directory-title": "Delete this directory?",
   "folios.editor.tree.confirm-delete-directory-body":
-    "Everything inside it — folios included — is deleted too. This cannot be undone.",
+    "Everything inside it, folios included, is deleted too. This cannot be undone.",
 
   "folios.editor.inspector.outline": "Outline",
   "folios.editor.inspector.collapse": "Collapse inspector",
@@ -291,7 +291,7 @@ export default {
   "quest.create.dependsOn.clear": "Clear dependency",
   "quest.create.estimate": "Estimate",
   "quest.create.estimate.helper":
-    "Roughly how long this might take — shown in the questlog so you can grab one that fits the time you have.",
+    "Roughly how long this might take. Shown in the questlog so you can grab one that fits the time you have.",
   "quest.create.estimate.custom": "Custom…",
   "quest.create.estimate.minutes": "min",
   "quest.create.estimate.clear": "Clear estimate",
@@ -302,7 +302,7 @@ export default {
   "quest.tags.suggestions": "Reuse:",
   "quest.view.questline.blockedBy": "Blocked by #$1",
   "quest.view.questline.blockedByShelved": "Blocked by shelved #$1",
-  "quest.view.questline.unblocked": "Unblocked — #$1 done",
+  "quest.view.questline.unblocked": "Unblocked: #$1 done",
   "quest.view.questline.unlocks": "Unlocks #$1",
   "quest.status.shelved": "Shelved",
 
@@ -326,13 +326,13 @@ export default {
   "project.create.step.modules": "Choose modules",
   "project.create.step.modules.helper":
     "Turn on the surfaces you'll use. Each one can be toggled later from settings.",
-  "project.create.module.folios": "Folios — Notes + files + directories",
+  "project.create.module.folios": "Folios: Notes + files + directories",
   "project.create.module.folios.helper":
-    "Drive-style storage scoped to this project — markdown folios (your shared memory), file uploads, and directories to organize them. AI agents read/write via MCP.",
-  "project.create.module.kanban": "Kanban — Visual board",
+    "Drive-style storage scoped to this project: markdown folios (your shared memory), file uploads, and directories to organize them. AI agents read/write via MCP.",
+  "project.create.module.kanban": "Kanban: Visual board",
   "project.create.module.kanban.helper":
     "Drag-and-drop columns for tracking work in progress alongside the table view.",
-  "project.create.module.milestones": "Milestones — Sprints",
+  "project.create.module.milestones": "Milestones: Sprints",
   "project.create.module.milestones.helper":
     "Time-boxed cycles that group completed quests and close with a recap.",
   "project.create.next": "Next",
@@ -350,17 +350,17 @@ export default {
   "quest.view.actions.unshelve": "Unshelve",
   "quest.view.complete.title": "Complete this quest",
   "quest.view.complete.description":
-    "Leave a short summary of what was done — what changed, decisions made, what a future reader (human or AI) would need to know.",
+    "Leave a short summary of what was done: what changed, decisions made, what a future reader (human or AI) would need to know.",
   "quest.view.complete.placeholder":
     "What was accomplished? (markdown supported)",
   "quest.view.complete.submit": "Complete with summary",
   "quest.view.complete.skip": "Complete without summary",
   "quest.view.completionSummary": "Completion Summary",
   "quest.view.completionSummary.edited": "Edited $1",
-  "quest.view.completionSummary.empty": "No summary yet — click to add one.",
+  "quest.view.completionSummary.empty": "No summary yet. Click to add one.",
   "quest.view.editSummary.title": "Edit completion summary",
   "quest.view.editSummary.description":
-    "Curate the summary post-completion — what the quest actually shipped, lessons learned, links to follow-ups. Markdown supported.",
+    "Curate the summary post-completion: what the quest actually shipped, lessons learned, links to follow-ups. Markdown supported.",
   "quest.view.editSummary.save": "Save",
   "quest.view.objectives": "Objectives",
   "quest.view.attachments": "Attachments",
@@ -411,7 +411,7 @@ export default {
   "project.settings.data.import.preview.confirm": "Import",
   "project.settings.data.import.preview.cancel": "Cancel",
   "project.settings.data.import.preview.empty":
-    "No data rows detected — the file appears to contain only a header.",
+    "No data rows detected. The file appears to contain only a header.",
   "project.settings.data.import.result":
     "Imported $1 quests ($2 updated, $3 skipped)",
   "project.settings.data.import.details": "View details",
@@ -428,7 +428,7 @@ export default {
   "project.settings.areas.column.select": "Select",
   "project.settings.areas.select": "Select $1",
   "project.settings.areas.empty":
-    "No areas yet. Forge a quest and pick an area — it appears here.",
+    "No areas yet. Forge a quest and pick an area, and it appears here.",
   "project.settings.areas.selected": "$1 selected",
   "project.settings.areas.selected.one": "1 selected",
   "project.settings.areas.merge.action": "Merge into...",
@@ -442,7 +442,7 @@ export default {
   "project.settings.areas.merge.submit": "Merge",
   "project.settings.areas.merge.done": "$1 quests moved.",
   "project.settings.areas.merge.done.one": "1 quest moved.",
-  "project.settings.areas.never": "—",
+  "project.settings.areas.never": "Never",
   "project.settings.areas.delete.action": "Delete",
   "project.settings.areas.delete.confirm":
     "Delete this area? It has no quests, and this cannot be undone.",
@@ -509,7 +509,7 @@ export default {
     "Periodic email reminders for accepted quests.",
   "project.settings.quests.chrono.label": "Quest chrono",
   "project.settings.quests.chrono.description":
-    "Stopwatch attached to a quest — start/stop a session from the quest view.",
+    "Stopwatch attached to a quest. Start/stop a session from the quest view.",
   "project.settings.feature.enable": "Enable",
   "project.settings.feature.kanban.description":
     "A drag & drop board to move quests between New, In Progress and Completed.",
@@ -520,14 +520,14 @@ export default {
   "project.settings.kanban.columns.placeholder": "Column name",
   "project.settings.kanban.columns.delete": "Delete",
   "project.settings.feature.folios.description":
-    "Markdown notes attached to the project — searchable, taggable, AI-accessible.",
+    "Markdown notes attached to the project: searchable, taggable, AI-accessible.",
   "project.settings.folios.summary.label": "Show summary for agents",
   "project.settings.folios.summary.description":
-    "Reveal the short summary each folio carries for AI agents. It is always written and always readable over MCP — this only decides whether the field shows while you read or edit.",
+    "Reveal the short summary each folio carries for AI agents. It is always written and always readable over MCP. This only decides whether the field shows while you read or edit.",
   "project.settings.feature.milestones.description":
     "Group quests into time-boxed cycles with start / end dates and changelogs.",
   "project.settings.feature.sigils.description":
-    "Enroll your applications so they can report crashes, page views and web vitals here — one token per app.",
+    "Enroll your applications so they can report crashes, page views and web vitals here, one token per app.",
   "project.settings.feature.feedback.description":
     "Let any signed-in user send this project a bug report or feature request, and give the owner an inbox to triage them in.",
   "project.settings.feature.epics.description":
@@ -566,7 +566,7 @@ export default {
   "milestone.tags.placeholder": "Add a tag…",
   "milestone.start.description": "Notes (optional)",
   "milestone.start.reroll": "Reroll name",
-  "milestone.detail.title": "Milestone #$1 — $2",
+  "milestone.detail.title": "Milestone #$1: $2",
   "milestone.detail.editTitle": "Title",
   "milestone.detail.editDescription": "Notes",
   "milestone.detail.save": "Save",
@@ -614,14 +614,14 @@ export default {
 
   "milestone.folio.dialogTitle": "Save changelog to Folios",
   "milestone.folio.description":
-    "The changelog is saved as a folio in this project — readable by every member, and by any agent over MCP.",
+    "The changelog is saved as a folio in this project, readable by every member, and by any agent over MCP.",
   "milestone.folio.title": "Folio title",
-  "milestone.folio.defaultTitle": "Milestone #$1 — $2",
+  "milestone.folio.defaultTitle": "Milestone #$1: $2",
   "milestone.folio.save": "Save",
   "milestone.folio.saved": "Changelog saved to Folios",
   "milestone.folio.error": "Could not save the changelog.",
   "milestone.folio.summary":
-    "Changelog for milestone #$1 — $2 quest(s) recorded.",
+    "Changelog for milestone #$1: $2 quest(s) recorded.",
 
   "project.settings.milestones.release.title": "Release cadence",
   "project.settings.milestones.duration.manual": "Manual close only",
@@ -646,7 +646,7 @@ export default {
   "quest.view.abandon.confirmButton": "Abandon Quest",
   "quest.view.shelve.title": "Shelve this quest",
   "quest.view.shelve.confirm":
-    "Set this quest aside as out of scope? It keeps everything it has and leaves the backlog — filter by Shelved to find it again.",
+    "Set this quest aside as out of scope? It keeps everything it has and leaves the backlog. Filter by Shelved to find it again.",
   "quest.view.shelve.confirmWithDependents":
     "Set this quest aside as out of scope? It leaves the backlog, but $1 depends on it and will stay blocked until you unshelve and complete it.",
   "quest.view.shelve.confirmButton": "Shelve Quest",
@@ -664,7 +664,7 @@ export default {
     "No reminder configured. You won't receive email nudges.",
   "quest.view.reminder.next": "Next email $1.",
   "quest.view.reminder.unavailable":
-    "Accept the quest first — reminders go to the assignee.",
+    "Accept the quest first: reminders go to the assignee.",
   "quest.view.duplicate": "Duplicate",
   "quest.view.duplicate.title": "Duplicate Quest",
   "quest.view.duplicate.suffix": "(Copy)",
@@ -749,17 +749,17 @@ export default {
   "app.dashboard.enrolled": "Enrolled",
   "app.settings.capabilities.title": "Capabilities",
   "app.settings.capabilities.description":
-    "What this app may report. Turning one off stops the ingest endpoint accepting it — for this app only, not for the others.",
+    "What this app may report. Turning one off stops the ingest endpoint accepting it, for this app only, not for the others.",
   "app.settings.capabilities.feedbackModuleOff":
     "The project's Feedback module is off, so this app's link stays hidden whatever this switch says. Turn the module on under Settings ▸ Feedback.",
   "app.settings.feedbackPosition.title": "Feedback button position",
   "app.settings.feedbackPosition.description":
-    "Which corner this app's floating feedback button sits in. Move it if it covers something — pagination usually lives bottom-right.",
+    "Which corner this app's floating feedback button sits in. Move it if it covers something; pagination usually lives bottom-right.",
   "app.settings.feedbackPosition.bottomLeft": "Bottom left",
   "app.settings.feedbackPosition.bottomRight": "Bottom right",
   "app.settings.rotate.title": "Rotate the token",
   "app.settings.rotate.description":
-    "Mints a new token and stops the current one immediately. Everything this app has reported is kept — this is how a leaked token is revoked without losing its history.",
+    "Mints a new token and stops the current one immediately. Everything this app has reported is kept: this is how a leaked token is revoked without losing its history.",
   "app.settings.delete.title": "Delete this app",
   "app.settings.delete.description":
     "Removes the app and everything it ever reported: page views, web vitals, unique visitors and its error budget. Blights already filed are kept. This cannot be undone.",
@@ -770,9 +770,9 @@ export default {
   "insights.range.30d": "30 days",
   "insights.uniqueVisitors": "Unique visitors",
   "insights.uniqueVisitors.note":
-    "Cookieless distinct visitors — the trustworthy headline.",
+    "Cookieless distinct visitors, the trustworthy headline.",
   "insights.totalViews": "Total views",
-  "insights.totalViews.note": "Best-effort — directional, not exact.",
+  "insights.totalViews.note": "Best-effort: directional, not exact.",
   "insights.totalViews.tooltip":
     "Raw page-view count. Nothing throttles what an enrolled app reports, so this number is inflatable by whoever holds its token. Trust the unique-visitor count instead.",
   "insights.overTime": "Views over time",
@@ -810,7 +810,7 @@ export default {
   "insights.vitals.inp": "INP",
   "insights.vitals.fcp": "FCP",
   "insights.vitals.ttfb": "TTFB",
-  "insights.vitals.empty": "—",
+  "insights.vitals.empty": "No data",
   "insights.vitals.good": "Good",
   "insights.vitals.needsImprovement": "Needs work",
   "insights.vitals.poor": "Poor",
@@ -840,7 +840,7 @@ export default {
   "blights.deleteSelectedConfirm": "Delete $1 selected blights permanently?",
   "blights.rules.title": "Ignore rules",
   "blights.rules.description":
-    "Drop incoming crashes whose message contains one of these substrings (case-insensitive). Rules apply to future ingest only — existing blights stay until you delete them.",
+    "Drop incoming crashes whose message contains one of these substrings (case-insensitive). Rules apply to future ingest only; existing blights stay until you delete them.",
   "blights.rules.settingsDescription":
     "Crashes whose message matches one of these substrings are dropped on arrival, before they ever reach the inbox.",
   "blights.rules.manage": "Manage rules",
@@ -875,7 +875,7 @@ export default {
   "sigils.create.subtitle":
     "Mints a token this app reports with. The token is shown once and never again.",
   "sigils.create.dialogDescription":
-    "Name the app. This name is its address — lowercase letters, digits and hyphens, up to 64 characters, e.g. lore-staging.",
+    "Name the app. This name is its address: lowercase letters, digits and hyphens, up to 64 characters, e.g. lore-staging.",
   "sigils.create.name": "App name",
   "sigils.create.namePlaceholder": "lore-staging",
   "sigils.create.invalid":
@@ -892,11 +892,11 @@ export default {
   "sigils.action.delete": "Delete",
   "sigils.rotate.confirmTitle": "Rotate the token for $1?",
   "sigils.rotate.confirmDescription":
-    "The current token stops working immediately and a new one is shown once. Everything this app has reported is kept — this is how you revoke a leaked token without losing its history.",
+    "The current token stops working immediately and a new one is shown once. Everything this app has reported is kept: this is how you revoke a leaked token without losing its history.",
   "sigils.rotate.confirm": "Rotate",
   "sigils.delete.confirmTitle": "Delete $1?",
   "sigils.delete.confirmDescription":
-    "This erases everything this app ever reported — page views, web vitals, unique visitors and its error budget — along with its token. Blights already filed are kept. To revoke a leaked token without losing the history, rotate it instead.",
+    "This erases everything this app ever reported (page views, web vitals, unique visitors and its error budget) along with its token. Blights already filed are kept. To revoke a leaked token without losing the history, rotate it instead.",
   "sigils.delete.confirm": "Delete",
   "sigils.toast.created": "Sigil created",
   "sigils.toast.rotated": "Token rotated",
@@ -925,7 +925,7 @@ export default {
   "feedback.acceptError": "Failed to accept feedback",
   "feedback.attachments": "Attachments",
   "feedback.linkedQuests": "Linked quests",
-  "feedback.noLinkedQuests": "No quests yet — create one to start work.",
+  "feedback.noLinkedQuests": "No quests yet. Create one to start work.",
   "feedback.unknownReporter": "unknown",
   "feedback.context.title": "Context",
   "feedback.context.reporter": "Reporter",
@@ -943,7 +943,7 @@ export default {
     "Report a bug or request a feature. The project owner will review it.",
   "feedback.request.messageField": "What's the problem or idea?",
   "feedback.request.messageHelper":
-    "Tell us what happened or what you'd like — be as specific as you can.",
+    "Tell us what happened or what you'd like, and be as specific as you can.",
   "feedback.request.pasteHint":
     "Paste a screenshot (Ctrl/⌘+V) or drag files anywhere here.",
   "feedback.request.attachments": "Attachments",

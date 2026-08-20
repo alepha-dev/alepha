@@ -48,7 +48,7 @@ export default {
   "folios.protected.encrypt": "Chiffrer",
   "folios.protected.encrypt-title": "Chiffrer ce folio",
   "folios.protected.encrypt-description":
-    "Définissez une phrase secrète. Le contenu est chiffré dans votre navigateur — le serveur ne stocke que le texte chiffré, et aucune récupération n'est possible si vous l'oubliez. Le titre, les tags et le résumé restent visibles aux autres membres du projet ; partagez la phrase secrète hors-bande avec qui doit déchiffrer.",
+    "Définissez une phrase secrète. Le contenu est chiffré dans votre navigateur : le serveur ne stocke que le texte chiffré, et aucune récupération n'est possible si vous l'oubliez. Le titre, les tags et le résumé restent visibles aux autres membres du projet ; partagez la phrase secrète hors-bande avec qui doit déchiffrer.",
   "folios.protected.encrypt-failed": "Le chiffrement a échoué.",
   "folios.protected.remove-confirm-title":
     "Retirer la protection de ce folio ?",
@@ -88,7 +88,7 @@ export default {
   loading: "Chargement…",
   "folios.history.revert-confirm-title": "Restaurer ce folio ?",
   "folios.history.revert-confirm-body":
-    "Cela crée une nouvelle révision avec l'ancien contenu. La version actuelle reste dans l'historique — vous pourrez annuler la restauration.",
+    "Cela crée une nouvelle révision avec l'ancien contenu. La version actuelle reste dans l'historique : vous pourrez annuler la restauration.",
   "folios.history.unpin": "Désépingler cette révision",
   "folios.history.actions": "Actions de la révision",
   "folios.history.pinned-badge": "Épinglée",
@@ -108,9 +108,9 @@ export default {
 
   "folios.wikilink.broken.title": "Lien cassé",
   "folios.wikilink.broken.folioNotFound":
-    "Aucun folio ne correspond à cette référence. Dans [[…]], #N désigne un folio — pour une quête, écrivez [[quest:#N]].",
+    "Aucun folio ne correspond à cette référence. Dans [[…]], #N désigne un folio ; pour une quête, écrivez [[quest:#N]].",
   "folios.wikilink.broken.ambiguous":
-    "Plusieurs entrées portent ce titre — utilisez la forme explicite #N pour lever l'ambiguïté.",
+    "Plusieurs entrées portent ce titre. Utilisez la forme explicite #N pour lever l'ambiguïté.",
   "folios.wikilink.broken.questNotFound":
     "Aucune quête ne correspond à cette référence.",
   "folios.wikilink.broken.epicNotFound":
@@ -118,7 +118,7 @@ export default {
   "folios.wikilink.broken.blobNotFound":
     "Aucun fichier de folio ne correspond à cette référence.",
   "folios.wikilink.broken.questFormWanted":
-    "Le folio #$1 n'existe pas, mais la quête #$1 existe. Dans [[…]], #N désigne un folio — écrivez plutôt [[quest:#$1]].",
+    "Le folio #$1 n'existe pas, mais la quête #$1 existe. Dans [[…]], #N désigne un folio ; écrivez plutôt [[quest:#$1]].",
 
   "folios.editor.menu.folio": "Folio",
   "folios.editor.menu.edit": "Édition",
@@ -194,7 +194,7 @@ export default {
   "folios.editor.tree.copy-wiki-link": "Copier le lien wiki",
   "folios.editor.tree.confirm-delete-directory-title": "Supprimer ce dossier ?",
   "folios.editor.tree.confirm-delete-directory-body":
-    "Tout ce qu'il contient — folios compris — est également supprimé. Cette action est irréversible.",
+    "Tout ce qu'il contient, folios compris, est également supprimé. Cette action est irréversible.",
 
   "folios.editor.inspector.outline": "Plan",
   "folios.editor.inspector.collapse": "Réduire l'inspecteur",
@@ -298,7 +298,7 @@ export default {
   "quest.create.dependsOn.clear": "Retirer la dépendance",
   "quest.create.estimate": "Estimation",
   "quest.create.estimate.helper":
-    "Combien de temps cela pourrait prendre — affiché dans le journal pour choisir une quête qui rentre dans le temps dont vous disposez.",
+    "Combien de temps cela pourrait prendre. Affiché dans le journal pour choisir une quête qui rentre dans le temps dont vous disposez.",
   "quest.create.estimate.custom": "Personnalisé…",
   "quest.create.estimate.minutes": "min",
   "quest.create.estimate.clear": "Effacer l'estimation",
@@ -309,7 +309,7 @@ export default {
   "quest.tags.suggestions": "Réutiliser :",
   "quest.view.questline.blockedBy": "Bloquée par #$1",
   "quest.view.questline.blockedByShelved": "Bloquée par #$1, mise de côté",
-  "quest.view.questline.unblocked": "Débloquée — #$1 faite",
+  "quest.view.questline.unblocked": "Débloquée : #$1 faite",
   "quest.view.questline.unlocks": "Débloque #$1",
   "quest.status.shelved": "Mise de côté",
 
@@ -332,13 +332,13 @@ export default {
   "project.create.step.modules": "Choisir les modules",
   "project.create.step.modules.helper":
     "Activez les surfaces que vous utiliserez. Chaque module peut être (dés)activé plus tard depuis les paramètres.",
-  "project.create.module.folios": "Folios — Notes + fichiers + dossiers",
+  "project.create.module.folios": "Folios : Notes + fichiers + dossiers",
   "project.create.module.folios.helper":
     "Notes markdown propres à ce projet, accessibles à vos agents IA (Claude, ChatGPT) via MCP.",
-  "project.create.module.kanban": "Kanban — Tableau visuel",
+  "project.create.module.kanban": "Kanban : Tableau visuel",
   "project.create.module.kanban.helper":
     "Colonnes drag-and-drop pour suivre l'avancement, à côté de la vue tableau.",
-  "project.create.module.milestones": "Jalons — Cycles",
+  "project.create.module.milestones": "Jalons : Cycles",
   "project.create.module.milestones.helper":
     "Cycles datés qui regroupent les quêtes terminées en jalons avec un récapitulatif.",
   "project.create.next": "Suivant",
@@ -356,7 +356,7 @@ export default {
   "quest.view.actions.unshelve": "Remettre en jeu",
   "quest.view.complete.title": "Terminer cette quête",
   "quest.view.complete.description":
-    "Laissez un bref résumé de ce qui a été fait — changements, décisions prises, ce qu'un lecteur futur (humain ou IA) doit savoir.",
+    "Laissez un bref résumé de ce qui a été fait : changements, décisions prises, ce qu'un lecteur futur (humain ou IA) doit savoir.",
   "quest.view.complete.placeholder":
     "Qu'avez-vous accompli ? (markdown supporté)",
   "quest.view.complete.submit": "Terminer avec résumé",
@@ -364,10 +364,10 @@ export default {
   "quest.view.completionSummary": "Résumé d'achèvement",
   "quest.view.completionSummary.edited": "Modifié $1",
   "quest.view.completionSummary.empty":
-    "Aucun résumé pour l'instant — cliquez pour en ajouter un.",
+    "Aucun résumé pour l'instant. Cliquez pour en ajouter un.",
   "quest.view.editSummary.title": "Modifier le résumé d'achèvement",
   "quest.view.editSummary.description":
-    "Affinez le résumé après-coup — ce qui a réellement été livré, les leçons, les liens vers les suites. Markdown supporté.",
+    "Affinez le résumé après-coup : ce qui a réellement été livré, les leçons, les liens vers les suites. Markdown supporté.",
   "quest.view.editSummary.save": "Enregistrer",
   "quest.view.objectives": "Objectifs",
   "quest.view.attachments": "Pièces jointes",
@@ -419,7 +419,7 @@ export default {
   "project.settings.data.import.preview.confirm": "Importer",
   "project.settings.data.import.preview.cancel": "Annuler",
   "project.settings.data.import.preview.empty":
-    "Aucune ligne de données détectée — le fichier ne contient qu'un en-tête.",
+    "Aucune ligne de données détectée. Le fichier ne contient qu'un en-tête.",
   "project.settings.data.import.result":
     "$1 quêtes importées ($2 mises à jour, $3 ignorées)",
   "project.settings.data.import.details": "Voir les détails",
@@ -436,7 +436,7 @@ export default {
   "project.settings.areas.column.select": "Sélection",
   "project.settings.areas.select": "Sélectionner $1",
   "project.settings.areas.empty":
-    "Aucun domaine pour l'instant. Créez une quête et choisissez un domaine — il apparaîtra ici.",
+    "Aucun domaine pour l'instant. Créez une quête et choisissez un domaine, il apparaîtra ici.",
   "project.settings.areas.selected": "$1 sélectionnées",
   "project.settings.areas.selected.one": "1 sélectionnée",
   "project.settings.areas.merge.action": "Fusionner vers...",
@@ -450,7 +450,7 @@ export default {
   "project.settings.areas.merge.submit": "Fusionner",
   "project.settings.areas.merge.done": "$1 quêtes déplacées.",
   "project.settings.areas.merge.done.one": "1 quête déplacée.",
-  "project.settings.areas.never": "—",
+  "project.settings.areas.never": "Jamais",
   "project.settings.areas.delete.action": "Supprimer",
   "project.settings.areas.delete.confirm":
     "Supprimer ce domaine ? Il ne contient aucune quête, et cette action est irréversible.",
@@ -518,7 +518,7 @@ export default {
     "Rappels e-mail périodiques pour les quêtes acceptées.",
   "project.settings.quests.chrono.label": "Chrono de quête",
   "project.settings.quests.chrono.description":
-    "Chronomètre attaché à une quête — start/stop une session depuis la vue quête.",
+    "Chronomètre attaché à une quête. Start/stop une session depuis la vue quête.",
   "project.settings.feature.enable": "Activer",
   "project.settings.feature.kanban.description":
     "Un tableau drag & drop pour déplacer les quêtes entre Nouvelle, En cours et Terminée.",
@@ -529,14 +529,14 @@ export default {
   "project.settings.kanban.columns.placeholder": "Nom de la colonne",
   "project.settings.kanban.columns.delete": "Supprimer",
   "project.settings.feature.folios.description":
-    "Notes markdown rattachées au projet — cherchables, taguables, accessibles à l’IA.",
+    "Notes markdown rattachées au projet : cherchables, taguables, accessibles à l’IA.",
   "project.settings.folios.summary.label": "Afficher le résumé pour les agents",
   "project.settings.folios.summary.description":
-    "Affiche le court résumé que chaque folio conserve pour les agents IA. Il est toujours enregistré et toujours lisible via MCP — ceci décide seulement si le champ apparaît à la lecture ou à l’édition.",
+    "Affiche le court résumé que chaque folio conserve pour les agents IA. Il est toujours enregistré et toujours lisible via MCP. Ceci décide seulement si le champ apparaît à la lecture ou à l’édition.",
   "project.settings.feature.milestones.description":
     "Regroupez les quêtes en jalons avec dates de début / fin et historique.",
   "project.settings.feature.sigils.description":
-    "Enrôlez vos applications pour qu’elles remontent ici plantages, pages vues et Web Vitals — un jeton par application.",
+    "Enrôlez vos applications pour qu’elles remontent ici plantages, pages vues et Web Vitals, un jeton par application.",
   "project.settings.feature.feedback.description":
     "Autorisez tout utilisateur connecté à envoyer un rapport de bug ou une demande de fonctionnalité à ce projet, et donnez au propriétaire une boîte de réception pour les trier.",
   "project.settings.feature.epics.description":
@@ -575,7 +575,7 @@ export default {
   "milestone.tags.placeholder": "Ajouter une étiquette…",
   "milestone.start.description": "Notes (optionnel)",
   "milestone.start.reroll": "Régénérer le nom",
-  "milestone.detail.title": "Jalon #$1 — $2",
+  "milestone.detail.title": "Jalon #$1 : $2",
   "milestone.detail.editTitle": "Titre",
   "milestone.detail.editDescription": "Notes",
   "milestone.detail.save": "Enregistrer",
@@ -623,14 +623,14 @@ export default {
 
   "milestone.folio.dialogTitle": "Enregistrer le journal dans les Folios",
   "milestone.folio.description":
-    "Le journal est enregistré comme folio de ce projet — lisible par tous les membres, et par tout agent via MCP.",
+    "Le journal est enregistré comme folio de ce projet, lisible par tous les membres, et par tout agent via MCP.",
   "milestone.folio.title": "Titre du folio",
-  "milestone.folio.defaultTitle": "Jalon #$1 — $2",
+  "milestone.folio.defaultTitle": "Jalon #$1 : $2",
   "milestone.folio.save": "Enregistrer",
   "milestone.folio.saved": "Journal enregistré dans les Folios",
   "milestone.folio.error": "Impossible d'enregistrer le journal.",
   "milestone.folio.summary":
-    "Journal du jalon #$1 — $2 quête(s) enregistrée(s).",
+    "Journal du jalon #$1 : $2 quête(s) enregistrée(s).",
 
   "project.settings.milestones.release.title": "Cadence de publication",
   "project.settings.milestones.duration.manual": "Clôture manuelle uniquement",
@@ -657,7 +657,7 @@ export default {
   "quest.view.abandon.confirmButton": "Abandonner la quête",
   "quest.view.shelve.title": "Mettre la quête de côté",
   "quest.view.shelve.confirm":
-    "Mettre cette quête de côté ? Elle conserve tout son contenu et quitte le backlog — filtrez sur « Mise de côté » pour la retrouver.",
+    "Mettre cette quête de côté ? Elle conserve tout son contenu et quitte le backlog. Filtrez sur « Mise de côté » pour la retrouver.",
   "quest.view.shelve.confirmWithDependents":
     "Mettre cette quête de côté ? Elle quitte le backlog, mais $1 en dépend et restera bloquée tant que vous ne l'aurez pas remise en jeu puis terminée.",
   "quest.view.shelve.confirmButton": "Mettre de côté",
@@ -675,7 +675,7 @@ export default {
     "Aucun rappel configuré. Aucun e-mail ne vous sera envoyé.",
   "quest.view.reminder.next": "Prochain e-mail $1.",
   "quest.view.reminder.unavailable":
-    "Acceptez d'abord la quête — les rappels sont envoyés à la personne assignée.",
+    "Acceptez d'abord la quête : les rappels sont envoyés à la personne assignée.",
   "quest.view.duplicate": "Dupliquer",
   "quest.view.duplicate.title": "Dupliquer la quête",
   "quest.view.duplicate.suffix": "(Copie)",
@@ -760,17 +760,17 @@ export default {
   "app.dashboard.enrolled": "Enrôlée le",
   "app.settings.capabilities.title": "Capacités",
   "app.settings.capabilities.description":
-    "Ce que cette application peut remonter. Désactiver une capacité empêche le point d'ingestion de l'accepter — pour cette application seulement, pas pour les autres.",
+    "Ce que cette application peut remonter. Désactiver une capacité empêche le point d'ingestion de l'accepter, pour cette application seulement, pas pour les autres.",
   "app.settings.capabilities.feedbackModuleOff":
     "Le module Retours du projet est désactivé : le lien de cette application reste masqué quoi qu'indique cet interrupteur. Activez le module dans Paramètres ▸ Retours.",
   "app.settings.feedbackPosition.title": "Position du bouton de retour",
   "app.settings.feedbackPosition.description":
-    "Le coin dans lequel se place le bouton flottant de cette application. Déplacez-le s'il recouvre un élément — la pagination occupe souvent le coin inférieur droit.",
+    "Le coin dans lequel se place le bouton flottant de cette application. Déplacez-le s'il recouvre un élément ; la pagination occupe souvent le coin inférieur droit.",
   "app.settings.feedbackPosition.bottomLeft": "En bas à gauche",
   "app.settings.feedbackPosition.bottomRight": "En bas à droite",
   "app.settings.rotate.title": "Renouveler le jeton",
   "app.settings.rotate.description":
-    "Génère un nouveau jeton et invalide l'actuel immédiatement. Tout ce que cette application a remonté est conservé — c'est ainsi qu'on révoque un jeton fuité sans perdre son historique.",
+    "Génère un nouveau jeton et invalide l'actuel immédiatement. Tout ce que cette application a remonté est conservé : c'est ainsi qu'on révoque un jeton fuité sans perdre son historique.",
   "app.settings.delete.title": "Supprimer cette application",
   "app.settings.delete.description":
     "Supprime l'application et tout ce qu'elle a remonté : pages vues, Web Vitals, visiteurs uniques et budget d'erreurs. Les fléaux déjà déposés sont conservés. Cette action est irréversible.",
@@ -782,9 +782,9 @@ export default {
   "insights.range.30d": "30 jours",
   "insights.uniqueVisitors": "Visiteurs uniques",
   "insights.uniqueVisitors.note":
-    "Visiteurs distincts sans cookie — la mesure de référence.",
+    "Visiteurs distincts sans cookie, la mesure de référence.",
   "insights.totalViews": "Pages vues",
-  "insights.totalViews.note": "Approximatif — une tendance, pas un compte.",
+  "insights.totalViews.note": "Approximatif : une tendance, pas un compte.",
   "insights.totalViews.tooltip":
     "Nombre brut de pages vues. Rien ne limite ce qu’une application enrôlée déclare, donc ce chiffre est gonflable par qui détient son jeton. Fiez-vous plutôt aux visiteurs uniques.",
   "insights.overTime": "Pages vues dans le temps",
@@ -824,7 +824,7 @@ export default {
   "insights.vitals.inp": "INP",
   "insights.vitals.fcp": "FCP",
   "insights.vitals.ttfb": "TTFB",
-  "insights.vitals.empty": "—",
+  "insights.vitals.empty": "Aucune donnée",
   "insights.vitals.good": "Bon",
   "insights.vitals.needsImprovement": "À améliorer",
   "insights.vitals.poor": "Médiocre",
@@ -855,7 +855,7 @@ export default {
     "Supprimer définitivement les $1 fléaux sélectionnés ?",
   "blights.rules.title": "Règles d'exclusion",
   "blights.rules.description":
-    "Ignorer les crashs entrants dont le message contient l'une de ces sous-chaînes (insensible à la casse). Les règles ne s'appliquent qu'aux nouveaux envois — les fléaux existants restent jusqu'à leur suppression.",
+    "Ignorer les crashs entrants dont le message contient l'une de ces sous-chaînes (insensible à la casse). Les règles ne s'appliquent qu'aux nouveaux envois ; les fléaux existants restent jusqu'à leur suppression.",
   "blights.rules.settingsDescription":
     "Les crashs dont le message correspond à l'une de ces sous-chaînes sont écartés à l'arrivée, avant même d'atteindre la boîte de réception.",
   "blights.rules.manage": "Gérer les règles",
@@ -891,7 +891,7 @@ export default {
   "sigils.create.subtitle":
     "Crée un jeton avec lequel cette application remonte ses données. Le jeton est affiché une seule fois, jamais ensuite.",
   "sigils.create.dialogDescription":
-    "Nommez l’application. Ce nom est son adresse — lettres minuscules, chiffres et tirets, jusqu’à 64 caractères, par ex. lore-staging.",
+    "Nommez l’application. Ce nom est son adresse : lettres minuscules, chiffres et tirets, jusqu’à 64 caractères, par ex. lore-staging.",
   "sigils.create.name": "Nom de l’application",
   "sigils.create.namePlaceholder": "lore-staging",
   "sigils.create.invalid":
@@ -909,11 +909,11 @@ export default {
   "sigils.action.delete": "Supprimer",
   "sigils.rotate.confirmTitle": "Renouveler le jeton de $1 ?",
   "sigils.rotate.confirmDescription":
-    "Le jeton actuel cesse de fonctionner immédiatement et un nouveau est affiché une seule fois. Tout ce que cette application a remonté est conservé — c’est ainsi qu’on révoque un jeton fuité sans perdre son historique.",
+    "Le jeton actuel cesse de fonctionner immédiatement et un nouveau est affiché une seule fois. Tout ce que cette application a remonté est conservé : c’est ainsi qu’on révoque un jeton fuité sans perdre son historique.",
   "sigils.rotate.confirm": "Renouveler",
   "sigils.delete.confirmTitle": "Supprimer $1 ?",
   "sigils.delete.confirmDescription":
-    "Cela efface tout ce que cette application a remonté — pages vues, Web Vitals, visiteurs uniques et son budget d’erreurs — ainsi que son jeton. Les fléaux déjà déposés sont conservés. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
+    "Cela efface tout ce que cette application a remonté (pages vues, Web Vitals, visiteurs uniques et son budget d’erreurs) ainsi que son jeton. Les fléaux déjà déposés sont conservés. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
   "sigils.delete.confirm": "Supprimer",
   "sigils.toast.created": "Sigil créé",
   "sigils.toast.rotated": "Jeton renouvelé",
@@ -944,7 +944,7 @@ export default {
   "feedback.attachments": "Pièces jointes",
   "feedback.linkedQuests": "Quêtes liées",
   "feedback.noLinkedQuests":
-    "Aucune quête pour le moment — créez-en une pour démarrer le travail.",
+    "Aucune quête pour le moment. Créez-en une pour démarrer le travail.",
   "feedback.unknownReporter": "inconnu",
   "feedback.context.title": "Contexte",
   "feedback.context.reporter": "Auteur",
@@ -962,7 +962,7 @@ export default {
     "Signalez un bogue ou demandez une fonctionnalité. Le propriétaire du projet examinera votre requête.",
   "feedback.request.messageField": "Quel est le problème ou l'idée ?",
   "feedback.request.messageHelper":
-    "Dites-nous ce qui s'est passé ou ce que vous aimeriez — soyez aussi précis que possible.",
+    "Dites-nous ce qui s'est passé ou ce que vous aimeriez, et soyez aussi précis que possible.",
   "feedback.request.pasteHint":
     "Collez une capture d'écran (Ctrl/⌘+V) ou glissez des fichiers ici.",
   "feedback.request.attachments": "Pièces jointes",

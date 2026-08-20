@@ -5,7 +5,7 @@
  *
  * The components call `tr("…", { default: "English" })`, which reads as
  * "translatable" and behaves as "English unless somebody defines the key".
- * Until this file, nobody did — and the defaults were French, so the package
+ * Until this file, nobody did, and the defaults were French, so the package
  * shipped a French back office to every application regardless of language.
  * `apps/examples/shop` is bilingual and its English admin was French throughout.
  *
@@ -15,7 +15,7 @@
  *
  * ### How to use it
  *
- * Same shape as `@alepha/ui`'s `uiFr` — a plain record the application spreads
+ * Same shape as `@alepha/ui`'s `uiFr`: a plain record the application spreads
  * into *its* catalogue, because this package is a library with no container of
  * its own to register a `$dictionary` into:
  *
@@ -35,21 +35,21 @@
  *
  * `tr()` falls back to the application's `fallbackLang` dictionary before it
  * falls back to the `default:` in the component. So in an app whose
- * `fallbackLang` is `"fr"` — the shop — defining a key here without an English
+ * `fallbackLang` is `"fr"` (the shop), defining a key here without an English
  * twin does not leave English untranslated, it makes English render the
  * French. The English lives in the component's own `default:`, which is why
  * these two must be edited as a pair.
  *
  * ### Vocabulary
  *
- * Deliberately generic commerce French — "produit", "mode de livraison" —
+ * Deliberately generic commerce French ("produit", "mode de livraison")
  * rather than any one shop's voice. `apps/examples/shop` is a jewellery atelier and
  * says "pièce" for a product; it overrides the handful of keys where that
  * matters in its own catalogue, which is exactly what spreading this first
  * is for.
  */
 export const commerceFr: Record<string, string> = {
-  // Catalogue — list, publish, restock
+  // Catalogue: list, publish, restock
   "commerce.admin.noProducts": "Aucun produit au catalogue.",
   "commerce.admin.newProduct": "Nouveau produit",
   "commerce.admin.edit": "Modifier",
@@ -67,7 +67,7 @@ export const commerceFr: Record<string, string> = {
   "commerce.admin.saved": "Produit enregistré.",
   "commerce.admin.allKinds": "Tous les types",
 
-  // Catalogue — columns
+  // Catalogue: columns
   "commerce.admin.colName": "Produit",
   "commerce.admin.colKind": "Type",
   "commerce.admin.colPrice": "Prix",
@@ -78,7 +78,7 @@ export const commerceFr: Record<string, string> = {
   "commerce.admin.online": "En ligne",
   "commerce.admin.draft": "Brouillon",
 
-  // Catalogue — editor
+  // Catalogue: editor
   "commerce.admin.fName": "Nom",
   "commerce.admin.fSlug": "Référence",
   "commerce.admin.fSlugHint":
@@ -119,7 +119,7 @@ export const commerceFr: Record<string, string> = {
 
   /*
    * Statuts de commande. Rendus via `tr(\`commerce.status.${status}\`)`, dont
-   * le `default:` est l'identifiant brut — donc sans ces clés, une commande
+   * le `default:` est l'identifiant brut, donc sans ces clés, une commande
    * affiche "fulfilled" dans les deux langues, pas seulement en français.
    */
   "commerce.status.pending": "En attente",
@@ -130,7 +130,7 @@ export const commerceFr: Record<string, string> = {
   "commerce.status.cancelled": "Annulée",
   "commerce.status.refunded": "Remboursée",
 
-  // Livraison — modes et tarifs
+  // Livraison: modes et tarifs
   "commerce.admin.noRates": "Aucun mode de livraison dans cette zone.",
   "commerce.admin.newRate": "Nouveau mode",
   "commerce.admin.withdraw": "Retirer",

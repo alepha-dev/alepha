@@ -1,7 +1,7 @@
 /**
  * Dictionary-driven labels and help text for schema-generated fields.
  *
- * A generated form can only prettify a property name — `reducedFactor` becomes
+ * A generated form can only prettify a property name: `reducedFactor` becomes
  * "Reduced Factor", which tells an operator nothing. Given a prefix, every
  * field can instead read a human label from `<prefix>.<field>` and help text
  * from `<prefix>.<field>.desc`, translated like the rest of the app.
@@ -20,7 +20,7 @@ export interface FieldI18nProps {
 
 /**
  * Fill `label`/`description` from the dictionary when the caller left them
- * unset. A missing key makes `tr` echo the key back, so compare against it —
+ * unset. A missing key makes `tr` echo the key back, so compare against it:
  * an absent entry must leave the field to its schema/pretty-name fallback.
  */
 export const resolveFieldI18n = (
@@ -53,7 +53,7 @@ export const resolveFieldI18n = (
   return next;
 };
 
-/** Prefix for a child of `name` — `parameters.x.payg` + `dailyCapCents`. */
+/** Prefix for a child of `name`: `parameters.x.payg` + `dailyCapCents`. */
 export const childI18nPrefix = (
   prefix: string | undefined,
   name: string,

@@ -5,7 +5,7 @@
  *
  * `tr()` resolves a missing key against the application's `fallbackLang`
  * dictionary BEFORE it reaches the `default:` written in the component. So in
- * an application whose fallback is French — `apps/examples/shop` — spreading
+ * an application whose fallback is French (`apps/examples/shop`), spreading
  * {@link commerceFr} alone does not leave English on the defaults, it renders
  * the French catalogue to English users. The back office came out with an
  * English shell around a French table: "Produit", "Prix", "Ajouté".
@@ -19,14 +19,14 @@
  * ```
  *
  * An application whose `fallbackLang` is already English can skip this one and
- * let the component defaults answer — the values here are identical to them.
+ * let the component defaults answer: the values here are identical to them.
  * Keep it that way: this file is the same text, in a form `tr()` can reach.
  *
  * ### The `$1` entries are not duplicates of a default
  *
  * Six strings interpolate (`restockConfirm`, `refundConfirm`, …). Their
  * component default is a template literal built from real values, while a
- * catalogue entry has to use `$1` placeholders — so those, uniquely, cannot be
+ * catalogue entry has to use `$1` placeholders, so those, uniquely, cannot be
  * copied across verbatim.
  */
 export const commerceEn: Record<string, string> = {

@@ -78,7 +78,7 @@ export const AdminKeysTokenDialog = (props: AdminKeysTokenDialogProps) => {
           <DialogDescription>
             {tr("admin.keys.tokenDescription", {
               default:
-                "Copy this token now — it is shown only once and cannot be recovered.",
+                "Copy this token now: it is shown only once and cannot be recovered.",
             })}
           </DialogDescription>
         </DialogHeader>

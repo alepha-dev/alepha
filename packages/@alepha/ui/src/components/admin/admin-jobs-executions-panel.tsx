@@ -148,7 +148,7 @@ export const JobExecutionsPanel = (props: JobExecutionsPanelProps) => {
             <span className="text-muted-foreground text-xs">
               {e.startedAt
                 ? String(l(e.startedAt, { date: "fromNow" }))
-                : tr("admin.jobs.notStarted", { default: "—" })}
+                : tr("admin.jobs.notStarted", { default: "Not started" })}
             </span>
           ),
         },
