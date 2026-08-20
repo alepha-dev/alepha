@@ -51,4 +51,40 @@ describe("PackCommand", () => {
       "my-app-latest.tar.gz",
     );
   });
+
+  it("should take --name over package.json", async () => {
+    // What a platform deploy passes: `platform({ name })` is the identity the
+    // deploy side knows the app by, and it is free to differ from the package
+    // name. Without this flag `pack` wrote one filename and the caller looked
+    // for another.
+    const { cli, pack, shell } = await create("app");
+
+    await cli.run(pack.pack, { argv: "--name capacity", root: "/app" });
+
+    const commands = shell.calls.map((it) => it.command).join("\n");
+    expect(commands).toContain("capacity-latest.tar.gz");
+    expect(commands).not.toContain("app-latest.tar.gz");
+  });
+
+  it("should keep --name verbatim, so the caller can predict the filename", async () => {
+    // The package-name default is slugified; an explicit name is not, or the
+    // caller that passed `app.v2` would again be looking for the wrong file.
+    const { cli, pack, shell } = await create("app");
+
+    await cli.run(pack.pack, { argv: "--name app.v2", root: "/app" });
+
+    expect(shell.calls.map((it) => it.command).join("\n")).toContain(
+      "app.v2-latest.tar.gz",
+    );
+  });
+
+  it("should refuse a --name that is not a filename", async () => {
+    // Taken verbatim into a path, so a separator or a parent reference would
+    // write outside the output directory.
+    const { cli, pack } = await create("app");
+
+    await expect(
+      cli.run(pack.pack, { argv: "--name ../../etc/cron.d/x", root: "/app" }),
+    ).rejects.toThrowError(/Invalid --name/);
+  });
 });

@@ -557,7 +557,16 @@ export class BayAdapter extends PlatformAdapter {
     await run({
       name: "pack",
       handler: async () => {
-        await this.shell.run(await this.cli(ctx, "pack"), { root: ctx.root });
+        // `--name` rather than letting `pack` derive it: left alone it names
+        // the artifact after `package.json`, which `platform({ name })` is
+        // free to differ from. `pack` then reported success and the deploy
+        // failed on a file it never wrote. Passing the name makes the two
+        // sides one input instead of two derivations. Safe to interpolate:
+        // `assertSafe` cleared `ctx.project` above, and `pack` re-validates.
+        await this.shell.run(
+          await this.cli(ctx, `pack --name ${ctx.project}`),
+          { root: ctx.root },
+        );
         artifact = join(ctx.root, `${ctx.project}-latest.tar.gz`);
         if (!(await this.fs.exists(artifact))) {
           throw new AlephaError(`\`alepha pack\` produced no ${artifact}.`);

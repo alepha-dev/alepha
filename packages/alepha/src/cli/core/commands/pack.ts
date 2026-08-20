@@ -19,9 +19,9 @@ import { FileSystemProvider, ShellProvider } from "alepha/system";
  * `coverage`.
  *
  * Output name: `<project-name>-<tag>.tar.gz` (default tag
- * "latest"). Project name comes from `package.json.name`. Naming
- * mirrors Docker tags — same artifact, different tag = different
- * file.
+ * "latest"). Project name comes from `--name` when the caller passes
+ * one, otherwise from `package.json.name`. Naming mirrors Docker tags:
+ * same artifact, different tag = different file.
  */
 export class PackCommand {
   protected readonly log = $logger();
@@ -37,6 +37,16 @@ export class PackCommand {
    * names, but `cli/core` must not depend on `platform-lib` — the dependency
    * runs the other way.
    */
+  /**
+   * What an explicit `--name` may contain.
+   *
+   * It lands verbatim in a path, so a separator or a parent reference would
+   * write the archive outside the output directory. Deliberately the same
+   * shape Bay validates an app key against, so the platform name it hands
+   * over always passes.
+   */
+  protected readonly namePattern = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
+
   protected slugify(name: string): string {
     return name
       .toLowerCase()
@@ -65,31 +75,48 @@ export class PackCommand {
             "Output directory for the tar.gz (default: current dir).",
         })
         .optional(),
+      name: z
+        .text({
+          aliases: ["n"],
+          description:
+            "Project name for the artifact filename (default: `package.json` `name`, slugified). `alepha platform` passes the deploy-side project name, which `platform({ name })` is free to make differ from the package name.",
+        })
+        .optional(),
     }),
     handler: async ({ flags, root, run }) => {
-      const pkgPath = this.fs.join(root, "package.json");
+      // Taken verbatim, so the caller that passed it can build the same
+      // filename without re-implementing `slugify`. That second derivation
+      // is exactly what let `pack` write one file while `BayAdapter` looked
+      // for another. Only the `package.json` fallback is slugified.
       let project: string;
-      try {
-        const pkg = await this.fs.readJsonFile<{ name?: string }>(pkgPath);
-        if (!pkg.name) {
+      if (flags.name !== undefined) {
+        if (!this.namePattern.test(flags.name)) {
           throw new AlephaError(
-            'Missing "name" in package.json — `alepha pack` needs it for the artifact filename.',
+            `Invalid --name "${flags.name}": the artifact filename is built from it, so it must be a single filename segment matching ${this.namePattern}.`,
           );
         }
-        project = pkg.name;
-      } catch (err) {
-        if (err instanceof AlephaError) throw err;
-        throw new AlephaError(
-          `Could not read package.json at ${pkgPath}. Run \`alepha pack\` from a workspace directory.`,
-        );
+        project = flags.name;
+      } else {
+        const pkgPath = this.fs.join(root, "package.json");
+        try {
+          const pkg = await this.fs.readJsonFile<{ name?: string }>(pkgPath);
+          if (!pkg.name) {
+            throw new AlephaError(
+              'Missing "name" in package.json: `alepha pack` needs it for the artifact filename. Pass `--name` to set it explicitly.',
+            );
+          }
+          project = this.slugify(pkg.name);
+        } catch (err) {
+          if (err instanceof AlephaError) throw err;
+          throw new AlephaError(
+            `Could not read package.json at ${pkgPath}. Run \`alepha pack\` from a workspace directory.`,
+          );
+        }
       }
 
       const tag = flags.tag ?? "latest";
       const outputDir = flags.output ?? root;
-      // Slugified: a scoped name like `@acme/app` carries a path separator,
-      // so the archive path pointed into a directory that does not exist and
-      // tar failed. `@acme/app` → `acme-app`.
-      const filename = `${this.slugify(project)}-${tag}.tar.gz`;
+      const filename = `${project}-${tag}.tar.gz`;
       const outputPath = this.fs.join(outputDir, filename);
 
       // Include list: just `dist/` + `migrations/`. Everything else

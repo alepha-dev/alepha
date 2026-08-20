@@ -255,6 +255,25 @@ describe("BayAdapter — the deploy it composes", () => {
     );
   });
 
+  it("packs under the platform name, not the package name", async () => {
+    // `platform({ name })` is the identity the deploy side knows the app by,
+    // and a workspace whose `package.json` is called something else is the
+    // normal case, not an exotic one. The adapter used to let `pack` derive
+    // the filename from `package.json` and then look for one built from
+    // `ctx.project`: `pack` reported success and the deploy failed on a file
+    // it never wrote.
+    const { adapter, shell, fs } = await setup();
+    await fs.writeFile(
+      "/project/package.json",
+      JSON.stringify({ name: "app" }),
+    );
+    await fs.writeFile("/project/capacity-latest.tar.gz", "TARBALL");
+
+    await adapter.deploy(context({ project: "capacity" }), run);
+
+    expect(shell.wasCalled("yarn alepha pack --name capacity")).toBe(true);
+  });
+
   it("passes a configured domain", async () => {
     const { adapter, shell } = await setup();
 

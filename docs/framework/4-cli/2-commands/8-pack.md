@@ -25,8 +25,11 @@ No source, no `alepha.config.ts`, no `package.json` - the deploy side reads ever
 |------|-------------|
 | `--tag`, `-t` | Tag suffix for the artifact name, Docker-style (default: `latest` → `<project>-latest.tar.gz`) |
 | `--output`, `-o` | Output directory for the archive (default: current directory) |
+| `--name`, `-n` | Project name for the artifact filename (default: `package.json` `name`) |
 
 The project name comes from `package.json` `name`, slugified for the filename (`@acme/app` → `acme-app`).
+
+`--name` is what a deploy passes when the app is known by another name: `platform({ name })` sets the identity the deploy side uses, and it is free to differ from the package name. `alepha platform up` passes it for you, so `pack` writes the file the deploy then looks for. Unlike the `package.json` default it is used verbatim, so it has to be a plain filename: letters, digits, `.`, `_` and `-`.
 
 ## Deploying a Packed Artifact
 
