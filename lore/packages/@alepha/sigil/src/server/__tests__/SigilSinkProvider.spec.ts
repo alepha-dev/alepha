@@ -4,6 +4,7 @@ import { HttpClient } from "alepha/server";
 import { describe, expect, it } from "vitest";
 import { AlephaSigil } from "../../index.ts";
 import { sigilClientAtom } from "../../shared/sigilClientAtom.ts";
+import { SIGIL_DEFAULT_SINK } from "../../sigilEnv.ts";
 import { SigilSinkProvider } from "../SigilSinkProvider.ts";
 
 /**
@@ -46,12 +47,9 @@ const withSink = (
   env: Record<string, any> = {},
 ) =>
   make({
-    SIGIL_CONFIG: JSON.stringify({
-      project: "demo",
-      sink: "https://sigil.example.com/",
-      ...config,
-    }),
-    SIGIL_KEY: "tk_secret",
+    SIGIL_CONFIG: JSON.stringify(config),
+    SIGIL_SINK: "https://sigil.example.com/",
+    SIGIL_KEY: "sg_demo_secret",
     ...env,
   });
 
@@ -150,8 +148,8 @@ describe("SigilSinkProvider", () => {
     await sink.flush();
 
     const call = ingests(http).at(-1)!;
-    expect(call.headers.authorization).toBe("Bearer tk_secret");
-    expect(call.body).not.toContain("tk_secret");
+    expect(call.headers.authorization).toBe("Bearer sg_demo_secret");
+    expect(call.body).not.toContain("sg_demo_secret");
   });
 
   it("normalises a trailing slash on the sink origin", async () => {
@@ -222,8 +220,8 @@ describe("SigilSinkProvider", () => {
         NODE_ENV: "production",
         APP_SECRET: "test-secret",
         SERVER_PORT: 0,
-        SIGIL_CONFIG: '{"project":"demo","sink":"https://sigil.example.com/"}',
-        SIGIL_KEY: "tk_secret",
+        SIGIL_SINK: "https://sigil.example.com/",
+        SIGIL_KEY: "sg_demo_secret",
       },
     })
       .with({ provide: HttpClient, use: RecordingHttpClient })
@@ -357,24 +355,30 @@ describe("SigilSinkProvider — half-configured", () => {
    * would make rolling this variable out the riskiest kind of deploy — the app
    * that fails to boot being the one about to start reporting correctly.
    */
-  it("stays inert and boots when the key is set without a config", async () => {
-    const alepha = make({ SIGIL_KEY: "tk_secret" });
+  it("reports on the key alone, with no config at all", async () => {
+    // The state this file used to call "half-configured" and refuse to act
+    // on. It is now simply an enrolled app: the sink has a default and the key
+    // names its own project, so there is no second half left to be missing.
+    const alepha = make({ SIGIL_KEY: "sg_demo_secret" });
+    const sink = alepha.inject(SigilSinkProvider);
+
+    await expect(alepha.start()).resolves.toBeDefined();
+    expect(sink.hasSink()).toBe(true);
+    expect(sink.project()).toBe("demo");
+    expect(sink.sinkOrigin()).toBe(SIGIL_DEFAULT_SINK);
+    expect(sink.feedbackUrl()).toBe(`${SIGIL_DEFAULT_SINK}/demo/request`);
+  });
+
+  it("stays inert and boots when a config arrives without a key", async () => {
+    const alepha = make({ SIGIL_CONFIG: '{"vitals":false}' });
     const sink = alepha.inject(SigilSinkProvider);
 
     await expect(alepha.start()).resolves.toBeDefined();
     expect(sink.hasSink()).toBe(false);
   });
 
-  it("stays inert and boots when the config is set without a key", async () => {
-    const alepha = make({ SIGIL_CONFIG: '{"project":"demo"}' });
-    const sink = alepha.inject(SigilSinkProvider);
-
-    await expect(alepha.start()).resolves.toBeDefined();
-    expect(sink.hasSink()).toBe(false);
-  });
-
-  it("captures locally rather than sending when inert", async () => {
-    const alepha = make({ SIGIL_KEY: "tk_secret" });
+  it("captures locally rather than sending when there is no key", async () => {
+    const alepha = make();
     const sink = alepha.inject(SigilSinkProvider);
     const http = alepha.inject(HttpClient) as RecordingHttpClient;
     await alepha.start();
@@ -383,5 +387,51 @@ describe("SigilSinkProvider — half-configured", () => {
     await sink.flush();
 
     expect(http.calls).toHaveLength(0);
+  });
+
+  it("keeps reporting for a key minted before the slug moved in", async () => {
+    // The migration case, and the one that decides whether rotating every
+    // deployed app is urgent or merely tidy. Reporting needs the credential
+    // and nothing else, so an old key loses the feedback link and not a
+    // single event.
+    const alepha = make({ SIGIL_KEY: "sg_Ab3xYz09QwErTyUi" });
+    const sink = alepha.inject(SigilSinkProvider);
+    const http = alepha.inject(HttpClient) as RecordingHttpClient;
+    await alepha.start();
+
+    expect(sink.hasSink()).toBe(true);
+    expect(sink.project()).toBeUndefined();
+    expect(sink.feedbackUrl()).toBeUndefined();
+
+    await sink.ingest({ views: [{ path: "/" }] });
+    await sink.flush();
+
+    expect(ingests(http)).toHaveLength(1);
+  });
+
+  it("fills in a scheme the operator did not paste", async () => {
+    // A bare hostname is concatenated into a fetch URL and into the feedback
+    // link, where it silently becomes a relative path: the flush hits the
+    // app's own origin and the link points back into the app.
+    const alepha = make({
+      SIGIL_KEY: "sg_demo_secret",
+      SIGIL_SINK: "lore.example.com",
+    });
+    const sink = alepha.inject(SigilSinkProvider);
+    await alepha.start();
+
+    expect(sink.sinkOrigin()).toBe("https://lore.example.com");
+    expect(sink.feedbackUrl()).toBe("https://lore.example.com/demo/request");
+  });
+
+  it("leaves a scheme the operator did paste alone", async () => {
+    const alepha = make({
+      SIGIL_KEY: "sg_demo_secret",
+      SIGIL_SINK: "http://localhost:3303/",
+    });
+    const sink = alepha.inject(SigilSinkProvider);
+    await alepha.start();
+
+    expect(sink.sinkOrigin()).toBe("http://localhost:3303");
   });
 });

@@ -73,7 +73,7 @@ const setup = async () => {
   );
 
   const enrol = async (name: string) => {
-    const minted = tokens.mint();
+    const minted = await tokens.mint(project.id);
     return await probe.sigils.create({
       projectId: project.id,
       name,

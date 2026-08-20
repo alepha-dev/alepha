@@ -100,7 +100,7 @@ export class SigilController {
         throw new ConflictError(`A sigil already exists named "${name}"`);
       }
 
-      const minted = this.tokens.mint();
+      const minted = await this.tokens.mint(params.projectId);
       try {
         const created = await this.sigils.create({
           projectId: params.projectId,
@@ -172,7 +172,7 @@ export class SigilController {
       await this.security.assertOwner(params.projectId, user);
       const sigil = await this.loadSigil(params.projectId, params.sigilId);
 
-      const minted = this.tokens.mint();
+      const minted = await this.tokens.mint(params.projectId);
       await this.sigils.updateById(sigil.id, {
         tokenHash: minted.hash,
         tokenPrefix: minted.prefix,

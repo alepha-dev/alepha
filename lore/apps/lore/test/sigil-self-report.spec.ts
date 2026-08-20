@@ -62,7 +62,12 @@ const readViews = async (analytics: LoreAnalytics, sigilId: string) => {
   }>;
 };
 
-const KEY = "sg_selfreport_fixed_for_the_test";
+/**
+ * Names `lore`, the slug of the fixture project below, because that is what a
+ * real key does: the token carries the project it reports into, so a fixture
+ * whose key named something else would exercise a state the sink cannot mint.
+ */
+const KEY = "sg_lore_fixed_secret_for_the_test";
 
 /**
  * Every project flag that still means something.
@@ -91,7 +96,7 @@ const setup = async (
       DATABASE_URL: ":memory:",
       PUBLIC_URL: "https://lore.test",
       // Unresolvable by construction — see the file comment.
-      SIGIL_CONFIG: '{"project":"lore","sink":"https://sink.invalid"}',
+      SIGIL_SINK: "https://sink.invalid",
       SIGIL_KEY: over.key ?? KEY,
     },
   });

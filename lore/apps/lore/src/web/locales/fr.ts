@@ -900,7 +900,7 @@ export default {
   "sigils.create.ownerOnly":
     "Seul le propriétaire du projet peut enrôler une application.",
   "sigils.token.title":
-    "Copiez ce jeton maintenant — il est stocké haché et ne sera plus jamais affiché. Renseignez-le comme SIGIL_KEY dans l’application, avec SIGIL_SINK pointant vers cette instance.",
+    "Copiez ce jeton maintenant : il est stocké haché et ne sera plus jamais affiché. Renseignez-le comme SIGIL_KEY dans l’application, seule variable nécessaire. Ajoutez SIGIL_SINK pointant vers cette instance si ce n’est pas le collecteur par défaut de l’application.",
   "sigils.token.copy": "Copier le jeton",
   "sigils.token.done": "Terminé",
   "sigils.lastSeen": "dernière remontée $1",

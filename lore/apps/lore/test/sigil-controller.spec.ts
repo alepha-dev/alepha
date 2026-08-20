@@ -1,3 +1,4 @@
+import { sigilKeyProject } from "@alepha/sigil/key";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -9,6 +10,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { SigilController } from "../src/api/controllers/SigilController.ts";
 import { members } from "../src/api/entities/members.ts";
+import { projects } from "../src/api/entities/projects.ts";
 import { sigilViewsHourly } from "../src/api/entities/sigilViewsHourly.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { SigilTokenService } from "../src/api/services/SigilTokenService.ts";
@@ -27,6 +29,7 @@ const userDataSchema = z.object({
 class Probe {
   members = $repository(members);
   views = $repository(sigilViewsHourly);
+  projects = $repository(projects);
 }
 
 interface TestContext {
@@ -50,8 +53,12 @@ interface TestContext {
  * that check alone in production.
  */
 class FixedTokenService extends SigilTokenService {
-  override mint(): { token: string; hash: string; prefix: string } {
-    return { token: "sg_fixed", hash: "fixed-hash", prefix: "sg_fixed" };
+  override async mint(): Promise<{
+    token: string;
+    hash: string;
+    prefix: string;
+  }> {
+    return { token: "sg_fixed_x", hash: "fixed-hash", prefix: "sg_fixed_x" };
   }
 }
 
@@ -152,8 +159,23 @@ describe("SigilController", () => {
       { user: owner },
     );
 
-    expect(created.data.token).toMatch(/^sg_/);
-    expect(created.data.tokenPrefix).toBe(created.data.token.slice(0, 11));
+    // The token names the project it was minted for, so the app it is pasted
+    // into needs no second variable to say which project it reports to.
+    const project = await ctx.probe.projects.findOne({
+      where: { id: { eq: projectId } },
+    });
+    const slug = sigilKeyProject(created.data.token);
+    expect(slug).toBe(project?.slug);
+
+    // The stored prefix shows the whole namespace and barely any secret. A
+    // fixed `slice(0, 11)` used to do this, and filed five characters of the
+    // secret in a readable column for any project whose slug was short.
+    const prefix = created.data.tokenPrefix;
+    const secret = created.data.token.slice(`sg_${slug}_`.length);
+    expect(created.data.token.startsWith(prefix)).toBe(true);
+    expect(prefix).toBe(`sg_${slug}_${secret.slice(0, 4)}`);
+    expect(secret.length).toBeGreaterThan(secret.slice(0, 4).length);
+
     expect("tokenHash" in created.data).toBe(false);
     // The token resolves to the sigil it was minted for, and to nothing else.
     const resolved = await ctx.tokens.verify(created.data.token);

@@ -30,6 +30,7 @@
     "./feedback-position": "./src/shared/sigilFeedbackPosition.ts",
     "./vitals": "./src/shared/schemas/sigilVitalsBuckets.ts",
     "./fingerprint": "./src/shared/sigilFingerprint.ts",
+    "./key": "./src/shared/sigilKey.ts",
     "./envelope": "./src/shared/schemas/sigilEnvelope.ts",
     "./config": "./src/shared/schemas/sigilConfig.ts",
     "./paths": "./src/shared/sigilPaths.ts",
