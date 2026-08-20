@@ -75,7 +75,7 @@ export function AdminAudits() {
           default: "Delete audit entries",
         }),
         description: tr("admin.audits.bulkDeleteConfirm", {
-          default: `Delete ${items.length} audit record(s)? Audit logs are usually retained for compliance — this cannot be undone.`,
+          default: `Delete ${items.length} audit record(s)? Audit logs are usually retained for compliance. This cannot be undone.`,
           args: [String(items.length)],
         }),
         destructive: true,

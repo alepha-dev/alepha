@@ -327,6 +327,23 @@ export abstract class FileSystemProvider {
   ): Promise<void>;
 
   /**
+   * Appends data to a file, creating it when it does not exist.
+   *
+   * The distinction from {@link writeFile} is cost, not convenience: an
+   * append-only log grows by one line at a time, and re-serialising the whole
+   * file on every line turns a cheap write into one proportional to everything
+   * written so far. Callers that keep such a file are expected to compact it
+   * themselves; nothing here bounds its size.
+   *
+   * @param path - The file path to append to
+   * @param data - The data to append (Buffer or string)
+   */
+  abstract appendFile(
+    path: string,
+    data: Uint8Array | Buffer | string,
+  ): Promise<void>;
+
+  /**
    * Reads the content of a file as a string.
    *
    * @param path - The file path to read

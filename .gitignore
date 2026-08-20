@@ -30,6 +30,9 @@ BUGS.md
 assets/docs
 .superpowers
 
+# Design mockups: local working artifacts, not part of the app.
+apps/lore/assets/mockups/
+
 .fleet
 
 # Artifacts produced by `alepha pack` — one per deploy, in the workspace root.

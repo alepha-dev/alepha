@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import {
   apiPost,
   createProjectViaWizard,
@@ -307,6 +307,15 @@ test.describe("Epics — the list", () => {
       await expect(page.getByText("No quests yet")).toBeVisible();
     });
 
+    await test.step("the sidebar badges the planned epics", async () => {
+      // Both seeded epics are `planned`, and the badge counts exactly that.
+      // It matters because `countOpenQuests` runs the backlog gate: the quest
+      // attached above is inside a planned epic, so it is absent from the
+      // Quests badge on purpose. This number is the sidebar's only trace of
+      // it. Read off the nav link so a stray "2" elsewhere cannot satisfy it.
+      await expect(epicsBadge(page)).toHaveText("2", { timeout: 15_000 });
+    });
+
     await test.step("the toolbar search narrows the table", async () => {
       await page.getByRole("textbox", { name: "Search" }).fill(withQuest);
 
@@ -399,6 +408,34 @@ test.describe("Epics — the list", () => {
       await expect(page.getByRole("link", { name: created })).toBeVisible({
         timeout: 15_000,
       });
+
+      // And the sidebar badge follows, without a reload. A new epic is born
+      // `planned`, so the count has to move 2 -> 3: the table's own refresh
+      // lands back in `fetchEpics`, which recounts and pushes the atom.
+      await expect(epicsBadge(page)).toHaveText("3", { timeout: 15_000 });
+    });
+
+    await test.step("releasing an epic takes it back off the badge", async () => {
+      // The direction the list alone can never cover: status changes on the
+      // DETAIL page, which knows one epic and so applies a delta instead of
+      // a count. Releasing is also the main way this badge goes down.
+      await page.getByRole("link", { name: empty }).click();
+      await page.getByRole("button", { name: "Begin the Epic" }).click();
+
+      await expect(epicsBadge(page)).toHaveText("2", { timeout: 15_000 });
     });
   });
 });
+
+/**
+ * The Epics entry's count in the sidebar.
+ *
+ * Scoped to `[data-slot="sidebar"]` because the BREADCRUMB is also a
+ * `navigation` landmark carrying an "Epics" link: a bare role lookup
+ * resolves to that one instead and reads "Epics" with no number at all.
+ */
+const epicsBadge = (page: Page) =>
+  page
+    .locator('[data-slot="sidebar"]')
+    .locator('[data-slot="sidebar-menu-item"]', { hasText: "Epics" })
+    .locator('[data-slot="sidebar-menu-badge"]');

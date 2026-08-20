@@ -25,6 +25,7 @@ import {
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentBlightCountAtom } from "../../atoms/currentBlightCountAtom.ts";
 import { currentEpicAtom } from "../../atoms/currentEpicAtom.ts";
+import { currentEpicCountAtom } from "../../atoms/currentEpicCountAtom.ts";
 import { currentFeedbackCountAtom } from "../../atoms/currentFeedbackCountAtom.ts";
 import { currentFolioPathAtom } from "../../atoms/currentFolioPathAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
@@ -172,6 +173,7 @@ const ProjectView = () => {
   const [sigil] = useStore(currentSigilAtom);
   const [epic] = useStore(currentEpicAtom);
   const [quest] = useStore(currentQuestAtom);
+  const [epicCount] = useStore(currentEpicCountAtom);
 
   if (!project) {
     return null;
@@ -193,12 +195,27 @@ const ProjectView = () => {
     setQuestsView({ view });
   };
 
-  // Four unlabelled groups (`NavGroup.label` omitted on purpose — see the
-  // great rename Task 9). Order is fixed: Work (Quests always on, Blights /
-  // Feedback / Milestones feature-gated) → Memory (Folios gated, Reports
-  // always on) → Ops (Apps, gated on `sigils`) → Settings (always on). Groups
-  // with no items are dropped by the `.filter` below so an all-gates-off
-  // project still renders a clean sidebar.
+  // Four unlabelled groups (`NavGroup.label` omitted on purpose, see the great
+  // rename Task 9), split by whether you ACT on a surface or READ it:
+  //
+  //   Work      Quests, Epics, Feedback, Blights
+  //   Record    Folios, Milestones, Reports
+  //   Ops       Apps
+  //   Settings
+  //
+  // Work is ordered chosen-then-arrived: Quests and Epics are what you put in,
+  // Feedback and Blights turn up on their own and need a verdict. They share
+  // one group rather than two, so the separator falls only where the mode
+  // changes from acting to reading.
+  //
+  // Milestones sits in Record, not beside Quests, because it plans nothing:
+  // the entity carries no objective or target, membership is a time window
+  // (`completedAt > last.closedAt`) rather than an assignment, no quest
+  // surface can even set `milestoneId`, and it auto-closes on a cron into a
+  // rich-markdown `changelog`. It is a folio the app fills in for you.
+  //
+  // Groups with no items are dropped by the `.filter` below, so an
+  // all-gates-off project still renders a clean sidebar.
   const workItems: NavGroup["items"] = [
     {
       label: tr("project.menu.quests"),
@@ -208,26 +225,41 @@ const ProjectView = () => {
       badge: questCount?.count ? questCount.count : undefined,
     },
   ];
-  // A lens on quests, so it sits right after them — scope precedes schedule.
+  // A lens on quests, so it sits right after them: scope, then the items.
   if (features.epics) {
     workItems.push({
       label: tr("project.menu.epics"),
       icon: Layers,
       href: router.path("projectEpics", { params: { projectSlug } }),
       active: name === "projectEpics" || name === "projectEpic",
+      // Planned epics only, and hidden at zero like every other badge here.
+      // A planned epic is a gate holding its quests out of the Quests count
+      // beside it, so this is the sidebar's only trace of that work.
+      badge: epicCount?.count ? epicCount.count : undefined,
     });
   }
-  // Blights are reported by apps, so the entry follows the apps: it appears
-  // once some enrolled app carries the capability, and goes when the last one
-  // drops it. `?? []` means a failed sigil read hides the entry — the same
-  // "a degraded section costs a section" trade the Apps group below makes.
+  // Arrived rather than chosen. Feedback leads because a human wrote it; a
+  // blight is filed by a machine.
+  if (features.feedback) {
+    workItems.push({
+      label: tr("project.menu.feedback"),
+      icon: Inbox,
+      href: router.path("projectFeedback", { params: { projectSlug } }),
+      active: name === "projectFeedback",
+      badge: feedbackCount?.count ? feedbackCount.count : undefined,
+    });
+  }
+  // Blights are reported by apps, so the entry appears once some enrolled app
+  // carries the capability, and goes when the last one drops it. `?? []` means
+  // a failed sigil read hides the entry, the same "a degraded section costs a
+  // section" trade the Apps group below makes.
   //
-  // …unless blights are already filed. They outlive the app that reported them
-  // (`blights.sigilId` is `ON DELETE SET NULL`) and stay for the retention
-  // window, so an owner who deletes their only app — or switches Blights off
-  // on it — would otherwise lose the only way into an inbox that still holds
-  // open crashes. A project that has never collected one still shows no entry,
-  // which is the property this gate exists for.
+  // ...unless blights are already filed. They outlive the app that reported
+  // them (`blights.sigilId` is `ON DELETE SET NULL`) and stay for the
+  // retention window, so an owner who deletes their only app, or switches
+  // Blights off on it, would otherwise lose the only way into an inbox that
+  // still holds open crashes. A project that has never collected one still
+  // shows no entry, which is the property this gate exists for.
   const collectsBlights = (sigils ?? []).some((it) =>
     it.kinds.includes("blights"),
   );
@@ -241,34 +273,27 @@ const ProjectView = () => {
       badge: blightCount?.count ? blightCount.count : undefined,
     });
   }
-  if (features.feedback) {
-    workItems.push({
-      label: tr("project.menu.feedback"),
-      icon: Inbox,
-      href: router.path("projectFeedback", { params: { projectSlug } }),
-      active: name === "projectFeedback",
-      badge: feedbackCount?.count ? feedbackCount.count : undefined,
-    });
-  }
-  if (features.milestones) {
-    workItems.push({
-      label: tr("project.menu.milestones"),
-      icon: Flag,
-      href: router.path("projectMilestones", { params: { projectSlug } }),
-      active: name === "projectMilestones",
-    });
-  }
 
-  const knowledgeItems: NavGroup["items"] = [];
+  // Record: surfaces you consult. Hand-written first, then the two the app
+  // writes for you.
+  const recordItems: NavGroup["items"] = [];
   if (features.folios) {
-    knowledgeItems.push({
+    recordItems.push({
       label: tr("project.menu.folios"),
       icon: BookOpen,
       href: router.path("projectFolios", { params: { projectSlug } }),
       active: name.startsWith("projectFolios"),
     });
   }
-  knowledgeItems.push({
+  if (features.milestones) {
+    recordItems.push({
+      label: tr("project.menu.milestones"),
+      icon: Flag,
+      href: router.path("projectMilestones", { params: { projectSlug } }),
+      active: name === "projectMilestones",
+    });
+  }
+  recordItems.push({
     label: tr("project.menu.reports"),
     icon: BarChart3,
     href: router.path("projectReports", { params: { projectSlug } }),
@@ -325,7 +350,7 @@ const ProjectView = () => {
 
   const nav: NavGroup[] = [
     { items: workItems },
-    { items: knowledgeItems },
+    { items: recordItems },
     { items: opsItems },
     {
       items: [

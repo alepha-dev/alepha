@@ -342,6 +342,15 @@ export class WorkerdFileSystemProvider implements FileSystemProvider {
     );
   }
 
+  public async appendFile(
+    _path: string,
+    _data: Uint8Array | Buffer | string,
+  ): Promise<void> {
+    throw new AlephaError(
+      "WorkerdFileSystemProvider: appendFile() is not available in edge runtimes.",
+    );
+  }
+
   public async readTextFile(_path: string): Promise<string> {
     throw new AlephaError(
       "WorkerdFileSystemProvider: readTextFile() is not available in edge runtimes.",

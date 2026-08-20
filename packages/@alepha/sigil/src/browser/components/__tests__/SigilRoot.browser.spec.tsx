@@ -15,6 +15,7 @@ import { SigilRoot } from "../SigilRoot.tsx";
 const renderRoot = async (config: {
   feedbackUrl?: string;
   excludedPaths?: string[];
+  feedbackButton?: string;
 }) => {
   const alepha = Alepha.create();
   await alepha.start();
@@ -22,6 +23,7 @@ const renderRoot = async (config: {
     enabled: { views: true, errors: true, vitals: true },
     feedbackButtonExcludedPaths: config.excludedPaths ?? [],
     feedbackUrl: config.feedbackUrl,
+    feedbackButton: config.feedbackButton,
     configAt: Date.now(),
   });
   render(
@@ -47,6 +49,32 @@ describe("SigilRoot", () => {
   it("does not render the button when there is no feedback URL", async () => {
     await renderRoot({});
     expect(screen.queryByLabelText("Feedback")).toBeNull();
+  });
+
+  /**
+   * `hidden` is a config value the schema has always accepted and nothing ever
+   * consumed. `sigilFeedbackPositionOf` narrows to a corner and falls back to
+   * the default, so asking it about "hidden" answered "bottom-right" and the
+   * button rendered - while the config JSDoc, the package README and the guide
+   * all described it as the way to keep the URL and drop the control.
+   */
+  it("renders no button when the position is hidden", async () => {
+    await renderRoot({
+      feedbackUrl: "https://lore.alepha.dev/alepha/request",
+      feedbackButton: "hidden",
+    });
+    expect(screen.queryByLabelText("Feedback")).toBeNull();
+  });
+
+  it("still renders for an unknown position, at the default corner", async () => {
+    // Unrecognised is not the same as hidden: the value reaches a `style` on a
+    // third-party page, so anything unknown falls back rather than suppressing
+    // a control the operator never asked to remove.
+    await renderRoot({
+      feedbackUrl: "https://lore.alepha.dev/alepha/request",
+      feedbackButton: "top-left",
+    });
+    expect(screen.getByLabelText("Feedback")).toBeTruthy();
   });
 
   it("hides the button on a path matching an excluded glob", async () => {

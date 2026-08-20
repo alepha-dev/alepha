@@ -26,3 +26,4 @@ Runtime inspection and debugging UI.
 ### Providers
 
 - [`DevAtomLogProvider`](/docs/reference-providers-devatomlogprovider) - In-memory ring buffer of `state:mutate` events, powering the devtools
+- [`DevLogStoreProvider`](/docs/reference-providers-devlogstoreprovider) - The devtools log buffer, and the part of it that outlives the process.

@@ -78,6 +78,15 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   public writeFileCalls: Array<{ path: string; data: string }> = [];
 
   /**
+   * Track appendFile calls for test assertions.
+   *
+   * Kept apart from {@link writeFileCalls} because the difference is the whole
+   * point of the two methods: a caller that keeps an append-only file needs to
+   * be able to assert it grew by a line rather than being re-serialised whole.
+   */
+  public appendFileCalls: Array<{ path: string; data: string }> = [];
+
+  /**
    * Track rm calls for test assertions
    */
   public rmCalls: Array<{ path: string; options?: RmOptions }> = [];
@@ -628,6 +637,32 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     this.mtimes.set(normalized, this.dateTime.nowMillis());
   }
 
+  public async appendFile(
+    path: string,
+    data: Uint8Array | Buffer | string,
+  ): Promise<void> {
+    const buffer =
+      typeof data === "string"
+        ? Buffer.from(data, "utf-8")
+        : data instanceof Buffer
+          ? data
+          : Buffer.from(data);
+
+    this.appendFileCalls.push({ path, data: buffer.toString("utf-8") });
+
+    if (this.writeFileError) {
+      throw this.writeFileError;
+    }
+
+    const normalized = this.normalizePath(path);
+    const existing = this.files.get(normalized);
+    this.files.set(
+      normalized,
+      existing ? Buffer.concat([existing, buffer]) : buffer,
+    );
+    this.mtimes.set(normalized, this.dateTime.nowMillis());
+  }
+
   /**
    * Reset all in-memory state (useful between tests).
    */
@@ -637,6 +672,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     this.mtimes.clear();
     this.mkdirCalls = [];
     this.writeFileCalls = [];
+    this.appendFileCalls = [];
     this.rmCalls = [];
     this.joinCalls = [];
     this.mkdirError = null;
@@ -658,6 +694,18 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
    */
   public wasWritten(path: string): boolean {
     return this.writeFileCalls.some((call) => call.path === path);
+  }
+
+  /**
+   * Check if a file was appended to.
+   *
+   * @example
+   * ```typescript
+   * expect(fs.wasAppended("/project/node_modules/.alepha/logs.jsonl")).toBe(true);
+   * ```
+   */
+  public wasAppended(path: string): boolean {
+    return this.appendFileCalls.some((call) => call.path === path);
   }
 
   /**

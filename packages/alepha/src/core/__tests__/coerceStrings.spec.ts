@@ -95,6 +95,32 @@ describe("coerceObject", () => {
     expect(coerceObject(schema, { CONFIG: "hello" }).CONFIG).toBe("hello");
   });
 
+  /**
+   * The shape every CI system produces for a secret that is not set:
+   * `${{ secrets.MISSING }}` interpolates to the empty string. Reading it as
+   * absent is what keeps deleting an optional variable from taking an app
+   * down at boot, which is otherwise exactly what happens - the field is
+   * optional, and `""` is the one value it can never satisfy.
+   */
+  it("should read an empty string as an absent structured value", () => {
+    const schema = z.object({
+      CONFIG: z.object({ a: z.string() }).optional(),
+      PATHS: z.array(z.string()).optional(),
+    });
+
+    expect(coerceObject(schema, { CONFIG: "" }).CONFIG).toBeUndefined();
+    expect(coerceObject(schema, { CONFIG: "   " }).CONFIG).toBeUndefined();
+    expect(coerceObject(schema, { PATHS: "" }).PATHS).toBeUndefined();
+  });
+
+  it("should still reject an empty string for a REQUIRED structured field", () => {
+    // Absent rather than malformed, so the error names the missing variable
+    // instead of complaining about its type. Both are errors; this one reads.
+    const schema = z.object({ CONFIG: z.object({ a: z.string() }) });
+
+    expect(coerceObject(schema, { CONFIG: "" }).CONFIG).toBeUndefined();
+  });
+
   it("should parse a JSON array arriving as a string", () => {
     const schema = z.object({ PATHS: z.array(z.string()) });
 
