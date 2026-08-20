@@ -27,11 +27,13 @@ import { ShopI18n } from "./ShopI18n.ts";
  * second market — see the note in `ShopI18n`.
  *
  * `AlephaSigil` reports page views, Web Vitals and grouped errors to the sink
- * named by `SIGIL_CONFIG`'s `sink` field (defaulting to the public Lore
- * instance), under the `shop-production` sigil, which lives in Lore project 1
- * (Alepha) — hence `"project":"alepha"` and not `"shop"`, whose project was
- * merged away. It is inert without `SIGIL_KEY` and inert outside
- * production, so dev and the e2e suite send nothing. Nothing is mounted in the
+ * named by `SIGIL_SINK` (defaulting to the public Lore instance), under the
+ * `shop-production` sigil, which lives in Lore project 1 (Alepha) rather than
+ * a shop project of its own, that one having been merged away. Nothing here
+ * says so: the project rides in `SIGIL_KEY`, which is shaped
+ * `sg_alepha_<secret>` for exactly that reason. It is inert without
+ * `SIGIL_KEY` and inert outside production, so dev and the e2e suite send
+ * nothing. Nothing is mounted in the
  * tree by importing it: the storefront gets no floating feedback button, which
  * is the right default for a shop.
  *
