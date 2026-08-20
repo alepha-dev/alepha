@@ -54,7 +54,11 @@ const QuestItem = (props: QuestItemProps) => {
             ~{formatEstimate(quest.estimateMinutes)}
           </span>
         )}
-        <span className="min-w-0 flex-1 truncate text-sm" title={quest.title}>
+        <span
+          className="min-w-0 flex-1 truncate text-sm"
+          title={`#${quest.shortId} - ${quest.title}`}
+        >
+          #{quest.shortId} <span className="text-muted-foreground">-</span>{" "}
           {quest.title}
         </span>
         {quest.metadata.objectivesProgress.total > 1 && (

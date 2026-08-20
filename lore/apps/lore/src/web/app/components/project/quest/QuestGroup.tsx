@@ -1,9 +1,7 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import { useI18n } from "alepha/react/i18n";
-import { Minus, Plus } from "lucide-react";
+import { cn } from "@alepha/ui/lib/utils";
+import { ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 import QuestItem from "./QuestItem.tsx";
 
 export interface QuestGroupProps {
@@ -17,7 +15,6 @@ export interface QuestGroupProps {
 }
 
 const QuestGroup = (props: QuestGroupProps) => {
-  const { tr } = useI18n<I18n, "en">();
   const [isExpanded, setIsExpanded] = useState(true);
 
   const collapseVersion = props.collapseSignal?.version ?? 0;
@@ -37,32 +34,31 @@ const QuestGroup = (props: QuestGroupProps) => {
     (a, b) => PRIORITY_ORDER[b.priority] - PRIORITY_ORDER[a.priority],
   );
 
-  const count = props.quests.length;
-  const countLabel =
-    count === 1
-      ? tr("quest.group.quests.one")
-      : tr("quest.group.quests", { args: [String(count)] });
-
   return (
     <div className="flex flex-col gap-0.5">
-      <div className="flex items-center gap-2 px-1">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0"
-          onClick={() => setIsExpanded(!isExpanded)}
-        >
-          {isExpanded ? (
-            <Minus className="size-3" />
-          ) : (
-            <Plus className="size-3" />
+      {/* The quest view's collapsible header, minus the icon: name, count,
+          hairline, chevron, and the whole row is the toggle. It used to lead
+          with a +/- button, which put the control before the thing it
+          controls and made only that 24px square clickable.
+
+          The name keeps its own weight rather than the block's uppercase
+          muted label: an area is a name the reader scans for, not a section
+          title. */}
+      <button
+        type="button"
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="group/group hover:bg-muted/40 focus-visible:ring-ring/50 -mx-1 flex items-center gap-2 rounded px-2 py-1 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none"
+        aria-expanded={isExpanded}
+      >
+        <span className="truncate text-sm font-bold">{props.name}</span>
+        <div className="bg-border h-px flex-1 opacity-40" />
+        <ChevronDown
+          className={cn(
+            "text-muted-foreground group-hover/group:text-foreground size-4 shrink-0 transition-all",
+            !isExpanded && "-rotate-90",
           )}
-        </Button>
-        <span className="text-sm font-bold">{props.name}</span>
-        <div className="bg-border h-px flex-1 opacity-30" />
-        <span className="text-muted-foreground text-sm">{countLabel}</span>
-      </div>
+        />
+      </button>
       {isExpanded && (
         <div className="flex flex-col gap-0.5">
           {quests.map((item, index) => (
