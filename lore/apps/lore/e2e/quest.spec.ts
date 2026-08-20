@@ -467,7 +467,10 @@ test.describe("Quest", () => {
       await expect(page.getByText(`Summary${t}`).first()).toBeVisible({
         timeout: 15_000,
       });
-      await expect(page.getByText(/completion summary/i)).toBeVisible({
+      // The summary is the BODY of the "completed the quest" entry now, not
+      // a section of its own headed "Completion summary": it is dated,
+      // authored and about the quest ending, so it belongs in the feed.
+      await expect(page.getByText(/completed the quest/i)).toBeVisible({
         timeout: 10_000,
       });
       await expect(page.getByText(summaryText).first()).toBeVisible();
@@ -835,7 +838,7 @@ test.describe("Quest", () => {
    * the `alephaKey` history stamp, and the arrow falls back to the quest
    * list when the answer is no.
    */
-  test("the header arrow goes back, and falls back to the list on a deep link", async ({
+  test("the breadcrumb walks back up from a quest, deep link included", async ({
     page,
   }) => {
     test.setTimeout(60_000);
@@ -894,29 +897,26 @@ test.describe("Quest", () => {
       await expect(crumbs.getByText(`#${shortId}`)).toBeVisible();
     });
 
-    await test.step("a deep link has no in-app history, so it lands on the list", async () => {
-      // `page.goto` is a real load: this entry IS the one the app booted
-      // into, which is exactly the case the fallback exists for.
+    await test.step("the breadcrumb is the way back, on a deep link too", async () => {
+      // The page mount has no back arrow any more: the breadcrumb sits
+      // directly above the title and says the same thing, so the arrow was a
+      // second control for one job. It survives on the CARD mount, where it
+      // is the drawer's only way out.
+      //
+      // `page.goto` is a real load, so this entry IS the one the app booted
+      // into — the case the arrow's history fallback used to exist for, and
+      // the one the breadcrumb handles without needing history at all.
       await page.goto(`/${projectSlug}/quests/${shortId}`);
       await page.waitForLoadState("networkidle");
 
-      await page.getByRole("button", { name: /^back$/i }).click();
-      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/?$`), {
-        timeout: 10_000,
-      });
-    });
-
-    await test.step("arriving from inside the app walks back one entry", async () => {
-      // Continues from the list the step above landed on. Clicking a table
-      // row is a real `router.push`, so this entry carries an alephaKey > 0
-      // and the arrow takes the history branch rather than the fallback.
-      await page.getByText(`Back${t}`).first().click();
-      await expect(page).toHaveURL(
-        new RegExp(`/${projectSlug}/quests/${shortId}$`),
-        { timeout: 10_000 },
+      await expect(page.getByRole("button", { name: /^back$/i })).toHaveCount(
+        0,
       );
 
-      await page.getByRole("button", { name: /^back$/i }).click();
+      await page
+        .getByRole("navigation", { name: "breadcrumb" })
+        .getByRole("link", { name: "Quests" })
+        .click();
       await expect(page).toHaveURL(new RegExp(`/${projectSlug}/?$`), {
         timeout: 10_000,
       });
@@ -980,7 +980,7 @@ test.describe("Quest", () => {
    * Accept / Complete opposite Shelve and Abandon; the lifecycle verbs moved
    * up into the title row and the rest moved in here.
    */
-  test("the rail states the quest, and Unassign sends it back to the backlog", async ({
+  test("the rail states the quest, and Unassign releases it without leaving", async ({
     page,
   }) => {
     test.setTimeout(60_000);
@@ -1051,93 +1051,22 @@ test.describe("Quest", () => {
         .getByRole("button", { name: /^unassign$/i })
         .click();
 
-      // Unassign PUSHES back to the list rather than going back: the list it
-      // would return to still showed the quest as assigned.
-      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/?$`), {
-        timeout: 10_000,
-      });
+      // Unassign STAYS on the quest. It releases the quest, it does not
+      // remove it, so navigating back to the list read as "that is gone"
+      // for something still sitting right there with its assignee cleared.
+      await expect(page).toHaveURL(
+        new RegExp(`/${projectSlug}/quests/${shortId}$`),
+        { timeout: 10_000 },
+      );
+      // And the rail reflects it without a reload.
+      await expect(page.getByText("In progress")).toHaveCount(0);
     });
   });
 
-  /**
-   * The card mount (quest #1221). `QuestView` is one component with two
-   * mounts: this route page, and the same file inside the board's sheet at
-   * half the width. `context="card"` is what tells them apart — there, the
-   * completion summary folds behind the header's overflow so the description
-   * and the objectives are what a card back opens on.
-   */
-  test("the card back folds the completion summary behind the overflow", async ({
-    page,
-  }) => {
-    test.setTimeout(60_000);
-
-    const t = Date.now();
-    const email = `card${t}@example.com`;
-    const password = "CardBack123!";
-    const projectTitle = `CB${t}`.slice(0, 20);
-    const questTitle = `Carded${t}`;
-
-    await registerAndVerify(page, email, password);
-    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
-      page,
-      projectTitle,
-    );
-
-    const { shortId } = await apiPost<{ id: number; shortId: number }>(
-      page,
-      "createQuest",
-      {
-        projectId,
-        title: questTitle,
-        description: "Seeded for the card back",
-        area: "Main",
-        priority: "medium",
-        objectives: [],
-        attachments: [],
-      },
-    );
-
-    await test.step("complete it, and the page mount shows the summary inline", async () => {
-      await page.goto(`/${projectSlug}/quests/${shortId}`);
-      await page.waitForLoadState("networkidle");
-
-      await page
-        .getByRole("button", { name: /sign and accept|accept.*quest/i })
-        .click();
-      await page
-        .getByRole("button", { name: /^complete quest$/i })
-        .first()
-        .click();
-      await page
-        .getByRole("button", { name: /complete without summary/i })
-        .click();
-
-      await expect(page.getByText(/completion summary/i).first()).toBeVisible({
-        timeout: 10_000,
-      });
-    });
-
-    await test.step("the card mount folds it away, and the overflow brings it back", async () => {
-      await page.goto(`/${projectSlug}/`);
-      await page.getByTestId("quests-view-kanban").click();
-      await expect(page.getByTestId("kanban-board")).toBeVisible({
-        timeout: 10_000,
-      });
-
-      await page.getByText(questTitle).first().click();
-      // The sheet renders the same component, so the description is there.
-      await expect(page.getByText("Seeded for the card back")).toBeVisible({
-        timeout: 10_000,
-      });
-      await expect(page.getByText(/completion summary/i)).toHaveCount(0);
-
-      await page.getByRole("button", { name: /^more$/i }).click();
-      await page.getByRole("menuitem", { name: /completion summary/i }).click();
-      await expect(page.getByText(/completion summary/i).first()).toBeVisible({
-        timeout: 10_000,
-      });
-    });
-  });
+  // The card mount used to fold the completion summary behind the header's
+  // overflow menu, and this test drove that menu. Both are gone: the summary
+  // is an entry in the Discussion feed on either mount, so there is no
+  // folded section left to reveal.
 
   test("view switcher reaches the kanban board and remembers the choice", async ({
     page,
@@ -1262,11 +1191,11 @@ test.describe("Quest", () => {
       if (!barInKanban) throw new Error("missing bounding box");
       expect(barInKanban.y).toBe(barInList.y);
 
-      // The detail route keeps neither. It used to hold the log at 25% and
-      // the bar above it, which made opening a quest feel like a pane inside
-      // the list rather than a page; the quest owns the viewport now, and a
-      // bar switching between two views the page does not have is chrome
-      // without a job. (This step used to assert the opposite of both.)
+      // The detail route keeps BOTH again. The log is how you move between
+      // quests without going back to the list first, which is exactly what
+      // the detail route wants, and the bar rides with it: the two are
+      // driven by one route set, so dropping the bar here would shift the
+      // log up the moment a quest opened.
       await page.goto(`/${projectSlug}/`);
       const { shortId } = await apiPost<{ shortId: number }>(
         page,
@@ -1285,9 +1214,10 @@ test.describe("Quest", () => {
       await expect(page.getByText(`RailProbe${t}`).first()).toBeVisible({
         timeout: 10_000,
       });
-      await expect(page.getByTestId("quest-log")).toHaveCount(0);
-      await expect(page.getByTestId("quest-log-rail")).toHaveCount(0);
-      await expect(page.getByTestId("quests-view-switcher")).toHaveCount(0);
+      await expect(page.getByTestId("quest-log")).toBeVisible({
+        timeout: 10_000,
+      });
+      await expect(page.getByTestId("quests-view-switcher")).toBeVisible();
     });
 
     await test.step("the view bar disappears when kanban is off", async () => {

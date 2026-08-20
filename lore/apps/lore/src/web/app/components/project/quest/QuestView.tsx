@@ -1,12 +1,5 @@
-import { MarkdownView } from "@alepha/ui/components/markdown-view/markdown-view";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@alepha/ui/components/ui/dropdown-menu";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
@@ -15,15 +8,13 @@ import { Link, useRouter } from "alepha/react/router";
 import {
   Archive,
   ArrowLeft,
+  CalendarClock,
+  CircleDot,
   FileText,
-  Link2,
+  Inbox,
   ListChecks,
-  MoreHorizontal,
   Paperclip,
-  Pencil,
-  ScrollText,
   Signature,
-  SquareCheck,
   Swords,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -34,79 +25,55 @@ import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuests
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentQuestAtom } from "@/web/app/atoms/currentQuestAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
-import AttachmentBadge from "./AttachmentBadge.tsx";
+import QuestAttachments from "./QuestAttachments.tsx";
 import QuestCompletionDialog from "./QuestCompletionDialog.tsx";
 import QuestDescription from "./QuestDescription.tsx";
 import QuestDiscussion from "./QuestDiscussion.tsx";
-import QuestSummaryEditDialog from "./QuestSummaryEditDialog.tsx";
 import QuestViewCollapsibleBlock from "./QuestViewCollapsibleBlock.tsx";
 import QuestViewEditButton from "./QuestViewEditButton.tsx";
 import QuestViewObjectives from "./QuestViewObjectives.tsx";
+import QuestViewQuestline from "./QuestViewQuestline.tsx";
 import QuestViewRail from "./QuestViewRail.tsx";
+import { QUEST_STATUS_TONE } from "./questChips.ts";
 
 export interface QuestViewProps {
   quest: QuestResource;
   /**
-   * Which mount this is. `page` is the quest route at
-   * `/:projectSlug/quests/:shortId`; `card` is the same component inside the
-   * kanban board's sheet, at half the width.
+   * Which mount this is.
    *
-   * It chooses which sections render inline and which fold behind the
-   * header's overflow menu — see {@link FOLDABLE_SECTIONS}. Defaults to
-   * `page` because the route loader hands this component its props and has
-   * nowhere to pass a context; only the card mount is explicit.
+   * - `page` is the quest route at `/:projectSlug/quests/:shortId`.
+   * - `card` is the kanban board's sheet, at half the viewport's width: one
+   *   narrow column, everything stacked, the back arrow doubling as the only
+   *   way out.
+   * - `dialog` is the questline map's popup, up to 1400px wide. It is a
+   *   PREVIEW, and that is what separates it from `card`: it is the only
+   *   mount whose subject has a page of its own one click away, so its
+   *   title is a link there, it closes with an X rather than an arrow, and
+   *   it carries Edit but none of the lifecycle verbs. Accepting or
+   *   completing a quest from a popup over a map is a decision that wants
+   *   the quest in front of you, not a card you opened to glance at.
+   *
+   * Nothing folds behind an overflow menu any more: the only section that
+   * ever did was the completion summary, which is now an entry in the
+   * Discussion feed on both mounts. Defaults to `page` because the route
+   * loader hands this component its props and has nowhere to pass a context;
+   * every other mount is explicit.
    */
   context?: QuestViewContext;
   onClose?: () => void;
   onQuestChange?: (quest: QuestResource) => void;
 }
 
-interface SectionHeaderProps {
-  icon: React.ReactNode;
-  label: string;
-}
-
-/** Mirror of ProjectQuestsTable.getPriorityColor — kept local so the
- *  sticky header doesn't have to import board internals. */
-const getPriorityColor = (priority: string): string => {
-  switch (priority) {
-    case "high":
-      return "bg-red-500/15 text-red-600";
-    case "medium":
-      return "bg-orange-500/15 text-orange-600";
-    default:
-      return "bg-muted text-muted-foreground";
-  }
-};
-
-const SectionHeader = (props: SectionHeaderProps) => (
-  <div className="flex items-center gap-2 px-1 py-1">
-    {/* Mirrors QuestViewCollapsibleBlock's header — same paddings,
-        icon/label face, and hairline rule — minus the chevron and the
-        clickable hover state. Keeping them visually aligned makes
-        collapsible vs. static sections feel like one family. */}
-    <span className="text-muted-foreground shrink-0 [&>svg]:size-4">
-      {props.icon}
-    </span>
-    <span className="text-muted-foreground text-xs font-semibold tracking-[0.84px] whitespace-nowrap uppercase">
-      {props.label}
-    </span>
-    <div className="bg-border h-px flex-1 opacity-40" />
-  </div>
-);
-
 const QuestView = (props: QuestViewProps) => {
   const alepha = useAlepha();
   const questApi = useClient<QuestController>();
   const router = useRouter<AppRouter>();
-  const { tr } = useI18n<I18n, "en">();
+  const { tr, l } = useI18n<I18n, "en">();
   const dialog = useDialog();
   const dt = useInject(DateTimeProvider);
   const [showDialog, setShowDialog] = useState(false);
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [completing, setCompleting] = useState(false);
-  const [showEditSummary, setShowEditSummary] = useState(false);
-  const [savingSummary, setSavingSummary] = useState(false);
   const [quest, setQuest] = useState<QuestResource>(props.quest);
   const [questline, setQuestline] = useState<{
     predecessor?: {
@@ -154,40 +121,46 @@ const QuestView = (props: QuestViewProps) => {
 
   const context: QuestViewContext = props.context ?? "page";
 
-  // Sections the card mount folds away, until the reader asks for one from
-  // the overflow menu. Revealing is per-mount and deliberately not
-  // remembered: a card back is opened to read the quest, not to resume a
-  // layout.
-  const [revealed, setRevealed] = useState<QuestViewSection[]>([]);
-  const rendersInline = (section: QuestViewSection) =>
-    context === "page" ||
-    !FOLDABLE_SECTIONS.includes(section) ||
-    revealed.includes(section);
+  // The status chip. Same four colours the quest table's dot uses, so a
+  // status reads identically in the list and on the quest.
+  const statusLabel = {
+    new: tr("quest.status.new"),
+    accepted: tr("quest.status.accepted"),
+    completed: tr("quest.status.completed"),
+    shelved: tr("quest.status.shelved"),
+  }[quest.metadata.status];
+  // Tone rather than classes: the hue now lives in `@alepha/ui`'s Badge and
+  // the meaning-to-tone map is shared with the quest table, so a status
+  // cannot look like one thing in the list and another here.
+  const statusTone = QUEST_STATUS_TONE[quest.metadata.status];
 
-  // A folded section only earns a menu entry when it would have something to
-  // show — an overflow listing "Completion summary" on an unfinished quest is
-  // a dead entry.
-  const foldedSections = FOLDABLE_SECTIONS.filter(
-    (section) => !rendersInline(section) && !!quest.completedAt,
-  );
+  // The due chip. Weekday only while the date is close enough for a weekday
+  // to be unambiguous; past a week "Friday" could be any of several, so it
+  // becomes a real date. Amber until it is overdue, then destructive.
+  const dueChip = quest.dueAt
+    ? (() => {
+        const due = dt.of(quest.dueAt);
+        const withinAWeek = due.diff(dt.now(), "day") < 7;
+        const overdue = due.isBefore(dt.now());
+        return (
+          <Badge variant="tint" tone={overdue ? "danger" : "warning"}>
+            <CalendarClock className="size-3" />
+            {tr("quest.view.due", {
+              args: [
+                String(
+                  l(quest.dueAt, { date: withinAWeek ? "dddd" : "ll" }) ?? "",
+                ),
+                String(due.fromNow()),
+              ],
+            })}
+          </Badge>
+        );
+      })()
+    : null;
 
   const updateQuest = (updated: QuestResource) => {
     setQuest(updated);
     props.onQuestChange?.(updated);
-  };
-
-  /**
-   * Leave the quest because it is no longer the thing being worked on.
-   *
-   * Unassign uses this and pushes rather than going back on purpose: the
-   * list it would return to still shows this quest as assigned.
-   */
-  const handleClose = () => {
-    if (props.onClose) {
-      props.onClose();
-    } else if (project) {
-      router.push("projectQuests", { meta: { deleted: true } });
-    }
   };
 
   /**
@@ -215,6 +188,19 @@ const QuestView = (props: QuestViewProps) => {
       });
     }
   };
+
+  /*
+   * The title's own text, shared by the two elements that can carry it: a
+   * plain span on the page and the kanban card, an anchor in the dialog.
+   * One definition, so the id and its muted separator cannot drift apart
+   * between the mounts.
+   */
+  const titleContent = (
+    <>
+      #{quest.shortId} <span className="text-muted-foreground">-</span>{" "}
+      {quest.title}
+    </>
+  );
 
   /**
    * Unassign. The server method is still called `abandonQuest`, but it
@@ -245,7 +231,9 @@ const QuestView = (props: QuestViewProps) => {
           (t) => t.id !== quest.id,
         ),
       );
-      handleClose();
+      // Deliberately stays put. Unassigning releases the quest, it does not
+      // remove it, so navigating back to the list read as "that is gone"
+      // for something still sitting right there with its assignee cleared.
     },
   };
 
@@ -287,84 +275,172 @@ const QuestView = (props: QuestViewProps) => {
     },
   };
 
+  // Hoisted so the two mounts can place the same rail differently: the page
+  // stands it up as a full-height column beside the scrolling body, the card
+  // stacks it underneath.
+  const railNode = (
+    <QuestViewRail
+      quest={quest}
+      questline={questline}
+      onUpdate={(it) => {
+        updateQuest(it);
+        alepha.store.set(currentQuestAtom, it);
+      }}
+      onShelve={shelveQuest.onClick}
+      onUnshelve={unshelveQuest.onClick}
+      onUnassign={unassignQuest.onClick}
+      shelveDisabled={shelveQuest.disabled}
+      unshelveDisabled={unshelveQuest.disabled}
+      unassignDisabled={unassignQuest.disabled}
+    />
+  );
+
   return (
-    // The quest sits directly on the page surface — no card, no border, no
-    // radius, no margin. `bg-background` is what the AppShell's content panel
-    // already paints, so the route context matches seamlessly; in the kanban
-    // drawer it covers the Sheet's `bg-popover` instead, which keeps the two
-    // contexts looking like the same view rather than two surfaces.
+    // The quest sits directly on the page surface: no card, no border, no
+    // radius, no margin.
+    //
+    // Transparent on the page so the shell's dot texture shows through. It
+    // used to paint `bg-background` here to match the content panel, which
+    // was seamless while that panel was flat and became an opaque patch the
+    // moment it gained the dots.
+    //
+    // The card mount still paints it: there it covers the Sheet's
+    // `bg-popover`, which is what keeps the drawer and the route looking
+    // like one view rather than two surfaces.
     <div
       key={quest.id}
-      className="bg-background flex flex-1 flex-col overflow-hidden"
+      className={
+        context === "card"
+          ? // One column that scrolls as a whole, because the sheet is half
+            // a viewport wide and has no room to stand anything beside
+            // anything else.
+            "bg-background flex flex-1 flex-col overflow-hidden"
+          : // Page AND dialog. Below `lg` this scrolls as one column, so the
+            // rail is reached by scrolling past the body. From `lg` it stops
+            // scrolling and becomes the row that stands the rail up beside
+            // the body, each with its own overflow. That is also what pins
+            // the header, since the sticky header then lives in the LEFT
+            // column's scrollport rather than in one that holds the rail too.
+            //
+            // A viewport breakpoint is honest for the dialog: its width is
+            // `min(1400px, 100vw-4rem)`, so it tracks the window until it
+            // caps. The card is the only mount where the two disagree, and
+            // the card is not in this branch.
+            "bg-background flex flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden"
+      }
     >
-      <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
-        <div className="flex flex-1 flex-col gap-6 px-5 py-4">
+      {/* The scroll surface at `lg`: the LEFT column only, which is what
+          makes the rail beside it stand still while this scrolls. Below
+          `lg` it owns no scroll at all and the root above does the work. */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden lg:overflow-y-auto">
+        <div className="flex flex-1 flex-col gap-6 px-10 pt-7 pb-14">
+          {/* Chips: what this quest IS right now, above the title that says
+              what it is about. Deliberately outside the sticky header below,
+              so the one line worth pinning while the body scrolls stays one
+              line. `-mx-5 -mt-4` moves here because this is the flush top
+              edge now, and `-mb-6` cancels the container's `gap-6`: the
+              chips label the title directly below them and a 24px trench
+              between the two read as two unrelated rows. */}
+          {/* `pr-14` in the dialog, dropped at `lg`: below `lg` the rail
+              is stacked at the bottom, so this row is what sits under the
+              popup's floating close and its "updated ..." stamp would run
+              beneath the X. From `lg` the rail is the top-right corner
+              instead and reserves the space itself. */}
+          <div
+            className={`-mx-10 -mt-7 -mb-6 flex flex-wrap items-center gap-2 px-10 pt-7 ${
+              context === "dialog" ? "pr-14 lg:pr-10" : ""
+            }`}
+          >
+            <Badge variant="tint" tone={statusTone}>
+              <CircleDot className="size-3" />
+              {statusLabel}
+            </Badge>
+
+            {quest.feedbackId != null && (
+              <Badge variant="secondary" className="text-muted-foreground">
+                <Inbox className="size-3" />
+                {tr("quest.view.fromFeedback", {
+                  args: [String(quest.feedbackId)],
+                })}
+              </Badge>
+            )}
+
+            {dueChip}
+
+            {/* Right-aligned, and last in the DOM: it is the least important
+                thing in the row and should be the last thing a screen reader
+                reaches. */}
+            <span className="text-muted-foreground ml-auto text-xs">
+              {tr("quest.view.updated", {
+                args: [String(dt.of(quest.updatedAt).fromNow())],
+              })}
+            </span>
+          </div>
+
           {/* Sticky header — stays visible as the quest body scrolls.
               Works in both contexts: the route page and the kanban
               drawer share this same scroll container.
-              `-mx-5 -mt-4` cancels the parent's padding so the header
-              spans the full width and sits flush with the top edge.
-              Carries the back arrow, the title (prefixed with #shortId),
-              the priority badge and the edit/duplicate/timer affordances. */}
-          <header className="bg-background border-border sticky top-0 z-10 -mx-5 -mt-4 flex items-center gap-3 border-b px-5 py-3">
-            {/* The arrow leads the header on both mounts. It replaces the
-                close cross that used to sit on the right: a cross says "this
-                is a dialog", and on the route page it was not one. */}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 shrink-0 p-0"
-              aria-label={tr("quest.view.back")}
-              onClick={handleBack}
-            >
-              <ArrowLeft className="size-4" />
-            </Button>
+              `-mx-5` spans the full width; the top offset now belongs to the
+              chips row above, which is what sits flush with the top edge.
+              Carries the title (prefixed with #shortId), the priority badge
+              and the edit/duplicate/timer affordances. */}
+          <header className="bg-background border-border sticky top-0 z-10 -mx-10 flex items-center gap-3 border-b px-10 py-3">
+            {/* Card mount only. On the page the breadcrumb already walks up
+                and the arrow was redundant beside it, but in the kanban
+                drawer this IS the close affordance: the sheet has no other
+                visible way out, so dropping it there would strand the
+                reader. */}
+            {context === "card" && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 shrink-0 p-0"
+                aria-label={tr("quest.view.back")}
+                onClick={handleBack}
+              >
+                <ArrowLeft className="size-4" />
+              </Button>
+            )}
 
-            {/* Title column: title + tag chips stacked, takes remaining
-                width. leading-tight compresses the title so the chips sit
-                close underneath instead of orphaning a half-line gap. */}
+            {/* Title column. Tags used to stack under the title here and are
+                now the rail's alone: rendering them in both places put the
+                same chips on screen twice on the page mount, where the rail
+                is always visible. */}
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               {/* Inter, not Cinzel: the RPG surface is vocabulary, not
-                  lettering. The page mount takes the mockup's 30px/600; the
-                  card back stays at 18px, where 30px would eat a half-width
-                  sheet. */}
-              <span
-                className={`truncate leading-tight font-semibold ${
-                  context === "page"
-                    ? "text-3xl tracking-[-0.6px]"
-                    : "text-lg font-bold"
-                }`}
-              >
-                <span className="text-muted-foreground font-mono text-sm">
-                  #{quest.shortId}
-                </span>{" "}
-                {quest.title}
-              </span>
-              {quest.tags && quest.tags.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1">
-                  {quest.tags.map((tag) => (
-                    <Link
-                      key={tag}
-                      href={router.path("projectQuests", {
-                        params: { projectSlug: project?.slug ?? "" },
-                        query: { tag },
-                      })}
-                      className="bg-muted hover:bg-muted/70 rounded-sm border px-1.5 py-0.5 font-mono text-xs leading-none"
-                    >
-                      {tag}
-                    </Link>
-                  ))}
-                </div>
+                  lettering. The page mount is 28px/600; the card back and the
+                  dialog stay at 18px, where 28px would eat a half-width
+                  sheet.
+
+                  In the dialog the title is a real anchor to the quest's own
+                  page. It is the one mount where "the same thing, elsewhere"
+                  exists and is worth offering, and an anchor rather than a
+                  handler so cmd-click opens it in a tab and hovering shows
+                  where it goes. `router.path` inherits `projectSlug` from the
+                  route the dialog is open over, which is always inside the
+                  project. */}
+              {context === "dialog" ? (
+                <Link
+                  href={router.path("projectQuest", {
+                    params: { shortId: String(quest.shortId) },
+                  })}
+                  className="truncate text-lg leading-tight font-bold"
+                >
+                  {titleContent}
+                </Link>
+              ) : (
+                <span
+                  className={`truncate leading-tight font-semibold ${
+                    context === "page"
+                      ? "text-[28px] tracking-[-0.6px]"
+                      : "text-lg font-bold"
+                  }`}
+                >
+                  {titleContent}
+                </span>
               )}
             </div>
-
-            <Badge
-              variant="secondary"
-              className={`${getPriorityColor(quest.priority)} shrink-0`}
-            >
-              {quest.priority}
-            </Badge>
 
             {quest.shelvedAt && (
               <Badge
@@ -394,10 +470,15 @@ const QuestView = (props: QuestViewProps) => {
                   showDialog={showDialog}
                   setShowDialog={setShowDialog}
                 />
-                {quest.acceptedAt ? (
+                {/* Edit above is on every mount; the lifecycle verb is not.
+                    Accept and Complete share one slot, so the dialog drops
+                    the slot rather than showing Complete and hiding Accept,
+                    which would have read as "this quest cannot be taken"
+                    rather than "not from here". Both verbs are one click
+                    away through the title. */}
+                {context === "dialog" ? null : quest.acceptedAt ? (
                   <Button
                     type="button"
-                    size="sm"
                     className="bg-green-600 text-white hover:bg-green-700"
                     disabled={
                       !questApi.completeQuest.can() ||
@@ -413,7 +494,6 @@ const QuestView = (props: QuestViewProps) => {
                 ) : (
                   <Button
                     type="button"
-                    size="sm"
                     className="bg-blue-600 text-white hover:bg-blue-700"
                     disabled={!questApi.acceptQuest.can()}
                     onClick={async () => {
@@ -436,122 +516,15 @@ const QuestView = (props: QuestViewProps) => {
                 )}
               </div>
             )}
-
-            {/* Overflow — the way back to a section this mount folded
-                away. Only rendered when it would have an entry, so the page
-                mount (which folds nothing) never shows an empty menu. */}
-            {foldedSections.length > 0 && (
-              <>
-                <div className="bg-border h-6 w-px shrink-0" />
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    render={
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 shrink-0 p-0"
-                        aria-label={tr("quest.view.more")}
-                      />
-                    }
-                  >
-                    <MoreHorizontal className="size-4" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {foldedSections.map((section) => (
-                      <DropdownMenuItem
-                        key={section}
-                        onClick={() =>
-                          setRevealed((prev) => [...prev, section])
-                        }
-                      >
-                        <ScrollText className="size-4" />
-                        {tr("quest.view.completionSummary")}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            )}
           </header>
 
-          {/* Body left, metadata rail right, scrolling together — the rail is
-              not independently sticky. The split is driven by `context`, not
-              by a media query alone: Tailwind breakpoints read the VIEWPORT,
-              and the card mount is a 50vw sheet on what is usually a wide
-              screen, so `lg:` would put a 308px rail beside a ~360px body
-              there. The card always stacks; the page stacks below `lg`. */}
-          <div
-            className={
-              context === "card"
-                ? "flex flex-col gap-6"
-                : "flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8"
-            }
-          >
+          {/* Body, and below it the rail on the one mount that keeps the
+              rail inside this scroll flow. Page and dialog both put theirs
+              outside as a standing sibling instead, so for them this column
+              holds the body alone. */}
+          <div className="flex flex-col gap-6">
             <div className="flex min-w-0 flex-1 flex-col gap-6">
-              {/* Questline (Lore #32) — predecessor + dependents.
-              Blocked-by flips to Unblocked once the predecessor closes;
-              dependents are surfaced as a backlink list. */}
-              {(questline.predecessor || questline.dependents.length > 0) && (
-                <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs">
-                  {questline.predecessor && (
-                    <Link
-                      href={router.path("projectQuestGraph", {
-                        params: {
-                          projectSlug: project?.slug ?? "",
-                          shortId: String(quest.shortId),
-                        },
-                      })}
-                      className={`inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 ${
-                        questline.predecessor.completedAt
-                          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600"
-                          : "border-amber-500/40 bg-amber-500/10 text-amber-600"
-                      }`}
-                    >
-                      {questline.predecessor.completedAt ? (
-                        <SquareCheck className="size-3" />
-                      ) : (
-                        <Link2 className="size-3" />
-                      )}
-                      {questline.predecessor.completedAt
-                        ? tr("quest.view.questline.unblocked", {
-                            args: [String(questline.predecessor.shortId)],
-                          })
-                        : questline.predecessor.shelvedAt
-                          ? // A shelved predecessor never completes on its own,
-                            // so say so rather than implying the block will
-                            // clear by itself.
-                            tr("quest.view.questline.blockedByShelved", {
-                              args: [String(questline.predecessor.shortId)],
-                            })
-                          : tr("quest.view.questline.blockedBy", {
-                              args: [String(questline.predecessor.shortId)],
-                            })}
-                      <span className="text-muted-foreground">
-                        {questline.predecessor.title}
-                      </span>
-                    </Link>
-                  )}
-                  {questline.dependents.map((dep) => (
-                    <Link
-                      key={dep.id}
-                      href={router.path("projectQuestGraph", {
-                        params: {
-                          projectSlug: project?.slug ?? "",
-                          shortId: String(quest.shortId),
-                        },
-                      })}
-                      className="bg-muted hover:bg-muted/70 inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5"
-                    >
-                      <Link2 className="size-3 rotate-90" />
-                      {tr("quest.view.questline.unlocks", {
-                        args: [String(dep.shortId)],
-                      })}
-                      <span className="text-muted-foreground">{dep.title}</span>
-                    </Link>
-                  ))}
-                </div>
-              )}
+              <QuestViewQuestline quest={quest} questline={questline} />
 
               {/* Description (collapsible, default expanded) */}
               <QuestViewCollapsibleBlock
@@ -565,65 +538,51 @@ const QuestView = (props: QuestViewProps) => {
                 />
               </QuestViewCollapsibleBlock>
 
-              {/* Completion summary — visible on completed quests. Owners /
-              creators (the only allowed editors server-side) can amend
-              the message; the data model carries an `editedAt` stamp so
-              the UI can surface "edited X ago" honestly. */}
-              {quest.completedAt && rendersInline("completionSummary") && (
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <SectionHeader
-                      icon={<ScrollText className="size-5" />}
-                      label={tr("quest.view.completionSummary")}
-                    />
-                    {questApi.updateQuestById.can() && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        aria-label={tr("quest.view.editSummary.title")}
-                        onClick={() => setShowEditSummary(true)}
-                      >
-                        <Pencil className="size-4" />
-                      </Button>
-                    )}
-                  </div>
-                  {quest.completionMessage ? (
-                    <div className="bg-muted border-border flex flex-col gap-2 rounded-md border p-3 px-4">
-                      <MarkdownView content={quest.completionMessage} />
-                      {quest.completionMessageUpdatedAt &&
-                        quest.completedAt &&
-                        quest.completionMessageUpdatedAt !==
-                          quest.completedAt && (
-                          <span className="text-muted-foreground text-xs italic">
-                            {tr("quest.view.completionSummary.edited", {
-                              args: [
-                                dt
-                                  .of(quest.completionMessageUpdatedAt)
-                                  .fromNow(),
-                              ],
-                            })}
-                          </span>
-                        )}
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setShowEditSummary(true)}
-                      className="bg-muted border-border text-muted-foreground rounded-md border p-3 px-4 text-left text-sm italic hover:underline"
-                    >
-                      {tr("quest.view.completionSummary.empty")}
-                    </button>
-                  )}
-                </div>
-              )}
-
               {/* Objectives (collapsible, default expanded) */}
               {quest.objectives.length > 0 && (
                 <QuestViewCollapsibleBlock
                   icon={<ListChecks className="size-5" />}
                   label={tr("quest.view.objectives")}
-                  defaultOpen
+                  // Open while there is work to do, folded once there is
+                  // not: on a finished quest the checklist is all ticks, and
+                  // the progress in the header already says so. The reader
+                  // came for what happened, which is the Discussion below.
+                  defaultOpen={!quest.completedAt}
+                  aside={
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="text-muted-foreground text-xs">
+                        {tr("quest.view.objectivesProgress", {
+                          args: [
+                            String(quest.metadata.objectivesProgress.completed),
+                            String(quest.metadata.objectivesProgress.total),
+                          ],
+                        })}
+                      </span>
+                      {/* Decorative: the count beside it already carries the
+                          meaning, so the bar is aria-hidden rather than a
+                          progressbar a screen reader has to read twice. */}
+                      <div
+                        aria-hidden="true"
+                        className="bg-muted h-1 w-24 overflow-hidden rounded-full"
+                      >
+                        <div
+                          className="bg-foreground/70 h-full rounded-full"
+                          style={{
+                            width: `${
+                              quest.metadata.objectivesProgress.total > 0
+                                ? Math.round(
+                                    (quest.metadata.objectivesProgress
+                                      .completed /
+                                      quest.metadata.objectivesProgress.total) *
+                                      100,
+                                  )
+                                : 0
+                            }%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  }
                 >
                   <QuestViewObjectives
                     quest={quest}
@@ -635,78 +594,85 @@ const QuestView = (props: QuestViewProps) => {
                 </QuestViewCollapsibleBlock>
               )}
 
-              {/* Attachments — kept non-collapsible; only shown when present */}
-              {quest.attachments && quest.attachments.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  <SectionHeader
-                    icon={<Paperclip className="size-5" />}
-                    label={tr("quest.view.attachments")}
+              {/* Attachments. Non-collapsible, and rendered even when empty
+                  on an open quest: the section used to be hidden until a
+                  file existed, which left no way to add the first one
+                  without going through the edit dialog. `QuestAttachments`
+                  is the upload control that already existed for that dialog
+                  and had no caller at all. */}
+              {(quest.attachments?.length || !quest.completedAt) && (
+                <QuestViewCollapsibleBlock
+                  icon={<Paperclip className="size-5" />}
+                  label={String(tr("quest.view.attachments"))}
+                  defaultOpen
+                  // The count, so a folded section still says whether there
+                  // is anything in it. Without it a collapsed Attachments
+                  // and an empty one look identical.
+                  aside={
+                    quest.attachments?.length ? (
+                      <span className="text-muted-foreground shrink-0 text-xs">
+                        {quest.attachments.length}
+                      </span>
+                    ) : undefined
+                  }
+                >
+                  <QuestAttachments
+                    questId={quest.id}
+                    value={quest.attachments ?? []}
+                    disabled={!!quest.completedAt}
+                    onChange={async (attachments) => {
+                      const updated = await questApi.updateQuestById({
+                        params: { id: quest.id },
+                        body: { attachments },
+                      });
+                      updateQuest(updated);
+                      alepha.store.set(currentQuestAtom, updated);
+                    }}
                   />
-                  <div className="flex flex-wrap gap-2">
-                    {quest.attachments.map((fileId) => (
-                      <AttachmentBadge key={fileId} fileId={fileId} disabled />
-                    ))}
-                  </div>
-                </div>
+                </QuestViewCollapsibleBlock>
               )}
 
-              {/* Discussion — the quest's history events and its comments
-                  in one feed. Always open: it is the section a returning
-                  reader comes back for, which the collapsed History block it
-                  replaces never was. */}
+              {/* Discussion: the quest's history events and its comments in
+                  one feed. Collapsible like its siblings, open by default. */}
               <QuestDiscussion quest={quest} />
             </div>
 
-            {/* The rule is what makes two columns read as two regions. It
-                turns horizontal when the rail stacks, which is always on the
-                card mount and below `lg` on the page. */}
-            <aside
-              className={
-                context === "card"
-                  ? "border-border w-full border-t pt-4"
-                  : "border-border w-full border-t pt-4 lg:w-[308px] lg:shrink-0 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6"
-              }
-            >
-              <QuestViewRail
-                quest={quest}
-                questline={questline}
-                onUpdate={(it) => {
-                  updateQuest(it);
-                  alepha.store.set(currentQuestAtom, it);
-                }}
-                onShelve={shelveQuest.onClick}
-                onUnshelve={unshelveQuest.onClick}
-                onUnassign={unassignQuest.onClick}
-                shelveDisabled={shelveQuest.disabled}
-                unshelveDisabled={unshelveQuest.disabled}
-                unassignDisabled={unassignQuest.disabled}
-              />
-            </aside>
+            {/* The card mount stacks the rail under the body: a drawer is a
+                single narrow column, and a 308px rail beside a ~360px body
+                would leave neither readable. Page and dialog put it outside
+                this scroll container entirely, below. */}
+            {context === "card" && (
+              <aside className="border-border w-full border-t pt-4">
+                {railNode}
+              </aside>
+            )}
           </div>
         </div>
       </div>
-      <QuestSummaryEditDialog
-        open={showEditSummary}
-        onOpenChange={(open) => {
-          if (!savingSummary) setShowEditSummary(open);
-        }}
-        initialValue={quest.completionMessage}
-        submitting={savingSummary}
-        onSave={async (message) => {
-          setSavingSummary(true);
-          try {
-            const updated = await questApi.updateQuestById({
-              params: { id: quest.id },
-              body: { completionMessage: message },
-            });
-            updateQuest(updated);
-            alepha.store.set(currentQuestAtom, updated);
-            setShowEditSummary(false);
-          } finally {
-            setSavingSummary(false);
-          }
-        }}
-      />
+
+      {/* A full-height bar, not a card, and a SIBLING of the scroll surface
+          rather than a child of it. That is what makes it stand still while
+          the body scrolls, and what lets it start at the very top of the page
+          instead of below the title.
+
+          It carries its own `overflow-y-auto` because a long rail must still
+          be reachable on a short viewport; it just does not move when the
+          quest does. Hidden below `lg`, where the viewport cannot afford
+          308px of chrome beside the prose. */}
+      {/* `lg:pt-12` in the dialog only. From `lg` this panel IS the popup's
+          top-right corner, and the close floats there over whatever the rail
+          scrolls beneath it; without the reserve, Status and its value opened
+          underneath the X. The page has no floating close, so it keeps the
+          even `p-4`. */}
+      {context !== "card" && (
+        <aside
+          className={`border-border bg-muted/20 w-full shrink-0 border-t p-4 lg:w-[308px] lg:overflow-y-auto lg:border-t-0 lg:border-l ${
+            context === "dialog" ? "lg:pt-12" : ""
+          }`}
+        >
+          {railNode}
+        </aside>
+      )}
       <QuestCompletionDialog
         open={showCompleteDialog}
         onOpenChange={(open) => {
@@ -752,7 +718,7 @@ const QuestView = (props: QuestViewProps) => {
  * exact file, and the kanban board mounts it inside a `Sheet`. Every change
  * here therefore pays twice, which is why this is a prop over a fork.
  */
-export type QuestViewContext = "page" | "card";
+export type QuestViewContext = "page" | "card" | "dialog";
 
 /**
  * Sections that can fold behind the header's overflow menu.
@@ -766,8 +732,4 @@ export type QuestViewContext = "page" | "card";
  * absorbed them — on the card the rail stacks under the body, so they are
  * reachable there without an overflow.
  */
-export type QuestViewSection = "completionSummary";
-
-const FOLDABLE_SECTIONS: QuestViewSection[] = ["completionSummary"];
-
 export default QuestView;
