@@ -53,7 +53,7 @@ const Home = () => {
     // it matters because going Back would otherwise land on
     // `?action=createProject` and bounce forward again.
     window.history.replaceState(null, "", router.path("home"));
-    router.push("projectCreate");
+    void router.push("projectCreate");
   }, [router, auth.user, canCreate]);
 
   // The signed-in landing page is the dashboard; the hero is what an
@@ -127,8 +127,8 @@ const Hero = (props: HeroProps) => {
       </div>
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
-          <LoreLogo size={28} className="size-7 animate-floating" />
-          <span className="text-muted-foreground text-xs uppercase tracking-widest">
+          <LoreLogo size={28} className="animate-floating size-7" />
+          <span className="text-muted-foreground text-xs tracking-widest uppercase">
             Alepha Lore
           </span>
         </div>

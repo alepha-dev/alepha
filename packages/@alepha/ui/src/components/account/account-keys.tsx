@@ -190,7 +190,7 @@ const AccountKeys = (props: AccountKeysProps) => {
               This is the only time it is shown. Store it somewhere safe before
               closing this dialog.
             </span>
-            <code className="break-all rounded-md border bg-muted p-3 font-mono text-xs">
+            <code className="bg-muted rounded-md border p-3 font-mono text-xs break-all">
               {freshToken}
             </code>
             <div className="flex justify-end gap-2">

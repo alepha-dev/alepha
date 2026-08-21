@@ -509,7 +509,7 @@ export function Control(props: ControlProps) {
           disabled={merged.disabled}
           maxLength={maxLength || undefined}
           autoComplete={merged.autoComplete}
-          autoFocus={merged.autoFocus}
+
           placeholder={merged.placeholder}
           value={String(value ?? "")}
           onChange={(e) => setValue(e.target.value)}
@@ -535,7 +535,7 @@ export function Control(props: ControlProps) {
         required={meta.required}
         disabled={merged.disabled}
         autoComplete={merged.autoComplete}
-        autoFocus={merged.autoFocus}
+
         inputProps={merged.inputProps}
         icon={resolveIcon(merged.icon, "password")}
         value={String(value ?? "")}
@@ -592,7 +592,7 @@ export function Control(props: ControlProps) {
     >
       <div className="relative">
         {Icon && (
-          <Icon className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2 pointer-events-none" />
+          <Icon className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
         )}
         <Input
           {...merged.inputProps}
@@ -607,7 +607,7 @@ export function Control(props: ControlProps) {
           type={htmlType}
           disabled={merged.disabled}
           autoComplete={autoComplete}
-          autoFocus={merged.autoFocus}
+
           placeholder={merged.placeholder}
           value={String(value ?? "")}
           minLength={meta.constraints.minLength}

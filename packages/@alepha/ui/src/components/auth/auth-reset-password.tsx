@@ -213,7 +213,7 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
             <img
               src={settings.logoUrl}
               alt={settings.displayName || props.realmConfig.realmName}
-              className="size-16 rounded-xl border bg-muted object-cover shadow-sm"
+              className="bg-muted size-16 rounded-xl border object-cover shadow-sm"
             />
           ) : null)}
         <Card className="w-full">
@@ -302,7 +302,7 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
                   <InputOTP
                     id="code"
                     maxLength={6}
-                    autoFocus
+
                     value={code}
                     onChange={(value) => setCode(value.replace(/\D/g, ""))}
                   >

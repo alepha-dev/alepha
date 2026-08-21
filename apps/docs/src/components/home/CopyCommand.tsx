@@ -9,7 +9,7 @@ const CopyCommand = (props: CopyCommandProps) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(props.command);
+    void navigator.clipboard.writeText(props.command);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [props.command]);

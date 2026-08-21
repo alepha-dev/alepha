@@ -47,7 +47,7 @@ const DashboardRail = () => {
     >
       <div className="flex items-center gap-2.5 px-1.5 pb-3.5">
         <LoreLogo size={26} className="size-[26px]" />
-        <span className="text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+        <span className="text-muted-foreground text-[11px] tracking-[0.18em] uppercase">
           Alepha Lore
         </span>
       </div>
@@ -64,7 +64,7 @@ const DashboardRail = () => {
         <span className="font-mono text-[11px]">⌘K</span>
       </button>
 
-      <div className="text-muted-foreground px-1.5 pb-2 text-[11px] font-medium uppercase tracking-[0.06em]">
+      <div className="text-muted-foreground px-1.5 pb-2 text-[11px] font-medium tracking-[0.06em] uppercase">
         {tr("dashboard.projects")}
       </div>
 

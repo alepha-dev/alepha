@@ -18,9 +18,9 @@ const ReportsKpiRow = (props: ReportsKpiRowProps) => {
       {props.kpis.map((kpi) => (
         <div key={kpi.label} className="flex flex-col gap-0.5">
           <span className="text-2xl font-bold tabular-nums">{kpi.value}</span>
-          <span className="text-xs text-muted-foreground">{kpi.label}</span>
+          <span className="text-muted-foreground text-xs">{kpi.label}</span>
           {kpi.hint ? (
-            <span className="text-xs text-muted-foreground/70">{kpi.hint}</span>
+            <span className="text-muted-foreground/70 text-xs">{kpi.hint}</span>
           ) : null}
         </div>
       ))}

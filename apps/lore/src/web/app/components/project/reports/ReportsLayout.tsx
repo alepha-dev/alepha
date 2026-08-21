@@ -41,7 +41,7 @@ const ReportsLayout = () => {
 
   return (
     <div className="mx-auto w-full max-w-5xl p-4">
-      <div className="flex gap-1 border-b border-border">
+      <div className="border-border flex gap-1 border-b">
         {TABS.map((tab) => {
           const isActive = activeRoute === tab.route;
           const href = router.path(tab.route);
@@ -50,9 +50,9 @@ const ReportsLayout = () => {
               key={tab.route}
               href={href}
               className={cn(
-                "whitespace-nowrap px-3 py-2 text-sm transition-colors",
+                "px-3 py-2 text-sm whitespace-nowrap transition-colors",
                 isActive
-                  ? "border-b-2 border-primary text-foreground"
+                  ? "border-primary text-foreground border-b-2"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >

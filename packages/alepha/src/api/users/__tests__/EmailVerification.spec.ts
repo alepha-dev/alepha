@@ -212,7 +212,7 @@ describe("alepha/api/users - Email Verification", () => {
     const token = extractCode(emailProvider.records[0].body);
 
     // Travel forward in time to expire the token (default expiration is 5 minutes for code verification)
-    dateTimeProvider.travel(6, "minutes");
+    await dateTimeProvider.travel(6, "minutes");
 
     // Attempt to verify with expired token
     await expect(
@@ -347,7 +347,7 @@ describe("alepha/api/users - Email Verification", () => {
     expect(emailProvider.records.length).toBe(1);
 
     // Wait for cooldown to pass (90 seconds default)
-    dateTimeProvider.travel(91, "seconds");
+    await dateTimeProvider.travel(91, "seconds");
 
     // Now should work
     await actions.requestEmailVerification({

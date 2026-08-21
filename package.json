@@ -43,6 +43,7 @@
     "depcheck": "^1.4.7",
     "oxfmt": "^0.64.0",
     "oxlint": "^1.79.0",
+    "oxlint-tsgolint": "^7.0.2001",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   },

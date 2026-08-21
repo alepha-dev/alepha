@@ -881,7 +881,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
           // WHITE wash that leaves the field lighter than the bar. Only the
           // dark-scoped rule (0,3,0) outranks it, and without it the two
           // controls disagreed: the trigger went dark, the input stayed light.
-          <div className="bg-muted flex flex-wrap items-end gap-2 rounded-md rounded-b-none border p-2 [&_:is(input,[role=combobox])]:bg-background dark:[&_:is(input,[role=combobox])]:bg-background">
+          <div className="bg-muted [&_:is(input,[role=combobox])]:bg-background dark:[&_:is(input,[role=combobox])]:bg-background flex flex-wrap items-end gap-2 rounded-md rounded-b-none border p-2">
             {props.filters && form ? (
               <form
                 {...form.props}
@@ -1016,8 +1016,8 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
             // because the colors are hard-coded (theme-relative `bg-foreground`
             // inverts awkwardly against a white container in dark mode).
             <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center">
-              <div className="pointer-events-auto flex animate-in fade-in-0 slide-in-from-bottom-2 items-center gap-2 rounded-full bg-zinc-900 px-3 py-1.5 text-zinc-100 shadow-lg ring-1 ring-white/10 duration-150">
-                <span className="text-sm pl-2">
+              <div className="animate-in fade-in-0 slide-in-from-bottom-2 pointer-events-auto flex items-center gap-2 rounded-full bg-zinc-900 px-3 py-1.5 text-zinc-100 shadow-lg ring-1 ring-white/10 duration-150">
+                <span className="pl-2 text-sm">
                   {tr("alephaTable.selected", {
                     default: `${selection.size} selected`,
                     args: [String(selection.size)],
@@ -1117,7 +1117,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                         <button
                           type="button"
                           onClick={() => toggleSort(key, def)}
-                          className="group/sort hover:text-foreground inline-flex cursor-pointer select-none items-center gap-1"
+                          className="group/sort hover:text-foreground inline-flex cursor-pointer items-center gap-1 select-none"
                         >
                           {def.label}
                           {/* A sortable column says so at rest. The arrow

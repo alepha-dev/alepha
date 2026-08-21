@@ -42,7 +42,7 @@ export const EnvLine = (props: EnvLineProps) => {
     !Number.isFinite(Number(v.value));
 
   const copy = () => {
-    navigator.clipboard.writeText(String(v.value ?? "")).then(() => {
+    void navigator.clipboard.writeText(String(v.value ?? "")).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });

@@ -145,7 +145,7 @@ export const DevJobs = () => {
       );
       setPushResult("Triggered");
       setPayloadOpen(false);
-      runtime.reload();
+      void runtime.reload();
     } catch (e: any) {
       setPushResult(e?.message ?? "Trigger failed");
     } finally {
@@ -166,7 +166,7 @@ export const DevJobs = () => {
       setPushResult(null);
       return;
     }
-    send({});
+    void send({});
   };
 
   if (meta.error) {
@@ -312,7 +312,7 @@ export const DevJobs = () => {
                     disabled={pushing}
                     onClick={() => {
                       try {
-                        send(JSON.parse(payloadText));
+                        void send(JSON.parse(payloadText));
                       } catch {
                         setPushResult("Payload is not valid JSON");
                       }

@@ -45,9 +45,9 @@ describe("BunShellProvider", () => {
     });
 
     it("should reject when command exits non-zero", async () => {
-      await expect(
-        shell.run("sh -c 'exit 7'", { capture: true }),
-      ).rejects.toThrow(/exited with code 7/);
+      expect(shell.run("sh -c 'exit 7'", { capture: true })).rejects.toThrow(
+        /exited with code 7/,
+      );
     });
   });
 
@@ -58,7 +58,7 @@ describe("BunShellProvider", () => {
     });
 
     it("should reject when an inherited command exits non-zero", async () => {
-      await expect(shell.run("false")).rejects.toThrow(/exited with code/);
+      expect(shell.run("false")).rejects.toThrow(/exited with code/);
     });
   });
 
@@ -144,15 +144,15 @@ describe("BunShellProvider", () => {
 
   describe("timeout", () => {
     it("kills a hung capture after the timeout", async () => {
-      await expect(
+      expect(
         shell.run(["sleep", "60"], { capture: true, timeout: 300 }),
       ).rejects.toThrow(/timed out after 300ms/);
     });
 
     it("kills a hung inherited command after the timeout", async () => {
-      await expect(
-        shell.run(["sleep", "60"], { timeout: 300 }),
-      ).rejects.toThrow(/timed out after 300ms/);
+      expect(shell.run(["sleep", "60"], { timeout: 300 })).rejects.toThrow(
+        /timed out after 300ms/,
+      );
     });
   });
 });

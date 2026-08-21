@@ -42,7 +42,7 @@ export const ProviderNode = (props: ProviderNodeProps) => {
       <div className="flex flex-col gap-1">
         {isModule ? (
           <>
-            <span className="break-words text-xs font-semibold">
+            <span className="text-xs font-semibold break-words">
               {data.label}
             </span>
             <span className="text-muted-foreground text-xs">
@@ -51,7 +51,7 @@ export const ProviderNode = (props: ProviderNodeProps) => {
           </>
         ) : (
           <>
-            <span className="break-words text-xs font-semibold">
+            <span className="text-xs font-semibold break-words">
               {data.label.split(".").pop()}
             </span>
             {data.module && (

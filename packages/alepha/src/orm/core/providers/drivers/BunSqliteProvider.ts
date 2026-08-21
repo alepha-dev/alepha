@@ -248,7 +248,7 @@ export class BunSqliteProvider extends DatabaseProvider {
 
     if (foreignKeysWereOn) this.sqlite!.run("PRAGMA foreign_keys=OFF");
     try {
-      const result = await migrate(this.bunDb!, {
+      const result = migrate(this.bunDb!, {
         migrationsFolder,
         ...options,
       });

@@ -119,7 +119,7 @@ export const MarkdownView = (props: MarkdownViewProps) => {
           a: ({ href, children }) => (
             <a
               href={href}
-              className="text-primary underline decoration-primary/50 underline-offset-4 hover:decoration-primary"
+              className="text-primary decoration-primary/50 hover:decoration-primary underline underline-offset-4"
             >
               {children}
             </a>
@@ -131,7 +131,7 @@ export const MarkdownView = (props: MarkdownViewProps) => {
               return <code className={`${className} text-xs`}>{children}</code>;
             }
             return (
-              <code className="bg-muted rounded px-1.5 py-0.5 text-[0.85em] font-mono">
+              <code className="bg-muted rounded px-1.5 py-0.5 font-mono text-[0.85em]">
                 {children}
               </code>
             );

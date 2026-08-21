@@ -412,7 +412,7 @@ export function useAction<Args extends any[], Result = void>(
   // issued for the previous deps, so its result is already stale.
   useEffect(() => {
     if (options.runOnInit) {
-      runAction([] as any, { supersede: true });
+      void runAction([] as any, { supersede: true });
     }
   }, [...deps, options.runOnInit]);
 

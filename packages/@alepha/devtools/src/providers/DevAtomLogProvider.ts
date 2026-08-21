@@ -53,8 +53,8 @@ export class DevAtomLogProvider {
     // in place. The unfiltered path reads the live buffer directly and
     // must copy before reversing, or callers could mutate internal state.
     if (key) {
-      return this.buffer.filter((e) => e.key === key).reverse();
+      return this.buffer.filter((e) => e.key === key).toReversed();
     }
-    return [...this.buffer].reverse();
+    return [...this.buffer].toReversed();
   }
 }

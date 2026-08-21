@@ -300,7 +300,7 @@ describe("$parameter", () => {
     });
 
     // Travel past the activation date
-    dateTime.travel(2, "hours");
+    await dateTime.travel(2, "hours");
 
     // Now get() should promote the next to current
     expect(await config.features.get()).toEqual({
@@ -1964,7 +1964,7 @@ describe("reloadNextInBackground", () => {
     await config.features.reload();
 
     // Travel past activation — get() triggers promotion + background reload
-    dateTime.travel(2, "hours");
+    await dateTime.travel(2, "hours");
 
     // This should not throw even though background reload runs
     const value = await config.features.get();

@@ -325,7 +325,7 @@ export function AuthRegister(props: AuthRegisterProps) {
           <div ref={contentRef}>
             <div
               key={state.phase}
-              className="animate-in fade-in duration-300 flex flex-col gap-4 px-6"
+              className="animate-in fade-in flex flex-col gap-4 px-6 duration-300"
             >
               {isVerifying ? (
                 <>
@@ -357,7 +357,7 @@ export function AuthRegister(props: AuthRegisterProps) {
                         id="emailCode"
                         maxLength={6}
                         autoComplete="one-time-code"
-                        autoFocus
+
                         value={emailCode}
                         onChange={setEmailCode}
                       >
@@ -386,7 +386,7 @@ export function AuthRegister(props: AuthRegisterProps) {
                         id="phoneCode"
                         maxLength={6}
                         autoComplete="one-time-code"
-                        autoFocus={!state.intent!.expectEmailVerification}
+
                         value={phoneCode}
                         onChange={setPhoneCode}
                       >
@@ -797,7 +797,7 @@ function RealmLogo(props: {
     <img
       src={props.settings.logoUrl}
       alt={props.settings.displayName || props.realmName}
-      className="size-16 rounded-xl border bg-muted object-cover shadow-sm"
+      className="bg-muted size-16 rounded-xl border object-cover shadow-sm"
     />
   );
 }

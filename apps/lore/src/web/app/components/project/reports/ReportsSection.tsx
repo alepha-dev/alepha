@@ -14,9 +14,9 @@ export interface ReportsSectionProps {
  */
 const ReportsSection = (props: ReportsSectionProps) => {
   return (
-    <section className="flex flex-col gap-3 border-b border-border pb-8">
+    <section className="border-border flex flex-col gap-3 border-b pb-8">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-muted-foreground">
+        <h3 className="text-muted-foreground text-sm font-semibold">
           {props.title}
         </h3>
         {props.action}

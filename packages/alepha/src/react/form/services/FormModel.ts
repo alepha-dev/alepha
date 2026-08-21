@@ -170,7 +170,7 @@ export class FormModel<T extends ZObject> {
       noValidate: true,
       onSubmit: (ev?: FormEventLike) => {
         ev?.preventDefault?.();
-        this.submit();
+        void this.submit();
       },
       onReset: (event: FormEventLike) => this.reset(event),
     };
@@ -206,7 +206,7 @@ export class FormModel<T extends ZObject> {
     const keys = new Set<string>([...oldKeys, ...Object.keys(this.values)]);
     for (const key of keys) {
       const path = `/${key.replaceAll(".", "/")}`;
-      this.alepha.events.emit(
+      void this.alepha.events.emit(
         "form:change",
         { id: this.id, path, value: this.values[key], initial: true },
         { catch: true },
@@ -230,13 +230,17 @@ export class FormModel<T extends ZObject> {
     Object.assign(this.values, { ...this.initialValues });
     for (const key of keys) {
       const path = `/${key.replaceAll(".", "/")}`;
-      this.alepha.events.emit(
+      void this.alepha.events.emit(
         "form:change",
         { id: this.id, path, value: this.values[key] },
         { catch: true },
       );
     }
-    this.alepha.events.emit("form:reset", { id: this.id }, { catch: true });
+    void this.alepha.events.emit(
+      "form:reset",
+      { id: this.id },
+      { catch: true },
+    );
     this.options.onReset?.();
   };
 
@@ -471,7 +475,7 @@ export class FormModel<T extends ZObject> {
       if (options.onChange) {
         options.onChange(key, typedValue, context.store);
       }
-      this.alepha.events.emit(
+      void this.alepha.events.emit(
         "form:change",
         { id: this.id, path: path, value: typedValue },
         { catch: true },

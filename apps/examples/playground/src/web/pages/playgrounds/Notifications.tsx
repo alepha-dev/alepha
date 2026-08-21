@@ -51,7 +51,7 @@ const Notifications = () => {
       </header>
       <Card>
         <CardHeader>
-          <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+          <CardTitle className="text-muted-foreground text-xs tracking-wider uppercase">
             Send
           </CardTitle>
         </CardHeader>
@@ -90,7 +90,7 @@ const Notifications = () => {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+          <CardTitle className="text-muted-foreground text-xs tracking-wider uppercase">
             Activity
           </CardTitle>
         </CardHeader>

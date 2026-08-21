@@ -103,7 +103,7 @@ export const DatabaseEditor = (props: DatabaseEditorProps) => {
     // system" case the rule exempts; it reports it because the loader flips
     // `loading` before its first await.
     // oxlint-disable-next-line react/set-state-in-effect
-    load();
+    void load();
   }, [load]);
 
   /**
@@ -112,7 +112,7 @@ export const DatabaseEditor = (props: DatabaseEditorProps) => {
    */
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       for (const e of entities) {
         if (cancelled || counts[e.name] !== undefined) continue;
         try {
@@ -261,7 +261,7 @@ export const DatabaseEditor = (props: DatabaseEditorProps) => {
               data-active={e.name === table || undefined}
               onClick={() => {
                 setParams({});
-                router.push(`/rows/${encodeURIComponent(e.name)}`);
+                void router.push(`/rows/${encodeURIComponent(e.name)}`);
               }}
             >
               <Table2 size={11} style={{ color: "var(--dt-get)" }} />

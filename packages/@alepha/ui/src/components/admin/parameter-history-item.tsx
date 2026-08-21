@@ -71,13 +71,13 @@ export const ParameterHistoryItem = (props: ParameterHistoryItemProps) => {
             toggle();
           }
         }}
-        className="hover:bg-accent/50 flex cursor-pointer select-none items-center gap-2 px-3 py-2.5 transition-colors"
+        className="hover:bg-accent/50 flex cursor-pointer items-center gap-2 px-3 py-2.5 transition-colors select-none"
       >
         <span className="text-muted-foreground flex size-4 shrink-0 items-center justify-center">
           {statusIcon(v.status)}
         </span>
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5 ml-1">
-          <span className="text-sm font-semibold capitalize leading-tight">
+        <div className="ml-1 flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="text-sm leading-tight font-semibold capitalize">
             {v.status}
           </span>
           <span className="text-muted-foreground flex items-center gap-1 text-xs leading-tight">

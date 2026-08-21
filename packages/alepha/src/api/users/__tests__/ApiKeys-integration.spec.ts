@@ -305,7 +305,7 @@ describe("alepha/api/users - API Keys Integration (Controllers)", () => {
     expect(beforeExpiry.status).toBe(200);
 
     // Travel past expiration
-    dateTimeProvider.travel(2, "hours");
+    await dateTimeProvider.travel(2, "hours");
 
     // Verify key no longer works
     await expect(

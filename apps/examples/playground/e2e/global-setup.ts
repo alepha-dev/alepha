@@ -103,7 +103,7 @@ export async function readLatestEmailCode(
       const files = (await readdir(dir))
         .filter((f) => f.startsWith(`${sanitized},`) && f.endsWith(".eml.json"))
         .sort()
-        .reverse();
+        .toReversed();
       if (files[0]) {
         const raw = await readFile(join(dir, files[0]), "utf8");
         const { body, sentAt } = JSON.parse(raw) as {

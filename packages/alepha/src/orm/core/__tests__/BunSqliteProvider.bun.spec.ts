@@ -127,7 +127,7 @@ describe("BunSqliteProvider", () => {
     // Async callbacks must run entirely INSIDE the transaction — drizzle's
     // sync bun-sqlite driver would otherwise COMMIT before the awaited work
     // finishes, making rollback impossible.
-    await expect(
+    expect(
       db.transactional(async () => {
         await app.userRepo.create({ name: "will-rollback" });
         await new Promise((resolve) => setTimeout(resolve, 10));
@@ -143,7 +143,7 @@ describe("BunSqliteProvider", () => {
     const app = setup();
     await alepha.start();
 
-    await expect(
+    expect(
       app.userRepo.transaction(async (tx) => {
         await app.userRepo.create({ name: "will-rollback" }, { tx: tx as any });
         await new Promise((resolve) => setTimeout(resolve, 10));

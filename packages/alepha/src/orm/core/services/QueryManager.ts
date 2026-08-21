@@ -58,9 +58,7 @@ export class QueryManager {
     if (isSQLWrapper(query)) {
       conditions.push(query as SQL);
     } else {
-      const keys = Object.keys(query) as Array<
-        keyof PgQueryWhere<ZObject> & string
-      >;
+      const keys = Object.keys(query) as Array<keyof PgQueryWhere<ZObject>>;
 
       for (const key of keys) {
         const operator = query[key] as SQL;

@@ -21,8 +21,8 @@ export interface ProductHeroProps {
  */
 const ProductHero = (props: ProductHeroProps) => {
   return (
-    <section className="home-block container hero-section">
-      <div className="flex flex-col gap-6 intro-hero">
+    <section className="home-block hero-section container">
+      <div className="intro-hero flex flex-col gap-6">
         <h1 className="hero-title">
           {props.name}
           <br />

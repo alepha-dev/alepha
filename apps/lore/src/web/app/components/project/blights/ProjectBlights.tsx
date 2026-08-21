@@ -348,7 +348,7 @@ const ProjectBlights = () => {
                           }),
                         );
                         refresh();
-                        router.push("projectQuest", {
+                        void router.push("projectQuest", {
                           params: {
                             projectSlug: project.slug,
                             shortId: String(res.questShortId),
@@ -414,7 +414,7 @@ const ProjectBlights = () => {
               {stackView.sourceUrl}
             </p>
           )}
-          <pre className="bg-muted max-h-[60vh] overflow-auto rounded-md border p-3 font-mono text-xs whitespace-pre-wrap break-words">
+          <pre className="bg-muted max-h-[60vh] overflow-auto rounded-md border p-3 font-mono text-xs break-words whitespace-pre-wrap">
             {stackView?.stack || "—"}
           </pre>
         </DialogContent>

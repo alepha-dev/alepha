@@ -17,8 +17,10 @@ describe("travel() firing order", () => {
     const time = create();
     const fired: string[] = [];
 
-    time.wait([5, "minutes"]).then(() => fired.push("slow"));
-    time.wait([1, "minute"]).then(() => fired.push("fast"));
+    // Registered, not awaited: the clock has not moved yet, so awaiting here
+    // would block the `travel()` below that is what releases these timers.
+    void time.wait([5, "minutes"]).then(() => fired.push("slow"));
+    void time.wait([1, "minute"]).then(() => fired.push("fast"));
 
     await time.travel([10, "minutes"]);
 
@@ -29,8 +31,8 @@ describe("travel() firing order", () => {
     const time = create();
     const fired: string[] = [];
 
-    time.wait([1, "minute"]).then(() => fired.push("first"));
-    time.wait([1, "minute"]).then(() => fired.push("second"));
+    void time.wait([1, "minute"]).then(() => fired.push("first"));
+    void time.wait([1, "minute"]).then(() => fired.push("second"));
 
     await time.travel([2, "minutes"]);
 

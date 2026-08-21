@@ -37,7 +37,7 @@ describe("D1TimeoutProvider", () => {
     const settled = await expect(pending).rejects.toThrow(/timed out/i);
 
     await time.travel([6, "seconds"]);
-    await settled;
+    settled;
   });
 
   it("rejects a stalled batch, not just a stalled statement", async () => {
@@ -48,7 +48,7 @@ describe("D1TimeoutProvider", () => {
     const settled = await expect(pending).rejects.toThrow(/timed out/i);
 
     await time.travel([6, "seconds"]);
-    await settled;
+    settled;
   });
 
   it("leaves a query that answers in time untouched", async () => {
@@ -113,7 +113,7 @@ describe("D1TimeoutProvider", () => {
       const pending = wrapped.prepare("select 1").all();
       const settled = await expect(pending).rejects.toThrow(/timed out/i);
       await time.travel([6, "seconds"]);
-      await settled;
+      settled;
 
       // The query D1 never answered finally errors, long after we stopped
       // waiting. Nothing is attached to it any more unless the wrapper kept
@@ -141,7 +141,7 @@ describe("D1TimeoutProvider", () => {
       // `withSession` would not merely lose the ceiling: it would make the
       // method vanish and take read replication down with it.
       await time.travel([6, "seconds"]);
-      await settled;
+      settled;
     });
 
     it("keeps withSession absent when the runtime has none", async () => {
@@ -215,7 +215,7 @@ describe("D1TimeoutProvider", () => {
       const settled = await expect(pending).rejects.toThrow(/timed out/i);
 
       await time.travel([6, "seconds"]);
-      await settled;
+      settled;
     });
 
     it("treats a CTE as a write, since it may wrap an insert", async () => {
@@ -251,7 +251,7 @@ describe("D1TimeoutProvider", () => {
       const settled = await expect(pending).rejects.toThrow(/timed out/i);
 
       await time.travel([6, "seconds"]);
-      await settled;
+      settled;
     });
   });
 });

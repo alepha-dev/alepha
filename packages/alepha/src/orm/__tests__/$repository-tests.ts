@@ -1376,7 +1376,7 @@ export const testCrudWithTimestamps = async (alepha: Alepha) => {
   expect(r1.name).toEqual("John");
   expect(r1.createdAt).toBe(r1.updatedAt);
 
-  dt.travel(1000);
+  await dt.travel(1000);
 
   const r2 = await app.users.updateOne(
     { name: { eq: "John" } },

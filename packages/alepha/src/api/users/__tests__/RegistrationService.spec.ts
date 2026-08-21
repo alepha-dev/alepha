@@ -367,7 +367,7 @@ describe("alepha/api/users - RegistrationService", () => {
       });
 
       // Travel forward 11 minutes (intent expires at 10)
-      dateTimeProvider.travel(11, "minutes");
+      await dateTimeProvider.travel(11, "minutes");
 
       // Attempt to complete
       await expect(

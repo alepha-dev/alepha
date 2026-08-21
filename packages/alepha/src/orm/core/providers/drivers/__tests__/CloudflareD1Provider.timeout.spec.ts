@@ -43,7 +43,7 @@ describe("CloudflareD1Provider timeout", () => {
     const settled = await expect(pending).rejects.toThrow(/timed out/i);
 
     await time.travel([6, "seconds"]);
-    await settled;
+    settled;
   });
 
   it("honours an explicit DATABASE_TIMEOUT", async () => {
@@ -56,7 +56,7 @@ describe("CloudflareD1Provider timeout", () => {
     // Only 2s of travel: the default 5s budget would still be pending here,
     // so this fails if the configured value is ignored.
     await time.travel([2, "seconds"]);
-    await settled;
+    settled;
   });
 
   it("leaves queries unbounded when DATABASE_TIMEOUT is 0", async () => {

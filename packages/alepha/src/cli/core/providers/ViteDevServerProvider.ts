@@ -456,7 +456,7 @@ export class ViteDevServerProvider {
 
     this.reloadDebounceTimer = setTimeout(() => {
       this.reloadDebounceTimer = null;
-      this.performReload();
+      void this.performReload();
     }, 100);
   }
 

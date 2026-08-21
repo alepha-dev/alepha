@@ -1,20 +1,31 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  // Only `correctness` — code that is outright wrong or useless — and it is an
-  // error, so `yarn lint` and the CI `checks` job fail on a new finding.
+  // `correctness` (code that is outright wrong) and `perf`, both errors, so
+  // `yarn lint` and the CI `checks` job fail on a new finding.
   //
-  // The wider categories were measured, not guessed: `correctness` +
-  // `suspicious` + `perf` across all eleven plugins reports 11158 findings on
-  // this repo, 5765 of them `react/react-in-jsx-scope` alone — a rule that is
-  // simply wrong under the automatic JSX runtime this repo compiles with.
-  // A gate nobody can pass is a gate nobody keeps.
+  // The wider categories were measured, not guessed. `suspicious` reports 7018
+  // findings on this repo and 5769 of them are `react/react-in-jsx-scope`
+  // alone, a rule that predates the automatic JSX runtime this repo compiles
+  // with; `pedantic` is 9036, `style` 114300, `restriction` 45102. The handful
+  // of `suspicious` rules that do earn their keep are enabled by name below
+  // instead. A gate nobody can pass is a gate nobody keeps.
   "categories": {
-    "correctness": "error"
+    "correctness": "error",
+    "perf": "error"
   },
-  // `jsx-a11y` is deliberately absent: Biome ran with `a11y.recommended: false`
-  // and turning it on here would be a new project, not a migration.
-  // `react-perf` and `jsdoc` are absent for the same reason — 1793 and 36
-  // findings respectively, none of them correctness.
+  "options": {
+    // Type-aware rules, via the `oxlint-tsgolint` binary that ships alongside
+    // oxlint. This is the one thing the previous toolchain could not do at
+    // all: Biome is type-agnostic, so `no-floating-promises`,
+    // `require-array-sort-compare` and `no-base-to-string` had no equivalent.
+    // It costs about 4s across this repo.
+    "typeAware": true,
+    // A suppression that no longer suppresses anything is a lie about the code
+    // under it. Biome accumulated 60 of these before anyone noticed, and 17
+    // dead `eslint-disable` comments were still in the tree years after ESLint
+    // left. Reported as an error so they get deleted rather than re-read.
+    "reportUnusedDisableDirectives": "error"
+  },
   "plugins": [
     "typescript",
     "unicorn",
@@ -22,13 +33,73 @@
     "react",
     "import",
     "promise",
-    "vitest"
+    "vitest",
+    "jsx-a11y"
   ],
   "rules": {
-    // Biome split this in two: `noUnusedImports` was an error with a safe fix,
-    // `noUnusedVariables` and `noUnusedFunctionParameters` were off. oxlint has
-    // no rule that separates the import half from the variable half, so the
-    // choice is all or nothing — and all is the better end state.
+    // ---------------------------------------------------------------------
+    // Enabled by name out of `suspicious`, which is otherwise far too noisy.
+    // ---------------------------------------------------------------------
+    // A component declared inside another component is a NEW type on every
+    // render, so React unmounts and remounts the subtree, losing its state and
+    // its DOM. The single most expensive React mistake that still type-checks.
+    //
+    // `allowAsProps` because the default flags render props too, and all 164
+    // sites in this repo are render props: `AlephaTable`'s `filters.render`,
+    // its column cells, and the admin panels built on them. Those are CALLED
+    // (`props.filters.render(form)`), never mounted, so no remount can happen.
+    // With the option set the rule reports zero here — which is the point: it
+    // now guards the real pattern instead of drowning it.
+    "react/no-unstable-nested-components": ["error", { "allowAsProps": true }],
+    // A `.then()` branch that returns nothing silently resolves the chain to
+    // `undefined`, so the next link receives nothing and the bug surfaces
+    // somewhere else entirely.
+    "promise/always-return": "error",
+    // `memo` with a dependency it does not actually close over is memoization
+    // that never invalidates.
+    "react/memo-dependencies": "error",
+    // An import kept only for its side effects, in a codebase where side
+    // effects belong in the DI container.
+    "import/no-unassigned-import": "error",
+    // `reverse()` mutates in place; `toReversed()` is what almost every call
+    // site meant.
+    "unicorn/no-array-reverse": "error",
+
+    // ---------------------------------------------------------------------
+    // Off, each because its premise does not hold in an Alepha app.
+    // ---------------------------------------------------------------------
+    // `perf`, and wrong here: sequential awaits in a loop are usually the
+    // point (ordered migrations, rate-limited calls). 586 findings, no bugs.
+    "no-await-in-loop": "off",
+    // `perf`, and was `noArrayIndexKey: off` under Biome for the same reason:
+    // the lists that use an index key are positional and never reordered.
+    "react/no-array-index-key": "off",
+    // Every one of the 40 sites was deliberate. Three shapes: the latest-ref
+    // pattern (`ref.current = props.onChange`), which exists so a subscription
+    // made once can reach the newest closure and which an effect assigns too
+    // late for; refs that cache a value across renders precisely so
+    // re-rendering is NOT triggered; and plain false positives, a ref object
+    // passed down as a `ref` prop and a ref read inside a `useState` lazy
+    // initializer, neither of which is a render-phase read at all. The rule
+    // encodes React Compiler semantics, which this codebase does not opt into.
+    "react/refs": "off",
+    // Every site is `{Icon && <Icon />}` where `Icon` came out of a
+    // module-level registry (`ICONS[name] ?? CircleDashed`). The rule cannot
+    // follow the lookup, so it reads a capitalised local as a component built
+    // during render.
+    "react/static-components": "off",
+    // Not a correctness rule at all: it reports where React Compiler would
+    // have to skip a component because its inferred deps differ from the
+    // hand-written ones. This repo does not compile with React Compiler.
+    "react/preserve-manual-memoization": "off",
+    // Was `useExhaustiveDependencies: off` under Biome. Alepha's hooks take
+    // primitives from the DI container, which are stable for the lifetime of
+    // the container and which the rule cannot know are stable.
+    "react-hooks/exhaustive-deps": "off",
+    // Biome split unused bindings in two: `noUnusedImports` was an error with
+    // a safe fix, `noUnusedVariables` and `noUnusedFunctionParameters` were
+    // off. oxlint has no rule that separates the import half from the variable
+    // half, so the choice is all or nothing, and all is the better end state.
     //
     // Parameters stay exempt (`args: "none"`): an interface-mandated signature
     // routinely ignores an argument, and renaming those to `_` across every
@@ -43,31 +114,6 @@
         "ignoreRestSiblings": true
       }
     ],
-    // Every one of the 40 sites this reported is deliberate, and none is the
-    // bug the rule describes. Three distinct shapes: the latest-ref pattern
-    // (`ref.current = props.onChange`), which exists so a subscription made
-    // once can reach the newest closure and which an effect assigns too late
-    // for; refs that cache a value across renders precisely so re-rendering is
-    // NOT triggered; and plain false positives — a ref object passed down as a
-    // `ref` prop, and a ref read inside a `useState` lazy initializer, neither
-    // of which is a render-phase read at all. The rule encodes React Compiler
-    // semantics, which this codebase does not opt into.
-    "react/refs": "off",
-    // Every site is `{Icon && <Icon />}` where `Icon` came out of a
-    // module-level registry (`ICONS[name] ?? CircleDashed`). The rule cannot
-    // follow the lookup, so it reads a capitalised local as a component built
-    // during render. Nothing here creates a component.
-    "react/static-components": "off",
-    // Not a correctness rule at all: it reports where React Compiler would
-    // have to skip a component because its inferred deps differ from the
-    // hand-written ones ("React Compiler has skipped optimizing this
-    // component"). This repo does not compile with React Compiler, so the
-    // diagnostic describes an optimisation that was never going to happen.
-    "react/preserve-manual-memoization": "off",
-    // Was `useExhaustiveDependencies: off` under Biome. Alepha's hooks take
-    // primitives from the DI container, which are stable for the lifetime of
-    // the container and which the rule cannot know are stable.
-    "react-hooks/exhaustive-deps": "off",
     // Every spec in this repo takes `expect` from the Vitest fixture
     // (`test("…", async ({ expect }) => …)`) rather than importing it, and the
     // rule counts assertions by identifier — so it reports 477 tests full of

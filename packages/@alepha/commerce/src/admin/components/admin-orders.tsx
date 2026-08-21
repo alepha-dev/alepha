@@ -356,7 +356,7 @@ const AdminOrderSheet = (props: AdminOrderSheetProps) => {
               </div>
 
               <section>
-                <h3 className="mb-3 text-xs font-medium uppercase tracking-wide">
+                <h3 className="mb-3 text-xs font-medium tracking-wide uppercase">
                   {tr("commerce.admin.lines", { default: "Items" })}
                 </h3>
                 <ul className="divide-border divide-y">
@@ -421,7 +421,7 @@ const AdminOrderSheet = (props: AdminOrderSheetProps) => {
 
               {address ? (
                 <section>
-                  <h3 className="mb-3 text-xs font-medium uppercase tracking-wide">
+                  <h3 className="mb-3 text-xs font-medium tracking-wide uppercase">
                     {tr("commerce.admin.address", {
                       default: "Delivery address",
                     })}

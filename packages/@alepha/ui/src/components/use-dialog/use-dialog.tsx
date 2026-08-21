@@ -168,7 +168,7 @@ export function DialogProvider(props: { children: ReactNode }) {
               )}
               <Input
                 id="alepha-dialog-prompt-input"
-                autoFocus
+
                 value={promptValue}
                 placeholder={opts?.placeholder}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => {

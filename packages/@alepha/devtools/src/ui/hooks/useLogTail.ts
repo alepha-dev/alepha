@@ -139,7 +139,7 @@ export const useLogTail = (filters: LogFilters): UseLogTailResult => {
   // Filters changing invalidates the cursor: a widened filter exposes older
   // entries the tail would otherwise never ask for.
   useEffect(() => {
-    poll(true);
+    void poll(true);
   }, [poll]);
 
   useEffect(() => {

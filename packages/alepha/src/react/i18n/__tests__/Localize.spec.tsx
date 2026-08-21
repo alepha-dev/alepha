@@ -21,21 +21,21 @@ describe("<Localize/>", () => {
     };
   };
 
-  it("should format date", () => {
+  it("should format date", async () => {
     const { render, i18n } = setup();
     const date = new Date("2024-09-23T23:45:00Z");
     expect(render(<Localize value={date} />)).toBe("9/24/2024");
-    i18n.setLang("fr");
+    await i18n.setLang("fr");
     expect(render(<Localize value={date} />)).toBe("24/09/2024");
   });
 
-  it("should format number", () => {
+  it("should format number", async () => {
     const { render, i18n } = setup();
     const number = 1234567.89;
     expect(render(<Localize value={number} />)).toBe("1,234,567.89");
-    i18n.setLang("de");
+    await i18n.setLang("de");
     expect(render(<Localize value={number} />)).toBe("1.234.567,89");
-    i18n.setLang("fr");
+    await i18n.setLang("fr");
     expect(render(<Localize value={number} />)).toBe("1\u202f234\u202f567,89");
   });
 
@@ -62,10 +62,10 @@ describe("<Localize/>", () => {
       ).toBe("$1,234.56");
     });
 
-    it("should format currency with locale", () => {
+    it("should format currency with locale", async () => {
       const { render, i18n } = setup();
       const number = 1234.56;
-      i18n.setLang("fr");
+      await i18n.setLang("fr");
       expect(
         render(
           <Localize
@@ -114,14 +114,14 @@ describe("<Localize/>", () => {
   });
 
   describe("date formatting options", () => {
-    it("should format with dayjs format string - LLL", () => {
+    it("should format with dayjs format string - LLL", async () => {
       const { render, i18n, dateTime } = setup();
       const date = dateTime.utc("2024-09-24T00:45:00Z").toDate();
       const formatted = render(<Localize value={date} date="LLL" />);
       // Format depends on local timezone, so just check it contains the key parts
       expect(formatted).toContain("September");
       expect(formatted).toContain("2024");
-      i18n.setLang("fr");
+      await i18n.setLang("fr");
       const frFormatted = render(<Localize value={date} date="LLL" />);
       expect(frFormatted).toContain("septembre");
       expect(frFormatted).toContain("2024");
@@ -185,10 +185,10 @@ describe("<Localize/>", () => {
       ).toBe("Tuesday, September 24, 2024");
     });
 
-    it("should format with Intl.DateTimeFormatOptions and locale", () => {
+    it("should format with Intl.DateTimeFormatOptions and locale", async () => {
       const { render, i18n } = setup();
       const date = new Date("2024-09-23T23:45:00Z");
-      i18n.setLang("fr");
+      await i18n.setLang("fr");
       expect(
         render(
           <Localize
@@ -342,10 +342,10 @@ describe("<Localize/>", () => {
       expect(formatted).toContain("5:00 AM");
     });
 
-    it("should respect locale and timezone together", () => {
+    it("should respect locale and timezone together", async () => {
       const { render, i18n, dateTime } = setup();
       const date = dateTime.utc("2024-09-24T12:00:00Z");
-      i18n.setLang("fr");
+      await i18n.setLang("fr");
       const formatted = render(
         <Localize value={date} timezone="Europe/Paris" date="LLL" />,
       );

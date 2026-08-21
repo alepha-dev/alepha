@@ -524,7 +524,7 @@ const ProjectFeedbackRequest = () => {
 
           <Card className="py-4 shadow">
             <CardContent className="px-4">
-              <div className="mb-4 flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2">
+              <div className="border-border bg-muted/30 mb-4 flex items-center justify-between gap-3 rounded-md border px-3 py-2">
                 <div className="flex min-w-0 items-center gap-3">
                   <UserAvatar fileId={userPicture} className="size-8" />
                   <div className="flex min-w-0 flex-col">
@@ -569,7 +569,7 @@ const ProjectFeedbackRequest = () => {
                     onFilePicked(e.dataTransfer.files);
                   }}
                   className={`flex flex-col gap-1 rounded-md ${
-                    dragging ? "ring-2 ring-primary ring-offset-2" : ""
+                    dragging ? "ring-primary ring-2 ring-offset-2" : ""
                   }`}
                 >
                   <Control
@@ -577,7 +577,7 @@ const ProjectFeedbackRequest = () => {
                     label={tr("feedback.request.messageField")}
                     description={tr("feedback.request.messageHelper")}
                     area
-                    autoFocus
+
                     rows={12}
                   />
                   <p className="text-muted-foreground text-xs">
@@ -629,18 +629,18 @@ const ProjectFeedbackRequest = () => {
                         return (
                           <li
                             key={a.id}
-                            className="flex items-center gap-2 rounded border border-border bg-muted/20 px-2 py-1 text-sm"
+                            className="border-border bg-muted/20 flex items-center gap-2 rounded border px-2 py-1 text-sm"
                           >
                             {isImage ? (
                               <FileImage
                                 id={a.id}
                                 alt=""
-                                className="size-10 shrink-0 rounded border border-border object-cover"
+                                className="border-border size-10 shrink-0 rounded border object-cover"
                               />
                             ) : (
                               <Paperclip className="size-3.5 shrink-0" />
                             )}
-                            <span className="truncate flex-1">{a.name}</span>
+                            <span className="flex-1 truncate">{a.name}</span>
                             <span className="text-muted-foreground text-xs">
                               {Math.round(a.size / 1024)} KB
                             </span>

@@ -98,7 +98,7 @@ const AreaRenameDialog = (props: AreaRenameDialogProps) => {
             id="area-rename-input"
             value={value}
             onChange={(e) => setValue(e.currentTarget.value)}
-            autoFocus
+
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();

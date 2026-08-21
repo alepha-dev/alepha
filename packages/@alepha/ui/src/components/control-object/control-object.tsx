@@ -94,7 +94,7 @@ export function ControlObject(props: ControlObjectProps) {
     | undefined;
 
   const grid = (
-    <div className="grid gap-3 grid-cols-12">
+    <div className="grid grid-cols-12 gap-3">
       {fieldNames.map((name) => {
         const field = nestedItems?.[name];
         if (!field) return null;
@@ -154,9 +154,9 @@ export function ControlObject(props: ControlObjectProps) {
         ) : (
           <div className="size-8 shrink-0" />
         )}
-        <div className="flex flex-col min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col">
           {meta.label && (
-            <legend className="text-sm font-medium leading-tight">
+            <legend className="text-sm leading-tight font-medium">
               {meta.label}
               {meta.required && (
                 <span className="text-destructive ml-0.5">*</span>

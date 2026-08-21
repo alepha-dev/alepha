@@ -329,7 +329,7 @@ const DevLayout = () => {
             onClose={() => setPaletteOpen(false)}
             onNavigate={(href: string) => {
               setPaletteOpen(false);
-              router.push(href);
+              void router.push(href);
             }}
           />
         )}

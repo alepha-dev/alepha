@@ -50,7 +50,7 @@ const Audits = () => {
       </header>
       <Card>
         <CardHeader>
-          <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+          <CardTitle className="text-muted-foreground text-xs tracking-wider uppercase">
             Emit
           </CardTitle>
         </CardHeader>
@@ -89,7 +89,7 @@ const Audits = () => {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+          <CardTitle className="text-muted-foreground text-xs tracking-wider uppercase">
             Activity
           </CardTitle>
         </CardHeader>

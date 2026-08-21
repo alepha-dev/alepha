@@ -48,8 +48,8 @@ const AccountDeleteWarning = () => {
   }
 
   return (
-    <div className="flex gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3">
-      <TriangleAlert className="mt-0.5 size-4 shrink-0 text-destructive" />
+    <div className="border-destructive/30 bg-destructive/5 flex gap-2 rounded-md border p-3">
+      <TriangleAlert className="text-destructive mt-0.5 size-4 shrink-0" />
       <span className="text-sm">
         {count === 1
           ? "1 quest you authored will also be deleted, including if it lives in someone else's project."

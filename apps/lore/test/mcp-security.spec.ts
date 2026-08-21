@@ -328,7 +328,7 @@ describe("MCP Security Integration", () => {
       expect(isErrorResponse(beforeExpiry.data)).toBe(false);
 
       // Travel past expiration
-      ctx.dateTimeProvider.travel(2, "hours");
+      await ctx.dateTimeProvider.travel(2, "hours");
 
       // Key expired → resolver fails → 401 challenge.
       const afterExpiry = await mcpRequest(

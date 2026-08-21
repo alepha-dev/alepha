@@ -82,13 +82,13 @@ const FolioPinnedBudget = (
   return (
     <div className="border-border flex flex-none flex-col gap-1.5 border-t px-3 py-2.5">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-muted-foreground text-[10.5px] font-medium uppercase tracking-[0.1em]">
+        <span className="text-muted-foreground text-[10.5px] font-medium tracking-[0.1em] uppercase">
           {tr("folios.editor.pinned.title")}
         </span>
         <span
           className={
             overCap
-              ? "folio-mono text-[11px] tabular-nums text-amber-600 dark:text-amber-400"
+              ? "folio-mono text-[11px] text-amber-600 tabular-nums dark:text-amber-400"
               : "folio-mono text-muted-foreground text-[11px] tabular-nums"
           }
         >

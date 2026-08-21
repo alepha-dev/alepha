@@ -35,7 +35,7 @@ export const Layout = () => {
     <TooltipProvider>
       <DialogProvider>
         <div className="flex min-h-dvh flex-col">
-          <header className="trait border-t-0 border-b sticky top-0 z-40 backdrop-blur-sm bg-background/85">
+          <header className="trait bg-background/85 sticky top-0 z-40 border-t-0 border-b backdrop-blur-sm">
             {/*
               Tighter gaps below `sm`. At 375px the mark, three nav links and
               three utility buttons came to 400px wide, so the whole page
@@ -50,7 +50,7 @@ export const Layout = () => {
                 aria-label={tr("nav.home")}
               >
                 <Poincon titre="AA" />
-                <span className="estampe text-sm hidden sm:block">
+                <span className="estampe hidden text-sm sm:block">
                   Atelier Aurore
                 </span>
               </Link>

@@ -253,7 +253,7 @@ describe("alepha/api/users - API Keys Integration", () => {
     expect(beforeExpiry).not.toBeNull();
 
     // Travel forward in time past expiry
-    dateTimeProvider.travel(2, "hours");
+    await dateTimeProvider.travel(2, "hours");
 
     // Verify key is now invalid
     const afterExpiry = await apiKeyService.validate(token);

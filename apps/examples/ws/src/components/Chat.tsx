@@ -25,7 +25,7 @@ export function Chat() {
   );
 
   useEffect(() => {
-    chat.send({
+    void chat.send({
       content: "User has joined the chat",
     });
   }, [chat.isConnected, roomId]);

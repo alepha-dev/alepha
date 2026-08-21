@@ -59,7 +59,7 @@ const QuestViewDuplicateButton = (props: QuestViewDuplicateButtonProps) => {
         <Button
           type="button"
           variant="ghost"
-          className="justify-start gap-3 [&_svg]:text-muted-foreground"
+          className="[&_svg]:text-muted-foreground justify-start gap-3"
           onClick={() => setShowDialog(true)}
         >
           <Copy className="size-4" />

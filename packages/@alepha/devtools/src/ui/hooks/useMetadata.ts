@@ -53,7 +53,7 @@ export const useMetadata = (): UseMetadataResult => {
       // system" case the rule exempts; it reports it because the loader flips
       // `loading` before its first await.
       // oxlint-disable-next-line react/set-state-in-effect
-      fetchMetadata();
+      void fetchMetadata();
     }
   }, [data, fetchMetadata]);
 

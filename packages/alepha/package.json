@@ -955,6 +955,7 @@
     "drizzle-orm": "1.0.0-rc.4",
     "oxfmt": "^0.64.0",
     "oxlint": "^1.79.0",
+    "oxlint-tsgolint": "^7.0.2001",
     "postgres": "^3.4.9",
     "s3mini": "^1.0.0",
     "tsx": "^4.23.12",

@@ -4,6 +4,9 @@
   "tabWidth": 2,
   "printWidth": 80,
   "sortImports": true,
+  "sortTailwindcss": {
+    "functions": ["cn", "clsx", "cva", "tw"]
+  },
   "ignorePatterns": [
     "**/.playwright",
     "**/playwright-report",

@@ -265,9 +265,9 @@ export const testCacheKeys = async (
   const provider = alepha.inject(CacheProvider);
   await alepha.start();
 
-  app.cache.set("test:A", "A");
-  app.cache.set("test:B", "B");
-  app.cache.set("hello", "C");
+  void app.cache.set("test:A", "A");
+  void app.cache.set("test:B", "B");
+  void app.cache.set("hello", "C");
   expect(await provider.keys("TestApp:cache").then((it) => it.length)).toEqual(
     3,
   );

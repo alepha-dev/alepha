@@ -176,7 +176,7 @@ const AppSettingsCapabilities = () => {
                   {tr(row.descriptionKey)}
                 </span>
                 {moduleOff && (
-                  <span className="text-amber-600 text-xs dark:text-amber-500">
+                  <span className="text-xs text-amber-600 dark:text-amber-500">
                     {tr("app.settings.capabilities.feedbackModuleOff")}
                   </span>
                 )}

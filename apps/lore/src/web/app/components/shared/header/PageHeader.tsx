@@ -19,7 +19,7 @@ const PageHeader = (props: PageHeaderProps) => {
   return (
     <>
       {showHome && (
-        <div className="fixed left-3 top-3 z-50">
+        <div className="fixed top-3 left-3 z-50">
           <Button
             render={<Link href={router.path("home")} />}
             // A link wearing a button's clothes: `nativeButton={false}` stops Base UI
@@ -36,7 +36,7 @@ const PageHeader = (props: PageHeaderProps) => {
           </Button>
         </div>
       )}
-      <div className="fixed right-3 top-3 z-50">
+      <div className="fixed top-3 right-3 z-50">
         <HeaderActions />
       </div>
     </>

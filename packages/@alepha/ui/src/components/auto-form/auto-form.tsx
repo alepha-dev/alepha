@@ -528,7 +528,7 @@ export function AutoForm<T extends ZObject>(props: AutoFormProps<T>) {
     <form {...props.form.props} className={props.className}>
       <div className="flex flex-col gap-4">
         {hasHeader && (
-          <div className="bg-muted/40 border rounded-md p-4 flex items-start gap-3">
+          <div className="bg-muted/40 flex items-start gap-3 rounded-md border p-4">
             {HeaderIcon && (
               <div className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-full">
                 <HeaderIcon className="size-5" />
@@ -757,7 +757,7 @@ function BottomBar(props: BottomBarProps) {
       className={
         props.bare
           ? "flex w-full items-center gap-2"
-          : "bg-card flex items-center gap-2 border rounded-md p-2"
+          : "bg-card flex items-center gap-2 rounded-md border p-2"
       }
     >
       {props.onCancel && (
@@ -767,7 +767,7 @@ function BottomBar(props: BottomBarProps) {
           onClick={props.onCancel}
           disabled={props.disabled}
         >
-          <X className="size-4 mr-1" />
+          <X className="mr-1 size-4" />
           {tr("autoForm.cancel", { default: "Cancel" })}
         </Button>
       )}
@@ -797,7 +797,7 @@ function BottomBar(props: BottomBarProps) {
             onClick={() => action.onClick()}
             disabled={props.disabled || action.disabled}
           >
-            {Icon && <Icon className="size-4 mr-1" />}
+            {Icon && <Icon className="mr-1 size-4" />}
             {action.label}
           </Button>
         );
@@ -857,7 +857,7 @@ function FormErrorPopover(props: FormErrorPopoverProps) {
         <AlertCircle className="size-4" />
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-2">
-        <p className="text-destructive text-sm font-medium px-2 py-1">
+        <p className="text-destructive px-2 py-1 text-sm font-medium">
           {items.length === 1
             ? tr("autoForm.error", { default: "Error" })
             : tr("autoForm.errors", { default: "Errors" })}
@@ -868,7 +868,7 @@ function FormErrorPopover(props: FormErrorPopoverProps) {
               <button
                 type="button"
                 onClick={() => focusError(it.path, props.form.id)}
-                className="hover:bg-accent w-full rounded text-left text-xs px-2 py-1"
+                className="hover:bg-accent w-full rounded px-2 py-1 text-left text-xs"
               >
                 <span className="font-medium">
                   {it.path || tr("autoForm.formLabel", { default: "Form" })}

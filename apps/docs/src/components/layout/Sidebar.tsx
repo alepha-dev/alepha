@@ -66,7 +66,7 @@ const Sidebar = (props: SidebarProps) => {
           <button
             type="button"
             onClick={handleExpandAll}
-            className="btn-reset flex items-center justify-center explorer-action"
+            className="btn-reset explorer-action flex items-center justify-center"
             title="Expand All"
             aria-label="Expand all folders"
             style={{
@@ -82,7 +82,7 @@ const Sidebar = (props: SidebarProps) => {
           <button
             type="button"
             onClick={handleCollapseAll}
-            className="btn-reset flex items-center justify-center explorer-action"
+            className="btn-reset explorer-action flex items-center justify-center"
             title="Collapse All"
             aria-label="Collapse all folders"
             style={{
@@ -100,7 +100,7 @@ const Sidebar = (props: SidebarProps) => {
 
       {/* File Tree */}
       <div
-        className="flex-1 scroll-area p-2"
+        className="scroll-area flex-1 p-2"
         style={{ overflowX: "hidden", overflowY: "auto" }}
       >
         <FileTree

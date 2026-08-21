@@ -90,7 +90,7 @@ const Tables = () => {
 
       <Card className="py-0">
         <CardHeader className="flex flex-row items-center justify-between gap-2 p-4">
-          <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+          <CardTitle className="text-muted-foreground text-xs tracking-wider uppercase">
             Owned by the page - {releases.length} of {RELEASES.length} rows
           </CardTitle>
           <Button
@@ -228,7 +228,7 @@ const Tables = () => {
 
       <Card className="py-0">
         <CardHeader className="p-4">
-          <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+          <CardTitle className="text-muted-foreground text-xs tracking-wider uppercase">
             Minimal - no toolbar, no filters, no paging
           </CardTitle>
         </CardHeader>
@@ -249,7 +249,7 @@ const Tables = () => {
 
       <Card className="py-0">
         <CardHeader className="p-4">
-          <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+          <CardTitle className="text-muted-foreground text-xs tracking-wider uppercase">
             Empty
           </CardTitle>
         </CardHeader>

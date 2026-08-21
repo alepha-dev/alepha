@@ -68,8 +68,8 @@ describe("$batch primitive", () => {
     const app = alepha.inject(TestApp);
     await alepha.start();
 
-    app.batcher.push("A");
-    app.batcher.push("B");
+    await app.batcher.push("A");
+    await app.batcher.push("B");
     expect(mockHandler).not.toHaveBeenCalled();
 
     await time.travel([6, "seconds"]); // Exceed maxDuration
@@ -94,9 +94,9 @@ describe("$batch primitive", () => {
     const app = alepha.inject(TestApp);
     await alepha.start();
 
-    app.batcher.push({ id: 1, value: "A" });
-    app.batcher.push({ id: 2, value: "B" });
-    app.batcher.push({ id: 1, value: "C" }); // Flushes partition 1
+    await app.batcher.push({ id: 1, value: "A" });
+    await app.batcher.push({ id: 2, value: "B" });
+    await app.batcher.push({ id: 1, value: "C" }); // Flushes partition 1
 
     await vi.waitFor(
       () => {
@@ -109,7 +109,7 @@ describe("$batch primitive", () => {
       { id: 1, value: "C" },
     ]);
 
-    app.batcher.push({ id: 2, value: "D" }); // Flushes partition 2
+    await app.batcher.push({ id: 2, value: "D" }); // Flushes partition 2
 
     await vi.waitFor(
       () => {
@@ -136,8 +136,8 @@ describe("$batch primitive", () => {
     const app = alepha.inject(TestApp);
     await alepha.start();
 
-    app.batcher.push("A");
-    app.batcher.push("B");
+    await app.batcher.push("A");
+    await app.batcher.push("B");
 
     await alepha.stop(); // Graceful shutdown should trigger flush
 
@@ -265,9 +265,9 @@ describe("$batch primitive", () => {
     const app = alepha.inject(TestApp);
     await alepha.start();
 
-    app.batcher.push({ id: 1, value: "A" });
-    app.batcher.push({ id: 2, value: "B" });
-    app.batcher.push({ id: 1, value: "C" });
+    await app.batcher.push({ id: 1, value: "A" });
+    await app.batcher.push({ id: 2, value: "B" });
+    await app.batcher.push({ id: 1, value: "C" });
 
     expect(mockHandler).not.toHaveBeenCalled();
 
@@ -304,8 +304,8 @@ describe("$batch primitive", () => {
     const app = alepha.inject(TestApp);
     await alepha.start();
 
-    app.batcher.push({ id: 1, value: "A" });
-    app.batcher.push({ id: 2, value: "B" });
+    await app.batcher.push({ id: 1, value: "A" });
+    await app.batcher.push({ id: 2, value: "B" });
 
     await app.batcher.flush();
 
@@ -538,11 +538,11 @@ describe("$batch primitive", () => {
 
     // Test default maxSize (10)
     for (let i = 0; i < 9; i++) {
-      app.batcher.push(`item-${i}`);
+      await app.batcher.push(`item-${i}`);
     }
     expect(mockHandler).not.toHaveBeenCalled();
 
-    app.batcher.push("item-9"); // 10th item should trigger flush
+    await app.batcher.push("item-9"); // 10th item should trigger flush
 
     await vi.waitFor(() => {
       expect(mockHandler).toHaveBeenCalledTimes(1);
@@ -575,7 +575,7 @@ describe("$batch primitive", () => {
     const app = alepha.inject(TestApp);
     await alepha.start();
 
-    app.batcher.push("A");
+    await app.batcher.push("A");
     expect(mockHandler).not.toHaveBeenCalled();
 
     // Wait for default timeout (1 second)

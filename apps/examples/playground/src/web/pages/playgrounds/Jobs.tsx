@@ -65,7 +65,7 @@ const Jobs = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+          <CardTitle className="text-muted-foreground text-xs tracking-wider uppercase">
             Cron
           </CardTitle>
         </CardHeader>
@@ -99,7 +99,7 @@ const Jobs = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+          <CardTitle className="text-muted-foreground text-xs tracking-wider uppercase">
             Queue · single push
           </CardTitle>
         </CardHeader>
@@ -140,7 +140,7 @@ const Jobs = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+          <CardTitle className="text-muted-foreground text-xs tracking-wider uppercase">
             Queue · batch / delay / key / priority
           </CardTitle>
         </CardHeader>
@@ -216,7 +216,7 @@ const Jobs = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+          <CardTitle className="text-muted-foreground text-xs tracking-wider uppercase">
             Activity log
           </CardTitle>
         </CardHeader>

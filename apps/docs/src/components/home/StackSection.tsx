@@ -57,7 +57,7 @@ const DepLines = (props: DepLinesProps) => {
 const StackSection = () => {
   return (
     <section id="stack" className="home-block home-section home-section-alt">
-      <div className="container container-wide">
+      <div className="container-wide container">
         <div className="section-head">
           <h2 className="section-title">
             One dependency

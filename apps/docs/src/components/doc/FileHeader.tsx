@@ -25,9 +25,9 @@ const FileHeader = (props: FileHeaderProps) => {
   const directory = stripSortPrefix(pathParts.join("/"));
 
   return (
-    <div className="pt-6 mb-8 pb-6">
+    <div className="mb-8 pt-6 pb-6">
       {/* Breadcrumb Path + Edit Button - Hidden on mobile */}
-      <div className="hidden-mobile flex items-center justify-between mb-2 text-sm gap-4 flex-wrap">
+      <div className="hidden-mobile mb-2 flex flex-wrap items-center justify-between gap-4 text-sm">
         <div className="flex items-center gap-2">
           <div className="flex items-center">
             <span style={{ color: "var(--color-accent)" }}>alepha</span>
@@ -46,15 +46,15 @@ const FileHeader = (props: FileHeaderProps) => {
       </div>
 
       {/* Metadata */}
-      <div className="flex gap-4 items-center flex-wrap text-sm">
+      <div className="flex flex-wrap items-center gap-4 text-sm">
         {props.readingTime && (
-          <div className="flex gap-1 items-center text-muted">
+          <div className="text-muted flex items-center gap-1">
             <IconClock size={14} />
             <span>{props.readingTime} min read</span>
           </div>
         )}
         {props.lastModified && (
-          <div className="flex gap-1 items-center text-muted">
+          <div className="text-muted flex items-center gap-1">
             <IconGitBranch size={14} />
             <span>
               Last commit:{" "}

@@ -26,7 +26,7 @@ const Docs = (props: ContentProps) => {
 
   return (
     <div
-      className="flex flex-1 w-full"
+      className="flex w-full flex-1"
       style={{
         minHeight: "100%",
         background: "var(--color-bg)",
@@ -35,7 +35,7 @@ const Docs = (props: ContentProps) => {
     >
       {/* Main Content */}
       <div
-        className="flex flex-1 flex-col p-4 md:p-6 w-full mx-auto gap-4"
+        className="mx-auto flex w-full flex-1 flex-col gap-4 p-4 md:p-6"
         style={{ maxWidth: 900 }}
       >
         {/* File Header */}

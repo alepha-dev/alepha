@@ -59,11 +59,11 @@ const MilestoneLedgerHero = (props: MilestoneLedgerHeroProps) => {
     <div className="bg-card border-border flex flex-col gap-6 border-b px-5 py-5 transition-colors lg:flex-row lg:items-center lg:gap-7 lg:px-7">
       <div className="relative flex size-13 shrink-0 items-center justify-center rounded-full bg-green-600 text-xl font-bold text-white">
         {milestone.number}
-        <span className="ring-card absolute -bottom-px -right-px size-3 animate-pulse rounded-full bg-green-400 ring-2" />
+        <span className="ring-card absolute -right-px -bottom-px size-3 animate-pulse rounded-full bg-green-400 ring-2" />
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2.5 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-green-600 dark:text-green-400">
+        <div className="flex items-center gap-2.5 text-[10.5px] font-semibold tracking-[0.16em] text-green-600 uppercase dark:text-green-400">
           {tr("milestone.ledger.recording")}
           <span className="text-muted-foreground truncate font-medium tracking-[0.12em]">
             {tr("milestone.ledger.started", {
@@ -119,7 +119,7 @@ const MilestoneLedgerHero = (props: MilestoneLedgerHeroProps) => {
       <div className="shrink-0 lg:w-52">
         {progress != null ? (
           <>
-            <div className="text-muted-foreground flex justify-between text-[10.5px] uppercase tracking-[0.1em]">
+            <div className="text-muted-foreground flex justify-between text-[10.5px] tracking-[0.1em] uppercase">
               <span>{tr("milestone.hero.progress")}</span>
               <span className="font-mono">{progress}%</span>
             </div>
@@ -138,7 +138,7 @@ const MilestoneLedgerHero = (props: MilestoneLedgerHeroProps) => {
             </div>
           </>
         ) : (
-          <div className="text-muted-foreground text-[10.5px] uppercase tracking-[0.1em]">
+          <div className="text-muted-foreground text-[10.5px] tracking-[0.1em] uppercase">
             {tr("milestone.ledger.window")}
           </div>
         )}
@@ -192,7 +192,7 @@ interface StatProps {
 
 const Stat = (props: StatProps) => (
   <div>
-    <div className="text-muted-foreground text-[10px] uppercase tracking-[0.1em]">
+    <div className="text-muted-foreground text-[10px] tracking-[0.1em] uppercase">
       {props.label}
     </div>
     <div className="mt-0.5 text-[22px] font-bold">{props.value}</div>

@@ -189,7 +189,7 @@ const QuestView = (props: QuestViewProps) => {
       return;
     }
     if (project) {
-      router.push("projectQuests", {
+      void router.push("projectQuests", {
         params: { projectSlug: project.slug },
       });
     }

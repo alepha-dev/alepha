@@ -44,14 +44,14 @@ const ProjectSettingsDangerZoneSection = () => {
     await projectApi.deleteProjectById({ params: { id: project.id } });
     alepha.store.set(userProjectsAtom, await projectApi.getHomeOverview());
     setDeleteModalOpen(false);
-    router.push("home");
+    void router.push("home");
   };
 
   const handleLeave = async () => {
     await projectApi.leaveProject({ params: { id: project.id } });
     alepha.store.set(userProjectsAtom, await projectApi.getHomeOverview());
     setLeaveDialogOpen(false);
-    router.push("home");
+    void router.push("home");
   };
 
   return (
@@ -129,7 +129,7 @@ const ProjectSettingsDangerZoneSection = () => {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleLeave}
-              className="bg-destructive text-white hover:bg-destructive/90"
+              className="bg-destructive hover:bg-destructive/90 text-white"
             >
               {tr("project.settings.leave.modal.submit")}
             </AlertDialogAction>

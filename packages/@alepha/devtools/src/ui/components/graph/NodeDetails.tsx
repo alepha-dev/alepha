@@ -20,10 +20,10 @@ export const NodeDetails = (props: NodeDetailsProps) => {
   const isModule = data.isModule;
 
   return (
-    <div className="bg-card border-border absolute right-4 top-4 z-10 w-[280px] rounded-lg border p-4 shadow-lg">
+    <div className="bg-card border-border absolute top-4 right-4 z-10 w-[280px] rounded-lg border p-4 shadow-lg">
       <div className="mb-3 flex items-start justify-between">
         <div className="flex flex-1 flex-col gap-1">
-          <span className="break-words text-sm font-semibold">
+          <span className="text-sm font-semibold break-words">
             {data.label}
           </span>
           {!isModule && data.module && (

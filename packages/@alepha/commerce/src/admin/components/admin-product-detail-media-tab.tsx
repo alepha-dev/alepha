@@ -92,7 +92,7 @@ export const AdminProductDetailMediaTab = (
                       className="size-full object-cover"
                     />
                     {index === 0 ? (
-                      <span className="bg-background/90 text-foreground absolute left-1 top-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium">
+                      <span className="bg-background/90 text-foreground absolute top-1 left-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium">
                         <Star className="size-3" />
                         {tr("commerce.admin.media.listing", {
                           default: "Listing",

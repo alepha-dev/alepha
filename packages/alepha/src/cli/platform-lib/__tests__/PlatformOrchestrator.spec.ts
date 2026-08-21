@@ -33,8 +33,10 @@ describe("PlatformOrchestrator", () => {
       },
     });
 
-    // Default package.json
-    fs.writeFile(
+    // Default package.json. `void` rather than `await` because the enclosing
+    // helper is sync and MemoryFileSystemProvider's body runs to completion
+    // synchronously for a string payload.
+    void fs.writeFile(
       "/project/package.json",
       JSON.stringify({
         name: "my-app",

@@ -55,7 +55,7 @@ describe("rate-limit counters expire", () => {
     await provider.checkLimitByKey("ip:1.2.3.4", { max: 5, windowMs: 60_000 });
     const firstKey = cache.incrCalls[0].key;
 
-    dateTime.travel(3_600_000);
+    await dateTime.travel(3_600_000);
     await provider.checkLimitByKey("ip:1.2.3.4", { max: 5, windowMs: 60_000 });
 
     expect(cache.incrCalls[1].key).not.toBe(firstKey);

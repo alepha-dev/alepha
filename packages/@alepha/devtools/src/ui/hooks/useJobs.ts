@@ -60,7 +60,7 @@ export const useJobs = (pollMs = 5000) => {
     // system" case the rule exempts; it reports it because the loader flips
     // `loading` before its first await.
     // oxlint-disable-next-line react/set-state-in-effect
-    load();
+    void load();
     const id = setInterval(load, pollMs);
     return () => clearInterval(id);
   }, [load, pollMs]);

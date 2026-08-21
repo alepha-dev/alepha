@@ -47,7 +47,7 @@ const Segment = () => {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+            <CardTitle className="text-muted-foreground text-xs tracking-wider uppercase">
               Basic (controlled)
             </CardTitle>
           </CardHeader>
@@ -62,7 +62,7 @@ const Segment = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+            <CardTitle className="text-muted-foreground text-xs tracking-wider uppercase">
               Full width
             </CardTitle>
           </CardHeader>
@@ -78,7 +78,7 @@ const Segment = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+            <CardTitle className="text-muted-foreground text-xs tracking-wider uppercase">
               Sizes
             </CardTitle>
           </CardHeader>
@@ -101,7 +101,7 @@ const Segment = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+            <CardTitle className="text-muted-foreground text-xs tracking-wider uppercase">
               Dividers toggle
             </CardTitle>
           </CardHeader>
@@ -124,7 +124,7 @@ const Segment = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+            <CardTitle className="text-muted-foreground text-xs tracking-wider uppercase">
               Disabled (all)
             </CardTitle>
           </CardHeader>
@@ -135,7 +135,7 @@ const Segment = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+            <CardTitle className="text-muted-foreground text-xs tracking-wider uppercase">
               Disabled (one option)
             </CardTitle>
           </CardHeader>

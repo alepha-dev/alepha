@@ -207,12 +207,12 @@ export const AtomDetail = (props: AtomDetailProps) => {
             onClick={() => {
               if (jsonMode) {
                 try {
-                  save(JSON.parse(jsonText));
+                  void save(JSON.parse(jsonText));
                 } catch {
                   setJsonError("Invalid JSON");
                 }
               } else {
-                save(form.currentValues);
+                void save(form.currentValues);
               }
             }}
           >

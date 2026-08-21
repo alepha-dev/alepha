@@ -79,7 +79,7 @@ export const AdminProductDetailStockTab = (
         {figures.map((figure) => (
           <Card key={figure.label}>
             <CardContent className="flex flex-col gap-1">
-              <span className="text-muted-foreground text-[11px] font-medium uppercase tracking-wide">
+              <span className="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">
                 {figure.label}
               </span>
               <span

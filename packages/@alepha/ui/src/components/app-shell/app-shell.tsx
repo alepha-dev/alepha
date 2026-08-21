@@ -122,7 +122,7 @@ function NavigationProgress(options: NavigationProgressOptions) {
   const barClassName = options.className ?? "bg-primary";
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-50 pointer-events-none"
+      className="pointer-events-none fixed top-0 right-0 left-0 z-50"
       style={{ height }}
     >
       <div
@@ -263,7 +263,7 @@ function SidebarNavItem(props: { item: NavItem }) {
       const row = (
         <div
           aria-disabled="true"
-          className="flex h-8 w-full items-center gap-2 rounded-md border border-dashed border-muted-foreground/40 bg-muted/40 px-2 text-sm text-muted-foreground"
+          className="border-muted-foreground/40 bg-muted/40 text-muted-foreground flex h-8 w-full items-center gap-2 rounded-md border border-dashed px-2 text-sm"
           style={{ cursor: "not-allowed" }}
         >
           {renderNavIcon(item.icon, "size-4 shrink-0")}
@@ -629,7 +629,7 @@ export function AppShell(props: AppShellProps) {
         // selectors out-specify the base `.fixed`/`.h-svh` utilities.
         className={
           props.fill
-            ? "relative min-h-0 h-full [&_[data-slot=sidebar-container]]:absolute [&_[data-slot=sidebar-container]]:h-auto"
+            ? "relative h-full min-h-0 [&_[data-slot=sidebar-container]]:absolute [&_[data-slot=sidebar-container]]:h-auto"
             : undefined
         }
       >
@@ -669,7 +669,7 @@ export function AppShell(props: AppShellProps) {
           <SidebarInset
             className={
               variant === "inset"
-                ? "md:peer-data-[variant=inset]:overflow-hidden border"
+                ? "border md:peer-data-[variant=inset]:overflow-hidden"
                 : undefined
             }
           >

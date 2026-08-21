@@ -5,7 +5,7 @@ import CopyCommand from "./CopyCommand.tsx";
 const ProofSection = () => {
   return (
     <section id="more" className="home-block home-section home-section-alt">
-      <div className="container proof-cta">
+      <div className="proof-cta container">
         <h2 className="section-title">Try it in one command</h2>
 
         <CopyCommand command="npx alepha@latest init my-app" />
@@ -17,7 +17,7 @@ const ProofSection = () => {
           something else.
         </p>
 
-        <div className="flex gap-6 proof-links">
+        <div className="proof-links flex gap-6">
           <a
             href="https://github.com/feunard/alepha"
             target="_blank"

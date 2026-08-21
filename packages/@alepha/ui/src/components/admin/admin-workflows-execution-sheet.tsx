@@ -191,7 +191,7 @@ export const WorkflowExecutionSheet = (props: WorkflowExecutionSheetProps) => {
             </div>
 
             {detail.error && (
-              <div className="text-destructive mx-4 mb-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs">
+              <div className="text-destructive border-destructive/30 bg-destructive/5 mx-4 mb-2 rounded-md border px-3 py-2 text-xs">
                 <span className="font-medium">
                   {detail.errorStep ? `${detail.errorStep}: ` : null}
                 </span>
@@ -268,7 +268,7 @@ const WorkflowExecutionSheetStep = (props: WorkflowExecutionSheetStepProps) => {
         </div>
       )}
       {step.result && (
-        <pre className="text-muted-foreground mt-1 max-h-32 overflow-auto rounded bg-muted/50 p-2 pl-2 text-[11px] leading-snug">
+        <pre className="text-muted-foreground bg-muted/50 mt-1 max-h-32 overflow-auto rounded p-2 pl-2 text-[11px] leading-snug">
           {JSON.stringify(step.result, null, 2)}
         </pre>
       )}

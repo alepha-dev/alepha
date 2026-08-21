@@ -7,7 +7,7 @@ import ScrollButton from "./ScrollButton.tsx";
 
 const HeroSection = () => {
   return (
-    <section id="hero" className="home-block container hero-section">
+    <section id="hero" className="home-block hero-section container">
       <div className={"light-pillar"}>
         <LightPillar
           intensity={1}
@@ -59,7 +59,7 @@ const HeroSection = () => {
 
         <CopyCommand command="npx alepha@latest init my-app" />
 
-        <div className="flex gap-4 flex-wrap hero-buttons">
+        <div className="hero-buttons flex flex-wrap gap-4">
           <Link href="/docs/guides-getting-started" className="hero-link">
             <button type="button" className="hero-btn hero-btn-primary">
               Get Started

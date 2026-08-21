@@ -209,7 +209,7 @@ export class DevLogStoreProvider {
       kept.push(entry);
     }
 
-    return kept.reverse();
+    return kept.toReversed();
   }
 
   protected marker(): LogEntry {

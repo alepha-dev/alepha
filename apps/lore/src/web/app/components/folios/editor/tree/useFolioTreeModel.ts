@@ -317,7 +317,7 @@ export const useFolioTreeModel = (
       toggle(node.id);
       return;
     }
-    router.push(
+    void router.push(
       router.path("projectFoliosFolio", {
         params: { projectSlug: input.projectSlug, shortId: node.shortId },
       }),

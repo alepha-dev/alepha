@@ -65,7 +65,7 @@ const PlatformSection = () => {
 
   return (
     <section id="platform" className="home-block home-section">
-      <div className="container container-wide">
+      <div className="container-wide container">
         <div className="section-head">
           <h2 className="section-title">Deploy with one command</h2>
           <p className="section-sub">

@@ -23,7 +23,7 @@ const PRIMITIVES = [
 const AgentSection = () => {
   return (
     <section id="agents" className="home-block home-section home-section-alt">
-      <div className="container container-wide">
+      <div className="container-wide container">
         <div className="section-head">
           <h2 className="section-title">
             Built for the thing writing your code

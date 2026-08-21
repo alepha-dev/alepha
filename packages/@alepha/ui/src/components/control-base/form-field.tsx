@@ -281,7 +281,7 @@ export function FormField(props: FormFieldProps) {
           {props.error && (
             <p
               id={errorId}
-              className="text-destructive text-xs flex items-center gap-1"
+              className="text-destructive flex items-center gap-1 text-xs"
               role="alert"
             >
               <span aria-hidden>⚠</span>
@@ -320,7 +320,7 @@ export function FormField(props: FormFieldProps) {
       {props.error && (
         <p
           id={errorId}
-          className="text-destructive text-xs flex items-center gap-1"
+          className="text-destructive flex items-center gap-1 text-xs"
           role="alert"
         >
           <span aria-hidden>⚠</span>

@@ -75,7 +75,7 @@ const FolioTreeContextMenu = (
         });
 
   const handleOpen = (): void => {
-    router.push(hrefFor());
+    void router.push(hrefFor());
   };
 
   const handleOpenNewTab = (): void => {

@@ -25,7 +25,7 @@ export const ActionDetail = (props: ActionDetailProps) => {
       lines.push(`  -d '{}' \\`);
     }
     lines.push(`  'http://localhost${action.fullPath}'`);
-    navigator.clipboard.writeText(lines.join("\n")).then(() => {
+    void navigator.clipboard.writeText(lines.join("\n")).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });

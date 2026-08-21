@@ -104,7 +104,7 @@ export const DevEnvironment = () => {
 
   const copyAll = () => {
     const text = visible.map((v) => `${v.name}=${v.value ?? ""}`).join("\n");
-    navigator.clipboard.writeText(text).then(() => {
+    void navigator.clipboard.writeText(text).then(() => {
       setCopiedAll(true);
       setTimeout(() => setCopiedAll(false), 1500);
     });

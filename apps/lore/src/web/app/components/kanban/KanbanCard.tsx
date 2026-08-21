@@ -47,7 +47,7 @@ const KanbanCard = (props: KanbanCardProps) => {
         onClick={() => onSelect(quest)}
         {...attributes}
         {...listeners}
-        className={`group flex w-full items-center gap-2 overflow-hidden rounded-md border border-border bg-card px-2 py-1.5 text-left shadow-sm transition-colors hover:bg-muted ${cursorClass}`}
+        className={`group border-border bg-card hover:bg-muted flex w-full items-center gap-2 overflow-hidden rounded-md border px-2 py-1.5 text-left shadow-sm transition-colors ${cursorClass}`}
       >
         <div className="flex flex-1 flex-col overflow-hidden">
           <span
@@ -58,12 +58,12 @@ const KanbanCard = (props: KanbanCardProps) => {
             {quest.title}
           </span>
           <div className="flex items-center gap-1">
-            <span className="text-[10px] font-mono text-muted-foreground/70">
+            <span className="text-muted-foreground/70 font-mono text-[10px]">
               #{quest.shortId}
             </span>
-            <span className="text-xs text-muted-foreground">{quest.area}</span>
+            <span className="text-muted-foreground text-xs">{quest.area}</span>
             {quest.metadata.objectivesProgress.total > 0 && (
-              <span className="text-[10px] text-muted-foreground">
+              <span className="text-muted-foreground text-[10px]">
                 {quest.metadata.objectivesProgress.completed}/
                 {quest.metadata.objectivesProgress.total}
               </span>
@@ -78,7 +78,7 @@ const KanbanCard = (props: KanbanCardProps) => {
             <AlertTriangle className="size-3.5 text-red-500" />
           )}
           {quest.priority === "optional" && (
-            <Sparkles className="size-3.5 text-muted-foreground" />
+            <Sparkles className="text-muted-foreground size-3.5" />
           )}
         </div>
       </button>

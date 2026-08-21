@@ -79,7 +79,7 @@ export const DevOutbox = () => {
     // system" case the rule exempts; it reports it because the loader flips
     // `loading` before its first await.
     // oxlint-disable-next-line react/set-state-in-effect
-    fetchAll();
+    void fetchAll();
     const id = setInterval(fetchAll, 5000);
     return () => clearInterval(id);
   }, [fetchAll]);

@@ -45,7 +45,7 @@ export const AccountHeader = (props: AccountHeaderProps) => {
       <Button
         variant="ghost"
         size="sm"
-        className="-ml-2 text-muted-foreground hover:text-foreground"
+        className="text-muted-foreground hover:text-foreground -ml-2"
         render={<Link href={router.path(home)} />}
         // A link wearing a button's clothes: `nativeButton={false}` stops Base UI
         // assuming a native <button> (it warns otherwise), and `role` puts back the

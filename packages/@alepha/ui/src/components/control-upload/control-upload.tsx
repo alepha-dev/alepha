@@ -266,14 +266,14 @@ export function ControlUpload(props: ControlUploadProps) {
   };
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) handleFiles(e.target.files);
+    if (e.target.files) void handleFiles(e.target.files);
   };
 
   const handleDrop = (e: DragEvent) => {
     e.preventDefault();
     setDragOver(false);
     if (props.disabled) return;
-    if (e.dataTransfer.files) handleFiles(e.dataTransfer.files);
+    if (e.dataTransfer.files) void handleFiles(e.dataTransfer.files);
   };
 
   const removeOne = (id: string) => {
@@ -302,7 +302,7 @@ export function ControlUpload(props: ControlUploadProps) {
     return (
       <div
         key={id}
-        className={`relative flex h-9 cursor-zoom-in items-center rounded-md border border-input bg-transparent pl-1 dark:bg-input/30 ${canClear ? "pr-9" : "pr-2"}`}
+        className={`border-input dark:bg-input/30 relative flex h-9 cursor-zoom-in items-center rounded-md border bg-transparent pl-1 ${canClear ? "pr-9" : "pr-2"}`}
         onClick={() => setPreviewId(id)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -378,12 +378,12 @@ export function ControlUpload(props: ControlUploadProps) {
       >
         {uploading ? (
           <>
-            <Loader2 className="size-4 mr-1 animate-spin" />
+            <Loader2 className="mr-1 size-4 animate-spin" />
             {tr("controlUpload.uploading", { default: "Uploading…" })}
           </>
         ) : (
           <>
-            <Upload className="size-4 mr-1" />
+            <Upload className="mr-1 size-4" />
             {props.multi
               ? tr("controlUpload.chooseFiles", { default: "Choose files" })
               : tr("controlUpload.chooseFile", { default: "Choose a file" })}
@@ -458,7 +458,7 @@ export function ControlUpload(props: ControlUploadProps) {
             )}
           </div>
           {(previewHasName || previewItem?.mimeType) && (
-            <div className="flex flex-col gap-0 border-t bg-muted/30 px-4 py-2">
+            <div className="bg-muted/30 flex flex-col gap-0 border-t px-4 py-2">
               {previewHasName && (
                 <span className="truncate text-sm font-medium">
                   {previewItem?.name}

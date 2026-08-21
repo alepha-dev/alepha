@@ -96,7 +96,7 @@ const ProjectSettingsMembersSection = (
                   value={email}
                   onChange={(e) => setEmail(e.currentTarget.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") handleInvite();
+                    if (e.key === "Enter") void handleInvite();
                   }}
                 />
               </div>
@@ -150,7 +150,7 @@ const ProjectSettingsMembersSection = (
           ))}
 
           {pendingInvitations.map((invitation) => (
-            <Card key={invitation.id} className="py-3 shadow opacity-80">
+            <Card key={invitation.id} className="py-3 opacity-80 shadow">
               <CardContent className="flex items-center gap-4 px-3">
                 <div className="bg-muted flex size-10 items-center justify-center rounded-md">
                   <Mail className="size-5" />

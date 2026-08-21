@@ -602,14 +602,14 @@ function Combobox(props: ComboboxProps) {
               <div className="flex min-w-0 flex-1 flex-col">
                 <div className="flex items-center gap-1.5">
                   {opt.tag && (
-                    <span className="bg-muted text-muted-foreground rounded px-1 text-[10px] uppercase tracking-wide">
+                    <span className="bg-muted text-muted-foreground rounded px-1 text-[10px] tracking-wide uppercase">
                       {opt.tag}
                     </span>
                   )}
                   <span className="truncate">{opt.label}</span>
                 </div>
                 {opt.description && (
-                  <span className="text-muted-foreground text-xs truncate">
+                  <span className="text-muted-foreground truncate text-xs">
                     {opt.description}
                   </span>
                 )}
@@ -687,7 +687,7 @@ function Combobox(props: ComboboxProps) {
             id={props.id}
             disabled={props.disabled}
             className={cn(
-              "flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent py-2 pr-2 pl-2.5 text-sm whitespace-nowrap transition-colors outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30 dark:hover:bg-input/50",
+              "border-input focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-input/50 flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border bg-transparent py-2 pr-2 pl-2.5 text-sm whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50",
               // Muted means "nothing chosen yet", which is only true without
               // a clear row. WITH one, empty is a selected value — the popup
               // already puts the check mark on it (see `cbValue`), and the

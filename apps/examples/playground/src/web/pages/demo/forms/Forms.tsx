@@ -21,7 +21,7 @@ const cards = [
 
 const FormsIndex = () => (
   <div className="container mx-auto max-w-3xl p-6">
-    <h1 className="text-2xl font-semibold mb-2">Form gallery</h1>
+    <h1 className="mb-2 text-2xl font-semibold">Form gallery</h1>
     <p className="text-muted-foreground mb-6 text-sm">
       A collection of typical AutoForm use cases. Each one exercises a different
       combination of $control options, autocomplete tokens, and ControlSelect

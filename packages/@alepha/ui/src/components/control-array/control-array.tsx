@@ -518,7 +518,7 @@ export function ControlArray(props: ControlArrayProps) {
           key={item.key}
           className="bg-muted/30 flex items-start gap-2 rounded-md border p-3"
         >
-          <div className="flex-1 min-w-0">{renderItemBody(item, index)}</div>
+          <div className="min-w-0 flex-1">{renderItemBody(item, index)}</div>
           {itemActions(index)}
         </div>
       ))}
@@ -542,7 +542,7 @@ export function ControlArray(props: ControlArrayProps) {
       </div>
       {items[activeTab] && (
         <div className="bg-muted/30 flex items-start gap-2 rounded-md border p-3">
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             {renderItemBody(items[activeTab], activeTab)}
           </div>
           {itemActions(activeTab)}
@@ -591,8 +591,8 @@ export function ControlArray(props: ControlArrayProps) {
           <Plus className="size-4" />
         </Button>
       )}
-      <div className="flex flex-col min-w-0 flex-1">
-        <div className="text-sm font-medium leading-tight">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="text-sm leading-tight font-medium">
           {meta.label}
           {meta.required && <span className="text-destructive ml-0.5">*</span>}
           <span className="text-muted-foreground ml-2 text-xs">

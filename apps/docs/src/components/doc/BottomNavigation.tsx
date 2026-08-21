@@ -30,7 +30,7 @@ const BottomNavigation = (props: BottomNavigationProps) => {
 
   return (
     <nav
-      className="mt-6 pt-6 pb-6 bottom-nav"
+      className="bottom-nav mt-6 pt-6 pb-6"
       aria-label="Document navigation"
       style={{
         display: "grid",
@@ -89,7 +89,7 @@ const NavButton = (props: NavButtonProps) => {
       aria-label={label}
       aria-busy={isPending}
       disabled={isPending}
-      className="btn-reset nav-button flex items-center gap-3 cursor-pointer w-full"
+      className="btn-reset nav-button flex w-full cursor-pointer items-center gap-3"
       style={{
         padding: "12px 16px",
         background: "transparent",
@@ -115,7 +115,7 @@ const NavButton = (props: NavButtonProps) => {
           alignItems: direction === "next" ? "flex-end" : "flex-start",
         }}
       >
-        <span className="text-xs text-muted" aria-hidden="true">
+        <span className="text-muted text-xs" aria-hidden="true">
           {direction === "prev" ? "Previous" : "Next"}
         </span>
         <span className="text-sm" style={{ color: "var(--color-text-bright)" }}>

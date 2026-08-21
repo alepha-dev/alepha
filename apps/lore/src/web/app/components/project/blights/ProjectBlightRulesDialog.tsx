@@ -129,7 +129,6 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
             value={pattern}
             placeholder={tr("blights.rules.placeholder")}
             onChange={(e) => setPattern(e.target.value)}
-            autoFocus
           />
           <Button type="submit" disabled={saving || !pattern.trim()}>
             <Plus className="size-4" />
@@ -153,7 +152,7 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
                 className="flex items-center justify-between gap-2 rounded-md border px-3 py-2"
               >
                 {/* Owner-authored — plain text, escaped by React. */}
-                <span className="break-all font-mono text-sm">
+                <span className="font-mono text-sm break-all">
                   {rule.pattern}
                 </span>
                 <Button

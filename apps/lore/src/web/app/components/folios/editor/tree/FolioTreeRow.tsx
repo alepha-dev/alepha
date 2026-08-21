@@ -165,21 +165,21 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
             onDragEnd={handleDragEnd}
             onClick={handleClick}
             className={cn(
-              "relative flex cursor-default items-center gap-1 py-1 pr-2 text-sm select-none hover:bg-muted/60",
+              "hover:bg-muted/60 relative flex cursor-default items-center gap-1 py-1 pr-2 text-sm select-none",
               isSelected && "bg-muted font-medium",
               isDragging && "opacity-45",
               dropHere === "inside" &&
-                "bg-primary/10 ring-1 ring-inset ring-primary/60",
+                "bg-primary/10 ring-primary/60 ring-1 ring-inset",
             )}
             style={{ paddingLeft: `${8 + props.depth * 13}px` }}
           />
         }
       >
         {dropHere === "before" && (
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-primary" />
+          <div className="bg-primary pointer-events-none absolute inset-x-0 top-0 h-0.5" />
         )}
         {dropHere === "after" && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 bg-primary" />
+          <div className="bg-primary pointer-events-none absolute inset-x-0 bottom-0 h-0.5" />
         )}
         {isDirectory ? (
           <button
@@ -204,19 +204,18 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
         />
         {isRenaming ? (
           <input
-            autoFocus
             value={draftName}
             onChange={(e) => setDraftName(e.target.value)}
             onKeyDown={handleRenameKeyDown}
             onBlur={commit}
             onClick={(e) => e.stopPropagation()}
-            className="min-w-0 flex-1 rounded border border-primary bg-background px-1 text-sm outline-none"
+            className="border-primary bg-background min-w-0 flex-1 rounded border px-1 text-sm outline-none"
           />
         ) : (
           <span className="min-w-0 flex-1 truncate">{node.name}</span>
         )}
         {!isRenaming && node.pinned && (
-          <Pin className="size-3 shrink-0 text-primary" />
+          <Pin className="text-primary size-3 shrink-0" />
         )}
       </ContextMenuTrigger>
       <FolioTreeContextMenu

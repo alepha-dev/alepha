@@ -91,7 +91,7 @@ export const JobExecutions = (props: JobExecutionsProps) => {
     // rows it pointed at are about to be replaced.
     // oxlint-disable-next-line react/set-state-in-effect
     setSelected(null);
-    load();
+    void load();
     const id = setInterval(load, 5000);
     return () => clearInterval(id);
   }, [load]);

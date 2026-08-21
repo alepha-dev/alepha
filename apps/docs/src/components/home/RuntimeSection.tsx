@@ -3,7 +3,7 @@ import RuntimeSwitcher from "./RuntimeSwitcher.tsx";
 const RuntimeSection = () => {
   return (
     <section id="runtimes" className="home-block home-section">
-      <div className="container container-wide">
+      <div className="container-wide container">
         <div className="section-head">
           <h2 className="section-title">Same code. Anywhere you run it.</h2>
           <p className="section-sub">

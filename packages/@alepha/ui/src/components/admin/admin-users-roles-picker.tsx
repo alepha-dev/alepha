@@ -76,7 +76,7 @@ export const AdminUsersRolesPicker = (props: AdminUsersRolesPickerProps) => {
         {label}
       </PopoverTrigger>
       <PopoverContent align="start" className="w-56 p-1">
-        <div className="px-2 py-1.5 text-xs text-muted-foreground">
+        <div className="text-muted-foreground px-2 py-1.5 text-xs">
           {props.rolesLabel}
         </div>
         <div className="flex flex-col">
@@ -89,7 +89,7 @@ export const AdminUsersRolesPicker = (props: AdminUsersRolesPickerProps) => {
                 className={
                   disabled
                     ? "flex cursor-not-allowed items-center gap-2 rounded-sm px-2 py-1.5 text-sm opacity-60"
-                    : "flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+                    : "hover:bg-accent hover:text-accent-foreground flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm"
                 }
               >
                 <Checkbox
@@ -114,7 +114,7 @@ export const AdminUsersRolesPicker = (props: AdminUsersRolesPickerProps) => {
                 />
                 <span className="flex-1">{role.name}</span>
                 {role.default && (
-                  <span className="text-[10px] uppercase text-muted-foreground">
+                  <span className="text-muted-foreground text-[10px] uppercase">
                     default
                   </span>
                 )}

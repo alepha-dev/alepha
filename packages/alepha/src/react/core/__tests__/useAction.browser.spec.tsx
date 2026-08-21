@@ -281,7 +281,9 @@ describe("useAction", () => {
 
     // Call 100 times rapidly with different values
     for (let i = 0; i < 100; i++) {
-      action.run(`value-${i}`);
+      // Not awaited: firing several calls in the same tick is what the
+      // debounce is being tested against.
+      void action.run(`value-${i}`);
     }
 
     // Wait for debounce to complete
@@ -310,11 +312,12 @@ describe("useAction", () => {
     const action = result.current;
 
     // Call multiple times with delays
-    action.run("first");
+    // Not awaited, same reason as above.
+    void action.run("first");
     await new Promise((resolve) => setTimeout(resolve, 30));
-    action.run("second");
+    void action.run("second");
     await new Promise((resolve) => setTimeout(resolve, 30));
-    action.run("third");
+    void action.run("third");
 
     // Wait for final debounce
     await new Promise((resolve) => setTimeout(resolve, 60));
@@ -403,7 +406,8 @@ describe("useAction", () => {
     const action = result.current;
 
     // Call handler
-    action.run("test");
+    // Not awaited, same reason as above.
+    void action.run("test");
 
     // Cancel before debounce completes
     await new Promise((resolve) => setTimeout(resolve, 50));

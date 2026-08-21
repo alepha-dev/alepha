@@ -10,7 +10,7 @@ const StatusBar = () => {
 
   return (
     <div
-      className="flex items-center px-4 hidden-mobile"
+      className="hidden-mobile flex items-center px-4"
       style={{
         height: 24,
         background: "var(--color-bg)",
@@ -46,7 +46,7 @@ const StatusBar = () => {
       </div>
 
       {/* Right side */}
-      <div className="flex items-center gap-4 ml-auto">
+      <div className="ml-auto flex items-center gap-4">
         <span>
           <ClientOnly>
             built{" "}

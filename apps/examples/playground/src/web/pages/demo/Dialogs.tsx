@@ -33,7 +33,7 @@ const Dialogs = () => {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+            <CardTitle className="text-muted-foreground text-xs tracking-wider uppercase">
               Confirm
             </CardTitle>
           </CardHeader>
@@ -73,7 +73,7 @@ const Dialogs = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+            <CardTitle className="text-muted-foreground text-xs tracking-wider uppercase">
               Alert
             </CardTitle>
           </CardHeader>
@@ -96,7 +96,7 @@ const Dialogs = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+            <CardTitle className="text-muted-foreground text-xs tracking-wider uppercase">
               Prompt
             </CardTitle>
           </CardHeader>
@@ -136,7 +136,7 @@ const Dialogs = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+            <CardTitle className="text-muted-foreground text-xs tracking-wider uppercase">
               Toast
             </CardTitle>
           </CardHeader>

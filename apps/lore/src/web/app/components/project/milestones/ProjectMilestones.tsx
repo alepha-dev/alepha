@@ -383,7 +383,7 @@ const ProjectMilestones = () => {
           onSaveToFolio={() => setFolioOpen(true)}
         />
 
-        <aside className="border-border flex shrink-0 flex-col overflow-hidden border-t xl:w-[346px] xl:border-l xl:border-t-0">
+        <aside className="border-border flex shrink-0 flex-col overflow-hidden border-t xl:w-[346px] xl:border-t-0 xl:border-l">
           <MilestoneOpenQuestsRail
             quests={openQuests}
             questsHref={questsHref}

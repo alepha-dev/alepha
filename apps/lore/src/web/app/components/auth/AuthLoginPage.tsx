@@ -14,7 +14,7 @@ const AuthLoginPage = (props: AuthLoginPageProps) => {
       <PageHeader />
       <AuthLogin
         realmConfig={props.realmConfig}
-        logo={<LoreLogo size={64} className="size-16 animate-floating" />}
+        logo={<LoreLogo size={64} className="animate-floating size-16" />}
       />
     </>
   );

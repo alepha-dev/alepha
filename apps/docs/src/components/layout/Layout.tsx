@@ -324,7 +324,7 @@ const LayoutContent = () => {
   // Home page layout - header without tabs, no sidebar
   if (!hasSidebar) {
     return (
-      <div className="flex flex-col min-h-screen w-full">
+      <div className="flex min-h-screen w-full flex-col">
         {/* Keyboard Shortcuts Help */}
         <KeyboardShortcutsHelp
           open={showHelp}
@@ -387,7 +387,7 @@ const LayoutContent = () => {
           />
           {/* Drawer */}
           <div
-            className={`absolute top-0 left-0 bottom-0 flex flex-col ${styles.mobileDrawer}`}
+            className={`absolute top-0 bottom-0 left-0 flex flex-col ${styles.mobileDrawer}`}
           >
             <Sidebar width={280} isMobileDrawer />
           </div>
@@ -395,12 +395,12 @@ const LayoutContent = () => {
       )}
 
       {/* Main IDE Layout */}
-      <div className="flex flex-col h-screen w-full">
+      <div className="flex h-screen w-full flex-col">
         {/* Header with tabs */}
         {!focusMode && <Header showTabs />}
 
         {/* Main Content Area */}
-        <div className={`flex flex-1 w-full ${styles.mainContainer}`}>
+        <div className={`flex w-full flex-1 ${styles.mainContainer}`}>
           {/* Sidebar - File Tree */}
           {!focusMode && <Sidebar width={sidebarWidth} />}
 

@@ -20,7 +20,7 @@ const Toasts = () => {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+            <CardTitle className="text-muted-foreground text-xs tracking-wider uppercase">
               Variants
             </CardTitle>
           </CardHeader>
@@ -62,7 +62,7 @@ const Toasts = () => {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-muted-foreground text-xs uppercase tracking-wider">
+            <CardTitle className="text-muted-foreground text-xs tracking-wider uppercase">
               Stacked
             </CardTitle>
           </CardHeader>

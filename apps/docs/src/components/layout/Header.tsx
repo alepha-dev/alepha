@@ -37,7 +37,7 @@ const Header = (props: HeaderProps) => {
 
   return (
     <header
-      className="flex bg-base"
+      className="bg-base flex"
       style={{
         height: 40,
         borderBottom: "1px solid var(--color-border)",
@@ -51,7 +51,7 @@ const Header = (props: HeaderProps) => {
         {showTabs && (
           <button
             type="button"
-            className="visible-mobile flex items-center justify-center h-full border-r"
+            className="visible-mobile flex h-full items-center justify-center border-r"
             onClick={() =>
               window.dispatchEvent(new CustomEvent("toggle-mobile-sidebar"))
             }
@@ -72,7 +72,7 @@ const Header = (props: HeaderProps) => {
         {/* Alepha Logo/Home */}
         <Link
           href="/"
-          className="logo-btn flex items-center gap-2 px-4 h-full border-r"
+          className="logo-btn flex h-full items-center gap-2 border-r px-4"
           style={{ textDecoration: "none", color: "var(--color-text-bright)" }}
         >
           {/*
@@ -94,7 +94,7 @@ const Header = (props: HeaderProps) => {
         {/* Version - Links to Changelog */}
         <Link
           href="/changelog"
-          className="version-btn hidden-mobile flex items-center gap-2 px-4 h-full border-r"
+          className="version-btn hidden-mobile flex h-full items-center gap-2 border-r px-4"
           style={{
             // Set here rather than in CSS because the inline colour on this
             // element would win over a class. Colour only, like the product
@@ -271,7 +271,7 @@ const TabBar = () => {
         const newTabs = prev.filter((t) => t.path !== closedPath);
         // If closing the active tab, navigate to the next most recent tab
         if (isActive && newTabs.length > 0) {
-          router.push(newTabs[0].path);
+          void router.push(newTabs[0].path);
         }
         return newTabs;
       });

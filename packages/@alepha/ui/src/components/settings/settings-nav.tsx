@@ -102,7 +102,7 @@ export const SettingsNav = (props: SettingsNavProps) => {
     24px — half again the height of the text it sits next to.
   */
   const entry = cn(
-    "flex items-center gap-2 whitespace-nowrap rounded-md px-2 text-left [&_svg]:size-4 [&_svg]:shrink-0",
+    "flex items-center gap-2 rounded-md px-2 text-left whitespace-nowrap [&_svg]:size-4 [&_svg]:shrink-0",
     size === "sm" ? "h-7 text-xs" : "h-8 text-sm",
   );
 
@@ -136,7 +136,7 @@ export const SettingsNav = (props: SettingsNavProps) => {
           {group.label ? (
             // `px-2` matches the entries below, so the heading and the labels
             // it heads share a left edge.
-            <span className="px-2 font-semibold text-[11px] text-muted-foreground uppercase tracking-wider">
+            <span className="text-muted-foreground px-2 text-[11px] font-semibold tracking-wider uppercase">
               {group.label}
             </span>
           ) : null}

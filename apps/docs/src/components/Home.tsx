@@ -18,7 +18,7 @@ const Home = () => {
       <ParticleNetwork />
 
       {/* Main Content */}
-      <div className="flex flex-col relative" style={{ paddingBottom: 24 }}>
+      <div className="relative flex flex-col" style={{ paddingBottom: 24 }}>
         {/*
           Backgrounds alternate strictly from here down: the hero is plain, then
           every even block is `home-section-alt` and every odd block is plain.

@@ -34,7 +34,7 @@ export function AdminAnalytics() {
   const [result, setResult] = useState<AdminAnalyticsResult>();
 
   useEffect(() => {
-    client.listDatasets().then((list) => {
+    void client.listDatasets().then((list) => {
       setDatasets(list);
       setSelected((current) => current ?? list[0]?.name);
     });

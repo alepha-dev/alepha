@@ -969,7 +969,7 @@ describe("BayAdapter — the secrets that ride the deploy", () => {
     const inner = it.shell.run.bind(it.shell);
     it.shell.run = (async (
       command: string | string[],
-      options: Record<string, unknown> = {},
+      options: Record<string, unknown>,
     ) => {
       const recorded = await inner(command, options);
       const key = Array.isArray(command) ? command.join(" ") : command;
@@ -1081,7 +1081,7 @@ describe("BayAdapter — the secrets that ride the deploy", () => {
     const inner = shell.run.bind(shell);
     shell.run = (async (
       command: string | string[],
-      options: Record<string, unknown> = {},
+      options: Record<string, unknown>,
     ) => {
       const key = Array.isArray(command) ? command.join(" ") : command;
       if (/rm -f/.test(key)) {

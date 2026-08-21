@@ -49,7 +49,6 @@ export type TResponseBody =
   | ZodRecord
   | FileSchema
   | ZodArray
-  | StreamSchema
   | ZodVoid;
 
 export interface RequestConfigSchema {

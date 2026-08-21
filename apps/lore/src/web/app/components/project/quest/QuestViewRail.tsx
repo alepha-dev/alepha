@@ -257,7 +257,7 @@ const QuestViewRail = (props: QuestViewRailProps) => {
             <Button
               type="button"
               variant="ghost"
-              className="justify-start gap-3 [&_svg]:text-muted-foreground"
+              className="[&_svg]:text-muted-foreground justify-start gap-3"
               disabled={props.unshelveDisabled}
               onClick={props.onUnshelve}
             >
@@ -268,7 +268,7 @@ const QuestViewRail = (props: QuestViewRailProps) => {
             <Button
               type="button"
               variant="ghost"
-              className="justify-start gap-3 [&_svg]:text-muted-foreground"
+              className="[&_svg]:text-muted-foreground justify-start gap-3"
               disabled={props.shelveDisabled}
               onClick={props.onShelve}
             >

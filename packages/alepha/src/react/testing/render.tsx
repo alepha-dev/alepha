@@ -161,7 +161,7 @@ export const renderWithAlephaSync = (
 
   if (autoStart) {
     // Fire and forget - not recommended, use async version instead
-    alepha.start();
+    void alepha.start();
   }
 
   const Wrapper = ({ children }: { children: ReactNode }) => {

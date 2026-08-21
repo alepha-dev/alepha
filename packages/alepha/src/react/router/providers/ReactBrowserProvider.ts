@@ -714,7 +714,7 @@ export class ReactBrowserProvider {
           url: this.location.pathname + this.location.search,
         });
 
-        this.render();
+        void this.render();
       });
 
       this.attachAnchorInterceptor();

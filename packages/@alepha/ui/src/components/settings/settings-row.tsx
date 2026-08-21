@@ -59,11 +59,11 @@ export const SettingsRow = (props: SettingsRowProps) => {
     >
       <div className="flex flex-col gap-0.5">
         {props.htmlFor ? (
-          <label htmlFor={props.htmlFor} className="font-medium text-sm">
+          <label htmlFor={props.htmlFor} className="text-sm font-medium">
             {props.label}
           </label>
         ) : (
-          <span className="font-medium text-sm">{props.label}</span>
+          <span className="text-sm font-medium">{props.label}</span>
         )}
         {props.description ? (
           <span className="text-muted-foreground text-xs">

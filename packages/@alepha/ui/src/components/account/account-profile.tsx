@@ -210,7 +210,7 @@ const AccountProfile = (props: AccountProfileProps) => {
                 >
                   {/* Only the image is clipped to a circle; the camera badge sits
                   outside the wrapper so the round mask cannot crop it. */}
-                  <div className="size-full overflow-hidden rounded-full border bg-muted">
+                  <div className="bg-muted size-full overflow-hidden rounded-full border">
                     <FileImage
                       id={profile.picture}
                       public
@@ -223,7 +223,7 @@ const AccountProfile = (props: AccountProfileProps) => {
                       }
                     />
                   </div>
-                  <div className="absolute right-0 bottom-0 flex size-5 items-center justify-center rounded-full border bg-card">
+                  <div className="bg-card absolute right-0 bottom-0 flex size-5 items-center justify-center rounded-full border">
                     <Camera className="size-3" />
                   </div>
                 </button>

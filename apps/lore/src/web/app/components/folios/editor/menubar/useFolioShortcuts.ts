@@ -93,7 +93,7 @@ export const useFolioShortcuts = (
       if (editorOwnsBinding(id, mode)) return;
       if (!isFolioActionEnabled(id, state)) return;
       event.preventDefault();
-      handlers[id]();
+      void handlers[id]();
     };
 
     window.addEventListener("keydown", onKeyDown, { capture: true });

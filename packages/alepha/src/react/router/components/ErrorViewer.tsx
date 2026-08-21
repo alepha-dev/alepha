@@ -32,7 +32,7 @@ const DevErrorPage = (props: ErrorViewerProps) => {
   const handleCopy = () => {
     const text = buildErrorText(props.error);
     if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(text);
+      void navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }

@@ -51,7 +51,7 @@ export const SettingsDangerSection = (props: SettingsDangerSectionProps) => {
           </span>
         ) : null}
       </div>
-      <Card className="gap-0 divide-y divide-destructive/20 rounded-lg border border-destructive/30 bg-card py-0">
+      <Card className="divide-destructive/20 border-destructive/30 bg-card gap-0 divide-y rounded-lg border py-0">
         {props.children}
       </Card>
     </div>

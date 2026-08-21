@@ -79,7 +79,7 @@ const QuestLog = (props: QuestLogProps) => {
       <div className="flex items-center gap-2 px-3 pt-3">
         <BookOpen className="text-muted-foreground size-4 shrink-0" />
         <span className="text-xs font-medium">{tr("quest-log.quests")}</span>
-        <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[11px] font-mono">
+        <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 font-mono text-[11px]">
           {filteredQuests.length}/25
         </span>
         <div className="ml-auto flex items-center">

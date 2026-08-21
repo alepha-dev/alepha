@@ -137,7 +137,7 @@ const AppLayout = () => {
         </span>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border">
+      <div className="border-border flex flex-wrap items-center justify-between gap-3 border-b">
         {/*
           Marks the tab bar. "Settings" is also a project-level nav entry, so a
           page-wide `getByRole("link", { name })` cannot say which one it found.
@@ -150,9 +150,9 @@ const AppLayout = () => {
                 key={tab.route}
                 href={router.path(tab.route, { params })}
                 className={cn(
-                  "whitespace-nowrap px-3 py-2 text-sm transition-colors",
+                  "px-3 py-2 text-sm whitespace-nowrap transition-colors",
                   isActive
-                    ? "border-b-2 border-primary text-foreground"
+                    ? "border-primary text-foreground border-b-2"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >

@@ -78,13 +78,13 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
     // system" case the rule exempts; it reports it because the loader flips
     // `loading` before its first await.
     // oxlint-disable-next-line react/set-state-in-effect
-    reload(status);
+    void reload(status);
   }, [status]);
 
   const active = items.find((p) => p.id === activeId) ?? null;
 
   const onChanged = () => {
-    reload(status);
+    void reload(status);
   };
 
   return (

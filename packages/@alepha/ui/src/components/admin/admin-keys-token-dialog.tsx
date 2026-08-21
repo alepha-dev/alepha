@@ -83,7 +83,7 @@ export const AdminKeysTokenDialog = (props: AdminKeysTokenDialogProps) => {
           </DialogDescription>
         </DialogHeader>
         <div className="flex items-start gap-2">
-          <code className="bg-muted min-w-0 flex-1 break-all rounded-md p-3 font-mono text-xs leading-relaxed">
+          <code className="bg-muted min-w-0 flex-1 rounded-md p-3 font-mono text-xs leading-relaxed break-all">
             {props.token}
           </code>
           <TooltipProvider>

@@ -234,7 +234,7 @@ export function Segmented(props: SegmentedProps) {
             className={cn(
               "relative z-10 inline-flex min-w-0 items-center justify-center rounded-[calc(var(--radius)-2px)] font-medium whitespace-nowrap",
               "transition-colors duration-150 ease-in-out",
-              "focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-[3px]",
+              "focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none",
               itemPadClass[size],
               active
                 ? "text-primary-foreground"

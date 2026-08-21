@@ -119,7 +119,7 @@ describe("$circuit", () => {
     await expect(svc.fn()).rejects.toThrowError("Fail");
 
     // Travel past reset window
-    dt.travel([60, "milliseconds"]);
+    await dt.travel([60, "milliseconds"]);
 
     // Half-open → probe succeeds → circuit closes
     expect(await svc.fn()).toBe("recovered");
@@ -144,7 +144,7 @@ describe("$circuit", () => {
     await expect(svc.fn()).rejects.toThrowError("Still failing");
 
     // Travel past reset window
-    dt.travel([60, "milliseconds"]);
+    await dt.travel([60, "milliseconds"]);
 
     // Half-open → probe fails → re-opens
     await expect(svc.fn()).rejects.toThrowError("Still failing");

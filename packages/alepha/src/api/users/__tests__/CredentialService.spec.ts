@@ -259,7 +259,7 @@ describe("alepha/api/users - CredentialService", () => {
       const code = extractCode(emailProvider.records[0].body);
 
       // Travel forward 11 minutes (intent expires at 10)
-      dateTimeProvider.travel(11, "minutes");
+      await dateTimeProvider.travel(11, "minutes");
 
       // Attempt to complete
       await expect(
@@ -704,7 +704,7 @@ describe("alepha/api/users - CredentialService", () => {
       await credentialService.createPasswordResetIntent("cooldown@example.com");
       expect(emailProvider.records.length).toBe(1);
 
-      dateTimeProvider.travel(91, "seconds");
+      await dateTimeProvider.travel(91, "seconds");
 
       await credentialService.createPasswordResetIntent("cooldown@example.com");
       await expect.poll(() => emailProvider.records.length).toBe(2);

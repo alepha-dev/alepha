@@ -36,7 +36,7 @@ const testDefaultPrimaryKeyIsUuidV7 = async (alepha: Alepha) => {
   dateTime.pause();
   // Far from the wall clock on purpose: ids must follow the app clock, not
   // any database-side default evaluated with the real time.
-  dateTime.travel(1_000_000_000);
+  await dateTime.travel(1_000_000_000);
 
   const first = await app.notes.create({ label: "first" });
   const second = await app.notes.create({ label: "second" });
@@ -66,7 +66,7 @@ const testUuidPrimaryKeyGeneratesV7 = async (alepha: Alepha) => {
 
   const dateTime = alepha.inject(DateTimeProvider);
   dateTime.pause();
-  dateTime.travel(1_000_000_000);
+  await dateTime.travel(1_000_000_000);
 
   const tag = await app.tags.create({ label: "tagged" });
 

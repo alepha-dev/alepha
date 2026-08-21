@@ -64,7 +64,7 @@ const AccountConnections = (props: AccountConnectionsProps) => {
       >
         <SettingsRow
           label={
-            <span className="flex items-center gap-2 text-muted-foreground">
+            <span className="text-muted-foreground flex items-center gap-2">
               <Plug className="size-4" />
               Nothing is connected
             </span>

@@ -292,7 +292,7 @@ const ParameterTreePane = (props: ParameterTreePaneProps) => {
   const { tr } = useI18n();
   return (
     <div className="bg-card flex min-h-0 flex-col gap-2 rounded-l-lg border p-2">
-      <div className="text-muted-foreground flex items-center gap-1.5 px-2 py-1 text-xs font-medium uppercase tracking-wide">
+      <div className="text-muted-foreground flex items-center gap-1.5 px-2 py-1 text-xs font-medium tracking-wide uppercase">
         <Settings2 className="size-3.5" />
         {tr("admin.parameters.treeTitle", { default: "Parameters" })}
       </div>
@@ -529,7 +529,7 @@ const ParameterEditorPane = (props: ParameterEditorPaneProps) => {
   if (!current) {
     return (
       <div className="bg-card flex min-h-0 flex-1 flex-col border-y">
-        <div className="flex items-center gap-3 border-b px-4 pb-3 pt-3">
+        <div className="flex items-center gap-3 border-b px-4 pt-3 pb-3">
           <Skeleton className="size-10 rounded-full" />
           <div className="flex flex-col gap-1.5">
             <Skeleton className="h-4 w-32" />
@@ -777,7 +777,7 @@ const ParameterHistoryPane = (props: ParameterHistoryPaneProps) => {
 
   return (
     <div className="bg-card flex min-h-0 flex-col overflow-hidden rounded-r-lg border">
-      <div className="text-muted-foreground flex items-center gap-1.5 px-3 py-2 text-xs font-medium uppercase tracking-wide">
+      <div className="text-muted-foreground flex items-center gap-1.5 px-3 py-2 text-xs font-medium tracking-wide uppercase">
         <HistoryIcon className="size-3.5" />
         {tr("admin.parameters.historyTitle", { default: "History" })}
       </div>

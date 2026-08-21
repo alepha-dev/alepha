@@ -256,7 +256,7 @@ export class DevToolsProvider {
       const total = entries.length;
 
       // Reverse so newest first
-      entries = entries.reverse();
+      entries = entries.toReversed();
 
       const offset = query.offset ? Number(query.offset) : 0;
       const limit = query.limit ? Number(query.limit) : 100;

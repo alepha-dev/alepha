@@ -116,7 +116,7 @@ const FileTreeNode = (props: FileTreeNodeProps) => {
       if (node.asset) {
         window.location.href = node.href;
       } else {
-        router.push(node.href);
+        void router.push(node.href);
       }
     }
   }, [hasChildren, expanded, node.href, node.asset, router]);

@@ -115,7 +115,7 @@ const Spotlight = (): ReactElement => {
       setHits([]);
       return;
     }
-    search.run(value.trim());
+    void search.run(value.trim());
   };
 
   const close = (): void => {

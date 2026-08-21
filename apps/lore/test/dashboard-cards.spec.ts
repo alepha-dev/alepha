@@ -318,7 +318,7 @@ describe("dashboard cards", () => {
   it("persists a new grid order", async ({ expect }) => {
     const { user } = await memberOf(ctx);
     const { cards } = await ctx.controller.listCards({}, { user });
-    const reversed = [...cards].reverse().map((card) => card.id);
+    const reversed = [...cards].toReversed().map((card) => card.id);
 
     await ctx.controller.reorderCards({ body: { ids: reversed } }, { user });
 

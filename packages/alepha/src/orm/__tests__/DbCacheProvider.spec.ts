@@ -45,7 +45,7 @@ describe("DbCacheProvider", () => {
     await cache.set("t", "long", 2, 3_600_000);
     expect(cache.size()).toBe(2);
 
-    dateTime.travel(60_000);
+    await dateTime.travel(60_000);
     // A write is the sweep trigger — nothing reads "short" ever again.
     await cache.set("t", "other", 3, 3_600_000);
 

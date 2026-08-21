@@ -46,7 +46,7 @@ export const AtomMutations = (props: AtomMutationsProps) => {
           if (!cancelled) setError(e?.message ?? "Failed to load mutations");
         });
 
-    load();
+    void load();
     const id = setInterval(load, 3000);
     return () => {
       cancelled = true;

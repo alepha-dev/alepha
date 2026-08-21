@@ -24,7 +24,7 @@ export const run = (
   //   });
   // }
 
-  (async () => {
+  void (async () => {
     try {
       await opts?.configure?.(alepha);
 

@@ -321,7 +321,7 @@ export class LinkProvider {
       writable: false,
     });
 
-    $.run = async (config: any = {}, options: ClientRequestOptions = {}) => {
+    $.run = async (config: any = {}, options: ClientRequestOptions) => {
       return this.follow(name, config, {
         ...scope,
         ...options,

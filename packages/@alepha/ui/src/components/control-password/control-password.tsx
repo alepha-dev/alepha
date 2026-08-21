@@ -46,7 +46,7 @@ export const ControlPassword = (props: ControlPasswordProps) => {
     >
       <div className="relative">
         {Icon && (
-          <Icon className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2 pointer-events-none" />
+          <Icon className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
         )}
         <Input
           {...props.inputProps}
@@ -59,7 +59,7 @@ export const ControlPassword = (props: ControlPasswordProps) => {
           name={props.name}
           type={reveal ? "text" : "password"}
           autoComplete={props.autoComplete ?? "current-password"}
-          autoFocus={props.autoFocus}
+
           disabled={props.disabled}
           required={props.required}
           minLength={props.minLength}

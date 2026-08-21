@@ -40,7 +40,7 @@ const QuestlineCard = (props: QuestlineCardProps) => {
       onClick={() => props.onOpen(node)}
       style={{ width: CARD_W, height: CARD_H }}
       aria-label={`#${node.quest.shortId} ${node.quest.title}`}
-      className={`group/card relative flex flex-col gap-2 rounded-lg border px-3.5 pt-[15px] pb-3 text-left transition-[transform,background-color,border-color] hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${STATE_CARD[node.state]}`}
+      className={`group/card focus-visible:outline-primary relative flex flex-col gap-2 rounded-lg border px-3.5 pt-[15px] pb-3 text-left transition-[transform,background-color,border-color] hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 ${STATE_CARD[node.state]}`}
     >
       {/* Status band across the top edge, following the card's radius. */}
       <span

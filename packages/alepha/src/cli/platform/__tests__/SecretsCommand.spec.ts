@@ -44,8 +44,13 @@ describe("SecretsCommand", () => {
       ...config,
     } as any);
 
-    // Seed package.json
-    fs.writeFile("/project/package.json", JSON.stringify({ name: "my-app" }));
+    // Seed package.json. `void` rather than `await` because the enclosing
+    // helper is sync and MemoryFileSystemProvider's body runs to completion
+    // synchronously for a string payload.
+    void fs.writeFile(
+      "/project/package.json",
+      JSON.stringify({ name: "my-app" }),
+    );
 
     // Seed store with pre-existing secrets
     for (const [env, secrets] of Object.entries(storeSecrets)) {

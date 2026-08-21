@@ -88,7 +88,7 @@ export const ParameterDiffDialog = (props: ParameterDiffDialogProps) => {
                 line.type === "same" && "text-muted-foreground",
               )}
             >
-              <span aria-hidden className="select-none opacity-60">
+              <span aria-hidden className="opacity-60 select-none">
                 {line.type === "add" ? "+" : line.type === "remove" ? "-" : " "}
               </span>
               <span className="flex-1">{line.text}</span>

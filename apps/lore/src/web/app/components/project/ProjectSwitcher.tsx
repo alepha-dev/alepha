@@ -65,7 +65,7 @@ const ProjectSwitcher = () => {
             render={
               <SidebarMenuButton
                 size="lg"
-                className="border border-sidebar-border bg-background text-foreground hover:bg-background hover:text-foreground data-[state=open]:bg-background data-[state=open]:text-foreground"
+                className="border-sidebar-border bg-background text-foreground hover:bg-background hover:text-foreground data-[state=open]:bg-background data-[state=open]:text-foreground border"
               />
             }
           >

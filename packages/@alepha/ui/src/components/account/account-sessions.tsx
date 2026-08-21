@@ -118,7 +118,7 @@ const AccountSessions = (props: AccountSessionsProps) => {
                 className={
                   session.current
                     ? "size-2 fill-green-500 text-green-500"
-                    : "size-2 fill-muted-foreground text-muted-foreground"
+                    : "fill-muted-foreground text-muted-foreground size-2"
                 }
               />
               {deviceIcon(session)}

@@ -142,8 +142,8 @@ export class DevCommand {
       return withPorts;
     }
 
-    const filter = only.split(",").map((s) => s.trim().toLowerCase());
-    return withPorts.filter((app) => filter.includes(app.name.toLowerCase()));
+    const filter = new Set(only.split(",").map((s) => s.trim().toLowerCase()));
+    return withPorts.filter((app) => filter.has(app.name.toLowerCase()));
   }
 
   /**

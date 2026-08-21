@@ -52,19 +52,19 @@ const KanbanColumn = (props: KanbanColumnProps) => {
 
   return (
     <div
-      className={`flex flex-1 flex-col overflow-hidden min-w-[260px] ${
+      className={`flex min-w-[260px] flex-1 flex-col overflow-hidden ${
         last ? "" : "border-border border-r"
       }`}
     >
       {/* Column header */}
-      <div className="flex items-center gap-2 border-border border-b px-3 py-2">
+      <div className="border-border flex items-center gap-2 border-b px-3 py-2">
         <span
           className={`size-2 shrink-0 rounded-full ${descriptor.dotClass}`}
         />
-        <span className="text-sm font-semibold truncate">
+        <span className="truncate text-sm font-semibold">
           {descriptor.label}
         </span>
-        <span className="text-xs text-muted-foreground">{quests.length}</span>
+        <span className="text-muted-foreground text-xs">{quests.length}</span>
       </div>
 
       {/* Column body — scrollable */}
@@ -77,7 +77,7 @@ const KanbanColumn = (props: KanbanColumnProps) => {
         <div className="flex min-h-[100px] flex-col gap-0.5 p-1">
           {quests.length === 0 && (
             <div className="flex items-center justify-center py-8 opacity-40">
-              <span className="text-sm text-muted-foreground">
+              <span className="text-muted-foreground text-sm">
                 {tr("kanban.empty")}
               </span>
             </div>

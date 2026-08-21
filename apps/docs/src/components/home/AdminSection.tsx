@@ -73,7 +73,7 @@ const AdminSection = () => {
 
   return (
     <section id="admin" className="home-block home-section home-section-alt">
-      <div className="container container-wide">
+      <div className="container-wide container">
         <div className="admin-layout">
           {/* Left: the pitch and the command */}
           <div className="admin-left">

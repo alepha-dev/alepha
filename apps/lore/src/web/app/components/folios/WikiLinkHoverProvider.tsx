@@ -253,7 +253,7 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
   return (
     // event delegation over rendered MarkdownView anchors; keyboard a11y handled by the underlying anchors.
     <div
-      className="relative [&_a[href^='lore-broken:']]:text-destructive [&_a[href^='lore-broken:']]:decoration-destructive/40 [&_a[href^='lore-broken:']]:decoration-wavy [&_a[href^='lore-broken:']]:cursor-help"
+      className="[&_a[href^='lore-broken:']]:text-destructive [&_a[href^='lore-broken:']]:decoration-destructive/40 relative [&_a[href^='lore-broken:']]:cursor-help [&_a[href^='lore-broken:']]:decoration-wavy"
       onMouseOver={(e) => handleEnter(e.target)}
       onFocus={(e) => handleEnter(e.target)}
       onMouseOut={(e) => handleLeave(e.relatedTarget as Node | null)}
@@ -356,7 +356,7 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
     }
     let alive = true;
     setLoading(true);
-    (async () => {
+    void (async () => {
       try {
         if (state.target.kind === "folio") {
           const folio = (await folioApi.getByShortId({

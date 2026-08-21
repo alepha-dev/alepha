@@ -55,7 +55,7 @@ const AuthRegisterPage = (props: AuthRegisterPageProps) => {
       <AuthRegister
         realmConfig={props.realmConfig}
         message={message}
-        logo={<LoreLogo size={64} className="size-16 animate-floating" />}
+        logo={<LoreLogo size={64} className="animate-floating size-16" />}
       />
     </>
   );

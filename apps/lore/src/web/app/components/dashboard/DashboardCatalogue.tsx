@@ -191,7 +191,7 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
         {!picked && (
           <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-6 pb-6">
             <div className="relative">
-              <Search className="text-muted-foreground pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2" />
+              <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2" />
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
@@ -204,7 +204,7 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
             <div className="flex flex-col">
               {groups.map(([group, metrics]) => (
                 <div key={group}>
-                  <div className="text-muted-foreground px-0 pb-1.5 pt-3.5 text-[10.5px] font-semibold uppercase tracking-[0.08em]">
+                  <div className="text-muted-foreground px-0 pt-3.5 pb-1.5 text-[10.5px] font-semibold tracking-[0.08em] uppercase">
                     {tr(`dashboard.group.${group}` as never)}
                   </div>
                   <div className="flex flex-col gap-1.5">
@@ -239,7 +239,7 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
           <>
             <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 pb-2">
               <div className="flex flex-col gap-1.5">
-                <div className="text-muted-foreground text-[10.5px] font-semibold uppercase tracking-[0.08em]">
+                <div className="text-muted-foreground text-[10.5px] font-semibold tracking-[0.08em] uppercase">
                   {tr("dashboard.scope.pick")}
                 </div>
                 <DashboardScopeStep
@@ -260,7 +260,7 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
               )}
             </div>
 
-            <DrawerFooter className="px-6 pb-6 pt-4">
+            <DrawerFooter className="px-6 pt-4 pb-6">
               <Button
                 onClick={save}
                 disabled={!canSave}

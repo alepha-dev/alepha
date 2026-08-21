@@ -108,7 +108,7 @@ export class QuestCommentController {
         limit: query?.limit ?? 200,
       });
 
-      return rows.reverse();
+      return rows.toReversed();
     },
   });
 

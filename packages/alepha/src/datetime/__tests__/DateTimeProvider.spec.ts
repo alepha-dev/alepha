@@ -33,8 +33,10 @@ describe("DateTimeProvider", () => {
 
     stack.push("A");
 
-    dt.wait([10, "minutes"]).then(() => stack.push("B"));
-    dt.wait([20, "minutes"]).then(() => stack.push("C"));
+    // Registered, not awaited: the clock has not moved yet, so awaiting here
+    // would block the `travel()` below that is what releases these timers.
+    void dt.wait([10, "minutes"]).then(() => stack.push("B"));
+    void dt.wait([20, "minutes"]).then(() => stack.push("C"));
 
     expect(stack).toEqual(["A"]);
 
@@ -72,9 +74,11 @@ describe("DateTimeProvider", () => {
     const stack: string[] = [];
 
     const abortController = new AbortController();
-    dt.wait([10, "minutes"], { signal: abortController.signal }).then(() =>
-      stack.push("A"),
-    );
+    // Deliberately not awaited: the point of the test is that this chain never
+    // completes, so the wait is started, observed not to have fired, aborted.
+    void dt
+      .wait([10, "minutes"], { signal: abortController.signal })
+      .then(() => stack.push("A"));
 
     expect(stack).toEqual([]);
 
