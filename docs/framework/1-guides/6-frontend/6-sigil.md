@@ -131,6 +131,30 @@ hydrates. It then carries the vitals collected by then instead of leaving them
 for a second request. The visible consequence is that a feedback button on a
 prerendered page appears a moment after the content rather than with it.
 
+## A page load is one request
+
+A server-rendered page carries a config stamped for this visit, so it has
+nothing to ask for and no reason to hurry. It waits instead for the last fact
+about the load to be known: whether the visitor engaged, which is settled ten
+seconds in. The pageview, TTFB, FCP, LCP and the engagement verdict then leave
+together.
+
+Without that wait they do not. The queue debounces for five seconds, so the
+first producer to finish arms the timer and the load reports itself at +5s -
+before the engagement verdict exists, which then pays for a request of its own
+at +15s. The wait costs nothing and removes that second request.
+
+A visitor who leaves before the ten seconds are up is still reported: the wait
+suspends the debounce, not the queue, and `pagehide` and `visibilitychange`
+flush directly. Their envelope simply carries no engagement, which is correct.
+
+Two things still leave separately, and both are deliberate. A page whose config
+has gone stale asks early, as above, because its feedback button cannot render
+until the answer arrives; its engagement follows ten seconds later. And CLS and
+INP are only final when the visit is over - CLS accumulates and INP is the worst
+interaction of the whole session - so they go out in a `keepalive` beacon at
+`visibilitychange`, which is the one request a visitor never waits on.
+
 The sink decides separately what it *keeps*. What an app sends is its own
 business; a sigil whose kinds withhold vitals discards them on arrival however
 enthusiastic the sender.

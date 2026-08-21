@@ -56,6 +56,17 @@ export class SigilBrowserProvider {
   /** Whether the render hook has queued the pageview and started the wait. */
   protected firstIngestArmed = false;
 
+  /**
+   * Which of the two waits is running.
+   *
+   * A stale-config page waits for LCP, because what it needs is the answer and
+   * it needs it before it can render its feedback button. A fresh one waits for
+   * the engagement verdict, because it needs nothing and may as well leave once
+   * there is nothing left to say. LCP arriving is only a release signal for the
+   * first of them.
+   */
+  protected firstIngestWaitsForLcp = false;
+
   /** Whether the first ingest has gone out. It happens once per page load. */
   protected firstIngestSent = false;
 
@@ -65,13 +76,19 @@ export class SigilBrowserProvider {
   protected firstIngestTimer?: ReturnType<typeof setTimeout>;
 
   /**
-   * The path engagement is currently being measured for, and whether it has
-   * already been reported. One pair rather than a set: only one path is on
-   * screen at a time, and a `Set` of every path ever visited would keep a
-   * long-lived tab's memory growing for no gain.
+   * The path engagement is currently being measured for, and whether its
+   * verdict is in. One pair rather than a set: only one path is on screen at a
+   * time, and a `Set` of every path ever visited would keep a long-lived tab's
+   * memory growing for no gain.
+   *
+   * "Settled" rather than "reported" because the two came apart: the verdict is
+   * reached whether or not a row is recorded for it, and a page with the views
+   * tracker off records none. The opening envelope waits on the verdict, so a
+   * flag that only flipped when a row was written would leave such a page
+   * holding forever.
    */
   protected engagementPath?: string;
-  protected engagementReported = false;
+  protected engagementSettled = false;
   protected dwellTimer?: ReturnType<typeof setTimeout>;
 
   /**
@@ -179,6 +196,17 @@ export class SigilBrowserProvider {
       // of the pre-hydration default.
       (this.alepha.events as any).on("react:browser:render", () => {
         this.initialRenderCounted = true;
+
+        // Nothing leaves until this load's envelope is complete - see
+        // `SigilQueue.hold`. Held before the view below is queued, so the
+        // debounce is never armed in the first place.
+        //
+        // Guarded on the same flag as the wait it belongs to. This hook is
+        // meant to fire once per load, but a second one after the release
+        // would re-hold a queue whose only release point has already been
+        // spent, and the page would then report nothing until `pagehide`.
+        if (!this.firstIngestArmed) this.queue!.hold();
+
         this.resetEngagement((location as any).pathname);
         if (this.wants("views")) {
           // The referrer rides on this view and no other. `document.referrer`
@@ -199,41 +227,53 @@ export class SigilBrowserProvider {
           );
         }
 
-        // The page was served with a config older than this visit — it came
-        // from a prerendered file, an edge cache or a restored document. It has
-        // to ask, because until the answer arrives the feedback button cannot
-        // know whether to render.
-        //
-        // Not right now, though. This hook runs while the main thread is still
-        // busy with the render it just finished, and a request fired here
-        // carries one pageview and nothing else: TTFB and FCP land a beat
-        // later and used to leave in a second request of their own. Waiting
-        // for the page to settle makes it one request carrying both.
-        if (
-          !sigilConfigIsFresh(
+        this.armFirstIngest(
+          sigilConfigIsFresh(
             this.alepha.store.get(sigilClientAtom),
             this.dateTime.nowMillis(),
-          )
-        ) {
-          this.armFirstIngest();
-        }
+          ),
+        );
       });
     },
   });
 
   /**
-   * Starts the wait for the first ingest: LCP, or {@link firstIngestDelayMs},
-   * whichever comes first.
+   * Starts the wait that the queue is held for, and with it decides what the
+   * page load's one request is waiting on.
    *
    * Arming is what the render hook contributes, and it matters that the wait
    * starts here rather than at `start`: the pageview is queued by that hook, so
    * an ingest sent before it would carry an empty envelope and leave the view
    * for a later request — the second request this exists to remove. LCP that
    * already arrived is therefore honoured *now*, not earlier.
+   *
+   * ## The two waits
+   *
+   * A page whose stamped config has gone stale (a prerendered file, an edge
+   * cache, a restored document) has to ask, because until the answer arrives
+   * its feedback button cannot know whether to render. So it waits only for the
+   * page to settle: LCP, or {@link firstIngestDelayMs} as the ceiling for a
+   * browser that never dispatches one. Its engagement follows in a request of
+   * its own, ten seconds later. That is the price of asking early, and only
+   * pages served from something that kept them pay it.
+   *
+   * A page whose config is fresh has nothing to ask for, so it waits for the
+   * last fact about the load to be known: whether the visitor engaged, which
+   * {@link dwellMs} settles. Every earlier signal (the view, TTFB, FCP, LCP)
+   * has landed well before then, so the whole load reports itself in one
+   * request instead of two.
+   *
+   * The fresh wait arms no timer of its own on purpose. `resetEngagement` has
+   * already scheduled the dwell, and a second timer set to the same delay would
+   * make which request the engagement lands in a question of which `setTimeout`
+   * was created first.
    */
-  protected armFirstIngest() {
+  protected armFirstIngest(configIsFresh: boolean) {
     if (this.firstIngestArmed) return;
     this.firstIngestArmed = true;
+    this.firstIngestWaitsForLcp = !configIsFresh;
+
+    if (configIsFresh) return;
 
     if (this.lcpSeen) {
       this.sendFirstIngest();
@@ -253,17 +293,23 @@ export class SigilBrowserProvider {
    */
   protected onLcpArrived() {
     this.lcpSeen = true;
-    if (this.firstIngestArmed) {
+    // Only the stale-config wait is a wait for LCP. A fresh page is waiting on
+    // the engagement verdict, and the main content having painted says nothing
+    // about that.
+    if (this.firstIngestArmed && this.firstIngestWaitsForLcp) {
       this.sendFirstIngest();
     }
   }
 
   /**
-   * Sends everything collected so far, once.
+   * Sends everything collected so far, once, and lifts the hold the load was
+   * assembled under.
    *
-   * Forced, so it still happens when every tracker is off and the queue is
-   * therefore empty. That case is the one that matters most: it is the only way
-   * such a page ever learns it was switched back on.
+   * Forced only on the wait that had something to ask. An empty envelope buys
+   * exactly one thing, and it is the only way a page with every tracker off ever
+   * learns it was switched back on — and only a page whose config was already
+   * stale needs to buy it. A fresh one knows, so when it has nothing to say it
+   * says nothing.
    */
   protected sendFirstIngest() {
     if (this.firstIngestSent) return;
@@ -274,7 +320,7 @@ export class SigilBrowserProvider {
       this.firstIngestTimer = undefined;
     }
 
-    void this.queue?.flush({ force: true });
+    void this.queue?.release({ force: this.firstIngestWaitsForLcp });
   }
 
   /**
@@ -302,28 +348,46 @@ export class SigilBrowserProvider {
    */
   protected resetEngagement(path: string) {
     this.engagementPath = path;
-    this.engagementReported = false;
+    this.engagementSettled = false;
     if (this.dwellTimer) clearTimeout(this.dwellTimer);
     this.dwellTimer = setTimeout(() => this.markEngaged(), this.dwellMs);
   }
 
   /**
-   * Records that the current path was engaged with, at most once per path.
+   * Settles engagement for the current path, at most once per path, and sends
+   * what the load has been holding.
    *
-   * Gated on the views flag for the same reason `dropDisabled` clears both
-   * arrays together: an `engaged` count that outlives the `count` it is a
-   * fraction of is worse than no count at all.
+   * Recording is gated on the views flag for the same reason `dropDisabled`
+   * clears both arrays together: an `engaged` count that outlives the `count`
+   * it is a fraction of is worse than no count at all. Settling is not gated,
+   * because the verdict is reached either way and the opening envelope is
+   * waiting on the verdict, not on the row.
    */
   protected markEngaged() {
-    if (this.engagementReported) return;
+    if (this.engagementSettled) return;
     if (!this.engagementPath) return;
-    if (!this.wants("views")) return;
-    this.engagementReported = true;
+    this.engagementSettled = true;
     if (this.dwellTimer) {
       clearTimeout(this.dwellTimer);
       this.dwellTimer = undefined;
     }
-    this.queue?.addEngagement(this.engagementPath, this.dateTime.nowMillis());
+
+    if (this.wants("views")) {
+      this.queue?.addEngagement(this.engagementPath, this.dateTime.nowMillis());
+    }
+
+    if (!this.firstIngestArmed || this.firstIngestWaitsForLcp) {
+      // The release belongs to the LCP wait, not to this. Before that wait
+      // ends the row simply rides the opening envelope; after it, nothing else
+      // is coming for this path (the early signals are long gone, and CLS/INP
+      // only finalize at hidden), so a debounce window here would be five
+      // seconds spent waiting for an envelope that cannot grow.
+      if (this.firstIngestSent) void this.queue?.flush();
+      return;
+    }
+
+    // The verdict was the last thing the opening envelope was waiting for.
+    this.sendFirstIngest();
   }
 
   /**
@@ -353,6 +417,13 @@ export class SigilBrowserProvider {
 
   public debugPendingEngagements(): string[] {
     return this.queue?.pendingEngagements() ?? [];
+  }
+
+  /**
+   * Whether the opening envelope is still being held. See `SigilQueue.hold`.
+   */
+  public debugQueueHeld(): boolean {
+    return this.queue?.isHeld() ?? false;
   }
 
   /**

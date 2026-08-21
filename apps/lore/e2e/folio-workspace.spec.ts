@@ -393,7 +393,16 @@ test.describe("Folio workspace", () => {
     const calls: string[] = [];
     const record = (req: { url: () => string }) => {
       const { pathname, search } = new URL(req.url());
-      if (pathname.startsWith("/api")) calls.push(pathname + search);
+      if (!pathname.startsWith("/api")) return;
+      // Telemetry is not what this counts. The sigil ingest fires on every
+      // page load and is orthogonal to how many DATA requests a
+      // folio-to-folio navigation costs, which is the regression this
+      // guards. It never showed up here before `2e9e28fa5` only because
+      // the queue's debounce sent it at +5s, past the 2s window below;
+      // batching the load into one request moved it inside. Excluding it
+      // is what the assertion always meant.
+      if (pathname.includes("/sigil")) return;
+      calls.push(pathname + search);
     };
     page.on("request", record);
     try {

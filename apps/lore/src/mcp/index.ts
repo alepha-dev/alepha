@@ -1,6 +1,7 @@
 import { $module } from "alepha";
 import { StreamableHttpMcpTransport } from "alepha/mcp";
 import { ProjectResources } from "./resources/ProjectResources.ts";
+import { AttachmentContentService } from "./services/AttachmentContentService.ts";
 import { BlightTools } from "./tools/BlightTools.ts";
 import { EpicTools } from "./tools/EpicTools.ts";
 import { FeedbackTools } from "./tools/FeedbackTools.ts";
@@ -25,5 +26,6 @@ export const LoreMcp = $module({
     SigilTools,
     InsightsTools,
     ProjectResources,
+    AttachmentContentService,
   ],
 });

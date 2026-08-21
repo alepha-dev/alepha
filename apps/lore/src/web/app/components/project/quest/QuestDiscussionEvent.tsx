@@ -9,6 +9,7 @@ import {
   type LucideIcon,
   Pencil,
   Signature,
+  SquareSlash,
   Sunrise,
   Swords,
   UserMinus,
@@ -81,6 +82,28 @@ const QuestDiscussionEvent = (props: QuestDiscussionEventProps) => {
             {dt.of(entry.at).fromNow()}
           </span>
         </div>
+
+        {/* Above the summary, because a reader deciding whether to trust a
+            closed quest needs to know what was skipped before reading the
+            account of what was done. */}
+        {!!entry.waivers?.length && (
+          <ul className="flex flex-col gap-1">
+            {entry.waivers.map((waiver) => (
+              <li
+                key={waiver.title}
+                className="text-muted-foreground flex gap-2 text-xs"
+              >
+                <SquareSlash className="mt-0.5 size-3.5 shrink-0" />
+                <span className="min-w-0">
+                  <span className="text-foreground font-medium">
+                    {tr("quest.discussion.waived", { args: [waiver.title] })}
+                  </span>{" "}
+                  {waiver.reason}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
 
         {/* An event with a body reads as a comment, because that is what it
             is: the completion summary is what the person said as they closed

@@ -480,10 +480,11 @@ const QuestView = (props: QuestViewProps) => {
                   <Button
                     type="button"
                     className="bg-green-600 text-white hover:bg-green-700"
-                    disabled={
-                      !questApi.completeQuest.can() ||
-                      quest.objectives.some((o) => !o.completed)
-                    }
+                    // No longer gated on every box being ticked: the
+                    // dialog now asks for a reason per unticked objective
+                    // and waives it. The old gate's only escape was to tick
+                    // a box for work nobody did.
+                    disabled={!questApi.completeQuest.can()}
                     onClick={() => setShowCompleteDialog(true)}
                   >
                     <Swords className="size-4" />
@@ -679,12 +680,13 @@ const QuestView = (props: QuestViewProps) => {
           if (!completing) setShowCompleteDialog(open);
         }}
         submitting={completing}
-        onConfirm={async (message) => {
+        unticked={quest.objectives.filter((o) => !o.completed)}
+        onConfirm={async (message, waive) => {
           setCompleting(true);
           try {
             const updatedQuest = await questApi.completeQuest({
               params: { id: quest.id },
-              body: { message },
+              body: { message, waive },
             });
             updateQuest(updatedQuest);
             alepha.store.set(currentQuestAtom, updatedQuest);

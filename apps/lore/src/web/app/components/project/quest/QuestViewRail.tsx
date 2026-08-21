@@ -10,6 +10,7 @@ import {
   CircleDot,
   Flag,
   Flame,
+  GitCommitHorizontal,
   Hourglass,
   Layers,
   Link2,
@@ -202,6 +203,30 @@ const QuestViewRail = (props: QuestViewRailProps) => {
 
         <QuestViewRailRow icon={Link2} label={tr("quest.rail.questline")}>
           {questlineParts.length > 0 ? questlineParts.join(" · ") : undefined}
+        </QuestViewRailRow>
+
+        {/* What shipped. No link target: Lore does not know the project's
+            repository, and a row that looks clickable and is not is worse
+            than a row that does not. */}
+        <QuestViewRailRow
+          icon={GitCommitHorizontal}
+          label={tr("quest.rail.commits")}
+        >
+          {quest.commits?.length ? (
+            <span className="flex flex-col items-end gap-0.5">
+              {quest.commits.map((commit) => (
+                <span key={commit.sha} className="min-w-0 truncate">
+                  <code className="font-mono">{commit.sha.slice(0, 7)}</code>
+                  {commit.message ? (
+                    <span className="text-muted-foreground font-normal">
+                      {" "}
+                      {commit.message}
+                    </span>
+                  ) : null}
+                </span>
+              ))}
+            </span>
+          ) : undefined}
         </QuestViewRailRow>
       </div>
 

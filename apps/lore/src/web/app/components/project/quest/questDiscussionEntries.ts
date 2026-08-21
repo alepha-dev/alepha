@@ -42,6 +42,16 @@ export type QuestDiscussionEntry =
        * both kinds of written entry.
        */
       bodyEdited?: boolean;
+      /**
+       * Objectives closed without being done, listed on the `completed`
+       * event above its summary.
+       *
+       * Folded onto the completion rather than rendered as their own rows.
+       * Every waiver is stamped by the same person at the same instant as
+       * the completion it is part of, so separate rows would repeat the
+       * actor and the time and say nothing the card does not.
+       */
+      waivers?: Array<{ title: string; reason: string }>;
     }
   | {
       kind: "comment";
@@ -58,6 +68,7 @@ export type QuestEventAction =
   | "unassigned"
   | "completed"
   | "objective_completed"
+  | "objective_waived"
   | "reminder_sent"
   | "shelved"
   | "unshelved";
@@ -90,6 +101,13 @@ export const buildQuestDiscussionEntries = (
   ];
 
   for (const [index, event] of quest.history.entries()) {
+    // `objective_waived` is kept out of the feed as a row of its own: it is
+    // part of the completion, and the completion card lists every waiver
+    // with its reason. The history row stays written, because it is the
+    // audit record of who waived what and when.
+    if (event.action === "objective_waived") {
+      continue;
+    }
     entries.push({
       kind: "event",
       key: `history-${index}`,
@@ -119,6 +137,15 @@ export const buildQuestDiscussionEntries = (
         !!quest.completionMessage &&
         !!quest.completionMessageUpdatedAt &&
         quest.completionMessageUpdatedAt !== quest.completedAt,
+      // Read off the objectives rather than the history rows: the reason
+      // lives on the objective, and this way the card cannot disagree with
+      // the checklist above it.
+      waivers: quest.objectives
+        .filter((objective) => objective.waivedReason)
+        .map((objective) => ({
+          title: objective.title,
+          reason: objective.waivedReason as string,
+        })),
     });
   }
 
