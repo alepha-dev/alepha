@@ -36,6 +36,7 @@ import {
 import { projectTitleSchema } from "../schemas/projectTitleSchema.ts";
 import { questResourceSchema } from "../schemas/questResourceSchema.ts";
 import { AreaService } from "../services/AreaService.ts";
+import { OpenQuestScope } from "../services/OpenQuestScope.ts";
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
 import { ProjectResourceMapper } from "../services/ProjectResourceMapper.ts";
@@ -99,6 +100,7 @@ export class ProjectController {
   slugs = $inject(ProjectSlugService);
   projectSecurity = $inject(ProjectSecurityService);
   areaService = $inject(AreaService);
+  openQuests = $inject(OpenQuestScope);
 
   /**
    * Reserve-and-collision gate for a project slug.
@@ -298,14 +300,21 @@ export class ProjectController {
       // `areas` (the `projects.areas` column) is `@deprecated` and frozen —
       // the Home page's "N areas" stat is re-sourced from the `areas` table
       // here instead, one batched query rather than one per card.
-      const areaCounts = await this.areaService.countByProjectIds(
-        result.map((it) => it.id),
-      );
+      const projectIds = result.map((it) => it.id);
+      const [areaCounts, openQuestCounts] = await Promise.all([
+        this.areaService.countByProjectIds(projectIds),
+        // The dashboard rail's per-project number. Counted through the same
+        // scope as the sidebar badge and the Active Quests tile: all three are
+        // visible together, and a disagreement between them is one of them
+        // lying rather than a rounding difference.
+        this.openQuests.countByProject(projectIds),
+      ]);
 
       return {
         projects: result.map((it) => ({
           ...this.projectMapper.toResource(it),
           areaCount: areaCounts.get(it.id) ?? 0,
+          openQuestCount: openQuestCounts.get(it.id) ?? 0,
         })),
         totalCount: result.length,
         ownedCount,

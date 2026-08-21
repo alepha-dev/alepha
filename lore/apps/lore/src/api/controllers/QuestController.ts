@@ -30,6 +30,7 @@ import {
 import { AreaService } from "../services/AreaService.ts";
 import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
+import { OpenQuestScope } from "../services/OpenQuestScope.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 import { QuestService } from "../services/QuestService.ts";
@@ -43,6 +44,7 @@ export class QuestController {
   dt = $inject(DateTimeProvider);
   security = $inject(ProjectSecurityService);
   epicVisibility = $inject(EpicVisibilityService);
+  openQuests = $inject(OpenQuestScope);
   fileService = $inject(FileService);
   questMapper = $inject(QuestResourceMapper);
   questService = $inject(QuestService);
@@ -569,17 +571,12 @@ export class QuestController {
     handler: async ({ params, user }) => {
       await this.security.assertMember(params.projectId, user);
 
-      const where = this.quests.createQueryWhere();
-      where.projectId = { eq: params.projectId };
-      where.completedAt = { isNull: true };
-      where.shelvedAt = { isNull: true };
-
-      // Quests inside a `planned` epic are not in the backlog, so they must
-      // not be counted here either. This badge links to the quest list, and
-      // the list applies the same gate — an ungated count reproduces exactly
-      // the disagreement the shelved exclusion above exists to prevent, and
-      // an e2e run caught it doing so (badge said 2, list showed none).
-      await this.epicVisibility.applyBacklogGate(where, params.projectId);
+      // `OpenQuestScope` owns what "open" means. This badge links to the
+      // quest list, and the dashboard counts the same thing on the same
+      // screen — an ungated or differently-gated count here reproduces
+      // exactly the disagreement an e2e run once caught (badge said 2, list
+      // showed none).
+      const where = await this.openQuests.where([params.projectId]);
 
       const count = await this.quests.count(where);
 

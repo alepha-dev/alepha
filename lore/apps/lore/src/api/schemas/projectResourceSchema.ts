@@ -39,6 +39,14 @@ export type ProjectResource = Infer<typeof projectResourceSchema>;
  */
 export const projectOverviewResourceSchema = projectResourceSchema.extend({
   areaCount: z.integer(),
+  /**
+   * Open quests, as `OpenQuestScope` defines them.
+   *
+   * The dashboard rail shows this beside the Active Quests tile, so the two
+   * are on screen together and must be the same number — which is why it is
+   * counted through the shared scope rather than derived here.
+   */
+  openQuestCount: z.integer(),
 });
 
 export type ProjectOverviewResource = Infer<

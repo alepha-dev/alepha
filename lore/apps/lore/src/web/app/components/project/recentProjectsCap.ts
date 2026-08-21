@@ -2,10 +2,14 @@
  * How many projects the summary surfaces show before deferring to the full
  * list at `/account/projects`.
  *
- * One constant because Home and `ProjectSwitcher` must agree: they are two
- * views of the same "your recent projects" idea, and a reader who counts five
- * in one and six in the other learns that one of them is lying about what
- * "recent" means.
+ * One constant because the dashboard's rail and `ProjectSwitcher` must agree:
+ * they are two views of the same "your recent projects" idea, and a reader who
+ * counts five in one and six in the other learns that one of them is lying
+ * about what "recent" means.
+ *
+ * It used to be Home's project card that made the first of those two. Home
+ * hands that job to the dashboard for anyone who has projects at all, and
+ * shows the hero to everyone else.
  *
  * ⚠️ This is a DISPLAY cap only. It must never be pushed down into
  * `getHomeOverview` or into `userProjectsAtom`, whose contract is the COMPLETE

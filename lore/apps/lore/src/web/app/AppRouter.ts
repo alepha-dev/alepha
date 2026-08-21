@@ -12,6 +12,7 @@ import { createElement } from "react";
 import type { AdminInvitationController } from "../../api/controllers/AdminInvitationController.ts";
 import type { AreaController } from "../../api/controllers/AreaController.ts";
 import type { BlightController } from "../../api/controllers/BlightController.ts";
+import type { DashboardController } from "../../api/controllers/DashboardController.ts";
 import type { DirectoryController } from "../../api/controllers/DirectoryController.ts";
 import type { EpicController } from "../../api/controllers/EpicController.ts";
 import type { FeedbackController } from "../../api/controllers/FeedbackController.ts";
@@ -40,6 +41,7 @@ import { currentQuestCountAtom } from "./atoms/currentQuestCountAtom.ts";
 import { currentSigilAtom } from "./atoms/currentSigilAtom.ts";
 import { currentSigilInsightsAtom } from "./atoms/currentSigilInsightsAtom.ts";
 import { currentSigilsAtom } from "./atoms/currentSigilsAtom.ts";
+import { dashboardAtom } from "./atoms/dashboardAtom.ts";
 import { folioTreeSeedAtom } from "./atoms/folioTreeSeedAtom.ts";
 import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
 import { userFoliosAtom } from "./atoms/userFoliosAtom.ts";
@@ -62,6 +64,7 @@ export class AppRouter {
   sigilApi = $client<SigilController>();
   folioApi = $client<FolioController>();
   directoryApi = $client<DirectoryController>();
+  dashboardApi = $client<DashboardController>();
   router = $inject(ReactRouter);
   auth = $inject(ReactAuth);
   account = $inject(AccountRouter);
@@ -272,6 +275,33 @@ export class AppRouter {
       }
     },
     lazy: () => import("./components/home/Home.tsx"),
+    /**
+     * The dashboard's card list, for a signed-in visitor.
+     *
+     * The CONFIGURATION only: the grid lays out with the right tiles, titles
+     * and chips before a single number exists, and `Dashboard` resolves the
+     * values itself once on mount. Splitting the two is what makes "loading"
+     * a designed state rather than a blank page, and it keeps the metric
+     * queries off the server-render path.
+     *
+     * This also seeds a brand-new account's default cards — see
+     * `dashboardSettings` for why that happens exactly once and why an
+     * emptied board stays empty.
+     *
+     * ⚠️ Fetched behind a `catch`: the cards are one section of the landing
+     * page, and a transient failure must cost the dashboard, not Home. And it
+     * runs on ENTRY only — a loader that revalidates on its own dependencies
+     * is the QuestGraph incident (folio #1057).
+     */
+    loader: async ({ user }) => {
+      if (!user) return;
+      const dashboard = await this.dashboardApi
+        .listCards({})
+        .catch(() => undefined);
+      if (dashboard) {
+        this.alepha.store.set(dashboardAtom, { cards: dashboard.cards });
+      }
+    },
   });
 
   projectCreate = $page({
@@ -687,6 +717,31 @@ export class AppRouter {
 
   projectQuests = $page({
     path: "/",
+    schema: {
+      /**
+       * `?status=` seeds the quests table's status filter on arrival — the
+       * drill-through target for a dashboard card, and for any link that
+       * wants to open one slice of the backlog.
+       *
+       * ⚠️ **One-directional, and it has to stay that way.** The URL seeds
+       * the filter on entry; the filter NEVER writes back. `?view=kanban`
+       * was removed for exactly this (#156): an effect that restored a
+       * missing param keyed on `useRouterState`, which is a global store, so
+       * the outgoing render on the way *out* of the page saw the next
+       * route's empty query and bounced the user straight back. Every
+       * sidebar link was dead. A page cannot tell "nobody has chosen yet"
+       * from "we are leaving" while the state lives in the URL — so nothing
+       * here may reintroduce a write-back.
+       *
+       * ⚠️ Typed as free text, not the status enum. A schema that rejects
+       * an unknown value turns a stale bookmark into an error page;
+       * `ProjectQuestsTable` maps it through the known set and ignores
+       * anything else, so a bad value degrades to the unfiltered list.
+       */
+      query: z.object({
+        status: z.text().optional(),
+      }),
+    },
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Quests`,
     }),

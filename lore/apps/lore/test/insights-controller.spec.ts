@@ -1142,6 +1142,262 @@ describe("InsightsController", () => {
     ).rejects.toThrow();
   });
 
+  describe("complete-day window and comparison", () => {
+    /**
+     * The reason this mode exists. `range: "1d"` means today-so-far, so
+     * measuring it against a full day reads as a collapse every morning and
+     * recovers by dinner — the number moves because the clock moved.
+     */
+    it("means yesterday, not today-so-far", async ({ expect }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "docs", owner);
+
+      await ctx.probe.views.create({
+        sigilId,
+        hour: hourUtc(ctx, 0, 2),
+        path: "/",
+        country: "FR",
+        count: 3,
+      });
+      await ctx.probe.views.create({
+        sigilId,
+        hour: hourUtc(ctx, 1, 23),
+        path: "/",
+        country: "FR",
+        count: 40,
+      });
+      await ctx.probe.uniques.create({
+        sigilId,
+        day: dayUtc(ctx, 0),
+        visitorHash: "today",
+      });
+      for (const visitorHash of ["y1", "y2"]) {
+        await ctx.probe.uniques.create({
+          sigilId,
+          day: dayUtc(ctx, 1),
+          visitorHash,
+        });
+      }
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        {
+          params: { projectId },
+          query: { range: "1d", until: "lastCompleteDay" },
+        },
+        { user: owner },
+      );
+
+      expect(res.data.since).toBe(dayUtc(ctx, 1));
+      expect(res.data.until).toBe(dayUtc(ctx, 1));
+      // The 23:00 row is the point: `until` names a DAY, and every hour of it
+      // is inside the window.
+      expect(res.data.totalViews).toBe(40);
+      expect(res.data.uniqueVisitors).toBe(2);
+    });
+
+    it("returns the preceding window alongside, measured the same way", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "docs", owner);
+
+      for (const visitorHash of ["a", "b", "c", "d", "e"]) {
+        await ctx.probe.uniques.create({
+          sigilId,
+          day: dayUtc(ctx, 1),
+          visitorHash,
+        });
+      }
+      for (const visitorHash of ["p", "q", "r", "s"]) {
+        await ctx.probe.uniques.create({
+          sigilId,
+          day: dayUtc(ctx, 2),
+          visitorHash,
+        });
+      }
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        {
+          params: { projectId },
+          query: { range: "1d", until: "lastCompleteDay", compare: true },
+        },
+        { user: owner },
+      );
+
+      expect(res.data.uniqueVisitors).toBe(5);
+      expect(res.data.previous).toMatchObject({
+        since: dayUtc(ctx, 2),
+        until: dayUtc(ctx, 2),
+        uniqueVisitors: 4,
+      });
+      expect(res.data.uniqueVisitorsDelta).toBe(25);
+    });
+
+    it("puts the previous window immediately before this one, without overlap", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "docs", owner);
+
+      // One visitor on the boundary day of the CURRENT window. If the two
+      // windows overlapped, this hash would be counted in both.
+      await ctx.probe.uniques.create({
+        sigilId,
+        day: dayUtc(ctx, 7),
+        visitorHash: "edge",
+      });
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        {
+          params: { projectId },
+          query: { range: "7d", until: "lastCompleteDay", compare: true },
+        },
+        { user: owner },
+      );
+
+      expect(res.data.since).toBe(dayUtc(ctx, 7));
+      expect(res.data.until).toBe(dayUtc(ctx, 1));
+      expect(res.data.previous?.since).toBe(dayUtc(ctx, 14));
+      expect(res.data.previous?.until).toBe(dayUtc(ctx, 8));
+      expect(res.data.uniqueVisitors).toBe(1);
+      expect(res.data.previous?.uniqueVisitors).toBe(0);
+    });
+
+    it("says nothing rather than +100% when the previous window was empty", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "docs", owner);
+
+      await ctx.probe.uniques.create({
+        sigilId,
+        day: dayUtc(ctx, 1),
+        visitorHash: "first-ever",
+      });
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        {
+          params: { projectId },
+          query: { range: "1d", until: "lastCompleteDay", compare: true },
+        },
+        { user: owner },
+      );
+
+      expect(res.data.previous?.uniqueVisitors).toBe(0);
+      expect(res.data.uniqueVisitorsDelta).toBeUndefined();
+    });
+
+    it("leaves existing 1d / 7d / 30d callers on today-anchored windows with no comparison", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "docs", owner);
+
+      await ctx.probe.views.create({
+        sigilId,
+        hour: hourUtc(ctx, 0, 2),
+        path: "/",
+        country: "FR",
+        count: 3,
+      });
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { projectId }, query: { range: "1d" } },
+        { user: owner },
+      );
+
+      expect(res.data.since).toBe(dayUtc(ctx, 0));
+      expect(res.data.until).toBe(dayUtc(ctx, 0));
+      expect(res.data.totalViews).toBe(3);
+      expect(res.data.previous).toBeUndefined();
+      expect(res.data.uniqueVisitorsDelta).toBeUndefined();
+    });
+
+    it("bounds the timeline and the error budget by the same day", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "docs", owner);
+
+      await ctx.probe.views.create({
+        sigilId,
+        hour: hourUtc(ctx, 0, 5),
+        path: "/",
+        country: "FR",
+        count: 7,
+      });
+      await ctx.probe.errorGroups.create({
+        sigilId,
+        fingerprint: "fp-today",
+        name: "TypeError",
+        message: "only seen today",
+        stackSample: "",
+        sourceUrl: "",
+        firstSeenAt: instantUtc(ctx, 0),
+        lastSeenAt: instantUtc(ctx, 0),
+        count: 1,
+      });
+      await ctx.probe.errorGroups.create({
+        sigilId,
+        fingerprint: "fp-yesterday",
+        name: "TypeError",
+        message: "last seen yesterday",
+        stackSample: "",
+        sourceUrl: "",
+        firstSeenAt: instantUtc(ctx, 1),
+        lastSeenAt: instantUtc(ctx, 1),
+        count: 1,
+      });
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        {
+          params: { projectId },
+          query: { range: "7d", until: "lastCompleteDay" },
+        },
+        { user: owner },
+      );
+
+      // Every field in the payload describes the same window — a response that
+      // claimed `since..until` while some of its numbers ran through today
+      // would be a silent lie.
+      expect(res.data.timeline.at(-1)?.date).toBe(dayUtc(ctx, 1));
+      expect(res.data.timeline.some((point) => point.views === 7)).toBe(false);
+      expect(res.data.errorGroups.map((group) => group.fingerprint)).toEqual([
+        "fp-yesterday",
+      ]);
+    });
+
+    it("answers the comparison even for a project with no apps", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        {
+          params: { projectId },
+          query: { range: "1d", until: "lastCompleteDay", compare: true },
+        },
+        { user: owner },
+      );
+
+      // "Not compared" and "compared, and it was zero" are different answers.
+      expect(res.data.previous).toEqual({
+        since: dayUtc(ctx, 2),
+        until: dayUtc(ctx, 2),
+        uniqueVisitors: 0,
+        totalViews: 0,
+      });
+      expect(res.data.until).toBe(dayUtc(ctx, 1));
+    });
+  });
+
   describe("insights sampling disclosure", () => {
     /*
       `estimated` / `sampleInterval` exist so a UI can label a number as a

@@ -73,6 +73,14 @@ export default defineConfig({
         // tr(`quest.create.estimate.unit.${unit}`) and its `.one` singular —
         // minutes/hours/days, chosen in the custom estimate popover.
         "quest.create.estimate.unit.",
+        // The dashboard's Add-card panel is GENERATED from the metric
+        // registry, so every one of these is constructed: the group heading
+        // from `descriptor.group`, and the filter field and its options from
+        // the metric's own Zod schema. Adding a metric adds keys under these
+        // prefixes and touches no component.
+        "dashboard.group.",
+        "dashboard.filterField.",
+        "dashboard.filterValue.",
       ],
     }),
     () => ({

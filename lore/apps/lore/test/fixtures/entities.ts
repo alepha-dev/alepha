@@ -6,6 +6,7 @@ import { type Epic, epics } from "@/api/entities/epics.ts";
 import { feedback } from "@/api/entities/feedback.ts";
 import { folioDirectories } from "@/api/entities/folioDirectories.ts";
 import { type Folio, folios } from "@/api/entities/folios.ts";
+import { type Member, members } from "@/api/entities/members.ts";
 import { milestones } from "@/api/entities/milestones.ts";
 import { type Project, projects } from "@/api/entities/projects.ts";
 import { type Quest, type QuestInsert, quests } from "@/api/entities/quests.ts";
@@ -34,6 +35,7 @@ type FolioInsert = Infer<typeof folios.insertSchema>;
  */
 export class TestEntityRepositories {
   projects = $repository(projects);
+  members = $repository(members);
   milestones = $repository(milestones);
   feedback = $repository(feedback);
   users = $repository(users);
@@ -79,13 +81,21 @@ export const createTestProject = async (
   const repo = alepha.inject(TestEntityRepositories);
   const owner = await repo.users.create({});
   projectSeq += 1;
+  const title = overrides.title ?? `Test Project ${projectSeq}`;
   return repo.projects.create({
     ...overrides,
     // Spread first, defaults last: `Partial<ProjectInsert>` types every
     // field as `T | undefined`, and a trailing spread would otherwise
     // widen `title` / `createdBy` to that even when `overrides` doesn't
     // actually set them, tripping `create()`'s non-optional parameter type.
-    title: overrides.title ?? `Test Project ${projectSeq}`,
+    title,
+    // `ProjectController.createProject` derives this and every URL in the app
+    // is built from it, so a fixture project without one is a project nothing
+    // can link to. The counter keeps it unique the same way the title is —
+    // `projects.slug` carries a unique index.
+    slug:
+      overrides.slug ??
+      `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${projectSeq}`,
     createdBy: overrides.createdBy ?? owner.id,
   });
 };
@@ -161,5 +171,27 @@ export const createTestFolio = async (
     projectId: overrides.projectId ?? project.id,
     shortId: overrides.shortId ?? folioSeq,
     title: overrides.title ?? `Test Folio ${folioSeq}`,
+  });
+};
+
+/**
+ * Gives a user a membership row in a project.
+ *
+ * `createTestProject` deliberately bypasses `ProjectController`, which is
+ * what writes the owner's own membership on create — so anything that reads
+ * a user's projects through the `users.projects` relation (it hops through
+ * `members`) sees nothing until this runs.
+ */
+export const createTestMember = async (
+  alepha: Alepha,
+  project: Project,
+  userId: string,
+  overrides: Partial<{ owner: boolean }> = {},
+): Promise<Member> => {
+  const repo = alepha.inject(TestEntityRepositories);
+  return repo.members.create({
+    projectId: project.id,
+    userId,
+    owner: overrides.owner ?? true,
   });
 };

@@ -17,6 +17,47 @@ export const insightsResourceSchema = z.object({
   range: z.enum(["1d", "7d", "30d"]),
   /** First UTC day included in the window, `YYYY-MM-DD`. */
   since: z.string(),
+  /**
+   * Last UTC day included, `YYYY-MM-DD`.
+   *
+   * Normally today, and then the window ends **mid-day**: `range: "1d"` means
+   * today-so-far, not yesterday. That distinction is invisible until you
+   * compare two windows, at which point a partial day measured against a
+   * complete one reads as a collapse every morning and recovers by dinner.
+   * `until: "lastCompleteDay"` on the request is what moves this to yesterday
+   * and makes a delta a statement about traffic.
+   */
+  until: z.string(),
+  /**
+   * The window of the same width immediately before this one, present only
+   * when the caller asked to compare.
+   *
+   * Measured the same way, in the same request, so the delta is not two
+   * numbers a client fetched separately and subtracted.
+   */
+  previous: z
+    .object({
+      since: z.string(),
+      until: z.string(),
+      /** The trustworthy half of the comparison. Always exact. */
+      uniqueVisitors: z.integer(),
+      /** Best-effort, like its current-window counterpart. */
+      totalViews: z.integer(),
+    })
+    .optional(),
+  /**
+   * Change in `uniqueVisitors` against `previous`, whole percent.
+   *
+   * Absent when there is nothing honest to say: no comparison was asked for,
+   * or the previous window was zero, where a percentage is undefined rather
+   * than infinite. A UI must render the absence as "no comparison", never as
+   * `+0%`.
+   *
+   * On uniques and not on `totalViews` deliberately — see the note at the top
+   * of this file. A delta amplifies whatever noise is in both windows, so it
+   * belongs on the number that cannot be inflated.
+   */
+  uniqueVisitorsDelta: z.number().optional(),
   /** Best-effort raw pageview count. Inflatable — see above. */
   totalViews: z.integer(),
   /** Abuse-resistant headline: distinct cookieless daily visitor hashes. */
