@@ -307,7 +307,7 @@ export class ReactPageProvider {
     state: ReactRouterState,
     previous: PreviousLayerData[] = [],
   ): Promise<CreateLayersResult> {
-    let context: Record<string, any> = {}; // all props
+    const context: Record<string, any> = {}; // all props
     const stack: Array<RouterStackItem> = [{ route }]; // stack of routes
 
     let parent = route.parent;
@@ -384,10 +384,7 @@ export class ReactPageProvider {
           it.props = previous[i].props;
           it.error = previous[i].error;
           it.cache = true;
-          context = {
-            ...context,
-            ...it.props,
-          };
+          Object.assign(context, it.props);
           continue;
         }
 
@@ -443,11 +440,11 @@ export class ReactPageProvider {
           ...props,
         };
 
-        // add props to context
-        context = {
-          ...context,
-          ...props,
-        };
+        // add props to context. `Object.assign` onto the accumulator rather
+        // than rebuilding it: `context` is a fresh local object and this runs
+        // once per layer, so re-spreading it made the walk quadratic in route
+        // depth.
+        Object.assign(context, props);
       } catch (e) {
         // check if we need to redirect
         if (e instanceof Redirection) {

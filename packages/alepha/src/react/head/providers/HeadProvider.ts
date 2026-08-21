@@ -62,18 +62,19 @@ export class HeadProvider {
    * Used by BrowserHeadProvider.refreshGlobalHead() to re-apply global head to the DOM.
    */
   public resolveGlobal(): Head {
-    let head: Head = {};
+    const head: Head = {};
 
     for (const h of this.global ?? []) {
       const resolved = typeof h === "function" ? h() : h;
       const { meta, link } = this.seoExpander.expand(resolved);
-      head = {
-        ...head,
-        ...resolved,
+      // `Object.assign` onto the accumulator rather than rebuilding it: `head`
+      // is a fresh local object, and re-spreading it once per entry made the
+      // merge quadratic in the number of global head sources.
+      Object.assign(head, resolved, {
         meta: [...(head.meta ?? []), ...meta, ...(resolved.meta ?? [])],
         link: [...(head.link ?? []), ...link, ...(resolved.link ?? [])],
         script: [...(head.script ?? []), ...(resolved.script ?? [])],
-      };
+      });
     }
 
     return head;

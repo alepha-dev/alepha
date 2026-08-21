@@ -168,6 +168,27 @@
       "error",
       { "allowNumber": true, "allowBoolean": true, "allowRegExp": true }
     ],
+    // The `perf` category's one bad rule here. Every finding is the standard
+    // immutable map (`rows.map(r => ({ ...r, extra }))`), and its only
+    // mechanical fix is `Object.assign(r, …)`, which MUTATES the row it was
+    // handed — applied blindly it rewrote 18 files, including one that would
+    // have permanently mutated a module-level array. Spreading each item is
+    // linear anyway; the quadratic case is spreading an ACCUMULATOR, and
+    // `oxc/no-accumulating-spread` stays on to catch exactly that.
+    "oxc/no-map-spread": "off",
+    // Tag purity, not accessibility, and it fights a component library that
+    // builds ARIA widgets on purpose. Of its 38 findings: `role="img"` on
+    // `<svg>` is the RECOMMENDED way to label an SVG and the suggested `<img>`
+    // does not apply; `role="group"`, `status`, `separator`, `dialog`, `list`
+    // and `region` on a `<div>` are composite-widget roles whose suggested tags
+    // (`fieldset`, `optgroup`, `details`…) carry layout and semantics of their
+    // own; and the `role="button"`/`role="link"` sites are correct ARIA
+    // implementations — `tabIndex` plus an Enter/Space `onKeyDown`, shadcn's
+    // own `BreadcrumbPage`, or a Base UI control whose non-native branch
+    // overwrites the role and has the reason written above it. The rules that
+    // catch a genuinely inaccessible element — `click-events-have-key-events`,
+    // `no-static-element-interactions` — stay on.
+    "jsx-a11y/prefer-tag-over-role": "off",
     // Control characters in regexes are intentional here — ANSI stripping and
     // the log formatters. Biome's equivalent was suppressed at four sites.
     "no-control-regex": "off"
