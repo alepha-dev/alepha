@@ -477,7 +477,6 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
       // that does nothing.
       ...props.filters?.seedValues,
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
@@ -607,7 +606,6 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     // `refreshKey` is what the filter-form subscriptions bump, so it is how
     // a filter change reaches this memo — `form.currentValues` is mutated in
     // place and its identity never changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     props.data,
     props.columns,

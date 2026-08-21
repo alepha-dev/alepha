@@ -192,9 +192,9 @@ describe("ProjectController reads through relations", () => {
 
     expect(response.data.totalCount).toBe(2);
     expect(response.data.ownedCount).toBe(2);
-    expect(response.data.projects.map((c) => c.id).sort()).toEqual(
-      [first.data.id, second.data.id].sort(),
-    );
+    expect(
+      response.data.projects.map((c) => c.id).sort((a, b) => a - b),
+    ).toEqual([first.data.id, second.data.id].sort((a, b) => a - b));
   });
 
   it("getHomeOverview shows nothing to a user with no projects", async ({

@@ -651,7 +651,7 @@ describe("sigil ingest", () => {
     // bucket is a dataset dimension now, not one of seven columns on a
     // single row — so only the two populated buckets come back.
     const byBucket = new Map(rows.map((row) => [row.bucket, row.samples]));
-    expect([...byBucket.keys()].sort()).toEqual([0, 5]);
+    expect([...byBucket.keys()].sort((a, b) => a - b)).toEqual([0, 5]);
     expect(byBucket.get(0)).toBe(2);
     expect(byBucket.get(5)).toBe(1);
   });
@@ -830,7 +830,7 @@ describe("sigil ingest", () => {
     // Two budgets, because two apps.
     const groups = await probe.errorGroups.findMany({});
     expect(groups).toHaveLength(2);
-    expect(groups.map((g) => g.count).sort()).toEqual([2, 5]);
+    expect(groups.map((g) => g.count).sort((a, b) => a - b)).toEqual([2, 5]);
 
     // One triage decision, because one bug.
     const inbox = await probe.blights.findMany({

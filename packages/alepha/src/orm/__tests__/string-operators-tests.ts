@@ -56,10 +56,11 @@ export const testContainsOperator = async (alepha: Alepha) => {
     where: { email: { contains: "example" } },
   });
   expect(result3).toHaveLength(2);
-  expect(result3.map((u: any) => u.name).sort()).toEqual([
-    "Alice Smith",
-    "Charlie Brown",
-  ]);
+  expect(
+    result3
+      .map((u: any) => u.name)
+      .sort((a, b) => String(a).localeCompare(String(b))),
+  ).toEqual(["Alice Smith", "Charlie Brown"]);
 
   // No matches
   const result4 = await repository.findMany({
@@ -362,10 +363,11 @@ export const testStringOperatorsEscapeWildcards = async (alepha: Alepha) => {
     where: { name: { contains: "_" } },
   });
   expect(result2).toHaveLength(2);
-  expect(result2.map((u: any) => u.name).sort()).toEqual([
-    "test_admin",
-    "under_score",
-  ]);
+  expect(
+    result2
+      .map((u: any) => u.name)
+      .sort((a, b) => String(a).localeCompare(String(b))),
+  ).toEqual(["test_admin", "under_score"]);
 
   // startsWith with underscore
   const result3 = await repository.findMany({
@@ -428,8 +430,9 @@ export const testWildcardInjectionPrevention = async (alepha: Alepha) => {
     where: { name: { contains: "user" } },
   });
   expect(result3).toHaveLength(2);
-  expect(result3.map((u: any) => u.name).sort()).toEqual([
-    "superuser",
-    "user123",
-  ]);
+  expect(
+    result3
+      .map((u: any) => u.name)
+      .sort((a, b) => String(a).localeCompare(String(b))),
+  ).toEqual(["superuser", "user123"]);
 };

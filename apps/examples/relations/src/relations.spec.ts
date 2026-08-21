@@ -109,7 +109,11 @@ describe("relations", () => {
         user: byId.get(c.userId),
       }));
 
-      expect(stitched.map((c) => c.user?.name).sort()).toEqual(["Ana", "Bo"]);
+      expect(
+        stitched
+          .map((c) => c.user?.name)
+          .sort((a, b) => String(a).localeCompare(String(b))),
+      ).toEqual(["Ana", "Bo"]);
     });
 
     it("with relations: the same result, declared once", async () => {
@@ -120,7 +124,11 @@ describe("relations", () => {
         include: { user: true },
       });
 
-      expect(found.map((c) => c.user?.name).sort()).toEqual(["Ana", "Bo"]);
+      expect(
+        found
+          .map((c) => c.user?.name)
+          .sort((a, b) => String(a).localeCompare(String(b))),
+      ).toEqual(["Ana", "Bo"]);
     });
   });
 

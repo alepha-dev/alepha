@@ -56,7 +56,6 @@ export function AdminAnalyticsQueryPanel(props: AdminAnalyticsQueryPanelProps) {
       shape[name] = (jsonSchemaToZod(property) as any).optional();
     }
     return z.object(shape) as ZObject;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.dataset]);
 
   const form = useForm(

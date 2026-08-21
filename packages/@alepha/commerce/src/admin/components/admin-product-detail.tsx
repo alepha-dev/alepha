@@ -139,7 +139,6 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
   const kindsKey = kinds.join(",");
   const schema = useMemo(
     () => productFormSchema(tr, kinds, product?.currency),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [tr, kindsKey, product?.currency],
   );
 
@@ -220,7 +219,6 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
       description: product.description ?? "",
       published: product.published,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productQuery.data]);
 
   // -- Media form ------------------------------------------------------------
@@ -243,7 +241,6 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
   useEffect(() => {
     if (!product) return;
     imagesForm.setInitialValues({ images: product.images ?? [] });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productQuery.data]);
 
   /*
@@ -308,7 +305,6 @@ export const AdminProductDetail = (props: AdminProductDetailProps) => {
   useEffect(() => {
     if (!product) return;
     configForm.setInitialValues((product.config as Record<string, any>) ?? {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productQuery.data, configJsonSchema]);
 
   const { loading: configSaving } = useFormState(configForm, ["loading"]);

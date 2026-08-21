@@ -132,6 +132,24 @@
     // (`expect(value, "which key failed")`), which Jest's does not. The rule
     // defaults to Jest's arity and reports every use of it.
     "vitest/valid-expect": ["error", { "maxArgs": 2 }],
+    // Lexicographic `.sort()` on numbers is the bug this catches
+    // (`[1, 2, 10]` sorts to `[1, 10, 2]`), and it found five latent ones here,
+    // each passing only because every value happened to be a single digit.
+    // `ignoreStringArrays` matches typescript-eslint's own default: on a real
+    // `string[]` the default sort IS the intended order. It exempts nothing in
+    // this repo today, where the flagged arrays were `any[]` and
+    // `(string | undefined)[]`, but it keeps the rule honest as those get typed.
+    "typescript/require-array-sort-compare": [
+      "error",
+      { "ignoreStringArrays": true }
+    ],
+    // Numbers and booleans in a template are unambiguous and universal in log
+    // and error messages. What the rule is worth having for is objects and
+    // nullish values, which render as `[object Object]` and `undefined`.
+    "typescript/restrict-template-expressions": [
+      "error",
+      { "allowNumber": true, "allowBoolean": true, "allowRegExp": true }
+    ],
     // Control characters in regexes are intentional here — ANSI stripping and
     // the log formatters. Biome's equivalent was suppressed at four sites.
     "no-control-regex": "off"

@@ -450,7 +450,6 @@ export const useFolioActions = (
     return () => {
       alive = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input.folio?.id]);
 
   const unlock = async (passphrase: string): Promise<string | null> => {

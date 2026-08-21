@@ -82,7 +82,9 @@ const resolveIconPlaceholders = (content) => {
     },
   );
   if (!used.size) return next;
-  const names = [...used].sort().join(", ");
+  const names = [...used]
+    .sort((a, b) => String(a).localeCompare(String(b)))
+    .join(", ");
   return next.replace(
     /import\s+\{\s*IconPlaceholder\s*\}\s+from\s+["'][^"']*icon-placeholder["'];?\n?/,
     `import { ${names} } from "lucide-react";\n`,

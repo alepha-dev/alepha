@@ -105,10 +105,11 @@ export const testOrgUserSeesOwnAndGlobalRows = async (alepha: Alepha) => {
 
   const results = await repository.findMany();
   expect(results).toHaveLength(2);
-  expect(results.map((r: any) => r.name).sort()).toEqual([
-    "global-row",
-    "org-a-row",
-  ]);
+  expect(
+    results
+      .map((r: any) => r.name)
+      .sort((a, b) => String(a).localeCompare(String(b))),
+  ).toEqual(["global-row", "org-a-row"]);
 
   // Count should also be filtered
   expect(await repository.count()).toEqual(2);
@@ -261,7 +262,11 @@ export const testStrictHidesGlobalRows = async (alepha: Alepha) => {
   // Strict: the org-a tenant must see ONLY its own row — the global NULL row
   // is NOT visible (the `OR org IS NULL` escape is dropped).
   const results = await repository.findMany();
-  expect(results.map((r: any) => r.name).sort()).toEqual(["org-a-row"]);
+  expect(
+    results
+      .map((r: any) => r.name)
+      .sort((a, b) => String(a).localeCompare(String(b))),
+  ).toEqual(["org-a-row"]);
   expect(await repository.count()).toEqual(1);
 };
 
@@ -496,7 +501,11 @@ export const testMultiModeHidesGlobalRows = async (alepha: Alepha) => {
   });
 
   const results = await repository.findMany();
-  expect(results.map((r: any) => r.name).sort()).toEqual(["org-a-row"]);
+  expect(
+    results
+      .map((r: any) => r.name)
+      .sort((a, b) => String(a).localeCompare(String(b))),
+  ).toEqual(["org-a-row"]);
 };
 
 /**

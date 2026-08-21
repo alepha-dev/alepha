@@ -373,7 +373,7 @@ describe("$job — queue mode (outbox)", () => {
     while (seen.length < 3 && Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, 25));
     }
-    expect(seen.sort()).toEqual([1, 2, 3]);
+    expect(seen.sort((a, b) => a - b)).toEqual([1, 2, 3]);
   });
 
   it("retry: failed queue job is rescheduled for the next sweep tick", async ({

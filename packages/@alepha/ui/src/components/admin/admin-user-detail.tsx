@@ -272,7 +272,6 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
       emailVerified: user.emailVerified ?? false,
       roles: user.roles ?? [],
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userQuery.data]);
 
   // -- Set password ---------------------------------------------------------
