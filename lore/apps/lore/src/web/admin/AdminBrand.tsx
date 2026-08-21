@@ -12,7 +12,7 @@ export const AdminBrand = () => {
   const router = useRouter<any>();
 
   return (
-    <div className="flex items-center gap-2 px-2 py-1.5 group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center">
+    <div className="flex items-center gap-2 px-2 py-1.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:px-0">
       <button
         type="button"
         onClick={() => router.push("home")}

@@ -85,7 +85,7 @@ const QuestViewSettings = (props: QuestViewSettingsProps) => {
         ) : (
           <BellRing className="size-3.5 text-amber-500" />
         )}
-        <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+        <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
           {tr("quest.view.reminder.title")}
         </span>
       </div>

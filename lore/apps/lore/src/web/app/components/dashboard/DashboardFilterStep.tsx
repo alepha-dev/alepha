@@ -44,7 +44,7 @@ const DashboardFilterStep = (props: DashboardFilterStepProps) => {
     <div className="flex flex-col gap-3">
       {fields.map((field) => (
         <div key={field.name} className="flex flex-col gap-1.5">
-          <div className="text-muted-foreground text-[10.5px] font-semibold uppercase tracking-[0.08em]">
+          <div className="text-muted-foreground text-[10.5px] font-semibold tracking-[0.08em] uppercase">
             {tr(`dashboard.filterField.${field.name}` as never)}
           </div>
           <div className="flex flex-wrap gap-1.5">

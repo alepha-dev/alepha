@@ -100,7 +100,7 @@ const ProjectSettingsSigilsEnrollDialog = (
         <div className="flex flex-col gap-2">
           <Input
             value={name}
-            autoFocus
+
             maxLength={APP_NAME_MAX_LENGTH}
             aria-label={tr("sigils.create.name")}
             placeholder={tr("sigils.create.namePlaceholder")}

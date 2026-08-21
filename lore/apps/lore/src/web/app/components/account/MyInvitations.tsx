@@ -83,16 +83,16 @@ const MyInvitations = (props: MyInvitationsProps) => {
       />
 
       {items.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-md border border-border bg-card p-6 text-center">
-          <Mail className="size-5 text-muted-foreground" />
+        <div className="border-border bg-card flex flex-col items-center gap-2 rounded-md border p-6 text-center">
+          <Mail className="text-muted-foreground size-5" />
           <span className="text-sm">No pending invitations.</span>
         </div>
       ) : (
-        <div className="flex flex-col gap-2 rounded-md border border-border bg-card p-2">
+        <div className="border-border bg-card flex flex-col gap-2 rounded-md border p-2">
           {items.map((invitation) => (
             <div
               key={invitation.id}
-              className="flex items-center gap-3 rounded-md border border-border bg-muted/40 p-3 shadow-sm"
+              className="border-border bg-muted/40 flex items-center gap-3 rounded-md border p-3 shadow-sm"
             >
               <div className="bg-background flex size-10 items-center justify-center rounded-md">
                 <Mail className="size-5" />
@@ -104,7 +104,7 @@ const MyInvitations = (props: MyInvitationsProps) => {
                   </span>
                   <Badge variant="secondary">Pending</Badge>
                 </div>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-muted-foreground text-xs">
                   {invitation.inviterName
                     ? `Invited by ${invitation.inviterName}`
                     : "Invited"}

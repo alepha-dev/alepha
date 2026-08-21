@@ -38,7 +38,7 @@ const FolioSummaryField = (props: FolioSummaryFieldProps): ReactElement => {
       <Sparkles className="text-muted-foreground mt-0.5 size-3.5 flex-none" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="folio-mono text-muted-foreground text-[10.5px] font-medium uppercase tracking-[0.1em]">
+          <span className="folio-mono text-muted-foreground text-[10.5px] font-medium tracking-[0.1em] uppercase">
             {tr("folios.editor.summary.label")}
           </span>
           {/* Only the unavailable case earns a note. "Click to edit" on a

@@ -57,7 +57,6 @@ const ProjectSettingsConfirmationModal = (
             value={inputValue}
             onChange={(e) => setInputValue(e.currentTarget.value)}
             placeholder={props.project.title}
-            autoFocus
           />
         </div>
         <AlertDialogFooter>
@@ -73,7 +72,7 @@ const ProjectSettingsConfirmationModal = (
               }
               props.onConfirm();
             }}
-            className="bg-destructive text-white hover:bg-destructive/90"
+            className="bg-destructive hover:bg-destructive/90 text-white"
           >
             {tr("project.settings.delete.modal.submit")}
           </AlertDialogAction>

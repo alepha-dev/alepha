@@ -99,7 +99,7 @@ const AppPerformance = () => {
             <Card key={metric.key}>
               <CardHeader className="pb-2">
                 <CardTitle className="text-muted-foreground flex items-center justify-between text-sm font-medium">
-                  <span className="uppercase tracking-wide">
+                  <span className="tracking-wide uppercase">
                     {tr(`insights.vitals.${metric.key}`)}
                   </span>
                   {rating && (

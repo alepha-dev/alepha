@@ -33,7 +33,6 @@ const MilestoneSaveToFolioDialog = (props: MilestoneSaveToFolioDialogProps) => {
         <Input
           value={title}
           onChange={(e) => setTitle(e.currentTarget.value)}
-          autoFocus
         />
       </div>
       <div className="flex justify-end gap-2">

@@ -52,7 +52,7 @@ const FolioMenubar = (props: FolioMenubarProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
 
   const dispatch = (id: FolioMenuItem["id"]): void => {
-    props.handlers[id]();
+    void props.handlers[id]();
   };
 
   const labelKeyFor = (item: FolioMenuItem): string => {

@@ -86,7 +86,7 @@ const DashboardCard = (props: DashboardCardProps) => {
 
   const open = () => {
     if (!link) return;
-    router.push(
+    void router.push(
       link.route as never,
       {
         params: link.params,
@@ -118,7 +118,7 @@ const DashboardCard = (props: DashboardCardProps) => {
         title={tr("dashboard.card.drag")}
       >
         <Icon className="text-muted-foreground size-3.5 shrink-0" />
-        <span className="text-muted-foreground truncate text-[11.5px] font-medium uppercase tracking-[0.05em]">
+        <span className="text-muted-foreground truncate text-[11.5px] font-medium tracking-[0.05em] uppercase">
           {tr(props.labelKey as never)}
         </span>
         <span className="flex-1" />

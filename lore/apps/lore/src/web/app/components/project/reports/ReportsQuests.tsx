@@ -210,7 +210,7 @@ const ReportsQuests = (props: ReportsQuestsProps) => {
 
       <ReportsSection title={tr("reports.quests.aging.title")}>
         {aging.length > 0 ? (
-          <div className="divide-y divide-border">
+          <div className="divide-border divide-y">
             {aging.map((quest) => (
               <Link
                 key={quest.shortId}

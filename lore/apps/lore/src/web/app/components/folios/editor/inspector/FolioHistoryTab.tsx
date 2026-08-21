@@ -267,13 +267,13 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
                     toggle();
                   }
                 }}
-                className="hover:bg-accent/50 flex cursor-pointer select-none items-center gap-2 px-3 py-2.5 transition-colors"
+                className="hover:bg-accent/50 flex cursor-pointer items-center gap-2 px-3 py-2.5 transition-colors select-none"
               >
                 <span className="text-muted-foreground flex size-4 shrink-0 items-center justify-center">
                   {actionIcon(revision.action)}
                 </span>
                 <div className="ml-1 flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="text-sm font-medium leading-tight">
+                  <span className="text-sm leading-tight font-medium">
                     <ActionLabel action={revision.action} />
                   </span>
                   <span className="text-muted-foreground folio-mono flex items-center gap-1 text-[11px] leading-tight">
@@ -389,14 +389,14 @@ const DiffView = (props: {
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
       {props.previous && (
         <div>
-          <div className="text-muted-foreground mb-1 text-[10px] uppercase tracking-wider">
+          <div className="text-muted-foreground mb-1 text-[10px] tracking-wider uppercase">
             {tr("folios.history.diff-before")}
           </div>
           <SnapshotBlock revision={props.previous} tone="before" />
         </div>
       )}
       <div>
-        <div className="text-muted-foreground mb-1 text-[10px] uppercase tracking-wider">
+        <div className="text-muted-foreground mb-1 text-[10px] tracking-wider uppercase">
           {tr("folios.history.diff-after")}
         </div>
         <SnapshotBlock revision={props.revision} tone="after" />
@@ -411,7 +411,7 @@ const SnapshotBlock = (props: {
 }) => (
   <pre
     className={cn(
-      "max-h-72 overflow-auto whitespace-pre-wrap rounded p-2 text-[11px]",
+      "max-h-72 overflow-auto rounded p-2 text-[11px] whitespace-pre-wrap",
       props.tone === "before" ? "bg-destructive/10" : "bg-primary/10",
     )}
   >

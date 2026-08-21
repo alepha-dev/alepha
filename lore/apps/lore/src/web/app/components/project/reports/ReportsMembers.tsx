@@ -61,7 +61,7 @@ const ReportsMembers = (props: ReportsMembersProps) => {
     <div className="flex flex-col gap-8">
       <ReportsSection title={tr("reports.members.leaderboard.title")}>
         {leaderboard.length > 0 ? (
-          <div className="divide-y divide-border">
+          <div className="divide-border divide-y">
             {leaderboard.map((member, index) => (
               <div
                 key={member.userId}
@@ -134,7 +134,7 @@ const ReportsMembers = (props: ReportsMembersProps) => {
 
       <ReportsSection title={tr("reports.members.idle.title")}>
         {idle.length > 0 ? (
-          <div className="divide-y divide-border">
+          <div className="divide-border divide-y">
             {idle.map((member) => (
               <div
                 key={member.userId}

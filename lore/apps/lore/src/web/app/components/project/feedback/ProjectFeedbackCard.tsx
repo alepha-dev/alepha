@@ -50,7 +50,7 @@ const ProjectFeedbackCard = (props: ProjectFeedbackCardProps) => {
         }
       }}
       className={cn(
-        "flex cursor-pointer select-none items-center gap-2 border-b px-3 py-2.5 transition-colors hover:bg-accent/50",
+        "hover:bg-accent/50 flex cursor-pointer items-center gap-2 border-b px-3 py-2.5 transition-colors select-none",
         props.selected && "bg-accent text-accent-foreground",
       )}
     >
@@ -58,7 +58,7 @@ const ProjectFeedbackCard = (props: ProjectFeedbackCardProps) => {
         {statusIcon(feedback.status)}
       </span>
       <div className="ml-1 flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="truncate text-sm font-semibold leading-tight">
+        <span className="truncate text-sm leading-tight font-semibold">
           {feedback.title}
         </span>
         <span className="text-muted-foreground flex min-w-0 items-center gap-1 text-xs leading-tight">

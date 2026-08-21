@@ -147,15 +147,15 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
         )}
 
         <section>
-          <h3 className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wide">
+          <h3 className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
             {tr("feedback.description")}
           </h3>
-          <p className="whitespace-pre-wrap text-sm">{feedback.description}</p>
+          <p className="text-sm whitespace-pre-wrap">{feedback.description}</p>
         </section>
 
         {feedback.attachmentUrls && feedback.attachmentUrls.length > 0 && (
           <section>
-            <h3 className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">
+            <h3 className="text-muted-foreground mb-2 text-xs font-medium tracking-wide uppercase">
               {tr("feedback.attachments")}
             </h3>
             <ul className="flex flex-col gap-1">
@@ -181,7 +181,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
 
         {feedback.status === "accepted" && (
           <section data-testid="feedback-linked-quests">
-            <h3 className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">
+            <h3 className="text-muted-foreground mb-2 text-xs font-medium tracking-wide uppercase">
               {tr("feedback.linkedQuests")}
             </h3>
             {linkedQuests.length === 0 ? (
@@ -199,13 +199,13 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
                           shortId: String(q.shortId),
                         },
                       })}
-                      className="bg-muted/30 hover:bg-muted/60 flex items-center gap-2 rounded border border-border px-3 py-2 text-sm"
+                      className="bg-muted/30 hover:bg-muted/60 border-border flex items-center gap-2 rounded border px-3 py-2 text-sm"
                       data-testid={`linked-quest-${q.id}`}
                     >
                       <ExternalLink className="size-3.5" />
                       <span className="flex-1 truncate">{q.title}</span>
                       <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide ${
+                        className={`rounded-full px-2 py-0.5 text-[10px] tracking-wide uppercase ${
                           questStatusColor[q.status] ?? ""
                         }`}
                       >
@@ -220,8 +220,8 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
         )}
 
         {(feedback.reporter || feedback.source) && (
-          <section className="bg-muted/30 rounded border border-border p-3 text-xs">
-            <h3 className="text-muted-foreground mb-2 font-medium uppercase tracking-wide">
+          <section className="bg-muted/30 border-border rounded border p-3 text-xs">
+            <h3 className="text-muted-foreground mb-2 font-medium tracking-wide uppercase">
               {tr("feedback.context.title")}
             </h3>
             {/* Provenance fields are attacker-controlled — rendered as escaped

@@ -179,7 +179,7 @@ const FolioLinksTab = (props: FolioLinksTabProps): ReactElement => {
     <div className="flex flex-col gap-4 py-2">
       {inbound.length > 0 && (
         <section>
-          <h3 className="text-muted-foreground mb-1 px-3 text-[10.5px] font-medium uppercase tracking-[0.1em]">
+          <h3 className="text-muted-foreground mb-1 px-3 text-[10.5px] font-medium tracking-[0.1em] uppercase">
             {tr("folios.editor.inspector.backlinks")}
           </h3>
           {renderRefs(inbound)}
@@ -187,7 +187,7 @@ const FolioLinksTab = (props: FolioLinksTabProps): ReactElement => {
       )}
       {outbound.length > 0 && (
         <section>
-          <h3 className="text-muted-foreground mb-1 px-3 text-[10.5px] font-medium uppercase tracking-[0.1em]">
+          <h3 className="text-muted-foreground mb-1 px-3 text-[10.5px] font-medium tracking-[0.1em] uppercase">
             {tr("folios.editor.inspector.outgoing")}
           </h3>
           {renderRefs(outbound)}

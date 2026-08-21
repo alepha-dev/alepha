@@ -436,7 +436,7 @@ export const useFolioActions = (
     const cached = getProtectedKey(folio.id);
     if (!cached) return;
     let alive = true;
-    (async () => {
+    void (async () => {
       try {
         const plaintext = await decryptEnvelopeWithKey(cached, folio.content);
         if (!alive) return;
@@ -996,14 +996,16 @@ export const useFolioActions = (
   const handlers: FolioActionHandlers = {
     "folio.new": () => {
       if (!project) return;
-      router.push(router.path("projectFoliosNew", { params: { projectSlug } }));
+      void router.push(
+        router.path("projectFoliosNew", { params: { projectSlug } }),
+      );
     },
     "folio.newDirectory": notYetWired,
     "folio.save": () => {
-      saveAction.run();
+      void saveAction.run();
     },
     "folio.duplicate": () => {
-      duplicateAction.run();
+      void duplicateAction.run();
     },
     "folio.move": () => {
       // Defense in depth: the meta bar's directory chip is already
@@ -1018,7 +1020,7 @@ export const useFolioActions = (
       setMoveDialogOpen(true);
     },
     "folio.pin": () => {
-      pinAction.run();
+      void pinAction.run();
     },
     "folio.export": exportFolio,
     "folio.encrypt": () => {
@@ -1030,10 +1032,10 @@ export const useFolioActions = (
         toaster.error(tr("folios.protected.unlock-before-edit"));
         return;
       }
-      removeProtectionAction.run();
+      void removeProtectionAction.run();
     },
     "folio.delete": () => {
-      handleDelete();
+      void handleDelete();
     },
     "edit.bold": () => input.format.run("edit.bold"),
     "edit.italic": () => input.format.run("edit.italic"),

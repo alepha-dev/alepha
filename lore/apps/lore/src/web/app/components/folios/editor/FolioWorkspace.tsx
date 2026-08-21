@@ -156,7 +156,7 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
       if (treeActions) return treeActions.createFolio();
       // Before the tree publishes, fall back to the create route — the
       // same destination `useFolioActions` uses.
-      router.push("projectFoliosNew", {
+      void router.push("projectFoliosNew", {
         params: { projectSlug: project?.slug ?? "" },
       });
     };

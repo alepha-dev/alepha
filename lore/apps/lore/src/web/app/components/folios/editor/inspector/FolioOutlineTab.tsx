@@ -104,7 +104,7 @@ const FolioOutlineTab = (props: FolioOutlineTabProps): ReactElement => {
             type="button"
             onClick={() => scrollTo(heading)}
             style={{ paddingLeft: 10 + (heading.level - 1) * 14 }}
-            className="hover:bg-accent/50 flex w-full items-center gap-2 py-1.5 pr-3 text-left text-sm text-foreground/85 transition-colors"
+            className="hover:bg-accent/50 text-foreground/85 flex w-full items-center gap-2 py-1.5 pr-3 text-left text-sm transition-colors"
           >
             <span className="folio-mono text-muted-foreground w-6 shrink-0 text-[10px] uppercase">
               H{heading.level}

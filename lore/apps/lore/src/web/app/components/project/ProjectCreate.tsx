@@ -129,7 +129,7 @@ const ProjectCreate = () => {
 
   useEffect(() => {
     if (!auth.user) {
-      router.push("register", {
+      void router.push("register", {
         query: { r: router.path("projectCreate") },
       });
     }
@@ -172,7 +172,7 @@ const ProjectCreate = () => {
             >
               <div
                 key={step}
-                className="animate-in fade-in slide-in-from-right-2 duration-300 flex flex-col gap-5"
+                className="animate-in fade-in slide-in-from-right-2 flex flex-col gap-5 duration-300"
               >
                 {step === 1 && (
                   <StepName
@@ -421,7 +421,7 @@ const ModuleToggle = (props: ModuleToggleProps) => {
       aria-pressed={props.checked}
       className={`flex items-start gap-3 rounded-lg border p-4 text-left transition-all ${
         props.checked
-          ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+          ? "border-primary bg-primary/5 ring-primary/30 ring-1"
           : "border-border hover:border-muted-foreground/40 hover:bg-muted/30"
       }`}
     >
@@ -445,7 +445,7 @@ const ModuleToggle = (props: ModuleToggleProps) => {
         }`}
       >
         <span
-          className={`block size-4 rounded-full bg-background transition-transform ${
+          className={`bg-background block size-4 rounded-full transition-transform ${
             props.checked ? "translate-x-4" : "translate-x-0"
           }`}
         />

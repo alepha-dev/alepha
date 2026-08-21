@@ -42,6 +42,7 @@ const FolioTreeResizer = (props: FolioTreeResizerProps): ReactElement => {
 
   return (
     <div
+      tabIndex={0}
       role="separator"
       aria-orientation="vertical"
       aria-label="Resize folio tree"

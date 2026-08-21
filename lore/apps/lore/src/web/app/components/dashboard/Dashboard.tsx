@@ -100,7 +100,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (!catalogueOpen || apps.length > 0 || projects.length === 0) return;
     let cancelled = false;
-    Promise.all(
+    void Promise.all(
       projects.map((project) =>
         sigilApi
           .listSigils({ params: { projectId: project.id } })
@@ -220,7 +220,7 @@ const Dashboard = () => {
           (`PageHeader` pins it at `top-3`). The greeting takes its
           breathing room from the row above it now, not from the top of
           the scroll area. */}
-      <main className="@container flex min-w-0 flex-1 flex-col overflow-y-auto px-8 pb-10 pt-4">
+      <main className="@container flex min-w-0 flex-1 flex-col overflow-y-auto px-8 pt-4 pb-10">
         <DashboardHeader
           name={displayName(auth.user, "")}
           cardCount={dashboard.cards.length}

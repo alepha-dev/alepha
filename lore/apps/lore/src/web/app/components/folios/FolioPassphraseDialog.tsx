@@ -116,7 +116,6 @@ const FolioPassphraseDialog = (props: FolioPassphraseDialogProps) => {
               value={passphrase}
               onChange={(e) => setPassphrase(e.currentTarget.value)}
               disabled={working}
-              autoFocus
             />
           </div>
           {props.requireConfirm && (

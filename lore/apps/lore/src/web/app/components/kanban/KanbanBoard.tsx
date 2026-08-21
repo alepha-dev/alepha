@@ -187,7 +187,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     // system" case the rule exempts; it reports it because the loader flips
     // `loading` before its first await.
     // oxlint-disable-next-line react/set-state-in-effect
-    if (reloadKey?.key) reload();
+    if (reloadKey?.key) void reload();
   }, [reloadKey]);
 
   const closeDrawer = () => {
@@ -268,9 +268,9 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       className="flex flex-1 flex-col overflow-hidden"
     >
       {/* Filter nav */}
-      <div className="flex items-center gap-2 border-border border-b bg-card px-3 py-1.5">
+      <div className="border-border bg-card flex items-center gap-2 border-b px-3 py-1.5">
         {loading && (
-          <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+          <Loader2 className="text-muted-foreground size-3.5 animate-spin" />
         )}
         <form {...filterForm.props} className="flex flex-1 items-center gap-2">
           {areaOptions.length > 0 && (

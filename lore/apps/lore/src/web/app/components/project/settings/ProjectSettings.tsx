@@ -146,7 +146,7 @@ const ProjectSettings = () => {
               className="flex flex-col gap-1"
             >
               {group.labelKey && (
-                <span className="text-muted-foreground px-3 text-[11px] font-semibold uppercase tracking-wider">
+                <span className="text-muted-foreground px-3 text-[11px] font-semibold tracking-wider uppercase">
                   {tr(group.labelKey)}
                 </span>
               )}
@@ -161,7 +161,7 @@ const ProjectSettings = () => {
                     key={item.route}
                     href={href}
                     className={cn(
-                      "flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-left text-sm transition-colors",
+                      "flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm whitespace-nowrap transition-colors",
                       isActive
                         ? "bg-muted font-medium"
                         : "text-muted-foreground hover:bg-muted/60",

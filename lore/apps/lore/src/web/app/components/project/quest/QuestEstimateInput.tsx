@@ -107,7 +107,7 @@ const QuestEstimateInput = (props: QuestEstimateInputProps) => {
             <Input
               type="number"
               min={1}
-              autoFocus
+
               aria-label={tr("quest.create.estimate.count")}
               className="w-20"
               value={count}

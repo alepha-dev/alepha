@@ -32,7 +32,6 @@ const ProjectMilestonesCloseModal = (
             if (e.key === "Enter" && title.trim())
               props.onConfirm(title.trim());
           }}
-          autoFocus
         />
       </div>
       <div className="flex justify-end gap-2">

@@ -38,7 +38,7 @@ const DashboardCardValue = (props: DashboardCardValueProps) => {
   }
 
   return (
-    <div className="mt-0.5 text-[32px] font-semibold leading-none tracking-[-0.025em] tabular-nums">
+    <div className="mt-0.5 text-[32px] leading-none font-semibold tracking-[-0.025em] tabular-nums">
       {props.value.value === undefined
         ? DASHBOARD_NO_VALUE
         : String(l(props.value.value))}

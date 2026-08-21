@@ -62,7 +62,7 @@ const MilestoneChangelogPanel = (props: MilestoneChangelogPanelProps) => {
         </Button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8 pt-4 lg:px-7">
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-4 pb-8 lg:px-7">
         {props.error ? (
           <p className="text-destructive py-10 text-center text-sm">
             {tr("milestone.changelog.error")}
@@ -79,7 +79,7 @@ const MilestoneChangelogPanel = (props: MilestoneChangelogPanelProps) => {
           props.areas.map((area) => (
             <div key={area.name} className="mb-6 last:mb-0">
               <div className="mb-1.5 flex items-center gap-2.5">
-                <span className="font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-green-600 dark:text-green-400">
+                <span className="font-mono text-[11px] font-medium tracking-[0.06em] text-green-600 uppercase dark:text-green-400">
                   {area.name}
                 </span>
                 <span className="text-muted-foreground text-[11px]">

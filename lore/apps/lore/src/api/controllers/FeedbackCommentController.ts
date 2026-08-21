@@ -129,7 +129,7 @@ export class FeedbackCommentController {
         limit: query?.limit ?? this.cap,
       });
 
-      return await this.withAuthors(rows.reverse());
+      return await this.withAuthors(rows.toReversed());
     },
   });
 

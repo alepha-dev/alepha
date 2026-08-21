@@ -26,7 +26,7 @@ const QuestlineTrack = (props: QuestlineTrackProps) => {
 
   return (
     <div
-      className="group/track relative transition-opacity duration-300 has-[button:hover]:opacity-100 group-has-[button:hover]/board:opacity-50"
+      className="group/track relative transition-opacity duration-300 group-has-[button:hover]/board:opacity-50 has-[button:hover]:opacity-100"
       style={{ width: track.width, height: track.height }}
     >
       <svg

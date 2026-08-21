@@ -395,7 +395,7 @@ const TimelineWindow = (props: TimelineWindowProps) => {
       {/* Previous row — 33%. Right edge borders + bottom-right corner
           rounded so the line peels away from the selected row. */}
       <div className="border-border flex h-1/3 min-h-0 flex-col gap-2 overflow-y-auto rounded-br-lg border-r border-b p-6">
-        <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
+        <span className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">
           previous
         </span>
         {w.prev.length > 0 ? (
@@ -413,7 +413,7 @@ const TimelineWindow = (props: TimelineWindowProps) => {
         {selected ? (
           <Link
             href={`/${projectSlug}/quests/${selected.shortId}`}
-            className="flex items-center gap-2 rounded px-2 py-1 hover:bg-muted/40"
+            className="hover:bg-muted/40 flex items-center gap-2 rounded px-2 py-1"
           >
             <span
               className={`size-2.5 shrink-0 rounded-full ${statusDot(selected.status)}`}
@@ -433,8 +433,8 @@ const TimelineWindow = (props: TimelineWindowProps) => {
 
       {/* Next row — 33%. Right edge borders + top-right corner
           rounded, mirroring previous. */}
-      <div className="border-border flex h-1/3 min-h-0 flex-col gap-2 overflow-y-auto rounded-tr-lg border-r border-t p-6">
-        <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wider">
+      <div className="border-border flex h-1/3 min-h-0 flex-col gap-2 overflow-y-auto rounded-tr-lg border-t border-r p-6">
+        <span className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">
           next
         </span>
         {w.next.length > 0 ? (

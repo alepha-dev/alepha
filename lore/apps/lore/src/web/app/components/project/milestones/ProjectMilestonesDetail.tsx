@@ -133,7 +133,7 @@ const ProjectMilestonesDetail = (props: ProjectMilestonesDetailProps) => {
             </Button>
           </div>
         </div>
-        <Card className="max-h-[40vh] overflow-auto whitespace-pre-wrap p-4 font-mono text-xs">
+        <Card className="max-h-[40vh] overflow-auto p-4 font-mono text-xs whitespace-pre-wrap">
           {markdown}
         </Card>
       </div>

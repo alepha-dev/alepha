@@ -244,7 +244,7 @@ const ProjectActionsCreateButton = () => {
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.currentTarget.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") handleInvite();
+                    if (e.key === "Enter") void handleInvite();
                   }}
                 />
               </div>
