@@ -22,12 +22,20 @@ export interface DashboardGridProps {
  *
  * ## Columns
  *
- * `repeat(auto-fill, minmax(216px, 1fr))` and a `168px` row, which are the
- * mockup's own track sizes. The mockup fixes the count at four on a
- * `min-width: 700px` desktop canvas; `auto-fill` keeps the tile identical at
- * every width and lets the number per row fall out of the space, which is
- * the same design on a viewport that can be a phone. At the mockup's own
- * width it lays out four.
+ * `repeat(auto-fill, minmax(clamp(216px, 15cqw, 300px), 1fr))` over a `168px`
+ * row. `216px` and the row height are the mockup's own track sizes, and
+ * `auto-fill` keeps the tile identical at every width while letting the
+ * number per row fall out of the space — the same design on a viewport that
+ * can be a phone. At the mockup's own width it still lays out four.
+ *
+ * The `clamp` is what a fixed `216px` minimum got wrong at the top end: the
+ * track never grew, so a 2100px window packed seven 235px tiles instead of
+ * six comfortable ones, and a 2560px one packed nine. `15cqw` is read
+ * against `main`'s inline size (it carries `@container`), not the viewport,
+ * so the rail's 320px does not count towards it and a collapsed rail widens
+ * the tiles rather than adding one. Below roughly 1440px the clamp floors at
+ * the mockup's `216px` and nothing about the old layout changes; above it
+ * the tiles widen instead of multiplying, up to `300px`.
  *
  * ## Drag
  *
@@ -57,7 +65,7 @@ const DashboardGrid = (props: DashboardGridProps) => {
   };
 
   return (
-    <div className="grid auto-rows-[168px] grid-cols-[repeat(auto-fill,minmax(216px,1fr))] items-stretch gap-3">
+    <div className="grid auto-rows-[168px] grid-cols-[repeat(auto-fill,minmax(clamp(216px,15cqw,300px),1fr))] items-stretch gap-3">
       {props.cards.map((card, index) => {
         const descriptor = props.metrics.get(card.metric);
         return (

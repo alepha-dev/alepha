@@ -1,4 +1,12 @@
 import { Button } from "@alepha/ui/components/ui/button";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@alepha/ui/components/ui/drawer";
 import { Input } from "@alepha/ui/components/ui/input";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -20,6 +28,7 @@ import DashboardScopeStep, {
 import { dashboardFilterFields } from "./dashboardFilterFields.ts";
 
 export interface DashboardCatalogueProps {
+  open: boolean;
   cards: DashboardCardResource[];
   projects: ProjectOverviewResource[];
   apps: DashboardScopeApp[];
@@ -53,6 +62,16 @@ export interface DashboardCatalogueProps {
  * A metric with nothing to scope is not offered. The mockup says as much in
  * its own footnote, and it is the honest behaviour: an app metric on an
  * account with no enrolled app would add a card that can only ever say zero.
+ *
+ * ## A real drawer, not an `<aside>`
+ *
+ * This used to be a bare flex child of the dashboard row, sliding nothing and
+ * stealing width from the grid it was meant to add to — every tile reflowed
+ * the moment the panel opened. It is now `@alepha/ui`'s `Drawer` on the right
+ * edge, which brings the parts that were missing rather than merely the
+ * animation: a focus trap, Escape and outside-press dismissal, and a
+ * scroll-locked backdrop. The caller keeps this mounted and drives `open`, so
+ * the panel gets its closing animation instead of vanishing.
  */
 const DashboardCatalogue = (props: DashboardCatalogueProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -130,123 +149,131 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
     (scope.kind !== "projects" || (scope.projectIds ?? []).length > 0);
 
   return (
-    <aside
-      data-testid="dashboard-catalogue"
-      className="border-border bg-card/55 flex w-86 shrink-0 flex-col gap-3 overflow-y-auto border-l px-6 pb-6 pt-7"
+    <Drawer
+      open={props.open}
+      onOpenChange={(open) => {
+        if (!open) props.onClose();
+      }}
+      swipeDirection="right"
     >
-      <div className="flex items-center gap-2">
-        {picked && !props.editing && (
-          <button
-            type="button"
-            aria-label={tr("dashboard.catalogue.back")}
-            onClick={() => setPicked(undefined)}
-            className="text-muted-foreground hover:bg-accent hover:text-foreground inline-flex size-6 items-center justify-center rounded-md transition-colors"
-          >
-            <ArrowLeft className="size-3.5" />
-          </button>
-        )}
-        <span className="text-sm font-medium">
-          {picked
-            ? tr(picked.labelKey as never)
-            : tr("dashboard.catalogue.title")}
-        </span>
-        <span className="flex-1" />
-        <button
-          type="button"
-          aria-label={tr("dashboard.catalogue.close")}
-          data-testid="dashboard-catalogue-close"
-          onClick={props.onClose}
-          className="text-muted-foreground hover:bg-accent hover:text-foreground inline-flex size-6 items-center justify-center rounded-[7px] transition-colors"
-        >
-          <X className="size-3.5" />
-        </button>
-      </div>
-
-      {!picked && (
-        <>
-          <div className="relative">
-            <Search className="text-muted-foreground pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2" />
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={String(tr("dashboard.catalogue.filter"))}
-              aria-label={String(tr("dashboard.catalogue.filter"))}
-              className="bg-background h-8 rounded-lg pl-8 text-[12.5px]"
-            />
-          </div>
-
-          <div className="flex flex-col">
-            {groups.map(([group, metrics]) => (
-              <div key={group}>
-                <div className="text-muted-foreground px-0 pb-1.5 pt-3.5 text-[10.5px] font-semibold uppercase tracking-[0.08em]">
-                  {tr(`dashboard.group.${group}` as never)}
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  {metrics.map((metric) => (
-                    <DashboardCatalogueRow
-                      key={metric.key}
-                      metric={metric}
-                      onBoard={props.cards.some(
-                        (card) => card.metric === metric.key,
-                      )}
-                      unavailableKey={unavailable(metric)}
-                      onSelect={() => start(metric)}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-            {groups.length === 0 && (
-              <div className="text-muted-foreground pt-4 text-[11.5px]">
-                {tr("dashboard.catalogue.empty")}
-              </div>
-            )}
-          </div>
-
-          <div className="border-border text-muted-foreground mt-4 border-t pt-3.5 text-[11.5px] leading-relaxed">
-            {tr("dashboard.catalogue.note")}
-          </div>
-        </>
-      )}
-
-      {picked && (
-        <div className="flex min-h-0 flex-1 flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <div className="text-muted-foreground text-[10.5px] font-semibold uppercase tracking-[0.08em]">
-              {tr("dashboard.scope.pick")}
-            </div>
-            <DashboardScopeStep
-              metric={picked}
-              projects={props.projects}
-              apps={props.apps}
-              scope={scope}
-              onChange={setScope}
-            />
-          </div>
-
-          {dashboardFilterFields(picked.filters).length > 0 && (
-            <DashboardFilterStep
-              metric={picked}
-              values={filters}
-              onChange={setFilters}
-            />
+      <DrawerContent
+        data-testid="dashboard-catalogue"
+        className="bg-card sm:[--drawer-content-width:23rem]"
+      >
+        <DrawerHeader className="flex-row items-center gap-2 p-6 pb-3 md:text-left">
+          {picked && !props.editing && (
+            <button
+              type="button"
+              aria-label={tr("dashboard.catalogue.back")}
+              onClick={() => setPicked(undefined)}
+              className="text-muted-foreground hover:bg-accent hover:text-foreground inline-flex size-6 items-center justify-center rounded-md transition-colors"
+            >
+              <ArrowLeft className="size-3.5" />
+            </button>
           )}
-
+          <DrawerTitle className="cn-font-sans text-sm font-medium">
+            {picked
+              ? tr(picked.labelKey as never)
+              : tr("dashboard.catalogue.title")}
+          </DrawerTitle>
           <span className="flex-1" />
-
-          <Button
-            onClick={save}
-            disabled={!canSave}
-            data-testid="dashboard-catalogue-save"
-            className="h-9 rounded-[9px]"
+          <DrawerClose
+            aria-label={tr("dashboard.catalogue.close")}
+            data-testid="dashboard-catalogue-close"
+            className="text-muted-foreground hover:bg-accent hover:text-foreground inline-flex size-6 items-center justify-center rounded-[7px] transition-colors"
           >
-            {props.editing
-              ? tr("dashboard.catalogue.save")
-              : tr("dashboard.addCard")}
-          </Button>
-        </div>
-      )}
-    </aside>
+            <X className="size-3.5" />
+          </DrawerClose>
+        </DrawerHeader>
+
+        {!picked && (
+          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-6 pb-6">
+            <div className="relative">
+              <Search className="text-muted-foreground pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2" />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={String(tr("dashboard.catalogue.filter"))}
+                aria-label={String(tr("dashboard.catalogue.filter"))}
+                className="bg-background h-8 rounded-lg pl-8 text-[12.5px]"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              {groups.map(([group, metrics]) => (
+                <div key={group}>
+                  <div className="text-muted-foreground px-0 pb-1.5 pt-3.5 text-[10.5px] font-semibold uppercase tracking-[0.08em]">
+                    {tr(`dashboard.group.${group}` as never)}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    {metrics.map((metric) => (
+                      <DashboardCatalogueRow
+                        key={metric.key}
+                        metric={metric}
+                        onBoard={props.cards.some(
+                          (card) => card.metric === metric.key,
+                        )}
+                        unavailableKey={unavailable(metric)}
+                        onSelect={() => start(metric)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {groups.length === 0 && (
+                <div className="text-muted-foreground pt-4 text-[11.5px]">
+                  {tr("dashboard.catalogue.empty")}
+                </div>
+              )}
+            </div>
+
+            <div className="border-border text-muted-foreground mt-4 border-t pt-3.5 text-[11.5px] leading-relaxed">
+              {tr("dashboard.catalogue.note")}
+            </div>
+          </div>
+        )}
+
+        {picked && (
+          <>
+            <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 pb-2">
+              <div className="flex flex-col gap-1.5">
+                <div className="text-muted-foreground text-[10.5px] font-semibold uppercase tracking-[0.08em]">
+                  {tr("dashboard.scope.pick")}
+                </div>
+                <DashboardScopeStep
+                  metric={picked}
+                  projects={props.projects}
+                  apps={props.apps}
+                  scope={scope}
+                  onChange={setScope}
+                />
+              </div>
+
+              {dashboardFilterFields(picked.filters).length > 0 && (
+                <DashboardFilterStep
+                  metric={picked}
+                  values={filters}
+                  onChange={setFilters}
+                />
+              )}
+            </div>
+
+            <DrawerFooter className="px-6 pb-6 pt-4">
+              <Button
+                onClick={save}
+                disabled={!canSave}
+                data-testid="dashboard-catalogue-save"
+                className="h-9 rounded-[9px]"
+              >
+                {props.editing
+                  ? tr("dashboard.catalogue.save")
+                  : tr("dashboard.addCard")}
+              </Button>
+            </DrawerFooter>
+          </>
+        )}
+      </DrawerContent>
+    </Drawer>
   );
 };
 
