@@ -395,6 +395,9 @@ const ProjectView = () => {
         return item.children
           .filter((child) => !!child.href)
           .map((child) => ({
+            // Coercion at a boundary: the value is a form/route/chart primitive whose
+            // declared type is wider than what can reach here.
+            // oxlint-disable-next-line typescript/no-base-to-string
             label: String(child.label),
             href: String(child.href),
             kind: "app",
@@ -402,6 +405,9 @@ const ProjectView = () => {
       }
       if (!item.href) return [];
       return [
+        // Coercion at a boundary: the value is a form/route/chart primitive whose
+        // declared type is wider than what can reach here.
+        // oxlint-disable-next-line typescript/no-base-to-string
         { label: String(item.label), href: String(item.href), kind: "page" },
       ];
     }),

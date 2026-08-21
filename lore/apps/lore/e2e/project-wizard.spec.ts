@@ -63,9 +63,7 @@ test.describe("Project wizard — feature toggles", () => {
         url.pathname.split("/").filter(Boolean).length === 1,
       { timeout: 15_000 },
     );
-    const projectSlug = new URL(page.url()).pathname
-      .split("/")
-      .filter(Boolean)[0];
+    const projectSlug = new URL(page.url()).pathname.split("/").find(Boolean);
     expect(projectSlug).toBeTruthy();
 
     // ProjectView's sidebar gates the Milestones entry on the matching

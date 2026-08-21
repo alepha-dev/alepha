@@ -1004,7 +1004,7 @@ export class FolioLinkService {
         // segment as a bare title. Accept only when unique — ambiguous
         // titles stay dangling so we don't rewrite to the wrong folio.
         if (!targetId) {
-          const last = token.ref.split("/").filter(Boolean).pop();
+          const last = token.ref.split("/").findLast(Boolean);
           if (last) {
             const hit = folioByTitle.get(last.toLowerCase().trim());
             if (hit && hit.count === 1) targetId = hit.id;

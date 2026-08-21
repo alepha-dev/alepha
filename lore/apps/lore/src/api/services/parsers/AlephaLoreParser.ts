@@ -48,6 +48,9 @@ export class AlephaLoreParser {
         if (!Array.isArray(parsed)) throw new Error("not an array");
         objectives = parsed.map(
           (o: { title?: unknown; completed?: unknown }) => ({
+            // Coercion at a boundary: the value is a form/route/chart primitive whose
+            // declared type is wider than what can reach here.
+            // oxlint-disable-next-line typescript/no-base-to-string
             title: String(o.title ?? ""),
             completed: Boolean(o.completed),
           }),
