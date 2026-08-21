@@ -708,6 +708,50 @@ const bindEnv = (env) => {
 const edgeCache = () =>
   typeof caches !== "undefined" && caches.default ? caches.default : undefined;
 
+// --- D1 read replication ----------------------------------------------------
+//
+// A D1 session only buys sequential consistency ACROSS requests if the
+// bookmark it ends on is handed back and presented on the next one. Drop it
+// and a user who just created something can be served by a replica that has
+// not caught up, and the write appears to have vanished.
+//
+// Carried in a cookie rather than a header because the browser returns it
+// with no client-side code. Both ends are guarded: an app not running
+// \`DATABASE_D1_MODE=sessions\` never populates the slot, so none of this fires.
+const D1_BOOKMARK_COOKIE = "alepha_d1_bookmark";
+
+const readBookmarkCookie = (request) => {
+  const header = request.headers.get("cookie");
+  if (!header) return undefined;
+
+  for (const part of header.split(";")) {
+    const [name, ...rest] = part.trim().split("=");
+    if (name === D1_BOOKMARK_COOKIE && rest.length) {
+      return decodeURIComponent(rest.join("="));
+    }
+  }
+
+  return undefined;
+};
+
+// \`append\`, not \`set\`: the response may already carry auth cookies and
+// replacing the whole header would sign the user out.
+const writeBookmarkCookie = (response, bookmark) => {
+  try {
+    response.headers.append(
+      "set-cookie",
+      D1_BOOKMARK_COOKIE +
+        "=" +
+        encodeURIComponent(bookmark) +
+        "; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600",
+    );
+  } catch {
+    // A Response built from an immutable source rejects header writes. Losing
+    // the bookmark costs consistency on the next request, never correctness
+    // on this one, so it must not turn into a 500.
+  }
+};
+
 // A shared entry is keyed by URL ALONE. Anything the caller's identity could
 // have influenced must stay out however loudly the route opts in — hence the
 // request-side credential check, which no Cache-Control directive can override.
@@ -747,11 +791,48 @@ export default {
       return new Response("Internal Server Error", { status: 500 });
     }
 
-    await withExecutionContext(executionCtx, () =>
-      __alepha.events.emit("web:request", ctx),
-    );
+    // A holder, not a store read. \`store.set\` writes to the innermost async
+    // layer and the handler runs several layers deeper than this, so the
+    // session it opens cannot be read back from here. Mutating an object this
+    // scope already owns crosses that boundary; reading the store instead
+    // silently returned nothing and the bookmark never reached the response.
+    const d1Carrier = {};
 
-    if (cache && isEdgeCacheable(request, ctx.res)) {
+    await withExecutionContext(executionCtx, async () => {
+      __alepha.store.set("alepha.orm.d1.carrier", d1Carrier, {
+        skipEvents: true,
+      });
+
+      const incoming = readBookmarkCookie(request);
+      if (incoming) {
+        __alepha.store.set("alepha.orm.d1.bookmark", incoming, {
+          skipEvents: true,
+        });
+      }
+
+      await __alepha.events.emit("web:request", ctx);
+    });
+
+    const outgoingBookmark =
+      d1Carrier.session && typeof d1Carrier.session.getBookmark === "function"
+        ? d1Carrier.session.getBookmark()
+        : undefined;
+
+    // Cacheability is decided BEFORE the cookie is attached, and the two are
+    // mutually exclusive. \`isEdgeCacheable\` refuses any response carrying a
+    // \`set-cookie\`, so attaching the bookmark first would silently switch the
+    // edge cache off for every response the moment an app enabled sessions.
+    //
+    // Skipping the bookmark on a cacheable response loses nothing: such a
+    // response is public and shared by construction, so it cannot depend on
+    // one caller's read position.
+    const cacheable = cache && isEdgeCacheable(request, ctx.res);
+
+    if (!cacheable && outgoingBookmark && ctx.res) {
+      writeBookmarkCookie(ctx.res, outgoingBookmark);
+    }
+
+    if (cacheable) {
       // \`put\` drains the body it is given, so the clone goes to the cache and
       // the original goes to the client. waitUntil keeps the isolate alive
       // until the write lands instead of racing the response.
