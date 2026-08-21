@@ -314,6 +314,9 @@ export class MqttJsClientProvider extends MqttClientProvider {
       // later one.
       const previous = subscription.ready;
       subscription.qos = qos;
+      // Sequencing, not a pipeline: the chain's value is never read, only
+      // awaited, so there is nothing for this callback to hand on.
+      // oxlint-disable-next-line promise/always-return
       subscription.ready = previous.then(async () => {
         await client.subscribeAsync(topic, { qos });
       });

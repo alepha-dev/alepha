@@ -124,6 +124,9 @@ export class ProjectScaffolder {
             root,
             typeof opts.packageJson === "boolean" ? {} : opts.packageJson,
           )
+          // A deliberate no-op `.then` that erases the resolved type, so every entry in
+          // `tasks` is a `Promise<void>`.
+          // oxlint-disable-next-line promise/always-return
           .then(() => {}),
       );
     }

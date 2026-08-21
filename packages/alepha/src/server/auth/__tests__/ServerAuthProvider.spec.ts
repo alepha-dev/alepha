@@ -195,7 +195,7 @@ describe("ServerAuthProvider", () => {
   });
 
   describe("refreshTokens", () => {
-    it("should return tokens when not expired", () => {
+    it("should return tokens when not expired", async () => {
       const { auth, time } = createApp();
       const now = time.now().unix();
 
@@ -207,9 +207,8 @@ describe("ServerAuthProvider", () => {
         issued_at: now,
       };
 
-      return auth.testRefreshTokens(tokens).then((result) => {
-        expect(result).toEqual(tokens);
-      });
+      const result = await auth.testRefreshTokens(tokens);
+      expect(result).toEqual(tokens);
     });
 
     it("should refresh expired tokens with refresh_token", async () => {

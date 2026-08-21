@@ -127,24 +127,29 @@ export class ServerBodyParserProvider {
           }
         }
 
-        return this.parse(stream, request.headers, route.schema.body)
-          .then((body) => {
-            if (body) {
-              request.body = body;
-            }
-          })
-          .catch((error) => {
-            if (error instanceof HttpError) {
-              throw error;
-            }
-            throw new HttpError(
-              {
-                status: 400,
-                message: "Failed to parse request body",
-              },
-              error,
-            );
-          });
+        return (
+          this.parse(stream, request.headers, route.schema.body)
+            // Assigns onto the request and hands nothing on; the `.catch` below is what
+            // the chain exists for.
+            // oxlint-disable-next-line promise/always-return
+            .then((body) => {
+              if (body) {
+                request.body = body;
+              }
+            })
+            .catch((error) => {
+              if (error instanceof HttpError) {
+                throw error;
+              }
+              throw new HttpError(
+                {
+                  status: 400,
+                  message: "Failed to parse request body",
+                },
+                error,
+              );
+            })
+        );
       }
     },
   });

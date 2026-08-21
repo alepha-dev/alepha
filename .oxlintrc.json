@@ -54,7 +54,13 @@
     // A `.then()` branch that returns nothing silently resolves the chain to
     // `undefined`, so the next link receives nothing and the bug surfaces
     // somewhere else entirely.
-    "promise/always-return": "error",
+    //
+    // `ignoreLastCallback` because the LAST callback in a chain is where side
+    // effects belong — `.then(res => setQuests(res.content))` has nothing to
+    // hand on and no one to hand it to. Without the option the rule reports 51
+    // findings here, 43 of them terminal callbacks; with it, the 8 that remain
+    // are all genuine mid-chain swallows.
+    "promise/always-return": ["error", { "ignoreLastCallback": true }],
     // `unicorn/no-array-reverse` and friends stay; `react/memo-dependencies`
     // does not. It is `exhaustive-deps` for `useMemo`/`useCallback`, so it
     // rests on the same premise as `react-hooks/exhaustive-deps` below and

@@ -131,6 +131,9 @@ export class BuildCompressTask extends BuildTask {
     if (gzip) {
       const gzipOptions = typeof gzip === "object" ? gzip : { level: 9 };
       tasks.push(
+        // Sequencing, not a pipeline: the chain's value is never read, only
+        // awaited, so there is nothing for this callback to hand on.
+        // oxlint-disable-next-line promise/always-return
         contentPromise.then(async (content) => {
           const compressed = await this.gzipCompress(content, gzipOptions);
           await this.fs.writeFile(`${filePath}.gz`, compressed);
@@ -141,6 +144,9 @@ export class BuildCompressTask extends BuildTask {
     if (brotli) {
       const brotliOptions = typeof brotli === "object" ? brotli : {};
       tasks.push(
+        // Sequencing, not a pipeline: the chain's value is never read, only
+        // awaited, so there is nothing for this callback to hand on.
+        // oxlint-disable-next-line promise/always-return
         contentPromise.then(async (content) => {
           const compressed = await this.brotliCompress(content, brotliOptions);
           await this.fs.writeFile(`${filePath}.br`, compressed);

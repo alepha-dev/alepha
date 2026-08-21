@@ -34,6 +34,9 @@ export const AtomMutations = (props: AtomMutationsProps) => {
         .fetch(
           `/__devtools/api/atoms/log?key=${encodeURIComponent(props.atomName)}`,
         )
+        // Assigns into state and hands nothing on; the `.catch` below is what the
+        // chain exists for.
+        // oxlint-disable-next-line promise/always-return
         .then((res) => {
           if (!cancelled) {
             setEntries((res.data as any)?.entries ?? []);

@@ -266,6 +266,9 @@ export class DevLogStoreProvider {
    * interleave their appends.
    */
   protected async flush(): Promise<void> {
+    // Sequencing, not a pipeline: the chain's value is never read, only
+    // awaited, so there is nothing for this callback to hand on.
+    // oxlint-disable-next-line promise/always-return
     this.flushing = this.flushing.then(async () => {
       if (this.pending.length === 0) {
         return;
