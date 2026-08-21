@@ -11,6 +11,7 @@ import { BlobController } from "./controllers/BlobController.ts";
 import { DashboardController } from "./controllers/DashboardController.ts";
 import { DirectoryController } from "./controllers/DirectoryController.ts";
 import { EpicController } from "./controllers/EpicController.ts";
+import { FeedbackCommentController } from "./controllers/FeedbackCommentController.ts";
 import { FeedbackController } from "./controllers/FeedbackController.ts";
 import { FolioController } from "./controllers/FolioController.ts";
 import { InsightsController } from "./controllers/InsightsController.ts";
@@ -55,6 +56,7 @@ import { InvitationService } from "./services/InvitationService.ts";
 import { OpenBlightCounter } from "./services/OpenBlightCounter.ts";
 import { OpenBlightsMetric } from "./services/OpenBlightsMetric.ts";
 import { OpenQuestScope } from "./services/OpenQuestScope.ts";
+import { ProjectActivityService } from "./services/ProjectActivityService.ts";
 import { ProjectLimits } from "./services/ProjectLimits.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 import { AlephaLoreParser } from "./services/parsers/AlephaLoreParser.ts";
@@ -121,6 +123,7 @@ export const LoreApi = $module({
     QuestService,
     ProjectLimits,
     AreaService,
+    ProjectActivityService,
     BlightRuleService,
     OpenBlightCounter,
     // What "open quests" means, shared by the sidebar badge, the dashboard
@@ -152,6 +155,7 @@ export const LoreApi = $module({
     // Controllers
     QuestController,
     QuestCommentController,
+    FeedbackCommentController,
     ProjectController,
     MilestoneController,
     EpicController,

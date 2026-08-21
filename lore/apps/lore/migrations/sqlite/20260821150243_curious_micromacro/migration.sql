@@ -1,0 +1,1 @@
+ALTER TABLE `quests` ADD `commits` text;

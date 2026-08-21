@@ -6,6 +6,7 @@ import { $action, ForbiddenError, okSchema } from "alepha/server";
 import { questComments } from "../entities/questComments.ts";
 import { quests } from "../entities/quests.ts";
 import { questCommentResourceSchema } from "../schemas/questCommentResourceSchema.ts";
+import { questCommentSourceSchema } from "../schemas/questCommentSourceSchema.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
@@ -29,6 +30,51 @@ export class QuestCommentController {
   quests = $repository(quests);
   security = $inject(ProjectSecurityService);
   dt = $inject(DateTimeProvider);
+
+  /**
+   * Comment counts and the newest comment stamp for a page of quests, in
+   * one query rather than one per quest.
+   *
+   * Lives here, next to the repository that owns the table, because two
+   * surfaces want the same two numbers: MCP's `quest_list` (an agent
+   * needs to know a row moved before it writes back over someone) and,
+   * later, the quest table in the UI. A plain method rather than an
+   * `$action`: it carries no gate of its own, so every caller must have
+   * already proven membership on the project the quests belong to, which
+   * is exactly what listing them required.
+   *
+   * Returns nothing for a quest with no comments; callers read a missing
+   * entry as zero rather than storing a row of zeroes per quest.
+   */
+  async commentStatsFor(
+    questIds: readonly number[],
+  ): Promise<Map<number, { count: number; lastAt: string }>> {
+    const stats = new Map<number, { count: number; lastAt: string }>();
+    if (questIds.length === 0) {
+      return stats;
+    }
+
+    const rows = await this.comments.findMany({
+      where: { questId: { inArray: [...questIds] } },
+      columns: ["questId", "createdAt"],
+    });
+
+    for (const row of rows) {
+      const current = stats.get(row.questId);
+      if (!current) {
+        stats.set(row.questId, { count: 1, lastAt: row.createdAt });
+        continue;
+      }
+      current.count += 1;
+      // Parsed rather than compared as strings: the column is an ISO
+      // datetime, and nothing in the schema pins the offset to `Z`.
+      if (Date.parse(row.createdAt) > Date.parse(current.lastAt)) {
+        current.lastAt = row.createdAt;
+      }
+    }
+
+    return stats;
+  }
 
   listQuestComments = $action({
     use: [$secure({ permissions: ["quest:read"] })],
@@ -71,6 +117,13 @@ export class QuestCommentController {
       params: z.object({ id: z.integer() }),
       body: z.object({
         body: z.string().min(1).meta({ size: "rich" }),
+        /**
+         * Set by `QuestTools.quest_comment_add` and by nothing else. The web
+         * client never sends it, so a comment with no `source` is one a
+         * human typed. See `questCommentSourceSchema` for why this is not
+         * derived from the credential the caller authenticated with.
+         */
+        source: questCommentSourceSchema.optional(),
       }),
       response: questCommentResourceSchema,
     },
@@ -82,6 +135,7 @@ export class QuestCommentController {
         questId: quest.id,
         authorId: user.id,
         body: body.body,
+        source: body.source,
       });
     },
   });
