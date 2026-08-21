@@ -8,6 +8,8 @@ import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import { AreaService } from "../../api/services/AreaService.ts";
 import { foldPinnedFolios } from "../../api/services/PinnedFolioFolder.ts";
 import {
+  projectActivityParamsSchema,
+  projectActivityResultSchema,
   projectContextParamsSchema,
   projectContextResultSchema,
   projectInfoParamsSchema,
@@ -294,6 +296,38 @@ export class ProjectTools {
         pinnedFoliosTruncated,
         isOwner: result.member?.owner ?? false,
       };
+    },
+  });
+
+  /**
+   * What moved in a project since a timestamp.
+   */
+  project_activity = $tool({
+    description:
+      "Everything that happened in a project since a timestamp, in one call: quests filed, accepted, unassigned, completed, shelved or edited, comments posted, feedback reported, folios written. Read-only. " +
+      "Call it at the START of a session with the stamp your last session ended on, and again before writing back to a quest you have not re-read: this is what stops you answering a conversation you never saw. " +
+      "Events come back oldest first with an `until` cursor to pass as the next call's `since`; events sharing that exact millisecond are not repeated, so treat the cursor as the boundary it is. " +
+      "Your own events are excluded unless you pass `includeOwn`. For the per-quest version of the same signal while scanning a list, `quest_list` rows carry `lastCommentAt`.",
+    title: "Project activity since",
+    annotations: { readOnlyHint: true, idempotentHint: true },
+    schema: {
+      params: projectActivityParamsSchema,
+      result: projectActivityResultSchema,
+    },
+    handler: async ({ params }) => {
+      const projectId = await this.resolveProjectId(
+        params.project,
+        params.project_name,
+      );
+
+      return await this.projectController.getProjectActivity({
+        params: { id: projectId },
+        query: {
+          since: params.since,
+          limit: params.limit,
+          includeOwn: params.includeOwn,
+        },
+      });
     },
   });
 }

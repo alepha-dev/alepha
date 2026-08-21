@@ -69,6 +69,13 @@ export const feedback = $entity({
      */
     source: feedbackSourceSchema.optional(),
   }),
+  /**
+   * ⚠️ `feedback` is a CASCADE parent since `feedback_comments` (#1281).
+   * Any future migration that REBUILDS this table (the drizzle
+   * `CREATE __new` / `INSERT FROM SELECT` / `DROP` pattern) wipes every
+   * thread on D1, which ignores `PRAGMA foreign_keys=OFF`. Same rule as
+   * `quests`: see `apps/lore/CLAUDE.md` → "Migration safety on D1".
+   */
   indexes: [
     { columns: ["projectId", "status", "deletedAt"] },
     { columns: ["projectId", "createdAt"] },
