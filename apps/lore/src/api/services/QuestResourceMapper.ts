@@ -38,10 +38,14 @@ export class QuestResourceMapper {
     // The next write persists these IDs, after which the synthesis is a
     // no-op.
     const objectives = quest.objectives.map((obj, index) =>
-      obj.id != null ? obj : { ...obj, id: index },
+      obj.id != null ? { ...obj, id: obj.id } : { ...obj, id: index },
     );
 
     const completedObjectives = objectives.filter((o) => o.completed).length;
+    // Deliberately disjoint from `completed`: `completeQuest` refuses to
+    // waive an objective that is already ticked, so no objective is ever
+    // both, and a reader can trust `completed` to mean work that happened.
+    const waivedObjectives = objectives.filter((o) => o.waivedReason).length;
 
     let totalTimeSpent = 0;
     for (const session of quest.timerSessions) {
@@ -61,6 +65,7 @@ export class QuestResourceMapper {
         status: this.questStatus(quest),
         objectivesProgress: {
           completed: completedObjectives,
+          waived: waivedObjectives,
           total: objectives.length,
         },
         totalTimeSpent,

@@ -71,6 +71,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { paginateLocal } from "./paginate-local.ts";
 import { useTableSelection } from "./use-table-selection.ts";
 
 type IconType = ComponentType<SVGProps<SVGSVGElement>>;
@@ -83,6 +84,14 @@ export interface ColumnDef<T> {
    * Sort key sent to the API. Defaults to the column key.
    */
   sortKey?: string;
+  /**
+   * Static-data mode only: the value this column sorts on, for a column
+   * whose sort key is not a plain property of the row (a derived total, a
+   * joined label). Defaults to `item[sortKey]`.
+   *
+   * Ignored when the table fetches: there the server owns the ordering.
+   */
+  sortValue?: (item: T) => unknown;
   /**
    * When true, the column starts hidden. The user can still toggle it
    * on via the built-in column picker. Pass `hideColumnPicker` on the
@@ -97,6 +106,11 @@ export interface ColumnDef<T> {
  * Context passed to every row-action `onClick`. `refresh()` re-fires the
  * current fetch with the current filters/sort — call it after a mutation
  * so the table reflects the new state without a manual reload.
+ *
+ * ⚠️ In static-data mode there is no fetch to re-fire, so `refresh()` only
+ * returns to page 0: the rows belong to the caller, and a mutation has to
+ * be written back into the array passed as `data`. The table renders the
+ * new array on the same render, without it.
  */
 export interface RowActionContext {
   refresh: () => void;
@@ -181,17 +195,61 @@ interface SortState {
   direction: "asc" | "desc";
 }
 
-export interface AlephaTableProps<T> {
-  /**
-   * Fetcher invoked with paging + sort + filters. Should return an
-   * Alepha `Page<T>`.
-   */
-  fetch: (params: {
-    page: number;
-    size: number;
-    sort?: string;
-    filters?: Record<string, any>;
-  }) => Promise<Page<T>>;
+export type TableFetcher<T> = (params: {
+  page: number;
+  size: number;
+  sort?: string;
+  filters?: Record<string, any>;
+}) => Promise<Page<T>>;
+
+/**
+ * Where the rows come from. Exactly one of the two.
+ *
+ * `data` is not sugar over `fetch`: a fetcher closing over an in-memory
+ * array cannot work, because the table holds `fetch` in a ref that is
+ * deliberately excluded from its load effect (see `fetchRef`), so the
+ * closure goes stale the moment the caller's array changes. Static rows
+ * therefore bypass the fetch path entirely and are derived synchronously.
+ */
+export type AlephaTableSource<T> =
+  | {
+      /**
+       * Fetcher invoked with paging + sort + filters. Should return an
+       * Alepha `Page<T>`.
+       */
+      fetch: TableFetcher<T>;
+      data?: never;
+      filter?: never;
+    }
+  | {
+      /**
+       * Rows the caller already holds. The table filters, sorts and pages
+       * them in memory and never issues a request.
+       *
+       * Use it when the array is the page's data rather than the table's —
+       * shared with a chart, a count, an aside — so that one array stays
+       * the single source of truth. For anything the reader can outgrow,
+       * pass `fetch` and let the server page it.
+       */
+      data: T[];
+      /**
+       * Static-data mode only: predicate replacing the built-in field
+       * matching, which pairs each filter value with the same-named
+       * property (strings as a case-insensitive substring, arrays by
+       * membership, everything else strictly).
+       *
+       * Reach for it as soon as a filter is not a field: a `search` box
+       * spanning several columns, a range, a joined label. Only ever
+       * called with filter values that are actually set.
+       */
+      filter?: (item: T, filters: Record<string, any>) => boolean;
+      fetch?: never;
+    };
+
+export type AlephaTableProps<T> = AlephaTableBaseProps<T> &
+  AlephaTableSource<T>;
+
+export interface AlephaTableBaseProps<T> {
   /**
    * Column definitions, keyed by the property name they read from.
    */
@@ -229,6 +287,9 @@ export interface AlephaTableProps<T> {
   onRowClick?: (item: T) => void;
   /**
    * Auto-refresh interval in ms (only when document is visible).
+   *
+   * Meaningless in static-data mode — there is no request to repeat, and a
+   * changed `data` array is already on screen the render it changes.
    */
   pollMs?: number;
   /**
@@ -238,6 +299,9 @@ export interface AlephaTableProps<T> {
    * already get `ctx.refresh()`; this is the escape hatch for everything
    * else. Changing it resets to page 0 and refetches; the initial value
    * is ignored (the table fetches on mount regardless).
+   *
+   * Not needed in static-data mode: a new `data` array is picked up on its
+   * own. Bumping this there only resets to page 0.
    */
   refreshSignal?: number | string;
   /**
@@ -455,8 +519,8 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     }
     return props.defaultSort ?? null;
   });
-  const [data, setData] = useState<T[]>([]);
-  const [meta, setMeta] = useState<Page<T>["page"] | null>(null);
+  const [fetchedData, setData] = useState<T[]>([]);
+  const [fetchedMeta, setMeta] = useState<Page<T>["page"] | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -481,9 +545,13 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   fetchRef.current = props.fetch;
 
   const load = useCallback(async () => {
+    // Static mode owns no request. Bail before touching `loading` too, so a
+    // table fed an array never flashes the skeleton over rows it already has.
+    const fetcher = fetchRef.current;
+    if (!fetcher) return;
     setLoading(true);
     try {
-      const res = await fetchRef.current({
+      const res = await fetcher({
         page,
         size,
         sort: sortParam,
@@ -508,6 +576,65 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  /**
+   * Static mode's equivalent of `load` — derived, not stored.
+   *
+   * Deliberately NOT routed through `load`: putting `props.data` in that
+   * effect's dependencies reproduces the exact loop `fetchRef` exists to
+   * prevent (load → setData → re-render → new inline array → new load).
+   * Computed synchronously there is no state to go stale, an inline
+   * `data={rows.filter(…)}` is safe, and a changed array is on screen in
+   * the same render.
+   */
+  const staticPage = useMemo(() => {
+    if (!props.data) return null;
+    const sortValues: Record<string, (item: T) => unknown> = {};
+    for (const [key, column] of Object.entries(props.columns)) {
+      if (column.sortValue) {
+        sortValues[column.sortKey ?? key] = column.sortValue;
+      }
+    }
+    return paginateLocal(props.data, {
+      page,
+      size,
+      sort: sortParam,
+      sortValues,
+      filters: form?.currentValues,
+      filter: props.filter,
+    });
+    // `refreshKey` is what the filter-form subscriptions bump, so it is how
+    // a filter change reaches this memo — `form.currentValues` is mutated in
+    // place and its identity never changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    props.data,
+    props.columns,
+    props.filter,
+    page,
+    size,
+    sortParam,
+    refreshKey,
+    form,
+  ]);
+
+  const data = staticPage ? staticPage.content : fetchedData;
+  const meta = staticPage ? staticPage.page : fetchedMeta;
+
+  /**
+   * Rows vanish under the reader in static mode: the caller detaches one and
+   * the page they are on stops existing. Nothing fetches, so nothing else
+   * would notice — the table would sit on an empty page with no visible
+   * cause. Fetch mode has the same hole, but there the server round-trip
+   * needed to see it makes this the wrong place to close it.
+   */
+  useEffect(() => {
+    if (!staticPage) return;
+    const totalPages = staticPage.page.totalPages ?? 0;
+    if (page > 0 && page > totalPages - 1) {
+      setPage(Math.max(0, totalPages - 1));
+    }
+  }, [staticPage, page]);
 
   // Persist sort to localStorage on every change.
   useEffect(() => {

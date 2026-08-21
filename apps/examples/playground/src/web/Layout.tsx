@@ -15,6 +15,7 @@ import {
   ListChecks,
   Megaphone,
   MessageSquareWarning,
+  Table2,
   Upload,
   UserPlus,
   Zap,
@@ -48,6 +49,7 @@ const NAV: NavGroup[] = [
   {
     label: "Demo",
     items: [
+      { href: "/demo/tables", label: "Table (static)", icon: Table2 },
       { href: "/demo/toasts", label: "Toasts", icon: Megaphone },
       { href: "/demo/dialogs", label: "Dialogs", icon: MessageSquareWarning },
       { href: "/demo/auto-form", label: "AutoForm", icon: ListChecks },

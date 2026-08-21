@@ -18,6 +18,11 @@ import {
   okSchema,
 } from "alepha/server";
 import { $etag } from "alepha/server/etag";
+// The helper the UI labels a user with, so an actor reads identically in an
+// activity feed and on the quest page. Precedent for reaching across:
+// `FolioBlobService` imports `folioAssetPath` from the same tree. Pure
+// function, no imports of its own.
+import { displayName } from "../../web/app/services/displayName.ts";
 import { type Member, members } from "../entities/members.ts";
 import { milestones } from "../entities/milestones.ts";
 import {
@@ -29,6 +34,7 @@ import {
 import { quests } from "../entities/quests.ts";
 import type { User } from "../entities/users.ts";
 import { relations } from "../relations.ts";
+import { projectActivityResultSchema } from "../schemas/projectActivitySchema.ts";
 import {
   projectOverviewResourceSchema,
   projectResourceSchema,
@@ -37,6 +43,7 @@ import { projectTitleSchema } from "../schemas/projectTitleSchema.ts";
 import { questResourceSchema } from "../schemas/questResourceSchema.ts";
 import { AreaService } from "../services/AreaService.ts";
 import { OpenQuestScope } from "../services/OpenQuestScope.ts";
+import { ProjectActivityService } from "../services/ProjectActivityService.ts";
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
 import { ProjectResourceMapper } from "../services/ProjectResourceMapper.ts";
@@ -100,6 +107,7 @@ export class ProjectController {
   slugs = $inject(ProjectSlugService);
   projectSecurity = $inject(ProjectSecurityService);
   areaService = $inject(AreaService);
+  activityService = $inject(ProjectActivityService);
   openQuests = $inject(OpenQuestScope);
 
   /**
@@ -343,6 +351,69 @@ export class ProjectController {
       });
 
       return project?.members ?? [];
+    },
+  });
+
+  /**
+   * Everything that moved in a project since a timestamp.
+   *
+   * Backs MCP's `project_activity`, which exists so an agent picking up a
+   * session can see what other people did while it was away instead of
+   * polling `quest_get` per quest.
+   *
+   * Member-gated like every other project read. Names are resolved here
+   * rather than in the service, so the same display name shows in a feed
+   * and on the quest page.
+   */
+  getProjectActivity = $action({
+    use: [$secure({ permissions: ["project:read"] }), this.ownsAsMember()],
+    schema: {
+      params: z.object({
+        id: z.integer(),
+      }),
+      query: z.object({
+        since: z.datetime(),
+        limit: z.integer().min(1).max(200).optional(),
+        /**
+         * Include events the caller performed. Off by default: the question
+         * this answers is what OTHERS did, and a busy session's own writes
+         * would drown that out.
+         */
+        includeOwn: z.boolean().optional(),
+      }),
+      response: projectActivityResultSchema,
+    },
+    handler: async ({ params, query, user }) => {
+      const result = await this.activityService.collect({
+        projectId: params.id,
+        since: query.since,
+        limit: query.limit ?? 100,
+        excludeUserId: query.includeOwn ? undefined : user.id,
+      });
+
+      // One lookup for the page, and only when something needs a name.
+      const actorIds = new Set(
+        result.events.map((event) => event.actorId).filter(Boolean),
+      );
+      const people = actorIds.size
+        ? await this.getProjectUsers({ params: { id: params.id } })
+        : [];
+
+      return {
+        ...result,
+        events: result.events.map((event) => ({
+          ...event,
+          actor: event.actorId
+            ? displayName(
+                people.find((person) => person.id === event.actorId),
+                event.actorId,
+              )
+            : undefined,
+        })),
+        // Never moves backwards over events the caller has not seen: with
+        // nothing to report, the window's own start is the honest cursor.
+        until: result.events.at(-1)?.at ?? result.since,
+      };
     },
   });
 

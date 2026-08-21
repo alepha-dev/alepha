@@ -1,19 +1,11 @@
+import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Badge } from "@alepha/ui/components/ui/badge";
-import { Button } from "@alepha/ui/components/ui/button";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@alepha/ui/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@alepha/ui/components/ui/table";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { X } from "lucide-react";
@@ -44,6 +36,16 @@ export interface ProjectEpicQuestsProps {
  * 480px band. It is its own tab now (`ProjectEpicFlow`), because a graph
  * given half a viewport and no way to grow was the smaller half of a
  * scrolling page.
+ *
+ * `AlephaTable` in static-data mode, not fetch mode, and that is the whole
+ * reason the mode exists. `ProjectEpic` loads the epic's quests once and
+ * hands the same array to the aside rollup, the flow graph, the tab count
+ * and this table; a table that fetched for itself would be a second source
+ * of truth, and a detach would leave the other three showing the old
+ * membership until the next navigation. It also sidesteps the shape
+ * mismatch: the epic set is two requests concatenated (the default status
+ * filter drops shelved quests server-side), which no single `fetch` ->
+ * `Page<T>` can express.
  */
 const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -67,65 +69,78 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
             <div className="text-muted-foreground p-6 text-center text-sm">
               {tr("epic.quests.loading")}
             </div>
-          ) : quests.length === 0 ? (
-            <div className="text-muted-foreground p-6 text-center text-sm">
-              {tr("epic.quests.empty")}
-            </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-16">
-                    {tr("epic.quests.column.number")}
-                  </TableHead>
-                  <TableHead>{tr("epic.quests.column.title")}</TableHead>
-                  <TableHead className="w-32">
-                    {tr("epic.quests.column.status")}
-                  </TableHead>
-                  <TableHead className="w-16" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {quests.map((quest) => (
-                  <TableRow key={quest.id}>
-                    <TableCell className="text-muted-foreground">
-                      #{quest.shortId}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      <Link
-                        href={router.path("projectQuest", {
-                          params: { shortId: quest.shortId },
-                        })}
-                        className="hover:underline"
-                      >
-                        {quest.title}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          QUEST_STATUS_BADGE_VARIANT[quest.metadata.status]
-                        }
-                      >
-                        {tr(QUEST_STATUS_LABEL_KEYS[quest.metadata.status])}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0"
-                        aria-label={tr("epic.quests.detach")}
-                        onClick={() => props.onDetach(quest)}
-                      >
-                        <X className="size-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <AlephaTable<QuestResource>
+              data={quests}
+              defaultSize={25}
+              emptyMessage={tr("epic.quests.empty")}
+              // Per project, not per epic: how the reader likes this table
+              // sorted is a preference about quests, not about one epic.
+              persistenceKey={`lor.epicQuests.${props.projectId}`}
+              onRowClick={(quest) =>
+                router.push("projectQuest", {
+                  params: { shortId: String(quest.shortId) },
+                })
+              }
+              columns={{
+                shortId: {
+                  label: tr("epic.quests.column.number"),
+                  sortable: true,
+                  className: "w-16 text-muted-foreground",
+                  cell: (quest) => `#${quest.shortId}`,
+                },
+                title: {
+                  label: tr("epic.quests.column.title"),
+                  sortable: true,
+                  className: "w-full max-w-0 min-w-48 font-medium",
+                  cell: (quest) => (
+                    // A real anchor rather than a span inside the clickable
+                    // row, so the browser owns shift / cmd / middle click and
+                    // can offer "copy link address". `stopPropagation`
+                    // because the row carries `onRowClick` too, and without
+                    // it a plain click navigates twice.
+                    <Link
+                      href={router.path("projectQuest", {
+                        params: { shortId: quest.shortId },
+                      })}
+                      onClick={(e) => e.stopPropagation()}
+                      className="block truncate hover:underline"
+                      title={quest.title}
+                    >
+                      {quest.title}
+                    </Link>
+                  ),
+                },
+                status: {
+                  label: tr("epic.quests.column.status"),
+                  sortable: true,
+                  className: "w-32",
+                  // The status is derived, not a column of the row, so the
+                  // sort needs telling what to compare.
+                  sortValue: (quest) => quest.metadata.status,
+                  cell: (quest) => (
+                    <Badge
+                      variant={
+                        QUEST_STATUS_BADGE_VARIANT[quest.metadata.status]
+                      }
+                    >
+                      {tr(QUEST_STATUS_LABEL_KEYS[quest.metadata.status])}
+                    </Badge>
+                  ),
+                },
+              }}
+              rowActions={(quest) => [
+                {
+                  icon: X,
+                  label: tr("epic.quests.detach"),
+                  destructive: true,
+                  // No `ctx.refresh()`: these rows are `ProjectEpic`'s state.
+                  // `onDetach` reloads it, and the table re-renders from the
+                  // new array on its own.
+                  onClick: () => props.onDetach(quest),
+                },
+              ]}
+            />
           )}
         </CardContent>
       </Card>

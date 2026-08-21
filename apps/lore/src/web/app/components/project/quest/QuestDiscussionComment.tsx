@@ -1,7 +1,8 @@
+import { Badge } from "@alepha/ui/components/ui/badge";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { MessageSquare } from "lucide-react";
+import { Bot, MessageSquare } from "lucide-react";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { displayName } from "@/web/app/services/displayName.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
@@ -39,6 +40,11 @@ const QuestDiscussionComment = (props: QuestDiscussionCommentProps) => {
     ? displayName(user, entry.by)
     : tr("quest.discussion.author.unknown");
 
+  // Written by a machine over MCP. `authorId` is still an account, and over
+  // MCP that account is the project owner's, so without this marker half of
+  // a thread reads as the owner talking to themselves.
+  const byAgent = entry.comment.source?.kind === "mcp";
+
   return (
     <li className="flex gap-3 py-3">
       {/* The same bordered circle every event uses, carrying a chat glyph.
@@ -47,7 +53,11 @@ const QuestDiscussionComment = (props: QuestDiscussionCommentProps) => {
           a face, at a size that broke the column's rhythm. Who wrote it is
           already the first thing on the line beside it. */}
       <span className="border-border text-muted-foreground flex size-7 shrink-0 items-center justify-center rounded-full border">
-        <MessageSquare className="size-3.5" />
+        {byAgent ? (
+          <Bot className="size-3.5" />
+        ) : (
+          <MessageSquare className="size-3.5" />
+        )}
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         {/* `min-h-7` matches the circle so the header line is centred on it
@@ -59,6 +69,22 @@ const QuestDiscussionComment = (props: QuestDiscussionCommentProps) => {
               {tr("quest.discussion.commented")}
             </span>
           </span>
+          {/* Next to the name, not in place of it: the account really did
+              post this, and saying otherwise would hide who to ask about
+              it. The badge answers the different question of whether a
+              person chose those words. */}
+          {byAgent && (
+            <Badge
+              variant="secondary"
+              className="text-muted-foreground shrink-0"
+              title={
+                entry.comment.source?.client ??
+                tr("quest.discussion.agent.hint")
+              }
+            >
+              {tr("quest.discussion.agent")}
+            </Badge>
+          )}
           <span className="text-muted-foreground ml-auto shrink-0 text-xs">
             {entry.comment.editedAt && (
               <span className="mr-1 italic">

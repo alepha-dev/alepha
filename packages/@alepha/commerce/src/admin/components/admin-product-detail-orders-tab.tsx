@@ -2,16 +2,17 @@ import * as React from "react";
 
 void React;
 
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
+import {
+  AlephaTable,
+  type TableFetcher,
+} from "@alepha/ui/components/alepha-table/alepha-table";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useI18n } from "alepha/react/i18n";
 import type { AdminProductOrderLine } from "../controllers/AdminProductController.ts";
 
 export interface AdminProductDetailOrdersTabProps {
   productId: string;
-  fetch: React.ComponentProps<
-    typeof AlephaTable<AdminProductOrderLine>
-  >["fetch"];
+  fetch: TableFetcher<AdminProductOrderLine>;
 }
 
 /**
