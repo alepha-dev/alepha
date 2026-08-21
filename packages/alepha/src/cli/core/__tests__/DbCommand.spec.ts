@@ -1,3 +1,4 @@
+import { delimiter, dirname } from "node:path";
 import { Alepha, AlephaError, z } from "alepha";
 import { CliProvider } from "alepha/command";
 import { $entity, $repository, db } from "alepha/orm";
@@ -23,6 +24,8 @@ class TestDbCommand extends DbCommand {
   public testResolveMigrationSqlPath = this.resolveMigrationSqlPath.bind(this);
   public testStripPublicSchemaFromMigrations =
     this.stripPublicSchemaFromMigrations.bind(this);
+  public testPrepareDrizzleOrmResolution =
+    this.prepareDrizzleOrmResolution.bind(this);
   public readonly testBaselineMark = this.baselineMark;
   public readonly testCreate = this.create;
 }
@@ -60,6 +63,7 @@ describe("DbCommand", () => {
     return {
       db: alepha.inject(TestDbCommand),
       fs: alepha.inject(MemoryFileSystemProvider),
+      utils: alepha.inject(AlephaCliUtils),
     };
   };
 
@@ -758,6 +762,73 @@ describe("DbCommand", () => {
       expect(await db.testMigrationsLayout("/app/migrations/sqlite")).toBe(
         "none",
       );
+    });
+  });
+
+  /**
+   * drizzle-kit imports `drizzle-orm` at runtime without declaring it, so it
+   * only works when the installer hoists both to the same `node_modules/`.
+   * Yarn and pnpm do not, and `alepha db migrations create` died with
+   * `Cannot find module 'drizzle-orm/_relations'` in every freshly installed
+   * project. Both mechanisms are load-bearing: NODE_PATH for the CJS require,
+   * the resolve hook for the `await import(...)` that ignores it.
+   */
+  describe("prepareDrizzleOrmResolution", () => {
+    it("writes a resolver hook pointing at alepha's own drizzle-orm", async () => {
+      const { db, fs } = create();
+
+      const { hookUrl } = await db.testPrepareDrizzleOrmResolution("/app");
+
+      const hook = await fs.readTextFile(
+        "/app/node_modules/.alepha/drizzle-orm-resolver.mjs",
+      );
+      expect(hook).toContain("registerHooks");
+      expect(hook).toContain('startsWith("drizzle-orm/")');
+      expect(hook).toMatch(
+        /createRequire\("file:\/\/.*drizzle-orm\/package\.json"\)/,
+      );
+      expect(hookUrl).toMatch(/^file:\/\/.*drizzle-orm-resolver\.mjs$/);
+    });
+
+    it("guards the hook so older runtimes without registerHooks still boot", async () => {
+      const { db, fs } = create();
+
+      await db.testPrepareDrizzleOrmResolution("/app");
+
+      const hook = await fs.readTextFile(
+        "/app/node_modules/.alepha/drizzle-orm-resolver.mjs",
+      );
+      expect(hook).toContain('typeof registerHooks === "function"');
+    });
+
+    it("points NODE_PATH at the directory holding drizzle-orm", async () => {
+      const { db, utils } = create();
+
+      const { nodePath } = await db.testPrepareDrizzleOrmResolution("/app");
+
+      expect(nodePath.split(delimiter)[0]).toBe(
+        dirname(utils.resolvePackageDir("drizzle-orm")),
+      );
+    });
+
+    it("prepends to a NODE_PATH the user already set rather than replacing it", async () => {
+      const { db } = create();
+      const previous = process.env.NODE_PATH;
+      process.env.NODE_PATH = "/somewhere/of/their/own";
+
+      try {
+        const { nodePath } = await db.testPrepareDrizzleOrmResolution("/app");
+
+        const entries = nodePath.split(delimiter);
+        expect(entries).toHaveLength(2);
+        expect(entries[1]).toBe("/somewhere/of/their/own");
+      } finally {
+        if (previous === undefined) {
+          delete process.env.NODE_PATH;
+        } else {
+          process.env.NODE_PATH = previous;
+        }
+      }
     });
   });
 });

@@ -1,4 +1,6 @@
+import * as nodeModule from "node:module";
 import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
 import { $inject, Alepha, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -495,12 +497,103 @@ export class DrizzleKitProvider {
         ? "drizzle-kit/payload/sqlite"
         : "drizzle-kit/payload/postgres";
 
+    const require = createRequire(import.meta.url);
+    this.ensureDrizzleOrmResolvable(require);
+
     try {
-      return createRequire(import.meta.url)(specifier);
-    } catch (_) {
+      return require(specifier);
+    } catch (cause) {
+      // Keep the cause. Reporting every failure as "not installed" sent us
+      // hunting for a missing package that was sitting right there; the real
+      // message was `Cannot find module 'drizzle-orm/_relations'`.
       throw new AlephaError(
-        "Drizzle Kit is not installed. Please install it with `npm install -D drizzle-kit`.",
+        `Failed to load Drizzle Kit ('${specifier}'). It ships with alepha, so this is usually a broken install: try reinstalling dependencies.`,
+        { cause },
       );
     }
+  }
+
+  /**
+   * Whether {@link ensureDrizzleOrmResolvable} has already run.
+   *
+   * `registerHooks` is process-global, so it is installed at most once.
+   */
+  protected drizzleOrmHookInstalled = false;
+
+  /**
+   * Let drizzle-kit find `drizzle-orm` when the installer put them at
+   * different depths.
+   *
+   * drizzle-kit imports `drizzle-orm` at runtime without declaring it as a
+   * dependency or a peer, so it only resolves when both land in the same
+   * `node_modules/`. Under yarn and pnpm `drizzle-orm` is nested inside
+   * `node_modules/alepha/` (it carries a dozen optional peers, so they give
+   * it a virtual instance) while drizzle-kit sits at the top level, and every
+   * in-process call here died on `Cannot find module 'drizzle-orm/_relations'`.
+   *
+   * The hook only fires once normal resolution has already failed, so a
+   * healthy install behaves exactly as before. Where it does fire, it
+   * resolves against alepha's own copy, which is the version drizzle-kit was
+   * shipped alongside.
+   *
+   * The spawned-binary path needs the same treatment for its own child
+   * process: see `DbCommand.prepareDrizzleOrmResolution`.
+   */
+  protected ensureDrizzleOrmResolvable(require: NodeJS.Require): void {
+    if (this.drizzleOrmHookInstalled) {
+      return;
+    }
+    this.drizzleOrmHookInstalled = true;
+
+    // Read off the namespace rather than imported by name: Bun's `node:module`
+    // has no `registerHooks`, and a named import of a missing export is a load
+    // -time SyntaxError there, so the whole ORM module would fail to evaluate.
+    //
+    // Node 22.15+ / 23.5+. Older runtimes, and Bun, keep the previous
+    // behaviour, which works wherever the installer hoisted both packages
+    // together.
+    const registerHooks = (
+      nodeModule as { registerHooks?: typeof nodeModule.registerHooks }
+    ).registerHooks;
+    if (typeof registerHooks !== "function") {
+      return;
+    }
+
+    let ownRequire: NodeJS.Require;
+    try {
+      ownRequire = createRequire(
+        pathToFileURL(require.resolve("drizzle-orm")).href,
+      );
+    } catch {
+      // alepha cannot see it either, so there is nothing to point at.
+      return;
+    }
+
+    registerHooks({
+      resolve(specifier, context, nextResolve) {
+        if (
+          specifier !== "drizzle-orm" &&
+          !specifier.startsWith("drizzle-orm/")
+        ) {
+          return nextResolve(specifier, context);
+        }
+        try {
+          return nextResolve(specifier, context);
+        } catch (error) {
+          // Resolved here rather than by re-delegating with a different
+          // `parentURL`: CJS `require` derives the parent from the requiring
+          // module and ignores the one in the context, so delegation fixes
+          // the ESM half only.
+          try {
+            return {
+              url: pathToFileURL(ownRequire.resolve(specifier)).href,
+              shortCircuit: true,
+            };
+          } catch {
+            throw error;
+          }
+        }
+      },
+    });
   }
 }
