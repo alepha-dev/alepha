@@ -170,11 +170,13 @@ alepha platform up --env production
 Requirements: [Node.js](https://nodejs.org/) 22+ or [Bun](https://bun.sh/) 1.3+
 
 ```bash
-npx alepha init my-app   # API + React (SSR) + Tailwind
+npx alepha init my-app                 # API + React (SSR) + Tailwind
+npx alepha init my-app --preset=saas   # the same, plus auth, account and admin
 cd my-app && npx alepha dev
 ```
 
-Every project gets the same structure, with no flavours to choose between.
+Every project gets the same structure. `--preset` only decides what is mounted on top of it,
+never where anything lives.
 
 ## Learn More
 
