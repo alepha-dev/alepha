@@ -27,6 +27,9 @@ ignores:
   - "highlight.js"
   - "oxfmt"
   - "oxlint"
+  # Never imported: oxlint discovers and spawns the `tsgolint` binary itself
+  # when `options.typeAware` is set.
+  - "oxlint-tsgolint"
   - "typescript"
   - "vitest"
   - "react-is"
