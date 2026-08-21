@@ -1,6 +1,8 @@
+import { parseFlowchart } from "@alepha/ui/components/markdown-view/diagram/flowchartParser.ts";
 import { EditorState } from "@codemirror/state";
 import { describe, expect, it } from "vitest";
 import {
+  DIAGRAM_BLOCK,
   insertBlock,
   TABLE_BLOCK,
   toggleInlineMarker,
@@ -118,5 +120,26 @@ describe("insertBlock", () => {
   it("never splits the line it was invoked from", () => {
     const s = at("hello world", 5);
     expect(applied(s, insertBlock(s, "---"))).toBe("hello world\n\n---\n");
+  });
+});
+
+describe("DIAGRAM_BLOCK", () => {
+  it("is a mermaid fence", () => {
+    expect(DIAGRAM_BLOCK.startsWith("```mermaid\n")).toBe(true);
+    expect(DIAGRAM_BLOCK.endsWith("```")).toBe(true);
+  });
+
+  it("is a starter our own parser can actually read", () => {
+    // A starter that does not render is worse than no starter: the author
+    // inserts it, sees a grey fence, and concludes diagrams do not work.
+    const source = /```mermaid\n([\s\S]*?)```/.exec(DIAGRAM_BLOCK);
+    expect(parseFlowchart(source?.[1] ?? "")).toBeDefined();
+  });
+
+  it("inserts into an empty document as its own block", () => {
+    const state = at("", 0);
+    expect(applied(state, insertBlock(state, DIAGRAM_BLOCK))).toContain(
+      "flowchart TD",
+    );
   });
 });

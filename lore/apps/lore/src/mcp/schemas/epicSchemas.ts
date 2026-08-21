@@ -1,5 +1,6 @@
 import { z } from "alepha";
 import { epicStatusSchema, projectParamsSchema } from "./commonSchemas.ts";
+import { DIAGRAM_CAPABILITY } from "./diagramCapability.ts";
 
 /**
  * Epic reference for MCP tools. Unlike quests (`id` / `shortId`) and
@@ -76,7 +77,7 @@ export const epicCreateParamsSchema = projectParamsSchema.extend({
   description: z
     .string()
     .describe(
-      "Epic description in Markdown. Plain text also works. HTML is not supported.",
+      `Epic description in Markdown. Plain text also works. HTML is not supported. ${DIAGRAM_CAPABILITY}`,
     )
     .optional(),
 });
@@ -98,7 +99,7 @@ export const epicUpdateParamsSchema = epicRefSchema.extend({
   title: z.string().min(3).max(80).describe("New epic title").optional(),
   description: z
     .string()
-    .describe("New epic description in Markdown")
+    .describe(`New epic description in Markdown. ${DIAGRAM_CAPABILITY}`)
     .optional(),
 });
 

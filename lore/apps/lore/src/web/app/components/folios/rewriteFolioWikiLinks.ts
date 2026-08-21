@@ -9,6 +9,7 @@ import {
   isImageBlob,
   type QuestRef,
 } from "./folioWikiLinkResolver.ts";
+import { outsideMarkdownCode } from "./markdownCodeSegments.ts";
 
 export {
   type BlobRef,
@@ -58,6 +59,29 @@ export const rewriteFolioWikiLinks = (
     directories,
     blobs,
   });
+
+  // Every pass below is a regex over a raw string, and a regex cannot see a
+  // code fence. Running them over the whole document turned `[[1, 2]]` in a
+  // ```ts block into a broken-link marker, inside the `<pre>`, on every Lore
+  // surface (#1261), and would corrupt a mermaid `A[[Sub]]` node before the
+  // diagram parser ever saw it. So the passes only ever see prose.
+  return outsideMarkdownCode(content, (segment) =>
+    rewriteSegment(segment, resolver, { hasWiki, hasBlobImage, hasAssets }),
+  );
+};
+
+/**
+ * The three rewrites, over one stretch of prose. Split out only so
+ * `outsideMarkdownCode` has something to call per segment; the passes and
+ * their order are exactly what they were when they ran over the whole
+ * document.
+ */
+const rewriteSegment = (
+  content: string,
+  resolver: ReturnType<typeof createFolioWikiLinkResolver>,
+  present: { hasWiki: boolean; hasBlobImage: boolean; hasAssets: boolean },
+): string => {
+  const { hasWiki, hasAssets } = present;
 
   // Step 0 — `assets/<name>`, the form folio markdown actually stores. Both
   // the embed `![alt](assets/x.webp)` and the plain link `[label](assets/x)`

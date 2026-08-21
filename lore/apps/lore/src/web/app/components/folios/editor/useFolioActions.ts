@@ -1044,6 +1044,7 @@ export const useFolioActions = (
     "insert.quote": () => input.format.run("insert.quote"),
     "insert.table": () => input.format.run("insert.table"),
     "insert.codeBlock": () => input.format.run("insert.codeBlock"),
+    "insert.diagram": () => input.format.run("insert.diagram"),
     "insert.divider": () => input.format.run("insert.divider"),
     "edit.find": () => input.find.show(),
     "view.mode": () => input.mode.toggle(),

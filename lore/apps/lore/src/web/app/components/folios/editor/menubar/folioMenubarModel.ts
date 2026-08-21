@@ -23,6 +23,7 @@ export type FolioActionId =
   | "insert.quote"
   | "insert.table"
   | "insert.codeBlock"
+  | "insert.diagram"
   | "insert.divider"
   | "edit.find"
   | "view.mode"
@@ -226,6 +227,11 @@ export const FOLIO_MENUS: FolioMenu[] = [
         syntaxHint: "```",
       },
       {
+        id: "insert.diagram",
+        labelKey: "folios.editor.action.diagram",
+        syntaxHint: "mermaid",
+      },
+      {
         id: "insert.divider",
         labelKey: "folios.editor.action.divider",
         syntaxHint: "---",
@@ -337,6 +343,7 @@ const NEEDS_EDIT_MODE = new Set<FolioActionId>([
   "insert.quote",
   "insert.table",
   "insert.codeBlock",
+  "insert.diagram",
   "insert.divider",
 ]);
 
