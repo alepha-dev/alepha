@@ -54,6 +54,22 @@ export interface AnalyticsQuery {
    */
   since: string;
   /**
+   * Last UTC day included, `YYYY-MM-DD`. Omitted means "up to the newest
+   * bucket there is", which is what every caller wanted before this existed.
+   *
+   * Inclusive, and a *day* rather than an hour: the bucket key is
+   * `YYYY-MM-DDTHH` with the day as its prefix, so both bounds are the same
+   * kind of thing and neither needs date arithmetic to compare. Days are also
+   * the only granularity a rolled-up bucket can still honour.
+   *
+   * Its reason for existing is comparison. A window that ends "now" ends
+   * mid-day, so measuring it against a complete one reads as a collapse every
+   * morning and recovers by evening — the number moves because the clock
+   * moved, not because anything happened. Bounding the top end is what makes
+   * "yesterday against the day before" a statement about traffic.
+   */
+  until?: string;
+  /**
    * Declared dimension names, plus the pseudo-dimensions `hour` and `day`.
    */
   groupBy?: string[];

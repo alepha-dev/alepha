@@ -392,8 +392,13 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
     // to the merged set — because applying a `limit` to each source
     // separately can drop a row that only belongs in the true top-N once
     // both sources are combined (see the class doc).
+    // Everything EXCEPT `orderBy`/`limit` has to be carried through — this is
+    // a list rather than a spread only so the two exclusions are visible, and
+    // a field forgotten here is a filter that silently stops applying on the
+    // merge path while still working on the hot-only one.
     const unordered: AnalyticsQuery = {
       since,
+      until: query.until,
       where: query.where,
       groupBy: query.groupBy,
       select: query.select,
@@ -457,6 +462,17 @@ export class WaeAnalyticsProvider extends AnalyticsProvider {
       `blob${AnalyticsSlotMap.KIND_SLOT} = ${AnalyticsEngineSql.quote(dataset.name)}`,
       `blob${AnalyticsSlotMap.HOUR_SLOT} >= ${AnalyticsEngineSql.quote(query.since)}`,
     ];
+
+    // The hour slot holds `YYYY-MM-DDTHH`, so an inclusive day bound has to be
+    // expressed as "strictly before the next day" — `<= '2026-08-20'` would
+    // exclude every hour of the 20th, which is the whole day it names.
+    if (query.until) {
+      conditions.push(
+        `blob${AnalyticsSlotMap.HOUR_SLOT} < ${AnalyticsEngineSql.quote(
+          AnalyticsBuckets.shiftDays(query.until, 1),
+        )}`,
+      );
+    }
 
     for (const [name, filter] of Object.entries(query.where ?? {})) {
       // `map.blobSlot` throws `AlephaError` for a name that is not one of

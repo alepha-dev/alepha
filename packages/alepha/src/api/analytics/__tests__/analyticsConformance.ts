@@ -154,6 +154,70 @@ export const analyticsConformance = (
       ]);
     });
 
+    it("bounds the window at `until`, inclusive of every hour of that day", async () => {
+      const provider = await factory();
+      await provider.record(dataset, [
+        {
+          hour: "2026-08-09T10",
+          appId: "a",
+          path: "/x",
+          bucket: 0,
+          samples: 1,
+        },
+        // Late on the last day of the window: `until` names a DAY, so an
+        // implementation comparing it against the `YYYY-MM-DDTHH` bucket
+        // without care drops this row and reports the day as empty.
+        {
+          hour: "2026-08-10T23",
+          appId: "a",
+          path: "/x",
+          bucket: 0,
+          samples: 1,
+        },
+        {
+          hour: "2026-08-11T00",
+          appId: "a",
+          path: "/x",
+          bucket: 0,
+          samples: 1,
+        },
+      ]);
+
+      const result = await provider.query(dataset, {
+        since: "2026-08-09",
+        until: "2026-08-10",
+        groupBy: ["day"],
+        select: { samples: "sum" },
+        orderBy: { key: "day", direction: "asc" },
+      });
+
+      expect(result.rows.map((row) => row.day)).toEqual([
+        "2026-08-09",
+        "2026-08-10",
+      ]);
+    });
+
+    it("returns nothing when `until` precedes `since`", async () => {
+      const provider = await factory();
+      await provider.record(dataset, [
+        {
+          hour: "2026-08-09T10",
+          appId: "a",
+          path: "/x",
+          bucket: 0,
+          samples: 1,
+        },
+      ]);
+
+      const result = await provider.query(dataset, {
+        since: "2026-08-09",
+        until: "2026-08-08",
+        select: { samples: "sum" },
+      });
+
+      expect(result.rows).toEqual([]);
+    });
+
     it("keeps a histogram queryable after a rollup, since percentiles need it", async () => {
       const provider = await factory();
       await provider.record(dataset, [

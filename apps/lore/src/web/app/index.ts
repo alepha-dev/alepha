@@ -6,12 +6,14 @@ import { AlephaCrypto } from "alepha/crypto";
 import { I18nProvider } from "alepha/react/i18n";
 import { AlephaReactUi } from "alepha/react/ui";
 import { createElement } from "react";
+import { LoreDashboardCatalog } from "@/api/dashboardCatalogModule.ts";
 import { AppRouter } from "./AppRouter.ts";
 import { currentAssignedQuestsAtom } from "./atoms/currentAssignedQuestsAtom.ts";
 import { currentMilestonesAtom } from "./atoms/currentMilestonesAtom.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { currentProjectMemberAtom } from "./atoms/currentProjectMemberAtom.ts";
 import { currentQuestAtom } from "./atoms/currentQuestAtom.ts";
+import { dashboardAtom } from "./atoms/dashboardAtom.ts";
 import {
   kanbanProjectAtom,
   kanbanReloadAtom,
@@ -26,7 +28,14 @@ import { ThemesProvider } from "./services/ThemesProvider.ts";
 
 export const LoreWebApp = $module({
   name: "lore.web.app",
-  imports: [AlephaReactUi, AlephaCrypto, AlephaSigil],
+  imports: [
+    AlephaReactUi,
+    AlephaCrypto,
+    AlephaSigil,
+    // The dashboard's tiles and its Add-card panel are generated from the
+    // metric registry, so the browser needs the declarative half of it.
+    LoreDashboardCatalog,
+  ],
   services: [I18n, ThemesProvider, AppRouter, AccountRouter, LoreAccountRouter],
   atoms: [
     projectDirectoriesAtom,
@@ -42,6 +51,7 @@ export const LoreWebApp = $module({
     // about — an unregistered persisted atom is silently in-memory only.
     questsViewAtom,
     userProjectsAtom,
+    dashboardAtom,
   ],
   register(alepha) {
     // Lore's `quests.createdBy` cascades, so deleting an account also deletes

@@ -177,7 +177,10 @@ export class MemoryAnalyticsProvider extends AnalyticsProvider {
   }
 
   protected matches(row: AnalyticsRow, query: AnalyticsQuery): boolean {
-    if (AnalyticsBuckets.day(row.hour) < query.since) return false;
+    const day = AnalyticsBuckets.day(row.hour);
+    if (day < query.since) return false;
+    // Inclusive: `until` names a day, and every hour of that day is in it.
+    if (query.until && day > query.until) return false;
     for (const [name, filter] of Object.entries(query.where ?? {})) {
       const value = row[name];
       if (

@@ -152,6 +152,27 @@ export interface TableAction {
 export interface AlephaTableFilters {
   schema: ZObject;
   initialValues?: Record<string, any>;
+  /**
+   * Filter values that outrank the persisted ones on mount.
+   *
+   * `initialValues` is what the table starts from when the reader has never
+   * chosen anything; a persisted choice wins over it, which is the right
+   * default for a preference. This is the opposite case: values the caller
+   * derived from *how the reader got here* — typically a URL param on a
+   * drill-through link — where landing on last week's stored filter instead
+   * would ignore the link that was just clicked.
+   *
+   * Read once, at mount, exactly like `initialValues`. Change the
+   * component's `key` to re-seed on a later arrival.
+   *
+   * **Transient, and by construction.** Persistence is written from
+   * `form:change` / `form:submit:success` only, never on mount — so a seed
+   * shows in the toolbar and narrows the fetch without overwriting the
+   * filter the reader chose for themselves last time. Touch any control and
+   * the resulting values (seed included) become the stored choice, which is
+   * the right moment for it: that is the reader choosing.
+   */
+  seedValues?: Record<string, any>;
   render: (form: FormModel<ZObject>) => ReactNode;
 }
 
@@ -386,6 +407,10 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     () => ({
       ...(props.filters?.initialValues ?? {}),
       ...(persistedFilterValues ?? {}),
+      // Last, so it beats the stored choice — see `seedValues`. A drill-through
+      // link that lost to a filter the reader set last week would be a link
+      // that does nothing.
+      ...(props.filters?.seedValues ?? {}),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],

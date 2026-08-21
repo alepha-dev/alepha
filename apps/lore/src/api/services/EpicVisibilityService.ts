@@ -78,6 +78,47 @@ export class EpicVisibilityService {
   }
 
   /**
+   * The same gate across several projects at once.
+   *
+   * Not a loop over {@link applyBacklogGate}: the two traps in the class
+   * comment are about the SHAPE of one clause, and a per-project loop would
+   * have to invent an AND/OR nesting that the where-object cannot express.
+   * Epic ids are globally unique, so the union of every scoped project's
+   * planned epics is a single correct exclusion list.
+   *
+   * Exists for the dashboard, whose cards routinely span every project the
+   * caller belongs to. Same two traps, same encoding: the `isNull` branch is
+   * mandatory (`epic_id NOT IN (…)` is NULL for a quest with no epic, and a
+   * NULL predicate excludes the row), and an empty planned set must produce
+   * no clause at all.
+   */
+  async applyBacklogGateAcross(
+    where: PgQueryWhere<typeof quests.schema>,
+    projectIds: number[],
+  ): Promise<void> {
+    if (projectIds.length === 0) {
+      return;
+    }
+
+    const planned = await this.epics.findMany({
+      where: {
+        projectId: { inArray: projectIds },
+        status: { eq: "planned" },
+      },
+      columns: ["id"],
+    });
+
+    if (planned.length === 0) {
+      return;
+    }
+
+    where.or = [
+      { epicId: { isNull: true } },
+      { epicId: { notInArray: planned.map((epic) => epic.id) } },
+    ];
+  }
+
+  /**
    * The same membership test as a raw SQL fragment, for callers that
    * hand-write their predicates instead of using a repository where-object.
    *

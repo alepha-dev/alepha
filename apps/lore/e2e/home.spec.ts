@@ -6,19 +6,20 @@ import {
 } from "./_helpers.ts";
 
 /**
- * Home is the only SSR'd route. The project list's "Updated <relative time>"
- * uses `fromNow()`, which is relative-to-now and therefore mismatches between
- * the server render and client hydration (clock drift / unit boundary) →
- * React #418. The fix wraps the relative time in `<ClientOnly>` so it never
- * appears in the server HTML.
+ * Home is the only SSR'd route, and a signed-in visitor with projects gets
+ * the dashboard there. Its standfirst says "Refreshed <relative time>", which
+ * `fromNow()` computes relative to now — so it mismatches between the server
+ * render and client hydration (clock drift / unit boundary) → React #418. The
+ * fix is the same one Home's project list used to carry: `<ClientOnly>`, so
+ * the relative time never appears in the server HTML.
  *
- * The mismatch itself is timing-dependent (only fires on a unit boundary), so
- * a "no console error" check would be a false green. Instead we assert the
- * deterministic mechanism of the fix: the relative time is NOT server-rendered
+ * The mismatch itself is timing-dependent (it only fires on a unit boundary),
+ * so a "no console error" check would be a false green. This asserts the
+ * deterministic mechanism instead: the relative time is NOT server-rendered
  * but DOES appear after hydration.
  */
 test.describe("Home (SSR)", () => {
-  test("the relative 'updated' time is client-only, not in the SSR HTML", async ({
+  test("the relative 'refreshed' time is client-only, not in the SSR HTML", async ({
     page,
   }) => {
     test.setTimeout(60_000);
@@ -34,19 +35,18 @@ test.describe("Home (SSR)", () => {
     // shares the browser context's session cookie).
     const html = await (await page.request.get("/")).text();
 
-    // The project list IS server-rendered (the title is in the SSR HTML)...
+    // The rail IS server-rendered (the project title is in the SSR HTML)...
     expect(html).toContain(projectTitle);
-    // ...but the relative "updated" time is NOT — it's behind <ClientOnly>, so
-    // server + first client render match and React #418 can't fire. A freshly
-    // created project reads as "a few seconds ago" / "a minute ago".
+    // ...but no relative time is. A dashboard resolved seconds ago reads as
+    // "a few seconds ago" / "a minute ago".
     expect(html).not.toContain("seconds ago");
     expect(html).not.toContain("minute ago");
 
     // After hydration it appears client-side.
     await page.goto("/");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText(/updated .*ago/i).first()).toBeVisible({
-      timeout: 10_000,
+    await expect(page.getByText(/refreshed .*ago/i).first()).toBeVisible({
+      timeout: 15_000,
     });
   });
 });
@@ -66,8 +66,8 @@ test.describe("Home (SSR)", () => {
  * actually clicks.
  */
 /**
- * Home and the project switcher show five projects; everything else lives at
- * `/account/projects`.
+ * The dashboard's rail and the project switcher show five projects;
+ * everything else lives at `/account/projects`.
  *
  * Six is the fixture on purpose — the smallest number that truncates. With
  * five the "see all" link must NOT appear, and a test built on five would pass
@@ -96,13 +96,13 @@ test.describe("Home (recent projects cap)", () => {
     }
 
     await page.goto("/");
-    await expect(page.getByTestId("home-see-all-projects")).toBeVisible({
+    await expect(page.getByTestId("dashboard-rail-see-all")).toBeVisible({
       timeout: 15_000,
     });
     // Five rows, not six — the assertion the whole feature exists for.
-    await expect(page.getByTestId("home-project-row")).toHaveCount(5);
+    await expect(page.getByTestId("dashboard-rail-project")).toHaveCount(5);
 
-    await page.getByTestId("home-see-all-projects").click();
+    await page.getByTestId("dashboard-rail-see-all").click();
     await page.waitForURL("**/account/projects", { timeout: 15_000 });
     await expect(page.getByTestId("account-project-row")).toHaveCount(6);
 

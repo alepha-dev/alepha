@@ -30,6 +30,17 @@ export interface LoreAnalyticsWindow {
    * First UTC day included, `YYYY-MM-DD`.
    */
   since: string;
+  /**
+   * Last UTC day included, `YYYY-MM-DD`. Omitted means "up to whatever the
+   * newest row is", which is what every caller wanted before this existed.
+   *
+   * Its reason for existing is comparison: a window ending "now" ends
+   * mid-day, so measuring it against a complete one reads as a collapse every
+   * morning and recovers by evening. Bounding the top end is what turns
+   * "yesterday against the day before" into a statement about traffic rather
+   * than about the clock.
+   */
+  until?: string;
 }
 
 /**
@@ -120,6 +131,11 @@ export class LoreAnalyticsStore {
         FROM ${this.uniques.table}
         WHERE ${this.uniques.table.sigilId} IN (${this.scope(window)})
           AND ${this.uniques.table.day} >= ${window.since}
+          ${
+            window.until
+              ? sql`AND ${this.uniques.table.day} <= ${window.until}`
+              : sql``
+          }
       `,
       z.object({ uniques: z.coerce.number() }),
     );

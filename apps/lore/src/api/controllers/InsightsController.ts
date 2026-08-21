@@ -13,6 +13,7 @@ import {
   type InsightsResource,
   insightsResourceSchema,
 } from "../schemas/insightsResourceSchema.ts";
+import { DailyVisitorsService } from "../services/DailyVisitorsService.ts";
 import { LoreAnalyticsStore } from "../services/LoreAnalyticsStore.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
@@ -71,6 +72,12 @@ export class InsightsController {
   protected datasets = $inject(LoreAnalytics);
   protected security = $inject(ProjectSecurityService);
   protected dateTime = $inject(DateTimeProvider);
+  /**
+   * Injected for one method: `percentChange`. The rule for when a delta may
+   * be shown at all — and when it must be withheld — is defined once, there,
+   * and the dashboard's visitors tile reads the same one.
+   */
+  protected visitors = $inject(DailyVisitorsService);
   protected sigils = $repository(sigils);
   protected errorGroups = $repository(sigilErrorGroups);
 
@@ -89,6 +96,26 @@ export class InsightsController {
          * caller had before the per-app page existed.
          */
         sigilId: z.uuid().optional(),
+        /**
+         * Where the window ends.
+         *
+         * `today` (the default, and every pre-existing caller) ends the
+         * window mid-day: `range: "1d"` then means **today so far**, which is
+         * a different number from yesterday and one that reads as a drop
+         * every morning until late evening.
+         *
+         * `lastCompleteDay` ends it at yesterday, so the window is whole.
+         * That is the only footing on which a comparison is honest.
+         */
+        until: z.enum(["today", "lastCompleteDay"]).optional(),
+        /**
+         * Also measure the window of the same width immediately before this
+         * one, and return it as `previous` with the uniques delta.
+         *
+         * Off by default: it is a second pass over the same tables, and the
+         * pages that never show a delta should not pay for one.
+         */
+        compare: z.boolean().optional(),
       }),
       response: insightsResourceSchema,
     },
@@ -98,11 +125,29 @@ export class InsightsController {
       const range = query.range ?? "7d";
       const days = RANGE_DAYS[range] ?? 7;
 
-      // A `days`-wide UTC window covering [today-(days-1) .. today].
+      // The window ends today unless the caller asked for whole days only.
+      // `anchor` is the last day IN the window; everything below counts back
+      // from it, so the two modes differ in exactly one place.
       const today = new Date(this.dateTime.nowMillis());
-      const sinceDate = new Date(today);
+      const anchor = new Date(today);
+      if (query.until === "lastCompleteDay") {
+        anchor.setUTCDate(anchor.getUTCDate() - 1);
+      }
+      const until = anchor.toISOString().slice(0, 10);
+      const sinceDate = new Date(anchor);
       sinceDate.setUTCDate(sinceDate.getUTCDate() - (days - 1));
       const since = sinceDate.toISOString().slice(0, 10);
+
+      // The preceding window of the same width, `[previousSince ..
+      // previousUntil]`, touching this one without overlapping it.
+      const previousUntilDate = new Date(sinceDate);
+      previousUntilDate.setUTCDate(previousUntilDate.getUTCDate() - 1);
+      const previousSinceDate = new Date(previousUntilDate);
+      previousSinceDate.setUTCDate(previousSinceDate.getUTCDate() - (days - 1));
+      const previousWindow = {
+        since: previousSinceDate.toISOString().slice(0, 10),
+        until: previousUntilDate.toISOString().slice(0, 10),
+      };
 
       const labels = await this.projectSigilLabels(params.projectId);
       // The membership check above is on the *project*, so a sigil id from the
@@ -124,6 +169,14 @@ export class InsightsController {
         return {
           range,
           since,
+          until,
+          // No apps means no traffic in either window. The comparison is
+          // still ANSWERED rather than omitted when it was asked for: absent
+          // means "not compared", and a caller that asked deserves the
+          // difference between that and "compared, and it was zero".
+          previous: query.compare
+            ? { ...previousWindow, uniqueVisitors: 0, totalViews: 0 }
+            : undefined,
           totalViews: 0,
           uniqueVisitors: 0,
           entries: 0,
@@ -136,7 +189,7 @@ export class InsightsController {
           topDevices: [],
           topReferrers: [],
           vitals: { lcp: null, cls: null, inp: null, fcp: null, ttfb: null },
-          timeline: this.zeroTimeline(today, days),
+          timeline: this.zeroTimeline(anchor, days),
           errorGroups: [],
           // Nothing was asked of a dataset, so there is nothing to have
           // sampled. `false` is also what the relational backend Lore runs
@@ -151,7 +204,7 @@ export class InsightsController {
       // this handler cannot tell which one it is talking to. Unique visitors
       // and the error budget stay on `LoreAnalyticsStore` / `sigilErrorGroups`
       // — see the class doc for why those two could not move.
-      const window = { sigilIds, since };
+      const window = { sigilIds, since, until };
       const analyticsWhere = { sigilId: { inArray: sigilIds } };
       const [
         uniqueVisitors,
@@ -168,11 +221,13 @@ export class InsightsController {
         this.analytics.uniqueVisitors(window),
         this.datasets.views.query({
           since,
+          until,
           where: analyticsWhere,
           select: { count: "sum", engaged: "sum", entries: "sum" },
         }),
         this.datasets.views.query({
           since,
+          until,
           where: analyticsWhere,
           groupBy: ["country"],
           select: { count: "sum" },
@@ -181,6 +236,7 @@ export class InsightsController {
         }),
         this.datasets.views.query({
           since,
+          until,
           where: analyticsWhere,
           groupBy: ["path"],
           select: { count: "sum" },
@@ -192,6 +248,7 @@ export class InsightsController {
         // Home. `entries` is only ever incremented by a page load.
         this.datasets.views.query({
           since,
+          until,
           where: analyticsWhere,
           groupBy: ["path"],
           select: { entries: "sum" },
@@ -203,6 +260,7 @@ export class InsightsController {
         // reward tagged links for how much the visitor happened to read.
         this.datasets.views.query({
           since,
+          until,
           where: analyticsWhere,
           groupBy: ["campaign"],
           select: { entries: "sum" },
@@ -211,6 +269,7 @@ export class InsightsController {
         }),
         this.datasets.views.query({
           since,
+          until,
           where: analyticsWhere,
           groupBy: ["device"],
           select: { count: "sum" },
@@ -225,6 +284,7 @@ export class InsightsController {
         // of magnitude.
         this.datasets.views.query({
           since,
+          until,
           where: analyticsWhere,
           groupBy: ["referrer"],
           select: { count: "sum" },
@@ -233,6 +293,7 @@ export class InsightsController {
         }),
         this.datasets.views.query({
           since,
+          until,
           where: analyticsWhere,
           groupBy: ["day"],
           select: { count: "sum" },
@@ -240,6 +301,7 @@ export class InsightsController {
         }),
         this.datasets.vitals.query({
           since,
+          until,
           where: analyticsWhere,
           groupBy: ["metric", "bucket"],
           select: { samples: "sum" },
@@ -298,7 +360,7 @@ export class InsightsController {
       const byDate = new Map(
         timelineResult.rows.map((row) => [String(row.day), Number(row.count)]),
       );
-      const timeline = this.zeroTimeline(today, days).map((point) => ({
+      const timeline = this.zeroTimeline(anchor, days).map((point) => ({
         date: point.date,
         views: byDate.get(point.date) ?? 0,
       }));
@@ -315,11 +377,26 @@ export class InsightsController {
         histograms[metric] = bucket;
       }
       const vitals = summariseVitals(histograms);
-      const errorGroups = await this.readErrorGroups(sigilIds, labels, since);
+      const errorGroups = await this.readErrorGroups(
+        sigilIds,
+        labels,
+        since,
+        until,
+      );
+
+      const previous = query.compare
+        ? await this.readPreviousWindow(sigilIds, previousWindow)
+        : undefined;
 
       return {
         range,
         since,
+        until,
+        previous,
+        uniqueVisitorsDelta: this.visitors.percentChange(
+          previous?.uniqueVisitors,
+          uniqueVisitors,
+        ),
         totalViews,
         uniqueVisitors,
         entries,
@@ -366,16 +443,23 @@ export class InsightsController {
    * budget and one that stopped last month does not. Both columns hold full ISO
    * timestamps and `since` is a `YYYY-MM-DD` prefix of the same format, so the
    * comparison is lexicographic with no date math.
+   *
+   * `until` bounds the top end the same way. It is a DAY, and the column is a
+   * full timestamp, so the bound has to be the day plus a `~` sentinel: every
+   * character a timestamp can carry after the date sorts below it, so
+   * `2026-08-20T23:59` is in and `2026-08-21T00:00` is out. `<= "2026-08-20"`
+   * would exclude the whole day it names.
    */
   protected async readErrorGroups(
     sigilIds: string[],
     labels: Map<string, string>,
     since: string,
+    until: string,
   ): Promise<InsightsResource["errorGroups"]> {
     const rows = await this.errorGroups.findMany({
       where: {
         sigilId: { inArray: sigilIds },
-        lastSeenAt: { gte: since },
+        lastSeenAt: { gte: since, lte: `${until}~` },
       },
       orderBy: [{ column: "count", direction: "desc" }],
       limit: TOP_ERROR_GROUPS,
@@ -395,13 +479,50 @@ export class InsightsController {
     }));
   }
 
-  /** A `days`-long zero-filled `[{ date, views: 0 }]` window ending today. */
+  /**
+   * The preceding window, measured the same way as the current one.
+   *
+   * Uniques and views only. A comparison needs a magnitude, not a second copy
+   * of the leaderboards — and the tile that asks for this shows one number
+   * with one delta beside it. Running the other eight queries again to feed a
+   * `+11%` would double the cost of every dashboard resolve for figures
+   * nothing reads.
+   *
+   * `uniqueVisitors` is what the delta is computed on. `totalViews` rides
+   * along because it costs nothing extra once the window is open, and it is
+   * labelled best-effort in both windows alike.
+   */
+  protected async readPreviousWindow(
+    sigilIds: string[],
+    window: { since: string; until: string },
+  ): Promise<NonNullable<InsightsResource["previous"]>> {
+    const [uniqueVisitors, views] = await Promise.all([
+      this.analytics.uniqueVisitors({ sigilIds, ...window }),
+      this.datasets.views.query({
+        since: window.since,
+        until: window.until,
+        where: { sigilId: { inArray: sigilIds } },
+        select: { count: "sum" },
+      }),
+    ]);
+
+    return {
+      ...window,
+      uniqueVisitors,
+      totalViews: Number(views.rows[0]?.count ?? 0),
+    };
+  }
+
+  /**
+   * A `days`-long zero-filled `[{ date, views: 0 }]` window ending on
+   * `anchor` — today for an ordinary read, yesterday for a complete-day one.
+   */
   protected zeroTimeline(
-    today: Date,
+    anchor: Date,
     days: number,
   ): Array<{ date: string; views: number }> {
     return Array.from({ length: days }, (_, index) => {
-      const day = new Date(today);
+      const day = new Date(anchor);
       day.setUTCDate(day.getUTCDate() - (days - 1 - index));
       return { date: day.toISOString().slice(0, 10), views: 0 };
     });

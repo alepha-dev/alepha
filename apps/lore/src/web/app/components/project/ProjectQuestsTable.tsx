@@ -69,6 +69,15 @@ const boardFiltersSchema = z.object({
   tag: z.string().optional(),
 });
 
+/**
+ * The `?status=` values this page understands.
+ *
+ * Anything else in the URL is dropped rather than rejected: a stale bookmark
+ * or a hand-edited link must land on the unfiltered list, not on an error
+ * page or an empty table with no visible cause.
+ */
+const SEEDABLE_STATUSES = ["new", "accepted", "completed", "shelved"] as const;
+
 const ProjectQuestsTable = () => {
   const alepha = useAlepha();
   const [project] = useStore(currentProjectAtom);
@@ -81,6 +90,20 @@ const ProjectQuestsTable = () => {
   const dialog = useDialog();
   const [users, setUsers] = useState<Array<User>>([]);
   const [knownTags, setKnownTags] = useState<string[]>([]);
+
+  /**
+   * The status the reader arrived with, if any.
+   *
+   * Read straight off the route and handed to AlephaTable as `seedValues`,
+   * which outranks the persisted filter — a drill-through link that lost to
+   * a filter set last week would be a link that does nothing.
+   *
+   * ⚠️ Read-only. Nothing here writes the filter back to the URL; see the
+   * `projectQuests` route for the #156 incident that rule comes from.
+   */
+  const seededStatus = SEEDABLE_STATUSES.find(
+    (status) => status === router.query.status,
+  );
 
   useEffect(() => {
     if (!project?.id) return;
@@ -132,7 +155,10 @@ const ProjectQuestsTable = () => {
       className="flex flex-1 flex-col overflow-hidden"
     >
       <AlephaTable<QuestResource>
-        key={project.id}
+        // The seed is part of the identity: `initialValues` are captured once
+        // per mount, and arriving from a different drill-through link on a
+        // route the app is already showing would otherwise change nothing.
+        key={`${project.id}:${seededStatus ?? ""}`}
         className="min-h-0 flex-1"
         defaultSize={25}
         emptyMessage={tr("common.noResults")}
@@ -142,6 +168,7 @@ const ProjectQuestsTable = () => {
         persistenceKey={`lor.board.${project.id}`}
         filters={{
           schema: boardFiltersSchema,
+          seedValues: seededStatus ? { status: seededStatus } : undefined,
           render: (form) => (
             <>
               <div className="w-44">

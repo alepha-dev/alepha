@@ -46,10 +46,10 @@ interface Point {
  * {@link execute} understands exactly the expression shapes
  * `WaeAnalyticsProvider` emits (`blobN`, `substring(blobN, 1, 10)`,
  * `sum(_sample_interval)`, `sum(doubleN * _sample_interval)`,
- * `max(_sample_interval)`, `blobN = '…'` / `>= '…'` / `IN (…)`) and nothing
- * else. That is the intended friction: a sixth expression shape means this
- * fake has to learn it too, the same closed-question design the sigil
- * original used.
+ * `max(_sample_interval)`, `blobN = '…'` / `>= '…'` / `< '…'` / `IN (…)`)
+ * and nothing else. That is the intended friction: a further expression shape
+ * means this fake has to learn it too, the same closed-question design the
+ * sigil original used.
  */
 export class FakeAnalyticsEngine implements AnalyticsEngineDataset {
   readonly points: Point[] = [];
@@ -220,6 +220,15 @@ export class FakeAnalyticsEngine implements AnalyticsEngineDataset {
     if (gte) {
       const [, slot, raw] = gte;
       return String(point.blobs[Number(slot) - 1] ?? "") >= this.unquote(raw);
+    }
+
+    // Strict, never `<=`: an inclusive day bound on an hour-granular column
+    // is emitted as "before the next day", which is the only shape
+    // `WaeAnalyticsProvider` produces here.
+    const lt = /^blob(\d+)\s*<\s*'((?:[^'\\]|\\.)*)'$/.exec(condition);
+    if (lt) {
+      const [, slot, raw] = lt;
+      return String(point.blobs[Number(slot) - 1] ?? "") < this.unquote(raw);
     }
 
     const inList = /^blob(\d+)\s+IN\s+\((.*)\)$/.exec(condition);

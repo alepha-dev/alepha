@@ -8,6 +8,7 @@ import { AdminProjectController } from "./controllers/AdminProjectController.ts"
 import { AreaController } from "./controllers/AreaController.ts";
 import { BlightController } from "./controllers/BlightController.ts";
 import { BlobController } from "./controllers/BlobController.ts";
+import { DashboardController } from "./controllers/DashboardController.ts";
 import { DirectoryController } from "./controllers/DirectoryController.ts";
 import { EpicController } from "./controllers/EpicController.ts";
 import { FeedbackController } from "./controllers/FeedbackController.ts";
@@ -25,6 +26,7 @@ import { SearchController } from "./controllers/SearchController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
 import { SigilIngestController } from "./controllers/SigilIngestController.ts";
 import { VersionController } from "./controllers/VersionController.ts";
+import { LoreDashboardCatalog } from "./dashboardCatalogModule.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
 import { InvitationJobs } from "./jobs/InvitationJobs.ts";
@@ -35,8 +37,13 @@ import { InvitationNotifications } from "./notifications/InvitationNotifications
 import { QuestNotifications } from "./notifications/QuestNotifications.ts";
 import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
+import { ActiveQuestsMetric } from "./services/ActiveQuestsMetric.ts";
 import { AreaService } from "./services/AreaService.ts";
 import { BlightRuleService } from "./services/BlightRuleService.ts";
+import { DailyVisitorsService } from "./services/DailyVisitorsService.ts";
+import { DashboardCardService } from "./services/DashboardCardService.ts";
+import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
+import { DashboardScopeService } from "./services/DashboardScopeService.ts";
 import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 import { FolioBlobService } from "./services/FolioBlobService.ts";
 import { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
@@ -45,6 +52,9 @@ import { FolioLinkService } from "./services/FolioLinkService.ts";
 import { FolioNameService } from "./services/FolioNameService.ts";
 import { FrozenSigilAnalyticsTables } from "./services/FrozenSigilAnalyticsTables.ts";
 import { InvitationService } from "./services/InvitationService.ts";
+import { OpenBlightCounter } from "./services/OpenBlightCounter.ts";
+import { OpenBlightsMetric } from "./services/OpenBlightsMetric.ts";
+import { OpenQuestScope } from "./services/OpenQuestScope.ts";
 import { ProjectLimits } from "./services/ProjectLimits.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 import { AlephaLoreParser } from "./services/parsers/AlephaLoreParser.ts";
@@ -55,6 +65,8 @@ import { QuestImportFormatProvider } from "./services/QuestImportFormatProvider.
 import { QuestService } from "./services/QuestService.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
+import { UniqueVisitorsMetric } from "./services/UniqueVisitorsMetric.ts";
+import { UntriagedFeedbackMetric } from "./services/UntriagedFeedbackMetric.ts";
 
 export const LoreApi = $module({
   name: "lore.api",
@@ -69,7 +81,11 @@ export const LoreApi = $module({
   // forever with no error (see `AnalyticsRetentionGuard`'s boot warning).
   // `AlephaApiAnalyticsAdmin` is the opt-in admin query surface behind
   // `admin:analytics:read` — it feeds the /admin/analytics page.
-  imports: [AlephaApiAnalyticsRollup, AlephaApiAnalyticsAdmin],
+  imports: [
+    AlephaApiAnalyticsRollup,
+    AlephaApiAnalyticsAdmin,
+    LoreDashboardCatalog,
+  ],
   services: [
     // Declares the `$realm`. Nothing injects it — it must be listed here
     // explicitly or the realm (and every permission) is never registered.
@@ -106,6 +122,24 @@ export const LoreApi = $module({
     ProjectLimits,
     AreaService,
     BlightRuleService,
+    OpenBlightCounter,
+    // What "open quests" means, shared by the sidebar badge, the dashboard
+    // rail and the Active Quests tile — all three are visible together.
+    OpenQuestScope,
+    // The dashboard: the membership gate every card scope goes through, and
+    // card storage. The declarative registry itself lives in
+    // `LoreDashboardCatalog` — see that module for why it cannot be listed
+    // here as well as in `LoreWebApp`.
+    DashboardScopeService,
+    DashboardCardService,
+    DailyVisitorsService,
+    // One resolver per metric, plus the registry that groups a card list by
+    // metric so N cards on one metric stay one query.
+    ActiveQuestsMetric,
+    OpenBlightsMetric,
+    UntriagedFeedbackMetric,
+    UniqueVisitorsMetric,
+    DashboardMetricRegistry,
     // The sink half: the token an app presents, and what happens to what it
     // sends. `SigilIngestService` itself holds no repository on any of the
     // aggregate tables — writes go through `LoreAnalyticsStore` (uniques) and
@@ -137,6 +171,7 @@ export const LoreApi = $module({
     SigilIngestController,
     InsightsController,
     BlightController,
+    DashboardController,
     VersionController,
   ],
 });

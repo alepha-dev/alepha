@@ -485,6 +485,16 @@ export class OrmAnalyticsProvider extends AnalyticsProvider {
       sql`substr(${sql.raw(timeColumn)}, 1, 10) >= ${query.since}`,
     ];
 
+    // Inclusive, and compared on the same day prefix as `since` so the two
+    // bounds are symmetric. `substr` rather than a range on the raw bucket:
+    // the bucket carries an hour, so `<= '2026-08-20'` would exclude every
+    // hour of the day it names.
+    if (query.until) {
+      conditions.push(
+        sql`substr(${sql.raw(timeColumn)}, 1, 10) <= ${query.until}`,
+      );
+    }
+
     for (const [name, filter] of Object.entries(query.where ?? {})) {
       this.assertKnownDimension(dataset, name);
       const column = this.columnName(repository, name);
