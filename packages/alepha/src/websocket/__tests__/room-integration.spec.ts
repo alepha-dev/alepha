@@ -15,7 +15,7 @@ function waitForOpen(ws: WebSocket) {
 
 function collect(ws: WebSocket): any[] {
   const out: any[] = [];
-  ws.on("message", (d) => out.push(JSON.parse(d.toString())));
+  ws.on("message", (d) => out.push(JSON.parse((d as Buffer).toString())));
   return out;
 }
 

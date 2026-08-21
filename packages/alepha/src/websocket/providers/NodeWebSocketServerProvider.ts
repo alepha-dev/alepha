@@ -3,7 +3,7 @@ import type { IncomingMessage } from "node:http";
 
 import { $hook, $inject, $store, AlephaError, SchemaValidator } from "alepha";
 import { $logger } from "alepha/logger";
-import { WebSocket, WebSocketServer } from "ws";
+import { WebSocket, WebSocketServer, type RawData } from "ws";
 
 import { WebSocketValidationError } from "../errors/WebSocketError.ts";
 import type {
@@ -482,7 +482,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     ws.on("message", (data) => {
       let parsed: any;
       try {
-        parsed = JSON.parse(data.toString());
+        parsed = JSON.parse(this.decodeFrame(data));
       } catch {
         this.log.warn(`Received non-JSON room message on ${connectionId}`);
         return;
@@ -639,7 +639,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
       this.emitHook("websocket:message", {
         connectionId,
         path,
-        message: data.toString(),
+        message: this.decodeFrame(data),
       });
       connection.handleMessage(data).catch((error) => {
         this.log.error(
@@ -696,6 +696,25 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
    * Emit a `websocket:*` observability hook. Fire-and-forget: a subscriber
    * must never be able to break the connection it is observing.
    */
+  /**
+   * Decode a `ws` frame to text.
+   *
+   * `RawData` is `Buffer | ArrayBuffer | Buffer[]`, and the array arm is not
+   * hypothetical: `ws` hands back a list of chunks for a fragmented message.
+   * A bare `.toString()` on that list comma-joins the chunks, so a message
+   * split across frames arrived as corrupt JSON and was dropped by the
+   * `catch` below as "non-JSON".
+   */
+  protected decodeFrame(data: RawData): string {
+    if (Buffer.isBuffer(data)) {
+      return data.toString();
+    }
+    if (Array.isArray(data)) {
+      return Buffer.concat(data).toString();
+    }
+    return Buffer.from(data).toString();
+  }
+
   protected emitHook<
     K extends
       | "websocket:connect"

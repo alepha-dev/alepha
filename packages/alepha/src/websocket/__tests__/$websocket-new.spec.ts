@@ -69,7 +69,7 @@ test("$websocket with channel-based architecture", async ({ expect }) => {
 
   // Listen for messages on ws2
   ws2.on("message", (data) => {
-    const message = JSON.parse(data.toString());
+    const message = JSON.parse((data as Buffer).toString());
     messages.push(message);
   });
 
@@ -165,11 +165,11 @@ test("$websocket room isolation", async ({ expect }) => {
   const room2Messages: any[] = [];
 
   room1Client.on("message", (data) => {
-    room1Messages.push(JSON.parse(data.toString()));
+    room1Messages.push(JSON.parse((data as Buffer).toString()));
   });
 
   room2Client.on("message", (data) => {
-    room2Messages.push(JSON.parse(data.toString()));
+    room2Messages.push(JSON.parse((data as Buffer).toString()));
   });
 
   await new Promise((resolve) => setTimeout(resolve, 100));

@@ -16,13 +16,17 @@ function waitForOpen(ws: WebSocket) {
 }
 
 function collectMessages(ws: WebSocket, messages: any[] = []) {
-  ws.on("message", (data) => messages.push(JSON.parse(data.toString())));
+  ws.on("message", (data) =>
+    messages.push(JSON.parse((data as Buffer).toString())),
+  );
   return messages;
 }
 
 function waitForMessage(ws: WebSocket): Promise<any> {
   return new Promise((resolve) =>
-    ws.once("message", (data) => resolve(JSON.parse(data.toString()))),
+    ws.once("message", (data) =>
+      resolve(JSON.parse((data as Buffer).toString())),
+    ),
   );
 }
 
