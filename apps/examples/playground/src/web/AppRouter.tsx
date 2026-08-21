@@ -16,6 +16,7 @@ export class AppRouter {
       this.playgroundNotifications,
       this.playgroundAudits,
       this.demoSegmented,
+      this.demoTables,
       this.demoToasts,
       this.demoDialogs,
       this.demoAutoForm,
@@ -78,6 +79,12 @@ export class AppRouter {
     path: "/demo/segmented",
     head: { title: "Segmented demo" },
     lazy: () => import("./pages/demo/Segmented.tsx"),
+  });
+
+  demoTables = $page({
+    path: "/demo/tables",
+    head: { title: "Table demo" },
+    lazy: () => import("./pages/demo/Tables.tsx"),
   });
 
   demoToasts = $page({

@@ -2,7 +2,10 @@ import * as React from "react";
 
 void React;
 
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
+import {
+  AlephaTable,
+  type TableFetcher,
+} from "@alepha/ui/components/alepha-table/alepha-table";
 import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import {
@@ -21,7 +24,7 @@ import type { stockAdjustSchema } from "./stock-adjust-schema.ts";
 export interface AdminProductDetailStockTabProps {
   product: AdminProductResource;
   form: FormModel<ReturnType<typeof stockAdjustSchema>>;
-  fetch: React.ComponentProps<typeof AlephaTable<StockMovementEntity>>["fetch"];
+  fetch: TableFetcher<StockMovementEntity>;
   refreshSignal: number;
 }
 

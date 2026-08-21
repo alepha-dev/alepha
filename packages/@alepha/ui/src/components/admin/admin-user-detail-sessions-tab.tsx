@@ -2,7 +2,10 @@ import * as React from "react";
 
 void React;
 
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
+import {
+  AlephaTable,
+  type TableFetcher,
+} from "@alepha/ui/components/alepha-table/alepha-table";
 import type { SessionResource } from "alepha/api/users";
 import type { UseActionReturn } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -13,7 +16,7 @@ export interface AdminUserDetailSessionsTabProps {
    * Scopes the table's persisted column/sort state to this user.
    */
   userId: string;
-  fetch: React.ComponentProps<typeof AlephaTable<SessionResource>>["fetch"];
+  fetch: TableFetcher<SessionResource>;
   revokeSession: UseActionReturn<[SessionResource, () => void], void>;
   bulkRevokeSessions: UseActionReturn<
     [SessionResource[], { refresh: () => void; clearSelection: () => void }],
