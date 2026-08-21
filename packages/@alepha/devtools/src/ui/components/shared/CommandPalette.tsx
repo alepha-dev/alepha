@@ -110,6 +110,9 @@ export const CommandPalette = (props: CommandPaletteProps) => {
   };
 
   return (
+    // Result rows in a listbox; the palette owns arrow-key and Enter handling at
+    // the container level, which is where a combobox belongs.
+    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
     <div
       style={{
         position: "fixed",
@@ -123,6 +126,8 @@ export const CommandPalette = (props: CommandPaletteProps) => {
       }}
       onClick={props.onClose}
     >
+      {/* Result rows in a listbox; the palette owns arrow-key and Enter handling at the container level. */}
+      {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div
         style={{
           width: 620,

@@ -46,6 +46,10 @@ const ChangelogChangeItem = (props: ChangelogChangeItemProps) => {
   );
 
   return (
+    // The row expands truncated text on click; it is a disclosure for content
+    // that is already fully present to a screen reader, so there is nothing
+    // keyboard-only users lose.
+    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
     <li
       className={`${styles.item} ${isBreaking ? styles.itemBreaking : ""} ${props.isExpanded ? styles.itemExpanded : ""} ${isOverflowing ? styles.itemClickable : ""}`}
       onClick={handleClick}

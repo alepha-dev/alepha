@@ -630,13 +630,15 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
    * cause. Fetch mode has the same hole, but there the server round-trip
    * needed to see it makes this the wrong place to close it.
    */
-  useEffect(() => {
-    if (!staticPage) return;
+  if (staticPage) {
     const totalPages = staticPage.page.totalPages ?? 0;
     if (page > 0 && page > totalPages - 1) {
+      // Guarded on `page`, so it settles in one pass and does not need an
+      // effect: the clamp lands before the rows render against a page that no
+      // longer exists.
       setPage(Math.max(0, totalPages - 1));
     }
-  }, [staticPage, page]);
+  }
 
   // Persist sort to localStorage on every change.
   useEffect(() => {

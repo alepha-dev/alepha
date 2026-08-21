@@ -73,6 +73,9 @@ const QuestViewTimer = (props: QuestViewTimerProps) => {
   };
 
   useEffect(() => {
+    // Seeds the clock before starting the interval below — the elapsed time is
+    // an external system, not something derivable during render.
+    // oxlint-disable-next-line react/set-state-in-effect
     setCurrentTime(calculateTotalTime());
     if (isTimerRunning()) {
       intervalRef.current = setInterval(() => {

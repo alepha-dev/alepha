@@ -229,7 +229,10 @@
         "**/e2e/**"
       ],
       "rules": {
-        "typescript/unbound-method": "off"
+        "typescript/unbound-method": "off",
+        // A test harness builds a fresh container per render on purpose; there
+        // are no consumers to spare a re-render.
+        "react/jsx-no-constructed-context-values": "off"
       }
     }
   ]

@@ -185,6 +185,8 @@ const CodeMirrorEditor = (props: CodeMirrorEditorProps) => {
   };
 
   return (
+    // Wrapper around the CodeMirror instance, which owns its own key handling.
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
       ref={hostRef}
       onMouseDown={focusEnd}

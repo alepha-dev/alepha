@@ -38,6 +38,8 @@ export const useAuthSlide = (): GettingStartedSlide | undefined => {
           num: "→",
           text: (
             <>
+              {/* An in-page action styled as a link; `preventDefault` runs the handler. */}
+              {/* oxlint-disable-next-line jsx-a11y/anchor-is-valid */}
               <a
                 href="#"
                 onClick={(e) => {

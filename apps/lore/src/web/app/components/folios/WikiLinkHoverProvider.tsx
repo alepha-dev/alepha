@@ -252,6 +252,9 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
 
   return (
     // event delegation over rendered MarkdownView anchors; keyboard a11y handled by the underlying anchors.
+    // Event delegation over the anchors MarkdownView renders; keyboard access
+    // is the anchors' own.
+    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
     <div
       className="[&_a[href^='lore-broken:']]:text-destructive [&_a[href^='lore-broken:']]:decoration-destructive/40 relative [&_a[href^='lore-broken:']]:cursor-help [&_a[href^='lore-broken:']]:decoration-wavy"
       onMouseOver={(e) => handleEnter(e.target)}

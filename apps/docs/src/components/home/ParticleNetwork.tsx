@@ -126,6 +126,9 @@ const ParticleNetwork = () => {
     <canvas
       ref={canvasRef}
       aria-hidden="true"
+      // A decorative background canvas, already `aria-hidden`; `presentation` is
+      // exactly the role it should carry.
+      // oxlint-disable-next-line jsx-a11y/no-interactive-element-to-noninteractive-role
       role="presentation"
       style={{
         position: "fixed",

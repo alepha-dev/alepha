@@ -191,6 +191,9 @@ const TocItems = () => {
               if (el) itemRefs.current.set(heading.id, el);
             }}
             type="button"
+            // A button carrying list-item semantics inside the surrounding `role="list"`,
+            // so assistive tech announces position in the outline.
+            // oxlint-disable-next-line jsx-a11y/no-interactive-element-to-noninteractive-role
             role="listitem"
             onClick={() => handleClick(heading.id)}
             aria-current={isActive ? "location" : undefined}

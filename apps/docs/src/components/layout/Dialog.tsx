@@ -106,6 +106,9 @@ const Dialog = (props: DialogProps) => {
       onClick={closeOnOverlayClick ? handleClose : undefined}
       role="presentation"
     >
+      {/* `stopPropagation` so a click inside does not reach the overlay's close
+          handler. Not an interaction of its own. */}
+      {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
       <div
         className={containerClasses}
         style={style}

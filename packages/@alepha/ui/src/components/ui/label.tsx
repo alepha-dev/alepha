@@ -5,6 +5,9 @@ import type * as React from "react";
 
 function Label({ className, ...props }: React.ComponentProps<"label">) {
   return (
+    // Stock shadcn `Label`: `htmlFor` arrives through the spread props, which
+    // the rule cannot follow.
+    // oxlint-disable-next-line jsx-a11y/label-has-associated-control
     <label
       data-slot="label"
       className={cn(
