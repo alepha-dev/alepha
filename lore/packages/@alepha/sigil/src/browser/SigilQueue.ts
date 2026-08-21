@@ -33,6 +33,22 @@ export class SigilQueue {
   protected engagements: Engagement[] = [];
   protected timer: ReturnType<typeof setTimeout> | null = null;
 
+  /**
+   * Whether the debounce is suspended.
+   *
+   * The opening envelope of a page load is not debounce-shaped. Its producers
+   * finish at different times - the view at hydration, TTFB and FCP a beat
+   * later, the engagement verdict only once the visitor has had time to give
+   * one - so a timer armed by the first of them sends before the last has
+   * spoken, and that last one then pays for a request of its own. Holding is
+   * how they leave together.
+   *
+   * It suspends the *timer*, not the queue. {@link flush} does not consult it,
+   * so the `pagehide` and `visibilitychange` handlers still report a visitor
+   * who leaves mid-hold.
+   */
+  protected held = false;
+
   constructor(
     protected readonly send: (env: Envelope) => Promise<void>,
     protected readonly opts: { debounceMs: number } = { debounceMs: 5000 },
@@ -76,6 +92,7 @@ export class SigilQueue {
   }
 
   protected schedule() {
+    if (this.held) return;
     if (this.timer) return;
     this.timer = setTimeout(() => void this.flush(), this.opts.debounceMs);
   }
@@ -113,6 +130,32 @@ export class SigilQueue {
     }
     if (enabled.errors === false) this.errors.length = 0;
     if (enabled.vitals === false) this.vitals.length = 0;
+  }
+
+  /**
+   * Suspends the debounce until {@link release}.
+   *
+   * Any timer already armed is cancelled, so a caller may hold before or after
+   * the first event of the load is queued and get the same answer either way.
+   */
+  public hold() {
+    this.held = true;
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+  }
+
+  /**
+   * Resumes the debounce and sends what accumulated during the hold.
+   *
+   * Sends rather than re-arms: a caller releases at the moment its envelope is
+   * complete, and a fresh debounce window on top of that would be exactly the
+   * wait this mechanism exists to remove.
+   */
+  public async release(options: { force?: boolean } = {}): Promise<void> {
+    this.held = false;
+    await this.flush(options);
   }
 
   public async flush(options: { force?: boolean } = {}): Promise<void> {
@@ -166,5 +209,15 @@ export class SigilQueue {
 
   public pendingEngagements(): string[] {
     return this.engagements.map((e) => e.path);
+  }
+
+  /**
+   * Whether the debounce is currently suspended. Exists for the browser
+   * provider's tests: a hold that is never lifted is invisible from the
+   * outside until the five-second debounce that would have proved it, which is
+   * not a wait a test should have to sit through.
+   */
+  public isHeld(): boolean {
+    return this.held;
   }
 }

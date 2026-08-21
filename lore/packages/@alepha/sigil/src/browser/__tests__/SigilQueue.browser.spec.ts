@@ -104,3 +104,124 @@ describe("SigilQueue — a config that arrives after the queue was filled", () =
     expect(sent[0].vitals).toHaveLength(1);
   });
 });
+
+/**
+ * The hold exists because a page load's producers do not finish together: the
+ * view lands at hydration, TTFB and FCP a beat later, and the engagement
+ * verdict only after the visitor has had time to give one. A debounce armed by
+ * the first of them sends before the last has spoken.
+ */
+describe("SigilQueue — holding the opening envelope", () => {
+  it("suspends the debounce and sends everything on release", async () => {
+    const sent: any[] = [];
+    const q = new SigilQueue(
+      async (env) => {
+        sent.push(env);
+      },
+      { debounceMs: 5 },
+    );
+
+    q.hold();
+    q.addView("/", 1);
+    q.addVital({ path: "/", metric: "fcp", value: 260, ts: 1 });
+    await new Promise((r) => setTimeout(r, 25));
+
+    // Well past the debounce, and nothing has left.
+    expect(sent).toHaveLength(0);
+    expect(q.isHeld()).toBe(true);
+
+    q.addEngagement("/", 2);
+    await q.release();
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0].views).toHaveLength(1);
+    expect(sent[0].vitals).toHaveLength(1);
+    expect(sent[0].engagements).toHaveLength(1);
+    expect(q.isHeld()).toBe(false);
+  });
+
+  /**
+   * A caller may hold before or after the first event of the load is queued -
+   * the render hook queues the view a line later, but a vital can arrive from
+   * a buffered PerformanceObserver entry before the hook runs at all.
+   */
+  it("cancels a debounce that was already armed", async () => {
+    const sent: any[] = [];
+    const q = new SigilQueue(
+      async (env) => {
+        sent.push(env);
+      },
+      { debounceMs: 5 },
+    );
+
+    q.addVital({ path: "/", metric: "ttfb", value: 51, ts: 1 });
+    q.hold();
+    await new Promise((r) => setTimeout(r, 25));
+
+    expect(sent).toHaveLength(0);
+  });
+
+  /**
+   * The hold suspends the timer, not the queue. `pagehide` and
+   * `visibilitychange` flush directly, and a visitor who leaves mid-hold has
+   * still visited.
+   */
+  it("still sends on an explicit flush while held", async () => {
+    const sent: any[] = [];
+    const q = new SigilQueue(
+      async (env) => {
+        sent.push(env);
+      },
+      { debounceMs: 5 },
+    );
+
+    q.hold();
+    q.addView("/", 1);
+    await q.flush();
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0].views).toHaveLength(1);
+  });
+
+  /**
+   * Released with nothing to say, a page says nothing. Only the wait that had
+   * something to ask forces an empty envelope.
+   */
+  it("sends nothing on an unforced release of an empty queue", async () => {
+    const sent: any[] = [];
+    const q = new SigilQueue(
+      async (env) => {
+        sent.push(env);
+      },
+      { debounceMs: 5 },
+    );
+
+    q.hold();
+    await q.release();
+    expect(sent).toHaveLength(0);
+
+    q.hold();
+    await q.release({ force: true });
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toEqual({});
+  });
+
+  it("returns to the ordinary debounce after a release", async () => {
+    const sent: any[] = [];
+    const q = new SigilQueue(
+      async (env) => {
+        sent.push(env);
+      },
+      { debounceMs: 5 },
+    );
+
+    q.hold();
+    await q.release();
+
+    q.addEngagement("/", 3);
+    await new Promise((r) => setTimeout(r, 25));
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0].engagements).toHaveLength(1);
+  });
+});
