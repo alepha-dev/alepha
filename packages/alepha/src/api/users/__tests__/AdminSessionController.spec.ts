@@ -8,6 +8,7 @@ import {
   AdminSessionController,
   AlephaApiUsers,
   SessionCrudService,
+  sessionResourceSchema,
   UserService,
 } from "../index.ts";
 
@@ -110,6 +111,42 @@ describe("alepha/api/users - AdminSessionController", () => {
       { user: adminUser },
     );
     expect(fetched.user?.email).toBe("withuser@example.com");
+  });
+
+  it("should expose lastUsedAt so admins can tell live sessions from stale ones", async ({
+    expect,
+  }) => {
+    const { sessionService, userService, controller, dateTimeProvider } =
+      await setup();
+
+    const user = await userService.users().create({
+      username: "idleuser",
+      email: "idle@example.com",
+      roles: ["user"],
+    });
+
+    const lastUsedAt = dateTimeProvider.now().subtract(2, "days").toISOString();
+    const session = await sessionService.sessions().create({
+      userId: user.id,
+      refreshToken: crypto.randomUUID(),
+      expiresAt: dateTimeProvider.now().add(180, "days").toISOString(),
+      lastUsedAt,
+    });
+
+    const listed = await controller.findSessions(
+      { query: { userId: user.id } },
+      { user: adminUser },
+    );
+    const found = listed.content.find((s) => s.id === session.id);
+    expect(found?.lastUsedAt).toBe(lastUsedAt);
+
+    // The handler's return value is not what ships: `schema.response` is what
+    // serializes, and a field absent from it is dropped with no error
+    // anywhere. `lastUsedAt` was missing from the resource schema while it
+    // sat on the entity, so the admin table could only show when a session
+    // STARTED, which says nothing about one that has been idle for months.
+    const serialized = sessionResourceSchema.parse(found);
+    expect(serialized.lastUsedAt).toBe(lastUsedAt);
   });
 
   it("should never expose refresh tokens to admins", async ({ expect }) => {

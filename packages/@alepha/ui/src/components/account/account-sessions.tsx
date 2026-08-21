@@ -48,6 +48,25 @@ const AccountSessions = (props: AccountSessionsProps) => {
     return `${agent.browser} on ${agent.os}`;
   };
 
+  /**
+   * "Signed in 3 months ago" says when the session was born, not whether it
+   * is still breathing: a long-lived session that refreshed this morning
+   * looks identical to an abandoned one. `lastUsedAt` is the signal
+   * someone hunting a stolen laptop is after, so it goes next to the IP.
+   * Skipped for the current session, where it would always read "a few
+   * seconds ago".
+   */
+  const description = (session: MySession) => {
+    const parts = [
+      session.ip ?? "unknown IP",
+      `signed in ${dt.of(session.createdAt).fromNow()}`,
+    ];
+    if (session.lastUsedAt && !session.current) {
+      parts.push(`last used ${dt.of(session.lastUsedAt).fromNow()}`);
+    }
+    return parts.join(" · ");
+  };
+
   const revoke = async (session: MySession) => {
     try {
       await api.deleteMySession({ params: { id: session.id } });
@@ -111,9 +130,7 @@ const AccountSessions = (props: AccountSessionsProps) => {
               ) : null}
             </span>
           }
-          description={`${session.ip ?? "unknown IP"} · signed in ${dt
-            .of(session.createdAt)
-            .fromNow()}`}
+          description={description(session)}
         >
           {session.current ? null : (
             <Button variant="ghost" size="sm" onClick={() => revoke(session)}>
