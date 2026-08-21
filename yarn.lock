@@ -5478,6 +5478,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"d1lab@workspace:apps/examples/d1lab":
+  version: 0.0.0-use.local
+  resolution: "d1lab@workspace:apps/examples/d1lab"
+  dependencies:
+    alepha: "npm:^0.26.0"
+    vite: "npm:^8.2.1"
+    wrangler: "npm:^4.123.0"
+  languageName: unknown
+  linkType: soft
+
 "d3-array@npm:2 - 3, d3-array@npm:2.10.0 - 3, d3-array@npm:^3.1.6":
   version: 3.2.4
   resolution: "d3-array@npm:3.2.4"

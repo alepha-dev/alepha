@@ -317,6 +317,70 @@ describe("BuildCloudflareTask", () => {
       );
     });
 
+    describe("d1 bookmark carrier", () => {
+      it("reads the incoming bookmark into the request's async context", async () => {
+        const { task, fs } = createTaskWithFs();
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        expect(
+          fs.wasWrittenMatching(
+            ENTRY,
+            /__alepha\.store\.set\(\s*["']alepha\.orm\.d1\.bookmark["']/,
+          ),
+        ).toBe(true);
+      });
+
+      it("reads the session off a holder, not out of the store", async () => {
+        const { task, fs } = createTaskWithFs();
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        const source = fs.getFileContent(ENTRY) ?? "";
+
+        // `store.set` writes to the innermost async layer, and the handler
+        // runs several layers below the entry point, so the session it opens
+        // cannot be read back from here. Verified against a real deploy: the
+        // store read returned nothing and the cookie was never set, while
+        // every unit test stayed green.
+        expect(source).toMatch(/const d1Carrier = \{\}/);
+        expect(source).toMatch(
+          /__alepha\.store\.set\(\s*["']alepha\.orm\.d1\.carrier["']/,
+        );
+        expect(source).toMatch(/d1Carrier\.session\.getBookmark\(\)/);
+        expect(source).not.toMatch(
+          /__alepha\.get\(\s*["']alepha\.orm\.d1\.session["']\s*\)/,
+        );
+      });
+
+      it("decides cacheability before attaching the cookie", async () => {
+        const { task, fs } = createTaskWithFs();
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        // `isEdgeCacheable` refuses any response carrying a `set-cookie`, so
+        // attaching the bookmark first would switch the edge cache off for
+        // every response the moment an app enabled sessions.
+        const source = fs.getFileContent(ENTRY) ?? "";
+
+        expect(source.indexOf("const cacheable =")).toBeLessThan(
+          source.indexOf("writeBookmarkCookie(ctx.res"),
+        );
+      });
+
+      it("appends the cookie rather than replacing the header", async () => {
+        const { task, fs } = createTaskWithFs();
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        // `set` would drop any auth cookie already on the response and sign
+        // the user out.
+        expect(
+          fs.wasWrittenMatching(ENTRY, /headers\.append\(\s*"set-cookie"/),
+        ).toBe(true);
+      });
+    });
+
     describe("edge cache", () => {
       /**
        * Lifts the generated `isEdgeCacheable` predicate out of the emitted

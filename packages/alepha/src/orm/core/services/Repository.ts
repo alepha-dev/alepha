@@ -64,6 +64,7 @@ import { DbError } from "../errors/DbError.ts";
 import { DbForeignKeyError } from "../errors/DbForeignKeyError.ts";
 import { DbNotNullError } from "../errors/DbNotNullError.ts";
 import { DbTableNotFoundError } from "../errors/DbTableNotFoundError.ts";
+import { DbTimeoutError } from "../errors/DbTimeoutError.ts";
 import { DbVersionMismatchError } from "../errors/DbVersionMismatchError.ts";
 import { getAttrFields, type PgAttrField } from "../helpers/pgAttr.ts";
 import type {
@@ -1784,6 +1785,16 @@ export abstract class Repository<T extends ZObject> {
   }
 
   protected handleError(error: unknown, message: string): DbError {
+    // Before any pattern matching: drizzle demotes the driver's error to
+    // `cause` and throws its own, so a timeout arrives here disguised as a
+    // generic `Failed query: ...`. Classifying it by message would be
+    // hopeless, and reporting it as a 500 would hide the one thing the
+    // caller can act on, which is to retry later.
+    const timeout = DbTimeoutError.from(error);
+    if (timeout) {
+      return timeout;
+    }
+
     if (!(error instanceof Error)) {
       return new DbError(message);
     }

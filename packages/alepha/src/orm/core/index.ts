@@ -1,6 +1,10 @@
 import { $module, type Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import type { PgAsyncTransaction } from "drizzle-orm/pg-core";
+import type {
+  D1DatabaseSession,
+  D1SessionState,
+} from "./interfaces/D1Database.ts";
 import { DbMigrationMode } from "./modes/DbMigrationMode.ts";
 import { $entity } from "./primitives/$entity.ts";
 import { $sequence } from "./primitives/$sequence.ts";
@@ -27,6 +31,35 @@ declare module "alepha" {
      * outermost `transactional()` block and drained once its COMMIT returns.
      */
     "alepha.orm.afterCommit"?: Array<() => void | Promise<void>>;
+    /**
+     * The D1 session serving the current async context, when the driver runs
+     * in `sessions` mode.
+     *
+     * Per-context rather than per-provider because a session is the unit of
+     * sequential consistency for one logical request: sharing one across
+     * concurrent invocations would hand request B the bookmark request A
+     * established, which is the stale-read bug replication is supposed to
+     * avoid.
+     */
+    "alepha.orm.d1.session"?: D1SessionState;
+    /**
+     * A bookmark supplied by whoever owns the request, read when the session
+     * opens.
+     *
+     * This slot is the seam that lets the HTTP layer carry a bookmark across
+     * requests without the ORM importing the server module, which it does
+     * not do anywhere else and should not start doing for this.
+     */
+    "alepha.orm.d1.bookmark"?: string;
+    /**
+     * A holder the request owner creates so it can read the session back.
+     *
+     * `store.set` only ever writes to the innermost async layer, and a handler
+     * runs several layers below whoever owns the request, so the session slot
+     * above cannot be read from outside. Mutating this object crosses that
+     * boundary, the same way `alepha.orm.afterCommit` does.
+     */
+    "alepha.orm.d1.carrier"?: { session?: D1DatabaseSession };
   }
   interface Hooks {
     /**
