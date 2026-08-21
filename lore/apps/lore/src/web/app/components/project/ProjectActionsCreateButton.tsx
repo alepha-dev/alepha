@@ -36,8 +36,10 @@ import {
   UserPlus,
 } from "lucide-react";
 import { useState } from "react";
+
 import type { InvitationController } from "@/api/controllers/InvitationController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
+
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { kanbanReloadAtom } from "../../atoms/kanbanProjectAtom.ts";

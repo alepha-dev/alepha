@@ -9,6 +9,7 @@ import {
   NotFoundError,
   okSchema,
 } from "alepha/server";
+
 // The helper the UI labels a user with, so a name reads identically in a
 // thread and on the rest of the page. Same precedent as `ProjectController`.
 import { displayName } from "../../web/app/services/displayName.ts";

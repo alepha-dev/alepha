@@ -6,6 +6,7 @@ import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { LinkProvider } from "alepha/server/links";
 import { describe, it } from "vitest";
+
 import QuestDependencyPicker from "./QuestDependencyPicker.tsx";
 
 interface FakeQuest {
@@ -33,8 +34,8 @@ class FakeLinkProvider extends LinkProvider {
   plannedEpicIds = new Set<number>();
   calls: Array<{ query?: { includePlanned?: boolean } }> = [];
 
-  // biome-ignore lint/suspicious/noExplicitAny: matches the real client's own loose virtual-action shape
-  override client<T extends object>(): any {
+  // matches the real client's own loose virtual-action shape
+  override client(): any {
     return {
       getQuests: async (config: { query?: { includePlanned?: boolean } }) => {
         this.calls.push({ query: config.query });

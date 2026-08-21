@@ -1,4 +1,5 @@
 import { describe, it } from "vitest";
+
 import { expandCommentReferences } from "../src/web/app/components/project/quest/commentReferences.ts";
 
 /**

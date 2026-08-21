@@ -3,6 +3,7 @@ import { Input } from "@alepha/ui/components/ui/input";
 import { useI18n } from "alepha/react/i18n";
 import { X } from "lucide-react";
 import { type KeyboardEvent, useState } from "react";
+
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface MilestoneTagInputProps {

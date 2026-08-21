@@ -1,6 +1,8 @@
 import { useI18n } from "alepha/react/i18n";
 import { useMemo } from "react";
+
 import type { I18n } from "@/web/app/services/I18n.ts";
+
 import type { QuestlineAreaColor } from "./questlineAreaColor.ts";
 import type { QuestlineState, QuestlineTrack } from "./questlineLayout.ts";
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { bucketIndex, METRICS, VITALS_BUCKETS } from "../sigilVitalsBuckets.ts";
 
 describe("sigilVitalsBuckets", () => {

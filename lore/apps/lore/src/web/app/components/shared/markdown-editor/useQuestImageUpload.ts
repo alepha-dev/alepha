@@ -1,5 +1,6 @@
 import { useClient } from "alepha/react";
 import { useCallback } from "react";
+
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 
 /**

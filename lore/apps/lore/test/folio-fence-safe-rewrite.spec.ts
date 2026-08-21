@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { splitMarkdownCode } from "../src/web/app/components/folios/markdownCodeSegments.ts";
 import { rewriteFolioWikiLinks } from "../src/web/app/components/folios/rewriteFolioWikiLinks.ts";
 

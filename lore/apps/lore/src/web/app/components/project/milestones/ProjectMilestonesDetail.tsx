@@ -9,9 +9,11 @@ import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Copy, Download, Save } from "lucide-react";
 import { useEffect, useState } from "react";
+
 import type { MilestoneController } from "@/api/controllers/MilestoneController.ts";
 import type { Milestone } from "@/api/entities/milestones.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+
 import MilestoneTagInput from "./MilestoneTagInput.tsx";
 
 export interface ProjectMilestonesDetailProps {

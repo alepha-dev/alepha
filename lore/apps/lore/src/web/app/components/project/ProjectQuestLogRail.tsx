@@ -2,6 +2,7 @@ import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { BookOpen, PanelLeftOpen } from "lucide-react";
 import type { ReactElement } from "react";
+
 import { currentAssignedQuestsAtom } from "../../atoms/currentAssignedQuestsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 

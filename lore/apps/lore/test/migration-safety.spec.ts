@@ -1,9 +1,11 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
+
 import { Alepha } from "alepha";
 import { $repository } from "alepha/orm";
 import { describe, it } from "vitest";
+
 import { blights } from "../src/api/entities/blights.ts";
 import { projects } from "../src/api/entities/projects.ts";
 import { sigilErrorGroups } from "../src/api/entities/sigilErrorGroups.ts";

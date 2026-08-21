@@ -1,6 +1,7 @@
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useI18n } from "alepha/react/i18n";
 import { Tags as TagsIcon } from "lucide-react";
+
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 

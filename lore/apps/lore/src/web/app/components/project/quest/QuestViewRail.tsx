@@ -19,6 +19,7 @@ import {
   UserMinus,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
@@ -26,14 +27,15 @@ import { currentMilestonesAtom } from "@/web/app/atoms/currentMilestonesAtom.ts"
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { displayName } from "@/web/app/services/displayName.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
-import { UserAvatar } from "../../shared/UserAvatar.tsx";
+
 import { useProjectUsers } from "../../shared/useProjectUsers.ts";
+import { UserAvatar } from "../../shared/UserAvatar.tsx";
+import { formatEstimate } from "./questEstimate.ts";
 import QuestViewDuplicateButton from "./QuestViewDuplicateButton.tsx";
 import QuestViewRailRow from "./QuestViewRailRow.tsx";
 import QuestViewRailTags from "./QuestViewRailTags.tsx";
 import QuestViewSettings from "./QuestViewSettings.tsx";
 import QuestViewTimer from "./QuestViewTimer.tsx";
-import { formatEstimate } from "./questEstimate.ts";
 
 export interface QuestViewRailProps {
   quest: QuestResource;
@@ -86,6 +88,8 @@ const QuestViewRail = (props: QuestViewRailProps) => {
   // the per-project number and title, which only the epic list carries.
   useEffect(() => {
     if (!project?.id || !quest.epicId || !epicsEnabled) {
+      // Early return of the epic fetch below.
+      // oxlint-disable-next-line react/set-state-in-effect
       setEpic(undefined);
       return;
     }

@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
+
 import { describe, it } from "vitest";
 
 const MIGRATIONS = join(import.meta.dirname, "../migrations/sqlite");

@@ -18,6 +18,7 @@ import {
   Trash2,
 } from "lucide-react";
 import type { ReactElement } from "react";
+
 import type { AppRouter } from "../../../../AppRouter.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 import type { FolioTreeNode } from "./folioTreeModel.ts";

@@ -1,4 +1,5 @@
 import { $repository } from "alepha/orm";
+
 import { blights } from "../entities/blights.ts";
 import { sigilErrorGroups } from "../entities/sigilErrorGroups.ts";
 import { type Sigil, sigils } from "../entities/sigils.ts";

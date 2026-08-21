@@ -1,5 +1,5 @@
-import { Control } from "@alepha/ui/components/control/control";
 import { ControlUpload } from "@alepha/ui/components/control-upload/control-upload";
+import { Control } from "@alepha/ui/components/control/control";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
@@ -20,7 +20,9 @@ import {
   Tag,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
+
 import type { AppRouter } from "../../AppRouter.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";

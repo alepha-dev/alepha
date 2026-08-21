@@ -1,5 +1,6 @@
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
+
 import { InsightsController } from "../../api/controllers/InsightsController.ts";
 import {
   insightsReadParamsSchema,

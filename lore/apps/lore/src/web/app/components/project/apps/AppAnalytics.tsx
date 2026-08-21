@@ -27,6 +27,7 @@ import {
   Users,
 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+
 import { currentSigilInsightsAtom } from "../../../atoms/currentSigilInsightsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import AppAnalyticsEstimatedBadge from "./AppAnalyticsEstimatedBadge.tsx";

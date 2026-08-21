@@ -1,6 +1,7 @@
 import type { BadgeTone } from "@alepha/ui/components/ui/badge";
 import type { LucideIcon } from "lucide-react";
 import { CircleCheck, CircleDashed, CircleDotDashed } from "lucide-react";
+
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 
 export type EpicStatus = EpicResource["status"];

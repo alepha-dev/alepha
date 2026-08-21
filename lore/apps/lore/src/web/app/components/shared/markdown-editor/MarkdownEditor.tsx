@@ -1,4 +1,5 @@
 import { lazy, Suspense, useSyncExternalStore } from "react";
+
 import type { MarkdownEditorInnerProps } from "./MarkdownEditorInner.tsx";
 
 export type MarkdownEditorProps = MarkdownEditorInnerProps;

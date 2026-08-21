@@ -13,9 +13,11 @@ import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useStore } from "alepha/react";
 import { currentUserAtom } from "alepha/security";
 import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { MyFeedbackResource } from "@/api/schemas/myFeedbackResourceSchema.ts";
+
 import FeedbackThread from "../../project/feedback/FeedbackThread.tsx";
 import QuestTagInput from "../../project/quest/QuestTagInput.tsx";
 
@@ -47,13 +49,16 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
   const readOnly = !props.feedback || props.feedback.status !== "pending";
   const disabled = saving || readOnly;
 
-  // Re-seed the form whenever a different feedback is opened.
-  useEffect(() => {
-    if (!props.feedback) return;
+  // Re-seed the form whenever a different feedback is opened. Adjusted during
+  // render rather than from an effect, so the drawer never paints one frame of
+  // the previous feedback's text.
+  const [seededFrom, setSeededFrom] = useState(props.feedback);
+  if (props.feedback && props.feedback !== seededFrom) {
+    setSeededFrom(props.feedback);
     setTitle(props.feedback.title);
     setDescription(props.feedback.description);
     setTags(props.feedback.tags ?? []);
-  }, [props.feedback]);
+  }
 
   const save = async () => {
     if (!props.feedback) return;

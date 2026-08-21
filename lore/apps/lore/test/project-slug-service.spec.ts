@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
+
 import { projectTitleSchema } from "../src/api/schemas/projectTitleSchema.ts";
 import { ProjectSlugService } from "../src/api/services/ProjectSlugService.ts";
 

@@ -8,6 +8,7 @@ import {
   useEffect,
   useRef,
 } from "react";
+
 import type { I18n } from "../../../../services/I18n.ts";
 import type { FolioFindState } from "./useFolioFind.ts";
 

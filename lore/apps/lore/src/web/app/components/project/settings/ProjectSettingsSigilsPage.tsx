@@ -10,11 +10,13 @@ import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Ban, Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+
 import type { SigilController } from "@/api/controllers/SigilController.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentProjectMemberAtom } from "@/web/app/atoms/currentProjectMemberAtom.ts";
 import { currentSigilsAtom } from "@/web/app/atoms/currentSigilsAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+
 import TokenReveal from "../../shared/TokenReveal.tsx";
 import ProjectBlightRulesDialog from "../blights/ProjectBlightRulesDialog.tsx";
 import ProjectSettingsFeatureSection from "./ProjectSettingsFeatureSection.tsx";

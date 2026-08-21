@@ -8,6 +8,7 @@ import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
 import { Activity, Search, Trash2 } from "lucide-react";
 import { useCallback } from "react";
+
 import type { AdminProjectController } from "@/api/controllers/AdminProjectController.ts";
 import type { AdminProjectResource } from "@/api/schemas/adminProjectResourceSchema.ts";
 

@@ -1,5 +1,6 @@
 import type { EditorView } from "@codemirror/view";
 import { useState } from "react";
+
 import MarkdownEditor from "../markdown-editor/MarkdownEditor.tsx";
 import type { MarkdownEditorMode } from "../markdown-editor/MarkdownEditorInner.tsx";
 import MarkdownModeToggle from "../markdown-editor/MarkdownModeToggle.tsx";

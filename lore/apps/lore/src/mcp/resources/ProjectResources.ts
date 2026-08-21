@@ -1,5 +1,6 @@
 import { $inject } from "alepha";
 import { $resource } from "alepha/mcp";
+
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
 
 /**

@@ -2,6 +2,7 @@ import { Checkbox } from "@alepha/ui/components/ui/checkbox";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { SquareSlash } from "lucide-react";
+
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuestsAtom.ts";

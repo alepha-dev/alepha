@@ -1,4 +1,5 @@
 import { type PointerEvent, type ReactElement, useRef } from "react";
+
 import { TREE_MAX_WIDTH, TREE_MIN_WIDTH } from "../useFolioPanes.ts";
 
 export interface FolioTreeResizerProps {

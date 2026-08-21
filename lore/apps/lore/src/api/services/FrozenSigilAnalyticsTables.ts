@@ -1,5 +1,6 @@
 import { $inject } from "alepha";
 import { DatabaseProvider } from "alepha/orm";
+
 import { sigilViewsHourly } from "../entities/sigilViewsHourly.ts";
 import { sigilVitalsHourly } from "../entities/sigilVitalsHourly.ts";
 

@@ -2,7 +2,9 @@ import { useStore } from "alepha/react";
 import { useRouter } from "alepha/react/router";
 import { type ReactElement, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+
 import type { FolioResource } from "@/api/schemas/folioResourceSchema.ts";
+
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { preloadMarkdownEditor } from "../../shared/markdown-editor/MarkdownEditor.tsx";

@@ -8,9 +8,11 @@ import {
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { X } from "lucide-react";
+
 import type { Folio } from "@/api/entities/folios.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+
 import EpicFolioPicker from "./EpicFolioPicker.tsx";
 
 export interface ProjectEpicFoliosProps {

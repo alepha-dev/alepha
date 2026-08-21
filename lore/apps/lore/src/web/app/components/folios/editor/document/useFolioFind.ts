@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+
 import { folioFindMatches, stepFolioMatch } from "./folioFindMatches.ts";
 
 /**
@@ -196,6 +197,9 @@ export const useFolioFind = (
     if (!open || !contentElement || !query.trim()) {
       clearHighlights();
       rangeCountRef.current = 0;
+      // The teardown branch of a DOM-highlighting effect: it clears ranges it
+      // painted into the document, so the count it resets belongs with them.
+      // oxlint-disable-next-line react/set-state-in-effect
       setTotal(0);
       return;
     }

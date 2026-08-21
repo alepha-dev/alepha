@@ -2,6 +2,7 @@ import { undo } from "@codemirror/commands";
 import { ensureSyntaxTree } from "@codemirror/language";
 import { EditorState, type Transaction } from "@codemirror/state";
 import { describe, expect, it } from "vitest";
+
 import { createMarkdownExtensions } from "./codeMirrorSetup.ts";
 
 /**

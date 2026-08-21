@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import { describe, it } from "vitest";
+
 import { blights } from "../src/api/entities/blights.ts";
 import { projects } from "../src/api/entities/projects.ts";
 import { sigils } from "../src/api/entities/sigils.ts";

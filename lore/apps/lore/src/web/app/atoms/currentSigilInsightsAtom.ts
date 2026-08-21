@@ -1,4 +1,5 @@
 import { $atom } from "alepha";
+
 import { insightsResourceSchema } from "@/api/schemas/insightsResourceSchema.ts";
 
 /**

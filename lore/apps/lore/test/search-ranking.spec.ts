@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { orderSearchHits } from "@/api/searchRanking.ts";
 
 const hit = (kind: string, title: string) => ({ kind, title });

@@ -5,11 +5,13 @@ import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { Send } from "lucide-react";
 import { type KeyboardEvent, useState } from "react";
+
 import type { QuestCommentController } from "@/api/controllers/QuestCommentController.ts";
 import type { QuestCommentResource } from "@/api/schemas/questCommentResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+
 import { UserAvatar } from "../../shared/UserAvatar.tsx";
 
 export interface QuestDiscussionComposerProps {

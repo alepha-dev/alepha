@@ -8,6 +8,7 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { AlephaServerCors } from "alepha/server/cors";
 import { describe, expect, it } from "vitest";
+
 import { blights } from "../src/api/entities/blights.ts";
 import { LoreAnalytics } from "../src/api/entities/loreAnalytics.ts";
 import { projects } from "../src/api/entities/projects.ts";
@@ -811,7 +812,7 @@ describe("sigil ingest", () => {
   });
 
   it("keeps two apps apart in the groups and together in the inbox", async () => {
-    const { alepha, probe, project, sigil, post } = await setup();
+    const { alepha, probe, project, post } = await setup();
 
     const tokens = alepha.inject(SigilTokenService);
     const staging = await tokens.mint(project.id);

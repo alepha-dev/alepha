@@ -4,10 +4,12 @@ import { useAlepha, useClient, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Hourglass } from "lucide-react";
+
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { userProjectsAtom } from "@/web/app/atoms/userProjectsAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+
 import ProjectSettingsFeatureSection from "./ProjectSettingsFeatureSection.tsx";
 import { useProjectFeatureToggle } from "./useProjectFeatureToggle.ts";
 

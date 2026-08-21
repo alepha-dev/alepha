@@ -1,6 +1,8 @@
 import { Skeleton } from "@alepha/ui/components/ui/skeleton";
 import { useI18n } from "alepha/react/i18n";
+
 import type { DashboardCardValue as CardValue } from "@/api/schemas/dashboardCardValueSchema.ts";
+
 import type { I18n } from "../../services/I18n.ts";
 import { DASHBOARD_NO_VALUE } from "./dashboardChips.ts";
 

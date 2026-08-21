@@ -24,9 +24,11 @@ import {
   Type,
 } from "lucide-react";
 import { type ReactElement, useEffect, useRef, useState } from "react";
+
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { FolioRevision } from "@/api/entities/folioRevisions.ts";
 import type { Folio } from "@/api/entities/folios.ts";
+
 import type { I18n } from "../../../../services/I18n.ts";
 
 export interface FolioHistoryTabProps {

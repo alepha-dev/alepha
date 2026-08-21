@@ -2,6 +2,7 @@ import type { CompletionSource } from "@codemirror/autocomplete";
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { type MouseEvent as ReactMouseEvent, useEffect, useRef } from "react";
+
 import { createMarkdownExtensions } from "./codeMirrorSetup.ts";
 import { imageMarkdown, insertAtCursor } from "./insertAtCursor.ts";
 

@@ -1,6 +1,7 @@
 import { Button } from "@alepha/ui/components/ui/button";
 import { useI18n } from "alepha/react/i18n";
 import { Columns3, List } from "lucide-react";
+
 import type { QuestsView } from "../../atoms/questsViewAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 

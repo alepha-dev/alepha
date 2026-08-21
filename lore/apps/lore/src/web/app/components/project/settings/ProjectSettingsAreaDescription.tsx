@@ -10,6 +10,7 @@ import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
+
 import type { AreaController } from "@/api/controllers/AreaController.ts";
 import type { AreaDetail } from "@/api/schemas/areaResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";

@@ -5,6 +5,7 @@ import { useI18n } from "alepha/react/i18n";
 import { Link, useRouterState } from "alepha/react/router";
 import { ArrowLeft } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
@@ -140,6 +141,10 @@ const QuestGraph = () => {
   }, [project?.id, questApi]);
 
   useEffect(() => {
+    // An effect that starts an I/O load is the "synchronize with an external
+    // system" case the rule exempts; it reports it because the loader flips
+    // `loading` before its first await.
+    // oxlint-disable-next-line react/set-state-in-effect
     void reload();
   }, [reload]);
 
@@ -152,11 +157,12 @@ const QuestGraph = () => {
   // Default selection: the focused quest (the URL one) in focused mode.
   // Subset mode has no URL to read a target from, so it falls back to the
   // first quest in step/shortId order instead.
-  useEffect(() => {
-    if (selectedId != null) return;
+  // Settles in one pass — once `selectedId` is set the guard stops it — so
+  // this belongs in render, not in an effect.
+  if (selectedId == null) {
     const focused = chain.find((q) => q.shortId === shortId);
     if (focused) setSelectedId(focused.id);
-  }, [chain, shortId, selectedId]);
+  }
 
   // Fetch the full description when selection changes. The chain
   // endpoint only carries the title/status/dependsOn — pull the body

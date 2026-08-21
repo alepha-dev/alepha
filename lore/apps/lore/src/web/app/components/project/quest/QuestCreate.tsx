@@ -26,6 +26,7 @@ import {
   Tent,
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
+
 import type { AreaController } from "@/api/controllers/AreaController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
@@ -35,6 +36,7 @@ import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentAreasAtom } from "@/web/app/atoms/currentAreasAtom.ts";
 import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuestsAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+
 import { useLoreEditorControl } from "../../shared/element/useLoreEditorControl.ts";
 import QuestAttachments from "./QuestAttachments.tsx";
 import QuestCreateObjectives from "./QuestCreateObjectives.tsx";

@@ -2,16 +2,18 @@ import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { MessageSquare } from "lucide-react";
 import { useEffect, useState } from "react";
+
 import type { QuestCommentController } from "@/api/controllers/QuestCommentController.ts";
 import type { QuestCommentResource } from "@/api/schemas/questCommentResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+
 import { useProjectUsers } from "../../shared/useProjectUsers.ts";
 import QuestDiscussionComment from "./QuestDiscussionComment.tsx";
 import QuestDiscussionComposer from "./QuestDiscussionComposer.tsx";
+import { buildQuestDiscussionEntries } from "./questDiscussionEntries.ts";
 import QuestDiscussionEvent from "./QuestDiscussionEvent.tsx";
 import QuestViewCollapsibleBlock from "./QuestViewCollapsibleBlock.tsx";
-import { buildQuestDiscussionEntries } from "./questDiscussionEntries.ts";
 
 export interface QuestDiscussionProps {
   quest: QuestResource;

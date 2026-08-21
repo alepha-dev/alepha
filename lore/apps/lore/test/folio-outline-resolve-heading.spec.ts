@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import type { FolioOutlineHeading } from "@/web/app/components/folios/editor/inspector/markdownOutline.ts";
 import {
   type FolioOutlineDomHeading,

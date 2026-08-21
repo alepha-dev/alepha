@@ -1,3 +1,7 @@
+// oxlint-disable react/globals -- Test harness. Each case renders a throwaway
+// component whose only job is to hand the hook's return value back to the
+// assertion, so the writes to the enclosing `let` are the measurement, not a
+// side effect the component depends on.
 import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
 import { render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
@@ -5,7 +9,9 @@ import { AlephaLogger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
 import { LinkProvider } from "alepha/server/links";
 import { describe, it } from "vitest";
+
 import type { Folio } from "@/api/entities/folios.ts";
+
 import { forgetProtectedKey } from "../protectedFolioKeys.ts";
 import {
   type UseFolioActionsResult,
@@ -64,8 +70,8 @@ interface RecordedUpdate {
 class FakeLinkProvider extends LinkProvider {
   updates: RecordedUpdate[] = [];
 
-  // biome-ignore lint/suspicious/noExplicitAny: matches the real client's own loose virtual-action shape
-  override client<T extends object>(): any {
+  // matches the real client's own loose virtual-action shape
+  override client(): any {
     return {
       update: async (config: {
         params: { id: string };

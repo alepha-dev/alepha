@@ -3,6 +3,7 @@ import type { RealmConfig } from "alepha/api/users";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useEffect } from "react";
+
 import type { AppRouter } from "../../AppRouter.ts";
 import type { I18n } from "../../services/I18n.ts";
 import PageHeader from "../shared/header/PageHeader.tsx";

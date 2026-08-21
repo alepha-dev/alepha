@@ -4,6 +4,7 @@ import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { X } from "lucide-react";
 import { type KeyboardEvent, useEffect, useState } from "react";
+
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 

@@ -14,10 +14,12 @@ import { useFieldValue, useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Loader2 } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
+
 import type { KanbanController } from "@/api/controllers/KanbanController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
+
 import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
 import { currentAssignedQuestsAtom } from "../../atoms/currentAssignedQuestsAtom.ts";
 import {
@@ -69,13 +71,6 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   const [tagFilterValue] = useFieldValue(filterForm.input.tags);
   const tagFilter = (tagFilterValue as string[] | undefined) ?? [];
   const [knownTags, setKnownTags] = useState<string[]>([]);
-  useEffect(() => {
-    if (!project?.id) return;
-    questApi
-      .listQuestTags({ query: { projectId: project.id } })
-      .then(setKnownTags)
-      .catch(() => null);
-  }, [project?.id]);
   const [selectedQuest, setSelectedQuest] = useState<QuestResource | null>(
     null,
   );
@@ -88,13 +83,17 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   const dndId = useId();
 
   useEffect(() => {
+    if (!project?.id) return;
+    questApi
+      .listQuestTags({ query: { projectId: project.id } })
+      .then(setKnownTags)
+      .catch(() => null);
+  }, [project?.id]);
+
+  useEffect(() => {
     setKanbanProject({ project });
     return () => setKanbanProject(undefined as any);
   }, [project]);
-
-  useEffect(() => {
-    if (reloadKey?.key) reload();
-  }, [reloadKey]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -182,6 +181,14 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // An effect that starts an I/O load is the "synchronize with an external
+    // system" case the rule exempts; it reports it because the loader flips
+    // `loading` before its first await.
+    // oxlint-disable-next-line react/set-state-in-effect
+    if (reloadKey?.key) reload();
+  }, [reloadKey]);
 
   const closeDrawer = () => {
     setSelectedQuest(null);

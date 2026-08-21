@@ -10,6 +10,7 @@ import {
 import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 import { $etag } from "alepha/server/etag";
+
 import { members } from "../entities/members.ts";
 import { projects } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
@@ -108,7 +109,7 @@ export class ProjectReportsController {
       response: reportsOverviewSchema,
     },
     handler: async ({ params, user }) => {
-      const { project } = await this.security.assertMember(params.id, user);
+      await this.security.assertMember(params.id, user);
 
       const inScope = this.questInScope(
         await this.epicVisibility.plannedEpicIds(params.id),
@@ -322,7 +323,7 @@ export class ProjectReportsController {
       response: reportsQuestsSchema,
     },
     handler: async ({ params, user }) => {
-      const { project } = await this.security.assertMember(params.id, user);
+      await this.security.assertMember(params.id, user);
 
       const inScope = this.questInScope(
         await this.epicVisibility.plannedEpicIds(params.id),
@@ -524,7 +525,7 @@ export class ProjectReportsController {
       response: reportsMembersSchema,
     },
     handler: async ({ params, user }) => {
-      const { project } = await this.security.assertMember(params.id, user);
+      await this.security.assertMember(params.id, user);
 
       const inScope = this.questInScope(
         await this.epicVisibility.plannedEpicIds(params.id),

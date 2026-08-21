@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
+
 import { AlephaLoreParser } from "../src/api/services/parsers/AlephaLoreParser.ts";
 
 describe("AlephaLoreParser", () => {

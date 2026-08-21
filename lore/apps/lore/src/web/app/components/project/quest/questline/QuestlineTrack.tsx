@@ -1,5 +1,5 @@
-import QuestlineCard from "./QuestlineCard.tsx";
 import type { QuestlineAreaColor } from "./questlineAreaColor.ts";
+import QuestlineCard from "./QuestlineCard.tsx";
 import type {
   QuestlineNode,
   QuestlineTrack as Track,

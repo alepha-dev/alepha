@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+
 import {
   createProjectViaWizard,
   newUserContext,
@@ -16,7 +17,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
     const aEmail = `inviter-${Date.now()}@example.com`;
     await registerAndVerify(page, aEmail, "GoodPassw0rd");
     const projectTitle = `Inv${Date.now()}`.slice(0, 20);
-    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+    const { slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
     );
@@ -79,7 +80,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
     const aEmail = `inviter-${Date.now()}@example.com`;
     await registerAndVerify(page, aEmail, "GoodPassw0rd");
     const projectTitle = `Dec${Date.now()}`.slice(0, 20);
-    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+    const { slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
     );
@@ -137,7 +138,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
     const aEmail = `inviter-${Date.now()}@example.com`;
     await registerAndVerify(page, aEmail, "GoodPassw0rd");
     const projectTitle = `Bnd${Date.now()}`.slice(0, 20);
-    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+    const { slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
     );
@@ -174,7 +175,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
     const aEmail = `inviter-${Date.now()}@example.com`;
     const target = `dup-${Date.now()}@example.com`;
     await registerAndVerify(page, aEmail, "GoodPassw0rd");
-    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+    const { slug: projectSlug } = await createProjectViaWizard(
       page,
       `Dup${Date.now()}`.slice(0, 20),
     );
@@ -209,7 +210,7 @@ test.describe("Invitation flow (in-app inbox)", () => {
     test.setTimeout(90_000);
     const aEmail = `selfinv-${Date.now()}@example.com`;
     await registerAndVerify(page, aEmail, "GoodPassw0rd");
-    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+    const { slug: projectSlug } = await createProjectViaWizard(
       page,
       `Slf${Date.now()}`.slice(0, 20),
     );

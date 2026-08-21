@@ -9,11 +9,13 @@ import {
   useRef,
   useState,
 } from "react";
+
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
+
 import type { I18n } from "../../services/I18n.ts";
 import type { BrokenWikiLinkReason } from "./folioWikiLinkResolver.ts";
 import { type BlobRef, BROKEN_HREF_PREFIX } from "./rewriteFolioWikiLinks.ts";
@@ -249,7 +251,7 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
   }, []);
 
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: event delegation over rendered MarkdownView anchors; keyboard a11y handled by the underlying anchors.
+    // event delegation over rendered MarkdownView anchors; keyboard a11y handled by the underlying anchors.
     <div
       className="relative [&_a[href^='lore-broken:']]:text-destructive [&_a[href^='lore-broken:']]:decoration-destructive/40 [&_a[href^='lore-broken:']]:decoration-wavy [&_a[href^='lore-broken:']]:cursor-help"
       onMouseOver={(e) => handleEnter(e.target)}
@@ -344,6 +346,10 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
 
   useEffect(() => {
     if (cache.has(key)) {
+      // Cache-hit branch of the preview fetch. The cache is a module-level Map
+      // mutated by other instances of this hook, so a render-phase read could
+      // return a different answer than the commit that follows it.
+      // oxlint-disable-next-line react/set-state-in-effect
       setData(cache.get(key) ?? null);
       setLoading(false);
       return;
@@ -441,7 +447,7 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
   );
 
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: presentational popover that follows the anchor; no keyboard interaction expected.
+    // presentational popover that follows the anchor; no keyboard interaction expected.
     <div
       ref={props.cardRef}
       style={{ position: "fixed", top, left, zIndex: 50 }}

@@ -20,7 +20,9 @@ import {
   Swords,
 } from "lucide-react";
 import { type ReactElement, useEffect, useState } from "react";
+
 import type { SearchController } from "@/api/controllers/SearchController.ts";
+
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import {
@@ -122,12 +124,16 @@ const Spotlight = (): ReactElement => {
     setHits([]);
   };
 
-  // Reopening must not flash the previous search's hits.
-  useEffect(() => {
-    if (!spotlight.open) return;
-    setQuery("");
-    setHits([]);
-  }, [spotlight.open]);
+  // Reopening must not flash the previous search's hits — which is exactly why
+  // this runs during render rather than after the commit that would show them.
+  const [wasOpen, setWasOpen] = useState(spotlight.open);
+  if (spotlight.open !== wasOpen) {
+    setWasOpen(spotlight.open);
+    if (spotlight.open) {
+      setQuery("");
+      setHits([]);
+    }
+  }
 
   // Capture phase for the same reason the folio workspace binds its shortcuts
   // there: ⌘K reaches a focused input otherwise.

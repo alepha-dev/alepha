@@ -4,6 +4,7 @@ import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { ArrowLeft, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
+
 import type { DashboardCardResource } from "@/api/schemas/dashboardCardResourceSchema.ts";
 import type { DashboardScope } from "@/api/schemas/dashboardScopeSchema.ts";
 import type { ProjectOverviewResource } from "@/api/schemas/projectResourceSchema.ts";
@@ -11,13 +12,14 @@ import {
   DashboardMetricCatalog,
   type DashboardMetricDescriptor,
 } from "@/api/services/DashboardMetricCatalog.ts";
+
 import type { I18n } from "../../services/I18n.ts";
 import DashboardCatalogueRow from "./DashboardCatalogueRow.tsx";
+import { dashboardFilterFields } from "./dashboardFilterFields.ts";
 import DashboardFilterStep from "./DashboardFilterStep.tsx";
 import DashboardScopeStep, {
   type DashboardScopeApp,
 } from "./DashboardScopeStep.tsx";
-import { dashboardFilterFields } from "./dashboardFilterFields.ts";
 
 export interface DashboardCatalogueProps {
   cards: DashboardCardResource[];

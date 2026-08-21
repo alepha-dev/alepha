@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { SigilQueue } from "../SigilQueue.ts";
 
 describe("SigilQueue", () => {

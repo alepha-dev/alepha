@@ -1,4 +1,5 @@
 import { type Infer, z } from "alepha";
+
 import { SIGIL_FEEDBACK_POSITIONS } from "../sigilFeedbackPosition.ts";
 
 /**

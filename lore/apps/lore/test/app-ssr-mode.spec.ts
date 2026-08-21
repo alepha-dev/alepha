@@ -2,6 +2,7 @@ import { AdminRouter } from "@alepha/ui/components/admin/admin-router";
 import { Alepha } from "alepha";
 import { AlephaReactRouter, ReactPageProvider } from "alepha/react/router";
 import { afterEach, beforeEach, describe, it } from "vitest";
+
 import { AppRouter } from "../src/web/app/AppRouter.ts";
 
 /**

@@ -1,7 +1,9 @@
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import type { ReactElement } from "react";
+
 import type { Folio } from "@/api/entities/folios.ts";
+
 import { userFoliosAtom } from "../../../../atoms/userFoliosAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 

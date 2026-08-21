@@ -3,6 +3,7 @@ import { $hook, $inject } from "alepha";
 // declares `job:error` without pulling the jobs runtime into an app that has
 // none. The hook simply never fires there.
 import type {} from "alepha/api/jobs";
+
 import { sigilScrubUrl } from "../shared/sigilScrubUrl.ts";
 import { SigilSinkProvider } from "./SigilSinkProvider.ts";
 

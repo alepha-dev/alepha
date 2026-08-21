@@ -4,10 +4,12 @@ import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { ArrowUpRight, File as FileIcon } from "lucide-react";
 import type { ReactElement } from "react";
+
 import type {
   FolioLinks,
   FolioResource,
 } from "@/api/schemas/folioResourceSchema.ts";
+
 import type { AppRouter } from "../../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";

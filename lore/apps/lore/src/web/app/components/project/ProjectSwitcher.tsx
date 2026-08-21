@@ -14,6 +14,7 @@ import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { Check, ChevronsUpDown, Home, LayoutGrid, Plus } from "lucide-react";
+
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";

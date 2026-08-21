@@ -3,8 +3,10 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { GripVertical } from "lucide-react";
 import type { DragEvent } from "react";
+
 import type { DashboardCardResource } from "@/api/schemas/dashboardCardResourceSchema.ts";
 import type { DashboardCardValue as CardValue } from "@/api/schemas/dashboardCardValueSchema.ts";
+
 import type { AppRouter } from "../../AppRouter.ts";
 import type { I18n } from "../../services/I18n.ts";
 import DashboardCardFooter from "./DashboardCardFooter.tsx";

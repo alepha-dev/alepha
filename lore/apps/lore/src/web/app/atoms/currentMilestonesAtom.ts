@@ -1,4 +1,5 @@
 import { $atom, z } from "alepha";
+
 import { milestones } from "@/api/entities/milestones.ts";
 
 export const currentMilestonesAtom = $atom({

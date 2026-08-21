@@ -1,4 +1,5 @@
 import { z } from "alepha";
+
 import { sigilConfig } from "./shared/schemas/sigilConfig.ts";
 
 /** The commons an app reports to when it names no other. */

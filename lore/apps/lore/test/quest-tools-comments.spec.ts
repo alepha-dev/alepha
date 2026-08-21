@@ -7,6 +7,7 @@ import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity, currentUserAtom } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { describe, expect, it } from "vitest";
+
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
@@ -47,7 +48,7 @@ const setup = async () => {
       return fn();
     });
 
-  // biome-ignore lint/suspicious/noExplicitAny: mirrors quest-tools-epic.spec.ts's own tool-execute helper
+  // mirrors quest-tools-epic.spec.ts's own tool-execute helper
   const call = (tool: any, params: Record<string, unknown>, userId = OWNER) =>
     asUser(userId, () => tool.execute(params));
 

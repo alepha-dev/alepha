@@ -2,6 +2,7 @@ import { $inject } from "alepha";
 import { FileService, files } from "alepha/api/files";
 import { $repository, $sequence } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";
+
 // A zero-dependency pure helper, deliberately shared with the browser: the
 // two writers and the reader of an `assets/` reference must agree on the
 // encoding exactly, and a second copy here is how that stops being true.

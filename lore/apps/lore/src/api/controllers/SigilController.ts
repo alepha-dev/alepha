@@ -9,6 +9,7 @@ import {
   NotFoundError,
   okSchema,
 } from "alepha/server";
+
 import { SIGIL_KINDS, type Sigil, sigils } from "../entities/sigils.ts";
 import { APP_NAME_PATTERN, appNameSchema } from "../schemas/appNameSchema.ts";
 import {

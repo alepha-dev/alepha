@@ -1,10 +1,16 @@
+// oxlint-disable react/globals -- Test harness. Each case renders a throwaway
+// component whose only job is to hand the hook's return value back to the
+// assertion, so the writes to the enclosing `let` are the measurement, not a
+// side effect the component depends on.
 import { fireEvent, render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
 import { act } from "react";
 import { describe, it } from "vitest";
+
 import type { Folio } from "@/api/entities/folios.ts";
+
 import {
   type FolioDraft,
   type FolioDraftValues,

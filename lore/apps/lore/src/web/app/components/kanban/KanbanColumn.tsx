@@ -2,7 +2,9 @@ import { Button } from "@alepha/ui/components/ui/button";
 import { useDroppable } from "@dnd-kit/core";
 import { useI18n } from "alepha/react/i18n";
 import { useMemo, useState } from "react";
+
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
+
 import type { I18n } from "../../services/I18n.ts";
 import KanbanCard from "./KanbanCard.tsx";
 

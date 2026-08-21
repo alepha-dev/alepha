@@ -1,4 +1,5 @@
 import { $inject } from "alepha";
+
 import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
 import type { OpenBlightsFilters } from "../schemas/openBlightsFiltersSchema.ts";
 import { DashboardMetricCatalog } from "./DashboardMetricCatalog.ts";

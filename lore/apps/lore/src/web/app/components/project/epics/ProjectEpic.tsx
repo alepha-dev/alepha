@@ -10,6 +10,7 @@ import { useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { BookOpen, FileText, Pencil, Swords, Workflow } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
+
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
@@ -20,6 +21,7 @@ import { currentEpicAtom } from "@/web/app/atoms/currentEpicAtom.ts";
 import { currentEpicCountAtom } from "@/web/app/atoms/currentEpicCountAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
 import EpicStatusControl from "./EpicStatusControl.tsx";
 import ProjectEpicAside from "./ProjectEpicAside.tsx";
@@ -141,9 +143,17 @@ const ProjectEpic = (props: ProjectEpicProps) => {
   }, [project?.id, epic.id, folioApi, toaster]);
 
   useEffect(() => {
+    // An effect that starts an I/O load is the "synchronize with an external
+    // system" case the rule exempts; it reports it because the loader flips
+    // `loading` before its first await.
+    // oxlint-disable-next-line react/set-state-in-effect
     void reloadQuests();
   }, [reloadQuests]);
   useEffect(() => {
+    // An effect that starts an I/O load is the "synchronize with an external
+    // system" case the rule exempts; it reports it because the loader flips
+    // `loading` before its first await.
+    // oxlint-disable-next-line react/set-state-in-effect
     void reloadFolios();
   }, [reloadFolios]);
 

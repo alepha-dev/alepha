@@ -1,7 +1,9 @@
 import { cn } from "@alepha/ui/lib/utils";
 import { ChevronDown } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
+
 import QuestItem from "./QuestItem.tsx";
 
 export interface QuestGroupProps {
@@ -21,11 +23,13 @@ const QuestGroup = (props: QuestGroupProps) => {
   const collapseCollapsed = props.collapseSignal?.collapsed ?? false;
   // Apply the global directive when its version bumps. Local toggles still
   // override afterwards until the next bump — intentionally keyed on
-  // collapseVersion only.
-  useEffect(() => {
-    if (!props.collapseSignal) return;
+  // collapseVersion only. Applied during render so the expand/collapse-all
+  // button does not paint the old state first.
+  const [appliedVersion, setAppliedVersion] = useState(collapseVersion);
+  if (props.collapseSignal && collapseVersion !== appliedVersion) {
+    setAppliedVersion(collapseVersion);
     setIsExpanded(!collapseCollapsed);
-  }, [collapseVersion]);
+  }
 
   // Highest priority first. This used to sort by difficulty, which is
   // gone — priority is the field that actually answers "which of these

@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+
 import { Alepha, z } from "alepha";
 import { ApiKeyController } from "alepha/api/keys";
 import { oauthOptions } from "alepha/api/oauth";

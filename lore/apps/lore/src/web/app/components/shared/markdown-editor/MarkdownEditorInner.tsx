@@ -1,6 +1,7 @@
 import { MarkdownView } from "@alepha/ui/components/markdown-view/markdown-view";
 import type { EditorView } from "@codemirror/view";
 import { useMemo, useRef, useState } from "react";
+
 import type { WikiLinkSuggestion } from "../../folios/editor/wikilink/wikiLinkSuggestion.ts";
 import CodeMirrorEditor from "./CodeMirrorEditor.tsx";
 import MarkdownSelectionToolbar from "./MarkdownSelectionToolbar.tsx";

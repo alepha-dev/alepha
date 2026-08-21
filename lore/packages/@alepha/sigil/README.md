@@ -23,7 +23,7 @@ SIGIL_KEY=sg_my-project_…
 ```
 
 That is the whole enrolment. The key is the only secret and the only required
-variable: it authorises the reporting *and* names the project reported into, so
+variable: it authorises the reporting _and_ names the project reported into, so
 there is nothing else for the app to be told.
 
 Its absence is a supported mode rather than a misconfiguration. Without a key
@@ -33,11 +33,11 @@ anything.
 
 ### The optional two
 
-| | |
-|---|---|
-| `SIGIL_SINK` | origin of the sink. Defaults to `https://lore.alepha.dev`; set it to self-host. |
-| `SIGIL_CONFIG` | JSON object of switches over what to collect. Every field optional. |
-| `SIGIL_SALT` | overrides the secret salting the daily visitor hash. Falls back to `APP_SECRET`. |
+|                |                                                                                  |
+| -------------- | -------------------------------------------------------------------------------- |
+| `SIGIL_SINK`   | origin of the sink. Defaults to `https://lore.alepha.dev`; set it to self-host.  |
+| `SIGIL_CONFIG` | JSON object of switches over what to collect. Every field optional.              |
+| `SIGIL_SALT`   | overrides the secret salting the daily visitor hash. Falls back to `APP_SECRET`. |
 
 `SIGIL_CONFIG` turns things off, never on:
 

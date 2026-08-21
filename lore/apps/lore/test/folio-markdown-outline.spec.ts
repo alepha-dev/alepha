@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { markdownOutline } from "@/web/app/components/folios/editor/inspector/markdownOutline.ts";
 
 describe("markdownOutline", () => {

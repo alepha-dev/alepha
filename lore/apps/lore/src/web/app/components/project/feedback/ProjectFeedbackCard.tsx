@@ -10,7 +10,9 @@ import {
   Clock,
   Paperclip,
 } from "lucide-react";
+
 import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
+
 import type { I18n } from "../../../services/I18n.ts";
 
 export interface ProjectFeedbackCardProps {

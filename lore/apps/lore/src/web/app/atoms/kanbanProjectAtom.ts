@@ -1,4 +1,5 @@
 import { $atom, z } from "alepha";
+
 import { projectResourceSchema } from "@/api/schemas/projectResourceSchema.ts";
 
 export const kanbanProjectAtom = $atom({

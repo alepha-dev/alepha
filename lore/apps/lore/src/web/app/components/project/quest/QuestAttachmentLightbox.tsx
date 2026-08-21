@@ -8,7 +8,9 @@ import {
 import { useI18n } from "alepha/react/i18n";
 import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { useEffect, useState } from "react";
+
 import type { I18n } from "@/web/app/services/I18n.ts";
+
 import {
   attachmentPreview,
   PREVIEW_MAX_BYTES,
@@ -48,12 +50,17 @@ const QuestAttachmentLightbox = (props: QuestAttachmentLightboxProps) => {
   // Re-seed from the tile that was clicked. Keyed on `openId` rather than on
   // `open` so re-opening a different item moves the carousel instead of
   // resuming wherever the last visit left it.
-  useEffect(() => {
+  const [seed, setSeed] = useState({
+    openId: props.openId,
+    items: props.items,
+  });
+  if (seed.openId !== props.openId || seed.items !== props.items) {
+    setSeed({ openId: props.openId, items: props.items });
     if (props.openId) {
       const at = props.items.findIndex((it) => it.fileId === props.openId);
       setIndex(at >= 0 ? at : 0);
     }
-  }, [props.openId, props.items]);
+  }
 
   const count = props.items.length;
   const current = props.items[index];
@@ -68,6 +75,8 @@ const QuestAttachmentLightbox = (props: QuestAttachmentLightboxProps) => {
   const isTextual = preview.kind === "markdown" || preview.kind === "text";
   useEffect(() => {
     if (!props.openId || !fileId || !isTextual) {
+      // Early return of the body fetch below — nothing to read, nothing to show.
+      // oxlint-disable-next-line react/set-state-in-effect
       setText(null);
       setTooLarge(false);
       return;

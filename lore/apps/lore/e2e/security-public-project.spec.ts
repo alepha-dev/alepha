@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
+
 import {
   createProjectViaWizard,
   newUserContext,
@@ -84,10 +85,7 @@ test.describe("Project membership gate", () => {
     const ownerEmail = `owner-${Date.now()}@example.com`;
     await registerAndVerify(page, ownerEmail, "GoodPassw0rd");
     const projectTitle = `Sec${Date.now()}`.slice(0, 20);
-    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
-      page,
-      projectTitle,
-    );
+    const { id: projectId } = await createProjectViaWizard(page, projectTitle);
 
     // ── User B: separate account, never invited ──────────────────────
     const b = await newUserContext(browser, baseURL!, "stranger");

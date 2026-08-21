@@ -19,11 +19,13 @@ import { Link, useRouter } from "alepha/react/router";
 import { HttpError } from "alepha/server";
 import { MapPin } from "lucide-react";
 import { useState } from "react";
+
 import type { AreaController } from "@/api/controllers/AreaController.ts";
 import type { AreaResource } from "@/api/schemas/areaResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { descriptionSnippet } from "@/web/app/services/descriptionSnippet.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+
 import AreaMergeDialog from "./AreaMergeDialog.tsx";
 
 export interface ProjectSettingsAreasPageProps {
@@ -55,7 +57,11 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
   const toggle = (id: number) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   };

@@ -1,4 +1,5 @@
 import { $atom, z } from "alepha";
+
 import { areaResourceSchema } from "@/api/schemas/areaResourceSchema.ts";
 
 /**

@@ -10,6 +10,7 @@ import {
 } from "@alepha/ui/components/ui/menubar";
 import { useI18n } from "alepha/react/i18n";
 import type { ReactElement } from "react";
+
 import type { I18n } from "../../../../services/I18n.ts";
 import type { FolioActionHandlers } from "../useFolioActions.ts";
 import {

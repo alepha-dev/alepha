@@ -5,6 +5,7 @@ import {
   ReactRouter,
 } from "alepha/react/router";
 import { afterEach, beforeEach, describe, it } from "vitest";
+
 import { ProjectSlugService } from "../src/api/services/ProjectSlugService.ts";
 import { AppRouter } from "../src/web/app/AppRouter.ts";
 import { LoreAccountRouter } from "../src/web/app/components/account/LoreAccountRouter.ts";

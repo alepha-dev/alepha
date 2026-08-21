@@ -9,10 +9,12 @@ import { useRouter } from "alepha/react/router";
 import { HttpError } from "alepha/server";
 import { Languages, Tag } from "lucide-react";
 import { useMemo } from "react";
+
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
 import { projectTitleSchema } from "@/api/schemas/projectTitleSchema.ts";
 import { ProjectSlugService } from "@/api/services/ProjectSlugService.ts";
+
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";

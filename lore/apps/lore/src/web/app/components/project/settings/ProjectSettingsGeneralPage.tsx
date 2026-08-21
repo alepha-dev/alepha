@@ -1,5 +1,7 @@
 import { useStore } from "alepha/react";
+
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+
 import ProjectUpdate from "../ProjectUpdate.tsx";
 import ProjectSettingsDangerZoneSection from "./ProjectSettingsDangerZoneSection.tsx";
 import ProjectSettingsDataSection from "./ProjectSettingsDataSection.tsx";
