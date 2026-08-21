@@ -247,6 +247,11 @@ const QuestGraph = () => {
             size="sm"
             className="h-8 w-8 p-0"
             render={<Link href={`/${project.slug}/quests/${shortId}`} />}
+            // A link wearing a button's clothes: `nativeButton={false}` stops Base UI
+            // assuming a native <button> (it warns otherwise), and `role` puts back the
+            // link semantics its non-native branch would overwrite with `role="button"`.
+            nativeButton={false}
+            role="link"
           >
             <ArrowLeft className="size-4" />
           </Button>

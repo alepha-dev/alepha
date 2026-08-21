@@ -22,6 +22,11 @@ const PageHeader = (props: PageHeaderProps) => {
         <div className="fixed left-3 top-3 z-50">
           <Button
             render={<Link href={router.path("home")} />}
+            // A link wearing a button's clothes: `nativeButton={false}` stops Base UI
+            // assuming a native <button> (it warns otherwise), and `role` puts back the
+            // link semantics its non-native branch would overwrite with `role="button"`.
+            nativeButton={false}
+            role="link"
             variant="ghost"
             size="icon"
             aria-label="Home"

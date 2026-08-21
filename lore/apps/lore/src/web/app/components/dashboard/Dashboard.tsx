@@ -202,7 +202,6 @@ const Dashboard = () => {
       params: { cardId: card.id },
       body: input as never,
     });
-    setEditing(undefined);
     setCatalogueOpen(false);
     apply(currentCards().map((it) => (it.id === card.id ? updated : it)));
   };
@@ -216,7 +215,12 @@ const Dashboard = () => {
     <div className="bg-dotted flex h-full min-h-0 w-full overflow-hidden">
       <DashboardRail />
 
-      <main className="flex min-w-0 flex-1 flex-col overflow-y-auto px-8 pb-10 pt-11">
+      {/* `pt-4` puts the action row on the rail's brand line, and on the
+          same line the account cluster holds on every other surface
+          (`PageHeader` pins it at `top-3`). The greeting takes its
+          breathing room from the row above it now, not from the top of
+          the scroll area. */}
+      <main className="@container flex min-w-0 flex-1 flex-col overflow-y-auto px-8 pb-10 pt-4">
         <DashboardHeader
           name={displayName(auth.user, "")}
           cardCount={dashboard.cards.length}
@@ -242,20 +246,26 @@ const Dashboard = () => {
         {dashboard.cards.length === 0 && <DashboardEmpty />}
       </main>
 
-      {catalogueOpen && (
-        <DashboardCatalogue
-          cards={dashboard.cards}
-          projects={projects}
-          apps={apps}
-          editing={editing}
-          onClose={() => {
-            setEditing(undefined);
-            setCatalogueOpen(false);
-          }}
-          onAdd={onAdd}
-          onUpdate={onUpdate}
-        />
-      )}
+      {/*
+       * Kept mounted, and re-keyed rather than mounted by a condition: the
+       * drawer needs to survive `open` going false long enough to animate
+       * out, and its step/scope/filter state has to start from `editing`
+       * every time the panel opens for a different card. `editing` is
+       * therefore left standing on close and cleared only when the panel is
+       * opened afresh — clearing it on close would change the key mid-exit
+       * and snap the drawer away instead of sliding it.
+       */}
+      <DashboardCatalogue
+        key={editing?.id ?? "new"}
+        open={catalogueOpen}
+        cards={dashboard.cards}
+        projects={projects}
+        apps={apps}
+        editing={editing}
+        onClose={() => setCatalogueOpen(false)}
+        onAdd={onAdd}
+        onUpdate={onUpdate}
+      />
     </div>
   );
 };
