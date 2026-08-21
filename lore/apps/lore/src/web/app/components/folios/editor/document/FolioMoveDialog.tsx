@@ -46,9 +46,7 @@ export interface FolioMoveDialogProps {
 const FolioMoveDialog = (props: FolioMoveDialogProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
   const [directories] = useStore(projectDirectoriesAtom);
-  const [picked, setPicked] = useState<string | "__root__" | undefined>(
-    undefined,
-  );
+  const [picked, setPicked] = useState<string | undefined>(undefined);
 
   const handleConfirm = async () => {
     if (picked === undefined) return;
