@@ -585,6 +585,76 @@ export class ProjectScaffolder {
   /**
    * Full project init — scaffolds files, installs deps, sets up PM and git.
    */
+  /**
+   * Drop a foreign Yarn PnP runtime from a `NODE_OPTIONS` value.
+   *
+   * `yarn create alepha` runs create-alepha out of a **temporary PnP install**
+   * and exports `--require <tmp>/.pnp.cjs` into the environment. Every child
+   * this scaffolder spawns inherits it, the project's own CLI included, and
+   * Vite's oxc transform then insists on finding a PnP manifest inside a
+   * project that was just scaffolded with `nodeLinker: node-modules`:
+   *
+   * ```
+   * [TSCONFIG_ERROR] Failed to load tsconfig: Failed to find yarn pnp manifest in <project>
+   * ```
+   *
+   * The visible symptom was a scaffold that skipped its initial migration and
+   * warned about it, on `yarn create` only, with an error naming neither yarn
+   * nor the real cause. `npm create` and `bun create` have no equivalent
+   * runtime to leak, which is how it survived this long.
+   *
+   * Only the PnP entries go: a `NODE_OPTIONS` the user set for their own
+   * reasons is theirs, and is left alone.
+   */
+  protected withoutForeignPnpRuntime(
+    nodeOptions: string | undefined,
+  ): string | undefined {
+    if (!nodeOptions) {
+      return nodeOptions;
+    }
+
+    // Values can be quoted, and a flag can carry its value either as the next
+    // token or inline after `=`.
+    const tokens = nodeOptions.match(/(?:[^\s"]+|"[^"]*")+/g) ?? [];
+    const unquote = (value: string) => value.replace(/^"|"$/g, "");
+    const preloadFlags = new Set([
+      "-r",
+      "--require",
+      "--import",
+      "--loader",
+      "--experimental-loader",
+    ]);
+    const isPnpRuntime = (value: string) =>
+      /\.pnp\.(?:c?js|loader\.mjs)$/.test(unquote(value));
+
+    const kept: string[] = [];
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i];
+      const bare = unquote(token);
+      const equals = bare.indexOf("=");
+      const flag = equals === -1 ? bare : bare.slice(0, equals);
+      const inlineValue = equals === -1 ? undefined : bare.slice(equals + 1);
+
+      if (!preloadFlags.has(flag)) {
+        kept.push(token);
+        continue;
+      }
+
+      const value = inlineValue ?? tokens[i + 1] ?? "";
+      if (!isPnpRuntime(value)) {
+        kept.push(token);
+        continue;
+      }
+
+      // Drop the flag, and the separate value token when there is one.
+      if (inlineValue === undefined) {
+        i++;
+      }
+    }
+
+    return kept.length > 0 ? kept.join(" ") : undefined;
+  }
+
   async init({
     run,
     root,
@@ -601,6 +671,17 @@ export class ProjectScaffolder {
     };
     args?: string;
   }) {
+    // Before anything is spawned into the new project. See the method.
+    // Assigning `undefined` to a `process.env` key stores the *string*
+    // "undefined", which node then rejects as a bad option, so an empty
+    // result has to be deleted rather than assigned.
+    const nodeOptions = this.withoutForeignPnpRuntime(process.env.NODE_OPTIONS);
+    if (nodeOptions === undefined) {
+      delete process.env.NODE_OPTIONS;
+    } else {
+      process.env.NODE_OPTIONS = nodeOptions;
+    }
+
     // Whether the user named a target directory. Distinguishes
     // `alepha init my-app` (create a project there) from a bare
     // `alepha init` (fill in whatever is missing, right here).

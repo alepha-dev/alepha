@@ -113,7 +113,7 @@ export class SitemapPrimitive extends Primitive<SitemapPrimitiveOptions> {
       if (path === "/404") {
         return false;
       }
-      if (!options.schema?.params) {
+      if (!this.hasParams(options)) {
         return true;
       }
       if (
@@ -134,7 +134,7 @@ export class SitemapPrimitive extends Primitive<SitemapPrimitiveOptions> {
     for (const page of pages) {
       const options = page.options;
 
-      if (!options.schema?.params) {
+      if (!this.hasParams(options)) {
         const path = options.path || "";
         const url = `${normalizedBaseUrl}${path === "" ? "/" : path}`;
         urls.push(url);
@@ -155,6 +155,24 @@ export class SitemapPrimitive extends Primitive<SitemapPrimitiveOptions> {
     }
 
     return this.buildSitemapXml(urls);
+  }
+
+  /**
+   * Whether a page carries route parameters, and so cannot be listed unless
+   * it enumerates its own URLs through `static.entries`.
+   *
+   * The path is consulted as well as the schema because `schema.params` is
+   * optional: `$page({ path: "/blog/:slug" })` routes perfectly well without
+   * one, and used to reach the sitemap as the literal `/blog/:slug`. Nothing
+   * failed, nothing warned, and the 404 surfaced only in Search Console.
+   */
+  protected hasParams(options: { path?: string; schema?: any }): boolean {
+    if (options.schema?.params) {
+      return true;
+    }
+    // Anchored on the slash so a literal colon inside a segment ("/foo:bar")
+    // stays a static URL. Route parameters are always "/:name".
+    return /\/:[^/]+/.test(options.path ?? "");
   }
 
   /**

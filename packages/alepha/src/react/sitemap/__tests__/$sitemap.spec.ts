@@ -40,6 +40,15 @@ describe("$sitemap", () => {
       static: { entries: [{ params: { slug: "hello" } }] },
       component: () => "post",
     });
+
+    /**
+     * `schema.params` is optional, so this routes fine. It must still be kept
+     * out of the sitemap: it has no concrete URL to offer.
+     */
+    untypedParam = $page({
+      path: "/notes/:noteSlug",
+      component: () => "note",
+    });
   }
 
   const start = async () => {
@@ -96,6 +105,18 @@ describe("$sitemap", () => {
     const { alepha } = await start();
     const { body } = sitemapOf(alepha).prerender();
     expect(body).toContain("<loc>https://example.com/blog/hello</loc>");
+  });
+
+  it("excludes a parameterized page that never declared a params schema", async ({
+    expect,
+  }) => {
+    const { alepha } = await start();
+
+    const { body } = sitemapOf(alepha).prerender();
+
+    // The bug this guards: the raw pattern shipped to crawlers as a real URL.
+    expect(body).not.toContain(":noteSlug");
+    expect(body).not.toContain("/notes/");
   });
 
   it("excludes wildcard and 404 routes", async ({ expect }) => {

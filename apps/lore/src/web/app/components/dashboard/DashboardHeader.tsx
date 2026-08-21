@@ -29,10 +29,17 @@ export interface DashboardHeaderProps {
  * and hydration and trips React #418. Home already carries the same note for
  * its project rows.
  *
- * The account / theme / language chrome sits at the end of this row rather
- * than floating top-right as it does on the rest of the app. The mockup does
- * not draw it, but it has to be reachable from the landing page, and the row
- * that already holds this page's controls is where it belongs.
+ * ## Two rows, split by what the controls belong to
+ *
+ * The top row is app-level and nothing else: the account / theme / language
+ * cluster every other surface pins at `top-3`, here flush right so it lands
+ * on the same line. The second row is the dashboard's own — the greeting on
+ * the left, and the two board actions that only mean anything on this page
+ * on the right.
+ *
+ * All five used to share one baseline, which put the account chrome level
+ * with the reader's name and made "Reset layout" read as ambient app chrome
+ * rather than something that rewrites this board.
  */
 const DashboardHeader = (props: DashboardHeaderProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -64,35 +71,40 @@ const DashboardHeader = (props: DashboardHeaderProps) => {
     );
 
   return (
-    <div className="mb-5 flex items-end gap-4">
-      <div className="min-w-0">
-        <h1 className="truncate text-2xl font-semibold tracking-[-0.02em]">
-          {tr("dashboard.greeting", { args: [props.name] })}
-        </h1>
-        <p className="text-muted-foreground mt-[5px] text-[13px]">
-          {standfirst}
-        </p>
-      </div>
-      <span className="flex-1" />
-      <div className="flex shrink-0 items-center gap-2">
-        <Button
-          variant="outline"
-          onClick={props.onReset}
-          data-testid="dashboard-reset"
-          className="h-8 rounded-[9px] px-2.5 text-[12.5px]"
-        >
-          <RotateCcw className="size-3.5" />
-          {tr("dashboard.reset")}
-        </Button>
-        <Button
-          onClick={props.onAdd}
-          data-testid="dashboard-add"
-          className="h-8 rounded-[9px] px-3 text-[12.5px]"
-        >
-          <Plus className="size-3.5" />
-          {tr("dashboard.addCard")}
-        </Button>
+    <div className="mb-5">
+      <div className="flex items-center justify-end">
         <HeaderActions />
+      </div>
+
+      <div className="mt-8 flex items-end gap-4">
+        <div className="min-w-0">
+          <h1 className="truncate text-2xl font-semibold tracking-[-0.02em]">
+            {tr("dashboard.greeting", { args: [props.name] })}
+          </h1>
+          <p className="text-muted-foreground mt-[5px] text-[13px]">
+            {standfirst}
+          </p>
+        </div>
+        <span className="flex-1" />
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={props.onReset}
+            data-testid="dashboard-reset"
+            className="h-8 rounded-[9px] px-2.5 text-[12.5px]"
+          >
+            <RotateCcw className="size-3.5" />
+            {tr("dashboard.reset")}
+          </Button>
+          <Button
+            onClick={props.onAdd}
+            data-testid="dashboard-add"
+            className="h-8 rounded-[9px] px-3 text-[12.5px]"
+          >
+            <Plus className="size-3.5" />
+            {tr("dashboard.addCard")}
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -177,7 +177,10 @@ export const formatBlobBytes = (bytes: number): string => {
  *  - `[[Folio Title]]` → folio by title (case-insensitive, ambiguous titles
  *    resolve to `broken: ambiguous-title`).
  *  - `[[#42#areas]]` / `[[Folio Title#areas]]` → folio + heading slug.
- *  - `[[quest#32]]` / `[[quest:Some Title]]` → quest in the same project.
+ *  - `[[quest:#32]]` / `[[quest:Some Title]]` → quest in the same project.
+ *    The colon is what selects the type, so the colon-less `[[quest#32]]` is
+ *    NOT a quest reference: it reads as a folio titled `quest` with the
+ *    anchor `32`, and breaks.
  *  - `[[blob:#3]]` / `[[blob:<uuid>]]` → an uploaded file.
  */
 export const createFolioWikiLinkResolver = (

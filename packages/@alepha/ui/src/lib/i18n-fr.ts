@@ -386,8 +386,10 @@ export const uiFr: Record<string, string> = {
   "admin.sessions.colDevice": "Appareil",
   "admin.sessions.colExpires": "Expire le",
   "admin.sessions.colIp": "IP",
+  "admin.sessions.colLastUsed": "Dernière activité",
   "admin.sessions.colStarted": "Ouverte le",
   "admin.sessions.colUser": "Utilisateur",
+  "admin.sessions.lastUsedNever": "Jamais",
   "admin.sessions.revoke": "Révoquer",
   "admin.sessions.revokeConfirm":
     "L'utilisateur sera déconnecté de cette session.",

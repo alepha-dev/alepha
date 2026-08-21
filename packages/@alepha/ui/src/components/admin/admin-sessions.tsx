@@ -135,6 +135,17 @@ export function AdminSessions() {
               </span>
             ),
           },
+          lastUsedAt: {
+            label: tr("admin.sessions.colLastUsed", { default: "Last used" }),
+            sortable: true,
+            cell: (s) => (
+              <span className="text-muted-foreground text-xs">
+                {s.lastUsedAt
+                  ? String(l(s.lastUsedAt, { date: "fromNow" }))
+                  : tr("admin.sessions.lastUsedNever", { default: "Never" })}
+              </span>
+            ),
+          },
           expiresAt: {
             label: tr("admin.sessions.colExpires", { default: "Expires" }),
             cell: (s) => (

@@ -1071,6 +1071,8 @@ export default {
   "admin.sessions.colIp": "IP",
   "admin.sessions.colDevice": "Appareil",
   "admin.sessions.colStarted": "Démarrée",
+  "admin.sessions.colLastUsed": "Dernière activité",
+  "admin.sessions.lastUsedNever": "Jamais",
   "admin.sessions.colExpires": "Expire",
   "admin.sessions.revoke": "Révoquer",
   "admin.sessions.bulkRevoke": "Révoquer la sélection",

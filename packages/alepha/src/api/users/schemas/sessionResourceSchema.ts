@@ -29,6 +29,15 @@ export const sessionResourceSchema = z.object({
   updatedAt: z.datetime(),
   userId: z.uuid(),
   expiresAt: z.datetime(),
+  /**
+   * Last time the session was used to refresh an access token, i.e. the
+   * last sign of life. `createdAt` alone cannot answer "is this session
+   * still in use?", which is the question an admin revoking sessions is
+   * actually asking: a session started months ago is fine if it refreshed
+   * this morning, and a session started yesterday is dead weight if it
+   * never came back. `null` on rows that predate the column.
+   */
+  lastUsedAt: z.datetime().optional(),
   ip: z.string().optional(),
   country: z.string().optional(),
   userAgent: z

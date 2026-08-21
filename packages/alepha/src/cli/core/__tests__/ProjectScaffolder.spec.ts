@@ -9,13 +9,22 @@ import { describe, expect, it } from "vitest";
 
 import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
 
+/**
+ * Exposes the NODE_OPTIONS sanitizer, which is protected because nothing
+ * outside init has any business calling it.
+ */
+class TestProjectScaffolder extends ProjectScaffolder {
+  public testWithoutForeignPnpRuntime =
+    this.withoutForeignPnpRuntime.bind(this);
+}
+
 describe("ProjectScaffolder", () => {
   const createTestEnv = () => {
     const alepha = Alepha.create()
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider });
 
-    const scaffolder = alepha.inject(ProjectScaffolder);
+    const scaffolder = alepha.inject(TestProjectScaffolder);
 
     return { alepha, scaffolder };
   };
@@ -163,6 +172,64 @@ describe("ProjectScaffolder", () => {
 
       expect(fs.wasWritten("/project/tsconfig.json")).toBe(true);
       expect(fs.wasWritten("/project/my-app/package.json")).toBe(false);
+    });
+  });
+
+  /**
+   * `yarn create alepha` runs create-alepha from a temporary PnP install and
+   * leaks `--require <tmp>/.pnp.cjs` into every child process. Vite's oxc
+   * transform then hunts for a PnP manifest in a project scaffolded with
+   * `nodeLinker: node-modules`, and the initial migration never gets written.
+   */
+  describe("withoutForeignPnpRuntime", () => {
+    it("drops a --require pointing at a pnp runtime", () => {
+      const { scaffolder } = createTestEnv();
+
+      expect(
+        scaffolder.testWithoutForeignPnpRuntime("--require /tmp/x/.pnp.cjs"),
+      ).toBeUndefined();
+    });
+
+    it("drops the inline form and the loader form", () => {
+      const { scaffolder } = createTestEnv();
+
+      expect(
+        scaffolder.testWithoutForeignPnpRuntime("--require=/tmp/x/.pnp.cjs"),
+      ).toBeUndefined();
+      expect(
+        scaffolder.testWithoutForeignPnpRuntime(
+          "--experimental-loader /tmp/x/.pnp.loader.mjs",
+        ),
+      ).toBeUndefined();
+    });
+
+    it("keeps options the user set for their own reasons", () => {
+      const { scaffolder } = createTestEnv();
+
+      expect(
+        scaffolder.testWithoutForeignPnpRuntime(
+          "--max-old-space-size=4096 --require /tmp/x/.pnp.cjs --enable-source-maps",
+        ),
+      ).toBe("--max-old-space-size=4096 --enable-source-maps");
+    });
+
+    it("leaves a --require of something that is not a pnp runtime alone", () => {
+      const { scaffolder } = createTestEnv();
+
+      expect(
+        scaffolder.testWithoutForeignPnpRuntime(
+          "--require /tmp/instrument.cjs",
+        ),
+      ).toBe("--require /tmp/instrument.cjs");
+    });
+
+    it("passes through empty and undefined untouched", () => {
+      const { scaffolder } = createTestEnv();
+
+      expect(
+        scaffolder.testWithoutForeignPnpRuntime(undefined),
+      ).toBeUndefined();
+      expect(scaffolder.testWithoutForeignPnpRuntime("")).toBe("");
     });
   });
 });

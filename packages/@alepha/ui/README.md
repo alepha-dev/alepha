@@ -80,11 +80,7 @@ import { z } from "alepha";
 import { useForm } from "alepha/react/form";
 
 const profileSchema = z.object({
-  username: z
-    .string()
-    .min(2)
-    .max(32)
-    .meta({ $control: { icon: "user" } }),
+  username: z.string().min(2).max(32).meta({ $control: { icon: "user" } }),
   email: z.string(),
   newsletter: z.boolean(),
 });
@@ -135,7 +131,7 @@ bar is the card's own last row. Each group carries its own `title` and
 ```
 
 So a settings card whose rows are all form fields should be an `AutoForm`.
-Reach for `SettingsSection` directly for the rows that are _not_ fields - an
+Reach for `SettingsSection` directly for the rows that are *not* fields - an
 avatar picker, a read-only value, a lone button.
 
 Add `autoSave` to commit on change instead, which hides the action bar. Text
@@ -165,20 +161,29 @@ with no second palette and no theme prop.
 The syntax is mermaid's so a document stays portable to GitHub, Obsidian and
 anywhere else, but only a subset is drawn:
 
-|             |                                                                                                                                                        |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Header      | `flowchart` / `graph`, `TD` `TB` `LR` `RL` `BT`                                                                                                        |
-| Nodes       | `[rect]` `(rounded)` `{diamond}` `((circle))`; `([ ])` `[[ ]]` `[( )]` `{{ }}` `> ]` `[/ /]` `[\ \]` `((( )))` are consumed and mapped onto those four |
-| Edges       | `-->` `---` `-.->` `==>` `<-->`, plus `--o` / `--x` as arrowheads                                                                                      |
-| Edge labels | both `-->                                                                                                                                              | text | `and`-- text -->` |
-| Structure   | chains `A --> B --> C`, fans `A & B --> C`, nested `subgraph`                                                                                          |
-| Text        | `<br/>` becomes a line break; quoted and backtick-quoted labels                                                                                        |
+| | |
+|---|---|
+| Header | `flowchart` / `graph`, `TD` `TB` `LR` `RL` `BT` |
+| Nodes | `[rect]` `(rounded)` `{diamond}` `((circle))`; `([ ])` `[[ ]]` `[( )]` `{{ }}` `> ]` `[/ /]` `[\ \]` `((( )))` are consumed and mapped onto those four |
+| Edges | `-->` `---` `-.->` `==>` `<-->`; `--o` and `--x` parse, but the emitter has one end marker, so they draw the same arrowhead as `-->` rather than mermaid's circle and cross |
+| Edge labels | both `-->|text|` and `-- text -->` |
+| Structure | chains `A --> B --> C`, fans `A & B --> C`, nested `subgraph` |
+| Text | `<br/>` becomes a line break; quoted and backtick-quoted labels |
 
 Everything else degrades to the code block it renders as today, silently:
 `sequenceDiagram`, `classDiagram`, `gantt` and mindmaps are not drawn, `style`
 and `classDef` are ignored (the theme picks the colours), and a malformed
 diagram, a parse failure or a graph past the 200-node / 400-edge cap all render
 the plain fence rather than an error.
+
+⚠️ **A node label must not contain a link operator.** The statement is scanned
+for links before anything knows where the labels are, so a `--`, `==` or `-.`
+sequence inside `[...]` is read as an edge and the label is cut. `A[--o]` yields
+an empty `A` and a bogus node named `]`; `A[pre--post]` truncates to `pre`.
+Quoting does NOT protect it - `A["-->"]` is damaged identically, because
+`splitOnLinks` runs with no quote awareness. A single hyphen (`A[well-known]`)
+is safe. There is no escape that works today, and the failure is silent: the
+graph still draws, with the wrong text.
 
 The font is pinned rather than inherited. Layout needs node sizes before it can
 place anything, and node width comes from a generated per-character width table
@@ -204,8 +209,3 @@ alepha-table, …) are never overwritten. After a sync, diff for removed
 `from "alepha/` imports before committing: the registry copy does not know
 about local patches.
 
-## API Reference
-
-### React Hooks
-
-- [`useIsMobile`](https://alepha.dev/docs/reference-react-hooks-useismobile) - Upstream's version seeds `undefined` and fills it in from an effect, which
