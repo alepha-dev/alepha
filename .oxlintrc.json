@@ -185,6 +185,16 @@
     // linear anyway; the quadratic case is spreading an ACCUMULATOR, and
     // `oxc/no-accumulating-spread` stays on to catch exactly that.
     "oxc/no-map-spread": "off",
+    // Same blind spot as `anchor-has-content` below, and it reports the same
+    // nine `render={<a />}` templates. The four findings that were real — an
+    // unlabelled select-all checkbox, an unlabelled row checkbox, and two
+    // action-column headers — are fixed; what is left is only the render prop.
+    "jsx-a11y/control-has-associated-label": "off",
+    // Cannot see through Base UI's `render` prop. Every finding is
+    // `<Button render={<a href="…" />}>{tr("…")}</Button>`, where the anchor is
+    // a TEMPLATE that Base UI clones with the button's children — so the
+    // rendered `<a>` has content, and the rule is reading the template.
+    "jsx-a11y/anchor-has-content": "off",
     // Tag purity, not accessibility, and it fights a component library that
     // builds ARIA widgets on purpose. Of its 38 findings: `role="img"` on
     // `<svg>` is the RECOMMENDED way to label an SVG and the suggested `<img>`

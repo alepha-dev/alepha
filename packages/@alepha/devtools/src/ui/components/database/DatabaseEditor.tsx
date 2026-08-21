@@ -414,6 +414,7 @@ export const DatabaseEditor = (props: DatabaseEditorProps) => {
                       <th style={{ width: 28 }}>
                         <input
                           type="checkbox"
+                          aria-label="Select all rows"
                           checked={
                             selection.size > 0 &&
                             selection.size === visibleRows.length
@@ -458,6 +459,7 @@ export const DatabaseEditor = (props: DatabaseEditorProps) => {
                           <td onClick={(e) => e.stopPropagation()}>
                             <input
                               type="checkbox"
+                              aria-label="Select row"
                               checked={selection.has(id)}
                               onChange={(e) => {
                                 const next = new Set(selection);

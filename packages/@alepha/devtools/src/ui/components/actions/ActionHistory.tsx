@@ -50,7 +50,7 @@ export const ActionHistory = (props: ActionHistoryProps) => {
             <th style={{ width: 70 }}>Status</th>
             <th style={{ width: 70 }}>Time</th>
             <th>Request</th>
-            <th style={{ width: 80 }} />
+            <th style={{ width: 80 }} aria-label="Actions" />
           </tr>
         </thead>
         <tbody>

@@ -153,7 +153,7 @@ export const JobExecutions = (props: JobExecutionsProps) => {
               <th style={{ width: 50 }}>Try</th>
               <th style={{ width: 80 }}>Duration</th>
               <th style={{ width: 90 }}>Started</th>
-              <th />
+              <th aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
