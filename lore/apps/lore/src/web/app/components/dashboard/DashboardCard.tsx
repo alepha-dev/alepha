@@ -111,6 +111,8 @@ const DashboardCard = (props: DashboardCardProps) => {
         props.over && "shadow-[inset_0_0_0_2px_var(--primary)]",
       )}
     >
+      {/* A drag affordance, pointer-only by nature; the card it belongs to is reachable and actionable by keyboard on its own. */}
+      {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions */}
       <div
         className="flex cursor-grab items-center gap-2 active:cursor-grabbing"
         onMouseDown={props.onArm}
@@ -129,7 +131,6 @@ const DashboardCard = (props: DashboardCardProps) => {
           onRemove={props.onRemove}
         />
       </div>
-
       <div className="flex flex-wrap gap-[5px]">
         {scopeChip && (
           <span className="bg-muted inline-flex h-[19px] items-center rounded-full px-[7px] text-[11px]">
@@ -145,7 +146,6 @@ const DashboardCard = (props: DashboardCardProps) => {
           </span>
         ))}
       </div>
-
       {link ? (
         <button
           type="button"

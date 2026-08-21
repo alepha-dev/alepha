@@ -265,6 +265,9 @@ export const useFolioTreeModel = (
     for (const d of directories) {
       if (!ancestorDirIds.has(d.id)) defaultCollapsed.add(d.id);
     }
+    // One-time initialisation, guarded by `initializedRef` above, so it cannot
+    // cascade.
+    // oxlint-disable-next-line react/set-state-in-effect
     setCollapsed(defaultCollapsed);
   }, [ancestorDirIds, directories, folios]);
 
@@ -274,6 +277,9 @@ export const useFolioTreeModel = (
   useEffect(() => {
     if (!initializedRef.current) return;
     if (ancestorDirIds.size === 0) return;
+    // One-time initialisation, guarded by `initializedRef` above, so it cannot
+    // cascade.
+    // oxlint-disable-next-line react/set-state-in-effect
     setCollapsed((prev) => {
       let changed = false;
       const next = new Set(prev);

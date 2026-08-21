@@ -171,6 +171,9 @@ export const useFolioDraft = (folio: Folio | undefined): FolioDraft => {
   useEffect(() => {
     formInitial.current = initial();
     baseline.current = formInitial.current;
+    // Re-seeds the draft when a different folio is opened, alongside the two
+    // ref writes it must stay in step with.
+    // oxlint-disable-next-line react/set-state-in-effect
     setSavedAt(folio?.updatedAt);
   }, [folio?.id, folio?.updatedAt, folio?.protected]);
 

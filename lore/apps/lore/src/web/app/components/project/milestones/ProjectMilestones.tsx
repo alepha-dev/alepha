@@ -409,6 +409,8 @@ const ProjectMilestones = () => {
                   value={startTitle}
                   onChange={(e) => setStartTitle(e.currentTarget.value)}
                   placeholder={tr("milestone.start.placeholder")}
+                  // Autofocus on the field the dialog exists to fill, on open only.
+                  // oxlint-disable-next-line jsx-a11y/no-autofocus
                   autoFocus
                 />
                 <Button

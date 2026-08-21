@@ -156,6 +156,9 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
     <ContextMenu>
       <ContextMenuTrigger
         render={
+          // A drag-and-drop tree row rendered through ContextMenuTrigger. It carries
+          // `tabIndex` and an Enter/Space handler of its own further down.
+          // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
           <div
             data-slot="folio-tree-row"
             draggable={!isRenaming}

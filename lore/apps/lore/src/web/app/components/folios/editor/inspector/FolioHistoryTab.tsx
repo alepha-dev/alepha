@@ -288,8 +288,9 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
                     )}
                   </span>
                 </div>
-
                 {/* Actions: intercept clicks so the menu never toggles the row. */}
+                {/* Row expander; the toggle button inside is the control. */}
+                {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions */}
                 <div
                   className="shrink-0"
                   onClick={(e) => e.stopPropagation()}
@@ -338,7 +339,6 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-
                 <span className="text-muted-foreground flex size-4 shrink-0 items-center justify-center">
                   <ChevronRight
                     className={cn(

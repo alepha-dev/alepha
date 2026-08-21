@@ -155,6 +155,9 @@ const ProjectCreate = () => {
         <StepIndicator current={step} total={TOTAL_STEPS} />
         <Card className="mt-4 shadow-sm">
           <CardContent className="flex flex-col gap-6 pt-2">
+            {/* A form-level key handler that stops Enter submitting from a text
+                field. The interactive elements are the inputs inside. */}
+            {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
             <form
               {...form.props}
               className="flex flex-col gap-6"
