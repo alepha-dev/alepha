@@ -133,6 +133,7 @@ export default {
   "folios.editor.action.quote": "Quote",
   "folios.editor.action.table": "Table",
   "folios.editor.action.code-block": "Code block",
+  "folios.editor.action.diagram": "Diagram",
   "folios.editor.action.divider": "Divider",
   "folios.editor.menu.insert": "Insert",
   "folios.editor.action.toggle-mode": "Toggle preview",

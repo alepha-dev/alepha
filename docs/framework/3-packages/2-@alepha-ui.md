@@ -57,6 +57,9 @@ filtering.
 `app-actions` for toolbars, plus ready-made `auth`, `account`, `settings`, and
 `admin` screens.
 
+**`markdown-view`** - renders markdown as prose, with diagrams. See the section
+below.
+
 **Hooks** - `use-toast` and `use-dialog` (imperative toasts and modals) live
 under `components/`; `use-mobile` lives under `hooks/`.
 
@@ -132,6 +135,49 @@ avatar picker, a read-only value, a lone button.
 Add `autoSave` to commit on change instead, which hides the action bar. Text
 fields still never commit on keystroke: they commit on Enter, or on the inline
 tick that appears in the input once the field is dirty.
+
+## Markdown, and diagrams in it
+
+`MarkdownView` renders markdown as formatted prose. Raw HTML is always escaped
+to text, never promoted to markup: it renders content authored by one user to
+another, so a live raw tag would be an injection point on every surface built on
+this package.
+
+A ` ```mermaid ` fence containing a **`flowchart`** is drawn as an SVG diagram
+instead of a code block. The renderer is in-house rather than mermaid itself:
+mermaid is roughly 500-900 kB gzip in a browser and cannot run without a DOM,
+because it measures text in a hidden element. Here the only imported piece is
+`graphre` (dagre in TypeScript, ~15.5 kB gzip) for layout; parsing, text
+measurement and drawing are ours. The whole thing is one lazy chunk of about
+18 kB gzip, imported only when a document actually contains a fence, so a
+document with no diagram pays nothing.
+
+Drawing it ourselves is what makes the diagram look like the app: the SVG uses
+`--card`, `--border`, `--muted-foreground` and `--muted`, so dark mode works
+with no second palette and no theme prop.
+
+The syntax is mermaid's so a document stays portable to GitHub, Obsidian and
+anywhere else, but only a subset is drawn:
+
+| | |
+|---|---|
+| Header | `flowchart` / `graph`, `TD` `TB` `LR` `RL` `BT` |
+| Nodes | `[rect]` `(rounded)` `{diamond}` `((circle))`; `([ ])` `[[ ]]` `[( )]` `{{ }}` `> ]` `[/ /]` `[\ \]` `((( )))` are consumed and mapped onto those four |
+| Edges | `-->` `---` `-.->` `==>` `<-->`, plus `--o` / `--x` as arrowheads |
+| Edge labels | both `-->|text|` and `-- text -->` |
+| Structure | chains `A --> B --> C`, fans `A & B --> C`, nested `subgraph` |
+| Text | `<br/>` becomes a line break; quoted and backtick-quoted labels |
+
+Everything else degrades to the code block it renders as today, silently:
+`sequenceDiagram`, `classDiagram`, `gantt` and mindmaps are not drawn, `style`
+and `classDef` are ignored (the theme picks the colours), and a malformed
+diagram, a parse failure or a graph past the 200-node / 400-edge cap all render
+the plain fence rather than an error.
+
+The font is pinned rather than inherited. Layout needs node sizes before it can
+place anything, and node width comes from a generated per-character width table
+measured against Inter at one size; inheriting the surrounding face would make
+text and box disagree, differently on every surface.
 
 ## Adding a shadcn component
 

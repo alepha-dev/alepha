@@ -6,6 +6,7 @@ import { DirectoryController } from "../../api/controllers/DirectoryController.t
 import { FolioController } from "../../api/controllers/FolioController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import { FolioLinkService } from "../../api/services/FolioLinkService.ts";
+import { DIAGRAM_CAPABILITY } from "../schemas/diagramCapability.ts";
 import {
   folioFullSchema,
   folioRefParamsSchema,
@@ -271,7 +272,8 @@ export class FolioTools {
 
   folio_create = $tool({
     description:
-      "Create a new folio in a project — a markdown note that becomes part of the project's memory for AI agents. Provide `project` (id) or `project_name`. `content` is markdown. **Always set `summary`** — a 1-2 sentence (~200 chars) description of what the folio is for. It's the field other agents (and future calls of yours) read in `project_context` to decide whether to fetch the body. Without a summary, the index falls back to the title and orientation suffers.",
+      "Create a new folio in a project — a markdown note that becomes part of the project's memory for AI agents. Provide `project` (id) or `project_name`. `content` is markdown. **Always set `summary`** — a 1-2 sentence (~200 chars) description of what the folio is for. It's the field other agents (and future calls of yours) read in `project_context` to decide whether to fetch the body. Without a summary, the index falls back to the title and orientation suffers. " +
+      DIAGRAM_CAPABILITY,
     title: "Create folio",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
@@ -335,7 +337,8 @@ export class FolioTools {
 
   folio_update = $tool({
     description:
-      "Update a folio. Any omitted field stays unchanged. Updating `content` is a good moment to also refresh `summary` so the orientation index in `project_context` stays accurate.",
+      "Update a folio. Any omitted field stays unchanged. Updating `content` is a good moment to also refresh `summary` so the orientation index in `project_context` stays accurate. " +
+      DIAGRAM_CAPABILITY,
     title: "Update folio",
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {

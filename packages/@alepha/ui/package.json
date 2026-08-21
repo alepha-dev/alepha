@@ -34,6 +34,7 @@
     "typecheck": "tsc --noEmit"
   },
   "exports": {
+    "./components/*.ts": "./src/components/*.ts",
     "./components/*": "./src/components/*.tsx",
     "./hooks/*": "./src/hooks/*.ts",
     "./lib/*": "./src/lib/*.ts",
@@ -48,6 +49,7 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.4.0",
     "embla-carousel-react": "^8.6.0",
+    "graphre": "^0.1.3",
     "highlight.js": "^11.12.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^1.31.0",
@@ -77,6 +79,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.8",
+    "@playwright/test": "^1.62.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.18",

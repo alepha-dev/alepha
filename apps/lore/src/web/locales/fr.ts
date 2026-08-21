@@ -135,6 +135,7 @@ export default {
   "folios.editor.action.quote": "Citation",
   "folios.editor.action.table": "Tableau",
   "folios.editor.action.code-block": "Bloc de code",
+  "folios.editor.action.diagram": "Diagramme",
   "folios.editor.action.divider": "Séparateur",
   "folios.editor.menu.insert": "Insérer",
   "folios.editor.action.toggle-mode": "Basculer l'aperçu",

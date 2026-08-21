@@ -7,6 +7,7 @@ import {
   projectParamsSchema,
   questStatusSchema,
 } from "./commonSchemas.ts";
+import { DIAGRAM_CAPABILITY } from "./diagramCapability.ts";
 
 // -----------------------------------------------------------------------------
 // Shared field descriptions
@@ -20,7 +21,8 @@ const AREA_DESCRIPTION =
   "Call `project_context` first and REUSE an existing area with its exact casing: 'Auth' and 'auth' are distinct, and each new value silently registers a new area. " +
   "Only invent a name when the work genuinely lives in a part of the system none of the existing areas covers; prefer the project's own naming convention (an import path, where one exists).";
 const DESCRIPTION_DESCRIPTION =
-  "Quest description in Markdown. Plain text also works. HTML is not supported and any tags will be stripped.";
+  "Quest description in Markdown. Plain text also works. HTML is not supported and any tags will be stripped. " +
+  DIAGRAM_CAPABILITY;
 
 /**
  * The epic a quest is filed under, carried on `quest_list` / `quest_get`
@@ -133,7 +135,7 @@ export const questCommentAddParamsSchema = entityRefSchema.extend({
     .string()
     .min(1)
     .describe(
-      "The comment, in Markdown. `[[folio title]]`, `[[quest:#12]]` and a bare `#12` all resolve to links when Lore renders it.",
+      `The comment, in Markdown. \`[[folio title]]\`, \`[[quest:#12]]\` and a bare \`#12\` all resolve to links when Lore renders it. ${DIAGRAM_CAPABILITY}`,
     ),
 });
 
@@ -280,7 +282,7 @@ export const questCompleteParamsSchema = entityRefSchema.extend({
   message: z
     .string()
     .describe(
-      "Optional summary of what was accomplished — files touched, decisions made, anything a future reader (human or AI) would need to understand why this quest is closed. Markdown supported. Strongly encouraged: leave a trail so the next session has context.",
+      `Optional summary of what was accomplished — files touched, decisions made, anything a future reader (human or AI) would need to understand why this quest is closed. Markdown supported. Strongly encouraged: leave a trail so the next session has context. ${DIAGRAM_CAPABILITY}`,
     )
     .optional(),
 });
@@ -313,7 +315,7 @@ export const questUpdateParamsSchema = entityRefSchema.extend({
   completionMessage: z
     .string()
     .describe(
-      "Rewrite the post-completion summary. Allowed on already-completed quests (the only field that is — other edits stay frozen). Pass an empty string to clear. Markdown supported.",
+      `Rewrite the post-completion summary. Allowed on already-completed quests (the only field that is — other edits stay frozen). Pass an empty string to clear. Markdown supported. ${DIAGRAM_CAPABILITY}`,
     )
     .optional(),
   tags: z

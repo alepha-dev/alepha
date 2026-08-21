@@ -170,6 +170,26 @@ export const TABLE_BLOCK = [
 ].join("\n");
 
 /**
+ * A mermaid `flowchart` starter.
+ *
+ * Deliberately small and deliberately RENDERABLE: `MarkdownView` draws this
+ * exact fence as a diagram, so the author who inserts it sees a picture
+ * rather than a grey block and learns the syntax by editing it. A starter
+ * that does not render would teach the opposite lesson.
+ *
+ * `markdownTransforms.browser.spec.ts` feeds it to the real parser, so a
+ * change here that breaks it goes red instead of shipping.
+ */
+export const DIAGRAM_BLOCK = [
+  "```mermaid",
+  "flowchart TD",
+  "  A[Start] --> B{Decision}",
+  "  B -->|yes| C[Done]",
+  "  B -->|no| A",
+  "```",
+].join("\n");
+
+/**
  * Escape a string for use inside a `RegExp`.
  */
 const escapeRegExp = (s: string): string =>

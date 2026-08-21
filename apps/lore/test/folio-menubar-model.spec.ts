@@ -330,3 +330,26 @@ describe("comprehensive menu coverage", () => {
     expect(encrypt?.alternateLabelKey).toBeDefined();
   });
 });
+
+describe("folioMenubarModel - the diagram starter (#1261)", () => {
+  const saved = {
+    locked: false,
+    isNew: false,
+    dirty: true,
+    isProtected: false,
+    isPinned: false,
+  };
+
+  it("offers an Insert > Diagram action", () => {
+    expect(folioMenuItems().map((i) => i.id)).toContain("insert.diagram");
+  });
+
+  it("needs edit mode, like every other text-inserting action", () => {
+    expect(
+      isFolioActionEnabled("insert.diagram", { ...saved, editing: true }),
+    ).toBe(true);
+    expect(
+      isFolioActionEnabled("insert.diagram", { ...saved, editing: false }),
+    ).toBe(false);
+  });
+});

@@ -1,5 +1,6 @@
 import type { EditorView } from "@codemirror/view";
 import {
+  DIAGRAM_BLOCK,
   insertBlock,
   TABLE_BLOCK,
   toggleInlineMarker,
@@ -30,6 +31,7 @@ export type MarkdownCommandId =
   | "insert.quote"
   | "insert.table"
   | "insert.codeBlock"
+  | "insert.diagram"
   | "insert.divider";
 
 const CODE_BLOCK = "```\n\n```";
@@ -49,6 +51,7 @@ export const markdownCommands: Record<
   "insert.quote": (v) => apply(v, toggleLinePrefix(v.state, "> ")),
   "insert.table": (v) => apply(v, insertBlock(v.state, TABLE_BLOCK)),
   "insert.codeBlock": (v) => apply(v, insertBlock(v.state, CODE_BLOCK)),
+  "insert.diagram": (v) => apply(v, insertBlock(v.state, DIAGRAM_BLOCK)),
   "insert.divider": (v) => apply(v, insertBlock(v.state, "---")),
 };
 
