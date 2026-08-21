@@ -92,6 +92,11 @@ const DashboardRail = () => {
 
       <Button
         render={<Link href={router.path("projectCreate")} />}
+        // A link wearing a button's clothes: `nativeButton={false}` stops Base UI
+        // assuming a native <button> (it warns otherwise), and `role` puts back the
+        // link semantics its non-native branch would overwrite with `role="button"`.
+        nativeButton={false}
+        role="link"
         className="h-[38px] justify-start rounded-[10px] px-3 text-[13.5px]"
       >
         <Sparkles className="size-4" />
