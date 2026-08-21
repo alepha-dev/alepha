@@ -1,11 +1,14 @@
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
+import { FeedbackCommentController } from "../../api/controllers/FeedbackCommentController.ts";
 import { FeedbackController } from "../../api/controllers/FeedbackController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import type { FeedbackResource } from "../../api/schemas/feedbackResourceSchema.ts";
 import {
   feedbackAttachmentGetParamsSchema,
+  feedbackCommentAddParamsSchema,
+  feedbackCommentAddResultSchema,
   feedbackGetParamsSchema,
   feedbackGetResultSchema,
   feedbackListParamsSchema,
@@ -13,6 +16,7 @@ import {
   feedbackTriageParamsSchema,
   feedbackTriageResultSchema,
 } from "../schemas/index.ts";
+import { AttachmentContentService } from "../services/AttachmentContentService.ts";
 
 /**
  * MCP tools for feedback — user-submitted bug/feature requests that the
@@ -23,6 +27,49 @@ import {
 export class FeedbackTools {
   protected readonly feedbackController = $inject(FeedbackController);
   protected readonly projectController = $inject(ProjectController);
+  protected readonly attachmentContent = $inject(AttachmentContentService);
+  protected readonly commentController = $inject(FeedbackCommentController);
+
+  /**
+   * How many comments `feedback_get` inlines. Same cap and same reasoning
+   * as `quest_get`'s.
+   */
+  protected readonly discussionCap = 50;
+
+  /**
+   * A feedback item's thread.
+   *
+   * The controller already resolves author names, because the reporter
+   * reads this thread too and cannot call `getProjectUsers`. So unlike
+   * `QuestTools.loadDiscussion` there is no second lookup here.
+   */
+  protected async loadDiscussion(feedbackId: number) {
+    const rows = await this.commentController.listFeedbackComments({
+      params: { id: feedbackId },
+      query: { limit: this.discussionCap + 1 },
+    });
+    if (rows.length === 0) {
+      return { discussion: [], discussionTruncated: false };
+    }
+
+    const discussionTruncated = rows.length > this.discussionCap;
+    const kept = discussionTruncated ? rows.slice(-this.discussionCap) : rows;
+
+    return {
+      discussion: kept.map((comment) => ({
+        id: comment.id,
+        author: comment.authorName,
+        authorKind:
+          comment.source?.kind === "mcp"
+            ? ("agent" as const)
+            : ("human" as const),
+        body: comment.body,
+        createdAt: comment.createdAt,
+        editedAt: comment.editedAt,
+      })),
+      discussionTruncated,
+    };
+  }
 
   protected async resolveProjectId(
     project?: number,
@@ -88,7 +135,8 @@ export class FeedbackTools {
 
   feedback_list = $tool({
     description:
-      "List feedback (user-submitted bug/feature requests) for a project. Owner-only. Defaults to status 'pending' — the inbox the owner needs to triage. Pass status='all' to see everything.",
+      "List feedback (user-submitted bug/feature requests) for a project. Owner-only. Defaults to status 'pending' — the inbox the owner needs to triage. Pass status='all' to see everything. " +
+      "A row with a non-zero `attachmentCount` carries files: `feedback_get` lists them and `feedback_attachment_get` renders an image inline, so triage does not need a round-trip per row to find out which reports came with a screenshot.",
     title: "List feedback",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -115,6 +163,9 @@ export class FeedbackTools {
           status: p.status,
           reporterName: this.reporterName(p),
           linkedQuestCount: p.linkedQuests?.length ?? 0,
+          // `toResources` already resolved these for the whole page in one
+          // `inArray` lookup, so the count is free.
+          attachmentCount: p.attachmentUrls?.length ?? 0,
           createdAt: p.createdAt,
         })),
       };
@@ -123,7 +174,7 @@ export class FeedbackTools {
 
   feedback_get = $tool({
     description:
-      "Get full details of one feedback item by ID, including description, reporter, tags (free-form key=value pairs like type=bug, host=lore.alepha.dev, path=/foo), attachments (id/name/mimeType/size — fetch their content with feedback_attachment_get), and linked quests spawned from it.",
+      "Get full details of one feedback item by ID, including description, reporter, tags (free-form key=value pairs like type=bug, host=lore.alepha.dev, path=/foo), attachments (id/name/mimeType/size — fetch their content with feedback_attachment_get), the linked quests spawned from it, and its discussion: the thread the owner and the reporter share. Answer or ask in it with `feedback_comment_add`.",
     title: "Get feedback",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -161,6 +212,7 @@ export class FeedbackTools {
           title: q.title,
           status: q.status,
         })),
+        ...(await this.loadDiscussion(p.id)),
         createdAt: p.createdAt,
       };
     },
@@ -184,35 +236,43 @@ export class FeedbackTools {
         params: { projectId, feedbackId, attachmentId: params.attachmentId },
       });
 
-      if (file.mimeType.startsWith("image/")) {
-        return {
-          content: [
-            { type: "image", data: file.data, mimeType: file.mimeType },
-          ],
-        };
-      }
+      // Images inline, text-like payloads decoded, opaque binary types
+      // (pdf/xlsx/…) a metadata note. Shared with `quest_attachment_get`
+      // so the two attachment surfaces cannot drift apart.
+      return this.attachmentContent.render(file);
+    },
+  });
 
-      // Text-like payloads are decoded inline so the agent can read them;
-      // opaque binary types (pdf/xlsx/…) return metadata only.
-      if (/^(text\/|application\/(json|csv))/.test(file.mimeType)) {
-        const text = Buffer.from(file.data, "base64").toString("utf8");
-        return {
-          content: [
-            {
-              type: "text",
-              text: `${file.name} (${file.mimeType}, ${file.size} bytes):\n\n${text}`,
-            },
-          ],
-        };
-      }
+  feedback_comment_add = $tool({
+    description:
+      'Leave a comment on a feedback item. This is where a triage question to the reporter goes, and where a finding like "reproduced on Safari only, not on Chrome" lives before there is a quest to put it on. The reporter can read and answer it even though they are usually not a project member. ' +
+      "No notification is sent: the thread is there when they next open their feedback. Read it back with `feedback_get`. Comments posted here are marked as agent-authored, so do not sign them.",
+    title: "Comment on feedback",
+    annotations: { readOnlyHint: false, idempotentHint: false },
+    schema: {
+      params: feedbackCommentAddParamsSchema,
+      result: feedbackCommentAddResultSchema,
+    },
+    handler: async ({ params }) => {
+      const projectId = await this.resolveProjectId(
+        params.project,
+        params.project_name,
+      );
+      const feedbackId = await this.resolveFeedbackId(projectId, params);
+
+      const comment = await this.commentController.createFeedbackComment({
+        params: { id: feedbackId },
+        // Only ever reached over MCP, so every comment it writes was
+        // written by a machine. Same reasoning as `quest_comment_add`.
+        body: { body: params.body, source: { kind: "mcp", client: params.as } },
+      });
 
       return {
-        content: [
-          {
-            type: "text",
-            text: `Attachment "${file.name}" is ${file.mimeType} (${file.size} bytes) — not inline-viewable here. Download it from the Lore inbox if you need the raw file.`,
-          },
-        ],
+        id: comment.id,
+        authorKind: "agent" as const,
+        body: comment.body,
+        createdAt: comment.createdAt,
+        editedAt: comment.editedAt,
       };
     },
   });
