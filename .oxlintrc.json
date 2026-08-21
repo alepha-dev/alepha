@@ -55,9 +55,14 @@
     // `undefined`, so the next link receives nothing and the bug surfaces
     // somewhere else entirely.
     "promise/always-return": "error",
-    // `memo` with a dependency it does not actually close over is memoization
-    // that never invalidates.
-    "react/memo-dependencies": "error",
+    // `unicorn/no-array-reverse` and friends stay; `react/memo-dependencies`
+    // does not. It is `exhaustive-deps` for `useMemo`/`useCallback`, so it
+    // rests on the same premise as `react-hooks/exhaustive-deps` below and
+    // fails for the same reason: every one of its 41 findings here was a
+    // `useMemo` closing over a DI primitive (`alepha.inject(service)`,
+    // `linkProvider.client(scope)`) that is stable for the lifetime of the
+    // container, or a dep list chosen deliberately with the reason written
+    // above it. Enabling one while disabling the other would be incoherent.
     // An import kept only for its side effects, in a codebase where side
     // effects belong in the DI container.
     "import/no-unassigned-import": "error",
