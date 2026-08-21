@@ -12,16 +12,16 @@ This PoC proves the vertical slice: **an `app.zip` goes in, an HTTPS URL comes o
 
 ## What's inside
 
-| | |
-|---|---|
-| Reverse proxy | routing by `Host`, *file-first / fallback app* |
+|               |                                                                                              |
+| ------------- | -------------------------------------------------------------------------------------------- |
+| Reverse proxy | routing by `Host`, _file-first / fallback app_                                               |
 | Static assets | served from **every kept release**, `.br`/`.gz` negotiation, immutable cache on hashed names |
-| Deployment | unzip (with zip-slip guard), manifest read, atomic `current` switch |
-| Provisioning | SQLite file, stable `APP_SECRET`, `.env` written atomically at `0600` |
-| Supervision | start/stop, graceful shutdown (SIGTERM then SIGKILL), process group |
-| State | one JSON file, written `temp + rename`, with a `.bak` |
-| Control API | HTTP on loopback, bearer token required |
-| CLI | thin client of that same API — **one contract** |
+| Deployment    | unzip (with zip-slip guard), manifest read, atomic `current` switch                          |
+| Provisioning  | SQLite file, stable `APP_SECRET`, `.env` written atomically at `0600`                        |
+| Supervision   | start/stop, graceful shutdown (SIGTERM then SIGKILL), process group                          |
+| State         | one JSON file, written `temp + rename`, with a `.bak`                                        |
+| Control API   | HTTP on loopback, bearer token required                                                      |
+| CLI           | thin client of that same API — **one contract**                                              |
 
 | TLS / ACME | CertMagic, testable **without a public domain or root** via Pebble |
 | Observability | `bay status`, `bay logs` — nothing is stored |
@@ -50,11 +50,11 @@ would suppress exactly the `console.log` you just added.
 
 **The database, and nothing else.**
 
-| | |
-|---|---|
-| SQLite database | ✅ snapshot through SQLite's own backup API, verified, then compressed |
-| `storage/` (uploads) | ❌ **never** — see below |
-| `.env` | ❌ **never** — secrets come from the deployment |
+|                      |                                                                        |
+| -------------------- | ---------------------------------------------------------------------- |
+| SQLite database      | ✅ snapshot through SQLite's own backup API, verified, then compressed |
+| `storage/` (uploads) | ❌ **never** — see below                                               |
+| `.env`               | ❌ **never** — secrets come from the deployment                        |
 
 Every backup response says what it did not cover, in words. The worst failure of
 a backup system is somebody believing it covers more than it does, and that
@@ -129,7 +129,7 @@ Two observations that will decide the retry:
 
 1. **Bay is already in the right place to count.** The proxy sees every request
    with its status code (`proxy.go`, where `lastSeen.touch` is called) and the
-   cgroup gives memory, CPU and restarts. Req/s, err/s and *client-observed*
+   cgroup gives memory, CPU and restarts. Req/s, err/s and _client-observed_
    latency therefore ask nothing of the app — and would work for all of them,
    non-Alepha included.
 2. **What only the app can say**: event-loop lag (the best early signal of a

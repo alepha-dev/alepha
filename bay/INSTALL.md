@@ -28,12 +28,12 @@ scp bay root@HOST:/opt/bay/bin/bay
 
 The layout the rest of this guide assumes:
 
-| Path | What it is |
-|---|---|
-| `/opt/bay/bin/bay` | the binary |
-| `/opt/bay/data` | `--root`: app releases, state, per-app `.env`, SQLite files |
-| `/opt/bay/runtimes` | `--runtimes`: the Node runtimes apps are launched with |
-| `/run/bay/control.sock` | the control socket, created at startup |
+| Path                    | What it is                                                  |
+| ----------------------- | ----------------------------------------------------------- |
+| `/opt/bay/bin/bay`      | the binary                                                  |
+| `/opt/bay/data`         | `--root`: app releases, state, per-app `.env`, SQLite files |
+| `/opt/bay/runtimes`     | `--runtimes`: the Node runtimes apps are launched with      |
+| `/run/bay/control.sock` | the control socket, created at startup                      |
 
 `/opt/bay/data` is the only directory that must survive an upgrade. It holds every app's releases
 and durable state.
@@ -126,7 +126,7 @@ error: control api unreachable (is `bay serve` running?):
 
 Note the message blames `bay serve` for being down. It is running; you simply cannot reach it.
 
-### 5b. `bay` must be on the *non-interactive* PATH
+### 5b. `bay` must be on the _non-interactive_ PATH
 
 `alepha platform` runs its commands as `ssh HOST bay ...`, which starts a **non-interactive** shell.
 That shell reads neither `~/.profile` nor `~/.bashrc`'s interactive section, so a PATH exported there
@@ -263,12 +263,12 @@ never sees has not been set. An identical push writes nothing and restarts nothi
 
 The `alepha platform` pre-flight distinguishes these for you, so read its message before digging:
 
-| Message | Fix |
-|---|---|
-| `bay` is not on that user's PATH | §5b — symlink into `/usr/local/bin` |
-| `connect: permission denied` on the socket | §5a — add the user to `bay-control`, then reconnect |
-| too old to read the artifact from stdin | §7 — upgrade the host binary |
-| `bay` does not know `--secrets-file` | §7 — upgrade the host binary; nothing was deployed |
-| `bay` has no `env` command | §7 — upgrade the host binary; affects `platform status` only |
-| `no secrets file at /tmp/…` | §7 — remove `PrivateTmp=` from `bay.service` |
-| `control api unreachable` as root | Bay really is down: `systemctl status bay` |
+| Message                                    | Fix                                                          |
+| ------------------------------------------ | ------------------------------------------------------------ |
+| `bay` is not on that user's PATH           | §5b — symlink into `/usr/local/bin`                          |
+| `connect: permission denied` on the socket | §5a — add the user to `bay-control`, then reconnect          |
+| too old to read the artifact from stdin    | §7 — upgrade the host binary                                 |
+| `bay` does not know `--secrets-file`       | §7 — upgrade the host binary; nothing was deployed           |
+| `bay` has no `env` command                 | §7 — upgrade the host binary; affects `platform status` only |
+| `no secrets file at /tmp/…`                | §7 — remove `PrivateTmp=` from `bay.service`                 |
+| `control api unreachable` as root          | Bay really is down: `systemctl status bay`                   |
