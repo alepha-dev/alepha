@@ -163,7 +163,7 @@ anywhere else, but only a subset is drawn:
 |---|---|
 | Header | `flowchart` / `graph`, `TD` `TB` `LR` `RL` `BT` |
 | Nodes | `[rect]` `(rounded)` `{diamond}` `((circle))`; `([ ])` `[[ ]]` `[( )]` `{{ }}` `> ]` `[/ /]` `[\ \]` `((( )))` are consumed and mapped onto those four |
-| Edges | `-->` `---` `-.->` `==>` `<-->`, plus `--o` / `--x` as arrowheads |
+| Edges | `-->` `---` `-.->` `==>` `<-->`; `--o` and `--x` parse, but the emitter has one end marker, so they draw the same arrowhead as `-->` rather than mermaid's circle and cross |
 | Edge labels | both `-->|text|` and `-- text -->` |
 | Structure | chains `A --> B --> C`, fans `A & B --> C`, nested `subgraph` |
 | Text | `<br/>` becomes a line break; quoted and backtick-quoted labels |
@@ -173,6 +173,15 @@ Everything else degrades to the code block it renders as today, silently:
 and `classDef` are ignored (the theme picks the colours), and a malformed
 diagram, a parse failure or a graph past the 200-node / 400-edge cap all render
 the plain fence rather than an error.
+
+⚠️ **A node label must not contain a link operator.** The statement is scanned
+for links before anything knows where the labels are, so a `--`, `==` or `-.`
+sequence inside `[...]` is read as an edge and the label is cut. `A[--o]` yields
+an empty `A` and a bogus node named `]`; `A[pre--post]` truncates to `pre`.
+Quoting does NOT protect it - `A["-->"]` is damaged identically, because
+`splitOnLinks` runs with no quote awareness. A single hyphen (`A[well-known]`)
+is safe. There is no escape that works today, and the failure is silent: the
+graph still draws, with the wrong text.
 
 The font is pinned rather than inherited. Layout needs node sizes before it can
 place anything, and node width comes from a generated per-character width table
