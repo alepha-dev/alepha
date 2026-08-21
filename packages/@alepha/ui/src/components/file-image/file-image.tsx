@@ -1,7 +1,9 @@
 import { type ComponentProps, type ReactNode, useState } from "react";
 
-export interface FileImageProps
-  extends Omit<ComponentProps<"img">, "src" | "id"> {
+export interface FileImageProps extends Omit<
+  ComponentProps<"img">,
+  "src" | "id"
+> {
   /**
    * File id (uuid) served by the Alepha files module. Absent → renders
    * `fallback`. (Repurposes the `id` slot — the raw HTML `id` attribute

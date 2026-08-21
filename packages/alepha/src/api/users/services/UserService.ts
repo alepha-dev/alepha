@@ -8,6 +8,7 @@ import type { Page } from "alepha/orm";
 import { CryptoProvider } from "alepha/security";
 import { BadRequestError, ConflictError } from "alepha/server";
 import { $client } from "alepha/server/links";
+
 import { UserAudits } from "../audits/UserAudits.ts";
 import type { UserEntity } from "../entities/users.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";

@@ -15,12 +15,12 @@ When `alepha.start()` is called, the framework emits events in this order:
 configure  ->  start  ->  ready  ->  (APP RUNNING)  ->  stop
 ```
 
-| Hook | When | Typical use |
-|------|------|-------------|
+| Hook        | When                                    | Typical use                               |
+| ----------- | --------------------------------------- | ----------------------------------------- |
 | `configure` | Before start, after container is locked | Register providers, resolve configuration |
-| `start` | After configure | Connect to databases, start listeners |
-| `ready` | After start | Application is fully operational |
-| `stop` | On shutdown (SIGINT/SIGTERM or manual) | Close connections, flush buffers |
+| `start`     | After configure                         | Connect to databases, start listeners     |
+| `ready`     | After start                             | Application is fully operational          |
+| `stop`      | On shutdown (SIGINT/SIGTERM or manual)  | Close connections, flush buffers          |
 
 All four receive the `Alepha` instance as payload.
 
@@ -57,9 +57,11 @@ class DatabaseService {
 
 ```typescript
 $hook({
-  on: "start",           // required: event name
-  handler: async () => { /* ... */ },  // required: callback
-  priority: "first",     // optional: "first" | "last" (default: insertion order)
+  on: "start", // required: event name
+  handler: async () => {
+    /* ... */
+  }, // required: callback
+  priority: "first", // optional: "first" | "last" (default: insertion order)
 });
 ```
 
@@ -85,17 +87,18 @@ The core `Hooks` interface defines:
 
 ```typescript
 interface Hooks {
-  configure: Alepha;                 // configuration phase
-  start: Alepha;                     // start phase
-  ready: Alepha;                     // ready phase
-  stop: Alepha;                      // shutdown phase
-  "state:mutate": {                  // state change notification
+  configure: Alepha; // configuration phase
+  start: Alepha; // start phase
+  ready: Alepha; // ready phase
+  stop: Alepha; // shutdown phase
+  "state:mutate": {
+    // state change notification
     key: keyof State;
     value: any;
     prevValue: any;
   };
-  "state:register": { atom: Atom };  // an atom was registered
-  echo: unknown;                     // free-form event for testing/debugging
+  "state:register": { atom: Atom }; // an atom was registered
+  echo: unknown; // free-form event for testing/debugging
 }
 ```
 
@@ -160,7 +163,7 @@ The `emit` method accepts options:
 
 ```typescript
 await alepha.events.emit("billing:invoice:created", payload, {
-  log: true,   // log execution timing of each hook
+  log: true, // log execution timing of each hook
   catch: true, // catch errors and log them instead of throwing
 });
 ```

@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import type { ComponentType } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
 import { useDevSession } from "../hooks/useDevSession.ts";
 import { useMetadata } from "../hooks/useMetadata.ts";
 import { CommandPalette } from "./shared/CommandPalette.tsx";

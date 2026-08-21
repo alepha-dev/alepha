@@ -15,7 +15,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+
 import type { reportsOverviewSchema } from "@/api/schemas/reportsSchemas.ts";
+
 import type { I18n } from "../../../services/I18n.ts";
 import ReportsKpiRow, { type ReportsKpi } from "./ReportsKpiRow.tsx";
 import ReportsSection from "./ReportsSection.tsx";

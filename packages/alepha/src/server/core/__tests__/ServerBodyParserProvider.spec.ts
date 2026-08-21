@@ -1,6 +1,8 @@
 import { brotliCompressSync, deflateSync, gzipSync } from "node:zlib";
+
 import { Alepha, z } from "alepha";
 import { describe, it } from "vitest";
+
 import { $action, HttpError } from "../index.ts";
 import {
   bodyParserOptions,

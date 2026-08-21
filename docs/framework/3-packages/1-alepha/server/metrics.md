@@ -13,7 +13,7 @@ npm install alepha
 Prometheus-style metrics collection.
 
 **Features:**
+
 - Prometheus-style metrics
 - Custom metric registration
 - Metric exposition endpoint
-

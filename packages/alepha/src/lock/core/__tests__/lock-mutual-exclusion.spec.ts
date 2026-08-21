@@ -1,5 +1,6 @@
 import { Alepha, createPrimitive } from "alepha";
 import { describe, expect, it } from "vitest";
+
 import { AlephaLock } from "../index.ts";
 import { $lock, LockPrimitive } from "../primitives/$lock.ts";
 import { LockProvider } from "../providers/LockProvider.ts";

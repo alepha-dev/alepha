@@ -1,4 +1,5 @@
 import { $inject } from "alepha";
+
 import type { Project } from "../entities/projects.ts";
 import { ProjectSlugService } from "./ProjectSlugService.ts";
 

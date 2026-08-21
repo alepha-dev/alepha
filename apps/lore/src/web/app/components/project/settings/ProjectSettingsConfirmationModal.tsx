@@ -10,7 +10,8 @@ import {
 } from "@alepha/ui/components/ui/alert-dialog";
 import { Input } from "@alepha/ui/components/ui/input";
 import { useI18n } from "alepha/react/i18n";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface ProjectSettingsConfirmationModalProps {
@@ -27,9 +28,13 @@ const ProjectSettingsConfirmationModal = (
   const { tr } = useI18n<I18n, "en">();
   const isValid = inputValue === props.project.title;
 
-  useEffect(() => {
+  // Clear on the open → closed transition, during render so a reopen never
+  // flashes the previous attempt's text.
+  const [wasOpen, setWasOpen] = useState(props.open);
+  if (props.open !== wasOpen) {
+    setWasOpen(props.open);
     if (!props.open) setInputValue("");
-  }, [props.open]);
+  }
 
   return (
     <AlertDialog open={props.open} onOpenChange={(o) => !o && props.onCancel()}>

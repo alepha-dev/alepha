@@ -11,4 +11,3 @@ import { $authCredentials } from "alepha/server/auth";
 Already configured Credentials authentication primitive.
 
 Uses username and password to authenticate users.
-

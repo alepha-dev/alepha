@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { AdminAnalyticsService } from "alepha/api/analytics";
 import { describe, expect, it } from "vitest";
+
 import { LoreAnalytics } from "../src/api/entities/loreAnalytics.ts";
 
 /**

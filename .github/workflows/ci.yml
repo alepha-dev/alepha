@@ -76,7 +76,6 @@ jobs:
     # the suite has genuinely regressed and raising this again is the wrong move.
     timeout-minutes: 12
     services:
-
       redis:
         image: redis
         ports:
@@ -182,7 +181,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
-
       redis:
         image: redis
         ports:

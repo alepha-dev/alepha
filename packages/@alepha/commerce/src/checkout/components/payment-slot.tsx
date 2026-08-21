@@ -3,6 +3,7 @@ import * as React from "react";
 void React;
 
 import { useEffect, useRef, useState } from "react";
+
 import type { PaymentHandoff } from "../providers/CheckoutPaymentProvider.ts";
 
 export interface PaymentSlotProps {
@@ -86,6 +87,9 @@ export function PaymentSlot(props: PaymentSlotProps) {
         `No payment renderer registered for provider '${handoff.provider}'. ` +
           `Pass one in the \`renderers\` prop.`,
       );
+      // The failure branch of mounting a third-party payment renderer into a DOM
+      // node — an external system, and the node does not exist during render.
+      // oxlint-disable-next-line react/set-state-in-effect
       setFailure(error);
       onError?.(error);
       return;

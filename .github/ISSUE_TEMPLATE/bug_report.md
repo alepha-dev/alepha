@@ -1,9 +1,9 @@
 ---
 name: Bug Report
 about: Something isn't working as expected
-title: ''
+title: ""
 labels: bug
-assignees: ''
+assignees: ""
 ---
 
 ## What happened?
@@ -16,10 +16,7 @@ What should have happened instead.
 
 ## How to reproduce
 
-Steps to reproduce:
-1.
-2.
-3.
+Steps to reproduce: 1. 2. 3.
 
 Or even better, a minimal code example:
 

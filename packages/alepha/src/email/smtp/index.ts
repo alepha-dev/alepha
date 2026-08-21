@@ -1,5 +1,6 @@
 import { $module, type Alepha } from "alepha";
 import { AlephaEmail, EmailProvider } from "alepha/email";
+
 import { NodemailerEmailProvider } from "./providers/NodemailerEmailProvider.ts";
 
 // Exports

@@ -1,6 +1,7 @@
 import { $pipeline, Alepha, z } from "alepha";
 import { $entity, $repository, db } from "alepha/orm";
 import { describe, expect, it } from "vitest";
+
 import { currentUserAtom } from "../atoms/currentUserAtom.ts";
 import { $owns, $secure } from "../index.ts";
 
@@ -86,7 +87,7 @@ describe("$secure publishes the user before running the guard", () => {
         user: USER,
         params: {},
         query: {},
-        // biome-ignore lint/suspicious/noExplicitAny: minimal request stub
+        // minimal request stub
       } as any);
       await app.fn();
     });
@@ -102,7 +103,7 @@ describe("$secure publishes the user before running the guard", () => {
         user: USER,
         params: { id: "d1" },
         query: {},
-        // biome-ignore lint/suspicious/noExplicitAny: minimal request stub
+        // minimal request stub
       } as any);
       return svc.read();
     });
@@ -118,7 +119,7 @@ describe("$secure publishes the user before running the guard", () => {
       alepha.store.set("alepha.action.request", {
         params: { id: "d1" },
         query: {},
-        // biome-ignore lint/suspicious/noExplicitAny: minimal request stub
+        // minimal request stub
       } as any);
       return svc.read();
     });

@@ -3,6 +3,7 @@ import { Alepha, createMiddleware, type Middleware, z } from "alepha";
 import { AlephaReact } from "alepha/react";
 import { act } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import {
   $page,
   NestedView,
@@ -132,6 +133,7 @@ describe("$page browser tests", () => {
       });
     });
 
+    // oxlint-disable-next-line vitest/no-disabled-tests
     it.skip("should handle async resolve function", async () => {
       // Skipped: Timing issues with multiple rapid navigations in jsdom
       class App {
@@ -725,6 +727,7 @@ describe("$page browser tests", () => {
       });
     });
 
+    // oxlint-disable-next-line vitest/no-disabled-tests
     it.skip("should update when navigating with different query params", async () => {
       // Skipped: Multiple rapid navigations to same page in jsdom have timing issues
       class App {

@@ -1,47 +1,47 @@
 {
   "name": "create-alepha",
-  "description": "Create a new Alepha project with a single command.",
-  "author": "Nicolas Foures",
   "version": "0.26.0",
-  "type": "module",
-  "engines": {
-    "node": ">=22.0.0"
-  },
+  "description": "Create a new Alepha project with a single command.",
+  "keywords": [
+    "alepha",
+    "create",
+    "framework",
+    "scaffold",
+    "typescript"
+  ],
+  "homepage": "https://alepha.dev",
   "license": "MIT",
+  "author": "Nicolas Foures",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/feunard/alepha.git"
+  },
   "bin": "./src/index.ts",
   "files": [
     "dist",
     "src"
   ],
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "publishConfig": {
+    "bin": "./dist/index.js",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts"
+  },
+  "scripts": {
+    "lint": "alepha lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "build": "tsdown"
+  },
   "devDependencies": {
     "alepha": "0.26.0",
     "tsdown": "^0.22.14",
     "vitest": "^4.1.10"
   },
-  "scripts": {
-    "lint": "biome check --fix",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests",
-    "build": "tsdown"
+  "engines": {
+    "node": ">=22.0.0"
   },
-  "homepage": "https://alepha.dev",
-  "llms": "https://alepha.dev/llms.txt",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/feunard/alepha.git"
-  },
-  "keywords": [
-    "alepha",
-    "create",
-    "scaffold",
-    "typescript",
-    "framework"
-  ],
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "publishConfig": {
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
-    "bin": "./dist/index.js"
-  }
+  "llms": "https://alepha.dev/llms.txt"
 }

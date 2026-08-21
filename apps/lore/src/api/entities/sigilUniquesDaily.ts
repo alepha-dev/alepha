@@ -1,4 +1,5 @@
 import type { Infer } from "alepha";
+
 import { sigilAnalytics } from "./sigilAnalytics.ts";
 
 export { UNIQUES_COLLAPSED_HASH } from "@alepha/sigil/ingest";

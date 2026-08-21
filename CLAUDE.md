@@ -13,10 +13,12 @@ This is a monorepo workspace using Yarn workspaces with the following structure:
 ## Environment Variables for Commands
 
 When running Alepha CLI commands (build, dev, etc.), use these environment variables for verbose output:
+
 - `LOG_FORMAT=pretty` - Human-readable colored log output
 - `LOG_LEVEL=trace` - Maximum verbosity (trace, debug, info, warn, error)
 
 Example:
+
 ```bash
 LOG_FORMAT=pretty LOG_LEVEL=trace yarn w @alepha/devtools build
 ```
@@ -24,6 +26,7 @@ LOG_FORMAT=pretty LOG_LEVEL=trace yarn w @alepha/devtools build
 ## Development Commands
 
 ### Core Commands
+
 - `yarn v` or `yarn alepha verify` - Full verification pipeline: clean, lint, typecheck, test, check:deps, check:i18n, check:migrations, build, e2e, clean. **JavaScript/TypeScript only — it does NOT run the Go suite.** Reach for it when the change can affect the build, SSR, or anything an e2e suite covers — `--fast` skips all three. Must complete within 10 minutes; always run it with a 10-minute timeout. If it exceeds 10 minutes, treat that as a failure (a hung step, usually e2e) and investigate, do not just wait longer.
   - **Needs Docker running** for the service checks (postgres, redis, s3mock, emqx).
 - `yarn v:go` - The Go lane: `apps/bay`'s suite in a container (gofmt, vet, build, tests, cross-compile), reproducing the `bay` CI job. **Run it when you touch `apps/bay`** — `yarn v` will not, and a green `yarn v` says nothing about Go.
@@ -34,7 +37,7 @@ LOG_FORMAT=pretty LOG_LEVEL=trace yarn w @alepha/devtools build
 - `yarn clean` or `yarn alepha clean` - Remove all generated files and node_modules
 - `yarn build` - Build all workspace packages using `tsdown`
 - `yarn test` - Run all tests using Vitest
-- `yarn lint` - Format and lint using Biome (with `--fix` flag)
+- `yarn lint` - Lint with oxlint (`--fix`), then format with oxfmt
 - `yarn typecheck` - TypeScript type checking (`tsc --noEmit`)
 
 ### Workspace-aggregated Checks
@@ -48,6 +51,7 @@ These fan out via `yarn workspaces foreach -Apt run …`, so every workspace tha
 The convention is `check:<thing>` at the app level → `yarn check:<thing>` at the root that fans out. To add a new check that spans apps, follow the same shape (workspace script + root aggregator + add it to the `verify` pipeline in `alepha.config.ts`).
 
 ### Workspace Commands
+
 - `yarn w <workspace> <command>` - Run commands in specific workspace
   - Examples:
     - `yarn w alepha test` - Run tests for alepha package
@@ -57,6 +61,7 @@ The convention is `check:<thing>` at the app level → `yarn check:<thing>` at t
 ## Architecture
 
 ### Framework Core
+
 - Uses primitive-based architecture with `$` prefixed primitives (`$action`, `$entity`, `$repository`, etc.)
 - Dependency injection container in `alepha`
 - Convention-driven with minimal configuration
@@ -67,12 +72,14 @@ The convention is `check:<thing>` at the app level → `yarn check:<thing>` at t
 Alepha uses a hybrid monorepo structure:
 
 **Unified Package (`alepha`)**
+
 - The `alepha` package exports 50+ framework sub-modules
 - Sub-modules can be imported as `alepha/module-name/submodule-name` (e.g., `alepha/server`, `alepha/security`, `alepha/api/users`)
 - Provides unified dependency management and consistent versioning
 - Located in `packages/alepha/src/` with each sub-module as a directory
 
 **Specialized Packages**
+
 - `@alepha/ui` - Shared shadcn Base UI Nova components. Edit `src/components/` directly. Stock shadcn primitives can be refreshed with `yarn w @alepha/ui sync`, which fetches them from the public `ui.shadcn.com/r/styles/base-nova` registry. Our own blocks (controls, admin, auth, app-shell, alepha-table, …) are not touched by `sync` — they're hand-maintained.
 - `@alepha/devtools` - Development tools and inspection UI
 - `@alepha/sigil` - The reporting half of a sigil: an app sends its page views, Web Vitals and errors to the sink named by `SIGIL_SINK` (default `https://lore.alepha.dev`), authenticated by `SIGIL_KEY`. The key is the only required variable and the only secret: it is shaped `sg_<project>_<secret>`, so it names its own project and the app needs nothing else. `SIGIL_CONFIG` is optional and holds switches only. Lore is the sink (`apps/lore`, `SigilIngestController`)
@@ -100,18 +107,18 @@ Everything that came from Lore carries a **shortId offset of +1000** (quest `#20
 
 Project `1` has a directory tree (browse it with `directory_list`). **Directories are subjects, not document types.** Put a new folio under the subject it is about and say which kind of document it is in its `summary`; there are no `plans/` or `specs/` directories, because a spec filed away from its subject is unfindable. (Folio tags are gone — the summary is the only taxonomy left.) Pass `directory_shortId` to `folio_create`:
 
-| Directory | What goes in it |
-|---|---|
-| `framework` | `packages/alepha` — core, ORM, react, security, build, `@alepha/ui` |
-| `lore` | `apps/lore` — the app, its data model, its UI, sigils, MCP |
-| `bay` | `apps/bay` — the Go supervisor, its deployment, the VPS |
-| `platform` | the deploy chain — `alepha platform`, its adapters, Cloudflare, SSH, npm release |
-| `commerce` | `@alepha/commerce` and `apps/examples/shop` |
-| `reviews` | dated audits and security reviews that span everything |
-| `archive` | retired experiments, kept only where a lesson survives (pulse, bay-admin, outposts) |
-| `trash` | superseded folios awaiting real deletion — see below |
+| Directory   | What goes in it                                                                     |
+| ----------- | ----------------------------------------------------------------------------------- |
+| `framework` | `packages/alepha` — core, ORM, react, security, build, `@alepha/ui`                 |
+| `lore`      | `apps/lore` — the app, its data model, its UI, sigils, MCP                          |
+| `bay`       | `apps/bay` — the Go supervisor, its deployment, the VPS                             |
+| `platform`  | the deploy chain — `alepha platform`, its adapters, Cloudflare, SSH, npm release    |
+| `commerce`  | `@alepha/commerce` and `apps/examples/shop`                                         |
+| `reviews`   | dated audits and security reviews that span everything                              |
+| `archive`   | retired experiments, kept only where a lesson survives (pulse, bay-admin, outposts) |
+| `trash`     | superseded folios awaiting real deletion — see below                                |
 
-**Lifecycle.** When work ships, the *outcome* folio survives and the spec folio moves to `trash`. `trash` is a manual soft-delete: `folio_delete` is immediate and permanent, so nothing is ever deleted outright — it is moved there and left for the user to purge. Do not empty `trash` without being asked.
+**Lifecycle.** When work ships, the _outcome_ folio survives and the spec folio moves to `trash`. `trash` is a manual soft-delete: `folio_delete` is immediate and permanent, so nothing is ever deleted outright — it is moved there and left for the user to purge. Do not empty `trash` without being asked.
 
 #### ⚠️ superpowers writes its plans and specs HERE, not to disk
 
@@ -124,19 +131,23 @@ A plan folio needs: what is being built, the constraints that bind it, and the d
 ### Testing
 
 #### Test Configuration
+
 - Uses **Vitest** with global test environment
 - Coverage tracking for `packages/*/src/**/*.ts(x)`
 - Test databases and Azure storage emulator configuration included via `vitest.config.ts`
 - Tests located in `__tests__/` directories within each package / module or as co-located `*.spec.ts` files
 
 #### Test Environments
+
 Two test environments are configured:
+
 1. **Node.js tests** - `*.spec.{ts,tsx}` (excludes `*.browser.spec.*`)
 2. **Browser tests (jsdom)** - `*.browser.spec.{ts,tsx}`
    - Use `.browser.spec.ts` or `.browser.spec.tsx` extension for browser tests
    - Automatically uses jsdom environment
 
 #### Running Tests
+
 - **All packages**: `yarn test`
 - **Single package**: `yarn w alepha test`
 - **Filtered tests**: `yarn w alepha vitest run <pattern>` (e.g., `yarn w alepha vitest run init.spec`)
@@ -146,21 +157,22 @@ Two test environments are configured:
 
 Two disjoint bands, and they must stay disjoint:
 
-| band | owner |
-|---|---|
-| `3001-3004` | `apps/benchmark` |
-| `3300-3399` | **dev servers** — `dev.port` in each app's `alepha.config.ts` (docs 3302, lore 3303, examples/playground 3304, examples/shop 3305, examples/errors 3306, examples/ssr 3311) |
-| `5173+` | dev servers with no `dev.port` (Vite default); also `alepha dev` in multi-app mode, which hands each child `5173 + index` via `SERVER_PORT` and so **overrides `dev.port`** |
-| `4300-4999` | **e2e, and nothing else** |
-| `11883` / `15432` / `16379` / `19090` | `compose.yml` test services (emqx / postgres / redis / s3mock) |
+| band                                  | owner                                                                                                                                                                       |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `3001-3004`                           | `apps/benchmark`                                                                                                                                                            |
+| `3300-3399`                           | **dev servers** — `dev.port` in each app's `alepha.config.ts` (docs 3302, lore 3303, examples/playground 3304, examples/shop 3305, examples/errors 3306, examples/ssr 3311) |
+| `5173+`                               | dev servers with no `dev.port` (Vite default); also `alepha dev` in multi-app mode, which hands each child `5173 + index` via `SERVER_PORT` and so **overrides `dev.port`** |
+| `4300-4999`                           | **e2e, and nothing else**                                                                                                                                                   |
+| `11883` / `15432` / `16379` / `19090` | `compose.yml` test services (emqx / postgres / redis / s3mock)                                                                                                              |
 
 All six Playwright configs (`apps/docs`, `apps/lore`, and `apps/examples/{playground,shop,ssr}` — ssr twice, prod + dev mode) take their port from `e2ePort("<app>")` in the repo-root `playwright.port.ts`, the same way every vitest config takes its browser project from `vitest.jsdom.ts`. Add port logic there, never to a caller; a new suite needs a slot in `E2E_SLOTS` or it will not typecheck.
 
-The argument is the **app name, not a port**, because it used to be the port — and it was the app's own *dev* port. `yarn dev` and `yarn e2e` in the same app fought over one socket, and with `reuseExistingServer` on, Playwright adopted the dev server and ran the suite against hot-reloaded sources and the dev database, reporting green.
+The argument is the **app name, not a port**, because it used to be the port — and it was the app's own _dev_ port. `yarn dev` and `yarn e2e` in the same app fought over one socket, and with `reuseExistingServer` on, Playwright adopted the dev server and ran the suite against hot-reloaded sources and the dev database, reporting green.
 
 `e2ePort` derives a slot from the **checkout path**, so two worktrees never collide (the probe cannot do this: `yarn start` builds for a minute before binding, so concurrent runs both see the port free), then **bind-tests it and steps a full stride if anything answers**. `reuseExistingServer` is therefore `false` everywhere: a port verified free has no server to reuse, and anything answering on it raced in and is not this run's build. `E2E_PORT` overrides the whole thing.
 
 #### Testing Patterns
+
 - **Automatic Lifecycle**: `Alepha.create()` automatically handles start/stop in test environments
 - **Service Substitution**: Use `Alepha.with()` for mocking dependencies (preferred over traditional mocking)
 - **Standard Structure**: Follow Arrange-Act-Assert pattern with descriptive test names
@@ -168,9 +180,11 @@ The argument is the **app name, not a port**, because it used to be the port —
 - **Shared Functions**: Create reusable test functions for testing multiple implementations
 
 #### Important: Avoid vi.mock
+
 **NEVER use `vi.mock()` or `vi.spyOn()`** - Alepha's DI system makes traditional mocking unnecessary and often problematic. Instead:
 
 1. **Service Substitution** - Replace real services with test implementations:
+
 ```typescript
 const alepha = Alepha.create()
   .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
@@ -187,6 +201,7 @@ const alepha = Alepha.create()
    - `MemoryFileStorageProvider` - In-memory file storage (buckets)
 
 3. **Test Assertion Helpers** - Memory providers include DX helpers:
+
 ```typescript
 const fs = alepha.inject(MemoryFileSystemProvider);
 expect(fs.wasWritten("/path/file.ts")).toBe(true);
@@ -198,6 +213,7 @@ expect(shell.wasCalled("yarn install")).toBe(true);
 ```
 
 4. **TestProvider Pattern** - For unit testing protected methods, create a test subclass:
+
 ```typescript
 class TestCliProvider extends CliProvider {
   public testParseFlags = this.parseFlags.bind(this);
@@ -208,6 +224,7 @@ const result = cli.testParseFlags(["--verbose"], flagDefs);
 ```
 
 5. **CLI Testing** - Use `CliProvider.run()` for lightweight command testing:
+
 ```typescript
 const cli = alepha.inject(CliProvider);
 const cmd = alepha.inject(InitCommand);
@@ -215,11 +232,14 @@ await cli.run(cmd.init, { argv: "--react", root: "/project" });
 ```
 
 #### Common Test Patterns
+
 ```typescript
 // Basic test structure
 test("description", async ({ expect }) => {
   const alepha = Alepha.create();
-  class TestApp { /* ... */ }
+  class TestApp {
+    /* ... */
+  }
   const app = alepha.inject(TestApp);
   await alepha.start();
 
@@ -234,8 +254,10 @@ const alepha = Alepha.create().with({
 });
 
 // Testing with memory providers
-const alepha = Alepha.create()
-  .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider });
+const alepha = Alepha.create().with({
+  provide: FileSystemProvider,
+  use: MemoryFileSystemProvider,
+});
 const fs = alepha.inject(MemoryFileSystemProvider);
 await fs.writeFile("/test/file.txt", "content");
 // ... run code that uses FileSystemProvider ...
@@ -244,7 +266,7 @@ expect(fs.wasWritten("/test/output.txt")).toBe(true);
 // Browser tests
 test("should work in browser", async ({ expect }) => {
   // This test will run in jsdom environment
-  const element = document.createElement('div');
+  const element = document.createElement("div");
   expect(element).toBeDefined();
 });
 ```
@@ -254,6 +276,7 @@ test("should work in browser", async ({ expect }) => {
 **⚠️ REQUIRED - Must Run After Every Code Modification:**
 
 After updating ANY code in this repository, you MUST execute:
+
 ```bash
 yarn lint       # Linting - auto-fixes formatting and import order
 yarn typecheck  # Type checking - catches TypeScript errors
@@ -261,11 +284,13 @@ yarn test       # Unit and integration tests - ensures functionality
 ```
 
 These commands are **MANDATORY** and non-negotiable. Do not skip them under any circumstances.
+
 - If `yarn typecheck` fails, fix all type errors before proceeding
 - If `yarn test` fails, fix all test failures
 - If `yarn lint` fails, fix all lint issues
 
 For package-specific work, use:
+
 ```bash
 yarn w @package-name typecheck && yarn w @package-name test
 ```

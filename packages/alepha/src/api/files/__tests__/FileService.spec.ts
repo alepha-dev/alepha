@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { Readable } from "node:stream";
+
 import { Alepha, type Service } from "alepha";
 import {
   FileStorageProvider,
@@ -11,6 +12,7 @@ import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import type { UserAccountToken } from "alepha/security";
 import { FileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
+
 import { users } from "../../users/entities/users.ts";
 import {
   $storage,
@@ -56,7 +58,7 @@ const testFileServiceOperations = async (
     opts?: { name?: string; type?: string },
   ) => {
     if (typeof textOrOpts === "string") {
-      return fs.createFile({ text: textOrOpts, ...(opts || {}) });
+      return fs.createFile({ text: textOrOpts, ...opts });
     }
     return fs.createFile(textOrOpts);
   };

@@ -1,8 +1,10 @@
 import { basename } from "node:path";
+
 import { $inject, Alepha } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
+
 import { alephaPackageJson, version } from "../alephaPackageJson.ts";
 
 /**
@@ -26,7 +28,7 @@ export interface WorkspaceContext {
    * Config files present at workspace root.
    */
   config: {
-    biomeJson: boolean;
+    oxlintrc: boolean;
     editorconfig: boolean;
     tsconfigJson: boolean;
   };
@@ -140,7 +142,7 @@ export class PackageManagerUtils {
       isPackage: false,
       workspaceRoot: null,
       packageManager: null,
-      config: { biomeJson: false, editorconfig: false, tsconfigJson: false },
+      config: { oxlintrc: false, editorconfig: false, tsconfigJson: false },
     };
 
     // Walk up 1–3 levels: `monorepo/pkg` (depth 1) was never checked, so a
@@ -230,9 +232,9 @@ export class PackageManagerUtils {
     const hasLockfile = hasYarnLock || hasPnpmLock || hasNpmLock || hasBunLock;
     if (!hasLockfile) return null;
 
-    const [hasBiome, hasEditorConfig, hasTsConfig, hasPackageJson] =
+    const [hasOxlintrc, hasEditorConfig, hasTsConfig, hasPackageJson] =
       await Promise.all([
-        this.fs.exists(this.fs.join(candidate, "biome.json")),
+        this.fs.exists(this.fs.join(candidate, ".oxlintrc.json")),
         this.fs.exists(this.fs.join(candidate, ".editorconfig")),
         this.fs.exists(this.fs.join(candidate, "tsconfig.json")),
         this.fs.exists(this.fs.join(candidate, "package.json")),
@@ -251,7 +253,7 @@ export class PackageManagerUtils {
       workspaceRoot: candidate,
       packageManager,
       config: {
-        biomeJson: hasBiome,
+        oxlintrc: hasOxlintrc,
         editorconfig: hasEditorConfig,
         tsconfigJson: hasTsConfig,
       },
@@ -392,7 +394,7 @@ export class PackageManagerUtils {
   /**
    * Opt a pnpm project into a hoisted `node_modules`.
    *
-   * `alepha` carries the toolchain — vite, vitest, typescript, biome,
+   * `alepha` carries the toolchain — vite, vitest, typescript, oxlint/oxfmt,
    * drizzle-kit — in its own `dependencies`, and the scaffold's generated
    * files import part of it directly: `vite.config.ts` imports
    * `vitest/config`, and the dummy spec imports `vitest`. npm, bun and yarn
@@ -482,7 +484,7 @@ export class PackageManagerUtils {
    * Write `package.json`, newline-terminated.
    *
    * `JSON.stringify` does not end with one, and every other tool that touches
-   * this file does — npm, yarn and biome all rewrite it with a trailing
+   * this file does — npm, yarn and oxfmt all rewrite it with a trailing
    * newline. Without it, the scaffolder emitted the one file in a new project
    * that its own `alepha lint` immediately had to fix.
    */
@@ -554,7 +556,7 @@ export class PackageManagerUtils {
       alepha: `^${version}`,
     };
 
-    // The toolchain (typescript, vite, vitest, biome, drizzle-kit) is NOT
+    // The toolchain (typescript, vite, vitest, oxlint/oxfmt, drizzle-kit) is NOT
     // pinned here — it ships embedded as `dependencies` of `alepha`, so the
     // `alepha` CLI resolves and runs it from its own install. The project
     // never declares those versions; upgrading `alepha` moves the whole

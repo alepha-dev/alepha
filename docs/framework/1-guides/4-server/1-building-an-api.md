@@ -29,11 +29,13 @@ class ProductController {
         limit: z.integer().default(10).optional(),
       }),
       // good practice is to move complex schemas to separate files (api/schemas/*) and import them
-      response: z.array(z.object({
-        id: z.uuid(),
-        name: z.text(),
-        price: z.number(),
-      })),
+      response: z.array(
+        z.object({
+          id: z.uuid(),
+          name: z.text(),
+          price: z.number(),
+        }),
+      ),
     },
     handler: async ({ query }) => {
       return await this.repo.findMany({
@@ -65,8 +67,8 @@ class ProductController {
 `$action` sits above `$route`: same pipeline, but all paths are prefixed with `/api` by default.
 
 ```typescript
-$action({ path: "/users" })       // GET /api/users
-$action({ path: "/users/:id" })   // GET /api/users/:id
+$action({ path: "/users" }); // GET /api/users
+$action({ path: "/users/:id" }); // GET /api/users/:id
 ```
 
 The prefix is configurable via the `serverApiOptions` atom:
@@ -93,7 +95,9 @@ When a `params` schema is provided and no `path` is set, path parameters are app
 class App {
   getUser = $action({
     schema: { params: z.object({ id: z.uuid() }) },
-    handler: async ({ params }) => { /* ... */ },
+    handler: async ({ params }) => {
+      /* ... */
+    },
   });
   // GET /api/getUser/:id
 }
@@ -124,13 +128,13 @@ Supported methods: `GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `HEAD`, `OPTIONS`, `
 
 The `schema` option accepts up to five fields:
 
-| Field | Purpose |
-|-------|---------|
-| `params` | Path parameters (e.g. `/products/:id`) |
-| `query` | URL query parameters |
-| `body` | Request body (JSON, text, or multipart) |
-| `headers` | Required request headers |
-| `response` | Response body shape |
+| Field      | Purpose                                 |
+| ---------- | --------------------------------------- |
+| `params`   | Path parameters (e.g. `/products/:id`)  |
+| `query`    | URL query parameters                    |
+| `body`     | Request body (JSON, text, or multipart) |
+| `headers`  | Required request headers                |
+| `response` | Response body shape                     |
 
 All fields use Zod schemas via the `z` helper from `alepha`. The handler receives fully validated and typed request data.
 
@@ -146,12 +150,16 @@ class AdminController {
 
   listUsers = $action({
     group: this.group,
-    handler: () => { /* ... */ },
+    handler: () => {
+      /* ... */
+    },
   });
 
   deleteUser = $action({
     group: this.group,
-    handler: () => { /* ... */ },
+    handler: () => {
+      /* ... */
+    },
   });
 }
 ```
@@ -162,9 +170,11 @@ The `disabled` option prevents the route from being registered. Useful for featu
 
 ```typescript
 class App {
-  env = $env(z.object({
-    ENABLE_BETA: z.boolean().default(false),
-  }));
+  env = $env(
+    z.object({
+      ENABLE_BETA: z.boolean().default(false),
+    }),
+  );
 
   beta = $action({
     disabled: !this.env.ENABLE_BETA,
@@ -230,6 +240,7 @@ for await (const chunk of stream) {
 ```
 
 Key differences from `$action`:
+
 - Method is always POST
 - Response is `text/event-stream` (not JSON)
 - Schema uses `data` (event shape) instead of `response`

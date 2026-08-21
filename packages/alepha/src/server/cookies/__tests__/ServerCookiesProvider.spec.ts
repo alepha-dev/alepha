@@ -1,6 +1,7 @@
 import { Alepha, z } from "alepha";
 import { $action, AlephaServer } from "alepha/server";
 import { describe, expect, test } from "vitest";
+
 import { $cookie, AlephaServerCookies } from "../index.ts";
 
 // A strong, 32-character secret for testing purposes

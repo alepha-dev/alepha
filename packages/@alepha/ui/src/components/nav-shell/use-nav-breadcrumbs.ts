@@ -1,6 +1,7 @@
 import { useRouterState } from "alepha/react/router";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
+
 import { navLabel } from "./nav-tree-util.ts";
 
 export interface UseNavBreadcrumbsOptions {

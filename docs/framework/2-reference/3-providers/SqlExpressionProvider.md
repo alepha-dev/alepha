@@ -22,12 +22,12 @@ class StatsController {
   protected readonly database = $inject(DatabaseProvider);
   protected readonly quests = $repository(quests);
 
-  perDay = () => this.database.run(
-    sql`SELECT ${this.sqlx.dateDay(this.quests.table.createdAt)} AS day,
+  perDay = () =>
+    this.database.run(
+      sql`SELECT ${this.sqlx.dateDay(this.quests.table.createdAt)} AS day,
                COUNT(*) AS total
         FROM ${this.quests.table} GROUP BY 1`,
-    z.object({ day: z.text(), total: z.integer() }),
-  );
+      z.object({ day: z.text(), total: z.integer() }),
+    );
 }
 ```
-

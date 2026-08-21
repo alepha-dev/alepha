@@ -8,7 +8,7 @@ import { ConsoleOutputProvider } from "alepha/command";
 
 ## Overview
 
-What a command *produces*, as opposed to what it *reports*.
+What a command _produces_, as opposed to what it _reports_.
 
 Two different things shared one stream: `ConsoleDestinationProvider` logs
 through `console.log`, so `alepha --version` came back as a timestamped,
@@ -21,7 +21,7 @@ does not control, so a parser written against one format broke under another.
 mutation whose own comment records the bug it caused ("flipping the format
 permanently made every later log lose its timestamp and level"). That
 workaround also cannot fix scripting: changing the format changes how a line
-*looks*, not which stream it goes to.
+_looks_, not which stream it goes to.
 
 So output is written here, straight to stdout, never through the logger. The
 logger keeps narrating; this prints results.
@@ -29,4 +29,3 @@ logger keeps narrating; this prints results.
 Colour is dropped when stdout is not a TTY, which is what makes the output
 pipeable without the caller stripping escape sequences by hand. `NO_COLOR`
 is honoured for the same reason.
-

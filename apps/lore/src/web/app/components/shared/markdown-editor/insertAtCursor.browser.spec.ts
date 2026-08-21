@@ -1,5 +1,6 @@
 import { EditorState } from "@codemirror/state";
 import { describe, expect, it } from "vitest";
+
 import { buildInsertion } from "./insertAtCursor.ts";
 
 /**

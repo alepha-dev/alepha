@@ -1,4 +1,5 @@
 import { $relations } from "alepha/orm";
+
 import { bookings, courts, invoices, participants } from "./entities.ts";
 
 export const tenantSchema = { courts, bookings, participants, invoices };

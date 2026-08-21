@@ -8,6 +8,7 @@ import {
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Bug, Eye, Users } from "lucide-react";
+
 import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
 import { currentSigilInsightsAtom } from "../../../atoms/currentSigilInsightsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";

@@ -4,6 +4,7 @@ import { AlephaContext } from "alepha/react";
 import type { ReactNode } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+
 import { I18nProvider, Localize } from "../index.ts";
 
 describe("<Localize/>", () => {

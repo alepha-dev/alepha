@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
+
 import { DocsChecker } from "../scripts/DocsChecker.ts";
 
 describe("DocsChecker", () => {
@@ -157,6 +158,45 @@ describe("DocsChecker", () => {
       const violations = await checker.check(["/docs/a.md"]);
 
       expect(violations).toEqual([]);
+    });
+
+    it("should keep the escape hatch across the blank line a formatter inserts", async () => {
+      // `<!-- docs-check-ignore -->` is a block-level HTML comment, so every
+      // markdown formatter puts a blank line after it. When the marker only
+      // exempted the line immediately below, formatting `docs/` detached every
+      // one of them and the check failed on prose nobody had touched.
+      const { checker, fs } = boot();
+      await fs.writeFile(
+        "/docs/a.md",
+        [
+          "<!-- docs-check-ignore -->",
+          "",
+          "Alepha used TypeBox before v0.20.",
+        ].join("\n"),
+      );
+
+      const violations = await checker.check(["/docs/a.md"]);
+
+      expect(violations).toEqual([]);
+    });
+
+    it("should not let a marker exempt a line two paragraphs down", async () => {
+      const { checker, fs } = boot();
+      await fs.writeFile(
+        "/docs/a.md",
+        [
+          "<!-- docs-check-ignore -->",
+          "",
+          "Alepha used TypeBox before v0.20.",
+          "",
+          "Alepha used TypeBox before v0.20.",
+        ].join("\n"),
+      );
+
+      const violations = await checker.check(["/docs/a.md"]);
+
+      expect(violations).toHaveLength(1);
+      expect(violations[0]).toMatchObject({ file: "/docs/a.md", line: 5 });
     });
   });
 

@@ -5,6 +5,7 @@ import {
   MemoryDestinationProvider,
 } from "alepha/logger";
 import { describe, expect, test } from "vitest";
+
 import {
   ChangelogCommand,
   changelogOptions,

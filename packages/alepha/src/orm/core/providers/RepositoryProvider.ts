@@ -1,4 +1,5 @@
 import { $inject, Alepha, type Service, type ZObject } from "alepha";
+
 import type { EntityPrimitive } from "../primitives/$entity.ts";
 import { Repository } from "../services/Repository.ts";
 import type { DatabaseProvider } from "./drivers/DatabaseProvider.ts";

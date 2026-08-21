@@ -2,6 +2,7 @@ import { cn } from "@alepha/ui/lib/utils";
 import { useI18n } from "alepha/react/i18n";
 import { Sparkles } from "lucide-react";
 import type { ReactElement } from "react";
+
 import type { I18n } from "../../../../services/I18n.ts";
 
 export interface FolioSummaryFieldProps {

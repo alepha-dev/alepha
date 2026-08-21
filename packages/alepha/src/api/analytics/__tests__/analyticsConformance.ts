@@ -1,5 +1,6 @@
 import { z } from "alepha";
 import { describe, expect, it } from "vitest";
+
 import type { AnalyticsProvider } from "../providers/AnalyticsProvider.ts";
 
 /**

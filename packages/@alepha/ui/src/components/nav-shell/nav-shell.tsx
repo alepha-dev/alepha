@@ -6,12 +6,15 @@ import {
 } from "@alepha/ui/components/app-shell/app-shell";
 import { useRouterState } from "alepha/react/router";
 import { useMemo } from "react";
+
 import { isActivePath } from "./nav-tree-util.ts";
 import { useNavBreadcrumbs } from "./use-nav-breadcrumbs.ts";
 import { useNavTree } from "./use-nav-tree.ts";
 
-export interface NavShellProps
-  extends Omit<AppShellProps, "nav" | "breadcrumbs"> {
+export interface NavShellProps extends Omit<
+  AppShellProps,
+  "nav" | "breadcrumbs"
+> {
   /**
    * Route name that anchors this shell — typically the layout `$page` mounted
    * at the shell's base path (e.g. `/admin`). The sidebar and breadcrumbs are

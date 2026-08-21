@@ -1,4 +1,5 @@
 import { join } from "node:path";
+
 import {
   $atom,
   $env,
@@ -18,6 +19,7 @@ import { type ServerHandler, ServerRouterProvider } from "alepha/server";
 import { ServerLinksProvider } from "alepha/server/links";
 import { ServerStaticProvider } from "alepha/server/static";
 import { FileSystemProvider } from "alepha/system";
+
 import { PAGE_ROUTE, type PageServerRoute } from "../constants/PAGE_ROUTE.ts";
 import { Redirection } from "../errors/Redirection.ts";
 import {
@@ -497,7 +499,7 @@ export class ReactServerProvider {
       // Skip SSR for file-like URLs hitting the catch-all wildcard.
       // Bots and crawlers often probe paths like /hello.txt, /wp-login.php, etc.
       // Rendering a full React page for these is wasteful — return a plain 404 instead.
-      // biome-ignore lint/complexity/useOptionalChain: staticFilePattern is `false | RegExp`; optional chaining doesn't narrow `false`
+      // staticFilePattern is `false | RegExp`; optional chaining doesn't narrow `false`
       if (staticFilePattern && staticFilePattern.test(url.pathname)) {
         reply.status = 404;
         reply.headers["content-type"] = "text/plain";

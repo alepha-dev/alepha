@@ -6,6 +6,7 @@ import {
   type StreamLike,
 } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+
 import { FileDetector } from "../services/FileDetector.ts";
 import type {
   CpOptions,
@@ -390,12 +391,12 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
         );
       }
       this.registerDirectoryTree(to);
-      for (const dirPath of [...this.directories]) {
+      for (const dirPath of Array.from(this.directories)) {
         if (dirPath.startsWith(`${from}/`)) {
           this.directories.add(`${to}/${dirPath.slice(from.length + 1)}`);
         }
       }
-      for (const [filePath, content] of [...this.files]) {
+      for (const [filePath, content] of Array.from(this.files)) {
         if (filePath.startsWith(`${from}/`)) {
           const newPath = `${to}/${filePath.slice(from.length + 1)}`;
           if (!force && this.files.has(newPath)) {

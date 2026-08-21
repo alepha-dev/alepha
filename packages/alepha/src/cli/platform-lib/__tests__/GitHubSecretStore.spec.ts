@@ -6,6 +6,7 @@ import {
   ShellProvider,
 } from "alepha/system";
 import { describe, test } from "vitest";
+
 import { GitHubSecretStore } from "../providers/GitHubSecretStore.ts";
 
 describe("GitHubSecretStore", () => {

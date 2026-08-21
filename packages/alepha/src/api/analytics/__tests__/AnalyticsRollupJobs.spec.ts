@@ -3,6 +3,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { MemoryDestinationProvider } from "alepha/logger";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, expect, it } from "vitest";
+
 // Imported through the module entry, not the primitive/job files directly —
 // see the note at the top of `analytics.spec.ts`: `$analytics`'s DI
 // auto-wiring depends on `AnalyticsPrimitive` (and, here, `AnalyticsRollupJobs`

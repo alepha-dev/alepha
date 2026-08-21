@@ -1,5 +1,7 @@
 import * as fs from "node:fs";
+
 import { expect, type Page, test } from "@playwright/test";
+
 import {
   apiPost,
   createProjectViaWizard,
@@ -665,7 +667,7 @@ test.describe("Folio workspace", () => {
     const fileName = `attached-${stamp}.txt`;
     const registered = page.waitForResponse(
       (r) =>
-        /\/folio\/blobs$/.test(new URL(r.url()).pathname) &&
+        new URL(r.url()).pathname.endsWith("/folio/blobs") &&
         r.request().method() === "POST" &&
         r.status() === 200,
       { timeout: 20_000 },

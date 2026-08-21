@@ -1,5 +1,6 @@
 import { $inject } from "alepha";
 import { $repository, $sequence } from "alepha/orm";
+
 import { projects } from "../entities/projects.ts";
 import { normalizeQuestTags, type Quest, quests } from "../entities/quests.ts";
 import { AreaService } from "./AreaService.ts";

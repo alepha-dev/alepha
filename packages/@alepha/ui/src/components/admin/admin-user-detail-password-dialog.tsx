@@ -15,6 +15,7 @@ import {
 import type { FormModel } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Ban } from "lucide-react";
+
 import type { passwordSchema } from "./admin-user-detail-password-schema.ts";
 
 export interface AdminUserDetailPasswordDialogProps {

@@ -16,6 +16,7 @@ Start here: [alepha.dev](https://alepha.dev)
 ### GitHub Discussions
 
 For questions like:
+
 - "How do I do X with Alepha?"
 - "What's the best way to structure Y?"
 - "Is there a built-in way to handle Z?"
@@ -25,12 +26,14 @@ Open a [GitHub Discussion](https://github.com/feunard/alepha/discussions).
 ### GitHub Issues
 
 For:
+
 - Bug reports (something is broken)
 - Feature requests (something is missing)
 
 Open a [GitHub Issue](https://github.com/feunard/alepha/issues).
 
 **Before opening an issue:**
+
 1. Search existing issues — it might already be reported
 2. Include a minimal reproduction — we can't fix what we can't see
 3. Include your environment (Node version, OS, Alepha version)

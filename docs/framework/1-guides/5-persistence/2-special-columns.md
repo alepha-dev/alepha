@@ -14,10 +14,10 @@ The `db` object is an instance of `DatabaseTypeProvider`.
 `db.primaryKey()` creates an auto-generated primary key column.
 
 ```typescript
-db.primaryKey()            // UUID, app-generated time-ordered UUIDv7 - default
-db.primaryKey(z.uuid())    // UUID, same app-side UUIDv7 generation
-db.primaryKey(z.integer()) // integer with identity (auto-increment)
-db.primaryKey(z.bigint())  // bigint with identity
+db.primaryKey(); // UUID, app-generated time-ordered UUIDv7 - default
+db.primaryKey(z.uuid()); // UUID, same app-side UUIDv7 generation
+db.primaryKey(z.integer()); // integer with identity (auto-increment)
+db.primaryKey(z.bigint()); // bigint with identity
 ```
 
 Calling `db.primaryKey()` with no argument creates a UUID column. Ids are generated in the application as [UUIDv7](https://www.rfc-editor.org/rfc/rfc9562) - time-ordered, so `ORDER BY id` matches insertion order and index locality stays as good as an integer key - and work identically on PostgreSQL, SQLite, and Cloudflare D1, on any database version. Unlike integer keys, they never leak row counts, can be generated before the row is inserted, and merge safely across databases.
@@ -27,9 +27,9 @@ Note that a UUIDv7 embeds its creation timestamp: anyone holding an id can read 
 There are also explicit shortcut methods:
 
 ```typescript
-db.identityPrimaryKey()    // integer with identity
-db.bigIdentityPrimaryKey() // bigint with identity
-db.uuidPrimaryKey()        // UUID
+db.identityPrimaryKey(); // integer with identity
+db.bigIdentityPrimaryKey(); // bigint with identity
+db.uuidPrimaryKey(); // UUID
 ```
 
 Every entity must have exactly one primary key. Multiple primary keys are not supported.
@@ -170,7 +170,7 @@ The tenant is resolved from `currentTenantAtom` first, then from the authenticat
 
 ### Declare whether the app is multi-tenant
 
-Scoping only protects you if an *unresolved* tenant is an error rather than a wildcard. That is an application-wide decision, so it lives in an atom rather than on each entity:
+Scoping only protects you if an _unresolved_ tenant is an error rather than a wildcard. That is an application-wide decision, so it lives in an atom rather than on each entity:
 
 ```typescript
 import { tenancyAtom } from "alepha/security";
@@ -179,10 +179,10 @@ import { tenancyAtom } from "alepha/security";
 alepha.set(tenancyAtom, { mode: "multi" });
 ```
 
-| Mode | Behaviour with no resolved tenant |
-|------|-----------------------------------|
-| `"single"` (default) | No predicate - every row is visible. Correct when the app has one tenant, or none. |
-| `"multi"` | **Throws.** Reads and writes are refused rather than run unscoped, and rows with a `NULL` organization are hidden from a scoped tenant. |
+| Mode                 | Behaviour with no resolved tenant                                                                                                       |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `"single"` (default) | No predicate - every row is visible. Correct when the app has one tenant, or none.                                                      |
+| `"multi"`            | **Throws.** Reads and writes are refused rather than run unscoped, and rows with a `NULL` organization are hidden from a scoped tenant. |
 
 Set it once, at the composition root. Without it, a `$job` or an admin script that forgets to resolve a tenant reads and writes across all of them - including on the framework's own tables (`users`, `files`, `audits`, `parameters`, API keys, payments).
 
@@ -201,7 +201,7 @@ organizationId: db.organization({ strict: false }),
 Leave it out unless you mean it: an entity that says nothing follows the application, which is where the decision belongs.
 
 ::: warning `strict` and `nullable` are different questions
-`nullable` is a schema fact - it is written into your migration. `mode` is a runtime policy and never changes generated SQL. An entity that fails closed *because the app is in `multi` mode* still has a nullable column; only an explicit `strict: true` implies `NOT NULL`, because such a table has no "global row" concept.
+`nullable` is a schema fact - it is written into your migration. `mode` is a runtime policy and never changes generated SQL. An entity that fails closed _because the app is in `multi` mode_ still has a nullable column; only an explicit `strict: true` implies `NOT NULL`, because such a table has no "global row" concept.
 :::
 
 ## Full Example
@@ -223,9 +223,7 @@ const user = $entity({
     deletedAt: db.deletedAt(),
     version: db.version(),
   }),
-  indexes: [
-    { column: "email", unique: true },
-  ],
+  indexes: [{ column: "email", unique: true }],
 });
 ```
 

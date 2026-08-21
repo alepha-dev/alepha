@@ -15,4 +15,3 @@ context it already opens; every log emitted inside that context is then
 captured, **including entries suppressed by the active `LOG_LEVEL`** - those
 are precisely the breadcrumbs worth having when something fails in
 production.
-

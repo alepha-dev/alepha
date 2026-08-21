@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+
 import { langAtom } from "./atoms/langAtom.ts";
 import { $dictionary } from "./primitives/$dictionary.ts";
 import { I18nProvider } from "./providers/I18nProvider.ts";

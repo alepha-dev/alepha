@@ -52,12 +52,12 @@ When the target action exists in the same process, `$client` calls the handler d
 
 Each property on a `$client` proxy returns a `VirtualAction` with these methods:
 
-| Method | Description |
-|--------|-------------|
-| `action(config)` | Default call. Local-first - calls the handler directly if available, otherwise HTTP. |
-| `action.run(config)` | Same as calling the action directly. Local-first. |
-| `action.fetch(config)` | Always makes an HTTP request, even if the action is local. |
-| `action.can()` | Returns `true` if the current user has permission to call this action. |
+| Method                 | Description                                                                          |
+| ---------------------- | ------------------------------------------------------------------------------------ |
+| `action(config)`       | Default call. Local-first - calls the handler directly if available, otherwise HTTP. |
+| `action.run(config)`   | Same as calling the action directly. Local-first.                                    |
+| `action.fetch(config)` | Always makes an HTTP request, even if the action is local.                           |
+| `action.can()`         | Returns `true` if the current user has permission to call this action.               |
 
 ```typescript
 // Direct call (local-first)
@@ -81,9 +81,11 @@ import { $remote } from "alepha/server/links";
 import { $env, z } from "alepha";
 
 class Gateway {
-  env = $env(z.object({
-    PAYMENTS_URL: z.text({ default: "http://localhost:4000" }),
-  }));
+  env = $env(
+    z.object({
+      PAYMENTS_URL: z.text({ default: "http://localhost:4000" }),
+    }),
+  );
 
   payments = $remote({
     url: this.env.PAYMENTS_URL,
@@ -162,4 +164,3 @@ The `LinkProvider` maintains a registry of all available actions (local and remo
 4. Authorization headers from the current request context are forwarded automatically.
 
 The proxy is built using JavaScript `Proxy`, so property access is intercepted at runtime and mapped to link lookups.
-

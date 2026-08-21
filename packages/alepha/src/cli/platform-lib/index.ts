@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+
 import { BayAdapter } from "./adapters/BayAdapter.ts";
 import { CloudflareAdapter } from "./adapters/CloudflareAdapter.ts";
 import { GitHubSecretStore } from "./providers/GitHubSecretStore.ts";

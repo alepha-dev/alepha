@@ -13,6 +13,7 @@ import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
+
 import type { SigilController } from "@/api/controllers/SigilController.ts";
 import {
   APP_NAME_MAX_LENGTH,

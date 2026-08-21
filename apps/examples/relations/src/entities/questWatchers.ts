@@ -1,5 +1,6 @@
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
+
 import { quests } from "./quests.ts";
 import { users } from "./users.ts";
 

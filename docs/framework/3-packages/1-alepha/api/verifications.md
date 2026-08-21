@@ -13,8 +13,8 @@ npm install alepha
 Email and phone verification workflows.
 
 **Features:**
+
 - Verification token generation
 - Verification code sending
 - Verification completion tracking
 - Resend functionality
-

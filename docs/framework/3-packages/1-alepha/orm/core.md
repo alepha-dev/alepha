@@ -13,6 +13,7 @@ npm install alepha
 Type-safe data layer over Drizzle ORM.
 
 **Features:**
+
 - `$entity` schema definitions with Zod + `db` column helpers
 - `Repository` CRUD, pagination, joins, and optimistic locking
 - Introspection-based dev schema sync, file-based production migrations

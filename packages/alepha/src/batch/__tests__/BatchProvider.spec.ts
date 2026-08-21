@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+
 import { AlephaBatch, BatchProvider } from "../index.ts";
 
 describe("BatchProvider", () => {
@@ -506,9 +507,7 @@ describe("BatchProvider", () => {
   });
 
   test("should skip retries during shutdown", async () => {
-    let attempts = 0;
     const handler = vi.fn(async () => {
-      attempts++;
       throw new Error("Always fails");
     });
 
@@ -624,9 +623,9 @@ describe("BatchProvider", () => {
     const handler = vi.fn(async () => "result");
     const context = batchProvider.createContext(alepha, { handler });
 
-    const id1 = batchProvider.push(context, "item-1");
-    const id2 = batchProvider.push(context, "item-2");
-    const id3 = batchProvider.push(context, "item-3");
+    batchProvider.push(context, "item-1");
+    batchProvider.push(context, "item-2");
+    batchProvider.push(context, "item-3");
 
     await batchProvider.flush(context);
 

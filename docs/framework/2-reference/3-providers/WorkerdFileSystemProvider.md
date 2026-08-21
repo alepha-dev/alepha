@@ -13,4 +13,3 @@ Web-standard implementation of FileSystemProvider for Cloudflare Workers and oth
 Uses only Web APIs (ReadableStream, TextEncoder, etc.) - no Node.js-specific APIs.
 Provides working `createFile` with proper streaming support.
 Filesystem operations (rm, cp, stat, etc.) are not available in edge runtimes and will throw.
-

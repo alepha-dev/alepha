@@ -71,6 +71,7 @@ import {
   useRef,
   useState,
 } from "react";
+
 import { paginateLocal } from "./paginate-local.ts";
 import { useTableSelection } from "./use-table-selection.ts";
 
@@ -469,12 +470,12 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
 
   const mergedFilterInitialValues = useMemo<Record<string, any>>(
     () => ({
-      ...(props.filters?.initialValues ?? {}),
-      ...(persistedFilterValues ?? {}),
+      ...props.filters?.initialValues,
+      ...persistedFilterValues,
       // Last, so it beats the stored choice — see `seedValues`. A drill-through
       // link that lost to a filter the reader set last week would be a link
       // that does nothing.
-      ...(props.filters?.seedValues ?? {}),
+      ...props.filters?.seedValues,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
@@ -1008,52 +1009,53 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
           </div>
         )}
 
-        {hasCheckbox && selection.size > 0 && (
-          // Linear-style floating action pill: fixed at the bottom-center of
-          // the viewport, dark surface that stays readable in both themes
-          // because the colors are hard-coded (theme-relative `bg-foreground`
-          // inverts awkwardly against a white container in dark mode).
-          <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center">
-            <div className="pointer-events-auto flex animate-in fade-in-0 slide-in-from-bottom-2 items-center gap-2 rounded-full bg-zinc-900 px-3 py-1.5 text-zinc-100 shadow-lg ring-1 ring-white/10 duration-150">
-              <span className="text-sm pl-2">
-                {tr("alephaTable.selected", {
-                  default: `${selection.size} selected`,
-                  args: [String(selection.size)],
+        {hasCheckbox &&
+          selection.size > 0 && (
+            // Linear-style floating action pill: fixed at the bottom-center of
+            // the viewport, dark surface that stays readable in both themes
+            // because the colors are hard-coded (theme-relative `bg-foreground`
+            // inverts awkwardly against a white container in dark mode).
+            <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center">
+              <div className="pointer-events-auto flex animate-in fade-in-0 slide-in-from-bottom-2 items-center gap-2 rounded-full bg-zinc-900 px-3 py-1.5 text-zinc-100 shadow-lg ring-1 ring-white/10 duration-150">
+                <span className="text-sm pl-2">
+                  {tr("alephaTable.selected", {
+                    default: `${selection.size} selected`,
+                    args: [String(selection.size)],
+                  })}
+                </span>
+                <span className="mx-1 h-4 w-px bg-white/20" />
+                {props.bulkActions?.map((action) => {
+                  const ActionIcon = action.icon;
+                  return (
+                    <Button
+                      key={action.label}
+                      size="sm"
+                      className={
+                        action.destructive
+                          ? "h-8 bg-red-600 text-white hover:bg-red-500"
+                          : "h-8 bg-transparent text-zinc-100 hover:bg-white/10 hover:text-zinc-100"
+                      }
+                      onClick={() => action.onClick(selectedItems, bulkCtx)}
+                    >
+                      {ActionIcon && <ActionIcon className="size-4" />}
+                      {action.label}
+                    </Button>
+                  );
                 })}
-              </span>
-              <span className="mx-1 h-4 w-px bg-white/20" />
-              {props.bulkActions?.map((action) => {
-                const ActionIcon = action.icon;
-                return (
-                  <Button
-                    key={action.label}
-                    size="sm"
-                    className={
-                      action.destructive
-                        ? "h-8 bg-red-600 text-white hover:bg-red-500"
-                        : "h-8 bg-transparent text-zinc-100 hover:bg-white/10 hover:text-zinc-100"
-                    }
-                    onClick={() => action.onClick(selectedItems, bulkCtx)}
-                  >
-                    {ActionIcon && <ActionIcon className="size-4" />}
-                    {action.label}
-                  </Button>
-                );
-              })}
-              <span className="mx-1 h-4 w-px bg-white/20" />
-              <Button
-                size="icon"
-                className="size-8 bg-transparent text-zinc-300 hover:bg-white/10 hover:text-zinc-100"
-                onClick={clearSelection}
-                aria-label={tr("alephaTable.clearSelection", {
-                  default: "Clear selection",
-                })}
-              >
-                <X className="size-4" />
-              </Button>
+                <span className="mx-1 h-4 w-px bg-white/20" />
+                <Button
+                  size="icon"
+                  className="size-8 bg-transparent text-zinc-300 hover:bg-white/10 hover:text-zinc-100"
+                  onClick={clearSelection}
+                  aria-label={tr("alephaTable.clearSelection", {
+                    default: "Clear selection",
+                  })}
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/*
           The toolbar, the rows and the footer are one panel: each facing edge

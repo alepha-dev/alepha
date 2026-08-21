@@ -18,13 +18,13 @@ It is a complete full-stack platform: server, database, auth, queues, storage, a
 
 Each layer builds on the previous.
 
-| Layer | Description | Primitives                                              |
-|-------|-------------|---------------------------------------------------------|
-| **Foundation** | DI, lifecycle, config | `$inject`, `$env`, `$module`, `$hook`, `$logger`        |
-| **Backend** | Database, storage, API | `$entity`, `$action`, `$repository`, `$storage`, `$topic` |
-| **Frontend** | React with SSR, routing, i18n | `$page`, `$head`, `$atom`, `$dictionary`                |
-| **Platform** | Users, auth, jobs, audits | `$realm`, `$job`, `$audit`, `$notification`             |
-| **Admin** | Admin panel & auth UI | `$pageAdmin`, `$pageAccount`, `$pageNav`                |
+| Layer          | Description                   | Primitives                                                |
+| -------------- | ----------------------------- | --------------------------------------------------------- |
+| **Foundation** | DI, lifecycle, config         | `$inject`, `$env`, `$module`, `$hook`, `$logger`          |
+| **Backend**    | Database, storage, API        | `$entity`, `$action`, `$repository`, `$storage`, `$topic` |
+| **Frontend**   | React with SSR, routing, i18n | `$page`, `$head`, `$atom`, `$dictionary`                  |
+| **Platform**   | Users, auth, jobs, audits     | `$realm`, `$job`, `$audit`, `$notification`               |
+| **Admin**      | Admin panel & auth UI         | `$pageAdmin`, `$pageAccount`, `$pageNav`                  |
 
 Not all layers are required. Foundation alone is enough for CLI tools. Add Backend for APIs,
 Frontend for web apps, Platform for users and background jobs.
@@ -152,15 +152,15 @@ not by scanning directories or parsing metadata.
 
 Common infrastructure needs are built-in primitives:
 
-| Need | Primitive | What it does |
-|------|-----------|--------------|
-| Background jobs | `$job` | Durable async work: retries, idempotency keys, crash recovery |
-| File uploads | `$storage` | Files with metadata: querying, TTL, tags (S3, R2, disk) |
-| Cron jobs | `$job` | Same primitive, declared with `cron` instead of `schema` |
-| Pub/sub | `$topic` | Publish and subscribe to events |
-| Caching | `$cache` | Cache expensive computations |
-| Distributed locks | `$lock` | Coordinate across processes |
-| Email | `$email` | Send transactional email |
+| Need              | Primitive  | What it does                                                  |
+| ----------------- | ---------- | ------------------------------------------------------------- |
+| Background jobs   | `$job`     | Durable async work: retries, idempotency keys, crash recovery |
+| File uploads      | `$storage` | Files with metadata: querying, TTL, tags (S3, R2, disk)       |
+| Cron jobs         | `$job`     | Same primitive, declared with `cron` instead of `schema`      |
+| Pub/sub           | `$topic`   | Publish and subscribe to events                               |
+| Caching           | `$cache`   | Cache expensive computations                                  |
+| Distributed locks | `$lock`    | Coordinate across processes                                   |
+| Email             | `$email`   | Send transactional email                                      |
 
 Production builds compile to an optimized bundle deployable to Cloudflare, Bay, or any VPS.
 Declarations like `$job({ cron })` automatically map to native platform formats (Cloudflare Triggers).

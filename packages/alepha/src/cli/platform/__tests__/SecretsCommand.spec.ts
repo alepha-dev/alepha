@@ -7,6 +7,7 @@ import {
 import { CliProvider } from "alepha/command";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, it, test } from "vitest";
+
 import { SecretsCommand } from "../commands/SecretsCommand.ts";
 
 class TestSecretsCommand extends SecretsCommand {
@@ -74,7 +75,7 @@ describe("SecretsCommand", () => {
     } finally {
       process.stdout.write = originalWrite;
     }
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping ANSI codes
+    // stripping ANSI codes
     return writes.join("").replace(/\x1B\[[0-9;]*m/g, "");
   };
 
@@ -241,7 +242,7 @@ describe("SecretsCommand", () => {
         process.stdout.write = originalWrite;
       }
 
-      // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping ANSI codes
+      // stripping ANSI codes
       const output = writes.join("").replace(/\x1B\[[0-9;]*m/g, "");
       expect(output).toContain("+ NEW_SECRET");
       expect(output).toContain("- OLD_SECRET");
@@ -389,10 +390,10 @@ describe("SecretsCommand", () => {
 
       const output = writes.join("");
       expect(output).toContain("env:");
-      // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub Actions `${{ ... }}` syntax in plain string
+      // GitHub Actions `${{ ... }}` syntax in plain string
       expect(output).toContain("API_KEY: ${{ secrets.API_KEY }}");
       expect(output).toContain(
-        // biome-ignore lint/suspicious/noTemplateCurlyInString: GitHub Actions `${{ ... }}` syntax in plain string
+        // GitHub Actions `${{ ... }}` syntax in plain string
         "GITHUB_CLIENT_ID: ${{ secrets.APP_GITHUB_CLIENT_ID }}",
       );
     });

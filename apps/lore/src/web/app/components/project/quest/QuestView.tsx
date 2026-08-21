@@ -18,6 +18,7 @@ import {
   Swords,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
@@ -25,7 +26,9 @@ import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuests
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentQuestAtom } from "@/web/app/atoms/currentQuestAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+
 import QuestAttachments from "./QuestAttachments.tsx";
+import { QUEST_STATUS_TONE } from "./questChips.ts";
 import QuestCompletionDialog from "./QuestCompletionDialog.tsx";
 import QuestDescription from "./QuestDescription.tsx";
 import QuestDiscussion from "./QuestDiscussion.tsx";
@@ -34,7 +37,6 @@ import QuestViewEditButton from "./QuestViewEditButton.tsx";
 import QuestViewObjectives from "./QuestViewObjectives.tsx";
 import QuestViewQuestline from "./QuestViewQuestline.tsx";
 import QuestViewRail from "./QuestViewRail.tsx";
-import { QUEST_STATUS_TONE } from "./questChips.ts";
 
 export interface QuestViewProps {
   quest: QuestResource;
@@ -92,9 +94,13 @@ const QuestView = (props: QuestViewProps) => {
     }>;
   }>({ dependents: [] });
 
-  useEffect(() => {
+  // Mirror the prop into local state, which the inline editors then mutate.
+  // Re-seeded during render on a prop change rather than from an effect.
+  const [seededQuest, setSeededQuest] = useState(props.quest);
+  if (props.quest !== seededQuest) {
+    setSeededQuest(props.quest);
     setQuest(props.quest);
-  }, [props.quest]);
+  }
 
   // Pull predecessor + dependents whenever the quest identity flips
   // (route change or duplicate spawn). Cheap — at most a few rows.

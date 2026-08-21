@@ -1,6 +1,7 @@
 import { $inject, AlephaError, z } from "alepha";
 import { $command, ConsoleOutputProvider } from "alepha/command";
 import { FileSystemProvider } from "alepha/system";
+
 import { AlephaCliUtils } from "../../services/AlephaCliUtils.ts";
 
 export class GenEnvCommand {

@@ -840,7 +840,7 @@ No public changes in range 0.20.4..HEAD
 
 ### Features
 
-- **orm**: partial indexes, subqueries (exists/notExists), connection pooling config, aggregate functions, dry-run   migrations, generated columns, query caching, database views (`cca9a73e`)
+- **orm**: partial indexes, subqueries (exists/notExists), connection pooling config, aggregate functions, dry-run migrations, generated columns, query caching, database views (`cca9a73e`)
 - **server/auth**: defer IODC discovery on serverless and dev (`4d74f9db`)
 - **server**: add $sse server action primitive (`15216b2c`)
 - **cli**: platform - add secret management (`92e7ba9d`)
@@ -1730,4 +1730,3 @@ No public changes in range 0.17.3..HEAD
 - **cookies**: fix set-cookie header (`f53b1aa5`)
 - **swagger**: fix copy script (`16c68e6d`)
 - **playground**: fix ssr (`d995ae77`)
-

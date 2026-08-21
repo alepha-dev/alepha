@@ -24,4 +24,3 @@ so it is false for exactly as long as the app is still starting.
 Not a security concern to have on by default: it says nothing an unauthorized
 caller can use, and both this and `/metrics` are masked from the public host
 by the reverse proxy - see `apps/bay/internal/proxy`.
-

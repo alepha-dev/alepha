@@ -1,4 +1,5 @@
 import { $atom } from "alepha";
+
 import { apiRegistryResponseSchema } from "../schemas/apiLinksResponseSchema.ts";
 
 export const apiLinksAtom = $atom({

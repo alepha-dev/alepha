@@ -34,11 +34,11 @@ Each part arrives as:
 
 ```typescript
 interface MultipartPart {
-  name?: string;                    // form field name
-  filename?: string;                // absent for a plain field
-  mediaType?: string;               // the part's Content-Type
-  headers: Record<string, string>;  // lowercased
-  data: AsyncIterable<Uint8Array>;  // the bytes, in arrival order
+  name?: string; // form field name
+  filename?: string; // absent for a plain field
+  mediaType?: string; // the part's Content-Type
+  headers: Record<string, string>; // lowercased
+  data: AsyncIterable<Uint8Array>; // the bytes, in arrival order
 }
 ```
 
@@ -98,7 +98,7 @@ it imports without having to load before it.
 Register through a `configure` hook rather than by substituting the provider.
 Substitution has an ordering constraint this cannot satisfy: the server resolves
 `MultipartCapProvider` while registering, and whoever wants to answer usually
-loads *after* - the container refuses the late substitution, loudly and
+loads _after_ - the container refuses the late substitution, loudly and
 correctly. Adding to a list works whenever it happens.
 
 This is what `alepha/api/files` does, mapping the targeted `$storage` bucket to
@@ -109,11 +109,11 @@ known before the first byte lands.
 
 **A resolver is a security surface, not a convenience.** It can raise a limit,
 so whatever it keys on is chosen by the caller. A query parameter is
-attacker-controlled, and a resolver that answers for *every* route lets any
+attacker-controlled, and a resolver that answers for _every_ route lets any
 request claim the largest budget the application declares anywhere. Answer
 `undefined` for routes you do not own.
 
-**A raised limit is only safe on a path that streams.** `$secure` runs *after*
+**A raised limit is only safe on a path that streams.** `$secure` runs _after_
 the body hook, so on the `z.file()` path the budget is reachable before
 authentication - a bigger number there is a cheaper denial of service, not a
 feature. On the `z.stream()` path the handler pulls the bytes, so nothing is
@@ -125,13 +125,13 @@ Limits are **counted, never trusted**. `Content-Length` is a claim by the
 sender, so the parser tallies bytes that actually arrived and refuses at the
 first byte past the limit rather than after the whole body is in.
 
-| Condition | Status | Message |
-|---|---|---|
-| One file too large | `413` | `File "<field>" exceeds size limit. Maximum allowed: N bytes` |
-| Request too large | `413` | `Request body size limit exceeded. Maximum allowed: N bytes` |
-| Too many parts | `413` | `Too many files. Maximum allowed: N` |
-| Part headers too large | `413` | `Part headers exceed size limit. Maximum allowed: N bytes` |
-| Anything unparseable | `400` | `Malformed multipart/form-data` |
+| Condition              | Status | Message                                                       |
+| ---------------------- | ------ | ------------------------------------------------------------- |
+| One file too large     | `413`  | `File "<field>" exceeds size limit. Maximum allowed: N bytes` |
+| Request too large      | `413`  | `Request body size limit exceeded. Maximum allowed: N bytes`  |
+| Too many parts         | `413`  | `Too many files. Maximum allowed: N`                          |
+| Part headers too large | `413`  | `Part headers exceed size limit. Maximum allowed: N bytes`    |
+| Anything unparseable   | `400`  | `Malformed multipart/form-data`                               |
 
 A limit blown while a `z.stream()` field is being drained still reads as a
 `413`, even though the handler is long past the parser's own error handling.

@@ -10,6 +10,7 @@ import {
   scrypt,
   timingSafeEqual,
 } from "node:crypto";
+
 import { AlephaError } from "alepha";
 
 export class CryptoProvider {

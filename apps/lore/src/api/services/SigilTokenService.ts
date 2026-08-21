@@ -2,6 +2,7 @@ import { sigilKeyBuild, sigilKeyPrefix } from "@alepha/sigil/key";
 import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { $repository } from "alepha/orm";
+
 import { projects } from "../entities/projects.ts";
 import { type Sigil, sigils } from "../entities/sigils.ts";
 

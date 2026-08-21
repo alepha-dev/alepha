@@ -1,5 +1,6 @@
 import { AlertTriangle, Check, Copy } from "lucide-react";
 import { useState } from "react";
+
 import type { EnvVariable } from "./DevEnvironment.tsx";
 
 const SENSITIVE = ["secret", "password", "key", "token", "salt", "credential"];

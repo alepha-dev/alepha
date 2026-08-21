@@ -1,4 +1,5 @@
 import { $inject, Alepha } from "alepha";
+
 import type { LogEntry } from "../schemas/logEntrySchema.ts";
 import { ConsoleColorProvider } from "./ConsoleColorProvider.ts";
 import { LogFormatterProvider } from "./LogFormatterProvider.ts";

@@ -1,6 +1,7 @@
 import { $hook, $inject, Alepha } from "alepha";
 import { $logger, LogBufferProvider, type LogEntry } from "alepha/logger";
 import { beforeEach, describe, it } from "vitest";
+
 import { $action, ServerProvider } from "../index.ts";
 
 class TestApp {

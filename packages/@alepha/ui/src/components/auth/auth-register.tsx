@@ -7,8 +7,8 @@ import {
   TurnstileWidget,
   type TurnstileWidgetHandle,
 } from "@alepha/ui/components/captcha/turnstile-widget";
-import { Control } from "@alepha/ui/components/control/control";
 import { iconFor } from "@alepha/ui/components/control-base/icon-hint";
+import { Control } from "@alepha/ui/components/control/control";
 import { Alert, AlertDescription } from "@alepha/ui/components/ui/alert";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";

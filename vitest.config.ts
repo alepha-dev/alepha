@@ -1,7 +1,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { defineConfig } from "vitest/config";
+
 import { jsdomProject } from "./vitest.jsdom.ts";
 
 const repoRoot = dirname(fileURLToPath(import.meta.url));

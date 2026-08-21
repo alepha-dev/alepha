@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { parseFlowchart } from "./flowchartParser.ts";
 
 const parse = (source: string) => {

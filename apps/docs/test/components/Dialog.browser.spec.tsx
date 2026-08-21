@@ -1,5 +1,6 @@
 import { act, render, screen } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
+
 import Dialog, {
   DIALOG_CLOSE_DURATION,
 } from "../../src/components/layout/Dialog.tsx";

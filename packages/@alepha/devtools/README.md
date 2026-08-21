@@ -15,6 +15,7 @@ npm install @alepha/devtools
 Runtime inspection and debugging UI.
 
 **Features:**
+
 - DevTools UI at `GET /__devtools`
 - Application metadata at `GET /__devtools/api/metadata`
 - Last 10,000 logs at `GET /__devtools/api/logs`

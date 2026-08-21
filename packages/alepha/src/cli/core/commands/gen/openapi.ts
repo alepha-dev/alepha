@@ -2,6 +2,7 @@ import { $inject, type Alepha, AlephaError, z } from "alepha";
 import { $command, ConsoleOutputProvider } from "alepha/command";
 import type { ServerSwaggerProvider } from "alepha/server/swagger";
 import { FileSystemProvider } from "alepha/system";
+
 import { AlephaCliUtils } from "../../services/AlephaCliUtils.ts";
 
 export class OpenApiCommand {

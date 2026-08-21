@@ -20,7 +20,7 @@ Alepha
 
 Alepha is a full-stack TypeScript framework. Define a schema once and it is your database table, your API validation, your TypeScript types and your React form.
 
-Everything between your code and the runtime (HTTP server, routing, auth, queues, storage, jobs, SSR) is rewritten clean and integrated for Node, Bun, and Cloudflare Workers. Two load-bearing layers are deliberately *not* reinvented: **React** for UI and **Drizzle** for SQL. Nothing to wire up, no config sprawl: one small, consistent surface of typed primitives.
+Everything between your code and the runtime (HTTP server, routing, auth, queues, storage, jobs, SSR) is rewritten clean and integrated for Node, Bun, and Cloudflare Workers. Two load-bearing layers are deliberately _not_ reinvented: **React** for UI and **Drizzle** for SQL. Nothing to wire up, no config sprawl: one small, consistent surface of typed primitives.
 
 One small surface covers the server, the database, auth, background work and React, so a weekend project and a distributed system are the same code with different infrastructure underneath.
 
@@ -33,23 +33,23 @@ One small surface covers the server, the database, auth, background work and Rea
 
 Everything below is MIT, and all of it is developed in this repository. Lore and Bay are not demos: they are the applications that keep the framework honest, and a fix that surfaces while building them lands in the same commit.
 
-| | | |
-|---|---|---|
-| **Alepha Framework** | The framework itself, on npm as [`alepha`](https://www.npmjs.com/package/alepha) | [alepha.dev](https://alepha.dev) |
-| **Alepha Lore** | Project management, for agents too: quests, folios, feedback and crash telemetry, every one of them readable and writable over MCP | [alepha.dev/lore](https://alepha.dev/lore) |
-| **Alepha Bay** | A self-hosted application server. One small Go binary that gives an Alepha app TLS, backups and process isolation on a machine you own | [alepha.dev/bay](https://alepha.dev/bay) |
+|                      |                                                                                                                                        |                                            |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| **Alepha Framework** | The framework itself, on npm as [`alepha`](https://www.npmjs.com/package/alepha)                                                       | [alepha.dev](https://alepha.dev)           |
+| **Alepha Lore**      | Project management, for agents too: quests, folios, feedback and crash telemetry, every one of them readable and writable over MCP     | [alepha.dev/lore](https://alepha.dev/lore) |
+| **Alepha Bay**       | A self-hosted application server. One small Go binary that gives an Alepha app TLS, backups and process isolation on a machine you own | [alepha.dev/bay](https://alepha.dev/bay)   |
 
 ## Architecture
 
 Each layer builds on the previous. Use only what you need: Foundation alone is enough for a CLI tool.
 
-| Layer          | Description | Primitives                                              |
-|----------------|-------------|---------------------------------------------------------|
-| **Foundation** | DI, lifecycle, config | `$inject`, `$env`, `$module`, `$hook`, `$logger`        |
-| **Backend**    | Database, storage, API | `$entity`, `$relations`, `$repository`, `$action`, `$storage` |
-| **Frontend**   | React with SSR, routing, i18n | `$page`, `$head`, `$atom`, `$dictionary`                |
-| **Platform**   | Users, auth, jobs, audits | `$realm`, `$job`, `$audit`, `$notification`             |
-| **Admin**      | Admin panel and auth UI | `$pageAdmin`, `$pageAccount`, `$pageNav`                |
+| Layer          | Description                   | Primitives                                                    |
+| -------------- | ----------------------------- | ------------------------------------------------------------- |
+| **Foundation** | DI, lifecycle, config         | `$inject`, `$env`, `$module`, `$hook`, `$logger`              |
+| **Backend**    | Database, storage, API        | `$entity`, `$relations`, `$repository`, `$action`, `$storage` |
+| **Frontend**   | React with SSR, routing, i18n | `$page`, `$head`, `$atom`, `$dictionary`                      |
+| **Platform**   | Users, auth, jobs, audits     | `$realm`, `$job`, `$audit`, `$notification`                   |
+| **Admin**      | Admin panel and auth UI       | `$pageAdmin`, `$pageAccount`, `$pageNav`                      |
 
 ## Why so small?
 
@@ -81,10 +81,11 @@ export class Api {
   views = $repository(viewEntity);
 
   inc = $action({
-    schema: { // ← validates + generates OpenAPI
+    schema: {
+      // ← validates + generates OpenAPI
       response: z.object({
-        count: z.number()
-      })
+        count: z.number(),
+      }),
     },
     handler: async () => {
       await this.views.create({});
@@ -101,7 +102,7 @@ import { $page } from "alepha/react/router";
 import type { Api } from "./Api.ts";
 
 export class AppRouter {
-  api = $client<Api>();  // ← fully typed, zero codegen
+  api = $client<Api>(); // ← fully typed, zero codegen
 
   home = $page({
     loader: () => this.api.inc(),
@@ -123,8 +124,10 @@ It comes from declaring `$realm` and mounting the admin pages, in both light and
 Nothing in the framework is sealed. Every provider is a class in the container, so a test replaces the one it does not want and leaves the rest running for real. There are 14 `Memory*Provider` classes for the I/O-bound ones, and the clock is one of them.
 
 ```ts
-const alepha = Alepha.create()
-  .with({ provide: EmailProvider, use: MemoryEmailProvider });
+const alepha = Alepha.create().with({
+  provide: EmailProvider,
+  use: MemoryEmailProvider,
+});
 
 const email = alepha.inject(MemoryEmailProvider);
 const time = alepha.inject(DateTimeProvider);

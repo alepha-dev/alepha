@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { afterEach, describe, it } from "vitest";
+
 import { BuildManifestTask } from "../tasks/BuildManifestTask.ts";
 
 /**
@@ -44,7 +45,9 @@ describe("R2 resource detection", () => {
       root: "/tmp/app",
       alepha: {
         primitives: (name: string) =>
-          name === "$storage" ? new Array(opts.storagePrimitives).fill({}) : [],
+          name === "$storage"
+            ? Array.from({ length: opts.storagePrimitives }, () => ({}))
+            : [],
         inject: () => {
           throw new Error("not available");
         },

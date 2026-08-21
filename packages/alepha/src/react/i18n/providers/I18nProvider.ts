@@ -12,6 +12,7 @@ import { $logger } from "alepha/logger";
 // dependency, `i18n → router`) is only consulted when it is also registered.
 import { RouterLocaleProvider } from "alepha/react/router";
 import { $cookie } from "alepha/server/cookies";
+
 import type { ServiceDictionary } from "../hooks/useI18n.ts";
 
 export class I18nProvider<

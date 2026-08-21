@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, test } from "vitest";
+
 import { $email, MemoryEmailProvider } from "../index.ts";
 
 describe("$email", () => {

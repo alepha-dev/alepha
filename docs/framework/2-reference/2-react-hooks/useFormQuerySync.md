@@ -12,12 +12,14 @@ Two-way bind a `useForm` instance to the URL query params, keyed
 per-field (so the URL stays human-readable: `?status=new&zone=ops`).
 
 Direction 1 - URL → form:
+
 - On mount AND every time one of the watched query keys changes
   (typically via browser back/forward or external `router.push`),
   call `form.input[key].set(value)` for each listed key. Missing /
   empty params clear the field (set to `undefined`).
 
 Direction 2 - form → URL:
+
 - Subscribe to the form's `form:change` event for the listed keys.
   Each emission writes the current values for all listed keys to the
   URL via `router.setQueryParams` (replace-state, no history spam).
@@ -32,4 +34,3 @@ navigable via back/forward.
 
 const form = useForm({ schema: z.object({ status: z.string(), q: z.string() }) });
 useFormQuerySync(form, { keys: ["status", "q"] });
-

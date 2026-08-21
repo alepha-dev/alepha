@@ -7,6 +7,7 @@ import {
 } from "@alepha/ui/components/ui/dropdown-menu";
 import { useI18n } from "alepha/react/i18n";
 import { Copy, Crosshair, MoreVertical, Trash2 } from "lucide-react";
+
 import type { I18n } from "../../services/I18n.ts";
 
 export interface DashboardCardMenuProps {

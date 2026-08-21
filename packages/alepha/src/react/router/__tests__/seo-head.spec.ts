@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { $head, AlephaReactHead } from "alepha/react/head";
 import { describe, it } from "vitest";
+
 import { $page } from "../index.ts";
 
 class App {

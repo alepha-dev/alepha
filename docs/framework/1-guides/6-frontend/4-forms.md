@@ -33,16 +33,16 @@ Spread `form.props` on the `<form>` element and `form.input.<field>.props` on ea
 
 ## useForm Options
 
-| Option          | Type                                | Description                                      |
-|-----------------|-------------------------------------|--------------------------------------------------|
-| `schema`        | `ZObject`                           | Zod schema defining fields and validation.   |
-| `handler`       | `(values) => unknown`               | Called on submit with validated values.           |
-| `initialValues` | `Partial<Infer<T>>`                | Pre-populate fields with existing data.          |
-| `id`            | `string`                            | Prefix for field IDs and `data-testid` attributes. |
-| `onChange`      | `(key, value, store) => void`       | Called on every field change.                    |
-| `onError`       | `(error) => void`                   | Called when submission throws an error.          |
-| `onReset`       | `() => void`                        | Called when the form is reset.                   |
-| `onCreateField` | `(name, schema) => InputHTMLAttributes` | Customize generated input attributes.        |
+| Option          | Type                                    | Description                                        |
+| --------------- | --------------------------------------- | -------------------------------------------------- |
+| `schema`        | `ZObject`                               | Zod schema defining fields and validation.         |
+| `handler`       | `(values) => unknown`                   | Called on submit with validated values.            |
+| `initialValues` | `Partial<Infer<T>>`                     | Pre-populate fields with existing data.            |
+| `id`            | `string`                                | Prefix for field IDs and `data-testid` attributes. |
+| `onChange`      | `(key, value, store) => void`           | Called on every field change.                      |
+| `onError`       | `(error) => void`                       | Called when submission throws an error.            |
+| `onReset`       | `() => void`                            | Called when the form is reset.                     |
+| `onCreateField` | `(name, schema) => InputHTMLAttributes` | Customize generated input attributes.              |
 
 The second argument to `useForm` is a dependency array (defaults to `[]`). When dependencies change, the form is re-created.
 
@@ -63,16 +63,16 @@ Spread on the `<form>` element. Includes:
 
 A proxy object where each key corresponds to a schema property. Each field has:
 
-| Property   | Type                        | Description                                 |
-|------------|-----------------------------|---------------------------------------------|
-| `props`    | `InputHTMLAttributes`       | Spread on the `<input>` element.            |
-| `path`     | `string`                    | JSON pointer path (e.g., `/email`).         |
-| `required` | `boolean`                   | Whether the field is required.              |
-| `schema`   | `ZType`                     | The Zod schema for this field.          |
-| `set`      | `(value: any) => void`      | Programmatically set the field value.       |
-| `initialValue` | `any`                   | The field's initial value (from `initialValues` or schema defaults). |
-| `items`    | `Record<string, InputField>` | Child fields, for object-typed properties - see [Nested Object Fields](#nested-object-fields). |
-| `form`     | `FormModel`                 | Reference back to the parent form.          |
+| Property       | Type                         | Description                                                                                    |
+| -------------- | ---------------------------- | ---------------------------------------------------------------------------------------------- |
+| `props`        | `InputHTMLAttributes`        | Spread on the `<input>` element.                                                               |
+| `path`         | `string`                     | JSON pointer path (e.g., `/email`).                                                            |
+| `required`     | `boolean`                    | Whether the field is required.                                                                 |
+| `schema`       | `ZType`                      | The Zod schema for this field.                                                                 |
+| `set`          | `(value: any) => void`       | Programmatically set the field value.                                                          |
+| `initialValue` | `any`                        | The field's initial value (from `initialValues` or schema defaults).                           |
+| `items`        | `Record<string, InputField>` | Child fields, for object-typed properties - see [Nested Object Fields](#nested-object-fields). |
+| `form`         | `FormModel`                  | Reference back to the parent form.                                                             |
 
 ### form.submit()
 
@@ -98,19 +98,19 @@ const { loading } = useFormState(form, ["loading"]);
 
 Input types are automatically inferred from the schema:
 
-| Schema Type      | Input Type       |
-|------------------|------------------|
-| `z.integer()`    | `number`         |
-| `z.number()`     | `number`         |
-| `z.boolean()`    | `checkbox`       |
-| `z.text()`       | `text`           |
-| Field named `password` | `password`  |
-| Field named `email` | `email`       |
-| Field named `url` | `url`           |
-| `z.date()`       | `date`           |
-| `z.time()`       | `time`           |
-| `z.datetime()`   | `datetime-local` |
-| `z.binary()`     | `file`           |
+| Schema Type            | Input Type       |
+| ---------------------- | ---------------- |
+| `z.integer()`          | `number`         |
+| `z.number()`           | `number`         |
+| `z.boolean()`          | `checkbox`       |
+| `z.text()`             | `text`           |
+| Field named `password` | `password`       |
+| Field named `email`    | `email`          |
+| Field named `url`      | `url`            |
+| `z.date()`             | `date`           |
+| `z.time()`             | `time`           |
+| `z.datetime()`         | `datetime-local` |
+| `z.binary()`           | `file`           |
 
 Note that `email`/`password`/`url` are detected from the **field name**, not the schema - a `z.email()` schema on a field named `contact` renders as plain `text`.
 
@@ -176,25 +176,25 @@ const { values } = useFormState(form, ["values"]);
 
 **Return type:**
 
-| Property  | Type                  | Description                          |
-|-----------|-----------------------|--------------------------------------|
-| `loading` | `boolean`             | True during form submission.         |
+| Property  | Type                  | Description                                               |
+| --------- | --------------------- | --------------------------------------------------------- |
+| `loading` | `boolean`             | True during form submission.                              |
 | `dirty`   | `boolean`             | True after any field change. Resets on successful submit. |
-| `error`   | `Error \| undefined`  | Error from the last failed submit.   |
-| `values`  | `Record \| undefined` | Current form values (updated on change and submit). |
+| `error`   | `Error \| undefined`  | Error from the last failed submit.                        |
+| `values`  | `Record \| undefined` | Current form values (updated on change and submit).       |
 
 ## Form Events
 
 Forms emit events on the Alepha event system:
 
-| Event                 | Payload                          | Description                    |
-|-----------------------|----------------------------------|--------------------------------|
+| Event                 | Payload                         | Description                                                        |
+| --------------------- | ------------------------------- | ------------------------------------------------------------------ |
 | `form:change`         | `{ id, path, value, initial? }` | A field value changed (`initial: true` marks programmatic resets). |
-| `form:reset`          | `{ id }`                        | Form was reset.                |
-| `form:submit:begin`   | `{ id }`                        | Submission started.            |
-| `form:submit:success` | `{ id, values }`                | Submission succeeded.          |
-| `form:submit:error`   | `{ id, error }`                 | Submission failed.             |
-| `form:submit:end`     | `{ id }`                        | Submission finished (always).  |
+| `form:reset`          | `{ id }`                        | Form was reset.                                                    |
+| `form:submit:begin`   | `{ id }`                        | Submission started.                                                |
+| `form:submit:success` | `{ id, values }`                | Submission succeeded.                                              |
+| `form:submit:error`   | `{ id, error }`                 | Submission failed.                                                 |
+| `form:submit:end`     | `{ id }`                        | Submission finished (always).                                      |
 
 Forms also emit `react:action:begin`, `react:action:success`, `react:action:error`, and `react:action:end` events with `type: "form"`, so global action handlers apply to form submissions too.
 
@@ -213,7 +213,7 @@ handler: async (values) => {
       path: "/email",
     });
   }
-}
+};
 ```
 
 The `path` is a JSON pointer matching the field path (e.g., `/email`, `/address/city`).

@@ -1,6 +1,7 @@
 import { $module, type Alepha } from "alepha";
 import { AlephaLock, LockProvider, LockTopicProvider } from "alepha/lock";
 import { RedisTopicProvider } from "alepha/topic/redis";
+
 import { RedisLockProvider } from "./providers/RedisLockProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

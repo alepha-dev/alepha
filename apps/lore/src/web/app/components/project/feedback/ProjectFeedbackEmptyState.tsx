@@ -11,7 +11,9 @@ import {
   SquareArrowOutUpRight,
 } from "lucide-react";
 import type { ReactElement } from "react";
+
 import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
+
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";

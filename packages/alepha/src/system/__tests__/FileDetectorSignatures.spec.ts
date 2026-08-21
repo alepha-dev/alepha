@@ -1,6 +1,8 @@
 import { Readable } from "node:stream";
+
 import { Alepha } from "alepha";
 import { beforeEach, describe, expect, it } from "vitest";
+
 import { FileDetector } from "../services/FileDetector.ts";
 
 describe("FileDetector — offsets, extensions, content-disposition", () => {

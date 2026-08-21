@@ -17,7 +17,7 @@ There is no bucket primitive. Declare file storage with `$storage`
 offer paginated listing, TTL expiry, tags, checksums, creator tracking and
 HTTP endpoints.
 
-Inject `FileStorageProvider` directly only when you need blobs *without* a
+Inject `FileStorageProvider` directly only when you need blobs _without_ a
 database - you get `upload` / `download` / `delete` / `deleteMany` /
 `exists` / `list`, keyed by a container name you manage yourself, and
 nothing else.
@@ -45,11 +45,11 @@ bucket per container.
 
 Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
 
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `S3_ACCESS_KEY_ID` | string | **Required** |  |
-| `S3_BUCKET_NAME` | string | **Required** |  |
-| `S3_ENDPOINT` | string | **Required** |  |
-| `S3_KEY_PREFIX` | string | - |  |
-| `S3_REGION` | string | - |  |
-| `S3_SECRET_ACCESS_KEY` | string | **Required** |  |
+| Variable               | Type   | Default      | Description |
+| ---------------------- | ------ | ------------ | ----------- |
+| `S3_ACCESS_KEY_ID`     | string | **Required** |             |
+| `S3_BUCKET_NAME`       | string | **Required** |             |
+| `S3_ENDPOINT`          | string | **Required** |             |
+| `S3_KEY_PREFIX`        | string | -            |             |
+| `S3_REGION`            | string | -            |             |
+| `S3_SECRET_ACCESS_KEY` | string | **Required** |             |

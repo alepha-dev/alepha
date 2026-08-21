@@ -9,7 +9,7 @@ import {
   PopoverTrigger,
 } from "@alepha/ui/components/ui/popover";
 import type { UserEntity } from "alepha/api/users";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export interface RoleMeta {
   name: string;
@@ -40,9 +40,11 @@ export const AdminUsersRolesPicker = (props: AdminUsersRolesPickerProps) => {
   // label and checkboxes reflect the change immediately; re-sync whenever the
   // row's roles change (e.g. a table refresh from another action).
   const [optimisticRoles, setOptimisticRoles] = useState<string[] | null>(null);
-  useEffect(() => {
+  const [syncedRoles, setSyncedRoles] = useState(props.user.roles);
+  if (props.user.roles !== syncedRoles) {
+    setSyncedRoles(props.user.roles);
     setOptimisticRoles(null);
-  }, [props.user.roles]);
+  }
 
   const userRoles = optimisticRoles ?? props.user.roles ?? [];
   const label =

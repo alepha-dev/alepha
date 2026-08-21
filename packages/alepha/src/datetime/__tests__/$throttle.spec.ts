@@ -1,5 +1,6 @@
 import { $pipeline, Alepha } from "alepha";
 import { describe, test } from "vitest";
+
 import { $throttle } from "../primitives/$throttle.ts";
 import { DateTimeProvider } from "../providers/DateTimeProvider.ts";
 
@@ -60,7 +61,7 @@ describe("$throttle", () => {
 
   test("excess calls are delayed, not rejected", async ({ expect }) => {
     const alepha = Alepha.create();
-    const dt = alepha.inject(DateTimeProvider);
+    alepha.inject(DateTimeProvider);
     let callCount = 0;
 
     class TestService {

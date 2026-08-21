@@ -1,6 +1,7 @@
 import { $inject } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, ConflictError } from "alepha/server";
+
 import type { UserEntity } from "../entities/users.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import { myProfileSchema } from "../schemas/myProfileSchema.ts";

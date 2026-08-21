@@ -6,6 +6,7 @@ import {
   type ZType,
   z,
 } from "alepha";
+
 import { PG_GENERATED } from "../constants/PG_SYMBOLS.ts";
 
 /**
@@ -18,9 +19,11 @@ import { PG_GENERATED } from "../constants/PG_SYMBOLS.ts";
  * After:  { name?: string | null; age: number; }
  */
 export type TObjectUpdate<T extends ZObject> = ZObject<{
-  [K in keyof T["shape"] as T["shape"][K] extends { [PG_GENERATED]: any }
-    ? never
-    : K]: T["shape"][K] extends ZodOptional<infer U extends ZType>
+  [
+    K in keyof T["shape"] as T["shape"][K] extends { [PG_GENERATED]: any }
+      ? never
+      : K
+  ]: T["shape"][K] extends ZodOptional<infer U extends ZType>
     ? ZodOptional<ZodUnion<[U, ZodNull]>>
     : T["shape"][K];
 }>;

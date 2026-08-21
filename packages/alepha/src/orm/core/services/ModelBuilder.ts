@@ -1,5 +1,6 @@
 import { AlephaError, z } from "alepha";
 import type { SQL } from "drizzle-orm";
+
 import type { EntityPrimitive } from "../primitives/$entity.ts";
 import type { SequencePrimitive } from "../primitives/$sequence.ts";
 

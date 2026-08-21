@@ -1,5 +1,6 @@
 import { Alepha, z } from "alepha";
 import { test } from "vitest";
+
 import { $channel } from "../primitives/$channel.ts";
 
 test("$channel should create a channel primitive", async ({ expect }) => {

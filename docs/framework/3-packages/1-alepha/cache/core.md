@@ -13,6 +13,7 @@ npm install alepha
 Type-safe caching with TTL support.
 
 **Features:**
+
 - Cached computations with type-safe keys and values
 - Configurable TTL
 - Cache invalidation

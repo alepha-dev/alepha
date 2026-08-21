@@ -1,6 +1,7 @@
 import { AlephaError } from "alepha";
 import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
+
 import { type Area, areas } from "../entities/areas.ts";
 import { quests } from "../entities/quests.ts";
 

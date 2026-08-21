@@ -15,9 +15,9 @@ answer for an API and the wrong one for a hard navigation: the visitor gets
 `{"status":503,…}` painted as text on a white background, with no styles, no
 favicon and no way back.
 
-The router already renders a real error page for anything a *loader* or a
-*component* throws - that path runs inside `createLayers`, which owns
-`errorHandler`. What never reached it is everything thrown *around* the
+The router already renders a real error page for anything a _loader_ or a
+_component_ throws - that path runs inside `createLayers`, which owns
+`errorHandler`. What never reached it is everything thrown _around_ the
 render: `use:` middleware, and every `server:onRequest` hook. Those are not
 exotic. `ServerNotReadyProvider` throws 503 while the app is still booting,
 `ServerRateLimitProvider` throws 429, `ServerAuthProvider` throws 401 on a
@@ -38,4 +38,3 @@ Two conditions, both required:
   that is what every programmatic client sends.
 - **React is loaded.** Guaranteed by construction: this provider ships with
   `alepha/react/router`, so an API-only app has no such listener.
-

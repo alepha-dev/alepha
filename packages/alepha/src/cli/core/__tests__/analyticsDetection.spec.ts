@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { afterEach, describe, it } from "vitest";
+
 import { BuildManifestTask } from "../tasks/BuildManifestTask.ts";
 
 /**
@@ -41,7 +42,7 @@ describe("analytics resource detection", () => {
       alepha: {
         primitives: (name: string) =>
           name === "$analytics"
-            ? new Array(opts.analyticsPrimitives).fill({})
+            ? Array.from({ length: opts.analyticsPrimitives }, () => ({}))
             : [],
         inject: () => {
           throw new Error("not available");

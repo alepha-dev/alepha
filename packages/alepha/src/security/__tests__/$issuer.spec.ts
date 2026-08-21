@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
+
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { describe, test } from "vitest";
+
 import { $issuer, currentTenantAtom, SecurityProvider } from "../index.ts";
 
 describe("$issuer federated tokens", () => {

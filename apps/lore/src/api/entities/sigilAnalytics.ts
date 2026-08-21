@@ -1,4 +1,5 @@
 import { createSigilAnalyticsEntities } from "@alepha/sigil/ingest";
+
 import { sigils } from "./sigils.ts";
 
 /**

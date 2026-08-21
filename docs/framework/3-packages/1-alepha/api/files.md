@@ -27,13 +27,14 @@ stored.id; // hand this to GET /api/files/:id
 ```
 
 **Features:**
+
 - `$storage` primitive with MIME/size constraints and default TTL
 - Upload/download HTTP endpoints, ETag-aware
 - Paginated, filterable file queries
 - TTL-based expiration swept by `api:files:purgeFiles`
 - Storage statistics for the admin UI
 
-Blobs *without* a database are a `FileStorageProvider` concern - see
+Blobs _without_ a database are a `FileStorageProvider` concern - see
 `alepha/bucket`.
 
 ## API Reference

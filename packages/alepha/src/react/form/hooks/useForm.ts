@@ -1,6 +1,7 @@
 import type { ZObject } from "alepha";
 import { useAlepha } from "alepha/react";
 import { useEffect, useId, useMemo, useRef } from "react";
+
 import { type FormCtrlOptions, FormModel } from "../services/FormModel.ts";
 
 /**
@@ -60,6 +61,9 @@ export const useForm = <T extends ZObject>(
       lifetime: "transient",
       args: [options.id || formId, options],
     });
+    // `deps` is `useForm`'s public dependency list, so it cannot be an array
+    // literal here.
+    // oxlint-disable-next-line react/use-memo
   }, deps);
 
   // The model is memoized once, but callers' handlers close over

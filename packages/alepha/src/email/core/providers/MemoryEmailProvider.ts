@@ -1,4 +1,5 @@
 import { $logger } from "alepha/logger";
+
 import type { EmailProvider, EmailSendOptions } from "./EmailProvider.ts";
 
 export interface EmailRecord {

@@ -13,4 +13,3 @@ npm install alepha
 The `alepha platform` plugin (`alepha p`): plan, provision, build, migrate,
 deploy and tear down named environments on Cloudflare Workers or Bay, plus
 `secrets` and `auth` management.
-

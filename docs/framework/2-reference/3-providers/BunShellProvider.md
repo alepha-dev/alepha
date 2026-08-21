@@ -16,4 +16,3 @@ skipping the `node:child_process` compatibility layer for better performance.
 Inherits executable resolution (`node_modules/.bin` walk) and command parsing
 from `NodeShellProvider`. Both capture engines receive PARSED argv (never an
 escaped shell string), so quoting survives intact.
-

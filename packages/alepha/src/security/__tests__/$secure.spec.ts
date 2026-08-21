@@ -1,6 +1,7 @@
 import { $pipeline, Alepha } from "alepha";
 import { ForbiddenError, UnauthorizedError } from "alepha/server";
 import { describe, test } from "vitest";
+
 import { currentUserAtom } from "../atoms/currentUserAtom.ts";
 import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
 import { $secure } from "../primitives/$secure.ts";

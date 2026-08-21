@@ -33,7 +33,7 @@ alepha.store.get(cartTotal); // number
 A computed whose deps include a `serverOnly` atom will NOT agree across the
 SSR boundary. `serverOnly` keeps the atom out of the hydration payload, so
 the server derives the value from the atom's real value while the browser
-re-derives it from the atom's *default* - React then hydrates a DOM that
+re-derives it from the atom's _default_ - React then hydrates a DOM that
 does not match the markup it received (a hydration mismatch, and a
 silently wrong value afterwards).
 
@@ -45,10 +45,9 @@ with.
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `name` | `N` | Yes |  |
-| `deps` | `D` | Yes |  |
-| `get` | `Object` | Yes |  |
-| `description` | `string` | No |  |
-
+| Option        | Type     | Required | Description |
+| ------------- | -------- | -------- | ----------- |
+| `name`        | `N`      | Yes      |             |
+| `deps`        | `D`      | Yes      |             |
+| `get`         | `Object` | Yes      |             |
+| `description` | `string` | No       |             |

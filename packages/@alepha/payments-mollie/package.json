@@ -1,51 +1,28 @@
 {
   "name": "@alepha/payments-mollie",
+  "version": "0.20.6",
   "private": true,
   "description": "Mollie payment provider for alepha/payments.",
   "keywords": [
     "alepha",
-    "payments",
     "mollie",
+    "payments",
     "typescript"
   ],
-  "author": "Nicolas Foures",
-  "version": "0.20.6",
-  "type": "module",
-  "engines": {
-    "node": ">=22.0.0"
-  },
+  "homepage": "https://alepha.dev",
   "license": "MIT",
-  "main": "./src/core/index.ts",
-  "types": "./src/core/index.ts",
-  "files": [
-    "dist",
-    "src"
-  ],
-  "dependencies": {
-    "@mollie/api-client": "^4.6.0"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.5.8",
-    "alepha": "0.26.0",
-    "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
-  },
-  "peerDependencies": {
-    "alepha": "^0.26.0"
-  },
-  "scripts": {
-    "lint": "alepha lint && yarn build:check",
-    "typecheck": "alepha typecheck",
-    "test": "alepha test",
-    "build": "node ../../alepha/scripts/build.ts",
-    "build:check": "node ../../alepha/scripts/build.ts --check"
-  },
+  "author": "Nicolas Foures",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/feunard/alepha.git"
   },
-  "homepage": "https://alepha.dev",
-  "llms": "https://alepha.dev/llms.txt",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "type": "module",
+  "main": "./src/core/index.ts",
+  "types": "./src/core/index.ts",
   "exports": {
     ".": {
       "types": "./src/core/index.ts",
@@ -63,5 +40,27 @@
         "default": "./dist/core/index.js"
       }
     }
-  }
+  },
+  "scripts": {
+    "lint": "alepha lint && yarn build:check",
+    "typecheck": "alepha typecheck",
+    "test": "alepha test",
+    "build": "node ../../alepha/scripts/build.ts",
+    "build:check": "node ../../alepha/scripts/build.ts --check"
+  },
+  "dependencies": {
+    "@mollie/api-client": "^4.6.0"
+  },
+  "devDependencies": {
+    "alepha": "0.26.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  },
+  "peerDependencies": {
+    "alepha": "^0.26.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "llms": "https://alepha.dev/llms.txt"
 }

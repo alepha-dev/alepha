@@ -13,6 +13,7 @@ npm install alepha
 OAuth2/OIDC authentication with social login providers.
 
 **Features:**
+
 - OAuth authentication provider
 - Username/password authentication
 - Google OAuth integration

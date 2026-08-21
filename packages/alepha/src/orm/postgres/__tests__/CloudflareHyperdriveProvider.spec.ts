@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
+
 import { CloudflareHyperdriveProvider } from "../providers/CloudflareHyperdriveProvider.ts";
 
 /**
@@ -46,9 +47,9 @@ describe("CloudflareHyperdriveProvider", () => {
       const { alepha, provider } = await boot();
 
       await alepha.fork(async () => {
-        provider.db;
-        provider.db;
-        provider.db;
+        void provider.db;
+        void provider.db;
+        void provider.db;
       });
 
       expect(provider.clientsOpened).toBe(1);
@@ -61,10 +62,10 @@ describe("CloudflareHyperdriveProvider", () => {
       const { alepha, provider } = await boot();
 
       await alepha.fork(async () => {
-        provider.db;
+        void provider.db;
       });
       await alepha.fork(async () => {
-        provider.db;
+        void provider.db;
       });
 
       expect(provider.clientsOpened).toBe(2);
@@ -76,8 +77,8 @@ describe("CloudflareHyperdriveProvider", () => {
       const { provider } = await boot();
       expect(provider.alsProvider.exists()).toBe(false);
 
-      provider.db;
-      provider.db;
+      void provider.db;
+      void provider.db;
 
       expect(provider.clientsOpened).toBe(2);
     });

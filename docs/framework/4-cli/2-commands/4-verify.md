@@ -12,8 +12,8 @@ Grab a coffee. When you get back, you'll know if your code is production-ready.
 
 ## Options
 
-| Flag | Description |
-|------|-------------|
+| Flag   | Description                                 |
+| ------ | ------------------------------------------- |
 | (none) | Runs the full pipeline with no flags needed |
 
 ## What It Does
@@ -24,7 +24,7 @@ The `verify` command runs a complete quality pipeline:
 alepha verify
 
 ✓ clean         Clean the project
-✓ lint          Format and lint code with Biome
+✓ lint          Lint with oxlint, then format with oxfmt
 ✓ typecheck     Check TypeScript types
 ✓ test          Run tests with Vitest
 ✓ db check      Check database migrations
@@ -50,7 +50,7 @@ Removes the `dist/` folder. Starts fresh.
 alepha lint
 ```
 
-Formats and lints your code with Biome (`biome check --fix`). Consistent style, no debates. Catches unused variables, suspicious patterns, import problems.
+Lints with oxlint and formats with oxfmt, in that order. Consistent style, no debates. Catches unused variables, suspicious patterns, import problems - and fails the run on anything in the `correctness` category it could not fix.
 
 ### 3. Typecheck
 
@@ -204,11 +204,10 @@ alepha build
 
 ### Lint Failures
 
-Biome auto-fixes formatting issues but some lint errors need manual fixes. The error messages tell you what's wrong:
+`oxlint --fix` applies every fix it can; what is left needs a human. The error messages tell you what's wrong:
 
 ```txt
-src/auth.ts:42:5 lint/suspicious/noExplicitAny
-  Don't use `any` type
+src/auth.ts:42:5: error eslint(no-unused-vars): Variable 'result' is declared but never used.
 ```
 
 Fix the issue, then run `verify` again.
@@ -247,10 +246,10 @@ Check your imports. Make sure all referenced files exist.
 
 ## Speed
 
-The full `verify` is fast - Biome and Vite are blazing quick:
+The full `verify` is fast - the oxc tools and Vite are blazing quick:
 
-- Format: <1s (Biome is written in Rust)
-- Lint: <1s (even on large codebases)
+- Lint: <1s (oxlint is written in Rust; even on large codebases)
+- Format: <1s (oxfmt, same)
 - Typecheck: ~5-30s (depends on project size)
 - Test: varies (depends on test count)
 - Build: ~5-30s (Vite + Rolldown)

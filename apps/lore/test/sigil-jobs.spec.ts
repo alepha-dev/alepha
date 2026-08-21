@@ -7,6 +7,7 @@ import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
+
 import { InsightsController } from "../src/api/controllers/InsightsController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { SigilController } from "../src/api/controllers/SigilController.ts";

@@ -14,10 +14,10 @@ This forces the `workerd` runtime. You cannot combine `--target=cloudflare` with
 
 Required for deployment:
 
-| Variable | Description |
-|----------|-------------|
-| `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare account ID |
-| `CLOUDFLARE_API_TOKEN` | API token with Workers permissions (or run `wrangler login` interactively) |
+| Variable                | Description                                                                |
+| ----------------------- | -------------------------------------------------------------------------- |
+| `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare account ID                                                 |
+| `CLOUDFLARE_API_TOKEN`  | API token with Workers permissions (or run `wrangler login` interactively) |
 
 `CLOUDFLARE_ANALYTICS_TOKEN` is **not** a deploy credential - it is the optional, app-runtime Analytics Engine read token (scope: Account Analytics · Read). It is deliberately named differently from `CLOUDFLARE_API_TOKEN`: wrangler treats that name as its own credential, so putting a read-only token there makes every provisioning call fail with an authentication error.
 
@@ -67,11 +67,13 @@ The build automatically adds the D1 binding to `wrangler.jsonc` (the binding is 
 
 ```json
 {
-  "d1_databases": [{
-    "binding": "DB",
-    "database_name": "my-database",
-    "database_id": "00000000-0000-0000-0000-000000000000"
-  }],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "my-database",
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
   "vars": { "DATABASE_URL": "d1://DB" }
 }
 ```
@@ -95,7 +97,7 @@ The R2 binding is added to `wrangler.jsonc` when `R2_BUCKET_NAME` is set at buil
 The Worker's `scheduled` handler dispatches the `cloudflare:scheduled` event, which Alepha routes to the matching `$job` handler.
 
 Expressions are **deduplicated**, so what costs you a Cron Trigger is the number
-of *distinct* expressions, not the number of jobs. Jobs sharing an expression
+of _distinct_ expressions, not the number of jobs. Jobs sharing an expression
 all run in the same invocation. The framework's own sweeps default to
 `*/15 * * * *` for this reason - see
 [Sweeps owned by other modules](/docs/guides-server-background-jobs) for the atoms

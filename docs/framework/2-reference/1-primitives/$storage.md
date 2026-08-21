@@ -28,14 +28,14 @@ HTTP endpoints.
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `name` | `string` | No | Unique name for this storage |
-| `description` | `string` | No | Human-readable purpose, surfaced in devtools and the admin UI. |
-| `mimeTypes` | `string[]` | No | Allowed MIME types |
-| `maxSize` | `number` | No | Maximum file size in **megabytes** |
-| `ttl` | `DurationLike` | No | Default lifetime for files placed here |
-| `provider` | `Service&lt;FileStorageProvider&gt; \| "memory"` | No | Storage backend |
+| Option        | Type                                             | Required | Description                                                    |
+| ------------- | ------------------------------------------------ | -------- | -------------------------------------------------------------- |
+| `name`        | `string`                                         | No       | Unique name for this storage                                   |
+| `description` | `string`                                         | No       | Human-readable purpose, surfaced in devtools and the admin UI. |
+| `mimeTypes`   | `string[]`                                       | No       | Allowed MIME types                                             |
+| `maxSize`     | `number`                                         | No       | Maximum file size in **megabytes**                             |
+| `ttl`         | `DurationLike`                                   | No       | Default lifetime for files placed here                         |
+| `provider`    | `Service&lt;FileStorageProvider&gt; \| "memory"` | No       | Storage backend                                                |
 
 ## Examples
 
@@ -55,4 +55,3 @@ class Media {
   }
 }
 ```
-

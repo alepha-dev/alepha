@@ -1,6 +1,8 @@
 import { IconAlertTriangle, IconGitCommit } from "@tabler/icons-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+
 import type { ChangelogChange } from "../../scripts/interfaces.ts";
+
 import styles from "./Changelog.module.css";
 
 export interface ChangelogChangeItemProps {

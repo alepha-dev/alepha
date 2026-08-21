@@ -13,6 +13,7 @@ npm install alepha
 Batch accumulation and processing.
 
 **Features:**
+
 - Batch accumulator with handler
 - Configurable batch size
 - Time-based triggers

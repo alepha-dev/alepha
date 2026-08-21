@@ -1,5 +1,6 @@
 import { $inject, AlephaError, SchemaValidator } from "alepha";
 import { $repository, type Page } from "alepha/orm";
+
 import { orderItems } from "../entities/orderItems.ts";
 import { type ProductEntity, products } from "../entities/products.ts";
 import { ProductHasOrdersError } from "../errors/CommerceError.ts";

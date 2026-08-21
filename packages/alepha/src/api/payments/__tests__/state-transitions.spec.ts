@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, expect, it } from "vitest";
+
 import type { PaymentIntentEntity } from "../entities/paymentIntents.ts";
 import { AlephaApiPayments } from "../index.ts";
 import { PaymentService } from "../services/PaymentService.ts";

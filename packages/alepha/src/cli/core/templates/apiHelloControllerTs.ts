@@ -13,6 +13,7 @@ export const apiHelloControllerTs = (
 
   return (
     `import { $action } from "alepha/server";
+
 import { helloResponseSchema } from "../schemas/helloResponseSchema.ts";
 
 export class HelloController {

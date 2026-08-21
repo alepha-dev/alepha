@@ -1,6 +1,7 @@
 import { $hook, Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+
 import { $batch, AlephaBatch } from "../index.ts";
 
 /**
@@ -51,7 +52,7 @@ describe("Batch startup buffering", () => {
       });
     }
 
-    const app = alepha.inject(TestApp);
+    alepha.inject(TestApp);
 
     // Handler should not be called during startup
     expect(mockHandler).not.toHaveBeenCalled();
@@ -127,7 +128,7 @@ describe("Batch startup buffering", () => {
       });
     }
 
-    const app = alepha.inject(TestApp);
+    alepha.inject(TestApp);
 
     // Travel time forward before starting (should have no effect)
     await time.travel([200, "milliseconds"]);
@@ -180,7 +181,7 @@ describe("Batch startup buffering", () => {
       });
     }
 
-    const app = alepha.inject(TestApp);
+    alepha.inject(TestApp);
 
     // Handler should not be called during startup
     expect(mockHandler).not.toHaveBeenCalled();
@@ -234,7 +235,7 @@ describe("Batch startup buffering", () => {
       });
     }
 
-    const app = alepha.inject(TestApp);
+    alepha.inject(TestApp);
 
     // No flushes during startup
     expect(mockHandler).not.toHaveBeenCalled();
@@ -401,7 +402,7 @@ describe("Batch startup buffering", () => {
       });
     }
 
-    const app = alepha.inject(TestApp);
+    alepha.inject(TestApp);
 
     await alepha.start();
 

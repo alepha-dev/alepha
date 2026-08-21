@@ -4,6 +4,7 @@ import {
   PipelinePrimitive,
   type PipelinePrimitiveOptions,
 } from "alepha";
+
 import type {
   TopicHandler,
   TopicMessageSchema,
@@ -75,8 +76,9 @@ export const $subscriber = <T extends TopicMessageSchema>(
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface SubscriberPrimitiveOptions<T extends TopicMessageSchema>
-  extends PipelinePrimitiveOptions {
+export interface SubscriberPrimitiveOptions<
+  T extends TopicMessageSchema,
+> extends PipelinePrimitiveOptions {
   /**
    * The topic primitive that this subscriber will listen to for messages.
    *

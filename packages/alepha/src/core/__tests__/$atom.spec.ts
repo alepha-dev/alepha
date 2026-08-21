@@ -1,5 +1,6 @@
 import { Alepha, type State } from "alepha";
 import { describe, expect, it } from "vitest";
+
 import { AlephaError } from "../errors/AlephaError.ts";
 import { $atom } from "../primitives/$atom.ts";
 import { $store } from "../primitives/$store.ts";

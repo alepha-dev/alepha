@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
+
 import { QuestCsvParser } from "../src/api/services/QuestCsvParser.ts";
 
 describe("QuestCsvParser", () => {

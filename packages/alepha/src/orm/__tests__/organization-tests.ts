@@ -1,6 +1,7 @@
 import { type Alepha, AlephaError, z } from "alepha";
 import { currentUserAtom, tenancyAtom } from "alepha/security";
 import { expect } from "vitest";
+
 import { $entity, $repository, db } from "../core/index.ts";
 
 const entity = $entity({

@@ -11,6 +11,7 @@ import { $circuit } from "alepha/server";
 Middleware that implements the circuit breaker pattern.
 
 Three states:
+
 - **Closed** (normal): calls pass through. Failures are counted.
 - **Open** (tripped): calls are immediately rejected. No handler execution.
 - **Half-open** (probing): one call is allowed. Success closes, failure re-opens.
@@ -26,8 +27,7 @@ class PaymentController {
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `threshold` | `number` | Yes | Consecutive failures before opening the circuit. |
-| `reset` | `DurationLike` | Yes | Cooldown before transitioning from open to half-open. |
-
+| Option      | Type           | Required | Description                                           |
+| ----------- | -------------- | -------- | ----------------------------------------------------- |
+| `threshold` | `number`       | Yes      | Consecutive failures before opening the circuit.      |
+| `reset`     | `DurationLike` | Yes      | Cooldown before transitioning from open to half-open. |

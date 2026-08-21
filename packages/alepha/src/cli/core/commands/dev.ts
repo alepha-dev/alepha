@@ -1,10 +1,12 @@
 import { spawn } from "node:child_process";
 import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
+
 import { $inject, $store, Alepha, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
+
 import { devOptions } from "../atoms/devOptions.ts";
 import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
 import { ViteDevServerProvider } from "../providers/ViteDevServerProvider.ts";

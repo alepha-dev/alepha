@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
+
 import { AlephaServerMetrics, ServerMetricsProvider } from "../index.ts";
 
 describe("ServerMetricsProvider", () => {

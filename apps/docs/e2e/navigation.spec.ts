@@ -67,7 +67,7 @@ test.describe("Navigation", () => {
     await page.goto("/docs/introduction");
     await page.waitForLoadState("networkidle");
 
-    const initialUrl = page.url();
+    page.url();
 
     // Navigate via sidebar link
     const sidebar = page.locator('[class*="sidebar"]').first();

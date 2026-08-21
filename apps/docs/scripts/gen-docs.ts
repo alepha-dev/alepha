@@ -1,7 +1,9 @@
 import { type Dirent, promises as fs } from "node:fs";
 import { dirname, join, relative } from "node:path";
+
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
+
 import type { EnvVarInfo, ModuleInfo } from "./interfaces.ts";
 
 interface PrimitiveDoc {
@@ -368,7 +370,7 @@ export class DocsCommand {
         // zod-idiomatic syntax: optional is a `.optional()` suffix, the type is
         // `: z.<type>(...)`, and description/default are chained methods.
         const isOptional = field.includes(".optional(");
-        // `z\s*\.` rather than `z\.`: biome breaks a long chain after the `z`,
+        // `z\s*\.` rather than `z\.`: the formatter breaks a long chain after the `z`,
         // and anchoring on the dot made this whole table vanish whenever a
         // field grew past the print width. Silently - a missing env-var table
         // reads exactly like a module that declares none.

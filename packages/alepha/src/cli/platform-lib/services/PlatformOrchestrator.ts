@@ -2,6 +2,7 @@ import { $inject, Alepha, AlephaError } from "alepha";
 import type { AppEntry } from "alepha/cli";
 import type { RunnerMethod } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
+
 import { BayAdapter } from "../adapters/BayAdapter.ts";
 import { CloudflareAdapter } from "../adapters/CloudflareAdapter.ts";
 import type {

@@ -84,6 +84,10 @@ export class ErrorBoundary extends React.Component<
     }
 
     if (this.hasResetKeyChanged(prevProps.resetKeys, this.props.resetKeys)) {
+      // Guarded twice — there is an error, and a reset key changed — so it
+      // cannot loop. The alternative, `getDerivedStateFromProps`, would have
+      // to mirror `resetKeys` into state to detect the same change.
+      // oxlint-disable-next-line react/no-did-update-set-state
       this.setState({ error: undefined });
     }
   }

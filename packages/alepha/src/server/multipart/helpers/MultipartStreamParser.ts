@@ -220,6 +220,7 @@ export class MultipartStreamParser {
         );
 
         let drained = false;
+        // oxlint-disable-next-line typescript/no-this-alias -- `[Symbol.asyncIterator]` must be a generator method, whose `this` is the object literal; an arrow cannot be a generator
         const self = this;
         const part: MultipartPart = {
           name: disposition.name,

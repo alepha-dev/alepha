@@ -60,7 +60,7 @@ export class BackgroundTaskProvider {
    * tests don't drop deferred work.
    */
   public async flush(): Promise<void> {
-    await Promise.allSettled([...this.pending]);
+    await Promise.allSettled(this.pending);
   }
 
   protected readonly onStop = $hook({

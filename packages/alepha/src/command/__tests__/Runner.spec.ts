@@ -9,6 +9,7 @@ import {
   ShellProvider,
 } from "alepha/system";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+
 import { Runner } from "../index.ts";
 
 describe("Runner", () => {

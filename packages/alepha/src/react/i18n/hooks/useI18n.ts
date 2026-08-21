@@ -1,4 +1,5 @@
 import { useInject, useStore } from "alepha/react";
+
 import type { DictionaryPrimitive } from "../primitives/$dictionary.ts";
 import { I18nProvider } from "../providers/I18nProvider.ts";
 

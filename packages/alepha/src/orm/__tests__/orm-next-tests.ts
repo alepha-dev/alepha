@@ -1,6 +1,7 @@
 import { type Alepha, z } from "alepha";
 import { sql } from "drizzle-orm";
 import { expect } from "vitest";
+
 import { PG_GENERATED } from "../core/constants/PG_SYMBOLS.ts";
 import { $entity, $repository, db, pgAttr } from "../core/index.ts";
 
@@ -124,7 +125,7 @@ export const testExistsSubquery = async (alepha: Alepha) => {
   await alepha.start();
 
   const p1 = await app.parents.create({ name: "P1" });
-  const p2 = await app.parents.create({ name: "P2" });
+  await app.parents.create({ name: "P2" });
   await app.children.create({ parentId: p1.id, label: "C1" });
 
   // parents that have at least one child

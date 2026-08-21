@@ -4,6 +4,7 @@ import { users } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
+
 import { projects } from "../entities/projects.ts";
 import { quests, REMINDER_INTERVAL_MS } from "../entities/quests.ts";
 import { QuestNotifications } from "../notifications/QuestNotifications.ts";

@@ -11,4 +11,3 @@ import { SmsProvider } from "alepha/sms";
 SMS provider interface.
 
 All methods are asynchronous and return promises.
-

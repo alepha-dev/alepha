@@ -10,7 +10,9 @@ import {
 } from "alepha/react/router";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
+
 import type { InsightsController } from "@/api/controllers/InsightsController.ts";
+
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";

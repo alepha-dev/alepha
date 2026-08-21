@@ -16,12 +16,12 @@ middleware belongs in the action's own `use: [...]`.
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `path` | `string` | Yes | Path prefix |
-| `use` | `Middleware[]` | Yes | Middleware functions to apply to matching routes. |
-| `method` | `RouteMethod \| RouteMethod[]` | No | Limit middleware to specific HTTP methods |
-| `exclude` | `string[]` | No | Exclude specific route paths from middleware application. |
+| Option    | Type                           | Required | Description                                               |
+| --------- | ------------------------------ | -------- | --------------------------------------------------------- |
+| `path`    | `string`                       | Yes      | Path prefix                                               |
+| `use`     | `Middleware[]`                 | Yes      | Middleware functions to apply to matching routes.         |
+| `method`  | `RouteMethod \| RouteMethod[]` | No       | Limit middleware to specific HTTP methods                 |
+| `exclude` | `string[]`                     | No       | Exclude specific route paths from middleware application. |
 
 ## Examples
 
@@ -33,4 +33,3 @@ class Security {
   });
 }
 ```
-

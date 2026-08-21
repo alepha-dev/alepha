@@ -13,6 +13,7 @@ npm install alepha
 OAuth 2.1 authorization server module for MCP.
 
 **Features:**
+
 - OAuth 2.1 authorization code flow with PKCE (RFC 7636)
 - Dynamic Client Registration (RFC 7591)
 - Authorization server metadata discovery (RFC 8414)
@@ -39,4 +40,3 @@ const app = Alepha.create()
   .with(AlephaOAuth)
   .set(oauthOptions, { realm: "users", resource: "/mcp" });
 ```
-

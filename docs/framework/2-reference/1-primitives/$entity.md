@@ -12,14 +12,14 @@ Creates a database entity primitive that defines table structure using Zod schem
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `name` | `string` | Yes | The database table name that will be created for this entity |
-| `schema` | `T` | Yes | Zod schema defining the table structure and column types. |
-| `indexes` | `Object` | No | Database indexes to create for query optimization. |
-| `foreignKeys` | `Array&lt;{` | No | Foreign key constraints to maintain referential integrity. |
-| `constraints` | `Array&lt;{` | No | Additional table constraints for data validation |
-| `config` | `Object` | No | Advanced Drizzle ORM configuration for complex table setups. |
+| Option        | Type         | Required | Description                                                  |
+| ------------- | ------------ | -------- | ------------------------------------------------------------ |
+| `name`        | `string`     | Yes      | The database table name that will be created for this entity |
+| `schema`      | `T`          | Yes      | Zod schema defining the table structure and column types.    |
+| `indexes`     | `Object`     | No       | Database indexes to create for query optimization.           |
+| `foreignKeys` | `Array&lt;{` | No       | Foreign key constraints to maintain referential integrity.   |
+| `constraints` | `Array&lt;{` | No       | Additional table constraints for data validation             |
+| `config`      | `Object`     | No       | Advanced Drizzle ORM configuration for complex table setups. |
 
 ## Examples
 
@@ -36,4 +36,3 @@ const userEntity = $entity({
   }),
 });
 ```
-

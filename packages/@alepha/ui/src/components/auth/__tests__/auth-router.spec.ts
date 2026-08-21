@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { describe, expect, it } from "vitest";
+
 import { AuthRouter } from "../auth-router.tsx";
 
 /**

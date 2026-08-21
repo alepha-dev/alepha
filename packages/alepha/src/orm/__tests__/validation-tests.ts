@@ -1,5 +1,6 @@
 import { type Alepha, z } from "alepha";
 import { expect } from "vitest";
+
 import { $entity, $repository, db } from "../core/index.ts";
 
 const TestEntity = $entity({

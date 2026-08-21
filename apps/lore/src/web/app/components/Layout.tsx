@@ -5,6 +5,7 @@ import { useI18n } from "alepha/react/i18n";
 import { NestedView } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
 import { useEffect } from "react";
+
 import Spotlight from "./shared/spotlight/Spotlight.tsx";
 
 const Layout = () => {

@@ -84,7 +84,7 @@ const HtmlContent = (props: HtmlContentProps) => {
       ref={containerRef}
       id="html-content"
       className="terminal-content"
-      // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML content is sanitized at build time
+      // HTML content is sanitized at build time
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

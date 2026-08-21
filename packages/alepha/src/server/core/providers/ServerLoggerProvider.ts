@@ -1,6 +1,7 @@
 import { $hook, $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+
 import { HttpError } from "../errors/HttpError.ts";
 
 export class ServerLoggerProvider {

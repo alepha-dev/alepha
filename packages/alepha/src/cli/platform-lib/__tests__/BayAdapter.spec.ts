@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+
 import { Alepha, AlephaError } from "alepha";
 import { type BuildTarget, buildOptions } from "alepha/cli";
 import type { RunnerMethod } from "alepha/command";
@@ -9,6 +10,7 @@ import {
   ShellProvider,
 } from "alepha/system";
 import { describe, expect, it } from "vitest";
+
 import { BayAdapter } from "../adapters/BayAdapter.ts";
 import type { PlatformContext } from "../adapters/PlatformAdapter.ts";
 

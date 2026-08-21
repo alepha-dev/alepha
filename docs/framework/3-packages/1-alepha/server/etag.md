@@ -13,6 +13,7 @@ npm install alepha
 ETag-based response caching.
 
 **Features:**
+
 - ETag generation and validation
 - Conditional request handling (304 Not Modified)
 - Optional response caching (store)

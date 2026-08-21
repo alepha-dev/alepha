@@ -196,10 +196,7 @@ const results = await this.players.findMany({
     },
   },
   where: {
-    or: [
-      { goals: { gte: 200 } },
-      { team: { country: { eq: "France" } } },
-    ],
+    or: [{ goals: { gte: 200 } }, { team: { country: { eq: "France" } } }],
   },
 });
 ```

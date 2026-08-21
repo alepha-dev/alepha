@@ -2,18 +2,19 @@ import { z } from "alepha";
 import { useQueryParams } from "alepha/react/router";
 import { Pause, Play, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
+
 import { DEV_LOG_RESTART_TYPE } from "../../../schemas/DevLogMarker.ts";
 import { type LogEntry, useLogTail } from "../../hooks/useLogTail.ts";
 import { DevEmpty } from "../shared/DevEmpty.tsx";
 import { DevError } from "../shared/DevError.tsx";
 import { LogDetail } from "./LogDetail.tsx";
-import { LogToolbar } from "./LogToolbar.tsx";
 import {
   LEVEL_COLOR,
   MESSAGE_COLOR,
   shortContext,
   shortModule,
 } from "./logFormat.ts";
+import { LogToolbar } from "./LogToolbar.tsx";
 
 /**
  * Filters live in the query string so a narrowed view survives a reload and

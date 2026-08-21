@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { Alepha, run } from "alepha";
+
 import { CreateAlephaCoreCommands } from "./CreateAlephaCoreCommands.ts";
 import { version } from "./version.ts";
 

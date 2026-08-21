@@ -7,6 +7,7 @@ import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useI18n } from "alepha/react/i18n";
 import { Link, NestedView, useRouter } from "alepha/react/router";
 import { useEffect } from "react";
+
 import type { AppRouter } from "./AppRouter.tsx";
 import { Poincon } from "./components/Poincon.tsx";
 import { usePanier } from "./hooks/usePanier.ts";

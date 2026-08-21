@@ -51,12 +51,12 @@ yarn add @alepha/payments-stripe
 
 ### Environment
 
-| Variable | Description |
-|---|---|
-| `STRIPE_SECRET_KEY` | API key (`sk_test_...` / `sk_live_...`). |
-| `STRIPE_WEBHOOK_SECRET` | Signing secret returned by `webhookEndpoints.create`. |
-| `STRIPE_PUBLISHABLE_KEY` | Required for the embedded Payment Element - `createElementSession` throws without it. |
-| `STRIPE_CONNECT_WEBHOOK_SECRET` | Signing secret for Connect webhooks; gates `parseConnectWebhook`. |
+| Variable                        | Description                                                                           |
+| ------------------------------- | ------------------------------------------------------------------------------------- |
+| `STRIPE_SECRET_KEY`             | API key (`sk_test_...` / `sk_live_...`).                                              |
+| `STRIPE_WEBHOOK_SECRET`         | Signing secret returned by `webhookEndpoints.create`.                                 |
+| `STRIPE_PUBLISHABLE_KEY`        | Required for the embedded Payment Element - `createElementSession` throws without it. |
+| `STRIPE_CONNECT_WEBHOOK_SECRET` | Signing secret for Connect webhooks; gates `parseConnectWebhook`.                     |
 
 ### Webhook security
 
@@ -84,9 +84,9 @@ yarn add @alepha/payments-mollie
 
 ### Environment
 
-| Variable | Description |
-|---|---|
-| `MOLLIE_API_KEY` | Mollie test or live API key. |
+| Variable             | Description                                                                                                                               |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `MOLLIE_API_KEY`     | Mollie test or live API key.                                                                                                              |
 | `MOLLIE_WEBHOOK_URL` | _(optional)_ Public URL Mollie POSTs webhooks to. Typically `https://app.example.com/api/payments/webhook`. Omit in dev to skip webhooks. |
 
 ### Webhook security
@@ -105,14 +105,14 @@ Unlike Stripe (one global endpoint), Mollie's webhook URL is attached to each pa
 
 ## Choosing a provider
 
-| Criterion | Stripe | Mollie |
-|---|---|---|
-| Coverage | Global; strong in US. | EU-focused; strong in NL/DE/BE/FR. |
-| Methods | Cards, Apple/Google Pay, ACH, SEPA, Klarna, etc. | Cards, iDEAL, Bancontact, SEPA, Klarna, gift cards, Apple Pay. |
-| Webhook security | HMAC signature. | Re-fetch by id. |
-| Saved cards | Tokenize-then-attach. | Mandate-via-first-payment. |
-| Manual capture | All card types. | Cards only. |
-| Platform fees | Stripe Connect. | Mollie Connect (OAuth). |
+| Criterion        | Stripe                                           | Mollie                                                         |
+| ---------------- | ------------------------------------------------ | -------------------------------------------------------------- |
+| Coverage         | Global; strong in US.                            | EU-focused; strong in NL/DE/BE/FR.                             |
+| Methods          | Cards, Apple/Google Pay, ACH, SEPA, Klarna, etc. | Cards, iDEAL, Bancontact, SEPA, Klarna, gift cards, Apple Pay. |
+| Webhook security | HMAC signature.                                  | Re-fetch by id.                                                |
+| Saved cards      | Tokenize-then-attach.                            | Mandate-via-first-payment.                                     |
+| Manual capture   | All card types.                                  | Cards only.                                                    |
+| Platform fees    | Stripe Connect.                                  | Mollie Connect (OAuth).                                        |
 
 For most EU SaaS apps either works; for marketplaces with US sellers, Stripe is the path of least resistance.
 

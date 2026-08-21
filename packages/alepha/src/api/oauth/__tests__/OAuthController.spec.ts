@@ -1,9 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
+
 import { Alepha } from "alepha";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { $issuer, SecurityProvider, type UserAccount } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
+
 import { renderConsentPage } from "../helpers/consentPage.ts";
 import { buildAuthorizationServerMetadata } from "../helpers/oauthMetadata.ts";
 import { AlephaOAuth, oauthOptions } from "../index.ts";

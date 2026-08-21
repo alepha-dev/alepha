@@ -71,7 +71,7 @@ test.describe("Keyboard Shortcuts", () => {
     await page.waitForTimeout(300);
 
     // Sidebar visibility should have changed
-    const afterToggle = await sidebar.isVisible();
+    await sidebar.isVisible();
 
     // Toggle back
     await page.keyboard.press("Meta+b");
@@ -136,11 +136,6 @@ test.describe("Theme Toggle", () => {
   test("theme persists after page reload", async ({ page }) => {
     await page.goto("/docs/introduction");
     await page.waitForLoadState("networkidle");
-
-    // Get initial theme
-    const initialTheme = await page.evaluate(() =>
-      document.documentElement.getAttribute("data-theme"),
-    );
 
     // Toggle theme
     const themeToggle = page

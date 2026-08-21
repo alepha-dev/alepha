@@ -1,5 +1,6 @@
 import { $module } from "alepha";
 import { AlephaApiJobs } from "alepha/api/jobs";
+
 import { VerificationController } from "./controllers/VerificationController.ts";
 import { VerificationJobs } from "./jobs/VerificationJobs.ts";
 import { VerificationParameters } from "./parameters/VerificationParameters.ts";

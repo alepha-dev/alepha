@@ -1,4 +1,5 @@
 import { IconExternalLink } from "@tabler/icons-react";
+
 import StatusBar from "../layout/StatusBar.tsx";
 import ProductHero from "./ProductHero.tsx";
 

@@ -3,6 +3,7 @@ import { $atom, $computed, Alepha, type Computed, z } from "alepha";
 import type { ReactNode } from "react";
 import { useRef } from "react";
 import { describe, expect, it } from "vitest";
+
 import { AlephaContext } from "../contexts/AlephaContext.ts";
 import { useComputed } from "../hooks/useComputed.ts";
 
@@ -145,6 +146,9 @@ describe("useComputed", () => {
   describe("mutation landing before the store subscribes", () => {
     const MutateDuringRender = (props: { alepha: Alepha }) => {
       const done = useRef(false);
+      // Reading and writing the ref during render is what reproduces the race
+      // described above; an effect would run after the commit this test is
+      // trying to get in front of.
       if (!done.current) {
         done.current = true;
         props.alepha.store.set(countAtom, { value: 3 });

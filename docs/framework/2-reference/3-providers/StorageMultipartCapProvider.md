@@ -18,4 +18,3 @@ promise the framework could not keep, and one nothing reported.
 The bucket is known **before** the body is read, because it arrives in the
 URL. That is the whole reason a per-destination budget is possible at all:
 by the time the first byte lands, where it is going has already been decided.
-

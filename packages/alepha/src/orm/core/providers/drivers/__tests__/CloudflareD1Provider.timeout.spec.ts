@@ -1,6 +1,7 @@
 import { Alepha, AlephaError, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { describe, expect, it } from "vitest";
+
 import { DbTimeoutError } from "../../../errors/DbTimeoutError.ts";
 import { $entity } from "../../../primitives/$entity.ts";
 import { $repository } from "../../../primitives/$repository.ts";
@@ -39,7 +40,7 @@ describe("CloudflareD1Provider timeout", () => {
     binding.stalling = true;
 
     const pending = provider.execute("select 1" as never);
-    const settled = expect(pending).rejects.toThrow(/timed out/i);
+    const settled = await expect(pending).rejects.toThrow(/timed out/i);
 
     await time.travel([6, "seconds"]);
     await settled;
@@ -50,7 +51,7 @@ describe("CloudflareD1Provider timeout", () => {
     binding.stalling = true;
 
     const pending = provider.execute("select 1" as never);
-    const settled = expect(pending).rejects.toThrow(/timed out/i);
+    const settled = await expect(pending).rejects.toThrow(/timed out/i);
 
     // Only 2s of travel: the default 5s budget would still be pending here,
     // so this fails if the configured value is ignored.

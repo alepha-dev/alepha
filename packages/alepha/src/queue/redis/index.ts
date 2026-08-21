@@ -1,5 +1,6 @@
 import { $module, type Alepha } from "alepha";
 import { AlephaQueue, QueueProvider } from "alepha/queue";
+
 import { RedisQueueProvider } from "./providers/RedisQueueProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

@@ -31,6 +31,9 @@ export const useActionHistory = (actionKey: string) => {
   const [entries, setEntries] = useState<ActionHistoryEntry[]>([]);
 
   const refresh = useCallback(() => {
+    // Reads `localStorage`, which does not exist on the server — the seed has
+    // to stay empty until after mount.
+    // oxlint-disable-next-line react/set-state-in-effect
     setEntries(readAll()[actionKey] ?? []);
   }, [actionKey]);
 

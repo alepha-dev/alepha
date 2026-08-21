@@ -1,4 +1,5 @@
 import { useState } from "react";
+
 import { DetailFields } from "../declared/DetailFields.tsx";
 import type { OutboxMessage } from "./DevOutbox.tsx";
 
@@ -61,7 +62,7 @@ export const OutboxDetail = (props: OutboxDetailProps) => {
               padding: 14,
               borderRadius: 2,
             }}
-            // biome-ignore lint/security/noDangerouslySetInnerHtml: devtools renders the developer's own outgoing email, in their own dev environment
+            // devtools renders the developer's own outgoing email, in their own dev environment
             dangerouslySetInnerHTML={{ __html: m.body }}
           />
         </div>

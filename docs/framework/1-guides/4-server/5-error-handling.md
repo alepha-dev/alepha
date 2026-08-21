@@ -36,14 +36,14 @@ throw new ValidationError("Validation has failed");
 
 Each class has a sensible default message:
 
-| Class | Status | Default Message |
-|-------|--------|-----------------|
-| `BadRequestError` | 400 | "Invalid request body" |
-| `ValidationError` | 400 | "Validation has failed" |
-| `UnauthorizedError` | 401 | "Not allowed to access this resource" |
-| `ForbiddenError` | 403 | "No permission to access this resource" |
-| `NotFoundError` | 404 | "Resource not found" |
-| `ConflictError` | 409 | "Entity already exists" |
+| Class               | Status | Default Message                         |
+| ------------------- | ------ | --------------------------------------- |
+| `BadRequestError`   | 400    | "Invalid request body"                  |
+| `ValidationError`   | 400    | "Validation has failed"                 |
+| `UnauthorizedError` | 401    | "Not allowed to access this resource"   |
+| `ForbiddenError`    | 403    | "No permission to access this resource" |
+| `NotFoundError`     | 404    | "Resource not found"                    |
+| `ConflictError`     | 409    | "Entity already exists"                 |
 
 ## Error Identification
 
@@ -119,7 +119,11 @@ This rule applies to every path an error can take to a client, including batched
 [
   { "action": "getUser", "status": 200, "data": { "id": "1" } },
   { "action": "chargeCard", "status": 500, "error": "Internal Server Error" },
-  { "action": "updateAge", "status": 400, "error": "age must be a positive integer" }
+  {
+    "action": "updateAge",
+    "status": 400,
+    "error": "age must be a positive integer"
+  }
 ]
 ```
 
@@ -129,18 +133,18 @@ Use the `server:onError` hook below to ship the unsanitized error to your logger
 
 `HttpError` maps status codes to error names automatically:
 
-| Status | Error Name |
-|--------|-----------|
-| 400 | BadRequestError |
-| 401 | UnauthorizedError |
-| 403 | ForbiddenError |
-| 404 | NotFoundError |
-| 409 | ConflictError |
-| 413 | PayloadTooLargeError |
-| 429 | TooManyRequestsError |
-| 500 | InternalServerError |
-| 502 | BadGatewayError |
-| 503 | ServiceUnavailableError |
+| Status | Error Name              |
+| ------ | ----------------------- |
+| 400    | BadRequestError         |
+| 401    | UnauthorizedError       |
+| 403    | ForbiddenError          |
+| 404    | NotFoundError           |
+| 409    | ConflictError           |
+| 413    | PayloadTooLargeError    |
+| 429    | TooManyRequestsError    |
+| 500    | InternalServerError     |
+| 502    | BadGatewayError         |
+| 503    | ServiceUnavailableError |
 
 Less common codes map too: 405 `MethodNotAllowedError`, 410 `GoneError`, 415 `UnsupportedMediaTypeError`, 501 `NotImplementedError`, 504 `GatewayTimeoutError`.
 

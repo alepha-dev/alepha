@@ -1,10 +1,12 @@
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
+
 import { $inject, Alepha, AlephaError } from "alepha";
 import { EnvUtils } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
+
 import {
   type AppEntry,
   AppEntryProvider,
@@ -55,7 +57,7 @@ export class AlephaCliUtils {
 
   /**
    * Resolve the absolute path to a toolchain binary that ships embedded in
-   * `alepha`'s own `dependencies` (typescript, vite, vitest, @biomejs/biome,
+   * `alepha`'s own `dependencies` (typescript, vite, vitest, oxlint, oxfmt,
    * drizzle-kit).
    *
    * The CLI runs the result via `node <path>` so the toolchain works under

@@ -3,6 +3,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
+
 import {
   AlephaApiVerification,
   VerificationJobs,
@@ -19,7 +20,7 @@ const alepha = Alepha.create()
 const db = alepha.inject(Db);
 
 describe("VerificationJobs", () => {
-  it("it should clear old verifications", async ({ expect }) => {
+  it("should clear old verifications", async ({ expect }) => {
     const time = alepha.inject(DateTimeProvider);
     const jobs = alepha.inject(VerificationJobs);
 

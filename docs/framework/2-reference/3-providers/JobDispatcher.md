@@ -18,6 +18,7 @@ publishes the executionId to `AlephaQueue` so a worker pool can consume
 the work asynchronously.
 
 Substitute via DI:
+
 ```ts
 Alepha.create()
   .with({ provide: JobDispatcher, use: MyCustomDispatcher })
@@ -26,4 +27,3 @@ Alepha.create()
 
 The `kind` getter is read by the `JobProvider.effectiveMode` accessor
 and by the admin UI so users can see which dispatcher is currently active.
-

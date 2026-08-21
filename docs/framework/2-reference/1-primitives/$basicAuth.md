@@ -24,8 +24,7 @@ class DevToolsController {
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `username` | `string` | Yes |  |
-| `password` | `string` | Yes |  |
-
+| Option     | Type     | Required | Description |
+| ---------- | -------- | -------- | ----------- |
+| `username` | `string` | Yes      |             |
+| `password` | `string` | Yes      |             |

@@ -15,4 +15,3 @@ the value to a class on the document root (e.g. `theme-claude`).
 
 const { theme, setTheme } = useTheme();
 setTheme("claude");
-

@@ -22,4 +22,3 @@ call `defer`.
 
 In-flight tasks are tracked and awaited on shutdown (`flush`), so graceful
 stop, `run({ once })`, and unit tests don't silently drop work.
-

@@ -2,6 +2,7 @@ import { Alepha } from "alepha";
 import { $repositories, DatabaseProvider } from "alepha/orm";
 import { NodePostgresProvider } from "alepha/orm/postgres";
 import { beforeEach, describe, expect, it } from "vitest";
+
 import { relations } from "./relations.ts";
 
 /**

@@ -5,6 +5,7 @@ import {
   type PagePrimitive,
 } from "alepha/react/router";
 import { describe, expect, it } from "vitest";
+
 import { AdminRouter } from "../admin-router.tsx";
 
 /**

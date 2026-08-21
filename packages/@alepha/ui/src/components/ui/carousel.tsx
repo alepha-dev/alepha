@@ -94,6 +94,9 @@ function Carousel({
 
   React.useEffect(() => {
     if (!api) return;
+    // Reads the initial state of the Embla carousel instance and subscribes to
+    // it. The instance is created by a ref callback, so it exists only here.
+    // oxlint-disable-next-line react/set-state-in-effect
     onSelect(api);
     api.on("reInit", onSelect);
     api.on("select", onSelect);

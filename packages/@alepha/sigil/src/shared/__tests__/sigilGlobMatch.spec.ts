@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { sigilAnyGlobMatch, sigilGlobMatch } from "../sigilGlobMatch.ts";
 
 describe("sigilGlobMatch — sigil excludedPaths matcher (#110)", () => {

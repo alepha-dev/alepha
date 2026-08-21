@@ -17,6 +17,7 @@ import {
 } from "@alepha/ui/components/ui/card";
 import type { FormModel } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
+
 import type { StockMovementEntity } from "../../entities/stockMovements.ts";
 import type { AdminProductResource } from "../controllers/AdminProductController.ts";
 import type { stockAdjustSchema } from "./stock-adjust-schema.ts";

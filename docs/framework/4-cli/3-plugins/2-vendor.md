@@ -41,12 +41,12 @@ Use cases:
 
 `vendor()` accepts the following options:
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `packages` | `string[]` | - | Package directory names to vendor (required) |
-| `remote` | `string` | `"https://github.com/feunard/alepha"` | Git remote URL to clone from |
-| `branch` | `string` | `"main"` | Branch to sync from |
-| `dir` | `string` | `".vendor"` | Directory holding the vendored packages (relative to project root); also where `vendor.json` is written |
+| Option     | Type       | Default                               | Description                                                                                             |
+| ---------- | ---------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `packages` | `string[]` | -                                     | Package directory names to vendor (required)                                                            |
+| `remote`   | `string`   | `"https://github.com/feunard/alepha"` | Git remote URL to clone from                                                                            |
+| `branch`   | `string`   | `"main"`                              | Branch to sync from                                                                                     |
+| `dir`      | `string`   | `".vendor"`                           | Directory holding the vendored packages (relative to project root); also where `vendor.json` is written |
 
 ```typescript check filename=alepha.config.ts
 import { defineConfig } from "alepha/cli/config";
@@ -81,10 +81,10 @@ The command:
 5. Updates `vendor.json` with the new commit hash
 6. Runs the package manager install
 
-| Flag | Description |
-|------|-------------|
-| `--force`, `-f` | Skip the local modification check and overwrite |
-| `--remote` | Override the configured remote for this invocation; accepts any git-clone URL, including local paths (`file:///abs/path/to/alepha`) |
+| Flag            | Description                                                                                                                         |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `--force`, `-f` | Skip the local modification check and overwrite                                                                                     |
+| `--remote`      | Override the configured remote for this invocation; accepts any git-clone URL, including local paths (`file:///abs/path/to/alepha`) |
 
 > **Local Changes Protection**
 >

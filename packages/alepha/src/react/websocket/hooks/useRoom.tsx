@@ -158,7 +158,9 @@ export const useRoom = <TClient extends TWSObject, TServer extends TWSObject>(
     onError,
   } = options;
 
-  // Keep handler ref stable to avoid stale closures
+  // Keep handler ref stable to avoid stale closures. Written during render on
+  // purpose: the subscription below reads it on the first message, which can
+  // arrive before an effect-assigned ref would have been updated.
   const handlerRef = useRef(handler);
   handlerRef.current = handler;
 
@@ -196,9 +198,13 @@ export const useRoom = <TClient extends TWSObject, TServer extends TWSObject>(
 
     unsubscribeRef.current = unsubscribe;
 
-    // Get initial state from connection
+    // Get initial state from connection. This is the "synchronize with an
+    // external system" case the rule exempts in principle: the socket already
+    // exists and its state cannot be derived during render. It runs once per
+    // subscription, not on every commit.
     const connection = webSocketClient.getConnection(channel);
     if (connection) {
+      // oxlint-disable-next-line react/set-state-in-effect
       setIsConnected(connection.isConnected);
       setIsConnecting(connection.isConnecting);
       setIsError(connection.isError);

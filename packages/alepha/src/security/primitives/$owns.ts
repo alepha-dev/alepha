@@ -5,6 +5,7 @@ import { $context, AlephaError, type Middleware } from "alepha";
 // Erased at compile time, this edge does not exist at runtime.
 import type { Repository } from "alepha/orm";
 import { ForbiddenError, NotFoundError } from "alepha/server";
+
 import { currentResourceAtom } from "../atoms/currentResourceAtom.ts";
 import { $secure, type SecureOptions } from "./$secure.ts";
 

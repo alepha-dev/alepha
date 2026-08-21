@@ -8,7 +8,12 @@ Alepha ships with first-class MCP support. You define tools, resources, and prom
 
 ```typescript
 import { Alepha, z, run } from "alepha";
-import { AlephaMcp, StreamableHttpMcpTransport, $tool, $resource } from "alepha/mcp";
+import {
+  AlephaMcp,
+  StreamableHttpMcpTransport,
+  $tool,
+  $resource,
+} from "alepha/mcp";
 import { AlephaServer } from "alepha/server";
 
 class MyMcp {
@@ -70,11 +75,13 @@ class TaskTools {
         limit: z.integer().min(1).max(100).optional(),
       }),
       result: z.object({
-        tasks: z.array(z.object({
-          id: z.integer(),
-          title: z.text(),
-          status: z.text(),
-        })),
+        tasks: z.array(
+          z.object({
+            id: z.integer(),
+            title: z.text(),
+            status: z.text(),
+          }),
+        ),
         total: z.integer(),
       }),
     },
@@ -110,13 +117,13 @@ class TaskTools {
 
 **Options:**
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `description` | `string` | Required. Tells the AI what the tool does. |
-| `schema.params` | `ZObject` | Zod schema for input parameters. |
-| `schema.result` | `ZType` | Zod schema for the return value. |
-| `handler` | `function` | Receives `{ params, context }`. Returns the result. |
-| `name` | `string` | Override the tool name. Defaults to the property key. |
+| Option          | Type       | Description                                           |
+| --------------- | ---------- | ----------------------------------------------------- |
+| `description`   | `string`   | Required. Tells the AI what the tool does.            |
+| `schema.params` | `ZObject`  | Zod schema for input parameters.                      |
+| `schema.result` | `ZType`    | Zod schema for the return value.                      |
+| `handler`       | `function` | Receives `{ params, context }`. Returns the result.   |
+| `name`          | `string`   | Override the tool name. Defaults to the property key. |
 
 Parameters and results are validated automatically. If validation fails, the client receives a JSON-RPC error.
 
@@ -171,18 +178,18 @@ class Resources {
 
 **Options:**
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `uri` | `string` | Required. Unique identifier (e.g. `app://projects`, `file:///readme`). |
-| `description` | `string` | What this resource contains. |
-| `mimeType` | `string` | Content type. Defaults to `text/plain`. |
-| `handler` | `function` | Returns `{ text }` for text content or `{ blob }` for binary. |
-| `name` | `string` | Display name. Defaults to the property key. |
+| Option        | Type       | Description                                                            |
+| ------------- | ---------- | ---------------------------------------------------------------------- |
+| `uri`         | `string`   | Required. Unique identifier (e.g. `app://projects`, `file:///readme`). |
+| `description` | `string`   | What this resource contains.                                           |
+| `mimeType`    | `string`   | Content type. Defaults to `text/plain`.                                |
+| `handler`     | `function` | Returns `{ text }` for text content or `{ blob }` for binary.          |
+| `name`        | `string`   | Display name. Defaults to the property key.                            |
 
 ### $resourceTemplate: Parameterized Resources
 
 `$resource` addresses one thing at a fixed URI. `$resourceTemplate` addresses a
-*family* of them, so an AI can read `folio://1/86` without you registering every
+_family_ of them, so an AI can read `folio://1/86` without you registering every
 folio up front:
 
 ```typescript
@@ -198,7 +205,10 @@ class FolioResources {
       shortId: z.text(),
     }),
     handler: async ({ variables }) => {
-      const folio = await this.folios.find(variables.projectId, variables.shortId);
+      const folio = await this.folios.find(
+        variables.projectId,
+        variables.shortId,
+      );
       // `undefined` means "well-formed URI, nothing there" -> not found.
       return folio ? { text: folio.content } : undefined;
     },
@@ -213,10 +223,10 @@ falls through to them when no fixed resource matches the URI exactly. A concrete
 
 **URI templates.** Two RFC 6570 forms are supported:
 
-| Form | Matches | Use for |
-|------|---------|---------|
-| `{var}` | one segment, never spanning `/`; percent-decoded | ids, slugs |
-| `{+var}` | greedy, `/` included; not decoded | trailing paths (`file:///{+path}`) |
+| Form     | Matches                                          | Use for                            |
+| -------- | ------------------------------------------------ | ---------------------------------- |
+| `{var}`  | one segment, never spanning `/`; percent-decoded | ids, slugs                         |
+| `{+var}` | greedy, `/` included; not decoded                | trailing paths (`file:///{+path}`) |
 
 Any other operator (`{?query}`, `{#frag}`, `{/path*}`) throws when the container
 wires the primitive up, rather than compiling into a pattern that silently never
@@ -224,14 +234,14 @@ matches.
 
 **Options:**
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `uriTemplate` | `string` | Required. The RFC 6570 pattern. |
-| `variables` | `ZObject` | Validates the extracted values. A failure is `-32602`, so a malformed URI never reaches the handler. |
-| `handler` | `function` | Receives `{ variables, uri, context }`. Returns `{ text }`, `{ blob }`, or `undefined` for not found. |
-| `description` | `string` | What this family of resources contains. |
-| `mimeType` | `string` | Content type. Defaults to `text/plain`. |
-| `name` | `string` | Display name. Defaults to the property key. |
+| Option        | Type       | Description                                                                                           |
+| ------------- | ---------- | ----------------------------------------------------------------------------------------------------- |
+| `uriTemplate` | `string`   | Required. The RFC 6570 pattern.                                                                       |
+| `variables`   | `ZObject`  | Validates the extracted values. A failure is `-32602`, so a malformed URI never reaches the handler.  |
+| `handler`     | `function` | Receives `{ variables, uri, context }`. Returns `{ text }`, `{ blob }`, or `undefined` for not found. |
+| `description` | `string`   | What this family of resources contains.                                                               |
+| `mimeType`    | `string`   | Content type. Defaults to `text/plain`.                                                               |
+| `name`        | `string`   | Display name. Defaults to the property key.                                                           |
 
 ### $prompt: Message Templates
 
@@ -259,12 +269,12 @@ class Prompts {
 
 **Options:**
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `description` | `string` | What this prompt does. |
-| `args` | `ZObject` | Zod schema for template arguments. |
-| `handler` | `function` | Returns an array of `{ role, content }` messages. |
-| `name` | `string` | Override the prompt name. Defaults to the property key. |
+| Option        | Type       | Description                                             |
+| ------------- | ---------- | ------------------------------------------------------- |
+| `description` | `string`   | What this prompt does.                                  |
+| `args`        | `ZObject`  | Zod schema for template arguments.                      |
+| `handler`     | `function` | Returns an array of `{ role, content }` messages.       |
+| `name`        | `string`   | Override the prompt name. Defaults to the property key. |
 
 ## Wiring It Up
 
@@ -303,12 +313,7 @@ export const MyAppMcp = $module({
 Then register the module alongside your other modules:
 
 ```typescript
-run(
-  Alepha.create()
-    .with(AlephaServer)
-    .with(MyAppApi)
-    .with(MyAppMcp),
-);
+run(Alepha.create().with(AlephaServer).with(MyAppApi).with(MyAppMcp));
 ```
 
 ## Using DI in Tools
@@ -371,7 +376,9 @@ Extract shared schemas to keep tool definitions clean:
 // schemas/common.ts
 export const projectParamsSchema = z.object({
   project: z.integer().describe("Project ID").optional(),
-  project_name: z.text({ description: "Project name (case-insensitive)" }).optional(),
+  project_name: z
+    .text({ description: "Project name (case-insensitive)" })
+    .optional(),
 });
 
 // tools/TaskTools.ts
@@ -384,7 +391,9 @@ task_list = $tool({
       status: z.enum(["new", "accepted", "completed"]).optional(),
     }),
   },
-  handler: async ({ params }) => { /* ... */ },
+  handler: async ({ params }) => {
+    /* ... */
+  },
 });
 ```
 
@@ -456,7 +465,7 @@ handler: async ({ params, context }) => {
     throw new NotFoundError(`Project ${params.id} not found`);
   }
   return project;
-}
+};
 ```
 
 An ordinary `Error` becomes a **tool execution error** (`isError: true` with the
@@ -466,18 +475,18 @@ when the caller cannot fix the problem by changing its arguments.
 
 Available error classes:
 
-| Error | Code | When to use |
-|-------|------|-------------|
-| `McpUnauthorizedError` | -32001 | Missing or invalid credentials |
-| `McpForbiddenError` | -32003 | Authenticated but not allowed |
-| `McpToolNotFoundError` | -32602 | Unknown tool name |
-| `McpResourceNotFoundError` | -32602 | Unknown resource URI |
-| `McpPromptNotFoundError` | -32602 | Unknown prompt name |
-| `McpInvalidParamsError` | -32602 | Bad parameters |
-| `McpToolOutputError` | -32603 | A tool returned a value violating its own `schema.result` (server raised, not thrown by you) |
+| Error                      | Code   | When to use                                                                                  |
+| -------------------------- | ------ | -------------------------------------------------------------------------------------------- |
+| `McpUnauthorizedError`     | -32001 | Missing or invalid credentials                                                               |
+| `McpForbiddenError`        | -32003 | Authenticated but not allowed                                                                |
+| `McpToolNotFoundError`     | -32602 | Unknown tool name                                                                            |
+| `McpResourceNotFoundError` | -32602 | Unknown resource URI                                                                         |
+| `McpPromptNotFoundError`   | -32602 | Unknown prompt name                                                                          |
+| `McpInvalidParamsError`    | -32602 | Bad parameters                                                                               |
+| `McpToolOutputError`       | -32603 | A tool returned a value violating its own `schema.result` (server raised, not thrown by you) |
 
 Unknown names are `-32602 Invalid params`, not `-32601 Method not found`:
-`-32601` says the *method* `tools/call` does not exist, which a client can read
+`-32601` says the _method_ `tools/call` does not exist, which a client can read
 as "this server has no tools at all".
 
 Input validation stays a tool execution error - the model sent bad arguments and
@@ -506,7 +515,7 @@ alepha.store.mut(mcpStreamableHttpOptions, (o) => ({ ...o, path: "/my-mcp" }));
 
 ### stdio: local servers
 
-Claude Desktop, Claude Code and every other *local* client launch the server as
+Claude Desktop, Claude Code and every other _local_ client launch the server as
 a subprocess and speak newline-delimited JSON-RPC over its pipes:
 
 ```typescript

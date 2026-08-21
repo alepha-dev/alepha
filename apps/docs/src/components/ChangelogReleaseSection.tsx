@@ -1,6 +1,7 @@
 import type { ChangelogChange } from "../../scripts/interfaces.ts";
-import styles from "./Changelog.module.css";
 import ChangelogChangeItem from "./ChangelogChangeItem.tsx";
+
+import styles from "./Changelog.module.css";
 
 export interface ChangelogReleaseSectionProps {
   title: string;

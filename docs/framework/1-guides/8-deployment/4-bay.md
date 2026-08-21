@@ -96,7 +96,7 @@ Two, both outside Alepha:
 1. **Your public key is in `~/.ssh/authorized_keys`** for the user you connect as. Alepha never
    handles the key - it runs `ssh`, and `ssh` does what it always does.
 2. **That user is in the `bay-control` group.** Bay publishes its control socket at mode `0660` owned
-   by that group, so membership *is* the deploy permission - there is no token to issue, store or
+   by that group, so membership _is_ the deploy permission - there is no token to issue, store or
    revoke.
 
 ```bash
@@ -118,7 +118,7 @@ otherwise surfaces halfway through as a permission error mentioning neither Bay 
 If that command (or `bay list`, behind `alepha platform status`) fails with a raw detail saying "no
 control socket found" rather than a plain permission error naming a `.sock` path, the group is not the
 problem - it means Bay never even tried to dial anything, because its own guess at the socket path
-missed entirely. Set `socket`, above, to the actual path. A permission error that *does* name a `.sock`
+missed entirely. Set `socket`, above, to the actual path. A permission error that _does_ name a `.sock`
 path is the genuine group problem instead: Bay found the socket file (its containing directory is
 world-readable) but refused to dial it for that user.
 
@@ -226,7 +226,7 @@ itself, at deploy time.
 
 The practical consequence: `alepha platform status` reports the running app and its release, and
 reports **empty** database and storage lists. That is deliberate honesty rather than a gap - Bay
-exposes no inventory of what it created, and listing what the manifest *asked for* would report
+exposes no inventory of what it created, and listing what the manifest _asked for_ would report
 intent as fact.
 
 ## Migrations
@@ -235,7 +235,7 @@ There is no migrate step, and `alepha platform migrate` is a no-op on Bay.
 
 Migrations are the app's own business here: Alepha runs them during its own boot as soon as a
 `migrations/` directory sits next to the bundle, and `alepha pack` always includes one. Redeploying
-the app *is* migrating it.
+the app _is_ migrating it.
 
 ## Status and teardown
 
@@ -255,16 +255,16 @@ bay remove myapp/production --purge   # on the host, and irreversible
 
 ## Bay versus Cloudflare
 
-| | Bay | Cloudflare |
-|---|---|---|
-| Runtime | long-lived Node/Bun process | `workerd` isolate, per request |
-| Build target | `bare` | `cloudflare` (forces `workerd`) |
-| Provisioning | by Bay, from the manifest, at deploy | by the CLI, via the Cloudflare API |
-| Database | SQLite file (or your own Postgres) in the app directory | D1, or Postgres via Hyperdrive |
-| Migrations | at app boot | `alepha platform migrate` |
-| Access | SSH key + `bay-control` group membership | `wrangler login` |
-| Rollback | automatic on failed readiness | redeploy the previous version |
-| Scaling | one machine | Cloudflare's edge |
+|              | Bay                                                     | Cloudflare                         |
+| ------------ | ------------------------------------------------------- | ---------------------------------- |
+| Runtime      | long-lived Node/Bun process                             | `workerd` isolate, per request     |
+| Build target | `bare`                                                  | `cloudflare` (forces `workerd`)    |
+| Provisioning | by Bay, from the manifest, at deploy                    | by the CLI, via the Cloudflare API |
+| Database     | SQLite file (or your own Postgres) in the app directory | D1, or Postgres via Hyperdrive     |
+| Migrations   | at app boot                                             | `alepha platform migrate`          |
+| Access       | SSH key + `bay-control` group membership                | `wrangler login`                   |
+| Rollback     | automatic on failed readiness                           | redeploy the previous version      |
+| Scaling      | one machine                                             | Cloudflare's edge                  |
 
 Both provision from your `$repository` / `$storage` / `$cache` / `$job` declarations - you do not
 maintain infrastructure config by hand on either.

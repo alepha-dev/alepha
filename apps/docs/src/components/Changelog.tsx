@@ -1,10 +1,12 @@
 import { IconArrowLeft } from "@tabler/icons-react";
 import { Link } from "alepha/react/router";
 import { useCallback, useState } from "react";
+
 import type { ChangelogEntry } from "../config/docs.ts";
-import styles from "./Changelog.module.css";
 import ChangelogRelease from "./ChangelogRelease.tsx";
 import StatusBar from "./layout/StatusBar.tsx";
+
+import styles from "./Changelog.module.css";
 
 export interface ChangelogProps {
   entries: ChangelogEntry[];

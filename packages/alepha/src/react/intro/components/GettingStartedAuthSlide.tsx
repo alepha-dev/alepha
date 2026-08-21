@@ -1,5 +1,6 @@
 import { useAuth } from "alepha/react/auth";
 import { useRouter } from "alepha/react/router";
+
 import type { GettingStartedSlide } from "./GettingStarted.tsx";
 
 /**

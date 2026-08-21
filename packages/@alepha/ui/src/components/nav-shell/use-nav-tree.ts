@@ -3,6 +3,7 @@ import type {
   NavItem,
 } from "@alepha/ui/components/app-shell/app-shell";
 import { useMemo } from "react";
+
 import { type NavEntry, useNavEntries } from "./use-nav-entries.ts";
 
 export interface UseNavTreeOptions {

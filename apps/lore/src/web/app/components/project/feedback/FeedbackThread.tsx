@@ -6,6 +6,7 @@ import { useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Bot, MessageSquare, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+
 import type { FeedbackCommentController } from "@/api/controllers/FeedbackCommentController.ts";
 import type { FeedbackCommentResource } from "@/api/schemas/feedbackCommentResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
@@ -56,6 +57,10 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
   useEffect(() => {
     // A failure here costs the thread, not the page around it: the reporter
     // still needs to read their own report.
+    // An effect that starts an I/O load is the "synchronize with an external
+    // system" case the rule exempts; it reports it because the loader flips
+    // `loading` before its first await.
+    // oxlint-disable-next-line react/set-state-in-effect
     load().catch(() => setComments([]));
   }, [load]);
 

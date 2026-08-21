@@ -1,6 +1,7 @@
 import { Alepha, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 import { describe, it } from "vitest";
+
 import { AlephaOrm } from "../core/index.ts";
 
 const noteEntity = $entity({

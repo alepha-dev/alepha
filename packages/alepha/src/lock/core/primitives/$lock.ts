@@ -18,6 +18,7 @@ import {
 } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $topic } from "alepha/topic";
+
 import { LockAcquireError } from "../errors/LockAcquireError.ts";
 import { LockProvider } from "../providers/LockProvider.ts";
 import { LockTopicProvider } from "../providers/LockTopicProvider.ts";

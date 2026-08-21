@@ -1,4 +1,5 @@
 import type { EditorView } from "@codemirror/view";
+
 import {
   DIAGRAM_BLOCK,
   insertBlock,

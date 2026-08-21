@@ -14,6 +14,7 @@ Uses OpenID Connect (OIDC) to authenticate users via their Apple accounts.
 Upon successful authentication, it links the Apple account to a user session.
 
 Apple-specific behavior:
+
 - `response_mode=form_post` (required by Apple when requesting `email`/`name`).
 - Scope: `name email` (Apple does not support the standard `profile` scope).
 - The user's name is only provided on the first authorization, as a `user`
@@ -32,7 +33,7 @@ set it via `APPLE_CLIENT_SECRET`.
 See: https://developer.apple.com/documentation/accountorganizationaldatasharing/creating-a-client-secret
 
 Environment Variables:
+
 - `APPLE_CLIENT_ID`: The Service ID obtained from the Apple Developer Console.
 - `APPLE_CLIENT_SECRET`: The signed ES256 JWT client secret generated from your
   Apple private key.
-

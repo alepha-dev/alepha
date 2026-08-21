@@ -9,6 +9,7 @@ import {
   type ZType,
 } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+
 import { CookieParser } from "../services/CookieParser.ts";
 import type {
   AbstractCookiePrimitive,
@@ -125,7 +126,6 @@ export class BrowserCookiePrimitive<T extends ZType>
       cookie.maxAge = this.dateTimeProvider.duration(options.ttl).as("seconds");
     }
 
-    // biome-ignore lint/suspicious/noDocumentCookie: ...
     document.cookie = this.cookieParser.cookieToString(this.name, cookie);
   }
 
@@ -166,7 +166,6 @@ export class BrowserCookiePrimitive<T extends ZType>
       maxAge: 0, // Set maxAge to 0 to delete the cookie
     };
 
-    // biome-ignore lint/suspicious/noDocumentCookie: ...
     document.cookie = this.cookieParser.cookieToString(this.name, cookie);
   }
 }

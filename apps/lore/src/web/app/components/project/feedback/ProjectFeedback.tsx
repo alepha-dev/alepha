@@ -10,8 +10,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
+
 import { currentFeedbackCountAtom } from "../../../atoms/currentFeedbackCountAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -72,6 +74,10 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
       setFeedbackCount({ count: props.items.length });
       return;
     }
+    // An effect that starts an I/O load is the "synchronize with an external
+    // system" case the rule exempts; it reports it because the loader flips
+    // `loading` before its first await.
+    // oxlint-disable-next-line react/set-state-in-effect
     reload(status);
   }, [status]);
 

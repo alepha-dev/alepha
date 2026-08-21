@@ -3,16 +3,16 @@ import * as React from "react";
 void React;
 
 import {
-  Control,
-  type ControlProps,
-} from "@alepha/ui/components/control/control";
-import {
   FormFieldAutoSaveProvider,
   FormFieldLayoutProvider,
   FormFieldRequiredMarkerProvider,
 } from "@alepha/ui/components/control-base/form-field";
 import { spanClass, widthFor } from "@alepha/ui/components/control-base/grid";
 import { iconFor } from "@alepha/ui/components/control-base/icon-hint";
+import {
+  Control,
+  type ControlProps,
+} from "@alepha/ui/components/control/control";
 import { SettingsHeading } from "@alepha/ui/components/settings/settings-heading";
 import { Button } from "@alepha/ui/components/ui/button";
 import {
@@ -831,10 +831,11 @@ function FormErrorPopover(props: FormErrorPopoverProps) {
   const { error } = useFormState(props.form, ["error"]);
   const { tr } = useI18n();
   const [open, setOpen] = useState(false);
-  // close popover when error clears
-  useEffect(() => {
-    if (!error && open) setOpen(false);
-  }, [error, open]);
+  // Close the popover when the error clears. Guarded on `open`, so it settles
+  // in one pass and does not need an effect.
+  if (!error && open) {
+    setOpen(false);
+  }
 
   if (!error) return null;
 

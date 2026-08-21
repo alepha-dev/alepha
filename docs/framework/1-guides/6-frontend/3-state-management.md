@@ -22,12 +22,12 @@ Atoms must contain only serializable data. Avoid storing class instances, functi
 
 **Options:**
 
-| Option        | Type       | Description                                |
-|---------------|------------|--------------------------------------------|
-| `name`        | `string`   | Unique identifier for the atom.            |
-| `schema`      | `ZType`    | Zod schema for validation.                 |
+| Option        | Type       | Description                                              |
+| ------------- | ---------- | -------------------------------------------------------- |
+| `name`        | `string`   | Unique identifier for the atom.                          |
+| `schema`      | `ZType`    | Zod schema for validation.                               |
 | `default`     | `Infer<T>` | Default value. Required unless schema is fully optional. |
-| `description` | `string`   | Optional description for documentation.    |
+| `description` | `string`   | Optional description for documentation.                  |
 
 ## useStore Hook
 
@@ -75,7 +75,7 @@ const [prefs, setPrefs] = useStore(userPrefs, { theme: "light" });
 
 ## Selecting Slices with useSelector
 
-`useStore` re-renders whenever *any* part of the atom mutates, even fields the component never reads. For an atom with several independent fields, that means unrelated updates trigger renders you don't need. `useSelector` subscribes to a derived slice instead, and only re-renders when that slice actually changes.
+`useStore` re-renders whenever _any_ part of the atom mutates, even fields the component never reads. For an atom with several independent fields, that means unrelated updates trigger renders you don't need. `useSelector` subscribes to a derived slice instead, and only re-renders when that slice actually changes.
 
 ```typescript check
 import { $atom, z } from "alepha";
@@ -110,12 +110,12 @@ const Sidebar = () => {
     shallowEqual,
   );
   // ...
-}
+};
 ```
 
 **When to use which:**
 
-- `useStore(atom)` returns `[value, setValue]` - use it when a component reads *and* writes the whole atom, or genuinely needs every field.
+- `useStore(atom)` returns `[value, setValue]` - use it when a component reads _and_ writes the whole atom, or genuinely needs every field.
 - `useSelector(atom, select, equality?)` is read-only and re-renders only on changes to the selected slice - use it for components that only care about part of a larger, frequently-changing atom. To write, call `alepha.store.set(atom, ...)` or use `useStore` elsewhere in the tree.
 
 ## Non-React Access
@@ -152,7 +152,7 @@ alepha.store.get(settings); // { theme: "dark", count: 1 } -- `extra` is gone
 
 This applies to every write path - `useStore`'s setter, `alepha.store.set`, and raw string-key writes once the atom has registered.
 
-Validation also runs the other direction, for a value that arrives from *outside* a normal `set` call: the SSR hydration payload, or a value passed to `Alepha.create(seed)`. If that value doesn't match the schema, the atom falls back to its declared default (and a warning is logged) instead of storing something invalid.
+Validation also runs the other direction, for a value that arrives from _outside_ a normal `set` call: the SSR hydration payload, or a value passed to `Alepha.create(seed)`. If that value doesn't match the schema, the atom falls back to its declared default (and a warning is logged) instead of storing something invalid.
 
 ## SSR Hydration
 
@@ -171,11 +171,11 @@ const uiPrefs = $atom({
 });
 ```
 
-| `persist` value  | Where it works        | Notes |
-|------------------|------------------------|-------|
-| `"cookie"`       | Server **and** browser | The only SSR-safe option: the server reads the cookie while rendering, so the very first paint already matches the persisted state. Use this for any app that renders on the server. |
-| `"localStorage"` | Browser only           | Fine for pure SPAs. The server cannot see it; registering such an atom during SSR logs a warning. |
-| `"sessionStorage"` | Browser only         | Same as `localStorage`, scoped to the tab. |
+| `persist` value    | Where it works         | Notes                                                                                                                                                                                |
+| ------------------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `"cookie"`         | Server **and** browser | The only SSR-safe option: the server reads the cookie while rendering, so the very first paint already matches the persisted state. Use this for any app that renders on the server. |
+| `"localStorage"`   | Browser only           | Fine for pure SPAs. The server cannot see it; registering such an atom during SSR logs a warning.                                                                                    |
+| `"sessionStorage"` | Browser only           | Same as `localStorage`, scoped to the tab.                                                                                                                                           |
 
 To make `persist: "cookie"` work, register the cookies module once, in code shared between your server and browser entry points:
 
@@ -288,7 +288,7 @@ const sessionSecret = $atom({
 
 Use it for state that must never leave the server - internal request-scoped data, secrets touched during rendering. The guarantee reaches further than just the hydration payload: `serverOnly` also withholds the value from the devtools mutation log and metadata endpoints, so it can't leak through those channels either.
 
-**Which atoms need it.** The hydration payload is built from the current request's state layer only - not from the app-level store. An atom you configure once at boot (`alepha.store.set(myOptions, ...)` in your entry file, a `configure` hook, an env read) was therefore never going to ship in the first place. So on a config atom, `serverOnly` is free: it changes nothing at runtime, it documents the intent, it redacts the value in devtools, and it means a later `store.set` from inside a request handler can't silently start leaking it. The flag genuinely changes behaviour only for atoms you write *during* a request - resolved tenant, resolved row, anything a middleware stamps per call. Those are exactly the ones worth auditing.
+**Which atoms need it.** The hydration payload is built from the current request's state layer only - not from the app-level store. An atom you configure once at boot (`alepha.store.set(myOptions, ...)` in your entry file, a `configure` hook, an env read) was therefore never going to ship in the first place. So on a config atom, `serverOnly` is free: it changes nothing at runtime, it documents the intent, it redacts the value in devtools, and it means a later `store.set` from inside a request handler can't silently start leaking it. The flag genuinely changes behaviour only for atoms you write _during_ a request - resolved tenant, resolved row, anything a middleware stamps per call. Those are exactly the ones worth auditing.
 
 Conversely, do not set it on an atom the browser is meant to read: anything a page loader fills for the client to pick up, anything behind `useStore` (the hook seeds its default into the request layer during SSR, so that value does ship by design), and anything a client-side service reads back after render.
 

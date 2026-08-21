@@ -59,7 +59,7 @@ export class ShopDrawings {
               <path d="M79 96 h 42" opacity="0.6" />
               <path d="M85 88 h 30" opacity="0.35" />`
            : ""
-}`,
+       }`,
     );
   }
 

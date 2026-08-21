@@ -1,5 +1,6 @@
 import { $module } from "alepha";
 import { AlephaApiJobs } from "alepha/api/jobs";
+
 import { AdminAnalyticsController } from "./controllers/AdminAnalyticsController.ts";
 import { AnalyticsRollupJobs } from "./jobs/AnalyticsRollupJobs.ts";
 import { $analytics } from "./primitives/$analytics.ts";

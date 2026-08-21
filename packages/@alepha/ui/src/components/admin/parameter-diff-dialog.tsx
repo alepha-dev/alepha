@@ -15,6 +15,7 @@ import {
 import { cn } from "@alepha/ui/lib/utils";
 import { useI18n } from "alepha/react/i18n";
 import { type ReactNode, useMemo } from "react";
+
 import { diffLines } from "./diff-lines.ts";
 
 export interface ParameterDiffDialogProps {
@@ -76,7 +77,7 @@ export const ParameterDiffDialog = (props: ParameterDiffDialogProps) => {
         <pre className="bg-muted max-h-[60vh] overflow-auto rounded-md p-3 font-mono text-xs leading-relaxed">
           {lines.map((line, index) => (
             <div
-              // biome-ignore lint/suspicious/noArrayIndexKey: diff lines are positional
+              // diff lines are positional
               key={index}
               className={cn(
                 "flex gap-2 whitespace-pre-wrap",

@@ -13,6 +13,7 @@ npm install alepha
 Automatic retry with backoff.
 
 **Features:**
+
 - Retry configuration
 - Exponential backoff
 - Max retry limits

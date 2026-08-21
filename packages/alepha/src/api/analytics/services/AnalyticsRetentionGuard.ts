@@ -1,5 +1,6 @@
 import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
+
 import { AnalyticsRollupJobs } from "../jobs/AnalyticsRollupJobs.ts";
 import { $analytics } from "../primitives/$analytics.ts";
 

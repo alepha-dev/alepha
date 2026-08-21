@@ -26,7 +26,7 @@ A `$job` is either **cron-only** (declares `cron`) or **payload-only** (declares
 - **direct**: push-driven, processed in-process right after the caller
   awaits the push. The DB outbox row is the durability guarantee - if
   the process dies, the reconciliation sweep re-dispatches. Default
-  when `AlephaApiJobsQueue` is *not* loaded. Best for cheap deployments
+  when `AlephaApiJobsQueue` is _not_ loaded. Best for cheap deployments
   (Cloudflare Workers, single-instance Node) where standing up a queue
   is overkill.
 

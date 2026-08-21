@@ -5,6 +5,7 @@ void React;
 import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
 import type { FormModel } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
+
 import type { productFormSchema } from "./product-form-schema.ts";
 
 export interface AdminProductDetailOverviewTabProps {

@@ -1,5 +1,6 @@
 import { Alepha, z } from "alepha";
 import { describe, expect, it } from "vitest";
+
 import { $route, ServerProvider } from "../index.ts";
 
 describe("server batch", () => {

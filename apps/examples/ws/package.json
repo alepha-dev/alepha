@@ -1,7 +1,7 @@
 {
+  "name": "ws",
   "private": true,
   "type": "module",
-  "name": "ws",
   "scripts": {
     "dev": "alepha dev",
     "typecheck": "tsc --noEmit",

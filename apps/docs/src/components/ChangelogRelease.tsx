@@ -1,8 +1,10 @@
 import { IconBug, IconChevronRight, IconSparkles } from "@tabler/icons-react";
 import { useCallback } from "react";
+
 import type { ChangelogEntry } from "../config/docs.ts";
-import styles from "./Changelog.module.css";
 import ChangelogReleaseSection from "./ChangelogReleaseSection.tsx";
+
+import styles from "./Changelog.module.css";
 
 export interface ChangelogReleaseProps {
   entry: ChangelogEntry;

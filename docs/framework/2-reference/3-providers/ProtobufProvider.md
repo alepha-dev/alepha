@@ -16,4 +16,3 @@ Schemas are walked as JSON Schema rather than through zod's internal
 and `$tool` already rely on, so this provider tracks one public, documented
 shape, and does not have to be rewritten whenever the schema layer
 reorganises its internals.
-

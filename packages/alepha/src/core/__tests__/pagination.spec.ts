@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { createPagination, pageSchema, z } from "../index.ts";
 
 describe("Pagination (Core)", () => {

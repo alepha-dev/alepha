@@ -14,6 +14,7 @@ Requires the Workers Paid plan and a verified sender address on the
 `EMAIL_FROM` domain.
 
 Two transports, picked automatically:
+
 - **Workers binding** (`SEND_EMAIL`) when running on Workers. Preferred -
   no egress and no token to rotate.
 - **REST API** otherwise, so the same provider keeps working on Node
@@ -21,6 +22,6 @@ Two transports, picked automatically:
   `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN`.
 
 Configuration is provided via environment variables:
+
 - `EMAIL_FROM`: Default sender email address
 - `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN`: REST fallback only
-

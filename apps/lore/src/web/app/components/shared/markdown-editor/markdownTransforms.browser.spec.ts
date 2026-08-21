@@ -1,6 +1,7 @@
 import { parseFlowchart } from "@alepha/ui/components/markdown-view/diagram/flowchartParser.ts";
 import { EditorState } from "@codemirror/state";
 import { describe, expect, it } from "vitest";
+
 import {
   DIAGRAM_BLOCK,
   insertBlock,

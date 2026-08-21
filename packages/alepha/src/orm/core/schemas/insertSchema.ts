@@ -1,5 +1,6 @@
 import type { ZObject, ZodOptional, ZType } from "alepha";
 import { z } from "alepha";
+
 import {
   PG_DEFAULT,
   PG_GENERATED,
@@ -16,11 +17,11 @@ import {
  * After:  { name: string; age?: number; }
  */
 export type TObjectInsert<T extends ZObject> = ZObject<{
-  [K in keyof T["shape"] as T["shape"][K] extends { [PG_GENERATED]: any }
-    ? never
-    : K]: T["shape"][K] extends
-    | { [PG_DEFAULT]: any }
-    | { [PG_ORGANIZATION]: any }
+  [
+    K in keyof T["shape"] as T["shape"][K] extends { [PG_GENERATED]: any }
+      ? never
+      : K
+  ]: T["shape"][K] extends { [PG_DEFAULT]: any } | { [PG_ORGANIZATION]: any }
     ? ZodOptional<Extract<T["shape"][K], ZType>>
     : T["shape"][K];
 }>;

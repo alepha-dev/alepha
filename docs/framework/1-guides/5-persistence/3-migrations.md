@@ -77,13 +77,13 @@ Under the hood each migration file is applied with `wrangler d1 execute --file` 
 
 The database driver is selected based on the `DATABASE_URL` environment variable:
 
-| URL Prefix        | Driver |
-|-------------------|--------|
+| URL Prefix        | Driver                                              |
+| ----------------- | --------------------------------------------------- |
 | `postgres://`     | PostgreSQL (Node.js or Bun, selected automatically) |
-| `pglite://`       | PGlite (embedded PostgreSQL) |
-| `hyperdrive://`   | Cloudflare Hyperdrive (Postgres from Workers) |
-| `d1://`           | Cloudflare D1 |
-| Other / no prefix | SQLite (Node.js or Bun, selected automatically) |
+| `pglite://`       | PGlite (embedded PostgreSQL)                        |
+| `hyperdrive://`   | Cloudflare Hyperdrive (Postgres from Workers)       |
+| `d1://`           | Cloudflare D1                                       |
+| Other / no prefix | SQLite (Node.js or Bun, selected automatically)     |
 
 Unset, SQLite writes to `node_modules/.alepha/sqlite.db` - a development scratch
 file that needs no configuration and is removed along with the rest of

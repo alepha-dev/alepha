@@ -1,4 +1,5 @@
 import type { AdminRouterOptions } from "@alepha/ui/components/admin/admin-router-options";
+
 import { AdminBrand } from "./AdminBrand.tsx";
 
 /**

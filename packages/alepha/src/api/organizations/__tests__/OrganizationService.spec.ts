@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { currentUserAtom } from "alepha/security";
 import { describe, it } from "vitest";
+
 import { AlephaApiOrganizations, OrganizationService } from "../index.ts";
 
 const setup = async () => {

@@ -19,4 +19,3 @@ The default locale is served WITHOUT a prefix (`/about` = default,
 `/fr/about` = French). The active locale is derived from the current
 request/navigation and stored under `alepha.react.router.locale`, so every
 URL the router builds (`pathname()`) automatically carries the right prefix.
-

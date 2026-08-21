@@ -1,5 +1,6 @@
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
+
 import { type Sigil, sigils } from "../entities/sigils.ts";
 import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
 import { DailyVisitorsService } from "./DailyVisitorsService.ts";

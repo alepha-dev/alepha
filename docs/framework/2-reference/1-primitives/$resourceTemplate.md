@@ -8,7 +8,7 @@ import { $resourceTemplate } from "alepha/mcp";
 
 ## Overview
 
-Creates an MCP resource template - a resource addressed by a *pattern*
+Creates an MCP resource template - a resource addressed by a _pattern_
 rather than a fixed URI.
 
 `$resource` covers data that lives at one known address. A template
@@ -32,19 +32,19 @@ never matches.
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `uriTemplate` | `string` | Yes | The RFC 6570 URI template this resource answers for. |
-| `name` | `string` | No | Human-readable name |
-| `title` | `string` | No | Human-friendly display title (spec 2025-11-25) |
-| `description` | `string` | No | Description of what this family of resources contains. |
-| `mimeType` | `string` | No | MIME type of the resource content. |
-| `icons` | `McpIcon[]` | No | Optional icons surfaced in client UIs (spec 2025-11-25 / SEP-973). |
-| `annotations` | `McpAnnotations` | No | Audience / priority / `lastModified` hints (spec 2025-03-26+). |
-| `_meta` | `Record&lt;string, unknown&gt;` | No | Arbitrary metadata passed through to clients on the descriptor (spec 2025-06-18+). |
-| `variables` | `T` | No | Zod schema validating the variables extracted from a concrete URI |
-| `handler` | `Object` | Yes | Handler returning the content for one concrete URI. |
-| `complete` | `CompletionHandler` | No | Optional autocompletion for the template's URI variables, served over `completion/complete` |
+| Option        | Type                            | Required | Description                                                                                 |
+| ------------- | ------------------------------- | -------- | ------------------------------------------------------------------------------------------- |
+| `uriTemplate` | `string`                        | Yes      | The RFC 6570 URI template this resource answers for.                                        |
+| `name`        | `string`                        | No       | Human-readable name                                                                         |
+| `title`       | `string`                        | No       | Human-friendly display title (spec 2025-11-25)                                              |
+| `description` | `string`                        | No       | Description of what this family of resources contains.                                      |
+| `mimeType`    | `string`                        | No       | MIME type of the resource content.                                                          |
+| `icons`       | `McpIcon[]`                     | No       | Optional icons surfaced in client UIs (spec 2025-11-25 / SEP-973).                          |
+| `annotations` | `McpAnnotations`                | No       | Audience / priority / `lastModified` hints (spec 2025-03-26+).                              |
+| `_meta`       | `Record&lt;string, unknown&gt;` | No       | Arbitrary metadata passed through to clients on the descriptor (spec 2025-06-18+).          |
+| `variables`   | `T`                             | No       | Zod schema validating the variables extracted from a concrete URI                           |
+| `handler`     | `Object`                        | Yes      | Handler returning the content for one concrete URI.                                         |
+| `complete`    | `CompletionHandler`             | No       | Optional autocompletion for the template's URI variables, served over `completion/complete` |
 
 ## Examples
 
@@ -64,4 +64,3 @@ class FolioResources {
   });
 }
 ```
-

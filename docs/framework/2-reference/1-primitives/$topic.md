@@ -18,14 +18,14 @@ event filtering, and pluggable backends (memory, Redis, custom providers).
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `name` | `string` | No | Unique name identifier for the topic |
-| `description` | `string` | No | Human-readable description of the topic's purpose and usage |
-| `provider` | `"memory" \| Service&lt;TopicProvider&gt;` | No | Topic provider configuration for message storage and delivery |
-| `schema` | `T` | Yes | Zod schema defining the structure of messages published to this topic |
-| `handler` | `TopicHandler&lt;T&gt;` | No | Default subscriber handler function that processes messages published to this topic |
-| `retain` | `boolean` | No | Whether the last published message should be retained and delivered to new subscribers |
+| Option        | Type                                       | Required | Description                                                                            |
+| ------------- | ------------------------------------------ | -------- | -------------------------------------------------------------------------------------- |
+| `name`        | `string`                                   | No       | Unique name identifier for the topic                                                   |
+| `description` | `string`                                   | No       | Human-readable description of the topic's purpose and usage                            |
+| `provider`    | `"memory" \| Service&lt;TopicProvider&gt;` | No       | Topic provider configuration for message storage and delivery                          |
+| `schema`      | `T`                                        | Yes      | Zod schema defining the structure of messages published to this topic                  |
+| `handler`     | `TopicHandler&lt;T&gt;`                    | No       | Default subscriber handler function that processes messages published to this topic    |
+| `retain`      | `boolean`                                  | No       | Whether the last published message should be retained and delivered to new subscribers |
 
 ## Examples
 
@@ -39,16 +39,20 @@ class NotificationService {
       payload: z.object({
         userId: z.text(),
         action: z.enum(["login", "logout", "purchase"]),
-        timestamp: z.number()
-      })
+        timestamp: z.number(),
+      }),
     },
     handler: async (message) => {
       console.log(`User ${message.payload.userId}: ${message.payload.action}`);
-    }
+    },
   });
 
   async trackLogin(userId: string) {
-    await this.userActivity.publish({ userId, action: "login", timestamp: this.dateTime.nowMillis() });
+    await this.userActivity.publish({
+      userId,
+      action: "login",
+      timestamp: this.dateTime.nowMillis(),
+    });
   }
 
   async subscribeToEvents() {
@@ -58,4 +62,3 @@ class NotificationService {
   }
 }
 ```
-

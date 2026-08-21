@@ -1,4 +1,5 @@
 import { $atom, z } from "alepha";
+
 import { questResourceSchema } from "@/api/schemas/questResourceSchema.ts";
 
 export const currentAssignedQuestsAtom = $atom({

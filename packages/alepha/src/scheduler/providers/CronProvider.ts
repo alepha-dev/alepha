@@ -161,12 +161,12 @@ export class CronProvider {
       return;
     }
 
-    const [next] = task.cron.getNextDates(1, now.toDate());
-    if (!next) {
+    const [nextRun] = task.cron.getNextDates(1, now.toDate());
+    if (!nextRun) {
       return;
     }
 
-    const duration = next.getTime() - now.toDate().getTime();
+    const duration = nextRun.getTime() - now.toDate().getTime();
     const abort = new AbortController();
     task.abort = abort;
 
@@ -188,14 +188,14 @@ export class CronProvider {
             `Cron task '${task.name}' is still running, skipping this invocation`,
           );
           if (task.loop) {
-            this.run(task, this.dt.of(next));
+            this.run(task, this.dt.of(nextRun));
           }
           return;
         }
 
         task.executing = true;
         task
-          .handler({ now: this.dt.of(next) })
+          .handler({ now: this.dt.of(nextRun) })
           .catch((err) => {
             if (task.onError) {
               task.onError(err);
@@ -208,7 +208,7 @@ export class CronProvider {
           });
 
         if (task.loop) {
-          this.run(task, this.dt.of(next));
+          this.run(task, this.dt.of(nextRun));
         }
       })
       .catch((err) => {

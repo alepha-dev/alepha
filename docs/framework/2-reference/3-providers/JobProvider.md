@@ -19,21 +19,22 @@ abstracted behind `JobDispatcher`, substituted by DI:
   it up.
 
 Push flow:
-  push()  → INSERT row (pending) → dispatcher.dispatch(jobName, id)
-  worker  → claim → UPDATE running → handler → DELETE/UPDATE on success
-          → UPDATE error / scheduled (retry) on failure
+push() → INSERT row (pending) → dispatcher.dispatch(jobName, id)
+worker → claim → UPDATE running → handler → DELETE/UPDATE on success
+→ UPDATE error / scheduled (retry) on failure
 
 Cron flow:
-  scheduler tick → acquire lock → executeInline (no retry)
-                                → enqueue + dispatch (retry declared)
+scheduler tick → acquire lock → executeInline (no retry)
+→ enqueue + dispatch (retry declared)
 
 Sweep responsibilities (every `sweepCron`):
-  - re-enqueue pending rows older than `staleThreshold`
-  - mark crashed running rows as failed and apply retry policy
-  - move `scheduled` rows with `scheduledAt <= now` to pending + dispatch
+
+- re-enqueue pending rows older than `staleThreshold`
+- mark crashed running rows as failed and apply retry policy
+- move `scheduled` rows with `scheduledAt <= now` to pending + dispatch
 
 Trim runs on its own cron (`trimCron`, default hourly):
-  - per-job history trimmed beyond `keepLastSuccess` / `keepLastError`
-  - decoupled from sweep because trim cost scales with job count, not
-    retry latency - running it every sweep is wasted work for most apps.
 
+- per-job history trimmed beyond `keepLastSuccess` / `keepLastError`
+- decoupled from sweep because trim cost scales with job count, not
+  retry latency - running it every sweep is wasted work for most apps.

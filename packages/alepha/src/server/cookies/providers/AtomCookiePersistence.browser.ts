@@ -1,5 +1,6 @@
 import { $hook, $inject, Alepha, type Atom, type State } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+
 import type { Cookie } from "../primitives/$cookie.ts";
 import { CookieParser } from "../services/CookieParser.ts";
 
@@ -72,7 +73,7 @@ export class AtomCookiePersistence {
         sameSite: "lax",
         maxAge: this.dateTime.duration([365, "days"]).as("seconds"),
       };
-      // biome-ignore lint/suspicious/noDocumentCookie: cookie persistence adapter
+      // cookie persistence adapter
       document.cookie = this.cookieParser.cookieToString(atom.key, cookie);
     },
   });
@@ -127,7 +128,7 @@ export class AtomCookiePersistence {
       sameSite: "lax",
       maxAge: 0,
     };
-    // biome-ignore lint/suspicious/noDocumentCookie: cookie persistence adapter
+    // cookie persistence adapter
     document.cookie = this.cookieParser.cookieToString(name, cookie);
   }
 }

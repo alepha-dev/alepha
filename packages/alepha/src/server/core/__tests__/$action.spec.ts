@@ -1,6 +1,7 @@
 import { Alepha, z } from "alepha";
 import { FileSystemProvider } from "alepha/system";
 import { describe, test } from "vitest";
+
 import { $action } from "../index.ts";
 
 describe("$action", () => {
@@ -160,7 +161,7 @@ describe("$action", () => {
 
   test("should filter fields", async ({ expect }) => {
     const alepha = Alepha.create();
-    const fileSystem = alepha.inject(FileSystemProvider);
+    alepha.inject(FileSystemProvider);
     class TestApp {
       test = $action({
         schema: {

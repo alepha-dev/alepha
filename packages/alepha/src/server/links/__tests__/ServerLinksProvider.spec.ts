@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
+
 import { Alepha, z } from "alepha";
 import { $issuer, $permission, $secure, AlephaSecurity } from "alepha/security";
 import { $action, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
+
 import { LinkProvider, ServerLinksProvider } from "../index.ts";
 
 describe("ServerLinksProvider", () => {

@@ -23,4 +23,3 @@ and survive isolate eviction. The user's `$websocket` handler runs INSIDE
 this object, so `reply()` fans out over this DO's own sockets with no
 cross-isolate hop. The DO replaces the `$topic` bus used by the Node
 provider.
-

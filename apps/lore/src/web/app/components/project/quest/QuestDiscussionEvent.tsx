@@ -14,9 +14,11 @@ import {
   Swords,
   UserMinus,
 } from "lucide-react";
+
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { displayName } from "@/web/app/services/displayName.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+
 import LoreViewer from "../../shared/element/LoreViewer.tsx";
 import type { ProjectUser } from "../../shared/useProjectUsers.ts";
 import type { QuestDiscussionEntry } from "./questDiscussionEntries.ts";

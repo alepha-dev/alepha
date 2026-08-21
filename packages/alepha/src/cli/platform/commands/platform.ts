@@ -16,6 +16,7 @@ import {
 } from "alepha/cli/platform-lib";
 import { $command, EnvUtils, type RunnerMethod } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
+
 import { SecretsCommand } from "./SecretsCommand.ts";
 
 export class PlatformCommand {

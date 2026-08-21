@@ -2,6 +2,7 @@ import { $inject, $pipeline, Alepha, z } from "alepha";
 import { $entity, $repository, db } from "alepha/orm";
 import { ForbiddenError } from "alepha/server";
 import { describe, expect, it } from "vitest";
+
 import { currentUserAtom } from "../atoms/currentUserAtom.ts";
 import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
 import { $owns } from "../primitives/$owns.ts";
@@ -73,7 +74,7 @@ const as = <R>(
 ) =>
   alepha.context.run(() => {
     alepha.store.set(currentUserAtom, user);
-    // biome-ignore lint/suspicious/noExplicitAny: minimal request stub
+    // minimal request stub
     alepha.store.set("alepha.action.request", {
       params: { id },
       query: {},

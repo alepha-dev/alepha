@@ -1,4 +1,5 @@
 import { z } from "alepha";
+
 import { linkSourceKindSchema } from "../../api/schemas/linkSourceKindSchema.ts";
 import { linkTargetKindSchema } from "../../api/schemas/linkTargetKindSchema.ts";
 

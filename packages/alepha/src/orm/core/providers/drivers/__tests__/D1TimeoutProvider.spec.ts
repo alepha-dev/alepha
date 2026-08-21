@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { describe, expect, it } from "vitest";
+
 import { D1TimeoutProvider } from "../D1TimeoutProvider.ts";
 import { FakeD1, FakeD1WithoutSessions, result, stall } from "./fakeD1.ts";
 
@@ -33,7 +34,7 @@ describe("D1TimeoutProvider", () => {
     const wrapped = timeouts.wrap(new FakeD1(stall), [5, "seconds"]);
 
     const pending = wrapped.prepare("select 1").all();
-    const settled = expect(pending).rejects.toThrow(/timed out/i);
+    const settled = await expect(pending).rejects.toThrow(/timed out/i);
 
     await time.travel([6, "seconds"]);
     await settled;
@@ -44,7 +45,7 @@ describe("D1TimeoutProvider", () => {
     const wrapped = timeouts.wrap(new FakeD1(stall), [5, "seconds"]);
 
     const pending = wrapped.batch([]);
-    const settled = expect(pending).rejects.toThrow(/timed out/i);
+    const settled = await expect(pending).rejects.toThrow(/timed out/i);
 
     await time.travel([6, "seconds"]);
     await settled;
@@ -110,7 +111,7 @@ describe("D1TimeoutProvider", () => {
       );
 
       const pending = wrapped.prepare("select 1").all();
-      const settled = expect(pending).rejects.toThrow(/timed out/i);
+      const settled = await expect(pending).rejects.toThrow(/timed out/i);
       await time.travel([6, "seconds"]);
       await settled;
 
@@ -134,7 +135,7 @@ describe("D1TimeoutProvider", () => {
 
       const session = wrapped.withSession?.("first-unconstrained");
       const pending = session?.prepare("select 1").all();
-      const settled = expect(pending).rejects.toThrow(/timed out/i);
+      const settled = await expect(pending).rejects.toThrow(/timed out/i);
 
       // The budget is on by default on serverless, so a wrapper that dropped
       // `withSession` would not merely lose the ceiling: it would make the
@@ -211,7 +212,7 @@ describe("D1TimeoutProvider", () => {
       });
 
       const pending = wrapped.prepare("SELECT * from quests").all();
-      const settled = expect(pending).rejects.toThrow(/timed out/i);
+      const settled = await expect(pending).rejects.toThrow(/timed out/i);
 
       await time.travel([6, "seconds"]);
       await settled;
@@ -247,7 +248,7 @@ describe("D1TimeoutProvider", () => {
       const wrapped = timeouts.wrap(new FakeD1(stall), [5, "seconds"]);
 
       const pending = wrapped.prepare("insert into quests values (1)").run();
-      const settled = expect(pending).rejects.toThrow(/timed out/i);
+      const settled = await expect(pending).rejects.toThrow(/timed out/i);
 
       await time.travel([6, "seconds"]);
       await settled;

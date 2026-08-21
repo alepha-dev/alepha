@@ -1,5 +1,6 @@
 import { Alepha, createMiddleware, z } from "alepha";
 import { describe, test } from "vitest";
+
 import { $route, ServerProvider } from "../index.ts";
 
 describe("$route", () => {

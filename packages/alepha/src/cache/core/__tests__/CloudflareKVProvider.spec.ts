@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { AlephaLogger, MemoryDestinationProvider } from "alepha/logger";
 import { beforeEach, describe, expect, it } from "vitest";
+
 import { $cache } from "../index.ts";
 import { CacheProvider } from "../providers/CacheProvider.ts";
 import {

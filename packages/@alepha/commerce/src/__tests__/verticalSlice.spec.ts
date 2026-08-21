@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
+
 import { $inject, $module, Alepha, z } from "alepha";
 import { PaymentService } from "alepha/api/payments";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
+
 import { CartService } from "../cart/services/CartService.ts";
 import { AlephaCommerceCheckout } from "../checkout/index.ts";
 import { CheckoutService } from "../checkout/services/CheckoutService.ts";

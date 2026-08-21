@@ -13,6 +13,7 @@ npm install alepha
 Test data generation with Faker.js.
 
 **Features:**
+
 - Zod schema-based generation
 - Context-aware field generation (email field -> email address)
 - Test data seeding

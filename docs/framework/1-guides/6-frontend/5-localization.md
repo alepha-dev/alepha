@@ -39,11 +39,11 @@ Interpolation uses positional placeholders: `$1`, `$2`, `$3`, etc.
 
 ## $dictionary Options
 
-| Option | Type                              | Description                                    |
-|--------|-----------------------------------|------------------------------------------------|
-| `lazy` | `() => Promise<{ default: T }>`  | Async loader for the translation module.       |
-| `lang` | `string`                          | Language code. Defaults to the property name.  |
-| `name` | `string`                          | Dictionary name. Defaults to the property name.|
+| Option | Type                            | Description                                     |
+| ------ | ------------------------------- | ----------------------------------------------- |
+| `lazy` | `() => Promise<{ default: T }>` | Async loader for the translation module.        |
+| `lang` | `string`                        | Language code. Defaults to the property name.   |
+| `name` | `string`                        | Dictionary name. Defaults to the property name. |
 
 ### Multiple Dictionaries Per Language
 
@@ -67,7 +67,7 @@ All dictionaries for the same language are merged. Key lookups search all dictio
 
 ### Translating `@alepha/ui`
 
-The components in `@alepha/ui` call `tr()` with English defaults - dialogs say "Cancel / Confirm", tables announce "Open row actions". A default is *not* a translation: until you define the key, a French application shows English there, and setting the browser locale changes nothing because the browser language was never the problem.
+The components in `@alepha/ui` call `tr()` with English defaults - dialogs say "Cancel / Confirm", tables announce "Open row actions". A default is _not_ a translation: until you define the key, a French application shows English there, and setting the browser locale changes nothing because the browser language was never the problem.
 
 `@alepha/ui` ships a French record you spread into your own catalogue:
 
@@ -130,22 +130,22 @@ const Header = () => {
 Translate a key. Returns the translated string, or the key itself if not found.
 
 ```typescript
-tr("hello")
+tr("hello");
 // "Hello"
 
-tr("welcome", { args: ["Alice"] })
+tr("welcome", { args: ["Alice"] });
 // "Welcome, Alice"
 
-tr("missing_key", { default: "Fallback text" })
+tr("missing_key", { default: "Fallback text" });
 // "Fallback text"
 ```
 
 **Options:**
 
-| Option    | Type       | Description                                    |
-|-----------|------------|------------------------------------------------|
-| `args`    | `string[]` | Positional arguments for `$1`, `$2`, etc.      |
-| `default` | `string`   | Fallback if the key is not found.              |
+| Option    | Type       | Description                               |
+| --------- | ---------- | ----------------------------------------- |
+| `args`    | `string[]` | Positional arguments for `$1`, `$2`, etc. |
+| `default` | `string`   | Fallback if the key is not found.         |
 
 Fallback behavior: if the key is not found in the current language, the fallback language (`"en"` by default) is checked. If still not found, the raw key string is returned.
 
@@ -156,13 +156,13 @@ Localize a value (date, number, or error) according to the current locale. Its r
 **Number formatting:**
 
 ```typescript
-l(1234.56)
+l(1234.56);
 // "1,234.56" (en) / "1 234,56" (fr)
 
-l(1234.56, { number: { style: "currency", currency: "USD" } })
+l(1234.56, { number: { style: "currency", currency: "USD" } });
 // "$1,234.56"
 
-l(0.85, { number: { style: "percent" } })
+l(0.85, { number: { style: "percent" } });
 // "85%"
 ```
 
@@ -171,23 +171,24 @@ Uses `Intl.NumberFormat` under the hood. The `number` option accepts standard `I
 **Date formatting:**
 
 ```typescript
-l(new Date())
+l(new Date());
 // "2/7/2026" (en) / "07/02/2026" (fr)
 
-l(new Date(), { date: "LLL" })
+l(new Date(), { date: "LLL" });
 // "February 7, 2026 10:30 AM" (dayjs format string)
 
-l(new Date(), { date: "fromNow" })
+l(new Date(), { date: "fromNow" });
 // "2 hours ago"
 
-l(new Date(), { date: { year: "numeric", month: "long", day: "numeric" } })
+l(new Date(), { date: { year: "numeric", month: "long", day: "numeric" } });
 // "February 7, 2026" (Intl.DateTimeFormatOptions)
 
-l(new Date(), { date: "LLL", timezone: "America/New_York" })
+l(new Date(), { date: "LLL", timezone: "America/New_York" });
 // Formatted in Eastern time
 ```
 
 The `date` option accepts:
+
 - A dayjs format string (e.g., `"LLL"`, `"YYYY-MM-DD"`, `"dddd, MMMM D YYYY"`)
 - `"fromNow"` for relative time
 - `Intl.DateTimeFormatOptions` for native formatting
@@ -199,19 +200,20 @@ The `timezone` option accepts IANA timezone names.
 `SchemaValidationError` is the schema-validation error Alepha throws:
 
 ```typescript
-l(validationError)
+l(validationError);
 // Localized validation error message
 ```
 
 ### setLang(lang)
 
 Switch the current language. On the browser, this:
+
 1. Loads the new language's dictionaries if not already loaded
 2. Sets a `lang` cookie (persists for 1 year)
 3. Updates the store, causing all `useI18n` consumers to re-render
 
 ```typescript
-setLang("fr")
+setLang("fr");
 ```
 
 ### lang
@@ -236,12 +238,12 @@ import { Localize } from "alepha/react/i18n";
 
 **Props:**
 
-| Prop       | Type                                  | Description                     |
-|------------|---------------------------------------|---------------------------------|
-| `value`    | `string \| number \| Date \| DateTime \| SchemaValidationError` | The value to localize. |
-| `number`   | `Intl.NumberFormatOptions`            | Number formatting options.      |
-| `date`     | `string \| Intl.DateTimeFormatOptions` | Date formatting options.       |
-| `timezone` | `string`                              | IANA timezone name.             |
+| Prop       | Type                                                            | Description                |
+| ---------- | --------------------------------------------------------------- | -------------------------- |
+| `value`    | `string \| number \| Date \| DateTime \| SchemaValidationError` | The value to localize.     |
+| `number`   | `Intl.NumberFormatOptions`                                      | Number formatting options. |
+| `date`     | `string \| Intl.DateTimeFormatOptions`                          | Date formatting options.   |
+| `timezone` | `string`                                                        | IANA timezone name.        |
 
 ## SSR Language Detection
 
@@ -318,6 +320,7 @@ language gets a `/<lang>` path prefix. With prefix routing on:
   <link rel="alternate" hreflang="fr" href="https://site.com/fr/about" />
   <link rel="alternate" hreflang="x-default" href="https://site.com/about" />
   ```
+
 - **There is no automatic redirect.** An unprefixed path (`/about`) is the default
   language by definition - visiting it never bounces a French browser to `/fr`.
   Google's guidance discourages auto-redirecting by perceived language, and it

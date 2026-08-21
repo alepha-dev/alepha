@@ -65,7 +65,7 @@ Engine's own ~90-day retention, which is exactly what a hot/cold split
 exists to prevent. `rollup` closes that gap itself, immediately
 before delegating: it tops up `cold`'s raw tier with Analytics Engine rows
 older than `before` (hour granularity, matching what `record()` would have
-written directly), *then* calls `cold.rollup()` to fold them - see
+written directly), _then_ calls `cold.rollup()` to fold them - see
 `forwardToCold`. What crosses over is the sample-corrected total
 `query()` already computed, not a raw stored double, so `cold`'s own
 arithmetic (the upsert accumulate, the day fold) can add and fold it
@@ -97,7 +97,7 @@ what makes `prune()` mean the same thing here as it does on
 `OrmAnalyticsProvider`: once pruned, gone from every result, not merely
 from `cold`'s own copy. See `recordPruneFloor`'s own doc for why this is a
 dedicated table rather than a row in the dataset's own raw/rolled table,
-and `prune`'s own doc for why the floor is written *before* the
+and `prune`'s own doc for why the floor is written _before_ the
 delete, not after.
 
 ## The read side has to merge too
@@ -111,7 +111,7 @@ is missing. So `query` queries both sources and merges, the same way
 tiers - same merge key (`JSON.stringify` of the grouped dimension values),
 the same mergeable aggregate (`sum`, added across sources), ordering and
 `limit` applied once to the merged set rather than per source. Two things
-are specific to a *composite* of two different backends rather than two
+are specific to a _composite_ of two different backends rather than two
 tables in the same one:
 
 - **Skipping `cold` when it cannot matter.** A window entirely within
@@ -131,7 +131,7 @@ tables in the same one:
   through `forwardToCold`, which itself read it out of Analytics Engine as
   a sample-corrected estimate. Landing in a relational table does not
   retroactively make it a measurement - so a merge where every
-  contributing row came from `cold` is *not* exact either, and does not
+  contributing row came from `cold` is _not_ exact either, and does not
   report `estimated: false`. Nothing this provider can return was ever
   measured directly; only `OrmAnalyticsProvider` running on its own
   (never forwarded through Analytics Engine at all) earns that.
@@ -141,4 +141,3 @@ tables in the same one:
 `writeDataPoint()` returns nothing and is not awaited; the runtime writes in
 the background. The sequential round-trip cost that dominates a remote
 database disappears on this path entirely.
-

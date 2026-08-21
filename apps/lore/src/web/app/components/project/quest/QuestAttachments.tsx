@@ -3,8 +3,10 @@ import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Loader2, Plus } from "lucide-react";
 import { type ChangeEvent, useEffect, useRef, useState } from "react";
+
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+
 import QuestAttachmentChip from "./QuestAttachmentChip.tsx";
 import QuestAttachmentLightbox from "./QuestAttachmentLightbox.tsx";
 import { attachmentPreview } from "./questAttachmentPreview.ts";
@@ -67,6 +69,8 @@ const QuestAttachments = (props: QuestAttachmentsProps) => {
   const signature = attachments.join(",");
   useEffect(() => {
     if (attachments.length === 0) {
+      // The empty-input early return of the fetch effect below.
+      // oxlint-disable-next-line react/set-state-in-effect
       setMeta([]);
       return;
     }

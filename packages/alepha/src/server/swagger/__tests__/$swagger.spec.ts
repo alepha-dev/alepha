@@ -1,6 +1,7 @@
 import { Alepha, type Middleware, OPTIONS, z } from "alepha";
 import { $action } from "alepha/server";
 import { describe, expect, it } from "vitest";
+
 import { $swagger, ServerSwaggerProvider } from "../index.ts";
 import type { SwaggerPrimitiveOptions } from "../primitives/$swagger.ts";
 

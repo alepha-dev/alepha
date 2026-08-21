@@ -1,6 +1,7 @@
 import { Alepha, AlephaError } from "alepha";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
+
 import { BuildCompressTask } from "../tasks/BuildCompressTask.ts";
 import { BuildManifestTask } from "../tasks/BuildManifestTask.ts";
 import { BuildStaticTask } from "../tasks/BuildStaticTask.ts";

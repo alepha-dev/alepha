@@ -1,6 +1,7 @@
 import { $inject, type Infer, z } from "alepha";
 import { db } from "alepha/orm";
 import { $action, NotFoundError } from "alepha/server";
+
 import type { ProductEntity } from "../entities/products.ts";
 import { CatalogService } from "../services/CatalogService.ts";
 import { StockService } from "../services/StockService.ts";

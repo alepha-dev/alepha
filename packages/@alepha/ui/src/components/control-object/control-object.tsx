@@ -2,11 +2,11 @@ import * as React from "react";
 
 void React;
 
+import { spanClass, widthFor } from "@alepha/ui/components/control-base/grid";
 import {
   Control,
   type ControlProps,
 } from "@alepha/ui/components/control/control";
-import { spanClass, widthFor } from "@alepha/ui/components/control-base/grid";
 import { Button } from "@alepha/ui/components/ui/button";
 import { type ZObject, z } from "alepha";
 import {
@@ -19,6 +19,7 @@ import {
 import { useI18n } from "alepha/react/i18n";
 import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
+
 import {
   childI18nPrefix,
   resolveFieldI18n,
@@ -98,7 +99,7 @@ export function ControlObject(props: ControlObjectProps) {
         const field = nestedItems?.[name];
         if (!field) return null;
         const fieldProps = {
-          ...(props.controlProps?.[name] ?? {}),
+          ...props.controlProps?.[name],
           ...resolveFieldI18n(
             tr as never,
             props.i18nPrefix,

@@ -14,9 +14,9 @@ Create a logger.
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `name` | `string` | No |  |
+| Option | Type     | Required | Description |
+| ------ | -------- | -------- | ----------- |
+| `name` | `string` | No       |             |
 
 ## Examples
 
@@ -24,7 +24,7 @@ Create a logger.
 import { $logger } from "alepha/logger";
 
 class MyService {
-	log = $logger();
+  log = $logger();
 
   constructor() {
     this.log.info("Service initialized");
@@ -32,4 +32,3 @@ class MyService {
   }
 }
 ```
-

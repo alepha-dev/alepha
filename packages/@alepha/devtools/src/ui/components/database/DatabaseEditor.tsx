@@ -13,6 +13,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
 import { useMetadata } from "../../hooks/useMetadata.ts";
 import { DevEmpty } from "../shared/DevEmpty.tsx";
 import { DevError } from "../shared/DevError.tsx";
@@ -98,6 +99,10 @@ export const DatabaseEditor = (props: DatabaseEditorProps) => {
   }, [http, table, page, size, sort]);
 
   useEffect(() => {
+    // An effect that starts an I/O load is the "synchronize with an external
+    // system" case the rule exempts; it reports it because the loader flips
+    // `loading` before its first await.
+    // oxlint-disable-next-line react/set-state-in-effect
     load();
   }, [load]);
 

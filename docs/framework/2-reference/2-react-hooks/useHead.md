@@ -23,6 +23,5 @@ const App = () => {
       Change Title {head.title}
     </button>
   );
-}
+};
 ```
-

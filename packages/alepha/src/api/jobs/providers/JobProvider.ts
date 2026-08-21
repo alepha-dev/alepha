@@ -21,6 +21,7 @@ import {
   DbEntityNotFoundError,
 } from "alepha/orm";
 import { CronProvider } from "alepha/scheduler";
+
 import {
   type JobStatus,
   jobExecutionEntity,
@@ -1520,7 +1521,7 @@ export class JobProvider {
       if (this.inFlight.size > 0) {
         this.log.info(`Draining ${this.inFlight.size} in-flight job(s)...`);
         await Promise.race([
-          Promise.allSettled([...this.inFlight]),
+          Promise.allSettled(this.inFlight),
           this.dt.wait([this.config.drainTimeout, "millisecond"]),
         ]);
       }

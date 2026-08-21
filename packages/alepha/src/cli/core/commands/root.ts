@@ -1,6 +1,7 @@
 import { $inject, Alepha, z } from "alepha";
 import { $command, CliProvider } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
+
 import { version } from "../alephaPackageJson.ts";
 
 export class RootCommand {

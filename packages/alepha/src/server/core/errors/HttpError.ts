@@ -1,4 +1,5 @@
 import { AlephaError } from "alepha";
+
 import type { ErrorSchema } from "../schemas/errorSchema.ts";
 
 export const isHttpError = (

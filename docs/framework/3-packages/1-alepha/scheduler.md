@@ -22,6 +22,7 @@ Register a cron directly with `CronProvider.createCronJob()` if you need a
 tick without a database.
 
 **Features:**
+
 - Cron expression scheduling (e.g., `0 0 * * *`)
 - Serverless cron dispatch via the `serverless:cron` hook (Cloudflare, generic)
 

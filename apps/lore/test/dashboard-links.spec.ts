@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { AlephaReactRouter, ReactRouter } from "alepha/react/router";
 import { afterEach, beforeEach, describe, it } from "vitest";
+
 import { DashboardMetricCatalog } from "@/api/services/DashboardMetricCatalog.ts";
 import { AppRouter } from "@/web/app/AppRouter.ts";
 

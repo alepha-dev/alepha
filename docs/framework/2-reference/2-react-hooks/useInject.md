@@ -10,4 +10,3 @@ import { useInject } from "alepha/react";
 
 Hook to inject a service instance.
 It's a wrapper of `useAlepha().inject(service)` with a memoization.
-

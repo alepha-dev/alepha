@@ -60,10 +60,10 @@ issuer = $issuer({
 
 `$issuer` manages access tokens and refresh tokens:
 
-| Setting | Default |
-|---------|---------|
-| Access token expiration | 15 minutes |
-| Refresh token expiration | 30 days |
+| Setting                  | Default    |
+| ------------------------ | ---------- |
+| Access token expiration  | 15 minutes |
+| Refresh token expiration | 30 days    |
 
 Override via the `settings` option:
 
@@ -133,7 +133,7 @@ address, read the error, learn whether that person has an account here.
 
 The behavior depends on `verifyEmailRequired`:
 
-- **Verification on**: an address already on file gets the *same* response a
+- **Verification on**: an address already on file gets the _same_ response a
   fresh one gets: an intent id and "check your inbox". No verification code is
   minted, so the intent can never be completed. The real owner is emailed a
   `registrationAttempt` notice instead, which carries no code and asks for no
@@ -154,9 +154,9 @@ Enable login methods through the `identities` option:
 ```typescript
 realm = $realm({
   identities: {
-    credentials: true,  // email/password (default)
-    google: true,       // Google OAuth
-    github: true,       // GitHub OAuth
+    credentials: true, // email/password (default)
+    google: true, // Google OAuth
+    github: true, // GitHub OAuth
   },
 });
 ```
@@ -173,15 +173,15 @@ have their own permissions.
 Declared paths are shown; as `$action`s they serve under the `/api` prefix
 (`GET /api/users/me`).
 
-| Controller | Endpoints |
-|---|---|
-| `MyProfileController` | `GET`/`PATCH /users/me` |
-| `MyAvatarController` | `POST`/`DELETE /users/me/avatar` |
-| `MyIdentityController` | `GET /users/me/identities`, `POST /users/me/identities/password`, `DELETE /users/me/identities/:id` |
-| `MyPasswordController` | `POST /users/me/password` |
-| `MySessionController` | `GET /users/me/sessions`, `DELETE /users/me/sessions/:id`, `POST /users/me/sessions/revoke-others` |
-| `MyConnectionController` | `GET /users/me/connections`, `DELETE /users/me/connections/:id` |
-| `MyAccountController` | `DELETE /users/me` |
+| Controller               | Endpoints                                                                                           |
+| ------------------------ | --------------------------------------------------------------------------------------------------- |
+| `MyProfileController`    | `GET`/`PATCH /users/me`                                                                             |
+| `MyAvatarController`     | `POST`/`DELETE /users/me/avatar`                                                                    |
+| `MyIdentityController`   | `GET /users/me/identities`, `POST /users/me/identities/password`, `DELETE /users/me/identities/:id` |
+| `MyPasswordController`   | `POST /users/me/password`                                                                           |
+| `MySessionController`    | `GET /users/me/sessions`, `DELETE /users/me/sessions/:id`, `POST /users/me/sessions/revoke-others`  |
+| `MyConnectionController` | `GET /users/me/connections`, `DELETE /users/me/connections/:id`                                     |
+| `MyAccountController`    | `DELETE /users/me`                                                                                  |
 
 Two rules are worth knowing before you wire a UI to them:
 
@@ -200,8 +200,8 @@ Two rules are worth knowing before you wire a UI to them:
 ### Deleting an Account: the `user:delete:before` Hook
 
 `deleteMyAccount` is a hard delete, and it asks for two independent proofs: the
-current password (that it is *you*) and the account's email typed verbatim
-(that you *meant it*). An OAuth-only account has no password to prove, so the
+current password (that it is _you_) and the account's email typed verbatim
+(that you _meant it_). An OAuth-only account has no password to prove, so the
 confirmation stands alone.
 
 The framework only knows about users, identities and sessions. It cannot know
@@ -229,7 +229,7 @@ class UserDeletionHook {
 > trusting your own cascade rules, and the failure mode is silent: a column
 > with no foreign key leaves orphaned rows pointing at a user that no longer
 > exists, and an `onDelete: "cascade"` column can delete rows the account
-> authored *inside other people's data*. Neither is visible in a diff.
+> authored _inside other people's data_. Neither is visible in a diff.
 
 ## Securing Actions
 
@@ -328,10 +328,7 @@ issuer = $issuer({
     },
     {
       name: "viewer",
-      permissions: [
-        { name: "articles:list" },
-        { name: "articles:get" },
-      ],
+      permissions: [{ name: "articles:list" }, { name: "articles:get" }],
     },
   ],
 });
@@ -341,11 +338,11 @@ issuer = $issuer({
 
 Permissions use a colon-separated hierarchy. The `*` wildcard matches everything at and below its level:
 
-| Pattern | Matches | Does not match |
-|---------|---------|----------------|
-| `*` | Everything (admin access) | - |
-| `articles:*` | `articles:list`, `articles:get`, `articles:delete` | `media:upload` |
-| `admin:articles:*` | `admin:articles:list`, `admin:articles:update` | `admin:users:list` |
+| Pattern            | Matches                                            | Does not match     |
+| ------------------ | -------------------------------------------------- | ------------------ |
+| `*`                | Everything (admin access)                          | -                  |
+| `articles:*`       | `articles:list`, `articles:get`, `articles:delete` | `media:upload`     |
+| `admin:articles:*` | `admin:articles:list`, `admin:articles:update`     | `admin:users:list` |
 
 Permissions declared in `$secure({ permissions: [...] })` are **auto-created** in the permission registry at definition time - no separate registration step is needed.
 
@@ -384,7 +381,7 @@ $secure({
 The `guard` receives a context object - `{ user, params, query, body, request?, alepha }` - and may be async:
 
 ```typescript
-guard: ({ user, params }) => user.id === params.id
+guard: ({ user, params }) => user.id === params.id;
 ```
 
 ### Check Order
@@ -416,36 +413,48 @@ profile = $action({
 // Role check (OR) - admin or manager
 dashboard = $action({
   use: [$secure({ roles: ["admin", "manager"] })],
-  handler: () => { /* ... */ },
+  handler: () => {
+    /* ... */
+  },
 });
 
 // Permission check (AND) - must have both
 publish = $action({
   use: [$secure({ permissions: ["articles:create", "articles:publish"] })],
-  handler: () => { /* ... */ },
+  handler: () => {
+    /* ... */
+  },
 });
 
 // Issuer restriction
 adminPanel = $action({
   use: [$secure({ issuers: ["admin"] })],
-  handler: () => { /* ... */ },
+  handler: () => {
+    /* ... */
+  },
 });
 
 // Custom guard - runs after all other checks
 ownProfile = $action({
   use: [$secure({ guard: ({ user, params }) => user.id === params.id })],
-  handler: () => { /* ... */ },
+  handler: () => {
+    /* ... */
+  },
 });
 
 // Combining options - all must pass
 adminManage = $action({
-  use: [$secure({
-    issuers: ["main"],
-    roles: ["admin"],
-    permissions: ["admin:manage"],
-    guard: ({ user }) => !!user.email,
-  })],
-  handler: () => { /* ... */ },
+  use: [
+    $secure({
+      issuers: ["main"],
+      roles: ["admin"],
+      permissions: ["admin:manage"],
+      guard: ({ user }) => !!user.email,
+    }),
+  ],
+  handler: () => {
+    /* ... */
+  },
 });
 ```
 
@@ -475,8 +484,12 @@ class WebhookController {
   protected readonly env = $env(z.object({ WEBHOOK_SECRET: z.text() }));
 
   webhook = $action({
-    use: [$basicAuth({ username: "stripe", password: this.env.WEBHOOK_SECRET })],
-    handler: ({ body }) => { /* ... */ },
+    use: [
+      $basicAuth({ username: "stripe", password: this.env.WEBHOOK_SECRET }),
+    ],
+    handler: ({ body }) => {
+      /* ... */
+    },
   });
 }
 ```

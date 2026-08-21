@@ -30,6 +30,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
 import type { AdminProductController } from "../controllers/AdminProductController.ts";
 import { AdminProductDetailAside } from "./admin-product-detail-aside.tsx";
 import { AdminProductDetailDetailsTab } from "./admin-product-detail-details-tab.tsx";

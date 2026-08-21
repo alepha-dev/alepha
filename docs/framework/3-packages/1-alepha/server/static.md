@@ -13,6 +13,7 @@ npm install alepha
 Infer file serving.
 
 **Features:**
+
 - Serve static files from directory
 
 ## API Reference

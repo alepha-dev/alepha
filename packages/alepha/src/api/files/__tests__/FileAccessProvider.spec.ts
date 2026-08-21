@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import type { UserAccountToken } from "alepha/security";
 import { describe, expect, it } from "vitest";
+
 import type { FileEntity } from "../entities/files.ts";
 import { FileAccessProvider } from "../providers/FileAccessProvider.ts";
 

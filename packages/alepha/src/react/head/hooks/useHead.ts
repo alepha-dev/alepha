@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { useInject } from "alepha/react";
 import { useCallback, useEffect, useMemo } from "react";
+
 import type { Head } from "../interfaces/Head.ts";
 import { BrowserHeadProvider } from "../providers/BrowserHeadProvider.ts";
 

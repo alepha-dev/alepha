@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { isActivePath, keepDeepestActive } from "../nav-tree-util.ts";
 
 /**

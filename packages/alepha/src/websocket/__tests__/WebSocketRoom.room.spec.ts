@@ -1,5 +1,6 @@
 import { Alepha, z } from "alepha";
 import { describe, expect, it } from "vitest";
+
 import { AlephaWebSocket } from "../index.ts";
 import type { RoomClock } from "../interfaces/RoomInterfaces.ts";
 import { $channel } from "../primitives/$channel.ts";
@@ -26,7 +27,7 @@ class FakeClock implements RoomClock {
   }
   advance(ms: number): void {
     this.ms += ms;
-    for (const fn of [...this.handlers.values()]) fn();
+    for (const fn of Array.from(this.handlers.values())) fn();
   }
 }
 

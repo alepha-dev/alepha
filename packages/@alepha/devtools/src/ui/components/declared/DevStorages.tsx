@@ -1,4 +1,5 @@
 import { HardDrive } from "lucide-react";
+
 import type { DevStorageMetadata } from "../../../schemas/DevStorageMetadata.ts";
 import { useMetadata } from "../../hooks/useMetadata.ts";
 import { DeclaredScreen } from "./DeclaredScreen.tsx";

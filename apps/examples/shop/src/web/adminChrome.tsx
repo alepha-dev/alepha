@@ -1,5 +1,6 @@
 import type { AdminRouterOptions } from "@alepha/ui/components/admin/admin-router-options";
 import { Tr } from "alepha/react/i18n";
+
 import { AdminCarteCommandes } from "./components/AdminCarteCommandes.tsx";
 import { AdminCartePieces } from "./components/AdminCartePieces.tsx";
 import { Poincon } from "./components/Poincon.tsx";

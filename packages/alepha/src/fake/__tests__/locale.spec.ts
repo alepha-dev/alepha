@@ -1,5 +1,6 @@
 import { Alepha, z } from "alepha";
 import { describe, expect, it } from "vitest";
+
 import { FakeProvider } from "../providers/FakeProvider.ts";
 
 const personSchema = z.object({ firstName: z.string() });

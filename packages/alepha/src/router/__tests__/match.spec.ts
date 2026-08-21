@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from "vitest";
+
 import { RouterProvider } from "../providers/RouterProvider.ts";
 
 interface TestRoute {
@@ -33,7 +34,6 @@ const setupRouter = () => {
 };
 
 describe("match", () => {
-  let router: RouterProvider<{ name: string; path: string }>;
   let add: (path: string, name: string) => void;
   let match: (path: string) => {
     name: string | null;
@@ -42,7 +42,6 @@ describe("match", () => {
 
   beforeEach(() => {
     const setup = setupRouter();
-    router = setup.router;
     add = setup.add;
     match = setup.match;
   });

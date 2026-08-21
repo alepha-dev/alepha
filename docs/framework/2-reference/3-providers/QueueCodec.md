@@ -17,4 +17,3 @@ so a change to one side could silently corrupt payloads.
 
 The envelope is `{ headers, payload }`. `headers` is currently always
 empty and exists so message metadata can be added without a format break.
-

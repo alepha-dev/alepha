@@ -39,7 +39,7 @@ export const folioFindMatches = (
   const matches: FolioFindMatch[] = [];
 
   let match: RegExpExecArray | null = null;
-  // biome-ignore lint/suspicious/noAssignInExpressions: standard regex.exec loop pattern
+  // standard regex.exec loop pattern
   while ((match = regex.exec(haystack)) !== null) {
     matches.push({
       start: match.index,

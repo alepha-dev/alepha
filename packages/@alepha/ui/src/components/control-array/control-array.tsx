@@ -33,6 +33,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+
 import {
   childI18nPrefix,
   resolveFieldI18n,
@@ -429,7 +430,7 @@ export function ControlArray(props: ControlArrayProps) {
       <div className={`grid gap-3 ${colsClass[columns]}`}>
         {itemFieldNames.map((name) => {
           const fieldProps = {
-            ...(props.controlProps?.[name] ?? {}),
+            ...props.controlProps?.[name],
             ...resolveFieldI18n(
               tr as never,
               props.i18nPrefix,

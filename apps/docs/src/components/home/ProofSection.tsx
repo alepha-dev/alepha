@@ -1,4 +1,5 @@
 import { IconBrandGithub, IconBrandNpm } from "@tabler/icons-react";
+
 import CopyCommand from "./CopyCommand.tsx";
 
 const ProofSection = () => {

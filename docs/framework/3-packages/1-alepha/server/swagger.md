@@ -13,6 +13,7 @@ npm install alepha
 Automatic API documentation generation.
 
 **Features:**
+
 - Swagger/OpenAPI configuration
 - Routes: `GET /docs` (UI), `GET /docs/json` (spec) - prefix configurable via `$swagger({ prefix })`
 

@@ -20,6 +20,7 @@ import "temporal-polyfill/global";
 ```
 
 Rationale:
+
 - Polyfill choice is an app concern (bundle size, runtime targets).
 - The polyfill is global-only by nature; importing it from a library would force it on every consumer regardless of need.
 - Once native support is universal, the polyfill becomes a no-op and apps drop the import. `alepha` itself never had to change.
@@ -32,34 +33,34 @@ The framework's documentation should mention the polyfill recommendation in the 
 
 Currently wraps `Dayjs`. After the swap it wraps a `Temporal.Instant` (and an optional timezone string for the `tz()` chain). Per-method translation:
 
-| Method | Temporal mapping |
-|---|---|
-| `add(n, unit)` / `add(Duration)` | `instant.add(Temporal.Duration.from({ [unit]: n }))` |
-| `subtract(n, unit)` / `subtract(Duration)` | `instant.subtract(...)` |
-| `startOf(unit)` / `endOf(unit)` | Convert to `ZonedDateTime`, zero out lower fields, convert back. ~10 lines per unit. No native equivalent. |
-| `isAfter` / `isBefore` / `isSame` | `Temporal.Instant.compare(a, b)` |
-| `diff(other, unit?)` | `instant.since(other).total({ unit })` (default unit: `"milliseconds"`) |
-| `tz(zone)` | Store `zone` on the wrapper; convert via `instant.toZonedDateTimeISO(zone)` when needed for formatting/`startOf`. |
-| `locale(lang)` | Store `lang` on the wrapper (consumed only by `format`/`fromNow`). Or drop the chained form and pass `lang` directly. |
-| `format(template?)` | See **Format tokens** below. |
-| `fromNow(withoutSuffix?)` | `Intl.RelativeTimeFormat` — pick the largest non-zero unit from `since(now)`. ~25 lines. Needs `lang` (currently inherited from `.locale()` chain). |
-| `toISOString()` | `instant.toString()` |
-| `toDate()` | `new Date(instant.epochMilliseconds)` |
-| `valueOf()` | `instant.epochMilliseconds` |
-| `unix()` | `Math.floor(instant.epochMilliseconds / 1000)` |
-| `toJSON` / `toString` | same as `toISOString()` |
-| `toDayjs()` | **Removed.** Verify with grep first — currently used only inside `DateTimeProvider`. |
+| Method                                     | Temporal mapping                                                                                                                                    |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `add(n, unit)` / `add(Duration)`           | `instant.add(Temporal.Duration.from({ [unit]: n }))`                                                                                                |
+| `subtract(n, unit)` / `subtract(Duration)` | `instant.subtract(...)`                                                                                                                             |
+| `startOf(unit)` / `endOf(unit)`            | Convert to `ZonedDateTime`, zero out lower fields, convert back. ~10 lines per unit. No native equivalent.                                          |
+| `isAfter` / `isBefore` / `isSame`          | `Temporal.Instant.compare(a, b)`                                                                                                                    |
+| `diff(other, unit?)`                       | `instant.since(other).total({ unit })` (default unit: `"milliseconds"`)                                                                             |
+| `tz(zone)`                                 | Store `zone` on the wrapper; convert via `instant.toZonedDateTimeISO(zone)` when needed for formatting/`startOf`.                                   |
+| `locale(lang)`                             | Store `lang` on the wrapper (consumed only by `format`/`fromNow`). Or drop the chained form and pass `lang` directly.                               |
+| `format(template?)`                        | See **Format tokens** below.                                                                                                                        |
+| `fromNow(withoutSuffix?)`                  | `Intl.RelativeTimeFormat` — pick the largest non-zero unit from `since(now)`. ~25 lines. Needs `lang` (currently inherited from `.locale()` chain). |
+| `toISOString()`                            | `instant.toString()`                                                                                                                                |
+| `toDate()`                                 | `new Date(instant.epochMilliseconds)`                                                                                                               |
+| `valueOf()`                                | `instant.epochMilliseconds`                                                                                                                         |
+| `unix()`                                   | `Math.floor(instant.epochMilliseconds / 1000)`                                                                                                      |
+| `toJSON` / `toString`                      | same as `toISOString()`                                                                                                                             |
+| `toDayjs()`                                | **Removed.** Verify with grep first — currently used only inside `DateTimeProvider`.                                                                |
 
 ### `Duration`
 
 Currently wraps `dayjsDuration.Duration`. After the swap it wraps `Temporal.Duration`. Per-method translation:
 
-| Method | Temporal mapping |
-|---|---|
-| `asMilliseconds()` etc. | `duration.total({ unit: "milliseconds" })` etc. |
-| `as(unit)` | `duration.total({ unit })` |
-| `toISOString()` | `duration.toString()` (Temporal already emits ISO 8601) |
-| `toDayjs()` | **Removed.** |
+| Method                  | Temporal mapping                                        |
+| ----------------------- | ------------------------------------------------------- |
+| `asMilliseconds()` etc. | `duration.total({ unit: "milliseconds" })` etc.         |
+| `as(unit)`              | `duration.total({ unit })`                              |
+| `toISOString()`         | `duration.toString()` (Temporal already emits ISO 8601) |
+| `toDayjs()`             | **Removed.**                                            |
 
 Constructor input normalization (number, `[n, unit]` tuple, ISO string `"PT5M"`, existing `Duration`) stays in `DateTimeProvider.duration()`. Temporal parses ISO strings natively via `Temporal.Duration.from()`; the tuple form needs a 3-line shim.
 

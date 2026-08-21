@@ -6,6 +6,7 @@ import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { AlephaSecurity, currentUserAtom } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 import { describe, it } from "vitest";
+
 import {
   AlephaApiUsers,
   RealmProvider,
@@ -63,7 +64,7 @@ describe("alepha/api/users - Email Verification", () => {
     const { userService, emailProvider, actions } = await setup();
 
     // Create a test user
-    const user = await userService.users().create({
+    await userService.users().create({
       username: "testuser",
       email: "test@example.com",
       roles: ["user"],

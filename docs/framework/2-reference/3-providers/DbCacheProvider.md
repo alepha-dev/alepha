@@ -25,4 +25,3 @@ entry written once and never read again was reclaimed by nothing short of a
 write to its table - never, for a read-mostly table. Two bounds close that:
 expired entries are swept on write, and the map is capped at
 `MAX_ENTRIES` with oldest-first eviction (insertion order).
-

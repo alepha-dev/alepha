@@ -3,7 +3,9 @@ import type { EditorView } from "@codemirror/view";
 import { useI18n } from "alepha/react/i18n";
 import { Bold, Code, Italic } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+
 import type { I18n } from "@/web/app/services/I18n.ts";
+
 import {
   type MarkdownCommandId,
   markdownCommands,
@@ -76,6 +78,9 @@ const MarkdownSelectionToolbar = (props: MarkdownSelectionToolbarProps) => {
   }, [props.view]);
 
   useEffect(() => {
+    // Reads CodeMirror's selection geometry, which only exists once the editor
+    // has been committed to the DOM.
+    // oxlint-disable-next-line react/set-state-in-effect
     sync();
     document.addEventListener("selectionchange", sync);
     // Scrolling moves the text out from under a `fixed` element, so the bar

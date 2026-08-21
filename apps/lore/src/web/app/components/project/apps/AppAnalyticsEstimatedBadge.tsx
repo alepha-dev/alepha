@@ -5,6 +5,7 @@ import {
 } from "@alepha/ui/components/ui/tooltip";
 import { useI18n } from "alepha/react/i18n";
 import { Info } from "lucide-react";
+
 import type { I18n } from "../../../services/I18n.ts";
 
 export interface AppAnalyticsEstimatedBadgeProps {

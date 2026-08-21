@@ -5,6 +5,7 @@
 ## Overview
 
 **Core Principles:**
+
 - **Primitive Architecture**: Define features using `$`-prefixed primitives (`$action`, `$entity`, `$page`) that auto-register with the framework
 - **Class-Based Services**: All services are classes, not functional components. Primitives are class properties.
 - **Zero-Mapping**: No route files, no config files - code structure IS the configuration
@@ -29,12 +30,12 @@ npx alepha dev                         # start the dev server
 ```
 
 Every Alepha project has the **same** structure. `--preset` is the only choice, and a preset
-decides what is *mounted* on the layout below, never where anything lives:
+decides what is _mounted_ on the layout below, never where anything lives:
 
-| Preset | What you get |
-|---|---|
-| `default` | The layout below: API module, web module (React SSR), Tailwind. |
-| `saas` | The above plus `@alepha/ui` and the identity surface - sign-in at `/auth/*`, an account area at `/account/*`, an admin console at `/admin/*` - backed by a `$realm` in `src/api/Realm.ts`. It also mounts the ORM, generates the initial migration, and writes `ADMIN_EMAIL` into a gitignored `.env`. Refused for Expo projects, which have no web module. |
+| Preset    | What you get                                                                                                                                                                                                                                                                                                                                                |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `default` | The layout below: API module, web module (React SSR), Tailwind.                                                                                                                                                                                                                                                                                             |
+| `saas`    | The above plus `@alepha/ui` and the identity surface - sign-in at `/auth/*`, an account area at `/account/*`, an admin console at `/admin/*` - backed by a `$realm` in `src/api/Realm.ts`. It also mounts the ORM, generates the initial migration, and writes `ADMIN_EMAIL` into a gitignored `.env`. Refused for Expo projects, which have no web module. |
 
 The remaining options are `--pm <yarn|npm|pnpm|bun>`, `--force` (`-f`) and `--no-devtools`.
 Building an API-only service? Generate the project, then delete `src/web/`,
@@ -47,7 +48,7 @@ never overwrites without `--force`.
 
 - ALWAYS scaffold new projects with `alepha init`, never by hand
 - use TypeScript (strict mode)
-- use Biome for formatting and linting
+- use oxlint for linting and oxfmt for formatting
 - use Vitest for testing
 - use Vite for bundling (full-stack)
 - use React for frontend (full-stack)
@@ -97,6 +98,7 @@ wired up - use utility classes, do not add another CSS framework.
 ## Examples
 
 ### API + Database
+
 ```typescript
 import { z } from "alepha";
 import { $action } from "alepha/server";
@@ -109,18 +111,16 @@ const userEntity = $entity({
     email: z.email(),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
-    deletedAt: db.deletedAt() // Soft delete
+    deletedAt: db.deletedAt(), // Soft delete
   }),
-  indexes: [
-    { column: "email", unique: true }
-  ]
+  indexes: [{ column: "email", unique: true }],
 });
 
 class UserController {
   userRepo = $repository(userEntity);
 
   getUser = $action({
-    path: "/users/:id",  // -> GET /api/users/:id
+    path: "/users/:id", // -> GET /api/users/:id
     schema: {
       params: z.object({ id: z.uuid() }),
       response: userEntity.schema,
@@ -140,7 +140,7 @@ class UserController {
   });
 
   listUsers = $action({
-    path: "/users",  // -> GET /api/users
+    path: "/users", // -> GET /api/users
     schema: {
       response: z.array(userEntity.schema),
     },
@@ -150,6 +150,7 @@ class UserController {
 ```
 
 ### React Page with SSR
+
 ```tsx
 import { $page } from "alepha/react/router";
 import { $client } from "alepha/server/links";
@@ -163,7 +164,9 @@ class AppRouter {
     loader: async () => ({ users: await this.api.listUsers() }),
     component: ({ users }) => (
       <ul>
-        {users.map(u => <li key={u.id}>{u.email}</li>)}
+        {users.map((u) => (
+          <li key={u.id}>{u.email}</li>
+        ))}
       </ul>
     ),
   });
@@ -171,6 +174,7 @@ class AppRouter {
 ```
 
 ### Entry Point
+
 ```typescript
 // src/main.server.ts
 import { run } from "alepha";
@@ -190,6 +194,7 @@ export const ApiModule = $module({
 ```
 
 ### Service Communication
+
 ```typescript
 // Within same module - use $inject
 class OrderService {
@@ -213,6 +218,7 @@ class AppRouter {
 ```
 
 ### Testing
+
 ```typescript
 import { describe, it, expect } from "vitest";
 import { Alepha } from "alepha";

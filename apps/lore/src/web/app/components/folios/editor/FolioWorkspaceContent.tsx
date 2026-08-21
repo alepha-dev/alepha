@@ -1,15 +1,17 @@
 import type { EditorView } from "@codemirror/view";
 import { useStore } from "alepha/react";
 import { type ReactElement, useRef, useState } from "react";
+
 import type { FolioResource } from "@/api/schemas/folioResourceSchema.ts";
+
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { useElementLinks } from "../../shared/element/useElementLinks.ts";
-import type { MarkdownEditorMode } from "../../shared/markdown-editor/MarkdownEditorInner.tsx";
-import MarkdownModeToggle from "../../shared/markdown-editor/MarkdownModeToggle.tsx";
 import {
   type MarkdownCommandId,
   markdownCommands,
 } from "../../shared/markdown-editor/markdownCommands.ts";
+import type { MarkdownEditorMode } from "../../shared/markdown-editor/MarkdownEditorInner.tsx";
+import MarkdownModeToggle from "../../shared/markdown-editor/MarkdownModeToggle.tsx";
 import FolioDocument from "./document/FolioDocument.tsx";
 import FolioFindBar from "./document/FolioFindBar.tsx";
 import { useFolioFind } from "./document/useFolioFind.ts";

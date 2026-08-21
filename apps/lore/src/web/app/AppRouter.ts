@@ -9,6 +9,7 @@ import { $secure, currentUserAtom } from "alepha/security";
 import { HttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { createElement } from "react";
+
 import type { AdminInvitationController } from "../../api/controllers/AdminInvitationController.ts";
 import type { AreaController } from "../../api/controllers/AreaController.ts";
 import type { BlightController } from "../../api/controllers/BlightController.ts";

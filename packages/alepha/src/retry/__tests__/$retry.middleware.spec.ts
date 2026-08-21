@@ -1,5 +1,6 @@
 import { $pipeline, Alepha } from "alepha";
 import { describe, test } from "vitest";
+
 import { $retry } from "../primitives/$retry.ts";
 
 describe("$retry middleware", () => {

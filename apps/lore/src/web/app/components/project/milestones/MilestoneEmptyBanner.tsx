@@ -2,6 +2,7 @@ import { Button } from "@alepha/ui/components/ui/button";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
 import { Library, Play } from "lucide-react";
+
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface MilestoneEmptyBannerProps {

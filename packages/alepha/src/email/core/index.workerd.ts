@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+
 import { $email } from "./primitives/$email.ts";
 import { EmailProvider } from "./providers/EmailProvider.ts";
 import { MemoryEmailProvider } from "./providers/MemoryEmailProvider.ts";

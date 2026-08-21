@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, test } from "vitest";
+
 import { AlephaReactI18n } from "../index.ts";
 import { $dictionary } from "../primitives/$dictionary.ts";
 import { I18nProvider } from "../providers/I18nProvider.ts";
@@ -17,7 +18,7 @@ describe("I18nProvider", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
 
     expect(i18n.registry).toHaveLength(2);
@@ -37,7 +38,7 @@ describe("I18nProvider", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
 
     await alepha.start();
@@ -60,7 +61,7 @@ describe("I18nProvider", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
 
     expect(i18n.lang).toBe("en");
@@ -78,7 +79,7 @@ describe("I18nProvider", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
 
     await alepha.start();
@@ -105,7 +106,7 @@ describe("I18nProvider", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
 
     await alepha.start();
@@ -123,7 +124,7 @@ describe("I18nProvider", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
 
     await alepha.start();
@@ -139,7 +140,7 @@ describe("I18nProvider", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
 
     await alepha.start();
@@ -159,7 +160,7 @@ describe("I18nProvider", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
 
     await alepha.start();
@@ -185,7 +186,7 @@ describe("I18nProvider", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
 
     const languages = i18n.languages;
@@ -209,7 +210,7 @@ describe("I18nProvider", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
 
     await alepha.start();
@@ -228,7 +229,7 @@ describe("I18nProvider", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
 
     expect(i18n.registry[0].name).toBe("custom-en");
@@ -246,7 +247,7 @@ describe("I18nProvider", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
 
     await alepha.start();
@@ -269,7 +270,7 @@ describe("I18nProvider", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
 
     await alepha.start();
@@ -311,7 +312,7 @@ describe("I18nProvider", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
 
     await alepha.start();
@@ -336,7 +337,7 @@ describe("I18nProvider", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
 
     await alepha.start();
@@ -356,7 +357,7 @@ describe("I18nProvider", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
 
     await alepha.start();
@@ -377,7 +378,7 @@ describe("I18nProvider", () => {
       }
 
       const alepha = Alepha.create().with(AlephaReactI18n);
-      const app = alepha.inject(App);
+      alepha.inject(App);
       const i18n = alepha.inject(I18nProvider);
 
       expect(i18n.lang).toBe("fr");
@@ -395,7 +396,7 @@ describe("I18nProvider", () => {
       }
 
       const alepha = Alepha.create().with(AlephaReactI18n);
-      const app = alepha.inject(App);
+      alepha.inject(App);
       const i18n = alepha.inject(I18nProvider);
 
       await alepha.start();
@@ -416,7 +417,7 @@ describe("I18nProvider", () => {
       }
 
       const alepha = Alepha.create().with(AlephaReactI18n);
-      const app = alepha.inject(App);
+      alepha.inject(App);
       const i18n = alepha.inject(I18nProvider);
 
       expect(i18n.languages).toEqual(["fr", "de"]);
@@ -438,7 +439,7 @@ describe("I18nProvider", () => {
       }
 
       const alepha = Alepha.create().with(AlephaReactI18n);
-      const app = alepha.inject(App);
+      alepha.inject(App);
       const i18n = alepha.inject(I18nProvider);
 
       await alepha.start();
@@ -548,7 +549,7 @@ describe("I18nProvider", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
 
     await alepha.start();

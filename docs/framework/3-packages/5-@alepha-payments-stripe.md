@@ -26,9 +26,9 @@ gates Connect webhooks.
 
 Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
 
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `STRIPE_CONNECT_WEBHOOK_SECRET` | string | - |  |
-| `STRIPE_PUBLISHABLE_KEY` | string | - |  |
-| `STRIPE_SECRET_KEY` | string | **Required** |  |
-| `STRIPE_WEBHOOK_SECRET` | string | **Required** |  |
+| Variable                        | Type   | Default      | Description |
+| ------------------------------- | ------ | ------------ | ----------- |
+| `STRIPE_CONNECT_WEBHOOK_SECRET` | string | -            |             |
+| `STRIPE_PUBLISHABLE_KEY`        | string | -            |             |
+| `STRIPE_SECRET_KEY`             | string | **Required** |             |
+| `STRIPE_WEBHOOK_SECRET`         | string | **Required** |             |

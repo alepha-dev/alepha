@@ -7,6 +7,7 @@ import {
   type PrimitiveArgs,
 } from "alepha";
 import type { DurationLike } from "alepha/datetime";
+
 import type { RetryBackoffOptions } from "../providers/RetryProvider.ts";
 import { RetryProvider } from "../providers/RetryProvider.ts";
 
@@ -179,7 +180,8 @@ export class RetryPrimitive<
   }
 }
 
-export interface RetryPrimitiveFn<T extends (...args: any[]) => any>
-  extends RetryPrimitive<T> {
+export interface RetryPrimitiveFn<
+  T extends (...args: any[]) => any,
+> extends RetryPrimitive<T> {
   (...args: Parameters<T>): Promise<ReturnType<T>>;
 }

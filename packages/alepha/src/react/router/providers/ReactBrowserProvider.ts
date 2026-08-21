@@ -13,6 +13,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { BrowserHeadProvider } from "alepha/react/head";
 import { LinkProvider } from "alepha/server/links";
+
 import type { RouterPushOptions } from "../services/ReactRouter.ts";
 import { ReactBrowserRouterProvider } from "./ReactBrowserRouterProvider.ts";
 import type {
@@ -679,7 +680,7 @@ export class ReactBrowserProvider {
       // Stamp the entry the app booted on, so returning to it can be restored
       // like any other.
       this.history.replaceState(
-        { ...(this.history.state ?? {}), alephaKey: this.historyKey },
+        { ...this.history.state, alephaKey: this.historyKey },
         "",
         this.location.href,
       );

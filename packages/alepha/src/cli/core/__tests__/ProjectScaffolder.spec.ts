@@ -6,6 +6,7 @@ import {
   ShellProvider,
 } from "alepha/system";
 import { describe, expect, it } from "vitest";
+
 import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
 
 describe("ProjectScaffolder", () => {

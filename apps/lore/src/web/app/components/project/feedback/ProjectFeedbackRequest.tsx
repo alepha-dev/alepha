@@ -13,8 +13,10 @@ import { useRouter, useRouterState } from "alepha/react/router";
 import { HttpError } from "alepha/server";
 import { Loader2, Paperclip, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { FeedbackSource } from "@/api/schemas/feedbackSourceSchema.ts";
+
 import type { AppRouter } from "../../../AppRouter.ts";
 import { displayName } from "../../../services/displayName.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -140,6 +142,10 @@ const useDraftAutofill = (projectId: string) => {
       window.sessionStorage.setItem(key, JSON.stringify(fromQuery));
       const cleanUrl = `${window.location.pathname}${window.location.hash}`;
       window.history.replaceState(null, "", cleanUrl);
+      // Reads `window.location` and `sessionStorage` and rewrites the URL — all
+      // client-only, so the draft cannot be seeded during render without breaking
+      // hydration.
+      // oxlint-disable-next-line react/set-state-in-effect
       setDraft(fromQuery);
       return;
     }
@@ -216,11 +222,13 @@ const ProjectFeedbackRequest = () => {
     source: draft.source,
   };
 
-  useEffect(() => {
+  const [seededTags, setSeededTags] = useState(draft.tags);
+  if (draft.tags !== seededTags) {
+    setSeededTags(draft.tags);
     if (draft.tags && draft.tags.length > 0) {
       setTags(draft.tags);
     }
-  }, [draft.tags]);
+  }
 
   // Fetch minimal project info to show "submitting to X" on the form. This
   // page is a top-level route with no project data; the endpoint is gated
@@ -548,7 +556,7 @@ const ProjectFeedbackRequest = () => {
                 {/* Single free-text field. It doubles as a paste/drop target
                   for screenshots — global paste works regardless of focus,
                   this just makes dragging files discoverable. */}
-                {/* biome-ignore lint/a11y/noStaticElementInteractions: file-attachment drop zone — the textarea inside is the real control, drag handlers are a progressive enhancement */}
+                {/* file-attachment drop zone — the textarea inside is the real control, drag handlers are a progressive enhancement */}
                 <div
                   onDragOver={(e) => {
                     e.preventDefault();

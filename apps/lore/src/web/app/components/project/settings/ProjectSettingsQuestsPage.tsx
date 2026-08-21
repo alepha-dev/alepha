@@ -2,9 +2,11 @@ import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { Switch } from "@alepha/ui/components/ui/switch";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+
 import type { ProjectFeatures } from "@/api/entities/projects.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+
 import { useProjectFeatureToggle } from "./useProjectFeatureToggle.ts";
 
 type QuestFeatureKey = "questEstimate" | "questReminder" | "questChrono";

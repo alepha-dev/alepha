@@ -6,6 +6,7 @@ import {
 } from "alepha/command";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
+
 import { GenEnvCommand } from "../commands/gen/env.ts";
 import { OpenApiCommand } from "../commands/gen/openapi.ts";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";

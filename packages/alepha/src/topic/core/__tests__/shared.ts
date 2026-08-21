@@ -119,8 +119,12 @@ export const testTopicBasic = async (
   await test1.t.publish({ id: "1", count: 2 });
   await test2.t.publish({ id: "2", count: 3 });
 
+  // Both polls are awaited — by the `Promise.all` that wraps them, which the
+  // rule does not follow.
   await Promise.all([
+    // oxlint-disable-next-line vitest/require-awaited-expect-poll
     expect.poll(() => expect(test3.stack).toEqual(["12", "23"])).toBeTruthy(),
+    // oxlint-disable-next-line vitest/require-awaited-expect-poll
     expect.poll(() => expect(test4.stack).toEqual(["12", "23"])).toBeTruthy(),
   ]);
 

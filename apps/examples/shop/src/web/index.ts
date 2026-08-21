@@ -7,6 +7,7 @@ import { $module } from "alepha";
 import { AlephaReactAuth } from "alepha/react/auth";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { AlephaReactUi } from "alepha/react/ui";
+
 import { AppRouter } from "./AppRouter.tsx";
 import { panierAtom } from "./panierAtom.ts";
 import { ShopI18n } from "./ShopI18n.ts";

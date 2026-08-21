@@ -20,6 +20,7 @@ import {
   Swords,
   Users,
 } from "lucide-react";
+
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";

@@ -5,8 +5,10 @@ import {
   gzip as gzipCb,
   type ZlibOptions,
 } from "node:zlib";
+
 import { $inject } from "alepha";
 import { FileSystemProvider } from "alepha/system";
+
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
 export interface CompressOptions {

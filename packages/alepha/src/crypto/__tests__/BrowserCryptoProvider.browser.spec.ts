@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { BrowserCryptoProvider } from "../providers/BrowserCryptoProvider.ts";
 
 describe("BrowserCryptoProvider", () => {

@@ -7,6 +7,7 @@ import {
   NodeFileSystemProvider,
 } from "alepha/system";
 import { describe, expect, it } from "vitest";
+
 import { DbCommand } from "../commands/db.ts";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 
@@ -596,9 +597,8 @@ describe("DbCommand", () => {
      * directory rather than `MemoryFileSystemProvider`.
      */
     it("still marks a non-D1 provider normally", async () => {
-      const { mkdirSync, mkdtempSync, rmSync, writeFileSync } = await import(
-        "node:fs"
-      );
+      const { mkdirSync, mkdtempSync, rmSync, writeFileSync } =
+        await import("node:fs");
       const { tmpdir } = await import("node:os");
       const { join } = await import("node:path");
 

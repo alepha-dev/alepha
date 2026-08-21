@@ -25,4 +25,3 @@ see that file for the proof-of-design.
 Callers never instantiate this directly. They declare a `SequencePrimitive`
 via `$sequence()` and call `.next(scope?)` on the primitive - this provider is
 the engine behind that call.
-

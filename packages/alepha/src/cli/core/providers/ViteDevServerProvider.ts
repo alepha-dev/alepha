@@ -1,8 +1,10 @@
 import { join } from "node:path";
+
 import { __alephaRef, $inject, type Alepha, AlephaError } from "alepha";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 import type { Plugin, ViteDevServer } from "vite";
+
 import { ViteUtils } from "../services/ViteUtils.ts";
 import type { AppEntry } from "./AppEntryProvider.ts";
 
@@ -199,9 +201,7 @@ export class ViteDevServerProvider {
         strictPort: true,
       },
       optimizeDeps: {
-        entries: [
-          ...(this.options.entry.browser ? [this.options.entry.browser] : []),
-        ],
+        entries: this.options.entry.browser ? [this.options.entry.browser] : [],
       },
     });
 

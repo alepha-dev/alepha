@@ -18,10 +18,12 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { useEffect } from "react";
+
 import {
   defaultProjectFeatures,
   type ProjectFeatures,
 } from "@/api/entities/projects.ts";
+
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentBlightCountAtom } from "../../atoms/currentBlightCountAtom.ts";
 import { currentEpicAtom } from "../../atoms/currentEpicAtom.ts";

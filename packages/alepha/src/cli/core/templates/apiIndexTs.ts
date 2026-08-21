@@ -20,6 +20,7 @@ export const apiIndexTs = (options: ApiIndexTsOptions = {}) => {
     return (
       `
 import { $module } from "alepha";
+
 import { HelloController } from "./controllers/HelloController.ts";
 
 export const ApiModule = $module({
@@ -35,6 +36,7 @@ export const ApiModule = $module({
 import { $module } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaOrm } from "alepha/orm";
+
 import { HelloController } from "./controllers/HelloController.ts";
 import { Realm } from "./Realm.ts";
 

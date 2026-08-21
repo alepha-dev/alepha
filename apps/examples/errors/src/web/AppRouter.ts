@@ -2,6 +2,7 @@ import { AlephaError, createMiddleware, type Middleware } from "alepha";
 import { $page } from "alepha/react/router";
 import { HttpError } from "alepha/server";
 import { createElement } from "react";
+
 import TooManyRequests from "./components/TooManyRequests.tsx";
 
 /**

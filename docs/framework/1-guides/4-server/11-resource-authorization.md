@@ -1,6 +1,6 @@
 # Resource Authorization
 
-`$secure` answers *what kind of user is this?* - issuer, roles, permissions. It cannot answer *does this user own row 42?*, because ownership is a property of the data, not of the token.
+`$secure` answers _what kind of user is this?_ - issuer, roles, permissions. It cannot answer _does this user own row 42?_, because ownership is a property of the data, not of the token.
 
 ```typescript check
 import { $inject } from "alepha";
@@ -18,7 +18,9 @@ read = $action({
   path: "/campaigns/:id",
   use: [$secure({ permissions: ["campaign:read"] })],
   handler: async ({ params, user }) => {
-    const campaign = await this.campaigns.getOne({ where: { id: { eq: params.id } } });
+    const campaign = await this.campaigns.getOne({
+      where: { id: { eq: params.id } },
+    });
     if (campaign.createdBy !== user.id) {
       throw new ForbiddenError("Not yours");
     }
@@ -27,7 +29,7 @@ read = $action({
 });
 ```
 
-The check is correct. The problem is that it is *invisible*: no test fails if the next endpoint forgets it, no tooling can see that this route is owner-scoped, and the rule gets copy-pasted into every handler that touches the resource.
+The check is correct. The problem is that it is _invisible_: no test fails if the next endpoint forgets it, no tooling can see that this route is owner-scoped, and the rule gets copy-pasted into every handler that touches the resource.
 
 ## `$owns`
 
@@ -56,7 +58,7 @@ class CampaignController {
 
 `cast` coerces the route param before querying - route params are always strings, so integer primary keys need `Number`.
 
-`repository` is a thunk rather than the repository itself. `$owns()` runs during class-field initialization, so a `$repository()` field declared *after* it would not exist yet; deferring the lookup to request time makes field order irrelevant.
+`repository` is a thunk rather than the repository itself. `$owns()` runs during class-field initialization, so a `$repository()` field declared _after_ it would not exist yet; deferring the lookup to request time makes field order irrelevant.
 
 ## The loaded row is handed to you
 
@@ -64,9 +66,9 @@ class CampaignController {
 
 ```typescript
 handler: async () => {
-  const campaign = this.owned.get<Campaign>();   // already loaded by the gate
+  const campaign = this.owned.get<Campaign>(); // already loaded by the gate
   return this.present(campaign);
-}
+};
 ```
 
 `get()` throws if no `$owns` ran, because that is a wiring mistake rather than a runtime condition. Use `find()` when a handler is legitimately reachable both with and without the gate.
@@ -86,14 +88,14 @@ $owns({
     resource: "campaignId",
     user: "userId",
   },
-})
+});
 ```
 
 Checks run in order: owner first, then membership. When you supply the `message` option, it's used for **both** denials on purpose - a different message per branch tells an attacker whether the resource exists and who owns it. (Without a custom `message`, the defaults differ; set one for endpoints where that distinction matters.)
 
 ## Privileged identities
 
-A caller with `ownership === false` bypasses both checks. That is the same `ownership` flag `$secure` sets from the permission registry: `false` means an admin whose grant is *not* narrowed to their own rows.
+A caller with `ownership === false` bypasses both checks. That is the same `ownership` flag `$secure` sets from the permission registry: `false` means an admin whose grant is _not_ narrowed to their own rows.
 
 This is deliberately strict - `undefined` does **not** bypass. `undefined` only means no permission check ran, which is not the same as "this caller is privileged". If you are migrating hand-written authz that treated `!user.ownership` as the bypass, note that `undefined` used to pass and now does not.
 
@@ -107,7 +109,7 @@ $secure({
     const invite = await alepha.inject(InviteService).find(params.token);
     return invite?.email === user.email;
   },
-})
+});
 ```
 
 Guards may be async and run after all other `$secure` checks. `params`, `query`, and `body` come from the action request when there is one, falling back to the raw HTTP request - so the same guard works over HTTP, over `action.run()`, and over MCP.

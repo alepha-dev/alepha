@@ -11,6 +11,7 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { currentUserAtom } from "alepha/security";
 import { LogIn, Shield, UserPlus } from "lucide-react";
+
 import type { PlaygroundI18n } from "../PlaygroundI18n.ts";
 
 const Home = () => {

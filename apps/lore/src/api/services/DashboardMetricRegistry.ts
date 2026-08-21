@@ -1,6 +1,7 @@
 import { $inject } from "alepha";
 import { $logger } from "alepha/logger";
 import type { UserAccountToken } from "alepha/security";
+
 import type { DashboardCardResource } from "../schemas/dashboardCardResourceSchema.ts";
 import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
 import { ActiveQuestsMetric } from "./ActiveQuestsMetric.ts";

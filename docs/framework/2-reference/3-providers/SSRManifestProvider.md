@@ -15,6 +15,6 @@ generated index.js via the ssrManifestAtom. This eliminates filesystem
 reads at runtime, making it optimal for serverless deployments.
 
 Manifest files are generated during `vite build`:
+
 - manifest.json (client manifest)
 - preload-manifest.json (from viteAlephaSsrPreload plugin)
-

@@ -1,6 +1,7 @@
 import { Alepha, z } from "alepha";
 import { $action, ServerProvider } from "alepha/server";
 import { describe, expect, it } from "vitest";
+
 import { $proxy } from "../index.ts";
 
 describe("$proxy", () => {

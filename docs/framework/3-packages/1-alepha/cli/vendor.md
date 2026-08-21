@@ -17,8 +17,9 @@ vendor directory (`.vendor/` by default). Useful for corporate projects that nee
 copy of Alepha for AI tooling, audits, documentation, or quick fixes.
 
 Commands:
-- `alepha vendor sync`  - replace local packages with remote source
-- `alepha vendor diff`  - compare local packages against remote HEAD
+
+- `alepha vendor sync` - replace local packages with remote source
+- `alepha vendor diff` - compare local packages against remote HEAD
 
 Configuration in `alepha.config.ts`:
 
@@ -34,4 +35,3 @@ export default defineConfig({
   ],
 });
 ```
-

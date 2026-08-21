@@ -11,9 +11,8 @@ import { $inject } from "alepha";
 Get the instance of the specified type from the context.
 
 ```ts
-class A { }
+class A {}
 class B {
   a = $inject(A);
 }
 ```
-

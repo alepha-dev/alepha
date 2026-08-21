@@ -23,4 +23,3 @@ This is the ONE place that reads that key - call sites use
 request's async context (which is where background work is scheduled). Outside
 a request (e.g. a cron tick) the key is absent and we fall back to the base
 fire-and-track behaviour.
-

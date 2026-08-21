@@ -7,6 +7,7 @@
 Instead, email security concerns directly to the maintainers. You can find contact information in the repository or reach out via GitHub's private vulnerability reporting feature.
 
 Include:
+
 - Description of the vulnerability
 - Steps to reproduce
 - Potential impact
@@ -23,9 +24,9 @@ Include:
 
 We provide security updates for:
 
-| Version | Supported |
-|---------|-----------|
-| Latest  | Yes       |
+| Version  | Supported   |
+| -------- | ----------- |
+| Latest   | Yes         |
 | < Latest | Best effort |
 
 ## Security Best Practices

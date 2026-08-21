@@ -18,7 +18,8 @@ opted in by overriding this provider in the consuming app:
 class MyAccess extends FileAccessProvider {
   async assertReadable(file, user) {
     if (file.bucket === "avatars") return; // public
-    if (file.bucket === "campaign-icons") return this.checkCampaignVisible(file, user);
+    if (file.bucket === "campaign-icons")
+      return this.checkCampaignVisible(file, user);
     return super.assertReadable(file, user);
   }
 }
@@ -29,4 +30,3 @@ Why this exists: prior to introducing this gate, `streamFile` only required
 the framework-wide `file:read` permission. The default `user` role grants
 `*`, so every authenticated user could download any file by UUID - turning
 the 128-bit id into the sole security boundary across tenants.
-

@@ -2,6 +2,7 @@ import { Alepha } from "alepha";
 import { AlephaCache } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
 import { describe, expect, it } from "vitest";
+
 import {
   DEVICE_POLL_INTERVAL_SECONDS,
   DeviceCodeService,

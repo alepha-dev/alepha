@@ -12,4 +12,3 @@ Handles HTML streaming for SSR.
 
 Uses hardcoded HTML structure - all customization via $head primitive.
 Pre-encodes static parts as Uint8Array for zero-copy streaming.
-

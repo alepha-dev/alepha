@@ -13,6 +13,7 @@ npm install alepha
 Request rate limiting on actions.
 
 **Features:**
+
 - Rate limit configuration per action
 
 ## API Reference

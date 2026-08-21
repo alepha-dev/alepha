@@ -9,8 +9,10 @@ export interface SegmentedOption {
   disabled?: boolean;
 }
 
-export interface SegmentedProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, "onChange"> {
+export interface SegmentedProps extends Omit<
+  React.HTMLAttributes<HTMLDivElement>,
+  "onChange"
+> {
   /**
    * Selectable options. Each one renders as a segment.
    */
@@ -141,6 +143,9 @@ export function Segmented(props: SegmentedProps) {
   }, [activeIndex]);
 
   React.useLayoutEffect(() => {
+    // Measures the DOM after it has been committed — there is nothing to
+    // derive during render, the geometry does not exist yet.
+    // oxlint-disable-next-line react/set-state-in-effect
     measureThumb();
   }, [measureThumb, options.length, size, fullWidth]);
 

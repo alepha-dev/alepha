@@ -4,6 +4,7 @@ import { $module } from "alepha";
 import { AlephaReactAuth } from "alepha/react/auth";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactUi } from "alepha/react/ui";
+
 import { AppRouter } from "./AppRouter.tsx";
 import { PlaygroundI18n } from "./PlaygroundI18n.ts";
 

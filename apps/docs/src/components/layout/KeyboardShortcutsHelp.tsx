@@ -1,4 +1,5 @@
 import Dialog from "./Dialog.tsx";
+
 import styles from "./KeyboardShortcutsHelp.module.css";
 
 // =============================================================================

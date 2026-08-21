@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { beforeEach, describe, test } from "vitest";
+
 import { $page, NestedView } from "../index.ts";
 
 describe("$page ssr option", () => {

@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+
 import { DashboardMetricCatalog } from "./services/DashboardMetricCatalog.ts";
 
 /**

@@ -13,6 +13,7 @@ npm install alepha
 Resource locking for distributed systems.
 
 **Features:**
+
 - Distributed locks with timeout
 - Time-based lock expiration
 - Automatic release on scope exit

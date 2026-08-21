@@ -1,4 +1,5 @@
 import { Alepha, run } from "alepha";
+
 import { AppRouter } from "./AppRouter.ts";
 
 const alepha = Alepha.create();

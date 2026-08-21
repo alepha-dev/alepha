@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
+
 import type { DevActionMetadata } from "../../../schemas/DevActionMetadata.ts";
 import { METHOD_COLOR, shortMethod } from "../shared/methodColor.ts";
 

@@ -1,4 +1,5 @@
 import { AlephaError, type Infer, type ZObject } from "alepha";
+
 import type { EntityPrimitive } from "./$entity.ts";
 
 /**

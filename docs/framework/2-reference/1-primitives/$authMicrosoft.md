@@ -24,8 +24,8 @@ for the `common` endpoint returns `{tenantid}` as a literal placeholder in the
 openid-client library handles this during token validation automatically.
 
 Environment Variables:
+
 - `MICROSOFT_CLIENT_ID`: The application (client) ID from the Azure Portal.
 - `MICROSOFT_CLIENT_SECRET`: The client secret value from the Azure Portal.
 - `MICROSOFT_TENANT_ID`: (Optional) Azure AD tenant ID or `"common"` for
   multi-tenant. Defaults to `"common"`.
-

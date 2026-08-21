@@ -15,11 +15,11 @@ Entry can be lazy-loaded, which is useful for large dictionaries or when transla
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `lang` | `string` | No |  |
-| `name` | `string` | No |  |
-| `lazy` | `Object` | Yes |  |
+| Option | Type     | Required | Description |
+| ------ | -------- | -------- | ----------- |
+| `lang` | `string` | No       |             |
+| `name` | `string` | No       |             |
+| `lazy` | `Object` | Yes      |             |
 
 ## Examples
 
@@ -46,4 +46,3 @@ class App {
 
 run(App);
 ```
-

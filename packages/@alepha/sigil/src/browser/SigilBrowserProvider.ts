@@ -1,5 +1,6 @@
 import { $hook, $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+
 import { sigilCampaign } from "../shared/sigilCampaign.ts";
 import {
   SIGIL_FIRST_INGEST_MAX_MS,

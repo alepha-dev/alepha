@@ -1,17 +1,31 @@
 {
   "name": "alepha",
-  "description": "A full-stack TypeScript framework. One schema, everywhere.",
-  "author": "Nicolas Foures",
   "version": "0.26.0",
-  "type": "module",
-  "engines": {
-    "node": ">=22.0.0",
-    "bun": ">=1.3.0"
-  },
+  "description": "A full-stack TypeScript framework. One schema, everywhere.",
+  "keywords": [
+    "aleph",
+    "alepha",
+    "api",
+    "cloudflare",
+    "drizzle",
+    "edge",
+    "framework",
+    "fullstack",
+    "orm",
+    "react",
+    "serverless",
+    "ssr",
+    "typescript",
+    "workers"
+  ],
+  "homepage": "https://alepha.dev",
   "license": "MIT",
+  "author": "Nicolas Foures",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/feunard/alepha.git"
+  },
   "bin": "./src/bin/index.ts",
-  "main": "./src/core/index.ts",
-  "types": "./src/core/index.ts",
   "files": [
     "dist",
     "src",
@@ -21,93 +35,9 @@
     "CHANGELOG.md",
     "CLAUDE.md"
   ],
-  "dependencies": {
-    "@biomejs/biome": "^2.5.8",
-    "@redis/client": "^6.2.1",
-    "@vitejs/plugin-react": "^6.0.5",
-    "dayjs": "^1.11.22",
-    "drizzle-kit": "1.0.0-rc.4",
-    "drizzle-orm": "1.0.0-rc.4",
-    "postgres": "^3.4.9",
-    "s3mini": "^1.0.0",
-    "tsx": "^4.23.12",
-    "typescript": "^7.0.2",
-    "vite": "^8.2.1",
-    "vite-bundle-analyzer": "^1.3.9",
-    "vitest": "^4.1.10",
-    "ws": "^8.21.3",
-    "zod": "^4.4.3"
-  },
-  "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260817.1",
-    "@electric-sql/pglite": "^0.5.5",
-    "@faker-js/faker": "^10.6.0",
-    "@tailwindcss/vite": "^4.3.3",
-    "@testing-library/dom": "^10.4.1",
-    "@testing-library/react": "^16.3.2",
-    "@types/bun": "^1.3.14",
-    "@types/node": "^26.2.0",
-    "@types/nodemailer": "^8.0.1",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
-    "@types/ws": "^8.18.1",
-    "cron-schedule": "^6.0.0",
-    "jose": "^6.2.9",
-    "jsdom": "^30.0.1",
-    "nodemailer": "^9.0.5",
-    "openid-client": "^6.8.5",
-    "prom-client": "^15.1.3",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "swagger-ui-dist": "^5.32.13",
-    "tailwindcss": "^4.3.3",
-    "tsdown": "^0.22.14"
-  },
-  "peerDependencies": {
-    "react": "^19",
-    "react-dom": "^19"
-  },
-  "peerDependenciesMeta": {
-    "react": {
-      "optional": true
-    },
-    "react-dom": {
-      "optional": true
-    }
-  },
-  "scarfSettings": {
-    "enabled": false
-  },
-  "scripts": {
-    "lint": "biome check --fix && yarn build:check",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "build": "node scripts/build.ts",
-    "build:check": "yarn build --check",
-    "copy": "node scripts/copy-swagger.ts"
-  },
-  "homepage": "https://alepha.dev",
-  "llms": "https://alepha.dev/llms.txt",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/feunard/alepha.git"
-  },
-  "keywords": [
-    "alepha",
-    "aleph",
-    "framework",
-    "typescript",
-    "fullstack",
-    "react",
-    "api",
-    "orm",
-    "drizzle",
-    "serverless",
-    "cloudflare",
-    "workers",
-    "edge",
-    "ssr"
-  ],
+  "type": "module",
+  "main": "./src/core/index.ts",
+  "types": "./src/core/index.ts",
   "exports": {
     "./api/analytics": {
       "types": "./src/api/analytics/index.ts",
@@ -557,9 +487,9 @@
     "./package.json": "./package.json"
   },
   "publishConfig": {
+    "bin": "./dist/bin/index.js",
     "main": "./dist/core/index.js",
     "types": "./dist/core/index.d.ts",
-    "bin": "./dist/bin/index.js",
     "exports": {
       "./api/analytics": {
         "types": "./dist/api/analytics/index.d.ts",
@@ -1008,5 +938,76 @@
       "./tsconfig.base": "./tsconfig.base.json",
       "./package.json": "./package.json"
     }
+  },
+  "scripts": {
+    "lint": "alepha lint && yarn build:check",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "node scripts/build.ts",
+    "build:check": "yarn build --check",
+    "copy": "node scripts/copy-swagger.ts"
+  },
+  "dependencies": {
+    "@redis/client": "^6.2.1",
+    "@vitejs/plugin-react": "^6.0.5",
+    "dayjs": "^1.11.22",
+    "drizzle-kit": "1.0.0-rc.4",
+    "drizzle-orm": "1.0.0-rc.4",
+    "oxfmt": "^0.64.0",
+    "oxlint": "^1.79.0",
+    "postgres": "^3.4.9",
+    "s3mini": "^1.0.0",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.1",
+    "vite-bundle-analyzer": "^1.3.9",
+    "vitest": "^4.1.10",
+    "ws": "^8.21.3",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260817.1",
+    "@electric-sql/pglite": "^0.5.5",
+    "@faker-js/faker": "^10.6.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/bun": "^1.3.14",
+    "@types/node": "^26.2.0",
+    "@types/nodemailer": "^8.0.1",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@types/ws": "^8.18.1",
+    "cron-schedule": "^6.0.0",
+    "jose": "^6.2.9",
+    "jsdom": "^30.0.1",
+    "nodemailer": "^9.0.5",
+    "openid-client": "^6.8.5",
+    "prom-client": "^15.1.3",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "swagger-ui-dist": "^5.32.13",
+    "tailwindcss": "^4.3.3",
+    "tsdown": "^0.22.14"
+  },
+  "peerDependencies": {
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "bun": ">=1.3.0",
+    "node": ">=22.0.0"
+  },
+  "llms": "https://alepha.dev/llms.txt",
+  "scarfSettings": {
+    "enabled": false
   }
 }

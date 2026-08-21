@@ -1,6 +1,7 @@
 import { $inject } from "alepha";
 import { $job } from "alepha/api/jobs";
 import { $logger } from "alepha/logger";
+
 import { InvitationService } from "../services/InvitationService.ts";
 
 export class InvitationJobs {

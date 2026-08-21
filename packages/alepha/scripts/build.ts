@@ -3,6 +3,7 @@ import { access, readdir, readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import * as os from "node:os";
 import { dirname, join, resolve } from "node:path";
+
 import { $inject, AlephaError, run, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
@@ -168,7 +169,7 @@ class AlephaPackageBuilderCli {
       };
 
       pkgData.publishConfig = {
-        ...(pkgData.publishConfig ?? {}),
+        ...pkgData.publishConfig,
         ...(pkgData.main ? { main: toDistPath(pkgData.main) } : {}),
         ...(pkgData.types ? { types: toDistTypes(pkgData.types) } : {}),
         ...(pkgData.bin ? { bin: remapBin(pkgData.bin) } : {}),

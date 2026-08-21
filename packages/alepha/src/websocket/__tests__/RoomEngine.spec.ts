@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import type {
   RoomClock,
   RoomPrimitiveOptions,
@@ -37,7 +38,7 @@ class FakeClock implements RoomClock {
   /** Advance virtual time by `ms` and fire every live interval once. */
   advance(ms: number): void {
     this.ms += ms;
-    for (const fn of [...this.handlers.values()]) fn();
+    for (const fn of Array.from(this.handlers.values())) fn();
   }
 }
 

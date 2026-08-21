@@ -297,16 +297,12 @@ test("ReactServerProvider - fillTemplate performance comparison", async ({
   (provider as any).preprocessedTemplate = preprocessed;
 
   const response1 = { html: "" };
-  const start1 = performance.now();
   provider.fillTemplate(response1, app, script);
-  const time1 = performance.now() - start1;
 
   // Test fallback without preprocessing (should work but potentially slower)
   (provider as any).preprocessedTemplate = null;
   const response2 = { html: template };
-  const start2 = performance.now();
   provider.fillTemplate(response2, app, script);
-  const time2 = performance.now() - start2;
 
   // Both should produce the same result
   expect(response1.html).toBe(response2.html);

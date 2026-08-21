@@ -7,6 +7,7 @@ import { lazy, Suspense } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
+
 import { DiagramErrorBoundary } from "./diagram/DiagramErrorBoundary.tsx";
 
 /**

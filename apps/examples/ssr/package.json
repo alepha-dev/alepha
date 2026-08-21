@@ -1,7 +1,7 @@
 {
+  "name": "ssr",
   "private": true,
   "type": "module",
-  "name": "ssr",
   "scripts": {
     "dev": "alepha dev",
     "build": "alepha build --stats=json",

@@ -14,7 +14,7 @@ projects: [
       environment: "jsdom",
     },
   },
-]
+];
 ```
 
 ```txt
@@ -29,17 +29,17 @@ src/
 
 The `alepha/react/testing` module exports:
 
-| Function | Purpose |
-|----------|---------|
-| `renderWithAlepha(element, options?)` | Async render with Alepha context (auto-starts the instance) |
-| `renderWithAlephaSync(element, options?)` | Sync render (autoStart defaults to false) |
-| `fillForm(screen, formId, values)` | Fill form fields by test ID (`{formId}-{fieldName}`) |
-| `fillField(screen, testId, value)` | Fill a single field by its test ID |
-| `submitForm(screen, options?)` | Click the submit button (default text: "Submit") |
-| `resetForm(screen, buttonText?)` | Click the reset button (default text: "Reset") |
-| `waitForFormSubmit(alepha, formId)` | Wait for the `form:submit:end` event |
-| `toggleSwitch(screen, role?, name?)` | Toggle a switch or checkbox element |
-| `setupJsdomMocks()` | Mock `matchMedia`, `ResizeObserver`, `IntersectionObserver`, `scrollTo`, `getComputedStyle` |
+| Function                                  | Purpose                                                                                     |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `renderWithAlepha(element, options?)`     | Async render with Alepha context (auto-starts the instance)                                 |
+| `renderWithAlephaSync(element, options?)` | Sync render (autoStart defaults to false)                                                   |
+| `fillForm(screen, formId, values)`        | Fill form fields by test ID (`{formId}-{fieldName}`)                                        |
+| `fillField(screen, testId, value)`        | Fill a single field by its test ID                                                          |
+| `submitForm(screen, options?)`            | Click the submit button (default text: "Submit")                                            |
+| `resetForm(screen, buttonText?)`          | Click the reset button (default text: "Reset")                                              |
+| `waitForFormSubmit(alepha, formId)`       | Wait for the `form:submit:end` event                                                        |
+| `toggleSwitch(screen, role?, name?)`      | Toggle a switch or checkbox element                                                         |
+| `setupJsdomMocks()`                       | Mock `matchMedia`, `ResizeObserver`, `IntersectionObserver`, `scrollTo`, `getComputedStyle` |
 
 ## Basic Rendering
 
@@ -49,7 +49,9 @@ import { renderWithAlepha, setupJsdomMocks } from "alepha/react/testing";
 beforeAll(() => setupJsdomMocks());
 
 test("should render greeting", async () => {
-  const { getByText, alepha } = await renderWithAlepha(<Greeting name="Alice" />);
+  const { getByText, alepha } = await renderWithAlepha(
+    <Greeting name="Alice" />,
+  );
 
   expect(getByText("Hello, Alice")).toBeDefined();
 });
@@ -65,7 +67,10 @@ Pass a pre-configured Alepha instance to swap services or providers:
 import { renderWithAlepha } from "alepha/react/testing";
 
 test("should render with mocked service", async () => {
-  const alepha = Alepha.create().with({ provide: UserService, use: FakeUserService });
+  const alepha = Alepha.create().with({
+    provide: UserService,
+    use: FakeUserService,
+  });
 
   const { getByText } = await renderWithAlepha(<UserProfile />, { alepha });
 
@@ -82,10 +87,9 @@ import { renderWithAlepha } from "alepha/react/testing";
 import { ThemeProvider } from "my-ui-library";
 
 test("should render themed component", async () => {
-  const { getByRole } = await renderWithAlepha(
-    <Button>Click me</Button>,
-    { wrapper: ThemeProvider },
-  );
+  const { getByRole } = await renderWithAlepha(<Button>Click me</Button>, {
+    wrapper: ThemeProvider,
+  });
 
   expect(getByRole("button")).toBeDefined();
 });
@@ -165,6 +169,7 @@ beforeAll(() => {
 ```
 
 Mocked APIs:
+
 - `window.matchMedia`
 - `window.ResizeObserver`
 - `window.IntersectionObserver`

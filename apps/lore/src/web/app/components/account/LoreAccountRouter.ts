@@ -2,6 +2,7 @@ import { $pageAccount } from "@alepha/ui/components/account/account-router-page"
 import { $client } from "alepha/server/links";
 import { FolderKanban, Mail, MessageSquareWarning } from "lucide-react";
 import { createElement } from "react";
+
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { InvitationController } from "@/api/controllers/InvitationController.ts";
 

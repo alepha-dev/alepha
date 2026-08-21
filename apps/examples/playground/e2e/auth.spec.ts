@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+
 import { readLatestEmailCode } from "./global-setup.ts";
 
 /**

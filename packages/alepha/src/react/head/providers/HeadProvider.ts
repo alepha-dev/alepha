@@ -1,5 +1,6 @@
 import { $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
+
 import { SeoExpander } from "../helpers/SeoExpander.ts";
 import type { Head } from "../interfaces/Head.ts";
 

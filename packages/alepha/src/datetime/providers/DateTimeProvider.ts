@@ -247,7 +247,7 @@ export class DateTimeProvider {
   protected readonly onStop = $hook({
     on: "stop",
     handler: () => {
-      for (const timeout of [...this.timeouts]) {
+      for (const timeout of Array.from(this.timeouts)) {
         this.clearTimeout(timeout);
       }
 
@@ -611,7 +611,7 @@ export class DateTimeProvider {
 
     const due: Timeout[] = [];
 
-    for (const timeout of [...this.timeouts]) {
+    for (const timeout of Array.from(this.timeouts)) {
       if (!timeout.timer) {
         continue;
       }

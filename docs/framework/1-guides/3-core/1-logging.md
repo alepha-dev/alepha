@@ -80,6 +80,7 @@ LOG_LEVEL=alepha.*:debug,*.test:silent,info
 ```
 
 Defaults by environment:
+
 - **dev**: `info`
 - **prod**: `info` (server) / `warn` (browser)
 - **test**: `trace` (but logs go to memory, only printed on test failure)
@@ -88,14 +89,15 @@ Defaults by environment:
 
 Set via the `LOG_FORMAT` environment variable.
 
-| Value | Description | Provider |
-|-------|-------------|----------|
-| `pretty` | Colored, human-readable output with timestamps, module and context | `PrettyFormatterProvider` |
-| `cli` | Compact output for CLI sessions: `HH:MM:SS L message {json}` (no module/context) | `CliFormatterProvider` |
-| `json` | Structured JSON, one object per line | `JsonFormatterProvider` |
-| `raw` | Plain message text, no metadata (best for piping) | `RawFormatterProvider` |
+| Value    | Description                                                                      | Provider                  |
+| -------- | -------------------------------------------------------------------------------- | ------------------------- |
+| `pretty` | Colored, human-readable output with timestamps, module and context               | `PrettyFormatterProvider` |
+| `cli`    | Compact output for CLI sessions: `HH:MM:SS L message {json}` (no module/context) | `CliFormatterProvider`    |
+| `json`   | Structured JSON, one object per line                                             | `JsonFormatterProvider`   |
+| `raw`    | Plain message text, no metadata (best for piping)                                | `RawFormatterProvider`    |
 
 If `LOG_FORMAT` is not set:
+
 - **Production** (non-browser): defaults to `json`
 - **Everything else**: defaults to `pretty`
 
@@ -122,11 +124,11 @@ Every log call produces a `LogEntry`:
 interface LogEntry {
   level: "SILENT" | "TRACE" | "DEBUG" | "INFO" | "WARN" | "ERROR";
   message: string;
-  service: string;   // class name, e.g. "UserService"
-  module: string;    // module name, e.g. "app" or "my.project.users"
-  context?: string;  // request-scoped correlation ID (from AsyncLocalStorage)
-  app?: string;      // APP_NAME env variable
-  data?: unknown;    // arbitrary payload or Error object
+  service: string; // class name, e.g. "UserService"
+  module: string; // module name, e.g. "app" or "my.project.users"
+  context?: string; // request-scoped correlation ID (from AsyncLocalStorage)
+  app?: string; // APP_NAME env variable
+  data?: unknown; // arbitrary payload or Error object
   timestamp: number; // milliseconds since epoch
 }
 ```
@@ -200,7 +202,11 @@ To capture and assert on logs in tests:
 
 ```typescript
 import { Alepha } from "alepha";
-import { $logger, LogDestinationProvider, MemoryDestinationProvider } from "alepha/logger";
+import {
+  $logger,
+  LogDestinationProvider,
+  MemoryDestinationProvider,
+} from "alepha/logger";
 
 class App {
   log = $logger();

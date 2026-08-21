@@ -18,4 +18,3 @@ all. Every behaviour the conformance suite pins is defined here first.
 Tiering is simulated by rewriting a row's bucket in place, which is exactly
 what the relational provider does with two tables - so a boundary-spanning
 query can be tested with no database.
-

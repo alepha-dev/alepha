@@ -18,20 +18,22 @@ Multiple useRoom hooks on the same channel will share a single WebSocket connect
 ## Examples
 
 ```tsx
-const chat = useRoom({
-  roomId: "room-123",
-  channel: chatChannel,
-  handler: (message) => {
-    if (message.type === "append") {
-      setMessages(prev => [...prev, message]);
-    }
-  }
-}, [roomId]);
+const chat = useRoom(
+  {
+    roomId: "room-123",
+    channel: chatChannel,
+    handler: (message) => {
+      if (message.type === "append") {
+        setMessages((prev) => [...prev, message]);
+      }
+    },
+  },
+  [roomId],
+);
 
 const sendMessage = async () => {
   await chat.send({
-    content: "Hello, world!"
+    content: "Hello, world!",
   });
 };
 ```
-

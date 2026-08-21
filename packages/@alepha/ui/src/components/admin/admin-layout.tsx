@@ -7,6 +7,7 @@ import { useRouter } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
 import { LayoutDashboard, Search } from "lucide-react";
 import { useState } from "react";
+
 import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
 
 /**
@@ -40,7 +41,7 @@ import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
  *   admin.
  */
 export const AdminLayout = () => {
-  const router = useRouter<any>();
+  useRouter<any>();
   const [options] = useStore(adminRouterOptionsAtom);
   const [spotlightOpen, setSpotlightOpen] = useState(false);
 

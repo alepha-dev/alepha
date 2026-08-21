@@ -3,7 +3,9 @@ import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { type ReactElement, useMemo } from "react";
 import { createPortal } from "react-dom";
+
 import type { Folio } from "@/api/entities/folios.ts";
+
 import { currentFolioBlobsAtom } from "../../../../atoms/currentFolioBlobsAtom.ts";
 import { currentProjectAtom } from "../../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";

@@ -1,5 +1,6 @@
 import { $module } from "alepha";
 import { MemoryTopicProvider } from "alepha/topic";
+
 import { LockProvider } from "./providers/LockProvider.ts";
 import { LockTopicProvider } from "./providers/LockTopicProvider.ts";
 import { MemoryLockProvider } from "./providers/MemoryLockProvider.ts";

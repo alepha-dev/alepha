@@ -15,6 +15,7 @@ import {
   useMemo,
   useState,
 } from "react";
+
 import { type NavEntry, useNavEntries } from "./use-nav-entries.ts";
 
 export interface SpotlightProps {

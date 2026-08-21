@@ -382,12 +382,26 @@ export class DocsChecker {
   }
 
   /**
-   * A line is exempt if it, or the line above it, carries the marker.
+   * A line is exempt if it carries the marker, or if the nearest non-blank
+   * line above it does.
+   *
+   * Blank lines are skipped rather than treated as a break, because a
+   * standalone `<!-- docs-check-ignore -->` is a block-level HTML comment and
+   * every markdown formatter puts a blank line after one. Requiring strict
+   * adjacency meant that running the formatter over `docs/` silently detached
+   * every marker from the line it exempts — the check then failed on prose
+   * nobody had touched.
    */
   protected isIgnored(lines: string[], index: number): boolean {
-    return (
-      lines[index].includes(IGNORE_MARKER) ||
-      (index > 0 && lines[index - 1].includes(IGNORE_MARKER))
-    );
+    if (lines[index].includes(IGNORE_MARKER)) {
+      return true;
+    }
+    for (let above = index - 1; above >= 0; above--) {
+      if (lines[above].trim() === "") {
+        continue;
+      }
+      return lines[above].includes(IGNORE_MARKER);
+    }
+    return false;
   }
 }

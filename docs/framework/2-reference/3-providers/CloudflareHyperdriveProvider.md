@@ -17,4 +17,3 @@ Creates a fresh connection per request, since Cloudflare Workers
 cannot reuse I/O objects across request contexts.
 
 URL format: hyperdrive://BINDING_NAME
-

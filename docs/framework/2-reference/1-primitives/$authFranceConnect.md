@@ -16,6 +16,7 @@ identity data (name, email, birthdate) sourced directly from government
 databases.
 
 **France Connect-specific behaviour**:
+
 - Scopes use individual claim names (`given_name`, `family_name`) rather
   than the standard grouped `profile` scope.
 - The `acr_values=eidas1` authorization parameter is mandatory and is
@@ -24,6 +25,7 @@ databases.
   returned at login and pass it to the logout endpoint when the session ends.
 
 **Environment Variables** (obtain from partenaires.franceconnect.gouv.fr):
+
 - `FRANCECONNECT_CLIENT_ID`: OAuth 2.0 client ID for your France Connect service provider.
 - `FRANCECONNECT_CLIENT_SECRET`: OAuth 2.0 client secret for your France Connect service provider.
 
@@ -34,4 +36,3 @@ class AuthProviders {
   franceconnect = $authFranceConnect(this.userRealm);
 }
 ```
-

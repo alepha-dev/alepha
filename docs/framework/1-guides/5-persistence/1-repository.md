@@ -31,9 +31,7 @@ const product = $entity({
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),
   }),
-  indexes: [
-    { column: "name", unique: true },
-  ],
+  indexes: [{ column: "name", unique: true }],
 });
 ```
 
@@ -208,7 +206,10 @@ Batch-create entities. Inserts are batched in chunks of 1000 by default.
 
 ```typescript
 const items = await this.repo.createMany(
-  [{ name: "A", price: 1 }, { name: "B", price: 2 }],
+  [
+    { name: "A", price: 1 },
+    { name: "B", price: 2 },
+  ],
   { batchSize: 500 },
 );
 ```
@@ -359,10 +360,16 @@ Where clauses accept either a direct value (shorthand for `eq`) or an object wit
 
 ```typescript
 // Direct value (shorthand for eq)
-{ status: "active" }
+{
+  status: "active";
+}
 
 // Explicit operator
-{ status: { eq: "active" } }
+{
+  status: {
+    eq: "active";
+  }
+}
 ```
 
 **Never pass `undefined` into a where-filter.** `where: { col: undefined }` throws
@@ -376,56 +383,56 @@ if (status) where.status = status;
 
 ### Comparison Operators
 
-| Operator | Description |
-|----------|-------------|
-| `eq` | Equal |
-| `ne` | Not equal |
-| `gt` | Greater than |
-| `gte` | Greater than or equal |
-| `lt` | Less than |
-| `lte` | Less than or equal |
+| Operator | Description           |
+| -------- | --------------------- |
+| `eq`     | Equal                 |
+| `ne`     | Not equal             |
+| `gt`     | Greater than          |
+| `gte`    | Greater than or equal |
+| `lt`     | Less than             |
+| `lte`    | Less than or equal    |
 
 ### Array Operators
 
-| Operator | Description |
-|----------|-------------|
-| `inArray` | Value in list |
+| Operator     | Description       |
+| ------------ | ----------------- |
+| `inArray`    | Value in list     |
 | `notInArray` | Value not in list |
 
 ### Null Operators
 
-| Operator | Description |
-|----------|-------------|
-| `isNull` | Value is NULL |
+| Operator    | Description       |
+| ----------- | ----------------- |
+| `isNull`    | Value is NULL     |
 | `isNotNull` | Value is not NULL |
 
 ### Range Operators
 
-| Operator | Description |
-|----------|-------------|
-| `between` | Value in range (inclusive). Accepts `[min, max]` |
-| `notBetween` | Value outside range. Accepts `[min, max]` |
+| Operator     | Description                                      |
+| ------------ | ------------------------------------------------ |
+| `between`    | Value in range (inclusive). Accepts `[min, max]` |
+| `notBetween` | Value outside range. Accepts `[min, max]`        |
 
 ### String Operators
 
-| Operator | Description |
-|----------|-------------|
-| `like` | Pattern match (case-sensitive) |
-| `notLike` | Negated pattern match (case-sensitive) |
-| `ilike` | Pattern match (case-insensitive) |
-| `notIlike` | Negated pattern match (case-insensitive) |
-| `eqInsensitive` | Case-insensitive equality |
-| `contains` | Case-insensitive substring match. Equivalent to `ilike: '%value%'` |
-| `startsWith` | Case-insensitive prefix match. Equivalent to `ilike: 'value%'` |
-| `endsWith` | Case-insensitive suffix match. Equivalent to `ilike: '%value'` |
+| Operator        | Description                                                        |
+| --------------- | ------------------------------------------------------------------ |
+| `like`          | Pattern match (case-sensitive)                                     |
+| `notLike`       | Negated pattern match (case-sensitive)                             |
+| `ilike`         | Pattern match (case-insensitive)                                   |
+| `notIlike`      | Negated pattern match (case-insensitive)                           |
+| `eqInsensitive` | Case-insensitive equality                                          |
+| `contains`      | Case-insensitive substring match. Equivalent to `ilike: '%value%'` |
+| `startsWith`    | Case-insensitive prefix match. Equivalent to `ilike: 'value%'`     |
+| `endsWith`      | Case-insensitive suffix match. Equivalent to `ilike: '%value'`     |
 
 ### PostgreSQL Array Operators
 
-| Operator | Description |
-|----------|-------------|
-| `arrayContains` | Column contains all elements of the given array |
+| Operator         | Description                                     |
+| ---------------- | ----------------------------------------------- |
+| `arrayContains`  | Column contains all elements of the given array |
 | `arrayContained` | Given array contains all elements of the column |
-| `arrayOverlaps` | Column shares any element with the given array |
+| `arrayOverlaps`  | Column shares any element with the given array  |
 
 ### Logical Operators
 
@@ -507,7 +514,7 @@ class OrderService {
 }
 ```
 
-Because nested `transactional()` blocks join the outermost transaction, the callback waits for the *outermost* commit - even when the method is called from inside someone else's transaction. Callbacks run in registration order and are discarded if the transaction rolls back. Outside any transaction, `afterCommit` runs its callback immediately.
+Because nested `transactional()` blocks join the outermost transaction, the callback waits for the _outermost_ commit - even when the method is called from inside someone else's transaction. Callbacks run in registration order and are discarded if the transaction rolls back. Outside any transaction, `afterCommit` runs its callback immediately.
 
 ## Repository.of
 
@@ -528,28 +535,28 @@ This creates a Repository subclass bound to the given entity, suitable for use w
 
 Repository operations emit lifecycle events:
 
-| Event | Payload |
-|-------|---------|
-| `repository:create:before` | `{ tableName, data }` |
-| `repository:create:after` | `{ tableName, data, entity }` |
-| `repository:update:before` | `{ tableName, where, data }` |
-| `repository:update:after` | `{ tableName, where, data, entities }` |
-| `repository:delete:before` | `{ tableName, where }` |
-| `repository:delete:after` | `{ tableName, where, ids }` |
-| `repository:read:before` | `{ tableName, query }` |
-| `repository:read:after` | `{ tableName, query, entities }` |
+| Event                      | Payload                                |
+| -------------------------- | -------------------------------------- |
+| `repository:create:before` | `{ tableName, data }`                  |
+| `repository:create:after`  | `{ tableName, data, entity }`          |
+| `repository:update:before` | `{ tableName, where, data }`           |
+| `repository:update:after`  | `{ tableName, where, data, entities }` |
+| `repository:delete:before` | `{ tableName, where }`                 |
+| `repository:delete:after`  | `{ tableName, where, ids }`            |
+| `repository:read:before`   | `{ tableName, query }`                 |
+| `repository:read:after`    | `{ tableName, query, entities }`       |
 
 ## Error Types
 
-| Error | Thrown When |
-|-------|------------|
-| `DbEntityNotFoundError` | `getOne`, `getById`, `updateOne`, `deleteById` find no match |
-| `DbVersionMismatchError` | `save` detects a version conflict (optimistic locking) |
-| `DbConflictError` | Unique constraint violation |
-| `DbForeignKeyError` | Foreign key constraint violation |
-| `DbNotNullError` | NOT NULL constraint violation |
-| `DbDeadlockError` | Database deadlock detected |
-| `DbTableNotFoundError` | Referenced table does not exist |
-| `DbColumnNotFoundError` | Referenced column does not exist |
-| `DbConnectionError` | The database cannot be reached |
-| `DbMigrationError` | A migration fails to apply |
+| Error                    | Thrown When                                                  |
+| ------------------------ | ------------------------------------------------------------ |
+| `DbEntityNotFoundError`  | `getOne`, `getById`, `updateOne`, `deleteById` find no match |
+| `DbVersionMismatchError` | `save` detects a version conflict (optimistic locking)       |
+| `DbConflictError`        | Unique constraint violation                                  |
+| `DbForeignKeyError`      | Foreign key constraint violation                             |
+| `DbNotNullError`         | NOT NULL constraint violation                                |
+| `DbDeadlockError`        | Database deadlock detected                                   |
+| `DbTableNotFoundError`   | Referenced table does not exist                              |
+| `DbColumnNotFoundError`  | Referenced column does not exist                             |
+| `DbConnectionError`      | The database cannot be reached                               |
+| `DbMigrationError`       | A migration fails to apply                                   |

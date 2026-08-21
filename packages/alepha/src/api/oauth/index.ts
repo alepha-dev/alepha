@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+
 import { OAuthController } from "./controllers/OAuthController.ts";
 import { DeviceCodeService } from "./services/DeviceCodeService.ts";
 import { OAuthClientService } from "./services/OAuthClientService.ts";

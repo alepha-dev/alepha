@@ -13,6 +13,7 @@ npm install alepha
 Declarative CLI command framework.
 
 **Features:**
+
 - CLI command definitions
 - Interactive CLI prompts (plain readline)
 - Command execution with captured output (streamed live at DEBUG level)
@@ -28,14 +29,14 @@ Declarative CLI command framework.
 ### Providers
 
 - [`CliProvider`](/docs/reference-providers-cliprovider) - CLI provider for parsing and executing commands.
-- [`ConsoleOutputProvider`](/docs/reference-providers-consoleoutputprovider) - What a command *produces*, as opposed to what it *reports*.
+- [`ConsoleOutputProvider`](/docs/reference-providers-consoleoutputprovider) - What a command _produces_, as opposed to what it _reports_.
 - [`MemoryOutputProvider`](/docs/reference-providers-memoryoutputprovider) - Captures command output instead of writing it to stdout.
 
 ### Environment Variables
 
 Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
 
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `CLI_DESCRIPTION` | text |  | Description of the CLI application. |
-| `CLI_NAME` | text | cli | Name of the CLI application. |
+| Variable          | Type | Default | Description                         |
+| ----------------- | ---- | ------- | ----------------------------------- |
+| `CLI_DESCRIPTION` | text |         | Description of the CLI application. |
+| `CLI_NAME`        | text | cli     | Name of the CLI application.        |

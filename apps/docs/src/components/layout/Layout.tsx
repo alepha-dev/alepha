@@ -1,12 +1,14 @@
 import { useEvents } from "alepha/react";
 import { NestedView, useRouterState } from "alepha/react/router";
 import { useCallback, useEffect, useRef, useState } from "react";
+
 import CommandPalette from "./CommandPalette.tsx";
 import Header from "./Header.tsx";
 import KeyboardShortcutsHelp from "./KeyboardShortcutsHelp.tsx";
-import styles from "./Layout.module.css";
 import Sidebar from "./Sidebar.tsx";
 import StatusBar from "./StatusBar.tsx";
+
+import styles from "./Layout.module.css";
 
 // =============================================================================
 // NAVIGATION PROGRESS BAR
@@ -195,6 +197,9 @@ const LayoutContent = () => {
 
   // Load sidebar width from localStorage on mount
   useEffect(() => {
+    // localStorage is client-only, so the width has to be seeded after mount or
+    // the server and the hydration render disagree.
+    // oxlint-disable-next-line react/set-state-in-effect
     setSidebarWidth(getInitialSidebarWidth());
   }, []);
 

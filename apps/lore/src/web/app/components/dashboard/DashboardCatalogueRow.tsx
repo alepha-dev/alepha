@@ -1,6 +1,8 @@
 import { useI18n } from "alepha/react/i18n";
 import { Check, Plus } from "lucide-react";
+
 import type { DashboardMetricDescriptor } from "@/api/services/DashboardMetricCatalog.ts";
+
 import type { I18n } from "../../services/I18n.ts";
 import { dashboardMetricIcon } from "./dashboardMetricIcon.ts";
 

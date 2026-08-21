@@ -1,6 +1,7 @@
 import type { Infer } from "alepha";
 import { z } from "alepha";
 import { $entity, db } from "alepha/orm";
+
 import { shippingZones } from "./shippingZones.ts";
 
 /**

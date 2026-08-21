@@ -1,5 +1,6 @@
 import { sigilKeyPrefix, sigilKeyProject } from "@alepha/sigil/key";
 import { expect, type Page, test } from "@playwright/test";
+
 import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
 
 /**

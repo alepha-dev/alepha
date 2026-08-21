@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { $action, ServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, test } from "vitest";
+
 import { $etag, AlephaServerEtag, ServerEtagProvider } from "../index.ts";
 
 class TestApp {

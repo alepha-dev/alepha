@@ -2,6 +2,7 @@ import { Alepha } from "alepha";
 import { $secure, AlephaSecurity } from "alepha/security";
 import { $action, HttpError } from "alepha/server";
 import { describe, it } from "vitest";
+
 import { LinkProvider, ServerLinksProvider } from "../index.ts";
 
 /**

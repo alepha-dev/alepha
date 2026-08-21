@@ -89,7 +89,10 @@ export function Chat() {
   );
 
   return (
-    <button onClick={() => chat.send({ content: "hello" })} disabled={!chat.isConnected}>
+    <button
+      onClick={() => chat.send({ content: "hello" })}
+      disabled={!chat.isConnected}
+    >
       Send
     </button>
   );
@@ -111,7 +114,11 @@ class ChatChannels {
     schema: {
       // Server -> client messages
       in: z.union([
-        z.object({ type: z.const("append"), content: z.text(), username: z.text() }),
+        z.object({
+          type: z.const("append"),
+          content: z.text(),
+          username: z.text(),
+        }),
         z.object({ type: z.const("system"), message: z.text() }),
       ]),
       // Client -> server messages
@@ -123,13 +130,13 @@ class ChatChannels {
 }
 ```
 
-| Option | Type | Description |
-|--------|------|--------------|
-| `path` | `string` | Required. The WebSocket endpoint path (e.g. `/ws/chat`). |
-| `description` | `string` | Optional documentation. |
-| `schema.in` | `ZObject \| ZodUnion` | Messages sent from server to client. |
-| `schema.out` | `ZObject \| ZodUnion` | Messages sent from client to server. |
-| `schema.roomId` | `ZodString` | Optional room ID validation (e.g. `z.uuid()`). Defaults to any string. |
+| Option          | Type                  | Description                                                            |
+| --------------- | --------------------- | ---------------------------------------------------------------------- |
+| `path`          | `string`              | Required. The WebSocket endpoint path (e.g. `/ws/chat`).               |
+| `description`   | `string`              | Optional documentation.                                                |
+| `schema.in`     | `ZObject \| ZodUnion` | Messages sent from server to client.                                   |
+| `schema.out`    | `ZObject \| ZodUnion` | Messages sent from client to server.                                   |
+| `schema.roomId` | `ZodString`           | Optional room ID validation (e.g. `z.uuid()`). Defaults to any string. |
 
 Schemas use the `z` builder - the same one used by `$action`.
 
@@ -145,7 +152,11 @@ class ChatController {
     channel: this.channels.chatChannel,
     handler: async ({ connectionId, userId, roomId, message, reply }) => {
       await reply({
-        message: { type: "append", username: userId ?? "anon", content: message.content },
+        message: {
+          type: "append",
+          username: userId ?? "anon",
+          content: message.content,
+        },
         exceptSelf: true,
       });
     },
@@ -161,23 +172,23 @@ class ChatController {
 
 The handler context:
 
-| Field | Description |
-|-------|--------------|
-| `connectionId` | Unique ID for this connection. |
-| `userId` | Authenticated user ID, if `secure: true` and a user resolved (see [Authentication](#authentication)). |
-| `roomId` | Room the incoming message was sent from. |
-| `message` | The parsed, schema-validated client message. |
-| `reply(options)` | Send a message back to the room, scoped to this connection's context. |
+| Field            | Description                                                                                           |
+| ---------------- | ----------------------------------------------------------------------------------------------------- |
+| `connectionId`   | Unique ID for this connection.                                                                        |
+| `userId`         | Authenticated user ID, if `secure: true` and a user resolved (see [Authentication](#authentication)). |
+| `roomId`         | Room the incoming message was sent from.                                                              |
+| `message`        | The parsed, schema-validated client message.                                                          |
+| `reply(options)` | Send a message back to the room, scoped to this connection's context.                                 |
 
 `reply()` options:
 
-| Option | Type | Description |
-|--------|------|--------------|
-| `message` | `Infer<TClient>` | Required. The message to send. |
-| `roomId` | `string` | Target room. Defaults to the sender's room. |
-| `exceptSelf` | `boolean` | Exclude the sender's own connection. |
-| `exceptConnectionIds` | `string[]` | Exclude specific connections. |
-| `exceptUserIds` | `string[]` | Exclude specific users. Requires `alepha/security`. **Not honored on the Cloudflare provider** - see below. |
+| Option                | Type             | Description                                                                                                 |
+| --------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------- |
+| `message`             | `Infer<TClient>` | Required. The message to send.                                                                              |
+| `roomId`              | `string`         | Target room. Defaults to the sender's room.                                                                 |
+| `exceptSelf`          | `boolean`        | Exclude the sender's own connection.                                                                        |
+| `exceptConnectionIds` | `string[]`       | Exclude specific connections.                                                                               |
+| `exceptUserIds`       | `string[]`       | Exclude specific users. Requires `alepha/security`. **Not honored on the Cloudflare provider** - see below. |
 
 ## Server-Initiated Messages
 
@@ -198,13 +209,13 @@ class NotificationService {
 
 `emit()` accepts:
 
-| Option | Description |
-|--------|--------------|
-| `message` | Required. |
-| `roomId` / `roomIds` | Target one or more rooms. |
-| `userId` / `userIds` | Target a user's connections (Node only - see below). |
-| `connectionId` / `connectionIds` | Target specific connections (Node only - see below). |
-| `exceptConnectionIds` / `exceptUserIds` | Exclusions. |
+| Option                                  | Description                                          |
+| --------------------------------------- | ---------------------------------------------------- |
+| `message`                               | Required.                                            |
+| `roomId` / `roomIds`                    | Target one or more rooms.                            |
+| `userId` / `userIds`                    | Target a user's connections (Node only - see below). |
+| `connectionId` / `connectionIds`        | Target specific connections (Node only - see below). |
+| `exceptConnectionIds` / `exceptUserIds` | Exclusions.                                          |
 
 ## Client
 
@@ -231,7 +242,10 @@ function Chat() {
   );
 
   return (
-    <button onClick={() => chat.send({ content: "hi" })} disabled={!chat.isConnected}>
+    <button
+      onClick={() => chat.send({ content: "hi" })}
+      disabled={!chat.isConnected}
+    >
       Send
     </button>
   );
@@ -242,11 +256,11 @@ function Chat() {
 
 The connection URL is auto-detected from `window.location` by default. Override it with the `url` option, or via environment variables:
 
-| Env Var | Default | Description |
-|---------|---------|--------------|
-| `WEBSOCKET_URL` | `""` (auto-detect) | WebSocket server URL, e.g. `ws://localhost:3001`. |
-| `WEBSOCKET_RECONNECT_INTERVAL` | `3000` | Milliseconds between reconnect attempts. |
-| `WEBSOCKET_MAX_RECONNECT_ATTEMPTS` | `10` | Set to `-1` for infinite retries. |
+| Env Var                            | Default            | Description                                       |
+| ---------------------------------- | ------------------ | ------------------------------------------------- |
+| `WEBSOCKET_URL`                    | `""` (auto-detect) | WebSocket server URL, e.g. `ws://localhost:3001`. |
+| `WEBSOCKET_RECONNECT_INTERVAL`     | `3000`             | Milliseconds between reconnect attempts.          |
+| `WEBSOCKET_MAX_RECONNECT_ATTEMPTS` | `10`               | Set to `-1` for infinite retries.                 |
 
 ## Authentication
 
@@ -255,7 +269,9 @@ Set `secure: true` on `$websocket` to require authentication, and `maxConnection
 ```typescript
 chat = $websocket({
   channel: this.channels.chatChannel,
-  handler: async ({ userId, message, reply }) => { /* ... */ },
+  handler: async ({ userId, message, reply }) => {
+    /* ... */
+  },
   secure: true,
   maxConnectionsPerUser: 3,
 });
@@ -278,13 +294,13 @@ Because Cloudflare allows only one room per connection (see below), joining mult
 
 ## Cloudflare (Durable Objects)
 
-On Cloudflare, `alepha/websocket` is backed by one **Durable Object per `channelPath:roomId`**, using the WebSocket Hibernation API so idle rooms cost nothing and survive isolate eviction. Your `$websocket` handler runs *inside* that Durable Object, so `reply()` is a local fan-out over the DO's own sockets - there is no cross-isolate hop, and no Redis or `alepha/topic` bus is needed. The Durable Object *is* the topic bus.
+On Cloudflare, `alepha/websocket` is backed by one **Durable Object per `channelPath:roomId`**, using the WebSocket Hibernation API so idle rooms cost nothing and survive isolate eviction. Your `$websocket` handler runs _inside_ that Durable Object, so `reply()` is a local fan-out over the DO's own sockets - there is no cross-isolate hop, and no Redis or `alepha/topic` bus is needed. The Durable Object _is_ the topic bus.
 
 This gives the same channel/handler code as Node, with a few v1 limitations worth knowing:
 
 **`emit` is room-scoped only.** `emit({ roomId })` and `emit({ roomIds })` work - each resolves to a Durable Object stub and calls its broadcast RPC. Targeting a `userId`/`connectionId`, or a channel-wide broadcast (no target at all), throws an `AlephaError` instead of silently doing nothing.
 
-**One room per connection.** A client socket is accepted by exactly one Durable Object, so a connection belongs to exactly one room - there is no equivalent of Node's multi-room connections. This is the *portable contract*: code that only ever joins a single room per connection behaves identically on both providers. If you rely on Node's multi-room support, watch for its dev-mode warning before deploying to Cloudflare.
+**One room per connection.** A client socket is accepted by exactly one Durable Object, so a connection belongs to exactly one room - there is no equivalent of Node's multi-room connections. This is the _portable contract_: code that only ever joins a single room per connection behaves identically on both providers. If you rely on Node's multi-room support, watch for its dev-mode warning before deploying to Cloudflare.
 
 **`exceptUserIds` is not honored on Cloudflare.** `reply()`'s and `emit()`'s `exceptConnectionIds` work as expected; `exceptUserIds` is silently ignored by the Cloudflare provider (it only tracks connections, not the user index Node maintains). Use `exceptConnectionIds` if you need to exclude specific clients.
 
@@ -293,9 +309,16 @@ This gives the same channel/handler code as Node, with a few v1 limitations wort
 ```jsonc
 {
   "durable_objects": {
-    "bindings": [{ "name": "ALEPHA_WEBSOCKET", "class_name": "AlephaWebSocketDurableObject" }],
+    "bindings": [
+      {
+        "name": "ALEPHA_WEBSOCKET",
+        "class_name": "AlephaWebSocketDurableObject",
+      },
+    ],
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AlephaWebSocketDurableObject"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["AlephaWebSocketDurableObject"] },
+  ],
 }
 ```
 

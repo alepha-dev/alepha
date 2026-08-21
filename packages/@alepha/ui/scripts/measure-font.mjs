@@ -15,12 +15,12 @@
  */
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+
 import { chromium } from "@playwright/test";
 
 const require = createRequire(import.meta.url);
-const fontPath = require.resolve(
-  "@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
-);
+const fontPath =
+  require.resolve("@fontsource-variable/inter/files/inter-latin-wght-normal.woff2");
 const fontBase64 = readFileSync(fontPath).toString("base64");
 
 const SIZE = 13;

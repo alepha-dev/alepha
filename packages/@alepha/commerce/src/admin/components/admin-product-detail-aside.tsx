@@ -8,6 +8,7 @@ import {
 } from "@alepha/ui/components/detail/detail-aside";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useI18n } from "alepha/react/i18n";
+
 import type { AdminProductResource } from "../controllers/AdminProductController.ts";
 import { productImageUrl } from "./product-image-url.ts";
 

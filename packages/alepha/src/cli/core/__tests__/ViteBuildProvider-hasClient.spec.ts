@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
+
 import type { AppEntry } from "../providers/AppEntryProvider.ts";
 import { ViteBuildProvider } from "../providers/ViteBuildProvider.ts";
 

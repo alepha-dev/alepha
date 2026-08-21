@@ -1,10 +1,12 @@
 import { randomUUID } from "node:crypto";
+
 import { $inject, Alepha, z } from "alepha";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { $issuer, $secure, AlephaSecurity } from "alepha/security";
 import { $action, AlephaServer } from "alepha/server";
 import { describe, expect, it } from "vitest";
+
 import { users } from "../../users/entities/users.ts";
 import { AdminApiKeyController } from "../controllers/AdminApiKeyController.ts";
 import { AlephaApiKeys } from "../index.ts";
@@ -243,11 +245,6 @@ describe("ApiKeyService", () => {
     app.issuer.registerResolver(app.apiKeyService.createResolver());
 
     // Access the protected action using API key
-    const mockRequest = {
-      url: new URL(`http://localhost?api_key=${token}`),
-      headers: {},
-    };
-
     const userInfo = await app.apiKeyService.validate(token);
     expect(userInfo?.id).toBe(userId);
   });
@@ -415,14 +412,14 @@ describe("ApiKeyService", () => {
       roles: ["admin"],
     });
 
-    // Run validation and revocation concurrently
-    const [validationResult] = await Promise.all([
+    // Run validation and revocation concurrently. The validation may or may
+    // not win the race, so only what comes after is asserted.
+    await Promise.all([
       service.validate(token),
       service.revoke(apiKey.id, userId),
     ]);
 
-    // First validation may succeed (race condition)
-    // But subsequent validations should fail
+    // Subsequent validations must fail.
     const afterRevoke = await service.validate(token);
     expect(afterRevoke).toBeNull();
   });

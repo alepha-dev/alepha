@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+
 import { Alepha } from "alepha";
 import {
   $action,
@@ -7,6 +8,7 @@ import {
   UnauthorizedError,
 } from "alepha/server";
 import { describe, expect, it } from "vitest";
+
 import { $issuer, $secure, AlephaSecurity } from "../index.ts";
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -825,7 +827,7 @@ describe("$secure multiple roles (OR)", () => {
 
 describe("$secure check order", () => {
   it("should check issuer before role", async () => {
-    const { alepha, app, users } = setup();
+    const { alepha, app } = setup();
     await alepha.start();
 
     // User from wrong issuer with wrong role — error message should be about issuer, not role

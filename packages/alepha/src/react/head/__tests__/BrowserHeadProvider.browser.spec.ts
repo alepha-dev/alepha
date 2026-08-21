@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { beforeEach, describe, expect, it } from "vitest";
+
 import type { Head } from "../interfaces/Head.ts";
 import { BrowserHeadProvider } from "../providers/BrowserHeadProvider.ts";
 

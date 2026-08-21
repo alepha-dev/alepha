@@ -1,14 +1,16 @@
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useMemo, useState } from "react";
+
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { currentAreasAtom } from "@/web/app/atoms/currentAreasAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+
+import { QuestlineAreaColor } from "./questlineAreaColor.ts";
 import QuestlineDialog from "./QuestlineDialog.tsx";
+import { QuestlineLayout, type QuestlineNode } from "./questlineLayout.ts";
 import QuestlineStatBar from "./QuestlineStatBar.tsx";
 import QuestlineTrack from "./QuestlineTrack.tsx";
-import { QuestlineAreaColor } from "./questlineAreaColor.ts";
-import { QuestlineLayout, type QuestlineNode } from "./questlineLayout.ts";
 
 export interface QuestlineProps {
   /**

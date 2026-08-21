@@ -11,14 +11,15 @@ import { $serviceAccount } from "alepha/security";
 Allow to get an access token for a service account.
 
 You have some options to configure the service account:
+
 - a OAUTH2 URL using client credentials grant type
 - a JWT secret shared between the services
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `gracePeriod` | `number; // Grace period in seconds before token expiration` | No |  |
+| Option        | Type                                                         | Required | Description |
+| ------------- | ------------------------------------------------------------ | -------- | ----------- |
+| `gracePeriod` | `number; // Grace period in seconds before token expiration` | No       |             |
 
 ## Examples
 
@@ -31,14 +32,15 @@ class MyService {
       url: "https://example.com/oauth2/token",
       clientId: "your-client-id",
       clientSecret: "your-client-secret",
-    }
+    },
   });
 
   async fetchData() {
     const token = await this.serviceAccount.token();
     // or
-    const response = await this.serviceAccount.fetch("https://api.example.com/data");
+    const response = await this.serviceAccount.fetch(
+      "https://api.example.com/data",
+    );
   }
 }
 ```
-

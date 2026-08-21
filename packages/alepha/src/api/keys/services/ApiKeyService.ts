@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+
 import { $inject, Alepha } from "alepha";
 import { $cache } from "alepha/cache";
 import { DateTimeProvider } from "alepha/datetime";
@@ -6,6 +7,7 @@ import { $logger } from "alepha/logger";
 import { $repository, type Page, RepositoryProvider, sql } from "alepha/orm";
 import type { IssuerResolver, UserInfo } from "alepha/security";
 import { ForbiddenError, type ServerRequest } from "alepha/server";
+
 import { type ApiKeyEntity, apiKeyEntity } from "../entities/apiKeyEntity.ts";
 
 export class ApiKeyService {

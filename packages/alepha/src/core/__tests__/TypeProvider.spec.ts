@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { Alepha } from "../Alepha.ts";
 import { z } from "../providers/TypeProvider.ts";
 
@@ -826,7 +827,7 @@ describe("TypeProvider", () => {
         // Bounds must be set explicitly via `.max()` (see next test).
         const schema = z.array(z.text());
 
-        const big = new Array(1001).fill("x");
+        const big = Array.from({ length: 1001 }, () => "x");
         expect(alepha.codec.decode(schema, big)).toEqual(big);
       });
 

@@ -13,6 +13,7 @@ npm install alepha
 Complete user management with multi-realm support for multi-tenant applications.
 
 **Features:**
+
 - User registration, login, and profile management
 - Password reset workflows
 - Email verification

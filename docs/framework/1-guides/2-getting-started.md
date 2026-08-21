@@ -21,7 +21,7 @@ This creates a `my-app` directory with:
 - `package.json` with Alepha as a dependency
 - `tsconfig.json` configured for TypeScript
 - `alepha.config.ts` with documented build options
-- `biome.json` for formatting and linting
+- `.oxlintrc.json` and `.oxfmtrc.json` for linting and formatting
 - `src/api/` with an example controller
 - `src/web/` with a React router and page
 - `src/main.server.ts` and `src/main.browser.ts` as the entry files
@@ -253,7 +253,8 @@ my-app/
   alepha.config.ts          # Build and entry point configuration
   package.json
   tsconfig.json
-  biome.json
+  .oxlintrc.json
+  .oxfmtrc.json
   vite.config.ts            # Tailwind plugin + Vitest config
   src/
     main.server.ts          # Server entry point
@@ -312,9 +313,9 @@ projects skip the web scaffolding automatically.
 
 ### Entry Points
 
-| File | Purpose |
-|------|---------|
-| `main.server.ts` | Server entry point |
+| File              | Purpose             |
+| ----------------- | ------------------- |
+| `main.server.ts`  | Server entry point  |
 | `main.browser.ts` | Browser entry point |
 
 ### Scaling with Modules
@@ -344,12 +345,12 @@ src/
 
 ### Naming Conventions
 
-| Directory | Contains | Example files |
-|-----------|----------|---------------|
-| `controllers/` | API endpoints with `$action` | `UserController.ts` |
-| `services/` | Business logic | `UserService.ts` |
-| `entities/` | Database schemas with `$entity` | `userEntity.ts` |
-| `providers/` | External service wrappers | `StripeProvider.ts` |
-| `schemas/` | Shared Zod schemas | `userSchema.ts` |
-| `atoms/` | State definitions with `$atom` | `currentUserAtom.ts` |
-| `components/` | React components | `UserCard.tsx` |
+| Directory      | Contains                        | Example files        |
+| -------------- | ------------------------------- | -------------------- |
+| `controllers/` | API endpoints with `$action`    | `UserController.ts`  |
+| `services/`    | Business logic                  | `UserService.ts`     |
+| `entities/`    | Database schemas with `$entity` | `userEntity.ts`      |
+| `providers/`   | External service wrappers       | `StripeProvider.ts`  |
+| `schemas/`     | Shared Zod schemas              | `userSchema.ts`      |
+| `atoms/`       | State definitions with `$atom`  | `currentUserAtom.ts` |
+| `components/`  | React components                | `UserCard.tsx`       |

@@ -94,8 +94,6 @@ export class FakeProvider {
    * If a seed is provided, the faker instance is reseeded.
    */
   public configure(options: Partial<FakeOptions>): this {
-    const oldSeed = this.options.seed;
-
     this.options = {
       ...this.options,
       ...options,

@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
+
 import { Alepha } from "alepha";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
+
 import { PaymentError } from "../errors/PaymentError.ts";
 import { AlephaApiPayments } from "../index.ts";
 import { PaymentMethodService } from "../services/PaymentMethodService.ts";
@@ -59,11 +61,7 @@ describe("PaymentMethodService", () => {
     await alepha.start();
 
     const method1 = await service.addPaymentMethod(userId, orgId, "tok_visa");
-    const method2 = await service.addPaymentMethod(
-      userId,
-      orgId,
-      "tok_mastercard",
-    );
+    await service.addPaymentMethod(userId, orgId, "tok_mastercard");
 
     await service.setDefault(method1.id, userId);
 

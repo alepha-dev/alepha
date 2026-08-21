@@ -9,6 +9,7 @@ import { ClientOnly, useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Clock, Pause, Play } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";

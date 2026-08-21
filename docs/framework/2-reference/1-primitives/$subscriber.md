@@ -15,6 +15,7 @@ with custom handler logic, enabling scalable pub/sub architectures where multipl
 subscribers can react to the same events independently.
 
 **Key Features**
+
 - Seamless integration with any $topic primitive
 - Full type safety inherited from topic schema
 - Real-time message delivery when events are published
@@ -22,16 +23,17 @@ subscribers can react to the same events independently.
 - Support for multiple independent subscribers per topic
 
 **Common Use Cases**
+
 - Notification services and audit logging
 - Analytics and metrics collection
 - Data synchronization and real-time UI updates
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `topic` | `TopicPrimitive&lt;T&gt;` | Yes | The topic primitive that this subscriber will listen to for messages |
-| `handler` | `TopicHandler&lt;T&gt;` | Yes | Message handler function that processes individual messages from the topic |
+| Option    | Type                      | Required | Description                                                                |
+| --------- | ------------------------- | -------- | -------------------------------------------------------------------------- |
+| `topic`   | `TopicPrimitive&lt;T&gt;` | Yes      | The topic primitive that this subscriber will listen to for messages       |
+| `handler` | `TopicHandler&lt;T&gt;`   | Yes      | Message handler function that processes individual messages from the topic |
 
 ## Examples
 
@@ -45,9 +47,9 @@ class UserActivityService {
       payload: z.object({
         userId: z.text(),
         action: z.enum(["login", "logout", "purchase"]),
-        timestamp: z.number()
-      })
-    }
+        timestamp: z.number(),
+      }),
+    },
   });
 
   activityLogger = $subscriber({
@@ -57,18 +59,17 @@ class UserActivityService {
       await this.auditLogger.log({
         userId,
         action,
-        timestamp
+        timestamp,
       });
-    }
+    },
   });
 
   async trackUserLogin(userId: string) {
     await this.userEvents.publish({
       userId,
       action: "login",
-      timestamp: this.dateTime.nowMillis()
+      timestamp: this.dateTime.nowMillis(),
     });
   }
 }
 ```
-

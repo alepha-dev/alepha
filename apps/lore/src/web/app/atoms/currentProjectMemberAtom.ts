@@ -1,4 +1,5 @@
 import { $atom } from "alepha";
+
 import { members } from "@/api/entities/members.ts";
 
 export const currentProjectMemberAtom = $atom({

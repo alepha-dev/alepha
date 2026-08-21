@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+
 import type { DevMetadata } from "../../../schemas/DevMetadata.ts";
 
 export interface CommandPaletteProps {
@@ -86,9 +87,13 @@ export const CommandPalette = (props: CommandPaletteProps) => {
     return pool.slice(0, 40);
   }, [entries, query]);
 
-  useEffect(() => {
+  // Reset the highlight when the query changes, during render so it never
+  // points at a row the new results no longer contain.
+  const [cursorQuery, setCursorQuery] = useState(query);
+  if (query !== cursorQuery) {
+    setCursorQuery(query);
     setCursor(0);
-  }, [query]);
+  }
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {

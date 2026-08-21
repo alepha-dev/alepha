@@ -1,6 +1,7 @@
 import { type Alepha, SchemaValidationError, z } from "alepha";
 import { eq } from "drizzle-orm";
 import { expect } from "vitest";
+
 import { $entity, $repository, db, sql } from "../core/index.ts";
 
 const userEntity = $entity({

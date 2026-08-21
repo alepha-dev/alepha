@@ -4,6 +4,7 @@ import {
   MemoryDestinationProvider,
 } from "alepha/logger";
 import { describe, expect, it } from "vitest";
+
 import {
   $command,
   AlephaCommand,

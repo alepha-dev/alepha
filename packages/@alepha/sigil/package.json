@@ -1,20 +1,30 @@
 {
   "name": "@alepha/sigil",
+  "version": "0.20.1",
   "private": true,
   "description": "Reports page views, vitals and errors from an Alepha app to a Sigil instance.",
-  "author": "Nicolas Foures",
-  "version": "0.20.1",
-  "type": "module",
-  "engines": {
-    "node": ">=22.0.0"
-  },
+  "keywords": [
+    "alepha",
+    "analytics",
+    "errors",
+    "observability",
+    "sigil",
+    "typescript"
+  ],
+  "homepage": "https://alepha.dev",
   "license": "MIT",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "author": "Nicolas Foures",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/feunard/alepha.git"
+  },
   "files": [
     "dist",
     "src"
   ],
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "exports": {
     ".": {
       "types": "./src/index.ts",
@@ -36,6 +46,12 @@
     "./paths": "./src/shared/sigilPaths.ts",
     "./scrub": "./src/shared/sigilScrubUrl.ts"
   },
+  "scripts": {
+    "lint": "alepha lint",
+    "typecheck": "alepha typecheck",
+    "test": "alepha test",
+    "build": "tsdown"
+  },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
@@ -53,24 +69,8 @@
     "react": "*",
     "react-dom": "*"
   },
-  "scripts": {
-    "lint": "alepha lint",
-    "typecheck": "alepha typecheck",
-    "test": "alepha test",
-    "build": "tsdown"
+  "engines": {
+    "node": ">=22.0.0"
   },
-  "homepage": "https://alepha.dev",
-  "llms": "https://alepha.dev/llms.txt",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/feunard/alepha.git"
-  },
-  "keywords": [
-    "alepha",
-    "sigil",
-    "analytics",
-    "errors",
-    "observability",
-    "typescript"
-  ]
+  "llms": "https://alepha.dev/llms.txt"
 }

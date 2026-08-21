@@ -5,6 +5,7 @@ import { AlephaContext } from "alepha/react";
 import { LinkProvider } from "alepha/server/links";
 import type React from "react";
 import { describe, it } from "vitest";
+
 import { useElementLinks } from "./useElementLinks.ts";
 
 interface FakeQuest {
@@ -31,8 +32,8 @@ class FakeLinkProvider extends LinkProvider {
   epics: Array<{ id: number; number: number; title: string }> = [];
   plannedEpicIds = new Set<number>();
 
-  // biome-ignore lint/suspicious/noExplicitAny: matches the real client's own loose virtual-action shape
-  override client<T extends object>(): any {
+  // matches the real client's own loose virtual-action shape
+  override client(): any {
     return {
       list: async () => [],
       listAllDirectories: async () => [],

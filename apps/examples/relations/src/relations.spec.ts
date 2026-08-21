@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { $repositories, $repository } from "alepha/orm";
 import { beforeEach, describe, expect, it } from "vitest";
+
 import { characters } from "./entities/characters.ts";
 import { users } from "./entities/users.ts";
 import { relations } from "./relations.ts";
@@ -372,7 +373,7 @@ describe("relations", () => {
       expect(Object.keys(found!).sort()).toEqual(["id", "title"]);
 
       // @ts-expect-error `ownerId` was not selected, so it is not on the type.
-      found?.ownerId;
+      void found?.ownerId;
     });
 
     it("works alongside include", async () => {
@@ -585,7 +586,7 @@ describe("relations", () => {
       });
       expect(plain.title).toBe("Plain");
       // @ts-expect-error nothing was included, so `owner` is not on the type.
-      plain.owner;
+      void plain.owner;
 
       const rich = await app.db.campaigns.create({
         data: { title: "Rich", ownerId: ana.id },
@@ -848,10 +849,10 @@ describe("relations", () => {
       expect(typeof level).toBe("number");
 
       // @ts-expect-error `owner` was not included, so it is not on the type.
-      found?.owner;
+      void found?.owner;
 
       // @ts-expect-error `user` was not included on the nested character.
-      found?.characters[0]?.user;
+      void found?.characters[0]?.user;
     });
 
     /**
@@ -878,7 +879,7 @@ describe("relations", () => {
       });
 
       // @ts-expect-error `characters` is an array, not a single row.
-      found?.characters.name;
+      void found?.characters.name;
 
       // @ts-expect-error `owner` is optional — it must be narrowed before use.
       const unchecked: string = found?.owner.email;
@@ -898,7 +899,7 @@ describe("relations", () => {
       expect(name).toBeDefined();
 
       // @ts-expect-error `level` was not selected on the relation.
-      found?.characters[0]?.level;
+      void found?.characters[0]?.level;
     });
 
     it("rejects a column that does not exist in select", async () => {

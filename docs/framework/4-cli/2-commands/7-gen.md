@@ -11,11 +11,11 @@ alepha gen openapi                  # print to stdout
 alepha gen openapi --out api.json   # write to a file
 ```
 
-| Flag | Description |
-|------|-------------|
+| Flag          | Description      |
+| ------------- | ---------------- |
 | `--out`, `-o` | Output file path |
 
-The `$swagger()` primitive is not required. The document is derived from your `$action` definitions, so `gen openapi` works on any app - it registers the swagger module for the duration of the command if you don't mount one. When `$swagger()` *is* present, its configuration (title, version, `excludeTags`, `rewrite`, …) is what gets emitted.
+The `$swagger()` primitive is not required. The document is derived from your `$action` definitions, so `gen openapi` works on any app - it registers the swagger module for the duration of the command if you don't mount one. When `$swagger()` _is_ present, its configuration (title, version, `excludeTags`, `rewrite`, …) is what gets emitted.
 
 ## env
 
@@ -37,8 +37,8 @@ Each variable comes with its description, its default value, whether it's requir
 #APP_SECRET=
 ```
 
-| Flag | Description |
-|------|-------------|
+| Flag          | Description                            |
+| ------------- | -------------------------------------- |
 | `--out`, `-o` | Output file path (e.g. `.env.example`) |
 
 This is the same `$env` metadata the [platform plugin](/docs/cli-plugins-platform) uses as its secret allowlist - declare variables with `$env` and every tool in the chain knows about them.
@@ -53,10 +53,10 @@ alepha gen changelog --from=1.0.0          # specific range
 alepha gen changelog --from=1.0.0 --to=main
 ```
 
-| Flag | Description |
-|------|-------------|
+| Flag           | Description                                                         |
+| -------------- | ------------------------------------------------------------------- |
 | `--from`, `-f` | Starting ref - tag, commit, or branch (default: latest version tag) |
-| `--to`, `-t` | Ending ref (default: `HEAD`) |
+| `--to`, `-t`   | Ending ref (default: `HEAD`)                                        |
 
 Only commits with a **type and a scope** are read - `feat(orm): …`, `fix(server): …`. Anything else is skipped, so work in progress can be committed without landing in release notes.
 
@@ -81,8 +81,8 @@ alepha.set(changelogOptions, {
 
 Scopes match on the segment before the first `/`, so `api` covers `api/users`. A commit with several scopes is published when any one of them is allowed, and lists only those - `fix(orm,internal)` prints as **orm**.
 
-| Option | Default | Meaning |
-|--------|---------|---------|
-| `types` | `["feat", "fix"]` | Types to publish, in section order |
-| `scopes` | *unset* | Scopes to publish; unset means all |
+| Option   | Default              | Meaning                                                 |
+| -------- | -------------------- | ------------------------------------------------------- |
+| `types`  | `["feat", "fix"]`    | Types to publish, in section order                      |
+| `scopes` | _unset_              | Scopes to publish; unset means all                      |
 | `ignore` | see `DEFAULT_IGNORE` | Scopes to exclude - applied only when `scopes` is unset |

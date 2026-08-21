@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { realmAuthSettingsAtom } from "../atoms/realmAuthSettingsAtom.ts";
 import { publicRealmSettingsSchema } from "./realmConfigSchema.ts";
 

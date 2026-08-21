@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, test } from "vitest";
+
 import { AlephaReactI18n } from "../index.ts";
 import { $dictionary } from "../primitives/$dictionary.ts";
 import { I18nProvider } from "../providers/I18nProvider.ts";
@@ -26,7 +27,7 @@ describe("I18n Integration Tests", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
 
     expect(enLoaded).toBe(false);
     expect(frLoaded).toBe(false);
@@ -47,7 +48,7 @@ describe("I18n Integration Tests", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
 
     const i18n1 = alepha.inject(I18nProvider);
     const i18n2 = alepha.inject(I18nProvider);
@@ -84,7 +85,7 @@ describe("I18n Integration Tests", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
 
     await alepha.start();
@@ -134,7 +135,7 @@ describe("I18n Integration Tests", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
 
     await alepha.start();
@@ -164,7 +165,7 @@ describe("I18n Integration Tests", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
 
     await alepha.start();
@@ -187,7 +188,7 @@ describe("I18n Integration Tests", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
 
     await alepha.start();
@@ -218,7 +219,7 @@ describe("I18n Integration Tests", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
 
     await alepha.start();

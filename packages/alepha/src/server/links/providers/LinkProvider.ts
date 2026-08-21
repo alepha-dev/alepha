@@ -21,6 +21,7 @@ import {
   type SseStream,
   UnauthorizedError,
 } from "alepha/server";
+
 import { linkOptionsAtom } from "../atoms/linkOptionsAtom.ts";
 import {
   type ApiRegistryResponse,
@@ -467,21 +468,21 @@ export interface ClientScope {
 }
 
 export type HttpVirtualClient<T> = {
-  [K in keyof T as T[K] extends ActionPrimitive<RequestConfigSchema>
-    ? K
-    : never]: T[K] extends ActionPrimitive<infer Schema>
-    ? VirtualAction<Schema>
-    : never;
+  [
+    K in keyof T as T[K] extends ActionPrimitive<RequestConfigSchema>
+      ? K
+      : never
+  ]: T[K] extends ActionPrimitive<infer Schema> ? VirtualAction<Schema> : never;
 } & {
-  [K in keyof T as T[K] extends SsePrimitive<SseConfigSchema>
-    ? K
-    : never]: T[K] extends SsePrimitive<infer Schema>
-    ? VirtualSse<Schema>
-    : never;
+  [
+    K in keyof T as T[K] extends SsePrimitive<SseConfigSchema> ? K : never
+  ]: T[K] extends SsePrimitive<infer Schema> ? VirtualSse<Schema> : never;
 };
 
-export interface VirtualAction<T extends RequestConfigSchema>
-  extends Pick<ActionPrimitive<T>, "name" | "run" | "fetch"> {
+export interface VirtualAction<T extends RequestConfigSchema> extends Pick<
+  ActionPrimitive<T>,
+  "name" | "run" | "fetch"
+> {
   (
     config?: ClientRequestEntry<T>,
     opts?: ClientRequestOptions,

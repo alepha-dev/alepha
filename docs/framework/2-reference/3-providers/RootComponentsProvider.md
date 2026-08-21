@@ -14,4 +14,3 @@ render on every page (siblings of the page view, inside AlephaContext).
 A module pushes into `rootComponents` from its `register` hook; the array
 is rendered by `ReactPageProvider.root()`. SSR-safe (same element feeds
 server render + client hydrate).
-

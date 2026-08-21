@@ -56,6 +56,10 @@ export const useJobs = (pollMs = 5000) => {
   }, [http]);
 
   useEffect(() => {
+    // An effect that starts an I/O load is the "synchronize with an external
+    // system" case the rule exempts; it reports it because the loader flips
+    // `loading` before its first await.
+    // oxlint-disable-next-line react/set-state-in-effect
     load();
     const id = setInterval(load, pollMs);
     return () => clearInterval(id);

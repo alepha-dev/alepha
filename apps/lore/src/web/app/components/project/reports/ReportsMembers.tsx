@@ -9,7 +9,9 @@ import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+
 import type { reportsMembersSchema } from "@/api/schemas/reportsSchemas.ts";
+
 import type { I18n } from "../../../services/I18n.ts";
 import { UserAvatar } from "../../shared/UserAvatar.tsx";
 import ReportsSection from "./ReportsSection.tsx";

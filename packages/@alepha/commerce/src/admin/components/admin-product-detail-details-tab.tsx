@@ -91,7 +91,7 @@ export const AdminProductDetailDetailsTab = (
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           {rows.map((row, index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional
+            // rows are positional
             // and a key may legitimately be empty while it is being typed.
             <div key={index} className="flex items-center gap-2">
               <Input

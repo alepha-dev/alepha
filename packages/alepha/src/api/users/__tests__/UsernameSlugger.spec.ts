@@ -2,6 +2,7 @@ import { Alepha } from "alepha";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { AlephaSecurity } from "alepha/security";
 import { describe, expect, it } from "vitest";
+
 import { realmAuthSettingsAtom } from "../atoms/realmAuthSettingsAtom.ts";
 import { AlephaApiUsers, RealmProvider, UsernameSlugger } from "../index.ts";
 

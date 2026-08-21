@@ -4,6 +4,7 @@ import { AlephaDateTime } from "alepha/datetime";
 import { AlephaContext } from "alepha/react";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
+
 import { useQuery } from "../hooks/useQuery.ts";
 
 describe("useQuery callback identity", () => {

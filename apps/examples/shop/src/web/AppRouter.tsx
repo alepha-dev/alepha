@@ -12,6 +12,7 @@ import { Tr } from "alepha/react/i18n";
 import { $page, Redirection } from "alepha/react/router";
 import { $client } from "alepha/server/links";
 import { Gem, Package, Truck } from "lucide-react";
+
 import { Layout } from "./Layout.tsx";
 
 /**

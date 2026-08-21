@@ -15,4 +15,3 @@ flash of expanded-then-collapsed when the user prefers a collapsed shell.
 ## Examples
 
 const { collapsed, setCollapsed, toggle } = useSidebarState();
-

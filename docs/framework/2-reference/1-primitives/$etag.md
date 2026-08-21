@@ -47,8 +47,7 @@ to another. Anonymous callers share a single entry.
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `store` | `true \| DurationLike \| CachePrimitiveOptions` | No | If true, enables storing cached responses |
-| `etag` | `true` | No | If true, enables ETag support for the cached responses. |
-
+| Option  | Type                                            | Required | Description                                             |
+| ------- | ----------------------------------------------- | -------- | ------------------------------------------------------- |
+| `store` | `true \| DurationLike \| CachePrimitiveOptions` | No       | If true, enables storing cached responses               |
+| `etag`  | `true`                                          | No       | If true, enables ETag support for the cached responses. |

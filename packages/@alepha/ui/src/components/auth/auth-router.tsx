@@ -1,6 +1,7 @@
 import type { RealmController } from "alepha/api/users";
 import { $page } from "alepha/react/router";
 import { $client } from "alepha/server/links";
+
 import { AuthLogin } from "./auth-login.tsx";
 import { AuthRegister } from "./auth-register.tsx";
 import { AuthResetPassword } from "./auth-reset-password.tsx";

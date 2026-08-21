@@ -2,6 +2,7 @@ import { Badge } from "@alepha/ui/components/ui/badge";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { AlertTriangle, Sparkles } from "lucide-react";
+
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
 export interface KanbanCardProps {

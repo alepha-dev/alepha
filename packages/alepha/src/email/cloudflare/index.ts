@@ -1,5 +1,6 @@
 import { $module, type Alepha } from "alepha";
 import { AlephaEmail, EmailProvider } from "alepha/email";
+
 import { CloudflareEmailProvider } from "./providers/CloudflareEmailProvider.ts";
 
 // Exports

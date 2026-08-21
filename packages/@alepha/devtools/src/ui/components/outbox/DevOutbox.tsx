@@ -4,6 +4,7 @@ import { useQueryParams } from "alepha/react/router";
 import { HttpClient } from "alepha/server";
 import { Mail, MessageSquare } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
 import { DevEmpty } from "../shared/DevEmpty.tsx";
 import { OutboxDetail } from "./OutboxDetail.tsx";
 
@@ -74,6 +75,10 @@ export const DevOutbox = () => {
   }, [http]);
 
   useEffect(() => {
+    // An effect that starts an I/O load is the "synchronize with an external
+    // system" case the rule exempts; it reports it because the loader flips
+    // `loading` before its first await.
+    // oxlint-disable-next-line react/set-state-in-effect
     fetchAll();
     const id = setInterval(fetchAll, 5000);
     return () => clearInterval(id);

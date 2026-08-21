@@ -51,11 +51,11 @@ plugin — none of it reaches a production build.
 This project uses the \`saas\` preset, so three routers from \`@alepha/ui\` are
 registered in \`src/web/index.ts\` and mount pages of their own:
 
-| Route | Router | Source |
-|---|---|---|
-| \`/auth/*\` | \`AuthRouter\` | \`@alepha/ui/components/auth/auth-router\` |
+| Route        | Router          | Source                                         |
+| ------------ | --------------- | ---------------------------------------------- |
+| \`/auth/*\`    | \`AuthRouter\`    | \`@alepha/ui/components/auth/auth-router\`       |
 | \`/account/*\` | \`AccountRouter\` | \`@alepha/ui/components/account/account-router\` |
-| \`/admin/*\` | \`AdminRouter\` | \`@alepha/ui/components/admin/admin-router\` |
+| \`/admin/*\`   | \`AdminRouter\`   | \`@alepha/ui/components/admin/admin-router\`     |
 
 **These pages are not in \`src/web/\`.** Don't write your own login or admin
 screen — extend the shells instead: \`$pageAdmin\` and \`$pageAccount\` add a page
@@ -67,12 +67,12 @@ goes through \`adminRouterOptionsAtom\` / \`accountRouterOptionsAtom\`, set with
 
 - \`settings.adminEmails\` — the first registration matching one of these is
   promoted to admin. It reads \`ADMIN_EMAIL\`; init wrote your \`git config
-  user.email\` into \`.env\`, so registering with that address locally makes you
+user.email\` into \`.env\`, so registering with that address locally makes you
   admin. Every deployed environment must set its own \`ADMIN_EMAIL\`, and one
   that does not promotes nobody.
 - \`features\` — \`audits\` and \`apiKeys\` are on; \`jobs\`, \`notifications\`,
   \`avatars\`, \`parameters\` and \`oauth\` each need a provider first. Turning one
-  on registers its module *and* makes its admin/account screens appear.
+  on registers its module _and_ makes its admin/account screens appear.
 - \`verifyEmailRequired\` / \`verifyPhoneRequired\` / \`resetPasswordAllowed\`
   each need \`features.notifications\`, because each completes by sending a
   code. Setting one without it refuses to boot rather than running with the

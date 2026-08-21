@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+
 import { SIGIL_FEEDBACK_CONTEXT_MAX_LEN } from "../../shared/sigilFeedbackContext.ts";
 import {
   SIGIL_FEEDBACK_POSITION_DEFAULT,

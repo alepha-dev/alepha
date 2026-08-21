@@ -1,4 +1,5 @@
 import { $atom, $store, type Infer } from "alepha";
+
 import {
   type VerificationSettings,
   verificationSettingsSchema,

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+
 import { Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
 import {
@@ -11,6 +12,7 @@ import { MemoryEmailProvider } from "alepha/email";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
+
 import { CartService } from "../cart/services/CartService.ts";
 import { checkoutSessions } from "../checkout/entities/checkoutSessions.ts";
 import { CheckoutService } from "../checkout/services/CheckoutService.ts";
@@ -126,70 +128,74 @@ const recoveryFor = (probe: RecoveryProbe, cartId: string) =>
     );
 
 describe("cart recovery sequence", () => {
-  it("reminds twice, then marks the checkout abandoned", {
-    timeout: 30_000,
-  }, async ({ expect }) => {
-    const ctx = await setup();
-    const { cartId, sessionId } = await openCheckout(ctx);
+  it(
+    "reminds twice, then marks the checkout abandoned",
+    {
+      timeout: 30_000,
+    },
+    async ({ expect }) => {
+      const ctx = await setup();
+      const { cartId, sessionId } = await openCheckout(ctx);
 
-    // The sequence exists and is parked on its first delay.
-    const parked = await waitFor(
-      () => recoveryFor(ctx.probe, cartId),
-      (e) => Boolean(e),
-      { label: "recovery sequence started" },
-    );
-    // Running, with its first step parked on the delay — no mail yet.
-    expect(parked?.status).toBe("running");
-    expect(ctx.mail.records).toHaveLength(0);
+      // The sequence exists and is parked on its first delay.
+      const parked = await waitFor(
+        () => recoveryFor(ctx.probe, cartId),
+        (e) => Boolean(e),
+        { label: "recovery sequence started" },
+      );
+      // Running, with its first step parked on the delay — no mail yet.
+      expect(parked?.status).toBe("running");
+      expect(ctx.mail.records).toHaveLength(0);
 
-    // First reminder after ~1h.
-    await waitForParked(ctx.probe, parked!.id, "firstReminder");
-    await ctx.dt.travel([61, "minute"]);
-    // Post-travel the clock is frozen: nudge the sweep while polling, so
-    // a delivery lost to the travel storm is re-derived from the rows.
-    await waitFor(
-      async () => {
-        await ctx.alepha.inject(WorkflowProvider).recoverySweep();
-        return ctx.mail.records.length;
-      },
-      (n) => n >= 1,
-      { label: "first reminder sent", interval: 100 },
-    );
-    expect(ctx.mail.records[0]!.to).toBe("camille@example.com");
-    expect(ctx.mail.records[0]!.subject).toContain("panier");
+      // First reminder after ~1h.
+      await waitForParked(ctx.probe, parked!.id, "firstReminder");
+      await ctx.dt.travel([61, "minute"]);
+      // Post-travel the clock is frozen: nudge the sweep while polling, so
+      // a delivery lost to the travel storm is re-derived from the rows.
+      await waitFor(
+        async () => {
+          await ctx.alepha.inject(WorkflowProvider).recoverySweep();
+          return ctx.mail.records.length;
+        },
+        (n) => n >= 1,
+        { label: "first reminder sent", interval: 100 },
+      );
+      expect(ctx.mail.records[0]!.to).toBe("camille@example.com");
+      expect(ctx.mail.records[0]!.subject).toContain("panier");
 
-    // Second reminder after ~23h more.
-    await waitForParked(ctx.probe, parked!.id, "secondReminder");
-    await ctx.dt.travel([24, "hour"]);
-    await waitFor(
-      async () => {
-        await ctx.alepha.inject(WorkflowProvider).recoverySweep();
-        return ctx.mail.records.length;
-      },
-      (n) => n >= 2,
-      { label: "second reminder sent", interval: 100 },
-    );
+      // Second reminder after ~23h more.
+      await waitForParked(ctx.probe, parked!.id, "secondReminder");
+      await ctx.dt.travel([24, "hour"]);
+      await waitFor(
+        async () => {
+          await ctx.alepha.inject(WorkflowProvider).recoverySweep();
+          return ctx.mail.records.length;
+        },
+        (n) => n >= 2,
+        { label: "second reminder sent", interval: 100 },
+      );
 
-    // Abandon after ~24h more.
-    await waitForParked(ctx.probe, parked!.id, "markAbandoned");
-    await ctx.dt.travel([25, "hour"]);
-    await waitFor(
-      async () => {
-        await ctx.alepha.inject(WorkflowProvider).recoverySweep();
-        return (await ctx.probe.sessions.findById(sessionId))?.status;
-      },
-      (s) => s === "abandoned",
-      { label: "session marked abandoned", interval: 100 },
-    );
+      // Abandon after ~24h more.
+      await waitForParked(ctx.probe, parked!.id, "markAbandoned");
+      await ctx.dt.travel([25, "hour"]);
+      await waitFor(
+        async () => {
+          await ctx.alepha.inject(WorkflowProvider).recoverySweep();
+          return (await ctx.probe.sessions.findById(sessionId))?.status;
+        },
+        (s) => s === "abandoned",
+        { label: "session marked abandoned", interval: 100 },
+      );
 
-    const done = await waitFor(
-      () => recoveryFor(ctx.probe, cartId),
-      (e) => e?.status === "completed",
-      { label: "recovery sequence completed" },
-    );
-    expect(done?.status).toBe("completed");
-    expect(ctx.mail.records).toHaveLength(2);
-  });
+      const done = await waitFor(
+        () => recoveryFor(ctx.probe, cartId),
+        (e) => e?.status === "completed",
+        { label: "recovery sequence completed" },
+      );
+      expect(done?.status).toBe("completed");
+      expect(ctx.mail.records).toHaveLength(2);
+    },
+  );
 
   it("stands down the moment the checkout converts", async ({ expect }) => {
     const ctx = await setup();

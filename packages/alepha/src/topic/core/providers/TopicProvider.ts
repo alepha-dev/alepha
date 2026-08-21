@@ -2,6 +2,7 @@ import { $inject, Alepha } from "alepha";
 import { DateTimeProvider, type Timeout } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { TemplatedPathParser } from "alepha/router";
+
 import { TopicTimeoutError } from "../errors/TopicTimeoutError.ts";
 import { $subscriber } from "../primitives/$subscriber.ts";
 import {
@@ -248,5 +249,5 @@ export interface TopicPublishOptions {
   params?: Record<string, string>;
 }
 
-// biome-ignore lint/suspicious/noEmptyInterface: augmented by provider-specific modules (e.g. MqttTopicProvider)
+// augmented by provider-specific modules (e.g. MqttTopicProvider)
 export interface TopicSubscribeOptions {}

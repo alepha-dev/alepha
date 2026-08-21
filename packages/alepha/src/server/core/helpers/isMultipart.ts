@@ -1,4 +1,5 @@
 import { z } from "alepha";
+
 import type { RequestConfigSchema } from "../interfaces/ServerRequest.ts";
 
 /**

@@ -2,6 +2,7 @@ import { useInject } from "alepha/react";
 import { HttpClient } from "alepha/server";
 import { RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+
 import type { JobExecution } from "../../hooks/useJobs.ts";
 
 const STATUS_COLOR: Record<string, string> = {
@@ -86,6 +87,9 @@ export const JobExecutions = (props: JobExecutionsProps) => {
   }, [http, props.jobName]);
 
   useEffect(() => {
+    // Clearing the selection belongs with the reload that invalidates it: the
+    // rows it pointed at are about to be replaced.
+    // oxlint-disable-next-line react/set-state-in-effect
     setSelected(null);
     load();
     const id = setInterval(load, 5000);

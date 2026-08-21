@@ -13,6 +13,7 @@ npm install alepha
 Provides declarative routing with the `$page` primitive for building type-safe React routes.
 
 This module enables:
+
 - URL pattern matching with parameters (e.g., `/users/:id`)
 - Nested routing with parent-child relationships
 - Type-safe URL parameter and query string validation
@@ -51,6 +52,6 @@ This module enables:
 
 Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
 
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `REACT_SSR_ENABLED` | boolean | - | Enable or disable server-side rendering (SSR) for React pages. When set to false, pages are rendered client-side only. |
+| Variable            | Type    | Default | Description                                                                                                            |
+| ------------------- | ------- | ------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `REACT_SSR_ENABLED` | boolean | -       | Enable or disable server-side rendering (SSR) for React pages. When set to false, pages are rendered client-side only. |

@@ -8,18 +8,18 @@ The same application code works against any provider - swap implementations with
 
 Three entities anchor the data:
 
-| Entity | Role |
-|---|---|
+| Entity           | Role                                                                                                                                                                                      |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `paymentIntents` | The unit of value transfer. Tracks status across the lifecycle: `created → processing → authorized → captured → refunded` (with branches for `failed`, `voided`, `cancelled`, `expired`). |
-| `paymentMethods` | Saved cards / mandates tied to a user, with provider reference + masked metadata (`brand`, `last4`, `expMonth`, `expYear`). |
-| `refunds` | Per-refund records linked to a captured intent. Supports partial and multi-step refunds. |
+| `paymentMethods` | Saved cards / mandates tied to a user, with provider reference + masked metadata (`brand`, `last4`, `expMonth`, `expYear`).                                                               |
+| `refunds`        | Per-refund records linked to a captured intent. Supports partial and multi-step refunds.                                                                                                  |
 
 Every state transition emits a hook on Alepha's event bus:
 
 ```typescript
-"payments:authorized" | "payments:captured" | "payments:failed"
-"payments:voided" | "payments:refunded" | "payments:cancelled"
-"payments:expired"
+"payments:authorized" | "payments:captured" | "payments:failed";
+"payments:voided" | "payments:refunded" | "payments:cancelled";
+("payments:expired");
 ```
 
 `payments:expired` is emitted by the stale-intent sweep described above - wire it if your fulfilment or notification code needs to release a reservation when a checkout is abandoned.
@@ -150,14 +150,16 @@ With no provider configured, the `MemoryPaymentProvider` is wired in. `createSes
 In tests, inject a fresh memory provider and assert against its in-memory state:
 
 ```typescript
-import { AlephaApiPayments, MemoryPaymentProvider, PaymentProvider } from "alepha/api/payments";
+import {
+  AlephaApiPayments,
+  MemoryPaymentProvider,
+  PaymentProvider,
+} from "alepha/api/payments";
 
-const alepha = Alepha.create()
-  .with(AlephaApiPayments)
-  .with({
-    provide: PaymentProvider,
-    use: MemoryPaymentProvider,
-  });
+const alepha = Alepha.create().with(AlephaApiPayments).with({
+  provide: PaymentProvider,
+  use: MemoryPaymentProvider,
+});
 
 const provider = alepha.inject(MemoryPaymentProvider);
 expect(provider.wasCharged(intent.providerRef)).toBe(true);

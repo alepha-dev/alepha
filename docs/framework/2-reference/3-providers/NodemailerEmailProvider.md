@@ -11,6 +11,7 @@ import { NodemailerEmailProvider } from "alepha/email/smtp";
 Email provider using Nodemailer for SMTP transport.
 
 Configuration is provided via environment variables:
+
 - EMAIL_HOST: SMTP server host
 - EMAIL_PORT: SMTP server port (default: 587)
 - EMAIL_USER: SMTP authentication username
@@ -19,4 +20,3 @@ Configuration is provided via environment variables:
 - EMAIL_SECURE: Use secure connection (default: false)
 
 Advanced pooling/rate limiting options can be configured via atom:
-

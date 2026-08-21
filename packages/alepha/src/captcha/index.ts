@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+
 import { CaptchaProvider } from "./providers/CaptchaProvider.ts";
 import { MemoryCaptchaProvider } from "./providers/MemoryCaptchaProvider.ts";
 import { TurnstileCaptchaProvider } from "./providers/TurnstileCaptchaProvider.ts";

@@ -1,5 +1,5 @@
 import { Copy, Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 export interface RecordFormProps {
   entity: any;
@@ -46,14 +46,27 @@ export const RecordForm = (props: RecordFormProps) => {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
+  // Re-seeded during render on a record change, so the form never shows the
+  // previous row's values for a frame.
+  const seed = {
+    record: props.record,
+    isNew: props.isNew,
+    entity: props.entity.name,
+  };
+  const [seededFrom, setSeededFrom] = useState(seed);
+  if (
+    seededFrom.record !== seed.record ||
+    seededFrom.isNew !== seed.isNew ||
+    seededFrom.entity !== seed.entity
+  ) {
+    setSeededFrom(seed);
     const next: Record<string, string> = {};
     for (const c of columns) {
       next[c.name] = props.isNew ? "" : toInput(props.record?.[c.name]);
     }
     setValues(next);
     setError(null);
-  }, [props.record, props.isNew, props.entity.name]);
+  }
 
   /**
    * Coerce back to the column's type before sending. Everything in an input is

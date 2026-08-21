@@ -1,4 +1,5 @@
 import type { Infer, ZObject } from "alepha";
+
 import type { EntityPrimitive } from "../primitives/$entity.ts";
 import type {
   EntitySchema,

@@ -1,5 +1,6 @@
 import { $inject, Alepha, z } from "alepha";
 import { BadRequestError, NotFoundError } from "alepha/server";
+
 import {
   $analytics,
   type AnalyticsPrimitive,

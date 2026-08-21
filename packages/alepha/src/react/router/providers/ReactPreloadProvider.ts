@@ -1,4 +1,5 @@
 import { $hook, $inject, Alepha } from "alepha";
+
 import { SSRManifestProvider } from "./SSRManifestProvider.ts";
 
 /**

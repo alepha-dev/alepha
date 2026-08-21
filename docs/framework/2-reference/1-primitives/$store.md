@@ -16,6 +16,7 @@ property is reactive: it re-reads on every access, so a mutation made
 elsewhere is visible immediately.
 
 Accepts either side of the state model:
+
 - an `Atom` - read from the store, and registered on first use if it
   was not already
 - a `Computed` - derived from its dependencies on every read. Computed
@@ -27,6 +28,7 @@ reading a derived value without wiring its dependencies by hand.
 ## Examples
 
 Reading an atom
+
 ```ts
 const userState = $atom({
   name: "user.state",
@@ -44,6 +46,7 @@ class UserService {
 ```
 
 Reading a computed
+
 ```ts
 const cartTotal = $computed({
   name: "cart.total",
@@ -55,4 +58,3 @@ class CheckoutService {
   total = $store(cartTotal); // number, re-derived on every read
 }
 ```
-

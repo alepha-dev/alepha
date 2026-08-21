@@ -5,6 +5,7 @@ import {
   generateKeyPair,
 } from "jose";
 import { describe, expect, it } from "vitest";
+
 import { signAppleClientSecret } from "../helpers/appleClientSecret.ts";
 
 describe("apple client secret", () => {

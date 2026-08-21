@@ -1,8 +1,7 @@
 import {
   type PropsWithChildren,
   type ReactNode,
-  useEffect,
-  useState,
+  useSyncExternalStore,
 } from "react";
 
 export interface ClientOnlyProps {
@@ -35,9 +34,15 @@ export interface ClientOnlyProps {
  * ```
  */
 const ClientOnly = (props: PropsWithChildren<ClientOnlyProps>) => {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  // `useSyncExternalStore` rather than a `useState` + `useEffect` mount flag:
+  // it reports `false` for both the server render and the hydration pass, then
+  // `true`, which is exactly the mount flag's behaviour minus the extra state
+  // and the effect that React now flags as a cascading render.
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   if (props.disabled) {
     return props.children;

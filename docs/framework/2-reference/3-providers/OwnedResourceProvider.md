@@ -19,9 +19,15 @@ class CampaignController {
 
   read = $action({
     path: "/campaigns/:id",
-    use: [$secure(), $owns({ repository: () => this.campaigns, param: "id", owner: "createdBy" })],
+    use: [
+      $secure(),
+      $owns({
+        repository: () => this.campaigns,
+        param: "id",
+        owner: "createdBy",
+      }),
+    ],
     handler: async () => this.owned.get<Campaign>(),
   });
 }
 ```
-

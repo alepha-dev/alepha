@@ -2,6 +2,7 @@ import { $atom, $inject, $store, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { JwtProvider } from "alepha/security";
 import { $route } from "alepha/server";
+
 import { renderConsentPage } from "../helpers/consentPage.ts";
 import {
   buildAuthorizationServerMetadata,

@@ -1,5 +1,6 @@
 import { $module } from "alepha";
 import { AlephaServer } from "alepha/server";
+
 import { $serve } from "./primitives/$serve.ts";
 import { ServerStaticProvider } from "./providers/ServerStaticProvider.ts";
 

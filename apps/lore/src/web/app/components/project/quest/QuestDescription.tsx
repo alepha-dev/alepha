@@ -1,6 +1,8 @@
 import { useStore } from "alepha/react";
+
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+
 import LoreViewer from "../../shared/element/LoreViewer.tsx";
 import { useReadingFonts } from "../../shared/useReadingFonts.ts";
 

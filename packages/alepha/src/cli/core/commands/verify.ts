@@ -1,6 +1,7 @@
 import { $inject } from "alepha";
 import { $command } from "alepha/command";
 import { FileSystemProvider } from "alepha/system";
+
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 
@@ -37,7 +38,7 @@ export class VerifyCommand {
    *
    * This command runs the following checks in order:
    * - Clean the project
-   * - Format and lint the code (Biome, one pass)
+   * - Format and lint the code (oxlint then oxfmt, one pass)
    * - Type check the code
    * - Run tests (skipped when the project has no spec files)
    * - Check database migrations (always; returns cleanly with no database)

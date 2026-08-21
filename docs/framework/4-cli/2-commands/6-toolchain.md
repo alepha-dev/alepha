@@ -1,6 +1,6 @@
 # Toolchain Commands
 
-Test, lint, typecheck, clean. The everyday commands, each backed by a tool that ships embedded in `alepha` - your project never declares Vitest, Biome, or TypeScript as dependencies, and upgrading `alepha` moves the whole toolchain at once.
+Test, lint, typecheck, clean. The everyday commands, each backed by a tool that ships embedded in `alepha` - your project never declares Vitest, oxlint, oxfmt, or TypeScript as dependencies, and upgrading `alepha` moves the whole toolchain at once.
 
 ## test
 
@@ -12,8 +12,8 @@ alepha test user                  # only specs whose path matches "user"
 alepha test test/auth.spec.ts     # a single file
 ```
 
-| Flag | Description |
-|------|-------------|
+| Flag             | Description                  |
+| ---------------- | ---------------------------- |
 | `--config`, `-c` | Path to a Vitest config file |
 
 Extra Vitest arguments go through the `VITEST_ARGS` environment variable:
@@ -26,13 +26,17 @@ Write specs in `test/` or co-locate them as `*.spec.ts` next to your source - bo
 
 ## lint
 
-Format and lint with Biome (`biome check --fix`). Auto-fixes formatting and import order; remaining issues are reported.
+Lint with [oxlint](https://oxc.rs/docs/guide/usage/linter.html), then format with [oxfmt](https://oxc.rs/docs/guide/usage/formatter.html) - two passes of one command:
 
 ```bash
 alepha lint
 ```
 
-A `biome.json` is created if missing, so the command works on a bare project.
+`oxlint --fix` applies every fix it can and reports what is left; `oxfmt` then formats and sorts imports. The order matters, because a lint fix (dropping an unused import, unwrapping a spread) rewrites code without regard for line width - formatting afterwards is what leaves the tree in a state the next `alepha lint` agrees with.
+
+Lint findings in the `correctness` category are **errors**, so `alepha lint` exits non-zero on a real bug and CI stops. Formatting differences are never an error - they are just fixed.
+
+`.oxlintrc.json` and `.oxfmtrc.json` are created if missing, so the command works on a bare project. Both, or neither: a formatter with no linter silently stops gating, and a linter with no formatter reformats to oxfmt's Prettier defaults, tabs included.
 
 ## typecheck
 

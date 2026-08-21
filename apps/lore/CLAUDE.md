@@ -18,7 +18,7 @@ The production Alepha Lore instance hosts the project we actually use to run thi
 
 **Write back what's worth keeping.** When a session produces a non-obvious decision, gotcha, or architectural fact about Lore/Alepha, persist it as a folio (`folio_create` / `folio_update` with a good `summary`). When in-flight work changes scope or completes, reflect it on the matching quest. Conversation history is ephemeral; folios and quests are the project's long-term memory.
 
-Lore's vocabulary has been renamed twice. Originally the codebase used the plain technical names `project`/`task`/`package`/`players`/`analytics`/`complexity`; a first rename swapped every one of those for RPG flavor — `campaign`/`quest`/`zone`/`member`/`chronicles`/`difficulty` — across code identifiers, DB tables, HTTP routes, MCP tools and URL params. The **2026-08 great rename** partially reversed that: the top-level container went back to the plain, technical **`project`** (campaign → project, `/c/:campaignId` → `/:projectSlug`, `campaign_*` MCP tools → `project_*`), because "campaign" read as more RPG-themed than the container itself deserved. The RPG vocabulary that describes the *work inside* a project was kept and in some cases sharpened: **quest**, member, folio, blight, sigil are all still RPG-flavored on purpose (the F/C/B/A/S difficulty ranks were part of that list until 2026-08-20, when the whole difficulty mechanic was erased — see "De-gamification" below). A later de-RPG pass (2026-08-09) then took **zone → `area`**: it named the functional part of the system a quest belongs to — "analogous to an Epic in Jira" by its own MCP description — and the map metaphor was carrying no weight. Column, route, `$page` name, MCP param and both locales moved together (FR: *Domaine*); the CSV importer still accepts a `zone` header so pre-rename exports keep working. Three other nouns were renamed in the same pass for clarity rather than theme: Petitions → **Feedback**, Chapters → **Milestones**, and Chronicles → **Reports** (with Reports▸Party → Reports▸Members). The old standalone "Archive" module (directory tree + blobs) was folded entirely into **Folios** — same entities, same MCP tools, one mental model instead of two. A **user** is the account; a **member** is that user's membership row in a project. Identity (name, picture) always comes from the account — the per-project "character" concept was removed in the 2026-07 de-gamification pass.
+Lore's vocabulary has been renamed twice. Originally the codebase used the plain technical names `project`/`task`/`package`/`players`/`analytics`/`complexity`; a first rename swapped every one of those for RPG flavor — `campaign`/`quest`/`zone`/`member`/`chronicles`/`difficulty` — across code identifiers, DB tables, HTTP routes, MCP tools and URL params. The **2026-08 great rename** partially reversed that: the top-level container went back to the plain, technical **`project`** (campaign → project, `/c/:campaignId` → `/:projectSlug`, `campaign_*` MCP tools → `project_*`), because "campaign" read as more RPG-themed than the container itself deserved. The RPG vocabulary that describes the _work inside_ a project was kept and in some cases sharpened: **quest**, member, folio, blight, sigil are all still RPG-flavored on purpose (the F/C/B/A/S difficulty ranks were part of that list until 2026-08-20, when the whole difficulty mechanic was erased — see "De-gamification" below). A later de-RPG pass (2026-08-09) then took **zone → `area`**: it named the functional part of the system a quest belongs to — "analogous to an Epic in Jira" by its own MCP description — and the map metaphor was carrying no weight. Column, route, `$page` name, MCP param and both locales moved together (FR: _Domaine_); the CSV importer still accepts a `zone` header so pre-rename exports keep working. Three other nouns were renamed in the same pass for clarity rather than theme: Petitions → **Feedback**, Chapters → **Milestones**, and Chronicles → **Reports** (with Reports▸Party → Reports▸Members). The old standalone "Archive" module (directory tree + blobs) was folded entirely into **Folios** — same entities, same MCP tools, one mental model instead of two. A **user** is the account; a **member** is that user's membership row in a project. Identity (name, picture) always comes from the account — the per-project "character" concept was removed in the 2026-07 de-gamification pass.
 
 All user-facing strings still go through `I18n.ts` for EN/FR localization.
 
@@ -73,43 +73,43 @@ apps/lore/                # This app
 
 Defined in `src/web/app/AppRouter.ts`. Route names (the `$page` keys) are what `router.path(...)` / `router.push(...)` consume.
 
-| Path | Route name | Page (lazy) | Notes |
-|------|------------|-------------|-------|
-| `/` | `home` | `home/Home.tsx` | Project list |
-| `/new-project` | `projectCreate` | `project/ProjectCreate.tsx` | New project form |
-| `/:projectSlug` | `project` | `project/ProjectView.tsx` | Project layout — sets `currentProjectAtom` + milestones/member/quests/feedback-count/blight-count/quest-count on load |
-| `/:projectSlug/` | `projectQuests` | `project/ProjectQuestsPage.tsx` | Quest list grouped by area; renders the kanban board instead when `questsViewAtom` says `kanban` (see "Kanban ↔ Header Communication" below — kanban is no longer its own route, and no longer a `?view=` param either) |
-| `/:projectSlug/milestones` | `projectMilestones` | `project/milestones/ProjectMilestones.tsx` | Milestones list |
-| `/:projectSlug/reports` | `projectReports` | `project/reports/ReportsLayout.tsx` | Reports layout |
-| `/:projectSlug/reports/` | `reportsOverview` | `project/reports/ReportsOverview.tsx` | Overview |
-| `/:projectSlug/reports/quests` | `reportsQuests` | `project/reports/ReportsQuests.tsx` | Quest analytics |
-| `/:projectSlug/reports/members` | `reportsMembers` | `project/reports/ReportsMembers.tsx` | Per-member contribution (was Reports▸Party) |
-| `/:projectSlug/feedback` | `projectFeedback` | `project/feedback/ProjectFeedback.tsx` | Owner inbox: triage bug/feature requests |
-| `/:projectSlug/blights` | `projectBlights` | `project/blights/ProjectBlights.tsx` | Crash-telemetry inbox (sigil-fed) |
-| `/:projectSlug/apps/:appName` | `projectApp` | `project/apps/AppLayout.tsx` | One enrolled app: tab bar + the range toggle every tab shares. Param is `:appName` — the app's **name**, not its id; the HTTP API still addresses a sigil by UUID (rotate, delete, `?sigilId=`). **Never** `:id` — see the router note below |
-| `/:projectSlug/apps/:appName/` | `app` | `project/apps/AppDashboard.tsx` | Headline numbers + the credential card |
-| `/:projectSlug/apps/:appName/analytics` | `appAnalytics` | `project/apps/AppAnalytics.tsx` | Page views, unique visitors, top pages/countries. 404 when this app's own `kinds` lacks `beacon` |
-| `/:projectSlug/apps/:appName/performance` | `appPerformance` | `project/apps/AppPerformance.tsx` | Web-vitals p75. 404 when this app's own `kinds` lacks `beacon` |
-| `/:projectSlug/apps/:appName/settings` | `appSettings` | `project/apps/AppSettings.tsx` | Capabilities card (per-app `kinds`) + rotate / delete this app (owner-only server-side) |
-| `/:projectSlug/quests/:shortId` | `projectQuest` | `project/quest/QuestView.tsx` | Quest detail (param is the integer `shortId`, not a UUID) |
-| `/:projectSlug/quests/:shortId/graph` | `projectQuestGraph` | `project/quest/QuestGraph.tsx` | Quest dependency graph |
-| `/:projectSlug/folios` | `projectFolios` | `folios/FoliosLayout.tsx` | The workspace with nothing open — tree + "no folio open" pane. The directory table (`FolioBrowser`) and its Recent Activity panel were deleted here: the tree is the only navigation now. Blob/activity ENDPOINTS are untouched, so blob support can return to the workspace without a server change |
-| `/:projectSlug/folios/new` | `projectFoliosNew` | `folios/FolioCreatePage.tsx` | New folio |
-| `/:projectSlug/folios/:shortId` | `projectFoliosFolio` | `folios/editor/FolioWorkspace.tsx` | Folio workspace — always-editable, summary/body, auto-saved. The old read-only `FolioView` + separate `/edit` route (`projectFoliosFolioEdit`) were merged into this one surface and the `/edit` route was deleted, not redirected |
-| `/:projectSlug/settings` | `projectSettings` | `project/settings/ProjectSettings.tsx` | Settings layout (sub-routes below) |
-| `/:projectSlug/settings/` | `projectSettingsBanner` | `…/ProjectSettingsGeneralPage.tsx` | General / banner |
-| `/:projectSlug/settings/members` | `projectSettingsMembers` | `…/ProjectSettingsMembersPage.tsx` | Members & pending invitations — the future home of per-member access rights |
-| `/:projectSlug/settings/areas` | `projectSettingsAreas` | `…/ProjectSettingsAreasPage.tsx` | Areas config |
-| `/:projectSlug/settings/kanban` | `projectSettingsKanban` | `…/ProjectSettingsKanbanPage.tsx` | Kanban columns config |
-| `/:projectSlug/settings/folios` | `projectSettingsFolios` | `…/ProjectSettingsFoliosPage.tsx` | Folios config |
-| `/:projectSlug/settings/feedback` | `projectSettingsFeedback` | `…/ProjectSettingsFeedbackPage.tsx` | `features.feedback` toggle — the module's own page now, split out of the Sigils page |
-| `/:projectSlug/settings/sigils` | `projectSettingsSigils` | `…/ProjectSettingsSigilsPage.tsx` | Sigil inventory — enrol (dialog) + list; master `features.sigils` toggle |
-| `/:projectSlug/settings/milestones` | `projectSettingsMilestones` | `…/ProjectSettingsMilestonesPage.tsx` | Milestone config |
-| `/:projectSlug/settings/quests` | `projectSettingsQuests` | `…/ProjectSettingsQuestsPage.tsx` | Per-quest module toggles (chrono / reminder) |
-| `/:projectSlug/request` | `projectFeedbackRequest` | `project/feedback/ProjectFeedbackRequest.tsx` | First-party feedback form (login required). Top-level, **not** nested under the `project` layout — no membership check |
-| `/account/feedback` | `myFeedback` | `account/feedback/MyFeedback.tsx` | A reporter's own submissions across all projects, declared in `src/web/app/components/account/LoreAccountRouter.ts` via `$pageAccount`, not in `AppRouter`. Detail is a drawer/sheet (`MyFeedbackEditSheet.tsx`), not a separate route — there is no per-feedback status page anymore. **The route name is deliberately still `myFeedback`**, not `accountFeedback`: it predates the `/account` migration and a `$page` rename is not typecheck-protected |
-| `/account/invitations` | `accountInvitations` | `account/MyInvitations.tsx` | Pending invitations addressed to the signed-in user. Also `$pageAccount`, group `Lore` |
-| `/*` | `notFound` | `NotFound` | — |
+| Path                                      | Route name                  | Page (lazy)                                   | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ----------------------------------------- | --------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                                       | `home`                      | `home/Home.tsx`                               | Project list                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `/new-project`                            | `projectCreate`             | `project/ProjectCreate.tsx`                   | New project form                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `/:projectSlug`                           | `project`                   | `project/ProjectView.tsx`                     | Project layout — sets `currentProjectAtom` + milestones/member/quests/feedback-count/blight-count/quest-count on load                                                                                                                                                                                                                                                                                                                                     |
+| `/:projectSlug/`                          | `projectQuests`             | `project/ProjectQuestsPage.tsx`               | Quest list grouped by area; renders the kanban board instead when `questsViewAtom` says `kanban` (see "Kanban ↔ Header Communication" below — kanban is no longer its own route, and no longer a `?view=` param either)                                                                                                                                                                                                                                   |
+| `/:projectSlug/milestones`                | `projectMilestones`         | `project/milestones/ProjectMilestones.tsx`    | Milestones list                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `/:projectSlug/reports`                   | `projectReports`            | `project/reports/ReportsLayout.tsx`           | Reports layout                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `/:projectSlug/reports/`                  | `reportsOverview`           | `project/reports/ReportsOverview.tsx`         | Overview                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `/:projectSlug/reports/quests`            | `reportsQuests`             | `project/reports/ReportsQuests.tsx`           | Quest analytics                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `/:projectSlug/reports/members`           | `reportsMembers`            | `project/reports/ReportsMembers.tsx`          | Per-member contribution (was Reports▸Party)                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `/:projectSlug/feedback`                  | `projectFeedback`           | `project/feedback/ProjectFeedback.tsx`        | Owner inbox: triage bug/feature requests                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `/:projectSlug/blights`                   | `projectBlights`            | `project/blights/ProjectBlights.tsx`          | Crash-telemetry inbox (sigil-fed)                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `/:projectSlug/apps/:appName`             | `projectApp`                | `project/apps/AppLayout.tsx`                  | One enrolled app: tab bar + the range toggle every tab shares. Param is `:appName` — the app's **name**, not its id; the HTTP API still addresses a sigil by UUID (rotate, delete, `?sigilId=`). **Never** `:id` — see the router note below                                                                                                                                                                                                              |
+| `/:projectSlug/apps/:appName/`            | `app`                       | `project/apps/AppDashboard.tsx`               | Headline numbers + the credential card                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `/:projectSlug/apps/:appName/analytics`   | `appAnalytics`              | `project/apps/AppAnalytics.tsx`               | Page views, unique visitors, top pages/countries. 404 when this app's own `kinds` lacks `beacon`                                                                                                                                                                                                                                                                                                                                                          |
+| `/:projectSlug/apps/:appName/performance` | `appPerformance`            | `project/apps/AppPerformance.tsx`             | Web-vitals p75. 404 when this app's own `kinds` lacks `beacon`                                                                                                                                                                                                                                                                                                                                                                                            |
+| `/:projectSlug/apps/:appName/settings`    | `appSettings`               | `project/apps/AppSettings.tsx`                | Capabilities card (per-app `kinds`) + rotate / delete this app (owner-only server-side)                                                                                                                                                                                                                                                                                                                                                                   |
+| `/:projectSlug/quests/:shortId`           | `projectQuest`              | `project/quest/QuestView.tsx`                 | Quest detail (param is the integer `shortId`, not a UUID)                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `/:projectSlug/quests/:shortId/graph`     | `projectQuestGraph`         | `project/quest/QuestGraph.tsx`                | Quest dependency graph                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `/:projectSlug/folios`                    | `projectFolios`             | `folios/FoliosLayout.tsx`                     | The workspace with nothing open — tree + "no folio open" pane. The directory table (`FolioBrowser`) and its Recent Activity panel were deleted here: the tree is the only navigation now. Blob/activity ENDPOINTS are untouched, so blob support can return to the workspace without a server change                                                                                                                                                      |
+| `/:projectSlug/folios/new`                | `projectFoliosNew`          | `folios/FolioCreatePage.tsx`                  | New folio                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `/:projectSlug/folios/:shortId`           | `projectFoliosFolio`        | `folios/editor/FolioWorkspace.tsx`            | Folio workspace — always-editable, summary/body, auto-saved. The old read-only `FolioView` + separate `/edit` route (`projectFoliosFolioEdit`) were merged into this one surface and the `/edit` route was deleted, not redirected                                                                                                                                                                                                                        |
+| `/:projectSlug/settings`                  | `projectSettings`           | `project/settings/ProjectSettings.tsx`        | Settings layout (sub-routes below)                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `/:projectSlug/settings/`                 | `projectSettingsBanner`     | `…/ProjectSettingsGeneralPage.tsx`            | General / banner                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `/:projectSlug/settings/members`          | `projectSettingsMembers`    | `…/ProjectSettingsMembersPage.tsx`            | Members & pending invitations — the future home of per-member access rights                                                                                                                                                                                                                                                                                                                                                                               |
+| `/:projectSlug/settings/areas`            | `projectSettingsAreas`      | `…/ProjectSettingsAreasPage.tsx`              | Areas config                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `/:projectSlug/settings/kanban`           | `projectSettingsKanban`     | `…/ProjectSettingsKanbanPage.tsx`             | Kanban columns config                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `/:projectSlug/settings/folios`           | `projectSettingsFolios`     | `…/ProjectSettingsFoliosPage.tsx`             | Folios config                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `/:projectSlug/settings/feedback`         | `projectSettingsFeedback`   | `…/ProjectSettingsFeedbackPage.tsx`           | `features.feedback` toggle — the module's own page now, split out of the Sigils page                                                                                                                                                                                                                                                                                                                                                                      |
+| `/:projectSlug/settings/sigils`           | `projectSettingsSigils`     | `…/ProjectSettingsSigilsPage.tsx`             | Sigil inventory — enrol (dialog) + list; master `features.sigils` toggle                                                                                                                                                                                                                                                                                                                                                                                  |
+| `/:projectSlug/settings/milestones`       | `projectSettingsMilestones` | `…/ProjectSettingsMilestonesPage.tsx`         | Milestone config                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `/:projectSlug/settings/quests`           | `projectSettingsQuests`     | `…/ProjectSettingsQuestsPage.tsx`             | Per-quest module toggles (chrono / reminder)                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `/:projectSlug/request`                   | `projectFeedbackRequest`    | `project/feedback/ProjectFeedbackRequest.tsx` | First-party feedback form (login required). Top-level, **not** nested under the `project` layout — no membership check                                                                                                                                                                                                                                                                                                                                    |
+| `/account/feedback`                       | `myFeedback`                | `account/feedback/MyFeedback.tsx`             | A reporter's own submissions across all projects, declared in `src/web/app/components/account/LoreAccountRouter.ts` via `$pageAccount`, not in `AppRouter`. Detail is a drawer/sheet (`MyFeedbackEditSheet.tsx`), not a separate route — there is no per-feedback status page anymore. **The route name is deliberately still `myFeedback`**, not `accountFeedback`: it predates the `/account` migration and a `$page` rename is not typecheck-protected |
+| `/account/invitations`                    | `accountInvitations`        | `account/MyInvitations.tsx`                   | Pending invitations addressed to the signed-in user. Also `$pageAccount`, group `Lore`                                                                                                                                                                                                                                                                                                                                                                    |
+| `/*`                                      | `notFound`                  | `NotFound`                                    | —                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 Also top-level under the shared layout: `/auth/login` (`login`), `/oauth/continue` (`oauthContinue`), `/auth/register` (`register`), `/auth/reset-password` (`resetPassword`).
 
@@ -127,7 +127,7 @@ including across different owners.
 **Adding a root-level route means reserving its first segment.**
 `ProjectSlugService.reserved` is what stops a project claiming a name the router
 already owns. The router tries static children before the param child, so the
-route wins and it is the *project* that becomes unreachable — silently, and only
+route wins and it is the _project_ that becomes unreachable — silently, and only
 for whoever picked that name. `test/app-routes.spec.ts` resolves the real route
 table and fails if any static root segment is missing from that list.
 
@@ -142,7 +142,7 @@ of the guard. A signed-in visitor gets a real 404 from the `project` route's own
 `errorHandler` — which exists solely for this and must not be removed.
 
 **Router params are not typechecked.** `router.path()` takes
-`params?: Record<string, any>`, and it merges the *current* route's params
+`params?: Record<string, any>`, and it merges the _current_ route's params
 before yours — so a call site still passing `projectId` keeps working while you
 are inside a project (the slug is inherited from state) and breaks only when
 navigating in from Home or Spotlight. Renaming a param is therefore a grep job,
@@ -162,6 +162,7 @@ one below.
 Live in `src/web/app/atoms/` (19 files). The project route loader fills the `current*` atoms on enter and clears them on leave — components inside the layout can read them without re-fetching. Three more atoms live in `src/api/atoms/` (`feedbackOptionsAtom`, `folioHistoryAtom`, `pinnedContentAtom`) — server-only tunables read by the backend, not route-driven.
 
 **Per-project (set by `project` route loader)**
+
 - `currentProjectAtom` — project metadata
 - `currentProjectMemberAtom` — the viewer's membership row for this project
 - `currentAssignedQuestsAtom` — quests assigned to the viewer
@@ -172,47 +173,57 @@ Live in `src/web/app/atoms/` (19 files). The project route loader fills the `cur
 - `currentSigilsAtom` — the enrolled apps the sidebar's Apps section lists. Fetched behind `.catch(() => undefined)`: reads are member-gated but a transient failure must cost the section, not the page. `undefined` (could not read) and `[]` (no apps yet) render differently — `[]` hides the Apps section entirely, `undefined` renders a "Couldn't load apps" entry instead
 
 **Per-resource (set by their route loaders)**
+
 - `currentQuestAtom` — active quest detail
 - `currentFolioAtom` — active folio detail
 - `currentSigilAtom` / `currentSigilInsightsAtom` — the open app and its analytics for the range its page currently shows. Atoms rather than loader props because the range toggle lives on the tab layout and `NestedView` cannot pass props to the tab it renders
 
 **Folios index (set by the `projectFolios` loader)**
+
 - `userFoliosAtom`, `folioTagsAtom`
 - `projectDirectoriesAtom` — folio directory tree
 - `currentFolioPathAtom` — breadcrumb chain for the active directory
 - `currentFolioContentsAtom` — folios + blobs in the active directory
 
 **Global (per-user, not per-project)**
+
 - `userProjectsAtom` — sidebar/home project list
 
 **Kanban ↔ Header communication (the pattern that needs explaining)**
+
 - `kanbanProjectAtom` — set by `KanbanBoard` on mount with `{ project }`; read by the Header so the "Create Quest" button can target the right project
 - `kanbanReloadAtom` — bumped by the Header's create button (`ProjectActionsCreateButton.tsx`) to trigger a board reload
 
 Both live in the one file `atoms/kanbanProjectAtom.ts`.
 
 ### Kanban ↔ Header Communication
+
 Kanban is not a route anymore — it's a second view of the `projectQuests` page (`ProjectQuestsPage.tsx` renders `KanbanBoard` instead of `ProjectQuestsTable`). `KanbanBoard` sets `kanbanProjectAtom` with `{ project }`. The Header reads it to:
+
 1. Show the project name in the header (falls back from `currentProjectAtom`)
 2. Show the "Create Quest" button
 
 After creating a quest from the header, it bumps `kanbanReloadAtom` which `KanbanBoard` watches to trigger a reload.
 
-**The view is an atom, not a query param.** `questsViewAtom` (`lor.quests.view`, cookie-persisted) is the single source of truth since #156. It was `?view=kanban` for exactly one iteration, seeded from `localStorage` by an effect on a bare `/:projectSlug/` — and that effect keyed on `useRouterState`, which is a global store, so it fired during the OUTGOING render of every navigation away from the page, saw the *next* route's empty query, and bounced the user straight back. Every sidebar link was dead for as long as the board was the stored view. Moving the view out of the URL removes the question the page could not answer ("nobody has chosen yet" vs "we are leaving"). Cookie rather than `localStorage` persistence because `ProjectView` picks the layout during SSR, where web storage does not exist.
+**The view is an atom, not a query param.** `questsViewAtom` (`lor.quests.view`, cookie-persisted) is the single source of truth since #156. It was `?view=kanban` for exactly one iteration, seeded from `localStorage` by an effect on a bare `/:projectSlug/` — and that effect keyed on `useRouterState`, which is a global store, so it fired during the OUTGOING render of every navigation away from the page, saw the _next_ route's empty query, and bounced the user straight back. Every sidebar link was dead for as long as the board was the stored view. Moving the view out of the URL removes the question the page could not answer ("nobody has chosen yet" vs "we are leaving"). Cookie rather than `localStorage` persistence because `ProjectView` picks the layout during SSR, where web storage does not exist.
 
-**The switch between the two views is not in the header.** It is `ProjectQuestsViewSwitcher.tsx`, a two-entry horizontal bar across the **top of the project content area** — rendered by `ProjectView` as the first child of that area and *outside* the `showQuestLog / fullWidth / else` branch, so it sits above the Quest Log and holds the same y-position in list and board view (#153, axis rotated by #163 — it was a vertical left rail until then). It used to live inside `ProjectQuestsPage`, which necessarily put it *between* the quest log and the table and made it read as a control for the table; no CSS inside the page could fix that, because a `NestedView`'s content is always right of the log. It renders on the same routes as the quest log (`projectQuests` **and** `projectQuest`) — dropping it on the detail route would shift the log up the moment a quest opened. Its entries carry visible labels rather than bare icons: a full-width band holding two icon buttons reads as unfinished in a way the narrow rail did not. It is gated on `project.features.kanban`: with kanban off it renders nothing rather than a single dead entry, and no empty band where it was.
+**The switch between the two views is not in the header.** It is `ProjectQuestsViewSwitcher.tsx`, a two-entry horizontal bar across the **top of the project content area** — rendered by `ProjectView` as the first child of that area and _outside_ the `showQuestLog / fullWidth / else` branch, so it sits above the Quest Log and holds the same y-position in list and board view (#153, axis rotated by #163 — it was a vertical left rail until then). It used to live inside `ProjectQuestsPage`, which necessarily put it _between_ the quest log and the table and made it read as a control for the table; no CSS inside the page could fix that, because a `NestedView`'s content is always right of the log. It renders on the same routes as the quest log (`projectQuests` **and** `projectQuest`) — dropping it on the detail route would shift the log up the moment a quest opened. Its entries carry visible labels rather than bare icons: a full-width band holding two icon buttons reads as unfinished in a way the narrow rail did not. It is gated on `project.features.kanban`: with kanban off it renders nothing rather than a single dead entry, and no empty band where it was.
 
 ### QuestView Reusability
+
 `QuestView` works in two contexts:
+
 1. **Project page** — rendered as a route (`/:projectSlug/quests/:shortId`), reads from `currentProjectAtom`, navigates via router
 2. **Kanban drawer** — rendered inside a `Drawer`, receives `onClose` and `onQuestChange` callbacks
 
 When `onClose` is provided, it's used instead of router navigation. When `onQuestChange` is provided, it's called on quest mutations so the parent can update its state.
 
 ### QuestCreate Navigation
+
 `QuestCreate` accepts an optional `onCreated` callback. When provided, it's called instead of the default `router.push("projectQuest", ...)` after creating a quest. Used by the kanban header to stay on the kanban view.
 
 ### Project access model
+
 Lore projects are private. Every project-scoped endpoint goes through
 `AppSecurityProvider.assertMember` (member-or-owner) or `assertOwner`
 (creator-only). There is no anonymous or "any-logged-in-user can browse"
@@ -226,6 +237,7 @@ feedback to a project that opts in. The feedback module toggle is the
 owner's opt-in/out lever.
 
 ### Drag & Drop
+
 Uses `@dnd-kit/core`. Cards are `useDraggable`, columns are `useDroppable`. Status transitions: `new → accepted → completed`. Completed quests cannot be moved back. New quests must be accepted before completing.
 
 ## Feedback
@@ -235,12 +247,14 @@ User-submitted bug reports / feature requests that the project owner triages. (R
 **Lifecycle**: `pending → accepted` (promoted to one or more quests, each linked back via `quests.feedbackId` — there is no `promotedQuestId` column) `| rejected`.
 
 **Submission flow (login required)** — both live entry points land on `POST /projects/:projectId/feedback`:
+
 - `/:projectSlug/request` — first-party form on lore (`ProjectFeedbackRequest.tsx`, route `projectFeedbackRequest`). Anonymous visitors see a sign-in CTA. Once logged in, they get the full form (title, description, type bug/feature, file uploads).
 - External "report a bug" buttons on third-party sites are plain `<a target="_blank" rel="noopener noreferrer">` anchors pointing to `/:projectSlug/request?path=<encoded>&url=<encoded>&type=bug` — no embedded JS, no screenshot capture, no widget. The page reads query params, persists them to `sessionStorage` (key `lor.feedback.draft.<projectId>` — renamed from `lor.petition.draft` in the same pass, unlike the storage bucket literals below, because this key is not a persisted external reference, just a transient client-side draft), cleans the URL via `history.replaceState`, and re-reads after the OAuth round-trip. Cleared on successful submit. `@alepha/sigil` builds this same request URL client-side as `${sink}/${project}/request`, reading the project out of its own `SIGIL_KEY` (tokens are shaped `sg_<project>_<secret>`), so an enrolled app's "report a bug" widget links out to it. **That shape is an external contract**: third-party apps construct it themselves now, which is what let the config round trip disappear. It also means a project rename breaks every enrolled app's feedback link until each key is rotated, where before a re-poll healed it. Reporting itself is unaffected by a rename, and by a key that names no project at all: the sink resolves the project from the token's hash and never from anything the app declares. `e2e/sigil.spec.ts` asserts the shape; it is the only thing that caught the URL still being id-based after the slug migration.
 
 **Reporter-facing views** — `/account/feedback` (`myFeedback`, own submissions across projects, detail in a drawer/sheet). There is no separate per-feedback status page (the old one was retired before this rename).
 
 **Attachments**
+
 - Uploaded one-at-a-time via `POST /projects/:projectId/feedback/attachments`. Returns a file id; the client collects ids and includes them in the feedback body.
 - Allowed types: png/jpg/jpeg/webp/gif/csv/txt/json/xlsx/xls/pdf. Both MIME and extension are checked (neither alone is trustworthy).
 - 5 MB / file, 10 / feedback item.
@@ -248,6 +262,7 @@ User-submitted bug reports / feature requests that the project owner triages. (R
 - `assertAttachmentsBelongToUser` blocks cross-user file id reuse — the controller verifies every claimed attachment was uploaded by the same user.
 
 **Rate limits — `feedbackOptionsAtom`** (lives in `src/api/atoms/`, server-only)
+
 - `maxFeedbackPerUserPerDay: 5` — per user, across all projects. Applies only to non-members; project owners/members submit without limit.
 - `maxFeedbackPerSigilPerDay: 50` — caps the blast radius of a leaked sigil token being weaponized to flood the inbox.
 - `maxAttachmentsPerUserPerDay: 50` — per user, across all feedback.
@@ -255,10 +270,12 @@ User-submitted bug reports / feature requests that the project owner triages. (R
 - All counts are DB-derived (no in-memory windows) so they survive restarts and are correct across workers.
 
 **Visibility / access**
+
 - Submit: any logged-in Lore user (no membership required), provided the project has `features.feedback === true`. The feedback module toggle in project settings is the owner's opt-in/out lever.
 - List/detail (read): any project member (`assertMember`). Triage — accept/reject/remove: project owner only (`assertOwner`). Same read-vs-mutate split applies to Blights and Insights (members can view the inbox / crash telemetry / analytics; owner-only actions stay gated).
 
 **Where to look**
+
 - Entity: `src/api/entities/feedback.ts`
 - Controller: `src/api/controllers/FeedbackController.ts` (submitFeedback, feedbackContext, uploadFeedbackAttachment, listFeedback, getFeedback, getFeedbackAttachment, acceptFeedback, rejectFeedback, removeFeedback, listMyFeedback, listMyFeedbackProjects, updateMyFeedback, deleteMyFeedback)
 - Rate limiter: `src/api/services/FeedbackRateLimiter.ts`
@@ -299,7 +316,7 @@ The MCP tool descriptions in `src/mcp/tools/ProjectTools.ts` and `src/mcp/tools/
 - Directory / blob controllers: `src/api/controllers/DirectoryController.ts`, `src/api/controllers/BlobController.ts`
 - History: `src/api/services/FolioHistoryService.ts` (append, retention sweep, protection-domain purge)
 - MCP tools: `src/mcp/tools/FolioTools.ts` (folio, directory and blob tools) + `ProjectTools.ts` (`project_context`)
-- UI: `src/web/app/components/folios/editor/FolioWorkspace.tsx` (the workspace shell — three panes: folio tree (`editor/tree/`), document (`editor/document/`), inspector (`editor/inspector/` — Outline / History / Links tabs, the History and Links tabs absorbed the old `FolioHistoryPanel.tsx` / `FolioBacklinksPanel.tsx`, both deleted)), `FolioBrowser.tsx` and `FolioProtectedView.tsx` are both deleted — the browser with the directory view, the protected view as a long-standing orphan the workspace's own locked-folio gate had already replaced. Pane visibility, the 1280/1024px drawer breakpoints and focus mode (⌘.) live in `editor/useFolioPanes.ts`; find-in-folio (⌘F) in `editor/document/useFolioFind.ts`, which paints through the CSS Custom Highlight API (`::highlight(folio-find)` in `src/main.css`) rather than injecting `<mark>` elements — View mode's DOM is derived from the markdown on every render, so an injected node is discarded (and under the old Lexical body it would have been saved into the folio). ⚠️ **⌘F has two implementations**: `useFolioFind` serves VIEW mode only; in Edit mode `useFolioShortcuts` stands aside so `@codemirror/search` handles it, because CodeMirror virtualizes its viewport and a text-node walk silently misses every match scrolled out of sight. It is also keyed on the *rewritten* content (`useFolioWikiLinks().rendered`), not the raw draft — the rewrite changes when the async quest fetch lands, replacing the pane's text nodes under any range the hook is holding
+- UI: `src/web/app/components/folios/editor/FolioWorkspace.tsx` (the workspace shell — three panes: folio tree (`editor/tree/`), document (`editor/document/`), inspector (`editor/inspector/` — Outline / History / Links tabs, the History and Links tabs absorbed the old `FolioHistoryPanel.tsx` / `FolioBacklinksPanel.tsx`, both deleted)), `FolioBrowser.tsx` and `FolioProtectedView.tsx` are both deleted — the browser with the directory view, the protected view as a long-standing orphan the workspace's own locked-folio gate had already replaced. Pane visibility, the 1280/1024px drawer breakpoints and focus mode (⌘.) live in `editor/useFolioPanes.ts`; find-in-folio (⌘F) in `editor/document/useFolioFind.ts`, which paints through the CSS Custom Highlight API (`::highlight(folio-find)` in `src/main.css`) rather than injecting `<mark>` elements — View mode's DOM is derived from the markdown on every render, so an injected node is discarded (and under the old Lexical body it would have been saved into the folio). ⚠️ **⌘F has two implementations**: `useFolioFind` serves VIEW mode only; in Edit mode `useFolioShortcuts` stands aside so `@codemirror/search` handles it, because CodeMirror virtualizes its viewport and a text-node walk silently misses every match scrolled out of sight. It is also keyed on the _rewritten_ content (`useFolioWikiLinks().rendered`), not the raw draft — the rewrite changes when the async quest fetch lands, replacing the pane's text nodes under any range the hook is holding
 - E2E: `e2e/folio-workspace.spec.ts` is the whole folio surface now (summary round-trip, inspector tabs, tree drag-move, find, focus mode, pane persistence, the empty `/folios`, creating from the tree). `e2e/folios.spec.ts` was deleted with the directory table it drove. A tree drag is a fire-and-forget `update` — arm `waitForResponse` BEFORE the drop, or navigating cancels it in flight and the drop looks like it did nothing
 
 **Bucket literals kept un-renamed** — `FOLIO_BLOB_BUCKET = "archive-blobs"` (`FolioBlobService.ts`, `LoreFileAccessProvider.ts`, `BlobController.ts`, `FolioBrowser.tsx`, `useFolioImageUpload.ts`). Same reasoning as the `petition-attachments` bucket in the Feedback section: it's a value already persisted on every existing `files` row, and renaming it would orphan every folio image/blob ever uploaded.
@@ -328,12 +345,12 @@ Enrolled at `/:projectSlug/settings/sigils` (a dialog on a card-button, not an i
 
 **Lore's own crashes reach the inbox through two paths, and one of them was silent until 2026-08-11.** Server-side failures are reported by `SigilServerErrors`, which listens on `server:onError` — emitted only by `ServerRouterProvider.errorHandler`, i.e. only for a route that fails as its own HTTP request. Anything failing inside `POST /api/_batch` was caught by that endpoint's `Promise.allSettled` and answered as a 200 with a per-entry error, so the event never fired. Since the React client batches by default and Lore's guarded pages are client-rendered, that was **every API failure the app ever had** — the inbox stayed empty through an outage in which every Insights read was 500ing. `ServerLinksProvider` now emits `server:onError` per failed entry (guards: `BatchEndpoint.spec.ts`, `SigilServerErrors.spec.ts`). Still open: a **pure client-side render crash** reports nothing at all — `NestedView` mounts `ErrorBoundary` with no `onError`, and React fires no `window.error` for what a boundary caught, so `SigilBrowserProvider` never sees it. See folio #82.
 
-**Rotate, don't delete.** All four aggregate tables cascade on `sigilId`, so deleting a sigil to revoke a leaked token also erases that app's views, vitals, uniques and error groups. `rotateSigil` re-mints `tokenHash`/`tokenPrefix` in place — the old token stops resolving immediately (`verify` looks a sigil up *by* its hash) and every row survives. The UI says which is which; so do the MCP tool descriptions.
+**Rotate, don't delete.** All four aggregate tables cascade on `sigilId`, so deleting a sigil to revoke a leaked token also erases that app's views, vitals, uniques and error groups. `rotateSigil` re-mints `tokenHash`/`tokenPrefix` in place — the old token stops resolving immediately (`verify` looks a sigil up _by_ its hash) and every row survives. The UI says which is which; so do the MCP tool descriptions.
 
 - **Blights** — one row per distinct failure, keyed by `(projectId, fingerprint)`, with a count. The owner triages them in the inbox (`/:projectSlug/blights`): resolve, ignore-by-rule (`blightIgnoreRules`), or **forward to a quest** (filed under the `Blights` area, provenance recorded in `quests.source`). Purged on a retention window (`project.retentionDays ?? 30`) by `BlightJobs`; resolved and `quest:`-forwarded rows are kept as audit trail. A blight survives its sigil — `blights.sigilId` is `ON DELETE SET NULL`.
 - **Insights** (`InsightsController`; the two beacon UI tabs 404 in the router when the open app's own `kinds` lacks `beacon` — see `AppRouter.ts`'s `assertBeacon()` — the endpoint itself is member-gated like any other project read, with no feature check of its own) — two segments over one payload: **Analytics** (page views, unique visitors) and **Performance** (web-vitals p75). Views and vitals are read through `alepha/api/analytics`'s `$analytics()` datasets — `sigil_views` / `sigil_vitals`, declared in `LoreAnalytics` (`src/api/entities/loreAnalytics.ts`) and asked via `views.query(...)` / `vitals.query(...)` — the same portable declaration that runs on a relational database, in memory for tests, and on Cloudflare Analytics Engine in production, with no backend-specific code in the controller (see the [Analytics guide](../../docs/1-guides/10-analytics.md)). `uniqueVisitors` stays on `sigil_uniques_daily` via `LoreAnalyticsStore`, because a distinct count cannot survive sampling or a rollup and so is out of `$analytics()`'s reach by construction. Buckets are hourly so a 14:00 deploy is visible against 13:00; the daily timeline is the dataset's `"day"` pseudo-dimension folding hour buckets with no epoch math on the controller's side, the same shape the old `substr(hour, 1, 10)` group produced. `uniqueVisitors` is the trustworthy headline — nothing throttles what an app reports, so `totalViews` is inflatable by whoever holds the token. The segments are the Analytics / Performance **tabs of one app's page**; `GET /projects/:projectId/insights?sigilId=` is what narrows them, and the id is verified to belong to the project in the path before it filters anything (member-gating is on the project, so an unchecked id would read another project's rows). Omitted, the endpoint still answers project-wide — which is what MCP's `insights_read` reads.
-  - ⚠️ **`sigil_error_groups` is written and swept, and currently read by nothing.** The App ▸ Errors tab was its only reader and was removed in #178: with one enrolled app it duplicated the Blights inbox. It was not a duplicate by construction, though — it answered "is this still happening *in that app*", which the inbox cannot, because the inbox keys on `(projectId, fingerprint)` so a triage decision does not fork, and that necessarily merges every enrolled app into one row. The distinction is worth nothing at one app and returns at two.
-    **The table is kept on purpose — do not delete it as unused.** Production holds ~1,086 rows across all four analytics tables, so the storage argument does not exist, and this is the only per-app error signal there is; dropping it would make the tab's return a migration instead of a revert. It stays on its own table rather than an analytics dataset because it keeps the *first* stack sample, which needs a read before every write — something an append-only dataset cannot do.
+  - ⚠️ **`sigil_error_groups` is written and swept, and currently read by nothing.** The App ▸ Errors tab was its only reader and was removed in #178: with one enrolled app it duplicated the Blights inbox. It was not a duplicate by construction, though — it answered "is this still happening _in that app_", which the inbox cannot, because the inbox keys on `(projectId, fingerprint)` so a triage decision does not fork, and that necessarily merges every enrolled app into one row. The distinction is worth nothing at one app and returns at two.
+    **The table is kept on purpose — do not delete it as unused.** Production holds ~1,086 rows across all four analytics tables, so the storage argument does not exist, and this is the only per-app error signal there is; dropping it would make the tab's return a migration instead of a revert. It stays on its own table rather than an analytics dataset because it keeps the _first_ stack sample, which needs a read before every write — something an append-only dataset cannot do.
   - **`sigil_views_hourly` / `sigil_vitals_hourly` are frozen, not deleted.** Both used to be the read path for Analytics/Performance and a dual-write target on ingest; both the read (this controller) and the write (`SigilIngestService`) moved onto the `$analytics()` datasets above, so nothing in the app reads or writes either table anymore. They stay declared purely so `yarn check:migrations` keeps agreeing with what is still physically on disk — `FrozenSigilAnalyticsTables` (`src/api/services/FrozenSigilAnalyticsTables.ts`) registers both entities directly with `DatabaseProvider` without handing any service a queryable repository on them, which is what keeps them in the migration snapshot instead of `check:migrations` proposing `DROP TABLE`. Actually dropping either table is a separate decision with its own migration review: `sigils` is the `ON DELETE CASCADE` parent of both (see "Migration safety on D1" below), so a rebuild migration here carries the same cascade-wipe risk as everywhere else in this file. When that review happens, `FrozenSigilAnalyticsTables` is what to delete first.
 
 > ⚠️ **`name`, `message`, `stack`, `sourceUrl` on a blight are 100% attacker-controlled** and are shown to the project owner — the highest-value target. Render as escaped plain text only. Never markdown, never `dangerouslySetInnerHTML`.
@@ -372,7 +389,7 @@ Lore has **no gamification currency**: no XP, no gold, no levels, no achievement
 
 What survives, deliberately:
 
-- The RPG **vocabulary** for the work inside a project (quests, folios, blights, sigils) — flavor, not mechanics. **This is the whole of it**: the identity principle settled on 2026-08-20 is that Lore's RPG surface is vocabulary only, because "quest" names the agent-facing unit of work better than "task" (which can mean a markdown checkbox, a Jira ticket, anything). Mechanics are not identity. The container itself is deliberately *not* RPG-flavored — see "The Lore of Lore" above for why it's `project`, not `campaign`.
+- The RPG **vocabulary** for the work inside a project (quests, folios, blights, sigils) — flavor, not mechanics. **This is the whole of it**: the identity principle settled on 2026-08-20 is that Lore's RPG surface is vocabulary only, because "quest" names the agent-facing unit of work better than "task" (which can mean a markdown checkbox, a Jira ticket, anything). Mechanics are not identity. The container itself is deliberately _not_ RPG-flavored — see "The Lore of Lore" above for why it's `project`, not `campaign`.
 - Two glyphs: `Swords` on Complete and `Signature` on Accept / "took the quest".
 - `projects.unlockedFeatures` / `unlockHistory` / `public` and `quests.note` — **`@deprecated` dead columns**. Nothing reads or writes them; they stay because dropping a column on either table risks the D1 rebuild path, and both are CASCADE parents (`projects` is the one that wiped prod in 2026-05; `quests` cascades through its own `dependsOn` self-reference).
 
@@ -395,7 +412,7 @@ yarn dev               # Dev server (HMR) on http://localhost:5173
 yarn start             # Prod-like (build + node dist) on http://localhost:3000
 yarn build             # Production build
 yarn typecheck         # tsc --noEmit
-yarn lint              # biome check --fix
+yarn lint              # oxlint --fix, then oxfmt
 yarn test              # vitest run
 yarn e2e               # playwright test
 yarn db:generate       # Generate new migration from entity changes
@@ -431,7 +448,7 @@ Lore deploys to Cloudflare D1, which **ignores `PRAGMA foreign_keys=OFF`**. Driz
 
 Mitigations, in order of preference:
 
-- **Avoid the rebuild entirely.** If the only change is a column *default* (the bomb we hit), move the default into the application handler — e.g. `createProject` injects `defaultProjectFeatures` server-side — and drop the `db.default(...)` from the entity schema. Drizzle won't generate a rebuild migration for an app-layer default.
+- **Avoid the rebuild entirely.** If the only change is a column _default_ (the bomb we hit), move the default into the application handler — e.g. `createProject` injects `defaultProjectFeatures` server-side — and drop the `db.default(...)` from the entity schema. Drizzle won't generate a rebuild migration for an app-layer default.
 - **Manually rewrite the migration** to back child rows up into `__bk_*` tables before the `DROP`, then re-insert and drop the backups after `RENAME`. Tedious but correct.
 - **Temporarily switch the CASCADE child(ren) to `onDelete: "set null"`** for the migration window if the children make sense without a parent — only viable when the FK column is nullable.
 
@@ -443,7 +460,7 @@ Mitigations, in order of preference:
 
 `migrations/sqlite/20260805005114_green_captain_universe/` is a rename-only migration for the whole vocabulary rename — **6 table renames** (`campaigns`→`projects`, `petitions`→`feedback`, `chapters`→`milestones`, `archive_directories`→`folio_directories`, `archive_blobs`→`folio_blobs`, `archive_names`→`folio_names`) and 15 column renames, entirely via `ALTER TABLE ... RENAME TO` / `RENAME COLUMN`. **Zero `DROP TABLE`.**
 
-drizzle-kit's auto-generator wanted to add a `projects` table *rebuild* on top of the renames, because the `features` column's JSON `DEFAULT` embeds the old key names (`petitions`, `chapters`, …) baked in as a literal string, and those keys changed too. A rebuild there means `DROP TABLE projects`, which on D1 cascades through `members`/`quests`/`milestones`/`folios`/`feedback` — the exact class of incident described above. That block was **deleted by hand** from the generated migration, replaced with an explanatory SQL comment. This is safe *only* because nothing reads the stale column default — `createProject` injects `defaultProjectFeatures` server-side in application code, so the column's `DEFAULT` clause is dead weight. The upshot: **the migration snapshot and the live `projects.features` column now deliberately disagree on that one default, forever** (or until a future migration touches that column for an unrelated reason). Do not "fix" this drift by generating a rebuild — that's the bomb, not the fix. `db:generate`/`db:check` will keep flagging it; that's expected, not a regression.
+drizzle-kit's auto-generator wanted to add a `projects` table _rebuild_ on top of the renames, because the `features` column's JSON `DEFAULT` embeds the old key names (`petitions`, `chapters`, …) baked in as a literal string, and those keys changed too. A rebuild there means `DROP TABLE projects`, which on D1 cascades through `members`/`quests`/`milestones`/`folios`/`feedback` — the exact class of incident described above. That block was **deleted by hand** from the generated migration, replaced with an explanatory SQL comment. This is safe _only_ because nothing reads the stale column default — `createProject` injects `defaultProjectFeatures` server-side in application code, so the column's `DEFAULT` clause is dead weight. The upshot: **the migration snapshot and the live `projects.features` column now deliberately disagree on that one default, forever** (or until a future migration touches that column for an unrelated reason). Do not "fix" this drift by generating a rebuild — that's the bomb, not the fix. `db:generate`/`db:check` will keep flagging it; that's expected, not a regression.
 
 ### ⚠️ Renaming a REQUIRED key inside a JSON column takes production down (real incident, 2026-08-05)
 
@@ -460,13 +477,13 @@ SchemaValidationError: Invalid input: 'features/feedback' is required at /featur
 Four of its keys are **required** `z.boolean()` — `kanban`, `folios`, `feedback`,
 `milestones` — while the rest (`sigils`, `blights`, `beacon`, `vitals`, the
 `quest*` trio) are `.optional()`. The migration renamed the
-*table and columns*, but the JSON **inside** the column still said `petitions`
+_table and columns_, but the JSON **inside** the column still said `petitions`
 and `chapters` on all 54 existing rows. A missing required key does not read as
 `undefined` and fall back to `false` — **the whole row fails to decode**, so
 every query touching `projects` throws.
 
 The plan had predicted "the flags read as undefined → off, owners re-enable them
-once." That reasoning came from the *optional* flags and was never checked
+once." That reasoning came from the _optional_ flags and was never checked
 against these four. Losing four toggles and losing every project read are not
 the same failure.
 
@@ -489,7 +506,7 @@ WHERE json_extract(features,'$.feedback') IS NULL
 ```
 
 The `CASE … json('true')` is load-bearing: `json_extract` on a JSON boolean
-returns integer `1`, so a naive round-trip writes `1` and the row *still* fails
+returns integer `1`, so a naive round-trip writes `1` and the row _still_ fails
 `z.boolean()`.
 
 **The rule:** renaming a key inside a JSON column is a data migration, not a
@@ -508,8 +525,8 @@ Folding `sigils.app` + `environment` + `label` into a single `name`
 ALTER TABLE `sigils` ADD `name` text NOT NULL;
 ```
 
-**SQLite refuses this on any table that has rows** — *"Cannot add a NOT NULL column
-with default value NULL"* — and accepts it on an empty one. Every database CI, `yarn v`
+**SQLite refuses this on any table that has rows** — _"Cannot add a NOT NULL column
+with default value NULL"_ — and accepts it on an empty one. Every database CI, `yarn v`
 and the test suite construct is empty, so the statement is green everywhere it is ever
 exercised and fails only against the single database that has data. It is the same
 blind spot as the JSON-key incident above, from the opposite direction: there, empty
@@ -532,7 +549,7 @@ schema carry the constraint. Order matters beyond the constraint: SQLite refuses
 a column an index still references, so the index swap precedes every `DROP COLUMN`.
 Also note drizzle emitted no backfill at all — it dropped `label` without carrying it
 anywhere, which would have left every existing sigil nameless before handing them to a
-`UNIQUE` index. Read generated migrations for what they *omit*, not only for `DROP TABLE`.
+`UNIQUE` index. Read generated migrations for what they _omit_, not only for `DROP TABLE`.
 
 **The drift this leaves behind is deliberate — do not "fix" it.** `sigils.name` is
 physically nullable on D1 while the snapshot declares it `NOT NULL`, because SQLite
@@ -551,7 +568,7 @@ the table against a future `DROP TABLE` from the family rebuild forward.
 
 Every Insights read 500'd in production — so every `/:projectSlug/apps/:appName` page
 rendered the generic ErrorPage — because `analytics_prune_floors` did not exist
-on D1. `WaeAnalyticsProvider.query()` reads that table before *every* read.
+on D1. `WaeAnalyticsProvider.query()` reads that table before _every_ read.
 
 `alepha/api/analytics` registered it only from `WaeAnalyticsProvider.register()`,
 deliberately: only the Analytics Engine backend needs a prune floor (WAE has no
@@ -565,7 +582,7 @@ runtime it booted under**, and the two runtimes are not the same one:
   `WaeAnalyticsProvider` → it reads a table nothing ever created.
 
 Same blind spot as the two entries above, third mechanism: not an empty test
-database, a *different runtime*. `yarn test`, `yarn typecheck` and
+database, a _different runtime_. `yarn test`, `yarn typecheck` and
 `yarn check:migrations` all run on the side where the table is not declared, so
 none of them could have gone red. Fixed in the framework —
 `OrmAnalyticsProvider.register()` now registers it unconditionally — plus
@@ -575,12 +592,12 @@ migration `20260810222423_tidy_ozymandias` (bare `CREATE TABLE`, D1-safe).
 the one in front of it, so each fix revealed the next and every "is it fixed?"
 answered itself with a new error:
 
-| # | Fault | Fix |
-|---|---|---|
-| 1 | `analytics_prune_floors` missing on D1 | register the table unconditionally |
-| 2 | `CLOUDFLARE_ANALYTICS_TOKEN` never pushed to the Worker | add it to the build manifest's env allowlist |
-| 3 | `HAVING COUNT(*) > 0` → 422 | `count()`, which takes no arguments |
-| 4 | `GROUP BY substring(blob2, 1, 10)` → 422 | group by the projected alias |
+| #   | Fault                                                   | Fix                                          |
+| --- | ------------------------------------------------------- | -------------------------------------------- |
+| 1   | `analytics_prune_floors` missing on D1                  | register the table unconditionally           |
+| 2   | `CLOUDFLARE_ANALYTICS_TOKEN` never pushed to the Worker | add it to the build manifest's env allowlist |
+| 3   | `HAVING COUNT(*) > 0` → 422                             | `count()`, which takes no arguments          |
+| 4   | `GROUP BY substring(blob2, 1, 10)` → 422                | group by the projected alias                 |
 
 **#1 and #2 are the same root cause.** The secret push is filtered by the build
 manifest's `env` list, which comes from `alepha.dump().env` — the graph as
@@ -593,7 +610,7 @@ deploy is green and the feature is dead.
 **#3 and #4 are a different lesson: the test fake agreed with the bug.**
 `FakeAnalyticsEngine` was written to mirror the SQL `WaeAnalyticsProvider`
 generates, so it accepted whatever that SQL said — including two statements the
-real Analytics Engine parser rejects outright. Teaching the fake the *parser's*
+real Analytics Engine parser rejects outright. Teaching the fake the _parser's_
 rules instead turned 28 of 43 WAE specs red immediately. A fake that mirrors
 generated SQL can never disagree with it; only one that mirrors the parser can.
 And validate against the real endpoint **before** fixing: #3 and #4 shipped a
@@ -618,9 +635,9 @@ own `sigils.kinds` changed what `SigilIngestService.gatesFor` computes:
 
 ```ts
 // before
-views: master && features.beacon === true && carries(sigil, "beacon")
+views: master && features.beacon === true && carries(sigil, "beacon");
 // after
-views: master && carries(sigil, "beacon")
+views: master && carries(sigil, "beacon");
 ```
 
 Same for `errors` (`features.blights`) and `vitals` (`features.vitals`). Only
@@ -630,7 +647,7 @@ the first-party form at `/:projectSlug/request`, which exists with no app enroll
 **Removing a conjunct is monotone in the "on" direction.** No sigil loses a
 capability; some gain one. A newly minted sigil carries all four kinds, and
 `ProjectCreate.tsx`'s `DEFAULT_FEATURES` never set `blights` / `beacon` / `vitals` —
-so on every wizard-created project those flags are *absent*, the old `=== true`
+so on every wizard-created project those flags are _absent_, the old `=== true`
 conjunct was false, and ingest was **silently discarding** everything those apps
 sent. The moment this deploys the same payloads are accepted: page views, web
 vitals, error groups, blights, and the daily visitor hash in `sigil_uniques_daily`
@@ -707,7 +724,7 @@ rule is that the flood never reaches the Worker.
 
 **Verify with `yarn test` from the repo root.** That is what CI runs, and the workspace command does not stand in for it.
 
-The root `vitest.config.ts`'s "node" project has no `include` filter (removed to keep WebStorm happy), so it collects every spec in the repo — lore's included — under the *root* config. `apps/lore/vitest.config.ts` is never consulted from the root; it only applies to `yarn w lore test`. **One hazard, two faces** — it has now produced a red suite in each direction, and the direction is not the lesson:
+The root `vitest.config.ts`'s "node" project has no `include` filter (removed to keep WebStorm happy), so it collects every spec in the repo — lore's included — under the _root_ config. `apps/lore/vitest.config.ts` is never consulted from the root; it only applies to `yarn w lore test`. **One hazard, two faces** — it has now produced a red suite in each direction, and the direction is not the lesson:
 
 **Face 1 — root red, workspace green (`@/` alias).** It stayed hidden because no lore spec had ever imported `AppRouter.ts`, which is the first thing that reaches `@/`-aliased app source transitively. `test/app-routes.spec.ts` did, and died at import time under `yarn test` (`Cannot find package '@/api/schemas/…'`) while passing under `yarn w lore test` — the `@/` alias it needed had just been added to `apps/lore/vitest.config.ts`, the one file the workspace command loads and the root command ignores. The command used to verify the fix was structurally incapable of failing on it.
 
@@ -739,12 +756,12 @@ The `@/` alias is still duplicated in both configs, and the root copy is load-be
 - `sigil-jobs.spec.ts` — the analytics collapse sweep: the uniques hash-fold, the hourly→daily view fold, idempotency across re-runs, and what Insights reads on either side of a sweep. Drives `DateTimeProvider.travel()` over the window boundary, so it asserts end state and never call counts
 - `insights-controller.spec.ts` / `insights-tools.spec.ts` — beacon/vitals windows and the p75 walk (clock pinned with `DateTimeProvider.pause()`), the `?sigilId=` per-app filter including the cross-project refusal, plus the MCP surface
 - `app-routes.spec.ts` — **regression guard**: boots the real `AppRouter` and resolves every route name the app passes the router as a plain string (every `router.path`/`push` call site and every `route: "…"` nav array in `src/`, including `ProjectSettings.tsx`'s — the array that broke once). `router.path()` takes `keyof VirtualRouter<T> | string`, so a deleted or renamed route is never a type error — this is the only thing that turns it into a red test instead of a production throw. Also asserts that **every static root segment in the route table is reserved** in `ProjectSlugService` — the invariant `/:projectSlug` creates
-- `project-slug-service.spec.ts` / `project-slug-controller.spec.ts` — slug derivation (accent folding, separator collapse, the reserved list and the `project-<id>` fallback) and its lifecycle: derived on create, recomputed on rename, 409 on a taken name across *any* owner, freed on delete
-- `project-slug-migration.spec.ts` — **regression guard**: reads the backfill migration for `DROP TABLE` / `ADD COLUMN … NOT NULL`, then actually *applies* it to a seeded database and asserts the slugs that come out (collision, accented title, CJK title, soft-deleted row). `migration-safety.spec.ts` stops at earlier migrations, so nothing else executes this SQL
+- `project-slug-service.spec.ts` / `project-slug-controller.spec.ts` — slug derivation (accent folding, separator collapse, the reserved list and the `project-<id>` fallback) and its lifecycle: derived on create, recomputed on rename, 409 on a taken name across _any_ owner, freed on delete
+- `project-slug-migration.spec.ts` — **regression guard**: reads the backfill migration for `DROP TABLE` / `ADD COLUMN … NOT NULL`, then actually _applies_ it to a seeded database and asserts the slugs that come out (collision, accented title, CJK title, soft-deleted row). `migration-safety.spec.ts` stops at earlier migrations, so nothing else executes this SQL
 - `user-deletion-hook.spec.ts` — **regression guard**: `UserDeletionHook` refuses `deleteMyAccount` while the account still owns projects, and the account survives the refusal. Load-bearing because `projects.createdBy` is a bare `z.uuid()` with **no foreign key** — deleting an owner cascades nothing and warns about nothing, leaving a project pointing at a row that no longer exists and failing `assertOwner` for everybody. Nothing in the schema, the types or the migration snapshot can catch that. Also pins that the hook's message reaches the client as a 409 with its text intact (`MyAccountController` emits without `{ log: true }` precisely so it does)
 - `blight-tools.spec.ts` — the MCP triage surface
 - `migration-safety.spec.ts` — asserts the great-rename migration (and the sigil-family rebuild before it) never drops a table the `projects` cascade reaches, and that a fresh D1-shaped database boots with all migrations applied
-- `petition-reporter-migration.spec.ts` / `petition-reporter-restore-migration.spec.ts` — deliberately still "petition"-named: they pin the behavior of two specific *historical* migrations (`reporterUserId`/`reporterEmail` column churn) that predate the 2026-08 rename, not the current Feedback module
+- `petition-reporter-migration.spec.ts` / `petition-reporter-restore-migration.spec.ts` — deliberately still "petition"-named: they pin the behavior of two specific _historical_ migrations (`reporterUserId`/`reporterEmail` column churn) that predate the 2026-08 rename, not the current Feedback module
 - Shared fixtures live in `test/fixtures/`
 
 ### ⚠️ Running e2e while another agent is running it
@@ -753,7 +770,7 @@ This suite used to run on **3303 — the same port as `yarn dev`**. With `reuseE
 
 `e2ePort("lore")` in the repo-root `playwright.port.ts` — shared by all six Playwright configs, same pattern as `vitest.jsdom.ts` — makes both impossible. E2E allocates from a reserved **4300-4999** band that no dev server may use; within it the slot is derived from the **checkout path**, so two worktrees never meet; and the port is then **bind-tested**, stepping a full stride if anything answers. `reuseExistingServer` is `false` everywhere as a result: a port verified free has nothing legitimate to adopt.
 
-`E2E_PORT` overrides the whole thing, probe included. Reach for it when the allocation cannot help — most often a worktree checked out *before* this landed, which still carries the old fixed-3303 config. Pick something inside the e2e band:
+`E2E_PORT` overrides the whole thing, probe included. Reach for it when the allocation cannot help — most often a worktree checked out _before_ this landed, which still carries the old fixed-3303 config. Pick something inside the e2e band:
 
 ```bash
 E2E_PORT=4999 npx playwright test quest.spec.ts
@@ -797,20 +814,20 @@ When you need to drive the app yourself with the Playwright MCP, use these short
 
 ### Servers
 
-| Mode | Command | URL | Database |
-|---|---|---|---|
-| **Dev** (HMR, no build) | `yarn dev` | http://localhost:5173 | `node_modules/.alepha/sqlite.db` (persistent) |
+| Mode                        | Command      | URL                   | Database                                               |
+| --------------------------- | ------------ | --------------------- | ------------------------------------------------------ |
+| **Dev** (HMR, no build)     | `yarn dev`   | http://localhost:5173 | `node_modules/.alepha/sqlite.db` (persistent)          |
 | **Prod-like** (build + run) | `yarn start` | http://localhost:3000 | in-memory (`DATABASE_URL=:memory:`) — wiped on restart |
 
 Dev mode is what you usually want — it keeps state between runs and emails accumulate on disk.
 
 ### ⚠️ Prod-like is not production — only workerd is
 
-| Mode | Runtime | Catches |
-|---|---|---|
-| `yarn dev` | Node + Vite | most things |
-| `yarn start` | Node, bundled | bundler/env issues |
-| **wrangler** | **workerd** | **isolate limits, Workers-only APIs** |
+| Mode         | Runtime       | Catches                               |
+| ------------ | ------------- | ------------------------------------- |
+| `yarn dev`   | Node + Vite   | most things                           |
+| `yarn start` | Node, bundled | bundler/env issues                    |
+| **wrangler** | **workerd**   | **isolate limits, Workers-only APIs** |
 
 The third row is not optional for anything that smells production-only. Quest #132 (folio page → error boundary in prod) was investigated once and closed as "not reproducible": dev fine, `node dist` fine, SSR already off. All true, and all irrelevant — the bug was an isolate crash, and neither Node mode runs an isolate. Under wrangler it reproduced on the first try.
 

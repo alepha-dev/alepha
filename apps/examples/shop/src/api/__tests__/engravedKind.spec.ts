@@ -1,10 +1,12 @@
 import { randomUUID } from "node:crypto";
+
 import { CatalogService, OrderService, StockService } from "@alepha/commerce";
 import { CartService } from "@alepha/commerce/cart";
 import { CheckoutService } from "@alepha/commerce/checkout";
 import { Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
 import { describe, it } from "vitest";
+
 import { ShopApi } from "../index.ts";
 import { WorkshopQueue } from "../WorkshopQueue.ts";
 

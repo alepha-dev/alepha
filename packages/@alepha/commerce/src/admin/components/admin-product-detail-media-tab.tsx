@@ -14,6 +14,7 @@ import {
 import type { FormModel } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { ArrowLeft, ArrowRight, Star } from "lucide-react";
+
 import type { imagesFormSchema } from "./images-form-schema.ts";
 import { productImageUrl } from "./product-image-url.ts";
 

@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+
 import { e2ePort } from "../../../playwright.port.ts";
 
 /*

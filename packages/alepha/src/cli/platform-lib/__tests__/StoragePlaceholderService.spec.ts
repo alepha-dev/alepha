@@ -6,6 +6,7 @@ import {
   ShellProvider,
 } from "alepha/system";
 import { describe, expect, it } from "vitest";
+
 import { StoragePlaceholderService } from "../services/StoragePlaceholderService.ts";
 
 const ROOT = "/app";

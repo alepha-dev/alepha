@@ -13,6 +13,7 @@ npm install alepha
 Captcha verification for bot protection.
 
 **Features:**
+
 - Provider abstraction for captcha services
 - Cloudflare Turnstile support (free, privacy-friendly)
 - In-memory provider for testing

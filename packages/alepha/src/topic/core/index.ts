@@ -1,4 +1,5 @@
 import { $module, type Alepha } from "alepha";
+
 import { $subscriber } from "./primitives/$subscriber.ts";
 import { $topic } from "./primitives/$topic.ts";
 import { MemoryTopicProvider } from "./providers/MemoryTopicProvider.ts";

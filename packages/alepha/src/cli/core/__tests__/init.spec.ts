@@ -11,6 +11,7 @@ import {
   ShellProvider,
 } from "alepha/system";
 import { describe, expect, it } from "vitest";
+
 import { InitCommand } from "../commands/init.ts";
 
 describe("alepha init", () => {
@@ -79,16 +80,23 @@ describe("alepha init", () => {
       expect(tsconfig.extends).toBe("alepha/tsconfig.base");
     });
 
-    it("should create biome.json", async () => {
+    it("should create the oxlint and oxfmt configs", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
       await cli.run(cmd.init, { root: "/project" });
 
-      expect(fs.wasWritten("/project/biome.json")).toBe(true);
-      expect(fs.wasWrittenMatching("/project/biome.json", /biomejs\.dev/)).toBe(
-        true,
-      );
+      // Both, or the project gets half a toolchain: a formatter with no linter
+      // silently stops gating, and a linter with no formatter reformats every
+      // file it touches to oxfmt's Prettier defaults, tabs included.
+      expect(fs.wasWritten("/project/.oxlintrc.json")).toBe(true);
+      expect(
+        fs.wasWrittenMatching("/project/.oxlintrc.json", /"correctness"/),
+      ).toBe(true);
+      expect(fs.wasWritten("/project/.oxfmtrc.json")).toBe(true);
+      expect(
+        fs.wasWrittenMatching("/project/.oxfmtrc.json", /"useTabs": false/),
+      ).toBe(true);
     });
 
     it("should create .editorconfig", async () => {
@@ -136,19 +144,19 @@ describe("alepha init", () => {
       ).toBe(true);
     });
 
-    it("should point the editor's formatter at Biome, and recommend it", async () => {
+    it("should point the editor's formatter at Oxc, and recommend it", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
 
       await cli.run(cmd.init, { root: "/project" });
 
-      // The project ships a biome.json and `alepha lint` formats with Biome.
-      // Without this the editor formats with something else on save and the two
-      // undo each other.
+      // The project ships an `.oxfmtrc.json` and `alepha lint` formats with
+      // oxfmt. Without this the editor formats with something else on save and
+      // the two undo each other.
       expect(
         fs.wasWrittenMatching(
           "/project/.vscode/settings.json",
-          /"\[typescript\]": \{ "editor\.defaultFormatter": "biomejs\.biome" \}/,
+          /"\[typescript\]": \{ "editor\.defaultFormatter": "oxc\.oxc-vscode" \}/,
         ),
       ).toBe(true);
 
@@ -157,7 +165,7 @@ describe("alepha init", () => {
       expect(
         fs.wasWrittenMatching(
           "/project/.vscode/extensions.json",
-          /biomejs\.biome/,
+          /oxc\.oxc-vscode/,
         ),
       ).toBe(true);
     });
@@ -459,7 +467,7 @@ describe("alepha init", () => {
         dependencies?: Record<string, string>;
         devDependencies?: Record<string, string>;
       }>("/project/package.json");
-      // The toolchain (vitest, vite, biome, tsc, drizzle-kit) ships embedded
+      // The toolchain (vitest, vite, oxlint/oxfmt, tsc, drizzle-kit) ships embedded
       // as dependencies of `alepha` — the project never declares it.
       expect(pkg.devDependencies?.vitest).toBeUndefined();
       expect(pkg.dependencies?.vitest).toBeUndefined();
@@ -612,7 +620,7 @@ describe("alepha init", () => {
       await cli.run(cmd.init, { argv: "subdir", root: "/project" });
 
       expect(fs.wasWritten("/project/subdir/tsconfig.json")).toBe(true);
-      expect(fs.wasWritten("/project/subdir/biome.json")).toBe(true);
+      expect(fs.wasWritten("/project/subdir/.oxlintrc.json")).toBe(true);
     });
 
     it("should honour an absolute path instead of reparenting it under root", async () => {
@@ -742,7 +750,7 @@ describe("alepha init", () => {
         "/workspace/package.json",
         json.stringify({ name: "monorepo", workspaces: ["packages/*"] }),
       );
-      await fs.writeFile("/workspace/biome.json", "{}");
+      await fs.writeFile("/workspace/.oxlintrc.json", "{}");
       await fs.writeFile("/workspace/.editorconfig", "root=true");
       await fs.writeFile("/workspace/tsconfig.json", "{}");
 
@@ -762,13 +770,18 @@ describe("alepha init", () => {
       );
     };
 
-    it("should always create biome.json even when workspace root has it", async () => {
+    it("should always create the oxc configs even when workspace root has them", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupWorkspace(fs, json);
 
       await cli.run(cmd.init, { root: "/workspace/packages/my-pkg" });
 
-      expect(fs.wasWritten("/workspace/packages/my-pkg/biome.json")).toBe(true);
+      expect(fs.wasWritten("/workspace/packages/my-pkg/.oxlintrc.json")).toBe(
+        true,
+      );
+      expect(fs.wasWritten("/workspace/packages/my-pkg/.oxfmtrc.json")).toBe(
+        true,
+      );
     });
 
     it("should skip .editorconfig when workspace root has it", async () => {

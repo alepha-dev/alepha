@@ -5,6 +5,7 @@ import { AlephaContext } from "alepha/react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { describe, it } from "vitest";
+
 import { useFieldValue, useForm } from "../index.ts";
 
 const TestInput = ({ input, testId }: { input: any; testId: string }) => {
@@ -830,6 +831,8 @@ describe("useForm — initialValues stability", () => {
      */
     const Parent = () => {
       const [tick, setTick] = useState(0);
+      // The point of the harness: record that the parent re-rendered.
+      // oxlint-disable-next-line react/globals
       renderCount = tick;
       return (
         <>

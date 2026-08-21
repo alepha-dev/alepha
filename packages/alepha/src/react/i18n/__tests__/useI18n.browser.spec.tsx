@@ -4,6 +4,7 @@ import { AlephaContext } from "alepha/react";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { describe, test } from "vitest";
+
 import { useI18n } from "../hooks/useI18n.ts";
 import { AlephaReactI18n } from "../index.ts";
 import { $dictionary } from "../primitives/$dictionary.ts";
@@ -29,7 +30,7 @@ describe("useI18n hook", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     await alepha.start();
 
     const ui = renderWithAlepha(alepha, <TranslationComponent />);
@@ -60,7 +61,7 @@ describe("useI18n hook", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     await alepha.start();
 
     const ui = renderWithAlepha(alepha, <TypeSafeComponent />);
@@ -109,7 +110,7 @@ describe("useI18n hook", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     await alepha.start();
 
     const ui = renderWithAlepha(alepha, <LanguageSwitcher />);
@@ -160,7 +161,7 @@ describe("useI18n hook", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
     await alepha.start();
 
@@ -203,7 +204,7 @@ describe("useI18n hook", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     await alepha.start();
 
     const ui = renderWithAlepha(alepha, <LanguageList />);
@@ -235,7 +236,7 @@ describe("useI18n hook", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     await alepha.start();
 
     const ui = renderWithAlepha(alepha, <InterpolationComponent />);
@@ -265,7 +266,7 @@ describe("useI18n hook", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     await alepha.start();
 
     const ui = renderWithAlepha(alepha, <DefaultComponent />);
@@ -291,7 +292,7 @@ describe("useI18n hook", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     await alepha.start();
 
     const ui = renderWithAlepha(alepha, <NumberFormatComponent />);
@@ -348,7 +349,7 @@ describe("useI18n hook", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     const i18n = alepha.inject(I18nProvider);
     await alepha.start();
 
@@ -419,7 +420,7 @@ describe("useI18n hook", () => {
     }
 
     const alepha = Alepha.create().with(AlephaReactI18n);
-    const app = alepha.inject(App);
+    alepha.inject(App);
     await alepha.start();
 
     const ui = renderWithAlepha(alepha, <FallbackComponent />);

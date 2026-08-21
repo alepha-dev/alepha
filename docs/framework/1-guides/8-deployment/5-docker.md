@@ -52,7 +52,7 @@ export default defineConfig({
       image: {
         tag: "ghcr.io/myorg/myapp",
         args: "--platform linux/amd64",
-        oci: true,   // add org.opencontainers.image.* labels (git revision, timestamp, version)
+        oci: true, // add org.opencontainers.image.* labels (git revision, timestamp, version)
       },
     },
   },
@@ -61,13 +61,13 @@ export default defineConfig({
 
 ## Configuration
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `docker.from` | `node:24-alpine` / `oven/bun:alpine` | Base image for the `FROM` instruction |
-| `docker.command` | `node` / `bun` | Command that runs the server |
-| `docker.install` | `[]` | Extra packages installed into the image (e.g. `["wrangler"]` for an app that shells out to a CLI) |
-| `docker.image` | - | Image tag, extra `docker build` args, OCI labels (used with `--image`) |
-| `docker.compile` | - | Single-binary compile mode, see below |
+| Option           | Default                              | Description                                                                                       |
+| ---------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `docker.from`    | `node:24-alpine` / `oven/bun:alpine` | Base image for the `FROM` instruction                                                             |
+| `docker.command` | `node` / `bun`                       | Command that runs the server                                                                      |
+| `docker.install` | `[]`                                 | Extra packages installed into the image (e.g. `["wrangler"]` for an app that shells out to a CLI) |
+| `docker.image`   | -                                    | Image tag, extra `docker build` args, OCI labels (used with `--image`)                            |
+| `docker.compile` | -                                    | Single-binary compile mode, see below                                                             |
 
 ## Compile Mode (Single Static Binary)
 

@@ -1,5 +1,6 @@
 import { $env, $inject, Alepha, z } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
+
 import { ServerReply } from "../helpers/ServerReply.ts";
 import type {
   RequestGeo,
@@ -43,6 +44,7 @@ export class ServerRequestParser {
       params: {},
       ...partialRawRequest,
     } as ServerRequestData;
+    // oxlint-disable-next-line typescript/no-this-alias -- the getters below are object-literal getters, whose `this` is the literal; an arrow cannot express a getter
     const self = this;
     let requestId: string | undefined;
     return {

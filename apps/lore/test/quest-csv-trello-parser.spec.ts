@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
+
 import { TrelloParser } from "../src/api/services/parsers/TrelloParser.ts";
 
 describe("TrelloParser", () => {

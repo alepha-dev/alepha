@@ -11,7 +11,7 @@ const CodePane = (props: CodePaneProps) => {
       ) : null}
       <div
         className="code-demo-content"
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML is sanitized at build time
+        // HTML is sanitized at build time
         dangerouslySetInnerHTML={{ __html: props.html }}
       />
     </div>

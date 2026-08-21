@@ -5,6 +5,7 @@ import {
   KIND,
   Primitive,
 } from "alepha";
+
 import type { EmailSendOptions } from "../providers/EmailProvider.ts";
 import { EmailProvider } from "../providers/EmailProvider.ts";
 import { MemoryEmailProvider } from "../providers/MemoryEmailProvider.ts";

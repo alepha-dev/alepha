@@ -1,8 +1,10 @@
 import { Button } from "@alepha/ui/components/ui/button";
 import { useI18n } from "alepha/react/i18n";
 import { BookMarked, Copy, Download, ScrollText } from "lucide-react";
+
 import type { MilestoneChangelogArea } from "@/api/schemas/milestoneChangelogAreaSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+
 import MilestoneChangelogRow from "./MilestoneChangelogRow.tsx";
 
 export interface MilestoneChangelogPanelProps {

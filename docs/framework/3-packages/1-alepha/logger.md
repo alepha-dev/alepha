@@ -13,6 +13,7 @@ npm install alepha
 Configurable logging with multiple outputs.
 
 **Features:**
+
 - Global logger access
 - JSON format
 - Pretty colored output

@@ -1,5 +1,6 @@
 import { $pipeline, Alepha } from "alepha";
 import { describe, test } from "vitest";
+
 import { LockAcquireError } from "../errors/LockAcquireError.ts";
 import { AlephaLock } from "../index.ts";
 import { $lock } from "../primitives/$lock.ts";

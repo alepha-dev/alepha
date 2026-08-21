@@ -12,8 +12,8 @@ That's it. Your app is running. Make changes and watch them appear instantly.
 
 ## Options
 
-| Flag | Description |
-|------|-------------|
+| Flag     | Description                                                              |
+| -------- | ------------------------------------------------------------------------ |
 | `--only` | Run only specific apps in a monorepo (comma-separated: `--only api,web`) |
 
 ## What It Does
@@ -36,6 +36,7 @@ export default defineConfig({
 ```
 
 You get:
+
 - **Hot Module Replacement**: Changes appear instantly without full page reload
 - **Fast Refresh**: React state preserved during edits
 - **SSR in development**: Same rendering behavior as production
@@ -103,10 +104,12 @@ These are available in your code via `process.env` or the `$env` primitive:
 import { $env, z } from "alepha";
 
 class MyService {
-  protected readonly env = $env(z.object({
-    DATABASE_URL: z.text(),
-    API_KEY: z.text(),
-  }));
+  protected readonly env = $env(
+    z.object({
+      DATABASE_URL: z.text(),
+      API_KEY: z.text(),
+    }),
+  );
 
   connect() {
     console.log(this.env.DATABASE_URL);

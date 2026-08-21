@@ -1,4 +1,5 @@
 import { $inject, $store, Alepha } from "alepha";
+
 import { logBufferConfig } from "../schemas/logBufferConfig.ts";
 import type { LogEntry } from "../schemas/logEntrySchema.ts";
 import { LogBuffer } from "../services/LogBuffer.ts";

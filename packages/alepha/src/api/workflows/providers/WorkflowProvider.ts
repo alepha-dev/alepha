@@ -12,6 +12,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { LockProvider } from "alepha/lock";
 import { $logger, LogBufferProvider } from "alepha/logger";
 import { $repository, DbConflictError } from "alepha/orm";
+
 import {
   type WorkflowExecutionEntity,
   type WorkflowStatus,
@@ -1530,7 +1531,7 @@ export class WorkflowProvider {
       if (this.inFlight.size > 0) {
         this.log.info(`Draining ${this.inFlight.size} in-flight step(s)...`);
         await Promise.race([
-          Promise.allSettled([...this.inFlight]),
+          Promise.allSettled(this.inFlight),
           this.dt.wait([this.config.drainTimeout, "millisecond"]),
         ]);
       }

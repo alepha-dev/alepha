@@ -1,6 +1,7 @@
 import { Alepha, AlephaError, z } from "alepha";
 import { $action, BadRequestError, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
+
 import { ServerLinksProvider } from "../index.ts";
 
 describe("POST /api/_batch", () => {

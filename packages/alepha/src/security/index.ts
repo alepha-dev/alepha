@@ -1,5 +1,6 @@
 import { $module } from "alepha";
 import type { FetchOptions } from "alepha/server";
+
 import { currentResourceAtom } from "./atoms/currentResourceAtom.ts";
 import { currentTenantAtom } from "./atoms/currentTenantAtom.ts";
 import { currentUserAtom } from "./atoms/currentUserAtom.ts";

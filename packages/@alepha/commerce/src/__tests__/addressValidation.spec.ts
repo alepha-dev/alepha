@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
+
 import { AlephaCommerceCheckout } from "../checkout/index.ts";
 import { AddressRulesProvider } from "../checkout/providers/AddressRulesProvider.ts";
 import { AddressService } from "../checkout/services/AddressService.ts";

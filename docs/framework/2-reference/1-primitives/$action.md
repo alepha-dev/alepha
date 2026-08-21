@@ -14,6 +14,7 @@ Server actions are the core building blocks for REST APIs in Alepha, providing d
 HTTP endpoints with full type safety, automatic validation, and OpenAPI documentation.
 
 **Key Features**
+
 - Full TypeScript inference for request/response types
 - Automatic schema validation using Zod
 - Convention-based URL generation with customizable paths
@@ -26,9 +27,9 @@ HTTP endpoints with full type safety, automatic validation, and OpenAPI document
 **Important:** All `$action` paths are automatically prefixed with `/api`.
 
 ```ts
-$action({ path: "/users" })     // → GET /api/users
-$action({ path: "/users/:id" }) // → GET /api/users/:id
-$action({ path: "/hello" })     // → GET /api/hello
+$action({ path: "/users" }); // → GET /api/users
+$action({ path: "/users/:id" }); // → GET /api/users/:id
+$action({ path: "/hello" }); // → GET /api/hello
 ```
 
 This prefix is configurable via the `serverApiOptions` atom
@@ -36,22 +37,23 @@ This prefix is configurable via the `serverApiOptions` atom
 HTTP method defaults to GET, or POST if body schema is provided.
 
 **Common Use Cases**
+
 - CRUD operations with type safety
 - File upload and download endpoints
 - Microservice communication
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `name` | `string` | No | Name of the action |
-| `group` | `string` | No | Group actions together |
-| `path` | `string` | No | Pathname of the route |
-| `method` | `RouteMethod` | No | The route method |
-| `schema` | `TConfig` | No | The config schema of the route |
-| `description` | `string` | No | A short description of the action |
-| `disabled` | `boolean` | No | Disable the route |
-| `handler` | `ServerActionHandler&lt;TConfig&gt;` | Yes | Main route handler |
+| Option        | Type                                 | Required | Description                       |
+| ------------- | ------------------------------------ | -------- | --------------------------------- |
+| `name`        | `string`                             | No       | Name of the action                |
+| `group`       | `string`                             | No       | Group actions together            |
+| `path`        | `string`                             | No       | Pathname of the route             |
+| `method`      | `RouteMethod`                        | No       | The route method                  |
+| `schema`      | `TConfig`                            | No       | The config schema of the route    |
+| `description` | `string`                             | No       | A short description of the action |
+| `disabled`    | `boolean`                            | No       | Disable the route                 |
+| `handler`     | `ServerActionHandler&lt;TConfig&gt;` | Yes      | Main route handler                |
 
 ## Examples
 
@@ -62,21 +64,23 @@ class UserController {
     schema: {
       query: z.object({
         page: z.number({ default: 1 }).optional(),
-        limit: z.number({ default: 10 }).optional()
+        limit: z.number({ default: 10 }).optional(),
       }),
       response: z.object({
-        users: z.array(z.object({
-          id: z.text(),
-          name: z.text(),
-          email: z.text()
-        })),
-        total: z.number()
-      })
+        users: z.array(
+          z.object({
+            id: z.text(),
+            name: z.text(),
+            email: z.text(),
+          }),
+        ),
+        total: z.number(),
+      }),
     },
     handler: async ({ query }) => {
       const users = await this.userService.findUsers(query);
       return { users: users.items, total: users.total };
-    }
+    },
   });
 
   createUser = $action({
@@ -85,14 +89,13 @@ class UserController {
     schema: {
       body: z.object({
         name: z.text(),
-        email: z.text({ format: "email" })
+        email: z.text({ format: "email" }),
       }),
-      response: z.object({ id: z.text(), name: z.text() })
+      response: z.object({ id: z.text(), name: z.text() }),
     },
     handler: async ({ body }) => {
       return await this.userService.create(body);
-    }
+    },
   });
 }
 ```
-

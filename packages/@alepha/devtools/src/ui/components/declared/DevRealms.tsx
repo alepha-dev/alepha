@@ -1,4 +1,5 @@
 import { ShieldCheck } from "lucide-react";
+
 import type { DevRealmMetadata } from "../../../schemas/DevRealmMetadata.ts";
 import { useMetadata } from "../../hooks/useMetadata.ts";
 import { DeclaredScreen } from "./DeclaredScreen.tsx";

@@ -10,4 +10,3 @@ import { CodecManager } from "alepha";
 
 CodecManager manages multiple codec formats and provides a unified interface
 for encoding and decoding data with different formats.
-

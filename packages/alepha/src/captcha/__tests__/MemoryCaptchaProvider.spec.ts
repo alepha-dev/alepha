@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
+
 import { CaptchaProvider, MemoryCaptchaProvider } from "../index.ts";
 
 describe("MemoryCaptchaProvider", () => {

@@ -1,5 +1,6 @@
 import { $store } from "alepha";
 import { $command } from "alepha/command";
+
 import { buildOptions } from "../atoms/buildOptions.ts";
 
 export class CleanCommand {

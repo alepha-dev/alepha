@@ -22,4 +22,3 @@ if (!user) {
   await login("credentials", { username, password });
 }
 ```
-

@@ -5,6 +5,7 @@ import { AlephaReactRouter } from "alepha/react/router";
 import { setupJsdomMocks } from "alepha/react/testing";
 import { User } from "lucide-react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+
 import { DetailLayout } from "../detail-layout.tsx";
 
 /**

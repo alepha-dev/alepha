@@ -7,6 +7,7 @@ import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { AlephaSecurity, CryptoProvider } from "alepha/security";
 import { BadRequestError, HttpError } from "alepha/server";
 import { describe, it } from "vitest";
+
 import {
   AlephaApiUsers,
   CredentialService,
@@ -508,8 +509,7 @@ describe("alepha/api/users - CredentialService", () => {
     it("should silently return intent when resetPasswordAllowed is false", async ({
       expect,
     }) => {
-      const { alepha, credentialService, userService, cryptoProvider } =
-        await setup();
+      const { alepha, credentialService, cryptoProvider } = await setup();
 
       // Register a separate realm with resetPasswordAllowed disabled
       const realmProvider = alepha.inject(RealmProvider);
@@ -561,8 +561,7 @@ describe("alepha/api/users - CredentialService", () => {
     it("should reject password that violates realm policy", async ({
       expect,
     }) => {
-      const { alepha, credentialService, userService, cryptoProvider } =
-        await setup();
+      const { alepha, credentialService, cryptoProvider } = await setup();
 
       // Register a realm with strict password policy
       const realmProvider = alepha.inject(RealmProvider);
@@ -624,8 +623,7 @@ describe("alepha/api/users - CredentialService", () => {
     });
 
     it("should accept password that meets realm policy", async ({ expect }) => {
-      const { alepha, credentialService, userService, cryptoProvider } =
-        await setup();
+      const { alepha, credentialService, cryptoProvider } = await setup();
 
       // Register a realm with strict password policy
       const realmProvider = alepha.inject(RealmProvider);

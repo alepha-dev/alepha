@@ -17,7 +17,7 @@ export const sigilGlobMatch = (path: string, pattern: string): boolean => {
     .replace(/[.+^$()|[\]\\]/g, "\\$&")
     .replace(/\*\*/g, "")
     .replace(/\*/g, "[^/]*")
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: U+0001 sentinel re-expanded to .* below.
+    // U+0001 sentinel re-expanded to .* below.
     .replace(//g, ".*");
   try {
     return new RegExp(`^${escaped}$`).test(path);

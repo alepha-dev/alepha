@@ -1,7 +1,9 @@
 import { basename } from "node:path";
+
 import { $inject } from "alepha";
 import { SEND_EMAIL_DEFAULT_BINDING } from "alepha/email/cloudflare";
 import { FileSystemProvider } from "alepha/system";
+
 import type { BuildManifest } from "../schemas/buildManifest.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 

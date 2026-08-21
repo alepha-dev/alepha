@@ -15,6 +15,7 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Eye, EyeOff, PackagePlus, Pencil, Plus, Shapes } from "lucide-react";
 import { useCallback } from "react";
+
 import type {
   AdminProductController,
   AdminProductResource,

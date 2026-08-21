@@ -6,6 +6,7 @@ import { $inject, Alepha } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, sql } from "alepha/orm";
+
 import { blights } from "../entities/blights.ts";
 import { LoreAnalytics } from "../entities/loreAnalytics.ts";
 import { projects } from "../entities/projects.ts";

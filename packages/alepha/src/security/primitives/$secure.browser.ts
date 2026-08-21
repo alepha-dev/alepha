@@ -4,6 +4,7 @@ import {
   MIDDLEWARE_PROTECTED,
   type Middleware,
 } from "alepha";
+
 import { currentUserAtom } from "../atoms/currentUserAtom.ts";
 import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
 import { PermissionRegistryProvider } from "../providers/PermissionRegistryProvider.ts";

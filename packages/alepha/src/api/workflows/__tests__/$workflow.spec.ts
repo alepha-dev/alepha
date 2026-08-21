@@ -2,6 +2,7 @@ import { Alepha, z } from "alepha";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
+
 import {
   $workflow,
   AlephaApiWorkflows,
@@ -318,6 +319,7 @@ describe("$workflow", () => {
      * retrying on a short delay. That is why this is skipped rather than
      * tuned.
      */
+    // oxlint-disable-next-line vitest/no-disabled-tests
     it.skip("should retry a step on failure with retries configured", async ({
       expect,
     }) => {

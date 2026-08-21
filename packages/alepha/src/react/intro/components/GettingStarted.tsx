@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
 import { useAdminSlide } from "./GettingStartedAdminSlide.tsx";
 import { useAuthSlide } from "./GettingStartedAuthSlide.tsx";
 import { useDevtoolsSlide } from "./GettingStartedDevtoolsSlide.tsx";
@@ -77,6 +78,7 @@ const GettingStarted = ({ welcome }: GettingStartedProps) => {
   // commit right after. Anything else that can only be known in the browser
   // belongs behind this flag too.
   const [mounted, setMounted] = useState(false);
+  // oxlint-disable-next-line react/set-state-in-effect
   useEffect(() => setMounted(true), []);
 
   // Get auth-aware slide content (hooks return undefined if routes don't exist)

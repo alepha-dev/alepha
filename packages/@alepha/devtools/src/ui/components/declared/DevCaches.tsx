@@ -1,4 +1,5 @@
 import { Boxes } from "lucide-react";
+
 import type { DevCacheMetadata } from "../../../schemas/DevCacheMetadata.ts";
 import { useMetadata } from "../../hooks/useMetadata.ts";
 import { DeclaredScreen } from "./DeclaredScreen.tsx";

@@ -5,6 +5,7 @@ import {
   HoverCardTrigger,
 } from "@alepha/ui/components/ui/hover-card";
 import { Crown, User as UserIcon } from "lucide-react";
+
 import type { Member } from "@/api/entities/members.ts";
 import type { User } from "@/api/entities/users.ts";
 import { displayName } from "@/web/app/services/displayName.ts";

@@ -1,6 +1,7 @@
 import { $atom, $hook, $inject, $store, type Infer, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
+
 import { EmailError } from "../errors/EmailError.ts";
 import type { EmailProvider, EmailSendOptions } from "./EmailProvider.ts";
 

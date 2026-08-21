@@ -54,8 +54,8 @@ export class AppRouter {
 URL pattern with parameter support. If omitted, defaults to the root (`/`).
 
 ```typescript
-path: "/users/:id"
-path: "/blog/:slug"
+path: "/users/:id";
+path: "/blog/:slug";
 ```
 
 ### schema
@@ -79,7 +79,7 @@ Server-side data fetching function. Receives typed params, query, and parent pro
 loader: async ({ params, query }) => {
   const user = await this.userApi.getUser(params.id);
   return { user };
-}
+};
 ```
 
 ### component and lazy
@@ -102,13 +102,15 @@ Set document head tags (title, meta, etc.). Can be static or dynamic:
 
 ```typescript
 // Static
-head: { title: "About Us" }
+head: {
+  title: "About Us";
+}
 
 // Dynamic, based on loader data
 head: (props) => ({
   title: props.user.name,
   description: `Profile of ${props.user.name}`,
-})
+});
 ```
 
 #### Canonical URLs
@@ -126,7 +128,9 @@ Nothing is emitted when there is no `PUBLIC_URL` to build on, for wildcard and `
 To point a page somewhere else - a duplicate that should defer to the original - set `url` yourself:
 
 ```typescript
-head: { url: "https://example.com/docs/routing" }
+head: {
+  url: "https://example.com/docs/routing";
+}
 ```
 
 Set it on a **page**, never in the global `$head()`: there it names the same URL for the whole site, and search engines read that as every page being a duplicate of that one. Alepha logs a warning if you do.
@@ -153,7 +157,7 @@ static: {
 Disable server-side rendering for the page component (`@default true`). With `ssr: false` the component renders client-side only (wrapped in `<ClientOnly />` internally), but the **loader still runs on the server** - data fetching is unaffected. The value is decided at the leaf and inherited as a default by descendants: `ssr: false` on a parent acts as the default for its children, and a child can override with `ssr: true`.
 
 ```typescript
-ssr: false
+ssr: false;
 ```
 
 ### stream
@@ -186,7 +190,7 @@ Use it for the handful of routes that can legitimately not exist - a product, an
 Attach middlewares to the page - this is how you add server-side caching:
 
 ```typescript
-use: [$cache({ ttl: [1, "hour"] })]
+use: [$cache({ ttl: [1, "hour"] })];
 ```
 
 > [!NOTE]
@@ -201,8 +205,8 @@ When `static: true` is set, the framework automatically applies `$cache({ provid
 UI-affordance predicate for the page's navigation entry - **not security**. Navigation surfaces (sidebar, breadcrumbs, command palette) consult it to hide or disable the entry; the router never does, and nothing returns a 403. For real access control, gate the page with `use: [$secure({ permissions })]`, which is server-enforced.
 
 ```typescript
-can: ({ has }) => has("admin")          // hide the nav entry
-can: ({ has }) => has("admin") || "disabled"  // show it greyed out
+can: ({ has }) => has("admin"); // hide the nav entry
+can: ({ has }) => has("admin") || "disabled"; // show it greyed out
 ```
 
 ### redirect
@@ -233,7 +237,7 @@ users = $page({
 Default props passed to the component; props returned by the `loader` override them.
 
 ```typescript
-props: () => ({ pageSize: 25 })
+props: () => ({ pageSize: 25 });
 ```
 
 ## Nested Routing
@@ -305,11 +309,11 @@ class AppRouter {
 
 Three routers ship whole surfaces you can mount instead of rebuilding:
 
-| Router | Surface | Extend with |
-|---|---|---|
-| `AuthRouter` | `/auth/{login,register,reset-password,verify-email}` | - (write your own to change the URLs) |
-| `AdminRouter` | `/admin` - users, sessions, keys, jobs, audits, … | `$pageAdmin` |
-| `AccountRouter` | `/account` - profile, security, sessions, API keys, connected apps | `$pageAccount` |
+| Router          | Surface                                                            | Extend with                           |
+| --------------- | ------------------------------------------------------------------ | ------------------------------------- |
+| `AuthRouter`    | `/auth/{login,register,reset-password,verify-email}`               | - (write your own to change the URLs) |
+| `AdminRouter`   | `/admin` - users, sessions, keys, jobs, audits, …                  | `$pageAdmin`                          |
+| `AccountRouter` | `/account` - profile, security, sessions, API keys, connected apps | `$pageAccount`                        |
 
 `$pageAdmin` and `$pageAccount` are `$pageNav` already parented to their shell,
 so one call adds a page to the shared sidebar with no separate registration -
@@ -351,7 +355,7 @@ errorHandler: (error) => {
 }
 ```
 
-The same handler also covers failures thrown *around* the render - a `use:`
+The same handler also covers failures thrown _around_ the render - a `use:`
 middleware, or a server hook such as the rate limiter or the not-ready guard
 that answers while the app is still booting. Those never run a loader, so there
 is no layer to fail; the router still resolves the nearest `errorHandler` and
@@ -383,7 +387,7 @@ context (`useRouter`, `useI18n`) work, event handlers do not.
 onEnter: () => {
   analytics.trackPageView("/dashboard");
   window.scrollTo(0, 0);
-}
+};
 ```
 
 - `onServerResponse`: called before the server sends the response (server only)
@@ -413,8 +417,12 @@ Define the keyframes in your CSS:
 
 ```css
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 ```
 
@@ -445,18 +453,18 @@ const Nav = () => {
 
 **Key methods and properties:**
 
-| Method/Property   | Description                                              |
-|-------------------|----------------------------------------------------------|
-| `push(path, opts)` | Navigate to a path or page name. Options: `replace`, `params`, `query`, `force`. |
-| `back()`          | Go back in history.                                       |
-| `forward()`       | Go forward in history.                                    |
-| `reload()`        | Reload the current page.                                  |
-| `isActive(href)`  | Check if the given path is the current route.             |
-| `pathname`        | Current pathname string.                                  |
-| `query`           | Current query parameters as `Record<string, string>`.     |
-| `path(name, cfg)` | Resolve a page name to its URL path.                      |
-| `anchor(path)`    | Returns `{ href, onClick }` props for anchor elements.    |
-| `setQueryParams(record)` | Update URL query parameters without navigation.    |
+| Method/Property          | Description                                                                      |
+| ------------------------ | -------------------------------------------------------------------------------- |
+| `push(path, opts)`       | Navigate to a path or page name. Options: `replace`, `params`, `query`, `force`. |
+| `back()`                 | Go back in history.                                                              |
+| `forward()`              | Go forward in history.                                                           |
+| `reload()`               | Reload the current page.                                                         |
+| `isActive(href)`         | Check if the given path is the current route.                                    |
+| `pathname`               | Current pathname string.                                                         |
+| `query`                  | Current query parameters as `Record<string, string>`.                            |
+| `path(name, cfg)`        | Resolve a page name to its URL path.                                             |
+| `anchor(path)`           | Returns `{ href, onClick }` props for anchor elements.                           |
+| `setQueryParams(record)` | Update URL query parameters without navigation.                                  |
 
 ### useActive
 
@@ -515,11 +523,11 @@ const SearchPage = () => {
 
 Options:
 
-| Option   | Type                        | Default    | Description                                                                 |
-|----------|-----------------------------|------------|-----------------------------------------------------------------------------|
-| `key`    | `string`                    | `"q"`      | Param name for `base64` format. Ignored by `querystring`.                   |
+| Option   | Type                          | Default    | Description                                                                                                                                      |
+| -------- | ----------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `key`    | `string`                      | `"q"`      | Param name for `base64` format. Ignored by `querystring`.                                                                                        |
 | `format` | `"base64"` \| `"querystring"` | `"base64"` | `base64` packs the whole object into one opaque param (`?q=…`); `querystring` spreads each field as its own readable param (`?search=…&page=…`). |
-| `push`   | `boolean`                   | `false`    | `true` adds a history entry (`pushState`) so back returns to the previous value; `false` replaces the current entry (`replaceState`). |
+| `push`   | `boolean`                     | `false`    | `true` adds a history entry (`pushState`) so back returns to the previous value; `false` replaces the current entry (`replaceState`).            |
 
 With `format: "querystring"`, each schema field maps to its own URL param,
 and values are coerced back to their declared types on read (e.g. a

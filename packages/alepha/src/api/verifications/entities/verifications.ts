@@ -1,6 +1,7 @@
 import type { Infer } from "alepha";
 import { z } from "alepha";
 import { $entity, db } from "alepha/orm";
+
 import { verificationTypeEnumSchema } from "../schemas/verificationTypeEnumSchema.ts";
 
 export const verifications = $entity({

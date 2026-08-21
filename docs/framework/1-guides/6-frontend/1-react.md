@@ -60,7 +60,7 @@ const MyComponent = () => {
   // alepha.inject(SomeService)
   // alepha.events.emit(...)
   // alepha.store.get(...)
-}
+};
 ```
 
 Must be used within an Alepha context (provided automatically by the router or by `<AlephaProvider>`).
@@ -75,7 +75,7 @@ import { useInject } from "alepha/react";
 const Dashboard = () => {
   const analytics = useInject(AnalyticsService);
   // use analytics methods
-}
+};
 ```
 
 ### useClient
@@ -121,27 +121,27 @@ import { useAction } from "alepha/react";
 
 **Returns:** `{ run, refetch, loading, error, cancel, result }`
 
-| Property  | Type                  | Description                                |
-|-----------|-----------------------|--------------------------------------------|
-| `run`     | `(...args) => Promise` | Execute the action                        |
-| `refetch` | `() => Promise`       | Re-execute the action, aborting any in-flight request (never dropped by the double-click dedup guard) |
-| `loading` | `boolean`             | True while executing                      |
-| `error`   | `Error \| undefined`  | Error from last failed execution          |
-| `cancel`  | `() => void`          | Cancel debounce timer or abort in-flight  |
-| `result`  | `T \| undefined`      | Result from last successful execution     |
+| Property  | Type                   | Description                                                                                           |
+| --------- | ---------------------- | ----------------------------------------------------------------------------------------------------- |
+| `run`     | `(...args) => Promise` | Execute the action                                                                                    |
+| `refetch` | `() => Promise`        | Re-execute the action, aborting any in-flight request (never dropped by the double-click dedup guard) |
+| `loading` | `boolean`              | True while executing                                                                                  |
+| `error`   | `Error \| undefined`   | Error from last failed execution                                                                      |
+| `cancel`  | `() => void`           | Cancel debounce timer or abort in-flight                                                              |
+| `result`  | `T \| undefined`       | Result from last successful execution                                                                 |
 
 **Options:**
 
-| Option      | Type                  | Description                                      |
-|-------------|-----------------------|--------------------------------------------------|
-| `handler`   | `(...args, ctx) => Promise` | The async function to execute. Receives an `ActionContext` with an `AbortSignal` as the last argument. |
-| `onError`   | `(error) => void`     | Custom error handler. Errors are never re-thrown by `run` - they land in `error` state and the `react:action:error` event, so fire-and-forget calls can't produce unhandled rejections. |
-| `onSuccess` | `(result) => void`    | Called after successful execution.                |
-| `id`        | `string`              | Identifier for debugging and analytics.           |
-| `debounce`  | `number`              | Delay in milliseconds before executing.           |
-| `runOnInit` | `boolean`             | Run once when the component mounts.               |
-| `runEvery`  | `DurationLike`        | Run periodically at the given interval.           |
-| `invalidates` | `string[]`          | Query-cache keys to invalidate after success - see [Invalidating after a write](#invalidating-after-a-write). |
+| Option        | Type                        | Description                                                                                                                                                                             |
+| ------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `handler`     | `(...args, ctx) => Promise` | The async function to execute. Receives an `ActionContext` with an `AbortSignal` as the last argument.                                                                                  |
+| `onError`     | `(error) => void`           | Custom error handler. Errors are never re-thrown by `run` - they land in `error` state and the `react:action:error` event, so fire-and-forget calls can't produce unhandled rejections. |
+| `onSuccess`   | `(result) => void`          | Called after successful execution.                                                                                                                                                      |
+| `id`          | `string`                    | Identifier for debugging and analytics.                                                                                                                                                 |
+| `debounce`    | `number`                    | Delay in milliseconds before executing.                                                                                                                                                 |
+| `runOnInit`   | `boolean`                   | Run once when the component mounts.                                                                                                                                                     |
+| `runEvery`    | `DurationLike`              | Run periodically at the given interval.                                                                                                                                                 |
+| `invalidates` | `string[]`                  | Query-cache keys to invalidate after success - see [Invalidating after a write](#invalidating-after-a-write).                                                                           |
 
 By default, concurrent executions are prevented - calling `run` while already executing is a no-op.
 
@@ -231,7 +231,7 @@ const StatusBar = () => {
   );
 
   return <div>...</div>;
-}
+};
 ```
 
 The second argument is a dependency list (same as `useEffect`). Events are fully typed based on the `Hooks` interface. Note that `useEvents` no-ops outside the browser - an SSR pass registers nothing, so don't rely on it for server-side listeners.
@@ -266,7 +266,10 @@ This is the part that replaces hand-patching state after a mutation. Declare wha
 const remove = useAction(
   {
     handler: async (id: string) => folioApi.delete({ params: { id } }),
-    invalidates: [["folios", campaignId], ["folioTags", campaignId]],
+    invalidates: [
+      ["folios", campaignId],
+      ["folioTags", campaignId],
+    ],
   },
   [campaignId],
 );
@@ -317,13 +320,13 @@ const App = () => {
       <MyApp />
     </AlephaProvider>
   );
-}
+};
 ```
 
 `AlephaProvider` creates an Alepha instance, calls `start()`, and provides the instance via React context. Props:
 
-| Prop        | Type                        | Description                       |
-|-------------|-----------------------------|-----------------------------------|
-| `children`  | `ReactNode`                 | Application content               |
-| `onLoading` | `() => ReactNode`           | Rendered while Alepha is starting |
-| `onError`   | `(error: Error) => ReactNode` | Rendered if start fails         |
+| Prop        | Type                          | Description                       |
+| ----------- | ----------------------------- | --------------------------------- |
+| `children`  | `ReactNode`                   | Application content               |
+| `onLoading` | `() => ReactNode`             | Rendered while Alepha is starting |
+| `onError`   | `(error: Error) => ReactNode` | Rendered if start fails           |

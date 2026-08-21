@@ -1,55 +1,28 @@
 {
   "name": "@alepha/protobuf",
-  "description": "Protocol Buffers (Protobuf) codec support for Alepha framework.",
-  "author": "Nicolas Foures",
   "version": "0.26.0",
-  "type": "module",
-  "engines": {
-    "node": ">=22.0.0"
-  },
-  "license": "MIT",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "files": [
-    "dist",
-    "src"
+  "description": "Protocol Buffers (Protobuf) codec support for Alepha framework.",
+  "keywords": [
+    "alepha",
+    "codec",
+    "protobuf",
+    "typescript",
+    "zod"
   ],
-  "dependencies": {
-    "protobufjs": "^8.7.2"
-  },
-  "dependenciesMeta": {
-    "protobufjs": {
-      "built": true
-    }
-  },
-  "devDependencies": {
-    "alepha": "0.26.0",
-    "tsdown": "^0.22.14",
-    "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
-  },
-  "peerDependencies": {
-    "alepha": "^0.26.0"
-  },
-  "scripts": {
-    "lint": "alepha lint",
-    "typecheck": "alepha typecheck",
-    "test": "alepha test",
-    "build": "tsdown"
-  },
   "homepage": "https://alepha.dev",
-  "llms": "https://alepha.dev/llms.txt",
+  "license": "MIT",
+  "author": "Nicolas Foures",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/feunard/alepha.git"
   },
-  "keywords": [
-    "alepha",
-    "protobuf",
-    "zod",
-    "codec",
-    "typescript"
+  "files": [
+    "dist",
+    "src"
   ],
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "exports": {
     ".": {
       "types": "./src/index.ts",
@@ -69,5 +42,32 @@
       },
       "./package.json": "./package.json"
     }
-  }
+  },
+  "scripts": {
+    "lint": "alepha lint",
+    "typecheck": "alepha typecheck",
+    "test": "alepha test",
+    "build": "tsdown"
+  },
+  "dependencies": {
+    "protobufjs": "^8.7.2"
+  },
+  "devDependencies": {
+    "alepha": "0.26.0",
+    "tsdown": "^0.22.14",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  },
+  "dependenciesMeta": {
+    "protobufjs": {
+      "built": true
+    }
+  },
+  "peerDependencies": {
+    "alepha": "^0.26.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "llms": "https://alepha.dev/llms.txt"
 }

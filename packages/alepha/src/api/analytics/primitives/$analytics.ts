@@ -1,5 +1,6 @@
 import { $inject, AlephaError, createPrimitive, KIND, Primitive } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+
 import { AnalyticsBuckets } from "../planner/AnalyticsBuckets.ts";
 import { AnalyticsSlotMap } from "../planner/AnalyticsSlotMap.ts";
 import { AnalyticsProvider } from "../providers/AnalyticsProvider.ts";
@@ -49,8 +50,10 @@ export const $analytics = (options: AnalyticsPrimitiveOptions) =>
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface AnalyticsPrimitiveOptions
-  extends Omit<AnalyticsDataset, "name"> {
+export interface AnalyticsPrimitiveOptions extends Omit<
+  AnalyticsDataset,
+  "name"
+> {
   /**
    * Storage-facing dataset name. Defaults to the property key it is declared
    * on, the same way `$storage` names a bucket.

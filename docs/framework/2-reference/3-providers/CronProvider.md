@@ -15,4 +15,3 @@ emit native platform triggers. `createCronJob(name, expression, handler)`
 registers a raw tick directly - no distributed lock, no run history, no
 retries: on multiple replicas every replica fires. Use `$job({ cron })`
 unless a database is genuinely unavailable.
-

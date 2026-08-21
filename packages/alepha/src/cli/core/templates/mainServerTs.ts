@@ -20,6 +20,7 @@ export const mainServerTs = (options: MainServerTsOptions = {}) => {
   return (
     `
 import { Alepha, run } from "alepha";
+
 ${imports.join("\n")}
 
 const alepha = Alepha.create();

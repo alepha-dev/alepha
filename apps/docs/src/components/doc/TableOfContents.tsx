@@ -1,4 +1,5 @@
 import { type CSSProperties, useEffect, useRef, useState } from "react";
+
 import styles from "./TableOfContents.module.css";
 
 interface HeadingItem {
@@ -56,6 +57,10 @@ const TocItems = () => {
       text: el.getAttribute("data-heading") || "",
       depth: Number(el.getAttribute("data-depth") || 2),
     }));
+    // Reads the rendered DOM — the external system this effect exists to
+    // synchronize with. There is nothing to derive during render: the headings
+    // do not exist until the content has been committed.
+    // oxlint-disable-next-line react/set-state-in-effect
     setHeadings(items);
 
     if (items.length > 0 && !activeId) {

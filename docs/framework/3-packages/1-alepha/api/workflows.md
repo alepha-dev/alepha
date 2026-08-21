@@ -13,6 +13,7 @@ npm install alepha
 Durable workflow engine for long-running business processes.
 
 **Features:**
+
 - Declarative, multi-step workflows with typed payloads
 - Saga-pattern compensation for failure recovery
 - Per-step retry with exponential backoff, delivered through the job
@@ -37,6 +38,7 @@ timer is armed: timers and queue deliveries only optimize latency,
 the recovery sweep re-dispatches anything due from the DB alone.
 
 **Sharp edges, learned by dogfooding:**
+
 - Dedup keys are kept on terminal rows - the partial unique index only
   spans live statuses, so a finished key can be re-used by a new run.
   Look executions up by key or payload; `WorkflowTestKit.findByPayload`

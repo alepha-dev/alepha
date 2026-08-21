@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+
 import { AdminApiKeyController } from "./controllers/AdminApiKeyController.ts";
 import { ApiKeyController } from "./controllers/ApiKeyController.ts";
 import { ApiKeyService } from "./services/ApiKeyService.ts";

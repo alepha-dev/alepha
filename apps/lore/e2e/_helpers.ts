@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+
 import { type Browser, expect, type Page } from "@playwright/test";
 
 export const emailDir = path.join(process.cwd(), "node_modules/.alepha/emails");

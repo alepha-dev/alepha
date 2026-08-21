@@ -18,9 +18,8 @@ You can add a service account if you want to use a security layer.
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `url` | `string \| (() =&gt; string)` | Yes | The URL of the remote service |
-| `name` | `string` | No | The name of the remote service. |
-| `serviceAccount` | `ServiceAccountPrimitive` | No | For communication between the server and the remote service with a security layer |
-
+| Option           | Type                          | Required | Description                                                                       |
+| ---------------- | ----------------------------- | -------- | --------------------------------------------------------------------------------- |
+| `url`            | `string \| (() =&gt; string)` | Yes      | The URL of the remote service                                                     |
+| `name`           | `string`                      | No       | The name of the remote service.                                                   |
+| `serviceAccount` | `ServiceAccountPrimitive`     | No       | For communication between the server and the remote service with a security layer |

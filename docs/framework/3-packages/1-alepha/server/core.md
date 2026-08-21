@@ -13,6 +13,7 @@ npm install alepha
 Convention-driven HTTP server with automatic validation and type inference.
 
 **Features:**
+
 - Type-safe API endpoints with schema validation
 - Lower-level HTTP route definitions
 - Automatic request/response validation via Zod
@@ -49,8 +50,8 @@ Convention-driven HTTP server with automatic validation and type inference.
 
 Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
 
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `SERVER_HOST` | text | localhost | Set 0.0.0.0 to listen on all interfaces. |
-| `SERVER_PORT` | integer | 3000 | Set 0 to listen on a random port. |
-| `TRUST_PROXY` | boolean | true | Trust proxy headers for client IP |
+| Variable      | Type    | Default   | Description                              |
+| ------------- | ------- | --------- | ---------------------------------------- |
+| `SERVER_HOST` | text    | localhost | Set 0.0.0.0 to listen on all interfaces. |
+| `SERVER_PORT` | integer | 3000      | Set 0 to listen on a random port.        |
+| `TRUST_PROXY` | boolean | true      | Trust proxy headers for client IP        |

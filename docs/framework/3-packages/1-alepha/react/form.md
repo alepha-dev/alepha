@@ -13,6 +13,7 @@ npm install alepha
 Type-safe forms with validation.
 
 **Features:**
+
 - Form state management
 - Zod schema validation
 - Field-level error handling

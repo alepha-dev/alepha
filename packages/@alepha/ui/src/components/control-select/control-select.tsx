@@ -29,7 +29,7 @@ import {
 } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Loader2 } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useMemo, useRef, useState } from "react";
 
 export type SelectOption =
   | string
@@ -235,18 +235,21 @@ export function ControlSelect(props: ControlSelectProps) {
     props.input.initialValue,
   );
 
-  const [staticData, setStaticData] = useState<SelectOption[]>([]);
   const enumKey = enumValues.map(optValue).join("");
   const min = meta.constraints.minimum;
   const max = meta.constraints.maximum;
-  useEffect(() => {
-    if (effectiveLoader) return;
+  // Derived, not stored: this is a pure function of the schema. As state
+  // filled in by an effect, the first paint of every boolean or ranged select
+  // was an EMPTY list, corrected one render later.
+  const staticData = useMemo<SelectOption[]>(() => {
+    if (effectiveLoader) return [];
     if (isBoolean && enumValues.length === 0) {
-      setStaticData([
+      return [
         { value: "true", label: tr("controlSelect.yes", { default: "Yes" }) },
         { value: "false", label: tr("controlSelect.no", { default: "No" }) },
-      ]);
-    } else if (
+      ];
+    }
+    if (
       isNumeric &&
       enumValues.length === 0 &&
       typeof min === "number" &&
@@ -255,10 +258,9 @@ export function ControlSelect(props: ControlSelectProps) {
     ) {
       const range: SelectOption[] = [];
       for (let i = min; i <= max; i++) range.push(String(i));
-      setStaticData(range);
-    } else {
-      setStaticData(enumValues);
+      return range;
     }
+    return enumValues;
   }, [effectiveLoader, enumKey, isBoolean, isNumeric, min, max, tr]);
 
   const data = effectiveLoader ? asyncData : staticData;

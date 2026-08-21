@@ -1,4 +1,5 @@
 import { $relations } from "alepha/orm";
+
 import { campaigns } from "./entities/campaigns.ts";
 import { characters } from "./entities/characters.ts";
 import { quests } from "./entities/quests.ts";

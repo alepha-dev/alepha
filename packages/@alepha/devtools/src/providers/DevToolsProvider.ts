@@ -6,6 +6,7 @@ import { RepositoryProvider } from "alepha/orm";
 import { $route, ServerProvider } from "alepha/server";
 import { $serve } from "alepha/server/static";
 import { FileSystemProvider } from "alepha/system";
+
 import { devtoolsAssets } from "../assets.ts";
 import { devMetadataSchema } from "../schemas/DevMetadata.ts";
 import { DevAtomLogProvider } from "./DevAtomLogProvider.ts";
@@ -413,9 +414,10 @@ export class DevToolsProvider {
     handler: async ({ params, query }) => {
       const service = this.getJobService();
       if (!service) return { executions: [] };
-      const result = await service.getExecutions(params.name, {
-        ...(query.status ? { status: query.status } : {}),
-      } as any);
+      const result = await service.getExecutions(
+        params.name,
+        (query.status ? { status: query.status } : {}) as any,
+      );
       return {
         executions: Array.isArray(result)
           ? result
@@ -599,7 +601,7 @@ export class DevToolsProvider {
     // Matches CSI SGR sequences (ESC [ ... m) — the colour codes the pretty
     // formatter emits. Written as \u001b rather than a literal control
     // byte so the source stays readable and copy-paste safe.
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI sequences are defined by the ESC control character, so matching them requires it
+    // ANSI sequences are defined by the ESC control character, so matching them requires it
     return value.replace(/\u001b\[[0-9;]*m/g, "");
   }
 

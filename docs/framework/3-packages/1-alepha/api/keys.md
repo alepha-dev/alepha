@@ -13,6 +13,7 @@ npm install alepha
 API key management module for programmatic access.
 
 **Features:**
+
 - Create API keys with role snapshots
 - List and revoke API keys
 - 15-minute validation caching
@@ -30,4 +31,3 @@ class MyApp {
   });
 }
 ```
-

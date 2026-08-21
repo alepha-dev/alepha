@@ -1,4 +1,5 @@
 import { join as nodeJoin } from "node:path";
+
 import { Alepha } from "alepha";
 import {
   CloudflareAdapter,
@@ -8,6 +9,7 @@ import {
 import { CliProvider } from "alepha/command";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, it } from "vitest";
+
 import { PlatformCommand } from "../commands/platform.ts";
 
 /**

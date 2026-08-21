@@ -1,4 +1,5 @@
 import { $inject, type Alepha, AlephaError } from "alepha";
+
 import { ViteUtils } from "../services/ViteUtils.ts";
 import type { AppEntry } from "./AppEntryProvider.ts";
 

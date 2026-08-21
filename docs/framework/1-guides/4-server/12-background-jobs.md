@@ -1,7 +1,7 @@
 # Background Jobs
 
 `$job` is the primitive for work that happens outside a request. It is backed by
-a database table (the *outbox*), which is what makes it durable: a push writes a
+a database table (the _outbox_), which is what makes it durable: a push writes a
 row before anything runs, so a handler that throws - or a process that dies
 mid-flight - leaves a record that a reconciliation sweep picks back up.
 
@@ -47,7 +47,7 @@ class Emails {
 }
 ```
 
-To run scheduled work *over a set of payloads*, compose the two: a cron job that
+To run scheduled work _over a set of payloads_, compose the two: a cron job that
 pushes, and a queue job that handles.
 
 ```typescript
@@ -56,13 +56,17 @@ class Reminders {
     cron: "0 * * * *",
     handler: async () => {
       const due = await this.repository.findMany({ where: { due: true } });
-      await this.remind.pushMany(due.map((row) => ({ payload: { id: row.id } })));
+      await this.remind.pushMany(
+        due.map((row) => ({ payload: { id: row.id } })),
+      );
     },
   });
 
   remind = $job({
     schema: z.object({ id: z.text() }),
-    handler: async ({ payload }) => { /* ... */ },
+    handler: async ({ payload }) => {
+      /* ... */
+    },
   });
 }
 ```
@@ -75,13 +79,13 @@ const executionId = await this.welcome.push({ userId: "u1" });
 
 `push()` accepts a second options argument:
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `delay` | `DurationLike` | Run no earlier than now + delay |
-| `scheduledAt` | `Date` | Run no earlier than this instant |
-| `key` | `string` | Deduplication key - see the caveat below |
-| `priority` | `"critical" \| "high" \| "normal" \| "low"` | Sweep dispatch order when there is a backlog |
-| `organizationId` | `string` | Owning tenant, persisted on the row for tenant-scoped admin views |
+| Option           | Type                                        | Description                                                       |
+| ---------------- | ------------------------------------------- | ----------------------------------------------------------------- |
+| `delay`          | `DurationLike`                              | Run no earlier than now + delay                                   |
+| `scheduledAt`    | `Date`                                      | Run no earlier than this instant                                  |
+| `key`            | `string`                                    | Deduplication key - see the caveat below                          |
+| `priority`       | `"critical" \| "high" \| "normal" \| "low"` | Sweep dispatch order when there is a backlog                      |
+| `organizationId` | `string`                                    | Owning tenant, persisted on the row for tenant-scoped admin views |
 
 `pushMany()` takes an array of `{ payload, key?, delay?, priority?, scheduledAt? }`
 and writes them in a batched INSERT.
@@ -93,8 +97,8 @@ second row - but only while a row with that key still exists. On success the row
 is either deleted (`record: "error"`, the queue-mode default) or updated with
 `key` set to `null`. Either way **the key is released once the job succeeds**.
 
-So `key` means *"don't enqueue this twice while it's still pending, running, or
-failing"* - it is not *"run this at most once ever"*. If you need the stronger
+So `key` means _"don't enqueue this twice while it's still pending, running, or
+failing"_ - it is not _"run this at most once ever"_. If you need the stronger
 guarantee, enforce it in the handler against your own data.
 
 ## Retries
@@ -109,7 +113,7 @@ first retry lands anywhere from a few seconds to ~15 minutes later, depending on
 where the tick falls. Lower `sweepCron` if you need tighter latency.
 
 Cron-mode jobs without `retry` do not retry - the next tick is the retry. Cron
-jobs that *declare* `retry` go through the same sweep path, which is useful for
+jobs that _declare_ `retry` go through the same sweep path, which is useful for
 once-daily jobs where waiting a full day is not acceptable.
 
 ## Timeouts and cancellation
@@ -155,15 +159,15 @@ push time and removed on success, so a healthy queue leaves no rows behind.
 Cron jobs default to `record: "all"` with one retained success so the admin
 "Last run" column is accurate.
 
-| Setting | Effect |
-|---------|--------|
-| `record: "error"` | Keep error and cancelled rows only (queue default) |
-| `record: "all"` | Keep successes too, trimmed to `keepLastSuccess` |
-| `record: "none"` | Fire-and-forget, no row even on error |
-| `keep: { ok, error }` | Per-job override. `0` here means **keep forever** |
+| Setting               | Effect                                             |
+| --------------------- | -------------------------------------------------- |
+| `record: "error"`     | Keep error and cancelled rows only (queue default) |
+| `record: "all"`       | Keep successes too, trimmed to `keepLastSuccess`   |
+| `record: "none"`      | Fire-and-forget, no row even on error              |
+| `keep: { ok, error }` | Per-job override. `0` here means **keep forever**  |
 
-Note the deliberate asymmetry: per-job `keep.ok: 0` means *never trim*, while
-the global `keepLastSuccess: 0` means *delete on success*.
+Note the deliberate asymmetry: per-job `keep.ok: 0` means _never trim_, while
+the global `keepLastSuccess: 0` means _delete on success_.
 
 ## Configuration
 
@@ -194,17 +198,17 @@ alepha.store.mut(jobConfig, (c) => ({ ...c, sweepCron: "*/5 * * * *" }));
 Inside a `$module`, the `register()` hook runs before `imports[]` and
 `services[]`, so it is also a safe place to do this.
 
-| Key | Default | Description |
-|-----|---------|-------------|
-| `sweepCron` | `*/15 * * * *` | Reconciliation sweep - bounds retry latency |
-| `trimCron` | `0 * * * *` | Ring-buffer trim tick |
-| `staleThreshold` | `300000` | Pending age (ms) before the sweep re-dispatches |
-| `runTimeout` | `1800000` | Running age (ms) before a crash is assumed |
-| `keepLastSuccess` | `10` | Successful rows kept per job |
-| `keepLastError` | `10` | Error rows kept per job |
-| `drainTimeout` | `30000` | Time (ms) to wait for in-flight jobs on shutdown |
-| `logMaxEntries` | `100` | Log lines captured per run |
-| `directMaxConcurrency` | `10` | Concurrent handlers in direct mode - what keeps a `pushMany` of thousands from exhausting the DB pool |
+| Key                    | Default        | Description                                                                                           |
+| ---------------------- | -------------- | ----------------------------------------------------------------------------------------------------- |
+| `sweepCron`            | `*/15 * * * *` | Reconciliation sweep - bounds retry latency                                                           |
+| `trimCron`             | `0 * * * *`    | Ring-buffer trim tick                                                                                 |
+| `staleThreshold`       | `300000`       | Pending age (ms) before the sweep re-dispatches                                                       |
+| `runTimeout`           | `1800000`      | Running age (ms) before a crash is assumed                                                            |
+| `keepLastSuccess`      | `10`           | Successful rows kept per job                                                                          |
+| `keepLastError`        | `10`           | Error rows kept per job                                                                               |
+| `drainTimeout`         | `30000`        | Time (ms) to wait for in-flight jobs on shutdown                                                      |
+| `logMaxEntries`        | `100`          | Log lines captured per run                                                                            |
+| `directMaxConcurrency` | `10`           | Concurrent handlers in direct mode - what keeps a `pushMany` of thousands from exhausting the DB pool |
 
 ### Sweeps owned by other modules
 
@@ -213,13 +217,13 @@ Modules that ship their own crons expose them the same way. All default to
 their own - which matters on Cloudflare, where each distinct expression costs a
 Cron Trigger.
 
-| Atom | Key | Default | Bounded by |
-|------|-----|---------|------------|
-| `workflowConfig` (`alepha/api/workflows`) | `timeoutCron` | `*/15 * * * *` | How late a workflow's `timeout` is enforced |
-| | `recoveryCron` | `*/15 * * * *` | `recovery.staleThreshold` (30 min) |
-| | `purgeCron` | `0 3 * * *` | `retentionDays` |
-| `paymentsConfig` (`alepha/api/payments`) | `expireStaleIntentsCron` | `*/15 * * * *` | The 30-minute intent cutoff |
-| `checkoutConfig` (`@alepha/commerce/checkout`) | `stockSweepCron` | `*/15 * * * *` | Nothing - `reserved()` excludes holds by `expiresAt` |
+| Atom                                           | Key                      | Default        | Bounded by                                           |
+| ---------------------------------------------- | ------------------------ | -------------- | ---------------------------------------------------- |
+| `workflowConfig` (`alepha/api/workflows`)      | `timeoutCron`            | `*/15 * * * *` | How late a workflow's `timeout` is enforced          |
+|                                                | `recoveryCron`           | `*/15 * * * *` | `recovery.staleThreshold` (30 min)                   |
+|                                                | `purgeCron`              | `0 3 * * *`    | `retentionDays`                                      |
+| `paymentsConfig` (`alepha/api/payments`)       | `expireStaleIntentsCron` | `*/15 * * * *` | The 30-minute intent cutoff                          |
+| `checkoutConfig` (`@alepha/commerce/checkout`) | `stockSweepCron`         | `*/15 * * * *` | Nothing - `reserved()` excludes holds by `expiresAt` |
 
 `timeoutCron` is the one to reconsider if you rely on tight workflow deadlines:
 a workflow past its deadline keeps running until the next tick, so a 15-minute
@@ -240,13 +244,13 @@ the outbox `claim()` UPDATE-guard instead, which is always on.
 
 `$job` emits lifecycle events you can hook:
 
-| Event | Payload |
-|-------|---------|
-| `job:begin` | `{ name, now, executionId }` |
-| `job:success` | `{ name, executionId }` |
-| `job:error` | `{ name, error, executionId }` |
-| `job:cancel` | `{ name, executionId }` |
-| `job:end` | `{ name, executionId }` |
+| Event         | Payload                        |
+| ------------- | ------------------------------ |
+| `job:begin`   | `{ name, now, executionId }`   |
+| `job:success` | `{ name, executionId }`        |
+| `job:error`   | `{ name, error, executionId }` |
+| `job:cancel`  | `{ name, executionId }`        |
+| `job:end`     | `{ name, executionId }`        |
 
 ## When not to use `$job`
 
@@ -274,5 +278,6 @@ the outbox `claim()` UPDATE-guard instead, which is always on.
   replica fires - no run history, no retry and
   nothing in the admin UI. Reach for it only when a database is genuinely
   unavailable.
+
 - **Fan-out to many subscribers.** Use `$topic` / `$subscriber`, which is
   publish/subscribe rather than work distribution.

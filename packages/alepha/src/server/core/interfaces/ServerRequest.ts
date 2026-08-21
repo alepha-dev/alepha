@@ -4,6 +4,7 @@ import type {
 } from "node:http";
 import type { Readable as NodeStream } from "node:stream";
 import type { ReadableStream as NodeWebStream } from "node:stream/web";
+
 import type {
   Async,
   FileSchema,
@@ -18,6 +19,7 @@ import type {
   ZodVoid,
 } from "alepha";
 import type { Route } from "alepha/router";
+
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import type { ServerReply } from "../helpers/ServerReply.ts";
 import type { UserAgentInfo } from "../services/UserAgentParser.ts";
@@ -230,7 +232,7 @@ export type ResponseKind = "json" | "text" | "void" | "file" | "any";
 
 export type ResponseBodyType =
   // not: object is not allowed, you want object ? add schema !
-  // biome-ignore lint/suspicious/noConfusingVoidType: handlers may return void (no return statement)
+  // handlers may return void (no return statement)
   string | Buffer | StreamLike | undefined | null | void;
 
 export type ServerHandler<

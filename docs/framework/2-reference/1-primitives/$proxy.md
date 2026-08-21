@@ -25,18 +25,19 @@ services behind a single endpoint.
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `path` | `string` | Yes | Path pattern to match for proxying requests |
-| `target` | `string \| (() =&gt; string)` | Yes | Target URL to which matching requests should be forwarded |
-| `disabled` | `boolean` | No | Whether this proxy is disabled |
-| `beforeRequest` | `Object` | No | Hook called before forwarding the request to the target server |
-| `afterResponse` | `Object` | No | Hook called after receiving the response from the target server |
-| `rewrite` | `Object` | No | Function to rewrite the URL before sending to the target server |
+| Option          | Type                          | Required | Description                                                     |
+| --------------- | ----------------------------- | -------- | --------------------------------------------------------------- |
+| `path`          | `string`                      | Yes      | Path pattern to match for proxying requests                     |
+| `target`        | `string \| (() =&gt; string)` | Yes      | Target URL to which matching requests should be forwarded       |
+| `disabled`      | `boolean`                     | No       | Whether this proxy is disabled                                  |
+| `beforeRequest` | `Object`                      | No       | Hook called before forwarding the request to the target server  |
+| `afterResponse` | `Object`                      | No       | Hook called after receiving the response from the target server |
+| `rewrite`       | `Object`                      | No       | Function to rewrite the URL before sending to the target server |
 
 ## Examples
 
 **Basic proxy setup:**
+
 ```ts
 import { $proxy } from "alepha/server/proxy";
 
@@ -44,25 +45,28 @@ class ApiGateway {
   // Forward all /api/* requests to external service
   api = $proxy({
     path: "/api/*",
-    target: "https://api.example.com"
+    target: "https://api.example.com",
   });
 }
 ```
 
 **Dynamic target with environment-based routing:**
+
 ```ts
 class ApiGateway {
   // Route to different environments based on configuration
   api = $proxy({
     path: "/api/*",
-    target: () => process.env.NODE_ENV === "production"
-      ? "https://api.prod.example.com"
-      : "https://api.dev.example.com"
+    target: () =>
+      process.env.NODE_ENV === "production"
+        ? "https://api.prod.example.com"
+        : "https://api.dev.example.com",
   });
 }
 ```
 
 **Advanced proxy with request/response modification:**
+
 ```ts
 class SecureProxy {
   secure = $proxy({
@@ -72,8 +76,8 @@ class SecureProxy {
       // Add authentication headers
       proxyRequest.headers = {
         ...proxyRequest.headers,
-        'Authorization': `Bearer ${await getServiceToken()}`,
-        'X-Forwarded-For': request.headers['x-forwarded-for'] || request.ip
+        Authorization: `Bearer ${await getServiceToken()}`,
+        "X-Forwarded-For": request.headers["x-forwarded-for"] || request.ip,
       };
     },
     afterResponse: async (request, proxyResponse) => {
@@ -82,20 +86,20 @@ class SecureProxy {
     },
     rewrite: (url) => {
       // Remove /secure prefix when forwarding
-      url.pathname = url.pathname.replace('/secure', '');
-    }
+      url.pathname = url.pathname.replace("/secure", "");
+    },
   });
 }
 ```
 
 **Conditional proxy based on feature flags:**
+
 ```ts
 class FeatureProxy {
   newApi = $proxy({
     path: "/v2/*",
     target: "https://new-api.example.com",
-    disabled: !process.env.ENABLE_V2_API // Disable if feature flag is off
+    disabled: !process.env.ENABLE_V2_API, // Disable if feature flag is off
   });
 }
 ```
-

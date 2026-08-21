@@ -23,9 +23,8 @@ processOrder = $action({
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `name` | `string \| ((...args: any[]) =&gt; string)` | Yes | Lock key name |
-| `wait` | `boolean` | No | Whether to wait for the lock to become available. |
-| `maxDuration` | `DurationLike` | No | Maximum duration the lock can be held before automatic expiration. |
-
+| Option        | Type                                        | Required | Description                                                        |
+| ------------- | ------------------------------------------- | -------- | ------------------------------------------------------------------ |
+| `name`        | `string \| ((...args: any[]) =&gt; string)` | Yes      | Lock key name                                                      |
+| `wait`        | `boolean`                                   | No       | Whether to wait for the lock to become available.                  |
+| `maxDuration` | `DurationLike`                              | No       | Maximum duration the lock can be held before automatic expiration. |

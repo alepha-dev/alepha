@@ -8,6 +8,7 @@ import {
   z,
 } from "alepha";
 import { $logger } from "alepha/logger";
+
 import type { ChannelPrimitive, TWSObject } from "../primitives/$channel.ts";
 
 const envSchema = z.object({
@@ -30,14 +31,6 @@ const envSchema = z.object({
 
 declare module "alepha" {
   interface Env extends Partial<Infer<typeof envSchema>> {}
-}
-
-/**
- * Room subscription
- */
-interface RoomSubscription<TClient extends TWSObject> {
-  roomId: string;
-  handler: (message: Infer<TClient>) => void;
 }
 
 /**

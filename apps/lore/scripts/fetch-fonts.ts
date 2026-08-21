@@ -81,7 +81,7 @@ async function download(remote: string): Promise<string> {
 
 /**
  * Filter Google's CSS down to latin + latin-ext charsets. Each block
- * starts with a `/* <charset> *​/` comment immediately before its
+ * starts with a `/* <charset> *\/` comment immediately before its
  * `@font-face { ... }` declaration.
  */
 function filterCharsets(css: string): string {

@@ -1,4 +1,5 @@
 import { describe, it } from "vitest";
+
 import { FOLIO_IMAGE_MAX_WIDTH } from "../src/web/app/components/folios/folioImageBounds.ts";
 
 /**

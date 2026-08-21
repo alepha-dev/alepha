@@ -4,7 +4,8 @@ import { useInject } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { HttpClient } from "alepha/server";
 import { RotateCcw, Save } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+
 import type { DevAtomMetadata } from "../../../schemas/DevAtomMetadata.ts";
 import { SchemaTree } from "../shared/SchemaTree.tsx";
 import { AtomChannels } from "./AtomChannels.tsx";
@@ -50,12 +51,21 @@ export const AtomDetail = (props: AtomDetailProps) => {
     [formSchema, atom.name],
   );
 
-  useEffect(() => {
+  // Re-seeded during render, not from an effect: otherwise the editor paints
+  // the previously selected atom's JSON for a frame before correcting itself.
+  const seed = { name: atom.name, formSchema, current };
+  const [seededFrom, setSeededFrom] = useState(seed);
+  if (
+    seededFrom.name !== seed.name ||
+    seededFrom.formSchema !== seed.formSchema ||
+    seededFrom.current !== seed.current
+  ) {
+    setSeededFrom(seed);
     setJsonText(JSON.stringify(current, null, 2));
     setJsonError(null);
     setStatus(null);
     setJsonMode(!formSchema);
-  }, [atom.name, formSchema, current]);
+  }
 
   const save = useCallback(
     async (value: unknown) => {

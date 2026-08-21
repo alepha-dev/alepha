@@ -14,5 +14,5 @@ Uses a KV namespace binding for all cache operations.
 Keys are stored as: `cache:{name}:{key}`
 
 **Required Cloudflare binding:**
-- `KV_CACHE` - A KV namespace binding in wrangler configuration
 
+- `KV_CACHE` - A KV namespace binding in wrangler configuration

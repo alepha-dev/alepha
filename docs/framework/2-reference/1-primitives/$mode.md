@@ -38,4 +38,3 @@ class DbMigrationMode {
 MIGRATE=true node app.js    # runs migrations, then exits
 MODE=MIGRATE node app.js    # same effect
 ```
-

@@ -1,6 +1,7 @@
 import { Alepha, AlephaError } from "alepha";
 import Stripe from "stripe";
 import { describe, expect, it } from "vitest";
+
 import { StripePaymentProvider } from "../StripePaymentProvider.ts";
 
 const PLATFORM_SECRET = "whsec_test_platform_secret";

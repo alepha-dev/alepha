@@ -1,4 +1,5 @@
 import { $repository } from "alepha/orm";
+
 import {
   type BlightIgnoreRule,
   blightIgnoreRules,

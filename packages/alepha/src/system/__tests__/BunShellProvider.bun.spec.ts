@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+
 import { Alepha } from "alepha";
+
 import { BunShellProvider } from "../providers/BunShellProvider.ts";
 import { ShellProvider } from "../providers/ShellProvider.ts";
 

@@ -1,4 +1,5 @@
 import { describe, it } from "vitest";
+
 import { RouterProvider } from "../providers/RouterProvider.ts";
 
 interface TestRoute {

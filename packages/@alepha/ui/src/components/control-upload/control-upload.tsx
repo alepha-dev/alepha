@@ -35,6 +35,7 @@ import {
   useRef,
   useState,
 } from "react";
+
 import {
   type ResizeImageOptions,
   resizeImage,
@@ -143,6 +144,11 @@ export function ControlUpload(props: ControlUploadProps) {
       : value
         ? [value as string]
         : [];
+    // Reconciles a cache of per-file metadata against the ids the field now
+    // holds, and the entries it keeps were filled in by the upload requests this
+    // same effect issues. It is the cache for an external system, not derived
+    // state; the updater already no-ops when nothing changed.
+    // oxlint-disable-next-line react/set-state-in-effect
     setMeta((current) => {
       let changed = false;
       const next = new Map(current);

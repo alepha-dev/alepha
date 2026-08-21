@@ -13,24 +13,21 @@
  * `node_modules/typescript`. Since the project no longer declares its own
  * `typescript`, that is the only copy present.
  *
- * **Biome.** The project ships a `biome.json` and `alepha lint` formats with
- * Biome, but the editor had no idea: format-on-save reached for whatever
- * default was configured and then `alepha lint` reformatted it back. Two tools
- * disagreeing on the same file is worse than either one alone, so the formatter
- * is pinned per-language — a bare `editor.defaultFormatter` would also claim
- * file types Biome does not handle.
+ * **Oxc.** The project ships an `.oxlintrc.json` and an `.oxfmtrc.json` and
+ * `alepha lint` runs oxlint then oxfmt, but the editor had no idea:
+ * format-on-save reached for whatever default was configured and then
+ * `alepha lint` reformatted it back. Two tools disagreeing on the same file is
+ * worse than either one alone, so the formatter is pinned per-language — a bare
+ * `editor.defaultFormatter` would also claim file types oxfmt does not handle.
  *
- * `source.fixAll.biome` is the one action to register — in Biome v2 it covers
- * import sorting too, and `biome check --fix` actively rewrites the older
- * `quickfix.biome` / `source.organizeImports.biome` pair into it. Writing the
- * deprecated names here made `alepha init` produce a file that its own closing
- * lint pass immediately edited: a fresh project should be lint-clean, not
- * arrive with a diff already pending.
+ * Two save actions, because the Oxc extension keeps the halves separate the
+ * same way the CLI does: `source.fixAll.oxc` applies oxlint's fixes and
+ * `source.format.oxc` runs oxfmt, which is also what sorts imports.
  *
- * `"explicit"` means it runs on an explicit save and not on autosave. Import
+ * `"explicit"` means they run on an explicit save and not on autosave. Import
  * sorting that fires mid-keystroke moves code out from under the cursor.
  *
- * This only takes effect with the Biome extension installed, which is why
+ * This only takes effect with the Oxc extension installed, which is why
  * {@link vscodeExtensionsJson} recommends it: pointing `defaultFormatter` at an
  * absent extension makes VS Code complain on every save.
  */
@@ -40,15 +37,16 @@ export const vscodeSettingsJson = () =>
   "typescript.tsdk": "node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
   "editor.codeActionsOnSave": {
-    "source.fixAll.biome": "explicit"
+    "source.fixAll.oxc": "explicit",
+    "source.format.oxc": "explicit"
   },
-  "[javascript]": { "editor.defaultFormatter": "biomejs.biome" },
-  "[javascriptreact]": { "editor.defaultFormatter": "biomejs.biome" },
-  "[typescript]": { "editor.defaultFormatter": "biomejs.biome" },
-  "[typescriptreact]": { "editor.defaultFormatter": "biomejs.biome" },
-  "[json]": { "editor.defaultFormatter": "biomejs.biome" },
-  "[jsonc]": { "editor.defaultFormatter": "biomejs.biome" },
-  "[css]": { "editor.defaultFormatter": "biomejs.biome" }
+  "[javascript]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[javascriptreact]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[typescript]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[typescriptreact]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[json]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[jsonc]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[css]": { "editor.defaultFormatter": "oxc.oxc-vscode" }
 }
 `.trim() + "\n";
 
@@ -56,12 +54,12 @@ export const vscodeSettingsJson = () =>
  * `.vscode/extensions.json` — the workspace recommendation prompt.
  *
  * Without it, {@link vscodeSettingsJson}'s formatter setting names an extension
- * the user may not have, and VS Code reports "Extension 'biomejs.biome' is
+ * the user may not have, and VS Code reports "Extension 'oxc.oxc-vscode' is
  * configured as formatter but it is not available" on every save.
  */
 export const vscodeExtensionsJson = () =>
   `
 {
-  "recommendations": ["biomejs.biome"]
+  "recommendations": ["oxc.oxc-vscode"]
 }
 `.trim() + "\n";

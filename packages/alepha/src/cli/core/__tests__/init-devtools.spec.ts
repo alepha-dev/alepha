@@ -7,6 +7,7 @@ import {
   ShellProvider,
 } from "alepha/system";
 import { describe, expect, it } from "vitest";
+
 import { InitCommand } from "../commands/init.ts";
 
 /**
@@ -45,7 +46,7 @@ describe("alepha init — devtools", () => {
       json.stringify({ name: "monorepo", workspaces: ["packages/*"] }),
     );
     await fs.writeFile("/workspace/yarn.lock", "");
-    await fs.writeFile("/workspace/biome.json", "{}");
+    await fs.writeFile("/workspace/.oxlintrc.json", "{}");
     await fs.writeFile("/workspace/.editorconfig", "root=true");
     await fs.writeFile("/workspace/tsconfig.json", "{}");
 

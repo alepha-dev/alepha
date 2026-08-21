@@ -1,4 +1,5 @@
 import { createSecretKey } from "node:crypto";
+
 import { $inject, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -22,6 +23,7 @@ import {
 } from "jose";
 import { JWTClaimValidationFailed, JWTExpired } from "jose/errors";
 import type { JWTVerifyOptions } from "jose/jwt/verify";
+
 import { InvalidTokenError } from "../errors/InvalidTokenError.ts";
 
 /**

@@ -13,6 +13,7 @@ npm install alepha
 Application parameter management.
 
 **Features:**
+
 - Versioned parameter definitions
 - Status derived from activationDate at query time
 - Schema validation with migration detection

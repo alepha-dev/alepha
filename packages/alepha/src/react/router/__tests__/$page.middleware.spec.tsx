@@ -1,5 +1,6 @@
 import { Alepha, createMiddleware, type Middleware } from "alepha";
 import { describe, test } from "vitest";
+
 import { $page, PagePrimitive } from "../index.ts";
 
 describe("$page middleware", () => {

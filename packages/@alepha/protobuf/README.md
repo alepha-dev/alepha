@@ -27,6 +27,7 @@ const back = alepha.codec.decode(schema, bytes, { encoder: "protobuf" });
 ```
 
 **Features:**
+
 - Message serialization/deserialization
 - Schemas are lowered through JSON Schema, so no zod internals are touched
 - proto3 defaults are restored on decode, including enum zero values

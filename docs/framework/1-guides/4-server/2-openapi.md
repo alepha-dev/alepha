@@ -19,6 +19,7 @@ class App {
 ```
 
 This serves:
+
 - Interactive Swagger UI at `/docs`
 - OpenAPI JSON at `/docs/json`
 
@@ -26,15 +27,15 @@ This serves:
 
 The `$swagger` primitive accepts these options:
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `info` | `{ title: "API Documentation", version: "1.0.0" }` | OpenAPI info block |
-| `prefix` | `"/docs"` | Base path for documentation endpoints |
-| `disabled` | `false` | Disable documentation entirely |
-| `excludeTags` | `[]` | Tag names to hide from documentation |
-| `ui` | `true` | Enable/disable Swagger UI, or pass UI options |
-| `rewrite` | - | Function to modify the generated OpenAPI document |
-| `servers` | server hostname | OpenAPI `servers` array |
+| Option        | Default                                            | Description                                       |
+| ------------- | -------------------------------------------------- | ------------------------------------------------- |
+| `info`        | `{ title: "API Documentation", version: "1.0.0" }` | OpenAPI info block                                |
+| `prefix`      | `"/docs"`                                          | Base path for documentation endpoints             |
+| `disabled`    | `false`                                            | Disable documentation entirely                    |
+| `excludeTags` | `[]`                                               | Tag names to hide from documentation              |
+| `ui`          | `true`                                             | Enable/disable Swagger UI, or pass UI options     |
+| `rewrite`     | -                                                  | Function to modify the generated OpenAPI document |
+| `servers`     | server hostname                                    | OpenAPI `servers` array                           |
 
 ### Custom Prefix
 

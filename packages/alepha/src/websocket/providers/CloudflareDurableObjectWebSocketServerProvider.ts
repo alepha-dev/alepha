@@ -1,5 +1,6 @@
 import { AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
+
 import type { RoomPrimitiveOptions } from "../interfaces/RoomInterfaces.ts";
 import type {
   EmitOptions,

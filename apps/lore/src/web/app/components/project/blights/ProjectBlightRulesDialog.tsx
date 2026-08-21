@@ -12,10 +12,12 @@ import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+
 import type {
   BlightController,
   BlightRuleResource,
 } from "@/api/controllers/BlightController.ts";
+
 import type { I18n } from "../../../services/I18n.ts";
 
 export interface ProjectBlightRulesDialogProps {
@@ -55,11 +57,23 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
     }
   };
 
-  // Reload the rule list every time the dialog opens, and reset the input.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: open + project id are the only relevant deps
+  // Clear the input on the closed → open transition. During render, so the
+  // dialog never shows the previous session's pattern.
+  const [wasOpen, setWasOpen] = useState(props.open);
+  if (props.open !== wasOpen) {
+    setWasOpen(props.open);
+    if (props.open) {
+      setPattern("");
+    }
+  }
+
+  // Reload the rule list every time the dialog opens.
   useEffect(() => {
     if (!props.open) return;
-    setPattern("");
+    // An effect that starts an I/O load is the "synchronize with an external
+    // system" case the rule exempts; it reports it because the loader flips
+    // `loading` before its first await.
+    // oxlint-disable-next-line react/set-state-in-effect
     void load();
   }, [props.open, props.projectId]);
 

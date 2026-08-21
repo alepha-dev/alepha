@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+
 import { ProtobufProvider } from "./providers/ProtobufProvider.ts";
 import { ProtobufSchemaCodec } from "./providers/ProtobufSchemaCodec.ts";
 

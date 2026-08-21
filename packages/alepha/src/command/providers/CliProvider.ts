@@ -1,5 +1,6 @@
 import * as fs from "node:fs/promises";
 import { glob } from "node:fs/promises";
+
 import {
   $atom,
   $env,
@@ -14,6 +15,7 @@ import {
   z,
 } from "alepha";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
+
 import { CommandError } from "../errors/CommandError.ts";
 import { UsageError } from "../errors/UsageError.ts";
 import { Asker } from "../helpers/Asker.ts";
@@ -320,7 +322,7 @@ export class CliProvider {
    * was ~30 lines under "Alepha failed to start / Failed during 'ready()' hook
    * for service: CliProvider", every frame of it inside
    * `alepha/dist/command/index.js`. None of those frames are the user's code,
-   * and the tool that actually failed — tsc, vitest, biome — has already
+   * and the tool that actually failed — tsc, vitest, oxlint — has already
    * printed its diagnostics above.
    *
    * So the default is the reason and nothing else, and the stack stays one

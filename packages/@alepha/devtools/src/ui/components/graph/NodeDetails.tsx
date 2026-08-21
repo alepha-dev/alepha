@@ -2,6 +2,7 @@ import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Separator } from "@alepha/ui/components/ui/separator";
 import { ArrowDown, ArrowUp, Box, X } from "lucide-react";
+
 import { getModuleColor } from "./constants.ts";
 import type { ProviderNodeData } from "./types.ts";
 

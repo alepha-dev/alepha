@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { describe, expect, it, vi } from "vitest";
+
 import { EmailError } from "../errors/EmailError.ts";
 import {
   LocalEmailProvider,

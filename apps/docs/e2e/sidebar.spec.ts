@@ -50,21 +50,9 @@ test.describe("Table of Contents", () => {
     );
 
     if (await toc.isVisible()) {
-      // Get initial active item
-      const initialActive = await toc
-        .locator('[class*="active"], [aria-current="true"]')
-        .first()
-        .textContent();
-
       // Scroll down significantly
       await page.evaluate(() => window.scrollTo(0, 1000));
       await page.waitForTimeout(500);
-
-      // Active item should have changed
-      const newActive = await toc
-        .locator('[class*="active"], [aria-current="true"]')
-        .first()
-        .textContent();
 
       // Just verify TOC is still visible and functional
       await expect(toc).toBeVisible();
@@ -120,12 +108,12 @@ test.describe("Status Bar", () => {
 
     if (await statusBar.isVisible()) {
       // Get initial time display
-      const initialText = await statusBar.textContent();
+      await statusBar.textContent();
 
       // Wait and check if time updates
       await page.waitForTimeout(1100);
 
-      const newText = await statusBar.textContent();
+      await statusBar.textContent();
 
       // Clock should have potentially changed (or be showing time)
       // Just verify status bar is still visible

@@ -1,4 +1,5 @@
 import { type AnchorHTMLAttributes, createElement } from "react";
+
 import { useRouter } from "../hooks/useRouter.ts";
 
 export interface LinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {

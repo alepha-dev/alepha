@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { $action, $route, AlephaServer, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
+
 import { compressOptions } from "../providers/ServerCompressProvider.ts";
 
 class App {

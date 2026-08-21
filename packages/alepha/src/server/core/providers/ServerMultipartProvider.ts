@@ -1,4 +1,5 @@
 import { Readable } from "node:stream";
+
 import {
   $atom,
   $hook,
@@ -432,6 +433,7 @@ export class ServerMultipartProvider {
     field: string,
     parts: AsyncGenerator<MultipartPart, void, unknown> | undefined,
   ): MultipartPart {
+    // oxlint-disable-next-line typescript/no-this-alias -- `[Symbol.asyncIterator]` must be a generator method, whose `this` is the object literal; an arrow cannot be a generator
     const self = this;
     return {
       ...part,

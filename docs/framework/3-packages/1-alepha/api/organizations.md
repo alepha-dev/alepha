@@ -13,8 +13,8 @@ npm install alepha
 Organization management for multi-tenancy.
 
 **Features:**
+
 - Admin CRUD for organizations
 - Organization scoping via `db.organization()` on entities
 - User with no organization = god mode (sees all resources)
 - User with an organization = scoped to that organization
-

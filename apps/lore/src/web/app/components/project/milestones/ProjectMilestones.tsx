@@ -20,6 +20,7 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Dices, Play } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { MilestoneController } from "@/api/controllers/MilestoneController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
@@ -30,6 +31,7 @@ import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentMilestonesAtom } from "@/web/app/atoms/currentMilestonesAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+
 import MilestoneChangelogPanel from "./MilestoneChangelogPanel.tsx";
 import MilestoneEmptyBanner from "./MilestoneEmptyBanner.tsx";
 import MilestoneLedgerHero from "./MilestoneLedgerHero.tsx";
@@ -120,6 +122,8 @@ const ProjectMilestones = () => {
   // Changelog for whichever milestone is on screen.
   useEffect(() => {
     if (!shownMilestone) {
+      // Early return of the loader below — nothing to fetch, so nothing to show.
+      // oxlint-disable-next-line react/set-state-in-effect
       setChangelog(null);
       setChangelogLoading(false);
       return;
@@ -151,6 +155,8 @@ const ProjectMilestones = () => {
   // Backlog only matters while nothing is recording.
   useEffect(() => {
     if (!project || activeMilestone) {
+      // Early return of the loader below — nothing to fetch, so nothing to show.
+      // oxlint-disable-next-line react/set-state-in-effect
       setBacklog(null);
       return;
     }

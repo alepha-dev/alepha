@@ -7,6 +7,7 @@ import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity, currentUserAtom } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { describe, expect, it } from "vitest";
+
 import { EpicController } from "../src/api/controllers/EpicController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
@@ -56,7 +57,7 @@ const setup = async () => {
       return fn();
     });
 
-  // biome-ignore lint/suspicious/noExplicitAny: mirrors blight-tools.spec.ts's own tool-execute helper
+  // mirrors blight-tools.spec.ts's own tool-execute helper
   const call = (tool: any, params: Record<string, unknown>, userId = OWNER) =>
     asUser(userId, () => tool.execute(params));
 

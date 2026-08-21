@@ -15,7 +15,7 @@ The server resolves a user's roles into concrete permission names before
 sending them (`SecurityProvider.getPermissions`, where a `*` role expands to
 the full list), so this side never has to resolve a role - it matches names
 against an already-flat list. A wildcard is therefore only meaningful on the
-*requirement* (`orders:*` = "anything in this group"), never on a grant.
+_requirement_ (`orders:*` = "anything in this group"), never on a grant.
 
 ## Why this reads the store instead of injecting `LinkProvider`
 
@@ -33,4 +33,3 @@ drift apart silently.
 Nothing here enforces anything: the browser is not an enforcement point, and
 the server re-checks every permission on the real request. This exists so the
 UI agrees with the answer the server would give.
-

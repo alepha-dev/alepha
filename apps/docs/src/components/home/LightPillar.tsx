@@ -1,5 +1,6 @@
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+
 import "./LightPillar.css";
 
 interface LightPillarProps {
@@ -343,6 +344,9 @@ const LightPillar: React.FC<LightPillarProps> = ({
 
     // Check for reduced motion preference
     if (prefersReducedMotion()) {
+      // Inside the WebGL setup effect: `prefers-reduced-motion` is a browser
+      // capability check, and this is the branch that declines to build a canvas.
+      // oxlint-disable-next-line react/set-state-in-effect
       setPerformanceDisabled(true);
       return;
     }
@@ -385,7 +389,7 @@ const LightPillar: React.FC<LightPillarProps> = ({
     }
 
     programRef.current = program;
-    // biome-ignore lint/correctness/useHookAtTopLevel: gl.useProgram is WebGL API, not a React hook
+    // gl.useProgram is WebGL API, not a React hook
     gl.useProgram(program);
 
     // Create fullscreen quad (triangle strip: 4 vertices)

@@ -11,6 +11,7 @@ import { useQueryParams } from "alepha/react/router";
 Hook to manage query parameters in the URL using a defined schema.
 
 Two storage formats are supported via `UseQueryParamsHookOptions.format`:
+
 - `"base64"` (default) packs the whole object into a single opaque param
   (named by `key`, default `q`) - e.g. `?q=eyJ0YWIiOiJzZWN1cml0eSJ9`.
 - `"querystring"` spreads each schema field across its own readable param -
@@ -23,8 +24,7 @@ button steps back through previous values.
 ## Examples
 
 const [params, setParams] = useQueryParams(
-  z.object({ tab: z.string().optional() }),
-  { format: "querystring" },
+z.object({ tab: z.string().optional() }),
+{ format: "querystring" },
 );
 // params.tab reads from `?tab=…`; setParams({ tab: "security" }) writes it.
-

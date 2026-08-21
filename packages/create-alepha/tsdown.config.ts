@@ -6,7 +6,7 @@ import { join } from "node:path";
  * This package is a ~150-line shell over `ProjectScaffolder`, which lives in
  * `alepha/cli` so that `npm create alepha` and `alepha init` scaffold the same
  * project from one source. Depending on `alepha` to reach it, though, made
- * `npm create alepha` download the whole framework toolchain — biome,
+ * `npm create alepha` download the whole framework toolchain — oxlint,
  * drizzle-kit, vite, vitest, tsx, postgres, redis — into the npx cache just to
  * write text files, and the scaffolded project then installed all of it again
  * in its own `node_modules`. Inlining it costs ~900 kB of dist and leaves the

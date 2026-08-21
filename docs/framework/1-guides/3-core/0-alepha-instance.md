@@ -76,9 +76,10 @@ Replace a service with a different implementation. This is the core of Alepha's 
 // In development: log to console
 alepha.with({
   provide: EmailProvider,
-  use: process.env.NODE_ENV === "production"
-    ? SmtpEmailProvider
-    : ConsoleEmailProvider,
+  use:
+    process.env.NODE_ENV === "production"
+      ? SmtpEmailProvider
+      : ConsoleEmailProvider,
 });
 ```
 
@@ -86,11 +87,11 @@ Any service that injects `EmailProvider` will receive the substituted implementa
 
 ### Service Lifetimes
 
-| Lifetime | Behavior |
-|----------|----------|
-| `singleton` | One instance per Alepha runtime (default) |
-| `transient` | New instance every time |
-| `scoped` | One instance per request context (AsyncLocalStorage) |
+| Lifetime    | Behavior                                             |
+| ----------- | ---------------------------------------------------- |
+| `singleton` | One instance per Alepha runtime (default)            |
+| `transient` | New instance every time                              |
+| `scoped`    | One instance per request context (AsyncLocalStorage) |
 
 ```typescript
 alepha.inject(Logger, { lifetime: "transient" });
@@ -104,12 +105,12 @@ Alepha has a strict lifecycle to ensure resources are opened and closed correctl
 configure  →  start  →  ready  →  (running)  →  stop
 ```
 
-| Phase | What happens |
-|-------|-------------|
+| Phase       | What happens                                                    |
+| ----------- | --------------------------------------------------------------- |
 | `configure` | Services register configuration. Primitives read their schemas. |
-| `start` | Providers connect to I/O (database, HTTP server). |
-| `ready` | App is live. Background jobs and schedulers start. |
-| `stop` | Graceful shutdown. Connections close, buffers flush. |
+| `start`     | Providers connect to I/O (database, HTTP server).               |
+| `ready`     | App is live. Background jobs and schedulers start.              |
+| `stop`      | Graceful shutdown. Connections close, buffers flush.            |
 
 ### Running the App
 
@@ -148,11 +149,13 @@ import { $logger } from "alepha/logger";
 export class EmailProvider {
   log = $logger();
 
-  env = $env(z.object({
-    SMTP_HOST: z.text(),
-    SMTP_USER: z.text(),
-    SMTP_PASS: z.text(),
-  }));
+  env = $env(
+    z.object({
+      SMTP_HOST: z.text(),
+      SMTP_USER: z.text(),
+      SMTP_PASS: z.text(),
+    }),
+  );
 
   protected transporter = createTransport({
     host: this.env.SMTP_HOST,
@@ -199,13 +202,17 @@ export abstract class QueueProvider {
 
 // Production: Redis
 export class RedisQueueProvider extends QueueProvider {
-  async push(job: object) { /* redis logic */ }
+  async push(job: object) {
+    /* redis logic */
+  }
 }
 
 // Dev/Test: in-memory
 export class MemoryQueueProvider extends QueueProvider {
   queue: object[] = [];
-  async push(job: object) { this.queue.push(job); }
+  async push(job: object) {
+    this.queue.push(job);
+  }
 }
 ```
 

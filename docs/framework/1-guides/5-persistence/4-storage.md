@@ -31,14 +31,14 @@ class MediaService {
 
 ### Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `name` | `string` | Property key | Key prefix in the backend, and the `bucket` value on every `files` row |
-| `mimeTypes` | `string[]` | any | Allowed MIME types; anything else throws `InvalidFileError` |
-| `maxSize` | `number` | `10` | Maximum size in **megabytes** |
-| `ttl` | `DurationLike` | none | Default retention; files are purged after it elapses |
-| `description` | `string` | - | Shown in devtools and the admin UI |
-| `provider` | `Service` or `"memory"` | injected default | Override the backend for this storage |
+| Option        | Type                    | Default          | Description                                                            |
+| ------------- | ----------------------- | ---------------- | ---------------------------------------------------------------------- |
+| `name`        | `string`                | Property key     | Key prefix in the backend, and the `bucket` value on every `files` row |
+| `mimeTypes`   | `string[]`              | any              | Allowed MIME types; anything else throws `InvalidFileError`            |
+| `maxSize`     | `number`                | `10`             | Maximum size in **megabytes**                                          |
+| `ttl`         | `DurationLike`          | none             | Default retention; files are purged after it elapses                   |
+| `description` | `string`                | -                | Shown in devtools and the admin UI                                     |
+| `provider`    | `Service` or `"memory"` | injected default | Override the backend for this storage                                  |
 
 > `maxSize` is in megabytes. `maxSize: 5 * 1024 * 1024` is not "5 MB" - it is
 > five million megabytes, i.e. no limit at all.
@@ -98,7 +98,7 @@ Takes the row id, or an already-loaded row (which skips the lookup).
 
 ```typescript
 const page = await this.images.list({ tags: ["avatar"], size: 20 });
-page.content;            // FileEntity[]
+page.content; // FileEntity[]
 page.page.totalElements; // total across all pages
 ```
 
@@ -112,8 +112,8 @@ listing capped at the backend's page size.
 ```typescript
 const row = await this.images.get(id);
 const found = await this.images.exists(id);
-await this.images.delete(id);              // removes row + blob
-await this.images.deleteMany([id1, id2]);  // batched where supported
+await this.images.delete(id); // removes row + blob
+await this.images.deleteMany([id1, id2]); // batched where supported
 ```
 
 ## Expiry
@@ -131,20 +131,22 @@ The default depends on the environment:
 - **Test**: `MemoryFileStorageProvider` (in-memory, lost on restart)
 - **Otherwise**: `S3FileStorageProvider` when `S3_ENDPOINT` is set, else `LocalFileStorageProvider`
 
-| Provider | Description |
-|----------|-------------|
-| `MemoryFileStorageProvider` | In-memory, for tests |
-| `LocalFileStorageProvider` | Local filesystem |
-| `R2FileStorageProvider` | Cloudflare R2 (Workers binding) |
-| `S3FileStorageProvider` | AWS S3 / MinIO / DigitalOcean Spaces / any S3-compatible service (via `s3mini`) |
+| Provider                    | Description                                                                     |
+| --------------------------- | ------------------------------------------------------------------------------- |
+| `MemoryFileStorageProvider` | In-memory, for tests                                                            |
+| `LocalFileStorageProvider`  | Local filesystem                                                                |
+| `R2FileStorageProvider`     | Cloudflare R2 (Workers binding)                                                 |
+| `S3FileStorageProvider`     | AWS S3 / MinIO / DigitalOcean Spaces / any S3-compatible service (via `s3mini`) |
 
 Override globally:
 
 ```typescript
 import { FileStorageProvider, S3FileStorageProvider } from "alepha/bucket";
 
-const alepha = Alepha.create()
-  .with({ provide: FileStorageProvider, use: S3FileStorageProvider });
+const alepha = Alepha.create().with({
+  provide: FileStorageProvider,
+  use: S3FileStorageProvider,
+});
 ```
 
 Or per storage:

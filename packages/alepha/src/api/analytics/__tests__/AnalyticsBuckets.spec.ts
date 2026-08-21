@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { AnalyticsBuckets } from "../planner/AnalyticsBuckets.ts";
 
 describe("AnalyticsBuckets", () => {

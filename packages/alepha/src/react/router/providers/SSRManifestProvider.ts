@@ -1,4 +1,5 @@
 import { $inject, Alepha, type Infer } from "alepha";
+
 import {
   type SsrManifestAtomSchema,
   ssrManifestAtom,
@@ -260,7 +261,7 @@ export class SSRManifestProvider {
     const base = this.base;
 
     // Find the entry point in the client manifest
-    for (const [key, entry] of Object.entries(this.clientManifest)) {
+    for (const entry of Object.values(this.clientManifest)) {
       if (entry.isEntry) {
         this.cachedEntryAssets = {
           js: `${base}/${entry.file}`,

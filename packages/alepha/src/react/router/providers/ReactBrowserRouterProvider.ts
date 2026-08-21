@@ -3,6 +3,7 @@ import { $logger } from "alepha/logger";
 import { BrowserHeadProvider } from "alepha/react/head";
 import { type Route, RouterProvider } from "alepha/router";
 import { createElement, type ReactNode } from "react";
+
 import NotFoundPage from "../components/NotFound.tsx";
 import { Redirection } from "../errors/Redirection.ts";
 import {

@@ -7,6 +7,7 @@
  * @module alepha.cli
  */
 import { $module } from "alepha";
+
 import { appEntryOptions } from "./atoms/appEntryOptions.ts";
 import { buildOptions } from "./atoms/buildOptions.ts";
 import { devOptions } from "./atoms/devOptions.ts";
@@ -14,12 +15,12 @@ import { BuildCommand } from "./commands/build.ts";
 import { CleanCommand } from "./commands/clean.ts";
 import { DbCommand } from "./commands/db.ts";
 import { DevCommand } from "./commands/dev.ts";
+import { GenCommand } from "./commands/gen.ts";
 import {
   changelogOptions,
   GitMessageParser,
   GitProvider,
 } from "./commands/gen/changelog.ts";
-import { GenCommand } from "./commands/gen.ts";
 import { InitCommand } from "./commands/init.ts";
 import { LintCommand } from "./commands/lint.ts";
 import { PackCommand } from "./commands/pack.ts";

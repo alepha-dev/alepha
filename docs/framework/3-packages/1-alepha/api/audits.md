@@ -13,6 +13,7 @@ npm install alepha
 Audit trail for compliance.
 
 **Features:**
+
 - Domain-specific audit types
 - Audit event logging
 - Filtering and searching

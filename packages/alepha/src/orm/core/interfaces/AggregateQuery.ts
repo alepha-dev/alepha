@@ -1,4 +1,5 @@
 import type { Infer, ZObject } from "alepha";
+
 import type { PgQueryWhereOrSQL } from "./PgQueryWhere.ts";
 
 export type AggregateOp = "count" | "sum" | "avg" | "min" | "max";
@@ -22,9 +23,9 @@ export type AggregateSelect<T extends ZObject> = {
 export type AggregateColumnResult<TValue, TSelect> = TSelect extends true
   ? TValue
   : {
-      [Op in AggregateOp as TSelect extends Record<Op, true>
-        ? Op
-        : never]: number;
+      [
+        Op in AggregateOp as TSelect extends Record<Op, true> ? Op : never
+      ]: number;
     };
 
 /**

@@ -77,7 +77,7 @@ pageViews = $analytics({
 
 `time_bucket` is the reserved column name the relational backend uses to store the bucket
 itself, so it cannot be declared as a dimension or a measure. `day` and `hour` are reserved as
-*dimension* names for the same reason - they are the pseudo-dimensions `query()` exposes for
+_dimension_ names for the same reason - they are the pseudo-dimensions `query()` exposes for
 grouping by time (see [Querying](#querying) below), and a real dimension with either name would
 be permanently shadowed by them.
 
@@ -179,7 +179,7 @@ caller-side and obvious rather than needing a merge-rule enforcement layer insid
 
 ### What analytics cannot do
 
-A dataset cannot answer "how many *distinct* visitors" - a distinct count cannot survive
+A dataset cannot answer "how many _distinct_ visitors" - a distinct count cannot survive
 sampling (a sampled window drops rows, so a naive `COUNT(DISTINCT ...)` under-counts) or a
 rollup (once hour buckets fold into a day bucket, which visitor hashes contributed to which hour
 is gone). `apps/lore` keeps unique-visitor counts on its own table
@@ -260,7 +260,10 @@ The hourly sweep that actually folds and prunes rows lives in a **separate modul
 `AlephaApiAnalyticsRollup`, which your app has to import explicitly alongside `AlephaApiAnalytics`:
 
 ```typescript
-import { AlephaApiAnalytics, AlephaApiAnalyticsRollup } from "alepha/api/analytics";
+import {
+  AlephaApiAnalytics,
+  AlephaApiAnalyticsRollup,
+} from "alepha/api/analytics";
 import { Alepha } from "alepha";
 
 const alepha = Alepha.create()
@@ -269,7 +272,7 @@ const alepha = Alepha.create()
 ```
 
 Forgetting `AlephaApiAnalyticsRollup` is silent in the sense that nothing throws: `record()` and
-`query()` keep working normally, and the raw table simply grows forever. It is not *completely*
+`query()` keep working normally, and the raw table simply grows forever. It is not _completely_
 silent, though - a boot-time `log.warn` from the retention guard names every dataset that
 declares `retention.hot` while no rollup job was ever constructed, specifically so this mistake
 does not stay invisible once the app is actually running.
@@ -308,11 +311,11 @@ happened to be running.
 The bound provider is a runtime decision the module makes, never something application code
 chooses:
 
-| Environment | Provider | Behavior |
-|---|---|---|
-| Tests (`alepha.isTest()`) | `MemoryAnalyticsProvider` | In-memory, exact, no sampling |
-| Node / Bun, no Cloudflare binding | `OrmAnalyticsProvider` | Relational tables, exact, no sampling |
-| Cloudflare Worker with a dataset binding | `WaeAnalyticsProvider` | Workers Analytics Engine, samples under load |
+| Environment                              | Provider                  | Behavior                                     |
+| ---------------------------------------- | ------------------------- | -------------------------------------------- |
+| Tests (`alepha.isTest()`)                | `MemoryAnalyticsProvider` | In-memory, exact, no sampling                |
+| Node / Bun, no Cloudflare binding        | `OrmAnalyticsProvider`    | Relational tables, exact, no sampling        |
+| Cloudflare Worker with a dataset binding | `WaeAnalyticsProvider`    | Workers Analytics Engine, samples under load |
 
 `AlephaApiAnalytics` and most other Alepha modules ship a memory implementation as the
 substitutable default - see [Unit Tests](/docs/guides-testing-unit-tests) for the general

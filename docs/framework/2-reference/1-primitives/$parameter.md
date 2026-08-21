@@ -14,13 +14,13 @@ lives in the database, is editable from the admin UI, and is versioned with
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `name` | `string` | No | Parameter name using dot notation for tree hierarchy |
-| `description` | `string` | No | Human-readable description of the parameter. |
-| `schema` | `T` | Yes | Zod schema defining the parameter structure. |
-| `default` | `Infer&lt;T&gt;` | Yes | Default value used when no parameter exists in database. |
-| `migrate` | `Object` | No | Optional migration function for schema changes |
+| Option        | Type             | Required | Description                                              |
+| ------------- | ---------------- | -------- | -------------------------------------------------------- |
+| `name`        | `string`         | No       | Parameter name using dot notation for tree hierarchy     |
+| `description` | `string`         | No       | Human-readable description of the parameter.             |
+| `schema`      | `T`              | Yes      | Zod schema defining the parameter structure.             |
+| `default`     | `Infer&lt;T&gt;` | Yes      | Default value used when no parameter exists in database. |
+| `migrate`     | `Object`         | No       | Optional migration function for schema changes           |
 
 ## Examples
 
@@ -37,4 +37,3 @@ class FeatureFlags {
   }
 }
 ```
-

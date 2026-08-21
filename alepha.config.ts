@@ -1,4 +1,5 @@
 import { connect } from "node:net";
+
 import { type Alepha, AlephaError, z } from "alepha";
 import { changelogOptions } from "alepha/cli";
 import { $command } from "alepha/command";
@@ -206,9 +207,12 @@ export default (alepha: Alepha) => {
 
         await run("yarn");
         await run(`yarn clean`);
-        await run(`yarn lint`);
 
         if (flags.fast) {
+          // No `copy` in this lane, so nothing generated exists to format and
+          // `lint` can go first — see the full path below for why the order
+          // matters there.
+          await run(`yarn lint`);
           await run([
             `yarn typecheck`,
             `yarn check:deps`,
@@ -233,9 +237,16 @@ export default (alepha: Alepha) => {
         // exhausting it. The only pairing below that pays is e2e.
         await run(`yarn copy`);
 
-        // After `copy`: docs/2-reference and docs/3-packages are generated
-        // from source JSDoc, so checking before it would validate a stale
-        // copy and miss a doc-breaking comment change.
+        // After `copy`, not before it. `gen:docs` writes docs/2-reference,
+        // docs/3-packages and every package README straight out of the JSDoc,
+        // and its output is not formatted — oxfmt formats markdown, so linting
+        // first left those files dirty in the working tree and handed the next
+        // person a diff on files they had not touched. CI has always run
+        // `copy` before `lint`; this is the local pipeline catching up.
+        await run(`yarn lint`);
+
+        // After `copy` for the same reason: checking before it would validate
+        // a stale copy and miss a doc-breaking comment change.
         await run(`yarn check:docs`);
         await run(`yarn check:deps`);
         await run(`yarn check:conventions`);

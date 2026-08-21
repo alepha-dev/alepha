@@ -1,6 +1,7 @@
 import { Alepha, z } from "alepha";
 import { sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+
 import { $entity } from "../core/primitives/$entity.ts";
 import { db } from "../core/providers/DatabaseTypeProvider.ts";
 import { SqliteModelBuilder } from "../core/services/SqliteModelBuilder.ts";
@@ -152,8 +153,6 @@ describe("ModelBuilder", () => {
 
       builder.buildTable(usersEntity, options);
 
-      const usersTable = options.tables.get("users") as any;
-
       // Then create posts table with foreign key
       const postsEntity = $entity({
         name: "posts",
@@ -282,8 +281,6 @@ describe("ModelBuilder", () => {
       });
 
       builder.buildTable(rolesEntity, options);
-
-      const rolesTable = options.tables.get("roles") as any;
 
       const entity = $entity({
         name: "users",
@@ -550,8 +547,6 @@ describe("ModelBuilder", () => {
       });
 
       builder.buildTable(usersEntity, options);
-
-      const usersTable = options.tables.get("users") as any;
 
       // Then create posts table with foreign key
       const postsEntity = $entity({

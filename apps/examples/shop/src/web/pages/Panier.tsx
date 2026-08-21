@@ -1,6 +1,7 @@
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
 import { useEffect } from "react";
+
 import { Dessin } from "../components/Dessin.tsx";
 import { Prix } from "../components/Prix.tsx";
 import { usePanier } from "../hooks/usePanier.ts";

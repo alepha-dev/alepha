@@ -1,8 +1,9 @@
 import { renderHook } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
-import type { ReactNode } from "react";
+import { act, type ReactNode } from "react";
 import { describe, test, vi } from "vitest";
+
 import { AlephaContext } from "../contexts/AlephaContext.ts";
 import { useAction } from "../hooks/useAction.ts";
 
@@ -82,7 +83,7 @@ describe("useAction", () => {
     expect(events).toEqual(["begin", "success", "end"]);
   });
 
-  test.skip("should handle errors", async ({ expect }) => {
+  test("should handle errors", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaDateTime);
     await alepha.start();
 
@@ -102,9 +103,13 @@ describe("useAction", () => {
       },
     );
 
-    const action = result.current;
-
-    await expect(() => action.run()).rejects.toThrow("Test error");
+    // `run()` deliberately does not re-throw: the error is captured in state
+    // and emitted as `react:action:error`, so a fire-and-forget `action.run()`
+    // cannot produce an unhandled rejection. The test asserted the opposite,
+    // which is why it had been skipped.
+    await act(async () => {
+      await result.current.run();
+    });
 
     expect(result.current.error).toBe(error);
     expect(result.current.loading).toBe(false);

@@ -4,6 +4,7 @@ import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import type { UserAccountToken } from "alepha/security";
 import { FileSystemProvider } from "alepha/system";
 import { describe, expect, it } from "vitest";
+
 import { $storage, FileController, FileService } from "../index.ts";
 
 const adminUser: UserAccountToken = {
@@ -42,7 +43,7 @@ describe("FileController", () => {
       opts?: { name?: string; type?: string },
     ) => {
       if (typeof textOrOpts === "string") {
-        return fs.createFile({ text: textOrOpts, ...(opts || {}) });
+        return fs.createFile({ text: textOrOpts, ...opts });
       }
       return fs.createFile(textOrOpts);
     };

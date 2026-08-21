@@ -34,6 +34,7 @@ import {
   unique,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+
 import { byte } from "../types/byte.ts";
 
 export class PostgresModelBuilder extends ModelBuilder {

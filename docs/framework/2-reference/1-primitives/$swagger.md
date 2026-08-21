@@ -16,15 +16,15 @@ and OAuth configuration.
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `info` | `OpenApiDocument["info"]` | No |  |
-| `prefix` | `string` | No |  |
-| `disabled` | `boolean` | No | If true, docs will be disabled. |
-| `excludeTags` | `string[]` | No | Tags to exclude from the documentation. |
-| `servers` | `OpenApiServer[]` | No | Server URLs for the API |
-| `ui` | `boolean \| SwaggerUiOptions` | No | Enable Swagger UI. |
-| `rewrite` | `Object` | No | Function to rewrite the OpenAPI document before serving it. |
+| Option        | Type                          | Required | Description                                                 |
+| ------------- | ----------------------------- | -------- | ----------------------------------------------------------- |
+| `info`        | `OpenApiDocument["info"]`     | No       |                                                             |
+| `prefix`      | `string`                      | No       |                                                             |
+| `disabled`    | `boolean`                     | No       | If true, docs will be disabled.                             |
+| `excludeTags` | `string[]`                    | No       | Tags to exclude from the documentation.                     |
+| `servers`     | `OpenApiServer[]`             | No       | Server URLs for the API                                     |
+| `ui`          | `boolean \| SwaggerUiOptions` | No       | Enable Swagger UI.                                          |
+| `rewrite`     | `Object`                      | No       | Function to rewrite the OpenAPI document before serving it. |
 
 ## Examples
 
@@ -35,11 +35,10 @@ class App {
     info: {
       title: "My API",
       version: "1.0.0",
-      description: "REST API documentation"
+      description: "REST API documentation",
     },
     excludeTags: ["internal"],
     prefix: "/docs", // URL mount point (default)
   });
 }
 ```
-

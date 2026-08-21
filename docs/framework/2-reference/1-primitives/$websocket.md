@@ -11,6 +11,7 @@ import { $websocket } from "alepha/websocket";
 Defines a WebSocket server endpoint for a specific channel.
 
 Server-side only. Creates a WebSocket endpoint that:
+
 - Accepts connections from clients
 - Validates incoming messages against the channel schema
 - Provides room-based messaging
@@ -29,11 +30,11 @@ class ChatController {
         message: {
           type: "append",
           username: userId,
-          content: message.content
+          content: message.content,
         },
-        exceptSelf: true
+        exceptSelf: true,
       });
-    }
+    },
   });
 
   async broadcastAnnouncement(roomId: string, text: string) {
@@ -42,10 +43,9 @@ class ChatController {
       message: {
         type: "append",
         username: "System",
-        content: text
-      }
+        content: text,
+      },
     });
   }
 }
 ```
-

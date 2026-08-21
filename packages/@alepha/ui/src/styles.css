@@ -191,11 +191,11 @@
  * enumerated rather than wildcarded — a fraction nobody listed keeps today's
  * behaviour, which is a no-op, not a wrong result. */
 :root:not(.dark)
-:is(
-  [class~="hover:bg-muted"]:hover,
-  [class~="focus:bg-muted"]:focus,
-  [class~="aria-expanded:bg-muted"][aria-expanded="true"]
-) {
+  :is(
+    [class~="hover:bg-muted"]:hover,
+    [class~="focus:bg-muted"]:focus,
+    [class~="aria-expanded:bg-muted"][aria-expanded="true"]
+  ) {
   background-color: var(--state-layer);
 }
 

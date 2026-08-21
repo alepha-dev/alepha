@@ -7,9 +7,11 @@ import {
   useNodesState,
   useReactFlow,
 } from "@xyflow/react";
+
 import "@xyflow/react/dist/style.css";
 import { Maximize2, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
 import { DevEmpty } from "../shared/DevEmpty.tsx";
 import { EntityNode } from "./EntityNode.tsx";
 import { type ErdLayout, layoutEntities } from "./layoutEntities.ts";

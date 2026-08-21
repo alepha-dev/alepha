@@ -1,5 +1,6 @@
 import { $hook, $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
+
 import { WorkerProvider } from "./WorkerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

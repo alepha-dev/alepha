@@ -11,8 +11,10 @@ import type { ReactElement, ReactNode } from "react";
 /**
  * Options for renderWithAlepha.
  */
-export interface RenderWithAlephaOptions
-  extends Omit<RenderOptions, "wrapper"> {
+export interface RenderWithAlephaOptions extends Omit<
+  RenderOptions,
+  "wrapper"
+> {
   /**
    * Pre-configured Alepha instance to use.
    * If not provided, a new instance with AlephaLogger will be created.

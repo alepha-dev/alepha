@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
+
 import { SeoExpander } from "../helpers/SeoExpander.ts";
 
 describe("SeoExpander", () => {

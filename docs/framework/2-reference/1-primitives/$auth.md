@@ -18,10 +18,10 @@ integration with both external identity providers (Auth0, Keycloak) and internal
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `name` | `string` | No | Name of the identity provider |
-| `disabled` | `boolean` | No | If true, auth provider will be skipped. |
+| Option     | Type      | Required | Description                             |
+| ---------- | --------- | -------- | --------------------------------------- |
+| `name`     | `string`  | No       | Name of the identity provider           |
+| `disabled` | `boolean` | No       | If true, auth provider will be skipped. |
 
 ## Examples
 
@@ -33,8 +33,8 @@ class AuthProviders {
     credentials: {
       account: async ({ username, password }) => {
         return await this.validateUser(username, password);
-      }
-    }
+      },
+    },
   });
 
   // External OIDC provider
@@ -43,9 +43,8 @@ class AuthProviders {
       issuer: "https://auth.example.com",
       clientId: "my-app",
       clientSecret: "secret",
-      redirectUri: "/auth/callback"
-    }
+      redirectUri: "/auth/callback",
+    },
   });
 }
 ```
-

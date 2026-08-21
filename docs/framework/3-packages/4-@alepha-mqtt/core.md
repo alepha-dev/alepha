@@ -26,6 +26,6 @@ Registers `MqttJsClientProvider` as the default implementation of `MqttClientPro
 
 Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
 
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
+| Variable          | Type | Default               | Description                |
+| ----------------- | ---- | --------------------- | -------------------------- |
 | `MQTT_BROKER_URL` | text | mqtt://localhost:1883 | MQTT broker connection URL |

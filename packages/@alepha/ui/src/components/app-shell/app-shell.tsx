@@ -70,7 +70,7 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import type { ComponentType, ReactNode, SVGProps } from "react";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 
 export interface NavigationProgressOptions {
   /**
@@ -243,9 +243,11 @@ function SidebarNavItem(props: { item: NavItem }) {
   // remount this item (useState's initializer runs only at mount, so without
   // this the group stays stuck closed and the active page is hidden — petition
   // #4). Only OPENS; never auto-collapses, so a manual toggle is preserved.
-  useEffect(() => {
+  const [wasActive, setWasActive] = useState(hasActive);
+  if (hasActive !== wasActive) {
+    setWasActive(hasActive);
     if (hasActive) setOpen(true);
-  }, [hasActive]);
+  }
 
   if (!isGroup) {
     // Disabled rows render with a muted, dashed-border treatment plus a

@@ -1,5 +1,6 @@
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+
 import { LoreAnalyticsStore } from "./LoreAnalyticsStore.ts";
 
 /** One complete UTC day of audience, and the one before it. */

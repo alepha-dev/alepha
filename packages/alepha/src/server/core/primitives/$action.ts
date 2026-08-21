@@ -14,6 +14,7 @@ import {
   z,
 } from "alepha";
 import { $logger } from "alepha/logger";
+
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import { isMultipart } from "../helpers/isMultipart.ts";
 import { ServerReply } from "../helpers/ServerReply.ts";
@@ -127,7 +128,8 @@ export const $action = <TConfig extends RequestConfigSchema>(
 // ----------------------------------------------------------------------------------------------------------
 
 export interface ActionPrimitiveOptions<TConfig extends RequestConfigSchema>
-  extends Omit<ServerRoute, "handler" | "path" | "schema" | "mapParams">,
+  extends
+    Omit<ServerRoute, "handler" | "path" | "schema" | "mapParams">,
     PipelinePrimitiveOptions {
   /**
    * Name of the action.
@@ -487,8 +489,9 @@ export class ActionPrimitive<
   }
 }
 
-export interface ActionPrimitiveFn<TConfig extends RequestConfigSchema>
-  extends ActionPrimitive<TConfig> {
+export interface ActionPrimitiveFn<
+  TConfig extends RequestConfigSchema,
+> extends ActionPrimitive<TConfig> {
   (
     config?: ClientRequestEntry<TConfig>,
     options?: ClientRequestOptions,
@@ -548,5 +551,6 @@ export type ServerActionHandler<
  *
  * This is NOT Server Request, but a specific type for actions.
  */
-export interface ServerActionRequest<TConfig extends RequestConfigSchema>
-  extends ServerRequest<TConfig> {}
+export interface ServerActionRequest<
+  TConfig extends RequestConfigSchema,
+> extends ServerRequest<TConfig> {}

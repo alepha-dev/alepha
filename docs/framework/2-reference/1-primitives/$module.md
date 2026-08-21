@@ -16,15 +16,15 @@ Wrap Services and Primitives into a Module.
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `name` | `string` | Yes | Name of the module |
-| `services` | `Array&lt;Service&gt;` | No | Services that belong to this module |
-| `variants` | `Array&lt;Service&gt;` | No | Alternative implementations that belong to this module but are NOT auto-injected |
-| `imports` | `Array&lt;Service&lt;Module&gt;&gt;` | No | Other modules this module depends on |
-| `primitives` | `Array&lt;PrimitiveFactoryLike&gt;` | No | List of $primitives to register in the module. |
-| `register` | `Object` | No | Additive side-effect hook |
-| `atoms` | `Array&lt;Atom&lt;any&gt;&gt;` | No | List of atoms to register in the module. |
+| Option       | Type                                 | Required | Description                                                                      |
+| ------------ | ------------------------------------ | -------- | -------------------------------------------------------------------------------- |
+| `name`       | `string`                             | Yes      | Name of the module                                                               |
+| `services`   | `Array&lt;Service&gt;`               | No       | Services that belong to this module                                              |
+| `variants`   | `Array&lt;Service&gt;`               | No       | Alternative implementations that belong to this module but are NOT auto-injected |
+| `imports`    | `Array&lt;Service&lt;Module&gt;&gt;` | No       | Other modules this module depends on                                             |
+| `primitives` | `Array&lt;PrimitiveFactoryLike&gt;`  | No       | List of $primitives to register in the module.                                   |
+| `register`   | `Object`                             | No       | Additive side-effect hook                                                        |
+| `atoms`      | `Array&lt;Atom&lt;any&gt;&gt;`       | No       | List of atoms to register in the module.                                         |
 
 ## Examples
 
@@ -33,8 +33,8 @@ import { $module } from "alepha";
 import { MyService } from "./MyService.ts";
 
 export default $module({
- name: "my.project.module",
- services: [MyService],
+  name: "my.project.module",
+  services: [MyService],
 });
 ```
 
@@ -71,4 +71,3 @@ It helps to keep a clean architecture and avoid monolithic applications.
 
 Small applications do not need modules. Modules earn their keep when the application
 grows - as a rule of thumb, once a module has 30+ `$actions`, consider splitting it.
-

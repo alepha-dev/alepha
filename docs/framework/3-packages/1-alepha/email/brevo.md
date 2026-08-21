@@ -22,7 +22,7 @@ Plugin for Alepha Email that provides Brevo transactional email capabilities.
 
 Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
 
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
+| Variable        | Type | Default      | Description                           |
+| --------------- | ---- | ------------ | ------------------------------------- |
 | `BREVO_API_KEY` | text | **Required** | Brevo API key for transactional email |
-| `EMAIL_FROM` | text | **Required** | Default sender email address |
+| `EMAIL_FROM`    | text | **Required** | Default sender email address          |

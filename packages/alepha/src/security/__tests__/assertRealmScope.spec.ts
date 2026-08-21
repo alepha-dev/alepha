@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { ForbiddenError } from "alepha/server";
 import { describe, expect, it } from "vitest";
+
 import { SecurityProvider } from "../providers/SecurityProvider.ts";
 
 describe("SecurityProvider.assertRealmScope", () => {

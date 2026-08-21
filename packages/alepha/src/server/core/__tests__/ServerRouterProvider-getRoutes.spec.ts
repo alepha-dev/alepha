@@ -1,5 +1,6 @@
 import { Alepha, z } from "alepha";
 import { describe, it } from "vitest";
+
 import { $action, $route, ServerRouterProvider } from "../index.ts";
 
 describe("ServerRouterProvider - getRoutes", () => {

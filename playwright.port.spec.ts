@@ -1,5 +1,7 @@
 import { createServer, type Server } from "node:net";
+
 import { afterEach, describe, it } from "vitest";
+
 import {
   candidatePorts,
   E2E_BAND_END,

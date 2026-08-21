@@ -15,11 +15,11 @@ shared `alepha_sequences` table managed by `SequenceProvider`.
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `name` | `string` | No | Sequence name |
-| `startWith` | `number` | No | Starting value used on the very first `.next()` for a `(name, scope)` pair |
-| `incrementBy` | `number` | No | Amount added on every call to `.next()` |
+| Option        | Type     | Required | Description                                                                |
+| ------------- | -------- | -------- | -------------------------------------------------------------------------- |
+| `name`        | `string` | No       | Sequence name                                                              |
+| `startWith`   | `number` | No       | Starting value used on the very first `.next()` for a `(name, scope)` pair |
+| `incrementBy` | `number` | No       | Amount added on every call to `.next()`                                    |
 
 ## Examples
 
@@ -37,4 +37,3 @@ class Quests {
   }
 }
 ```
-

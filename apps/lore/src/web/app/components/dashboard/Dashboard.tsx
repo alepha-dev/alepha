@@ -3,11 +3,13 @@ import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { useEffect, useMemo, useState } from "react";
+
 import type { DashboardController } from "@/api/controllers/DashboardController.ts";
 import type { SigilController } from "@/api/controllers/SigilController.ts";
 import type { DashboardCardResource } from "@/api/schemas/dashboardCardResourceSchema.ts";
 import type { DashboardScope } from "@/api/schemas/dashboardScopeSchema.ts";
 import { DashboardMetricCatalog } from "@/api/services/DashboardMetricCatalog.ts";
+
 import { dashboardAtom } from "../../atoms/dashboardAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import { displayName } from "../../services/displayName.ts";
@@ -83,7 +85,6 @@ const Dashboard = () => {
   // dependency list: every mutation below re-resolves explicitly, and keying
   // this on state the same effect writes is precisely how a loader turns into
   // a request loop.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: see above
   useEffect(() => {
     void resolve(alepha.store.get(dashboardAtom).cards);
   }, []);

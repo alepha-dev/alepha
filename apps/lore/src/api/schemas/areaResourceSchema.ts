@@ -1,4 +1,5 @@
 import { type Infer, z } from "alepha";
+
 import { areas } from "../entities/areas.ts";
 
 /**

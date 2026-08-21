@@ -1,5 +1,6 @@
 import type { Atom, Infer, TAtomObject } from "alepha";
 import { useCallback, useRef, useSyncExternalStore } from "react";
+
 import { useAlepha } from "./useAlepha.ts";
 
 /**

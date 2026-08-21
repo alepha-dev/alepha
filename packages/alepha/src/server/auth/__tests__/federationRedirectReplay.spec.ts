@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { JtiReplayGuard } from "../helpers/jtiReplayGuard.ts";
 import { safeRedirectPath } from "../helpers/safeRedirectPath.ts";
 

@@ -1,5 +1,6 @@
 import { $module } from "alepha";
 import { AlephaEmail } from "alepha/email";
+
 import { AlephaCommerceCheckout } from "../checkout/index.ts";
 import {
   DefaultOrderMailRenderer,

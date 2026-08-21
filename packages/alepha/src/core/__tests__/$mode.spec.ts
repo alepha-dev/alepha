@@ -1,5 +1,6 @@
 import { $hook, $inject, $module, Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
+
 import { $mode } from "../primitives/$mode.ts";
 
 describe("$mode", () => {

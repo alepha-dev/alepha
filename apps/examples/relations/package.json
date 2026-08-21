@@ -1,7 +1,7 @@
 {
+  "name": "relations",
   "private": true,
   "type": "module",
-  "name": "relations",
   "scripts": {
     "dev": "alepha dev",
     "typecheck": "tsc --noEmit",

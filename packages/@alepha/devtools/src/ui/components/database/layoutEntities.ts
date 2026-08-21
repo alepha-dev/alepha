@@ -44,8 +44,8 @@ export const layoutEntities = (
 
   if (layout === "grid") {
     const cols = Math.max(1, Math.ceil(Math.sqrt(boxes.length)));
-    const columnY = new Array(cols).fill(0);
-    const columnX = new Array(cols).fill(0);
+    const columnY = Array.from({ length: cols }, () => 0);
+    const columnX = Array.from({ length: cols }, () => 0);
     let x = 0;
     for (let c = 0; c < cols; c++) {
       columnX[c] = x;

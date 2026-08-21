@@ -7,7 +7,7 @@ Every code change must pass linting, type checking, and tests before being commi
 Run these three commands after every modification:
 
 ```bash
-yarn lint       # Format and lint with Biome (auto-fixes)
+yarn lint       # Lint with oxlint, then format with oxfmt (auto-fixes)
 yarn typecheck  # TypeScript type checking (tsc --noEmit)
 yarn test       # Run Vitest test suite
 ```
@@ -32,7 +32,7 @@ npx alepha verify
 
 ### yarn lint
 
-Uses [Biome](https://biomejs.dev/) with `--fix` enabled. Automatically formats code, sorts imports, and applies lint rules. No configuration needed.
+Uses [oxlint](https://oxc.rs/docs/guide/usage/linter.html) with `--fix`, then [oxfmt](https://oxc.rs/docs/guide/usage/formatter.html). Automatically formats code, sorts imports, and applies lint rules; correctness findings it cannot fix stop the run. No configuration needed.
 
 ### yarn typecheck
 

@@ -16,15 +16,16 @@ in both directions (server→client and client→server).
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `path` | `string` | Yes | WebSocket endpoint path (e.g., "/ws/chat") |
-| `description` | `string` | No | Optional description for documentation |
-| `schema` | `Object` | Yes | Message schemas for bidirectional communication |
+| Option        | Type     | Required | Description                                     |
+| ------------- | -------- | -------- | ----------------------------------------------- |
+| `path`        | `string` | Yes      | WebSocket endpoint path (e.g., "/ws/chat")      |
+| `description` | `string` | No       | Optional description for documentation          |
+| `schema`      | `Object` | Yes      | Message schemas for bidirectional communication |
 
 ## Examples
 
 Server-side with $websocket
+
 ```typescript
 class ChatController {
   // Channel must be defined inside a class
@@ -37,32 +38,33 @@ class ChatController {
         z.object({
           type: z.const("append"),
           content: z.text(),
-          username: z.text()
+          username: z.text(),
         }),
         z.object({
           type: z.const("system"),
-          message: z.text()
-        })
+          message: z.text(),
+        }),
       ]),
       // Client → Server messages
       out: z.object({
-        content: z.text()
-      })
-    }
+        content: z.text(),
+      }),
+    },
   });
 
   chat = $websocket({
     channel: this.chatChannel,
     handler: async ({ message, reply }) => {
       await reply({
-        message: { type: "append", content: message.content, username: "user" }
+        message: { type: "append", content: message.content, username: "user" },
       });
-    }
+    },
   });
 }
 ```
 
 Browser-side with useRoom
+
 ```typescript
 // Define channel in a class for browser context
 class ChatClient {
@@ -78,4 +80,3 @@ function Chat() {
   const chat = useRoom({ roomId: "lobby", channel: client.chatChannel, handler: ... }, []);
 }
 ```
-

@@ -5,12 +5,13 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
 import { setupJsdomMocks } from "alepha/react/testing";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
+
 import AdminLayout from "../admin-layout.tsx";
-import { AdminRouter } from "../admin-router.tsx";
 import {
   type AdminRouterOptions,
   adminRouterOptionsAtom,
 } from "../admin-router-options.tsx";
+import { AdminRouter } from "../admin-router.tsx";
 
 /**
  * The three seams `adminRouterOptionsAtom` opens into the layout itself —

@@ -1,5 +1,6 @@
 import type { UserAccountToken } from "alepha/security";
 import { ForbiddenError, NotFoundError } from "alepha/server";
+
 import type { FileEntity } from "../entities/files.ts";
 
 /**

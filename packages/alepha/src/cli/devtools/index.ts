@@ -1,8 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
+
 import { $context, $module, AlephaError } from "alepha";
 import { ViteDevServerProvider } from "alepha/cli";
+
 import {
   type DevtoolsOptions,
   devtoolsOptions,
@@ -104,9 +106,8 @@ const DEVTOOLS_OVERLAY_SCRIPT = `
  * @param resolve injection seam for tests; defaults to Node resolution.
  */
 export const resolveDevtoolsAssetsPath = (
-  resolve: (specifier: string) => string = createRequire(
-    import.meta.url,
-  ).resolve,
+  resolve: (specifier: string) => string = createRequire(import.meta.url)
+    .resolve,
 ): string | undefined => {
   try {
     return join(dirname(resolve("@alepha/devtools/package.json")), "assets/ui");

@@ -20,6 +20,7 @@ import {
   discovery,
   refreshTokenGrant,
 } from "openid-client";
+
 import type { OAuth2Profile } from "../providers/ServerAuthProvider.ts";
 import type { Tokens } from "../schemas/tokensSchema.ts";
 

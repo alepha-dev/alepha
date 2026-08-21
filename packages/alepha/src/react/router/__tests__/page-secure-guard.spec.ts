@@ -1,6 +1,7 @@
 import { Alepha, createMiddleware, type Middleware } from "alepha";
 import { $secure } from "alepha/security";
 import { describe, expect, it } from "vitest";
+
 import { AlephaReactRouter } from "../index.ts";
 import { $page } from "../primitives/$page.ts";
 

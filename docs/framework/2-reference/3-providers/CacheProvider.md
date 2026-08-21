@@ -12,4 +12,3 @@ Cache provider interface.
 
 All methods are asynchronous and return promises.
 Values are stored as Uint8Array.
-

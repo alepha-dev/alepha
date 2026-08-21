@@ -1,4 +1,5 @@
 import type { Infer } from "alepha";
+
 import type {
   AnyRelation,
   EntitySchema,
@@ -147,12 +148,12 @@ export type Resolve<
   K extends keyof ZType,
   TArgs,
 > = Projected<RowOf<ZType, K>, TArgs> & {
-  [R in keyof IncludeOf<TArgs> &
-    keyof RelationsFor<ZType, TMap, K>]: RelationsFor<
-    ZType,
-    TMap,
-    K
-  >[R] extends Relation<"many", infer T extends keyof ZType & string>
+  [
+    R in keyof IncludeOf<TArgs> & keyof RelationsFor<ZType, TMap, K>
+  ]: RelationsFor<ZType, TMap, K>[R] extends Relation<
+    "many",
+    infer T extends keyof ZType & string
+  >
     ? Array<Resolve<ZType, TMap, T, ArgsOf<IncludeOf<TArgs>[R]>>>
     : RelationsFor<ZType, TMap, K>[R] extends Relation<
           "one",

@@ -1,6 +1,7 @@
 import { PaymentStatus } from "@mollie/api-client";
 import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
+
 import { MolliePaymentProvider } from "../MolliePaymentProvider.ts";
 
 class TestMollieProvider extends MolliePaymentProvider {

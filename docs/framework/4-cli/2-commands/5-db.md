@@ -18,8 +18,8 @@ Migrations are written to `migrations/<provider>/` - one directory per database 
 
 All subcommands accept:
 
-| Flag | Description |
-|------|-------------|
+| Flag         | Description                                                                                                      |
+| ------------ | ---------------------------------------------------------------------------------------------------------------- |
 | `--provider` | Target a single database provider by name (e.g. `postgres`, `sqlite`). Default: all providers with repositories. |
 
 ## Commands
@@ -46,11 +46,11 @@ alepha db migrations create --name add-user-avatar
 alepha db migrations create --custom          # empty migration for hand-written SQL
 ```
 
-| Flag | Description |
-|------|-------------|
-| `--name` | Name for the generated migration file |
-| `--custom` | Generate an empty migration file for custom SQL (data migrations, manual adjustments) |
-| `--hints` | JSON array of drizzle-kit hints resolving ambiguous diffs (rename-vs-create). When a hint is required, drizzle-kit exits with code 2 and prints the exact JSON to pass - without it, a table rename becomes CREATE+DROP, which is data loss |
+| Flag       | Description                                                                                                                                                                                                                                 |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--name`   | Name for the generated migration file                                                                                                                                                                                                       |
+| `--custom` | Generate an empty migration file for custom SQL (data migrations, manual adjustments)                                                                                                                                                       |
+| `--hints`  | JSON array of drizzle-kit hints resolving ambiguous diffs (rename-vs-create). When a hint is required, drizzle-kit exits with code 2 and prints the exact JSON to pass - without it, a table rename becomes CREATE+DROP, which is data loss |
 
 ### migrations apply
 
@@ -60,7 +60,7 @@ Apply pending migrations to the database. Boots your app in production mode with
 alepha db migrations apply
 ```
 
-For a *deployed* database (Cloudflare D1, Hyperdrive), use `alepha platform db migrate` instead - it resolves the environment, adapter, and resource naming.
+For a _deployed_ database (Cloudflare D1, Hyperdrive), use `alepha platform db migrate` instead - it resolves the environment, adapter, and resource naming.
 
 ### push
 
@@ -102,13 +102,13 @@ alepha db studio
 
 ## Local vs Deployed
 
-The `alepha db` commands operate on the database your app connects to locally (`DATABASE_URL`, or the default dev SQLite database). Operations against a *deployed* database live under the [platform plugin](/docs/cli-plugins-platform):
+The `alepha db` commands operate on the database your app connects to locally (`DATABASE_URL`, or the default dev SQLite database). Operations against a _deployed_ database live under the [platform plugin](/docs/cli-plugins-platform):
 
-| Local | Deployed |
-|-------|----------|
-| `alepha db migrations apply` | `alepha p db migrate` |
-| `alepha db baseline mark` | `alepha p db baseline mark` |
-| - | `alepha p db export` (pull remote DB into a local snapshot) |
+| Local                        | Deployed                                                    |
+| ---------------------------- | ----------------------------------------------------------- |
+| `alepha db migrations apply` | `alepha p db migrate`                                       |
+| `alepha db baseline mark`    | `alepha p db baseline mark`                                 |
+| -                            | `alepha p db export` (pull remote DB into a local snapshot) |
 
 ## Workflow
 

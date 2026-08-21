@@ -1,4 +1,5 @@
 import { Alepha } from "alepha";
+
 import { TenantApp, tenancyTests } from "./tenancyTests.ts";
 
 tenancyTests("sqlite", async () => {

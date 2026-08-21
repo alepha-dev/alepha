@@ -24,14 +24,14 @@ on:
   workflow_dispatch:
     inputs:
       version_bump:
-        description: 'Version bump type'
+        description: "Version bump type"
         required: true
         type: choice
         options:
           - minor
           - patch
           - major
-        default: 'minor'
+        default: "minor"
 
 jobs:
   release:
@@ -103,7 +103,7 @@ jobs:
         with:
           node-version: "26.x"
           cache: "yarn"
-          registry-url: 'https://registry.npmjs.org'
+          registry-url: "https://registry.npmjs.org"
 
       - name: Install Dependencies
         run: yarn

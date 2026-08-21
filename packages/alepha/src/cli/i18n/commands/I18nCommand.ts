@@ -1,6 +1,7 @@
 import { $inject, $store } from "alepha";
 import { $command } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
+
 import { i18nOptions } from "../atoms/i18nOptions.ts";
 import { I18nCheckService } from "../services/I18nCheckService.ts";
 

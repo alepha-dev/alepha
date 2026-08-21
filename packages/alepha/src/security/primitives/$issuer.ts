@@ -14,6 +14,7 @@ import {
 import { $logger } from "alepha/logger";
 import type { ServerRequest } from "alepha/server";
 import type { JSONWebKeySet, JWTPayload } from "jose";
+
 import { currentTenantAtom } from "../atoms/currentTenantAtom.ts";
 import { SecurityError } from "../errors/SecurityError.ts";
 import type { IssuerResolver } from "../interfaces/IssuerResolver.ts";

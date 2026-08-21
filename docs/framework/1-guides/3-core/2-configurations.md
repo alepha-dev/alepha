@@ -10,16 +10,18 @@ Alepha provides two primitives for configuration: `$env` for environment variabl
 import { $env, z } from "alepha";
 
 class App {
-  env = $env(z.object({
-    DATABASE_URL: z.text(),
-    PORT: z.integer().default(3000),
-    DEBUG: z.boolean().optional(),
-  }));
+  env = $env(
+    z.object({
+      DATABASE_URL: z.text(),
+      PORT: z.integer().default(3000),
+      DEBUG: z.boolean().optional(),
+    }),
+  );
 
   connect() {
     console.log(this.env.DATABASE_URL); // string, guaranteed to exist
-    console.log(this.env.PORT);         // number, defaults to 3000
-    console.log(this.env.DEBUG);        // boolean | undefined
+    console.log(this.env.PORT); // number, defaults to 3000
+    console.log(this.env.DEBUG); // boolean | undefined
   }
 }
 ```
@@ -48,12 +50,14 @@ String values support `$VAR` interpolation using other variables from the same s
 
 ```typescript
 class Config {
-  env = $env(z.object({
-    HOST: z.text({ default: "localhost" }),
-    PORT: z.integer().default(5432),
-    DB_NAME: z.text({ default: "mydb" }),
-    DATABASE_URL: z.text({ default: "postgres://$HOST:$PORT/$DB_NAME" }),
-  }));
+  env = $env(
+    z.object({
+      HOST: z.text({ default: "localhost" }),
+      PORT: z.integer().default(5432),
+      DB_NAME: z.text({ default: "mydb" }),
+      DATABASE_URL: z.text({ default: "postgres://$HOST:$PORT/$DB_NAME" }),
+    }),
+  );
 }
 ```
 
@@ -68,10 +72,15 @@ how an app accepts them without renaming its own configuration:
 import { $env, z } from "alepha";
 
 class Config {
-  env = $env(z.object({
-    DATABASE_URL: z.text({ aliases: ["POSTGRES_URL"] }),
-    SERVER_PORT: z.integer().meta({ aliases: ["PORT"] }).default(3000),
-  }));
+  env = $env(
+    z.object({
+      DATABASE_URL: z.text({ aliases: ["POSTGRES_URL"] }),
+      SERVER_PORT: z
+        .integer()
+        .meta({ aliases: ["PORT"] })
+        .default(3000),
+    }),
+  );
 }
 ```
 
@@ -106,10 +115,12 @@ not sensitive:
 import { $env, z } from "alepha";
 
 class Payments {
-  env = $env(z.object({
-    STRIPE_SECRET_KEY: z.text(),                  // secret, like everything else
-    PUBLIC_URL: z.text({ secret: false }),        // declassified: safe in plaintext
-  }));
+  env = $env(
+    z.object({
+      STRIPE_SECRET_KEY: z.text(), // secret, like everything else
+      PUBLIC_URL: z.text({ secret: false }), // declassified: safe in plaintext
+    }),
+  );
 }
 ```
 

@@ -1,4 +1,5 @@
 import { ArrowRight } from "lucide-react";
+
 import type { LogEntry } from "../../hooks/useLogTail.ts";
 import { LEVEL_COLOR, MESSAGE_COLOR, shortModule } from "../logs/logFormat.ts";
 

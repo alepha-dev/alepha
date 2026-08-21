@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { Alepha, Json } from "alepha";
 import { CliProvider } from "alepha/command";
 import {
@@ -10,6 +11,7 @@ import {
   ShellProvider,
 } from "alepha/system";
 import { describe, expect, it } from "vitest";
+
 import { version } from "../alephaPackageJson.ts";
 import { InitCommand } from "../commands/init.ts";
 
@@ -270,7 +272,8 @@ describe("alepha init --preset", () => {
       await cli.run(cmd.init, { argv: "--preset=saas", root: "/project" });
 
       expect(fs.wasWritten("/project/tsconfig.json")).toBe(true);
-      expect(fs.wasWritten("/project/biome.json")).toBe(true);
+      expect(fs.wasWritten("/project/.oxlintrc.json")).toBe(true);
+      expect(fs.wasWritten("/project/.oxfmtrc.json")).toBe(true);
       expect(fs.wasWritten("/project/src/main.server.ts")).toBe(true);
       expect(fs.wasWritten("/project/src/main.browser.ts")).toBe(true);
     });
@@ -359,7 +362,7 @@ describe("alepha init --preset", () => {
 
     /**
      * Ordering is pinned on both sides. After `install`, because it runs the
-     * project's own `alepha` binary. Before the lint pass, because biome
+     * project's own `alepha` binary. Before the lint pass, because oxfmt
      * reformats drizzle's `snapshot.json`: generating afterwards leaves the
      * staged copy unformatted, and the user's first `lint` or `verify` then
      * dirties a project they have not touched.

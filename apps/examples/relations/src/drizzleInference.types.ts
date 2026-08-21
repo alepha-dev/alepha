@@ -16,6 +16,7 @@ import type { SchemaToTableConfig } from "alepha/orm";
 import { defineRelations } from "drizzle-orm";
 import type { PgTableWithColumns } from "drizzle-orm/pg-core";
 import type { SQLiteAsyncDatabase } from "drizzle-orm/sqlite-core/async/db";
+
 import type { campaigns } from "./entities/campaigns.ts";
 import type { characters } from "./entities/characters.ts";
 import type { users } from "./entities/users.ts";

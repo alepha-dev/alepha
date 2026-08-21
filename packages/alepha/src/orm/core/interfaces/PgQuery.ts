@@ -1,5 +1,6 @@
 import type { Infer, ZObject } from "alepha";
 import type { SQLWrapper } from "drizzle-orm";
+
 import type { PgQueryWhereOrSQL } from "./PgQueryWhere.ts";
 
 /**
@@ -58,8 +59,6 @@ export type PgRelationMap<Base extends ZObject> = Record<
   string,
   PgRelation<Base>
 >;
-
-type TObjectAny = ZObject<any>;
 
 export type PgRelation<Base extends ZObject> = {
   type?: "left" | "inner" | "right";

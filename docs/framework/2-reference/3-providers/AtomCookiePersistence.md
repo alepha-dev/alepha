@@ -13,7 +13,7 @@ Binds every atom declared with `persist: "cookie"` to an HTTP cookie.
 - `server:onRequest`: seeds the request-scoped state from the cookie, so
   SSR renders with the persisted value.
 - `state:mutate`: writes the new value back as a Set-Cookie header.
-- `state:register`: an atom registering lazily *during* a request (first
+- `state:register`: an atom registering lazily _during_ a request (first
   touched by an SSR render, after `server:onRequest` already ran) reads
   its cookie right away, so that render still sees the persisted value.
 
@@ -31,4 +31,3 @@ order-independent.
 The cookie is named after the atom key, lives 365 days, SameSite=lax,
 path "/". For custom cookie options (encryption, signing, custom TTL),
 declare an explicit `$cookie({ key: atom.key, ... })` binding instead.
-

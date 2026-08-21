@@ -37,4 +37,3 @@ class AppSeed {
 ```bash
 SEED=true node app.js
 ```
-

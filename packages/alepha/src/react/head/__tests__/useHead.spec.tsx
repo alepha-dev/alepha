@@ -1,8 +1,13 @@
+// oxlint-disable react/globals -- Test harness. Each case renders a throwaway
+// component whose only job is to hand the hook's return value back to the
+// assertion, so the writes to the enclosing `let` are the measurement, not a
+// side effect the component depends on.
 import { render } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaContext } from "alepha/react";
 import { act, type ReactNode } from "react";
 import { beforeEach, describe, it, vi } from "vitest";
+
 import type { Head } from "../index.ts";
 import { useHead } from "../index.ts";
 

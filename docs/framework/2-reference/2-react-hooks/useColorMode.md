@@ -16,4 +16,3 @@ the OS preference and updates live as the OS toggles between light/dark.
 const { mode, setMode, resolved } = useColorMode();
 setMode("dark");
 document.documentElement.classList.toggle("dark", resolved === "dark");
-

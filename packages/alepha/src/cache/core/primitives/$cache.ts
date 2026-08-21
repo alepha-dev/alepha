@@ -14,6 +14,7 @@ import {
 } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+
 import { CacheProvider } from "../providers/CacheProvider.ts";
 import { MemoryCacheProvider } from "../providers/MemoryCacheProvider.ts";
 
@@ -705,8 +706,10 @@ export interface CachePrimitiveFn<
  * Cache middleware + store. Callable as middleware `(handler) => wrappedHandler`
  * AND exposes store methods (`.get()`, `.set()`, `.invalidate()`, `.incr()`).
  */
-export interface CacheMiddlewareFn<TReturn = any>
-  extends CachePrimitive<TReturn, any[]> {
+export interface CacheMiddlewareFn<TReturn = any> extends CachePrimitive<
+  TReturn,
+  any[]
+> {
   <T extends (...args: any[]) => any>(handler: T): T;
   [OPTIONS]?: MiddlewareMetadata;
 }

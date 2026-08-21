@@ -5,6 +5,7 @@ import {
   type Head,
 } from "alepha/react/head";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
 import { $page } from "../index.browser.ts";
 
 describe("$page head integration (browser)", () => {

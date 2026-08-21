@@ -12,6 +12,7 @@ import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { KeyRound, Trash2 } from "lucide-react";
 import { type ReactNode, useState } from "react";
+
 import { PROVIDER_LABELS } from "../auth/provider-labels.ts";
 
 export interface AccountSecurityProps {

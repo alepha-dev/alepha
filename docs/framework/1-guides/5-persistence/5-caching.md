@@ -56,17 +56,17 @@ class SessionService {
 
 ## Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `name` | `string` | `ClassName:propertyKey` | Cache namespace. Keys are stored as `cache:<name>:<key>` |
-| `handler` | `Function` | - | Function whose results are cached automatically |
-| `ttl` | `DurationLike` | `[300, "seconds"]` (5 min) | Time-to-live. Set `0` to disable expiration |
-| `key` | `Function` | `JSON.stringify(args)` | Custom key generator from handler arguments |
-| `provider` | `Class` or `"memory"` | Injected `CacheProvider` | Override the cache backend |
-| `compress` | `boolean` | `false` | Enable gzip compression (60-80% size reduction) |
-| `disabled` | `boolean` | `false` | Disable caching entirely |
-| `memory` | `true` or options | off | Add an in-process L1 memory tier in front of `provider` |
-| `stale` | `DurationLike` | off | Stale-while-revalidate window after `ttl` expires |
+| Option     | Type                  | Default                    | Description                                              |
+| ---------- | --------------------- | -------------------------- | -------------------------------------------------------- |
+| `name`     | `string`              | `ClassName:propertyKey`    | Cache namespace. Keys are stored as `cache:<name>:<key>` |
+| `handler`  | `Function`            | -                          | Function whose results are cached automatically          |
+| `ttl`      | `DurationLike`        | `[300, "seconds"]` (5 min) | Time-to-live. Set `0` to disable expiration              |
+| `key`      | `Function`            | `JSON.stringify(args)`     | Custom key generator from handler arguments              |
+| `provider` | `Class` or `"memory"` | Injected `CacheProvider`   | Override the cache backend                               |
+| `compress` | `boolean`             | `false`                    | Enable gzip compression (60-80% size reduction)          |
+| `disabled` | `boolean`             | `false`                    | Disable caching entirely                                 |
+| `memory`   | `true` or options     | off                        | Add an in-process L1 memory tier in front of `provider`  |
+| `stale`    | `DurationLike`        | off                        | Stale-while-revalidate window after `ttl` expires        |
 
 ### L1 Memory Tier
 
@@ -90,10 +90,10 @@ getPrices = $cache({
 TTL accepts a `DurationLike` tuple: `[amount, unit]`.
 
 ```typescript
-ttl: [30, "seconds"]
-ttl: [10, "minutes"]
-ttl: [1, "hour"]
-ttl: [7, "days"]
+ttl: [30, "seconds"];
+ttl: [10, "minutes"];
+ttl: [1, "hour"];
+ttl: [7, "days"];
 ```
 
 The default TTL is 5 minutes (300 seconds). It can be overridden globally via the `cacheOptions` atom:
@@ -239,11 +239,11 @@ alepha.store.mut(redisCacheOptions, () => ({ prefix: "tenant-a" }));
 
 Caching is configured through state atoms, not environment variables:
 
-| Atom | Field | Default | Description |
-|------|-------|---------|-------------|
-| `cacheOptions` | `enabled` | `true` | Enable or disable all caching globally |
-| `cacheOptions` | `defaultTtl` | `300` | Default TTL in seconds |
-| `redisCacheOptions` | `prefix` | - | Prefix for all Redis cache keys |
+| Atom                | Field        | Default | Description                            |
+| ------------------- | ------------ | ------- | -------------------------------------- |
+| `cacheOptions`      | `enabled`    | `true`  | Enable or disable all caching globally |
+| `cacheOptions`      | `defaultTtl` | `300`   | Default TTL in seconds                 |
+| `redisCacheOptions` | `prefix`     | -       | Prefix for all Redis cache keys        |
 
 ```typescript
 import { cacheOptions } from "alepha/cache";

@@ -71,6 +71,7 @@ export default defineConfig({
 Copy the `dist/` folder to any server and run it. No build tools, no package managers, no configuration files required on the target machine.
 
 Works on:
+
 - VPS (DigitalOcean, Hetzner, Linode)
 - Bare metal servers
 - Any container runtime
@@ -84,7 +85,7 @@ When you run more than one replica (e.g. 10 Docker instances behind a load balan
 import { AlephaLockRedis } from "alepha/lock/redis";
 
 const app = Alepha.create()
-  .with(AlephaLockRedis)   // Redis-backed lock store
+  .with(AlephaLockRedis) // Redis-backed lock store
   .with(AlephaApiJobs);
 ```
 

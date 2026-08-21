@@ -20,11 +20,11 @@ to `""` (relative URLs).
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `hostname` | `string` | No | Absolute base URL used to build `&lt;loc&gt;` entries (e.g |
-| `path` | `string` | No | Route path the sitemap is served at. |
-| `static` | `boolean` | No | Prerender the sitemap to a static file at build time. |
+| Option     | Type      | Required | Description                                                |
+| ---------- | --------- | -------- | ---------------------------------------------------------- |
+| `hostname` | `string`  | No       | Absolute base URL used to build `&lt;loc&gt;` entries (e.g |
+| `path`     | `string`  | No       | Route path the sitemap is served at.                       |
+| `static`   | `boolean` | No       | Prerender the sitemap to a static file at build time.      |
 
 ## Examples
 
@@ -35,4 +35,3 @@ class AppRouter {
   sitemap = $sitemap();
 }
 ```
-

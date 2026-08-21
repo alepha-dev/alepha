@@ -1,4 +1,5 @@
 import { $inject, type Async, createPrimitive, KIND, Primitive } from "alepha";
+
 import { I18nProvider } from "../providers/I18nProvider.ts";
 
 /**

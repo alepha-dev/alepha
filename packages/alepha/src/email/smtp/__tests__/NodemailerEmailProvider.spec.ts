@@ -2,6 +2,7 @@ import { Alepha } from "alepha";
 import { EmailError } from "alepha/email";
 import type { Transporter } from "nodemailer";
 import { describe, expect, it } from "vitest";
+
 import {
   NodemailerEmailProvider,
   nodemailerEmailOptions,

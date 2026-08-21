@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { CronProvider } from "alepha/scheduler";
 import { describe, expect, it } from "vitest";
+
 import { AlephaApiWorkflows, WorkflowJobs, workflowConfig } from "../index.ts";
 
 /**

@@ -1,4 +1,5 @@
 import { $logger } from "alepha/logger";
+
 import { QueueProvider } from "./QueueProvider.ts";
 
 // `extends`, not `implements` — otherwise this misses default members added

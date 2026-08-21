@@ -18,10 +18,10 @@ Every Alepha project gets the same structure: an API module, a React web module 
 
 A preset does not move the furniture. It decides what is mounted on top of it:
 
-| Preset | What you get |
-|---|---|
-| `default` | The skeleton. API module, web module, Tailwind. |
-| `saas` | The skeleton **plus** the identity surface: `@alepha/ui`, sign-in, an account area and an admin console. |
+| Preset    | What you get                                                                                             |
+| --------- | -------------------------------------------------------------------------------------------------------- |
+| `default` | The skeleton. API module, web module, Tailwind.                                                          |
+| `saas`    | The skeleton **plus** the identity surface: `@alepha/ui`, sign-in, an account area and an admin console. |
 
 ```bash
 alepha init my-app --preset=saas
@@ -33,7 +33,7 @@ This is the one axis worth branching on because it is the one you cannot easily 
 
 ## What It Does
 
-1. **Creates configuration files**: `tsconfig.json`, `biome.json`, `alepha.config.ts`, `.editorconfig`, `.vscode/settings.json`
+1. **Creates configuration files**: `tsconfig.json`, `.oxlintrc.json`, `.oxfmtrc.json`, `alepha.config.ts`, `.editorconfig`, `.vscode/settings.json`
 2. **Sets up package.json**: Adds Alepha dependencies and standard scripts
 3. **Configures your package manager**: Works with Yarn, pnpm, npm, or Bun
 4. **Installs dependencies**: Gets everything ready to run
@@ -43,12 +43,12 @@ This is the one axis worth branching on because it is the one you cannot easily 
 
 ## Options
 
-| Flag | Description |
-|------|-------------|
-| `--preset <name>` | Project shape: `default` (the default) or `saas` |
-| `--pm <manager>` | Package manager to use: `yarn`, `npm`, `pnpm`, or `bun` |
-| `--force`, `-f` | Override existing files |
-| `--no-devtools` | Skip `@alepha/devtools` (dev-only, no production bundle cost) |
+| Flag              | Description                                                   |
+| ----------------- | ------------------------------------------------------------- |
+| `--preset <name>` | Project shape: `default` (the default) or `saas`              |
+| `--pm <manager>`  | Package manager to use: `yarn`, `npm`, `pnpm`, or `bun`       |
+| `--force`, `-f`   | Override existing files                                       |
+| `--no-devtools`   | Skip `@alepha/devtools` (dev-only, no production bundle cost) |
 
 The first positional argument is the target path:
 
@@ -62,11 +62,11 @@ current directory.
 
 With no argument, `init` picks its target from what the current directory holds:
 
-| Current directory | Result |
-|---|---|
-| Empty | Scaffolds **in place** - `mkdir my-app && cd my-app && alepha init` does what you expect |
-| Has a `package.json` | Fills in whatever is missing, in place |
-| Non-empty, no `package.json` | Creates `./my-app/`, so a stray `init` can't scatter files over unrelated work |
+| Current directory            | Result                                                                                   |
+| ---------------------------- | ---------------------------------------------------------------------------------------- |
+| Empty                        | Scaffolds **in place** - `mkdir my-app && cd my-app && alepha init` does what you expect |
+| Has a `package.json`         | Fills in whatever is missing, in place                                                   |
+| Non-empty, no `package.json` | Creates `./my-app/`, so a stray `init` can't scatter files over unrelated work           |
 
 Dotfiles don't count towards "empty", so running `git init` first is fine.
 
@@ -91,7 +91,8 @@ my-app/
 ├── alepha.config.ts
 ├── vite.config.ts                   # Tailwind plugin + Vitest config
 ├── tsconfig.json
-├── biome.json
+├── .oxlintrc.json
+├── .oxfmtrc.json
 ├── .editorconfig
 ├── .vscode/settings.json
 ├── AGENTS.md
@@ -102,7 +103,7 @@ The router is wired to the API out of the box - `AppRouter.ts` calls `HelloContr
 
 **Dependencies:** `alepha`, `react`, `react-dom` and, as dev dependencies, `@types/react`, `tailwindcss`, `@tailwindcss/vite`, `@alepha/devtools`.
 
-The toolchain - TypeScript, Vite, Vitest, Biome, drizzle-kit - ships embedded in `alepha` and never appears in your `package.json`. Upgrading `alepha` moves the whole toolchain at once.
+The toolchain - TypeScript, Vite, Vitest, oxlint, oxfmt, drizzle-kit - ships embedded in `alepha` and never appears in your `package.json`. Upgrading `alepha` moves the whole toolchain at once.
 
 ## The `saas` Preset
 
@@ -112,11 +113,11 @@ alepha init my-app --preset=saas
 
 Everything above, plus a working identity surface on first run:
 
-| Route | What's there |
-|---|---|
-| `/auth/*` | Login, register, password reset, email verification |
-| `/account/*` | Profile, security, sessions, API keys, connected apps |
-| `/admin/*` | Users, sessions, keys, audit log - and any other console page whose module you mount |
+| Route        | What's there                                                                         |
+| ------------ | ------------------------------------------------------------------------------------ |
+| `/auth/*`    | Login, register, password reset, email verification                                  |
+| `/account/*` | Profile, security, sessions, API keys, connected apps                                |
+| `/admin/*`   | Users, sessions, keys, audit log - and any other console page whose module you mount |
 
 It adds one dependency, `@alepha/ui`, and three files' worth of difference:
 
@@ -129,7 +130,7 @@ src/
 └── main.css                         # @import "@alepha/ui/styles.css"
 ```
 
-Note what is *not* there: no chrome file, and no changes to `main.server.ts` or `main.browser.ts`. The router options atoms default to `{}`, and their `homeRouteName` / `loginRouteName` defaults already point at the pages this scaffold mounts. Configure them when you want your own branding, not before.
+Note what is _not_ there: no chrome file, and no changes to `main.server.ts` or `main.browser.ts`. The router options atoms default to `{}`, and their `homeRouteName` / `loginRouteName` defaults already point at the pages this scaffold mounts. Configure them when you want your own branding, not before.
 
 ### Your first admin
 
@@ -214,14 +215,13 @@ export default defineConfig({
 
 Everything else about the Vite setup is handled internally by the Alepha CLI - this file exists so Tailwind can hook in and so Vitest has its config (`test.root` stops Vitest walking up into a parent monorepo's config; there is no separate Vitest config file).
 
-### biome.json
+### .oxlintrc.json and .oxfmtrc.json
 
-Linting and formatting rules that make sense:
+The two halves of what `alepha lint` runs, written in Rust and fast enough that linting a large monorepo is under a second.
 
-- Consistent code style across your team
-- Import organization
-- TypeScript-aware rules
-- Fast - Biome is written in Rust
+`.oxlintrc.json` enables oxlint's `correctness` category as an **error** - code that is outright wrong, nothing about style - across the TypeScript, React, import, promise, unicorn and Vitest plugins. A handful of rules are turned off with the reason written next to each: the ones whose premise (React Compiler semantics, Jest's `expect` arity, a hook dependency the DI container guarantees is stable) does not hold in an Alepha app.
+
+`.oxfmtrc.json` is the formatter: two spaces at 80 columns, double quotes, semicolons, trailing commas, and `sortImports` for import organization. These are spelled out rather than left to oxfmt's defaults, because the defaults are Prettier's - and one of them (tabs) disagrees with the `.editorconfig` written next to it.
 
 ### package.json Scripts
 
@@ -240,7 +240,7 @@ Your package.json gets these scripts:
 }
 ```
 
-Every script delegates to the `alepha` CLI - there are no raw `tsc` / `vite` / `vitest` / `biome` invocations, because the toolchain is embedded in `alepha`.
+Every script delegates to the `alepha` CLI - there are no raw `tsc` / `vite` / `vitest` / `oxlint` invocations, because the toolchain is embedded in `alepha`.
 
 ## Workspace Awareness
 

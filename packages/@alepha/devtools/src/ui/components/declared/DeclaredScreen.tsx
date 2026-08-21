@@ -2,6 +2,7 @@ import { z } from "alepha";
 import { useQueryParams } from "alepha/react/router";
 import type { ComponentType, ReactNode } from "react";
 import { useMemo, useState } from "react";
+
 import { useMetadata } from "../../hooks/useMetadata.ts";
 
 const querySchema = z.object({

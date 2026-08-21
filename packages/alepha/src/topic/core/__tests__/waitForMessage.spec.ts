@@ -1,5 +1,6 @@
 import { Alepha, z } from "alepha";
 import { describe, expect, it } from "vitest";
+
 import { MemoryTopicProvider } from "../providers/MemoryTopicProvider.ts";
 import { TopicProvider } from "../providers/TopicProvider.ts";
 

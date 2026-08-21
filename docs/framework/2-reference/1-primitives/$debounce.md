@@ -27,8 +27,7 @@ class SearchController {
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `delay` | `DurationLike` | Yes | Coalescing window |
-| `key` | `Object` | No | Key function to group calls |
-
+| Option  | Type           | Required | Description                 |
+| ------- | -------------- | -------- | --------------------------- |
+| `delay` | `DurationLike` | Yes      | Coalescing window           |
+| `key`   | `Object`       | No       | Key function to group calls |

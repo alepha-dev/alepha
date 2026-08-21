@@ -23,6 +23,7 @@ those with a DB-backed outbox and a reconciliation sweep. (Cloudflare
 Queues adds broker-level retry/DLQ, configured on the binding.)
 
 **Features:**
+
 - Consumers registered imperatively via `WorkerProvider.register`
 - Polling worker loop with configurable concurrency and backoff
 - Batch send where the backend supports it (`QueueProvider.pushMany`)

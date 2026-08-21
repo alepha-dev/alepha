@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+
 import { BrevoEmailProvider } from "../providers/BrevoEmailProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 import { Alepha, z } from "alepha";
 import { BadRequestError, NotFoundError } from "alepha/server";
 import { describe, expect, it } from "vitest";
+
 // Import through `../index.ts`, not the primitive file: evaluating the module
 // const is what tags `$analytics` with `AlephaApiAnalytics`, whose `register()`
 // binds `MemoryAnalyticsProvider` in test mode. Importing the primitive

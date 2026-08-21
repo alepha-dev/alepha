@@ -1,9 +1,11 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path, { join } from "node:path";
+
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import hljs from "highlight.js";
 import { Marked, type Tokens } from "marked";
+
 import type {
   ChangelogChange,
   ChangelogEntry,

@@ -15,6 +15,7 @@ Throws `UnauthorizedError` if no user is resolved, `ForbiddenError` if checks fa
 Stores the resolved user in `currentUserAtom` and `request.user` for downstream access.
 
 Works across all transports (atom-first resolution):
+
 1. `currentUserAtom`: set by `action.run()` fork, MCP transport, pipelines, jobs
 2. `request.user`: set by previous middleware
 3. HTTP headers - JWT/API key resolution
@@ -71,10 +72,9 @@ class OrderController {
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `issuers` | `string[]` | No | Restrict to specific issuers (realms) |
-| `roles` | `string[]` | No | Required roles |
-| `permissions` | `Object` | No | Required permissions |
-| `guard` | `Object` | No | Custom guard |
-
+| Option        | Type       | Required | Description                           |
+| ------------- | ---------- | -------- | ------------------------------------- |
+| `issuers`     | `string[]` | No       | Restrict to specific issuers (realms) |
+| `roles`       | `string[]` | No       | Required roles                        |
+| `permissions` | `Object`   | No       | Required permissions                  |
+| `guard`       | `Object`   | No       | Custom guard                          |

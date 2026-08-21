@@ -75,7 +75,7 @@ const AgentSection = () => {
             <pre className="agent-term">
               <span className="agent-term-cmd">$ alepha verify</span>
               {
-                "\n[23:41:02] DEBUG CLI <alepha.core.Alepha>: ready OK [0.0ms]\n[23:41:03] INFO  CLI <alepha.cli.Lint>: biome OK [1.2s]\n[23:41:06] INFO  CLI <alepha.cli.Types>: tsc OK [3.4s]"
+                "\n[23:41:02] DEBUG CLI <alepha.core.Alepha>: ready OK [0.0ms]\n[23:41:03] INFO  CLI <alepha.cli.Lint>: oxlint + oxfmt OK [1.2s]\n[23:41:06] INFO  CLI <alepha.cli.Types>: tsc OK [3.4s]"
               }
             </pre>
           </AgentStation>

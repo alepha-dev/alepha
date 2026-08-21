@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { DatabaseProvider } from "alepha/orm";
 import { NodePostgresProvider } from "alepha/orm/postgres";
+
 import { TenantApp, tenancyTests } from "./tenancyTests.ts";
 
 tenancyTests("postgres", async () => {

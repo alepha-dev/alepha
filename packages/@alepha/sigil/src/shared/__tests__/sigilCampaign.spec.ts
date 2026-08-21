@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { sigilCampaign } from "../sigilCampaign.ts";
 
 describe("sigilCampaign", () => {

@@ -70,8 +70,10 @@ test("should return user by id", async () => {
 Never use `vi.mock()` or `vi.spyOn()`. Alepha's dependency injection system replaces the need for traditional mocking. Use `.with({ provide, use })` to swap implementations.
 
 ```typescript
-const alepha = Alepha.create()
-  .with({ provide: PaymentService, use: FakePaymentService });
+const alepha = Alepha.create().with({
+  provide: PaymentService,
+  use: FakePaymentService,
+});
 
 const svc = alepha.inject(PaymentService);
 // svc is now an instance of FakePaymentService
@@ -81,17 +83,17 @@ const svc = alepha.inject(PaymentService);
 
 Alepha ships memory implementations for all I/O-bound services. These run in-process with no external dependencies and include test assertion helpers.
 
-| Provider | Import | Replaces |
-|----------|--------|----------|
-| `MemoryFileSystemProvider` | `alepha/system` | File system |
-| `MemoryShellProvider` | `alepha/system` | Shell commands |
-| `MemoryQueueProvider` | `alepha/queue` | Job queues |
-| `MemoryTopicProvider` | `alepha/topic` | Pub/sub topics |
-| `MemoryLockProvider` | `alepha/lock` | Distributed locks |
-| `MemoryCacheProvider` | `alepha/cache` | Caching layer |
+| Provider                    | Import          | Replaces                    |
+| --------------------------- | --------------- | --------------------------- |
+| `MemoryFileSystemProvider`  | `alepha/system` | File system                 |
+| `MemoryShellProvider`       | `alepha/system` | Shell commands              |
+| `MemoryQueueProvider`       | `alepha/queue`  | Job queues                  |
+| `MemoryTopicProvider`       | `alepha/topic`  | Pub/sub topics              |
+| `MemoryLockProvider`        | `alepha/lock`   | Distributed locks           |
+| `MemoryCacheProvider`       | `alepha/cache`  | Caching layer               |
 | `MemoryFileStorageProvider` | `alepha/bucket` | File storage (S3, R2, etc.) |
-| `MemoryEmailProvider` | `alepha/email` | Email sending |
-| `MemorySmsProvider` | `alepha/sms` | SMS sending |
+| `MemoryEmailProvider`       | `alepha/email`  | Email sending               |
+| `MemorySmsProvider`         | `alepha/sms`    | SMS sending                 |
 
 In test environments, `FileSystemProvider` and `ShellProvider` both default to
 their memory implementations automatically - file writes and shell commands
@@ -101,8 +103,10 @@ stay inside the container unless a test opts back into the real thing:
 import { FileSystemProvider, NodeFileSystemProvider } from "alepha/system";
 
 // Only when a test really needs the disk (e.g. real fixture files):
-const alepha = Alepha.create()
-  .with({ provide: FileSystemProvider, use: NodeFileSystemProvider });
+const alepha = Alepha.create().with({
+  provide: FileSystemProvider,
+  use: NodeFileSystemProvider,
+});
 ```
 
 ### Example: File System
@@ -150,7 +154,7 @@ Code that reads time through the injected `DateTimeProvider` (never `Date.now()`
 
 ```typescript
 const dateTime = alepha.inject(DateTimeProvider);
-dateTime.pause();               // freeze the clock
+dateTime.pause(); // freeze the clock
 await dateTime.travel([2, "hours"]); // jump forward
 ```
 

@@ -13,6 +13,7 @@ npm install alepha
 Complete authentication and authorization system with JWT, RBAC, and multi-issuer support.
 
 **Features:**
+
 - JWT token issuer with role definitions
 - Role-based access control (RBAC)
 - Fine-grained permissions

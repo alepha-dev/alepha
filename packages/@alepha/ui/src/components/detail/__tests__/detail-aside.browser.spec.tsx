@@ -5,6 +5,7 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
 import { setupJsdomMocks } from "alepha/react/testing";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+
 import { DetailAside } from "../detail-aside.tsx";
 
 /**

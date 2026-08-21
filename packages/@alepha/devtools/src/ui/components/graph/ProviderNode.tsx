@@ -1,5 +1,6 @@
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Handle, Position } from "@xyflow/react";
+
 import { getModuleColor } from "./constants.ts";
 import type { ProviderNodeData } from "./types.ts";
 

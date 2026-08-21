@@ -17,17 +17,16 @@ queue job that handles them.
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `name` | `string` | No | Optional explicit job name |
-| `description` | `string` | No | Human-readable description (shown in the admin UI). |
-| `schema` | `T` | No | Payload schema (Zod) |
-| `cron` | `string` | No | Cron expression for recurring execution |
-| `retry` | `JobRetryOptions` | No | Retry policy for queue-mode and direct-mode jobs |
-| `lock` | `boolean` | No | **Cron-mode only.** Whether to acquire a distributed lock around the cron tick so that only one instance of a multi-replica deployment runs the handler per tick |
-| `timeout` | `DurationLike` | No | Max execution time per attempt |
-| `priority` | `JobPriority` | No | Default priority for pushed jobs |
-| `record` | `"error" \| "all" \| "none"` | No | Whether to record successful executions |
-| `keep` | `Object` | No | Override the global ring-buffer trim for this job |
-| `handler` | `Object` | Yes | Handler function |
-
+| Option        | Type                         | Required | Description                                                                                                                                                      |
+| ------------- | ---------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`        | `string`                     | No       | Optional explicit job name                                                                                                                                       |
+| `description` | `string`                     | No       | Human-readable description (shown in the admin UI).                                                                                                              |
+| `schema`      | `T`                          | No       | Payload schema (Zod)                                                                                                                                             |
+| `cron`        | `string`                     | No       | Cron expression for recurring execution                                                                                                                          |
+| `retry`       | `JobRetryOptions`            | No       | Retry policy for queue-mode and direct-mode jobs                                                                                                                 |
+| `lock`        | `boolean`                    | No       | **Cron-mode only.** Whether to acquire a distributed lock around the cron tick so that only one instance of a multi-replica deployment runs the handler per tick |
+| `timeout`     | `DurationLike`               | No       | Max execution time per attempt                                                                                                                                   |
+| `priority`    | `JobPriority`                | No       | Default priority for pushed jobs                                                                                                                                 |
+| `record`      | `"error" \| "all" \| "none"` | No       | Whether to record successful executions                                                                                                                          |
+| `keep`        | `Object`                     | No       | Override the global ring-buffer trim for this job                                                                                                                |
+| `handler`     | `Object`                     | Yes      | Handler function                                                                                                                                                 |

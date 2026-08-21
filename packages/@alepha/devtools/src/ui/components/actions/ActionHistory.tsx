@@ -70,9 +70,9 @@ export const ActionHistory = (props: ActionHistoryProps) => {
                 <td>
                   {e.error ??
                     JSON.stringify({
-                      ...(e.params ?? {}),
-                      ...(e.query ?? {}),
-                      ...((e.body as any) ?? {}),
+                      ...e.params,
+                      ...e.query,
+                      ...(e.body as any),
                     })}
                 </td>
                 <td>

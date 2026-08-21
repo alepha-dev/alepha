@@ -21,11 +21,11 @@ No source, no `alepha.config.ts`, no `package.json` - the deploy side reads ever
 
 ## Options
 
-| Flag | Description |
-|------|-------------|
-| `--tag`, `-t` | Tag suffix for the artifact name, Docker-style (default: `latest` → `<project>-latest.tar.gz`) |
-| `--output`, `-o` | Output directory for the archive (default: current directory) |
-| `--name`, `-n` | Project name for the artifact filename (default: `package.json` `name`) |
+| Flag             | Description                                                                                    |
+| ---------------- | ---------------------------------------------------------------------------------------------- |
+| `--tag`, `-t`    | Tag suffix for the artifact name, Docker-style (default: `latest` → `<project>-latest.tar.gz`) |
+| `--output`, `-o` | Output directory for the archive (default: current directory)                                  |
+| `--name`, `-n`   | Project name for the artifact filename (default: `package.json` `name`)                        |
 
 The project name comes from `package.json` `name`, slugified for the filename (`@acme/app` → `acme-app`).
 

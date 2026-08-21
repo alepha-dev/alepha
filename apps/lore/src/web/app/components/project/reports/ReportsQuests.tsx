@@ -8,7 +8,9 @@ import type { Infer } from "alepha";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+
 import type { reportsQuestsSchema } from "@/api/schemas/reportsSchemas.ts";
+
 import type { AppRouter } from "../../../AppRouter.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import ReportsSection from "./ReportsSection.tsx";

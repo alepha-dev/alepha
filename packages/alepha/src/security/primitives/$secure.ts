@@ -11,6 +11,7 @@ import {
   type ServerRequest,
   UnauthorizedError,
 } from "alepha/server";
+
 import { currentUserAtom } from "../atoms/currentUserAtom.ts";
 import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
 import { SecurityProvider } from "../providers/SecurityProvider.ts";

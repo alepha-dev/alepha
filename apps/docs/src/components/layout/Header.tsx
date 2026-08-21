@@ -188,6 +188,9 @@ const SearchButton = () => {
   const [isMac, setIsMac] = useState(true);
 
   useEffect(() => {
+    // `navigator` is client-only, so the seed must be `true` for both the server
+    // render and hydration; the real platform lands on the first commit.
+    // oxlint-disable-next-line react/set-state-in-effect
     setIsMac(navigator.platform.toLowerCase().includes("mac"));
   }, []);
 
@@ -245,18 +248,21 @@ const TabBar = () => {
   // Store recently visited tabs
   const [tabs, setTabs] = useState<{ path: string; name: string }[]>([]);
 
-  useEffect(() => {
-    if (currentPath?.startsWith("/docs/")) {
-      setTabs((prev) => {
-        // Remove if already exists
-        const filtered = prev.filter((t) => t.path !== currentPath);
-        // Add to front
-        const newTabs = [{ path: currentPath, name: currentName }, ...filtered];
-        // Keep only last 5
-        return newTabs.slice(0, 5);
-      });
-    }
-  }, [currentPath, currentName]);
+  // Recorded during render rather than from an effect: the tab strip is
+  // derived from where the router already is, so waiting for a commit only
+  // renders the strip once without the page you just opened.
+  const [recordedPath, setRecordedPath] = useState<string | undefined>();
+  if (currentPath?.startsWith("/docs/") && currentPath !== recordedPath) {
+    setRecordedPath(currentPath);
+    setTabs((prev) => {
+      // Remove if already exists
+      const filtered = prev.filter((t) => t.path !== currentPath);
+      // Add to front
+      const newTabs = [{ path: currentPath, name: currentName }, ...filtered];
+      // Keep only last 5
+      return newTabs.slice(0, 5);
+    });
+  }
 
   const handleClose = useCallback(
     (closedPath: string) => {
@@ -450,6 +456,9 @@ const DarkModeToggle = () => {
 
   useEffect(() => {
     const initialMode = getInitialMode();
+    // Reads localStorage and the OS preference, neither of which exists on the
+    // server — seeding from them during render would break hydration.
+    // oxlint-disable-next-line react/set-state-in-effect
     setMode(initialMode);
     document.documentElement.setAttribute("data-theme", initialMode);
   }, []);

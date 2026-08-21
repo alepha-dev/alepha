@@ -2,6 +2,7 @@ import { $hook, $inject, Alepha, z } from "alepha";
 import { $notification } from "alepha/api/notifications";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
+
 import { projects } from "../entities/projects.ts";
 
 export class InvitationNotifications {

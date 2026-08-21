@@ -3,6 +3,7 @@ import { useAlepha, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { ArrowRight, Search, Sparkles } from "lucide-react";
+
 import type { AppRouter } from "../../AppRouter.ts";
 import { spotlightOpenAtom } from "../../atoms/spotlightOpenAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";

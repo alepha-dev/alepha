@@ -1,6 +1,7 @@
 import { $pageAdmin } from "@alepha/ui/components/admin/admin-router-page";
 import { $client } from "alepha/server/links";
 import { FolderKanban } from "lucide-react";
+
 import type { AdminProjectController } from "@/api/controllers/AdminProjectController.ts";
 
 /**

@@ -13,6 +13,7 @@ npm install alepha
 Auth-related React components and hooks.
 
 **Features:**
+
 - Auth state hooks (`useAuth`)
 
 Route protection is done with `use: [$secure(...)]` on the page or action,

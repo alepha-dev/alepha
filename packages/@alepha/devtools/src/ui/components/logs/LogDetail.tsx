@@ -1,4 +1,5 @@
 import { useState } from "react";
+
 import type { LogEntry } from "../../hooks/useLogTail.ts";
 import { DetailFields } from "../declared/DetailFields.tsx";
 import { detectEventType } from "./DevLogs.tsx";

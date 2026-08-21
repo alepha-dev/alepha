@@ -1,4 +1,5 @@
 import type { Infer } from "alepha";
+
 import type { ChannelPrimitive, TWSObject } from "../primitives/$channel.ts";
 
 /**

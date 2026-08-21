@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { rewriteFolioWikiLinks } from "../src/web/app/components/folios/rewriteFolioWikiLinks.ts";
 
 const PROJECT_SLUG = "sds";

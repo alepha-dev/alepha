@@ -1,5 +1,6 @@
 import type { Async, Hook, Hooks } from "alepha";
 import { type DependencyList, useEffect } from "react";
+
 import { useAlepha } from "./useAlepha.ts";
 
 /**

@@ -5,7 +5,9 @@ import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Copy, Loader2, Paperclip, Pencil, Trash2, Upload } from "lucide-react";
 import { type DragEvent, type ReactElement, useRef, useState } from "react";
+
 import type { BlobController } from "@/api/controllers/BlobController.ts";
+
 import { currentFolioBlobsAtom } from "../../../../atoms/currentFolioBlobsAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 import { folioAssetEmbed } from "../../folioAssetReference.ts";

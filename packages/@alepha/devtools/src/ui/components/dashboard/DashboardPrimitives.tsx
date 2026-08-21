@@ -13,6 +13,7 @@ import {
   Zap,
 } from "lucide-react";
 import type { ComponentType } from "react";
+
 import type { DevMetadata } from "../../../schemas/DevMetadata.ts";
 
 export interface DashboardPrimitivesProps {

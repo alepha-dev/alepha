@@ -17,8 +17,8 @@ threading a foreign key's target through the column type makes
 `quests.dependsOn -> quests.id` (a self reference) and every mutual
 reference fail with
 
-  TS7022: 'quests' implicitly has type 'any' because it is referenced
-          directly or indirectly in its own initializer
+TS7022: 'quests' implicitly has type 'any' because it is referenced
+directly or indirectly in its own initializer
 
 The `() => any` in `db.ref` is load-bearing - that `any` is what breaks the
 cycle. Declaring relations separately, once every entity's type has already
@@ -50,4 +50,3 @@ export const relations = $relations(schema, (r) => ({
   },
 }));
 ```
-

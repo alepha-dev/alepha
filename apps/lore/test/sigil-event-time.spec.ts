@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { AlephaOrm } from "alepha/orm";
 import { describe, expect, it } from "vitest";
+
 import { SigilIngestService } from "../src/api/services/SigilIngestService.ts";
 
 /**

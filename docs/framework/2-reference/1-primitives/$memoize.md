@@ -26,8 +26,7 @@ class Api {
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `max` | `number` | No | Maximum number of entries to keep in the cache |
-| `key` | `Object` | No | Custom key function |
-
+| Option | Type     | Required | Description                                    |
+| ------ | -------- | -------- | ---------------------------------------------- |
+| `max`  | `number` | No       | Maximum number of entries to keep in the cache |
+| `key`  | `Object` | No       | Custom key function                            |

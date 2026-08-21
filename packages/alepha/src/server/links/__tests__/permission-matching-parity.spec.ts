@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { PermissionRegistryProvider } from "alepha/security";
 import { describe, expect, it } from "vitest";
+
 import { LinkProvider } from "../providers/LinkProvider.ts";
 
 /**

@@ -5,9 +5,10 @@ import {
   type PagePrimitive,
 } from "alepha/react/router";
 import { describe, expect, it } from "vitest";
+
 import { AdminRouter } from "../../admin/admin-router.tsx";
-import { AccountRouter } from "../account-router.tsx";
 import { $pageAccount } from "../account-router-page.tsx";
+import { AccountRouter } from "../account-router.tsx";
 
 /**
  * Reads the permissions a page's route gate actually enforces — see

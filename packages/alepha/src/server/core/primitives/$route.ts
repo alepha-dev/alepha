@@ -5,6 +5,7 @@ import {
   PipelinePrimitive,
   type PipelinePrimitiveOptions,
 } from "alepha";
+
 import { ServerReply } from "../helpers/ServerReply.ts";
 import type {
   RequestConfigSchema,
@@ -32,7 +33,9 @@ export const $route = <TConfig extends RequestConfigSchema>(
 
 export interface RoutePrimitiveOptions<
   TConfig extends RequestConfigSchema = RequestConfigSchema,
-> extends Omit<ServerRoute<TConfig>, "handler">,
+>
+  extends
+    Omit<ServerRoute<TConfig>, "handler">,
     PipelinePrimitiveOptions<ServerHandler<TConfig>> {}
 
 // ---------------------------------------------------------------------------------------------------------------------

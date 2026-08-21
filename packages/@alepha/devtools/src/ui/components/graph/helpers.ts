@@ -1,4 +1,5 @@
 import type { DevProviderMetadata } from "@alepha/devtools";
+
 import type {
   GraphFilters,
   LayoutType,
@@ -104,7 +105,7 @@ export const buildModuleGraph = (
   const moduleDeps = new Map<string, Set<string>>();
   const moduleDependents = new Map<string, Set<string>>();
 
-  for (const [module, moduleProviders] of moduleMap) {
+  for (const module of moduleMap.keys()) {
     moduleDeps.set(module, new Set());
     moduleDependents.set(module, new Set());
   }

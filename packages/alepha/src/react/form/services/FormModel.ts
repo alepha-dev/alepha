@@ -32,8 +32,6 @@ export class FormModel<T extends ZObject> {
     public readonly id: string,
     public readonly options: FormCtrlOptions<T>,
   ) {
-    this.options = options;
-
     // Initialize with schema defaults first, then override with initialValues
     const schemaDefaults = this.extractSchemaDefaults(options.schema);
     if (Object.keys(schemaDefaults).length > 0) {
@@ -404,7 +402,6 @@ export class FormModel<T extends ZObject> {
       store: Record<string, any>;
     },
   ): SchemaToInput<T> {
-    const parent = context.parent || "";
     return new Proxy<SchemaToInput<T>>({} as SchemaToInput<T>, {
       get: (_, prop: string) => {
         if (!options.schema || !z.schema.isObject(schema)) {

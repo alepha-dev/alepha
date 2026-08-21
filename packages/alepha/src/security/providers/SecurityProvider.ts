@@ -10,6 +10,7 @@ import { $logger } from "alepha/logger";
 import { ForbiddenError } from "alepha/server";
 import type { JSONWebKeySet, JWTPayload } from "jose";
 import type { JWTVerifyOptions } from "jose/jwt/verify";
+
 import { currentTenantAtom } from "../atoms/currentTenantAtom.ts";
 import { currentUserAtom } from "../atoms/currentUserAtom.ts";
 import { InvalidPermissionError } from "../errors/InvalidPermissionError.ts";

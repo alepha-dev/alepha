@@ -44,4 +44,3 @@ dataset's declared dimensions/measures - via `assertKnownDimension`
 / `assertKnownMeasure` - before it is ever spliced into SQL text with
 `sql.raw`. An unknown name throws `AlephaError` instead of reaching the
 database as an attacker-chosen identifier.
-

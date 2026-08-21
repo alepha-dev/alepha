@@ -47,14 +47,14 @@ node dist/index.js
 
 ## Options
 
-| Flag | Description |
-|------|-------------|
-| `--target`, `-t` | Deployment target: `bare`, `docker`, `cloudflare` (alias: `cf`), or `static` |
-| `--runtime`, `-r` | JavaScript runtime: `node`, `bun`, or `workerd` |
-| `--stats` | Generate build statistics report (use `--stats=json` for JSON output) |
-| `--image`, `-i` | Build Docker image (`-i` for latest, `-i=<version>` for specific version). Requires `--target=docker` |
-| `--compile`, `-c` | Compile the server to a single static binary. Requires `--target=docker --runtime=bun` |
-| `--prebuilt` | Skip the bundle steps; only regenerate the target-specific deploy config (e.g. `wrangler.jsonc`) when `dist/` is already built |
+| Flag              | Description                                                                                                                    |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `--target`, `-t`  | Deployment target: `bare`, `docker`, `cloudflare` (alias: `cf`), or `static`                                                   |
+| `--runtime`, `-r` | JavaScript runtime: `node`, `bun`, or `workerd`                                                                                |
+| `--stats`         | Generate build statistics report (use `--stats=json` for JSON output)                                                          |
+| `--image`, `-i`   | Build Docker image (`-i` for latest, `-i=<version>` for specific version). Requires `--target=docker`                          |
+| `--compile`, `-c` | Compile the server to a single static binary. Requires `--target=docker --runtime=bun`                                         |
+| `--prebuilt`      | Skip the bundle steps; only regenerate the target-specific deploy config (e.g. `wrangler.jsonc`) when `dist/` is already built |
 
 Some targets force a runtime: `cloudflare` always uses `workerd`.
 
@@ -226,13 +226,13 @@ export default defineConfig({
 
 Available options mirror the flags (`stats`, `target`, `runtime`) plus per-target configuration:
 
-| Section | Description |
-|---------|-------------|
-| `output` | Override `dist` and `public` directory names |
-| `cloudflare` | Extra `wrangler.jsonc` config merged into the generated file |
-| `docker` | Base image, run command, global installs, image tag/args/OCI labels, `compile` mode |
-| `static` | Surge domain for the `CNAME` file; `source` to adopt a client directory the workspace built itself (must live outside `dist/`) |
-| `pwa` | Web app manifest: name, short name, colors, display mode |
+| Section      | Description                                                                                                                    |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `output`     | Override `dist` and `public` directory names                                                                                   |
+| `cloudflare` | Extra `wrangler.jsonc` config merged into the generated file                                                                   |
+| `docker`     | Base image, run command, global installs, image tag/args/OCI labels, `compile` mode                                            |
+| `static`     | Surge domain for the `CNAME` file; `source` to adopt a client directory the workspace built itself (must live outside `dist/`) |
+| `pwa`        | Web app manifest: name, short name, colors, display mode                                                                       |
 
 ## Client-Side Optimization
 
@@ -267,6 +267,7 @@ alepha build
 ```
 
 Perfect for:
+
 - API servers
 - CLI tools
 - Background workers

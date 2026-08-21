@@ -6,6 +6,7 @@ import {
   ShellProvider,
 } from "alepha/system";
 import { describe, expect, it } from "vitest";
+
 import type { BuildOptions } from "../atoms/buildOptions.ts";
 import type { AppEntry } from "../providers/AppEntryProvider.ts";
 import { BuildDockerTask } from "../tasks/BuildDockerTask.ts";

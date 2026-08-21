@@ -6,6 +6,7 @@ import { AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, HttpError } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
+
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";
@@ -72,7 +73,7 @@ const seedAcceptedQuest = async (
   );
   // Reminders are an owner toggle (off by default). The spec asserts the
   // setQuestReminder behavior, not the gate — enable it up front.
-  // biome-ignore lint/suspicious/noExplicitAny: ORM repo generic is too strict
+  // ORM repo generic is too strict
   const projectsRepo: any = (ctx.projects as any).projects;
   const c = await projectsRepo.getOne({
     where: { id: { eq: project.data.id } },

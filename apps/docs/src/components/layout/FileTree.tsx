@@ -6,8 +6,10 @@ import {
   IconFolderOpen,
 } from "@tabler/icons-react";
 import { useRouter, useRouterState } from "alepha/react/router";
-import { type CSSProperties, useCallback, useEffect, useState } from "react";
+import { type CSSProperties, useCallback, useState } from "react";
+
 import type { DocNode } from "../../config/docs.ts";
+
 import styles from "./FileTree.module.css";
 
 // Grid constants for perfect alignment
@@ -86,19 +88,23 @@ const FileTreeNode = (props: FileTreeNodeProps) => {
 
   // Only respond to defaultExpanded changes (from expand/collapse all buttons)
   // Don't auto-collapse when navigating between files
-  useEffect(() => {
+  const [appliedDefault, setAppliedDefault] = useState(defaultExpanded);
+  if (defaultExpanded !== appliedDefault) {
+    setAppliedDefault(defaultExpanded);
     if (defaultExpanded !== undefined) {
       setExpanded(defaultExpanded);
     }
-  }, [defaultExpanded]);
+  }
 
   // Auto-expand when a child becomes active (but don't collapse)
   // Skip auto-expand if user explicitly collapsed all (defaultExpanded === false)
-  useEffect(() => {
+  const [appliedActive, setAppliedActive] = useState(containsActive);
+  if (containsActive !== appliedActive) {
+    setAppliedActive(containsActive);
     if (containsActive && !expanded && defaultExpanded !== false) {
       setExpanded(true);
     }
-  }, [containsActive, defaultExpanded]);
+  }
 
   const handleClick = useCallback(() => {
     if (hasChildren) {

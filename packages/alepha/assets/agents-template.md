@@ -47,44 +47,48 @@ src/
 ## Primitives Reference
 
 ### Core (`alepha`)
-| Primitive | Purpose |
-|-----------|---------|
-| `$inject` | Dependency injection |
-| `$env` | Environment variables |
-| `$hook` | Lifecycle hooks (on: "start", "stop") |
-| `$atom` | Global state (module-level) |
-| `$module` | Module definition |
-| `$context` | Request-scoped context |
+
+| Primitive  | Purpose                               |
+| ---------- | ------------------------------------- |
+| `$inject`  | Dependency injection                  |
+| `$env`     | Environment variables                 |
+| `$hook`    | Lifecycle hooks (on: "start", "stop") |
+| `$atom`    | Global state (module-level)           |
+| `$module`  | Module definition                     |
+| `$context` | Request-scoped context                |
 
 ### Server (`alepha/server`)
-| Primitive | Purpose |
-|-----------|---------|
+
+| Primitive | Purpose                            |
+| --------- | ---------------------------------- |
 | `$action` | REST API endpoints (auto GET/POST) |
-| `$route` | Low-level HTTP routes |
+| `$route`  | Low-level HTTP routes              |
 
 `$client` - the type-safe cross-module HTTP client - is imported from
 `alepha/server/links`, not `alepha/server`.
 
 ### Database (`alepha/orm`)
-| Primitive | Purpose |
-|-----------|---------|
-| `$entity` | Database table definition |
-| `$relations` | How entities relate; read with `include` |
-| `$repository` | Type-safe CRUD operations |
+
+| Primitive       | Purpose                                         |
+| --------------- | ----------------------------------------------- |
+| `$entity`       | Database table definition                       |
+| `$relations`    | How entities relate; read with `include`        |
+| `$repository`   | Type-safe CRUD operations                       |
 | `$repositories` | One binding per entity of a `$relations` schema |
-| `$sequence` | Auto-increment sequences |
+| `$sequence`     | Auto-increment sequences                        |
 
 ### Infrastructure
-| Primitive | Import | Purpose |
-|-----------|--------|---------|
-| `$logger` | `alepha/logger` | Structured logging |
-| `$job` | `alepha/api/jobs` | Background jobs AND cron - durable, retried, crash-safe |
-| `$cache` | `alepha/cache` | Cached computations |
-| `$storage` | `alepha/api/files` | File storage with metadata, TTL, querying |
-| `$email` | `alepha/email` | Email sending |
-| `$sms` | `alepha/sms` | SMS sending |
-| `$lock` | `alepha/lock` | Distributed locks |
-| `$retry` | `alepha/retry` | Retry with backoff |
+
+| Primitive  | Import             | Purpose                                                 |
+| ---------- | ------------------ | ------------------------------------------------------- |
+| `$logger`  | `alepha/logger`    | Structured logging                                      |
+| `$job`     | `alepha/api/jobs`  | Background jobs AND cron - durable, retried, crash-safe |
+| `$cache`   | `alepha/cache`     | Cached computations                                     |
+| `$storage` | `alepha/api/files` | File storage with metadata, TTL, querying               |
+| `$email`   | `alepha/email`     | Email sending                                           |
+| `$sms`     | `alepha/sms`       | SMS sending                                             |
+| `$lock`    | `alepha/lock`      | Distributed locks                                       |
+| `$retry`   | `alepha/retry`     | Retry with backoff                                      |
 
 **Background work: always reach for `$job`.** It is the only primitive with a
 durable outbox - at-least-once delivery, retries, idempotency keys, priorities,
@@ -98,11 +102,18 @@ class Emails {
   welcome = $job({
     schema: z.object({ userId: z.text() }),
     retry: { retries: 3 },
-    handler: async ({ payload, attempt }) => { /* ... */ },
+    handler: async ({ payload, attempt }) => {
+      /* ... */
+    },
   });
 
   // cron-mode: declare `cron` instead. Never both.
-  sweep = $job({ cron: "0 3 * * *", handler: async () => { /* ... */ } });
+  sweep = $job({
+    cron: "0 3 * * *",
+    handler: async () => {
+      /* ... */
+    },
+  });
 }
 ```
 
@@ -133,40 +144,49 @@ class Media {
 A storage is a **key prefix inside one bucket** (`{APP_NAME}/{storage}/{fileId}`),
 never a cloud bucket of its own - so declaring many is free.
 
-Register `AlephaApiFiles`; it needs a database. For blobs *without* one, inject
+Register `AlephaApiFiles`; it needs a database. For blobs _without_ one, inject
 `FileStorageProvider` from `alepha/bucket` directly and give up metadata,
 expiry, querying and the HTTP endpoints.
 
 ### Security (`alepha/security`)
-| Primitive | Purpose |
-|-----------|---------|
-| `$issuer` | JWT token generation/validation |
-| `$permission` | Permission definitions |
-| `$role` | Role-based access |
-| `$basicAuth` | HTTP Basic Auth |
-| `$serviceAccount` | Service-to-service auth |
+
+| Primitive         | Purpose                         |
+| ----------------- | ------------------------------- |
+| `$issuer`         | JWT token generation/validation |
+| `$permission`     | Permission definitions          |
+| `$role`           | Role-based access               |
+| `$basicAuth`      | HTTP Basic Auth                 |
+| `$serviceAccount` | Service-to-service auth         |
 
 ### React (`alepha/react/router`)
-| Primitive | Purpose |
-|-----------|---------|
-| `$page` | Pages with SSR, loaders, code-splitting |
-| `$head` | Document head management |
-| `$dictionary` | i18n translations |
+
+| Primitive     | Purpose                                 |
+| ------------- | --------------------------------------- |
+| `$page`       | Pages with SSR, loaders, code-splitting |
+| `$head`       | Document head management                |
+| `$dictionary` | i18n translations                       |
 
 ### Other
-| Primitive | Import | Purpose |
-|-----------|--------|---------|
-| `$command` | `alepha/command` | CLI commands |
-| `$swagger` | `alepha/server` | OpenAPI docs |
-| `$proxy` | `alepha/server` | HTTP proxy |
-| `$tool` | `alepha/mcp` | MCP tool definition |
-| `$prompt` | `alepha/mcp` | MCP prompt definition |
-| `$resource` | `alepha/mcp` | MCP resource definition |
+
+| Primitive   | Import           | Purpose                 |
+| ----------- | ---------------- | ----------------------- |
+| `$command`  | `alepha/command` | CLI commands            |
+| `$swagger`  | `alepha/server`  | OpenAPI docs            |
+| `$proxy`    | `alepha/server`  | HTTP proxy              |
+| `$tool`     | `alepha/mcp`     | MCP tool definition     |
+| `$prompt`   | `alepha/mcp`     | MCP prompt definition   |
+| `$resource` | `alepha/mcp`     | MCP resource definition |
 
 ## React Hooks
 
 ```typescript
-import { useAlepha, useClient, useStore, useAction, useInject } from "alepha/react";
+import {
+  useAlepha,
+  useClient,
+  useStore,
+  useAction,
+  useInject,
+} from "alepha/react";
 import { useRouter, useActive, useQueryParams } from "alepha/react/router";
 import { useForm, useFormState } from "alepha/react/form";
 import { useAuth } from "alepha/react/auth";
@@ -174,20 +194,21 @@ import { useHead } from "alepha/react/head";
 import { useI18n } from "alepha/react/i18n";
 ```
 
-| Hook | Purpose |
-|------|---------|
-| `useClient<T>()` | Type-safe API calls |
-| `useStore(atom)` | Global state `[value, setValue]` |
-| `useAction({ handler })` | Async ops with loading/error |
-| `useRouter<T>()` | Type-safe navigation |
-| `useActive(path)` | Check if route is active |
-| `useForm({ schema, handler })` | Forms with validation |
-| `useAuth()` | Authentication state |
-| `useInject(Service)` | Access DI container |
+| Hook                           | Purpose                          |
+| ------------------------------ | -------------------------------- |
+| `useClient<T>()`               | Type-safe API calls              |
+| `useStore(atom)`               | Global state `[value, setValue]` |
+| `useAction({ handler })`       | Async ops with loading/error     |
+| `useRouter<T>()`               | Type-safe navigation             |
+| `useActive(path)`              | Check if route is active         |
+| `useForm({ schema, handler })` | Forms with validation            |
+| `useAuth()`                    | Authentication state             |
+| `useInject(Service)`           | Access DI container              |
 
 ## Examples
 
 ### API Endpoint
+
 ```typescript
 import { z } from "alepha";
 import { $action } from "alepha/server";
@@ -205,6 +226,7 @@ class UserController {
 ```
 
 ### Entity & Repository
+
 ```typescript
 import { z } from "alepha";
 import { $entity, $repository, db } from "alepha/orm";
@@ -224,6 +246,7 @@ class UserService {
 ```
 
 ### Page with Loader
+
 ```tsx
 import { z } from "alepha";
 import { $page } from "alepha/react/router";
@@ -236,7 +259,7 @@ class AppRouter {
     path: "/users/:id",
     schema: { params: z.object({ id: z.uuid() }) },
     loader: async ({ params }) => ({
-      user: await this.api.getUser({ params })
+      user: await this.api.getUser({ params }),
     }),
     component: ({ user }) => <div>{user.email}</div>,
   });
@@ -244,6 +267,7 @@ class AppRouter {
 ```
 
 ### Form
+
 ```tsx
 import { z } from "alepha";
 import { useForm } from "alepha/react/form";
@@ -308,7 +332,7 @@ z.string().nullable()   // Nullable: likewise
 
 ## Going deeper
 
-`src/` here is *this project's* code, not the framework's. To read how a
+`src/` here is _this project's_ code, not the framework's. To read how a
 primitive is actually implemented, open it in `node_modules/alepha/src/` - the
 published package ships its sources alongside `dist/`, so the implementation is
 always on disk next to the app using it.

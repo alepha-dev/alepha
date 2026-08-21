@@ -1,6 +1,7 @@
 import { Alepha } from "alepha";
 import { $action, AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
 import { $basicAuth, AlephaSecurity } from "../index.ts";
 
 describe("Basic Authentication", () => {

@@ -1,5 +1,6 @@
 import { $module, type Alepha } from "alepha";
 import { AlephaEmail, EmailProvider } from "alepha/email";
+
 import { BrevoEmailProvider } from "./providers/BrevoEmailProvider.ts";
 
 // Exports

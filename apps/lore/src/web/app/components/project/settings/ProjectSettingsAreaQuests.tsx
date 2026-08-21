@@ -6,6 +6,7 @@ import {
 } from "@alepha/ui/components/ui/card";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
+
 import type { AreaDetail } from "@/api/schemas/areaResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";

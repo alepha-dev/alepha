@@ -18,6 +18,7 @@ import { AlephaContext, ClientOnly } from "alepha/react";
 import type { Head } from "alepha/react/head";
 import { currentUserAtom } from "alepha/security";
 import { createElement, type ReactNode, StrictMode } from "react";
+
 import ErrorViewer from "../components/ErrorViewer.tsx";
 import NestedView from "../components/NestedView.tsx";
 import NotFoundPage from "../components/NotFound.tsx";
@@ -935,8 +936,10 @@ export const isPageRoute = (it: any): it is PageRoute => {
   );
 };
 
-export interface PageRouteEntry
-  extends Omit<PagePrimitiveOptions, "children" | "parent"> {
+export interface PageRouteEntry extends Omit<
+  PagePrimitiveOptions,
+  "children" | "parent"
+> {
   children?: PageRouteEntry[];
 }
 

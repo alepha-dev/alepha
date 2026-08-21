@@ -17,4 +17,3 @@ being processed in-process.
 
 This talks to `QueueProvider` / `WorkerProvider` directly. The queue is an
 internal transport under `$job`, not something an application declares.
-

@@ -1,6 +1,8 @@
 import { Readable } from "node:stream";
+
 import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
+
 import { FileDetector } from "../services/FileDetector.ts";
 
 /**
@@ -96,6 +98,9 @@ describe("FileDetector.peekBytes", () => {
     for await (const chunk of result.stream) {
       out.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     }
+    // The spread is load-bearing: it turns the Buffer into a plain array so
+    // `toEqual` compares element-wise rather than Buffer-to-array.
+    // oxlint-disable-next-line unicorn/no-useless-spread
     expect([...Buffer.concat(out)]).toEqual([1, 2, 3]);
   });
 

@@ -1,5 +1,6 @@
 import { createMiddleware, type Middleware } from "alepha";
 import { HttpError } from "alepha/server";
+
 import type { RateLimitOptions } from "../index.ts";
 import { ServerRateLimitProvider } from "../providers/ServerRateLimitProvider.ts";
 

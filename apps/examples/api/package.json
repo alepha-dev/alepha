@@ -1,7 +1,7 @@
 {
+  "name": "api",
   "private": true,
   "type": "module",
-  "name": "api",
   "scripts": {
     "dev": "alepha dev",
     "build": "alepha build",

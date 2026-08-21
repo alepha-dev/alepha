@@ -6,7 +6,9 @@ import { AlephaCrypto } from "alepha/crypto";
 import { I18nProvider } from "alepha/react/i18n";
 import { AlephaReactUi } from "alepha/react/ui";
 import { createElement } from "react";
+
 import { LoreDashboardCatalog } from "@/api/dashboardCatalogModule.ts";
+
 import { AppRouter } from "./AppRouter.ts";
 import { currentAssignedQuestsAtom } from "./atoms/currentAssignedQuestsAtom.ts";
 import { currentMilestonesAtom } from "./atoms/currentMilestonesAtom.ts";

@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import {
   $atom,
   $hook,
@@ -24,6 +25,7 @@ import {
 } from "alepha/server";
 import { ServerStaticProvider } from "alepha/server/static";
 import { FileSystemProvider } from "alepha/system";
+
 import {
   $swagger,
   type OpenApiDocument,

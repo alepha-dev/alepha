@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
+
 import { BatchCollector } from "../services/BatchCollector.ts";
 
 describe("BatchCollector", () => {

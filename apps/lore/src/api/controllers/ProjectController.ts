@@ -18,6 +18,7 @@ import {
   okSchema,
 } from "alepha/server";
 import { $etag } from "alepha/server/etag";
+
 // The helper the UI labels a user with, so an actor reads identically in an
 // activity feed and on the quest page. Precedent for reaching across:
 // `FolioBlobService` imports `folioAssetPath` from the same tree. Pure
@@ -206,7 +207,7 @@ export class ProjectController {
       const project = await this.projects.create({
         ...body,
         slug: slug || undefined,
-        features: { ...defaultProjectFeatures, ...(body.features ?? {}) },
+        features: { ...defaultProjectFeatures, ...body.features },
         createdBy: user.id,
       });
 

@@ -1,6 +1,8 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+
 import { type FullConfig, request } from "@playwright/test";
+
 import { e2ePort } from "../../../../playwright.port.ts";
 
 // The same call `playwright.config.ts` makes, not a copy of its number.

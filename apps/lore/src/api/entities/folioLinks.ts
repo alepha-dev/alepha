@@ -1,5 +1,6 @@
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
+
 import { linkSourceKindSchema } from "../schemas/linkSourceKindSchema.ts";
 import { linkTargetKindSchema } from "../schemas/linkTargetKindSchema.ts";
 /**

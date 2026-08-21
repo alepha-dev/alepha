@@ -8,6 +8,7 @@ import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
 import { Prix } from "../components/Prix.tsx";
 import { usePanier } from "../hooks/usePanier.ts";
 

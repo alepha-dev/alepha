@@ -11,4 +11,3 @@ import { EmailProvider } from "alepha/email";
 Email provider interface.
 
 All methods are asynchronous and return promises.
-

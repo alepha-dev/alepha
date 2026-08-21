@@ -1,5 +1,6 @@
 import { $context, Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
+
 import { MissingContextError } from "../errors/MissingContextError.ts";
 
 describe("$context", () => {

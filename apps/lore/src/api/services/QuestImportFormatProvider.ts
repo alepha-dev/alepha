@@ -1,4 +1,5 @@
 import { $inject } from "alepha";
+
 import { AlephaLoreParser } from "./parsers/AlephaLoreParser.ts";
 import { TrelloParser } from "./parsers/TrelloParser.ts";
 

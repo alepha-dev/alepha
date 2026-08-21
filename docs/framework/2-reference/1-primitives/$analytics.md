@@ -16,9 +16,9 @@ module, so app code never names a backend.
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `name` | `string` | No | Storage-facing dataset name |
+| Option | Type     | Required | Description                 |
+| ------ | -------- | -------- | --------------------------- |
+| `name` | `string` | No       | Storage-facing dataset name |
 
 ## Examples
 
@@ -47,4 +47,3 @@ class PageViews {
   }
 }
 ```
-

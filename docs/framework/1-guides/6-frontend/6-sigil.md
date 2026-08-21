@@ -8,10 +8,7 @@ sink is anything serving the two sigil endpoints; Lore is one.
 import { Alepha } from "alepha";
 import { AlephaSigil } from "@alepha/sigil";
 
-Alepha.create()
-  .with(AlephaSigil)
-  .with(App)
-  .start();
+Alepha.create().with(AlephaSigil).with(App).start();
 ```
 
 Then one server-side variable:
@@ -21,14 +18,14 @@ SIGIL_KEY=sg_alepha_…
 ```
 
 That is the whole enrolment. The key is the only secret and the only required
-variable: it authorises the reporting *and* names the project reported into.
+variable: it authorises the reporting _and_ names the project reported into.
 
-| Variable | Required | |
-|---|---|---|
-| `SIGIL_KEY` | **yes** | the sigil token the sink minted for this app - **secret, server-only** |
-| `SIGIL_SINK` | no | origin of the sink. Defaults to `https://lore.alepha.dev`; set it to self-host |
-| `SIGIL_CONFIG` | no | JSON: switches over what this app reports |
-| `SIGIL_SALT` | no | overrides the secret salting the daily visitor hash. Falls back to `APP_SECRET` |
+| Variable       | Required |                                                                                 |
+| -------------- | -------- | ------------------------------------------------------------------------------- |
+| `SIGIL_KEY`    | **yes**  | the sigil token the sink minted for this app - **secret, server-only**          |
+| `SIGIL_SINK`   | no       | origin of the sink. Defaults to `https://lore.alepha.dev`; set it to self-host  |
+| `SIGIL_CONFIG` | no       | JSON: switches over what this app reports                                       |
+| `SIGIL_SALT`   | no       | overrides the secret salting the daily visitor hash. Falls back to `APP_SECRET` |
 
 Without a key the module is **inert**: it still captures and still collapses a
 crash loop into one logged warning, but nothing leaves the machine. It says so
@@ -66,14 +63,14 @@ Rotate it on the sink to get one back.
 SIGIL_CONFIG={"vitals":false,"feedbackButton":"hidden"}
 ```
 
-| Field | Default | |
-|---|---|---|
-| `analytics` | `true` | page views |
-| `blights` | `true` | client and server errors |
-| `vitals` | `true` | web-vitals samples |
-| `feedback` | `true` | whether there is a feedback link at all |
-| `feedbackButton` | `"bottom-right"` | `"hidden"`, `"bottom-left"` or `"bottom-right"` |
-| `feedbackButtonExcludedPaths` | `[]` | path globs the button stays off - `*` within a segment, `**` across them |
+| Field                         | Default          |                                                                          |
+| ----------------------------- | ---------------- | ------------------------------------------------------------------------ |
+| `analytics`                   | `true`           | page views                                                               |
+| `blights`                     | `true`           | client and server errors                                                 |
+| `vitals`                      | `true`           | web-vitals samples                                                       |
+| `feedback`                    | `true`           | whether there is a feedback link at all                                  |
+| `feedbackButton`              | `"bottom-right"` | `"hidden"`, `"bottom-left"` or `"bottom-right"`                          |
+| `feedbackButtonExcludedPaths` | `[]`             | path globs the button stays off - `*` within a segment, `**` across them |
 
 `feedback` and `feedbackButton` are separate on purpose: `feedback: false` means
 there is no URL at all, while `feedback: true` with the button `hidden` gives
@@ -114,7 +111,7 @@ It used to be fetched from the sink instead, and that failed in two opposite
 ways. On a serverless runtime the isolate is discarded between requests, so the
 cached answer was gone on nearly every one and fetched again - awaited in front
 of the first byte of every cold page. On a prerendered app the same code ran
-during the *build*, so the answer was baked into the HTML and could not change
+during the _build_, so the answer was baked into the HTML and could not change
 until the next deploy: a kill-switch that needs a redeploy, which is the thing
 the fetch existed to avoid.
 
@@ -155,7 +152,7 @@ INP are only final when the visit is over - CLS accumulates and INP is the worst
 interaction of the whole session - so they go out in a `keepalive` beacon at
 `visibilitychange`, which is the one request a visitor never waits on.
 
-The sink decides separately what it *keeps*. What an app sends is its own
+The sink decides separately what it _keeps_. What an app sends is its own
 business; a sigil whose kinds withhold vitals discards them on arrival however
 enthusiastic the sender.
 

@@ -1,5 +1,6 @@
 import { Alepha, z } from "alepha";
 import { describe, expect, it } from "vitest";
+
 import { $entity, $repository, db } from "../core/index.ts";
 
 /**
@@ -69,7 +70,7 @@ describe("writes do not mutate the caller's payload", () => {
       row.id as number,
       {
         name: "b",
-        // biome-ignore lint/suspicious/noExplicitAny: forcing a distinct instant
+        // forcing a distinct instant
       } as any,
       { now: "2030-01-01T00:00:00.000Z" },
     );

@@ -1,6 +1,7 @@
 import type { PublicProduct } from "@alepha/commerce";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
+
 import { Dessin } from "../components/Dessin.tsx";
 import { PlaqueSpec } from "../components/PlaqueSpec.tsx";
 import { Poincon } from "../components/Poincon.tsx";

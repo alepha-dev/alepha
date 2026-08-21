@@ -16,9 +16,8 @@ This will allow you to use the router in a typesafe way.
 ## Examples
 
 class App {
-  home = $page();
+home = $page();
 }
 
 const router = useRouter<App>();
 router.push("home"); // typesafe
-

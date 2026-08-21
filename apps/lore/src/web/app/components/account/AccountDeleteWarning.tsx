@@ -1,6 +1,7 @@
 import { useClient } from "alepha/react";
 import { TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
+
 import type { UserDeletionHook } from "@/api/hooks/UserDeletionHook.ts";
 
 /**

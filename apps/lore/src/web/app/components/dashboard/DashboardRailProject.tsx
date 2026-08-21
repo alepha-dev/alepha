@@ -1,5 +1,7 @@
 import { Link } from "alepha/react/router";
+
 import type { ProjectOverviewResource } from "@/api/schemas/projectResourceSchema.ts";
+
 import { ProjectIcon } from "../shared/ProjectIcon.tsx";
 
 export interface DashboardRailProjectProps {

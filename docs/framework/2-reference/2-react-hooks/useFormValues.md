@@ -20,4 +20,3 @@ the OLD model's `id` forever, so the values it returns would freeze at
 whatever the old form last held. The render-time re-seed below (rather
 than resetting inside the effect) avoids painting one frame of the
 previous form's values before the effect has a chance to run.
-

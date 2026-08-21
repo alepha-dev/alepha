@@ -1,4 +1,5 @@
 import { $inject, Alepha } from "alepha";
+
 import type { Head, HeadLink, HeadMeta } from "../interfaces/Head.ts";
 import { HeadProvider } from "./HeadProvider.ts";
 

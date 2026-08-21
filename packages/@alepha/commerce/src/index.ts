@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+
 import { OrderController } from "./controllers/OrderController.ts";
 import { ProductController } from "./controllers/ProductController.ts";
 import { DigitalKindHandler } from "./kinds/DigitalKindHandler.ts";

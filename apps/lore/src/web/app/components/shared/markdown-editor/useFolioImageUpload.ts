@@ -1,7 +1,9 @@
 import { resizeImage } from "@alepha/ui/lib/resize-image";
 import { useClient } from "alepha/react";
 import { useCallback } from "react";
+
 import type { BlobController } from "@/api/controllers/BlobController.ts";
+
 import { folioAssetPath } from "../../folios/folioAssetReference.ts";
 import { FOLIO_IMAGE_MAX_WIDTH } from "../../folios/folioImageBounds.ts";
 

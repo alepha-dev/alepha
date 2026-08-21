@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+
 import autocannon from "autocannon";
 
 const targets = [

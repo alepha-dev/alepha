@@ -15,6 +15,7 @@ with full type safety for event data. The handler receives `emit()` and `close()
 functions to control the stream.
 
 **Key Features**
+
 - Full TypeScript inference for event data types
 - Automatic schema validation using Zod
 - Convention-based URL generation with customizable paths
@@ -27,23 +28,23 @@ functions to control the stream.
 All `$sse` paths are automatically prefixed with `/api`.
 
 ```ts
-$sse({ path: "/events" })     // POST /api/events
-$sse({ path: "/feed/:id" })   // POST /api/feed/:id
+$sse({ path: "/events" }); // POST /api/events
+$sse({ path: "/feed/:id" }); // POST /api/feed/:id
 ```
 
 The HTTP method is always POST.
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `name` | `string` | No | Name of the SSE endpoint. |
-| `group` | `string` | No | Group SSE endpoints together. |
-| `path` | `string` | No | Pathname of the route |
-| `schema` | `TConfig` | No | The config schema for the SSE endpoint. |
-| `description` | `string` | No | A short description of the endpoint |
-| `disabled` | `boolean` | No | Disable the SSE endpoint. |
-| `handler` | `SseHandler&lt;TConfig&gt;` | Yes | Main SSE handler |
+| Option        | Type                        | Required | Description                             |
+| ------------- | --------------------------- | -------- | --------------------------------------- |
+| `name`        | `string`                    | No       | Name of the SSE endpoint.               |
+| `group`       | `string`                    | No       | Group SSE endpoints together.           |
+| `path`        | `string`                    | No       | Pathname of the route                   |
+| `schema`      | `TConfig`                   | No       | The config schema for the SSE endpoint. |
+| `description` | `string`                    | No       | A short description of the endpoint     |
+| `disabled`    | `boolean`                   | No       | Disable the SSE endpoint.               |
+| `handler`     | `SseHandler&lt;TConfig&gt;` | Yes      | Main SSE handler                        |
 
 ## Examples
 
@@ -64,4 +65,3 @@ class NotificationController {
   });
 }
 ```
-

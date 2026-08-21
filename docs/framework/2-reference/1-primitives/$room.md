@@ -30,27 +30,33 @@ Durable Object per `channelPath:roomId`, the loop alive while the socket is).
 ## Examples
 
 An authoritative 20Hz world
+
 ```typescript
 class GameServer {
-  world = $channel({ path: "/ws/world", schema: { in: serverMsg, out: clientIntent } });
+  world = $channel({
+    path: "/ws/world",
+    schema: { in: serverMsg, out: clientIntent },
+  });
 
   room = $room({
     channel: this.world,
     tickHz: 20,
     state: () => new World(),
-    onJoin:    (room, conn) => room.state.addPlayer(conn.id),
+    onJoin: (room, conn) => room.state.addPlayer(conn.id),
     onMessage: (room, conn, intent) => room.state.enqueue(conn.id, intent),
-    onTick:    (room, dt) => {
+    onTick: (room, dt) => {
       room.state.step(dt);
-      for (const conn of room.connections) room.send(conn.id, room.state.viewFor(conn.id));
+      for (const conn of room.connections)
+        room.send(conn.id, room.state.viewFor(conn.id));
     },
-    onLeave:   (room, conn) => room.state.removePlayer(conn.id),
-    onEmpty:   (room) => room.state.persist(),
+    onLeave: (room, conn) => room.state.removePlayer(conn.id),
+    onEmpty: (room) => room.state.persist(),
   });
 }
 ```
 
 A headless coordinator (party-wide state)
+
 ```typescript
 class Coordinator {
   party = $channel({ path: "/ws/party", schema: { in: any, out: any } });
@@ -59,8 +65,10 @@ class Coordinator {
     channel: this.party,
     state: () => ({ switches: {} as Record<string, boolean> }),
     methods: {
-      setSwitch: (room, id: string, value: boolean) => { room.state.switches[id] = value; },
-      snapshot:  (room) => room.state.switches,
+      setSwitch: (room, id: string, value: boolean) => {
+        room.state.switches[id] = value;
+      },
+      snapshot: (room) => room.state.switches,
     },
   });
 
@@ -69,4 +77,3 @@ class Coordinator {
   }
 }
 ```
-

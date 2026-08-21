@@ -25,20 +25,20 @@ existing project to fill in missing pieces (it additionally takes `--force`).
 npm create alepha my-app --preset saas
 ```
 
-| Preset | What you get |
-|---|---|
-| `default` | API module, React web module with SSR, Tailwind |
-| `saas` | The above plus `@alepha/ui`: sign-in at `/auth/*`, an account area at `/account/*`, an admin console at `/admin/*`, and the `$realm` behind them |
+| Preset    | What you get                                                                                                                                     |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `default` | API module, React web module with SSR, Tailwind                                                                                                  |
+| `saas`    | The above plus `@alepha/ui`: sign-in at `/auth/*`, an account area at `/account/*`, an admin console at `/admin/*`, and the `$realm` behind them |
 
 Both presets lay out `src/api/`, `src/web/` and `src/main.css` identically - a
 preset decides what is mounted, never where it lives.
 
 ## Options
 
-| Flag | Description |
-|------|-------------|
-| `--preset <name>` | `default` (the default) or `saas` |
-| `--pm <manager>` | Force a package manager: `yarn`, `npm`, `pnpm`, or `bun` |
+| Flag              | Description                                              |
+| ----------------- | -------------------------------------------------------- |
+| `--preset <name>` | `default` (the default) or `saas`                        |
+| `--pm <manager>`  | Force a package manager: `yarn`, `npm`, `pnpm`, or `bun` |
 
 ## After creating
 

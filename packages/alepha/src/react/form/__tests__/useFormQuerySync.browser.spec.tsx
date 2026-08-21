@@ -5,6 +5,7 @@ import { $page, ReactRouter } from "alepha/react/router";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { beforeEach, describe, it } from "vitest";
+
 import { useForm, useFormQuerySync } from "../index.ts";
 
 class App {

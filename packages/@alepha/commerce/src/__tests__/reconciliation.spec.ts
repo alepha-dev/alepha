@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+
 import { Alepha } from "alepha";
 import {
   MemoryPaymentProvider,
@@ -14,6 +15,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
+
 import { CartService } from "../cart/services/CartService.ts";
 import { checkoutSessions } from "../checkout/entities/checkoutSessions.ts";
 import { AlephaCommerceCheckout } from "../checkout/index.ts";
@@ -155,97 +157,103 @@ describe("checkout reconciliation", () => {
     expect(scheduled?.status).not.toBe("failed");
   });
 
-  it("recovers a paid checkout whose webhook never arrived", {
-    timeout: 30_000,
-  }, async ({ expect }) => {
-    const alepha = Alepha.create()
-      .with({ provide: PaymentProvider, use: PaidButWebhooklessProvider })
-      .with(AlephaOrmPostgres)
-      .with(AlephaCommerceSettlement);
-    const ctx = injectCtx(alepha);
-    await alepha.start();
+  it(
+    "recovers a paid checkout whose webhook never arrived",
+    {
+      timeout: 30_000,
+    },
+    async ({ expect }) => {
+      const alepha = Alepha.create()
+        .with({ provide: PaymentProvider, use: PaidButWebhooklessProvider })
+        .with(AlephaOrmPostgres)
+        .with(AlephaCommerceSettlement);
+      const ctx = injectCtx(alepha);
+      await alepha.start();
 
-    // The buyer paid — but no webhook is ever delivered. Exactly the
-    // Mollie-without-webhook gap.
-    const { sessionId } = await payWithoutWebhook(ctx);
+      // The buyer paid — but no webhook is ever delivered. Exactly the
+      // Mollie-without-webhook gap.
+      const { sessionId } = await payWithoutWebhook(ctx);
 
-    const scheduled = await waitFor(
-      () => reconciliationFor(ctx.probe, sessionId),
-      (e) => Boolean(e),
-      { label: "reconciliation scheduled" },
-    );
-    await waitForParkedReconcile(ctx.probe, scheduled!.id);
+      const scheduled = await waitFor(
+        () => reconciliationFor(ctx.probe, sessionId),
+        (e) => Boolean(e),
+        { label: "reconciliation scheduled" },
+      );
+      await waitForParkedReconcile(ctx.probe, scheduled!.id);
 
-    await ctx.dt.travel([26, "minute"]);
+      await ctx.dt.travel([26, "minute"]);
 
-    // The clock is frozen after travel — no further cron ever ticks, so a
-    // wake-up lost in the catch-up storm would strand the step forever in
-    // test time (production's next real tick rescues it within minutes).
-    // Nudge the sweep on every poll: it is idempotent, and a single nudge
-    // can lose its lock to a still-running storm invocation.
-    await waitFor(
-      async () => {
-        await ctx.alepha.inject(WorkflowProvider).recoverySweep();
-        return (await ctx.probe.sessions.findById(sessionId))?.status;
-      },
-      (s) => s === "completed",
-      {
-        label: "stranded paid checkout settled",
-        interval: 100,
-        timeout: 25_000,
-      },
-    );
+      // The clock is frozen after travel — no further cron ever ticks, so a
+      // wake-up lost in the catch-up storm would strand the step forever in
+      // test time (production's next real tick rescues it within minutes).
+      // Nudge the sweep on every poll: it is idempotent, and a single nudge
+      // can lose its lock to a still-running storm invocation.
+      await waitFor(
+        async () => {
+          await ctx.alepha.inject(WorkflowProvider).recoverySweep();
+          return (await ctx.probe.sessions.findById(sessionId))?.status;
+        },
+        (s) => s === "completed",
+        {
+          label: "stranded paid checkout settled",
+          interval: 100,
+          timeout: 25_000,
+        },
+      );
 
-    const session = await ctx.probe.sessions.findById(sessionId);
-    const order = await ctx.probe.orders.findById(session!.orderId!);
-    expect(order?.status).toBe("paid");
+      const session = await ctx.probe.sessions.findById(sessionId);
+      const order = await ctx.probe.orders.findById(session!.orderId!);
+      expect(order?.status).toBe("paid");
 
-    const done = await waitFor(
-      () => reconciliationFor(ctx.probe, sessionId),
-      (e) => e?.status === "completed",
-      { label: "reconciliation completed" },
-    );
-    expect(done?.status).toBe("completed");
-  });
+      const done = await waitFor(
+        () => reconciliationFor(ctx.probe, sessionId),
+        (e) => e?.status === "completed",
+        { label: "reconciliation completed" },
+      );
+      expect(done?.status).toBe("completed");
+    },
+  );
 
-  it("abandons a checkout the PSP cannot confirm", { timeout: 30_000 }, async ({
-    expect,
-  }) => {
-    const alepha = Alepha.create()
-      .with(AlephaOrmPostgres)
-      .with(AlephaCommerceSettlement);
-    const ctx = injectCtx(alepha);
-    await alepha.start();
+  it(
+    "abandons a checkout the PSP cannot confirm",
+    { timeout: 30_000 },
+    async ({ expect }) => {
+      const alepha = Alepha.create()
+        .with(AlephaOrmPostgres)
+        .with(AlephaCommerceSettlement);
+      const ctx = injectCtx(alepha);
+      await alepha.start();
 
-    const { sessionId } = await payWithoutWebhook(ctx);
+      const { sessionId } = await payWithoutWebhook(ctx);
 
-    const scheduled = await waitFor(
-      () => reconciliationFor(ctx.probe, sessionId),
-      (e) => Boolean(e),
-      { label: "reconciliation scheduled" },
-    );
-    await waitForParkedReconcile(ctx.probe, scheduled!.id);
+      const scheduled = await waitFor(
+        () => reconciliationFor(ctx.probe, sessionId),
+        (e) => Boolean(e),
+        { label: "reconciliation scheduled" },
+      );
+      await waitForParkedReconcile(ctx.probe, scheduled!.id);
 
-    await ctx.dt.travel([26, "minute"]);
+      await ctx.dt.travel([26, "minute"]);
 
-    // Same nudging poll as the recovery test above.
-    await waitFor(
-      async () => {
-        await ctx.alepha.inject(WorkflowProvider).recoverySweep();
-        return (await ctx.probe.sessions.findById(sessionId))?.status;
-      },
-      (s) => s === "abandoned",
-      {
-        label: "unconfirmable checkout abandoned",
-        interval: 100,
-        timeout: 25_000,
-      },
-    );
+      // Same nudging poll as the recovery test above.
+      await waitFor(
+        async () => {
+          await ctx.alepha.inject(WorkflowProvider).recoverySweep();
+          return (await ctx.probe.sessions.findById(sessionId))?.status;
+        },
+        (s) => s === "abandoned",
+        {
+          label: "unconfirmable checkout abandoned",
+          interval: 100,
+          timeout: 25_000,
+        },
+      );
 
-    const session = await ctx.probe.sessions.findById(sessionId);
-    const order = await ctx.probe.orders.findById(session!.orderId!);
-    expect(order?.status).toBe("cancelled");
-  });
+      const session = await ctx.probe.sessions.findById(sessionId);
+      const order = await ctx.probe.orders.findById(session!.orderId!);
+      expect(order?.status).toBe("cancelled");
+    },
+  );
 
   it("payments:expired closes the graveyard even without the settlement module", async ({
     expect,

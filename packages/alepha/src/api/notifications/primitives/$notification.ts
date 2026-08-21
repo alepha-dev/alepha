@@ -7,6 +7,7 @@ import {
   type ZObject,
 } from "alepha";
 import { currentTenantAtom } from "alepha/security";
+
 import { NotificationJobs } from "../jobs/NotificationJobs.ts";
 
 /**
@@ -43,8 +44,9 @@ export const $notification = <T extends ZObject>(
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface NotificationPrimitiveOptions<T extends ZObject>
-  extends NotificationMessage<T> {
+export interface NotificationPrimitiveOptions<
+  T extends ZObject,
+> extends NotificationMessage<T> {
   name?: string;
   description?: string;
   category?: string;

@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+
 import { SettingsDangerSection } from "../settings-danger-section.tsx";
 import { SettingsRow } from "../settings-row.tsx";
 import { SettingsSection } from "../settings-section.tsx";

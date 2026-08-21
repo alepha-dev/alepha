@@ -1518,7 +1518,7 @@ export class Alepha {
 
   public services<T extends object>(base: Service<T>): Array<T> {
     const list: Array<T> = [];
-    for (const [key, value] of this.registry.entries()) {
+    for (const value of this.registry.values()) {
       if (value.instance instanceof base) {
         list.push(value.instance as T);
       }

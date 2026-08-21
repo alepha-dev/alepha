@@ -1,6 +1,7 @@
 import { Alepha, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { describe, it } from "vitest";
+
 import "../index.ts";
 import { CronProvider } from "../providers/CronProvider.ts";
 
@@ -14,11 +15,9 @@ describe("CronProvider", () => {
 
     let concurrentCount = 0;
     let maxConcurrent = 0;
-    let totalCalls = 0;
 
     cron.createCronJob("slow-task", "* * * * *", async () => {
       concurrentCount++;
-      totalCalls++;
       maxConcurrent = Math.max(maxConcurrent, concurrentCount);
       // Simulate slow handler
       await new Promise((r) => setTimeout(r, 200));

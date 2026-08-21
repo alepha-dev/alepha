@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { randomUUID } from "node:crypto";
+
 import { Alepha } from "alepha";
+
 import { BunRedisProvider } from "../providers/BunRedisProvider.ts";
 import { BunRedisSubscriberProvider } from "../providers/BunRedisSubscriberProvider.ts";
 import { RedisProvider } from "../providers/RedisProvider.ts";
@@ -11,7 +13,6 @@ import { RedisSubscriberProvider } from "../providers/RedisSubscriberProvider.ts
 describe("BunRedisProvider", () => {
   let alepha: Alepha;
   let redis: RedisProvider;
-  let sub: RedisSubscriberProvider;
 
   beforeAll(async () => {
     alepha = Alepha.create({
@@ -24,7 +25,7 @@ describe("BunRedisProvider", () => {
       });
 
     redis = alepha.inject(RedisProvider);
-    sub = alepha.inject(RedisSubscriberProvider);
+    alepha.inject(RedisSubscriberProvider);
 
     await alepha.start();
   });

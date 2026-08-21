@@ -2,6 +2,7 @@ import { Alepha, AlephaError, z } from "alepha";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { LinkProvider, ServerLinksProvider } from "alepha/server/links";
 import { describe, test } from "vitest";
+
 import { $sse } from "../index.ts";
 
 describe("$sse", () => {

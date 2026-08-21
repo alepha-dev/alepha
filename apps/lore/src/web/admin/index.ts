@@ -1,5 +1,6 @@
 import { AdminRouter } from "@alepha/ui/components/admin/admin-router";
 import { $module } from "alepha";
+
 import { LoreAdminRouter } from "./LoreAdminRouter.tsx";
 
 export const LoreWebAdmin = $module({

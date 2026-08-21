@@ -6,6 +6,7 @@ import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { AlephaSecurity, CryptoProvider } from "alepha/security";
 import { BadRequestError, ConflictError, HttpError } from "alepha/server";
 import { describe, it } from "vitest";
+
 import {
   AlephaApiUsers,
   RealmProvider,
@@ -291,7 +292,7 @@ describe("alepha/api/users - RegistrationService", () => {
     it("should complete registration without verification requirements", async ({
       expect,
     }) => {
-      const { registrationService, userService } = await setup();
+      const { registrationService } = await setup();
 
       // Create intent
       const intent = await registrationService.createRegistrationIntent({
@@ -506,8 +507,7 @@ describe("alepha/api/users - RegistrationService", () => {
     it("should create credentials identity with hashed password", async ({
       expect,
     }) => {
-      const { registrationService, sessionService, realmProvider } =
-        await setup();
+      const { registrationService, sessionService } = await setup();
 
       const intent = await registrationService.createRegistrationIntent({
         email: "withpassword@example.com",

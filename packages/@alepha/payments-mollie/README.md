@@ -24,9 +24,9 @@ const alepha = Alepha.create()
 
 ### Environment Variables
 
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `MOLLIE_API_KEY` | string | **Required** | Mollie test or live API key. |
+| Variable             | Type   | Default      | Description                                                                                   |
+| -------------------- | ------ | ------------ | --------------------------------------------------------------------------------------------- |
+| `MOLLIE_API_KEY`     | string | **Required** | Mollie test or live API key.                                                                  |
 | `MOLLIE_WEBHOOK_URL` | string | _(optional)_ | Public webhook URL Mollie will POST to (e.g. `https://app.example.com/api/payments/webhook`). |
 
 ### Webhook security

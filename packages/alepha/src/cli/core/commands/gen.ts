@@ -1,5 +1,6 @@
 import { $inject } from "alepha";
 import { $command } from "alepha/command";
+
 import { ChangelogCommand } from "./gen/changelog.ts";
 import { GenEnvCommand } from "./gen/env.ts";
 import { OpenApiCommand } from "./gen/openapi.ts";

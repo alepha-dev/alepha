@@ -11,4 +11,3 @@ import { AppEntryProvider } from "alepha/cli";
 Service for locating entry files in Alepha projects.
 
 Resolves application entry points for the CLI build pipeline.
-

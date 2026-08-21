@@ -1,6 +1,7 @@
 import { $hook, type Alepha, type Infer, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { expect } from "vitest";
+
 import { DbEntityNotFoundError } from "../core/errors/DbEntityNotFoundError.ts";
 import { $entity, $repository, db } from "../core/index.ts";
 import { bigEntity } from "./fixtures/bigEntitySchema.ts";
@@ -521,7 +522,7 @@ export const testRepositoryHooks = async (alepha: Alepha) => {
 
   // Test: createMany hook
   app.tracker.clear();
-  const users = await app.users.createMany([
+  await app.users.createMany([
     { name: "Bob", email: "bob@example.com" },
     { name: "Charlie", email: "charlie@example.com" },
   ]);
@@ -545,7 +546,7 @@ export const testRepositoryHooks = async (alepha: Alepha) => {
 
   // Test: find hook
   app.tracker.clear();
-  const allUsers = await app.users.findMany();
+  await app.users.findMany();
 
   expect(app.tracker.find("read:before")).toHaveLength(1);
   expect(app.tracker.find("read:after")).toHaveLength(1);
@@ -1014,7 +1015,7 @@ export const testTransactionThrowsWhenUnsupported = async (alepha: Alepha) => {
         original,
       );
     } else {
-      // biome-ignore lint/performance/noDelete: setting to undefined fails because the prototype has a getter
+      // setting to undefined fails because the prototype has a getter
       delete provider.supportsTransactions;
     }
   }

@@ -21,4 +21,3 @@ relying on the event loop (Node/Vercel) is delegated to
 `BackgroundTaskProvider.defer` - this dispatcher stays
 platform-agnostic. The DB outbox row remains the durability guarantee: if
 the process dies mid-handler, the next sweep re-dispatches.
-

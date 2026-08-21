@@ -1,8 +1,10 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
 import { Alepha, AlephaError } from "alepha";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
 import { DatabaseProvider } from "../providers/drivers/DatabaseProvider.ts";
 
 /**
@@ -17,7 +19,7 @@ class FakeDatabaseProvider extends DatabaseProvider {
 
   protected builder = {} as any;
   public db = {} as any;
-  public dialect: "sqlite" = "sqlite";
+  public dialect = "sqlite" as const;
   public url = "sqlite://fake";
 
   /**

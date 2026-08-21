@@ -45,37 +45,37 @@ Alias: `alepha p` (or `alepha platform`).
 
 Common flags accepted by most subcommands:
 
-| Flag | Description |
-|------|-------------|
-| `--env`, `-e` | Target environment (default: `"production"`) |
-| `--tenant` | Tenant slug, for apps with `tenancy: "optional"` or `"required"` |
-| `--verbose`, `-v` | Enable detailed output |
-| `--json` | Machine-readable output |
+| Flag              | Description                                                      |
+| ----------------- | ---------------------------------------------------------------- |
+| `--env`, `-e`     | Target environment (default: `"production"`)                     |
+| `--tenant`        | Tenant slug, for apps with `tenancy: "optional"` or `"required"` |
+| `--verbose`, `-v` | Enable detailed output                                           |
+| `--json`          | Machine-readable output                                          |
 
 ## Configuration
 
 `platform()` accepts the following options:
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `name` | `string` | `package.json` name | Project name. Used as prefix for all resource names. |
-| `default` | `string` | `"production"` | Default environment when `--env` is omitted. |
-| `tenancy` | `"none" \| "optional" \| "required"` | `"none"` | Multi-tenancy mode - see [Multi-Tenancy](#multi-tenancy). |
-| `secrets` | `object` | - | External secret store config - see [the secrets command](#secrets-1). |
-| `environments` | `Record` | - | Named environments with adapter and options. |
+| Option         | Type                                 | Default             | Description                                                           |
+| -------------- | ------------------------------------ | ------------------- | --------------------------------------------------------------------- |
+| `name`         | `string`                             | `package.json` name | Project name. Used as prefix for all resource names.                  |
+| `default`      | `string`                             | `"production"`      | Default environment when `--env` is omitted.                          |
+| `tenancy`      | `"none" \| "optional" \| "required"` | `"none"`            | Multi-tenancy mode - see [Multi-Tenancy](#multi-tenancy).             |
+| `secrets`      | `object`                             | -                   | External secret store config - see [the secrets command](#secrets-1). |
+| `environments` | `Record`                             | -                   | Named environments with adapter and options.                          |
 
 ### Environment Options
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `adapter` | `string` | Deploy target: `"cloudflare"` (Workers) or `"bay"` |
-| `domain` | `string` | Custom domain for the worker. Wildcards (`"*.club.myapp.com"`) are supported for multi-tenant apps and require `zone`. Omit to use the default `*.workers.dev` URL. |
-| `zone` | `string` | Cloudflare zone that owns `domain`. Required for wildcard domains; for a plain host it switches the binding from a Custom Domain to a zone route. |
-| `host` | `string` | **Bay only, required there.** SSH destination of the Bay server (an ssh alias works). `BAY_HOST` overrides it. |
-| `socket` | `string` | **Bay only.** Absolute path of Bay's control socket - required on any host whose Bay root isn't `$HOME/bay-data`. See the [Bay guide](/docs/guides-deployment-bay). |
-| `services` | `Array<{ binding, service }>` | Worker-to-worker service bindings, exposed on the runtime `env`. |
-| `jurisdiction` | `"eu" \| "fedramp"` | Cloudflare data jurisdiction for R2 buckets and D1 databases. |
-| `accountId` | `string` | Cloudflare account ID. Falls back to `CLOUDFLARE_ACCOUNT_ID`, then to the token's account when it is scoped to exactly one. |
+| Option         | Type                          | Description                                                                                                                                                         |
+| -------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `adapter`      | `string`                      | Deploy target: `"cloudflare"` (Workers) or `"bay"`                                                                                                                  |
+| `domain`       | `string`                      | Custom domain for the worker. Wildcards (`"*.club.myapp.com"`) are supported for multi-tenant apps and require `zone`. Omit to use the default `*.workers.dev` URL. |
+| `zone`         | `string`                      | Cloudflare zone that owns `domain`. Required for wildcard domains; for a plain host it switches the binding from a Custom Domain to a zone route.                   |
+| `host`         | `string`                      | **Bay only, required there.** SSH destination of the Bay server (an ssh alias works). `BAY_HOST` overrides it.                                                      |
+| `socket`       | `string`                      | **Bay only.** Absolute path of Bay's control socket - required on any host whose Bay root isn't `$HOME/bay-data`. See the [Bay guide](/docs/guides-deployment-bay). |
+| `services`     | `Array<{ binding, service }>` | Worker-to-worker service bindings, exposed on the runtime `env`.                                                                                                    |
+| `jurisdiction` | `"eu" \| "fedramp"`           | Cloudflare data jurisdiction for R2 buckets and D1 databases.                                                                                                       |
+| `accountId`    | `string`                      | Cloudflare account ID. Falls back to `CLOUDFLARE_ACCOUNT_ID`, then to the token's account when it is scoped to exactly one.                                         |
 
 ```typescript check filename=alepha.config.ts
 import { defineConfig } from "alepha/cli/config";
@@ -119,13 +119,13 @@ All cloud resources follow a deterministic naming convention:
 
 For a project named `acme` deployed to `production`:
 
-| Resource | Name |
-|----------|------|
-| Worker | `acme-production` |
-| D1 Database | `acme-production` |
-| R2 Bucket | `acme-production` |
+| Resource     | Name              |
+| ------------ | ----------------- |
+| Worker       | `acme-production` |
+| D1 Database  | `acme-production` |
+| R2 Bucket    | `acme-production` |
 | KV Namespace | `acme-production` |
-| Queue | `acme-production` |
+| Queue        | `acme-production` |
 
 With a tenant (see [Multi-Tenancy](#multi-tenancy)): `<tenant>-<project>-<env>`.
 
@@ -154,8 +154,8 @@ alepha p up
 alepha p up --env staging
 ```
 
-| Flag | Description |
-|------|-------------|
+| Flag         | Description                                                                                                                       |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------- |
 | `--prebuilt` | Skip the Vite bundle steps; only regenerate the deploy config (`wrangler.jsonc`). Use when `dist/` was already produced upstream. |
 
 `--tag` no longer exists - it was removed with the artifact registry. A
@@ -213,7 +213,7 @@ alepha p deploy --env production
 
 ### db
 
-Operations against the *deployed* database. They live under `platform` (not core `alepha db`) because they need the environment config, tenancy, adapter, and resource naming.
+Operations against the _deployed_ database. They live under `platform` (not core `alepha db`) because they need the environment config, tenancy, adapter, and resource naming.
 
 ```bash
 # Run database migrations on the deployed database
@@ -263,11 +263,11 @@ alepha p secrets apply          # push local secrets (upsert; never deletes) - -
 
 Configure the store in `platform()`:
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `secrets.store` | `"github"` | - | Secret store backend |
-| `secrets.environmentPattern` | `string` | `"{project}-{env}"` | Pattern for resolving environment names in the store |
-| `secrets.keys` | `string[]` | auto | Override the worker secret-key allowlist used during `up` |
+| Option                       | Type       | Default             | Description                                               |
+| ---------------------------- | ---------- | ------------------- | --------------------------------------------------------- |
+| `secrets.store`              | `"github"` | -                   | Secret store backend                                      |
+| `secrets.environmentPattern` | `string`   | `"{project}-{env}"` | Pattern for resolving environment names in the store      |
+| `secrets.keys`               | `string[]` | auto                | Override the worker secret-key allowlist used during `up` |
 
 ## Multi-Tenancy
 
@@ -281,9 +281,13 @@ Set `tenancy` to deploy the same app once per tenant:
 platform({
   tenancy: "required",
   environments: {
-    production: { adapter: "cloudflare", domain: "*.club.myapp.com", zone: "myapp.com" },
+    production: {
+      adapter: "cloudflare",
+      domain: "*.club.myapp.com",
+      zone: "myapp.com",
+    },
   },
-})
+});
 ```
 
 ```bash
@@ -307,15 +311,15 @@ On first run, `alepha p up` opens the Wrangler OAuth flow in your browser. The t
 
 Alepha detects primitives in your code and maps them to Cloudflare resources:
 
-| Primitive | Cloudflare Resource | Condition |
-|-----------|-------------------|-----------|
-| `$entity` / `$repository` | D1 (SQLite) | `DATABASE_URL` is absent or not Postgres |
-| `$entity` / `$repository` | Hyperdrive | `DATABASE_URL` starts with `postgres:` |
-| `$storage` | R2 | Any `$storage` primitive detected |
-| `$cache` | KV | Any `$cache` *without* an explicit `provider` (an explicit choice opts out of the platform default) |
-| `$job` | Queue | `JobQueueProvider` registered (via `AlephaApiJobsQueue`) - i.e. `$job` dispatch routed through a broker. There is no `$queue` primitive; `alepha/queue` is the transport `$job` sits on, never called directly |
-| `$websocket` / `$room` | Durable Objects | Either primitive detected - the `ALEPHA_WEBSOCKET` binding and its migration are written into `wrangler.jsonc` at build time |
-| Cron jobs | Cron Triggers | Any cron expression registered (configured at build time, not provisioned) |
+| Primitive                 | Cloudflare Resource | Condition                                                                                                                                                                                                      |
+| ------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `$entity` / `$repository` | D1 (SQLite)         | `DATABASE_URL` is absent or not Postgres                                                                                                                                                                       |
+| `$entity` / `$repository` | Hyperdrive          | `DATABASE_URL` starts with `postgres:`                                                                                                                                                                         |
+| `$storage`                | R2                  | Any `$storage` primitive detected                                                                                                                                                                              |
+| `$cache`                  | KV                  | Any `$cache` _without_ an explicit `provider` (an explicit choice opts out of the platform default)                                                                                                            |
+| `$job`                    | Queue               | `JobQueueProvider` registered (via `AlephaApiJobsQueue`) - i.e. `$job` dispatch routed through a broker. There is no `$queue` primitive; `alepha/queue` is the transport `$job` sits on, never called directly |
+| `$websocket` / `$room`    | Durable Objects     | Either primitive detected - the `ALEPHA_WEBSOCKET` binding and its migration are written into `wrangler.jsonc` at build time                                                                                   |
+| Cron jobs                 | Cron Triggers       | Any cron expression registered (configured at build time, not provisioned)                                                                                                                                     |
 
 D1, Hyperdrive, R2, KV, and Queue are provisioned via the Cloudflare REST API during the `provision` step. Cron triggers are written into `wrangler.jsonc` during the `build` step.
 
@@ -341,17 +345,17 @@ DATABASE_URL=postgres://user:pass@db.neon.tech:5432/mydb
 
 The adapter runs `alepha build -t cloudflare` with environment variables injected from provisioned resources:
 
-| Variable | Set When |
-|----------|----------|
-| `DATABASE_URL` | D1 provisioned (format: `d1://name:id`) |
-| `HYPERDRIVE_ID` | Hyperdrive provisioned |
-| `POSTGRES_SCHEMA` | Hyperdrive, when set in `.env.{env}` |
-| `R2_BUCKET_NAME` | R2 provisioned |
-| `CLOUDFLARE_KV_NAME` | KV provisioned |
-| `CLOUDFLARE_KV_ID` | KV provisioned |
-| `CLOUDFLARE_QUEUE_NAME` | Queue provisioned |
-| `CLOUDFLARE_ANALYTICS_DATASET` | Set by hand - see below |
-| `CLOUDFLARE_DOMAIN` | Domain configured |
+| Variable                       | Set When                                |
+| ------------------------------ | --------------------------------------- |
+| `DATABASE_URL`                 | D1 provisioned (format: `d1://name:id`) |
+| `HYPERDRIVE_ID`                | Hyperdrive provisioned                  |
+| `POSTGRES_SCHEMA`              | Hyperdrive, when set in `.env.{env}`    |
+| `R2_BUCKET_NAME`               | R2 provisioned                          |
+| `CLOUDFLARE_KV_NAME`           | KV provisioned                          |
+| `CLOUDFLARE_KV_ID`             | KV provisioned                          |
+| `CLOUDFLARE_QUEUE_NAME`        | Queue provisioned                       |
+| `CLOUDFLARE_ANALYTICS_DATASET` | Set by hand - see below                 |
+| `CLOUDFLARE_DOMAIN`            | Domain configured                       |
 
 You do not set these manually - with one exception.
 
@@ -364,7 +368,7 @@ so there is no id to pair with the name the way KV and D1 need one. Set it in
 That binding is **write-only** - `env.ANALYTICS.writeDataPoint({...})`, which
 returns nothing and is not awaited. Reading the data back is a different
 mechanism entirely: `POST /accounts/{account_id}/analytics_engine/sql` over
-plain HTTP with a bearer token scoped *Account · Account Analytics · Read*. Note
+plain HTTP with a bearer token scoped _Account · Account Analytics · Read_. Note
 that permission is **account-wide** - Cloudflare offers no per-dataset analytics
 read scope - so think about where that token lives before putting it in a Worker
 that also serves unauthenticated routes.

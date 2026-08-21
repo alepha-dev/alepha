@@ -1,5 +1,6 @@
 import { type Infer, z } from "alepha";
 import { logEntrySchema } from "alepha/logger";
+
 import { notificationResourceSchema } from "./notificationResourceSchema.ts";
 
 export const notificationDetailResourceSchema = notificationResourceSchema

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+
 import { Alepha } from "alepha";
 import {
   MemoryPaymentProvider,
@@ -7,6 +8,7 @@ import {
 } from "alepha/api/payments";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
+
 import { CartService } from "../cart/services/CartService.ts";
 import { AlephaCommerceCheckout } from "../checkout/index.ts";
 import { CheckoutPaymentProvider } from "../checkout/providers/CheckoutPaymentProvider.ts";

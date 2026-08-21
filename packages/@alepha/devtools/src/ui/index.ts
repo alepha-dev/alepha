@@ -1,5 +1,6 @@
 import { $module } from "alepha";
 import { AlephaReactI18n } from "alepha/react/i18n";
+
 import { AppRouter } from "./AppRouter.tsx";
 import { devMetadataAtom } from "./atoms/devMetadataAtom.ts";
 

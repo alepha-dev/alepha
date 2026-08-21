@@ -23,15 +23,14 @@ The budget is resolved at three levels, most specific last:
 3. `MultipartCapProvider`: the only level that knows where the bytes
    are actually going, which is why it wins.
 
-A level can *raise* the ceiling, not merely lower it. That inversion was the
+A level can _raise_ the ceiling, not merely lower it. That inversion was the
 whole problem before: a bucket declaring `maxSize: 100` was silently capped
 by a 5 MB global it knew nothing about, so the declaration read like a
 promise the framework could not keep.
 
-⚠️ Raising a ceiling on this path is not free. `$secure` runs *after* this
+⚠️ Raising a ceiling on this path is not free. `$secure` runs _after_ this
 hook, so whatever budget is granted here is reachable before authentication -
 a bigger number is a cheaper denial of service until the bytes stop being
 buffered.
 
 plus a delimiter regardless of payload size.
-

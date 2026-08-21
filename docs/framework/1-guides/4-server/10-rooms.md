@@ -34,16 +34,17 @@ class GameServer {
     tickHz: 20,
     state: () => new World(),
 
-    onJoin:    (room, conn) => room.state.spawn(conn.id),
+    onJoin: (room, conn) => room.state.spawn(conn.id),
     onMessage: (room, conn, intent) => room.state.enqueue(conn.id, intent),
-    onTick:    (room, dt) => {
-      room.state.step(dt);                       // advance the authoritative sim
-      for (const conn of room.connections) {     // per-recipient AOI view
+    onTick: (room, dt) => {
+      room.state.step(dt); // advance the authoritative sim
+      for (const conn of room.connections) {
+        // per-recipient AOI view
         room.send(conn.id, room.state.viewFor(conn.id));
       }
     },
-    onLeave:   (room, conn) => room.state.despawn(conn.id),
-    onEmpty:   (room) => room.state.persist(),
+    onLeave: (room, conn) => room.state.despawn(conn.id),
+    onEmpty: (room) => room.state.persist(),
   });
 }
 ```
@@ -53,7 +54,7 @@ Key points:
 - **`room.state`** is your world - created by the factory, never serialized by
   the framework. Keep authoritative collections (players, monsters, loot) here.
 - **`room.send(id, msg)`** targets one connection. This is what a per-recipient
-  area-of-interest stream needs: each client gets a *different* frame every tick.
+  area-of-interest stream needs: each client gets a _different_ frame every tick.
   **`room.broadcast(msg, { exceptConnectionIds })`** fans out to all.
 - **`conn.data`** is a per-connection bag you own (last acked input seq, hero id,
   AOI cursor…).
@@ -71,19 +72,24 @@ HTTP action, or anywhere on the server.
 ```typescript
 // partySchema: any z.object() / union message schema
 class Party {
-  channel = $channel({ path: "/ws/party", schema: { in: partySchema, out: partySchema } });
+  channel = $channel({
+    path: "/ws/party",
+    schema: { in: partySchema, out: partySchema },
+  });
 
   session = $room({
     channel: this.channel,
     state: () => ({ switches: {} as Record<string, boolean> }),
     methods: {
-      setSwitch: (room, id: string, v: boolean) => { room.state.switches[id] = v; },
-      snapshot:  (room) => room.state.switches,
+      setSwitch: (room, id: string, v: boolean) => {
+        room.state.switches[id] = v;
+      },
+      snapshot: (room) => room.state.switches,
     },
   });
 
   async flip(partyId: string, id: string) {
-    await this.session.call(partyId, "setSwitch", id, true);   // one room, by id
+    await this.session.call(partyId, "setSwitch", id, true); // one room, by id
     await this.session.broadcast(partyId, { type: "state-changed" });
   }
 }
@@ -97,11 +103,11 @@ call. Either way the room comes to life lazily on its first call.
 A cooperative RPG on Workers has three kinds of authoritative object. All
 three are one `$room`:
 
-| Game object | `$room` shape | addressed by |
-| --- | --- | --- |
-| **World** (the 20Hz simulation of one map) | `tickHz: 20`, `state: () => new World()`, `onTick` steps + streams AOI | `partyId:mapId` |
-| **Session coordinator** (party-wide switches/variables, chat, victory) | headless, `methods` mutate + snapshot, `broadcast` pushes to rooms | `partyId` |
-| **Presence lease** (single-owner hero connection + epoch) | headless, `methods` acquire/renew/release | `heroId` |
+| Game object                                                            | `$room` shape                                                          | addressed by    |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------- | --------------- |
+| **World** (the 20Hz simulation of one map)                             | `tickHz: 20`, `state: () => new World()`, `onTick` steps + streams AOI | `partyId:mapId` |
+| **Session coordinator** (party-wide switches/variables, chat, victory) | headless, `methods` mutate + snapshot, `broadcast` pushes to rooms     | `partyId`       |
+| **Presence lease** (single-owner hero connection + epoch)              | headless, `methods` acquire/renew/release                              | `heroId`        |
 
 The pure simulation (`step()`, reconciliation, the wire protocol) stays in your
 own runtime-free package and is called from `onTick`/`onMessage` - Alepha never
@@ -109,13 +115,13 @@ touches it.
 
 ## Node vs Cloudflare: what differs
 
-| | Node (VPS) | Cloudflare |
-| --- | --- | --- |
-| Room instance | object in a `Map` | one Durable Object per `channel:room` |
-| Tick loop | `setInterval` | `setInterval` inside the DO (alive while a socket is) |
-| `state` in memory | one process, shared | per-DO; survives while the room is warm |
-| Coordinator `call()` | direct method call | DO-to-DO RPC |
-| Transactions | full SQL | D1 has no multi-statement transactions |
+|                      | Node (VPS)          | Cloudflare                                            |
+| -------------------- | ------------------- | ----------------------------------------------------- |
+| Room instance        | object in a `Map`   | one Durable Object per `channel:room`                 |
+| Tick loop            | `setInterval`       | `setInterval` inside the DO (alive while a socket is) |
+| `state` in memory    | one process, shared | per-DO; survives while the room is warm               |
+| Coordinator `call()` | direct method call  | DO-to-DO RPC                                          |
+| Transactions         | full SQL            | D1 has no multi-statement transactions                |
 
 On a single VPS you have shared memory and real timers, so a coordinator/lease is
 just a headless room in the same process. On Cloudflare the same headless room is
@@ -129,5 +135,5 @@ holds a socket. To recover from a rare mid-connection isolate reset, a Durable
 Object `alarm()` fires every ~10s while the room holds sockets: it re-hydrates
 any hibernation socket the fresh in-memory engine has forgotten (which restarts
 the tick loop) and re-arms itself. Connectivity and the loop come back
-automatically; the room *state* does not (in-memory state cannot survive
+automatically; the room _state_ does not (in-memory state cannot survive
 eviction), so persist anything durable in `onEmpty` or a `method`.

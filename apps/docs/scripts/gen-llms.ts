@@ -1,7 +1,9 @@
 import { promises as fs } from "node:fs";
 import path, { join } from "node:path";
+
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
+
 import type { DocNode } from "./interfaces.ts";
 
 interface DocItem {

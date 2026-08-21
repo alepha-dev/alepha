@@ -1,57 +1,58 @@
 ignores:
-    - 'alepha'
-    - '@alepha/ui'
-    - '@alepha/mantine'
-    - '@alepha/mqtt'
-    - '@alepha/devtools'
-    # Self-referenced by its own spec, which resolves `@alepha/sigil/react`
-    # through the package's `exports` map — the only way to prove that subpath
-    # is reachable outside the `browser` condition. Same treatment as the other
-    # workspace packages above.
-    - '@alepha/sigil'
-    - '@vitejs/plugin-react'
-    - 'jsdom'
-    - '@vitest/coverage-v8'
-    - 'drizzle-kit'
-    - 'swagger-ui-dist'
-    - 'vite'
-    # Reached through `createRequire(import.meta.url)("vite-bundle-analyzer")`
-    # in `ViteUtils.importAnalyzer`, so depcheck sees no import at all. Lazy
-    # for the same reason as `vite` above: `--stats` is the only path that
-    # touches it, and a static import drags its report template into every
-    # consumer of the CLI barrel.
-    - 'vite-bundle-analyzer'
-    - '@types/react'
-    - 'animate.css'
-    - 'marked-highlight'
-    - 'highlight.js'
-    - '@biomejs/biome'
-    - 'typescript'
-    - 'vitest'
-    - 'react-is'
-    - '@playwright/test'
-    - 'wrangler'
-    - 'vercel'
-    - '@fontsource/jetbrains-mono'
-    - '@types/bun'
-    - 'better-sqlite3'
-    - 'surge'
-    - 'bun'
-    - 'bun:sqlite'
-    - 'bun:test'
-    - 'cloudflare:workers'
-    - 'tailwindcss'
-    - '@tailwindcss/vite'
-    - '@types/react-dom'
-    - '@types/react-is'
-    - '@fontsource-variable/archivo'
-    - '@fontsource-variable/inter'
-    - '@fontsource-variable/jetbrains-mono'
-    - 'date-fns'
-    - 'tw-animate-css'
-    - 'shadcn'
-    - 'yjs'
+  - "alepha"
+  - "@alepha/ui"
+  - "@alepha/mantine"
+  - "@alepha/mqtt"
+  - "@alepha/devtools"
+  # Self-referenced by its own spec, which resolves `@alepha/sigil/react`
+  # through the package's `exports` map — the only way to prove that subpath
+  # is reachable outside the `browser` condition. Same treatment as the other
+  # workspace packages above.
+  - "@alepha/sigil"
+  - "@vitejs/plugin-react"
+  - "jsdom"
+  - "@vitest/coverage-v8"
+  - "drizzle-kit"
+  - "swagger-ui-dist"
+  - "vite"
+  # Reached through `createRequire(import.meta.url)("vite-bundle-analyzer")`
+  # in `ViteUtils.importAnalyzer`, so depcheck sees no import at all. Lazy
+  # for the same reason as `vite` above: `--stats` is the only path that
+  # touches it, and a static import drags its report template into every
+  # consumer of the CLI barrel.
+  - "vite-bundle-analyzer"
+  - "@types/react"
+  - "animate.css"
+  - "marked-highlight"
+  - "highlight.js"
+  - "oxfmt"
+  - "oxlint"
+  - "typescript"
+  - "vitest"
+  - "react-is"
+  - "@playwright/test"
+  - "wrangler"
+  - "vercel"
+  - "@fontsource/jetbrains-mono"
+  - "@types/bun"
+  - "better-sqlite3"
+  - "surge"
+  - "bun"
+  - "bun:sqlite"
+  - "bun:test"
+  - "cloudflare:workers"
+  - "tailwindcss"
+  - "@tailwindcss/vite"
+  - "@types/react-dom"
+  - "@types/react-is"
+  - "@fontsource-variable/archivo"
+  - "@fontsource-variable/inter"
+  - "@fontsource-variable/jetbrains-mono"
+  - "date-fns"
+  - "tw-animate-css"
+  - "shadcn"
+  - "yjs"
 
 ignore-patterns:
-    - 'dist'
-    - 'assets'
+  - "dist"
+  - "assets"

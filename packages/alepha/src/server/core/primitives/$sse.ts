@@ -13,6 +13,7 @@ import {
   z,
 } from "alepha";
 import { $logger } from "alepha/logger";
+
 import type { RouteMethod } from "../constants/routeMethods.ts";
 import { ServerReply } from "../helpers/ServerReply.ts";
 import type {
@@ -139,8 +140,9 @@ export type SseHandler<TConfig extends SseConfigSchema = SseConfigSchema> = (
 /**
  * Options for the $sse primitive.
  */
-export interface SsePrimitiveOptions<TConfig extends SseConfigSchema>
-  extends PipelinePrimitiveOptions {
+export interface SsePrimitiveOptions<
+  TConfig extends SseConfigSchema,
+> extends PipelinePrimitiveOptions {
   /**
    * Name of the SSE endpoint.
    */
@@ -734,8 +736,9 @@ export class SsePrimitive<
 /**
  * Combined callable + SsePrimitive interface.
  */
-export interface SsePrimitiveFn<TConfig extends SseConfigSchema>
-  extends SsePrimitive<TConfig> {
+export interface SsePrimitiveFn<
+  TConfig extends SseConfigSchema,
+> extends SsePrimitive<TConfig> {
   (config?: SseRequestEntry<TConfig>): SseStream<SseEventData<TConfig>>;
 }
 

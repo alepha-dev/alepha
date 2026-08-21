@@ -13,6 +13,7 @@ npm install alepha
 Model Context Protocol for AI tool integration.
 
 **Features:**
+
 - MCP resource definitions (fixed URIs and RFC 6570 templates)
 - MCP tool definitions
 - MCP prompt definitions
@@ -26,7 +27,7 @@ Model Context Protocol for AI tool integration.
 
 - [`$prompt`](/docs/reference-primitives-$prompt) - Creates an MCP prompt primitive for defining reusable prompt templates.
 - [`$resource`](/docs/reference-primitives-$resource) - Creates an MCP resource primitive for exposing read-only data.
-- [`$resourceTemplate`](/docs/reference-primitives-$resourcetemplate) - Creates an MCP resource template - a resource addressed by a *pattern*
+- [`$resourceTemplate`](/docs/reference-primitives-$resourcetemplate) - Creates an MCP resource template - a resource addressed by a _pattern_
 - [`$tool`](/docs/reference-primitives-$tool) - Creates an MCP tool primitive for defining callable functions.
 
 ### Providers

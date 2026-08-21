@@ -11,4 +11,3 @@ import { MqttJsClientProvider } from "@alepha/mqtt";
 MQTT client provider backed by the `mqtt` npm package (mqtt.js).
 
 Wraps `mqtt.connectAsync` and exposes a lifecycle-managed client.
-

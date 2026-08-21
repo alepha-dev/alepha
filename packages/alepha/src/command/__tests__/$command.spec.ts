@@ -4,6 +4,7 @@ import {
   MemoryDestinationProvider,
 } from "alepha/logger";
 import { describe, expect, test, vi } from "vitest";
+
 import {
   $command,
   CommandError,
@@ -473,7 +474,7 @@ describe("$command", () => {
   /**
    * A task that ran and failed is a command failure, not a crash.
    *
-   * `tsc`, `vitest` and `biome` all print their own diagnostics before the
+   * `tsc`, `vitest` and `oxlint` all print their own diagnostics before the
    * `CommandError` is raised. Letting it out of the `ready` hook wrapped it in
    * "Alepha failed to start / Failed during 'ready()' hook for service:
    * CliProvider" and roughly thirty stack frames, none of them in the user's
@@ -606,9 +607,7 @@ describe("$command", () => {
         });
       }
 
-      const { alepha } = await setupTestCommands(["cmd", "hello"], (a) =>
-        a.with(TestCommand),
-      );
+      await setupTestCommands(["cmd", "hello"], (a) => a.with(TestCommand));
 
       expect(mockHandler).toHaveBeenCalledOnce();
       const [callArgs] = mockHandler.mock.calls[0];

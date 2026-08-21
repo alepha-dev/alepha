@@ -15,15 +15,15 @@ variable substitution, and categorization for different notification channels.
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `name` | `string` | No |  |
-| `description` | `string` | No |  |
-| `category` | `string` | No |  |
-| `critical` | `boolean` | No |  |
-| `sensitive` | `boolean` | No | Marks the template's rendered `variables` as personal data |
-| `translations` | `Object` | No |  |
-| `schema` | `T` | Yes |  |
+| Option         | Type      | Required | Description                                                |
+| -------------- | --------- | -------- | ---------------------------------------------------------- |
+| `name`         | `string`  | No       |                                                            |
+| `description`  | `string`  | No       |                                                            |
+| `category`     | `string`  | No       |                                                            |
+| `critical`     | `boolean` | No       |                                                            |
+| `sensitive`    | `boolean` | No       | Marks the template's rendered `variables` as personal data |
+| `translations` | `Object`  | No       |                                                            |
+| `schema`       | `T`       | Yes      |                                                            |
 
 ## Examples
 
@@ -35,16 +35,15 @@ class NotificationTemplates {
     schema: z.object({ username: z.text(), activationLink: z.text() }),
     email: {
       subject: "Welcome to our platform!",
-      body: (vars) => `Hello ${vars.username}, click: ${vars.activationLink}`
-    }
+      body: (vars) => `Hello ${vars.username}, click: ${vars.activationLink}`,
+    },
   });
 
   async sendWelcome(user: User) {
     await this.welcomeEmail.push({
       variables: { username: user.name, activationLink: generateLink() },
-      contact: user.email
+      contact: user.email,
     });
   }
 }
 ```
-

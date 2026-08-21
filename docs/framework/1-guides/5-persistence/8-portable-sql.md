@@ -4,7 +4,12 @@ Repository methods cover most queries, but analytics work - grouping by day, mea
 
 ```typescript check
 import { $inject, z } from "alepha";
-import { $repository, DatabaseProvider, sql, SqlExpressionProvider } from "alepha/orm";
+import {
+  $repository,
+  DatabaseProvider,
+  sql,
+  SqlExpressionProvider,
+} from "alepha/orm";
 ```
 
 ## Why dates diverge
@@ -56,7 +61,7 @@ Text on both dialects is deliberate. Postgres `DATE(col)` decodes to a `Date` wh
 
 A sortable ISO year-week label, e.g. `'2026-W11'`.
 
-ISO on both dialects, also deliberate. Postgres `IYYY-IW` and SQLite `%Y-%W` are *different numbering schemes* - `%W` counts Monday-started weeks from the first Monday of the year (`00`–`53`), ISO weeks run `01`–`53` with different year-boundary rules. Hand-written code that pairs them produces different labels for the same row depending on where it runs.
+ISO on both dialects, also deliberate. Postgres `IYYY-IW` and SQLite `%Y-%W` are _different numbering schemes_ - `%W` counts Monday-started weeks from the first Monday of the year (`00`–`53`), ISO weeks run `01`–`53` with different year-boundary rules. Hand-written code that pairs them produces different labels for the same row depending on where it runs.
 
 SQLite has no ISO week function, so this uses the Thursday rule: the ISO week of a date is the week containing the Thursday of that date's Monday-started week, and the ISO year is that Thursday's calendar year.
 
@@ -80,10 +85,10 @@ Elapsed time between two timestamp columns, as a floating-point count of `"secon
 ```typescript
 const [cycle] = await this.database.run(
   sql`SELECT AVG(${this.sqlx.dateDiff(
-        this.quests.table.completedAt,
-        this.quests.table.acceptedAt,
-        "hours",
-      )}) AS hours
+    this.quests.table.completedAt,
+    this.quests.table.acceptedAt,
+    "hours",
+  )}) AS hours
       FROM ${this.quests.table}`,
   z.object({ hours: z.number().nullable() }),
 );
@@ -110,7 +115,7 @@ Instant-aligned on both dialects, not midnight-aligned. If you want calendar-day
 The helpers cover their own output, not yours. Postgres returns `COUNT(*)` (bigint) and bare `AVG(numeric)` as strings; SQLite returns numbers. For aggregates you write yourself, decode with `z.coerce.number()`:
 
 ```typescript
-z.object({ total: z.coerce.number() })
+z.object({ total: z.coerce.number() });
 ```
 
 `dateDiff` is the exception - it casts, so `z.number()` is correct there.

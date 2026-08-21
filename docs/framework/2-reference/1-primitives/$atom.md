@@ -18,6 +18,7 @@ Using atoms allows you to have type safety, validation, and default values for y
 You control how state is structured and validated.
 
 Features:
+
 - Schema validation on every write (invalid writes throw)
 - Default value for initial state
 - Automatic getter access in services with `$store`
@@ -30,6 +31,7 @@ Features:
 - Documentation generation & devtools integration (mutation log)
 
 Common use cases:
+
 - user preferences
 - feature flags
 - configuration options
@@ -41,11 +43,10 @@ If you need to store complex data, consider using identifiers or references inst
 
 ## Options
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `name` | `N` | Yes |  |
-| `schema` | `T` | Yes |  |
-| `description` | `string` | No |  |
-| `persist` | `AtomPersist` | No | Persist this atom outside the in-memory store |
-| `serverOnly` | `boolean` | No | Keep this atom's *value* server-side |
-
+| Option        | Type          | Required | Description                                   |
+| ------------- | ------------- | -------- | --------------------------------------------- |
+| `name`        | `N`           | Yes      |                                               |
+| `schema`      | `T`           | Yes      |                                               |
+| `description` | `string`      | No       |                                               |
+| `persist`     | `AtomPersist` | No       | Persist this atom outside the in-memory store |
+| `serverOnly`  | `boolean`     | No       | Keep this atom's _value_ server-side          |

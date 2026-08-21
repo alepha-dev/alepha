@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+
 import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
 
 test.describe("Members settings page", () => {
@@ -10,10 +11,7 @@ test.describe("Members settings page", () => {
     const email = `mb-${Date.now()}@example.com`;
     await registerAndVerify(page, email, "GoodPassw0rd");
     const title = `MB${Date.now()}`.slice(0, 20);
-    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
-      page,
-      title,
-    );
+    const { slug: projectSlug } = await createProjectViaWizard(page, title);
 
     await page.goto(`/${projectSlug}/settings/members`);
     await page.waitForLoadState("domcontentloaded");
@@ -40,10 +38,7 @@ test.describe("Members settings page", () => {
     const email = `mb404-${Date.now()}@example.com`;
     await registerAndVerify(page, email, "GoodPassw0rd");
     const title = `MB404${Date.now()}`.slice(0, 20);
-    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
-      page,
-      title,
-    );
+    const { slug: projectSlug } = await createProjectViaWizard(page, title);
 
     for (const path of [
       `/${projectSlug}/character`,

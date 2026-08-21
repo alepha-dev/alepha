@@ -191,9 +191,8 @@ for (const [, item] of results) {
   if (item) writeFiles(item);
 }
 
-log("Formatting with biome…");
-run("yarn", ["biome", "check", "--fix", "packages/@alepha/ui/src"], {
-  cwd: repoRoot,
-});
+log("Linting and formatting with oxlint + oxfmt…");
+run("yarn", ["oxlint", "--fix", "packages/@alepha/ui/src"], { cwd: repoRoot });
+run("yarn", ["oxfmt", "packages/@alepha/ui/src"], { cwd: repoRoot });
 
 log("Sync complete.");

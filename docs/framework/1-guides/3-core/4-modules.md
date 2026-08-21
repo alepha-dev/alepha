@@ -15,8 +15,12 @@ It's also highly recommended in full-stack mode to make 2 modules: `api` (server
 ```typescript check
 import { $module } from "alepha";
 
-class PaymentService { /* ... */ }
-class InvoiceService { /* ... */ }
+class PaymentService {
+  /* ... */
+}
+class InvoiceService {
+  /* ... */
+}
 
 const billingModule = $module({
   name: "billing",
@@ -61,13 +65,13 @@ LOG_LEVEL=billing:debug,info
 
 ```typescript
 interface ModulePrimitiveOptions {
-  name: string;                            // required
-  services?: Array<Service>;               // services to register
-  imports?: Array<Service<Module>>;        // other modules this one depends on
-  variants?: Array<Service>;               // opt-in services (not auto-registered)
+  name: string; // required
+  services?: Array<Service>; // services to register
+  imports?: Array<Service<Module>>; // other modules this one depends on
+  variants?: Array<Service>; // opt-in services (not auto-registered)
   primitives?: Array<PrimitiveFactoryLike>; // primitive factories to associate
-  atoms?: Array<Atom<any>>;                // atoms to register in state
-  register?: (alepha: Alepha) => void;     // extra registration logic
+  atoms?: Array<Atom<any>>; // atoms to register in state
+  register?: (alepha: Alepha) => void; // extra registration logic
 }
 ```
 
@@ -96,7 +100,7 @@ const mod = $module({
 });
 ```
 
-Services listed in `variants` are *not* auto-registered - they're opt-in implementations the user wires explicitly with `alepha.with(...)` (e.g. a transport choice).
+Services listed in `variants` are _not_ auto-registered - they're opt-in implementations the user wires explicitly with `alepha.with(...)` (e.g. a transport choice).
 
 ## Module Dependencies
 
@@ -122,14 +126,18 @@ const CoreModule = $module({
   services: [RandomService, VeryRandomService],
 });
 
-class DatabaseService { /* ... */ }
+class DatabaseService {
+  /* ... */
+}
 
 const DatabaseModule = $module({
   name: "database",
   services: [DatabaseService],
 });
 
-class ServerProvider { /* ... */ }
+class ServerProvider {
+  /* ... */
+}
 
 const ServerModule = $module({
   name: "server",

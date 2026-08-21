@@ -10,7 +10,9 @@ import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Pencil, Square } from "lucide-react";
+
 import type { I18n } from "@/web/app/services/I18n.ts";
+
 import type { MilestoneWithCount } from "./ProjectMilestones.tsx";
 
 export interface MilestoneLedgerHeroProps {

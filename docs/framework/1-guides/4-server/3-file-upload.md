@@ -6,10 +6,10 @@ Multipart parsing is built into `AlephaServer` and active by default.
 Which one you declare decides how the bytes reach your handler, and it is the
 only decision that really matters here:
 
-| Schema | Handler receives | Bytes are | Use when |
-|---|---|---|---|
-| `z.file()` | a `FileLike` | held until the handler returns | you need to read the content more than once, or need its size up front |
-| `z.stream()` | the part, consumed once | passed through as they arrive | the payload is large, or you are forwarding it somewhere else |
+| Schema       | Handler receives        | Bytes are                      | Use when                                                               |
+| ------------ | ----------------------- | ------------------------------ | ---------------------------------------------------------------------- |
+| `z.file()`   | a `FileLike`            | held until the handler returns | you need to read the content more than once, or need its size up front |
+| `z.stream()` | the part, consumed once | passed through as they arrive  | the payload is large, or you are forwarding it somewhere else          |
 
 `z.file()` is the convenient one; `z.stream()` is the one that does not put the
 payload in memory.
@@ -51,14 +51,14 @@ A `z.file()` field arrives as a `FileLike`:
 
 ```typescript
 interface FileLike {
-  name: string;           // Original filename
-  type: string;           // MIME type (e.g. "image/png")
-  size: number;           // Size in bytes
-  lastModified: number;   // Timestamp in milliseconds
+  name: string; // Original filename
+  type: string; // MIME type (e.g. "image/png")
+  size: number; // Size in bytes
+  lastModified: number; // Timestamp in milliseconds
 
-  stream(): StreamLike;                 // Read as stream
-  arrayBuffer(): Promise<ArrayBuffer>;  // Read into memory
-  text(): Promise<string>;              // Read as text
+  stream(): StreamLike; // Read as stream
+  arrayBuffer(): Promise<ArrayBuffer>; // Read into memory
+  text(): Promise<string>; // Read as text
 }
 ```
 
@@ -111,7 +111,7 @@ Three consequences worth knowing before you reach for it:
   it is not guessed.
 - **Parsing stops at the streamed part.** Whatever follows it in the message is
   never read, because the handler - not the parser - is driving. A client that
-  wants other fields honoured must send them *before* the file. This is inherent
+  wants other fields honoured must send them _before_ the file. This is inherent
   to streaming, not a limitation of the parser.
 
 Because the handler pulls the bytes, nothing is consumed before
@@ -124,14 +124,14 @@ limit.
 
 Defaults, applied to every route:
 
-| Limit | Default | Counts |
-|---|---|---|
-| One file | 5 MB | that part's content |
-| Whole request | 10 MB | every part's content, **plus** the preamble and every part's headers |
-| Parts per request | 10 | every part - text fields as well as files |
+| Limit             | Default | Counts                                                               |
+| ----------------- | ------- | -------------------------------------------------------------------- |
+| One file          | 5 MB    | that part's content                                                  |
+| Whole request     | 10 MB   | every part's content, **plus** the preamble and every part's headers |
+| Parts per request | 10      | every part - text fields as well as files                            |
 
 The last two columns are the ones that surprise. The request budget bounds
-*reading*, not delivering: a sender that never emits a boundary costs exactly as
+_reading_, not delivering: a sender that never emits a boundary costs exactly as
 much as one that sends content, so the bytes walked past are billed too. And a
 form with three text fields and eight files is eleven parts, not eight.
 
@@ -140,7 +140,7 @@ A route raises its own ceiling by declaring it, in **bytes**:
 ```typescript
 body: z.object({
   video: z.file({ maxBytes: 50_000_000 }),
-})
+});
 ```
 
 And the framework's own upload route takes its ceiling from the `$storage`

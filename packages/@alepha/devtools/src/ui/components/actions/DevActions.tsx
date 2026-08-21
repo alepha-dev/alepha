@@ -1,6 +1,7 @@
 import { z } from "alepha";
 import { useQueryParams } from "alepha/react/router";
 import { useMemo } from "react";
+
 import { useMetadata } from "../../hooks/useMetadata.ts";
 import { ActionDetail } from "./ActionDetail.tsx";
 import { ActionTree, actionKey } from "./ActionTree.tsx";

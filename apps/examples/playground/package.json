@@ -1,7 +1,7 @@
 {
+  "name": "playground",
   "private": true,
   "type": "module",
-  "name": "playground",
   "scripts": {
     "dev": "alepha dev",
     "build": "alepha build --stats",

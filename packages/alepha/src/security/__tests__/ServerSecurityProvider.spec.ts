@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+
 import { Alepha } from "alepha";
 import {
   $action,
@@ -9,6 +10,7 @@ import {
   UnauthorizedError,
 } from "alepha/server";
 import { describe, expect, it } from "vitest";
+
 import { $issuer, $secure, AlephaSecurity } from "../index.ts";
 
 describe("$secure middleware", () => {

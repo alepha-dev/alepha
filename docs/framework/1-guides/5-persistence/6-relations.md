@@ -4,7 +4,13 @@ Declare how entities relate to one another once, then read the graph with `inclu
 
 ```typescript check
 import { z } from "alepha";
-import { $entity, $relations, $repositories, $repository, db } from "alepha/orm";
+import {
+  $entity,
+  $relations,
+  $repositories,
+  $repository,
+  db,
+} from "alepha/orm";
 ```
 
 Relations are the layer above [joins](/docs/guides-persistence-joins). A join is a SQL join you write per query; a relation is a name you declare once and reuse. Relations also do what a join cannot: one-to-many without multiplying rows, many-to-many without exposing the junction, and arbitrary nesting.
@@ -275,10 +281,10 @@ await repos.teams.aggregate({ select: { id: { count: true } } });
 
 One statement, whatever the shape. Each included relation becomes a subquery, using the strategy the dialect is best at:
 
-| Dialect | Strategy |
-|---|---|
-| PostgreSQL | `LEFT JOIN LATERAL` with `json_agg` |
-| SQLite | correlated subqueries with `json_object` / `json_group_array` |
+| Dialect       | Strategy                                                      |
+| ------------- | ------------------------------------------------------------- |
+| PostgreSQL    | `LEFT JOIN LATERAL` with `json_agg`                           |
+| SQLite        | correlated subqueries with `json_object` / `json_group_array` |
 | Cloudflare D1 | the same, restricted to `json_*` - D1's SQLite has no `jsonb` |
 
 `toSQL()` returns the statement without running it, which is how you get it in front of `EXPLAIN`:

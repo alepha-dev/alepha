@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+
 import {
   apiPost,
   createProjectViaWizard,
@@ -727,7 +728,7 @@ test.describe("Quest", () => {
     const projectTitle = `ZC${t}`.slice(0, 20);
 
     await registerAndVerify(page, email, password);
-    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+    const { slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
     );
@@ -792,7 +793,7 @@ test.describe("Quest", () => {
     const projectTitle = `KV${t}`.slice(0, 20);
 
     await registerAndVerify(page, email, password);
-    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+    const { slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
     );

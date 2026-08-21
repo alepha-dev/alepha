@@ -1,6 +1,7 @@
 import { stdin as input, stdout as output } from "node:process";
 import type { Interface } from "node:readline/promises";
 import { createInterface as createPromptInterface } from "node:readline/promises";
+
 import {
   $hook,
   $inject,
@@ -12,6 +13,7 @@ import {
   type ZType,
 } from "alepha";
 import { ConsoleColorProvider } from "alepha/logger";
+
 import { NoInputError } from "../errors/NoInputError.ts";
 import { ConsoleOutputProvider } from "../providers/ConsoleOutputProvider.ts";
 

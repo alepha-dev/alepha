@@ -1,4 +1,5 @@
 import { createMiddleware, type Middleware } from "alepha";
+
 // Type-only on purpose — the server implementation imports `alepha/orm` and
 // `alepha/server`, neither of which belongs in a browser bundle. Erased at
 // compile time.

@@ -1,6 +1,7 @@
 import { createMiddleware, type Middleware } from "alepha";
 import type { CachePrimitiveOptions } from "alepha/cache";
 import type { DurationLike } from "alepha/datetime";
+
 import { ServerEtagProvider } from "../providers/ServerEtagProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

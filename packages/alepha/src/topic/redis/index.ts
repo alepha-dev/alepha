@@ -1,5 +1,6 @@
 import { $module, type Alepha } from "alepha";
 import { AlephaTopic, TopicProvider } from "alepha/topic";
+
 import { RedisTopicProvider } from "./providers/RedisTopicProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

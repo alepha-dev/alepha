@@ -29,12 +29,12 @@ The devtools UI inspects the live Alepha container behind your dev server: regis
 
 `devtools()` accepts:
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
+| Option       | Type      | Default | Description                                                        |
+| ------------ | --------- | ------- | ------------------------------------------------------------------ |
 | `hideButton` | `boolean` | `false` | Hide the floating button. The UI stays reachable at `/__devtools/` |
 
 ```typescript
-devtools({ hideButton: true })
+devtools({ hideButton: true });
 ```
 
 ## Dev-Only by Design

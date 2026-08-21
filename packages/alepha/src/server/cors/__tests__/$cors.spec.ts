@@ -1,6 +1,7 @@
 import { $pipeline, Alepha } from "alepha";
 import { AlephaServer } from "alepha/server";
 import { describe, test } from "vitest";
+
 import { AlephaServerCors } from "../index.ts";
 import { $cors } from "../primitives/$cors.ts";
 

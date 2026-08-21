@@ -7,6 +7,7 @@ import {
   ShellProvider,
 } from "alepha/system";
 import { describe, expect, it } from "vitest";
+
 import { PackCommand } from "../commands/pack.ts";
 
 describe("PackCommand", () => {

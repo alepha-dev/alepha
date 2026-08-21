@@ -1,6 +1,7 @@
 import type { Infer, State, TAtomObject } from "alepha";
 import { Atom } from "alepha";
-import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
+
 import { useAlepha } from "./useAlepha.ts";
 
 /**
@@ -25,12 +26,13 @@ function useStore(target: any, defaultValue?: any): any {
 
   // Seed during render (not in an effect) on purpose: effects don't run during
   // SSR, and the default has to be in the store before `exportAtoms` serializes
-  // the hydration payload. Idempotent — only fills an empty slot.
-  useMemo(() => {
-    if (defaultValue != null && alepha.store.get(target) == null) {
-      alepha.store.set(target, defaultValue);
-    }
-  }, [defaultValue, key]);
+  // the hydration payload. A plain statement rather than a `useMemo`, because
+  // `store.get(target) == null` is already the idempotency guard — the memo
+  // only ever saved a map lookup, and a `useMemo` that returns nothing is a
+  // side effect wearing a cache's clothes.
+  if (defaultValue != null && alepha.store.get(target) == null) {
+    alepha.store.set(target, defaultValue);
+  }
 
   const subscribe = useCallback(
     (onStoreChange: () => void) => {

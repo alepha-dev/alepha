@@ -31,28 +31,39 @@ always has - no cache reads, no cache writes, no shared state.
 ## Examples
 
 Basic
+
 ```tsx
 const client = useInject(HttpClient);
-const { data, loading, error, refetch } = useQuery({
-  handler: async ({ signal }) => {
-    const res = await client.fetch("/api/users", { signal });
-    return res.data;
+const { data, loading, error, refetch } = useQuery(
+  {
+    handler: async ({ signal }) => {
+      const res = await client.fetch("/api/users", { signal });
+      return res.data;
+    },
   },
-}, []);
+  [],
+);
 ```
 
 Re-fetch when a dep changes
+
 ```tsx
-const { data } = useQuery({
-  handler: async () => api.getUser(userId),
-}, [userId]);
+const { data } = useQuery(
+  {
+    handler: async () => api.getUser(userId),
+  },
+  [userId],
+);
 ```
 
 Polling
-```tsx
-const { data } = useQuery({
-  handler: async () => api.getStatus(),
-  runEvery: [5, "seconds"],
-}, []);
-```
 
+```tsx
+const { data } = useQuery(
+  {
+    handler: async () => api.getStatus(),
+    runEvery: [5, "seconds"],
+  },
+  [],
+);
+```

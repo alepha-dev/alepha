@@ -1,4 +1,5 @@
 import { useRouter } from "alepha/react/router";
+
 import type { AppRouter } from "../AppRouter.ts";
 
 const Home = () => {

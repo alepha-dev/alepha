@@ -1,6 +1,7 @@
 import { $atom, $inject, $module, $store, Alepha, z } from "alepha";
 import { $action, AlephaServer } from "alepha/server";
 import { describe, expect, it } from "vitest";
+
 import { AlephaServerCookies } from "../index.ts";
 
 const settingsAtom = $atom({

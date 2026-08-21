@@ -6,6 +6,7 @@ import {
   ShellProvider,
 } from "alepha/system";
 import { describe, it } from "vitest";
+
 import { VendorService } from "../services/VendorService.ts";
 
 describe("VendorService", () => {

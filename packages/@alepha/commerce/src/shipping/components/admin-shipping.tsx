@@ -20,7 +20,8 @@ import { useClient, useQuery } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Ban, Plus } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+
 import type { AdminShippingController } from "../controllers/AdminShippingController.ts";
 import type { ShippingRateEntity } from "../entities/shippingRates.ts";
 
@@ -53,12 +54,11 @@ export function AdminShipping() {
   );
 
   // Select the narrowest zone once they arrive, so the page is never empty while
-  // a zone exists.
-  useEffect(() => {
-    if (!zoneId && zones?.zones.length) {
-      setZoneId(zones.zones[0]!.id);
-    }
-  }, [zoneId, zones]);
+  // a zone exists. Guarded on `zoneId`, so it settles in one pass and does not
+  // need an effect.
+  if (!zoneId && zones?.zones.length) {
+    setZoneId(zones.zones[0]!.id);
+  }
 
   const fetcher = useCallback(
     async (params: { page: number; size: number }) => {

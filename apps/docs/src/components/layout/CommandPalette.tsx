@@ -2,14 +2,16 @@ import { IconFile } from "@tabler/icons-react";
 import { useRouter } from "alepha/react/router";
 import Fuse, { type IFuseOptions } from "fuse.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import { tree } from "../../config/docs.ts";
 import {
   findMatchedKeyword,
   flattenTree,
   type SearchableDoc,
 } from "../../helpers/search.ts";
-import styles from "./CommandPalette.module.css";
 import Dialog, { useDialog } from "./Dialog.tsx";
+
+import styles from "./CommandPalette.module.css";
 
 // =============================================================================
 // TYPES
@@ -76,10 +78,13 @@ const CommandPalette = () => {
     }));
   }, [query, allDocs, fuse]);
 
-  // Reset selection when query changes
-  useEffect(() => {
+  // Reset selection when query changes. During render, so the highlight never
+  // sits on a stale row for a frame.
+  const [selectionQuery, setSelectionQuery] = useState(query);
+  if (query !== selectionQuery) {
+    setSelectionQuery(query);
     setSelectedIndex(0);
-  }, [query]);
+  }
 
   // Scroll selected item into view
   useEffect(() => {

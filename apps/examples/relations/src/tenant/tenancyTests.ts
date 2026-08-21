@@ -2,6 +2,7 @@ import type { Alepha } from "alepha";
 import { $repositories } from "alepha/orm";
 import { currentTenantAtom } from "alepha/security";
 import { beforeEach, describe, expect, it } from "vitest";
+
 import { tenantRelations } from "./relations.ts";
 
 /**

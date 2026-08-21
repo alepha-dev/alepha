@@ -3,6 +3,7 @@ import { SettingsLayout } from "@alepha/ui/components/settings/settings-layout";
 import { SettingsNav } from "@alepha/ui/components/settings/settings-nav";
 import { useStore } from "alepha/react";
 import { NestedView } from "alepha/react/router";
+
 import { useNavEntries } from "../nav-shell/use-nav-entries.ts";
 import { accountRouterOptionsAtom } from "./account-router-options.tsx";
 

@@ -1,4 +1,5 @@
 import { type Infer, z } from "alepha";
+
 import { dashboardScopeSchema } from "./dashboardScopeSchema.ts";
 
 /**

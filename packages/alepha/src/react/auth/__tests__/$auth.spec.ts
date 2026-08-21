@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+
 import { Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $issuer, AlephaSecurity } from "alepha/security";
@@ -12,6 +13,7 @@ import {
 } from "alepha/server/auth";
 import { $client } from "alepha/server/links";
 import { describe, test } from "vitest";
+
 import { ReactAuth, type ReactAuthProvider } from "../index.ts";
 
 describe("$auth", () => {

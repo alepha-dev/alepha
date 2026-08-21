@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+
 import { Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
 import {
@@ -11,6 +12,7 @@ import { MemoryEmailProvider } from "alepha/email";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
+
 import { CartService } from "../cart/services/CartService.ts";
 import { CheckoutService } from "../checkout/services/CheckoutService.ts";
 import { AlephaCommerceInvoicing } from "../invoicing/index.ts";
@@ -137,74 +139,80 @@ describe("commerce settlement workflow", () => {
     expect(confirmation).toBeDefined();
   });
 
-  it("retries a failed invoice step instead of losing the invoice", {
-    timeout: 20_000,
-  }, async ({ expect }) => {
-    class FlakyInvoiceService extends InvoiceService {
-      public failures = 0;
-      public override async issueForOrder(orderId: string) {
-        if (this.failures < 1) {
-          this.failures++;
-          throw new Error("invoice renderer down (test)");
+  it(
+    "retries a failed invoice step instead of losing the invoice",
+    {
+      timeout: 20_000,
+    },
+    async ({ expect }) => {
+      class FlakyInvoiceService extends InvoiceService {
+        public failures = 0;
+        public override async issueForOrder(orderId: string) {
+          if (this.failures < 1) {
+            this.failures++;
+            throw new Error("invoice renderer down (test)");
+          }
+          return super.issueForOrder(orderId);
         }
-        return super.issueForOrder(orderId);
       }
-    }
 
-    // The substitution must land before the modules: invoicing's
-    // `register` resolves InvoiceService eagerly at module wiring time.
-    const alepha = Alepha.create()
-      .with({ provide: InvoiceService, use: FlakyInvoiceService })
-      .with(AlephaOrmPostgres)
-      .with(AlephaCommerceInvoicing)
-      .with(AlephaCommerceNotifications)
-      .with(AlephaCommerceSettlement);
-    const ctx = injectCtx(alepha);
-    await alepha.start();
+      // The substitution must land before the modules: invoicing's
+      // `register` resolves InvoiceService eagerly at module wiring time.
+      const alepha = Alepha.create()
+        .with({ provide: InvoiceService, use: FlakyInvoiceService })
+        .with(AlephaOrmPostgres)
+        .with(AlephaCommerceInvoicing)
+        .with(AlephaCommerceNotifications)
+        .with(AlephaCommerceSettlement);
+      const ctx = injectCtx(alepha);
+      await alepha.start();
 
-    const orderId = await payOneOrder(ctx);
+      const orderId = await payOneOrder(ctx);
 
-    // First attempt fails; the retry is scheduled with backoff. Wait for
-    // the retry to be PARKED (pending + scheduledAt) before travelling —
-    // travel() only releases timers that already exist, and the retry's
-    // timer is born a beat after the failing handler returns.
-    const failing = await waitFor(
-      () => findSettlement(ctx.probe, orderId),
-      (e) => Boolean(e),
-      { label: "settlement execution exists" },
-    );
-    await waitFor(
-      () =>
-        ctx.probe.steps.findOne({
-          where: {
-            workflowExecutionId: { eq: failing!.id },
-            stepName: { eq: "issueInvoice" },
-          },
-        }),
-      (s) => s?.status === "pending" && Boolean(s?.scheduledAt),
-      { label: "invoice retry parked" },
-    );
-    await alepha.inject(DateTimeProvider).travel([2, "minute"]);
+      // First attempt fails; the retry is scheduled with backoff. Wait for
+      // the retry to be PARKED (pending + scheduledAt) before travelling —
+      // travel() only releases timers that already exist, and the retry's
+      // timer is born a beat after the failing handler returns.
+      const failing = await waitFor(
+        () => findSettlement(ctx.probe, orderId),
+        (e) => Boolean(e),
+        { label: "settlement execution exists" },
+      );
+      await waitFor(
+        () =>
+          ctx.probe.steps.findOne({
+            where: {
+              workflowExecutionId: { eq: failing!.id },
+              stepName: { eq: "issueInvoice" },
+            },
+          }),
+        (s) => s?.status === "pending" && Boolean(s?.scheduledAt),
+        { label: "invoice retry parked" },
+      );
+      await alepha.inject(DateTimeProvider).travel([2, "minute"]);
 
-    // Post-travel the clock is frozen: nudge the sweep while polling, so
-    // a retry delivery lost to the travel storm is re-derived from rows.
-    const exec = await waitFor(
-      async () => {
-        await alepha.inject(WorkflowProvider).recoverySweep();
-        return findSettlement(ctx.probe, orderId);
-      },
-      (e) => e?.status === "completed",
-      {
-        label: "settlement completed after retry",
-        timeout: 18_000,
-        interval: 100,
-      },
-    );
-    expect(exec?.status).toBe("completed");
+      // Post-travel the clock is frozen: nudge the sweep while polling, so
+      // a retry delivery lost to the travel storm is re-derived from rows.
+      const exec = await waitFor(
+        async () => {
+          await alepha.inject(WorkflowProvider).recoverySweep();
+          return findSettlement(ctx.probe, orderId);
+        },
+        (e) => e?.status === "completed",
+        {
+          label: "settlement completed after retry",
+          timeout: 18_000,
+          interval: 100,
+        },
+      );
+      expect(exec?.status).toBe("completed");
 
-    const invoices = await alepha.inject(InvoiceService).listForOrder(orderId);
-    expect(invoices).toHaveLength(1);
-  });
+      const invoices = await alepha
+        .inject(InvoiceService)
+        .listForOrder(orderId);
+      expect(invoices).toHaveLength(1);
+    },
+  );
 
   it("runs one settlement per order even when the webhook is redelivered", async ({
     expect,

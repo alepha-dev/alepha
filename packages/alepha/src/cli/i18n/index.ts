@@ -1,4 +1,5 @@
 import { $context, $module } from "alepha";
+
 import { type I18nOptions, i18nOptions } from "./atoms/i18nOptions.ts";
 import { I18nCommand } from "./commands/I18nCommand.ts";
 import { I18nCheckService } from "./services/I18nCheckService.ts";

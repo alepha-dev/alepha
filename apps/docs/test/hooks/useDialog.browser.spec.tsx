@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, test } from "vitest";
+
 import { useDialog } from "../../src/components/layout/Dialog.tsx";
 
 describe("useDialog", () => {

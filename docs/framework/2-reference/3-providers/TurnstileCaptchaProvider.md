@@ -24,7 +24,11 @@ Free, privacy-friendly, and supports invisible mode.
 Add the Turnstile script and widget to your form:
 
 ```html
-<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<script
+  src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+  async
+  defer
+></script>
 <form>
   <div class="cf-turnstile" data-sitekey="YOUR_SITE_KEY"></div>
   <button type="submit">Submit</button>
@@ -64,4 +68,3 @@ alepha.with({ provide: CaptchaProvider, use: TurnstileCaptchaProvider });
 
 - `TURNSTILE_SECRET_KEY`: The secret key from the Cloudflare Turnstile dashboard (required).
 - `TURNSTILE_SITE_KEY`: The public site key, exposed to the client via `getSiteKey()` (required).
-

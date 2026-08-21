@@ -1,4 +1,5 @@
 import { describe, it, test } from "vitest";
+
 import {
   testTopicAsSub,
   testTopicBasic,

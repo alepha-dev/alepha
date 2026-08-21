@@ -6,6 +6,7 @@ import {
   MemoryDestinationProvider,
 } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
+
 import { DEV_LOG_RESTART_TYPE } from "../schemas/DevLogMarker.ts";
 
 /**

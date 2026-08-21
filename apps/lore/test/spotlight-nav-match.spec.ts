@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import type { ProjectNavEntry } from "../src/web/app/atoms/projectNavAtom.ts";
 import { matchProjectNav } from "../src/web/app/components/shared/spotlight/matchProjectNav.ts";
 

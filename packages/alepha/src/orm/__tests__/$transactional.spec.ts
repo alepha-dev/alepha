@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
+
 import { AlephaOrmPostgres } from "../postgres/index.ts";
 import {
   testAfterCommitDiscardedOnRollback,
@@ -55,6 +56,7 @@ describe("$transactional", () => {
 
   // SQLite uses a single connection — writes inside a transaction always participate,
   // so tx:null cannot bypass the active transaction like PostgreSQL can.
+  // oxlint-disable-next-line vitest/no-disabled-tests
   it.skip("should bypass implicit tx with tx: null (sqlite)", async () => {
     await testBypassImplicitTx(
       Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),

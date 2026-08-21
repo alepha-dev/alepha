@@ -1,4 +1,5 @@
 import type { Infer } from "alepha";
+
 import type { ChannelPrimitive, TWSObject } from "../primitives/$channel.ts";
 
 /**
@@ -97,11 +98,10 @@ export interface RoomContext<TClient extends TWSObject, TState> {
  * acquire/renew/release. On Cloudflare each call is a Durable Object RPC; on
  * Node it is a direct in-process method call.
  */
-export type RoomMethod<
-  TClient extends TWSObject,
-  TServer extends TWSObject,
-  TState,
-> = (room: RoomContext<TClient, TState>, ...args: any[]) => any | Promise<any>;
+export type RoomMethod<TClient extends TWSObject, TState> = (
+  room: RoomContext<TClient, TState>,
+  ...args: any[]
+) => any | Promise<any>;
 
 /**
  * Options for the {@link $room} primitive — a stateful, optionally
@@ -172,7 +172,7 @@ export interface RoomPrimitiveOptions<
    * Server-side methods callable on this room by id from outside it. The seam
    * for coordinator/presence rooms.
    */
-  methods?: Record<string, RoomMethod<TClient, TServer, TState>>;
+  methods?: Record<string, RoomMethod<TClient, TState>>;
 
   /** Enforce authentication on the handshake (via alepha/security). */
   secure?: boolean;

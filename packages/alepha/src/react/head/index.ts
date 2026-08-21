@@ -1,5 +1,6 @@
 import { $module } from "alepha";
 import { AlephaReact } from "alepha/react";
+
 import { SeoExpander } from "./helpers/SeoExpander.ts";
 import { $head } from "./primitives/$head.ts";
 import { BrowserHeadProvider } from "./providers/BrowserHeadProvider.ts";

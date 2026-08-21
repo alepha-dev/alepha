@@ -12,6 +12,7 @@ import {
   useRef,
   useState,
 } from "react";
+
 import { QueryCache } from "../services/QueryCache.ts";
 import { useAlepha } from "./useAlepha.ts";
 import { useInject } from "./useInject.ts";
@@ -319,6 +320,9 @@ export function useAction<Args extends any[], Result = void>(
         }
       }
     },
+    // `deps` is `useAction`'s public dependency list, so it cannot be an
+    // array literal here.
+    // oxlint-disable-next-line react/use-memo
     [...deps],
   );
 

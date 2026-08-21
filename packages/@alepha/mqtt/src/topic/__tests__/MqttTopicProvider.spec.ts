@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
+
 import { MqttClientProvider, MqttJsClientProvider } from "@alepha/mqtt";
 import { $inject, Alepha, z } from "alepha";
 import { $subscriber, $topic, AlephaTopic, TopicProvider } from "alepha/topic";
 import { describe, it } from "vitest";
+
 import { MqttTopicProvider, mqttTopicOptions } from "../index.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

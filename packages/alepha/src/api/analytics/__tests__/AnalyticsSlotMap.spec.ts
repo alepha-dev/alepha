@@ -1,6 +1,7 @@
 import type { ZType } from "alepha";
 import { z } from "alepha";
 import { describe, expect, it } from "vitest";
+
 import { AnalyticsSlotMap } from "../planner/AnalyticsSlotMap.ts";
 
 describe("AnalyticsSlotMap", () => {

@@ -1,4 +1,5 @@
 import { $logger } from "alepha/logger";
+
 import type { CaptchaProvider } from "./CaptchaProvider.ts";
 
 export interface CaptchaRecord {

@@ -2,6 +2,7 @@ import { Alepha } from "alepha";
 import { AlephaReact } from "alepha/react";
 import { act } from "react";
 import { beforeEach, describe, expect, it } from "vitest";
+
 import { $page, ReactRouter } from "../index.browser.ts";
 
 describe("NestedView exit animation", () => {

@@ -1,7 +1,9 @@
 import { useI18n } from "alepha/react/i18n";
 import { Archive, Check, CircleDot, Lock, Play } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
+
 import type { I18n } from "@/web/app/services/I18n.ts";
+
 import {
   CARD_H,
   CARD_W,

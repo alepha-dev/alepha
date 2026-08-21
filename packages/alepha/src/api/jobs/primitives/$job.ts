@@ -9,6 +9,7 @@ import {
   type ZType,
 } from "alepha";
 import type { DateTime, DurationLike } from "alepha/datetime";
+
 import {
   JobProvider,
   type JobTriggerContext,
@@ -47,8 +48,9 @@ export interface JobRetryOptions {
 
 export type JobPriority = "critical" | "high" | "normal" | "low";
 
-export interface JobPrimitiveOptions<T extends ZType = ZType>
-  extends PipelinePrimitiveOptions {
+export interface JobPrimitiveOptions<
+  T extends ZType = ZType,
+> extends PipelinePrimitiveOptions {
   /**
    * Optional explicit job name. Defaults to `ClassName.propertyKey`.
    * Recommended convention for framework-internal jobs: `api:module:jobName`.

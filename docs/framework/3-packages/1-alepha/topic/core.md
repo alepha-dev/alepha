@@ -13,6 +13,7 @@ npm install alepha
 Publish/subscribe messaging for event-driven architectures.
 
 **Features:**
+
 - Pub/sub topics with type-safe messages
 - Topic subscription handlers
 - Multiple subscriber support

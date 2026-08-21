@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { sigilScrubUrl } from "../sigilScrubUrl.ts";
 
 describe("sigilScrubUrl", () => {

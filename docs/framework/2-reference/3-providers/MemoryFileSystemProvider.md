@@ -17,4 +17,3 @@ One deliberate looseness versus the node provider: `writeFile` succeeds
 without its parent directories existing (and registers them implicitly),
 so tests can seed fixtures in one call. Everything else follows the
 contract pinned by `fileSystemContract.spec.ts`.
-

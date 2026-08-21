@@ -13,6 +13,7 @@ npm install alepha
 Cross-Origin Resource Sharing configuration.
 
 **Features:**
+
 - CORS policy definition
 
 ## API Reference

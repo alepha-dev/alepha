@@ -1,4 +1,5 @@
 import { $inject, Alepha } from "alepha";
+
 import type { RoomPrimitiveOptions } from "../interfaces/RoomInterfaces.ts";
 import type {
   EmitOptions,

@@ -2,6 +2,7 @@ import { Alepha, z } from "alepha";
 import { DatabaseProvider } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, expect, it } from "vitest";
+
 import { AnalyticsEntityFactory } from "../services/AnalyticsEntityFactory.ts";
 
 const dataset = {

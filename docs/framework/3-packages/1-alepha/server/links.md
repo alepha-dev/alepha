@@ -13,6 +13,7 @@ npm install alepha
 Type-safe API client with request deduplication.
 
 **Features:**
+
 - Virtual HTTP client for type-safe API calls
 - Remote action definitions
 - Type inference from action schemas

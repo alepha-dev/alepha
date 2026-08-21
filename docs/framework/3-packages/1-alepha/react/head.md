@@ -13,6 +13,7 @@ npm install alepha
 HTML head element management.
 
 **Features:**
+
 - Title, meta tags, and links
 - SEO optimization
 - Social media tags

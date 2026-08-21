@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, test } from "vitest";
+
 import { SecretFilterService } from "../services/SecretFilterService.ts";
 
 describe("SecretFilterService", () => {

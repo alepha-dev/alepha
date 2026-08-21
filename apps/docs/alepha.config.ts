@@ -1,5 +1,6 @@
 import { defineConfig } from "alepha/cli/config";
 import { platform } from "alepha/cli/platform";
+
 import pkg from "../../packages/alepha/package.json" with { type: "json" };
 import { CheckDocsCommand } from "./scripts/check-docs.ts";
 import { DocsCommand } from "./scripts/gen-docs.ts";

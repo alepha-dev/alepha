@@ -12,6 +12,7 @@ import {
   type PlatformOptions,
   platformOptions,
 } from "alepha/cli/platform-lib";
+
 import { PlatformCommand } from "./commands/platform.ts";
 import { SecretsCommand } from "./commands/SecretsCommand.ts";
 

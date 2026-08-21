@@ -1,6 +1,7 @@
 import { type Alepha, type Infer, type ZObject, z } from "alepha";
 import { useAlepha } from "alepha/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+
 import { useRouter } from "./useRouter.ts";
 import { useRouterState } from "./useRouterState.ts";
 
@@ -58,9 +59,14 @@ export const useQueryParams = <T extends ZObject>(
     Partial<Infer<T>> | undefined
   >(read());
 
-  useEffect(() => {
+  // Re-read during render rather than from an effect. React re-runs the
+  // component immediately, before children render and before the browser
+  // paints, so the URL and the returned params never disagree for a frame.
+  const [syncedSignature, setSyncedSignature] = useState(signature);
+  if (signature !== syncedSignature) {
+    setSyncedSignature(signature);
     setQueryParams(read());
-  }, [signature]);
+  }
 
   return [
     queryParams,

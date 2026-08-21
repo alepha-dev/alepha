@@ -33,4 +33,3 @@ Cloudflare D1, Bun SQLite).
 - `count` column: integer counter for atomic `incr()`.
 - `expiresAt` column: nullable timestamp; expired rows are filtered at read
   time and reaped opportunistically on writes.
-

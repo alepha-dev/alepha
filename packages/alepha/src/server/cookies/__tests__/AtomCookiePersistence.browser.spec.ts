@@ -1,5 +1,6 @@
 import { $atom, Alepha, z } from "alepha";
 import { beforeEach, describe, expect, it } from "vitest";
+
 import { AtomCookiePersistence } from "../providers/AtomCookiePersistence.browser.ts";
 
 const schema = z.object({ theme: z.string() });

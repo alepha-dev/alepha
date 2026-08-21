@@ -1,5 +1,6 @@
 import { $hook, Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
+
 import { $interval, DateTimeProvider } from "../index.ts";
 
 describe("$interval", () => {

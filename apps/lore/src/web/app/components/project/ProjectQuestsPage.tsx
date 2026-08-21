@@ -1,11 +1,13 @@
 import { useClient, useStore } from "alepha/react";
 import { useEffect, useState } from "react";
+
 import type { KanbanController } from "@/api/controllers/KanbanController.ts";
 import {
   defaultProjectFeatures,
   type ProjectFeatures,
 } from "@/api/entities/projects.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
+
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { questsViewAtom } from "../../atoms/questsViewAtom.ts";
 import KanbanBoard from "../kanban/KanbanBoard.tsx";
