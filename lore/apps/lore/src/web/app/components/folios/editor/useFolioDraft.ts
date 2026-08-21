@@ -172,7 +172,6 @@ export const useFolioDraft = (folio: Folio | undefined): FolioDraft => {
     formInitial.current = initial();
     baseline.current = formInitial.current;
     setSavedAt(folio?.updatedAt);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [folio?.id, folio?.updatedAt, folio?.protected]);
 
   const markSaved = (at: string, saved: FolioDraftValues) => {

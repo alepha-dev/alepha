@@ -167,7 +167,6 @@ export const useFolioTreeModel = (
     }
     // Runs once per mount, deliberately — clears the hand-off exactly once
     // so it never leaks into a later, unrelated mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [dragId, setDragId] = useState<string | undefined>();
   const [drop, setDrop] = useState<
@@ -267,7 +266,6 @@ export const useFolioTreeModel = (
       if (!ancestorDirIds.has(d.id)) defaultCollapsed.add(d.id);
     }
     setCollapsed(defaultCollapsed);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ancestorDirIds, directories, folios]);
 
   // Later navigations only ever EXPAND the new folio's ancestor path —

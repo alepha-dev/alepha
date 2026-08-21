@@ -84,7 +84,6 @@ const QuestViewTimer = (props: QuestViewTimerProps) => {
         clearInterval(intervalRef.current);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quest.timerSessions]);
 
   if (!quest.acceptedAt || quest.completedAt) return null;
