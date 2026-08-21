@@ -15,9 +15,46 @@ export { questStatusSchema };
 export const epicStatusSchema = z.enum(["planned", "active", "done"]);
 
 /**
- * Quest objective.
+ * Quest objective, as a tool hands one out.
+ *
+ * `id` is required here and optional on the input side: the server mints one
+ * for every objective and backfills legacy rows, so a read always carries it.
+ * It is what `quest_objective_set` addresses and what the quest's own history
+ * rows point at, which is why stripping it from the output (as this schema
+ * used to) turned every objectives replace into a silent renumbering.
  */
 export const objectiveSchema = z.object({
+  id: z
+    .integer()
+    .describe(
+      "Stable per-quest objective id. Pass it to `quest_objective_set` to tick one, and carry it back on `quest_update.objectives` so an edit stays an edit.",
+    ),
+  title: z.string(),
+  completed: z.boolean(),
+  waivedReason: z
+    .string()
+    .describe(
+      "Why this objective was closed WITHOUT being done, recorded when the quest was completed. Present means the box is unticked on purpose: the work did not happen and this says why. Never set alongside `completed: true`.",
+    )
+    .optional(),
+  waivedAt: z.datetime().optional(),
+});
+
+/**
+ * Quest objective, as a tool accepts one.
+ *
+ * `id` optional so `quest_create` works with no ids at all, and so a
+ * `quest_update` replace can mix kept objectives (carrying their id) with
+ * brand-new ones (carrying none).
+ */
+export const objectiveInputSchema = z.object({
+  id: z
+    .integer()
+    .min(0)
+    .describe(
+      "The id this objective already has, from `quest_get`. Carry it and the objective keeps its identity (and the history rows pointing at it stay true); omit it and a fresh objective is created. Omit on every item when creating a quest.",
+    )
+    .optional(),
   title: z.string(),
   completed: z.boolean(),
 });

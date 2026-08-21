@@ -1,6 +1,6 @@
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
-import { BadRequestError, NotFoundError } from "alepha/server";
+import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
 import { EpicController } from "../../api/controllers/EpicController.ts";
 import { FeedbackController } from "../../api/controllers/FeedbackController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
@@ -17,8 +17,13 @@ import { displayName } from "../../web/app/services/displayName.ts";
 import {
   questAcceptParamsSchema,
   questAcceptResultSchema,
+  questAttachmentAddParamsSchema,
+  questAttachmentAddResultSchema,
+  questAttachmentGetParamsSchema,
   questCommentAddParamsSchema,
   questCommentAddResultSchema,
+  questCommitAddParamsSchema,
+  questCommitAddResultSchema,
   questCompleteParamsSchema,
   questCompleteResultSchema,
   questCreateParamsSchema,
@@ -29,15 +34,20 @@ import {
   questGetResultSchema,
   questListParamsSchema,
   questListResultSchema,
+  questObjectiveSetParamsSchema,
+  questObjectiveSetResultSchema,
   questShelveParamsSchema,
   questShelveResultSchema,
   questTagsParamsSchema,
   questTagsResultSchema,
+  questUnassignParamsSchema,
+  questUnassignResultSchema,
   questUnshelveParamsSchema,
   questUnshelveResultSchema,
   questUpdateParamsSchema,
   questUpdateResultSchema,
 } from "../schemas/index.ts";
+import { AttachmentContentService } from "../services/AttachmentContentService.ts";
 
 /**
  * MCP tools for quest operations.
@@ -49,6 +59,48 @@ export class QuestTools {
   protected readonly epicController = $inject(EpicController);
   protected readonly commentController = $inject(QuestCommentController);
   protected readonly questMapper = $inject(QuestResourceMapper);
+  protected readonly attachmentContent = $inject(AttachmentContentService);
+
+  /**
+   * What `quest_attachment_add` accepts.
+   *
+   * Not the storage's own list, which is far wider: this one is exactly the
+   * set `quest_attachment_get` can render back inline, so an agent can
+   * always read what an agent wrote. Everything here is also inert when
+   * served from `/api/files/:id`, which is the property the storage's list
+   * is really protecting.
+   */
+  protected readonly attachableMimeTypes = [
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "image/gif",
+    "text/plain",
+    "text/csv",
+    "text/markdown",
+    "application/json",
+  ];
+
+  /** 2 MB decoded. Screenshots and logs, not binaries. */
+  protected readonly maxAttachmentBytes = 2 * 1024 * 1024;
+
+  /**
+   * Decode a base64 payload, refusing anything that is not actually base64.
+   *
+   * `Buffer.from(x, "base64")` never throws: it silently drops characters
+   * it does not recognise, so a truncated or corrupted payload would be
+   * stored as a shorter, broken file. Validating the alphabet first is what
+   * turns that into an error the caller can act on.
+   */
+  protected decodeBase64(data: string): Buffer {
+    const compact = data.replace(/\s+/g, "");
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(compact) || compact.length % 4 !== 0) {
+      throw new BadRequestError(
+        "`data` is not valid base64. Send the raw base64 of the file's bytes, with no data-URL prefix.",
+      );
+    }
+    return Buffer.from(compact, "base64");
+  }
 
   /**
    * How many comments `quest_get` inlines. A quest that ever carries more
@@ -56,6 +108,18 @@ export class QuestTools {
    * would be a surface with no readers.
    */
   protected readonly discussionCap = 50;
+
+  /**
+   * Who actually wrote a comment.
+   *
+   * Absent provenance means a human typed it in the UI: `source` is written
+   * only by `quest_comment_add`, and the web client never sends it.
+   */
+  protected authorKindOf(comment: {
+    source?: { kind?: string };
+  }): "human" | "agent" {
+    return comment.source?.kind === "mcp" ? "agent" : "human";
+  }
 
   /**
    * A quest's discussion, with authors resolved to names.
@@ -71,6 +135,8 @@ export class QuestTools {
     discussion: Array<{
       id: number;
       author?: string;
+      authorKind: "human" | "agent";
+      client?: string;
       body: string;
       createdAt: string;
       editedAt?: string;
@@ -101,6 +167,10 @@ export class QuestTools {
               comment.authorId,
             )
           : undefined,
+        // The account name is the same either way over MCP, which is
+        // exactly why this field has to exist.
+        authorKind: this.authorKindOf(comment),
+        client: comment.source?.client,
         body: comment.body,
         createdAt: comment.createdAt,
         editedAt: comment.editedAt,
@@ -234,7 +304,8 @@ export class QuestTools {
    */
   quest_comment_add = $tool({
     description:
-      "Leave a comment on a quest, as yourself. Comments interleave with the quest's own history into its Discussion, and are what an agent uses to report what it decided, what it could not do, or what the next session should know. Read them back with `quest_get`.",
+      "Leave a comment on a quest, as yourself. Comments interleave with the quest's own history into its Discussion, and are what an agent uses to report what it decided, what it could not do, or what the next session should know. Read them back with `quest_get`. " +
+      "Anything posted through this tool is recorded as agent-authored and shown that way in Lore, so do not sign your messages or announce that you are an AI: the thread already says so.",
     title: "Comment on a quest",
     annotations: { readOnlyHint: false, idempotentHint: false },
     schema: {
@@ -245,7 +316,17 @@ export class QuestTools {
       const id = await this.resolveQuestId(params);
       const comment = await this.commentController.createQuestComment({
         params: { id },
-        body: { body: params.body },
+        // Stamped unconditionally: this tool is only ever reached over MCP,
+        // so every comment it writes was written by a machine. Without it
+        // the row is indistinguishable from one the owner typed, because
+        // over MCP the session user IS the owner's account.
+        // `client` is self-reported, exactly as `clientInfo.name` would be,
+        // so taking it as a param costs nothing in trust. Reading it off
+        // `initialize` instead needs framework plumbing: the Streamable HTTP
+        // transport keeps no per-session state, and the provider is a
+        // process-global singleton, which is the same shape that already had
+        // to be backed out for protocol-version negotiation.
+        body: { body: params.body, source: { kind: "mcp", client: params.as } },
       });
 
       // The author is the session user, so it is whoever the caller is —
@@ -253,6 +334,8 @@ export class QuestTools {
       // something they already know.
       return {
         id: comment.id,
+        authorKind: this.authorKindOf(comment),
+        client: comment.source?.client,
         body: comment.body,
         createdAt: comment.createdAt,
         editedAt: comment.editedAt,
@@ -265,7 +348,9 @@ export class QuestTools {
    */
   quest_list = $tool({
     description:
-      'List quests for the project. Can filter by status (new, accepted, completed, shelved), search by title, or filter by a single tag (use `quest_tags` to discover existing tag values). Shelved quests — deliberately set aside as out of scope — are hidden unless you pass `status: "shelved"`.',
+      'List quests for the project. Can filter by status (new, accepted, completed, shelved), search by title, or filter by a single tag (use `quest_tags` to discover existing tag values). Shelved quests — deliberately set aside as out of scope — are hidden unless you pass `status: "shelved"`. ' +
+      "Rows carry `updatedAt`, `commentCount` and `lastCommentAt`, and the default order is newest-updated first: keep the timestamp of your last call, and any row whose `lastCommentAt` is later than it means someone spoke since. Read that quest with `quest_get` before writing back to it, or you will answer a conversation you have not seen. " +
+      'Descriptions and objectives are NOT inlined by default; pass `detail: "full"` only when you mean to read them all, and `quest_get` when you want one quest in depth.',
     title: "List quests",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -303,18 +388,40 @@ export class QuestTools {
       // needs its epic stamped (design §5.3).
       const epicRefs = await this.buildEpicRefMap(projectId);
 
+      // Same shape, second signal: one query for the page's whole
+      // discussion metadata. An agent listing a project has to be able to
+      // tell that someone spoke since it last looked, and the alternative
+      // is a `quest_get` per row.
+      const commentStats = await this.commentController.commentStatsFor(
+        result.content.map((quest) => quest.id),
+      );
+
+      // Bodies are opt-in. 24 quests came back as 61.9 KB when every
+      // description was inlined, which the client spilled to a file; the
+      // question a list answers is which quests exist and which ones moved.
+      const full = params.detail === "full";
+
       return {
         quests: result.content.map((quest) => ({
           id: quest.id,
           shortId: quest.shortId,
           title: quest.title,
-          description: quest.description,
+          description: full ? quest.description : undefined,
           area: quest.area,
           priority: quest.priority,
           status: this.getQuestStatus(quest),
-          objectives: quest.objectives,
+          objectives: full ? quest.objectives : undefined,
+          objectivesProgress: quest.metadata.objectivesProgress,
           tags: quest.tags,
           createdAt: quest.createdAt,
+          updatedAt: quest.updatedAt,
+          // The list itself, deliberately not: it would be a payload per
+          // row for a signal a count already carries. `quest.attachments`
+          // is on the row already, so this costs no lookup.
+          attachmentCount: quest.attachments.length,
+          commitCount: quest.commits?.length ?? 0,
+          commentCount: commentStats.get(quest.id)?.count ?? 0,
+          lastCommentAt: commentStats.get(quest.id)?.lastAt,
           acceptedAt: quest.acceptedAt,
           completedAt: quest.completedAt,
           shelvedAt: quest.shelvedAt,
@@ -476,7 +583,7 @@ export class QuestTools {
    */
   quest_shelve = $tool({
     description:
-      "Shelve a quest: set it aside as out of scope for now without deleting it. Shelved quests disappear from the default `quest_list` and from project progress/stats, but keep their description, objectives and history — call `quest_unshelve` to bring one back. Only quests still in the 'new' status can be shelved; abandon an accepted quest first. Use this instead of `quest_delete` when the idea is worth keeping but nobody intends to work it now.",
+      "Shelve a quest: set it aside as out of scope for now without deleting it. Shelved quests disappear from the default `quest_list` and from project progress/stats, but keep their description, objectives and history — call `quest_unshelve` to bring one back. Only quests still in the 'new' status can be shelved; call `quest_unassign` first on an accepted one. Use this instead of `quest_delete` when the idea is worth keeping but nobody intends to work it now.",
     title: "Shelve quest",
     annotations: {
       readOnlyHint: false,
@@ -534,11 +641,49 @@ export class QuestTools {
   });
 
   /**
+   * Send an accepted quest back to the backlog.
+   */
+  quest_unassign = $tool({
+    description:
+      "Send an accepted quest back to the backlog as 'new': clears the assignee and any reminders, and keeps everything written on it (description, objectives, comments, history). Use it when you took a quest you are not going to work, or when handing one back. " +
+      "It is also the step before `quest_shelve` on an accepted quest, which only accepts quests in 'new'. Nothing is deleted; `quest_delete` is the destructive one.",
+    title: "Unassign quest",
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+    },
+    schema: {
+      params: questUnassignParamsSchema,
+      result: questUnassignResultSchema,
+    },
+    handler: async ({ params }) => {
+      const id = await this.resolveQuestId(params);
+      // The controller method is still named `abandonQuest`. The UI renamed
+      // the action to Unassign on 2026-08-20 because it never deleted
+      // anything, and the tool follows the vocabulary rather than the
+      // method name.
+      const quest = await this.questController.abandonQuest({
+        params: { id },
+      });
+
+      return {
+        id: quest.id,
+        shortId: quest.shortId,
+        title: quest.title,
+        status: this.getQuestStatus(quest),
+      };
+    },
+  });
+
+  /**
    * Complete a quest.
    */
   quest_complete = $tool({
     description:
-      "Mark a quest as complete. All objectives must be completed first. Pass `message` with a short summary of what was actually done — the summary is persisted on the quest, shown in the UI, and returned by `quest_get` / `project_context` so future agents working on this project can read it. Leaving it blank is allowed but wastes a free way to hand context to the next session.",
+      "Mark a quest as complete. Every objective must be either ticked or waived. Pass `message` with a short summary of what was actually done — the summary is persisted on the quest, shown in the UI, and returned by `quest_get` / `project_context` so future agents working on this project can read it. Leaving it blank is allowed but wastes a free way to hand context to the next session. " +
+      "An objective you did not do is waived with a reason, never ticked: pass it in `waive` and it stays unticked with the reason shown on the quest. Ticking it instead would be indistinguishable from work that actually happened. " +
+      "If you know what shipped, pass `commits` too; `quest_commit_add` records any sha that turns up after the merge.",
     title: "Complete quest",
     annotations: {
       // destructive: state-altering; cannot be undone
@@ -553,7 +698,11 @@ export class QuestTools {
       const id = await this.resolveQuestId(params);
       const result = await this.questController.completeQuest({
         params: { id },
-        body: { message: params.message },
+        body: {
+          message: params.message,
+          waive: params.waive,
+          commits: params.commits,
+        },
       });
 
       return {
@@ -561,6 +710,42 @@ export class QuestTools {
         shortId: result.shortId,
         title: result.title,
         completedAt: result.completedAt!,
+      };
+    },
+  });
+
+  /**
+   * Record what shipped for a quest.
+   */
+  quest_commit_add = $tool({
+    description:
+      'Record a commit against a quest, so "what shipped for #16" is a field on the quest instead of a grep of the git log for its number. Use it when a change lands, and pass the subject line too: a bare sha means nothing to a reader without the repository in front of them. ' +
+      "Deduped on the sha, so recording the same commit twice is a no-op. Allowed on completed quests, which is the common case: the sha is usually known only after the merge. `quest_complete` takes the same list, for the commits you already have when you close the quest.",
+    title: "Record a commit on a quest",
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+    },
+    schema: {
+      params: questCommitAddParamsSchema,
+      result: questCommitAddResultSchema,
+    },
+    handler: async ({ params }) => {
+      const id = await this.resolveQuestId(params);
+      const quest = await this.questController.addQuestCommit({
+        params: { id },
+        body: {
+          sha: params.sha,
+          message: params.message,
+          repo: params.repo,
+        },
+      });
+
+      return {
+        id: quest.id,
+        shortId: quest.shortId,
+        commits: quest.commits ?? [],
       };
     },
   });
@@ -610,6 +795,21 @@ export class QuestTools {
         quest.projectId,
       );
 
+      // Skipped entirely when the quest carries no files, the common case,
+      // and the same reasoning as the discussion load above.
+      const attachments = quest.attachments.length
+        ? (
+            await this.questController.listQuestAttachments({
+              params: { id: quest.id },
+            })
+          ).map((file) => ({
+            id: file.fileId,
+            name: file.name,
+            mimeType: file.mimeType,
+            size: file.size,
+          }))
+        : [];
+
       return {
         id: quest.id,
         shortId: quest.shortId,
@@ -632,7 +832,88 @@ export class QuestTools {
         completionMessageUpdatedAt: quest.completionMessageUpdatedAt,
         tags: quest.tags,
         dependsOn_shortId,
+        commits: quest.commits ?? [],
+        attachments,
         epic,
+      };
+    },
+  });
+
+  /**
+   * Open one of a quest's attachments.
+   */
+  quest_attachment_get = $tool({
+    description:
+      "Fetch the actual content of one file attached to a quest. For images the bytes come back inline as an image block, so a screenshot the owner attached to explain a bug is something you can look at, not just a filename. Text-like files (txt/csv/json/markdown) are returned decoded; other binary types return a metadata note only. Pass `attachmentId` from a `quest_get` `attachments[].id`.",
+    title: "Get quest attachment",
+    annotations: { readOnlyHint: true, idempotentHint: true },
+    schema: {
+      params: questAttachmentGetParamsSchema,
+    },
+    handler: async ({ params }) => {
+      const id = await this.resolveQuestId(params);
+      const file = await this.questController.getQuestAttachment({
+        params: { id, fileId: params.attachmentId },
+      });
+
+      return this.attachmentContent.render(file);
+    },
+  });
+
+  /**
+   * Attach a file to a quest.
+   */
+  quest_attachment_add = $tool({
+    description:
+      "Attach a file to a quest: a screenshot, a probe log, a CSV of measurements. Use it when you have evidence rather than a claim, since a file on the quest is something the owner can look at where numbers pasted into a comment are something they have to take your word for. " +
+      "For screenshots and logs only, capped at 2 MB decoded, and restricted to the types `quest_attachment_get` can read back inline (png, jpeg, webp, gif, plain text, csv, markdown, json). Allowed on completed quests: evidence usually arrives at the end.",
+    title: "Attach a file to a quest",
+    annotations: { readOnlyHint: false, destructiveHint: false },
+    schema: {
+      params: questAttachmentAddParamsSchema,
+      result: questAttachmentAddResultSchema,
+    },
+    handler: async ({ params }) => {
+      const id = await this.resolveQuestId(params);
+
+      if (!this.attachableMimeTypes.includes(params.mimeType)) {
+        throw new BadRequestError(
+          `mimeType "${params.mimeType}" is not accepted here. Use one of: ${this.attachableMimeTypes.join(", ")}.`,
+        );
+      }
+
+      const bytes = this.decodeBase64(params.data);
+      if (bytes.byteLength > this.maxAttachmentBytes) {
+        throw new BadRequestError(
+          `Attachment is ${bytes.byteLength} bytes decoded, over the ${this.maxAttachmentBytes} byte limit. This is for screenshots and logs; put anything larger somewhere it belongs and link to it.`,
+        );
+      }
+
+      const uploaded = await this.questController.uploadAttachment({
+        body: {
+          file: new File([new Uint8Array(bytes)], params.name, {
+            type: params.mimeType,
+          }),
+        },
+      });
+      // Two calls, same as the UI: the bytes go to storage, then the file
+      // id is recorded on the quest. `addAttachment` dedupes on the id, so
+      // a retry cannot double up.
+      await this.questController.addAttachment({
+        params: { id },
+        body: { fileId: uploaded.fileId },
+      });
+
+      const files = await this.questController.listQuestAttachments({
+        params: { id },
+      });
+      const file = files.find((it) => it.fileId === uploaded.fileId);
+
+      return {
+        id: uploaded.fileId,
+        name: file?.name ?? params.name,
+        mimeType: file?.mimeType ?? params.mimeType,
+        size: file?.size ?? bytes.byteLength,
       };
     },
   });
@@ -666,11 +947,61 @@ export class QuestTools {
   });
 
   /**
+   * Tick or untick one objective, without resending the array.
+   */
+  quest_objective_set = $tool({
+    description:
+      "Set one objective's completed state on an accepted quest. Use this rather than `quest_update` whenever you are only ticking a box: a `quest_update` replace has to carry every objective, and one typo there renames an objective while one omission deletes it. " +
+      "Sets rather than toggles, so it is safe to repeat. Only works while the quest is accepted, because ticking work on a quest nobody has started is meaningless: `quest_accept` first.",
+    title: "Set a quest objective",
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+    },
+    schema: {
+      params: questObjectiveSetParamsSchema,
+      result: questObjectiveSetResultSchema,
+    },
+    handler: async ({ params }) => {
+      const id = await this.resolveQuestId(params);
+
+      // `completeObjective` FLIPS. Read first and call it only when the
+      // state actually differs, which is what makes this tool idempotent:
+      // an agent retrying after a dropped response must not untick the box
+      // it just ticked.
+      const quest = await this.questController.getQuestById({ params: { id } });
+      const target = quest.objectives.find((o) => o.id === params.objectiveId);
+      if (!target) {
+        throw new NotFoundError(
+          `Objective ${params.objectiveId} not found on quest #${quest.shortId}.`,
+        );
+      }
+
+      const after =
+        target.completed === params.completed
+          ? quest
+          : await this.questController.completeObjective({
+              params: { id },
+              body: { objectiveId: params.objectiveId },
+            });
+
+      return {
+        id: after.id,
+        shortId: after.shortId,
+        objectives: after.objectives,
+      };
+    },
+  });
+
+  /**
    * Update a quest.
    */
   quest_update = $tool({
     description:
-      "Update a quest's properties. Non-completed quests accept any field; completed quests only accept `completionMessage` (project memory stays curatable, but the quest body is frozen as an audit record). Omitted fields stay unchanged. Note: passing `objectives` REPLACES the entire objectives array — fetch the current quest first (quest_get or quest_list) and pass back the full list with your edits.",
+      "Update a quest's properties. Non-completed quests accept any field; completed quests only accept `completionMessage` (project memory stays curatable, but the quest body is frozen as an audit record). Omitted fields stay unchanged. " +
+      "Passing `objectives` REPLACES the entire array, so fetch the quest first and pass back the full list, each surviving item carrying the `id` it already had. That path is for rewording, reordering, adding or removing objectives; to tick or untick one, call `quest_objective_set` instead of resending everything. " +
+      "Nothing here stops you overwriting an edit someone made while you were working: pass `expectedUpdatedAt` from your last `quest_get` and a 409 will tell you to re-read instead.",
     title: "Update quest",
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {
@@ -688,9 +1019,28 @@ export class QuestTools {
         (params.dependsOn_shortId != null && params.dependsOn_shortId !== 0) ||
         (params.feedback_shortId != null && params.feedback_shortId !== 0) ||
         params.epic_number != null;
-      const current = needsProject
+      // An epic move is a write of its own (`attachQuest` sets `epicId`,
+      // which stamps `updatedAt`), and it happens BEFORE the field update
+      // below. So when both are requested the controller's own check would
+      // see a row this very call had just moved and refuse every time.
+      // Check here instead, before anything is written, and let the
+      // controller check when there is no epic move to get in the way.
+      const epicMove = params.epic_number != null;
+      const needsCurrent = needsProject || params.expectedUpdatedAt != null;
+      const current = needsCurrent
         ? await this.questController.getQuestById({ params: { id } })
         : undefined;
+
+      if (
+        epicMove &&
+        params.expectedUpdatedAt != null &&
+        current &&
+        current.updatedAt !== params.expectedUpdatedAt
+      ) {
+        throw new ConflictError(
+          `Quest #${current.shortId} changed since you read it: its updatedAt is ${current.updatedAt}, you passed ${params.expectedUpdatedAt}. Re-read the quest before writing.`,
+        );
+      }
 
       // Translate `dependsOn_shortId` for update: 0 = clear, integer =
       // resolve to global id within the same project as the quest.
@@ -767,6 +1117,9 @@ export class QuestTools {
           tags: params.tags,
           dependsOn,
           feedbackId,
+          // Already checked above when an epic move preceded this write;
+          // forwarding it there would compare against our own change.
+          expectedUpdatedAt: epicMove ? undefined : params.expectedUpdatedAt,
         },
       });
 

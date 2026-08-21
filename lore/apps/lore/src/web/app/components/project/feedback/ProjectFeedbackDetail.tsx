@@ -11,6 +11,7 @@ import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
+import { currentUserAtom } from "alepha/security";
 import { ExternalLink, Paperclip, Plus } from "lucide-react";
 import { Fragment, useState } from "react";
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
@@ -19,6 +20,7 @@ import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import QuestCreate from "../quest/QuestCreate.tsx";
+import FeedbackThread from "./FeedbackThread.tsx";
 
 export interface ProjectFeedbackDetailProps {
   feedback: FeedbackResource;
@@ -30,6 +32,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
   const { feedback } = props;
   const { tr } = useI18n<I18n, "en">();
   const [project] = useStore(currentProjectAtom);
+  const [currentUser] = useStore(currentUserAtom);
   const feedbackApi = useClient<FeedbackController>();
   const router = useRouter<AppRouter>();
   const toaster = useToast();
@@ -257,6 +260,17 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
             </dl>
           </section>
         )}
+
+        {/* The thread, under the item's own content: triage findings and
+            questions to the reporter used to have nowhere to live but a
+            quest that might never be created. */}
+        <section className="border-border border-t p-3">
+          <FeedbackThread
+            feedbackId={feedback.id}
+            currentUserId={currentUser?.id}
+            isOwner={project.createdBy === currentUser?.id}
+          />
+        </section>
       </div>
 
       {feedback.status === "pending" && (

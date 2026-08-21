@@ -54,7 +54,7 @@ apps/lore/                # This app
 └── public/               # Static assets served at /
 ```
 
-**Controllers (18)** — `AdminInvitation`, `Blight`, `Blob`, `Directory`, `Feedback`, `Folio`, `Insights`, `Invitation`, `Kanban`, `Milestone`, `Project`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `QuestComment`, `Sigil`, `SigilIngest`, `Version`.
+**Controllers (19)** — `AdminInvitation`, `Blight`, `Blob`, `Directory`, `Feedback`, `FeedbackComment`, `Folio`, `Insights`, `Invitation`, `Kanban`, `Milestone`, `Project`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `QuestComment`, `Sigil`, `SigilIngest`, `Version`.
 
 > `User`, `Session` and `Identity` were **deleted** when Lore moved onto the shared
 > `/account` area: they duplicated the framework's `MyProfileController`,
@@ -63,11 +63,11 @@ apps/lore/                # This app
 > `MySessionController`'s actions verbatim. Reach for the `alepha/api/users` and
 > `alepha/api/oauth` controllers instead of re-adding an app-local one.
 
-**Entities (24)** — `blightIgnoreRules`, `blights`, `feedback`, `files`, `folioBlobs`, `folioDirectories`, `folioLinks`, `folioNames`, `folioRevisions`, `folios`, `identities`, `invitations`, `members`, `milestones`, `projects`, `questComments`, `quests`, `sessions`, `sigilErrorGroups`, `sigilUniquesDaily`, `sigilViewsHourly`, `sigilVitalsHourly`, `sigils`, `users`.
+**Entities (25)** — `blightIgnoreRules`, `blights`, `feedback`, `feedbackComments`, `files`, `folioBlobs`, `folioDirectories`, `folioLinks`, `folioNames`, `folioRevisions`, `folios`, `identities`, `invitations`, `members`, `milestones`, `projects`, `questComments`, `quests`, `sessions`, `sigilErrorGroups`, `sigilUniquesDaily`, `sigilViewsHourly`, `sigilVitalsHourly`, `sigils`, `users`.
 
-**Services (18)** — `BlightRuleService`, `FeedbackRateLimiter`, `FolioBlobService`, `FolioDirectoryService`, `FolioHistoryService`, `FolioLinkService`, `FolioNameService`, `InvitationService`, `PinnedFolioFolder`, `ProjectLimits`, `ProjectSecurityService`, `QuestCsvFormatter`, `QuestCsvParser`, `QuestImportFormatProvider`, `QuestResourceMapper`, `QuestService`, `SigilIngestService`, `SigilTokenService`, plus `parsers/`.
+**Services (19)** — `BlightRuleService`, `FeedbackRateLimiter`, `FolioBlobService`, `FolioDirectoryService`, `FolioHistoryService`, `FolioLinkService`, `FolioNameService`, `InvitationService`, `PinnedFolioFolder`, `ProjectActivityService`, `ProjectLimits`, `ProjectSecurityService`, `QuestCsvFormatter`, `QuestCsvParser`, `QuestImportFormatProvider`, `QuestResourceMapper`, `QuestService`, `SigilIngestService`, `SigilTokenService`, plus `parsers/`.
 
-**MCP tools (8)** — `BlightTools`, `FeedbackTools`, `FolioTools` (absorbed the old `ArchiveTools`: `directory_*` / `blob_*` live here now), `InsightsTools`, `MilestoneTools`, `ProjectTools`, `QuestTools` (including `quest_comment_add`, and the discussion inlined on `quest_get`), `SigilTools`.
+**MCP tools (8)** — `BlightTools`, `FeedbackTools` (`feedback_comment_add`, plus the thread inlined on `feedback_get`), `FolioTools` (absorbed the old `ArchiveTools`: `directory_*` / `blob_*` live here now), `InsightsTools`, `MilestoneTools`, `ProjectTools` (including `project_activity`, the one call for everything that moved since a timestamp), `QuestTools` (`quest_comment_add`, `quest_objective_set`, `quest_unassign`, `quest_attachment_get` / `_add`, `quest_commit_add`, and the discussion inlined on `quest_get`), `SigilTools`.
 
 ## Routes
 

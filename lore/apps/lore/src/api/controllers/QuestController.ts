@@ -7,7 +7,9 @@ import { $secure, type UserAccountToken } from "alepha/security";
 import {
   $action,
   BadRequestError,
+  ConflictError,
   ForbiddenError,
+  NotFoundError,
   okSchema,
 } from "alepha/server";
 import { blights, QUEST_STATUS_PREFIX } from "../entities/blights.ts";
@@ -20,6 +22,7 @@ import {
   REMINDER_INTERVAL_MS,
   REMINDER_INTERVAL_VALUES,
 } from "../entities/quests.ts";
+import { questCommitSchema } from "../schemas/questCommitSchema.ts";
 import { questCreateSchema } from "../schemas/questCreateSchema.ts";
 import {
   type QuestResource,
@@ -181,6 +184,88 @@ export class QuestController {
     return this.questService.ensureObjectiveIds(objectives);
   }
 
+  /**
+   * The shape a caller sends to record a commit. `at` and `by` are stamped
+   * server-side, so a caller cannot backdate the trail or credit someone
+   * else with it.
+   */
+  protected readonly commitInputSchema = questCommitSchema
+    .pick({ sha: true, message: true, repo: true })
+    .extend({
+      sha: z
+        .string()
+        .regex(/^[0-9a-fA-F]{7,40}$/)
+        .describe("Commit sha, 7 to 40 hex characters."),
+    });
+
+  /**
+   * Append commits to a quest's trail, deduped on the sha.
+   *
+   * Normalized to lowercase because git prints shas in lowercase but a
+   * caller may not, and a trail listing the same commit twice under two
+   * casings is worse than useless. Idempotent: recording a sha the quest
+   * already carries leaves the trail alone rather than erroring, so an
+   * agent retrying a dropped call is safe.
+   */
+  protected appendCommits(
+    existing: Quest["commits"],
+    incoming: Array<{ sha: string; message?: string; repo?: string }>,
+    userId: string,
+    at: string,
+  ): Quest["commits"] {
+    const trail = [...(existing ?? [])];
+    const seen = new Set(trail.map((commit) => commit.sha.toLowerCase()));
+
+    for (const commit of incoming) {
+      const sha = commit.sha.toLowerCase();
+      if (seen.has(sha)) continue;
+      seen.add(sha);
+      trail.push({
+        sha,
+        message: commit.message?.trim() || undefined,
+        repo: commit.repo?.trim() || undefined,
+        at,
+        by: userId,
+      });
+    }
+
+    return trail;
+  }
+
+  /**
+   * Record what shipped for a quest.
+   *
+   * Allowed on completed quests, like `completionMessage`: the trail is
+   * project memory, and the sha is usually known only after the merge.
+   */
+  addQuestCommit = $action({
+    use: [$secure({ permissions: ["quest:update"] })],
+    schema: {
+      params: z.object({
+        id: z.integer(),
+      }),
+      body: this.commitInputSchema,
+      response: questResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      const quest = await this.quests.getOne({
+        where: { id: { eq: params.id } },
+      });
+      await this.security.assertMember(quest.projectId, user);
+
+      const updated = await this.quests.updateById(params.id, {
+        commits: this.appendCommits(
+          quest.commits,
+          [body],
+          user.id,
+          this.dt.nowISOString(),
+        ),
+      });
+
+      return this.mapQuestToResource(updated);
+    },
+  });
+
   createQuest = $action({
     use: [$secure({ permissions: ["quest:create"] }), $transactional()],
     schema: {
@@ -339,7 +424,13 @@ export class QuestController {
         params.id,
         user,
         "attach a file to",
-        ["new", "accepted", "shelved"],
+        // Completed included, unlike every other write on a quest: evidence
+        // arrives at the END. A screenshot or a probe log proving the work
+        // is what an agent has to hand once it closes the quest, and the
+        // alternative is numbers pasted into prose. The quest BODY stays
+        // frozen (`updateQuestById` still refuses), which is what the audit
+        // record is actually protecting.
+        ["new", "accepted", "shelved", "completed"],
       );
 
       if (quest.attachments.includes(body.fileId)) {
@@ -404,6 +495,69 @@ export class QuestController {
       );
 
       return files.filter((it) => it !== undefined);
+    },
+  });
+
+  /**
+   * One quest attachment's bytes (base64) plus its metadata.
+   *
+   * Backs the `quest_attachment_get` MCP tool, which wraps the bytes into
+   * an MCP `image` content block so an agent can actually look at the
+   * screenshot the owner attached. Before this existed, a file on a quest
+   * was invisible to every agent working it.
+   *
+   * Same two gates as `FeedbackController.getFeedbackAttachment`, which is
+   * the shape this copies: project membership, plus an IDOR guard that the
+   * `fileId` is one of THIS quest's own attachments. Without the second, a
+   * member could read any file in the system by id through a quest they
+   * can see. The 10 MB storage cap bounds the base64 payload (~13.4 MB).
+   */
+  getQuestAttachment = $action({
+    use: [$secure({ permissions: ["quest:read"] })],
+    schema: {
+      params: z.object({
+        id: z.integer(),
+        fileId: z.uuid(),
+      }),
+      response: z.object({
+        id: z.uuid(),
+        name: z.string(),
+        mimeType: z.string(),
+        size: z.integer(),
+        data: z.string().describe("Base64-encoded file bytes."),
+      }),
+    },
+    handler: async ({ params, user }) => {
+      const quest = await this.quests.getOne({
+        where: { id: { eq: params.id } },
+      });
+      await this.security.assertMember(quest.projectId, user);
+
+      // IDOR guard: only files hanging off THIS quest are readable.
+      if (!(quest.attachments ?? []).includes(params.fileId)) {
+        throw new NotFoundError("Attachment not found on this quest");
+      }
+
+      const file = await this.fileService.getFileById(params.fileId).catch(
+        // A row can outlive its blob (purge job, manual delete);
+        // `listQuestAttachments` silently drops those, so a caller reading
+        // from that list can legitimately arrive here with a dead id.
+        () => undefined,
+      );
+      if (!file) {
+        throw new NotFoundError("Attachment file missing");
+      }
+
+      const blob = await this.attachments.download(file);
+      const data = Buffer.from(await blob.arrayBuffer()).toString("base64");
+
+      return {
+        id: file.id,
+        name: file.name,
+        mimeType: file.mimeType,
+        size: file.size,
+        data,
+      };
     },
   });
 
@@ -1008,6 +1162,35 @@ export class QuestController {
          * accepted → completed transition.
          */
         message: z.string().meta({ size: "rich" }).optional(),
+        /**
+         * Objectives being closed WITHOUT having been done, each with the
+         * reason. They stay unticked and carry the reason on the record.
+         *
+         * Half the objectives on a real quest are manual ("walk the plateau
+         * in the live adventure"), and the all-ticked gate used to leave two
+         * options: tick a box for work you did not do, or leave a finished
+         * quest open. A false tick is the worse of the two, because nothing
+         * downstream can tell it from a real one.
+         *
+         * Only accepted here, never on `updateQuest`: waiving is part of
+         * closing, and a reason written at the moment of skipping says more
+         * than any up-front classification of the objective could.
+         */
+        waive: z
+          .array(
+            z.object({
+              objectiveId: z.integer().min(0),
+              reason: z.string().min(1),
+            }),
+          )
+          .optional(),
+        /**
+         * What shipped. Closing a quest and recording the commits is the
+         * call the caller is already making, so this is the natural place
+         * for it; `addQuestCommit` covers the sha that only turns up after
+         * the merge.
+         */
+        commits: z.array(this.commitInputSchema).optional(),
       }),
       response: questResourceSchema,
     },
@@ -1019,19 +1202,70 @@ export class QuestController {
         ["accepted"],
       );
 
-      // Check if all objectives are completed
-      if (quest.objectives.length > 0) {
-        const incompleteObjectives = quest.objectives.filter(
-          (obj) => !obj.completed,
-        );
-        if (incompleteObjectives.length > 0) {
+      const now = this.dt.nowISOString();
+
+      // Backfill ids before addressing anything by id, same invariant
+      // `completeObjective` keeps: what is read out of `objectives` goes
+      // back in with stable ids.
+      const objectives = this.ensureObjectiveIds(quest.objectives);
+      const waivedEvents: Quest["history"] = [];
+
+      for (const waiver of body?.waive ?? []) {
+        const target = objectives.find((o) => o.id === waiver.objectiveId);
+        if (!target) {
           throw new BadRequestError(
-            `Cannot complete quest: ${incompleteObjectives.length} objective(s) remain incomplete`,
+            `Cannot waive objective ${waiver.objectiveId}: quest #${quest.shortId} has no such objective.`,
           );
         }
+        if (target.completed) {
+          throw new BadRequestError(
+            `Cannot waive objective ${waiver.objectiveId} ("${target.title}"): it is already completed. A waiver records work that was NOT done.`,
+          );
+        }
+        const reason = waiver.reason.trim();
+        if (!reason) {
+          throw new BadRequestError(
+            `Cannot waive objective ${waiver.objectiveId} ("${target.title}") without a reason.`,
+          );
+        }
+        target.waivedReason = reason;
+        target.waivedBy = user.id;
+        target.waivedAt = now;
+        waivedEvents.push({
+          at: now,
+          by: user.id,
+          action: "objective_waived",
+          objectiveId: target.id,
+        });
       }
 
-      quest.completedAt = this.dt.nowISOString();
+      // Ticked or waived closes an objective; anything else still blocks.
+      const blocking = objectives.filter(
+        (obj) => !obj.completed && !obj.waivedReason,
+      );
+      if (blocking.length > 0) {
+        const named = blocking
+          .map((obj) => `${obj.id} ("${obj.title}")`)
+          .join(", ");
+        throw new BadRequestError(
+          `Cannot complete quest: ${blocking.length} objective(s) are neither completed nor waived: ${named}. Tick what was done, and pass the rest in \`waive\` with a reason.`,
+        );
+      }
+
+      quest.objectives = objectives;
+      if (waivedEvents.length > 0) {
+        quest.history = [...quest.history, ...waivedEvents];
+      }
+      if (body?.commits?.length) {
+        quest.commits = this.appendCommits(
+          quest.commits,
+          body.commits,
+          user.id,
+          now,
+        );
+      }
+
+      quest.completedAt = now;
       quest.completedBy = user.id;
       quest.kanbanColumn = undefined;
       // Reminders auto-stop when the quest is done (see Lore #42).
@@ -1040,7 +1274,7 @@ export class QuestController {
       const message = body?.message?.trim();
       if (message) {
         quest.completionMessage = message;
-        quest.completionMessageUpdatedAt = quest.completedAt;
+        quest.completionMessageUpdatedAt = now;
         // Embedded editor images become quest attachments so every
         // member can read them (see mergeEmbeddedAttachments).
         quest.attachments = this.questService.mergeEmbeddedAttachments(
@@ -1102,7 +1336,13 @@ export class QuestController {
   });
 
   updateQuestById = $action({
-    use: [$secure({ permissions: ["quest:update"] })],
+    // Transactional since `expectedUpdatedAt` landed: the version check is
+    // a read followed by a write, and outside a transaction two concurrent
+    // updates carrying the same token both read the old `updatedAt`, both
+    // pass, and the later one silently wins anyway, which is the exact
+    // failure the parameter exists to prevent. Same reasoning as
+    // `completeQuest`'s.
+    use: [$secure({ permissions: ["quest:update"] }), $transactional()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1142,6 +1382,17 @@ export class QuestController {
           // mirrors `areas.name`'s `.max(48)` so a too-long area is a clean
           // 400 from THIS schema, not a 500 thrown out of `ensureArea`.
           area: z.string().max(48).optional(),
+          /**
+           * Optimistic concurrency, opt-in: the `updatedAt` the caller last
+           * read. If the row has moved since, the update is refused with a
+           * 409 instead of quietly overwriting whatever the other writer
+           * put there.
+           *
+           * Never required. Two writers on one project is a when, not an
+           * if, but a caller that deliberately wants last-write-wins is
+           * still allowed to omit this, and every existing client does.
+           */
+          expectedUpdatedAt: z.datetime().optional(),
         }),
       response: questResourceSchema,
     },
@@ -1161,13 +1412,35 @@ export class QuestController {
         );
       }
 
+      // Checked before anything is validated or written, and inside this
+      // action's transaction. `history.at(-1)` costs nothing (the row is
+      // already loaded) and turns "someone changed it" into something the
+      // caller can act on.
+      if (
+        body.expectedUpdatedAt != null &&
+        body.expectedUpdatedAt !== quest.updatedAt
+      ) {
+        const last = quest.history.at(-1);
+        throw new ConflictError(
+          `Quest #${quest.shortId} changed since you read it: its updatedAt is ${quest.updatedAt}, you passed ${body.expectedUpdatedAt}${
+            last ? ` (last change: ${last.action})` : ""
+          }. Re-read the quest before writing.`,
+        );
+      }
+
       // On completed quests the only field that can be revised is the
       // completion summary — project memory is curatable, but the quest
       // body (title/description/objectives/…) stays frozen as an audit
       // record of what was closed.
       if (quest.completedAt) {
         const otherEdits = Object.entries(body).filter(
-          ([key, value]) => key !== "completionMessage" && value !== undefined,
+          ([key, value]) =>
+            key !== "completionMessage" &&
+            // A concurrency token is not an edit: passing it alongside a
+            // completionMessage rewrite must not read as trying to change
+            // the frozen body.
+            key !== "expectedUpdatedAt" &&
+            value !== undefined,
         );
         if (otherEdits.length > 0) {
           throw new BadRequestError(
@@ -1205,8 +1478,20 @@ export class QuestController {
       }
 
       const patch: Record<string, unknown> = { ...body };
+      // A precondition, not a column.
+      delete patch.expectedUpdatedAt;
       if (body.area !== undefined) {
         patch.area = ensuredArea?.name ?? body.area.trim();
+      }
+      // An objectives replace is an EDIT, not a fresh array: items that
+      // carry an id keep it, items that do not get a new one minted above
+      // the highest in use. Writing `body.objectives` straight through
+      // instead left ids off whatever the caller omitted, and the next read
+      // re-derived them by array position, so reordering or dropping one
+      // silently repointed every `objective_completed` history row at a
+      // different objective.
+      if (body.objectives !== undefined) {
+        patch.objectives = this.ensureObjectiveIds(body.objectives);
       }
       if (body.tags !== undefined) {
         patch.tags = normalizeQuestTags(body.tags);
@@ -1369,6 +1654,15 @@ export class QuestController {
       body: z.object({
         objectives: z.array(
           z.object({
+            /**
+             * The id this objective already has. Optional so the web
+             * editor can add a row without inventing one, but a caller
+             * that HAS the id must send it back: `ensureObjectiveIds`
+             * treats an array with no ids at all as legacy and numbers it
+             * by position, which repoints every `objective_completed`
+             * history row at whatever now sits at that index.
+             */
+            id: z.integer().min(0).optional(),
             title: z.string(),
             completed: z.boolean(),
           }),

@@ -1,6 +1,7 @@
 import { type Infer, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $entity, db } from "alepha/orm";
+import { questCommitSchema } from "../schemas/questCommitSchema.ts";
 import { questSourceSchema } from "../schemas/questSourceSchema.ts";
 import { epics } from "./epics.ts";
 import { feedback } from "./feedback.ts";
@@ -93,6 +94,23 @@ export const quests = $entity({
           id: z.integer().min(0).optional(),
           title: z.string(),
           completed: z.boolean(),
+          /**
+           * Why this objective was skipped rather than done, set when the
+           * quest was completed with it still unticked.
+           *
+           * A waived objective is NOT marked completed: it stays unticked
+           * and carries the reason instead. That is the whole point. A box
+           * ticked by someone who did not do the work looks exactly like a
+           * real one, which is worse than an honest gap, and the gate used
+           * to leave no third option.
+           *
+           * Written only by `completeQuest`, never by an objectives edit:
+           * waiving is part of closing a quest, not a property of the
+           * objective that anyone can set in passing.
+           */
+          waivedReason: z.string().optional(),
+          waivedBy: z.uuid().optional(),
+          waivedAt: z.datetime().optional(),
         }),
       ),
       [],
@@ -130,6 +148,7 @@ export const quests = $entity({
             "assigned",
             "unassigned",
             "objective_completed",
+            "objective_waived",
             "reminder_sent",
             "shelved",
             "unshelved",
@@ -223,6 +242,21 @@ export const quests = $entity({
      * needs a migration. See `questSourceSchema`.
      */
     source: questSourceSchema.optional(),
+    /**
+     * What shipped for this quest, appended as commits land.
+     *
+     * ⚠️ Optional with NO `db.default(...)` so the migration is a plain
+     * additive `ALTER TABLE ADD COLUMN`. A column DEFAULT triggers a table
+     * rebuild, and on D1 `DROP TABLE quests` fires `dependsOn`'s SET NULL
+     * against the copied rows AND cascades `quest_comments`, wiping every
+     * questline link and every discussion. See `apps/lore/CLAUDE.md` →
+     * "Migration safety on D1". Same reasoning as `epicId`.
+     *
+     * A JSON array rather than a `quest_commits` table because a handful of
+     * commits per quest is the expected shape, and a table would be a
+     * second cascade child on `quests` to worry about forever.
+     */
+    commits: z.array(questCommitSchema).optional(),
   }),
   indexes: [
     {
