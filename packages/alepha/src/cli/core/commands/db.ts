@@ -1072,9 +1072,7 @@ if (typeof registerHooks === "function") {
     this.log.info("");
   }
 
-  protected async resolveLastSnapshot(
-    migrationDir: string,
-  ): Promise<any | null> {
+  protected async resolveLastSnapshot(migrationDir: string): Promise<any> {
     // v1 layout: folder names are timestamp-prefixed (YYYYMMDDHHMMSS_name),
     // so a plain string sort orders them chronologically — the same
     // assumption drizzle-kit's own folder scan relies on.

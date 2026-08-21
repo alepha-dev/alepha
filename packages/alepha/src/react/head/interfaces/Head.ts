@@ -43,7 +43,7 @@ export interface Seo {
   /**
    * Content type - used for og:type (default: "website")
    */
-  type?: "website" | "article" | "product" | "profile" | string;
+  type?: "website" | "article" | "product" | "profile" | (string & {});
   /**
    * Image width in pixels - used for og:image:width
    */

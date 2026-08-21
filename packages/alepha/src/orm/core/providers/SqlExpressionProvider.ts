@@ -140,7 +140,7 @@ export class SqlExpressionProvider {
  * Anything Drizzle accepts inside a `sql` template — a column, a nested
  * fragment, or a bound value.
  */
-export type SqlLike = SQL | unknown;
+export type SqlLike = unknown;
 
 /**
  * Units understood by the interval-shaped helpers.

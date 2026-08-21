@@ -25,7 +25,7 @@ export interface D1Database {
    * caller goes through a session.
    */
   withSession?(
-    constraintOrBookmark?: D1SessionBookmark | D1SessionConstraint,
+    constraintOrBookmark?: (D1SessionBookmark & {}) | D1SessionConstraint,
   ): D1DatabaseSession;
 }
 

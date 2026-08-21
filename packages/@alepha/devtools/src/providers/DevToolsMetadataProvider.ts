@@ -667,7 +667,7 @@ export class DevToolsMetadataProvider {
     }
   }
 
-  protected getProviderName(provider?: "memory" | any): string {
+  protected getProviderName(provider?: any): string {
     if (!provider) {
       return "default";
     }

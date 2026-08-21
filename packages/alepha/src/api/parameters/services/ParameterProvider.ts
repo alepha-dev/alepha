@@ -751,8 +751,8 @@ export class ParameterProvider {
   public async getCurrentWithDefault(name: string): Promise<{
     current: ParameterWithStatus | null;
     next: ParameterWithStatus | null;
-    defaultValue: unknown | null;
-    currentValue: unknown | null;
+    defaultValue: unknown;
+    currentValue: unknown;
     schema: Record<string, unknown> | null;
     description: string | null;
   }> {

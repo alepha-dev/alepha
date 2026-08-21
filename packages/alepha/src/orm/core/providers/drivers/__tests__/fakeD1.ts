@@ -80,7 +80,7 @@ export class FakeD1 implements D1Database {
   public readonly executed: unknown[][] = [];
   /** Every constraint or bookmark `withSession` was opened with. */
   public readonly sessions: Array<
-    D1SessionBookmark | D1SessionConstraint | undefined
+    (D1SessionBookmark & {}) | D1SessionConstraint | undefined
   > = [];
   /** Flip to make subsequent calls hang, simulating a primary that stalls. */
   public stalling = false;
@@ -118,7 +118,7 @@ export class FakeD1 implements D1Database {
    * model a `workerd` build that predates the Sessions API.
    */
   public withSession?: (
-    constraintOrBookmark?: D1SessionBookmark | D1SessionConstraint,
+    constraintOrBookmark?: (D1SessionBookmark & {}) | D1SessionConstraint,
   ) => D1DatabaseSession = (constraintOrBookmark) => {
     this.sessions.push(constraintOrBookmark);
     return {

@@ -74,7 +74,7 @@ export interface CloudflareEmailSendMessage {
 
 export interface CloudflareEmailSendResult {
   id?: string;
-  status?: "queued" | "sent" | "bounced" | string;
+  status?: "queued" | "sent" | "bounced" | (string & {});
 }
 
 /**

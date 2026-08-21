@@ -1,3 +1,6 @@
+// Registers `alepha/security` so the swagger module can describe the auth
+// schemes it declares; there is nothing to bind.
+// oxlint-disable-next-line import/no-unassigned-import
 import "alepha/security";
 import { $module } from "alepha";
 import { AlephaServer, type RequestConfigSchema } from "alepha/server";

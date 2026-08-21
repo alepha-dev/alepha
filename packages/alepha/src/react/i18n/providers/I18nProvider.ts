@@ -543,7 +543,7 @@ export interface I18nLocalizeOptions {
    * @see https://day.js.org/docs/en/display/format
    * @see https://day.js.org/docs/en/display/from-now
    */
-  date?: string | "fromNow" | Intl.DateTimeFormatOptions;
+  date?: (string & {}) | "fromNow" | Intl.DateTimeFormatOptions;
   /**
    * Timezone to display dates in (when value is a Date or DateTime)
    * Uses IANA timezone names (e.g., "America/New_York", "Europe/Paris", "Asia/Tokyo")

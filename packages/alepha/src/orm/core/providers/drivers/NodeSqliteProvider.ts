@@ -31,6 +31,8 @@ import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
 
 (() => {
   if (process?.emit) {
+    // Captured to be restored, never called through this binding.
+    // oxlint-disable-next-line typescript/unbound-method
     const originalEmit = process.emit;
     process.emit = (event: any, warning: any, ...args: any[]) => {
       if (

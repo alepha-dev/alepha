@@ -124,7 +124,7 @@ export class AlsProvider {
    * whichever fork layer it physically lives, instead of flattening
    * fork-scoped state into the app-level store.
    */
-  public getLayer(key: string): AsyncLocalStorageData | undefined {
+  public getLayer(key: string): AsyncLocalStorageData {
     if (!this.als) {
       return undefined;
     }

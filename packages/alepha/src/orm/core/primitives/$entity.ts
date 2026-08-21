@@ -108,7 +108,7 @@ export interface EntityPrimitiveOptions<
          * }]
          * ```
          */
-        expressions: (self: Record<Keys & string, any>) => (SQL | any)[];
+        expressions: (self: Record<Keys & string, any>) => any[];
         /**
          * Whether this should be a unique index (enforces uniqueness constraint).
          */

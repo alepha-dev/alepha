@@ -101,7 +101,7 @@ export interface RoomContext<TClient extends TWSObject, TState> {
 export type RoomMethod<TClient extends TWSObject, TState> = (
   room: RoomContext<TClient, TState>,
   ...args: any[]
-) => any | Promise<any>;
+) => any;
 
 /**
  * Options for the {@link $room} primitive — a stateful, optionally

@@ -57,7 +57,7 @@ const namedIcons: Record<string, IconComponent> = {
  * component. Returns `undefined` if not found.
  */
 export const iconFor = (
-  hint?: IconHint | string | null,
+  hint?: IconHint | (string & {}) | null,
 ): IconComponent | undefined => {
   if (!hint) return undefined;
   return namedIcons[hint as string];

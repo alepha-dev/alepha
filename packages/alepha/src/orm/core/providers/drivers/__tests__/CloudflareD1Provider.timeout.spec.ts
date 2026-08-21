@@ -40,10 +40,14 @@ describe("CloudflareD1Provider timeout", () => {
     binding.stalling = true;
 
     const pending = provider.execute("select 1" as never);
-    const settled = await expect(pending).rejects.toThrow(/timed out/i);
+    // The assertion is attached BEFORE the clock moves, on purpose: `pending`
+    // rejects during the `travel()` below, and with no handler attached yet
+    // that surfaces as an unhandled rejection. It is awaited two lines down.
+    // oxlint-disable-next-line vitest/valid-expect
+    const settled = expect(pending).rejects.toThrow(/timed out/i);
 
     await time.travel([6, "seconds"]);
-    settled;
+    await settled;
   });
 
   it("honours an explicit DATABASE_TIMEOUT", async () => {
@@ -51,12 +55,16 @@ describe("CloudflareD1Provider timeout", () => {
     binding.stalling = true;
 
     const pending = provider.execute("select 1" as never);
-    const settled = await expect(pending).rejects.toThrow(/timed out/i);
+    // The assertion is attached BEFORE the clock moves, on purpose: `pending`
+    // rejects during the `travel()` below, and with no handler attached yet
+    // that surfaces as an unhandled rejection. It is awaited two lines down.
+    // oxlint-disable-next-line vitest/valid-expect
+    const settled = expect(pending).rejects.toThrow(/timed out/i);
 
     // Only 2s of travel: the default 5s budget would still be pending here,
     // so this fails if the configured value is ignored.
     await time.travel([2, "seconds"]);
-    settled;
+    await settled;
   });
 
   it("leaves queries unbounded when DATABASE_TIMEOUT is 0", async () => {

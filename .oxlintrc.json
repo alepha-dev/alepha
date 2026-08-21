@@ -71,7 +71,14 @@
     // above it. Enabling one while disabling the other would be incoherent.
     // An import kept only for its side effects, in a codebase where side
     // effects belong in the DI container.
-    "import/no-unassigned-import": "error",
+    //
+    // The `allow` list is the set where a side-effect import IS the interface:
+    // a stylesheet has nothing to export, and dayjs plugins and locales
+    // register themselves onto the shared dayjs instance by being imported.
+    "import/no-unassigned-import": [
+      "error",
+      { "allow": ["**/*.css", "dayjs/plugin/*", "dayjs/locale/*"] }
+    ],
     // `reverse()` mutates in place; `toReversed()` is what almost every call
     // site meant.
     "unicorn/no-array-reverse": "error",
@@ -164,5 +171,26 @@
     // Control characters in regexes are intentional here — ANSI stripping and
     // the log formatters. Biome's equivalent was suppressed at four sites.
     "no-control-regex": "off"
-  }
+  },
+  "overrides": [
+    {
+      // `unbound-method` guards a real bug — a method passed as a callback
+      // loses its `this` — but nothing in a spec file does that. What specs DO
+      // do is name a method without calling it, three ways the rule cannot
+      // tell apart from the bug: `expect(mockLogger.error).toHaveBeenCalled()`,
+      // save-and-restore patching (`const original = process.stdout.write`),
+      // and pulling one method off a prototype to test it in isolation. All 13
+      // findings in specs were one of those; the rule stays on for src/.
+      "files": [
+        "**/*.spec.ts",
+        "**/*.spec.tsx",
+        "**/__tests__/**",
+        "**/test/**",
+        "**/e2e/**"
+      ],
+      "rules": {
+        "typescript/unbound-method": "off"
+      }
+    }
+  ]
 }

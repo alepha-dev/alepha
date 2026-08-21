@@ -113,6 +113,8 @@ export class CloudflareD1Provider extends DatabaseProvider {
    */
   public sessionsEnabled(): boolean {
     return (
+      // An existence check on the binding, not a call.
+      // oxlint-disable-next-line typescript/unbound-method
       this.env.DATABASE_D1_MODE === "sessions" && Boolean(this.d1?.withSession)
     );
   }

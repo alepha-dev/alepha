@@ -2,6 +2,8 @@ import { Alepha, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { describe, it } from "vitest";
 
+// Loads the module under test for its registration side effect.
+// oxlint-disable-next-line import/no-unassigned-import
 import "../index.ts";
 import { CronProvider } from "../providers/CronProvider.ts";
 

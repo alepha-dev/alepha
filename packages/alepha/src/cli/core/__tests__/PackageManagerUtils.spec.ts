@@ -129,7 +129,7 @@ describe("PackageManagerUtils", () => {
  */
 describe("getWorkspaceContext — workspace membership", () => {
   const seed = async (
-    files: Record<string, unknown | string>,
+    files: Record<string, unknown>,
   ): Promise<TestPackageManagerUtils> => {
     const alepha = Alepha.create()
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })

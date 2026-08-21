@@ -626,7 +626,7 @@ export class RqbExecutor {
     );
   }
 
-  protected databaseClassOf(provider: DatabaseProvider): any | undefined {
+  protected databaseClassOf(provider: DatabaseProvider): any {
     const connection = provider.db as any;
     if (!connection) return undefined;
 

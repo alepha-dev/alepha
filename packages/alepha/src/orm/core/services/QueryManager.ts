@@ -288,7 +288,7 @@ export class QueryManager {
    * Map a filter operator to a SQL query.
    */
   public mapOperatorToSql(
-    operator: FilterOperators<any> | any,
+    operator: any,
     column: PgColumn,
     columnSchema?: ZObject,
     columnName?: string,

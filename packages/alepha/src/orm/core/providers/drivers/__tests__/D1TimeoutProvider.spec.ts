@@ -34,10 +34,14 @@ describe("D1TimeoutProvider", () => {
     const wrapped = timeouts.wrap(new FakeD1(stall), [5, "seconds"]);
 
     const pending = wrapped.prepare("select 1").all();
-    const settled = await expect(pending).rejects.toThrow(/timed out/i);
+    // The assertion is attached BEFORE the clock moves, on purpose: `pending`
+    // rejects during the `travel()` below, and with no handler attached yet
+    // that surfaces as an unhandled rejection. It is awaited two lines down.
+    // oxlint-disable-next-line vitest/valid-expect
+    const settled = expect(pending).rejects.toThrow(/timed out/i);
 
     await time.travel([6, "seconds"]);
-    settled;
+    await settled;
   });
 
   it("rejects a stalled batch, not just a stalled statement", async () => {
@@ -45,10 +49,14 @@ describe("D1TimeoutProvider", () => {
     const wrapped = timeouts.wrap(new FakeD1(stall), [5, "seconds"]);
 
     const pending = wrapped.batch([]);
-    const settled = await expect(pending).rejects.toThrow(/timed out/i);
+    // The assertion is attached BEFORE the clock moves, on purpose: `pending`
+    // rejects during the `travel()` below, and with no handler attached yet
+    // that surfaces as an unhandled rejection. It is awaited two lines down.
+    // oxlint-disable-next-line vitest/valid-expect
+    const settled = expect(pending).rejects.toThrow(/timed out/i);
 
     await time.travel([6, "seconds"]);
-    settled;
+    await settled;
   });
 
   it("leaves a query that answers in time untouched", async () => {
@@ -111,9 +119,13 @@ describe("D1TimeoutProvider", () => {
       );
 
       const pending = wrapped.prepare("select 1").all();
-      const settled = await expect(pending).rejects.toThrow(/timed out/i);
+      // The assertion is attached BEFORE the clock moves, on purpose: `pending`
+      // rejects during the `travel()` below, and with no handler attached yet
+      // that surfaces as an unhandled rejection. It is awaited two lines down.
+      // oxlint-disable-next-line vitest/valid-expect
+      const settled = expect(pending).rejects.toThrow(/timed out/i);
       await time.travel([6, "seconds"]);
-      settled;
+      await settled;
 
       // The query D1 never answered finally errors, long after we stopped
       // waiting. Nothing is attached to it any more unless the wrapper kept
@@ -135,13 +147,17 @@ describe("D1TimeoutProvider", () => {
 
       const session = wrapped.withSession?.("first-unconstrained");
       const pending = session?.prepare("select 1").all();
-      const settled = await expect(pending).rejects.toThrow(/timed out/i);
+      // The assertion is attached BEFORE the clock moves, on purpose: `pending`
+      // rejects during the `travel()` below, and with no handler attached yet
+      // that surfaces as an unhandled rejection. It is awaited two lines down.
+      // oxlint-disable-next-line vitest/valid-expect
+      const settled = expect(pending).rejects.toThrow(/timed out/i);
 
       // The budget is on by default on serverless, so a wrapper that dropped
       // `withSession` would not merely lose the ceiling: it would make the
       // method vanish and take read replication down with it.
       await time.travel([6, "seconds"]);
-      settled;
+      await settled;
     });
 
     it("keeps withSession absent when the runtime has none", async () => {
@@ -212,10 +228,14 @@ describe("D1TimeoutProvider", () => {
       });
 
       const pending = wrapped.prepare("SELECT * from quests").all();
-      const settled = await expect(pending).rejects.toThrow(/timed out/i);
+      // The assertion is attached BEFORE the clock moves, on purpose: `pending`
+      // rejects during the `travel()` below, and with no handler attached yet
+      // that surfaces as an unhandled rejection. It is awaited two lines down.
+      // oxlint-disable-next-line vitest/valid-expect
+      const settled = expect(pending).rejects.toThrow(/timed out/i);
 
       await time.travel([6, "seconds"]);
-      settled;
+      await settled;
     });
 
     it("treats a CTE as a write, since it may wrap an insert", async () => {
@@ -248,10 +268,14 @@ describe("D1TimeoutProvider", () => {
       const wrapped = timeouts.wrap(new FakeD1(stall), [5, "seconds"]);
 
       const pending = wrapped.prepare("insert into quests values (1)").run();
-      const settled = await expect(pending).rejects.toThrow(/timed out/i);
+      // The assertion is attached BEFORE the clock moves, on purpose: `pending`
+      // rejects during the `travel()` below, and with no handler attached yet
+      // that surfaces as an unhandled rejection. It is awaited two lines down.
+      // oxlint-disable-next-line vitest/valid-expect
+      const settled = expect(pending).rejects.toThrow(/timed out/i);
 
       await time.travel([6, "seconds"]);
-      settled;
+      await settled;
     });
   });
 });
