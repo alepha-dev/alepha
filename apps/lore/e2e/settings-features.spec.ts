@@ -45,9 +45,7 @@ test.describe("Project settings — feature toggles", () => {
     );
     // The wizard lands on `/<slug>` — the project's URL identity is the whole
     // first segment now, not an id behind a `/p/` prefix.
-    const projectSlug = new URL(page.url()).pathname
-      .split("/")
-      .filter(Boolean)[0];
+    const projectSlug = new URL(page.url()).pathname.split("/").find(Boolean);
     expect(projectSlug).toBeTruthy();
 
     // Kanban is a view of the Quests page now, not a

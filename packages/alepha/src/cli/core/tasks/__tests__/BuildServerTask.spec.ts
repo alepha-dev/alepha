@@ -119,6 +119,9 @@ describe("BuildServerTask DO re-export", () => {
       expect(out).toContain('import{createRequire as i}from"node:module"');
       // The rewritten binding is a require that throws only when CALLED.
       const factory = out.slice(out.indexOf("var S=") + "var S=".length);
+      // The point of the test: evaluate the binding this task rewrote into the
+      // bundle and prove it throws only when called.
+      // oxlint-disable-next-line typescript/no-implied-eval
       const S = new Function(
         `return ${factory.slice(0, factory.lastIndexOf(",x=1;"))}`,
       )();
@@ -190,6 +193,9 @@ describe("BuildServerTask DO re-export", () => {
       const out = createTask().testStubImportMetaUrl(chunk, "BrcTAm3C.js");
       expect(out).not.toContain("import.meta.url");
       // Evaluating the rewritten chunk must not throw and must yield a URL.
+      // The point of the test: evaluate the binding this task rewrote into the
+      // bundle and prove it throws only when called.
+      // oxlint-disable-next-line typescript/no-implied-eval
       const href = new Function(`${out}return s;`)();
       expect(href).toBe("file:///assets/Shadow.png");
     });
@@ -272,6 +278,9 @@ describe("BuildServerTask DO re-export", () => {
       expect(out).toContain('var m="stub import.meta.url in chunks"');
       expect(out).toContain('new URL("./a.png","file:///server/y.js")');
       // The whole point: the rewritten chunk is still valid JavaScript.
+      // The point of the test: evaluate the binding this task rewrote into the
+      // bundle and prove it throws only when called.
+      // oxlint-disable-next-line typescript/no-implied-eval
       expect(() => new Function(out)).not.toThrow();
     });
 

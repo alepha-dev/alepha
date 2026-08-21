@@ -127,6 +127,8 @@ describe("CloudflareEmailProvider — REST fallback", () => {
       body: "<p>hi</p>",
     });
 
+    // Test fixture: the body is a string the test just wrote.
+    // oxlint-disable-next-line typescript/no-base-to-string
     expect(JSON.parse(String(provider.requests[0].init.body))).toEqual({
       to: ["a@example.com", "b@example.com"],
       from: EMAIL_FROM,

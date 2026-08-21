@@ -140,6 +140,8 @@ const FALLBACK_RATIO = 0.57;
 
 const RATIOS: Map<string, number> = new Map(
   WIDTH_BUCKETS.flatMap(([ratio, chars]) =>
+    // Width buckets are ASCII characters; there is nothing multi-unit to split.
+    // oxlint-disable-next-line typescript/no-misused-spread
     [...chars].map((char) => [char, ratio] as [string, number]),
   ),
 );

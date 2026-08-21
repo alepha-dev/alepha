@@ -389,6 +389,9 @@ export interface AlephaTableBaseProps<T> {
 }
 
 const defaultRowKey = (item: unknown): string =>
+  // Coercion at a boundary: the value is a form/route/chart primitive whose
+  // declared type is wider than what can reach here.
+  // oxlint-disable-next-line typescript/no-base-to-string
   String((item as { id?: unknown })?.id ?? Math.random());
 
 const EMPTY_FILTERS_SCHEMA = z.object({}) as ZObject;

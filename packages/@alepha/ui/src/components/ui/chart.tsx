@@ -151,6 +151,9 @@ function ChartTooltipContent({
     }
 
     const [item] = payload;
+    // Coercion at a boundary: the value is a form/route/chart primitive whose
+    // declared type is wider than what can reach here.
+    // oxlint-disable-next-line typescript/restrict-template-expressions
     const key = `${labelKey ?? item?.dataKey ?? item?.name ?? "value"}`;
     const itemConfig = getPayloadConfigFromPayload(config, item, key);
     const value =
@@ -199,6 +202,9 @@ function ChartTooltipContent({
         {payload
           .filter((item) => item.type !== "none")
           .map((item, index) => {
+            // Coercion at a boundary: the value is a form/route/chart primitive whose
+            // declared type is wider than what can reach here.
+            // oxlint-disable-next-line typescript/restrict-template-expressions
             const key = `${nameKey ?? item.name ?? item.dataKey ?? "value"}`;
             const itemConfig = getPayloadConfigFromPayload(config, item, key);
             const indicatorColor = color ?? item.payload?.fill ?? item.color;
@@ -298,6 +304,9 @@ function ChartLegendContent({
       {payload
         .filter((item) => item.type !== "none")
         .map((item, index) => {
+          // Coercion at a boundary: the value is a form/route/chart primitive whose
+          // declared type is wider than what can reach here.
+          // oxlint-disable-next-line typescript/restrict-template-expressions
           const key = `${nameKey ?? item.dataKey ?? "value"}`;
           const itemConfig = getPayloadConfigFromPayload(config, item, key);
 

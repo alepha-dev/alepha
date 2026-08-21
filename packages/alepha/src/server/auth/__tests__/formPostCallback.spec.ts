@@ -87,6 +87,8 @@ describe("form_post callback on the Node adapter", () => {
 
     const form = await request?.formData();
     expect(form?.get("code")).toBe("abc");
+    // Test fixture: the body is a string the test just wrote.
+    // oxlint-disable-next-line typescript/no-base-to-string
     expect(String(form?.get("user"))).toContain("Ada");
   });
 

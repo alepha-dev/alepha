@@ -765,6 +765,8 @@ describe("Schema migration", () => {
         migrate: (old: unknown) => {
           const prev = old as Record<string, unknown>;
           return {
+            // Test fixture: the body is a string the test just wrote.
+            // oxlint-disable-next-line typescript/no-base-to-string
             name: String(prev.firstName ?? "unknown"),
             age: 30,
           };

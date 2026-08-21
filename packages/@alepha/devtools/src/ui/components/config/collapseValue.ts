@@ -11,6 +11,7 @@ const MAX_KEYS = 2;
 export const collapse = (value: unknown): string => {
   if (value === null) return "null";
   if (value === undefined) return "undefined";
+  // oxlint-disable-next-line typescript/no-base-to-string
   if (typeof value !== "object") return JSON.stringify(value) ?? String(value);
 
   if (Array.isArray(value)) {
@@ -37,5 +38,6 @@ const leaf = (value: unknown): string => {
   if (value === null) return "null";
   if (Array.isArray(value)) return `[${value.length}]`;
   if (typeof value === "object") return "{…}";
+  // oxlint-disable-next-line typescript/no-base-to-string
   return JSON.stringify(value) ?? String(value);
 };

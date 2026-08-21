@@ -395,6 +395,9 @@ describe("BuildCloudflareTask", () => {
         const source = await fs.readTextFile(ENTRY);
         const start = source.indexOf("const isEdgeCacheable");
         const end = source.indexOf("export default");
+        // The point of the test: compile the `isEdgeCacheable` helper out of the
+        // worker entry point this task generates, and run it against real requests.
+        // oxlint-disable-next-line typescript/no-implied-eval
         return new Function(
           `${source.slice(start, end)}; return isEdgeCacheable;`,
         )() as (request: Request, response?: Response) => boolean;

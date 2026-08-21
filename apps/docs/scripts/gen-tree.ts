@@ -338,7 +338,7 @@ export class TreeCommand {
       }
       return null;
     } catch (error) {
-      this.log.trace(`Failed to get git last modified: ${error}`);
+      this.log.trace("Failed to get git last modified:", error);
       return null;
     }
   }

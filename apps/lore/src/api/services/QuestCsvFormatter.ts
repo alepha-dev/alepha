@@ -51,7 +51,11 @@ export class QuestCsvFormatter {
         QUEST_CSV_HEADER.map((col) => {
           const v = row[col];
           if (col === "objectives") return this.escape(JSON.stringify(v));
-          return this.escape(String(v));
+          // A structured cell has to be JSON; `String(v)` would write
+          // `[object Object]` into the export.
+          return this.escape(
+            typeof v === "object" && v !== null ? JSON.stringify(v) : String(v),
+          );
         }).join(","),
       );
     }

@@ -182,7 +182,7 @@ describe("AppRouter route table", () => {
     const unreserved = new Set<string>();
     for (const page of pageApi.getPages()) {
       const path = pageApi.pathname(page.name, { params });
-      const first = path.split("/").filter(Boolean)[0];
+      const first = path.split("/").find(Boolean);
       // Skip the project subtree itself (it resolves to the sample slug) and
       // the wildcard catch-all.
       if (!first || first === "sds" || first.startsWith("*")) {

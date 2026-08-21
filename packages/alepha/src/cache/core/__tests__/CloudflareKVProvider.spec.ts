@@ -22,6 +22,8 @@ class FakeKV {
   async get(key: string, type?: "text" | "arrayBuffer"): Promise<any> {
     const value = this.store.get(key);
     if (value === undefined) return null;
+    // Test fixture: the body is a string the test just wrote.
+    // oxlint-disable-next-line typescript/no-base-to-string
     return type === "arrayBuffer" ? value : String(value);
   }
 

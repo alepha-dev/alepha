@@ -453,7 +453,10 @@ function Combobox(props: ComboboxProps) {
       ? (props.value as unknown[]).map(String)
       : []
     : props.value != null
-      ? [String(props.value)]
+      ? // Coercion at a boundary: the value is a form/route/chart primitive whose
+        // declared type is wider than what can reach here.
+        // oxlint-disable-next-line typescript/no-base-to-string
+        [String(props.value)]
       : [];
 
   const labelFor = (val: string) =>
@@ -752,7 +755,13 @@ const useAsyncLoader = (
           cache.current.set("", result);
           setData(result);
 
+          // Coercion at a boundary: the value is a form/route/chart primitive whose
+          // declared type is wider than what can reach here.
+          // oxlint-disable-next-line typescript/no-base-to-string
           if (!isShort && defaultValue != null && String(defaultValue) !== "") {
+            // Coercion at a boundary: the value is a form/route/chart primitive whose
+            // declared type is wider than what can reach here.
+            // oxlint-disable-next-line typescript/no-base-to-string
             const resolved = await loader("", [String(defaultValue)]);
             if (resolved.length > 0) {
               setData((prev) => {

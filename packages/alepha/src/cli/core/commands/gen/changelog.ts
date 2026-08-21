@@ -178,9 +178,9 @@ export class ChangelogCommand {
     const tags = tagsOutput
       .trim()
       .split("\n")
-      .filter((tag) => tag.match(/^\d+\.\d+\.\d+$/));
+      .find((tag) => tag.match(/^\d+\.\d+\.\d+$/));
 
-    return tags[0] || null;
+    return tags || null;
   }
 
   // ---------------------------------------------------------------------------

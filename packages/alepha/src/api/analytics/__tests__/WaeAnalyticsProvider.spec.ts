@@ -51,6 +51,8 @@ class TestWaeAnalyticsProvider extends WaeAnalyticsProvider {
     _input: RequestInfo | URL,
     init?: RequestInit,
   ): Promise<Response> {
+    // Test fixture: the body is a string the test just wrote.
+    // oxlint-disable-next-line typescript/no-base-to-string
     const sql = String(init?.body ?? "");
     const rows = await this.fakeEngine.query(sql);
     return new Response(JSON.stringify({ data: rows }), {

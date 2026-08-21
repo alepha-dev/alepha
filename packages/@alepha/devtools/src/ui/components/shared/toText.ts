@@ -19,6 +19,7 @@ export const toText = (value: unknown): string => {
   }
   if (typeof value === "object") {
     try {
+      // oxlint-disable-next-line typescript/no-base-to-string
       return JSON.stringify(value) ?? String(value);
     } catch {
       // Cyclic, or a BigInt in the graph. Better a partial answer than a throw
@@ -26,5 +27,7 @@ export const toText = (value: unknown): string => {
       return Object.prototype.toString.call(value);
     }
   }
+  // Narrowed to a primitive above, which the rule cannot follow.
+  // oxlint-disable-next-line typescript/no-base-to-string
   return String(value);
 };

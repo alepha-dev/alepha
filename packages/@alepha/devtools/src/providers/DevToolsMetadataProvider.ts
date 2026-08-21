@@ -161,7 +161,9 @@ export class DevToolsMetadataProvider {
       description: storage.options.description,
       mimeTypes: storage.options.mimeTypes,
       maxSize: storage.options.maxSize,
-      ttl: storage.options.ttl ? String(storage.options.ttl) : undefined,
+      ttl: storage.options.ttl
+        ? this.dateTime.duration(storage.options.ttl).toISOString()
+        : undefined,
       provider: this.getProviderName(storage.options.provider),
     }));
   }

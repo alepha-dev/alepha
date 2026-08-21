@@ -228,6 +228,9 @@ export class ReactServerTemplateProvider {
       props: layer.props,
       error: layer.error
         ? {
+            // Deliberately flattening an Error for the SSR payload: `name` and `message`
+            // are non-enumerable, which is why they are re-added on the next lines.
+            // oxlint-disable-next-line typescript/no-misused-spread
             ...layer.error,
             name: layer.error.name,
             message: layer.error.message,

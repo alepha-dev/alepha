@@ -447,12 +447,12 @@ export class ParameterProvider {
     const pastVersions = sorted.filter(
       (v) => new Date(v.activationDate) <= effectiveNow,
     );
-    const futureVersions = sorted.filter(
+    const nextVersionCandidate = sorted.find(
       (v) => new Date(v.activationDate) > effectiveNow,
     );
 
     const currentVersion = pastVersions[pastVersions.length - 1];
-    const nextVersion = futureVersions[0];
+    const nextVersion = nextVersionCandidate;
 
     return sorted.map((v) => {
       let status: ParameterStatus;

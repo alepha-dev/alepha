@@ -212,7 +212,7 @@ export const createProjectViaWizard = async (
     { timeout: 15_000 },
   );
 
-  const slug = new URL(page.url()).pathname.split("/").filter(Boolean)[0];
+  const slug = new URL(page.url()).pathname.split("/").find(Boolean);
   expect(slug).toBeTruthy();
 
   // Both identities, because callers need both: every URL takes the slug,

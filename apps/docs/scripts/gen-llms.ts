@@ -131,7 +131,7 @@ export class LlmsCommand {
             copiedCount++;
             this.log.trace(`Copied: ${doc.slug}.md`);
           } catch (error) {
-            this.log.warn(`Failed to copy ${doc.slug}: ${error}`);
+            this.log.warn(`Failed to copy ${doc.slug}:`, error);
           }
         }
 

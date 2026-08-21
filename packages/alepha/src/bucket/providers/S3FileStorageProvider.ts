@@ -203,7 +203,7 @@ export class S3FileStorageProvider implements FileStorageProvider {
       this.log.trace(`File uploaded successfully: ${fileId}`);
       return fileId;
     } catch (error) {
-      this.log.error(`Failed to upload file: ${error}`);
+      this.log.error("Failed to upload file:", error);
       // An `AlephaError` came from this framework and already says what it
       // means — `InvalidFileError` carries a status, and re-dressing it as a
       // generic "Upload failed" dropped that status on the floor, so a refusal
@@ -362,7 +362,7 @@ export class S3FileStorageProvider implements FileStorageProvider {
     try {
       await client.deleteObject(this.key(bucketName, fileId));
     } catch (error) {
-      this.log.error(`Failed to delete file: ${error}`);
+      this.log.error("Failed to delete file:", error);
       if (error instanceof Error) {
         throw new FileNotFoundError("Error deleting file", { cause: error });
       }
@@ -414,7 +414,7 @@ export class S3FileStorageProvider implements FileStorageProvider {
           await Promise.all(keys.map((key) => client.deleteObject(key)));
         }
       } catch (error) {
-        this.log.error(`Failed to delete files: ${error}`);
+        this.log.error("Failed to delete files:", error);
         if (error instanceof Error) {
           throw new FileNotFoundError("Error deleting files", { cause: error });
         }
