@@ -1,4 +1,5 @@
 import { z } from "alepha";
+import { projectActivityResultSchema as apiProjectActivityResultSchema } from "../../api/schemas/projectActivitySchema.ts";
 import {
   epicStatusSchema,
   prioritySchema,
@@ -175,3 +176,29 @@ export const projectContextResultSchema = z.object({
    */
   preferredLanguage: z.string().optional(),
 });
+
+// -----------------------------------------------------------------------------
+// project_activity
+// -----------------------------------------------------------------------------
+
+export const projectActivityParamsSchema = projectParamsSchema.extend({
+  since: z
+    .datetime()
+    .describe(
+      "Return everything that happened strictly after this instant. Pass the `until` of your previous call, or the time your last session ended. Reaching back more than 30 days is pulled forward to the limit and reported as `sinceClamped`.",
+    ),
+  limit: z
+    .integer()
+    .min(1)
+    .max(200)
+    .describe("Maximum events to return (default: 100).")
+    .optional(),
+  includeOwn: z
+    .boolean()
+    .describe(
+      "Include events you performed yourself. Off by default: the question this answers is what OTHER people did, and your own writes are noise. Note that over MCP your account is the owner's, so your own comments and the owner's are indistinguishable here; `actorKind: \"agent\"` on a comment is the finer signal.",
+    )
+    .optional(),
+});
+
+export const projectActivityResultSchema = apiProjectActivityResultSchema;

@@ -10,11 +10,13 @@ import {
 } from "@alepha/ui/components/ui/sheet";
 import { Textarea } from "@alepha/ui/components/ui/textarea";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { useClient } from "alepha/react";
+import { useClient, useStore } from "alepha/react";
+import { currentUserAtom } from "alepha/security";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { MyFeedbackResource } from "@/api/schemas/myFeedbackResourceSchema.ts";
+import FeedbackThread from "../../project/feedback/FeedbackThread.tsx";
 import QuestTagInput from "../../project/quest/QuestTagInput.tsx";
 
 export interface MyFeedbackEditSheetProps {
@@ -33,6 +35,7 @@ export interface MyFeedbackEditSheetProps {
 const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
   const feedbackApi = useClient<FeedbackController>();
   const toaster = useToast();
+  const [currentUser] = useStore(currentUserAtom);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -134,6 +137,20 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
               disabled={disabled}
             />
           </div>
+
+          {/* The same thread the project owner sees. The reporter is
+              usually not a member of the project, which is exactly why the
+              comment endpoints gate on "member OR reporter of this item"
+              rather than membership. Never the owner here, so no moderation
+              controls. */}
+          {props.feedback && (
+            <div className="border-border border-t pt-4">
+              <FeedbackThread
+                feedbackId={props.feedback.id}
+                currentUserId={currentUser?.id}
+              />
+            </div>
+          )}
         </div>
 
         <SheetFooter>
