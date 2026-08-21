@@ -2,7 +2,10 @@ import * as React from "react";
 
 void React;
 
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
+import {
+  AlephaTable,
+  type TableFetcher,
+} from "@alepha/ui/components/alepha-table/alepha-table";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import type { AuditEntity } from "alepha/api/audits";
 import { useI18n } from "alepha/react/i18n";
@@ -12,7 +15,7 @@ export interface AdminUserDetailAuditsTabProps {
    * Scopes the table's persisted column/sort state to this user.
    */
   userId: string;
-  fetch: React.ComponentProps<typeof AlephaTable<AuditEntity>>["fetch"];
+  fetch: TableFetcher<AuditEntity>;
 }
 
 /**
