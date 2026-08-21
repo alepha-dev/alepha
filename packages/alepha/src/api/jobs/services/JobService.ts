@@ -1,4 +1,5 @@
 import { $inject, Alepha, AlephaError, z } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, sql } from "alepha/orm";
 import { NotFoundError } from "alepha/server";
@@ -21,6 +22,7 @@ import type { JobRegistration } from "../schemas/jobRegistrationSchema.ts";
  */
 export class JobService {
   protected readonly alepha = $inject(Alepha);
+  protected readonly dt = $inject(DateTimeProvider);
   protected readonly log = $logger();
   protected readonly jobProvider = $inject(JobProvider);
   protected readonly executions = $repository(jobExecutionEntity);
@@ -112,7 +114,9 @@ export class JobService {
         type: this.jobProvider.effectiveMode(name),
         cron: opts.cron,
         priority: (opts.priority ?? "normal") as JobRegistration["priority"],
-        timeout: opts.timeout ? String(opts.timeout) : undefined,
+        timeout: opts.timeout
+          ? this.dt.duration(opts.timeout).toISOString()
+          : undefined,
         retry: opts.retry
           ? {
               retries: opts.retry.retries,

@@ -5,6 +5,7 @@ import type { DevEnvMetadata } from "../../../schemas/DevEnvMetadata.ts";
 import { useMetadata } from "../../hooks/useMetadata.ts";
 import { DevEmpty } from "../shared/DevEmpty.tsx";
 import { DevError } from "../shared/DevError.tsx";
+import { toText } from "../shared/toText.ts";
 import { EnvLine } from "./EnvLine.tsx";
 
 export interface EnvVariable {
@@ -103,7 +104,7 @@ export const DevEnvironment = () => {
   }
 
   const copyAll = () => {
-    const text = visible.map((v) => `${v.name}=${v.value ?? ""}`).join("\n");
+    const text = visible.map((v) => `${v.name}=${toText(v.value)}`).join("\n");
     void navigator.clipboard.writeText(text).then(() => {
       setCopiedAll(true);
       setTimeout(() => setCopiedAll(false), 1500);

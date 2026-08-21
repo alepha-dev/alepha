@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMetadata } from "../../hooks/useMetadata.ts";
 import { DevEmpty } from "../shared/DevEmpty.tsx";
 import { DevError } from "../shared/DevError.tsx";
+import { toText } from "../shared/toText.ts";
 import { RecordForm } from "./RecordForm.tsx";
 import { RowCell } from "./RowCell.tsx";
 
@@ -144,11 +145,7 @@ export const DatabaseEditor = (props: DatabaseEditorProps) => {
   const visibleRows = useMemo(() => {
     if (!search) return records;
     return records.filter((r) =>
-      Object.values(r).some((v) =>
-        String(v ?? "")
-          .toLowerCase()
-          .includes(search),
-      ),
+      Object.values(r).some((v) => toText(v).toLowerCase().includes(search)),
     );
   }, [records, search]);
 

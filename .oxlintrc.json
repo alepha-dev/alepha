@@ -164,9 +164,18 @@
     // Numbers and booleans in a template are unambiguous and universal in log
     // and error messages. What the rule is worth having for is objects and
     // nullish values, which render as `[object Object]` and `undefined`.
+    //
+    // `allowNever` covers the exhaustiveness guard — `throw new AlephaError(
+    // \`unknown aggregate '${aggregate}'\`)` after every case is handled, where
+    // the value is `never` by construction and the template is the diagnostic.
     "typescript/restrict-template-expressions": [
       "error",
-      { "allowNumber": true, "allowBoolean": true, "allowRegExp": true }
+      {
+        "allowNumber": true,
+        "allowBoolean": true,
+        "allowRegExp": true,
+        "allowNever": true
+      }
     ],
     // The `perf` category's one bad rule here. Every finding is the standard
     // immutable map (`rows.map(r => ({ ...r, extra }))`), and its only

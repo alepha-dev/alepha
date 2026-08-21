@@ -2,6 +2,7 @@ import { ShieldCheck } from "lucide-react";
 
 import type { DevRealmMetadata } from "../../../schemas/DevRealmMetadata.ts";
 import { useMetadata } from "../../hooks/useMetadata.ts";
+import { toText } from "../shared/toText.ts";
 import { DeclaredScreen } from "./DeclaredScreen.tsx";
 import { DetailFields } from "./DetailFields.tsx";
 
@@ -14,7 +15,7 @@ const check = (on?: boolean) => (on ? "declared" : "—");
 const formatDuration = (value: unknown): string | undefined => {
   if (value === undefined || value === null) return undefined;
   if (Array.isArray(value)) return value.join(" ");
-  return String(value);
+  return toText(value);
 };
 
 /**

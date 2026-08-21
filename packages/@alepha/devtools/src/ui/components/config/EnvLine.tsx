@@ -1,6 +1,7 @@
 import { AlertTriangle, Check, Copy } from "lucide-react";
 import { useState } from "react";
 
+import { toText } from "../shared/toText.ts";
 import type { EnvVariable } from "./DevEnvironment.tsx";
 
 const SENSITIVE = ["secret", "password", "key", "token", "salt", "credential"];
@@ -42,7 +43,7 @@ export const EnvLine = (props: EnvLineProps) => {
     !Number.isFinite(Number(v.value));
 
   const copy = () => {
-    void navigator.clipboard.writeText(String(v.value ?? "")).then(() => {
+    void navigator.clipboard.writeText(toText(v.value)).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });
@@ -125,7 +126,7 @@ export const EnvLine = (props: EnvLineProps) => {
             </span>
           )}
           {v.defaultValue !== undefined && (
-            <span className="dt-chip">default: {String(v.defaultValue)}</span>
+            <span className="dt-chip">default: {toText(v.defaultValue)}</span>
           )}
 
           <button
@@ -152,7 +153,7 @@ export const EnvLine = (props: EnvLineProps) => {
           <AlertTriangle size={10} />
           Expected {v.type}, received "{String(v.value)}".
           {v.defaultValue !== undefined
-            ? ` Falling back to the default of ${String(v.defaultValue)}.`
+            ? ` Falling back to the default of ${toText(v.defaultValue)}.`
             : " There is no default to fall back to."}
         </div>
       )}

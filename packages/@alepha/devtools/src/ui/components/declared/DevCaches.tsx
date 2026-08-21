@@ -2,12 +2,13 @@ import { Boxes } from "lucide-react";
 
 import type { DevCacheMetadata } from "../../../schemas/DevCacheMetadata.ts";
 import { useMetadata } from "../../hooks/useMetadata.ts";
+import { toText } from "../shared/toText.ts";
 import { DeclaredScreen } from "./DeclaredScreen.tsx";
 import { DetailFields } from "./DetailFields.tsx";
 
 const formatTtl = (ttl?: unknown): string => {
   if (ttl === undefined || ttl === null) return "no expiry";
-  if (typeof ttl !== "number") return String(ttl);
+  if (typeof ttl !== "number") return toText(ttl);
   if (ttl < 60) return `${ttl}s`;
   if (ttl < 3600) return `${Math.floor(ttl / 60)}m`;
   if (ttl < 86400) return `${Math.floor(ttl / 3600)}h`;

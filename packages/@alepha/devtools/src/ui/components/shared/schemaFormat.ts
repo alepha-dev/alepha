@@ -1,3 +1,4 @@
+import { toText } from "./toText.ts";
 /**
  * Formatting helpers for rendering JSON Schema as a readable tree.
  *
@@ -157,7 +158,7 @@ export const formatScalar = (value: unknown): string => {
   if (typeof value === "string") return value;
   if (value === null) return "null";
   if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
+  return toText(value);
 };
 
 export const truncate = (value: string, max: number): string =>

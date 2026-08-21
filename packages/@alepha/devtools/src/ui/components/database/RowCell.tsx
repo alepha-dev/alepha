@@ -1,5 +1,7 @@
 import { Link2 } from "lucide-react";
 
+import { toText } from "../shared/toText.ts";
+
 export interface RowCellProps {
   value: unknown;
   column: any;
@@ -34,7 +36,7 @@ export const RowCell = (props: RowCellProps) => {
   }
 
   if (column?.ref) {
-    const id = String(value);
+    const id = toText(value);
     return (
       <button
         type="button"
@@ -62,7 +64,7 @@ export const RowCell = (props: RowCellProps) => {
   }
 
   if (column?.primaryKey) {
-    const id = String(value);
+    const id = toText(value);
     return <span title={id}>{id.length > 10 ? id.slice(0, 8) : id}</span>;
   }
 
@@ -75,11 +77,11 @@ export const RowCell = (props: RowCellProps) => {
   }
 
   if (column?.type === "enum") {
-    return <span className="dt-chip">{String(value)}</span>;
+    return <span className="dt-chip">{toText(value)}</span>;
   }
 
   if (column?.type === "datetime" || column?.type === "date") {
-    const n = typeof value === "number" ? value : Date.parse(String(value));
+    const n = typeof value === "number" ? value : Date.parse(toText(value));
     if (!Number.isNaN(n)) {
       return <span title={new Date(n).toISOString()}>{relative(n)}</span>;
     }
@@ -93,5 +95,5 @@ export const RowCell = (props: RowCellProps) => {
     );
   }
 
-  return <>{String(value)}</>;
+  return <>{toText(value)}</>;
 };

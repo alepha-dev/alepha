@@ -1,6 +1,8 @@
 import { Copy, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { toText } from "../shared/toText.ts";
+
 export interface RecordFormProps {
   entity: any;
   record: any;
@@ -37,7 +39,7 @@ const isGenerated = (c: any): boolean =>
 const toInput = (value: unknown): string => {
   if (value === undefined || value === null) return "";
   if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
+  return toText(value);
 };
 
 export const RecordForm = (props: RecordFormProps) => {

@@ -154,10 +154,14 @@ export class WorkflowService {
           name: step.name,
           hasCompensate: Boolean(step.compensate),
           hasRetry: Boolean(step.retry),
-          timeout: step.timeout ? String(step.timeout) : undefined,
+          timeout: step.timeout
+            ? this.dt.duration(step.timeout).toISOString()
+            : undefined,
         })),
         onError: opts.onError ?? "compensate",
-        timeout: opts.timeout ? String(opts.timeout) : undefined,
+        timeout: opts.timeout
+          ? this.dt.duration(opts.timeout).toISOString()
+          : undefined,
         priority: opts.priority ?? "normal",
         tags: opts.tags,
         paused: this.workflowProvider.isWorkflowPaused(name),

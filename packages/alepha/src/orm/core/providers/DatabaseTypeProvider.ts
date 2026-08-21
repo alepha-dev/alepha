@@ -143,7 +143,9 @@ export class DatabaseTypeProvider {
       >;
     }
 
-    throw new AlephaError(`Unsupported type for primary key: ${type}`);
+    throw new AlephaError(
+      `Unsupported type for primary key: ${JSON.stringify(type)}`,
+    );
   }
 
   /**

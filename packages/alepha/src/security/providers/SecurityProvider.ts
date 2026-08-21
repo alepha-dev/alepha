@@ -856,7 +856,9 @@ export class SecurityProvider {
             : roleOrString;
 
         if (!role) {
-          throw new SecurityError(`Role '${roleOrString}' not found`);
+          const name =
+            typeof roleOrString === "string" ? roleOrString : roleOrString.name;
+          throw new SecurityError(`Role '${name}' not found`);
         }
 
         if (role.permissions.some((it) => it.name === "*" && !it.exclude)) {
