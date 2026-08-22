@@ -36,6 +36,8 @@ import type { SequencePrimitive } from "../primitives/$sequence.ts";
 import { ModelBuilder, type TableConfigBuilders } from "./ModelBuilder.ts";
 
 export class SqliteModelBuilder extends ModelBuilder {
+  protected readonly dialect = "sqlite" as const;
+
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
 

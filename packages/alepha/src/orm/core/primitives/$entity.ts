@@ -8,6 +8,7 @@ import type {
 
 import { insertSchema, type TObjectInsert } from "../schemas/insertSchema.ts";
 import { type TObjectUpdate, updateSchema } from "../schemas/updateSchema.ts";
+import type { IndexExpressionContext } from "../services/ModelBuilder.ts";
 
 /**
  * Creates a database entity primitive that defines table structure using Zod schemas.
@@ -98,17 +99,27 @@ export interface EntityPrimitiveOptions<
          * Can include column references and SQL functions like `LOWER()`, `UPPER()`, etc.
          * Columns and expressions can be mixed together.
          *
+         * The second argument carries the dialect and the helpers that need
+         * it. Reach for `ctx.caseInsensitive` rather than writing `LOWER()`
+         * by hand: on sqlite a MULTI-column unique index containing an
+         * expression is one drizzle-kit v1 cannot introspect at all, and it
+         * takes `push` and the dev-mode `DATABASE_SYNC` down with it. See
+         * {@link IndexExpressionContext}.
+         *
          * @example
          * ```ts
          * // Case-insensitive unique username per realm
          * indexes: [{
-         *   expressions: (self) => [self.realm, sql`LOWER(${self.username})`],
+         *   expressions: (self, ctx) => [self.realm, ctx.caseInsensitive(self.username)],
          *   unique: true,
-         *   name: "users_realm_username_lower_idx",
+         *   name: "users_realm_username_ci_idx",
          * }]
          * ```
          */
-        expressions: (self: Record<Keys & string, any>) => any[];
+        expressions: (
+          self: Record<Keys & string, any>,
+          ctx: IndexExpressionContext,
+        ) => any[];
         /**
          * Whether this should be a unique index (enforces uniqueness constraint).
          */
