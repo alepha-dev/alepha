@@ -4,6 +4,10 @@ import { join } from "node:path";
 import { brotliCompressSync, gzipSync } from "node:zlib";
 
 import { Alepha } from "alepha";
+import {
+  LogDestinationProvider,
+  MemoryDestinationProvider,
+} from "alepha/logger";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
@@ -191,5 +195,75 @@ describe("alepha/server/static", () => {
     // JS file should not have the header
     const jsResponse = await fetch(`${hostname}/script.js`);
     expect(jsResponse.headers.get("cache-control")).toBeNull();
+  });
+
+  test("should emit an hour as 3600, not 3.6", async () => {
+    const { hostname } = await setupServer({
+      cacheControl: { fileTypes: [".css"], maxAge: [1, "hour"] },
+    });
+
+    const response = await fetch(`${hostname}/style.css`);
+
+    expect(response.headers.get("cache-control")).toBe(
+      "public, max-age=3600, immutable",
+    );
+  });
+
+  /**
+   * `maxAge` is a `DurationLike`, so a bare number is **milliseconds**. The SSR
+   * static server passed `3600` meaning an hour and shipped `max-age=3.6` on
+   * every asset of every Alepha app until someone read the header.
+   *
+   * The value is not second-guessed here - guessing the unit would hide the
+   * mistake. What is guaranteed is that the header stays well-formed:
+   * RFC 9111 defines `delta-seconds` as a non-negative integer, and a cache
+   * meeting `max-age=3.6` may discard the directive, taking `immutable` with
+   * it. So the number is rounded, and 3.6 seconds is loud enough to be noticed.
+   */
+  test("should always emit an integer delta-seconds", async () => {
+    const { hostname } = await setupServer({
+      cacheControl: { fileTypes: [".css"], maxAge: 3600 },
+    });
+
+    const response = await fetch(`${hostname}/style.css`);
+
+    expect(response.headers.get("cache-control")).toBe(
+      "public, max-age=4, immutable",
+    );
+  });
+
+  /**
+   * The rounding above keeps the header legal; this is what makes the mistake
+   * visible. No threshold on the resulting number would work - 3.6 seconds
+   * looks like a duration someone could have chosen - so the warning keys on
+   * the bare number instead, which in a `DurationLike` can only ever mean
+   * milliseconds, and nobody caches in those.
+   */
+  test("should warn when maxAge is a bare number", async () => {
+    class TestApp {
+      staticContent = $serve({
+        root: tempTestDir,
+        cacheControl: { fileTypes: [".css"], maxAge: 3600 },
+      });
+    }
+
+    const alepha = Alepha.create({ env: { LOG_LEVEL: "warn" } })
+      .with({ provide: LogDestinationProvider, use: MemoryDestinationProvider })
+      .with(AlephaServer)
+      .with(AlephaServerStatic)
+      .with(TestApp);
+
+    await alepha.start();
+    const logs = alepha.inject(MemoryDestinationProvider);
+    const server = alepha.inject(ServerProvider);
+
+    await fetch(`${server.hostname}/style.css`);
+
+    expect(
+      logs.logs.some(
+        (log) =>
+          log.level === "WARN" && log.message.includes("MILLISECONDS (3.6s)"),
+      ),
+    ).toBe(true);
   });
 });

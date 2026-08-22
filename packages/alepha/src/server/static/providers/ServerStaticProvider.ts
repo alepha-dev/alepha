@@ -4,7 +4,7 @@ import { basename, isAbsolute, join, sep } from "node:path";
 import type { Readable as NodeStream } from "node:stream";
 
 import { $hook, $inject, Alepha } from "alepha";
-import { DateTimeProvider } from "alepha/datetime";
+import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { type ServerHandler, ServerRouterProvider } from "alepha/server";
 import { FileDetector } from "alepha/system";
@@ -254,12 +254,44 @@ export class ServerStaticProvider {
       if (filename.endsWith(type)) {
         return {
           immutable: options.cacheControl.immutable ?? true,
-          maxAge: this.dateTimeProvider
-            .duration(options.cacheControl.maxAge ?? [30, "days"])
-            .as("seconds"),
+          maxAge: this.toDeltaSeconds(options.cacheControl.maxAge),
         };
       }
     }
+  }
+
+  /**
+   * Turn the configured `maxAge` into the integer `delta-seconds` the header
+   * grammar allows, and say something when it was written in the unit nobody
+   * means.
+   *
+   * RFC 9111 defines `delta-seconds` as a non-negative integer, so a
+   * fractional value is not a shorter cache window: it is a malformed
+   * directive a cache may discard outright, taking `immutable` down with it.
+   * Hence the rounding.
+   *
+   * Hence also the warning, and note what it keys on. The tell is not the
+   * magnitude - 3.6 seconds is a perfectly ordinary-looking number and no
+   * threshold catches it without rejecting durations somebody might really
+   * want. The tell is the **bare number**: `maxAge` is a `DurationLike`, where
+   * a plain number is milliseconds, and no one has ever wanted a cache lifetime
+   * measured in them. That is how `maxAge: 3600`, written meaning an hour, put
+   * `max-age=3.6` on every asset of every Alepha app. Anyone who genuinely
+   * wants milliseconds can say `[n, "milliseconds"]` and be believed.
+   *
+   * The value is rounded, never reinterpreted: guessing the intended unit would
+   * hide the mistake rather than surface it.
+   */
+  protected toDeltaSeconds(maxAge: DurationLike | undefined): number {
+    if (typeof maxAge === "number") {
+      this.log.warn(
+        `Static cache-control maxAge is the bare number ${maxAge}, which a DurationLike reads as MILLISECONDS (${maxAge / 1000}s). Pass [n, "seconds"] or [n, "hours"] to mean what it looks like.`,
+      );
+    }
+
+    return Math.round(
+      this.dateTimeProvider.duration(maxAge ?? [30, "days"]).as("seconds"),
+    );
   }
 
   public async getAllFiles(

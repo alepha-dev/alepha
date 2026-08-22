@@ -339,7 +339,19 @@ export class ReactServerProvider {
     await this.serverStaticProvider.createStaticServer({
       root,
       cacheControl: {
-        maxAge: 3600,
+        // `[1, "hour"]`, not `3600`. The field is a `DurationLike`, and a bare
+        // number there is read as **milliseconds**, so `3600` shipped
+        // `cache-control: public, max-age=3.6, immutable` on every asset of
+        // every Alepha app: an hour of caching turned into 3.6 seconds, and a
+        // fractional delta-seconds is not even valid per RFC 9111, so a cache
+        // is free to read it as zero and drop the directive entirely.
+        //
+        // An hour rather than the year `immutable` would normally earn,
+        // because `getCacheControl` selects by file extension and not by
+        // whether the name carries a content hash: `public/logo.png` gets this
+        // same header as `asset.B_Zwhoqw.css`, and a year on a name the user
+        // can overwrite is unrecoverable.
+        maxAge: [1, "hour"],
         immutable: true,
       },
       ...this.options.staticServer,
