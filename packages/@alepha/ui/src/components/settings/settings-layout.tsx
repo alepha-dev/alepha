@@ -104,7 +104,22 @@ export const SettingsLayout = (props: SettingsLayoutProps) => {
         <div
           className={cn(
             "flex min-w-0 flex-1 flex-col gap-8",
-            props.fill && "md:min-h-0 md:overflow-y-auto",
+            // `md:px-2 md:-mx-2` is not spacing, it is clip headroom, and it
+            // only exists because of the `overflow-y-auto` on the same line.
+            //
+            // An element with `overflow-y: auto` cannot keep `overflow-x:
+            // visible`, CSS computes the visible axis to `auto`, so this
+            // column becomes a horizontal clipping box too. The cards inside
+            // are exactly as wide as it is, which puts their edges on the clip
+            // boundary; a border survives that (it is inside the border box)
+            // but a ring or a `shadow-sm` does not, and the cards came out
+            // looking shaved down both sides.
+            //
+            // The padding moves the boundary out from under the cards and the
+            // equal negative margin takes the width straight back, so nothing
+            // moves and nothing narrows. Plain padding would have fixed the
+            // clipping by making every card 16px narrower instead.
+            props.fill && "md:-mx-2 md:min-h-0 md:overflow-y-auto md:px-2",
           )}
         >
           {props.children}
