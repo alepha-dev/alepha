@@ -302,6 +302,7 @@ Since the 2026-08 great rename, Folios also absorbed the standalone **Archive** 
 1. `project_context` — one-shot orientation: project metadata + active quests + folio index (~2K tokens, no folio bodies).
 2. `folio_get` / `quest_get` on the specific entries that look relevant.
 3. `folio_create` / `folio_update` when the agent decides something worth remembering long-term.
+4. A folio that belongs to an epic is filed with `epic_number` on `folio_create` / `folio_update` (0 detaches), exactly like quests. `epic_get` lists the attached folios, `folio_list` takes an `epic` filter, and every folio row carries its `epic` ref. A design folio left unattached is how an epic's Folios tab ends up reading 0.
 
 The MCP tool descriptions in `src/mcp/tools/ProjectTools.ts` and `src/mcp/tools/FolioTools.ts` are the public-facing version of this convention — every Claude reads them on connect. Keep them sharp.
 

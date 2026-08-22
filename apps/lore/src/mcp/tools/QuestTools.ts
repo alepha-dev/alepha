@@ -7,7 +7,6 @@ import { FeedbackController } from "../../api/controllers/FeedbackController.ts"
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import { QuestCommentController } from "../../api/controllers/QuestCommentController.ts";
 import { QuestController } from "../../api/controllers/QuestController.ts";
-import type { EpicResource } from "../../api/schemas/epicResourceSchema.ts";
 import type { QuestStatus } from "../../api/schemas/questResourceSchema.ts";
 import { QuestResourceMapper } from "../../api/services/QuestResourceMapper.ts";
 // Same helper the UI labels a user with, so a name reads identically over
@@ -49,6 +48,7 @@ import {
   questUpdateResultSchema,
 } from "../schemas/index.ts";
 import { AttachmentContentService } from "../services/AttachmentContentService.ts";
+import { EpicRefService } from "../services/EpicRefService.ts";
 
 /**
  * MCP tools for quest operations.
@@ -58,6 +58,7 @@ export class QuestTools {
   protected readonly projectController = $inject(ProjectController);
   protected readonly feedbackController = $inject(FeedbackController);
   protected readonly epicController = $inject(EpicController);
+  protected readonly epicRefs = $inject(EpicRefService);
   protected readonly commentController = $inject(QuestCommentController);
   protected readonly questMapper = $inject(QuestResourceMapper);
   protected readonly attachmentContent = $inject(AttachmentContentService);
@@ -235,33 +236,6 @@ export class QuestTools {
   }
 
   /**
-   * Build an `epicId -> { number, title, status }` lookup for every epic
-   * in a project, so `quest_list` can stamp up to 100 returned quests with
-   * their epic in one extra call instead of one per quest. `quest_list` is
-   * deliberately not gated over MCP (design §5.3), so a result can mix a
-   * planned epic's quests with released ones — the epic's status is what
-   * lets a caller tell them apart.
-   */
-  protected async buildEpicRefMap(
-    projectId: number,
-  ): Promise<
-    Map<
-      number,
-      { number: number; title: string; status: EpicResource["status"] }
-    >
-  > {
-    const projectEpics = await this.epicController.getEpics({
-      params: { projectId },
-    });
-    return new Map(
-      projectEpics.map((epic) => [
-        epic.id,
-        { number: epic.number, title: epic.title, status: epic.status },
-      ]),
-    );
-  }
-
-  /**
    * Get quest status from quest data. Delegates so the MCP surface cannot
    * drift from the status the REST resource and the controller's transition
    * guards report — this used to be a third, independently-ordered copy.
@@ -387,7 +361,7 @@ export class QuestTools {
       // One extra call for the whole page rather than one per quest —
       // `quest_list` can return up to 100 quests, and every one of them
       // needs its epic stamped (design §5.3).
-      const epicRefs = await this.buildEpicRefMap(projectId);
+      const epicRefs = await this.epicRefs.mapFor(projectId);
 
       // Same shape, second signal: one query for the page's whole
       // discussion metadata. An agent listing a project has to be able to
@@ -780,13 +754,7 @@ export class QuestTools {
       // `quest_get` is direct addressing, so it never gates on the epic's
       // status (design §5.3) — this is purely enrichment. Skip the extra
       // call entirely when the quest has no epic, the common case.
-      let epic:
-        | { number: number; title: string; status: EpicResource["status"] }
-        | undefined;
-      if (quest.epicId != null) {
-        const epicRefs = await this.buildEpicRefMap(quest.projectId);
-        epic = epicRefs.get(quest.epicId);
-      }
+      const epic = await this.epicRefs.refFor(quest.projectId, quest.epicId);
 
       // Read as well as write: an agent that can comment but cannot see the
       // owner's reply has half the loop, and "do X differently" left on a

@@ -67,6 +67,20 @@ export const epicGetResultSchema = z.object({
   createdAt: z.datetime(),
   activatedAt: z.datetime().optional(),
   completedAt: z.datetime().optional(),
+  /**
+   * The folios filed under this epic (pinned first, then newest-updated), capped at 100.
+   * Bodies are not inlined: `folio_get` by `shortId`. An epic "owns quests
+   * and folios"; the quests were reachable through `quest_list`'s `epic`
+   * filter, the folios through nothing at all before this field.
+   */
+  folios: z.array(
+    z.object({
+      shortId: z.integer(),
+      title: z.string(),
+      summary: z.string().optional(),
+      updatedAt: z.string(),
+    }),
+  ),
 });
 
 // -----------------------------------------------------------------------------

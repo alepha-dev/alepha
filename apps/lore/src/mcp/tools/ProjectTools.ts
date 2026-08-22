@@ -239,6 +239,11 @@ export class ProjectTools {
         },
       });
       const capped = folios.length > FOLIO_INDEX_CAP;
+      // The epic index above already holds every epic's number; a folio
+      // only needs to point into it.
+      const epicNumberById = new Map(
+        epics.map((epic) => [epic.id, epic.number]),
+      );
       const items = (capped ? folios.slice(0, FOLIO_INDEX_CAP) : folios).map(
         (folio) => ({
           shortId: folio.shortId,
@@ -247,6 +252,8 @@ export class ProjectTools {
           // Omit when empty so agents seeing the field always trust it.
           // The schema field is optional; consumers fall back to title.
           summary: folio.summary?.trim() ? folio.summary : undefined,
+          epicNumber:
+            folio.epicId != null ? epicNumberById.get(folio.epicId) : undefined,
         }),
       );
 

@@ -86,6 +86,13 @@ const folioIndexEntrySchema = z.object({
   title: z.string(),
   updatedAt: z.string(),
   summary: z.string().optional(),
+  /**
+   * The per-project number of the epic the folio is filed under, absent
+   * when it has none. Just the number: the `epics` index in the same
+   * payload carries the title and status, so repeating them here would
+   * only cost tokens.
+   */
+  epicNumber: z.integer().optional(),
 });
 
 export const projectContextResultSchema = z.object({

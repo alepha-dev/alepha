@@ -3,6 +3,7 @@ import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
 import { EpicController } from "../../api/controllers/EpicController.ts";
+import { FolioController } from "../../api/controllers/FolioController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import {
   epicCreateParamsSchema,
@@ -27,6 +28,7 @@ import {
  */
 export class EpicTools {
   protected readonly epicController = $inject(EpicController);
+  protected readonly folioController = $inject(FolioController);
   protected readonly projectController = $inject(ProjectController);
 
   /**
@@ -105,7 +107,7 @@ export class EpicTools {
    */
   epic_get = $tool({
     description:
-      "Fetch a single epic by its per-project number, including its description, status, and progress rollup (completed/total quest counts; every quest in the epic counts, planned-gated ones included). Use quest_list with the `epic` filter to fetch the quests themselves.",
+      "Fetch a single epic by its per-project number, including its description, status, progress rollup (completed/total quest counts; every quest in the epic counts, planned-gated ones included) and the folios filed under it (shortId, title, summary; read a body with `folio_get`). Use quest_list with the `epic` filter to fetch the quests themselves.",
     title: "Get epic",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -122,6 +124,12 @@ export class EpicTools {
         params: { projectId, number: params.number },
       });
 
+      // Filtered server-side, same as the Epic detail page: an attached
+      // folio outside a client-side window would otherwise silently drop.
+      const folios = await this.folioController.list({
+        query: { projectId, epicId: epic.id, limit: 100 },
+      });
+
       return {
         id: epic.id,
         number: epic.number,
@@ -134,6 +142,13 @@ export class EpicTools {
         createdAt: epic.createdAt,
         activatedAt: epic.activatedAt,
         completedAt: epic.completedAt,
+        folios: folios.map((folio) => ({
+          shortId: folio.shortId,
+          title: folio.title,
+          // Omit when empty so agents seeing the field always trust it.
+          summary: folio.summary?.trim() ? folio.summary : undefined,
+          updatedAt: folio.updatedAt,
+        })),
       };
     },
   });
