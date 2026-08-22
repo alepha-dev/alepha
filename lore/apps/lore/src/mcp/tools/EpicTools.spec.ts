@@ -10,6 +10,7 @@ import { describe, it } from "vitest";
 
 import {
   createTestEpic,
+  createTestFolio,
   createTestQuest,
   TestEntityRepositories,
 } from "../../../test/fixtures/entities.ts";
@@ -18,6 +19,7 @@ import { members } from "../../api/entities/members.ts";
 import { LoreApi } from "../../api/index.ts";
 import { LoreMcp } from "../index.ts";
 import { EpicTools } from "./EpicTools.ts";
+import { FolioTools } from "./FolioTools.ts";
 import { ProjectTools } from "./ProjectTools.ts";
 import { QuestTools } from "./QuestTools.ts";
 
@@ -66,6 +68,7 @@ const setup = async () => {
   const membersProbe = alepha.inject(MembersProbe);
   const epicTools = alepha.inject(EpicTools);
   const questTools = alepha.inject(QuestTools);
+  const folioTools = alepha.inject(FolioTools);
   const projectTools = alepha.inject(ProjectTools);
   const projectApi = alepha.inject(ProjectController);
   const users = alepha.inject(UserService);
@@ -126,6 +129,7 @@ const setup = async () => {
     repos,
     epicTools,
     questTools,
+    folioTools,
     projectTools,
     project,
     call,
@@ -433,6 +437,228 @@ describe("Lore MCP — epics", () => {
       expect((await repos.quests.getById(created.id)).title).toBe(
         "Original title",
       );
+    });
+  });
+
+  describe("folio_create — epic_number", () => {
+    it("attaches the new folio to the epic and returns the epic ref", async ({
+      expect,
+    }) => {
+      // Before this, an agent had no way to file a folio under an epic: the
+      // web picker could, `folio_create` could not, so every design folio an
+      // agent wrote landed unattached and the epic's Folios tab read 0.
+      const { alepha, repos, project, folioTools, call } = await setup();
+      const epic = await createTestEpic(alepha, project, {
+        title: "Lore Deploy",
+        status: "planned",
+      });
+
+      const created = await call(folioTools.folio_create, {
+        project: project.id,
+        title: "Deploy design",
+        content: "# Design",
+        epic_number: epic.number,
+      });
+
+      expect((await repos.folios.getById(created.id)).epicId).toBe(epic.id);
+      expect(created.epic).toEqual({
+        number: epic.number,
+        title: "Lore Deploy",
+        status: "planned",
+      });
+    });
+
+    it("a refused attach leaves no folio row behind (non-owner member)", async ({
+      expect,
+    }) => {
+      // `attachFolio` is owner-gated while `folio_create` only needs
+      // membership, so a non-owner member reaches the attach and is refused.
+      // Same cleanup contract as quest_create: no orphaned, unlinked folio
+      // for an agent to duplicate on retry.
+      const { alepha, repos, project, folioTools, call, addNonOwnerMember } =
+        await setup();
+      const memberId = await addNonOwnerMember();
+      const epic = await createTestEpic(alepha, project);
+      const before = await repos.folios.count({
+        projectId: { eq: project.id },
+      });
+
+      await expect(
+        call(
+          folioTools.folio_create,
+          {
+            project: project.id,
+            title: "Should not survive",
+            epic_number: epic.number,
+          },
+          memberId,
+        ),
+      ).rejects.toThrowError();
+
+      const after = await repos.folios.count({
+        projectId: { eq: project.id },
+      });
+      expect(after).toBe(before);
+    });
+  });
+
+  describe("folio_update — epic_number", () => {
+    it("reparents a folio to a different epic", async ({ expect }) => {
+      const { alepha, repos, project, folioTools, call } = await setup();
+      const epic = await createTestEpic(alepha, project);
+      const folio = await createTestFolio(alepha, project);
+
+      const updated = await call(folioTools.folio_update, {
+        id: folio.id,
+        epic_number: epic.number,
+      });
+
+      expect((await repos.folios.getById(folio.id)).epicId).toBe(epic.id);
+      expect(updated.epic?.number).toBe(epic.number);
+    });
+
+    it("passing 0 clears the folio's epic link", async ({ expect }) => {
+      const { alepha, repos, project, folioTools, call } = await setup();
+      const epic = await createTestEpic(alepha, project);
+      const folio = await createTestFolio(alepha, project, {
+        epicId: epic.id,
+      });
+
+      const updated = await call(folioTools.folio_update, {
+        id: folio.id,
+        epic_number: 0,
+      });
+
+      expect((await repos.folios.getById(folio.id)).epicId).toBeUndefined();
+      expect(updated.epic).toBeUndefined();
+    });
+
+    it("a refused attach leaves the other fields unchanged (non-owner member)", async ({
+      expect,
+    }) => {
+      // The epic move runs BEFORE the field update, so an owner-gate
+      // refusal throws before `title` is written.
+      const { alepha, repos, project, folioTools, call, addNonOwnerMember } =
+        await setup();
+      const memberId = await addNonOwnerMember();
+      const epic = await createTestEpic(alepha, project);
+      const created = await call(
+        folioTools.folio_create,
+        { project: project.id, title: "Original title" },
+        memberId,
+      );
+
+      await expect(
+        call(
+          folioTools.folio_update,
+          { id: created.id, title: "Changed title", epic_number: epic.number },
+          memberId,
+        ),
+      ).rejects.toThrowError();
+
+      expect((await repos.folios.getById(created.id)).title).toBe(
+        "Original title",
+      );
+    });
+  });
+
+  describe("folio reads carry the epic", () => {
+    it("folio_get returns the epic ref, and nothing for an unattached folio", async ({
+      expect,
+    }) => {
+      const { alepha, project, folioTools, call } = await setup();
+      const epic = await createTestEpic(alepha, project, { title: "Deploy" });
+      const attached = await createTestFolio(alepha, project, {
+        epicId: epic.id,
+      });
+      const loose = await createTestFolio(alepha, project);
+
+      const a = await call(folioTools.folio_get, { id: attached.id });
+      const b = await call(folioTools.folio_get, { id: loose.id });
+
+      expect(a.epic).toEqual({
+        number: epic.number,
+        title: "Deploy",
+        status: "planned",
+      });
+      expect(b.epic).toBeUndefined();
+    });
+
+    it("folio_list carries the epic ref and narrows on the `epic` filter", async ({
+      expect,
+    }) => {
+      const { alepha, project, folioTools, call } = await setup();
+      const epic = await createTestEpic(alepha, project);
+      const other = await createTestEpic(alepha, project);
+      const inEpic = await createTestFolio(alepha, project, {
+        epicId: epic.id,
+      });
+      await createTestFolio(alepha, project, { epicId: other.id });
+      await createTestFolio(alepha, project);
+
+      const all = await call(folioTools.folio_list, { project: project.id });
+      const filtered = await call(folioTools.folio_list, {
+        project: project.id,
+        epic: epic.id,
+      });
+
+      expect(all.folios).toHaveLength(3);
+      expect(
+        all.folios.find((f: any) => f.shortId === inEpic.shortId).epic.number,
+      ).toBe(epic.number);
+      expect(filtered.folios.map((f: any) => f.shortId)).toEqual([
+        inEpic.shortId,
+      ]);
+    });
+
+    it("epic_get lists the attached folios", async ({ expect }) => {
+      // An epic "owns quests and folios"; quests were reachable through
+      // quest_list's `epic` filter, folios through nothing at all.
+      const { alepha, project, epicTools, call } = await setup();
+      const epic = await createTestEpic(alepha, project);
+      const folio = await createTestFolio(alepha, project, {
+        epicId: epic.id,
+        title: "Design",
+        summary: "The design record",
+      });
+      await createTestFolio(alepha, project);
+
+      const result = await call(epicTools.epic_get, {
+        project: project.id,
+        number: epic.number,
+      });
+
+      expect(result.folios).toEqual([
+        {
+          shortId: folio.shortId,
+          title: "Design",
+          summary: "The design record",
+          updatedAt: folio.updatedAt,
+        },
+      ]);
+    });
+
+    it("project_context's folio index says which epic a folio belongs to", async ({
+      expect,
+    }) => {
+      const { alepha, project, projectTools, call } = await setup();
+      const epic = await createTestEpic(alepha, project);
+      const attached = await createTestFolio(alepha, project, {
+        epicId: epic.id,
+      });
+      const loose = await createTestFolio(alepha, project);
+
+      const result = await call(projectTools.project_context, {
+        project: project.id,
+      });
+
+      const byShortId = new Map(
+        result.folios.items.map((f: any) => [f.shortId, f]),
+      );
+      expect((byShortId.get(attached.shortId) as any).epicNumber).toBe(
+        epic.number,
+      );
+      expect((byShortId.get(loose.shortId) as any).epicNumber).toBeUndefined();
     });
   });
 });
