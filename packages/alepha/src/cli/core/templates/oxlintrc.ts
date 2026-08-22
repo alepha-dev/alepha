@@ -12,6 +12,14 @@
  * Alepha app, each for a reason a future reader can check. Everything else is
  * left alone deliberately: a scaffolded project should fail on a real bug and
  * on nothing else.
+ *
+ * `ignorePatterns` carries `node_modules` because oxlint has no built-in
+ * exclusion for it, unlike oxfmt, and falls back on whatever ignore files it
+ * happens to find. `alepha lint` passes the same pattern on the command line,
+ * so this entry is what covers the editor: the scaffold recommends the Oxc
+ * extension and turns on `source.fixAll.oxc`, and the extension reads this
+ * file rather than the CLI. Without it, a project whose `.gitignore` is
+ * missing gets its dependencies linted, and fixed.
  */
 export const oxlintrc = () =>
   `
@@ -20,6 +28,7 @@ export const oxlintrc = () =>
   "categories": {
     "correctness": "error"
   },
+  "ignorePatterns": ["node_modules", "dist", ".gen"],
   "plugins": [
     "typescript",
     "unicorn",

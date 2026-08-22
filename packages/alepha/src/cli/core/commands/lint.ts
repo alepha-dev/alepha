@@ -33,9 +33,26 @@ export class LintCommand {
       // unfixable lint error still gets formatted. Otherwise `lint` leaves the
       // tree half-done and the error it reports is buried under a diff the
       // user did not ask for.
+      // `--ignore-pattern node_modules` is not made redundant by the
+      // project's `.gitignore`. The two halves of the toolchain disagree here:
+      // oxfmt skips `node_modules` unless asked not to
+      // (`--with-node-modules`), while oxlint has no built-in exclusion at all
+      // and honours only the ignore files it finds. With no `.gitignore` on
+      // disk, `oxlint --fix` walks into the dependencies and *rewrites* them.
+      //
+      // Which is reachable two ways, neither exotic. `alepha init` runs this
+      // pass before `ensureGitRepo` writes the `.gitignore`; and that write is
+      // skipped outright when the directory was already a git repository, so
+      // such a project never gets one. A fresh `--preset saas` scaffold
+      // reported 258k errors from `node_modules` and edited 460 files across
+      // drizzle-kit, react-dom and alepha's own installed `dist` - a regex
+      // rewritten in `drizzle-kit/bin.cjs` is not a diff anyone asked for.
+      //
+      // Passed on the command line rather than left to `.oxlintrc.json` so it
+      // also covers every project scaffolded before the template carried it.
       let unfixed: unknown;
       try {
-        await run(`node "${oxlint}" --fix`);
+        await run(`node "${oxlint}" --fix --ignore-pattern node_modules`);
       } catch (error) {
         unfixed = error;
       }

@@ -99,6 +99,27 @@ describe("alepha init", () => {
       ).toBe(true);
     });
 
+    /**
+     * The editor's copy of the guard `alepha lint` passes on the command line.
+     * oxlint has no built-in `node_modules` exclusion (oxfmt does), and the
+     * scaffold both recommends the Oxc extension and turns on
+     * `source.fixAll.oxc`, so a project whose `.gitignore` is missing has its
+     * dependencies linted and fixed from inside the editor.
+     */
+    it("should keep the linter out of node_modules", async () => {
+      const { fs, cli, cmd, json } = createTestEnv();
+      await setupProject(fs, json);
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(
+        fs.wasWrittenMatching(
+          "/project/.oxlintrc.json",
+          /"ignorePatterns":.*"node_modules"/,
+        ),
+      ).toBe(true);
+    });
+
     it("should create .editorconfig", async () => {
       const { fs, cli, cmd, json } = createTestEnv();
       await setupProject(fs, json);
