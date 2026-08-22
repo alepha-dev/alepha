@@ -1,4 +1,5 @@
-import { Card, CardContent } from "@alepha/ui/components/ui/card";
+import { SettingsRow } from "@alepha/ui/components/settings/settings-row";
+import { SettingsSection } from "@alepha/ui/components/settings/settings-section";
 import { Switch } from "@alepha/ui/components/ui/switch";
 import { useI18n } from "alepha/react/i18n";
 
@@ -72,24 +73,25 @@ const ProjectSettingsFeatureSection = (
   const label = tr(NAV_KEYS[props.featureKey]);
   const description = tr(DESCRIPTION_KEYS[props.featureKey]);
 
+  // `SettingsSection` + `SettingsRow` rather than a hand-rolled `Card`. This
+  // used to be `<Card className="py-4 shadow">` with its own flex row, which
+  // is the exact drift `SettingsSection` documents and warns against: `py-4`
+  // stacks on the row's own padding, and `shadow` is a step heavier than the
+  // `shadow-sm` every other settings card carries. On a page such as
+  // `/settings/kanban` it sat directly under cards built the shared way and
+  // read as a different component.
   return (
-    <div className="flex flex-col gap-4">
-      <Card className="py-4 shadow">
-        <CardContent className="flex items-center justify-between gap-4 px-4">
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium">{label}</span>
-            <span className="text-muted-foreground text-xs">{description}</span>
-          </div>
-          <Switch
-            checked={props.enabled}
-            onCheckedChange={(value) => {
-              void props.onToggle(value);
-            }}
-            aria-label={tr("project.settings.feature.enable")}
-          />
-        </CardContent>
-      </Card>
-    </div>
+    <SettingsSection>
+      <SettingsRow label={label} description={description}>
+        <Switch
+          checked={props.enabled}
+          onCheckedChange={(value) => {
+            void props.onToggle(value);
+          }}
+          aria-label={tr("project.settings.feature.enable")}
+        />
+      </SettingsRow>
+    </SettingsSection>
   );
 };
 

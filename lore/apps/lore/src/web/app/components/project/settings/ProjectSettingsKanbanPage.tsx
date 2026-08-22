@@ -1,7 +1,9 @@
+import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { Input } from "@alepha/ui/components/ui/input";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { cn } from "@alepha/ui/lib/utils";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { GripVertical, Plus, Trash2 } from "lucide-react";
@@ -114,7 +116,7 @@ const ProjectSettingsKanbanPage = () => {
       />
 
       {enabled && (
-        <Card className="py-4 shadow">
+        <Card className={cn(settingsCardEdge, "py-4")}>
           <CardContent className="flex flex-col gap-3 px-4">
             <div className="flex flex-col gap-1">
               <span className="text-sm font-medium">

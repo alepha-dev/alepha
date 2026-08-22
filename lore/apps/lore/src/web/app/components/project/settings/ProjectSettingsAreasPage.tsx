@@ -1,3 +1,4 @@
+import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
@@ -123,7 +124,7 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
         </div>
       )}
 
-      <Card className="shadow">
+      <Card className={settingsCardEdge}>
         <CardContent className="p-0">
           {props.areas.length === 0 ? (
             <div className="text-muted-foreground p-6 text-center text-sm">

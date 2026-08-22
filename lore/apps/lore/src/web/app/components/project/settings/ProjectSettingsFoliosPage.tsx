@@ -1,5 +1,7 @@
+import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { Switch } from "@alepha/ui/components/ui/switch";
+import { cn } from "@alepha/ui/lib/utils";
 import { useI18n } from "alepha/react/i18n";
 
 import type { I18n } from "@/web/app/services/I18n.ts";
@@ -24,7 +26,7 @@ const ProjectSettingsFoliosPage = () => {
           `useProjectFeatureToggle` reads it as false) — the summary is
           written for agents, not readers. Hiding it never stops it being
           persisted. */}
-      <Card className="py-4 shadow">
+      <Card className={cn(settingsCardEdge, "py-4")}>
         <CardContent className="flex items-center justify-between gap-4 px-4">
           <div className="flex flex-col gap-1">
             <span className="text-sm font-medium">
