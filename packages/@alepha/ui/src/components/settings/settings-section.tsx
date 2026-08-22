@@ -1,3 +1,4 @@
+import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
 import { SettingsHeading } from "@alepha/ui/components/settings/settings-heading";
 import { Card } from "@alepha/ui/components/ui/card";
 import { cn } from "@alepha/ui/lib/utils";
@@ -44,7 +45,7 @@ export const SettingsSection = (props: SettingsSectionProps) => {
   return (
     <div className={cn("flex flex-col gap-2", props.className)}>
       <SettingsHeading title={props.title} description={props.description} />
-      <Card className="bg-card gap-0 divide-y rounded-lg border py-0 shadow-sm ring-0">
+      <Card className={cn(settingsCardEdge, "gap-0 divide-y py-0")}>
         {props.children}
       </Card>
     </div>

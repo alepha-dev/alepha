@@ -1,3 +1,4 @@
+import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,6 +11,7 @@ import {
 } from "@alepha/ui/components/ui/alert-dialog";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
+import { cn } from "@alepha/ui/lib/utils";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
@@ -58,7 +60,7 @@ const ProjectSettingsDangerZoneSection = () => {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <span className="text-sm">{tr("project.settings.danger.title")}</span>
-        <Card className="bg-card divide-y rounded-lg border py-0 shadow-sm ring-0">
+        <Card className={cn(settingsCardEdge, "divide-y py-0")}>
           {isOwner ? (
             <CardContent className="flex flex-col gap-3 px-4 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
               <div className="flex flex-col gap-0.5">

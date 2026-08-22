@@ -1,3 +1,4 @@
+import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import {
@@ -6,6 +7,7 @@ import {
   TooltipTrigger,
 } from "@alepha/ui/components/ui/tooltip";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { cn } from "@alepha/ui/lib/utils";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Ban, Plus } from "lucide-react";
@@ -115,7 +117,7 @@ const ProjectSettingsSigilsPage = () => {
             />
           )}
 
-          <Card className="bg-card gap-0 divide-y rounded-lg border py-0 shadow-sm ring-0">
+          <Card className={cn(settingsCardEdge, "gap-0 divide-y py-0")}>
             <CardContent className="flex flex-col gap-3 px-4 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
               <div className="flex flex-col gap-0.5">
                 <span className="text-sm font-medium">
