@@ -1,12 +1,11 @@
-import { cn } from "@alepha/ui/lib/utils";
+import { SettingsLayout } from "@alepha/ui/components/settings/settings-layout";
+import {
+  SettingsNav,
+  type SettingsNavItem,
+} from "@alepha/ui/components/settings/settings-nav";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import {
-  Link,
-  NestedView,
-  useRouter,
-  useRouterState,
-} from "alepha/react/router";
+import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 import {
   BookMarked,
   BookOpen,
@@ -20,6 +19,7 @@ import {
   Swords,
   Users,
 } from "lucide-react";
+import { createElement, useMemo } from "react";
 
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
@@ -129,58 +129,48 @@ const ProjectSettings = () => {
   const router = useRouter<AppRouter>();
   const routerState = useRouterState();
   const [project] = useStore(currentProjectAtom);
+  const projectSlug = project?.slug;
+  const activeRoute = routerState.name ?? "";
+
+  /*
+    Resolved hrefs, built here rather than left to `SettingsNav`. That is the
+    documented contract: this subtree is parameterised
+    (`/:projectSlug/settings/...`), and `useNavEntries` would hand back the raw
+    route *pattern*, so every link in the rail would carry a literal
+    `:projectSlug` and render perfectly while going nowhere. `/account/*` is
+    static and can pass its entries straight through; this one cannot.
+  */
+  const items = useMemo<SettingsNavItem[]>(
+    () =>
+      projectSlug
+        ? NAV_GROUPS.flatMap((group) =>
+            group.items.map((item) => ({
+              name: item.route,
+              href: router.path(item.route, { params: { projectSlug } }),
+              label: tr(item.labelKey),
+              icon: createElement(item.icon),
+              group: group.labelKey ? String(tr(group.labelKey)) : undefined,
+              active: activeRoute === item.route,
+            })),
+          )
+        : [],
+    [projectSlug, activeRoute, router, tr],
+  );
+
   if (!project) {
     return null;
   }
 
-  const projectSlug = project.slug;
-  const activeRoute = routerState.name ?? "";
-
   return (
-    <div className="mx-auto w-full max-w-6xl p-4 md:pt-10">
-      <div className="flex flex-col gap-6 md:flex-row md:items-start">
-        <nav className="flex shrink-0 flex-col gap-4 md:sticky md:top-0 md:w-48 md:self-start">
-          {NAV_GROUPS.map((group, groupIdx) => (
-            <div
-              key={group.labelKey ?? `group-${groupIdx}`}
-              className="flex flex-col gap-1"
-            >
-              {group.labelKey && (
-                <span className="text-muted-foreground px-3 text-[11px] font-semibold tracking-wider uppercase">
-                  {tr(group.labelKey)}
-                </span>
-              )}
-              {group.items.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeRoute === item.route;
-                const href = router.path(item.route, {
-                  params: { projectSlug },
-                });
-                return (
-                  <Link
-                    key={item.route}
-                    href={href}
-                    className={cn(
-                      "flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm whitespace-nowrap transition-colors",
-                      isActive
-                        ? "bg-muted font-medium"
-                        : "text-muted-foreground hover:bg-muted/60",
-                    )}
-                  >
-                    <Icon className="size-4" />
-                    {tr(item.labelKey)}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
-        </nav>
-
-        <div className="min-w-0 flex-1">
-          <NestedView />
-        </div>
-      </div>
-    </div>
+    // `max-w-6xl` overrides the layout's own `max-w-5xl` (`cn` is tailwind-
+    // merge, so the later class wins). Project settings hold wider content
+    // than the account pages do: the quests and sigils screens are tables.
+    <SettingsLayout
+      className="max-w-6xl"
+      nav={<SettingsNav items={items} size="default" />}
+    >
+      <NestedView />
+    </SettingsLayout>
   );
 };
 
