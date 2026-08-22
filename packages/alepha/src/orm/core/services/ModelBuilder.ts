@@ -1,5 +1,5 @@
 import { AlephaError, z } from "alepha";
-import type { SQL } from "drizzle-orm";
+import { type SQL, sql } from "drizzle-orm";
 
 import type { EntityPrimitive } from "../primitives/$entity.ts";
 import type { SequencePrimitive } from "../primitives/$sequence.ts";
@@ -26,10 +26,47 @@ export interface TableConfigBuilders<TConfig> {
 }
 
 /**
+ * Handed to an entity's `expressions` callback so an index can be written once
+ * and still come out right on both dialects.
+ */
+export interface IndexExpressionContext {
+  /**
+   * The dialect this model is being built for.
+   */
+  dialect: "postgresql" | "sqlite";
+
+  /**
+   * A case-insensitive index key for `column`.
+   *
+   * `LOWER(col)` on postgres, `col COLLATE NOCASE` on sqlite. The two are
+   * equivalent in effect - sqlite's `lower()` and its `NOCASE` collation both
+   * fold ASCII only - but not to drizzle-kit, and that is the whole reason
+   * this helper exists rather than a bare `sql` template at the call site.
+   *
+   * drizzle-kit v1's sqlite introspection throws
+   * `unexpected unique index '<name>' with expression value` for any
+   * MULTI-column unique index carrying an expression (single-column ones it
+   * skips). A collation is not an expression: `PRAGMA index_xinfo` reports a
+   * real column, so the same index becomes readable. Without it, `push` and
+   * the dev-mode `DATABASE_SYNC` that runs it cannot apply anything to a
+   * database that already carries the index - which is every Alepha app with
+   * the identity surface, from its second run onwards.
+   */
+  caseInsensitive: (column: unknown) => SQL;
+}
+
+/**
  * Abstract base class for transforming Alepha Primitives (Entity, Sequence, etc...)
  * into drizzle models (tables, enums, sequences, etc...).
  */
 export abstract class ModelBuilder {
+  /**
+   * Which dialect this builder emits for. Read by
+   * {@link indexExpressionContext}, so an entity can branch without knowing
+   * which subclass it landed in.
+   */
+  protected abstract readonly dialect: "postgresql" | "sqlite";
+
   /**
    * Build a table from an entity primitive.
    */
@@ -53,6 +90,20 @@ export abstract class ModelBuilder {
       schema: string;
     },
   ): void;
+
+  /**
+   * The second argument every `expressions` callback receives.
+   */
+  protected indexExpressionContext(): IndexExpressionContext {
+    const dialect = this.dialect;
+    return {
+      dialect,
+      caseInsensitive: (column: unknown) =>
+        dialect === "sqlite"
+          ? sql`${column} COLLATE NOCASE`
+          : sql`LOWER(${column})`,
+    };
+  }
 
   /**
    * Convert camelCase to snake_case for column names.
@@ -214,7 +265,10 @@ export abstract class ModelBuilder {
               }
               configs.push(idx);
             } else if ("expressions" in indexDef) {
-              const parts = indexDef.expressions(self as any);
+              const parts = indexDef.expressions(
+                self as any,
+                this.indexExpressionContext(),
+              );
               if (parts.length > 0) {
                 let idx = indexDef.unique
                   ? builders.uniqueIndex(indexDef.name).on(...parts)

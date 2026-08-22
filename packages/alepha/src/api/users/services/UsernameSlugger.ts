@@ -20,7 +20,7 @@ import { RealmProvider } from "../providers/RealmProvider.ts";
  * **Collision retry** — `pickAvailable()` checks the realm's `users` table
  * and the realm's `usernameBlocklist`. On hit, it appends `-<4 random>` and
  * retries up to {@link MAX_RETRIES} times. Best-effort against concurrent
- * registrations: the unique index on `(realm, lower(username))` is the
+ * registrations: the unique index on `(realm, username COLLATE NOCASE)` is the
  * authoritative race guard, callers that hit a unique-violation should
  * call `pickAvailable` again with a fresh suffix.
  *

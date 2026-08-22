@@ -38,6 +38,8 @@ import {
 import { byte } from "../types/byte.ts";
 
 export class PostgresModelBuilder extends ModelBuilder {
+  protected readonly dialect = "postgresql" as const;
+
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
 
