@@ -76,7 +76,24 @@ export class DrizzleKitProvider {
         { error },
       );
       const { statements } = await this.generateMigration(provider);
-      await this.executeStatementsLenient(statements, provider);
+      const { applied, skipped } = await this.executeStatementsLenient(
+        statements,
+        provider,
+      );
+
+      // The fallback diffs against an EMPTY snapshot, so it can only ever
+      // CREATE. Against a database whose tables all exist already, every
+      // statement is skipped and nothing is synchronized, yet the caller
+      // goes on to log "Synchronization OK". That combination is the exact
+      // shape of a silent no-op: entity changes never reach the database and
+      // the app only finds out when a query names a column that was never
+      // added. Say so instead.
+      if (skipped > 0 && applied === 0) {
+        this.log.warn(
+          `Schema of '${provider.name}' could NOT be synchronized: push introspection failed and the fallback only knows how to create tables, all ${skipped} of which already exist. Entity changes have NOT been applied: run your migrations, or recreate the database.`,
+          { error },
+        );
+      }
     }
 
     this.log.info(
@@ -293,7 +310,10 @@ export class DrizzleKitProvider {
   }> {
     if (provider.dialect === "sqlite") {
       const sqlite = kit as typeof DrizzleKitSqlite;
-      return await sqlite.pushSchema(models, provider.db as any);
+      return await sqlite.pushSchema(
+        models,
+        this.sqliteDbForDrizzleKit(provider) as any,
+      );
     }
 
     const postgres = kit as typeof DrizzleKitPostgres;
@@ -304,6 +324,32 @@ export class DrizzleKitProvider {
       entities: undefined,
       extensions: undefined,
     });
+  }
+
+  /**
+   * Adapt a provider to the `SQLiteDB` shape drizzle-kit's sqlite payload
+   * introspects through: a single `query(sql): Promise<Row[]>`.
+   *
+   * `provider.db` is a drizzle *ORM* instance, which has `all`/`get`/`run`
+   * and no `query` at all, so `pushSchema` threw `db.query is not a function`
+   * on the very first introspection call, for every sqlite provider, every
+   * time. The throw was caught by {@link synchronize}'s fallback, which
+   * diffs against an EMPTY snapshot and can therefore only ever emit
+   * `CREATE TABLE`; on a database that already had those tables the lenient
+   * executor skipped all of them and the run logged "Synchronization OK"
+   * having applied nothing. A column added to an entity simply never
+   * reached any existing local dev database, silently.
+   *
+   * Only `query` is needed: `pushSchema` uses it for introspection and for
+   * its data-loss `suggestions`, and Alepha runs `sqlStatements` itself
+   * rather than calling the returned `apply()` (the only user of `batch`).
+   */
+  protected sqliteDbForDrizzleKit(provider: DatabaseProvider): {
+    query: (query: string) => Promise<Record<string, unknown>[]>;
+  } {
+    return {
+      query: (query: string) => provider.execute(sql.raw(query)),
+    };
   }
 
   /**
@@ -375,24 +421,29 @@ export class DrizzleKitProvider {
   protected async executeStatementsLenient(
     statements: string[],
     provider: DatabaseProvider,
-  ): Promise<void> {
+  ): Promise<{ applied: number; skipped: number }> {
     if (statements.length > 0) {
       this.log.debug(
         `Executing ${statements.length} statements (lenient) ...`,
         { statements },
       );
     }
+    let applied = 0;
+    let skipped = 0;
     for (const statement of statements) {
       try {
         await provider.execute(sql.raw(statement));
+        applied++;
       } catch (error: any) {
         if (this.errorMentions(error, "already exists")) {
           this.log.debug(`Skipped (already exists): ${statement.slice(0, 80)}`);
+          skipped++;
           continue;
         }
         throw error;
       }
     }
+    return { applied, skipped };
   }
 
   /**
