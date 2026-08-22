@@ -1,8 +1,8 @@
 import { delimiter, dirname } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { $inject, AlephaError, z } from "alepha";
-import { $command } from "alepha/command";
+import { type Alepha, $inject, z } from "alepha";
+import { $command, CommandError } from "alepha/command";
 import { $logger } from "alepha/logger";
 import type {
   DatabaseProvider,
@@ -63,17 +63,8 @@ export class DbCommand {
       // gating it on a `migrations/` directory existing meant the one state
       // worth catching — entities declared, no migrations generated yet —
       // was the exact state that skipped the check.
-      //
-      // Resolved by name, so absence can only be observed by trying. Anything
-      // that is not "this app has no ORM" is rethrown.
-      let repositoryProvider: RepositoryProvider;
-      try {
-        repositoryProvider =
-          alepha.inject<RepositoryProvider>("RepositoryProvider");
-      } catch (err) {
-        if (!/Service not found/i.test((err as Error)?.message ?? "")) {
-          throw err;
-        }
+      const repositoryProvider = this.findRepositoryProvider(alepha);
+      if (!repositoryProvider) {
         this.log.info("No database configured; nothing to check.");
         return;
       }
@@ -155,7 +146,7 @@ export class DbCommand {
         );
         this.log.info("");
 
-        throw new AlephaError(
+        throw new CommandError(
           `Database migrations are not up to date (${drifted
             .map((d) => d.provider)
             .join(", ")}).`,
@@ -245,8 +236,7 @@ export class DbCommand {
         mode: "development",
         entry,
       });
-      const repositoryProvider =
-        alepha.inject<RepositoryProvider>("RepositoryProvider");
+      const repositoryProvider = this.requireDatabase(alepha, "baseline");
 
       const seen = new Set<string>();
       for (const primitive of repositoryProvider.getRepositories()) {
@@ -295,8 +285,7 @@ export class DbCommand {
         mode: "production",
         entry,
       });
-      const repositoryProvider =
-        alepha.inject<RepositoryProvider>("RepositoryProvider");
+      const repositoryProvider = this.requireDatabase(alepha, "baseline");
 
       const seen = new Set<string>();
       for (const primitive of repositoryProvider.getRepositories()) {
@@ -314,7 +303,7 @@ export class DbCommand {
         // fall through to `runMigrator`'s generic "driver not supported"
         // error, which would wrongly suggest the capability doesn't exist.
         if (provider.driver === "d1") {
-          throw new AlephaError(
+          throw new CommandError(
             `'alepha db baseline mark' does not support Cloudflare D1 — use 'alepha platform db baseline mark' instead, which drives the wrangler bookkeeping table directly.`,
           );
         }
@@ -364,10 +353,9 @@ export class DbCommand {
           entry,
         });
 
+        const repositoryProvider = this.requireDatabase(alepha, "push to");
         const drizzleKitProvider =
           alepha.inject<DrizzleKitProvider>("DrizzleKitProvider");
-        const repositoryProvider =
-          alepha.inject<RepositoryProvider>("RepositoryProvider");
         const accepted = new Set<string>([]);
 
         for (const primitive of repositoryProvider.getRepositories()) {
@@ -526,6 +514,93 @@ export class DbCommand {
   /**
    * Run a drizzle-kit command for all database providers in an Alepha instance.
    */
+  /**
+   * Run the drizzle-kit child, turning a non-zero exit into a
+   * {@link CommandError}.
+   *
+   * Everything drizzle-kit has to say it has already said on its own stdout by
+   * the time this throws, so the only thing left to add is which command failed
+   * against which provider - and, above all, not a stack through the CLI's
+   * internals for a tool exiting 1 on the user's schema.
+   */
+  protected async execDrizzleKit(
+    command: string,
+    drizzleCommand: string,
+    providerName: string,
+    options: Parameters<AlephaCliUtils["exec"]>[1],
+  ): Promise<void> {
+    try {
+      await this.utils.exec(command, options);
+    } catch (error) {
+      throw new CommandError(
+        `drizzle-kit '${drizzleCommand}' failed for '${providerName}'. Its output is above.`,
+        { cause: error },
+      );
+    }
+  }
+
+  /**
+   * drizzle-kit's command names, as the sentence in {@link requireDatabase}
+   * needs to read them.
+   */
+  protected readonly drizzleActions: Record<string, string> = {
+    generate: "generate migrations for",
+    push: "push to",
+    studio: "browse",
+    migrate: "migrate",
+  };
+
+  /**
+   * The ORM entry point every database command works through, or `undefined`
+   * when this project simply has no database.
+   *
+   * Resolved by name rather than by class, so its absence can only be observed
+   * by trying; anything that is not "this app has no ORM" is rethrown, because
+   * a container that failed to build a provider it *does* declare is a real
+   * bug and must keep its stack.
+   */
+  protected findRepositoryProvider(
+    alepha: Alepha,
+  ): RepositoryProvider | undefined {
+    try {
+      return alepha.inject<RepositoryProvider>("RepositoryProvider");
+    } catch (error) {
+      if (!/Service not found/i.test((error as Error)?.message ?? "")) {
+        throw error;
+      }
+      return undefined;
+    }
+  }
+
+  /**
+   * The same lookup, for the commands that cannot do their job without one.
+   *
+   * The split is deliberate. `migrations check` asks a question, and "no
+   * database" is a valid answer to it, so it says so and exits 0 - which is
+   * what lets `alepha verify` run the check unconditionally. `push`,
+   * `generate`, `studio` and `baseline` are instructions, and carrying one out
+   * against nothing is not success; reporting it as such is the silent-no-op
+   * shape this codebase keeps paying for.
+   *
+   * Either way the user must not meet `Service not found: DrizzleKitProvider`,
+   * which names an internal of a container they never wrote.
+   *
+   * @param action - fills "there is nothing to ___", so phrase it as something
+   *   that sentence can take: `"baseline"`, `"push to"`.
+   */
+  protected requireDatabase(
+    alepha: Alepha,
+    action: string,
+  ): RepositoryProvider {
+    const repositoryProvider = this.findRepositoryProvider(alepha);
+    if (!repositoryProvider) {
+      throw new CommandError(
+        `No database configured, so there is nothing to ${action}. Import 'AlephaOrm' into your module and declare an $entity to give this project one.`,
+      );
+    }
+    return repositoryProvider;
+  }
+
   public async runDrizzleKitCommand(options: {
     root: string;
     args?: string;
@@ -544,10 +619,15 @@ export class DbCommand {
       entry,
     });
 
+    const repositoryProvider = this.requireDatabase(
+      alepha,
+      // Not `options.command`: those are drizzle-kit's names, and a user who
+      // typed `alepha db migrations create` should not be told that
+      // 'generate' has nothing to run against.
+      this.drizzleActions[options.command] ?? "work with",
+    );
     const drizzleKitProvider =
       alepha.inject<DrizzleKitProvider>("DrizzleKitProvider");
-    const repositoryProvider =
-      alepha.inject<RepositoryProvider>("RepositoryProvider");
     const accepted = new Set<string>([]);
 
     for (const primitive of repositoryProvider.getRepositories()) {
@@ -604,8 +684,17 @@ export class DbCommand {
       // node_modules bin and fails.
       const drizzleKit = this.utils.resolveBin("drizzle-kit");
       const drizzleOrm = await this.prepareDrizzleOrmResolution(rootDir);
-      await this.utils.exec(
+      // The child's failure is a command failure, not a crash. drizzle-kit
+      // streams its own diagnostic first ("unable to open database file",
+      // "unexpected unique index ... with expression value"), and a plain
+      // `AlephaError` from `exec` reaches the `ready` hook unrecognised, so
+      // the user's answer arrived under "Alepha failed to start" with seven
+      // frames of `alepha/dist` on top of it. `CommandError` is what
+      // `CliProvider.reportFailure` renders as the reason and an exit code.
+      await this.execDrizzleKit(
         `node "${drizzleKit}" ${options.command} --config="${drizzleConfigJsPath}"${flags}`,
+        options.command,
+        providerName,
         {
           global: true,
           env: {
@@ -822,7 +911,7 @@ if (typeof registerHooks === "function") {
       return;
     }
 
-    throw new AlephaError(
+    throw new CommandError(
       [
         `Refusing to generate a destructive migration: DROP TABLE found in ${offenders.length} statement(s).`,
         "",
@@ -880,7 +969,7 @@ if (typeof registerHooks === "function") {
       .ls(archiveDir, { hidden: true })
       .catch(() => null);
     if (archiveEntries !== null) {
-      throw new AlephaError(
+      throw new CommandError(
         `Archive '${archiveDir}' already exists. This project has been baselined before; remove or rename the archive to baseline again.`,
       );
     }

@@ -1,7 +1,7 @@
 import { delimiter, dirname } from "node:path";
 
 import { Alepha, AlephaError, z } from "alepha";
-import { CliProvider } from "alepha/command";
+import { CliProvider, CommandError } from "alepha/command";
 import { $entity, $repository, db } from "alepha/orm";
 import {
   FileSystemProvider,
@@ -30,6 +30,8 @@ class TestDbCommand extends DbCommand {
     this.prepareDrizzleOrmResolution.bind(this);
   public readonly testBaselineMark = this.baselineMark;
   public readonly testCreate = this.create;
+  public testFindRepositoryProvider = this.findRepositoryProvider.bind(this);
+  public testRequireDatabase = this.requireDatabase.bind(this);
 }
 
 /**
@@ -68,6 +70,47 @@ describe("DbCommand", () => {
       utils: alepha.inject(AlephaCliUtils),
     };
   };
+
+  /**
+   * A project with no ORM is an ordinary project, not a broken one. What it
+   * used to get was `Service not found: DrizzleKitProvider` under "Alepha
+   * failed to start", naming an internal of a container the user never wrote.
+   */
+  describe("resolving the database", () => {
+    it("should report an absent ORM without naming a container internal", () => {
+      const { db } = create();
+      const userAlepha = Alepha.create();
+
+      expect(() => db.testRequireDatabase(userAlepha, "push to")).toThrowError(
+        /No database configured, so there is nothing to push to/,
+      );
+      expect(() =>
+        db.testRequireDatabase(userAlepha, "push to"),
+      ).not.toThrowError(/Service not found/);
+    });
+
+    /**
+     * A command failure, so `CliProvider` renders the reason and exits 1
+     * instead of unwinding a stack through its own internals.
+     */
+    it("should report it as a command failure", () => {
+      const { db } = create();
+
+      expect(() => db.testRequireDatabase(Alepha.create(), "baseline")).toThrow(
+        CommandError,
+      );
+    });
+
+    /**
+     * `check` asks a question, and "no database" answers it: `alepha verify`
+     * runs the check unconditionally and must stay green on a DB-less app.
+     */
+    it("should answer with undefined for the commands that tolerate it", () => {
+      const { db } = create();
+
+      expect(db.testFindRepositoryProvider(Alepha.create())).toBeUndefined();
+    });
+  });
 
   /**
    * D1 ignores `PRAGMA foreign_keys=OFF`, so a generated migration that drops a
