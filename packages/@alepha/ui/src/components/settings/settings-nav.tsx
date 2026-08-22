@@ -159,7 +159,16 @@ export const SettingsNav = (props: SettingsNavProps) => {
                   entry,
                   "transition-colors",
                   item.active
-                    ? "bg-muted font-medium"
+                    ? // Same active treatment as `SidebarMenuButton`: the
+                      // interaction-token fill plus a left bar, not a heavier
+                      // fill on its own. See the "Sidebar active item" block in
+                      // `styles.css` for why the bar is the part that carries
+                      // the state: `--sidebar-accent` is spent on hover too, so
+                      // fill alone renders the current page and the hovered row
+                      // as one merged shape. Written as utilities here because
+                      // that CSS keys off `[data-slot="sidebar-menu-button"]`,
+                      // which this rail deliberately is not (see above).
+                      "bg-sidebar-accent text-sidebar-accent-foreground after:bg-sidebar-primary relative font-medium after:absolute after:top-1 after:bottom-1 after:left-0 after:w-[3px] after:rounded-full"
                     : "text-muted-foreground hover:bg-muted/60",
                 )}
               >
