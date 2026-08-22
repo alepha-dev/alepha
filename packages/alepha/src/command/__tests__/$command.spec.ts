@@ -435,6 +435,59 @@ describe("$command", () => {
       expect(pushHandler.mock.calls[0][0].args).toBe("./some/path");
       expect(process.exitCode).not.toBe(1);
     });
+
+    /**
+     * A leaf is where this used to stop, because the guard also demanded
+     * `hasChildren`. So `alepha verify fast` (meaning `--fast`) ran a full
+     * verify and exited 0 with the word dropped on the floor - the same green
+     * no-op in CI that the group-level guard exists to prevent, one level
+     * down. A leaf has no subcommands to have mistyped, so the message names
+     * the argument rather than a command.
+     */
+    test("should reject a stray word on a command that takes none", async () => {
+      const leafHandler = vi.fn();
+
+      class LeafCommands {
+        verify = $command({
+          name: "verify",
+          description: "Verify the project.",
+          handler: leafHandler,
+        });
+      }
+
+      await expectUsageError(
+        setupTestCommands(["verify", "fast"], (a) => a.with(LeafCommands)),
+        "Unexpected argument 'fast'",
+      );
+      expect(leafHandler).not.toHaveBeenCalled();
+    });
+
+    /**
+     * `--mode` never appears in any command's `flags` - `mode: true` turns it
+     * on and it is read straight off the argv - so the resolver had no way to
+     * know it takes a value, and left `production` sitting in the positionals.
+     * Harmless while leaves were unguarded; a usage error the moment they were
+     * not.
+     */
+    test("should not mistake a --mode value for a stray word", async () => {
+      const modeHandler = vi.fn();
+
+      class ModeCommands {
+        build = $command({
+          name: "build",
+          mode: true,
+          description: "Build the project.",
+          handler: modeHandler,
+        });
+      }
+
+      await setupTestCommands(["build", "--mode", "production"], (a) =>
+        a.with(ModeCommands),
+      );
+
+      expect(modeHandler).toHaveBeenCalledOnce();
+      expect(process.exitCode).not.toBe(1);
+    });
   });
 
   describe("Error Handling", () => {

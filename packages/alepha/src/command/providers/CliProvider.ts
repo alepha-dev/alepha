@@ -272,14 +272,26 @@ export class CliProvider {
     // prevent; it just never fires here, because a nested typo always leaves
     // `command` truthy.
     //
-    // Only groups, and only groups that declare no positional args of their
-    // own: `alepha db push [path]` legitimately keeps `path` as an argument,
-    // and a leftover word there is data, not a typo.
-    if (command.hasChildren && !command.options.args) {
+    // The gate is "declares no positional args of its own", and nothing more.
+    // `alepha db push [path]` and `alepha test [filter]` legitimately keep
+    // their word, and a leftover there is data, not a typo.
+    //
+    // It used to also require `hasChildren`, which left every leaf command
+    // outside the guard: `alepha verify fast` (meaning `--fast`),
+    // `alepha build prod`, `alepha lint src/` all ran the default behaviour
+    // and exited 0 with the word silently dropped. That is the same green
+    // no-op in CI the guard was written to stop; a leaf has simply always
+    // consumed its whole path, so `positionalArgs[consumedArgs.length]` is
+    // the first word it was never asked for either way.
+    if (!command.options.args) {
       const unknown = positionalArgs[consumedArgs.length];
       if (unknown !== undefined) {
+        // Naming it a "command" is right for a group and wrong for a leaf,
+        // which has no subcommands to have mistyped.
         throw new UsageError(
-          `Unknown command: '${[...consumedArgs, unknown].join(" ")}'`,
+          command.hasChildren
+            ? `Unknown command: '${[...consumedArgs, unknown].join(" ")}'`
+            : `Unexpected argument '${unknown}': '${consumedArgs.join(" ")}' takes no positional arguments.`,
         );
       }
     }
@@ -537,6 +549,16 @@ export class CliProvider {
         const flags = (command.options as { flags?: ZObject }).flags;
         return flags ? this.extractFlagDefs(flags) : [];
       }),
+      // `--mode` is not in `options.flags` on any command: `mode: true` turns
+      // it on and `parseModeFlag` reads it straight off the argv, so it is
+      // invisible to the superset above. Without it `build --mode production`
+      // leaves `production` sitting in `positionalArgs`, which is what the
+      // paragraph above says this method exists to prevent.
+      {
+        key: "__mode__",
+        aliases: ["mode", "m"],
+        schema: z.string(),
+      },
     ];
 
     const consumedIndices = this.getFlagConsumedIndices(argv, flagDefs);
