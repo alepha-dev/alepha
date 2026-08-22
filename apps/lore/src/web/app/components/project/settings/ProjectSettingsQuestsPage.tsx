@@ -67,7 +67,7 @@ const ProjectSettingsQuestsPage = () => {
         </span>
       </div>
 
-      <Card className="bg-card gap-0 divide-y rounded-lg border py-0">
+      <Card className="bg-card gap-0 divide-y rounded-lg border py-0 shadow-sm ring-0">
         {ROWS.map((row) => (
           <ProjectSettingsQuestsPageRow key={row.key} row={row} />
         ))}

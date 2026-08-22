@@ -44,7 +44,7 @@ export const SettingsSection = (props: SettingsSectionProps) => {
   return (
     <div className={cn("flex flex-col gap-2", props.className)}>
       <SettingsHeading title={props.title} description={props.description} />
-      <Card className="bg-card gap-0 divide-y rounded-lg border py-0">
+      <Card className="bg-card gap-0 divide-y rounded-lg border py-0 shadow-sm ring-0">
         {props.children}
       </Card>
     </div>

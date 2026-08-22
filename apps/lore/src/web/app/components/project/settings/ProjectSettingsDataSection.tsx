@@ -146,7 +146,7 @@ const ProjectSettingsDataSection = () => {
   return (
     <div className="flex flex-col gap-2">
       <span className="text-sm">{tr("project.settings.data.title")}</span>
-      <Card className="bg-card gap-0 divide-y rounded-lg border py-0">
+      <Card className="bg-card gap-0 divide-y rounded-lg border py-0 shadow-sm ring-0">
         <CardContent className="flex flex-col gap-3 px-4 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
           <div className="flex flex-col gap-0.5">
             <span className="text-sm font-medium">
