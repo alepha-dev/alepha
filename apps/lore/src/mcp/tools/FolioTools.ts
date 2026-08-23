@@ -4,15 +4,18 @@ import { BadRequestError, NotFoundError } from "alepha/server";
 
 import { BlobController } from "../../api/controllers/BlobController.ts";
 import { DirectoryController } from "../../api/controllers/DirectoryController.ts";
+import { EpicController } from "../../api/controllers/EpicController.ts";
 import { FolioController } from "../../api/controllers/FolioController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import { FolioLinkService } from "../../api/services/FolioLinkService.ts";
 import { DIAGRAM_CAPABILITY } from "../schemas/diagramCapability.ts";
 import {
+  folioEpicRefSchema,
   folioFullSchema,
   folioRefParamsSchema,
   folioRefSchema,
 } from "../schemas/index.ts";
+import { EpicRefService } from "../services/EpicRefService.ts";
 
 /**
  * Pull a ~200-character window around the first match of `query` in `text`.
@@ -56,6 +59,8 @@ export class FolioTools {
   protected readonly directoryController = $inject(DirectoryController);
   protected readonly folioLinkService = $inject(FolioLinkService);
   protected readonly blobController = $inject(BlobController);
+  protected readonly epicController = $inject(EpicController);
+  protected readonly epicRefs = $inject(EpicRefService);
 
   /**
    * Resolve project ID from params (by ID or name). Required: at least one
@@ -116,6 +121,22 @@ export class FolioTools {
     );
   }
 
+  /**
+   * Resolve an `epic_number` MCP input to the global epic id, scoped to the
+   * given project. A read-only lookup, so any project member can resolve
+   * it; `EpicController.attachFolio` / `detachFolio` (owner-gated, like
+   * every epic mutation) are what then decide whether the move happens.
+   */
+  protected async resolveEpicId(
+    projectId: number,
+    number: number,
+  ): Promise<number> {
+    const epic = await this.epicController.getEpicByNumber({
+      params: { projectId, number },
+    });
+    return epic.id;
+  }
+
   // Folios live inside `folio_directories` (quest #66); use the
   // `directory_*` MCP tools to navigate the tree.
 
@@ -153,7 +174,7 @@ export class FolioTools {
 
   folio_list = $tool({
     description:
-      "List the project's folios (markdown notes that act as the project's shared memory), pinned first, then newest first. Returns id, title, summary, updatedAt — call `folio_get` to read full content. For initial orientation on a project, prefer `project_context` — it returns this same index alongside the active quests in one round-trip.",
+      "List the project's folios (markdown notes that act as the project's shared memory), pinned first, then newest first. Returns id, title, summary, updatedAt and the `epic` the folio is filed under, if any — call `folio_get` to read full content. Pass `epic` to narrow the list to one epic's folios. For initial orientation on a project, prefer `project_context` — it returns this same index alongside the active quests in one round-trip.",
     title: "List folios",
     annotations: {
       readOnlyHint: true,
@@ -163,6 +184,12 @@ export class FolioTools {
       params: z.object({
         project: z.integer().optional(),
         project_name: z.string().optional(),
+        epic: z
+          .integer()
+          .describe(
+            "Filter to the folios filed under one epic, by its global id (the `id` field from epic_list / epic_get, not the per-project `number`). `epic_get` returns the same list inline.",
+          )
+          .optional(),
         limit: z.integer().min(1).max(100).default(20).optional(),
       }),
       result: z.object({
@@ -175,8 +202,15 @@ export class FolioTools {
         params.project_name,
       );
       const folios = await this.folioController.list({
-        query: { limit: params.limit ?? 20, projectId },
+        query: {
+          limit: params.limit ?? 20,
+          projectId,
+          ...(params.epic != null ? { epicId: params.epic } : {}),
+        },
       });
+      // One extra call for the whole page rather than one per folio, the
+      // same way quest_list stamps its rows.
+      const epicRefs = await this.epicRefs.mapFor(projectId);
       return {
         folios: folios.map((f) => ({
           id: f.id,
@@ -184,6 +218,7 @@ export class FolioTools {
           title: f.title,
           summary: f.summary || undefined,
           updatedAt: f.updatedAt,
+          epic: f.epicId != null ? epicRefs.get(f.epicId) : undefined,
         })),
       };
     },
@@ -212,6 +247,7 @@ export class FolioTools {
             title: z.string(),
             snippet: z.string(),
             updatedAt: z.string(),
+            epic: folioEpicRefSchema.optional(),
           }),
         ),
       }),
@@ -228,6 +264,7 @@ export class FolioTools {
           projectId,
         },
       });
+      const epicRefs = await this.epicRefs.mapFor(projectId);
       return {
         results: folios.map((f) => ({
           id: f.id,
@@ -235,6 +272,7 @@ export class FolioTools {
           title: f.title,
           snippet: buildSnippet(f.content, params.query),
           updatedAt: f.updatedAt,
+          epic: f.epicId != null ? epicRefs.get(f.epicId) : undefined,
         })),
       };
     },
@@ -266,6 +304,7 @@ export class FolioTools {
         content: folio.content,
         createdAt: folio.createdAt,
         updatedAt: folio.updatedAt,
+        epic: await this.epicRefs.refFor(folio.projectId, folio.epicId),
         links,
       };
     },
@@ -273,7 +312,7 @@ export class FolioTools {
 
   folio_create = $tool({
     description:
-      "Create a new folio in a project — a markdown note that becomes part of the project's memory for AI agents. Provide `project` (id) or `project_name`. `content` is markdown. **Always set `summary`** — a 1-2 sentence (~200 chars) description of what the folio is for. It's the field other agents (and future calls of yours) read in `project_context` to decide whether to fetch the body. Without a summary, the index falls back to the title and orientation suffers. " +
+      "Create a new folio in a project — a markdown note that becomes part of the project's memory for AI agents. Provide `project` (id) or `project_name`. `content` is markdown. Pass `epic_number` to file the folio under an epic (it then shows on the epic's Folios tab and in `epic_get`), the same way quest_create does; attaching is owner-only, like every epic mutation. **Always set `summary`** — a 1-2 sentence (~200 chars) description of what the folio is for. It's the field other agents (and future calls of yours) read in `project_context` to decide whether to fetch the body. Without a summary, the index falls back to the title and orientation suffers. " +
       DIAGRAM_CAPABILITY,
     title: "Create folio",
     annotations: { readOnlyHint: false, destructiveHint: false },
@@ -302,6 +341,12 @@ export class FolioTools {
             "Pin the folio. Pinned folios sort to the top of `folio_list` AND have their full content surfaced in `project_context` — they're the per-project equivalent of CLAUDE.md / AGENTS.md. Per-project pin (one shared pin set per project). Use sparingly: the 8K-char total budget across all pinned folios is consumed every time an agent calls `project_context`.",
           )
           .optional(),
+        epic_number: z
+          .integer()
+          .describe(
+            "Per-project number of the epic to file this folio under (see epic_list). A design or outcome folio of an epic belongs here; left unattached it never shows on the epic. Owner-only (same gate as every other epic mutation).",
+          )
+          .optional(),
       }),
       result: folioFullSchema,
     },
@@ -314,6 +359,12 @@ export class FolioTools {
         params.directory_shortId,
         projectId,
       );
+      // Resolved before the create so an unknown epic number fails with
+      // nothing written.
+      const epicId =
+        params.epic_number != null
+          ? await this.resolveEpicId(projectId, params.epic_number)
+          : undefined;
       const folio = await this.folioController.create({
         body: {
           projectId,
@@ -324,6 +375,28 @@ export class FolioTools {
           pinned: params.pinned,
         },
       });
+
+      // File the folio under its epic. `FolioController.create` has no
+      // `epicId` field of its own: `EpicController` owns that mutation
+      // (owner-gated), so this is a second call, exactly as quest_create.
+      //
+      // `create` only needs membership, so a non-owner member can reach
+      // this attach and have it refused. Clean up rather than leave an
+      // orphaned, unlinked folio behind: an agent that sees the error and
+      // retries would otherwise create a duplicate every time. The
+      // original error (not any delete failure) is what the caller sees.
+      if (epicId != null) {
+        try {
+          await this.epicController.attachFolio({
+            params: { id: epicId },
+            body: { folioId: folio.id },
+          });
+        } catch (error) {
+          await this.folioController.delete({ params: { id: folio.id } });
+          throw error;
+        }
+      }
+
       return {
         id: folio.id,
         shortId: folio.shortId,
@@ -332,13 +405,14 @@ export class FolioTools {
         content: folio.content,
         createdAt: folio.createdAt,
         updatedAt: folio.updatedAt,
+        epic: await this.epicRefs.refFor(projectId, epicId),
       };
     },
   });
 
   folio_update = $tool({
     description:
-      "Update a folio. Any omitted field stays unchanged. Updating `content` is a good moment to also refresh `summary` so the orientation index in `project_context` stays accurate. " +
+      "Update a folio. Any omitted field stays unchanged. `epic_number` files the folio under an epic, and 0 detaches it from its current one (owner-only, like every epic mutation). Updating `content` is a good moment to also refresh `summary` so the orientation index in `project_context` stays accurate. " +
       DIAGRAM_CAPABILITY,
     title: "Update folio",
     annotations: { readOnlyHint: false, idempotentHint: true },
@@ -365,6 +439,12 @@ export class FolioTools {
             "Pin or unpin the folio. Pinned folios surface their full content in `project_context` (capped at 8K chars total across all pinned). Omit to leave the current state untouched.",
           )
           .optional(),
+        epic_number: z
+          .integer()
+          .describe(
+            "Move the folio under the epic with this per-project number (see epic_list). Pass 0 to detach it from its current epic. Omit to leave the epic untouched. Owner-only (same gate as every other epic mutation).",
+          )
+          .optional(),
       }),
       result: folioFullSchema,
     },
@@ -385,16 +465,54 @@ export class FolioTools {
           projectId,
         );
       }
-      const folio = await this.folioController.update({
-        params: { id },
-        body: {
-          title: params.title,
-          content: params.content,
-          summary: params.summary,
-          directoryId,
-          pinned: params.pinned,
-        },
-      });
+
+      // Translate `epic_number`: 0 = detach from the folio's current epic
+      // (a no-op if it has none), integer = resolve within the folio's own
+      // project and attach. Applied BEFORE the field update, not after:
+      // `attachFolio` / `detachFolio` are owner-gated while `update` only
+      // needs membership, so doing this first means a refusal throws
+      // before any other field is written, and there is no window where
+      // the title lands and the epic link silently does not.
+      if (params.epic_number != null) {
+        const current = await this.folioController.get({ params: { id } });
+        if (params.epic_number === 0) {
+          if (current.epicId != null) {
+            await this.epicController.detachFolio({
+              params: { id: current.epicId, folioId: id },
+            });
+          }
+        } else {
+          const epicId = await this.resolveEpicId(
+            current.projectId,
+            params.epic_number,
+          );
+          await this.epicController.attachFolio({
+            params: { id: epicId },
+            body: { folioId: id },
+          });
+        }
+      }
+
+      // An epic move alone is not an edit: skip the update (and the
+      // revision it would record) when no other field was passed.
+      const hasFieldUpdate =
+        params.title !== undefined ||
+        params.content !== undefined ||
+        params.summary !== undefined ||
+        directoryId !== undefined ||
+        params.pinned !== undefined;
+      const folio = hasFieldUpdate
+        ? await this.folioController.update({
+            params: { id },
+            body: {
+              title: params.title,
+              content: params.content,
+              summary: params.summary,
+              directoryId,
+              pinned: params.pinned,
+            },
+          })
+        : await this.folioController.get({ params: { id } });
       return {
         id: folio.id,
         shortId: folio.shortId,
@@ -403,6 +521,7 @@ export class FolioTools {
         content: folio.content,
         createdAt: folio.createdAt,
         updatedAt: folio.updatedAt,
+        epic: await this.epicRefs.refFor(folio.projectId, folio.epicId),
       };
     },
   });

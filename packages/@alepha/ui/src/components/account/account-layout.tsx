@@ -57,7 +57,13 @@ export const AccountLayout = () => {
           <AccountHeader homeRouteName={options.homeRouteName} />
         )
       }
-      nav={<SettingsNav items={entries} />}
+      /*
+        `size="default"` so this rail and `apps/lore`'s project-settings one
+        are the same size as well as the same component. `default` rather than
+        the `sm` this used to take because the metrics both rails borrow are
+        `SidebarMenuButton`'s, and the sidebar itself renders at `default`.
+      */
+      nav={<SettingsNav items={entries} size="default" />}
     >
       <NestedView />
     </SettingsLayout>

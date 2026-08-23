@@ -72,7 +72,7 @@ export class MyProfileController {
 
       /*
         Usernames are unique per realm, case-insensitively, through the
-        `users_realm_username_lower_idx` index. Letting the write hit that
+        `users_realm_username_ci_idx` index. Letting the write hit that
         index and translating the driver error would work, but the error text
         differs per backend (sqlite/postgres phrase it differently), so the
         translation is the fragile part rather than the check. Reading first

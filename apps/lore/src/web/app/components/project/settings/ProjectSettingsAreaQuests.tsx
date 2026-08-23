@@ -1,3 +1,4 @@
+import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
 import {
   Card,
   CardContent,
@@ -28,7 +29,7 @@ const ProjectSettingsAreaQuests = (props: ProjectSettingsAreaQuestsProps) => {
   }
 
   return (
-    <Card>
+    <Card className={settingsCardEdge}>
       <CardHeader>
         <CardTitle>{tr("area.detail.quests.title")}</CardTitle>
       </CardHeader>

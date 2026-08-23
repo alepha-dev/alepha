@@ -1,3 +1,4 @@
+import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
 import { Card } from "@alepha/ui/components/ui/card";
 import { cn } from "@alepha/ui/lib/utils";
 import type { ReactNode } from "react";
@@ -51,7 +52,12 @@ export const SettingsDangerSection = (props: SettingsDangerSectionProps) => {
           </span>
         ) : null}
       </div>
-      <Card className="divide-destructive/20 border-destructive/30 bg-card gap-0 divide-y rounded-lg border py-0 shadow-sm ring-0">
+      <Card
+        className={cn(
+          settingsCardEdge,
+          "divide-destructive/20 border-destructive/30 gap-0 divide-y py-0",
+        )}
+      >
         {props.children}
       </Card>
     </div>

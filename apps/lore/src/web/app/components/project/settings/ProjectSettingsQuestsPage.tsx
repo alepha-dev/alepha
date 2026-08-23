@@ -1,5 +1,7 @@
+import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { Switch } from "@alepha/ui/components/ui/switch";
+import { cn } from "@alepha/ui/lib/utils";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
@@ -67,7 +69,7 @@ const ProjectSettingsQuestsPage = () => {
         </span>
       </div>
 
-      <Card className="bg-card gap-0 divide-y rounded-lg border py-0 shadow-sm ring-0">
+      <Card className={cn(settingsCardEdge, "gap-0 divide-y py-0")}>
         {ROWS.map((row) => (
           <ProjectSettingsQuestsPageRow key={row.key} row={row} />
         ))}

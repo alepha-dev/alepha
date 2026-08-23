@@ -435,9 +435,25 @@ export class QueryManager {
     if (operator?.eqInsensitive != null) {
       // Equality, not a pattern: no LIKE metacharacters are involved, so a
       // raw user-supplied value cannot act as a wildcard.
-      conditions.push(
-        sql`LOWER(${column}) = LOWER(${encodeValue(operator.eqInsensitive)})`,
-      );
+      if (dialect === "sqlite") {
+        // `COLLATE NOCASE` rather than `LOWER()` on both sides, and the
+        // reason is the index, not the comparison: the two fold the same
+        // ASCII range, but sqlite narrows on an index column only when the
+        // predicate matches the key it was built from. Entities declare
+        // case-insensitive uniqueness through `ctx.caseInsensitive`, which
+        // emits `col COLLATE NOCASE`, so a `LOWER()` predicate against
+        // `users` still finds the index and still seeks on `realm` - and then
+        // filters every row in that realm by hand. On a single-realm
+        // deployment that is the whole table, on the login path, on every
+        // sign-in.
+        conditions.push(
+          sql`${column} = ${encodeValue(operator.eqInsensitive)} COLLATE NOCASE`,
+        );
+      } else {
+        conditions.push(
+          sql`LOWER(${column}) = LOWER(${encodeValue(operator.eqInsensitive)})`,
+        );
+      }
     }
 
     if (operator?.ilike != null) {

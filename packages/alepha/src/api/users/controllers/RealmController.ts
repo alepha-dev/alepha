@@ -82,7 +82,7 @@ export class RealmController {
       }
 
       // Case-insensitive AND realm-scoped, matching the
-      // `(realm, LOWER(username))` unique index. `eq` reported
+      // `(realm, username COLLATE NOCASE)` unique index. `eq` reported
       // `available: true` for "Admin" when "admin" was taken (the
       // registration then 409'd), and it searched every realm.
       const realm = this.realmProvider.getRealm(realmName);

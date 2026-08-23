@@ -1,3 +1,4 @@
+import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
 import { Button } from "@alepha/ui/components/ui/button";
 import {
   Card,
@@ -48,7 +49,7 @@ const ProjectSettingsAreaDescription = (
   };
 
   return (
-    <Card>
+    <Card className={settingsCardEdge}>
       <CardHeader>
         <CardTitle>{tr("area.detail.description.title")}</CardTitle>
       </CardHeader>

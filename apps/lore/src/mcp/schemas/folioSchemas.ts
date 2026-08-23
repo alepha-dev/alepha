@@ -2,6 +2,19 @@ import { z } from "alepha";
 
 import { linkSourceKindSchema } from "../../api/schemas/linkSourceKindSchema.ts";
 import { linkTargetKindSchema } from "../../api/schemas/linkTargetKindSchema.ts";
+import { epicStatusSchema } from "./commonSchemas.ts";
+
+/**
+ * The epic a folio is filed under. Same shape as the `epic` on quest rows
+ * (`EpicRefService`): `number` is how an agent addresses the epic, and
+ * `status` is what tells a planned epic's folios from released ones, since
+ * no folio list is gated over MCP.
+ */
+export const folioEpicRefSchema = z.object({
+  number: z.integer(),
+  title: z.string(),
+  status: epicStatusSchema,
+});
 
 /**
  * Lightweight folio reference returned by list/search tools.
@@ -12,6 +25,7 @@ export const folioRefSchema = z.object({
   title: z.string(),
   summary: z.string().optional(),
   updatedAt: z.string(),
+  epic: folioEpicRefSchema.optional(),
 });
 
 /**
@@ -49,6 +63,11 @@ export const folioFullSchema = z.object({
   content: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  /**
+   * The epic this folio is filed under, absent when it has none. Set with
+   * `epic_number` on `folio_create` / `folio_update`.
+   */
+  epic: folioEpicRefSchema.optional(),
   /**
    * Wiki-style cross-folio references resolved at save time. `outbound`
    * are folios this one points to via `[[...]]`; `inbound` are folios
