@@ -84,7 +84,9 @@ const setup = async () => {
     });
   };
 
-  /** The same failure, seen by one app. */
+  /**
+   * The same failure, seen by one app.
+   */
   const reportError = async (
     sigilId: string,
     over: Record<string, unknown> = {},

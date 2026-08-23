@@ -12,7 +12,9 @@ export interface QuestTagInputProps {
   value?: string[];
   onChange?: (next: string[]) => void;
   disabled?: boolean;
-  /** Project id used to fetch the known-tags suggestion list. */
+  /**
+   * Project id used to fetch the known-tags suggestion list.
+   */
   projectId?: number;
 }
 

@@ -1,6 +1,7 @@
 import { Button } from "@alepha/ui/components/ui/button";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { resizeImage } from "@alepha/ui/lib/resize-image";
+import { AlephaError } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Copy, Loader2, Paperclip, Pencil, Trash2, Upload } from "lucide-react";
@@ -78,7 +79,7 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
           { method: "POST", body: form, credentials: "include" },
         );
         if (!uploaded.ok) {
-          throw new Error(
+          throw new AlephaError(
             `${original.name} — upload failed (${uploaded.status})`,
           );
         }

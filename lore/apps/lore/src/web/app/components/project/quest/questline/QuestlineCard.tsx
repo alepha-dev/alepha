@@ -13,7 +13,9 @@ import {
 
 export interface QuestlineCardProps {
   node: QuestlineNode;
-  /** Tailwind class for the area dot, resolved from `areas.color`. */
+  /**
+   * Tailwind class for the area dot, resolved from `areas.color`.
+   */
   areaDotClass: string;
   onOpen: (node: QuestlineNode) => void;
 }

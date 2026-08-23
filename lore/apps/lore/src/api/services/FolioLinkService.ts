@@ -16,7 +16,9 @@ import type { LinkTargetKind } from "../schemas/linkTargetKindSchema.ts";
  * the renderer.
  */
 export interface ParsedToken {
-  /** Target table — `folio` (default), `quest`, `epic` or `blob`. */
+  /**
+   * Target table — `folio` (default), `quest`, `epic` or `blob`.
+   */
   type: LinkTargetKind;
   /**
    * The reference body. `#N` means lookup by shortId; for blobs, a bare
@@ -25,9 +27,13 @@ export interface ParsedToken {
    * resolvers can pattern-match without splitting again.
    */
   ref: string;
-  /** Heading slug for anchor links — `undefined` when the token has no `#suffix`. */
+  /**
+   * Heading slug for anchor links — `undefined` when the token has no `#suffix`.
+   */
   anchor?: string;
-  /** Original token (between the `[[` and `]]`) for debugging / rendering. */
+  /**
+   * Original token (between the `[[` and `]]`) for debugging / rendering.
+   */
   raw: string;
 }
 

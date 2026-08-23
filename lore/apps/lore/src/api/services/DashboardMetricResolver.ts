@@ -12,7 +12,9 @@ import type { ResolvedDashboardScope } from "./DashboardScopeService.ts";
 export interface DashboardResolvable {
   card: DashboardCardResource;
   scope: ResolvedDashboardScope;
-  /** The metric's filters, already parsed against its own schema. */
+  /**
+   * The metric's filters, already parsed against its own schema.
+   */
   filters: Record<string, unknown>;
 }
 
@@ -38,7 +40,9 @@ export interface DashboardResolvable {
  * catches it and marks those cards `ok: false`.
  */
 export interface DashboardMetricResolver {
-  /** The registry key this resolver answers for. */
+  /**
+   * The registry key this resolver answers for.
+   */
   readonly metric: string;
 
   resolveAll(

@@ -109,7 +109,9 @@ const setup = async (): Promise<TestContext> => {
   };
 };
 
-/** `YYYY-MM-DD`, `daysAgo` days before the pinned instant, UTC. */
+/**
+ * `YYYY-MM-DD`, `daysAgo` days before the pinned instant, UTC.
+ */
 const dayUtc = (ctx: TestContext, daysAgo: number): string => {
   const day = new Date(ctx.nowMs);
   day.setUTCDate(day.getUTCDate() - daysAgo);

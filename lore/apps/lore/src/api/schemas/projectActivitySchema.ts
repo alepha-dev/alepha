@@ -40,7 +40,9 @@ export const projectActivityEventSchema = z.object({
   quest: z.object({ shortId: z.integer(), title: z.string() }).optional(),
   feedback: z.object({ shortId: z.integer(), title: z.string() }).optional(),
   folio: z.object({ shortId: z.integer(), title: z.string() }).optional(),
-  /** One short phrase, already readable without decoding `kind`. */
+  /**
+   * One short phrase, already readable without decoding `kind`.
+   */
   summary: z.string(),
 });
 

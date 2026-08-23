@@ -5,9 +5,9 @@
  * persistence — the cache must vanish on tab close so a second visitor
  * can't skip the passphrase prompt.
  *
- * The map is shared across renders of `FolioProtectedView` and any
- * future protected-folio editor so a user who unlocked from the read
- * view doesn't have to re-enter the passphrase when they hit Edit.
+ * The map is shared across renders of the folio workspace so a user who
+ * unlocked a folio once does not re-enter the passphrase on every
+ * navigation back to it.
  */
 const cache = new Map<string, CryptoKey>();
 
@@ -33,14 +33,14 @@ export const forgetAllProtectedKeys = (): void => {
  * wires the listeners on first call, never tears them down (the tab is
  * the lifetime).
  */
-let armedAt = 0;
+let armed = false;
 let idleTimer: ReturnType<typeof setTimeout> | undefined;
 const DEFAULT_IDLE_MS = 15 * 60 * 1000;
 
 export const ensureProtectedKeysAutoLock = (idleMs = DEFAULT_IDLE_MS): void => {
   if (typeof window === "undefined") return;
-  if (armedAt) return;
-  armedAt = Date.now();
+  if (armed) return;
+  armed = true;
   const reset = () => {
     if (idleTimer) clearTimeout(idleTimer);
     idleTimer = setTimeout(() => {

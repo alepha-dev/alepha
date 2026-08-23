@@ -22,7 +22,7 @@ export class ProjectResources {
     uri: "lore://projects",
     name: "Project List",
     description:
-      "List of all projects (projects) the user has access to. Use project_list tool for more details, or use project ID/title in other tools.",
+      "List of all projects the user has access to. Use project_list tool for more details, or use project ID/title in other tools.",
     mimeType: "application/json",
     handler: async () => {
       const projects = await this.projectController.getMyProjects();

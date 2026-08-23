@@ -3,6 +3,7 @@ import { type UserEntity, users } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, type Page } from "alepha/orm";
+import type { UserAccountToken } from "alepha/security";
 import { BadRequestError, ForbiddenError } from "alepha/server";
 
 import { type InvitationEntity, invitations } from "../entities/invitations.ts";
@@ -53,7 +54,7 @@ export class InvitationService {
 
   public async create(
     data: CreateInvitation,
-    inviter: { id: string; email?: string },
+    inviter: UserAccountToken,
   ): Promise<InvitationEntity> {
     const email = data.email.trim().toLowerCase();
 
@@ -61,7 +62,7 @@ export class InvitationService {
       throw new BadRequestError("Cannot invite yourself");
     }
 
-    await this.security.assertOwner(Number(data.resourceId), inviter as any);
+    await this.security.assertOwner(Number(data.resourceId), inviter);
 
     const existingUser = await this.users.findOne({
       where: { email: { eq: email } },

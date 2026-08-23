@@ -17,6 +17,7 @@ import {
   type KeyboardEvent,
   type MouseEvent,
   type ReactElement,
+  useEffect,
   useRef,
   useState,
 } from "react";
@@ -62,6 +63,7 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
   // in some browsers before the fiber is fully torn down) from being
   // mistaken for a user-initiated blur-to-commit.
   const cancelledRef = useRef(false);
+  const renameInputRef = useRef<HTMLInputElement>(null);
   // React-documented "adjust state during render" pattern: reset the draft
   // to the CURRENT name exactly on the OFF→ON transition into rename mode,
   // not just at this row's mount. `useState(node.name)`'s initializer only
@@ -73,6 +75,16 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
     setDraftName(node.name);
   }
   wasRenamingRef.current = isRenaming;
+
+  // Focus the input when it appears (the a11y rule that removed `autoFocus`
+  // left rename, new folio and new directory opening an input nobody could
+  // type into without clicking it first).
+  useEffect(() => {
+    if (isRenaming) {
+      renameInputRef.current?.focus();
+      renameInputRef.current?.select();
+    }
+  }, [isRenaming]);
 
   const handleClick = (): void => {
     if (isRenaming) return;
@@ -207,6 +219,7 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
         />
         {isRenaming ? (
           <input
+            ref={renameInputRef}
             value={draftName}
             onChange={(e) => setDraftName(e.target.value)}
             onKeyDown={handleRenameKeyDown}

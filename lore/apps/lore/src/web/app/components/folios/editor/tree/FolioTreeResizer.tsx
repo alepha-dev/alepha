@@ -1,6 +1,10 @@
 import { type PointerEvent, type ReactElement, useRef } from "react";
 
-import { TREE_MAX_WIDTH, TREE_MIN_WIDTH } from "../useFolioPanes.ts";
+import {
+  TREE_DEFAULT_WIDTH,
+  TREE_MAX_WIDTH,
+  TREE_MIN_WIDTH,
+} from "../useFolioPanes.ts";
 
 export interface FolioTreeResizerProps {
   width: number;
@@ -53,7 +57,7 @@ const FolioTreeResizer = (props: FolioTreeResizerProps): ReactElement => {
       onPointerMove={onPointerMove}
       onPointerUp={end}
       onPointerCancel={end}
-      onDoubleClick={() => props.onWidth(242)}
+      onDoubleClick={() => props.onWidth(TREE_DEFAULT_WIDTH)}
       className="hover:bg-primary/40 active:bg-primary/60 -ml-[2px] w-[5px] flex-none cursor-col-resize transition-colors"
     />
   );

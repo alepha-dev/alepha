@@ -15,7 +15,7 @@ import { sigilClientAtom } from "../shared/sigilClientAtom.ts";
  *
  * ```tsx
  * const feedback = useFeedbackUrl();
- * return feedback ? <a href={feedback}>Signaler un problème</a> : null;
+ * return feedback ? <a href={feedback}>Report a problem</a> : null;
  * ```
  *
  * Returns `undefined` rather than a fallback URL: a link to a feedback form

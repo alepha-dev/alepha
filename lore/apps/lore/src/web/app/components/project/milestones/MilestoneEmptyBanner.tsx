@@ -6,13 +6,21 @@ import { Library, Play } from "lucide-react";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface MilestoneEmptyBannerProps {
-  /** Quests completed since the last close — see `getMilestoneBacklog`. */
+  /**
+   * Quests completed since the last close — see `getMilestoneBacklog`.
+   */
   backlogCount: number;
-  /** `#4 July release`, when a milestone has ever closed. */
+  /**
+   * `#4 July release`, when a milestone has ever closed.
+   */
   lastLabel?: string;
-  /** Localized close date of that milestone. */
+  /**
+   * Localized close date of that milestone.
+   */
   lastClosedOn?: string;
-  /** Localized auto-close setting, e.g. "Manual" or "2 weeks". */
+  /**
+   * Localized auto-close setting, e.g. "Manual" or "2 weeks".
+   */
   autoCloseLabel: string;
   settingsHref: string;
   onStart: () => void;

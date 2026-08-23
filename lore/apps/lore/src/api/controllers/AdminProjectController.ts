@@ -38,7 +38,9 @@ export class AdminProjectController {
   protected readonly url = "/admin/projects";
   protected readonly group = "admin:projects";
   protected readonly projects = $repository(projects);
-  /** Relation-aware view of the same table, for the owner JOIN. */
+  /**
+   * Relation-aware view of the same table, for the owner JOIN.
+   */
   protected readonly projectsWith = $repository(relations, "projects");
   protected readonly members = $repository(members);
   protected readonly projectDeletion = $inject(ProjectDeletionService);

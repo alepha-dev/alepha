@@ -42,7 +42,7 @@ import type { QuestController } from "@/api/controllers/QuestController.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
-import { kanbanReloadAtom } from "../../atoms/kanbanProjectAtom.ts";
+import { kanbanReloadAtom } from "../../atoms/kanbanReloadAtom.ts";
 import { questsViewAtom } from "../../atoms/questsViewAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import EpicCreateSheet from "./epics/EpicCreateSheet.tsx";

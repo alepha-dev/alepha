@@ -38,9 +38,17 @@ const TokenReveal = (props: TokenRevealProps) => {
             size="sm"
             variant="outline"
             aria-label={props.copyLabel}
-            onClick={() => {
-              void navigator.clipboard.writeText(props.token);
-              toaster.success(props.copiedMessage);
+            onClick={async () => {
+              // The toast only after the write resolved: the clipboard call
+              // rejects on an insecure context, and "copied" was shown anyway.
+              try {
+                await navigator.clipboard.writeText(props.token);
+                toaster.success(props.copiedMessage);
+              } catch (error) {
+                toaster.error(
+                  error instanceof Error ? error.message : String(error),
+                );
+              }
             }}
           >
             <Copy />

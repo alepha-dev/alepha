@@ -3,12 +3,18 @@ import { DateTimeProvider } from "alepha/datetime";
 
 import { LoreAnalyticsStore } from "./LoreAnalyticsStore.ts";
 
-/** One complete UTC day of audience, and the one before it. */
+/**
+ * One complete UTC day of audience, and the one before it.
+ */
 export interface DailyVisitors {
-  /** The day measured, `YYYY-MM-DD`. */
+  /**
+   * The day measured, `YYYY-MM-DD`.
+   */
   day: string;
   uniqueVisitors: number;
-  /** The preceding day, `YYYY-MM-DD`. */
+  /**
+   * The preceding day, `YYYY-MM-DD`.
+   */
   previousDay: string;
   previousUniqueVisitors: number;
   /**
@@ -93,7 +99,9 @@ export class DailyVisitorsService {
     return Math.round(((after - before) / before) * 100);
   }
 
-  /** Yesterday, UTC. The most recent day that is over. */
+  /**
+   * Yesterday, UTC. The most recent day that is over.
+   */
   lastCompleteDay(): string {
     return this.shift(
       new Date(this.dateTime.nowMillis()).toISOString().slice(0, 10),
@@ -101,7 +109,9 @@ export class DailyVisitorsService {
     );
   }
 
-  /** `YYYY-MM-DD` shifted by whole days, UTC. */
+  /**
+   * `YYYY-MM-DD` shifted by whole days, UTC.
+   */
   protected shift(day: string, days: number): string {
     const at = Date.parse(`${day}T00:00:00.000Z`) + days * 24 * 60 * 60 * 1000;
     return new Date(at).toISOString().slice(0, 10);

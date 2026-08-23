@@ -1,6 +1,8 @@
 import { useRouter } from "alepha/react/router";
 import { ArrowLeft, LayoutDashboard } from "lucide-react";
 
+import type { AppRouter } from "../app/AppRouter.ts";
+
 /**
  * Lore's admin sidebar brand: a back-arrow to `home` beside the
  * "Admin Panel" title. Recovered verbatim from the deleted
@@ -9,7 +11,7 @@ import { ArrowLeft, LayoutDashboard } from "lucide-react";
  * and hooks have no place in a plain options object.
  */
 export const AdminBrand = () => {
-  const router = useRouter<any>();
+  const router = useRouter<AppRouter>();
 
   return (
     <div className="flex items-center gap-2 px-2 py-1.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:px-0">

@@ -6,9 +6,13 @@ import { $atom, type Infer, z } from "alepha";
  * enough for the palette to pick its own.
  */
 const projectNavEntrySchema = z.object({
-  /** Already translated — the sidebar resolved it through `tr`. */
+  /**
+   * Already translated — the sidebar resolved it through `tr`.
+   */
   label: z.string(),
-  /** Already resolved through `router.path(...)`. */
+  /**
+   * Already resolved through `router.path(...)`.
+   */
   href: z.string(),
   /**
    * `app` is one enrolled app rather than a fixed page. Drives the palette's

@@ -1,5 +1,6 @@
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { useClient } from "alepha/react";
+import { DateTimeProvider } from "alepha/datetime";
+import { useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Loader2, Plus } from "lucide-react";
 import { type ChangeEvent, useEffect, useRef, useState } from "react";
@@ -46,6 +47,7 @@ interface AttachmentMeta {
 const QuestAttachments = (props: QuestAttachmentsProps) => {
   const questApi = useClient<QuestController>();
   const { tr } = useI18n<I18n, "en">();
+  const dateTime = useInject(DateTimeProvider);
   const toaster = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -160,7 +162,9 @@ const QuestAttachments = (props: QuestAttachmentsProps) => {
           ? file.name.slice(file.name.lastIndexOf("."))
           : ".png";
         pasted.push(
-          new File([file], `pasted-${Date.now()}${ext}`, { type: file.type }),
+          new File([file], `pasted-${dateTime.nowMillis()}${ext}`, {
+            type: file.type,
+          }),
         );
       }
       if (pasted.length > 0) {

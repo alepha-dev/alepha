@@ -5,11 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import type { Folio } from "@/api/entities/folios.ts";
 
 /**
- * The folio fields the workspace edits. `summary` is new to the web UI —
- * the column has existed since the MCP tools started writing it, but no
- * browser surface has ever set it. The web UI does not offer a field for
- * it yet either (Task 8 adds `FolioSummaryField`) — it is only carried
- * here so the draft buffer's shape already matches the eventual form.
+ * The folio fields the workspace edits. `summary` is edited through
+ * `FolioSummaryField` and carried here like the other two.
  */
 export const folioDraftSchema = z.object({
   title: z.string().max(200).meta({ title: "Title" }),

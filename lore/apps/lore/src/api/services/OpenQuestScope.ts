@@ -25,7 +25,9 @@ export class OpenQuestScope {
   protected readonly quests = $repository(quests);
   protected readonly epicVisibility = $inject(EpicVisibilityService);
 
-  /** The gated where-object, ready for a `count` or a `findMany`. */
+  /**
+   * The gated where-object, ready for a `count` or a `findMany`.
+   */
   async where(
     projectIds: number[],
   ): Promise<PgQueryWhere<typeof quests.schema>> {

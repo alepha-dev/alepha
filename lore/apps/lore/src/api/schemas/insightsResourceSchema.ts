@@ -15,7 +15,9 @@ import { type Infer, z } from "alepha";
  */
 export const insightsResourceSchema = z.object({
   range: z.enum(["1d", "7d", "30d"]),
-  /** First UTC day included in the window, `YYYY-MM-DD`. */
+  /**
+   * First UTC day included in the window, `YYYY-MM-DD`.
+   */
   since: z.string(),
   /**
    * Last UTC day included, `YYYY-MM-DD`.
@@ -39,9 +41,13 @@ export const insightsResourceSchema = z.object({
     .object({
       since: z.string(),
       until: z.string(),
-      /** The trustworthy half of the comparison. Always exact. */
+      /**
+       * The trustworthy half of the comparison. Always exact.
+       */
       uniqueVisitors: z.integer(),
-      /** Best-effort, like its current-window counterpart. */
+      /**
+       * Best-effort, like its current-window counterpart.
+       */
       totalViews: z.integer(),
     })
     .optional(),
@@ -58,13 +64,19 @@ export const insightsResourceSchema = z.object({
    * belongs on the number that cannot be inflated.
    */
   uniqueVisitorsDelta: z.number().optional(),
-  /** Best-effort raw pageview count. Inflatable — see above. */
+  /**
+   * Best-effort raw pageview count. Inflatable — see above.
+   */
   totalViews: z.integer(),
-  /** Abuse-resistant headline: distinct cookieless daily visitor hashes. */
+  /**
+   * Abuse-resistant headline: distinct cookieless daily visitor hashes.
+   */
   uniqueVisitors: z.integer(),
   topCountries: z.array(
     z.object({
-      /** ISO-3166 alpha-2, or `ZZ` when the edge did not say. */
+      /**
+       * ISO-3166 alpha-2, or `ZZ` when the edge did not say.
+       */
       country: z.string(),
       count: z.integer(),
     }),
@@ -73,7 +85,9 @@ export const insightsResourceSchema = z.object({
     z.object({
       path: z.string(),
       count: z.integer(),
-      /** Share of `totalViews`, rounded to a whole percent. */
+      /**
+       * Share of `totalViews`, rounded to a whole percent.
+       */
       percentage: z.number(),
     }),
   ),
@@ -101,9 +115,13 @@ export const insightsResourceSchema = z.object({
    * spike is people.
    */
   engagedViews: z.integer(),
-  /** `engagedViews / totalViews`, rounded to a whole percent. */
+  /**
+   * `engagedViews / totalViews`, rounded to a whole percent.
+   */
   engagementRate: z.number(),
-  /** Where visits *started*, by `entries` rather than by total views. */
+  /**
+   * Where visits *started*, by `entries` rather than by total views.
+   */
   topEntryPaths: z.array(
     z.object({
       path: z.string(),
@@ -111,14 +129,18 @@ export const insightsResourceSchema = z.object({
       percentage: z.number(),
     }),
   ),
-  /** `utm_campaign` / `utm_source` tags on arrivals. `none` is untagged. */
+  /**
+   * `utm_campaign` / `utm_source` tags on arrivals. `none` is untagged.
+   */
   topCampaigns: z.array(
     z.object({
       campaign: z.string(),
       count: z.integer(),
     }),
   ),
-  /** `mobile` / `tablet` / `desktop`, by total views. */
+  /**
+   * `mobile` / `tablet` / `desktop`, by total views.
+   */
   topDevices: z.array(
     z.object({
       device: z.string(),
@@ -127,10 +149,14 @@ export const insightsResourceSchema = z.object({
   ),
   topReferrers: z.array(
     z.object({
-      /** A bare host (`news.ycombinator.com`), or `direct`. */
+      /**
+       * A bare host (`news.ycombinator.com`), or `direct`.
+       */
       referrer: z.string(),
       count: z.integer(),
-      /** Share of `totalViews`, rounded to a whole percent. */
+      /**
+       * Share of `totalViews`, rounded to a whole percent.
+       */
       percentage: z.number(),
     }),
   ),
@@ -143,20 +169,32 @@ export const insightsResourceSchema = z.object({
    * undone in the controller rather than left for the UI to remember.
    */
   vitals: z.object({
-    /** Largest Contentful Paint p75, ms. */
+    /**
+     * Largest Contentful Paint p75, ms.
+     */
     lcp: z.number().nullable(),
-    /** Cumulative Layout Shift p75, unitless. */
+    /**
+     * Cumulative Layout Shift p75, unitless.
+     */
     cls: z.number().nullable(),
-    /** Interaction to Next Paint p75, ms. */
+    /**
+     * Interaction to Next Paint p75, ms.
+     */
     inp: z.number().nullable(),
-    /** First Contentful Paint p75, ms. */
+    /**
+     * First Contentful Paint p75, ms.
+     */
     fcp: z.number().nullable(),
-    /** Time to First Byte p75, ms. */
+    /**
+     * Time to First Byte p75, ms.
+     */
     ttfb: z.number().nullable(),
   }),
   timeline: z.array(
     z.object({
-      /** UTC day, `YYYY-MM-DD`. */
+      /**
+       * UTC day, `YYYY-MM-DD`.
+       */
       date: z.string(),
       views: z.integer(),
     }),
@@ -184,7 +222,9 @@ export const insightsResourceSchema = z.object({
       fingerprint: z.string(),
       name: z.string(),
       message: z.string(),
-      /** Occurrences in this app, summed across every batch. */
+      /**
+       * Occurrences in this app, summed across every batch.
+       */
       count: z.integer(),
       firstSeenAt: z.string(),
       lastSeenAt: z.string(),

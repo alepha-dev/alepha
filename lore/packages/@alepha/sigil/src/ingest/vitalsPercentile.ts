@@ -59,17 +59,29 @@ export const vitalsP75 = (
   return boundaries[boundaries.length - 1];
 };
 
-/** p75 for all five metrics, `null` where the window saw no sample. */
+/**
+ * p75 for all five metrics, `null` where the window saw no sample.
+ */
 export interface VitalsP75Summary {
-  /** Largest Contentful Paint, ms. */
+  /**
+   * Largest Contentful Paint, ms.
+   */
   lcp: number | null;
-  /** Cumulative Layout Shift, unitless — already un-scaled. */
+  /**
+   * Cumulative Layout Shift, unitless — already un-scaled.
+   */
   cls: number | null;
-  /** Interaction to Next Paint, ms. */
+  /**
+   * Interaction to Next Paint, ms.
+   */
   inp: number | null;
-  /** First Contentful Paint, ms. */
+  /**
+   * First Contentful Paint, ms.
+   */
   fcp: number | null;
-  /** Time to First Byte, ms. */
+  /**
+   * Time to First Byte, ms.
+   */
   ttfb: number | null;
 }
 

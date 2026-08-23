@@ -54,7 +54,9 @@ export class SigilBrowserProvider {
    */
   protected firstIngestDelayMs = SIGIL_FIRST_INGEST_MAX_MS;
 
-  /** Whether the render hook has queued the pageview and started the wait. */
+  /**
+   * Whether the render hook has queued the pageview and started the wait.
+   */
   protected firstIngestArmed = false;
 
   /**
@@ -68,10 +70,14 @@ export class SigilBrowserProvider {
    */
   protected firstIngestWaitsForLcp = false;
 
-  /** Whether the first ingest has gone out. It happens once per page load. */
+  /**
+   * Whether the first ingest has gone out. It happens once per page load.
+   */
   protected firstIngestSent = false;
 
-  /** Whether LCP has arrived, which may be before the render hook runs. */
+  /**
+   * Whether LCP has arrived, which may be before the render hook runs.
+   */
   protected lcpSeen = false;
 
   protected firstIngestTimer?: ReturnType<typeof setTimeout>;
@@ -434,10 +440,9 @@ export class SigilBrowserProvider {
    * an ingest response brings a newer config, and the whole point of a
    * kill-switch is that events after it stop.
    *
-   * Errors are never gated away by a stale config on purpose — see the
-   * `blights` field. There is no sampling here any more: the appetite is a
-   * declared setting rather than something the sink dictates per page, so an
-   * app that wants less says so once.
+   * Every tracker obeys its switch, errors included. There is no sampling
+   * here: the appetite is a declared setting rather than something the sink
+   * dictates per page, so an app that wants less says so once.
    */
   protected wants(tracker: SigilTracker): boolean {
     return this.alepha.store.get(sigilClientAtom).enabled[tracker] !== false;

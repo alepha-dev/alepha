@@ -26,7 +26,9 @@ export const sigilGlobMatch = (path: string, pattern: string): boolean => {
   }
 };
 
-/** Any-of helper: true if `path` matches any pattern in the list. */
+/**
+ * Any-of helper: true if `path` matches any pattern in the list.
+ */
 export const sigilAnyGlobMatch = (
   path: string,
   patterns: readonly string[],

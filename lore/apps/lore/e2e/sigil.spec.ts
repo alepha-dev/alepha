@@ -82,7 +82,9 @@ const takeMintedToken = async (page: Page): Promise<string> => {
 const sigilRows = (page: Page, name: string) =>
   page.getByTestId("sigil-row").filter({ hasText: name });
 
-/** One aggregated client error, as the cable would forward it. */
+/**
+ * One aggregated client error, as the cable would forward it.
+ */
 const errorBatch = (message: string, count: number) => ({
   errors: [
     {

@@ -8,7 +8,9 @@ import { dashboardMetricIcon } from "./dashboardMetricIcon.ts";
 
 export interface DashboardCatalogueRowProps {
   metric: DashboardMetricDescriptor;
-  /** Whether the board already carries a card on this metric. */
+  /**
+   * Whether the board already carries a card on this metric.
+   */
   onBoard: boolean;
   /**
    * Why this metric cannot be added right now, if it cannot — an i18n key.

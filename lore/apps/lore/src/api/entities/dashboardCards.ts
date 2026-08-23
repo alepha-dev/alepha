@@ -32,7 +32,9 @@ export const dashboardCards = $entity({
      * a column-constraint change is a table rebuild.
      */
     metric: z.string().min(1).max(64),
-    /** The tagged-union scope. See `dashboardScopeSchema`. */
+    /**
+     * The tagged-union scope. See `dashboardScopeSchema`.
+     */
     scope: dashboardScopeSchema,
     /**
      * The metric's own filter values, validated against that metric's Zod
@@ -41,9 +43,13 @@ export const dashboardCards = $entity({
      * against a half-understood config.
      */
     filters: db.default(z.record(z.text(), z.any()), {}),
-    /** Grid width in columns. The mockup's Page Views card spans 2. */
+    /**
+     * Grid width in columns. The mockup's Page Views card spans 2.
+     */
     size: db.default(z.integer().min(1).max(6), 1),
-    /** Ordering within the grid, ascending. Ties break on `id`. */
+    /**
+     * Ordering within the grid, ascending. Ties break on `id`.
+     */
     position: db.default(z.integer().min(0), 0),
     createdAt: db.createdAt(),
   }),

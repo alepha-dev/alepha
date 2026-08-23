@@ -54,15 +54,6 @@ export interface FolioTreeState {
   renamingId?: string;
   dragId?: string;
   drop?: { id: string; position: FolioDropPosition };
-  /**
-   * Set while an EXTERNAL file drag (`dataTransfer` carrying `Files`) is over
-   * the tree, naming the directory the bytes would land in — `parentId:
-   * undefined` is the project root. Kept separate from `drop` above because
-   * the two answer different questions: `drop` is a re-parent of a row that
-   * already exists and has three positions per row, this is a create with
-   * exactly one. Sharing the field would make `dragId` (never set for an
-   * external drag) the only thing telling them apart.
-   */
   toggle: (id: string) => void;
   select: (node: FolioTreeNode) => void;
   beginRename: (id: string) => void;
@@ -72,8 +63,6 @@ export interface FolioTreeState {
   onDragOver: (id: string, position: FolioDropPosition) => void;
   onDrop: (id: string) => Promise<void>;
   onDragEnd: () => void;
-  /** An external file drag is hovering the row/area that owns `parentId`. */
-  /** The file drag left the tree entirely — clear the highlight. */
   createFolio: (parentId?: string) => Promise<void>;
   createDirectory: (parentId?: string) => Promise<void>;
   remove: (node: FolioTreeNode) => Promise<void>;

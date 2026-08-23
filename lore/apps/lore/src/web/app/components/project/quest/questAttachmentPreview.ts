@@ -39,7 +39,9 @@ const LANGUAGES: Record<string, string> = {
   ini: "ini",
 };
 
-/** Extensions shown as text with no language hint. */
+/**
+ * Extensions shown as text with no language hint.
+ */
 const PLAIN = new Set(["txt", "csv", "tsv", "log", "env", "diff", "patch"]);
 
 export const attachmentPreview = (

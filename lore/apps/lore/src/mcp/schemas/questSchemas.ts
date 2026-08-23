@@ -373,9 +373,7 @@ export const questCreateParamsSchema = projectParamsSchema.extend({
   title: z.string().describe("Quest title"),
   description: z.string().describe(DESCRIPTION_DESCRIPTION),
   area: z.string().describe(AREA_DESCRIPTION),
-  priority: z
-    .enum(["optional", "low", "medium", "high"])
-    .describe(PRIORITY_DESCRIPTION),
+  priority: prioritySchema.describe(PRIORITY_DESCRIPTION),
   objectives: z
     .array(objectiveInputSchema)
     .describe("List of objectives/subquests")
@@ -527,10 +525,7 @@ export const questUpdateParamsSchema = entityRefSchema.extend({
   title: z.string().describe("New quest title").optional(),
   description: z.string().describe(`New ${DESCRIPTION_DESCRIPTION}`).optional(),
   area: z.string().describe(`New ${AREA_DESCRIPTION}`).optional(),
-  priority: z
-    .enum(["optional", "low", "medium", "high"])
-    .describe(`New ${PRIORITY_DESCRIPTION}`)
-    .optional(),
+  priority: prioritySchema.describe(`New ${PRIORITY_DESCRIPTION}`).optional(),
   objectives: z
     .array(objectiveInputSchema)
     .describe(

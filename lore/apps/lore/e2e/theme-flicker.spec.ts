@@ -9,12 +9,13 @@ test.describe("theme no-flash", () => {
   test("dark mode + theme-arcane applied before paint via boot script", async ({
     context,
     page,
+    baseURL,
   }) => {
     await context.addCookies([
       {
         name: "alepha-ui",
         value: cookieValue("dark", "arcane"),
-        url: "http://localhost:3303",
+        url: String(baseURL),
       },
     ]);
 

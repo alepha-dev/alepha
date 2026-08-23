@@ -197,6 +197,13 @@ describe("AppRouter route table", () => {
       [...unreserved].sort(),
       "add these to ProjectSlugService.reserved, or a project can claim them",
     ).toEqual([]);
+
+    // The locale prefixes are root segments too: `routing = "prefix"` makes
+    // `/fr/...` the French site, so a project slugged "fr" was swallowed by
+    // the locale detection and never reached the project route.
+    for (const locale of ["fr", "en"]) {
+      expect(slugs.isReserved(locale), locale).toBe(true);
+    }
   });
 
   it("has no project-level Insights route left", ({ expect }) => {

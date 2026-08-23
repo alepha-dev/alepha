@@ -72,9 +72,6 @@ export default {
     "Le contenu chiffré semble corrompu ou a été écrit par une ancienne version.",
   "folios.protected.lost-passphrase-hint": "Phrase secrète perdue ?",
   "folios.protected.delete-unrecoverable": "Supprimer le folio",
-  "folio.type.directory": "Dossier",
-  "folio.type.folio": "Folio",
-  "folio.type.blob": "Fichier",
   "folio.action.duplicate": "Dupliquer",
   "folio.action.duplicate-suffix": " (copie)",
   "folio.action.delete": "Supprimer",
@@ -98,12 +95,6 @@ export default {
   "folios.history.action.rename": "Renommé",
   "folios.history.action.tag-change": "Tags modifiés",
   "folios.history.action.revert": "Restauré",
-
-  "folios.activity.action.create": "a créé",
-  "folios.activity.action.edit": "a modifié",
-  "folios.activity.action.rename": "a renommé",
-  "folios.activity.action.tag-change": "a étiqueté",
-  "folios.activity.action.revert": "a restauré",
 
   "folios.wikilink.broken.title": "Lien cassé",
   "folios.wikilink.broken.folioNotFound":

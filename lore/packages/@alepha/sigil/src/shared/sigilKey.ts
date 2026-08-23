@@ -1,4 +1,6 @@
-/** What every sigil token starts with, whatever mints it. */
+/**
+ * What every sigil token starts with, whatever mints it.
+ */
 export const SIGIL_KEY_PREFIX = "sg_";
 
 /**

@@ -418,7 +418,7 @@ export class AppRouter {
         // Pending-feedback count for the sidebar badge. Fetched once per
         // project navigation instead of polled: accept/reject/remove
         // actions adjust the atom locally, so within-session math stays
-        // correct. Errors leave the count undefined (badge hides).
+        // correct. Errors count as 0 (the badge hides).
         this.feedbackApi
           .listFeedback({
             params: { projectId: project.id },
@@ -576,14 +576,14 @@ export class AppRouter {
   /**
    * One enrolled app — the tab shell, and the loader every tab under it reads.
    *
-   * The segment is the app's **name**, not its id: `/p/2/apps/lore-staging`.
+   * The segment is the app's **name**, not its id: `/lore/apps/lore-staging`.
    * Names are unique on `(projectId, name)` and constrained to
    * `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$` on the way in (see `appNameSchema`), so
    * they survive a path unescaped. The HTTP API still addresses a sigil by
    * UUID — rotate, delete and `?sigilId=` are unchanged; only this page moved.
    *
    * ⚠️ The path segment is `:appName`, not `:id` or `:name`, and that is
-   * load-bearing. `/p/:projectId` is already a param node at an outer position,
+   * load-bearing. `/:projectSlug` is already a param node at an outer position,
    * and the router keeps one key per position: two routes naming different
    * segments the same thing collapse onto one, the outer one wins, and the
    * inner param arrives missing.
@@ -634,7 +634,7 @@ export class AppRouter {
       this.alepha.store.set(currentSigilAtom, sigil);
 
       // The app's own Beacon capability, not the project's. Off means there is
-      // nothing collected to read, and the three tabs that would show it are
+      // nothing collected to read, and the two tabs that would show it are
       // not rendered. The app still has a page.
       if (sigil.kinds.includes("beacon")) {
         this.alepha.store.set(
@@ -701,7 +701,7 @@ export class AppRouter {
   });
 
   /**
-   * The gate the three analytics tabs share.
+   * The gate the two analytics tabs share.
    *
    * Reads the open app rather than the project: Beacon is a per-app capability
    * now. A 404 rather than a 403, for the same reason the deleted project-level
@@ -986,6 +986,13 @@ export class AppRouter {
       });
       return { area };
     },
+    // A deleted or foreign area is a 404, like the sibling detail routes,
+    // not the generic error page.
+    errorHandler: (error) => {
+      if (HttpError.is(error, 404)) {
+        return createElement(NotFound, { style: { height: "100%" } });
+      }
+    },
   });
 
   projectSettingsKanban = $page({
@@ -1129,7 +1136,7 @@ export class AppRouter {
   });
 
   // Quest dependency graph page (Lore #98). Focused quest's connected
-  // `dependsOn` component, dagre-laid-out, polled every 60s.
+  // `dependsOn` component, laid out client-side, loaded once on mount.
   projectQuestGraph = $page({
     name: "projectQuestGraph",
     path: "/quests/:shortId/graph",
@@ -1213,6 +1220,7 @@ export class AppRouter {
     onLeave: () => {
       this.alepha.store.set(currentFolioAtom, undefined);
       this.alepha.store.set(currentFolioPathAtom, []);
+      this.alepha.store.set(currentFolioBlobsAtom, []);
     },
   });
 
@@ -1225,9 +1233,11 @@ export class AppRouter {
     lazy: () => import("./components/folios/FolioCreatePage.tsx"),
     loader: async ({ url }) => {
       this.alepha.store.set(currentFolioAtom, undefined);
-      // Carry the source directory across the navigation: FolioBrowser's
-      // "+ Create → New folio" link adds `?dir=<shortId>` when the user
-      // is in a directory; resolve to a UUID here so the editor can pass
+      // A draft has no attachments of its own: without this the last opened
+      // folio's blobs were offered in the new folio's link picker.
+      this.alepha.store.set(currentFolioBlobsAtom, []);
+      // Carry the source directory across the navigation: the folio tree's
+      // create link adds `?dir=<shortId>` when the user is in a directory; resolve to a UUID here so the editor can pass
       // it to `folioApi.create({ directoryId })`. Without this, every
       // folio created from this page lands at the project root
       // regardless of the directory the user clicked from.

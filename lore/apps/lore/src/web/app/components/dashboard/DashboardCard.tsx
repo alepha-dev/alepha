@@ -17,11 +17,17 @@ import { dashboardMetricIcon } from "./dashboardMetricIcon.ts";
 
 export interface DashboardCardProps {
   card: DashboardCardResource;
-  /** Absent until the first resolve returns. */
+  /**
+   * Absent until the first resolve returns.
+   */
   value?: CardValue;
-  /** i18n key for the metric's title, from the catalogue. */
+  /**
+   * i18n key for the metric's title, from the catalogue.
+   */
   labelKey: string;
-  /** lucide id for the metric's icon, from the catalogue. */
+  /**
+   * lucide id for the metric's icon, from the catalogue.
+   */
   icon: string;
   /**
    * Whether a mousedown on this card's header has armed it for dragging.

@@ -1,7 +1,7 @@
 import { $dictionary } from "alepha/react/i18n";
 
 /**
- * Translation dictionaries, one dynamic import per locale so each ~860-entry
+ * Translation dictionaries, one dynamic import per locale so each ~1040-entry
  * table is its own chunk and only the active language is fetched. Previously
  * both `en` and `fr` shipped on init even though only one is ever shown.
  *

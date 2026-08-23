@@ -220,7 +220,9 @@ export class FolioDirectoryService {
     await this.directories.deleteById(id);
   }
 
-  /** Depth of a directory — 0 for root-level, 1 for one parent up, etc. */
+  /**
+   * Depth of a directory — 0 for root-level, 1 for one parent up, etc.
+   */
   protected async depthOf(directoryId: string): Promise<number> {
     let depth = 0;
     let cursor: string | undefined = directoryId;
@@ -237,7 +239,9 @@ export class FolioDirectoryService {
     return depth;
   }
 
-  /** Build the ScopeKey for the name-reservation table. */
+  /**
+   * Build the ScopeKey for the name-reservation table.
+   */
   public scopeOf(projectId: number, parentDirectoryId?: string) {
     return parentDirectoryId
       ? { parentDirectoryId }

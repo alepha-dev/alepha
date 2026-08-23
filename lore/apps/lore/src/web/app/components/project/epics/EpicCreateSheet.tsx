@@ -13,7 +13,9 @@ import EpicCreate from "./EpicCreate.tsx";
 
 export interface EpicCreateSheetProps {
   projectId: number;
-  /** Present ⇒ the drawer edits that epic; absent ⇒ it creates one. */
+  /**
+   * Present ⇒ the drawer edits that epic; absent ⇒ it creates one.
+   */
   epic?: EpicResource;
   open: boolean;
   onOpenChange: (open: boolean) => void;

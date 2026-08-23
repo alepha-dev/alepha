@@ -2,7 +2,9 @@ import type { ReactNode } from "react";
 
 export interface ReportsSectionProps {
   title: string;
-  /** Optional right-aligned control (e.g. a range select). */
+  /**
+   * Optional right-aligned control (e.g. a range select).
+   */
   action?: ReactNode;
   children: ReactNode;
 }

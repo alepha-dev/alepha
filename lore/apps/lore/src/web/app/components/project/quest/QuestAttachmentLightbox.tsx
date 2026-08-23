@@ -23,9 +23,13 @@ export interface PreviewableAttachment {
 }
 
 export interface QuestAttachmentLightboxProps {
-  /** Previewable attachments, in the order the row shows them. */
+  /**
+   * Previewable attachments, in the order the row shows them.
+   */
   items: PreviewableAttachment[];
-  /** The one to open on, or `null` while closed. */
+  /**
+   * The one to open on, or `null` while closed.
+   */
   openId: string | null;
   onOpenChange: (open: boolean) => void;
 }
@@ -54,7 +58,10 @@ const QuestAttachmentLightbox = (props: QuestAttachmentLightboxProps) => {
     openId: props.openId,
     items: props.items,
   });
-  if (seed.openId !== props.openId || seed.items !== props.items) {
+  // Keyed on `openId` only: the parent rebuilds `items` every render, so
+  // comparing it snapped the carousel back to the clicked file whenever an
+  // upload finished or metadata arrived while paging.
+  if (seed.openId !== props.openId) {
     setSeed({ openId: props.openId, items: props.items });
     if (props.openId) {
       const at = props.items.findIndex((it) => it.fileId === props.openId);

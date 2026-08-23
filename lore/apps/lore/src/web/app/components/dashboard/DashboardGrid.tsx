@@ -10,7 +10,9 @@ import DashboardCard from "./DashboardCard.tsx";
 export interface DashboardGridProps {
   cards: DashboardCardResource[];
   values?: DashboardCardValue[];
-  /** The catalogue, by metric key, for each card's label and icon. */
+  /**
+   * The catalogue, by metric key, for each card's label and icon.
+   */
   metrics: Map<string, DashboardMetricDescriptor>;
   onReorder: (ids: number[]) => void;
   onAdd: () => void;

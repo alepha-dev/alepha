@@ -38,9 +38,13 @@ import { type BlobRef, BROKEN_HREF_PREFIX } from "./rewriteFolioWikiLinks.ts";
  * built (no extra fetch).
  */
 export interface WikiLinkHoverProviderProps {
-  /** Addresses the preview fetches, which are API calls. */
+  /**
+   * Addresses the preview fetches, which are API calls.
+   */
   projectId: number;
-  /** Matched against the first segment of a hovered link's own URL. */
+  /**
+   * Matched against the first segment of a hovered link's own URL.
+   */
   projectSlug: string;
   blobs: BlobRef[];
   children: React.ReactNode;
@@ -68,7 +72,9 @@ type HoverTarget =
 
 interface HoverState {
   target: HoverTarget;
-  /** The `<a href>` (reader) or `[data-wiki-href]` span (editor) hovered. */
+  /**
+   * The `<a href>` (reader) or `[data-wiki-href]` span (editor) hovered.
+   */
   anchorEl: HTMLElement;
 }
 
@@ -79,6 +85,21 @@ const FOLIO_RE = /^\/([^/]+)\/folios\/(\d+)(?:[#?]|$)/;
 const QUEST_RE = /^\/([^/]+)\/quests\/(\d+)(?:[#?]|$)/;
 const EPIC_RE = /^\/([^/]+)\/epics\/(\d+)(?:[#?]|$)/;
 const BLOB_RE = /^\/api\/files\/([a-f0-9-]{36})(?:[#?]|$)/i;
+
+/**
+ * The path of a link target: an absolute URL is reduced to its path, a
+ * malformed one ("httpfoo") is kept as is instead of throwing out of the
+ * hover handler.
+ */
+const pathOf = (href: string): string => {
+  if (!/^https?:\/\//i.test(href)) return href;
+  try {
+    const url = new URL(href);
+    return url.pathname + url.search + url.hash;
+  } catch {
+    return href;
+  }
+};
 
 const parseHref = (
   href: string | null,
@@ -99,9 +120,7 @@ const parseHref = (
   }
   // Strip protocol/host if present (markdown links are typically root-relative
   // but a user could paste an absolute URL into a wiki body).
-  const path = href.startsWith("http")
-    ? new URL(href).pathname + new URL(href).search + new URL(href).hash
-    : href;
+  const path = pathOf(href);
   const folio = FOLIO_RE.exec(path);
   if (folio && folio[1] === projectSlug) {
     return { kind: "folio", shortId: Number(folio[2]) };
@@ -245,7 +264,11 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
     const el = e.target as HTMLElement;
     const anchor = el.closest("a[href]") as HTMLAnchorElement | null;
     if (!anchor) return;
-    if (anchor.getAttribute("href")?.startsWith(BROKEN_HREF_PREFIX)) {
+    const href = anchor.getAttribute("href");
+    // A broken wiki-link renders with an EMPTY href (react-markdown strips
+    // the custom scheme), and the browser's default for `<a href="">` is a
+    // navigation to the current URL: a full reload of the workspace.
+    if (href === "" || href?.startsWith(BROKEN_HREF_PREFIX)) {
       e.preventDefault();
     }
   }, []);
@@ -304,10 +327,14 @@ interface QuestPreview {
 interface EpicPreview {
   kind: "epic";
   title: string;
-  /** The epic's per-project `number`, which is how it is addressed. */
+  /**
+   * The epic's per-project `number`, which is how it is addressed.
+   */
   number: number;
   status: string;
-  /** `completed / total` quests, the same rollup the Epics list shows. */
+  /**
+   * `completed / total` quests, the same rollup the Epics list shows.
+   */
   progress: { completed: number; total: number };
 }
 
@@ -365,7 +392,11 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
           const folio = (await folioApi.getByShortId({
             params: { projectId, shortId: state.target.shortId },
           })) as Folio;
-          const body = stripMarkdown(folio.content ?? "");
+          // A protected folio's content is its encryption envelope; the
+          // preview used to paint the first 600 characters of that JSON.
+          const body = folio.protected
+            ? ""
+            : stripMarkdown(folio.content ?? "");
           const preview: FolioPreview = {
             kind: "folio",
             title: folio.title,

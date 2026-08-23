@@ -17,14 +17,22 @@ export interface DirectoryRef {
  * Pulled from `BlobController.listBlobs` / `listAllBlobs`.
  */
 export interface BlobRef {
-  /** UUID — both PK and file id served at `/api/files/<uuid>`. */
+  /**
+   * UUID — both PK and file id served at `/api/files/<uuid>`.
+   */
   fileId: string;
   shortId: number;
-  /** Display name in the folio tree (e.g. `diagram.png`). */
+  /**
+   * Display name in the folio tree (e.g. `diagram.png`).
+   */
   name: string;
-  /** MIME type from the framework `files` row. Drives image vs file render. */
+  /**
+   * MIME type from the framework `files` row. Drives image vs file render.
+   */
   mime?: string;
-  /** Byte size from the framework `files` row. Shown next to non-image links. */
+  /**
+   * Byte size from the framework `files` row. Shown next to non-image links.
+   */
   size?: number;
 }
 
@@ -118,7 +126,9 @@ export interface FolioWikiLinkResolver {
    * left exactly as the author typed it.
    */
   resolve: (body: string) => WikiLinkTarget | undefined;
-  /** Resolve a `blob:` embed target (`#42` or a uuid) to its row. */
+  /**
+   * Resolve a `blob:` embed target (`#42` or a uuid) to its row.
+   */
   resolveBlob: (ref: string) => BlobRef | undefined;
   /**
    * Resolve the `<name>` half of an `assets/<name>` path to its row.
@@ -131,7 +141,9 @@ export interface FolioWikiLinkResolver {
   resolveBlobByName: (name: string) => BlobRef | undefined;
 }
 
-/** File extensions that render inline as `<img>` when referenced via `blob:`. */
+/**
+ * File extensions that render inline as `<img>` when referenced via `blob:`.
+ */
 const IMAGE_EXTENSIONS = new Set([
   "png",
   "jpg",

@@ -47,20 +47,14 @@ const QuestViewObjectives = (props: QuestViewObjectivesProps) => {
   return (
     <div className="flex flex-col gap-2 px-3 py-2">
       {quest.objectives.map((objective) => (
-        // `objective.id` is always defined post-mapper (legacy rows are
-        // backfilled with id = index server-side; new objectives get a
-        // real id at create time). Falling back to title only as a
-        // belt-and-braces key.
         <label
-          key={objective.id ?? objective.title}
+          key={objective.id}
           className="flex cursor-pointer items-start gap-2"
         >
           <Checkbox
             checked={objective.completed}
-            onCheckedChange={() =>
-              objective.id != null && handleObjectiveToggle(objective.id)
-            }
-            disabled={disabled || objective.id == null}
+            onCheckedChange={() => handleObjectiveToggle(objective.id)}
+            disabled={disabled}
             className="mt-0.5"
           />
           <span className="flex min-w-0 flex-col gap-0.5">

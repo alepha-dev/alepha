@@ -65,7 +65,9 @@ const createTestUser = async (
   return { id: response.data.id, roles: response.data.roles };
 };
 
-/** Direct repo insert — bypass the invitation flow. */
+/**
+ * Direct repo insert — bypass the invitation flow.
+ */
 const addMember = async (
   ctx: TestContext,
   userId: string,
