@@ -2,7 +2,9 @@ import { z } from "alepha";
 
 import { sigilConfig } from "./shared/schemas/sigilConfig.ts";
 
-/** The commons an app reports to when it names no other. */
+/**
+ * The commons an app reports to when it names no other.
+ */
 export const SIGIL_DEFAULT_SINK = "https://lore.alepha.dev";
 
 /**

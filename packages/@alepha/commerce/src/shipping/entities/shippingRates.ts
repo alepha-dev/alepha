@@ -33,13 +33,19 @@ export const shippingRates = $entity({
 
     name: z.text({ minLength: 1, maxLength: 100 }),
 
-    /** Tax-inclusive price, in the smallest currency unit. */
+    /**
+     * Tax-inclusive price, in the smallest currency unit.
+     */
     price: z.integer().min(0),
 
-    /** Free when the cart subtotal reaches this. Null → never free. */
+    /**
+     * Free when the cart subtotal reaches this. Null → never free.
+     */
     freeAbove: z.integer().min(0).optional(),
 
-    /** Shown to the buyer as an estimate. */
+    /**
+     * Shown to the buyer as an estimate.
+     */
     minDays: z.integer().min(0).optional(),
     maxDays: z.integer().min(0).optional(),
 

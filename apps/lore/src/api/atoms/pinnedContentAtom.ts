@@ -16,7 +16,9 @@ export const pinnedContentAtom = $atom({
   description:
     "Cap for total characters of pinned folio bodies in project_context.",
   schema: z.object({
-    /** Max characters across all pinned folios surfaced in project_context. */
+    /**
+     * Max characters across all pinned folios surfaced in project_context.
+     */
     maxChars: z.integer().min(256).default(8192),
   }),
   default: {

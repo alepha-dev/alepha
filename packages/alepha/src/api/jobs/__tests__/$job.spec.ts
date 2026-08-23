@@ -19,7 +19,9 @@ const makeApp = () =>
     .with(AlephaApiJobs)
     .with(AlephaApiJobsQueue);
 
-/** App without `AlephaApiJobsQueue` — exercises *direct* mode. */
+/**
+ * App without `AlephaApiJobsQueue` — exercises *direct* mode.
+ */
 const makeAppDirect = () =>
   Alepha.create().with(AlephaOrmPostgres).with(AlephaApiJobs);
 

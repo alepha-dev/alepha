@@ -31,7 +31,9 @@ class TestReactBrowserProvider extends ReactBrowserProvider {
   public testPushState = this.pushState.bind(this);
   public testNextFrame = this.nextFrame.bind(this);
 
-  /** Subclass seams instead of spies, per the repo's testing rules. */
+  /**
+   * Subclass seams instead of spies, per the repo's testing rules.
+   */
   public hidden = false;
   public scheduled: Array<"timeout" | "frame"> = [];
 

@@ -272,9 +272,15 @@ export class NodeFileSystemProvider implements FileSystemProvider {
     // EVERY error made EACCES, ENOSPC and EROFS vanish, so the failure
     // surfaced far from its cause on a later write. `recursive: true` already
     // makes EEXIST a no-op, so this rethrows anything else.
-    await p.catch((error: NodeJS.ErrnoException) => {
+    await p.catch(async (error: NodeJS.ErrnoException) => {
       if (error?.code === "EEXIST") {
-        return;
+        // `recursive: true` already treats an existing directory as done,
+        // so an EEXIST here is a file squatting the path: report it now
+        // rather than on the next write into the "directory".
+        const existing = await fsStat(path).catch(() => undefined);
+        if (existing?.isDirectory()) {
+          return;
+        }
       }
       throw error;
     });

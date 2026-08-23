@@ -13,12 +13,16 @@ import type { Repository } from "../services/Repository.ts";
 import type { PgQueryWhere } from "./PgQueryWhere.ts";
 import type { IncludeArg, RelationsFor } from "./RelationInclude.ts";
 
-/** The plain insert shape for an entity. */
+/**
+ * The plain insert shape for an entity.
+ */
 export type InsertOf<ZType extends EntitySchema, K extends keyof ZType> = Infer<
   TObjectInsert<SchemaOf<ZType, K>>
 >;
 
-/** Make selected keys optional, leaving the rest untouched. */
+/**
+ * Make selected keys optional, leaving the rest untouched.
+ */
 type Optionalize<T, K extends PropertyKey> = Omit<T, K & keyof T> &
   Partial<Pick<T, K & keyof T>>;
 
@@ -90,20 +94,28 @@ type ChildCreateData<
   TTo extends string,
 > = Omit<CreateData<ZType, TMap, K>, TTo>;
 
-/** Arguments to a nested create. */
+/**
+ * Arguments to a nested create.
+ */
 export interface CreateArgs<
   ZType extends EntitySchema,
   TMap extends RelationMapFor<ZType>,
   K extends keyof ZType,
 > {
   data: CreateData<ZType, TMap, K>;
-  /** Re-read the created row with these relations resolved. */
+  /**
+   * Re-read the created row with these relations resolved.
+   */
   include?: IncludeArg<ZType, TMap, K>;
-  /** Project the returned row. */
+  /**
+   * Project the returned row.
+   */
   select?: ReadonlyArray<keyof RowOf<ZType, K>>;
 }
 
-/** Arguments to `createMany`. */
+/**
+ * Arguments to `createMany`.
+ */
 export interface CreateManyArgs<
   ZType extends EntitySchema,
   TMap extends RelationMapFor<ZType>,
@@ -146,7 +158,9 @@ export interface UpdateArgs<
   select?: ReadonlyArray<keyof RowOf<ZType, K>>;
 }
 
-/** Arguments to `updateMany`. */
+/**
+ * Arguments to `updateMany`.
+ */
 export interface UpdateManyArgs<
   ZType extends EntitySchema,
   K extends keyof ZType,
@@ -168,14 +182,20 @@ export interface UpsertArgs<
 > {
   create: InsertOf<ZType, K>;
   update?: UpdateOf<ZType, K>;
-  /** Conflict target. Defaults to the primary key. */
+  /**
+   * Conflict target. Defaults to the primary key.
+   */
   target?: Array<keyof RowOf<ZType, K>>;
   include?: IncludeArg<ZType, TMap, K>;
 }
 
-/** Arguments to `delete` / `deleteMany`. */
+/**
+ * Arguments to `delete` / `deleteMany`.
+ */
 export interface DeleteArgs<ZType extends EntitySchema, K extends keyof ZType> {
   where: PgQueryWhere<SchemaOf<ZType, K>>;
-  /** Hard-delete a soft-deletable entity. */
+  /**
+   * Hard-delete a soft-deletable entity.
+   */
   force?: boolean;
 }

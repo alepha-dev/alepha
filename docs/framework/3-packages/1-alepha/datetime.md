@@ -15,7 +15,7 @@ Date and time operations.
 **Features:**
 
 - Recurring interval definitions
-- Duration parsing (ISO 8601, human-readable)
+- Duration helpers (numbers, `[n, unit]` tuples and `Duration` objects)
 - Timezone support
 - Dayjs integration
 

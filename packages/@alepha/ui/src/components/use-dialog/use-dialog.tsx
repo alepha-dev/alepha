@@ -78,16 +78,29 @@ const Ctx = createContext<DialogApi | null>(null);
  * through {@link useDialog}. Mount once near the root:
  * `<DialogProvider>{children}</DialogProvider>`.
  */
-export function DialogProvider(props: { children: ReactNode }) {
+export const DialogProvider = (props: { children: ReactNode }) => {
   const { tr } = useI18n();
   const [pending, setPending] = useState<Pending | null>(null);
   const [promptValue, setPromptValue] = useState("");
   const [promptError, setPromptError] = useState<string | null>(null);
-  const resolverRef = useRef<((value: unknown) => void) | null>(null);
+  const resolverRef = useRef<{
+    kind: Kind;
+    resolve: (value: unknown) => void;
+  } | null>(null);
 
   const open = <T,>(kind: Kind, options: Pending["options"]) =>
     new Promise<T>((resolve) => {
-      resolverRef.current = resolve as (value: unknown) => void;
+      // A dialog opened while another is pending settles the first as
+      // dismissed; overwriting its resolver left that promise hanging
+      // forever (a double click on a "Revoke" button was enough).
+      const previous = resolverRef.current;
+      if (previous) {
+        previous.resolve(previous.kind === "prompt" ? null : false);
+      }
+      resolverRef.current = {
+        kind,
+        resolve: resolve as (value: unknown) => void,
+      };
       if (kind === "prompt") {
         const o = options as PromptOptions;
         setPromptValue(o.defaultValue ?? "");
@@ -97,7 +110,7 @@ export function DialogProvider(props: { children: ReactNode }) {
     });
 
   const resolve = (value: unknown) => {
-    resolverRef.current?.(value);
+    resolverRef.current?.resolve(value);
     resolverRef.current = null;
     setPending(null);
   };
@@ -220,7 +233,7 @@ export function DialogProvider(props: { children: ReactNode }) {
       </AlertDialog>
     </Ctx.Provider>
   );
-}
+};
 
 /**
  * Imperative dialog API. Returns an object with:

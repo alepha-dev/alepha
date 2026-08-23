@@ -1,6 +1,6 @@
 import { $hook, $inject, Alepha, type Infer, type ZType, z } from "alepha";
-import { $logger } from "alepha/logger";
-import { describe, expect, test, vi } from "vitest";
+import type { LogEntry } from "alepha/logger";
+import { describe, expect, test } from "vitest";
 
 import {
   MemoryQueueProvider,
@@ -16,7 +16,6 @@ const payloadSchema = z.object({
 });
 
 class TestWorkerProvider extends WorkerProvider {
-  public readonly log = $logger();
   public workersRunning = 0;
   public workerIntervals: Record<number, number> = {};
   public abortController = new AbortController();
@@ -24,6 +23,21 @@ class TestWorkerProvider extends WorkerProvider {
     return super.waitForNextMessage(n);
   }
 }
+
+/**
+ * Every entry is emitted on the `log` event whatever the active level, so a
+ * test can observe what a worker logged without spying on its logger.
+ */
+const captureLogs = (app: Alepha) => {
+  const entries: LogEntry[] = [];
+  app.events.on("log", (event) => {
+    entries.push(event.entry);
+  });
+  return entries;
+};
+
+const messagesAt = (entries: LogEntry[], level: LogEntry["level"]) =>
+  entries.filter((it) => it.level === level).map((it) => it.message);
 
 /**
  * Builds a service that registers one queue consumer on start.
@@ -111,11 +125,11 @@ describe("WorkerProvider", () => {
       app.with(consumerService("test", payloadSchema, async () => {}));
 
       const workerProvider = app.inject(TestWorkerProvider);
-      const logSpy = vi.spyOn(workerProvider.log, "debug");
+      const logs = captureLogs(app);
 
       await app.start();
 
-      expect(logSpy).toHaveBeenCalledWith("Starting worker n-0");
+      expect(messagesAt(logs, "DEBUG")).toContain("Starting worker n-0");
       expect(workerProvider.workersRunning).toBe(1);
 
       await app.stop();
@@ -127,13 +141,13 @@ describe("WorkerProvider", () => {
       app.with(consumerService("test", payloadSchema, async () => {}));
 
       const workerProvider = app.inject(TestWorkerProvider);
-      const logSpy = vi.spyOn(workerProvider.log, "debug");
+      const logs = captureLogs(app);
 
       await app.start();
 
-      expect(logSpy).toHaveBeenCalledWith("Starting worker n-0");
-      expect(logSpy).toHaveBeenCalledWith("Starting worker n-1");
-      expect(logSpy).toHaveBeenCalledWith("Starting worker n-2");
+      expect(messagesAt(logs, "DEBUG")).toContain("Starting worker n-0");
+      expect(messagesAt(logs, "DEBUG")).toContain("Starting worker n-1");
+      expect(messagesAt(logs, "DEBUG")).toContain("Starting worker n-2");
       expect(workerProvider.workersRunning).toBe(3);
 
       await app.stop();
@@ -144,13 +158,13 @@ describe("WorkerProvider", () => {
       const app = await createTestApp();
 
       const workerProvider = app.inject(TestWorkerProvider);
-      const logSpy = vi.spyOn(workerProvider.log, "debug");
+      const logs = captureLogs(app);
 
       await app.start();
 
-      expect(logSpy).not.toHaveBeenCalledWith(
-        expect.stringMatching(/Starting worker/),
-      );
+      expect(
+        messagesAt(logs, "DEBUG").some((it) => /Starting worker/.test(it)),
+      ).toBe(false);
       expect(workerProvider.workersRunning).toBe(0);
 
       await app.stop();
@@ -163,7 +177,7 @@ describe("WorkerProvider", () => {
       app.with(consumerService("test", payloadSchema, async () => {}));
 
       const workerProvider = app.inject(TestWorkerProvider);
-      const debugSpy = vi.spyOn(workerProvider.log, "debug");
+      const logs = captureLogs(app);
 
       await app.start();
       expect(workerProvider.workersRunning).toBe(2);
@@ -174,7 +188,7 @@ describe("WorkerProvider", () => {
       // Call wakeUp - should detect missing worker and restart it
       workerProvider.wakeUp();
 
-      expect(debugSpy).toHaveBeenCalledWith("Waking up workers...");
+      expect(messagesAt(logs, "DEBUG")).toContain("Waking up workers...");
       expect(workerProvider.workersRunning).toBe(2);
 
       await app.stop();
@@ -242,14 +256,14 @@ describe("WorkerProvider", () => {
       const push = producerFor(app);
 
       const workerProvider = app.inject(TestWorkerProvider);
-      const errorSpy = vi.spyOn(workerProvider.log, "error");
+      const logs = captureLogs(app);
 
       await app.start();
 
       await push("test", payloadSchema, { id: "error", count: 1 });
 
       await expect
-        .poll(() => errorSpy.mock.calls.length > 0, { timeout: 500 })
+        .poll(() => messagesAt(logs, "ERROR").length > 0, { timeout: 500 })
         .toBeTruthy();
 
       // Worker should still be running after processing error
@@ -266,7 +280,7 @@ describe("WorkerProvider", () => {
 
       const workerProvider = app.inject(TestWorkerProvider);
       const queueProvider = app.inject(QueueProvider);
-      const errorSpy = vi.spyOn(workerProvider.log, "error");
+      const logs = captureLogs(app);
 
       await app.start();
 
@@ -274,13 +288,14 @@ describe("WorkerProvider", () => {
       await queueProvider.push("test", "invalid-json");
 
       await expect
-        .poll(() => errorSpy.mock.calls.length > 0, { timeout: 500 })
+        .poll(() => messagesAt(logs, "ERROR").length > 0, { timeout: 500 })
         .toBeTruthy();
 
-      expect(errorSpy).toHaveBeenCalledWith(
-        "Failed to process message",
-        expect.any(Error),
+      const failure = logs.find(
+        (it) => it.message === "Failed to process message",
       );
+      expect(failure?.level).toBe("ERROR");
+      expect(failure?.data).toBeInstanceOf(Error);
 
       // Worker should still be running
       expect(workerProvider.workersRunning).toBe(1);
@@ -294,7 +309,7 @@ describe("WorkerProvider", () => {
 
       const workerProvider = app.inject(TestWorkerProvider);
       const queueProvider = app.inject(QueueProvider);
-      const errorSpy = vi.spyOn(workerProvider.log, "error");
+      const logs = captureLogs(app);
 
       await app.start();
 
@@ -307,13 +322,14 @@ describe("WorkerProvider", () => {
       );
 
       await expect
-        .poll(() => errorSpy.mock.calls.length > 0, { timeout: 500 })
+        .poll(() => messagesAt(logs, "ERROR").length > 0, { timeout: 500 })
         .toBeTruthy();
 
-      expect(errorSpy).toHaveBeenCalledWith(
-        "Failed to process message",
-        expect.any(Error),
+      const failure = logs.find(
+        (it) => it.message === "Failed to process message",
       );
+      expect(failure?.level).toBe("ERROR");
+      expect(failure?.data).toBeInstanceOf(Error);
 
       // Worker should still be running
       expect(workerProvider.workersRunning).toBe(1);
@@ -407,7 +423,7 @@ describe("WorkerProvider", () => {
       app.with(consumerService("test", payloadSchema, async () => {}));
 
       const workerProvider = app.inject(TestWorkerProvider);
-      const warnSpy = vi.spyOn(workerProvider.log, "warn");
+      const logs = captureLogs(app);
 
       await app.start();
 
@@ -417,7 +433,7 @@ describe("WorkerProvider", () => {
       // This should detect the abort and return early
       await workerProvider.waitForNextMessage(0);
 
-      expect(warnSpy).toHaveBeenCalledWith("Worker n-0 aborted.");
+      expect(messagesAt(logs, "WARN")).toContain("Worker n-0 aborted.");
 
       await app.stop();
     });

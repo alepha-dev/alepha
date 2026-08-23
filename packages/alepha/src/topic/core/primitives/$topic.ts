@@ -134,7 +134,6 @@ export interface TopicPrimitiveOptions<T extends TopicMessageSchema> {
    * @default Uses injected TopicProvider
    * @example "memory"
    * @example RedisTopicProvider
-   * @example RabbitMQTopicProvider
    */
   provider?: "memory" | Service<TopicProvider>;
 

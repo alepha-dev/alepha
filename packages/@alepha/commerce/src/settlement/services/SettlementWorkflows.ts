@@ -90,8 +90,8 @@ export class SettlementWorkflows {
    *   (`PaymentService.syncIntent`, which routes any missed transition
    *   through the same guarded path a webhook takes: a captured payment
    *   settles, a failed one abandons),
-   * - the PSP unreachable or non-committal → abandon: the payment
-   *   module's own 30-minute expiry has already had its shot by then.
+   * - the PSP unreachable or non-committal → abandon; the payment
+   *   module's own 30-minute expiry sweep follows as the fleet-wide net.
    *
    * The step skips when the session resolved in the meantime; a paid
    * conversion also cancels the execution via `SettlementListener`.

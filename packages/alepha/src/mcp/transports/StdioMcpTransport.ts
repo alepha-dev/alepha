@@ -45,7 +45,9 @@ export class StdioMcpTransport {
   protected readonly log = $logger();
   protected readonly mcpServer = $inject(McpServerProvider);
 
-  /** Bytes read from stdin that do not yet form a complete line. */
+  /**
+   * Bytes read from stdin that do not yet form a complete line.
+   */
   protected buffer = "";
 
   /**
@@ -54,7 +56,9 @@ export class StdioMcpTransport {
    */
   protected stdoutWrite?: (chunk: string) => void;
 
-  /** Restores `process.stdout.write` on stop. */
+  /**
+   * Restores `process.stdout.write` on stop.
+   */
   protected restoreStdout?: () => void;
 
   protected onLine = (line: string): void => {

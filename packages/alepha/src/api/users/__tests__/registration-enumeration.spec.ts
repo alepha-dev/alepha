@@ -59,6 +59,40 @@ describe("alepha/api/users - registration enumeration", () => {
   describe("with email verification required", () => {
     const settings = { verifyEmailRequired: true, email: "required" };
 
+    it("answers a second attempt inside the cooldown like the first, taken or fresh", async ({
+      expect,
+    }) => {
+      // The fresh path creates a verification, and the verification service
+      // rate-limits (90 s cooldown); the decoy path never did. Two POSTs for
+      // the same address therefore told a stranger whether it was on file.
+      const { registrationService, userService } = await setup(settings);
+
+      await userService.users().create({
+        username: "owner",
+        email: "taken@example.com",
+        roles: ["user"],
+      });
+
+      const body = (email: string) => ({
+        email,
+        password: "SecurePassword123!",
+      });
+
+      await registrationService.createRegistrationIntent(
+        body("taken@example.com"),
+      );
+      await registrationService.createRegistrationIntent(
+        body("taken@example.com"),
+      );
+
+      await registrationService.createRegistrationIntent(
+        body("fresh@example.com"),
+      );
+      await expect(
+        registrationService.createRegistrationIntent(body("fresh@example.com")),
+      ).resolves.toBeDefined();
+    });
+
     it("answers a taken email exactly like a fresh one", async ({ expect }) => {
       const { registrationService, userService } = await setup(settings);
 

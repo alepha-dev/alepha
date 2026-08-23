@@ -16,13 +16,19 @@ export const sigilResourceSchema = z.object({
   id: z.uuid(),
   projectId: z.integer(),
   name: z.string(),
-  /** First characters of the token — enough to name it, not to use it. */
+  /**
+   * First characters of the token — enough to name it, not to use it.
+   */
   tokenPrefix: z.string(),
   kinds: z.array(z.string()),
-  /** Which corner this app's feedback button sits in. Absent = bottom-right. */
+  /**
+   * Which corner this app's feedback button sits in. Absent = bottom-right.
+   */
   feedbackPosition: z.string().optional(),
   createdAt: z.string(),
-  /** Last time this app reported. Absent means never. */
+  /**
+   * Last time this app reported. Absent means never.
+   */
   lastSeenAt: z.string().optional(),
 });
 

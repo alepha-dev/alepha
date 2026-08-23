@@ -72,6 +72,10 @@ describe("query-only navigation", () => {
     // components reading `router.query` desync otherwise.
     expect(window.location.search).toBe("?tab=security");
     expect(router.query.tab).toBe("security");
+    // The history entry must keep the key the router stamped on it: scroll
+    // restoration and canGoBack() read it back on popstate, and a bare
+    // `replaceState({})` used to wipe it.
+    expect(window.history.state).toEqual({ alephaKey: expect.any(Number) });
   });
 
   it("useQueryParams re-syncs when the router state changes", async () => {

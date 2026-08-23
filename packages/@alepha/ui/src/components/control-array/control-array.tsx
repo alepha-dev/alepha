@@ -190,7 +190,9 @@ const objectVariants = (itemSchema: ZType): ZObject[] | null => {
   return objects.length === variants.length ? objects : null;
 };
 
-/** The property whose value identifies the variant (a literal in every variant). */
+/**
+ * The property whose value identifies the variant (a literal in every variant).
+ */
 const discriminantOf = (variants: ZObject[]): string | null => {
   const [first] = variants;
   if (!first) return null;
@@ -206,7 +208,9 @@ const discriminantOf = (variants: ZObject[]): string | null => {
   return null;
 };
 
-/** The single allowed value of a literal/const schema, if it is one. */
+/**
+ * The single allowed value of a literal/const schema, if it is one.
+ */
 const literalValueOf = (schema: unknown): unknown => {
   if (!schema) return undefined;
   const inner = z.schema.unwrap(schema as ZType) as {
@@ -223,7 +227,9 @@ const literalValueOf = (schema: unknown): unknown => {
   return values?.length === 1 ? values[0] : undefined;
 };
 
-/** Label for a variant: its discriminant value, else its index. */
+/**
+ * Label for a variant: its discriminant value, else its index.
+ */
 const variantLabel = (
   variant: ZObject,
   discriminant: string | null,
@@ -274,7 +280,7 @@ const buildFieldInput = (
   set: (v: unknown) => onFieldChange(fieldName, v),
 });
 
-export function ControlArray(props: ControlArrayProps) {
+export const ControlArray = (props: ControlArrayProps) => {
   const form = useFormState(props.input, ["error"]);
   const { tr } = useI18n();
   const { items, setItems, nextKey } = useArrayItems(props.input);
@@ -330,9 +336,15 @@ export function ControlArray(props: ControlArrayProps) {
     ? Object.keys(z.schema.shape(objectItemSchema))
     : [];
 
-  // Schema-driven max/min if present
-  const schemaMax = (schema as { maxItems?: number }).maxItems;
-  const schemaMin = (schema as { minItems?: number }).minItems;
+  // Schema-driven max/min if present: `z.array().max(3)` lands in zod's
+  // constraint bag, the JSON-schema `maxItems` names never existed here.
+  const bounds =
+    (z.schema.unwrap(schema) as { _zod?: { bag?: Record<string, unknown> } })
+      ._zod?.bag ?? {};
+  const schemaMax =
+    typeof bounds.maximum === "number" ? bounds.maximum : undefined;
+  const schemaMin =
+    typeof bounds.minimum === "number" ? bounds.minimum : undefined;
   const min = props.min ?? schemaMin ?? 0;
   const max = props.max ?? schemaMax ?? Number.POSITIVE_INFINITY;
   const columns = props.columns ?? 1;
@@ -340,8 +352,8 @@ export function ControlArray(props: ControlArrayProps) {
   // Tabs heuristic: forced or nested complex item or many items
   const hasComplexFields = objectItemSchema
     ? fieldNames.some((n) => {
-        const p = z.schema.shape(objectItemSchema)[n] as { type?: string };
-        return p?.type === "object" || p?.type === "array";
+        const inner = z.schema.unwrap(z.schema.shape(objectItemSchema)[n]);
+        return z.schema.isObject(inner) || z.schema.isArray(inner);
       })
     : false;
   const useTabs =
@@ -698,4 +710,4 @@ export function ControlArray(props: ControlArrayProps) {
       {confirmContent}
     </fieldset>
   );
-}
+};

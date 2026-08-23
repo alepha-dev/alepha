@@ -573,22 +573,32 @@ export class RegistrationService {
     realmName?: string,
   ): Promise<void> {
     this.log.debug("Sending email verification code", { email });
+    try {
+      const verification = await this.verificationService.createVerification({
+        type: "code",
+        target: email,
+      });
 
-    const verification = await this.verificationService.createVerification({
-      type: "code",
-      target: email,
-    });
+      await this.userNotifications(realmName).emailVerification.push({
+        contact: email,
+        variables: {
+          email,
+          code: verification.token,
+          expiresInMinutes: Math.floor(verification.codeExpiration / 60),
+        },
+      });
 
-    await this.userNotifications(realmName).emailVerification.push({
-      contact: email,
-      variables: {
+      this.log.debug("Email verification code sent", { email });
+    } catch (error) {
+      // Silent fail, like the phone path: the verification service rate
+      // limits (cooldown, daily cap), and surfacing that here would tell a
+      // stranger that the address is fresh, while a taken address (the
+      // decoy path) never throws.
+      this.log.warn("Failed to send email verification code", {
         email,
-        code: verification.token,
-        expiresInMinutes: Math.floor(verification.codeExpiration / 60),
-      },
-    });
-
-    this.log.debug("Email verification code sent", { email });
+        error,
+      });
+    }
   }
 
   /**

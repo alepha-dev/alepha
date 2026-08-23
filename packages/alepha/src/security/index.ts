@@ -90,7 +90,7 @@ declare module "alepha/server" {
   interface ClientRequestOptions extends FetchOptions {
     /**
      * Forward user from the previous request.
-     * If "system", use system user. @see {ServerSecurityProvider.localSystemUser}
+     * If "system", use the system user.
      * If "context", use the user from the current context (e.g. request).
      *
      * @default "system" if provided, else "context" if available.

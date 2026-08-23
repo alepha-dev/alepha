@@ -12,13 +12,21 @@ import { AlephaError } from "alepha";
  * where the bytes go — a bucket, a hash, the floor — before any arrive.
  */
 export interface MultipartPart {
-  /** The `name` of the form field, from `Content-Disposition`. */
+  /**
+   * The `name` of the form field, from `Content-Disposition`.
+   */
   name?: string;
-  /** The client-supplied filename. Absent for a plain field. */
+  /**
+   * The client-supplied filename. Absent for a plain field.
+   */
   filename?: string;
-  /** The part's `Content-Type`, absent when it did not declare one. */
+  /**
+   * The part's `Content-Type`, absent when it did not declare one.
+   */
   mediaType?: string;
-  /** Every header of this part, lowercased. */
+  /**
+   * Every header of this part, lowercased.
+   */
   headers: Record<string, string>;
   /**
    * The part's bytes, in arrival order.
@@ -75,7 +83,9 @@ export interface MultipartParserOptions {
    * first byte past the limit rather than after the whole body is in.
    */
   maxFileBytes?: number;
-  /** Maximum number of parts in one message. */
+  /**
+   * Maximum number of parts in one message.
+   */
   maxParts?: number;
   /**
    * Maximum bytes of the message, all of it.
@@ -103,7 +113,9 @@ export interface MultipartParserOptions {
  * honouring re-readability forces the implementation to keep every byte.
  */
 export class MultipartStreamParser {
-  /** RFC 2046 §5.1.1 caps a boundary at 70 characters. */
+  /**
+   * RFC 2046 §5.1.1 caps a boundary at 70 characters.
+   */
   protected static readonly MAX_BOUNDARY_LENGTH = 70;
 
   protected static readonly DEFAULTS = {
@@ -118,7 +130,9 @@ export class MultipartStreamParser {
   protected readonly maxParts: number;
   protected readonly maxTotalBytes: number;
 
-  /** Unconsumed bytes. Never larger than one chunk plus a delimiter. */
+  /**
+   * Unconsumed bytes. Never larger than one chunk plus a delimiter.
+   */
   protected buffer: Uint8Array = new Uint8Array(0);
   protected reader?: ReadableStreamDefaultReader<Uint8Array>;
   protected done = false;

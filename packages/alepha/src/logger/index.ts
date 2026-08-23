@@ -70,11 +70,15 @@ export const AlephaLogger = $module({
     // DEBUG=alepha:* → LOG_LEVEL=alepha.*:debug,info LOG_FORMAT=pretty
     let logLevel = env.LOG_LEVEL;
     let logFormat = env.LOG_FORMAT;
-    if (env.DEBUG) {
-      if (env.DEBUG === "1" || env.DEBUG === "true") {
+    const debug = env.DEBUG;
+    // Through isEnvEnabled(): a raw truthiness check turned `DEBUG=false` into
+    // a bogus `false:debug` level and pretty output in production.
+    if (debug && alepha.isEnvEnabled("DEBUG")) {
+      if (debug === "1" || debug === "true") {
         logLevel ??= "trace";
       } else {
-        const patterns = env.DEBUG.split(",")
+        const patterns = debug
+          .split(",")
           .map((p) => p.trim().replaceAll(":", "."))
           .filter(Boolean);
         logLevel ??= `${patterns.map((p) => `${p}:debug`).join(",")},info`;

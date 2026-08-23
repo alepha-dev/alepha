@@ -16,10 +16,14 @@ import type { GraphNode } from "./graphModel.ts";
 export const DIAGRAM_FONT_FAMILY =
   '"Inter Variable", Inter, system-ui, -apple-system, "Segoe UI", sans-serif';
 
-/** The one size every diagram label is drawn at. */
+/**
+ * The one size every diagram label is drawn at.
+ */
 export const DIAGRAM_FONT_SIZE = 13;
 
-/** Baseline-to-baseline distance, as a multiple of the font size. */
+/**
+ * Baseline-to-baseline distance, as a multiple of the font size.
+ */
 export const DIAGRAM_LINE_HEIGHT = 1.35;
 
 /**
@@ -29,7 +33,9 @@ export const DIAGRAM_LINE_HEIGHT = 1.35;
  */
 export const MAX_LABEL_WIDTH = 220;
 
-/** How many lines a label keeps before the rest is cut with an ellipsis. */
+/**
+ * How many lines a label keeps before the rest is cut with an ellipsis.
+ */
 export const MAX_LABEL_LINES = 8;
 
 /**
@@ -156,11 +162,17 @@ export const measureLine = (line: string, fontSize: number): number => {
 };
 
 export interface LabelMetrics {
-  /** The widest line, in pixels. */
+  /**
+   * The widest line, in pixels.
+   */
   width: number;
-  /** Total height of the line box stack, in pixels. */
+  /**
+   * Total height of the line box stack, in pixels.
+   */
   height: number;
-  /** The lines as measured - wrapped and capped, so the emitter draws these. */
+  /**
+   * The lines as measured - wrapped and capped, so the emitter draws these.
+   */
   lines: string[];
 }
 

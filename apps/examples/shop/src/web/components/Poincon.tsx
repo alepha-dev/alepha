@@ -1,3 +1,5 @@
+import { useI18n } from "alepha/react/i18n";
+
 export interface PoinconProps {
   /**
    * What is struck inside the mark — a metal fineness in parts per thousand
@@ -27,6 +29,7 @@ export interface PoinconProps {
  * punch would strike them.
  */
 export const Poincon = (props: PoinconProps) => {
+  const { tr } = useI18n();
   const { titre, size = "sm", className } = props;
   const width = size === "lg" ? 60 : 40;
 
@@ -39,7 +42,9 @@ export const Poincon = (props: PoinconProps) => {
       role="img"
       // A screen reader should hear the fact, not the shape.
       aria-label={
-        /^\d+$/.test(titre) ? `Titre ${titre} millièmes` : `Poinçon ${titre}`
+        /^\d+$/.test(titre)
+          ? String(tr("hallmark.fineness", { args: [titre] }))
+          : String(tr("hallmark.mark", { args: [titre] }))
       }
     >
       <polygon

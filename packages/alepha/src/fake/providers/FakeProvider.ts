@@ -349,7 +349,13 @@ export class FakeProvider {
         case "date":
           return this.faker.date.recent().toISOString().split("T")[0];
         case "time":
-          return this.faker.date.recent().toISOString().split("T")[1];
+          // `z.time()` is a local time with no offset, so the ISO string's
+          // trailing `Z` has to go or the generated value fails its own schema.
+          return this.faker.date
+            .recent()
+            .toISOString()
+            .split("T")[1]
+            .replace("Z", "");
         case "bigint":
           return this.faker.number
             .bigInt({ min: -9007199254740991n, max: 9007199254740991n })
@@ -404,8 +410,10 @@ export class FakeProvider {
     }
 
     // Ensure min/max length constraints
-    if (minLength !== undefined && text.length < minLength) {
-      text = text.padEnd(minLength, " ");
+    // Pad with words, not spaces: `z.text()` trims before it measures, so
+    // space padding produced a value the schema then rejected as too short.
+    while (minLength !== undefined && text.length < minLength) {
+      text = `${text} ${this.faker.lorem.word()}`;
     }
     if (maxLength !== undefined && text.length > maxLength) {
       text = text.slice(0, maxLength);
@@ -416,29 +424,64 @@ export class FakeProvider {
 
   protected generateNumber(schema: ZodNumber): number {
     const schemaAny = schema as any;
-    // zod exposes numeric bounds as `.minValue` / `.maxValue` (number | null).
-    const min = schemaAny.minValue ?? -1000000;
-    const max = schemaAny.maxValue ?? 1000000;
-    // `.multipleOf` is a builder method on zod schemas, not a value — only use
-    // it if it surfaces as an actual number.
-    const multipleOf =
-      typeof schemaAny.multipleOf === "number"
-        ? schemaAny.multipleOf
-        : undefined;
+    // zod exposes numeric bounds as `.minValue` / `.maxValue`, and reports an
+    // unbounded side as +-Infinity rather than null, so a `??` fallback never
+    // applied and faker produced NaN for every plain `z.number()`.
+    const min = Number.isFinite(schemaAny.minValue)
+      ? schemaAny.minValue
+      : -1000000;
+    const max = Number.isFinite(schemaAny.maxValue)
+      ? schemaAny.maxValue
+      : 1000000;
+    const multipleOf = this.readCheck(schema, "multiple_of", "value");
 
-    let value = this.faker.number.float({ min, max });
-
-    if (multipleOf != null) {
-      value = Math.round(value / multipleOf) * multipleOf;
+    if (multipleOf != null && multipleOf > 0) {
+      return (
+        this.faker.number.int({
+          min: Math.ceil(min / multipleOf),
+          max: Math.floor(max / multipleOf),
+        }) * multipleOf
+      );
     }
 
-    return value;
+    return this.faker.number.float({ min, max });
+  }
+
+  /**
+   * Reads one property of a native zod check (`.min()`, `.multipleOf()`, ...),
+   * which zod 4 stores in `_zod.def.checks` rather than on the schema itself.
+   */
+  protected readCheck(
+    schema: unknown,
+    check: string,
+    key: string,
+  ): number | undefined {
+    const checks = ((schema as any)._zod?.def?.checks ?? []) as any[];
+    for (const c of checks) {
+      const d = c?._zod?.def;
+      if (d?.check === check) return d[key];
+    }
+    return undefined;
   }
 
   protected generateInteger(schema: ZodNumber): number {
     const schemaAny = schema as any;
-    const min = schemaAny.minValue ?? -2147483647;
-    const max = schemaAny.maxValue ?? 2147483647;
+    const min = Number.isFinite(schemaAny.minValue)
+      ? schemaAny.minValue
+      : -2147483647;
+    const max = Number.isFinite(schemaAny.maxValue)
+      ? schemaAny.maxValue
+      : 2147483647;
+    const multipleOf = this.readCheck(schema, "multiple_of", "value");
+
+    if (multipleOf != null && multipleOf > 0) {
+      return (
+        this.faker.number.int({
+          min: Math.ceil(min / multipleOf),
+          max: Math.floor(max / multipleOf),
+        }) * multipleOf
+      );
+    }
 
     return this.faker.number.int({ min, max });
   }
@@ -501,6 +544,34 @@ export class FakeProvider {
     // If no key name context, use regular generation
     if (!keyName) {
       return this.generateValue(schema);
+    }
+
+    // Peel optional / nullable / default wrappers first, rolling the same
+    // probabilities as generateValue, so that `firstName: z.text().optional()`
+    // still gets a name rather than falling through to lorem text.
+    const wrapped = schema as any;
+    if (this.guard.isOptional(schema)) {
+      if (
+        this.faker.datatype.boolean({
+          probability: this.options.optionalProbability,
+        })
+      ) {
+        return undefined;
+      }
+      return this.generateValueWithContext(wrapped.unwrap(), keyName);
+    }
+    if (this.guard.isNullable(schema)) {
+      if (
+        this.faker.datatype.boolean({
+          probability: this.options.nullableProbability,
+        })
+      ) {
+        return null;
+      }
+      return this.generateValueWithContext(wrapped.unwrap(), keyName);
+    }
+    if (z.schema.isDefault(wrapped)) {
+      return this.generateValueWithContext(wrapped.unwrap() as ZType, keyName);
     }
 
     // Normalize key name: lowercase and remove underscores/hyphens

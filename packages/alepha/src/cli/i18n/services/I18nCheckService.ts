@@ -72,39 +72,67 @@ export interface I18nCheckOptions {
 }
 
 export interface I18nCheckResult {
-  /** Total number of keys discovered across all dictionary files. */
+  /**
+   * Total number of keys discovered across all dictionary files.
+   */
   totalKeys: number;
-  /** Number of keys exempted via `dynamicPrefixes`. */
+  /**
+   * Number of keys exempted via `dynamicPrefixes`.
+   */
   exemptKeys: number;
-  /** Number of source files scanned for references. */
+  /**
+   * Number of source files scanned for references.
+   */
   scannedFiles: number;
-  /** Dictionary files that contributed keys. */
+  /**
+   * Dictionary files that contributed keys.
+   */
   dictionaryFiles: string[];
-  /** Keys that have no quoted-literal reference anywhere in the scan. */
+  /**
+   * Keys that have no quoted-literal reference anywhere in the scan.
+   */
   unused: string[];
-  /** Entries written with a `{0}`-style placeholder Alepha never interpolates. */
+  /**
+   * Entries written with a `{0}`-style placeholder Alepha never interpolates.
+   */
   badPlaceholders: I18nBadPlaceholder[];
-  /** `tr(...)` call sites that pass fewer arguments than their key needs. */
+  /**
+   * `tr(...)` call sites that pass fewer arguments than their key needs.
+   */
   missingArgs: I18nMissingArg[];
 }
 
 export interface I18nMissingArg {
-  /** The dotted key whose placeholders go unfilled. */
+  /**
+   * The dotted key whose placeholders go unfilled.
+   */
   key: string;
-  /** Highest `$N` the entry uses, i.e. how many arguments it needs. */
+  /**
+   * Highest `$N` the entry uses, i.e. how many arguments it needs.
+   */
   needs: number;
-  /** How many the call site passes — `0` when it passes no `args` at all. */
+  /**
+   * How many the call site passes — `0` when it passes no `args` at all.
+   */
   got: number;
-  /** Absolute path of the file holding the call. */
+  /**
+   * Absolute path of the file holding the call.
+   */
   file: string;
 }
 
 export interface I18nBadPlaceholder {
-  /** Absolute path of the dictionary file the entry was declared in. */
+  /**
+   * Absolute path of the dictionary file the entry was declared in.
+   */
   file: string;
-  /** The dotted key the placeholder belongs to. */
+  /**
+   * The dotted key the placeholder belongs to.
+   */
   key: string;
-  /** The offending placeholder as written, e.g. `{0}`. */
+  /**
+   * The offending placeholder as written, e.g. `{0}`.
+   */
   placeholder: string;
 }
 

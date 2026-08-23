@@ -110,7 +110,9 @@ const rewriteSegment = (
           // only an EMBED of a non-image has to degrade, because there is no
           // image to show.
           if (!bang) return `[${label}](${fileUrl})`;
-          if (isImageBlob(blob)) return `![${label || blob.name}](${fileUrl})`;
+          if (isImageBlob(blob)) {
+            return `![${escapeMarkdownLabel(label || blob.name)}](${fileUrl})`;
+          }
           const sizeSuffix =
             blob.size != null ? ` (${formatBlobBytes(blob.size)})` : "";
           return `[${escapeMarkdownLabel(`📎 ${blob.name}${sizeSuffix}`)}](${fileUrl})`;

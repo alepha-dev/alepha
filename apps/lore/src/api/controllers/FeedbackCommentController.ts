@@ -52,14 +52,6 @@ export class FeedbackCommentController {
   protected readonly cap = 200;
 
   /**
-   * Load the feedback item, proving the caller may see its thread.
-   *
-   * Two ways in, and the order is deliberate: membership first because it
-   * is the common case, then the reporter check. A stranger gets a 404
-   * rather than a 403, the same way `loadMyFeedback` does, so an id probe
-   * learns nothing about what exists.
-   */
-  /**
    * Attach display names to a page of comments, in one lookup for the
    * distinct authors rather than one per row.
    */
@@ -85,6 +77,14 @@ export class FeedbackCommentController {
     }));
   }
 
+  /**
+   * Load the feedback item, proving the caller may see its thread.
+   *
+   * Two ways in, and the order is deliberate: membership first because it
+   * is the common case, then the reporter check. A stranger gets a 404
+   * rather than a 403, the same way `loadMyFeedback` does, so an id probe
+   * learns nothing about what exists.
+   */
   protected async loadReadable(feedbackId: number, user: UserAccountToken) {
     const row = await this.feedback.findOne({
       where: { id: { eq: feedbackId } },

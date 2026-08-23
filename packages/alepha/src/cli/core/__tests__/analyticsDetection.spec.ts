@@ -22,7 +22,9 @@ describe("analytics resource detection", () => {
     else process.env.CLOUDFLARE_ANALYTICS_DATASET = original;
   });
 
-  /** Drives the private detection through a minimal fake context. */
+  /**
+   * Drives the private detection through a minimal fake context.
+   */
   const detect = async (opts: {
     analyticsPrimitives: number;
     envDataset?: string;

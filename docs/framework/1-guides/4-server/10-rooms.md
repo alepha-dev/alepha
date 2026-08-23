@@ -23,6 +23,8 @@ room hibernates for free). You never write a Durable Object.
 ## An authoritative simulation room
 
 ```typescript
+import { $channel, $room } from "alepha/websocket";
+
 class GameServer {
   world = $channel({
     path: "/ws/world",

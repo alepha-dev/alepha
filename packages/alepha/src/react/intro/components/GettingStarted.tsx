@@ -65,7 +65,8 @@ const formatServerTime = (isoString: string): string => {
 /**
  * A welcome component displayed when creating a new Alepha application.
  */
-const GettingStarted = ({ welcome }: GettingStartedProps) => {
+const GettingStarted = (props: GettingStartedProps) => {
+  const { welcome } = props;
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState<"next" | "prev">("next");
 

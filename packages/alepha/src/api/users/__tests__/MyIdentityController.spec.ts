@@ -11,7 +11,7 @@ import {
   SessionService,
 } from "../index.ts";
 
-const PASSWORD = "correct-horse-battery";
+const PASSWORD = "Correct-Horse-Battery-1";
 
 const setup = async (username: string) => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });

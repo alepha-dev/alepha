@@ -34,7 +34,10 @@ export class I18nCommand {
             `Did the dictionary location change? ` +
             `Searched: ${opts.scan.join(", ")}\n\n`,
         );
-        process.exit(2);
+        // An exit code, not `process.exit()`: the latter skips the CLI's own
+        // shutdown (hooks, flushed logs) on its way out.
+        process.exitCode = 2;
+        return;
       }
 
       process.stdout.write(
@@ -119,7 +122,7 @@ export class I18nCommand {
       }
 
       process.stdout.write("\n");
-      process.exit(1);
+      process.exitCode = 1;
     },
   });
 

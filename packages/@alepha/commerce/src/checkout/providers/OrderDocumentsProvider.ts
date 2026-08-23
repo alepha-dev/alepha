@@ -1,4 +1,6 @@
-/** Looks up the documents one module can produce for an order. */
+/**
+ * Looks up the documents one module can produce for an order.
+ */
 export type OrderDocumentSource = (orderId: string) => Promise<string[]>;
 
 /**

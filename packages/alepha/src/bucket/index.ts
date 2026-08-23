@@ -59,11 +59,15 @@ export const AlephaBucket = $module({
     alepha.with({
       optional: true,
       provide: FileStorageProvider,
-      use:
-        alepha.isTest() || alepha.isServerless()
-          ? MemoryFileStorageProvider
-          : useS3
-            ? S3FileStorageProvider
+      // S3 wins whenever it is configured: a serverless deployment has no
+      // disk, but it does have object storage, and falling back to memory
+      // there lost every upload on the next isolate.
+      use: alepha.isTest()
+        ? MemoryFileStorageProvider
+        : useS3
+          ? S3FileStorageProvider
+          : alepha.isServerless()
+            ? MemoryFileStorageProvider
             : LocalFileStorageProvider,
     });
 

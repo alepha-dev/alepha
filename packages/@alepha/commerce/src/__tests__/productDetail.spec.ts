@@ -16,7 +16,9 @@ import { ProductKindRegistry } from "../providers/ProductKindRegistry.ts";
 import { CatalogService } from "../services/CatalogService.ts";
 import { StockService } from "../services/StockService.ts";
 
-/** A kind that takes no configuration at all — neither core kind is one. */
+/**
+ * A kind that takes no configuration at all — neither core kind is one.
+ */
 class PlainKindHandler extends ProductKindHandler {
   public readonly kind = "plain";
   public readonly configSchema = undefined;

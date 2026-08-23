@@ -29,7 +29,9 @@ describe("R2 resource detection", () => {
     else process.env.R2_BUCKET_NAME = original;
   });
 
-  /** Drives the private detection through a minimal fake context. */
+  /**
+   * Drives the private detection through a minimal fake context.
+   */
   const detect = async (opts: {
     storagePrimitives: number;
     envBucket?: string;

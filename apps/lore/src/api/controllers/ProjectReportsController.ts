@@ -305,9 +305,9 @@ export class ProjectReportsController {
    * completed-vs-remaining breakdowns by area and by priority, average cycle
    * time per priority, and an actionable list of the oldest still-open quests.
    *
-   * Same access model as `getReportsOverview`: members-only + the
-   * Members-only. Date computations dialect-branch (SQLite epoch-ms
-   * ints in production, Postgres timestamps in tests).
+   * Same access model as `getReportsOverview`: members-only. Date
+   * computations dialect-branch (SQLite epoch-ms integers on D1, Postgres
+   * timestamps on node).
    */
   getReportsQuests = $action({
     use: [
@@ -507,9 +507,9 @@ export class ProjectReportsController {
    * an "idle" list of members who have not completed a quest in the last 14
    * days.
    *
-   * Same access model as `getReportsOverview`: members-only + the
-   * Members-only. Date computations dialect-branch (SQLite epoch-ms
-   * ints in production, Postgres timestamps in tests).
+   * Same access model as `getReportsOverview`: members-only. Date
+   * computations dialect-branch (SQLite epoch-ms integers on D1, Postgres
+   * timestamps on node).
    */
   getReportsMembers = $action({
     use: [

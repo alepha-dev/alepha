@@ -1,16 +1,22 @@
 import { useI18n } from "alepha/react/i18n";
 
 export interface PlaqueSpecProps {
-  /** Descriptive spec copy, as seeded in the product's `config`. */
+  /**
+   * Descriptive spec copy, as seeded in the product's `config`.
+   */
   spec: {
     titre?: string;
     metal?: string;
     poids?: string;
     dimensions?: string;
   };
-  /** Product slug, shown as the atelier's own reference. */
+  /**
+   * Product slug, shown as the atelier's own reference.
+   */
   reference: string;
-  /** `list` is compact for a catalogue row; `detail` opens it out. */
+  /**
+   * `list` is compact for a catalogue row; `detail` opens it out.
+   */
   variant?: "list" | "detail";
 }
 

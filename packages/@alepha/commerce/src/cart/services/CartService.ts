@@ -8,11 +8,15 @@ import { CommerceError } from "../../errors/CommerceError.ts";
 import { type CartItemEntity, cartItems } from "../entities/cartItems.ts";
 import { type CartEntity, carts } from "../entities/carts.ts";
 
-/** A cart priced against the catalog as it stands right now. */
+/**
+ * A cart priced against the catalog as it stands right now.
+ */
 export interface PricedCart {
   cart: CartEntity;
   lines: PricedCartLine[];
-  /** Sum of the lines, in the smallest currency unit. */
+  /**
+   * Sum of the lines, in the smallest currency unit.
+   */
   subtotal: number;
   currency: string;
 }
@@ -23,12 +27,18 @@ export interface PricedCartLine {
   name: string;
   kind: string;
   unitPrice: number;
-  /** The product's VAT rate in basis points, or unset for the seller default. */
+  /**
+   * The product's VAT rate in basis points, or unset for the seller default.
+   */
   rateBps?: number;
   quantity: number;
-  /** `unitPrice * quantity`. */
+  /**
+   * `unitPrice * quantity`.
+   */
   lineTotal: number;
-  /** First product image, so a cart can show a thumbnail without a second query. */
+  /**
+   * First product image, so a cart can show a thumbnail without a second query.
+   */
   image?: string;
 }
 
@@ -41,7 +51,9 @@ export interface PricedCartLine {
  * customer ends up charged a different figure from the one they were shown.
  */
 export class CartService {
-  /** How long an untouched cart survives. */
+  /**
+   * How long an untouched cart survives.
+   */
   public static readonly TTL_DAYS = 30;
 
   protected readonly cartRepo = $repository(carts);
@@ -209,7 +221,9 @@ export class CartService {
     await this.cartRepo.deleteById(fromCartId);
   }
 
-  /** Push the expiry out. Called on every mutation. */
+  /**
+   * Push the expiry out. Called on every mutation.
+   */
   protected async touch(cartId: string): Promise<void> {
     await this.cartRepo.updateById(cartId, { expiresAt: this.expiry() });
   }

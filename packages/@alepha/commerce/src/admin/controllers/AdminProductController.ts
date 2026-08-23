@@ -11,7 +11,9 @@ import { CatalogService } from "../../services/CatalogService.ts";
 import { OrderService } from "../../services/OrderService.ts";
 import { StockService } from "../../services/StockService.ts";
 
-/** A catalog row with its live stock figures, which is what an admin needs. */
+/**
+ * A catalog row with its live stock figures, which is what an admin needs.
+ */
 export const adminProductSchema = products.schema.extend({
   onHand: z.integer(),
   reserved: z.integer(),
@@ -44,7 +46,9 @@ const productInputSchema = z.object({
   published: z.boolean().optional(),
 });
 
-/** An order line as the catalogue shows it: the line, plus its order's context. */
+/**
+ * An order line as the catalogue shows it: the line, plus its order's context.
+ */
 export const productOrderLineSchema = orderItems.schema.extend({
   orderStatus: z.text().optional(),
   orderCreatedAt: z.text().optional(),
@@ -302,7 +306,9 @@ export class AdminProductController {
     schema: {
       params: z.object({ id: z.uuid() }),
       body: z.object({
-        /** Signed, and refused at zero — see `StockService.recordAdjustment`. */
+        /**
+         * Signed, and refused at zero — see `StockService.recordAdjustment`.
+         */
         quantity: z.integer().min(-100000).max(100000),
         reason: z.enum(["intake", "return", "adjustment"]),
         note: z.text({ maxLength: 500 }).optional(),

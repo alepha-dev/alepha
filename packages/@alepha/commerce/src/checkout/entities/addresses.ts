@@ -22,23 +22,33 @@ export const addresses = $entity({
     updatedAt: db.updatedAt(),
     organizationId: db.organization(),
 
-    /** Null for a guest checkout: the address exists but belongs to nobody. */
+    /**
+     * Null for a guest checkout: the address exists but belongs to nobody.
+     */
     userId: z.uuid().optional(),
 
     fullName: z.text({ minLength: 1, maxLength: 200 }),
     line1: z.text({ minLength: 1, maxLength: 200 }),
     line2: z.text({ maxLength: 200 }).optional(),
     locality: z.text({ minLength: 1, maxLength: 120 }),
-    /** Province / state. Required only where the country rule says so. */
+    /**
+     * Province / state. Required only where the country rule says so.
+     */
     region: z.text({ maxLength: 120 }).optional(),
-    /** Stored normalised (upper case, single spaces). */
+    /**
+     * Stored normalised (upper case, single spaces).
+     */
     postalCode: z.text({ minLength: 2, maxLength: 16 }),
-    /** ISO 3166-1 alpha-2, upper case. */
+    /**
+     * ISO 3166-1 alpha-2, upper case.
+     */
     country: z.text({ minLength: 2, maxLength: 2 }),
 
     phone: z.text({ maxLength: 32 }).optional(),
 
-    /** The one a signed-in customer gets pre-filled. */
+    /**
+     * The one a signed-in customer gets pre-filled.
+     */
     isDefault: db.default(z.boolean(), false),
   }),
   indexes: [
@@ -49,7 +59,9 @@ export const addresses = $entity({
 
 export type AddressEntity = Infer<typeof addresses.schema>;
 
-/** What a caller submits — no id, no timestamps. */
+/**
+ * What a caller submits — no id, no timestamps.
+ */
 export const addressInputSchema = z.object({
   fullName: z.text({ minLength: 1, maxLength: 200 }),
   line1: z.text({ minLength: 1, maxLength: 200 }),

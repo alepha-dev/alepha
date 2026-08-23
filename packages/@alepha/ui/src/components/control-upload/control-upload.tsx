@@ -115,7 +115,7 @@ interface UploadedFileMeta {
  * Single-file: form value is a uuid string.
  * Multi-file: form value is an array of uuid strings.
  */
-export function ControlUpload(props: ControlUploadProps) {
+export const ControlUpload = (props: ControlUploadProps) => {
   const form = useFormState(props.input, ["error"]);
   const [value, setValue] = useFieldValue(props.input);
   const client = useClient<FileController>();
@@ -475,9 +475,9 @@ export function ControlUpload(props: ControlUploadProps) {
       </Dialog>
     </FormField>
   );
-}
+};
 
-function ItemThumb(props: { url: string; alt: string }) {
+const ItemThumb = (props: { url: string; alt: string }) => {
   const [broken, setBroken] = useState(false);
   if (broken) {
     return (
@@ -494,7 +494,7 @@ function ItemThumb(props: { url: string; alt: string }) {
       onError={() => setBroken(true)}
     />
   );
-}
+};
 
 const formatBytes = (n: number): string => {
   if (!n) return "0 B";

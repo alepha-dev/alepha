@@ -108,8 +108,7 @@ export class UserController {
   /**
    * Request email verification.
    * Generates a verification token using verification service and sends an email to the user.
-   * @param method - The verification method: "code" (default) sends a 6-digit code, "link" sends a clickable verification link.
-   * @param verifyUrl - Required when method is "link". The base URL for the verification link. Token and email will be appended as query params.
+   * @param method - The verification method: "code" (default) sends a numeric code, "link" sends a clickable verification link built from the realm's `verifyEmailUrl` setting.
    */
   public requestEmailVerification = $action({
     path: "/users/email-verification/request",

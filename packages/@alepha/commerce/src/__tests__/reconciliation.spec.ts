@@ -74,7 +74,9 @@ const injectCtx = (alepha: Alepha) => ({
   probe: alepha.inject(ReconciliationProbe),
 });
 
-/** Open a checkout and hand it to the payment rail. */
+/**
+ * Open a checkout and hand it to the payment rail.
+ */
 const payWithoutWebhook = async (ctx: ReturnType<typeof injectCtx>) => {
   const ring = await ctx.catalog.create({
     slug: `ring-${randomUUID()}`,
@@ -109,7 +111,9 @@ const reconciliationFor = (probe: ReconciliationProbe, sessionId: string) =>
       ),
     );
 
-/** Wait until the reconcile step is parked (pending + scheduledAt). */
+/**
+ * Wait until the reconcile step is parked (pending + scheduledAt).
+ */
 const waitForParkedReconcile = async (
   probe: ReconciliationProbe,
   executionId: string,
@@ -266,7 +270,7 @@ describe("checkout reconciliation", () => {
 
     const { sessionId } = await payWithoutWebhook(ctx);
 
-    // The payments expiry sweep (30-minute cutoff, 5-minute cron) fires
+    // The payments expiry sweep (30-minute cutoff, 15-minute cron) fires
     // during the travel, expires the unpollable intent, and its new
     // `payments:expired` event abandons the checkout.
     await ctx.dt.travel([36, "minute"]);

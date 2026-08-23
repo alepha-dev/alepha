@@ -2,7 +2,6 @@
  * Helper for building server replies.
  */
 export class ServerReply {
-  // TODO: make it private
   public headers: Record<string, string> & {
     "set-cookie"?: string[];
   } = {};

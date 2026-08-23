@@ -55,9 +55,9 @@ export const oauthOptions = $atom({
 });
 
 /**
- * OAuth 2.1 authorization server endpoints: discovery metadata and
- * RFC 7591 dynamic client registration. Authorize/token routes are added
- * separately.
+ * OAuth 2.1 authorization server endpoints: discovery metadata, RFC 7591
+ * dynamic client registration, authorization, token and RFC 8628 device
+ * authorization.
  */
 export class OAuthController {
   protected readonly log = $logger();
@@ -324,12 +324,6 @@ export class OAuthController {
   });
 
   /**
-   * POST /oauth/token — supports the `authorization_code` grant (verifies
-   * PKCE, mints an access token via the realm issuer) and the
-   * `refresh_token` grant (exchanges a refresh token for a fresh access
-   * token, so a client stays connected without re-running the flow).
-   */
-  /**
    * POST /oauth/device_authorization — RFC 8628 §3.2.
    *
    * Unauthenticated on purpose: the device has no credential yet, which is the
@@ -364,6 +358,12 @@ export class OAuthController {
     },
   });
 
+  /**
+   * POST /oauth/token — supports the `authorization_code` grant (verifies
+   * PKCE, mints an access token via the realm issuer) and the
+   * `refresh_token` grant (exchanges a refresh token for a fresh access
+   * token, so a client stays connected without re-running the flow).
+   */
   token = $route({
     method: "POST",
     path: "/oauth/token",

@@ -16,7 +16,7 @@ import { useI18n } from "alepha/react/i18n";
 import { Trash2 } from "lucide-react";
 import { useCallback } from "react";
 
-export function AdminNotifications() {
+export const AdminNotifications = () => {
   const client = useClient<AdminNotificationController>();
   const toast = useToast();
   const { l, tr } = useI18n();
@@ -125,6 +125,6 @@ export function AdminNotifications() {
       />
     </AdminPage>
   );
-}
+};
 
 export default AdminNotifications;

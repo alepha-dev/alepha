@@ -37,12 +37,18 @@ export interface DeviceAuthorization {
   scopes: string[];
   resource?: string;
   status: "pending" | "approved" | "denied";
-  /** Set once a human approves. */
+  /**
+   * Set once a human approves.
+   */
   userId?: string;
   createdAt: number;
-  /** Last poll, used to enforce the interval. */
+  /**
+   * Last poll, used to enforce the interval.
+   */
   lastPolledAt?: number;
-  /** Wrong user codes tried against this record's slot. */
+  /**
+   * Wrong user codes tried against this record's slot.
+   */
   attempts: number;
 }
 

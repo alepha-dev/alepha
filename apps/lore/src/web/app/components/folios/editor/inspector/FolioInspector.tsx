@@ -51,8 +51,7 @@ export interface FolioInspectorProps {
   onReverted: (folio: Folio) => Promise<void>;
   /**
    * The editor's contenteditable root (or an ancestor of it) — threaded
-   * down to the Outline tab only. `null` until the MDXEditor's lazy chunk
-   * mounts.
+   * down to the Outline tab only. `null` until the editor mounts.
    */
   contentElement: HTMLElement | null;
   /**

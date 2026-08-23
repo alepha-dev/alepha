@@ -39,7 +39,7 @@ export interface ButtonLanguageProps {
  *
  * Renders nothing when only one language is registered.
  */
-export function ButtonLanguage(props: ButtonLanguageProps) {
+export const ButtonLanguage = (props: ButtonLanguageProps) => {
   const i18n = useI18n();
   const languages = i18n.languages;
 
@@ -95,4 +95,4 @@ export function ButtonLanguage(props: ButtonLanguageProps) {
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
+};

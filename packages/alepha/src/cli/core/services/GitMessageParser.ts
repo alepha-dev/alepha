@@ -1,5 +1,3 @@
-import { $logger } from "alepha/logger";
-
 import {
   type ChangelogOptions,
   DEFAULT_IGNORE,
@@ -22,8 +20,6 @@ import type { Commit } from "../commands/gen/changelog.ts";
  * - `feat(cli): add command` → included
  */
 export class GitMessageParser {
-  protected readonly log = $logger();
-
   /**
    * Parse a git commit line into a structured Commit object.
    *

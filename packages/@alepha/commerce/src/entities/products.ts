@@ -29,15 +29,21 @@ export const products = $entity({
     updatedAt: db.updatedAt(),
     organizationId: db.organization(),
 
-    /** Registered with {@link ProductKindRegistry}. Core knows `good`. */
+    /**
+     * Registered with {@link ProductKindRegistry}. Core knows `good`.
+     */
     kind: db.default(z.text({ maxLength: 64 }), "good"),
 
-    /** URL-safe identifier, unique per tenant. What the storefront routes on. */
+    /**
+     * URL-safe identifier, unique per tenant. What the storefront routes on.
+     */
     slug: z.text({ minLength: 1, maxLength: 200 }),
     name: z.text({ minLength: 1, maxLength: 200 }),
     description: z.text({ maxLength: 4000 }).optional(),
 
-    /** What the buyer pays, in the smallest currency unit (cents). */
+    /**
+     * What the buyer pays, in the smallest currency unit (cents).
+     */
     price: z.integer().min(0),
     currency: db.default(z.text({ minLength: 3, maxLength: 3 }), "EUR"),
 
@@ -71,7 +77,9 @@ export const products = $entity({
      */
     vatRateBps: z.integer().min(0).max(10000).optional(),
 
-    /** Kind-specific payload. Validated by the registered handler. */
+    /**
+     * Kind-specific payload. Validated by the registered handler.
+     */
     config: z.json().optional(),
 
     /**
@@ -89,7 +97,9 @@ export const products = $entity({
      */
     attributes: z.json().optional(),
 
-    /** Draft rows are invisible to the public catalog. */
+    /**
+     * Draft rows are invisible to the public catalog.
+     */
     published: db.default(z.boolean(), false),
   }),
   indexes: [

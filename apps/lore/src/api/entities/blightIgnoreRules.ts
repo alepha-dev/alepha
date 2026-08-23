@@ -32,7 +32,9 @@ export const blightIgnoreRules = $entity({
     projectId: db.ref(z.integer(), () => projects.cols.id, {
       onDelete: "cascade",
     }),
-    /** Case-insensitive substring matched against a blight's `message`. */
+    /**
+     * Case-insensitive substring matched against a blight's `message`.
+     */
     pattern: z.string().min(1).max(200),
     /**
      * The owner who added the rule. NULLABLE + `set null` on delete so a

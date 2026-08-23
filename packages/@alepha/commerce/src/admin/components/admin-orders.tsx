@@ -30,7 +30,7 @@ import type { OrderEntity, OrderStatus } from "../../entities/orders.ts";
 import type { AdminOrderController } from "../controllers/AdminOrderController.ts";
 
 const formatPrice = (cents: number, currency: string) =>
-  new Intl.NumberFormat("fr-FR", { style: "currency", currency }).format(
+  new Intl.NumberFormat(undefined, { style: "currency", currency }).format(
     (cents ?? 0) / 100,
   );
 
@@ -73,7 +73,7 @@ const filtersSchema = z.object({
  * "Refund". An operator clicking through a list of orders needs the amount in the
  * dialog, because that is the fact they are agreeing to.
  */
-export function AdminOrders() {
+export const AdminOrders = () => {
   const client = useClient<AdminOrderController>();
   const { l, tr } = useI18n();
   const dialog = useDialog();
@@ -289,7 +289,7 @@ export function AdminOrders() {
       ) : null}
     </AdminPage>
   );
-}
+};
 
 interface AdminOrderSheetProps {
   orderId: string;

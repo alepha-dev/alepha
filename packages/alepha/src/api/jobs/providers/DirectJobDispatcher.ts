@@ -51,7 +51,9 @@ export class DirectJobDispatcher extends JobDispatcher {
   protected readonly pending: Array<[jobName: string, executionId: string]> =
     [];
 
-  /** Workers currently pulling from {@link pending}. */
+  /**
+   * Workers currently pulling from {@link pending}.
+   */
   protected active = 0;
 
   /**
@@ -89,7 +91,9 @@ export class DirectJobDispatcher extends JobDispatcher {
     }
   }
 
-  /** Pulls until the queue is empty. Never rejects — a failed run is logged. */
+  /**
+   * Pulls until the queue is empty. Never rejects — a failed run is logged.
+   */
   protected async worker(): Promise<void> {
     try {
       for (;;) {

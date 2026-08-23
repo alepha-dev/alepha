@@ -21,7 +21,9 @@ import type { campaigns } from "./entities/campaigns.ts";
 import type { characters } from "./entities/characters.ts";
 import type { users } from "./entities/users.ts";
 
-/** The Drizzle table type for an Alepha entity, derived from its schema. */
+/**
+ * The Drizzle table type for an Alepha entity, derived from its schema.
+ */
 type TableOf<TEntity extends { schema: any }> = PgTableWithColumns<
   SchemaToTableConfig<TEntity["schema"]>
 >;

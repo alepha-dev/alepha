@@ -183,12 +183,10 @@ export class ReactBrowserRouterProvider extends RouterProvider<BrowserRoute> {
     }
 
     // [feature]: local hook for leaving a page
-    if (previous) {
-      for (let i = 0; i < previous.length; i++) {
-        const layer = previous[i];
-        if (state.layers[i]?.name !== layer.name && layer.name !== "error") {
-          this.pageApi.findRoute(layer.name)?.onLeave?.();
-        }
+    for (let i = 0; i < previous.length; i++) {
+      const layer = previous[i];
+      if (state.layers[i]?.name !== layer.name && layer.name !== "error") {
+        this.pageApi.findRoute(layer.name)?.onLeave?.();
       }
     }
 

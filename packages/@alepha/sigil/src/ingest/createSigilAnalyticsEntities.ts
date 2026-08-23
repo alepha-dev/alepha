@@ -1,4 +1,4 @@
-import { type Infer, z } from "alepha";
+import { z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 /**
@@ -90,11 +90,17 @@ export const createSigilAnalyticsEntities = (
     schema: z.object({
       id: db.primaryKey(z.integer()),
       sigilId: sigilId(),
-      /** UTC hour bucket, `YYYY-MM-DDTHH`. */
+      /**
+       * UTC hour bucket, `YYYY-MM-DDTHH`.
+       */
       hour: z.string().min(13).max(13),
-      /** Page path, query and fragment stripped. */
+      /**
+       * Page path, query and fragment stripped.
+       */
       path: z.string().min(1).max(1024),
-      /** Coarse ISO-3166 country from the edge; `ZZ` when unknown. */
+      /**
+       * Coarse ISO-3166 country from the edge; `ZZ` when unknown.
+       */
       country: db.default(z.string().min(1).max(8), "ZZ"),
       count: db.default(z.integer().min(1), 1),
     }),
@@ -135,7 +141,9 @@ export const createSigilAnalyticsEntities = (
     schema: z.object({
       id: db.primaryKey(z.integer()),
       sigilId: sigilId(),
-      /** UTC day bucket, `YYYY-MM-DD`. */
+      /**
+       * UTC day bucket, `YYYY-MM-DD`.
+       */
       day: z.string().min(10).max(10),
       /**
        * A visitor hash, or {@link UNIQUES_COLLAPSED_HASH} on a collapsed row.
@@ -183,7 +191,9 @@ export const createSigilAnalyticsEntities = (
     schema: z.object({
       id: db.primaryKey(z.integer()),
       sigilId: sigilId(),
-      /** UTC hour bucket, `YYYY-MM-DDTHH`. */
+      /**
+       * UTC hour bucket, `YYYY-MM-DDTHH`.
+       */
       hour: z.string().min(13).max(13),
       metric: z
         .enum(["lcp", "cls", "inp", "fcp", "ttfb"])
@@ -216,12 +226,4 @@ export const createSigilAnalyticsEntities = (
 
 export type SigilAnalyticsEntities = ReturnType<
   typeof createSigilAnalyticsEntities
->;
-
-export type SigilViewHourly = Infer<SigilAnalyticsEntities["views"]["schema"]>;
-export type SigilUniqueDaily = Infer<
-  SigilAnalyticsEntities["uniques"]["schema"]
->;
-export type SigilVitalHourly = Infer<
-  SigilAnalyticsEntities["vitals"]["schema"]
 >;

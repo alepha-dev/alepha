@@ -1,8 +1,8 @@
 import { Alepha, z } from "alepha";
 import { describe, expect, it } from "vitest";
 
-describe("TypeBox Use Cases", () => {
-  it("should remove property when omitted in schema with z.interface()", () => {
+describe("Zod use cases", () => {
+  it("should drop a property omitted from the schema when decoding", () => {
     const entity = z.object({
       id: z.integer(),
       name: z.string(),

@@ -8,7 +8,9 @@ export const notificationPayloadSchema = z.object({
   category: z.text().optional(),
   critical: z.boolean().optional(),
   sensitive: z.boolean().optional(),
-  /** Recipient language (e.g. "fr" or "fr-FR") used to pick `translations`. */
+  /**
+   * Recipient language (e.g. "fr" or "fr-FR") used to pick `translations`.
+   */
   lang: z.text().optional(),
 });
 

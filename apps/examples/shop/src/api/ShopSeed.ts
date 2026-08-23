@@ -7,18 +7,26 @@ import { $logger } from "alepha/logger";
 import { ShopDrawings } from "./ShopDrawings.ts";
 import { ShopMedia } from "./ShopMedia.ts";
 
-/** One catalogue entry, with the drawing that will be generated for it. */
+/**
+ * One catalogue entry, with the drawing that will be generated for it.
+ */
 interface Piece {
   slug: string;
   name: string;
   description: string;
-  /** Tax-inclusive price in cents. */
+  /**
+   * Tax-inclusive price in cents.
+   */
   price: number;
   kind?: string;
-  /** Metal titre, shown in the poinçon. */
+  /**
+   * Metal titre, shown in the poinçon.
+   */
   titre: string;
   metal: string;
-  /** Grams. */
+  /**
+   * Grams.
+   */
   poids: string;
   dimensions: string;
   drawing: string;
@@ -183,7 +191,7 @@ export class ShopSeed {
 
       if (piece.stock > 0) {
         await this.stock.recordIntake(product.id, piece.stock, {
-          note: "Mise en vitrine",
+          note: "Put on display",
         });
       }
       this.log.info(`Seeded '${piece.slug}'`);

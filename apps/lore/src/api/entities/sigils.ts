@@ -32,12 +32,18 @@ export const sigils = $entity({
     projectId: db.ref(z.integer(), () => projects.cols.id, {
       onDelete: "cascade",
     }),
-    /** Display name of the app, e.g. `lore`. Free-form; the operator names it. */
+    /**
+     * Display name of the app, e.g. `lore`. Free-form; the operator names it.
+     */
     name: z.string().min(1).max(100),
     tokenHash: z.string().min(1).max(256),
-    /** First characters of the token, so the UI can name it. */
+    /**
+     * First characters of the token, so the UI can name it.
+     */
     tokenPrefix: z.string().min(1).max(32),
-    /** Capability buckets this sigil's ingest endpoint accepts. */
+    /**
+     * Capability buckets this sigil's ingest endpoint accepts.
+     */
     kinds: db.default(z.array(z.string().max(50)).max(10), []),
     /**
      * Which corner this app's feedback button sits in.
@@ -52,7 +58,9 @@ export const sigils = $entity({
     feedbackPosition: z.enum(SIGIL_FEEDBACK_POSITIONS).optional(),
     createdBy: db.ref(z.uuid().optional(), () => users.cols.id),
     createdAt: db.createdAt(),
-    /** Last time this sigil reported anything. Drives the "silent" badge. */
+    /**
+     * Last time this sigil reported anything. Drives the "silent" badge.
+     */
     lastSeenAt: z.string().optional(),
   }),
   indexes: [

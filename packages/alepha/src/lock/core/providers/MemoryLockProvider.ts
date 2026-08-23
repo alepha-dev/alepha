@@ -33,6 +33,11 @@ export class MemoryLockProvider extends LockProvider {
 
     if (px) {
       this.ttl(key, px);
+    } else if (this.storeTimeout[key] != null) {
+      // A value written without an expiry must not inherit the previous
+      // value's timer and vanish under its new holder.
+      this.storeTimeout[key].clear();
+      delete this.storeTimeout[key];
     }
 
     this.store[key] = value;

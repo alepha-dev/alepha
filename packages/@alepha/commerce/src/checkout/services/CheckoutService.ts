@@ -18,7 +18,9 @@ import { ShippingQuoteProvider } from "../providers/ShippingQuoteProvider.ts";
 import { AddressService } from "./AddressService.ts";
 import { TaxService } from "./TaxService.ts";
 
-/** Totals for a checkout, all in the smallest currency unit. */
+/**
+ * Totals for a checkout, all in the smallest currency unit.
+ */
 export interface CheckoutTotals {
   subtotal: number;
   shippingTotal: number;
@@ -267,16 +269,37 @@ export class CheckoutService {
       );
     }
 
-    const paying = await this.repo.updateById(sessionId, {
-      ...totals,
-      status: "paying",
-      orderId: order.id,
-    });
+    // Claim the session atomically: `assertOpen` above is only a read, and
+    // two overlapping pay() calls used to create two orders and two stock
+    // holds for one checkout. The loser gives back the order it just created.
+    let paying: CheckoutSessionEntity;
+    try {
+      paying = await this.repo.updateOne(
+        { id: { eq: sessionId }, status: { eq: "open" } },
+        { ...totals, status: "paying", orderId: order.id },
+      );
+    } catch {
+      await this.orders.cancel(order.id);
+      throw new CommerceError(
+        `Checkout ${sessionId} is no longer open: a payment is already in progress.`,
+      );
+    }
 
-    const handoff = await this.payment.start(paying, {
-      returnUrl: options.returnUrl,
-      email: session.email,
-    });
+    let handoff: PaymentHandoff;
+    try {
+      handoff = await this.payment.start(paying, {
+        returnUrl: options.returnUrl,
+        email: session.email,
+      });
+    } catch (error) {
+      // A PSP that refuses the handoff must not strand the session in
+      // `paying` with a pending order: nothing reconciles that state (the
+      // `commerce:checkout:paying` event is only emitted after the handoff)
+      // and the buyer's retry was refused as "not open".
+      await this.orders.cancel(order.id);
+      await this.repo.updateById(sessionId, { status: "open" });
+      throw error;
+    }
 
     const updated = await this.repo.updateById(sessionId, {
       paymentIntentId: handoff.intentId,
@@ -459,7 +482,9 @@ export class CheckoutService {
     };
   }
 
-  /** The destination country recorded on a session, if any. */
+  /**
+   * The destination country recorded on a session, if any.
+   */
   protected countryOf(session: CheckoutSessionEntity): string | undefined {
     return (session.shippingAddress as { country?: string } | undefined)
       ?.country;

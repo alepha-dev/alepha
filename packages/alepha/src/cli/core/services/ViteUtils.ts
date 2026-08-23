@@ -2,12 +2,11 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { dirname, join, relative, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 
 import { $hook, $inject, type Alepha, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { FileSystemProvider } from "alepha/system";
 import type { InlineConfig, Logger, Plugin, ViteDevServer } from "vite";
 
 import type { AppEntry } from "../providers/AppEntryProvider.ts";
@@ -60,7 +59,6 @@ export interface PreloadManifest {
  * When Vite is replaced, only this file needs to change.
  */
 export class ViteUtils {
-  protected readonly fs = $inject(FileSystemProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly log = $logger();
   protected viteDevServer?: ViteDevServer;
@@ -371,7 +369,9 @@ export class ViteUtils {
       },
       writeBundle(options) {
         const outDir = options.dir || "";
-        if (outDir.includes("server")) return;
+        // `dir` is the absolute outDir: test its last segment only, or any
+        // checkout whose path contains "server" silently skipped the manifest.
+        if (basename(outDir) === "server") return;
 
         if (preloadMap.size > 0) {
           const viteDir = join(outDir, ".vite");

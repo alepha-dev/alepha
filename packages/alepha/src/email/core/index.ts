@@ -20,7 +20,9 @@ declare module "alepha" {
   interface Hooks {
     "email:sending": {
       to: string | string[];
-      /** The channel name (the `$email` primitive's name), not a template id. */
+      /**
+       * The channel name (the `$email` primitive's name), not a template id.
+       */
       template: string;
       provider: EmailProvider;
       abort(): void;

@@ -1,7 +1,7 @@
 import { $inject, $store, AlephaError, z } from "alepha";
 import { PackageManagerUtils } from "alepha/cli";
 import { $command } from "alepha/command";
-import { $logger, ConsoleColorProvider } from "alepha/logger";
+import { ConsoleColorProvider } from "alepha/logger";
 
 import { vendorOptions } from "../atoms/vendorOptions.ts";
 import type {
@@ -19,7 +19,6 @@ import { VendorService } from "../services/VendorService.ts";
 const DEFAULT_REMOTE = "https://github.com/feunard/alepha";
 
 export class VendorCommand {
-  protected readonly log = $logger();
   protected readonly options = $store(vendorOptions);
   protected readonly vendorService = $inject(VendorService);
   protected readonly color = $inject(ConsoleColorProvider);

@@ -396,7 +396,9 @@ const defaultRowKey = (item: unknown): string =>
 
 const EMPTY_FILTERS_SCHEMA = z.object({}) as ZObject;
 
-/** Synchronous localStorage read. Returns undefined on miss or error. */
+/**
+ * Synchronous localStorage read. Returns undefined on miss or error.
+ */
 const readPersisted = <V,>(key: string, suffix: string): V | undefined => {
   if (typeof window === "undefined") return undefined;
   try {
@@ -407,7 +409,9 @@ const readPersisted = <V,>(key: string, suffix: string): V | undefined => {
   }
 };
 
-/** Synchronous localStorage write. Empty objects/null delete the key. */
+/**
+ * Synchronous localStorage write. Empty objects/null delete the key.
+ */
 const writePersisted = (key: string, suffix: string, value: unknown): void => {
   if (typeof window === "undefined") return;
   const fullKey = `${key}.${suffix}`;
@@ -1443,7 +1447,7 @@ function computePageItems(
   return items;
 }
 
-function SkeletonRows(props: { rows: number; cols: number }) {
+const SkeletonRows = (props: { rows: number; cols: number }) => {
   return (
     <>
       {Array.from({ length: props.rows }).map((_, i) => (
@@ -1457,7 +1461,7 @@ function SkeletonRows(props: { rows: number; cols: number }) {
       ))}
     </>
   );
-}
+};
 
 function RowActionsMenu<T>(props: {
   actions: RowAction<T>[];

@@ -1,6 +1,6 @@
 # Alepha @alepha/payments-mollie
 
-Mollie payment provider for `alepha/payments`.
+Mollie payment provider for `alepha/api/payments`.
 
 ## Installation
 

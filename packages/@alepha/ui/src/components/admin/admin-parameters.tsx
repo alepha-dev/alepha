@@ -77,7 +77,7 @@ export interface AdminParametersProps {
   fields?: Record<string, Record<string, Partial<Omit<ControlProps, "input">>>>;
 }
 
-export function AdminParameters(props: AdminParametersProps = {}) {
+export const AdminParameters = (props: AdminParametersProps = {}) => {
   const client = useClient<AdminParameterController>();
   const { tr } = useI18n();
   const toast = useToast();
@@ -267,7 +267,7 @@ export function AdminParameters(props: AdminParametersProps = {}) {
       )}
     </div>
   );
-}
+};
 
 // ── Pane A: tree ─────────────────────────────────────────────────────
 
@@ -452,7 +452,9 @@ const TreeNodeView = (props: TreeNodeViewProps) => {
 // ── Pane B: editor ───────────────────────────────────────────────────
 
 interface ParameterEditorPaneProps {
-  /** Per-field overrides for this parameter's generated form. */
+  /**
+   * Per-field overrides for this parameter's generated form.
+   */
   fields?: Record<string, Partial<Omit<ControlProps, "input">>>;
   name: string | undefined;
   reloadKey: number;
@@ -487,7 +489,7 @@ const ParameterEditorPane = (props: ParameterEditorPaneProps) => {
           },
         });
         toast.success(
-          tr("admin.parameters.factoryReset", {
+          tr("admin.parameters.factoryResetDone", {
             default: "Parameter reset to defaults",
           }),
         );
@@ -624,9 +626,13 @@ const ParameterEditorPane = (props: ParameterEditorPaneProps) => {
 };
 
 interface ParameterEditorFormProps {
-  /** Per-field overrides forwarded to AutoForm (domain widgets). */
+  /**
+   * Per-field overrides forwarded to AutoForm (domain widgets).
+   */
   fields?: Record<string, Partial<Omit<ControlProps, "input">>>;
-  /** `$parameter({ description })` as declared in code. */
+  /**
+   * `$parameter({ description })` as declared in code.
+   */
   declaredDescription?: string;
   name: string;
   schema: ZObject;

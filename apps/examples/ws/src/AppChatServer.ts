@@ -1,4 +1,5 @@
 import { $inject } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $websocket } from "alepha/websocket";
 
@@ -10,6 +11,7 @@ import { ChatChannels } from "./channels/ChatChannels.ts";
 export class AppChatServer {
   protected readonly log = $logger();
   protected readonly channels = $inject(ChatChannels);
+  protected readonly dateTime = $inject(DateTimeProvider);
 
   chat = $websocket({
     channel: this.channels.chatChannel,
@@ -19,7 +21,7 @@ export class AppChatServer {
         message: {
           username: connectionId.slice(0, 8),
           content: message.content,
-          timestamp: Date.now(),
+          timestamp: this.dateTime.nowMillis(),
         },
       });
     },

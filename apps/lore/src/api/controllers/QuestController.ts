@@ -343,7 +343,13 @@ export class QuestController {
         // three-way clear only matters on update.
         dueAt: body.dueAt ?? undefined,
         objectives: body.objectives,
-        attachments: body.attachments,
+        attachments: await this.ownUploads(
+          this.questService.mergeEmbeddedAttachments(
+            [body.description],
+            body.attachments ?? [],
+          ),
+          user,
+        ),
         tags: body.tags,
         dependsOn: body.dependsOn,
         feedbackId: body.feedbackId,
@@ -436,6 +442,15 @@ export class QuestController {
 
       if (quest.attachments.includes(body.fileId)) {
         return this.mapQuestToResource(quest);
+      }
+
+      // Listing an id here is what grants every member read access to the
+      // bytes, so only the caller's own uploads into the quest bucket may be
+      // listed: an avatar, a folio blob or another project's attachment
+      // used to become readable by naming its id.
+      const [owned] = await this.ownUploads([body.fileId], user);
+      if (!owned) {
+        throw new NotFoundError("File not found among your uploads");
       }
 
       const updated = await this.quests.updateById(params.id, {
@@ -562,6 +577,48 @@ export class QuestController {
     },
   });
 
+  /**
+   * The subset of `ids` that are files this user uploaded into the quest
+   * bucket, in the order given. Anything else is dropped: another user's
+   * upload, an avatar, a folio blob, a foreign id. Being listed in
+   * `quest.attachments` is what lets every project member read the bytes
+   * (see `LoreFileAccessProvider`), so a caller must not be able to list a
+   * file that is not theirs.
+   */
+  protected async ownUploads(
+    ids: string[],
+    user: UserAccountToken,
+  ): Promise<string[]> {
+    const wanted = [...new Set(ids)];
+    if (wanted.length === 0) {
+      return [];
+    }
+    const rows = await this.fileService.fileRepository.findMany({
+      where: {
+        id: { inArray: wanted },
+        bucket: { eq: this.attachments.name },
+        creator: { eq: user.id },
+      },
+    });
+    const owned = new Set(rows.map((row) => row.id));
+    return wanted.filter((id) => owned.has(id));
+  }
+
+  /**
+   * Apply `ownUploads` to what a write ADDS to a quest: ids the quest
+   * already lists were vetted when they were added and stay as the merge
+   * left them (a patch may drop some), new ones must be the caller's own.
+   */
+  protected async withOwnEmbedded(
+    current: string[],
+    merged: string[],
+    user: UserAccountToken,
+  ): Promise<string[]> {
+    const kept = merged.filter((id) => current.includes(id));
+    const added = merged.filter((id) => !current.includes(id));
+    return [...kept, ...(await this.ownUploads(added, user))];
+  }
+
   removeAttachment = $action({
     use: [$secure({ permissions: ["quest:update"] })],
     schema: {
@@ -579,14 +636,32 @@ export class QuestController {
         ["new", "accepted", "shelved"],
       );
 
+      // Only an id this quest lists can be removed through it. The handler
+      // used to delete ANY file in the instance by id (avatars, project
+      // icons, folio blobs): `FileService.deleteFile` has no owner check.
+      if (!quest.attachments.includes(params.fileId)) {
+        throw new NotFoundError("Attachment not found on this quest");
+      }
+
       const updatedAttachments = quest.attachments.filter(
         (id) => id !== params.fileId,
       );
 
-      // Delete the file from storage
-      await this.fileService.deleteFile(params.fileId).catch(() => {
-        // File may not exist or already deleted
-      });
+      // The bytes go only for a file of the quest bucket. An embedded image
+      // can be merged into several quests (`mergeEmbeddedAttachments`), so
+      // a deletion here can still break another quest's embed; that is the
+      // pre-existing behaviour and a narrower problem than the one above.
+      const file = await this.fileService
+        .getFileById(params.fileId)
+        .catch(() => undefined);
+      if (file && file.bucket === this.attachments.name) {
+        await this.fileService.deleteFile(file.id).catch((error) => {
+          this.log.warn("Attachment bytes could not be deleted", {
+            fileId: file.id,
+            error,
+          });
+        });
+      }
 
       const updated = await this.quests.updateById(params.id, {
         attachments: updatedAttachments,
@@ -1277,10 +1352,15 @@ export class QuestController {
         quest.completionMessage = message;
         quest.completionMessageUpdatedAt = now;
         // Embedded editor images become quest attachments so every
-        // member can read them (see mergeEmbeddedAttachments).
-        quest.attachments = this.questService.mergeEmbeddedAttachments(
-          [message],
+        // member can read them (see mergeEmbeddedAttachments); only the
+        // caller's own uploads qualify, like everywhere else.
+        quest.attachments = await this.withOwnEmbedded(
           quest.attachments,
+          this.questService.mergeEmbeddedAttachments(
+            [message],
+            quest.attachments,
+          ),
+          user,
         );
       }
 
@@ -1557,9 +1637,13 @@ export class QuestController {
       }
       // Markdown carried by this patch may embed editor-uploaded images —
       // fold their file ids into attachments so members can read them.
-      patch.attachments = this.questService.mergeEmbeddedAttachments(
-        [body.description, body.completionMessage],
-        (patch.attachments as string[] | undefined) ?? quest.attachments,
+      patch.attachments = await this.withOwnEmbedded(
+        quest.attachments,
+        this.questService.mergeEmbeddedAttachments(
+          [body.description, body.completionMessage],
+          (patch.attachments as string[] | undefined) ?? quest.attachments,
+        ),
+        user,
       );
       // Don't append a "updated" history entry on a completed quest — we
       // only allow the summary edit, the rest of the quest is frozen.
@@ -1733,17 +1817,15 @@ export class QuestController {
         );
       }
 
-      // Clear dependents' `dependsOn` before the row is removed — the FK
-      // emitted by Drizzle's `ALTER TABLE ADD COLUMN REFERENCES` lacks
-      // an explicit `ON DELETE SET NULL` clause (SQLite ALTER quirk),
-      // so D1 would refuse the delete if any dependent still pointed at
-      // this id. Mirror the folio-parent pattern.
+      // Clear dependents' `dependsOn` so the dependency graph does not keep
+      // edges to a deleted quest. `null`, not `undefined`: the repository
+      // strips undefined keys from an update, which made this a no-op.
       const dependents = await this.quests.findMany({
         where: { dependsOn: { eq: params.id } },
         columns: ["id"],
       });
       for (const dep of dependents) {
-        await this.quests.updateById(dep.id, { dependsOn: undefined });
+        await this.quests.updateById(dep.id, { dependsOn: null });
       }
 
       // Hand the blight back to the inbox before its quest disappears.

@@ -36,7 +36,9 @@ describe("dashboard drill-through links", () => {
     await alepha.stop();
   });
 
-  /** Every param any catalogue link can ask for, so `path()` can build one. */
+  /**
+   * Every param any catalogue link can ask for, so `path()` can build one.
+   */
   const params = { projectSlug: "sds", appName: "docs" };
 
   it("resolves every metric's link to a real path", ({ expect }) => {

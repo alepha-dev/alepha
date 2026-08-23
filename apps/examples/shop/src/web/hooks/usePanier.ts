@@ -50,7 +50,9 @@ export const usePanier = () => {
 
   return {
     panier,
-    /** Total number of items, for the header badge. */
+    /**
+     * Total number of items, for the header badge.
+     */
     compte: panier.lines.reduce((sum, line) => sum + line.quantity, 0),
     refresh,
     ajouter,

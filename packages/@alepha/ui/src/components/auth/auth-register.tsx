@@ -41,6 +41,8 @@ import {
   useState,
 } from "react";
 
+import { safeRedirect } from "./safe-redirect.ts";
+
 export interface AuthRegisterProps {
   /**
    * Realm configuration (drives required fields, verification step, OAuth buttons).
@@ -80,12 +82,12 @@ interface State {
   credentials?: { identifier: string; password: string };
 }
 
-export function AuthRegister(props: AuthRegisterProps) {
+export const AuthRegister = (props: AuthRegisterProps) => {
   const auth = useAuth();
   const userCtrl = useClient<UserController>();
   const router = useRouter();
   const { tr } = useI18n();
-  const redirect = router.query.redirect || "/";
+  const redirect = safeRedirect(router.query.redirect);
   // Surface upstream auth errors (e.g. failed OAuth callback redirects with
   // `?error=...`) — same pattern as AuthLogin. Without this the user lands on
   // a fresh-looking registration page with no clue why.
@@ -101,9 +103,8 @@ export function AuthRegister(props: AuthRegisterProps) {
   const captchaSiteKey = props.realmConfig.captchaSiteKey;
   const [captchaToken, setCaptchaToken] = useState<string | undefined>();
   const captchaRef = useRef<TurnstileWidgetHandle | null>(null);
-  // The `useForm` handler is memoized at form-create time, so it closes over
-  // the *initial* `captchaToken` (undefined). Mirror the latest value into a
-  // ref the handler can read at submission time.
+  // The handler reads the token the widget issued last through a ref, so a
+  // submit never posts a token captured by an earlier render.
   const captchaTokenRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     captchaTokenRef.current = captchaToken;
@@ -460,9 +461,9 @@ export function AuthRegister(props: AuthRegisterProps) {
       )}
     </Centered>
   );
-}
+};
 
-function FormPhase(props: {
+const FormPhase = (props: {
   allowed: boolean;
   form: ReturnType<typeof useForm>;
   formError: string | undefined;
@@ -482,7 +483,7 @@ function FormPhase(props: {
   captchaRef: React.RefObject<TurnstileWidgetHandle | null>;
   onCaptchaToken: (token: string | undefined) => void;
   message?: ReactNode;
-}) {
+}) => {
   const { tr } = useI18n();
   const [passwordFieldFocused, setPasswordFieldFocused] = useState(false);
   const {
@@ -683,9 +684,9 @@ function FormPhase(props: {
       )}
     </>
   );
-}
+};
 
-function Centered(props: { children: React.ReactNode }) {
+const Centered = (props: { children: React.ReactNode }) => {
   return (
     <div className="flex min-h-svh flex-1 items-center justify-center p-6">
       <div className="flex w-full max-w-sm flex-col items-center gap-4">
@@ -693,12 +694,12 @@ function Centered(props: { children: React.ReactNode }) {
       </div>
     </div>
   );
-}
+};
 
-function RealmHeader(props: {
+const RealmHeader = (props: {
   settings: RealmConfig["settings"];
   realmName: string;
-}) {
+}) => {
   const s = props.settings;
   if (!s.displayName && !s.description) return null;
   return (
@@ -713,12 +714,12 @@ function RealmHeader(props: {
       )}
     </div>
   );
-}
+};
 
-function PasswordRules(props: {
+const PasswordRules = (props: {
   policy: RealmConfig["settings"]["passwordPolicy"];
   value: string;
-}) {
+}) => {
   const { tr } = useI18n();
   const policy = props.policy;
   const value = props.value;
@@ -786,12 +787,12 @@ function PasswordRules(props: {
       ))}
     </ul>
   );
-}
+};
 
-function RealmLogo(props: {
+const RealmLogo = (props: {
   settings: RealmConfig["settings"];
   realmName: string;
-}) {
+}) => {
   if (!props.settings.logoUrl) return null;
   return (
     <img
@@ -800,7 +801,7 @@ function RealmLogo(props: {
       className="bg-muted size-16 rounded-xl border object-cover shadow-sm"
     />
   );
-}
+};
 
 /**
  * The reference shape of the registration form, with every configurable field

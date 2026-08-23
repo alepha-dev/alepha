@@ -22,7 +22,7 @@ Every state transition emits a hook on Alepha's event bus:
 ("payments:expired");
 ```
 
-`payments:expired` is emitted by the stale-intent sweep described above - wire it if your fulfilment or notification code needs to release a reservation when a checkout is abandoned.
+`payments:expired` is emitted by the stale-intent sweep described below - wire it if your fulfilment or notification code needs to release a reservation when a checkout is abandoned.
 
 Your own modules (accounting, notifications, fulfilment) listen via `$hook` - they never call the PSP directly.
 

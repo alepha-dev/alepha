@@ -52,7 +52,7 @@ export interface ControlDateProps {
   disabled?: boolean;
 }
 
-export function ControlDate(props: ControlDateProps) {
+export const ControlDate = (props: ControlDateProps) => {
   const form = useFormState(props.input, ["error"]);
   const [value, setValue] = useFieldValue(props.input);
 
@@ -109,7 +109,7 @@ export function ControlDate(props: ControlDateProps) {
       />
     </FormField>
   );
-}
+};
 
 interface DatePopoverProps {
   id?: string;
@@ -119,9 +119,32 @@ interface DatePopoverProps {
   onChange: (value: string | undefined) => void;
 }
 
-function DatePopover(props: DatePopoverProps) {
+/**
+ * A date-only value (`YYYY-MM-DD`) names a calendar day, so it is parsed
+ * and formatted in local parts: `new Date("2026-08-23")` is UTC midnight,
+ * which displays as the 22nd west of Greenwich, and `toISOString()` on a
+ * local midnight stores the previous day east of it.
+ */
+const parseDateOnly = (value: string): Date => {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+};
+
+const formatDateOnly = (date: Date): string => {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+};
+
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+const DatePopover = (props: DatePopoverProps) => {
   const [open, setOpen] = useState(false);
-  const date = props.value ? new Date(props.value) : undefined;
+  const date = props.value
+    ? !props.withTime && DATE_ONLY.test(props.value)
+      ? parseDateOnly(props.value)
+      : new Date(props.value)
+    : undefined;
 
   const formatted = date
     ? props.withTime
@@ -137,7 +160,7 @@ function DatePopover(props: DatePopoverProps) {
     if (props.withTime) {
       props.onChange(d.toISOString());
     } else {
-      props.onChange(d.toISOString().slice(0, 10));
+      props.onChange(formatDateOnly(d));
       setOpen(false);
     }
   };
@@ -187,4 +210,4 @@ function DatePopover(props: DatePopoverProps) {
       </PopoverContent>
     </Popover>
   );
-}
+};

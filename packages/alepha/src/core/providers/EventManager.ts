@@ -238,11 +238,6 @@ export class EventManager {
 
     const catchErrors = options.catch ?? false;
 
-    // Logger is captured at compile time. Since compilation happens after
-    // start() (on first emit), the logger is already fully configured and
-    // won't change afterwards — this is safe.
-    const log = this.log;
-
     // Once the first async hook is encountered, all remaining hooks
     // must run in this async continuation to preserve sequential ordering
     const runRemainingAsync = async (
@@ -256,7 +251,7 @@ export class EventManager {
           if (result && typeof result === "object" && "then" in result) {
             if (catchErrors) {
               await (result as Promise<void>).catch((error) => {
-                log?.error(
+                this.log?.error(
                   `${String(event)}(${hook.caller?.name ?? "unknown"}) ERROR`,
                   error,
                 );
@@ -267,7 +262,7 @@ export class EventManager {
           }
         } catch (error) {
           if (catchErrors) {
-            log?.error(
+            this.log?.error(
               `${String(event)}(${hook.caller?.name ?? "unknown"}) ERROR`,
               error,
             );
@@ -290,7 +285,7 @@ export class EventManager {
             if (catchErrors) {
               return (result as Promise<void>)
                 .catch((error) => {
-                  log?.error(
+                  this.log?.error(
                     `${String(event)}(${hook.caller?.name ?? "unknown"}) ERROR`,
                     error,
                   );
@@ -303,7 +298,7 @@ export class EventManager {
           }
         } catch (error) {
           if (catchErrors) {
-            log?.error(
+            this.log?.error(
               `${String(event)}(${hook.caller?.name ?? "unknown"}) ERROR`,
               error,
             );

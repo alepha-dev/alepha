@@ -25,7 +25,9 @@ class StaleReadPaymentService extends PaymentService {
     return this.staleSnapshot ?? fresh;
   }
 
-  /** Read the row as it really is, bypassing the staleness. */
+  /**
+   * Read the row as it really is, bypassing the staleness.
+   */
   public actual(id: string): Promise<PaymentIntentEntity> {
     return super.getIntent(id);
   }

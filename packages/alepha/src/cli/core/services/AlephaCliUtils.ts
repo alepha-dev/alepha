@@ -18,9 +18,9 @@ import { ViteUtils } from "./ViteUtils.ts";
  *
  * Provides:
  * - Command execution
- * - File editing helpers
- * - Drizzle/ORM utilities
- * - Environment loading
+ * - Resolution of the bins and packages embedded in `alepha`
+ * - Generated config files under `node_modules/.alepha`
+ * - Environment loading and git metadata
  */
 export class AlephaCliUtils {
   protected readonly log = $logger();
@@ -29,7 +29,6 @@ export class AlephaCliUtils {
   protected readonly boot = $inject(AppEntryProvider);
   protected readonly shell = $inject(ShellProvider);
   protected readonly viteUtils = $inject(ViteUtils);
-  protected readonly alepha = $inject(Alepha);
 
   // ===========================================
   // Command Execution

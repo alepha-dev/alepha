@@ -13,7 +13,7 @@ import {
   UserService,
 } from "../index.ts";
 
-const PASSWORD = "correct-horse-battery";
+const PASSWORD = "Correct-Horse-Battery-1";
 
 const setup = async (username: string) => {
   const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
@@ -86,12 +86,12 @@ describe("alepha/api/users - MyPasswordController", () => {
   }) => {
     const ctx = await setup("pw-happy");
 
-    await change(ctx, PASSWORD, "a-brand-new-secret");
+    await change(ctx, PASSWORD, "A-Brand-New-Secret-2");
 
     const result = await ctx.sessionService.login(
       "credentials",
       "pw-happy",
-      "a-brand-new-secret",
+      "A-Brand-New-Secret-2",
     );
     expect(result?.id).toBe(ctx.user.id);
   });
@@ -142,7 +142,7 @@ describe("alepha/api/users - MyPasswordController", () => {
     */
     const ctx = await setup("pw-sessions");
 
-    const res = await change(ctx, PASSWORD, "a-brand-new-secret");
+    const res = await change(ctx, PASSWORD, "A-Brand-New-Secret-2");
 
     expect(res.otherSessionsRevoked).toBe(1);
     const remaining = await ctx.realmProvider
@@ -156,7 +156,7 @@ describe("alepha/api/users - MyPasswordController", () => {
     // standing on.
     const ctx = await setup("pw-current");
 
-    await change(ctx, PASSWORD, "a-brand-new-secret");
+    await change(ctx, PASSWORD, "A-Brand-New-Secret-2");
 
     const still = await ctx.realmProvider
       .sessionRepository()

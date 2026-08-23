@@ -21,7 +21,7 @@ const formatAmount = (cents: number, currency = "USD") => {
   }).format((cents ?? 0) / 100);
 };
 
-export function AdminPayments() {
+export const AdminPayments = () => {
   const client = useClient<AdminPaymentController>();
   const { l, tr } = useI18n();
 
@@ -87,6 +87,6 @@ export function AdminPayments() {
       />
     </AdminPage>
   );
-}
+};
 
 export default AdminPayments;

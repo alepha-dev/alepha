@@ -154,9 +154,13 @@ export interface ResourceTemplatePrimitiveOptions<T extends ZObject> {
 }
 
 export interface ResourceTemplateHandlerArgs<T extends ZObject> {
-  /** Values extracted from the URI, validated against `variables`. */
+  /**
+   * Values extracted from the URI, validated against `variables`.
+   */
   variables: Infer<T>;
-  /** The concrete URI that matched. */
+  /**
+   * The concrete URI that matched.
+   */
   uri: string;
   context?: McpContext;
 }
@@ -168,7 +172,9 @@ export class ResourceTemplatePrimitive<T extends ZObject> extends Primitive<
 > {
   protected readonly mcpServer = $inject(McpServerProvider);
 
-  /** Lazily compiled matcher — see {@link compile}. */
+  /**
+   * Lazily compiled matcher — see {@link compile}.
+   */
   protected matcher?: { regex: RegExp; names: string[]; reserved: boolean[] };
 
   public get name(): string {

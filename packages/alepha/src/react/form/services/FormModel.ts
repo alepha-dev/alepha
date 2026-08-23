@@ -43,9 +43,12 @@ export class FormModel<T extends ZObject> {
       // initial values (the form's whole job is to collect them). Codecs still
       // run on whatever's provided; missing fields stay undefined and only the
       // full schema is enforced at submit time.
+      // `validation: false`: a legacy value the schema no longer accepts
+      // must reach the form (and fail at submit), not crash the render.
       const decoded = this.alepha.codec.decode(
         options.schema.partial(),
         options.initialValues,
+        { validation: false },
       ) as Record<string, any>;
       Object.assign(
         this.values,
@@ -181,10 +184,9 @@ export class FormModel<T extends ZObject> {
     // incomplete; full schema is enforced only at submit time.
     const decoded = this.flattenObjectValues(
       this.options.schema,
-      this.alepha.codec.decode(this.options.schema.partial(), values) as Record<
-        string,
-        any
-      >,
+      this.alepha.codec.decode(this.options.schema.partial(), values, {
+        validation: false,
+      }) as Record<string, any>,
     );
 
     // Snapshot the OLD keys before we wipe — without this, fields that
@@ -472,6 +474,16 @@ export class FormModel<T extends ZObject> {
     const set = (value: any) => {
       const typedValue = this.getValueFromInput(value, field);
       context.store[key] = typedValue;
+      if (
+        typedValue === undefined &&
+        z.schema.isObject(z.schema.unwrap(field))
+      ) {
+        // Clearing an object clears its flattened children too, or
+        // `restructureValues` rebuilds the object from them at submit.
+        for (const storeKey of Object.keys(context.store)) {
+          if (storeKey.startsWith(`${key}.`)) delete context.store[storeKey];
+        }
+      }
       if (options.onChange) {
         options.onChange(key, typedValue, context.store);
       }
@@ -524,10 +536,11 @@ export class FormModel<T extends ZObject> {
       attr.type = "email";
     } else if (name === "url") {
       attr.type = "url";
+    } else if (z.schema.format(field) === "binary") {
+      // `z.file()` is `any` with a binary format, not a string.
+      attr.type = "file";
     } else if (z.schema.isString(field)) {
-      if (z.schema.format(field) === "binary") {
-        attr.type = "file";
-      } else if (z.schema.format(field) === "date") {
+      if (z.schema.format(field) === "date") {
         attr.type = "date";
       } else if (z.schema.format(field) === "time") {
         attr.type = "time";
@@ -633,7 +646,7 @@ export class FormModel<T extends ZObject> {
     }
     if (input instanceof File) {
       // for file inputs, return the File object directly
-      if (z.schema.isString(schema) && z.schema.format(schema) === "binary") {
+      if (z.schema.format(schema) === "binary") {
         return input;
       }
       // for now, ignore other formats
@@ -651,8 +664,12 @@ export class FormModel<T extends ZObject> {
     }
 
     if (z.schema.isNumber(schema)) {
+      // A cleared field is "no value", not 0 (`Number("")` is 0), and text
+      // that is not a number is no value either; `null` would fail an
+      // optional number at submit with a message about the wrong thing.
+      if (input === "") return undefined;
       const num = Number(input);
-      return Number.isNaN(num) ? null : num;
+      return Number.isNaN(num) ? undefined : num;
     }
 
     if (z.schema.isString(schema)) {

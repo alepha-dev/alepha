@@ -27,7 +27,9 @@ interface PasswordResetIntent {
   expiresAt: string;
 }
 
-/** Password-reset requests allowed per IP per 15-minute window. */
+/**
+ * Password-reset requests allowed per IP per 15-minute window.
+ */
 const RESET_IP_MAX_ATTEMPTS = 20;
 
 const INTENT_TTL_MINUTES = 10;
@@ -205,9 +207,13 @@ export class CredentialService {
       return { intentId, expiresAt };
     }
 
-    // Find user by email (silent fail for security)
+    // Find user by email (silent fail for security), within this realm only:
+    // the same address may exist in another realm with its own policy.
     const user = await this.users(userRealmName).findOne({
-      where: { email: { eq: email } },
+      where: {
+        realm: { eq: this.realmProvider.getRealm(userRealmName).name },
+        email: { eq: email },
+      },
     });
 
     if (!user) {

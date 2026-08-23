@@ -27,7 +27,7 @@ const maxLogLineBytes = 1 << 20
 // the very thing being investigated.
 type LogLine struct {
 	// At is the entry's own timestamp when it carried one, or the journal's.
-	At time.Time `json:"at,omitempty"`
+	At time.Time `json:"at,omitzero"`
 	// Level is normalised to lowercase text: "info", "error". Empty when the
 	// line declared none.
 	Level string `json:"level,omitempty"`

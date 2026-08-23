@@ -3,7 +3,7 @@ import type { ZObject, ZType } from "alepha";
 import type { PgSymbolKeys, PgSymbols } from "../constants/PG_SYMBOLS.ts";
 
 /**
- * Decorates a typebox schema with a Postgres attribute.
+ * Decorates a zod schema with a Postgres attribute.
  *
  * > It's just a fancy way to add Symbols to a field.
  *

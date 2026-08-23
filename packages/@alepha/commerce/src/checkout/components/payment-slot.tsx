@@ -2,14 +2,19 @@ import * as React from "react";
 
 void React;
 
+import { useI18n } from "alepha/react/i18n";
 import { useEffect, useRef, useState } from "react";
 
 import type { PaymentHandoff } from "../providers/CheckoutPaymentProvider.ts";
 
 export interface PaymentSlotProps {
-  /** What the server returned from `POST /api/commerce/checkout/:id/pay`. */
+  /**
+   * What the server returned from `POST /api/commerce/checkout/:id/pay`.
+   */
   handoff: PaymentHandoff;
-  /** Where the PSP should send the payer back after a 3-D Secure detour. */
+  /**
+   * Where the PSP should send the payer back after a 3-D Secure detour.
+   */
   returnUrl: string;
   /**
    * Renderers for embedded providers, keyed by the `provider` name the server
@@ -17,7 +22,9 @@ export interface PaymentSlotProps {
    * shop.
    */
   renderers?: Record<string, EmbeddedPaymentRenderer>;
-  /** Rendered while a redirect is being followed or an SDK is loading. */
+  /**
+   * Rendered while a redirect is being followed or an SDK is loading.
+   */
   fallback?: React.ReactNode;
   onError?: (error: Error) => void;
 }
@@ -48,6 +55,12 @@ export interface EmbeddedPaymentRenderer {
     returnUrl: string;
     onConfirmed: () => void;
     onError: (error: Error) => void;
+    /**
+     * The strings a renderer shows, localised by the caller. Optional so a
+     * renderer written against the first version of this interface still
+     * mounts; it then falls back to English.
+     */
+    labels?: { pay?: string; declined?: string };
   }): Promise<() => void>;
 }
 
@@ -59,8 +72,27 @@ export interface EmbeddedPaymentRenderer {
  * mounts the matching renderer, and the page above knows about neither. Changing
  * PSP, or moving between hosted and embedded, changes nothing here.
  */
-export function PaymentSlot(props: PaymentSlotProps) {
+export const PaymentSlot = (props: PaymentSlotProps) => {
   const { handoff, returnUrl, renderers, fallback, onError } = props;
+  const { tr } = useI18n();
+  // Read through a ref inside the mount effect: the labels must not be a
+  // dependency that re-mounts the PSP widget on every render.
+  const labelsRef = useRef({
+    pay: String(tr("commerce.checkout.pay", { default: "Pay" })),
+    declined: String(
+      tr("commerce.checkout.declined", {
+        default: "The payment was declined.",
+      }),
+    ),
+  });
+  labelsRef.current = {
+    pay: String(tr("commerce.checkout.pay", { default: "Pay" })),
+    declined: String(
+      tr("commerce.checkout.declined", {
+        default: "The payment was declined.",
+      }),
+    ),
+  };
   const containerRef = useRef<HTMLDivElement>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [failure, setFailure] = useState<Error | undefined>();
@@ -104,6 +136,7 @@ export function PaymentSlot(props: PaymentSlotProps) {
         clientSecret: handoff.clientSecret,
         publishableKey: handoff.publishableKey,
         returnUrl,
+        labels: labelsRef.current,
         onConfirmed: () => setConfirmed(true),
         onError: (error) => {
           setFailure(error);
@@ -146,7 +179,11 @@ export function PaymentSlot(props: PaymentSlotProps) {
         order becomes paid when the webhook lands. Saying more than we know is how
         a customer is told their order is done and then finds it pending.
       */}
-      {confirmed ? <p data-payment-slot-confirmed>Paiement envoyé…</p> : null}
+      {confirmed ? (
+        <p data-payment-slot-confirmed>
+          {tr("commerce.checkout.paymentSent", { default: "Payment sent…" })}
+        </p>
+      ) : null}
     </div>
   );
-}
+};

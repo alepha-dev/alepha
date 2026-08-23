@@ -58,32 +58,18 @@ const Audits = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() =>
-              run(
-                "emitInfo",
-                () =>
-                  (
-                    client as never as Record<string, () => Promise<unknown>>
-                  ).emitInfo?.() ?? Promise.resolve({ ok: true }),
-              )
-            }
+            onClick={() => run("auditLogin", () => client.auditLogin())}
           >
-            emit info
+            audit login
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={() =>
-              run(
-                "emitWarning",
-                () =>
-                  (
-                    client as never as Record<string, () => Promise<unknown>>
-                  ).emitWarning?.() ?? Promise.resolve({ ok: true }),
-              )
+              run("auditFailedLogin", () => client.auditFailedLogin())
             }
           >
-            emit warning
+            audit failed login
           </Button>
         </CardContent>
       </Card>

@@ -1022,7 +1022,9 @@ describe("filtering by a relation", () => {
     expect(found.map((c) => c.title)).toEqual(["The Sunken Archive"]);
   });
 
-  /** An empty object still filters: it means "has at least one". */
+  /**
+   * An empty object still filters: it means "has at least one".
+   */
   it("treats an empty relation filter as a presence check", async () => {
     await seed(app);
 

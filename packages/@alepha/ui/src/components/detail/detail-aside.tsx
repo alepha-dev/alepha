@@ -33,9 +33,13 @@ export interface DetailAsideProps {
    * block is not rendered at all and the list starts at the top edge.
    */
   title?: string;
-  /** Thumbnail or avatar source. Falls back to {@link fallback}. */
+  /**
+   * Thumbnail or avatar source. Falls back to {@link fallback}.
+   */
   image?: string;
-  /** Shown in place of a missing image. Defaults to the title's initial. */
+  /**
+   * Shown in place of a missing image. Defaults to the title's initial.
+   */
   fallback?: string;
   /**
    * Set `false` for an entity that has no avatar concept at all, and the

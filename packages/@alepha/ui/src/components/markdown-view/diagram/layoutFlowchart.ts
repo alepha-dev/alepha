@@ -31,7 +31,9 @@ export interface PositionedNode {
   y: number;
   width: number;
   height: number;
-  /** The lines as MEASURED - wrapped and capped. Draw exactly these. */
+  /**
+   * The lines as MEASURED - wrapped and capped. Draw exactly these.
+   */
   lines: string[];
   shape: GraphNodeShape;
 }
@@ -39,18 +41,24 @@ export interface PositionedNode {
 export interface PositionedCluster {
   id: string;
   label: string;
-  /** TOP-LEFT corner, same convention as `PositionedNode`. */
+  /**
+   * TOP-LEFT corner, same convention as `PositionedNode`.
+   */
   x: number;
   y: number;
   width: number;
   height: number;
-  /** 0 for an outermost `subgraph`, 1 for one nested inside it, and so on. */
+  /**
+   * 0 for an outermost `subgraph`, 1 for one nested inside it, and so on.
+   */
   depth: number;
 }
 
 export interface PositionedEdgeLabel {
   lines: string[];
-  /** TOP-LEFT corner, same convention as `PositionedNode`. */
+  /**
+   * TOP-LEFT corner, same convention as `PositionedNode`.
+   */
   x: number;
   y: number;
   width: number;
@@ -63,7 +71,9 @@ export interface PositionedEdge {
   style: GraphEdgeStyle;
   arrowStart: boolean;
   arrowEnd: boolean;
-  /** The polyline graphre routed, in order, in graph units. */
+  /**
+   * The polyline graphre routed, in order, in graph units.
+   */
   points: Array<{ x: number; y: number }>;
   label?: PositionedEdgeLabel;
 }
@@ -78,7 +88,9 @@ export interface PositionedGraph {
   height: number;
   fontSize: number;
   nodes: PositionedNode[];
-  /** Outermost first, so an emitter can draw them in order and get z-order free. */
+  /**
+   * Outermost first, so an emitter can draw them in order and get z-order free.
+   */
   clusters: PositionedCluster[];
   edges: PositionedEdge[];
 }

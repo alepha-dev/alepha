@@ -3,9 +3,13 @@ import { cn } from "@alepha/ui/lib/utils";
 import { Image as ImageIcon } from "lucide-react";
 
 export interface ProjectIconProps {
-  /** Project icon file id (`project.icon`). Absent → an image placeholder. */
+  /**
+   * Project icon file id (`project.icon`). Absent → an image placeholder.
+   */
   fileId?: string | null;
-  /** Container classes — size/shape overrides (defaults to `size-8`). */
+  /**
+   * Container classes — size/shape overrides (defaults to `size-8`).
+   */
   className?: string;
   alt?: string;
 }

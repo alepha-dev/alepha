@@ -206,7 +206,9 @@ export const projects = $entity({
      * with a hand-written, verified `ALTER TABLE ... DROP COLUMN`.
      */
     unlockedFeatures: db.default(z.array(z.string()), []),
-    /** @deprecated — see `unlockedFeatures`. */
+    /**
+     * @deprecated — see `unlockedFeatures`.
+     */
     unlockHistory: db.default(
       z.array(
         z.object({

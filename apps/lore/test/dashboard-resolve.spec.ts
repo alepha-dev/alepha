@@ -80,7 +80,9 @@ const memberOf = async (
   return { user: token(project.createdBy!), project };
 };
 
-/** Replace the seeded set with exactly the cards a test is about. */
+/**
+ * Replace the seeded set with exactly the cards a test is about.
+ */
 const only = async (
   ctx: TestContext,
   user: UserAccountToken,
@@ -116,7 +118,9 @@ const createSigil = async (
   });
 };
 
-/** `YYYY-MM-DD` for `daysAgo` days before the container's clock, UTC. */
+/**
+ * `YYYY-MM-DD` for `daysAgo` days before the container's clock, UTC.
+ */
 const dayUtc = (ctx: TestContext, daysAgo: number): string => {
   const day = new Date(ctx.dateTime.nowMillis());
   day.setUTCDate(day.getUTCDate() - daysAgo);

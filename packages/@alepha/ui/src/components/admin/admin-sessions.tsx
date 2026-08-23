@@ -14,7 +14,7 @@ import { useI18n } from "alepha/react/i18n";
 import { LogOut } from "lucide-react";
 import { useCallback } from "react";
 
-export function AdminSessions() {
+export const AdminSessions = () => {
   const client = useClient<AdminSessionController>();
   const toast = useToast();
   const dialog = useDialog();
@@ -166,6 +166,6 @@ export function AdminSessions() {
       />
     </AdminPage>
   );
-}
+};
 
 export default AdminSessions;

@@ -35,7 +35,9 @@ class FakeClock implements RoomClock {
     return this.handlers.size;
   }
 
-  /** Advance virtual time by `ms` and fire every live interval once. */
+  /**
+   * Advance virtual time by `ms` and fire every live interval once.
+   */
   advance(ms: number): void {
     this.ms += ms;
     for (const fn of Array.from(this.handlers.values())) fn();

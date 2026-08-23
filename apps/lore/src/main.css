@@ -149,8 +149,8 @@ body::before {
 
 /* ────────────────────────────────────────────────────────────────────────
  * Display font — used on h1/h2/h3 + .display utility.
- * Each theme overrides --font-display via the theme class. ThemePicker
- * lazy-loads the matching Google Fonts CSS only for the active theme.
+ * Each theme overrides --font-display via the theme class. The fonts are
+ * self-hosted under public/fonts, one stylesheet per theme.
  * ──────────────────────────────────────────────────────────────────────── */
 
 :root {

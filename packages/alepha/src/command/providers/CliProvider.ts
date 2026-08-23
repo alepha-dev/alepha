@@ -494,7 +494,7 @@ export class CliProvider {
       }
       // A negative number is a VALUE, not a flag — `--count -5` used to fail
       // because any token starting with `-` was treated as a flag name.
-      if (!afterTerminator && arg.startsWith("-") && !/^-\d/.test(arg)) {
+      if (!afterTerminator && this.isFlagToken(arg)) {
         result.push(arg);
       } else if (
         consumedIndex < consumedArgs.length &&
@@ -564,7 +564,7 @@ export class CliProvider {
     const consumedIndices = this.getFlagConsumedIndices(argv, flagDefs);
 
     const positionalArgs = argv.filter(
-      (arg, idx) => !arg.startsWith("-") && !consumedIndices.has(idx),
+      (arg, idx) => !this.isFlagToken(arg) && !consumedIndices.has(idx),
     );
 
     return { ...this.resolveCommand(positionalArgs), positionalArgs };
@@ -759,7 +759,7 @@ export class CliProvider {
    * Read a schema's metadata (`title`, `description`, `aliases`, `alias`, …).
    *
    * Under zod these options live on the schema's `.meta()` registry rather than
-   * as direct properties (typebox), and they sit on the INNER schema — so any
+   * as direct properties, and they sit on the INNER schema, so any
    * optional / nullable / default wrappers are peeled first.
    */
   protected schemaMeta(schema: ZType | undefined): Record<string, any> {
@@ -875,7 +875,19 @@ export class CliProvider {
       const value = process.env[key];
 
       if (value !== undefined) {
-        result[key] = value;
+        // Environment values are strings; a `z.number()` or `z.boolean()`
+        // declaration could never validate without this cast.
+        try {
+          result[key] = this.parseArgumentValue(
+            value,
+            z.schema.unwrap(propSchema),
+          );
+        } catch (error) {
+          if (error instanceof UsageError) {
+            throw new UsageError(`Invalid value for ${key}: ${error.message}`);
+          }
+          throw error;
+        }
       } else {
         const def = z.schema.getDefault(propSchema);
         if (def !== undefined) {
@@ -922,7 +934,7 @@ export class CliProvider {
       // Handle --mode value or -m value
       if (arg === "--mode" || arg === "-m") {
         const nextArg = argv[i + 1];
-        if (nextArg && !nextArg.startsWith("-")) {
+        if (nextArg && !this.isFlagToken(nextArg)) {
           return nextArg;
         }
         throw new UsageError("Flag --mode requires a value.");
@@ -960,7 +972,7 @@ export class CliProvider {
 
     for (let i = 0; i < argv.length; i++) {
       const arg = argv[i];
-      if (!arg.startsWith("-")) continue;
+      if (!this.isFlagToken(arg)) continue;
 
       const [rawKey, ...valueParts] = arg.replace(/^-{1,2}/, "").split("=");
       const value = valueParts.join("=");
@@ -983,11 +995,14 @@ export class CliProvider {
         z.schema.options(base).some((s) => z.schema.isBoolean(s));
 
       if (z.schema.isBoolean(base)) {
-        result[def.key] = true;
+        // `--flag=false` used to read as true: the value was never looked at.
+        result[def.key] = value
+          ? this.castFlagValue(value, base, rawKey)
+          : true;
       } else if (isUnionWithBoolean && !value) {
         // Union with boolean: --flag without value → true
         const nextArg = argv[i + 1];
-        if (nextArg && !nextArg.startsWith("-")) {
+        if (nextArg && !this.isFlagToken(nextArg)) {
           // Has a value after space: --flag value
           result[def.key] = nextArg;
           i++; // consume next arg
@@ -1001,7 +1016,7 @@ export class CliProvider {
       } else {
         // Check for space-separated value: --flag value
         const nextArg = argv[i + 1];
-        if (nextArg && !nextArg.startsWith("-")) {
+        if (nextArg && !this.isFlagToken(nextArg)) {
           result[def.key] = this.castFlagValue(nextArg, base, rawKey);
         } else {
           throw new UsageError(`Flag --${rawKey} requires a value.`);
@@ -1036,6 +1051,14 @@ export class CliProvider {
   }
 
   /**
+   * A token is a flag when it starts with a dash and is not a negative
+   * number: `--count -5` passes a value, not a flag named `5`.
+   */
+  protected isFlagToken(arg: string): boolean {
+    return arg.startsWith("-") && !/^-\d/.test(arg);
+  }
+
+  /**
    * Get indices of argv elements consumed by flags (for separating args from flags)
    */
   protected getFlagConsumedIndices(
@@ -1046,7 +1069,7 @@ export class CliProvider {
 
     for (let i = 0; i < argv.length; i++) {
       const arg = argv[i];
-      if (!arg.startsWith("-")) continue;
+      if (!this.isFlagToken(arg)) continue;
 
       consumed.add(i);
 
@@ -1068,13 +1091,13 @@ export class CliProvider {
       // Exception: union with boolean can work without a value
       if (!z.schema.isBoolean(base) && !isUnionWithBoolean && !hasEqualValue) {
         const nextArg = argv[i + 1];
-        if (nextArg && !nextArg.startsWith("-")) {
+        if (nextArg && !this.isFlagToken(nextArg)) {
           consumed.add(i + 1);
         }
       } else if (isUnionWithBoolean && !hasEqualValue) {
         // Union with boolean: check if next arg looks like a value (not a flag)
         const nextArg = argv[i + 1];
-        if (nextArg && !nextArg.startsWith("-")) {
+        if (nextArg && !this.isFlagToken(nextArg)) {
           consumed.add(i + 1);
         }
       }
@@ -1099,18 +1122,24 @@ export class CliProvider {
 
     // Extract positional arguments (non-flag arguments that aren't consumed as flag values)
     const positionalArgs = argv.filter(
-      (arg, idx) => !arg.startsWith("-") && !consumedIndices.has(idx),
+      (arg, idx) => !this.isFlagToken(arg) && !consumedIndices.has(idx),
     );
     // For root commands, there's no command name to remove; otherwise slice off the command name
     const argsOnly = isRootCommand ? positionalArgs : positionalArgs.slice(1);
 
     try {
-      if (z.schema.isOptional(schema)) {
-        // Handle optional args: z.text().optional()
+      // The cast below only knows strings, numbers and booleans; the decode
+      // is what applies the rest of the declaration (min/max, enums,
+      // formats), which positional arguments used to bypass entirely.
+      if (this.isOptionalOrDefaulted(schema)) {
+        // Handle optional args: z.text().optional(), z.number().default(1)
         if (argsOnly.length === 0) {
-          return undefined;
+          return z.schema.getDefault(schema);
         }
-        return this.parseArgumentValue(argsOnly[0], schema);
+        return this.alepha.codec.decode(
+          schema,
+          this.parseArgumentValue(argsOnly[0], schema),
+        );
       } else if (z.schema.items(schema).length > 0) {
         // Handle tuple args: z.tuple([z.text(), z.number()])
         const result: any[] = [];
@@ -1119,21 +1148,24 @@ export class CliProvider {
           const itemSchema = items[i];
           if (i < argsOnly.length) {
             result.push(this.parseArgumentValue(argsOnly[i], itemSchema));
-          } else if (z.schema.isOptional(itemSchema)) {
-            result.push(undefined);
+          } else if (this.isOptionalOrDefaulted(itemSchema)) {
+            result.push(z.schema.getDefault(itemSchema));
           } else {
             throw new UsageError(
               `Missing required argument at position ${i + 1}`,
             );
           }
         }
-        return result;
+        return this.alepha.codec.decode(schema, result);
       } else {
         // Handle single arg: z.text(), z.number(), etc.
         if (argsOnly.length === 0) {
           throw new UsageError("Missing required argument");
         }
-        return this.parseArgumentValue(argsOnly[0], schema);
+        return this.alepha.codec.decode(
+          schema,
+          this.parseArgumentValue(argsOnly[0], schema),
+        );
       }
     } catch (error) {
       if (error instanceof SchemaValidationError) {
@@ -1144,25 +1176,39 @@ export class CliProvider {
   }
 
   /**
+   * A declaration that can be left out: `.optional()`, or `.default()`,
+   * whose value stands in for the missing argument.
+   */
+  protected isOptionalOrDefaulted(schema: ZType): boolean {
+    return (
+      z.schema.isOptional(schema) || z.schema.getDefault(schema) !== undefined
+    );
+  }
+
+  /**
    * Convert a string argument value to the appropriate type based on schema
    */
   protected parseArgumentValue(value: string, schema: ZType): any {
-    if (z.schema.isString(schema)) {
+    // Peel optional/nullable/default: `z.number().optional()` is still a
+    // number, and used to stay a string.
+    const base = z.schema.unwrap(schema);
+
+    if (z.schema.isString(base)) {
       return value;
     }
 
-    if (z.schema.isNumber(schema) || z.schema.isInteger(schema)) {
+    if (z.schema.isNumber(base) || z.schema.isInteger(base)) {
       const num = Number(value);
       if (Number.isNaN(num)) {
         throw new UsageError(`Expected number, got "${value}"`);
       }
-      if (z.schema.isInteger(schema) && !Number.isInteger(num)) {
+      if (z.schema.isInteger(base) && !Number.isInteger(num)) {
         throw new UsageError(`Expected integer, got "${value}"`);
       }
       return num;
     }
 
-    if (z.schema.isBoolean(schema)) {
+    if (z.schema.isBoolean(base)) {
       const lower = value.toLowerCase();
       if (lower === "true" || lower === "1") return true;
       if (lower === "false" || lower === "0") return false;
@@ -1292,7 +1338,7 @@ export class CliProvider {
 
       const flags = [
         // Read aliases/description from the schema's `.meta()` registry (zod),
-        // not as direct schema properties (typebox) — see extractFlagDefs.
+        // not as direct schema properties; see extractFlagDefs.
         ...this.extractFlagDefs(command.flags),
         // Add --mode flag if command has mode option enabled
         ...(command.options.mode
@@ -1338,7 +1384,7 @@ export class CliProvider {
         out(c.set("WHITE_BOLD", "Env:"));
         const maxEnvLength = Math.max(...envVars.map(([key]) => key.length));
         for (const [key, schema] of envVars) {
-          const isOptional = z.schema.isOptional(schema as ZType);
+          const isOptional = this.isOptionalOrDefaulted(schema as ZType);
           // Wrapped schemas (`.optional()`) keep the description in the
           // INNER schema's `.meta()` registry, so reading `.description`
           // off the wrapper rendered an empty Env: section.
@@ -1384,9 +1430,9 @@ export class CliProvider {
       out(c.set("WHITE_BOLD", "Flags:"));
 
       // In general help, also show root command flags
-      const rootCommand = this.commands.find((cmd) => cmd.name === "");
+      const rootCommand = this.findCommand("");
       // Read aliases/description from the schema's `.meta()` registry (zod),
-      // not as direct schema properties (typebox) — see extractFlagDefs.
+      // not as direct schema properties; see extractFlagDefs.
       const rootFlags = rootCommand
         ? this.extractFlagDefs(rootCommand.flags)
         : [];

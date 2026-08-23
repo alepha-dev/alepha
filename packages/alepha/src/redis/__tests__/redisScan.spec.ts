@@ -12,7 +12,9 @@ import { NodeRedisProvider } from "../providers/NodeRedisProvider.ts";
  * and container flush, wildcard `invalidate("x*")` and `clear()` all go
  * through it. The contract is unchanged; only the traversal is.
  */
-/** Counts SCAN round-trips so pagination can be observed, not assumed. */
+/**
+ * Counts SCAN round-trips so pagination can be observed, not assumed.
+ */
 class Probe extends NodeRedisProvider {
   public pages = 0;
 

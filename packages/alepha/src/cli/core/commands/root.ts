@@ -1,11 +1,10 @@
 import { $inject, Alepha, z } from "alepha";
 import { $command, CliProvider } from "alepha/command";
-import { $logger, ConsoleColorProvider } from "alepha/logger";
+import { ConsoleColorProvider } from "alepha/logger";
 
 import { version } from "../alephaPackageJson.ts";
 
 export class RootCommand {
-  protected readonly log = $logger();
   protected readonly cli = $inject(CliProvider);
   protected readonly alepha = $inject(Alepha);
   protected readonly color = $inject(ConsoleColorProvider);

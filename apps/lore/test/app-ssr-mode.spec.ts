@@ -24,7 +24,9 @@ import { AppRouter } from "../src/web/app/AppRouter.ts";
  * rename guard `app-routes.spec.ts` provides for navigation names.
  */
 
-/** Reachable without an account — must ship HTML. */
+/**
+ * Reachable without an account — must ship HTML.
+ */
 const PUBLIC_ROUTES = [
   "home",
   "login",
@@ -37,7 +39,9 @@ const PUBLIC_ROUTES = [
   "notFound",
 ];
 
-/** Behind the login wall — must not be server-rendered. */
+/**
+ * Behind the login wall — must not be server-rendered.
+ */
 const GUARDED_ROUTES = [
   "projectCreate",
   // The project layout and a representative spread of its subtree, which

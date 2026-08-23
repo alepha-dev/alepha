@@ -1,3 +1,5 @@
+import { AlephaError } from "alepha";
+
 import type { ImportIssue, ImportRow } from "../../schemas/questImportRow.ts";
 
 export type ParseRowResult =
@@ -45,7 +47,7 @@ export class AlephaLoreParser {
     if (objectivesRaw.length > 0) {
       try {
         const parsed = JSON.parse(objectivesRaw);
-        if (!Array.isArray(parsed)) throw new Error("not an array");
+        if (!Array.isArray(parsed)) throw new AlephaError("not an array");
         objectives = parsed.map(
           (o: { title?: unknown; completed?: unknown }) => ({
             // Coercion at a boundary: the value is a form/route/chart primitive whose

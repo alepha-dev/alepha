@@ -1,7 +1,7 @@
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useI18n } from "alepha/react/i18n";
 
-export interface WorkflowStatusBadgeProps {
+export interface AdminWorkflowsStatusBadgeProps {
   /**
    * Accepts both execution statuses and step statuses — the two sets
    * overlap on everything but `timed_out` / `skipped`.
@@ -28,7 +28,9 @@ const VARIANTS: Record<
 /**
  * Coloured badge for a workflow execution or step status.
  */
-export const WorkflowStatusBadge = (props: WorkflowStatusBadgeProps) => {
+export const AdminWorkflowsStatusBadge = (
+  props: AdminWorkflowsStatusBadgeProps,
+) => {
   const { tr } = useI18n();
   return (
     <Badge variant={VARIANTS[props.status] ?? "outline"}>

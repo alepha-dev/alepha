@@ -1,5 +1,4 @@
 import { $inject, z } from "alepha";
-import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
@@ -27,7 +26,6 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
  * merges" rule cannot drift between them.
  */
 export class AreaController {
-  log = $logger();
   areas = $repository(areas);
   quests = $repository(quests);
   service = $inject(AreaService);

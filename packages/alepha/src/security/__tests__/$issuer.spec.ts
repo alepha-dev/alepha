@@ -117,6 +117,7 @@ describe("$issuer", () => {
       aud: app.issuer.name,
       iat: now.unix(),
       exp: now.unix() + app.issuer.refreshTokenExpiration.asSeconds(),
+      sid: expect.any(String),
     });
 
     expect(

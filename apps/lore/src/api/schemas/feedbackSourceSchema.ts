@@ -25,22 +25,38 @@ import { type Infer, z } from "alepha";
  */
 export const feedbackSourceSchema = z.object({
   sigilId: z.string().max(100).optional(),
-  /** Full `location.href` of the embedding page at click time. */
+  /**
+   * Full `location.href` of the embedding page at click time.
+   */
   hostUrl: z.string().max(2000),
-  /** `location.pathname` (+ search) of the embedding page. */
+  /**
+   * `location.pathname` (+ search) of the embedding page.
+   */
   hostPath: z.string().max(2000),
-  /** `document.title` of the embedding page. */
+  /**
+   * `document.title` of the embedding page.
+   */
   title: z.string().max(500).optional(),
-  /** `document.referrer` — where the visitor arrived from. */
+  /**
+   * `document.referrer` — where the visitor arrived from.
+   */
   referrer: z.string().max(2000).optional(),
   userAgent: z.string().max(1000),
-  /** `navigator.language` (e.g. "en-US"). */
+  /**
+   * `navigator.language` (e.g. "en-US").
+   */
   language: z.string().max(35).optional(),
-  /** Viewport size as "WxH" (`innerWidth`x`innerHeight`). */
+  /**
+   * Viewport size as "WxH" (`innerWidth`x`innerHeight`).
+   */
   viewport: z.string().max(20).optional(),
-  /** Screen size as "WxH" (`screen.width`x`screen.height`). */
+  /**
+   * Screen size as "WxH" (`screen.width`x`screen.height`).
+   */
   screen: z.string().max(20).optional(),
-  /** IANA timezone (e.g. "Europe/Paris"). */
+  /**
+   * IANA timezone (e.g. "Europe/Paris").
+   */
   timezone: z.string().max(100).optional(),
   consoleTail: z.array(z.string().max(2000)).max(50).optional(),
 });

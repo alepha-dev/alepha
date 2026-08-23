@@ -137,9 +137,9 @@ import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
  *
  * Route names live in one process-wide namespace, and a duplicate does not
  * throw: `ReactPageProvider.page()` returns the first match. An adopter that
- * registers its own page named `files` (or any of the other ten) either
+ * registers its own page named `files` (or any of the other twelve) either
  * shadows this one or is shadowed by it, silently, depending on mount order.
- * Treat these eleven names as reserved when hanging pages off `layout`.
+ * Treat these thirteen names as reserved when hanging pages off `layout`.
  */
 export class AdminRouter {
   protected readonly options = $store(adminRouterOptionsAtom);

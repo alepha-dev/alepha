@@ -16,12 +16,6 @@ import { sigilKeyProject } from "../shared/sigilKey.ts";
 import { SIGIL_INGEST_PATH } from "../shared/sigilPaths.ts";
 import { SIGIL_DEFAULT_SINK, sigilEnv } from "../sigilEnv.ts";
 
-/** How long a batch may sit before it is worth a round trip. */
-const FLUSH_WINDOW_MS = 10_000;
-
-/** Envelope caps, mirroring the schema so a flush never builds a 413. */
-const CAPS = { views: 50, errors: 20, vitals: 50, engagements: 50 } as const;
-
 /**
  * One error, and how many times it happened since the last flush.
  */
@@ -62,6 +56,21 @@ interface AggregatedError {
  * awaited in front of the first byte of every cold page.
  */
 export class SigilSinkProvider {
+  /**
+   * How long a batch may sit before it is worth a round trip.
+   */
+  protected readonly flushWindowMs = 10_000;
+
+  /**
+   * Envelope caps, mirroring the schema so a flush never builds a 413.
+   */
+  protected readonly caps = {
+    views: 50,
+    errors: 20,
+    vitals: 50,
+    engagements: 50,
+  } as const;
+
   protected readonly alepha = $inject(Alepha);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly http = $inject(HttpClient);
@@ -69,12 +78,16 @@ export class SigilSinkProvider {
   protected readonly background = $inject(BackgroundTaskProvider);
   protected env = $env(sigilEnv);
 
-  /** Errors waiting to be sent, keyed by fingerprint source. */
+  /**
+   * Errors waiting to be sent, keyed by fingerprint source.
+   */
   protected readonly pendingErrors = new Map<string, AggregatedError>();
   protected pendingViews: NonNullable<SigilEnvelope["views"]> = [];
   protected pendingVitals: NonNullable<SigilEnvelope["vitals"]> = [];
   protected pendingEngagements: NonNullable<SigilEnvelope["engagements"]> = [];
-  /** Stamps of the batch being built. Last writer wins; they rarely differ. */
+  /**
+   * Stamps of the batch being built. Last writer wins; they rarely differ.
+   */
   protected pendingStamp: {
     country?: string;
     visitor?: string;
@@ -402,11 +415,11 @@ export class SigilSinkProvider {
    */
   protected isDue(now: number): boolean {
     if (!this.hasPending()) return false;
-    if (this.pendingErrors.size >= CAPS.errors) return true;
-    if (this.pendingViews.length >= CAPS.views) return true;
-    if (this.pendingVitals.length >= CAPS.vitals) return true;
-    if (this.pendingEngagements.length >= CAPS.engagements) return true;
-    return now - (this.oldestPendingAt ?? now) >= FLUSH_WINDOW_MS;
+    if (this.pendingErrors.size >= this.caps.errors) return true;
+    if (this.pendingViews.length >= this.caps.views) return true;
+    if (this.pendingVitals.length >= this.caps.vitals) return true;
+    if (this.pendingEngagements.length >= this.caps.engagements) return true;
+    return now - (this.oldestPendingAt ?? now) >= this.flushWindowMs;
   }
 
   /**
@@ -433,14 +446,17 @@ export class SigilSinkProvider {
   public async flush(): Promise<void> {
     if (!this.hasPending()) return;
 
-    const views = this.pendingViews.splice(0, CAPS.views);
-    const vitals = this.pendingVitals.splice(0, CAPS.vitals);
-    const engagements = this.pendingEngagements.splice(0, CAPS.engagements);
+    const views = this.pendingViews.splice(0, this.caps.views);
+    const vitals = this.pendingVitals.splice(0, this.caps.vitals);
+    const engagements = this.pendingEngagements.splice(
+      0,
+      this.caps.engagements,
+    );
     // Entries, so the surviving ones are deleted by the key they were stored
     // under rather than by a recomputed fingerprint.
     const errorEntries = [...this.pendingErrors.entries()].slice(
       0,
-      CAPS.errors,
+      this.caps.errors,
     );
     for (const [key] of errorEntries) this.pendingErrors.delete(key);
 

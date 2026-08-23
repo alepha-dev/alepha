@@ -18,7 +18,9 @@ export const sellerIdentityAtom = $atom({
   schema: z.object({
     name: z.text({ maxLength: 200 }).describe("Registered business name"),
     address: z.text({ maxLength: 400 }).describe("Registered address"),
-    /** SIRET in France; the local company register number elsewhere. */
+    /**
+     * SIRET in France; the local company register number elsewhere.
+     */
     registrationNumber: z
       .text({ maxLength: 64 })
       .describe("SIRET or equivalent company registration number"),
@@ -40,7 +42,9 @@ export const sellerIdentityAtom = $atom({
       .text({ maxLength: 200 })
       .optional()
       .describe("e.g. 'TVA non applicable, art. 293 B du CGI'"),
-    /** Prefix of the invoice number. */
+    /**
+     * Prefix of the invoice number.
+     */
     numberPrefix: z.text({ maxLength: 8 }).default("FA"),
   }),
   default: {

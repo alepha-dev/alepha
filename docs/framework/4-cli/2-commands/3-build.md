@@ -31,9 +31,9 @@ After building, your `dist/` folder looks like this:
 dist/
 ├── index.js          # Server entry point
 ├── public/           # Static assets (CSS, JS, images)
-│   ├── assets/
-│   │   ├── index-abc123.js
-│   │   └── index-def456.css
+│   ├── entry.abc123.js
+│   ├── chunk.def456.js
+│   ├── asset.0123ab.css
 │   └── favicon.svg
 ├── manifest.json     # Build manifest (every target; `alepha pack` requires it)
 └── package.json      # Production dependencies

@@ -26,7 +26,7 @@ import { useEffect, useState } from "react";
  * declares. Datasets, dimensions and measures all come from the admin API's
  * JSON-Schema descriptors — nothing here is app-specific.
  */
-export function AdminAnalytics() {
+export const AdminAnalytics = () => {
   const client = useClient<AdminAnalyticsController>();
   const { tr } = useI18n();
   const [datasets, setDatasets] = useState<AdminDatasetDescriptor[]>();
@@ -99,6 +99,6 @@ export function AdminAnalytics() {
       )}
     </AdminPage>
   );
-}
+};
 
 export default AdminAnalytics;

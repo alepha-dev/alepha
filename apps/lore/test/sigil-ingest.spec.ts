@@ -1,4 +1,4 @@
-import { SIGIL_CONFIG_PATH, SIGIL_INGEST_PATH } from "@alepha/sigil/paths";
+import { SIGIL_INGEST_PATH } from "@alepha/sigil/paths";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -208,11 +208,6 @@ const setup = async (over: { kinds?: string[]; features?: unknown } = {}) => {
       body: JSON.stringify(body),
     });
 
-  const getConfig = (token: string | undefined = minted.token) =>
-    fetch(`${server.hostname}${SIGIL_CONFIG_PATH}`, {
-      headers: token ? { authorization: `Bearer ${token}` } : {},
-    });
-
   return {
     alepha,
     probe,
@@ -223,7 +218,6 @@ const setup = async (over: { kinds?: string[]; features?: unknown } = {}) => {
     service,
     token: minted.token,
     post,
-    getConfig,
   };
 };
 

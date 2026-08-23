@@ -25,12 +25,16 @@ import { InsufficientStockError } from "../errors/CommerceError.ts";
  *
  * Ported from Club's `StockService`, which learned the hard way that a counter
  * column oversells: two concurrent sales read the same snapshot, both see
- * enough, both write. Reading the sum **inside** the transaction that writes
- * closes that window, so every mutating method here expects to be called
- * within one.
+ * enough, both write. Every mutating method here expects to be called inside
+ * the transaction that writes. That serialises the check on SQLite and D1
+ * (one writer at a time); on Postgres at READ COMMITTED two transactions can
+ * still read the same sum before either commits, and a per-product row lock
+ * is what would close that window.
  */
 export class StockService {
-  /** How long a hold survives without a settled payment. */
+  /**
+   * How long a hold survives without a settled payment.
+   */
   public static readonly RESERVATION_TTL_MINUTES = 30;
 
   protected readonly log = $logger();

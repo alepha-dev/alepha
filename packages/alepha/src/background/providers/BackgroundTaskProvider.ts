@@ -21,7 +21,9 @@ export class BackgroundTaskProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
 
-  /** In-flight deferred tasks, awaited on stop. */
+  /**
+   * In-flight deferred tasks, awaited on stop.
+   */
   protected readonly pending = new Set<Promise<void>>();
 
   /**

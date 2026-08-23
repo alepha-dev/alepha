@@ -14,11 +14,17 @@
  * stroked in *that piece's* metal, so the image states the metal.
  */
 export class ShopDrawings {
-  /** 18-carat yellow gold, 750‰. */
+  /**
+   * 18-carat yellow gold, 750‰.
+   */
   public static readonly OR_JAUNE = "#c9a227";
-  /** White gold / palladium, 750‰. */
+  /**
+   * White gold / palladium, 750‰.
+   */
   public static readonly OR_GRIS = "#b6bcc4";
-  /** Sterling silver, 925‰. */
+  /**
+   * Sterling silver, 925‰.
+   */
   public static readonly ARGENT = "#96a3a8";
 
   /**

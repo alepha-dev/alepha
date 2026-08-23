@@ -50,7 +50,9 @@ export const insightsReadParamsSchema = projectParamsSchema.extend({
 
 export const insightsReadResultSchema = z.object({
   range: z.string(),
-  /** First day included, `YYYY-MM-DD`. */
+  /**
+   * First day included, `YYYY-MM-DD`.
+   */
   since: z.string(),
   /**
    * Still-failing groups, most widespread first, capped at what the Insights
@@ -96,12 +98,18 @@ export const insightsReadResultSchema = z.object({
        * Read `engagementRate` before believing a spike is people.
        */
       engagedViews: z.integer(),
-      /** `engagedViews / totalViews` as a whole percent. */
+      /**
+       * `engagedViews / totalViews` as a whole percent.
+       */
       engagementRate: z.number(),
       topPaths: z.array(z.object({ path: z.string(), count: z.number() })),
-      /** Where visits started, by page loads rather than total views. */
+      /**
+       * Where visits started, by page loads rather than total views.
+       */
       topEntryPaths: z.array(z.object({ path: z.string(), count: z.number() })),
-      /** `utm_campaign` / `utm_source` on arrivals; `none` is untagged. */
+      /**
+       * `utm_campaign` / `utm_source` on arrivals; `none` is untagged.
+       */
       topCampaigns: z.array(
         z.object({ campaign: z.string(), count: z.number() }),
       ),
@@ -119,7 +127,9 @@ export const insightsReadResultSchema = z.object({
       topReferrers: z.array(
         z.object({ referrer: z.string(), count: z.number() }),
       ),
-      /** Daily views across the window, zero-filled so gaps are visible. */
+      /**
+       * Daily views across the window, zero-filled so gaps are visible.
+       */
       timeline: z.array(z.object({ date: z.string(), views: z.number() })),
     })
     .optional(),

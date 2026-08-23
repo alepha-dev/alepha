@@ -51,7 +51,7 @@ export class RedisTopicProvider extends TopicProvider {
     handler: async () => {
       const subscribers = this.subscribers();
       if (subscribers.length) {
-        await Promise.all(subscribers.map((fn) => fn()));
+        await Promise.all(subscribers.map((it) => it.subscribe()));
         for (const subscriber of subscribers) {
           this.log.debug(`Subscribed to topic '${subscriber.name}'`);
         }

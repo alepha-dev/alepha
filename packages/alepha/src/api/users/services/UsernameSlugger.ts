@@ -74,7 +74,7 @@ export class UsernameSlugger {
    * @example
    * slug("ni.foures+testkv@gmail.com") // "ni-foures-testkv"
    * slug("john.doe@example.com")       // "john-doe"
-   * slug("é@example.com")              // "user-XXX" (padded)
+   * slug("é@example.com")              // "user" (fallback)
    */
   public slug(email: string | null | undefined): string {
     const raw = (email ?? "").trim();

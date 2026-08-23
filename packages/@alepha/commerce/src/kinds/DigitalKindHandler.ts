@@ -8,7 +8,9 @@ import { ProductKindHandler } from "../interfaces/ProductKindHandler.ts";
  * Config for a `digital` product.
  */
 export const digitalConfigSchema = z.object({
-  /** Where the buyer collects the goods. */
+  /**
+   * Where the buyer collects the goods.
+   */
   downloadUrl: z.text({ minLength: 1 }),
 });
 

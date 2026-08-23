@@ -49,7 +49,9 @@ const dispatcherWith = (probe: ConcurrencyProbe, maxConcurrency: number) => {
   return { alepha, dispatcher: alepha.inject(DirectJobDispatcher) };
 };
 
-/** Wait for every dispatched execution to have run. */
+/**
+ * Wait for every dispatched execution to have run.
+ */
 const drained = async (probe: ConcurrencyProbe, expected: number) => {
   for (let i = 0; i < 200 && probe.completed.length < expected; i++) {
     await sleep(10);

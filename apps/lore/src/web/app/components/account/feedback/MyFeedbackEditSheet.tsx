@@ -22,7 +22,9 @@ import FeedbackThread from "../../project/feedback/FeedbackThread.tsx";
 import QuestTagInput from "../../project/quest/QuestTagInput.tsx";
 
 export interface MyFeedbackEditSheetProps {
-  /** The feedback being edited; `undefined` keeps the sheet closed. */
+  /**
+   * The feedback being edited; `undefined` keeps the sheet closed.
+   */
   feedback: MyFeedbackResource | undefined;
   onClose: () => void;
   onSaved: () => void;

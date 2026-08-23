@@ -1,11 +1,4 @@
-import {
-  $context,
-  $inject,
-  createMiddleware,
-  type Middleware,
-  Primitive,
-  type PrimitiveArgs,
-} from "alepha";
+import { $context, createMiddleware, type Middleware } from "alepha";
 import type { DurationLike } from "alepha/datetime";
 
 import type { RetryBackoffOptions } from "../providers/RetryProvider.ts";
@@ -145,43 +138,4 @@ export interface RetryMiddlewareOptions {
    * An AbortSignal to allow for external cancellation of the retry loop.
    */
   signal?: AbortSignal;
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-export class RetryPrimitive<
-  T extends (...args: any[]) => any,
-> extends Primitive<RetryPrimitiveOptions<T>> {
-  protected readonly retryProvider = $inject(RetryProvider);
-  protected appAbortController?: AbortController;
-
-  constructor(args: PrimitiveArgs<RetryPrimitiveOptions<T>>) {
-    super(args);
-
-    this.alepha.events.on("stop", () => {
-      this.appAbortController?.abort();
-      // See the middleware above: an aborted controller must not survive into
-      // the next start, or every retry cancels instantly.
-      this.appAbortController = undefined;
-    });
-  }
-
-  async run(...args: Parameters<T>): Promise<ReturnType<T>> {
-    // Nov 25: Cloudflare does not like 'new AbortController' outside main handler, we can't pre-create it in the constructor.
-    this.appAbortController ??= new AbortController();
-
-    return this.retryProvider.retry(
-      {
-        ...this.options,
-        additionalSignal: this.appAbortController.signal,
-      },
-      ...args,
-    );
-  }
-}
-
-export interface RetryPrimitiveFn<
-  T extends (...args: any[]) => any,
-> extends RetryPrimitive<T> {
-  (...args: Parameters<T>): Promise<ReturnType<T>>;
 }

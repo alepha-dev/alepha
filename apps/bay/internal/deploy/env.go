@@ -37,17 +37,6 @@ import (
 // as a different variable — or as two.
 var envKeyPattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
-// BayOwnedKeys returns the env vars Bay manages, sorted.
-//
-// A copy, so a caller cannot reorder or extend the list Bay defends. Exported
-// because the control API reports it: a client that knows which keys will be
-// refused can say so before a deploy rather than after.
-func BayOwnedKeys() []string {
-	out := append([]string(nil), bayOwnedKeys...)
-	sort.Strings(out)
-	return out
-}
-
 // IsBayOwned reports whether Bay writes this key itself.
 func IsBayOwned(key string) bool {
 	for _, k := range bayOwnedKeys {

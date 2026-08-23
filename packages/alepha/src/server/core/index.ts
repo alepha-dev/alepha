@@ -74,8 +74,7 @@ declare module "alepha" {
       request: ServerRequest;
       error: Error;
     };
-    // last chance to modify the response -
-    // TODO: probably not really needed, we can also update the response in the onResponse hook...
+    // last chance to modify the response
     "server:onSend": {
       route: ServerRoute;
       request: ServerRequest;

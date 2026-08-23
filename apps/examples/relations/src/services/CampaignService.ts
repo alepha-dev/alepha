@@ -111,7 +111,9 @@ export class CampaignService {
     });
   }
 
-  /** Rename, and hand back the row with its owner already attached. */
+  /**
+   * Rename, and hand back the row with its owner already attached.
+   */
   async rename(campaignId: number, title: string) {
     return await this.db.campaigns.update({
       where: { id: { eq: campaignId } },

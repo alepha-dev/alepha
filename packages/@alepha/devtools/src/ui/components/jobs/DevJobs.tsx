@@ -349,7 +349,7 @@ export const DevJobs = () => {
                   padding: "0 14px 10px",
                   fontSize: 11,
                   color:
-                    pushResult === "Pushed"
+                    pushResult === "Triggered"
                       ? "var(--dt-get)"
                       : "var(--dt-error)",
                 }}

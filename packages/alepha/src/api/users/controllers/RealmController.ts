@@ -6,10 +6,10 @@ import { $etag } from "alepha/server/etag";
 
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import { realmConfigSchema } from "../schemas/realmConfigSchema.ts";
+import { UsernameSlugger } from "../services/UsernameSlugger.ts";
 
 /**
  * Controller for exposing realm configuration.
- * Uses $route instead of $action to keep endpoints hidden from API documentation.
  */
 export class RealmController {
   protected readonly url = "/realms";
@@ -17,10 +17,10 @@ export class RealmController {
   protected readonly realmProvider = $inject(RealmProvider);
   protected readonly serverAuthProvider = $inject(ServerAuthProvider);
   protected readonly captchaProvider = $inject(CaptchaProvider);
+  protected readonly usernameSlugger = $inject(UsernameSlugger);
 
   /**
    * Get realm configuration settings.
-   * This endpoint is not exposed in the API documentation.
    */
   public readonly getRealmConfig = $action({
     group: this.group,
@@ -74,6 +74,12 @@ export class RealmController {
     handler: async ({ query, body }) => {
       const realmName = query.realmName;
       const userRepository = this.realmProvider.userRepository(realmName);
+
+      // A blocklisted name is not available either; answering "available"
+      // only for the registration to refuse it was a contradiction.
+      if (await this.usernameSlugger.isBlocked(realmName, body.username)) {
+        return { available: false };
+      }
 
       // Case-insensitive AND realm-scoped, matching the
       // `(realm, LOWER(username))` unique index. `eq` reported

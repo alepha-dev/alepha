@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 
-import { $inject, $store, Alepha, z } from "alepha";
+import { $inject, $store, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
@@ -10,17 +10,14 @@ import { FileSystemProvider } from "alepha/system";
 import { devOptions } from "../atoms/devOptions.ts";
 import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
 import { ViteDevServerProvider } from "../providers/ViteDevServerProvider.ts";
-import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
 
 export class DevCommand {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
-  protected readonly utils = $inject(AlephaCliUtils);
   protected readonly pm = $inject(PackageManagerUtils);
   protected readonly scaffolder = $inject(ProjectScaffolder);
-  protected readonly alepha = $inject(Alepha);
   protected readonly viteDevServer = $inject(ViteDevServerProvider);
   protected readonly boot = $inject(AppEntryProvider);
   protected readonly options = $store(devOptions);

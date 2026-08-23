@@ -520,6 +520,7 @@ describe("alepha/api/users - CredentialService", () => {
 
       // Create a user in the no-reset realm
       const user = await credentialService.users("no-reset").create({
+        realm: "no-reset",
         email: "noreset@example.com",
         username: "noresetuser",
         roles: ["user"],
@@ -581,6 +582,7 @@ describe("alepha/api/users - CredentialService", () => {
 
       // Create a user in the strict-policy realm
       const user = await credentialService.users("strict-policy").create({
+        realm: "strict-policy",
         email: "strict@example.com",
         username: "strictuser",
         roles: ["user"],
@@ -643,6 +645,7 @@ describe("alepha/api/users - CredentialService", () => {
 
       // Create a user in the strict-accept realm
       const user = await credentialService.users("strict-accept").create({
+        realm: "strict-accept",
         email: "accept@example.com",
         username: "acceptuser",
         roles: ["user"],
@@ -721,6 +724,7 @@ describe("alepha/api/users - CredentialService", () => {
       });
 
       const user = await ctx.credentialService.users("captcha-realm").create({
+        realm: "captcha-realm",
         email: "captcha@example.com",
         username: "captchauser",
         roles: ["user"],

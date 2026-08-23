@@ -92,7 +92,9 @@ const sell = async (
   throw new Error(`invoice for order ${orderId} never issued`);
 };
 
-/** Poll until the settlement workflow has issued the order's invoice. */
+/**
+ * Poll until the settlement workflow has issued the order's invoice.
+ */
 const invoiceFor = async (
   ctx: Awaited<ReturnType<typeof setup>>,
   orderId: string,

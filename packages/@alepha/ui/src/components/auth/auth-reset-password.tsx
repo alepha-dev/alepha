@@ -17,7 +17,7 @@ import {
   InputOTPSlot,
 } from "@alepha/ui/components/ui/input-otp";
 import { Label } from "@alepha/ui/components/ui/label";
-import { AlephaError, z } from "alepha";
+import { AlephaError, SchemaValidationError, z } from "alepha";
 import type {
   PasswordResetIntentResponse,
   RealmConfig,
@@ -30,6 +30,8 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { AlertCircle, CheckCircle2, Info } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+
+import { safeRedirect } from "./safe-redirect.ts";
 
 export interface AuthResetPasswordProps {
   /**
@@ -57,7 +59,7 @@ interface State {
   code?: string;
 }
 
-export function AuthResetPassword(props: AuthResetPasswordProps) {
+export const AuthResetPassword = (props: AuthResetPasswordProps) => {
   const router = useRouter();
   const { tr } = useI18n();
   const userCtrl = useClient<UserController>();
@@ -65,7 +67,7 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [code, setCode] = useState("");
-  const redirect = router.query.redirect || "/";
+  const redirect = safeRedirect(router.query.redirect);
 
   const settings = props.realmConfig.settings;
   const allowed = settings?.resetPasswordAllowed !== false;
@@ -94,10 +96,9 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
   const [captchaToken, setCaptchaToken] = useState<string | undefined>();
   const captchaRef = useRef<TurnstileWidgetHandle | null>(null);
   /*
-   * `useForm` memoizes its handler at form-create time, so the handler closes
-   * over the *initial* `captchaToken` — `undefined` — and would post that
-   * forever. Mirror the live value into a ref the handler reads at submit
-   * time. Same reason, same fix as `auth-register.tsx`.
+   * The handler reads the token the widget issued last through a ref, so a
+   * submit never posts a token captured by an earlier render. Same shape as
+   * `auth-register.tsx`.
    */
   const captchaTokenRef = useRef<string | undefined>(undefined);
   useEffect(() => {
@@ -167,10 +168,16 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
     [state.intent, state.code],
   );
 
-  const { loading: emailSubmitting } = useFormState(emailForm, ["loading"]);
-  const { loading: passwordSubmitting } = useFormState(passwordForm, [
-    "loading",
-  ]);
+  const emailState = useFormState(emailForm, ["loading", "error"]);
+  const passwordState = useFormState(passwordForm, ["loading", "error"]);
+  const emailSubmitting = emailState.loading;
+  const passwordSubmitting = passwordState.loading;
+  // A handler that throws (mismatched passwords, a wrong code, a refused
+  // captcha) lands in the form's error state, not in `error`; reading only
+  // `loading` showed nothing at all after a failed submit.
+  const submitError = [passwordState.error, emailState.error].find(
+    (err) => err && !(err instanceof SchemaValidationError),
+  )?.message;
 
   const handleCodeSubmit = () => {
     if (code.length === 6) {
@@ -218,10 +225,10 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
           ) : null)}
         <Card className="w-full">
           <CardContent className="flex flex-col gap-4">
-            {error && (
+            {(error ?? submitError) && (
               <Alert variant="destructive">
                 <AlertCircle className="size-4" />
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>{error ?? submitError}</AlertDescription>
               </Alert>
             )}
             {!allowed ? (
@@ -419,4 +426,4 @@ export function AuthResetPassword(props: AuthResetPasswordProps) {
       </div>
     </div>
   );
-}
+};

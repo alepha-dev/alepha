@@ -72,7 +72,9 @@ interface ParseState {
   nodes: Map<string, GraphNode>;
   clusters: Map<string, GraphCluster>;
   edges: GraphEdge[];
-  /** Open `subgraph` ids, innermost last. */
+  /**
+   * Open `subgraph` ids, innermost last.
+   */
   stack: string[];
 }
 
@@ -290,9 +292,13 @@ interface LinkSpec {
 }
 
 interface StatementPart {
-  /** The node group left of `link`, or the whole statement for the first part. */
+  /**
+   * The node group left of `link`, or the whole statement for the first part.
+   */
   group: string;
-  /** The link that JOINS this group to the previous one. */
+  /**
+   * The link that JOINS this group to the previous one.
+   */
   link?: LinkSpec;
 }
 

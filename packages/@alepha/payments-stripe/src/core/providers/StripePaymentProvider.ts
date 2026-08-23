@@ -276,7 +276,9 @@ export class StripePaymentProvider implements PaymentProvider {
     return this.verifyAndMapWebhook(request, this.env.STRIPE_WEBHOOK_SECRET);
   }
 
-  /** Whether the connected-accounts webhook endpoint is configured. */
+  /**
+   * Whether the connected-accounts webhook endpoint is configured.
+   */
   public get hasConnectWebhookSecret(): boolean {
     return Boolean(this.env.STRIPE_CONNECT_WEBHOOK_SECRET);
   }
@@ -335,6 +337,10 @@ export class StripePaymentProvider implements PaymentProvider {
       // `payment_intent.succeeded` alone would never match it.
       "checkout.session.completed": "captured",
       "checkout.session.expired": "failed",
+      // Delayed-notification methods (SEPA debit, bank transfer) complete the
+      // session with `payment_status: "unpaid"` and settle later.
+      "checkout.session.async_payment_succeeded": "captured",
+      "checkout.session.async_payment_failed": "failed",
     };
 
     const status = statusMap[event.type] ?? event.type;
@@ -344,6 +350,14 @@ export class StripePaymentProvider implements PaymentProvider {
 
     if (object.object === "checkout.session") {
       const session = event.data.object as Stripe.Checkout.Session;
+      // `completed` means the buyer finished the form, not that the money
+      // arrived: an unpaid completion is left unmapped so the order is not
+      // marked paid (stock, invoice, mail) before the funds exist.
+      const sessionStatus =
+        event.type === "checkout.session.completed" &&
+        session.payment_status !== "paid"
+          ? event.type
+          : status;
       return {
         // The stored ref is the PI when it existed at creation, the session
         // id otherwise (lazy PI) — surface both and let the service match.
@@ -352,7 +366,7 @@ export class StripePaymentProvider implements PaymentProvider {
           typeof session.payment_intent === "string"
             ? session.payment_intent
             : undefined,
-        status,
+        status: sessionStatus,
         account,
         raw: event,
       };
@@ -421,9 +435,13 @@ export class StripePaymentProvider implements PaymentProvider {
      * question. Defaults to `7997` (membership sports/recreation clubs).
      */
     mcc?: string;
-    /** Public support website prefill (`configuration.merchant.support.url`). */
+    /**
+     * Public support website prefill (`configuration.merchant.support.url`).
+     */
     supportUrl?: string;
-    /** Public support email prefill (`configuration.merchant.support.email`). */
+    /**
+     * Public support email prefill (`configuration.merchant.support.email`).
+     */
     supportEmail?: string;
   }): Promise<{ id: string }> {
     // FR/EU platforms (PSD2, verified empirically 2026-06-11 on the Stripe
@@ -703,6 +721,16 @@ export class StripePaymentProvider implements PaymentProvider {
       ? { stripeAccount: options.stripeAccount }
       : undefined;
     try {
+      if (providerRef.startsWith("cs_")) {
+        // A lazily created PaymentIntent stores the session id itself, and
+        // `sessions.list({ payment_intent })` rejects that filter.
+        await this.stripe.checkout.sessions.expire(
+          providerRef,
+          undefined,
+          requestOptions,
+        );
+        return;
+      }
       const sessions = await this.stripe.checkout.sessions.list(
         { payment_intent: providerRef, limit: 1 },
         requestOptions,

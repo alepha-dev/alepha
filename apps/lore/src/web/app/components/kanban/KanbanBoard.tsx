@@ -22,10 +22,7 @@ import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
 import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
 import { currentAssignedQuestsAtom } from "../../atoms/currentAssignedQuestsAtom.ts";
-import {
-  kanbanProjectAtom,
-  kanbanReloadAtom,
-} from "../../atoms/kanbanProjectAtom.ts";
+import { kanbanReloadAtom } from "../../atoms/kanbanReloadAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import QuestView from "../project/quest/QuestView.tsx";
 import KanbanColumn, {
@@ -74,7 +71,6 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   const [selectedQuest, setSelectedQuest] = useState<QuestResource | null>(
     null,
   );
-  const [, setKanbanProject] = useStore(kanbanProjectAtom);
   const [reloadKey] = useStore(kanbanReloadAtom);
   const questApi = useClient<QuestController>();
   const kanbanApi = useClient<KanbanController>();
@@ -89,11 +85,6 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       .then(setKnownTags)
       .catch(() => null);
   }, [project?.id]);
-
-  useEffect(() => {
-    setKanbanProject({ project });
-    return () => setKanbanProject(undefined as any);
-  }, [project]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {

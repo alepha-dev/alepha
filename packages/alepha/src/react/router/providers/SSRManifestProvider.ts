@@ -273,42 +273,6 @@ export class SSRManifestProvider {
 
     return null;
   }
-
-  /**
-   * Build preload link tags for entry assets.
-   *
-   * @returns Array of link objects ready to be rendered
-   */
-  public getEntryPreloadLinks(): Array<{
-    rel: string;
-    href: string;
-    as?: string;
-    crossorigin?: string;
-  }> {
-    const assets = this.getEntryAssets();
-    if (!assets) {
-      return [];
-    }
-
-    const links: Array<{
-      rel: string;
-      href: string;
-      as?: string;
-      crossorigin?: string;
-    }> = [];
-
-    // Add CSS preloads first (critical for rendering)
-    for (const css of assets.css) {
-      links.push({ rel: "stylesheet", href: css, crossorigin: "" });
-    }
-
-    // Add entry JS modulepreload
-    if (assets.js) {
-      links.push({ rel: "modulepreload", href: assets.js });
-    }
-
-    return links;
-  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

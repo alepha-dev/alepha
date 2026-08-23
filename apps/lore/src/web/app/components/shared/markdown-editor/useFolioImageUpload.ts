@@ -1,4 +1,5 @@
 import { resizeImage } from "@alepha/ui/lib/resize-image";
+import { AlephaError } from "alepha";
 import { useClient } from "alepha/react";
 import { useCallback } from "react";
 
@@ -43,7 +44,7 @@ export const useFolioImageUpload = (
   const handler = useCallback(
     async (original: File) => {
       if (projectId === undefined || folioId === undefined) {
-        throw new Error("No folio in scope for image upload");
+        throw new AlephaError("No folio in scope for image upload");
       }
       // MDXEditor's paste handler calls this with `DataTransferItem
       // .getAsFile()`, which is typed `File | null`. It only ever reaches
@@ -51,7 +52,7 @@ export const useFolioImageUpload = (
       // not expected — but an unguarded one would surface as a confusing
       // `resizeImage` crash rather than a clear refusal.
       if (!original) {
-        throw new Error("Nothing to upload");
+        throw new AlephaError("Nothing to upload");
       }
       // Downscaled before the bytes leave the machine, exactly as the
       // Attachments panel does it. This path carries the toolbar's image
@@ -75,7 +76,7 @@ export const useFolioImageUpload = (
         credentials: "include",
       });
       if (!uploaded.ok) {
-        throw new Error(`upload failed: ${uploaded.status}`);
+        throw new AlephaError(`upload failed: ${uploaded.status}`);
       }
       const uploadedJson = (await uploaded.json()) as { id: string };
       const blob = await blobApi.registerBlob({

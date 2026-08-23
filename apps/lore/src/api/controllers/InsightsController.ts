@@ -20,14 +20,18 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export type { InsightsResource };
 
-/** Lookback windows the Insights page offers, in whole UTC days. */
+/**
+ * Lookback windows the Insights page offers, in whole UTC days.
+ */
 const RANGE_DAYS: Record<string, number> = {
   "1d": 1,
   "7d": 7,
   "30d": 30,
 };
 
-/** How many rows the top-countries / top-paths leaderboards return. */
+/**
+ * How many rows the top-countries / top-paths leaderboards return.
+ */
 const TOP_N = 10;
 
 /**

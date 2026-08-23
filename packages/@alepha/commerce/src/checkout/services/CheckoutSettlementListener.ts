@@ -61,8 +61,8 @@ export class CheckoutSettlementListener {
   /**
    * A payment that failed or was abandoned must give its stock back at once.
    *
-   * The sweep would get there eventually, but "eventually" here means up to five
-   * minutes during which the last ring is invisible to a buyer who would have
+   * The sweep would get there eventually, but "eventually" here means up to
+   * fifteen minutes during which the last ring is invisible to a buyer who would have
    * paid for it. Releasing on the failure event costs nothing and closes that
    * window.
    */

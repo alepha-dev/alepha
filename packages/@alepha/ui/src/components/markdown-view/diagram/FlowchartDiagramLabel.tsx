@@ -6,7 +6,9 @@ import { round } from "./FlowchartDiagram.tsx";
 import { DIAGRAM_LINE_HEIGHT } from "./textMetrics.ts";
 
 export interface FlowchartDiagramLabelProps {
-  /** Already wrapped and capped by `measureLabel` - draw exactly these. */
+  /**
+   * Already wrapped and capped by `measureLabel` - draw exactly these.
+   */
   lines: string[];
   centerX: number;
   centerY: number;

@@ -200,9 +200,7 @@ organizationId: db.organization({ strict: false }),
 
 Leave it out unless you mean it: an entity that says nothing follows the application, which is where the decision belongs.
 
-::: warning `strict` and `nullable` are different questions
-`nullable` is a schema fact - it is written into your migration. `mode` is a runtime policy and never changes generated SQL. An entity that fails closed _because the app is in `multi` mode_ still has a nullable column; only an explicit `strict: true` implies `NOT NULL`, because such a table has no "global row" concept.
-:::
+> **Warning: `strict` and `nullable` are different questions.** `nullable` is a schema fact - it is written into your migration. `mode` is a runtime policy and never changes generated SQL. An entity that fails closed _because the app is in `multi` mode_ still has a nullable column; only an explicit `strict: true` implies `NOT NULL`, because such a table has no "global row" concept.
 
 ## Full Example
 

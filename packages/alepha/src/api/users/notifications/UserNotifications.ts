@@ -161,36 +161,6 @@ export class UserNotifications {
   });
 
   // Link-based notifications (alternative)
-  public readonly passwordResetLink = $notification({
-    category: "security",
-    description: "Email sent to users with a link to reset their password.",
-    critical: true,
-    sensitive: true,
-    email: {
-      subject: "Reset your password",
-      body: (it) => `
-			<h1>Reset Your Password</h1>
-			<p>Hi ${it.email},</p>
-			<p>We received a request to reset your password. Click the link below to create a new password:</p>
-			<p style="margin: 30px 0;">
-				<a href="${it.resetUrl}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
-					Reset Password
-				</a>
-			</p>
-			<p>Or copy and paste this link into your browser:</p>
-			<p style="word-break: break-all; color: #666;">${it.resetUrl}</p>
-			<p>This link will expire in ${it.expiresInMinutes} minutes.</p>
-			<p>If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.</p>
-			<p>Best regards,<br>The Team</p>
-		`,
-    },
-    schema: z.object({
-      email: z.string().meta({ format: "email" }),
-      resetUrl: z.string(),
-      expiresInMinutes: z.number(),
-    }),
-  });
-
   public readonly accountLockout = $notification({
     category: "security",
     description:

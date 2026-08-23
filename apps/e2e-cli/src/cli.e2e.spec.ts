@@ -35,8 +35,24 @@ import type { ChildProcess } from "node:child_process";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { type AddressInfo, createServer } from "node:net";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+/**
+ * A port nothing listens on right now. Fixed ports (15000-15002) sat outside
+ * every documented band and made two worktrees running this suite at once
+ * assert against each other's servers.
+ */
+const freePort = (): Promise<number> =>
+  new Promise((resolvePort, reject) => {
+    const server = createServer();
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const { port } = server.address() as AddressInfo;
+      server.close(() => resolvePort(port));
+    });
+  });
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -458,8 +474,9 @@ describe("Alepha CLI E2E", () => {
 
   describe("dev server", () => {
     it("serves the app", async () => {
+      const port = await freePort();
       const devServer = startProcess(`"${CLI}" dev`, PROJECT_DIR, {
-        SERVER_PORT: "15000",
+        SERVER_PORT: String(port),
       });
 
       try {
@@ -470,7 +487,7 @@ describe("Alepha CLI E2E", () => {
         await new Promise((r) => setTimeout(r, 1000));
 
         const response = await fetchWithRetry(
-          "http://localhost:15000",
+          `http://localhost:${port}`,
           20,
           500,
         );
@@ -484,8 +501,9 @@ describe("Alepha CLI E2E", () => {
       const mainServerPath = join(PROJECT_DIR, "src/main.server.ts");
       const originalContent = await readFile(mainServerPath, "utf-8");
 
+      const port = await freePort();
       const devServer = startProcess(`"${CLI}" dev`, PROJECT_DIR, {
-        SERVER_PORT: "15001",
+        SERVER_PORT: String(port),
       });
 
       try {
@@ -495,7 +513,9 @@ describe("Alepha CLI E2E", () => {
         );
         await new Promise((r) => setTimeout(r, 1000));
 
-        const initialResponse = await fetchWithRetry("http://localhost:15001");
+        const initialResponse = await fetchWithRetry(
+          `http://localhost:${port}`,
+        );
         expect(initialResponse.status).toBe(200);
 
         await writeFile(
@@ -508,13 +528,16 @@ describe("Alepha CLI E2E", () => {
         // Specifically 500, not merely ">= 400". It used to fall through to
         // Vite and come back 404, which reads as "your route is wrong" when the
         // truth is "your app does not compile".
-        const errorResponse = await fetch("http://localhost:15001/api/hello", {
-          headers: { accept: "application/json" },
-        });
+        const errorResponse = await fetch(
+          `http://localhost:${port}/api/hello`,
+          {
+            headers: { accept: "application/json" },
+          },
+        );
         expect(errorResponse.status).toBe(500);
 
         // A browser still gets a 200 shell so Vite's error overlay can attach.
-        const htmlResponse = await fetch("http://localhost:15001/", {
+        const htmlResponse = await fetch(`http://localhost:${port}/`, {
           headers: { accept: "text/html" },
         });
         expect(htmlResponse.status).toBe(200);
@@ -523,7 +546,7 @@ describe("Alepha CLI E2E", () => {
         await new Promise((r) => setTimeout(r, isWindows ? 8000 : 3000));
 
         const recoveryResponse = await fetchWithRetry(
-          "http://localhost:15001",
+          `http://localhost:${port}`,
           20,
           500,
         );
@@ -584,15 +607,16 @@ describe("Alepha CLI E2E", () => {
       // A build that compiles but cannot serve a request is not a build. Needs
       // APP_SECRET: the app refuses to start in production without one, which
       // is exactly the behaviour `.env.example` documents.
+      const port = await freePort();
       const server = startProcess("node dist/index.js", PROJECT_DIR, {
-        SERVER_PORT: "15002",
+        SERVER_PORT: String(port),
         NODE_ENV: "production",
         APP_SECRET: "e2e-only-not-a-real-secret-0123456789abcdef",
       });
 
       try {
         const response = await fetchWithRetry(
-          "http://localhost:15002/api/hello",
+          `http://localhost:${port}/api/hello`,
           30,
           500,
         );

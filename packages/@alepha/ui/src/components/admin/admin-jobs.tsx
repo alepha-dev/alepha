@@ -2,7 +2,7 @@ import * as React from "react";
 
 void React;
 
-import { JobExecutionsPanel } from "@alepha/ui/components/admin/admin-jobs-executions-panel";
+import { AdminJobsExecutionsPanel } from "@alepha/ui/components/admin/admin-jobs-executions-panel";
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
@@ -84,7 +84,7 @@ function applyJobFilters(
   return out;
 }
 
-export function AdminJobs() {
+export const AdminJobs = () => {
   const client = useClient<AdminJobController>();
   const { l, tr } = useI18n();
   const toast = useToast();
@@ -283,7 +283,7 @@ export function AdminJobs() {
                 </SheetDescription>
               </SheetHeader>
               <div className="flex min-h-0 flex-1 flex-col p-4">
-                <JobExecutionsPanel jobName={openJob.name} />
+                <AdminJobsExecutionsPanel jobName={openJob.name} />
               </div>
             </>
           )}
@@ -291,6 +291,6 @@ export function AdminJobs() {
       </Sheet>
     </AdminPage>
   );
-}
+};
 
 export default AdminJobs;

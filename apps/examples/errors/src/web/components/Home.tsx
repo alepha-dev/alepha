@@ -24,7 +24,7 @@ const Home = () => {
     {
       go: () => router.push("asyncError"),
       label: "Async Error",
-      desc: "Promise rejection in useEffect",
+      desc: "Rejected promise read with React.use()",
     },
     {
       go: () => router.push("nonErrorThrow"),

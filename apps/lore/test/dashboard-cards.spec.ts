@@ -64,7 +64,9 @@ const setup = async (): Promise<TestContext> => {
 
 const token = (id: string): UserAccountToken => ({ id, roles: ["user"] });
 
-/** A user who is a member of one project. */
+/**
+ * A user who is a member of one project.
+ */
 const memberOf = async (
   ctx: TestContext,
 ): Promise<{ user: UserAccountToken; project: Project }> => {

@@ -30,8 +30,7 @@ export interface FolioTreeProps {
    * A callback rather than hoisting `useFolioTreeModel` into the workspace:
    * the model owns local state the tree needs (`renamingId` — a freshly
    * created directory opens straight into inline rename), so a second
-   * instance would create the row and then fail to focus it. Mirrors how
-   * `FolioEditorMenubar` hands its realm dispatchers up.
+   * instance would create the row and then fail to focus it.
    */
   onActions?: (actions: FolioTreeActions) => void;
 }

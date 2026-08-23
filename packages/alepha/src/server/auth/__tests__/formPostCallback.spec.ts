@@ -28,7 +28,9 @@ const setup = async () => {
   return alepha.inject(ProviderProbe);
 };
 
-/** Minimal IncomingMessage stand-in: a Readable carrying method + headers. */
+/**
+ * Minimal IncomingMessage stand-in: a Readable carrying method + headers.
+ */
 const nodeRequest = (body: string, headers: Record<string, string> = {}) => {
   const stream = Readable.from([Buffer.from(body)]) as any;
   stream.method = "POST";

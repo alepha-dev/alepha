@@ -18,11 +18,17 @@ export type ToastIntent = "primary" | "success" | "info" | "warning" | "danger";
  * here as consumers genuinely need them.
  */
 export interface ToastOptions {
-  /** Action button shown next to the toast. */
+  /**
+   * Action button shown next to the toast.
+   */
   action?: { label: string; onClick: () => void };
-  /** Auto-dismiss delay in ms. */
+  /**
+   * Auto-dismiss delay in ms.
+   */
   duration?: number;
-  /** Secondary description line under the main message. */
+  /**
+   * Secondary description line under the main message.
+   */
   description?: string;
 }
 

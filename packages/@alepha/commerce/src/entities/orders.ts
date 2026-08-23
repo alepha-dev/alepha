@@ -46,7 +46,9 @@ export const orders = $entity({
     updatedAt: db.updatedAt(),
     organizationId: db.organization(),
 
-    /** Buyer. Optional — a walk-in sale is anonymous. */
+    /**
+     * Buyer. Optional — a walk-in sale is anonymous.
+     */
     userId: z.uuid().optional(),
 
     status: orderStatusEnum,
@@ -62,7 +64,9 @@ export const orders = $entity({
      */
     total: z.integer().min(0),
 
-    /** Delivery charged, already included in {@link total}. */
+    /**
+     * Delivery charged, already included in {@link total}.
+     */
     shippingTotal: db.default(z.integer().min(0), 0),
 
     /**
@@ -81,18 +85,26 @@ export const orders = $entity({
      */
     paymentIntentId: z.text().optional(),
 
-    /** Indexable shipping choice. Carrier detail lives in the address blob. */
+    /**
+     * Indexable shipping choice. Carrier detail lives in the address blob.
+     */
     shippingMethod: z.text({ maxLength: 64 }).optional(),
 
-    /** Carrier's consignment number, once handed over. */
+    /**
+     * Carrier's consignment number, once handed over.
+     */
     trackingNumber: z.text({ maxLength: 64 }).optional(),
-    /** Where the buyer follows the parcel. */
+    /**
+     * Where the buyer follows the parcel.
+     */
     trackingUrl: z.text({ maxLength: 500 }).optional(),
 
     shippedAt: z.text().optional(),
     deliveredAt: z.text().optional(),
 
-    /** Address shape varies by region — kept opaque on purpose. */
+    /**
+     * Address shape varies by region — kept opaque on purpose.
+     */
     shippingAddress: z.json().optional(),
 
     notes: z.text({ maxLength: 2000 }).optional(),

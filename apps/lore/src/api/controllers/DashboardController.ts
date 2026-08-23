@@ -175,7 +175,9 @@ export class DashboardController {
     },
   });
 
-  /** Restore the default card set, keeping the seeding marker. */
+  /**
+   * Restore the default card set, keeping the seeding marker.
+   */
   resetLayout = $action({
     use: [$secure()],
     method: "POST",

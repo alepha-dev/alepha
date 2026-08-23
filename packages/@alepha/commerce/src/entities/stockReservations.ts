@@ -2,7 +2,9 @@ import type { Infer } from "alepha";
 import { z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
-/** What became of a hold. */
+/**
+ * What became of a hold.
+ */
 export const reservationStatusEnum = z.enum(["held", "consumed", "released"]);
 
 /**
@@ -33,7 +35,9 @@ export const stockReservations = $entity({
     productId: z.uuid(),
     quantity: z.integer().min(1),
 
-    /** The order this hold was taken for. */
+    /**
+     * The order this hold was taken for.
+     */
     orderId: z.uuid(),
 
     status: db.default(reservationStatusEnum, "held"),

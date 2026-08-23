@@ -272,7 +272,7 @@ export class CloudflareEmailProvider implements EmailProvider {
       // Mirror the binding path's 429 shape so the caller's retry logic
       // does not have to care which transport was used.
       throw Object.assign(
-        new Error(detail),
+        new AlephaError(detail),
         response.status === 429 ? { status: 429 } : {},
       );
     }

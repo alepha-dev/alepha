@@ -4,7 +4,7 @@ Proof of concept for `$relations` — declared relations with a fully inferred
 `include`, built alongside Drizzle v1.
 
 ```bash
-yarn vitest run apps/examples/relations    # 58 tests, 2 files
+yarn vitest run apps/examples/relations    # 9 spec files
 cd apps/examples/relations && tsc --noEmit # proves the type assertions
 ```
 
@@ -142,22 +142,17 @@ initializer`. Same for any mutual reference. The `() => any` in `db.ref` is
 load-bearing: that `any` is what breaks the cycle. Drizzle's `defineRelations`
 and Prisma's codegen both land here for the same reason.
 
-**Resolution is batched, not joined.** One query for the parents, then one per
-included relation, regardless of row count — the spec asserts exactly 3 queries
-for a two-level include, and 3 for a many-to-many (parent, junction, target). A
-SQL join multiplies parent rows by their children, so the parent has to be
-de-duplicated back out, and on a `limit`ed query the multiplication truncates
-the wrong thing. Two tests pin the cases a join gets wrong: an empty relation
-stays `[]` rather than dropping the parent, and `limit: 1` returns one parent
-with both its children.
+**Resolution runs on Drizzle's relational query builder.** Since 2026-07-29
+(`RqbExecutor` in `packages/alepha/src/orm/core/services`) an `include` compiles
+to one query: lateral joins on Postgres, correlated subqueries on SQLite and D1.
+The shape the specs pin is unchanged: an empty relation stays `[]` rather than
+dropping the parent, and `limit: 1` returns one parent with both its children.
 
-It also behaves identically on every dialect, including D1, where a lateral
-join isn't available. That matters here — Lore runs on D1.
+It behaves identically on every dialect, including D1, where a lateral join
+isn't available. That matters here — Lore runs on D1.
 
-**Per-parent `limit` costs an in-memory slice.** One query cannot cap per group
-without window functions, so the rows are fetched and sliced after grouping.
-With a single parent the limit is pushed into SQL instead. This is the one
-place where the batched strategy is measurably worse than a lateral join.
+**Per-parent `limit` is pushed into the subquery.** RQB caps each group in SQL,
+so there is no in-memory slice to pay for.
 
 **Join columns are carried, then dropped.** `select` that omits the column a
 relation is stitched on would otherwise silently resolve everything to
@@ -181,19 +176,11 @@ parent back.
 
 ## Known limitations
 
-- **Not on Drizzle's RQB v2 — decided, not deferred.** RQB exists to compile a
-  `with` tree into one query that returns the nested shape. Several small
-  indexed queries were preferred instead: predictable, no cartesian blow-up,
-  independently cacheable, and legible in the logs. Since that is the opposite
-  of what RQB is for, adopting it would mean paying for the runtime-tables to
-  static-types bridge in order to get the behaviour being avoided. The
-  declaration still mirrors `defineRelations`, so the choice stays reversible.
-
-  What the batched strategy costs is round trips, and that is mitigated rather
-  than ignored: sibling relations are issued concurrently, so a three-relation
-  include costs one round trip's latency, not three. Depth stays sequential
-  because it must. Inside a transaction it falls back to sequential, since a
-  transaction pins one connection and most drivers cannot multiplex on it.
+- **On Drizzle's RQB v2 since 2026-07-29.** The first version issued several
+  small indexed queries instead (one per included relation); that was replaced
+  by the relational query builder once the runtime-tables to static-types
+  bridge existed. The declaration mirrors `defineRelations`, so the earlier
+  batched strategy stays a possible fallback.
 
 - **To-one foreign keys are optional in `CreateData`** whether or not you
   actually nest that relation — the type cannot see which keys the value will

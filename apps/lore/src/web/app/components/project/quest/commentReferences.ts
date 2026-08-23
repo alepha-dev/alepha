@@ -28,9 +28,13 @@ export const expandCommentReferences = (
 };
 
 export interface CommentReferenceOptions {
-  /** The project's URL identity, for the mention link. */
+  /**
+   * The project's URL identity, for the mention link.
+   */
   projectSlug: string;
-  /** Project members, as the mention list to match `@name` against. */
+  /**
+   * Project members, as the mention list to match `@name` against.
+   */
   members: Array<{ name: string }>;
 }
 

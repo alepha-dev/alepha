@@ -68,9 +68,10 @@ export const mcpStreamableHttpOptions = $atom({
   serverOnly: true,
 });
 
-// Backward-compat alias for the legacy atom name. Prefer
-// `mcpStreamableHttpOptions` going forward; this re-export keeps existing
-// consumer imports compiling and will be removed once they migrate.
+/**
+ * Alias kept for the atom's former name. Prefer `mcpStreamableHttpOptions`;
+ * this export keeps existing imports compiling and goes once they migrate.
+ */
 export const mcpSseOptions = mcpStreamableHttpOptions;
 
 // ---------------------------------------------------------------------------------------------------------------------

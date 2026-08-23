@@ -9,13 +9,17 @@ import type { DashboardMetricDescriptor } from "@/api/services/DashboardMetricCa
 import type { I18n } from "../../services/I18n.ts";
 import { ProjectIcon } from "../shared/ProjectIcon.tsx";
 
-/** One app the reader can point a card at. */
+/**
+ * One app the reader can point a card at.
+ */
 export interface DashboardScopeApp {
   id: string;
   name: string;
   projectId: number;
   projectTitle: string;
-  /** Whether this app reports page views. Visitors cards need it. */
+  /**
+   * Whether this app reports page views. Visitors cards need it.
+   */
   beacon: boolean;
 }
 

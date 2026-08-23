@@ -704,7 +704,9 @@ export class DocsCommand {
     }
   }
 
-  /** Docs-site page for a package documented by `DOC.md` rather than `@module`. */
+  /**
+   * Docs-site page for a package documented by `DOC.md` rather than `@module`.
+   */
   generatePackagePage(pkgJson: any, packageName: string, doc: string): string {
     const isCreatePackage = pkgJson.name.startsWith("create-");
     let md = `# ${isCreatePackage ? pkgJson.name : this.formatPackageName(packageName)}\n\n`;

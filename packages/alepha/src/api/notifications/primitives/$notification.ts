@@ -153,7 +153,9 @@ $notification[KIND] = NotificationPrimitive;
 export interface NotificationPushOptions<T extends ZObject> {
   variables: Infer<T>;
   contact: string;
-  /** Recipient language (e.g. "fr"); defaults to the current request's. */
+  /**
+   * Recipient language (e.g. "fr"); defaults to the current request's.
+   */
   lang?: string;
   /**
    * Owning tenant for this notification. Defaults to the tenant resolved for

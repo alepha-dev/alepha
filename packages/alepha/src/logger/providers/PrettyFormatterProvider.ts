@@ -11,33 +11,9 @@ export class PrettyFormatterProvider extends LogFormatterProvider {
   public format(entry: LogEntry): string {
     const { data, timestamp } = entry;
 
+    const { details, isError } = this.formatDetails(data);
+
     let output = "";
-    let details = "";
-
-    const isError = data instanceof Error;
-    if (isError) {
-      details = this.formatError(data);
-    } else if (data) {
-      let error = "";
-      let jsonData = data;
-      if ("error" in data && data.error instanceof Error) {
-        error = this.formatError(data.error);
-        const { error: _, ...rest } = data;
-        jsonData = rest;
-      }
-
-      if (Object.keys(jsonData).length > 0) {
-        try {
-          details = JSON.stringify(jsonData);
-        } catch {
-          details = "[Unserializable Object]";
-        }
-      }
-
-      if (error) {
-        details += `\n${error}`;
-      }
-    }
 
     output += this.color.set(
       "GREY_DARK",
@@ -84,6 +60,45 @@ export class PrettyFormatterProvider extends LogFormatterProvider {
     }
 
     return output;
+  }
+
+  /**
+   * Renders `entry.data` for display: an Error as its stack (with causes), an
+   * object as JSON with an `error` member rendered after it. Shared with
+   * {@link CliFormatterProvider}.
+   */
+  protected formatDetails(data: LogEntry["data"]): {
+    details: string;
+    isError: boolean;
+  } {
+    if (data instanceof Error) {
+      return { details: this.formatError(data), isError: true };
+    }
+
+    let details = "";
+    if (data) {
+      let error = "";
+      let jsonData = data;
+      if ("error" in data && data.error instanceof Error) {
+        error = this.formatError(data.error);
+        const { error: _, ...rest } = data;
+        jsonData = rest;
+      }
+
+      if (Object.keys(jsonData).length > 0) {
+        try {
+          details = JSON.stringify(jsonData);
+        } catch {
+          details = "[Unserializable Object]";
+        }
+      }
+
+      if (error) {
+        details += `\n${error}`;
+      }
+    }
+
+    return { details, isError: false };
   }
 
   public formatTimestamp(timestamp: number): string {

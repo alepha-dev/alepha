@@ -160,11 +160,17 @@ export interface RelationsPrimitive<
  * How a many-to-many hop crosses its junction table.
  */
 export interface RelationThrough {
-  /** The junction entity's key in the schema. */
+  /**
+   * The junction entity's key in the schema.
+   */
   entity: string;
-  /** Junction column matching the owner's `from`. */
+  /**
+   * Junction column matching the owner's `from`.
+   */
   fromColumn: string;
-  /** Junction column matching the target's `to`. */
+  /**
+   * Junction column matching the target's `to`.
+   */
   toColumn: string;
 }
 
@@ -189,9 +195,13 @@ export interface Relation<
 > extends ResolvedRelation {
   kind: TKind;
   target: TTarget;
-  /** Column on the owning entity. */
+  /**
+   * Column on the owning entity.
+   */
   from: TFrom;
-  /** Column on the target entity — the one a nested write fills in. */
+  /**
+   * Column on the target entity — the one a nested write fills in.
+   */
   to: TTo;
 }
 
@@ -205,11 +215,15 @@ export type RelationMapFor<ZType extends EntitySchema> = {
   >;
 };
 
-/** The row type of an entity in the schema. */
+/**
+ * The row type of an entity in the schema.
+ */
 export type RowOf<ZType extends EntitySchema, K extends keyof ZType> =
   ZType[K] extends EntityPrimitive<infer T extends ZObject> ? Infer<T> : never;
 
-/** The schema (not the row type) of an entity in the schema map. */
+/**
+ * The schema (not the row type) of an entity in the schema map.
+ */
 export type SchemaOf<ZType extends EntitySchema, K extends keyof ZType> =
   ZType[K] extends EntityPrimitive<infer T extends ZObject> ? T : never;
 
@@ -238,7 +252,9 @@ export interface ColumnRef<
   entity: TEntity;
   column: TColumn;
   through?: { entity: string; column: string };
-  /** Phantom — carries the column's value type for inference only. */
+  /**
+   * Phantom — carries the column's value type for inference only.
+   */
   __value?: TValue;
   /**
    * Route this side of a many-to-many through a junction column.
@@ -266,7 +282,9 @@ export interface HoppedColumnRef<
   readonly __hopped: true;
 }
 
-/** A column ref that can additionally hop through a junction table. */
+/**
+ * A column ref that can additionally hop through a junction table.
+ */
 export type HoppableColumnRef<
   TEntity extends string,
   TColumn extends string,
@@ -302,7 +320,9 @@ export interface RelationFactory<
   }): Relation<TKind, K, TFrom, TTo>;
 }
 
-/** `r.<entity>.<column>` refs for every entity in the schema. */
+/**
+ * `r.<entity>.<column>` refs for every entity in the schema.
+ */
 export type ColumnRefs<ZType extends EntitySchema> = {
   [K in keyof ZType & string]: {
     [C in keyof RowOf<ZType, K> & string]-?: HoppableColumnRef<

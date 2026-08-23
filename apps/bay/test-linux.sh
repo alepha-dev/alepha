@@ -4,8 +4,8 @@
 #
 # Why this exists: `go test ./...` on macOS is GREEN while running a fraction of
 # the suite. `internal/runner/systemd_test.go` opens with `//go:build linux`, so
-# the Go toolchain excludes the file outright — 5 of the 12 tests in that package
-# run natively, the other 7 do not exist, and nothing says so. `ok
+# the Go toolchain excludes the file outright — the Linux-only tests in that
+# package do not exist natively, and nothing says so. `ok
 # internal/runner` is printed either way. Everything that unit tests
 # `Systemd.render()` — the sandbox directives, the memory and CPU ceilings, the
 # stop timeout — is in the half that stays silent.

@@ -3,9 +3,13 @@ import { cn } from "@alepha/ui/lib/utils";
 import { User } from "lucide-react";
 
 export interface UserAvatarProps {
-  /** User avatar file id (`user.picture`). Absent → a `User` placeholder. */
+  /**
+   * User avatar file id (`user.picture`). Absent → a `User` placeholder.
+   */
   fileId?: string | null;
-  /** Container classes — size/shape overrides (defaults to `size-8`). */
+  /**
+   * Container classes — size/shape overrides (defaults to `size-8`).
+   */
   className?: string;
   alt?: string;
 }

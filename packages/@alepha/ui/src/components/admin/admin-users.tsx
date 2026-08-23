@@ -43,9 +43,8 @@ export interface AdminUsersProps {
 }
 
 // Filter schema. Lives at module scope so its identity stays stable
-// across renders — AlephaTable's internal `useForm` only captures it
-// once and a fresh reference per render would harmlessly re-anchor the
-// form initialization but is wasteful.
+// across renders: a fresh reference per render would make AlephaTable's
+// internal `useForm` re-anchor the filters on every render.
 const filtersSchema = z.object({
   search: z.string().optional(),
   // "" = All status, "verified" = Active + emailVerified, "active" =
@@ -88,8 +87,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
   const dialog = useDialog();
 
   // Role metadata is a read-only fetch via useQuery: runs on mount, re-runs
-  // when realm changes, aborts on unmount via the passed signal, and exposes
-  // refetch() — called after a role toggle so the picker reflects new state.
+  // when realm changes, aborts on unmount via the passed signal.
   // The picker simply degrades to read-only text if the metadata fetch fails;
   // not a blocking error (swallowed in onError).
   const rolesQuery = useQuery(
@@ -132,18 +130,14 @@ export const AdminUsers = (props: AdminUsersProps) => {
 
   const isSelf = (user: UserEntity) => currentUser?.id === user.id;
 
-  const toggleRole = useAction<[UserEntity, string, boolean]>(
+  const setRoles = useAction<[UserEntity, string[]]>(
     {
-      handler: async (user, role, checked) => {
-        const next = checked
-          ? Array.from(new Set([...(user.roles ?? []), role]))
-          : (user.roles ?? []).filter((r) => r !== role);
+      handler: async (user, roles) => {
         await client.updateUser({
           params: { id: user.id },
           query: { userRealmName: props.userRealmName },
-          body: { roles: next },
+          body: { roles },
         });
-        await rolesQuery.refetch();
       },
     },
     [client, props.userRealmName],
@@ -263,7 +257,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
         const enabled = items.filter((u) => u.enabled && !isSelf(u));
         if (enabled.length === 0) {
           toast.error(
-            tr("admin.users.noneSelected", {
+            tr("admin.users.noneActive", {
               default: "No active users in selection",
             }),
           );
@@ -425,7 +419,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
               <AdminUsersRolesPicker
                 user={u}
                 availableRoles={availableRoles}
-                onToggle={(role, checked) => toggleRole.run(u, role, checked)}
+                onToggle={(roles) => setRoles.run(u, roles)}
                 rolesLabel={String(
                   tr("admin.users.rolesLabel", { default: "Roles" }),
                 )}

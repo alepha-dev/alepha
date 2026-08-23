@@ -153,7 +153,8 @@ export class CloudflareKVProvider extends CacheProvider {
     value: Uint8Array,
     ttl?: number,
   ): Promise<Uint8Array> {
-    if (!this.alepha.isReady()) {
+    // Same gate as the other cache backends: started, not ready.
+    if (!this.alepha.isStarted()) {
       return new Uint8Array(value);
     }
 

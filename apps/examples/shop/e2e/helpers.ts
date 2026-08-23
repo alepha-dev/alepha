@@ -72,7 +72,9 @@ export const buy = async (
   return page.url();
 };
 
-/** The country picker is a combobox, so it needs opening before selecting. */
+/**
+ * The country picker is a combobox, so it needs opening before selecting.
+ */
 export const selectCountry = async (page: Page, code: string) => {
   const labels: Record<string, string> = {
     BE: "Belgique",
@@ -140,7 +142,9 @@ export const signInAsAdmin = async (page: Page) => {
 
 interface CredentialsForm {
   path: string;
-  /** The `name` attribute of the field that takes the address. */
+  /**
+   * The `name` attribute of the field that takes the address.
+   */
   account: string;
   submit: RegExp;
 }

@@ -8,9 +8,13 @@ import { StockService } from "../services/StockService.ts";
  * Config for a `good`.
  */
 export const goodConfigSchema = z.object({
-  /** When false, the product sells without touching the ledger. */
+  /**
+   * When false, the product sells without touching the ledger.
+   */
   trackStock: z.boolean().optional(),
-  /** Below this on-hand value the admin shows a warning. */
+  /**
+   * Below this on-hand value the admin shows a warning.
+   */
   lowStockThreshold: z.integer().min(0).optional(),
 });
 

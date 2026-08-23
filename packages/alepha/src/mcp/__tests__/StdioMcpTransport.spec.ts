@@ -40,7 +40,9 @@ class FakeProcess {
     this.stdin.resume = () => {};
   }
 
-  /** Protocol messages the client would have read, one per line. */
+  /**
+   * Protocol messages the client would have read, one per line.
+   */
   get messages(): any[] {
     return this.stdoutChunks
       .join("")
@@ -65,7 +67,9 @@ class Tools {
     handler: async () => "pong",
   });
 
-  /** Writes to stdout mid-call — the classic way to corrupt the stream. */
+  /**
+   * Writes to stdout mid-call — the classic way to corrupt the stream.
+   */
   chatty = $tool({
     description: "Logs while working",
     schema: { result: z.text() },
@@ -87,7 +91,9 @@ const start = async () => {
   return alepha;
 };
 
-/** Feed one message and let the microtask queue drain. */
+/**
+ * Feed one message and let the microtask queue drain.
+ */
 const send = async (message: unknown) => {
   fake.stdin.emit("data", `${JSON.stringify(message)}\n`);
   await new Promise((resolve) => setTimeout(resolve, 10));

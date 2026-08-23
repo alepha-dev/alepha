@@ -15,7 +15,9 @@ export interface SearchableDoc {
 // HELPERS
 // =============================================================================
 
-/** Flatten the doc tree to get all docs with hrefs */
+/**
+ * Flatten the doc tree to get all docs with hrefs
+ */
 export const flattenTree = (nodes: DocNode[]): SearchableDoc[] => {
   const result: SearchableDoc[] = [];
   for (const node of nodes) {
@@ -34,7 +36,9 @@ export const flattenTree = (nodes: DocNode[]): SearchableDoc[] => {
   return result;
 };
 
-/** Find the best matching keyword for display */
+/**
+ * Find the best matching keyword for display
+ */
 export const findMatchedKeyword = (
   doc: SearchableDoc,
   query: string,

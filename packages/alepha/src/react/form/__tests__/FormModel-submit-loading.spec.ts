@@ -5,7 +5,7 @@ import { describe, it } from "vitest";
 import { FormModel } from "../services/FormModel.ts";
 
 /**
- * Repro for: a form whose submit fails TypeBox validation (missing field)
+ * Repro for: a form whose submit fails schema validation (missing field)
  * leaves the submit button stuck in its loading state forever.
  *
  * The button's loading is driven by the `form:submit:begin` / `form:submit:end`

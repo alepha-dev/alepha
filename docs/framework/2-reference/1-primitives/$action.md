@@ -63,8 +63,8 @@ class UserController {
     path: "/users",
     schema: {
       query: z.object({
-        page: z.number({ default: 1 }).optional(),
-        limit: z.number({ default: 10 }).optional(),
+        page: z.number().default(1).optional(),
+        limit: z.number().default(10).optional(),
       }),
       response: z.object({
         users: z.array(

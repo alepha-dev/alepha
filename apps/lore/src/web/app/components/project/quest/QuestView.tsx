@@ -119,12 +119,6 @@ const QuestView = (props: QuestViewProps) => {
 
   const [project] = useStore(currentProjectAtom);
 
-  // Per-quest feature toggles live on the project. Undefined → off
-  // (the new toggles default off for old projects until the owner
-  // opts in via Settings → Quests).
-  // The per-quest module gates now live where their controls do — the rail
-  // reads `questChrono`, `questReminder` and `questEstimate` itself.
-
   const context: QuestViewContext = props.context ?? "page";
 
   // The status chip. Same four colours the quest table's dot uses, so a
@@ -146,7 +140,10 @@ const QuestView = (props: QuestViewProps) => {
   const dueChip = quest.dueAt
     ? (() => {
         const due = dt.of(quest.dueAt);
-        const withinAWeek = due.diff(dt.now(), "day") < 7;
+        // Both directions: a negative diff (overdue) is "within a week" only
+        // when it is less than a week ago, or a three-month-old deadline
+        // reads as "Due Monday".
+        const withinAWeek = Math.abs(due.diff(dt.now(), "day")) < 7;
         const overdue = due.isBefore(dt.now());
         return (
           <Badge variant="tint" tone={overdue ? "danger" : "warning"}>
@@ -728,16 +725,4 @@ const QuestView = (props: QuestViewProps) => {
  */
 export type QuestViewContext = "page" | "card" | "dialog";
 
-/**
- * Sections that can fold behind the header's overflow menu.
- *
- * Only the card mount folds them: at half the viewport width, the completion
- * summary pushes the description and the objectives (what a card back is
- * opened for) below the fold. On the page there is room for everything, so
- * nothing folds and the overflow never renders.
- *
- * The reminder controls were the second entry until the metadata rail
- * absorbed them — on the card the rail stacks under the body, so they are
- * reachable there without an overflow.
- */
 export default QuestView;

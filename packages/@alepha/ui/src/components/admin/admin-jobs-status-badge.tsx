@@ -2,7 +2,7 @@ import { Badge } from "@alepha/ui/components/ui/badge";
 import type { JobExecutionResource } from "alepha/api/jobs";
 import { useI18n } from "alepha/react/i18n";
 
-export interface JobStatusBadgeProps {
+export interface AdminJobsStatusBadgeProps {
   status: JobExecutionResource["status"];
 }
 
@@ -21,7 +21,7 @@ const VARIANTS: Record<
 /**
  * Coloured badge for a job execution's status.
  */
-export const JobStatusBadge = (props: JobStatusBadgeProps) => {
+export const AdminJobsStatusBadge = (props: AdminJobsStatusBadgeProps) => {
   const { tr } = useI18n();
   return (
     <Badge variant={VARIANTS[props.status]}>

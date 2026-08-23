@@ -31,7 +31,7 @@ the module still captures, and aggregated errors go to the app's own logger
 instead. That is the headless case: an app that must not phone home to
 anything.
 
-### The optional two
+### The optional three
 
 |                |                                                                                  |
 | -------------- | -------------------------------------------------------------------------------- |

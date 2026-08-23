@@ -1,4 +1,4 @@
-import { $inject, $store, Alepha, AlephaError } from "alepha";
+import { $inject, $store, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
@@ -11,7 +11,9 @@ import { NamingService, type Tenancy } from "./NamingService.ts";
 export interface ResolvedPlatformConfig {
   project: string;
   defaultEnv: string;
-  /** App tenancy mode (undefined ⇒ "none"). */
+  /**
+   * App tenancy mode (undefined ⇒ "none").
+   */
   tenancy?: Tenancy;
   environments: Record<string, EnvironmentConfig>;
 }
@@ -29,7 +31,6 @@ export interface ResolvedPlatformConfig {
  */
 export class PlatformInspector {
   protected readonly log = $logger();
-  protected readonly alepha = $inject(Alepha);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly options = $store(platformOptions);
   protected readonly naming = $inject(NamingService);
@@ -73,14 +74,18 @@ export class PlatformInspector {
 
     this.log.warn(` alepha.config.ts not found or missing platform config.
 
-Please add a "platform" section to alepha.config.ts:
+Please register the platform plugin in alepha.config.ts:
+
+import { platform } from "alepha/cli/platform";
 
 export default defineConfig({
-  platform: {
-    environments: {
-      production: { adapter: "cloudflare" },
-    },
-  },
+  plugins: [
+    platform({
+      environments: {
+        production: { adapter: "cloudflare" },
+      },
+    }),
+  ],
 });
         `);
     throw new AlephaError("Missing platform configuration.");

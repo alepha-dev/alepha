@@ -1,9 +1,13 @@
 export interface PrixProps {
-  /** Tax-inclusive amount in the smallest currency unit. */
+  /**
+   * Tax-inclusive amount in the smallest currency unit.
+   */
   cents: number;
   currency?: string;
   className?: string;
-  /** Struck through, for a shipping rate the cart has made free. */
+  /**
+   * Struck through, for a shipping rate the cart has made free.
+   */
   barre?: boolean;
 }
 

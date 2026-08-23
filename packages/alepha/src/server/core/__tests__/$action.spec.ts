@@ -81,7 +81,8 @@ describe("$action", () => {
     await alepha.start();
 
     expect(await app.a1.fetch({}).then((it) => it.data)).toBe("ok:a1");
-    expect(await app.a2.fetch({}).then((it) => it.data)).toBe("Not Found");
+    // A 404 is an error to the client, not a text body to hand back as data.
+    await expect(app.a2.fetch({})).rejects.toMatchObject({ status: 404 });
     await expect(app.a2.run({})).rejects.toThrowError(
       "Action 'a2' is disabled.",
     );

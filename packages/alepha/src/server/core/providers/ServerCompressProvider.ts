@@ -163,6 +163,9 @@ export class ServerCompressProvider {
 
     if (typeof body === "object" && body instanceof Readable) {
       this.setHeaders(response, encoding);
+      // A proxied upstream may have declared its uncompressed length; the
+      // client would stop reading the gzip body at that byte count.
+      delete response.headers["content-length"];
       // pipeline, not pipe: a failing source must tear the compressor down
       // too, otherwise the response never ends and the client hangs.
       response.body = pipeline(body, compressor.stream({ params }), (error) => {
@@ -175,6 +178,7 @@ export class ServerCompressProvider {
 
     if (typeof body === "object" && body instanceof ReadableStream) {
       this.setHeaders(response, encoding);
+      delete response.headers["content-length"];
       // For streaming responses, use flush mode to avoid buffering
       response.body = this.createFlushingCompressStream(
         body,

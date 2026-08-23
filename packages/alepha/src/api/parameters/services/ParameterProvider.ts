@@ -63,11 +63,11 @@ export class ParameterProvider {
    * Unique identifier for this instance (to avoid self-updates).
    */
   protected get instanceId(): string {
-    this._instanceId ??= this.crypto.randomUUID();
-    return this._instanceId;
+    this.cachedInstanceId ??= this.crypto.randomUUID();
+    return this.cachedInstanceId;
   }
 
-  protected _instanceId: string | undefined;
+  protected cachedInstanceId: string | undefined;
 
   /**
    * Resolve the active tenant for cache keying — MIRRORS the Repository's
@@ -90,7 +90,9 @@ export class ParameterProvider {
     return user?.organization ?? "~global";
   }
 
-  /** Per-org cache key for the value caches (`${org}:${name}`). */
+  /**
+   * Per-org cache key for the value caches (`${org}:${name}`).
+   */
   protected cacheKey(name: string): string {
     return `${this.orgKey()}:${name}`;
   }
@@ -312,7 +314,9 @@ export class ParameterProvider {
     this.loadedAt.set(ck, this.dateTimeProvider.nowMillis());
   }
 
-  /** Whether the cached value outlived the revalidation TTL. */
+  /**
+   * Whether the cached value outlived the revalidation TTL.
+   */
   protected isStale(ck: string): boolean {
     const ttl = this.revalidateAfterMs;
     if (ttl <= 0) return false;
@@ -633,7 +637,9 @@ export class ParameterProvider {
     return names;
   }
 
-  /** Drop every per-org value cache entry for `name` in the active org. */
+  /**
+   * Drop every per-org value cache entry for `name` in the active org.
+   */
   protected evictCaches(name: string): void {
     const ck = this.cacheKey(name);
     this.cachedCurrent.delete(ck);

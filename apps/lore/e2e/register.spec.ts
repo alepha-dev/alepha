@@ -1,47 +1,13 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
+import { readFileSync } from "node:fs";
 
 import { expect, test } from "@playwright/test";
 
-const emailDir = path.join(process.cwd(), "node_modules/.alepha/emails");
+import { extractCode, findLatestEmail } from "./_helpers.ts";
 
-const findLatestEmail = async (
-  email: string,
-  maxWaitMs = 5000,
-): Promise<string | null> => {
-  const start = Date.now();
-  const sanitized = email.replace(/[^a-zA-Z0-9@.-]/g, "_");
-  while (Date.now() - start < maxWaitMs) {
-    if (fs.existsSync(emailDir)) {
-      const files = fs
-        .readdirSync(emailDir)
-        .filter((f) => f.startsWith(sanitized) && f.endsWith(".eml.json"))
-        .map((f) => ({
-          path: path.join(emailDir, f),
-          mtime: fs.statSync(path.join(emailDir, f)).mtime.getTime(),
-        }))
-        .sort((a, b) => b.mtime - a.mtime);
-      if (files.length > 0) return files[0].path;
-    }
-    await new Promise((r) => setTimeout(r, 300));
-  }
-  return null;
-};
-
-const extractCode = (json: string): string | null => {
-  const body = JSON.parse(json).body as string;
-  const m =
-    body.match(/letter-spacing:\s*8px[^>]*>[\s\n]*([A-Z0-9]{6})[\s\n]*</i) ??
-    body.match(/<span[^>]*>[\s\n]*([A-Z0-9]{6})[\s\n]*<\/span>/i);
-  return m ? m[1] : null;
-};
-
-test.beforeAll(() => {
-  fs.mkdirSync(emailDir, { recursive: true });
-  for (const f of fs.readdirSync(emailDir)) {
-    if (f.endsWith(".eml.json")) fs.unlinkSync(path.join(emailDir, f));
-  }
-});
+// No wipe of the dev-mail directory here: spec files run in parallel
+// workers, and deleting every `.eml.json` used to race another file's
+// registration between "submit" and "find the verification mail". Every
+// lookup filters on its own unique address, so nothing needs clearing.
 
 test.describe("Register", () => {
   test("schema-level minLength error is visible", async ({ page }) => {
@@ -100,7 +66,7 @@ test.describe("Register", () => {
 
     const emailPath = await findLatestEmail(email, 10_000);
     expect(emailPath).not.toBeNull();
-    const code = extractCode(fs.readFileSync(emailPath!, "utf-8"));
+    const code = extractCode(readFileSync(emailPath!, "utf-8"));
     expect(code).not.toBeNull();
     expect(code).toHaveLength(6);
 
@@ -145,7 +111,7 @@ test.describe("Register", () => {
 
     const emailPath = await findLatestEmail(email, 10_000);
     expect(emailPath).not.toBeNull();
-    const code = extractCode(fs.readFileSync(emailPath!, "utf-8"));
+    const code = extractCode(readFileSync(emailPath!, "utf-8"));
     expect(code).not.toBeNull();
     expect(code).toHaveLength(6);
 

@@ -1,10 +1,18 @@
-/** One VAT bucket inside a ventilation. */
+/**
+ * One VAT bucket inside a ventilation.
+ */
 export interface VatBucket {
-  /** Rate in basis points (2000 = 20.00 %). */
+  /**
+   * Rate in basis points (2000 = 20.00 %).
+   */
   rateBps: number;
-  /** Taxable base (excluding tax), in the smallest currency unit. */
+  /**
+   * Taxable base (excluding tax), in the smallest currency unit.
+   */
   baseCents: number;
-  /** Tax amount, in the smallest currency unit. */
+  /**
+   * Tax amount, in the smallest currency unit.
+   */
   vatCents: number;
 }
 
@@ -73,7 +81,9 @@ export class VatCalculator {
       }));
   }
 
-  /** The rate carrying the largest amount — what a one-line summary shows. */
+  /**
+   * The rate carrying the largest amount — what a one-line summary shows.
+   */
   public dominantRateBps(buckets: VatBucket[]): number | undefined {
     let best: VatBucket | undefined;
     for (const bucket of buckets) {
@@ -87,7 +97,9 @@ export class VatCalculator {
     return best?.rateBps;
   }
 
-  /** Totals across a ventilation. */
+  /**
+   * Totals across a ventilation.
+   */
   public totals(buckets: VatBucket[]): {
     baseCents: number;
     vatCents: number;

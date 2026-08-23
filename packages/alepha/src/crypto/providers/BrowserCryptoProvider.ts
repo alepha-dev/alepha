@@ -331,10 +331,10 @@ export class BrowserCryptoProvider {
     try {
       parsed = JSON.parse(envelope);
     } catch {
-      throw new AlephaError("Invalid protected folio envelope");
+      throw new AlephaError("Invalid passphrase envelope");
     }
     if (!parsed.salt || !parsed.iv || !parsed.ciphertext) {
-      throw new AlephaError("Invalid protected folio envelope");
+      throw new AlephaError("Invalid passphrase envelope");
     }
     const key = await this.deriveKeyFromPassphrase(
       passphrase,

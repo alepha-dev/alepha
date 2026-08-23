@@ -156,7 +156,9 @@ class SilentAdapter extends PlatformAdapter {
   async teardown(): Promise<void> {}
 }
 
-/** Composes its own host, unlike the base adapter's default of controlling it. */
+/**
+ * Composes its own host, unlike the base adapter's default of controlling it.
+ */
 class ComposingAdapter extends SilentAdapter {
   override readonly controlsDomain = false;
 }

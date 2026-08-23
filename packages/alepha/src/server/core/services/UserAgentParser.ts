@@ -29,9 +29,9 @@ export interface UserAgentInfo {
 
 /**
  * Simple User-Agent parser to detect OS, browser, and device type.
- * This parser is not exhaustive and may not cover all edge cases.
- *
- * Use result for non
+ * This parser is not exhaustive and may not cover all edge cases: use the
+ * result for coarse analytics (OS, browser family, device type), never for
+ * a security decision.
  */
 export class UserAgentParser {
   public parse(userAgent: string = ""): UserAgentInfo {

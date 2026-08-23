@@ -13,7 +13,9 @@ import { usePanier } from "../hooks/usePanier.ts";
 
 export interface ProduitProps {
   produit: PublicProduct;
-  /** What may still be sold — on-hand minus what other carts are holding. */
+  /**
+   * What may still be sold — on-hand minus what other carts are holding.
+   */
   disponible: number;
 }
 

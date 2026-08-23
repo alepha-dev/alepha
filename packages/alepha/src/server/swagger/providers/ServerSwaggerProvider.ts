@@ -383,11 +383,21 @@ export class ServerSwaggerProvider {
       };
     }
 
-    if (z.schema.isObject(schema) || z.schema.isArray(schema)) {
+    if (
+      z.schema.isObject(schema) ||
+      z.schema.isArray(schema) ||
+      z.schema.isRecord(schema)
+    ) {
       return {
         schema,
         status: 200,
         type: "application/json",
+      };
+    }
+
+    if (z.schema.isVoid(schema)) {
+      return {
+        status: 204,
       };
     }
 
@@ -404,10 +414,11 @@ export class ServerSwaggerProvider {
       z.schema.isInteger(schema) ||
       z.schema.isBoolean(schema)
     ) {
+      // The router serves scalar responses as text, not JSON.
       return {
         schema,
         status: 200,
-        type: "application/json",
+        type: "text/plain",
       };
     }
 
@@ -536,7 +547,7 @@ window.onload = function() {
 
       const root = await this.getAssetPath(
         ui.root,
-        // TODO: this is shitty, take time to get the correct path
+        // TODO: resolve the asset directory from the package root instead of probing relative paths
         join(dirname, "../../assets/swagger-ui"),
         join(dirname, "../../../assets/swagger-ui"),
         join(dirname, "../../../../assets/swagger-ui"),

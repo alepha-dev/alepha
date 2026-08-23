@@ -1,7 +1,9 @@
 import type { OrderItemEntity } from "../../entities/orderItems.ts";
 import type { OrderEntity } from "../../entities/orders.ts";
 
-/** A rendered email, ready to send. */
+/**
+ * A rendered email, ready to send.
+ */
 export interface RenderedMail {
   subject: string;
   body: string;

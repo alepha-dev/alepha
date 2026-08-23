@@ -21,7 +21,9 @@ export const shippingZones = $entity({
 
     name: z.text({ minLength: 1, maxLength: 100 }),
 
-    /** ISO 3166-1 alpha-2, upper case. */
+    /**
+     * ISO 3166-1 alpha-2, upper case.
+     */
     countries: z.array(z.text({ minLength: 2, maxLength: 2 })),
 
     /**

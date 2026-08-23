@@ -33,7 +33,9 @@ export class NotificationJobs {
   );
   protected readonly executions = $repository(jobExecutionEntity);
 
-  /** Runtime-editable config. Admins can change retentionDays without deploy. */
+  /**
+   * Runtime-editable config. Admins can change retentionDays without deploy.
+   */
   public readonly settings = $parameter({
     name: "alepha.api.notifications",
     description: "Notification delivery & retention settings.",

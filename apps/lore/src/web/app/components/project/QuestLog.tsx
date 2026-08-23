@@ -80,7 +80,7 @@ const QuestLog = (props: QuestLogProps) => {
         <BookOpen className="text-muted-foreground size-4 shrink-0" />
         <span className="text-xs font-medium">{tr("quest-log.quests")}</span>
         <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 font-mono text-[11px]">
-          {filteredQuests.length}/25
+          {filteredQuests.length}
         </span>
         <div className="ml-auto flex items-center">
           <Tooltip>
@@ -94,8 +94,8 @@ const QuestLog = (props: QuestLogProps) => {
                   onClick={toggleAll}
                   aria-label={
                     collapseSignal.collapsed
-                      ? tr("quest-log.expand-all" as never)
-                      : tr("quest-log.collapse-all" as never)
+                      ? tr("quest-log.expand-all")
+                      : tr("quest-log.collapse-all")
                   }
                 />
               }
@@ -108,8 +108,8 @@ const QuestLog = (props: QuestLogProps) => {
             </TooltipTrigger>
             <TooltipContent>
               {collapseSignal.collapsed
-                ? tr("quest-log.expand-all" as never)
-                : tr("quest-log.collapse-all" as never)}
+                ? tr("quest-log.expand-all")
+                : tr("quest-log.collapse-all")}
             </TooltipContent>
           </Tooltip>
           {/* Deliberately NOT a chevron. The button to its left toggles the
@@ -127,15 +127,13 @@ const QuestLog = (props: QuestLogProps) => {
                   className="size-6"
                   data-testid="quest-log-collapse"
                   onClick={props.onCollapse}
-                  aria-label={tr("quest-log.collapse-panel" as never)}
+                  aria-label={tr("quest-log.collapse-panel")}
                 />
               }
             >
               <PanelLeftClose className="size-3.5" />
             </TooltipTrigger>
-            <TooltipContent>
-              {tr("quest-log.collapse-panel" as never)}
-            </TooltipContent>
+            <TooltipContent>{tr("quest-log.collapse-panel")}</TooltipContent>
           </Tooltip>
         </div>
       </div>

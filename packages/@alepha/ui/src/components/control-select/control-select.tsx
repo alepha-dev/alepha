@@ -94,7 +94,7 @@ export interface ControlSelectProps {
    */
   loader?: (search: string, resolve?: string[]) => Async<SelectOption[]>;
   /**
-   * Option count above which `loader` is invoked on every search instead of once. Defaults to ~50.
+   * Option count above which `loader` is invoked on every search instead of once. Defaults to 100.
    */
   loaderThreshold?: number;
   /**
@@ -194,7 +194,7 @@ const titlecase = (s: string) =>
 const segmentedLabel = (o: SelectOption) =>
   typeof o === "string" ? titlecase(o) : o.label;
 
-export function ControlSelect(props: ControlSelectProps) {
+export const ControlSelect = (props: ControlSelectProps) => {
   const { tr } = useI18n();
   const form = useFormState(props.input, ["error"]);
   const [value, setValue] = useFieldValue(props.input);
@@ -235,7 +235,10 @@ export function ControlSelect(props: ControlSelectProps) {
     props.input.initialValue,
   );
 
-  const enumKey = enumValues.map(optValue).join("");
+  // Labels and `disabled` flags are part of the identity: keying on the
+  // joined values alone collided (`["ab","c"]` vs `["a","bc"]`) and kept a
+  // stale list when only the labels changed.
+  const enumKey = JSON.stringify(enumValues);
   const min = meta.constraints.minimum;
   const max = meta.constraints.maximum;
   // Derived, not stored: this is a pure function of the schema. As state
@@ -349,7 +352,7 @@ export function ControlSelect(props: ControlSelectProps) {
       />
     </FormField>
   );
-}
+};
 
 interface ComboboxProps {
   id?: string;

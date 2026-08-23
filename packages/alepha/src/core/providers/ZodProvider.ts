@@ -41,7 +41,9 @@ zod.config(enLocale());
  */
 export type ZType = zod.ZodType;
 export type ZObject<T extends zod.ZodRawShape = any> = zod.ZodObject<T>;
-/** Extract the TypeScript type of a schema — `z.infer` is not reachable. */
+/**
+ * Extract the TypeScript type of a schema — `z.infer` is not reachable.
+ */
 export type Infer<T extends zod.ZodType> = zod.infer<T>;
 
 export type {
@@ -81,7 +83,9 @@ export interface SchemaOptions {
   description?: string;
   default?: unknown;
   format?: string;
-  /** Alepha string transforms, kept for JSON-Schema round-trip parity. */
+  /**
+   * Alepha string transforms, kept for JSON-Schema round-trip parity.
+   */
   "~options"?: { trim?: boolean; lowercase?: boolean };
   [key: string]: unknown;
 }
@@ -105,7 +109,9 @@ export interface TextOptions extends StringOptions {
 
 // ---------------------------------------------------------------------------
 
-/** Default length caps for the `z.text()` size families. */
+/**
+ * Default length caps for the `z.text()` size families.
+ */
 export const Z_LIMITS = {
   short: 64,
   regular: 255,
@@ -114,7 +120,9 @@ export const Z_LIMITS = {
   arrayMaxItems: 1000,
 };
 
-/** Attach metadata + default without changing the schema's inferred type. */
+/**
+ * Attach metadata + default without changing the schema's inferred type.
+ */
 const meta = <T extends zod.ZodType>(schema: T, options?: SchemaOptions): T => {
   if (!options) return schema;
   const { default: def, ...rest } = options;
@@ -135,7 +143,9 @@ const applyString = (base: zod.ZodString, o?: StringOptions): zod.ZodString => {
   return s;
 };
 
-/** zod's native `.format` getter (uuid/email/safeint/…), guarded. */
+/**
+ * zod's native `.format` getter (uuid/email/safeint/…), guarded.
+ */
 const nativeFmt = (s: any): string | undefined => {
   try {
     return (s?.format ?? undefined) as string | undefined;
@@ -157,10 +167,14 @@ const fmt = (s: any): string | undefined => {
   }
 };
 
-/** zod's internal type discriminator (`string` | `number` | …), wrapping-safe. */
+/**
+ * zod's internal type discriminator (`string` | `number` | …), wrapping-safe.
+ */
 const defType = (s: any): string | undefined => s?._zod?.def?.type;
 
-/** Tag a string-format schema with its JSON-Schema `format` (stays a real `ZodString`). */
+/**
+ * Tag a string-format schema with its JSON-Schema `format` (stays a real `ZodString`).
+ */
 const strFmt = (base: zod.ZodType, format: string): zod.ZodString =>
   meta(base, { format }) as unknown as zod.ZodString;
 
@@ -246,12 +260,18 @@ export const z = {
   void: zod.void,
   undefined: zod.undefined,
   literal: zod.literal,
-  /** Alias for `zod.literal` (legacy `t.const`). */
+  /**
+   * Alias for `zod.literal` (legacy `t.const`).
+   */
   const: zod.literal,
   enum: zod.enum,
-  /** Integer — native `z.int()` (format `safeint`, drives PG INT column). */
+  /**
+   * Integer — native `z.int()` (format `safeint`, drives PG INT column).
+   */
   integer: zod.int,
-  /** Free-form JSON object (`Record<string, any>`). */
+  /**
+   * Free-form JSON object (`Record<string, any>`).
+   */
   json: () => zod.record(zod.string(), zod.any()),
 
   /**
@@ -331,7 +351,9 @@ export const z = {
    */
   date: () => strFmt(zod.iso.date(), "date"),
   time: () => strFmt(zod.iso.time(), "time"),
-  /** bigint as a validated string (no codec). */
+  /**
+   * bigint as a validated string (no codec).
+   */
   bigint: () => strFmt(zod.string().regex(/^-?\d+$/), "bigint"),
   binary: () => strFmt(zod.string(), "binary"),
   duration: () => strFmt(zod.string(), "duration"),
@@ -377,7 +399,9 @@ export const z = {
       label: z.text(),
       description: z.longText().optional(),
     }),
-  /** Pagination wrapper, mirrors `pageSchema(item)`. */
+  /**
+   * Pagination wrapper, mirrors `pageSchema(item)`.
+   */
   page: <T extends zod.ZodType>(item: T) =>
     zod.object({
       content: zod.array(item),
@@ -411,7 +435,9 @@ export const z = {
       zod.toJSONSchema(schema, params),
     )) as typeof zod.toJSONSchema,
 
-  /** Runtime type guards (`z.schema.*`) — schema introspection for ORM + forms. */
+  /**
+   * Runtime type guards (`z.schema.*`) — schema introspection for ORM + forms.
+   */
   schema: {
     isOptional: (s: any) => s instanceof zod.ZodOptional,
     isDefault: (s: any) => s instanceof zod.ZodDefault,
@@ -442,7 +468,6 @@ export const z = {
     isEmail: (s: any) => fmt(s) === "email",
     isUrl: (s: any) => fmt(s) === "url",
     isBinary: (s: any) => fmt(s) === "binary",
-    isUUID: (s: any) => fmt(s) === "uuid",
     // Explicit `: boolean` — ORs `ZodLiteral`/`ZodEnum` whose inferred predicate
     // would leak zod's non-exported `Literal`/`EnumValue` internals (TS2883).
     isScalar: (s: any): boolean =>
@@ -483,13 +508,19 @@ export const z = {
     // is a process-wide side effect on a library the application also imports,
     // so two copies of zod in the tree leave one of them silently unpatched.
 
-    /** Property schemas of a `ZodObject`. Empty object for anything else. */
+    /**
+     * Property schemas of a `ZodObject`. Empty object for anything else.
+     */
     shape: (s: any): Record<string, ZType> => s?.shape ?? {},
 
-    /** Element schema of a `ZodArray`, or `undefined`. */
+    /**
+     * Element schema of a `ZodArray`, or `undefined`.
+     */
     element: (s: any): ZType | undefined => s?.element,
 
-    /** Member schemas of a `ZodUnion`. Empty array for anything else. */
+    /**
+     * Member schemas of a `ZodUnion`. Empty array for anything else.
+     */
     options: (s: any): ZType[] =>
       Array.isArray(s?.options) ? (s.options as ZType[]) : [],
 
@@ -503,14 +534,18 @@ export const z = {
       const items = s?._zod?.def?.items;
       return Array.isArray(items) ? (items as ZType[]) : [];
     },
-    /** The string values of a `ZodEnum` (typebox-compat for `value.enum`). */
+    /**
+     * The string values of a `ZodEnum` (typebox-compat for `value.enum`).
+     */
     enumValues: (s: any): string[] => {
       const opts = s?.options;
       if (Array.isArray(opts)) return opts as string[];
       const entries = s?._zod?.def?.entries;
       return entries ? (Object.values(entries) as string[]) : [];
     },
-    /** Peel optional / nullable / default wrappers to the inner schema. */
+    /**
+     * Peel optional / nullable / default wrappers to the inner schema.
+     */
     unwrap: (s: any): any => {
       let cur = s;
       while (
@@ -551,7 +586,9 @@ export const z = {
       }
       return undefined;
     },
-    /** typebox-compat: the object's required (non-optional) field names. */
+    /**
+     * typebox-compat: the object's required (non-optional) field names.
+     */
     requiredKeys: (s: any): string[] => {
       const shape = s?.shape;
       return shape

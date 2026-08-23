@@ -152,7 +152,9 @@ ${
     return `${sign}${(Math.abs(cents) / 100).toFixed(2)} ${currency}`;
   }
 
-  /** Basis points to a percentage: 2000 → "20 %", 550 → "5,5 %". */
+  /**
+   * Basis points to a percentage: 2000 → "20 %", 550 → "5,5 %".
+   */
   protected rate(bps: number): string {
     const percent = bps / 100;
     return `${String(percent).replace(".", ",")} %`;

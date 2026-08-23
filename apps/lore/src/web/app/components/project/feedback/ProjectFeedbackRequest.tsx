@@ -5,7 +5,8 @@ import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { z } from "alepha";
-import { useClient } from "alepha/react";
+import { DateTimeProvider } from "alepha/datetime";
+import { useClient, useInject } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
@@ -47,7 +48,9 @@ const MAX_TAG_LENGTH = 100;
 
 type DraftContext = {
   tags?: string[];
-  /** Page-context provenance captured by the sigil button (see source schema). */
+  /**
+   * Page-context provenance captured by the sigil button (see source schema).
+   */
   source?: FeedbackSource;
 };
 
@@ -171,6 +174,7 @@ const useDraftAutofill = (projectId: string) => {
 
 const ProjectFeedbackRequest = () => {
   const { tr } = useI18n<I18n, "en">();
+  const dateTime = useInject(DateTimeProvider);
   const router = useRouter<AppRouter>();
   const meRouter = useRouter<LoreAccountRouter>();
   const auth = useAuth();
@@ -274,7 +278,7 @@ const ProjectFeedbackRequest = () => {
   }, [auth.user, projectSlug]);
 
   // One free-text field. Client schema stays looser than the server's — a
-  // `minLength` here would fail TypeBox at form-construction time (empty
+  // `minLength` here would fail validation at form-construction time (empty
   // initial value). The server (`feedbackBodySchema`) enforces real bounds.
   const form = useForm({
     schema: z.object({
@@ -413,9 +417,13 @@ const ProjectFeedbackRequest = () => {
             const ext = file.name.includes(".")
               ? file.name.slice(file.name.lastIndexOf("."))
               : ".png";
-            const named = new File([file], `pasted-${Date.now()}${ext}`, {
-              type: file.type,
-            });
+            const named = new File(
+              [file],
+              `pasted-${dateTime.nowMillis()}${ext}`,
+              {
+                type: file.type,
+              },
+            );
             pasted.push(named);
           }
         }
@@ -452,7 +460,7 @@ const ProjectFeedbackRequest = () => {
                 <Button
                   onClick={() =>
                     router.push("login", {
-                      query: { r: window.location.pathname },
+                      query: { redirect: window.location.pathname },
                     })
                   }
                 >

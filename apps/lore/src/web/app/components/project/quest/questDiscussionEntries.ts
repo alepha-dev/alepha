@@ -12,14 +12,20 @@ import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 export type QuestDiscussionEntry =
   | {
       kind: "event";
-      /** Stable across renders — the feed keys on it. */
+      /**
+       * Stable across renders — the feed keys on it.
+       */
       key: string;
       at: string;
       by?: string;
       action: QuestEventAction;
-      /** The objective's title, for `objective_completed`. */
+      /**
+       * The objective's title, for `objective_completed`.
+       */
       subject?: string;
-      /** The feedback item a quest was promoted from, for `created`. */
+      /**
+       * The feedback item a quest was promoted from, for `created`.
+       */
       feedbackId?: number;
       /**
        * Markdown the event carries as its own body, rendered under the

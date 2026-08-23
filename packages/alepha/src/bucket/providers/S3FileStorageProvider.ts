@@ -139,6 +139,8 @@ export class S3FileStorageProvider implements FileStorageProvider {
    * same thing on every backend.
    */
   protected key(container: string, fileId: string): string {
+    this.assertKeySegment(container, "bucket name");
+    this.assertKeySegment(fileId, "file id");
     const parts = [container, fileId];
     const tenantId = this.alepha.store.get(currentTenantAtom)?.id;
     if (tenantId) {
@@ -155,6 +157,20 @@ export class S3FileStorageProvider implements FileStorageProvider {
    */
   protected containerPrefix(container: string): string {
     return `${this.key(container, "")}`;
+  }
+
+  /**
+   * File ids and container names are path segments of the object key. A
+   * separator or a dot-dot in either would read or delete outside the
+   * container (and outside the tenant prefix), so they are refused here,
+   * the same way the local provider refuses them for filesystem paths.
+   */
+  protected assertKeySegment(value: string, label: string): void {
+    // An empty id is allowed: `list()` addresses the container itself with
+    // one, and an empty key cannot leave it.
+    if (/[/\\]/.test(value) || value.includes("..") || value.startsWith(".")) {
+      throw new AlephaError(`Invalid ${label}: '${value}'`);
+    }
   }
 
   protected createId(mimeType: string): string {
@@ -363,10 +379,12 @@ export class S3FileStorageProvider implements FileStorageProvider {
       await client.deleteObject(this.key(bucketName, fileId));
     } catch (error) {
       this.log.error("Failed to delete file:", error);
-      if (error instanceof Error) {
-        throw new FileNotFoundError("Error deleting file", { cause: error });
-      }
-      throw error;
+      // The file exists (checked above); a failed DELETE is a storage
+      // error, not a missing file, and callers that swallow NotFound
+      // must not swallow this.
+      throw new AlephaError(`Error deleting file '${fileId}'`, {
+        cause: error,
+      });
     }
   }
 
@@ -401,24 +419,10 @@ export class S3FileStorageProvider implements FileStorageProvider {
         .slice(i, i + 1000)
         .map((id) => this.key(bucketName, id));
       try {
-        // bun:s3 client exposes a per-key deleteObject; some SDKs also expose
-        // deleteObjects(keys: string[]). Prefer batch when available.
-        const batch = (
-          client as unknown as {
-            deleteObjects?: (keys: string[]) => Promise<unknown>;
-          }
-        ).deleteObjects;
-        if (typeof batch === "function") {
-          await batch.call(client, keys);
-        } else {
-          await Promise.all(keys.map((key) => client.deleteObject(key)));
-        }
+        await client.deleteObjects(keys);
       } catch (error) {
         this.log.error("Failed to delete files:", error);
-        if (error instanceof Error) {
-          throw new FileNotFoundError("Error deleting files", { cause: error });
-        }
-        throw error;
+        throw new AlephaError("Error deleting files", { cause: error });
       }
     }
   }

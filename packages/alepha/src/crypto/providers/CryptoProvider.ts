@@ -252,8 +252,8 @@ export class CryptoProvider {
    * Web Crypto API parity with `BrowserCryptoProvider`. Node 18+ exposes
    * `globalThis.crypto.subtle`, so the implementations are the same on
    * both runtimes. Server-side use is unusual — passphrase-derived keys
-   * are a browser-only flow in Alepha — but these stubs exist so the
-   * type surface matches and shared call sites compile.
+   * are a browser-only flow in Alepha, but the implementations are real
+   * and exist so the type surface matches and shared call sites compile.
    */
   public async deriveKeyFromPassphrase(
     passphrase: string,
@@ -272,7 +272,7 @@ export class CryptoProvider {
     return subtle.deriveKey(
       {
         name: "PBKDF2",
-        salt: hexToBytes(saltHex).buffer as ArrayBuffer,
+        salt: this.hexToBytes(saltHex).buffer as ArrayBuffer,
         iterations,
         hash: "SHA-256",
       },
@@ -332,18 +332,18 @@ export class CryptoProvider {
       parsed.kdf?.iterations ?? 600_000,
     );
     const decrypted = await subtle.decrypt(
-      { name: "AES-GCM", iv: hexToBytes(parsed.iv).buffer as ArrayBuffer },
+      { name: "AES-GCM", iv: this.hexToBytes(parsed.iv).buffer as ArrayBuffer },
       key,
-      hexToBytes(parsed.ciphertext).buffer as ArrayBuffer,
+      this.hexToBytes(parsed.ciphertext).buffer as ArrayBuffer,
     );
     return new TextDecoder().decode(decrypted);
   }
-}
 
-const hexToBytes = (hex: string): Uint8Array => {
-  const out = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < hex.length; i += 2) {
-    out[i / 2] = Number.parseInt(hex.substring(i, i + 2), 16);
+  protected hexToBytes(hex: string): Uint8Array {
+    const out = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length; i += 2) {
+      out[i / 2] = Number.parseInt(hex.substring(i, i + 2), 16);
+    }
+    return out;
   }
-  return out;
-};
+}

@@ -10,15 +10,21 @@ import type { CheckoutSessionEntity } from "../entities/checkoutSessions.ts";
 export type PaymentHandoff =
   | {
       mode: "redirect";
-      /** Where to send the browser. */
+      /**
+       * Where to send the browser.
+       */
       url: string;
       intentId: string;
     }
   | {
       mode: "embedded";
-      /** Per-payment secret the PSP's browser SDK confirms against. */
+      /**
+       * Per-payment secret the PSP's browser SDK confirms against.
+       */
       clientSecret: string;
-      /** Publishable key for the SDK. Never a secret key. */
+      /**
+       * Publishable key for the SDK. Never a secret key.
+       */
       publishableKey: string;
       /**
        * Which SDK to load. The browser `<PaymentSlot/>` dispatches on it, so a
@@ -42,14 +48,18 @@ export type PaymentHandoff =
  * nothing.
  */
 export interface PaymentCapabilities {
-  /** Handoff shapes this provider can produce. */
+  /**
+   * Handoff shapes this provider can produce.
+   */
   modes: Array<PaymentHandoff["mode"]>;
   /**
    * Whether the PSP can collect the shipping address itself. When false, the
    * checkout must collect it — which is the case this PoC assumes.
    */
   collectsShippingAddress: boolean;
-  /** Whether the PSP can compute destination-based tax. */
+  /**
+   * Whether the PSP can compute destination-based tax.
+   */
   computesTax: boolean;
 }
 

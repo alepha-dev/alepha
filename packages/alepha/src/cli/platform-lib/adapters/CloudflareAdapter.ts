@@ -5,7 +5,6 @@ import { join } from "node:path";
 import {
   $inject,
   $store,
-  Alepha,
   AlephaError,
   type Alepha as AlephaInstance,
 } from "alepha";
@@ -51,7 +50,6 @@ export class CloudflareAdapter extends PlatformAdapter {
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly shell = $inject(ShellProvider);
   protected readonly cache = $inject(PlatformCacheProvider);
-  protected readonly alepha = $inject(Alepha);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly envUtils = $inject(EnvUtils);
   protected readonly api = $inject(CloudflareApi);
@@ -1335,7 +1333,9 @@ export class CloudflareAdapter extends PlatformAdapter {
     await this.api.createR2(name);
   }
 
-  /** Whether a Cloudflare error message indicates the bucket is already gone. */
+  /**
+   * Whether a Cloudflare error message indicates the bucket is already gone.
+   */
   protected isMissingBucketError(msg: string): boolean {
     return (
       msg.includes("does not exist") ||

@@ -9,8 +9,8 @@ import { readLatestEmailCode } from "./global-setup.ts";
  * Email-verification *completion* isn't exercised end-to-end because
  * verification codes are hashed in the DB and the playground has no peek
  * endpoint — we only assert the verification step renders when the realm
- * requires it. Today the realm has `verifyEmailRequired: false`, so register
- * lands the user directly.
+ * requires it. The realm has `verifyEmailRequired: true`, so register lands
+ * on the code step, which is what the test asserts.
  */
 
 test.describe("/auth/login", () => {

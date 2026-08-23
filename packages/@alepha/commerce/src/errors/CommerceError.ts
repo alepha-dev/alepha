@@ -23,7 +23,9 @@ export class CommerceError extends AlephaError {
  */
 export class UnknownProductKindError extends CommerceError {
   override name = "UnknownProductKindError";
-  /** A payload naming a kind nobody owns is a bad request, not a server fault. */
+  /**
+   * A payload naming a kind nobody owns is a bad request, not a server fault.
+   */
   public readonly status = 400;
 
   constructor(kind: string, known: string[]) {

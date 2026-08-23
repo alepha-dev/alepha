@@ -32,7 +32,7 @@ export const AlephaDevtools = $module({
   register: (alepha) => {
     // SECURITY: DevTools mounts unauthenticated endpoints that read and MUTATE
     // application state — arbitrary DB create/update/delete, atom writes, and
-    // cleartext env (secrets) via `/devtools/metadata`. It must NEVER be exposed
+    // cleartext env (secrets) via `/__devtools/api/metadata`. It must NEVER be exposed
     // on a deployed app. Guard registration here (like sigil does) so that
     // importing this module into a production server graph — as the module docs
     // suggest — cannot accidentally expose those routes. The route-bearing
@@ -46,6 +46,5 @@ export const AlephaDevtools = $module({
     alepha.with(AlephaServerStatic);
     alepha.with(DevToolsProvider);
     alepha.with(DevToolsMetadataProvider);
-    alepha.store.push("alepha.build.assets", "alepha");
   },
 });

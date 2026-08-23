@@ -59,7 +59,9 @@ describe("$resourceTemplate — matching", () => {
     expect(result.contents[0].text).toContain("1/a b");
   });
 
-  /** Simple expansion is one segment: it must not swallow a `/`. */
+  /**
+   * Simple expansion is one segment: it must not swallow a `/`.
+   */
   it("does not match across a path separator", async () => {
     const alepha = await start();
 

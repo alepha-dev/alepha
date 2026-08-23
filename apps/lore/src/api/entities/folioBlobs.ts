@@ -32,7 +32,9 @@ export const folioBlobs = $entity({
   name: "folio_blobs",
   schema: z.object({
     fileId: db.primaryKey(z.uuid()),
-    /** Per-project sequential id. URL form is `blob:#42`. */
+    /**
+     * Per-project sequential id. URL form is `blob:#42`.
+     */
     shortId: z.integer().min(1),
     createdAt: db.createdAt(),
     updatedAt: db.updatedAt(),

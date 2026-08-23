@@ -12,9 +12,13 @@ import { WorkshopQueue } from "./WorkshopQueue.ts";
  * Config for an engraved piece.
  */
 export const engravedConfigSchema = z.object({
-  /** Longest inscription the workshop can fit on this piece. */
+  /**
+   * Longest inscription the workshop can fit on this piece.
+   */
   maxCharacters: z.integer().min(1).max(60),
-  /** Working days added to the dispatch estimate. */
+  /**
+   * Working days added to the dispatch estimate.
+   */
   extraLeadDays: z.integer().min(0).max(30),
 });
 
@@ -36,6 +40,17 @@ export class EngravedKindHandler extends ProductKindHandler {
   protected readonly log = $logger();
   protected readonly stock = $inject(StockService);
   protected readonly workshop = $inject(WorkshopQueue);
+
+  /**
+   * Hold the blank while the payment is in flight, like a plain `good`:
+   * without it two buyers reached the payment page for the last one and the
+   * loser failed at settlement, after the capture.
+   */
+  public async reserve(item: OrderItemEntity): Promise<void> {
+    await this.stock.reserve(item.productId, item.quantity, {
+      orderId: item.orderId,
+    });
+  }
 
   public async fulfil(item: OrderItemEntity): Promise<void> {
     await this.stock.recordSale(item.productId, item.quantity, {

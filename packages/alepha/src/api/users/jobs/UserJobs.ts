@@ -10,10 +10,8 @@ import { RealmProvider } from "../providers/RealmProvider.ts";
 /**
  * User-specific jobs wrapper service.
  *
- * This service handles user-related scheduled jobs such as:
+ * This service handles user-related scheduled jobs:
  * - Session purge (cleaning up expired sessions)
- * - Verification code cleanup
- * - Inactive user notifications
  *
  * Declared as a module variant — not auto-injected. It is instantiated
  * lazily the first time something calls `alepha.inject(UserJobs)`.

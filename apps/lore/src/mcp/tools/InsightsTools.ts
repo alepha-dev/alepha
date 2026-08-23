@@ -49,7 +49,7 @@ export class InsightsTools {
       const res = await this.insights.getInsights({
         params: { projectId },
         query: { range: params.range },
-      } as any);
+      });
 
       // All three unless asked otherwise. A caller that wants one question
       // answered should not pay for the other two in context.

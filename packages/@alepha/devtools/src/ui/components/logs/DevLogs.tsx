@@ -30,7 +30,14 @@ const querySchema = z.object({
 
 export const detectEventType = (data: any): string | undefined => {
   if (!data || typeof data !== "object") return undefined;
-  if (data.status && data.method && data.path && data.duration) return "http";
+  // `duration` can round to 0 and still be an HTTP entry.
+  if (
+    data.status &&
+    data.method &&
+    data.path &&
+    typeof data.duration === "number"
+  )
+    return "http";
   if (data.type === "db:query") return "db";
   return undefined;
 };

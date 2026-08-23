@@ -139,7 +139,9 @@ const Dashboard = () => {
     void resolve(cards);
   };
 
-  /** The card list as it stands right now, not as it was at render time. */
+  /**
+   * The card list as it stands right now, not as it was at render time.
+   */
   const currentCards = () => alepha.store.get(dashboardAtom).cards;
 
   const onReorder = async (ids: number[]) => {

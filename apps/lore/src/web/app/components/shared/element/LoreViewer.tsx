@@ -5,9 +5,13 @@ import { useElementLinks } from "./useElementLinks.ts";
 
 export interface LoreViewerProps {
   element: ElementRef;
-  /** The element's stored markdown, exactly as saved. */
+  /**
+   * The element's stored markdown, exactly as saved.
+   */
   content: string;
-  /** Extra classes for the prose root — a per-surface reading face. */
+  /**
+   * Extra classes for the prose root — a per-surface reading face.
+   */
   className?: string;
 }
 

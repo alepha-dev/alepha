@@ -56,7 +56,9 @@ export const folioRevisions = $entity({
     action: z
       .enum(["create", "edit", "rename", "tag-change", "revert"])
       .meta({ mode: "text" }),
-    /** Snapshot of the folio's content at the time of the revision. */
+    /**
+     * Snapshot of the folio's content at the time of the revision.
+     */
     contentSnapshot: z.string(),
     titleSnapshot: z.string(),
     /**
@@ -76,7 +78,9 @@ export const folioRevisions = $entity({
     pinned: db.default(z.boolean(), false),
   }),
   indexes: [
-    /** Read path: list revisions for a folio, newest first. */
+    /**
+     * Read path: list revisions for a folio, newest first.
+     */
     { columns: ["folioId", "at"] },
   ],
 });

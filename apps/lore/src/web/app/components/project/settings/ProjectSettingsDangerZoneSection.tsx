@@ -10,6 +10,7 @@ import {
 } from "@alepha/ui/components/ui/alert-dialog";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
@@ -26,6 +27,7 @@ import ProjectSettingsConfirmationModal from "./ProjectSettingsConfirmationModal
 
 const ProjectSettingsDangerZoneSection = () => {
   const alepha = useAlepha();
+  const toaster = useToast();
   const auth = useAuth();
   const { tr } = useI18n<I18n, "en">();
   const projectApi = useClient<ProjectController>();
@@ -40,18 +42,28 @@ const ProjectSettingsDangerZoneSection = () => {
 
   const isOwner = project.createdBy === auth.user?.id;
 
+  // A refused delete or leave (an owned project, a server error) used to be
+  // an unhandled rejection with the dialog left open and nothing said.
   const handleDelete = async () => {
-    await projectApi.deleteProjectById({ params: { id: project.id } });
-    alepha.store.set(userProjectsAtom, await projectApi.getHomeOverview());
-    setDeleteModalOpen(false);
-    void router.push("home");
+    try {
+      await projectApi.deleteProjectById({ params: { id: project.id } });
+      alepha.store.set(userProjectsAtom, await projectApi.getHomeOverview());
+      setDeleteModalOpen(false);
+      void router.push("home");
+    } catch (error) {
+      toaster.error(error instanceof Error ? error.message : String(error));
+    }
   };
 
   const handleLeave = async () => {
-    await projectApi.leaveProject({ params: { id: project.id } });
-    alepha.store.set(userProjectsAtom, await projectApi.getHomeOverview());
-    setLeaveDialogOpen(false);
-    void router.push("home");
+    try {
+      await projectApi.leaveProject({ params: { id: project.id } });
+      alepha.store.set(userProjectsAtom, await projectApi.getHomeOverview());
+      setLeaveDialogOpen(false);
+      void router.push("home");
+    } catch (error) {
+      toaster.error(error instanceof Error ? error.message : String(error));
+    }
   };
 
   return (

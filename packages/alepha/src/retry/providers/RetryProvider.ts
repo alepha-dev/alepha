@@ -1,4 +1,4 @@
-import { $inject } from "alepha";
+import { $inject, AlephaError } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 
@@ -75,6 +75,8 @@ export interface RetryBackoffOptions {
 
   /**
    * Maximum delay in milliseconds.
+   *
+   * @default 10000
    */
   max?: number;
 
@@ -102,6 +104,13 @@ export class RetryProvider {
     ...args: Parameters<T>
   ): Promise<ReturnType<T>> {
     const maxAttempts = options.max ?? 3;
+    if (maxAttempts < 1) {
+      // With zero attempts the loop never ran and `throw lastError` threw
+      // `undefined`, the least diagnosable failure possible.
+      throw new AlephaError(
+        `retry: 'max' must be at least 1, received ${maxAttempts}`,
+      );
+    }
     const when = options.when ?? (() => true);
     const { handler, onError } = options;
 
@@ -113,7 +122,9 @@ export class RetryProvider {
       : Infinity;
 
     // Combine user-provided signal with additional signal (e.g., app lifecycle)
-    const signals = [options.signal, options.additionalSignal].filter(Boolean);
+    const signals = [options.signal, options.additionalSignal].filter(
+      (signal): signal is AbortSignal => signal != null,
+    );
     const onAbort = () => {
       // Always set RetryCancelError when aborted, even if another error exists
       // This ensures cancellation takes precedence over retry errors
@@ -122,21 +133,18 @@ export class RetryProvider {
 
     // Add abort listeners to all signals
     for (const signal of signals) {
-      signal?.addEventListener("abort", onAbort);
+      signal.addEventListener("abort", onAbort);
     }
 
-    // FIX BUG #8: Create combined signal ONCE at the start instead of on each backoff
-    // This prevents memory leak from creating multiple AbortSignal.any() instances
-    const waitSignals = [options.signal, options.additionalSignal].filter(
-      Boolean,
-    ) as AbortSignal[];
+    // One combined signal for the whole loop: creating an `AbortSignal.any()`
+    // per backoff leaked a listener on every attempt.
     const combinedSignal =
-      waitSignals.length > 0 ? AbortSignal.any(waitSignals) : undefined;
+      signals.length > 0 ? AbortSignal.any(signals) : undefined;
 
     try {
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         // Check for cancellation
-        if (signals.some((signal) => signal?.aborted)) {
+        if (signals.some((signal) => signal.aborted)) {
           throw new RetryCancelError();
         }
 
@@ -161,7 +169,12 @@ export class RetryProvider {
             throw new RetryTimeoutError(maxDurationMs);
           }
 
-          // Log the error with warning level
+          if (!(err instanceof Error) || !when(err)) {
+            throw err; // don't retry if it's not an Error or `when` returns false
+          }
+
+          // Logged after the `when` check: a failure that is rethrown as-is
+          // is not a retry, and reporting it as one was misleading.
           this.log.warn("Retry attempt failed", {
             attempt,
             maxAttempts,
@@ -170,12 +183,8 @@ export class RetryProvider {
             errorName: lastError.name,
           });
 
-          if (!(err instanceof Error) || !when(err)) {
-            throw err; // don't retry if it's not an Error or `when` returns false
-          }
-
-          // FIX BUG #7: Call onError BEFORE checking if this is the final attempt
-          // This ensures onError is called for ALL failed attempts, including the last one
+          // `onError` runs for every failed attempt, including the last one,
+          // so it has to be called before the final-attempt check below.
           if (onError) {
             onError(err, attempt, ...args);
           }
@@ -199,7 +208,7 @@ export class RetryProvider {
     } finally {
       // Clean up listeners to prevent memory leaks
       for (const signal of signals) {
-        signal?.removeEventListener("abort", onAbort);
+        signal.removeEventListener("abort", onAbort);
       }
     }
 

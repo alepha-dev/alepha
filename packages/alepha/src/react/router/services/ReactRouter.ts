@@ -69,31 +69,6 @@ export class ReactRouter<T extends object> {
     return isActive;
   }
 
-  public node(
-    name: keyof VirtualRouter<T> | string,
-    config: {
-      params?: Record<string, any>;
-      query?: Record<string, any>;
-    } = {},
-  ): any {
-    // TODO: improve typing (or just remove this method)
-    const page = this.pageApi.page(name as string);
-    if (!page.lazy && !page.component) {
-      return {
-        ...page,
-        label: page.label ?? page.name,
-        children: undefined,
-      };
-    }
-
-    return {
-      ...page,
-      label: page.label ?? page.name,
-      href: this.path(name, config),
-      children: undefined,
-    };
-  }
-
   public path(
     name: keyof VirtualRouter<T> | string,
     config: {
@@ -119,7 +94,9 @@ export class ReactRouter<T extends object> {
       return;
     }
 
-    await this.push(this.location.pathname + this.location.search, {
+    // `browser.url` is already stripped of the base path; `location.pathname`
+    // is not, and push() re-adds the base, so a non-root BASE_URL doubled it.
+    await this.push(this.browser.url, {
       replace: true,
       force: true,
     });
@@ -310,13 +287,15 @@ export class ReactRouter<T extends object> {
     const func = typeof record === "function" ? record : () => record;
     const search = new URLSearchParams(func(this.query)).toString();
     const path = search ? `${this.pathname}?${search}` : this.pathname;
-    const state = this.base(path);
 
-    if (options.push) {
-      window.history.pushState({}, "", state);
-    } else {
-      window.history.replaceState({}, "", state);
+    if (!this.browser) {
+      throw new AlephaError("Browser is required");
     }
+
+    // Through the browser provider, never `window.history` directly: it stamps
+    // the `alephaKey` that popstate reads back for scroll restoration and
+    // canGoBack(). A bare `replaceState({})` wiped that key.
+    this.browser.pushState(path, !options.push);
 
     // Keep the router store in sync — `router.query`, `useQueryParams`, and
     // every `useRouterState` subscriber read from the store, not from

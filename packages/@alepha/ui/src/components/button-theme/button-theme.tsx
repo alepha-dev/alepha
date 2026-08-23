@@ -55,7 +55,7 @@ export interface ButtonThemeProps {
  * `<head>` (id `alepha-theme-fonts`); switching themes swaps it. No effect
  * when the list has 0 or 1 entries.
  */
-export function ButtonTheme(props: ButtonThemeProps) {
+export const ButtonTheme = (props: ButtonThemeProps) => {
   const { theme, setTheme } = useTheme();
   const [list] = useStore(uiThemeListAtom);
   const themes = list ?? [];
@@ -127,7 +127,7 @@ export function ButtonTheme(props: ButtonThemeProps) {
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
+};
 
 interface ThemeSwatchProps {
   colors: string[];

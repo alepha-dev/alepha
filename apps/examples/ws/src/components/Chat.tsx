@@ -7,7 +7,7 @@ import { ChatChannels, type chatInSchema } from "../channels/ChatChannels.ts";
 
 type ChatMessage = Infer<typeof chatInSchema>;
 
-export function Chat() {
+export const Chat = () => {
   const channels = useInject(ChatChannels);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -84,4 +84,4 @@ export function Chat() {
       </form>
     </div>
   );
-}
+};

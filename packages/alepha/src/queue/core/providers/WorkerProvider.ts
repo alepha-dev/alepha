@@ -267,6 +267,14 @@ export class WorkerProvider {
 
     this.log.trace("Waiting for workers to finish...");
     await Promise.all(this.workerPromises);
+
+    // Leave nothing from this run behind: `startWorkers()` only creates a
+    // controller when none exists, so the aborted one used to survive into
+    // the next start and every poll saw an already-aborted signal (no
+    // backoff, no wait, a hot loop on the queue).
+    this.abortController = undefined;
+    this.workerPromises = [];
+    this.workerIntervals = {};
   }
 
   /**

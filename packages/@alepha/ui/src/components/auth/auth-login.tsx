@@ -18,6 +18,8 @@ import { HttpError } from "alepha/server";
 import { AlertCircle, Mail, User } from "lucide-react";
 import { type ReactNode, useEffect, useMemo } from "react";
 
+import { safeRedirect } from "./safe-redirect.ts";
+
 export interface AuthLoginProps {
   /**
    * Realm configuration (credential providers + OAuth buttons that render).
@@ -54,20 +56,7 @@ export interface AuthLoginProps {
   logo?: ReactNode;
 }
 
-/**
- * Filter the `?redirect=` query param to a safe in-app destination:
- * - Only accept same-origin absolute paths (must start with a single `/`).
- * - Reject `//evil.com` / full URLs (open-redirect surface).
- * - Reject `/auth/*` to avoid bouncing the user back into the auth flow.
- */
-const safeRedirect = (raw: string | string[] | undefined): string => {
-  if (typeof raw !== "string" || raw.length === 0) return "/";
-  if (!raw.startsWith("/") || raw.startsWith("//")) return "/";
-  if (raw.startsWith("/auth/")) return "/";
-  return raw;
-};
-
-export function AuthLogin(props: AuthLoginProps) {
+export const AuthLogin = (props: AuthLoginProps) => {
   const auth = useAuth();
   const router = useRouter();
   const { tr } = useI18n();
@@ -379,4 +368,4 @@ export function AuthLogin(props: AuthLoginProps) {
       {formColumn}
     </div>
   );
-}
+};

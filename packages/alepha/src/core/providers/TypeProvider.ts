@@ -11,7 +11,9 @@ import { z } from "./ZodProvider.ts";
 
 export type { FileSchema, StreamSchema };
 
-/** Re-export the `z` provider (the canonical alepha zod) for relative imports. */
+/**
+ * Re-export the `z` provider (the canonical alepha zod) for relative imports.
+ */
 export { z };
 
 /**

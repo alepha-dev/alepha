@@ -23,7 +23,9 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface EpicQuestPickerProps {
   projectId: number;
-  /** Quest ids already attached to this epic — excluded from the list. */
+  /**
+   * Quest ids already attached to this epic — excluded from the list.
+   */
   attachedIds: Set<number>;
   onAttach: (questId: number) => void;
 }

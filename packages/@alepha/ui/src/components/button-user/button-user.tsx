@@ -23,8 +23,8 @@ import type { ReactNode } from "react";
 export interface ButtonUserProps {
   /**
    * Custom menu items rendered between the email header and the logout
-   * footer. When omitted, a default menu is rendered: email + admin (when
-   * permitted) + logout. When provided, the consumer is responsible for the
+   * footer. When omitted, a default menu is rendered: email + account + admin
+   * (when permitted) + logout. When provided, the consumer is responsible for the
    * full layout — use `ButtonUser.Email`, `ButtonUser.AdminMenuItem`,
    * `ButtonUser.LogoutMenuItem` as building blocks.
    */
@@ -75,7 +75,7 @@ export interface ButtonUserProps {
  *   <ButtonUser.LogoutMenuItem />
  * </ButtonUser>
  */
-export function ButtonUser(props: ButtonUserProps) {
+export const ButtonUser = (props: ButtonUserProps) => {
   const auth = useAuth();
 
   if (!auth.user) {
@@ -126,7 +126,7 @@ export function ButtonUser(props: ButtonUserProps) {
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
+};
 
 interface DefaultMenuProps {
   onAdminClick?: () => void;

@@ -356,7 +356,9 @@ export class Alepha {
    *  List of all services + how they are provided.
    */
   protected registry: Map<Service, ServiceDefinition> = new Map();
-  /** Services already warned about a scoped -> singleton fallback. */
+  /**
+   * Services already warned about a scoped -> singleton fallback.
+   */
   protected readonly scopedFallbackWarned = new Set<Service | string>();
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -632,8 +634,18 @@ export class Alepha {
     }
 
     this.startedAt = performance.now();
-    this.startPromise = this.boot();
-    return this.startPromise;
+    const promise = this.boot();
+    this.startPromise = promise;
+    // boot() can fail before its first await (a substituted service whose
+    // constructor throws), in which case its catch block has already run
+    // resetStartup() by the time the promise is assigned above. Without this,
+    // the rejected promise stayed cached and every later start() returned it.
+    promise.catch(() => {
+      if (this.startPromise === promise) {
+        this.startPromise = undefined;
+      }
+    });
+    return promise;
   }
 
   /**
@@ -995,7 +1007,7 @@ export class Alepha {
         return this;
       }
 
-      if (!this.substitutions.has(entry.provide) && !this.has(entry.provide)) {
+      if (!this.has(entry.provide)) {
         if (this.started) {
           throw new ContainerLockedError();
         }

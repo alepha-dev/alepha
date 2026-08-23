@@ -117,7 +117,9 @@ export class InvoiceService {
     // cannot consume a number.
     return this.db.transactional(async () => {
       const year = Number(this.dateTime.nowISOString().slice(0, 4));
-      const seq = await this.invoiceNumber.next(String(year));
+      const seq = await this.invoiceNumber.next(
+        `${order.organizationId ?? "default"}:${year}`,
+      );
 
       return this.repo.create({
         number: this.formatNumber(seller.numberPrefix, year, seq),
@@ -165,7 +167,9 @@ export class InvoiceService {
 
     return this.db.transactional(async () => {
       const year = Number(this.dateTime.nowISOString().slice(0, 4));
-      const seq = await this.invoiceNumber.next(String(year));
+      const seq = await this.invoiceNumber.next(
+        `${original.organizationId ?? "default"}:${year}`,
+      );
       const seller = this.seller;
 
       return this.repo.create({

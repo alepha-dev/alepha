@@ -108,9 +108,15 @@ export class WebSocketChannelConnection<
       channelPath: this.channel.options.path,
     });
 
+    // The server reads the rooms to join from the upgrade URL, so every
+    // branch announces them: a custom or env URL used to join no room at
+    // all, and the subscriber waited forever for a broadcast.
+    const roomIds = Array.from(this.subscriptions.keys());
+
     if (this.options.url) {
-      this.log.debug("Using custom WebSocket URL", { url: this.options.url });
-      return this.options.url;
+      const url = this.withRoomIds(this.options.url, roomIds);
+      this.log.debug("Using custom WebSocket URL", { url, roomIds });
+      return url;
     }
 
     // Auto-detect URL from current location (browser only)
@@ -118,19 +124,28 @@ export class WebSocketChannelConnection<
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host = window.location.host;
       const path = this.channel.options.path;
-      // Send all room IDs as query params
-      const roomIds = Array.from(this.subscriptions.keys());
-      const roomParam =
-        roomIds.length > 0 ? `?roomIds=${roomIds.join(",")}` : "";
-      const url = `${protocol}//${host}${path}${roomParam}`;
+      const url = this.withRoomIds(`${protocol}//${host}${path}`, roomIds);
       this.log.debug("Auto-detected WebSocket URL", { url, roomIds });
       return url;
     }
 
     // Fallback to env URL
-    const url = `${this.env.WEBSOCKET_URL}${this.channel.options.path}`;
-    this.log.debug("Using env WebSocket URL", { url });
+    const url = this.withRoomIds(
+      `${this.env.WEBSOCKET_URL}${this.channel.options.path}`,
+      roomIds,
+    );
+    this.log.debug("Using env WebSocket URL", { url, roomIds });
     return url;
+  }
+
+  /**
+   * Append the `roomIds` query to a URL that does not carry one yet. A
+   * caller that wrote the list into its custom URL by hand keeps it.
+   */
+  protected withRoomIds(base: string, roomIds: string[]): string {
+    if (roomIds.length === 0 || /[?&]roomIds=/.test(base)) return base;
+    const separator = base.includes("?") ? "&" : "?";
+    return `${base}${separator}roomIds=${roomIds.map(encodeURIComponent).join(",")}`;
   }
 
   /**
@@ -234,6 +249,7 @@ export class WebSocketChannelConnection<
         this.ws = ws;
 
         ws.onopen = () => {
+          if (this.ws !== ws) return;
           this.isConnected = true;
           this.isConnecting = false;
           this.isError = false;
@@ -280,6 +296,11 @@ export class WebSocketChannelConnection<
         };
 
         ws.onclose = (event) => {
+          // A socket that reconnect() already replaced must not report for
+          // the new one: its late close used to clear `this.ws`, flag the
+          // live connection as down and schedule a second reconnect, so a
+          // second subscription leaked one extra socket per reconnect.
+          if (this.ws !== ws) return;
           this.isConnected = false;
           this.isConnecting = false;
           this.ws = undefined;
@@ -503,8 +524,16 @@ export class WebSocketChannelConnection<
     }
 
     if (this.ws) {
-      this.ws.close();
+      // Detach before closing: the handlers belong to this connection's
+      // state, and the close event of an abandoned socket fires after the
+      // next one has already opened.
+      const ws = this.ws;
       this.ws = undefined;
+      ws.onopen = null;
+      ws.onmessage = null;
+      ws.onclose = null;
+      ws.onerror = null;
+      ws.close();
     }
 
     this.isConnected = false;

@@ -232,4 +232,7 @@ export const commerceFr: Record<string, string> = {
   "commerce.admin.orders.colQuantity": "Qté",
   "commerce.admin.orders.colUnitPrice": "Prix unitaire",
   "commerce.admin.orders.colTotal": "Total",
+  "commerce.checkout.pay": "Payer",
+  "commerce.checkout.declined": "Le paiement a été refusé.",
+  "commerce.checkout.paymentSent": "Paiement envoyé…",
 };

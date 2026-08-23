@@ -1,4 +1,3 @@
-import { existsSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -7,7 +6,6 @@ import { defineConfig } from "vitest/config";
 import { jsdomProject } from "./vitest.jsdom.ts";
 
 const repoRoot = dirname(fileURLToPath(import.meta.url));
-loadEnv();
 
 export default defineConfig({
   resolve: {
@@ -46,14 +44,13 @@ export default defineConfig({
       exclude: [
         "apps/**",
         "scripts/**",
-        // ignore experimental packages
-        "packages/ui",
-        "packages/devtools",
+        // ignore experimental packages and tooling
+        "packages/@alepha/ui",
+        "packages/@alepha/devtools",
         "packages/create-alepha",
         "packages/alepha/src/vite",
         "packages/alepha/src/cli",
         "packages/alepha/src/bin",
-        "packages/alepha/src/thread",
       ],
     },
     env: {
@@ -65,9 +62,9 @@ export default defineConfig({
       TZ: "Europe/Paris",
       // database connection string for tests, installed via docker-compose
       DATABASE_URL: "postgres://postgres:postgres@127.0.0.1:15432/postgres",
-      // S3-compatible storage (MinIO via docker-compose) for testing NodeS3BucketProvider
+      // S3-compatible storage (s3mock via docker-compose) for testing S3FileStorageProvider
       S3_ENDPOINT: "http://127.0.0.1:19090",
-      // Must match `initialBuckets` on the s3mock service in compose.yml.
+      // The bucket the S3 specs create on the s3mock service before they run.
       S3_BUCKET_NAME: "alepha-test",
       S3_REGION: "us-east-1",
       S3_ACCESS_KEY_ID: "mock",
@@ -118,7 +115,6 @@ export default defineConfig({
             // e2e suites meant for `yarn e2e` run inside `yarn test`.
             "**/.claude/**",
             "apps/e2e-cli/**",
-            "apps/tmp/**",
           ],
         },
       },
@@ -140,22 +136,3 @@ export default defineConfig({
     ],
   },
 });
-
-function loadEnv(): Record<string, string> {
-  // if .env, read and load to var "env"
-  if (existsSync(".env")) {
-    return readFileSync(".env", "utf-8")
-      .split("\n")
-      .map((e) => e.trim().split("="))
-      .filter((e) => e.length === 2)
-      .reduce(
-        (acc, cur) => {
-          acc[cur[0].trim()] = cur[1].trim();
-          return acc;
-        },
-        {} as Record<string, string>,
-      );
-  }
-
-  return {};
-}

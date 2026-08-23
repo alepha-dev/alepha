@@ -12,8 +12,9 @@ gets - `yarn create alepha`, `pnpm create alepha` and `bun create alepha` all
 resolve themselves through `npm_config_user_agent`, so there is nothing to
 answer.
 
-Pass the name and it runs start to finish without a prompt, which is what a CI
-needs. Omit it and an interactive wizard asks for anything missing.
+Pass the name, `--preset` and `--no-devtools` and it runs start to finish
+without a prompt, which is what a CI needs. Omit any of them and an interactive
+wizard asks for what is missing.
 
 The package is standalone with no runtime dependencies, so `npm create` stays
 fast. It scaffolds the same layout as `alepha init`; use `init` from inside an
@@ -35,10 +36,11 @@ preset decides what is mounted, never where it lives.
 
 ## Options
 
-| Flag              | Description                                              |
-| ----------------- | -------------------------------------------------------- |
-| `--preset <name>` | `default` (the default) or `saas`                        |
-| `--pm <manager>`  | Force a package manager: `yarn`, `npm`, `pnpm`, or `bun` |
+| Flag              | Description                                                 |
+| ----------------- | ----------------------------------------------------------- |
+| `--preset <name>` | `default` (the default) or `saas`                           |
+| `--pm <manager>`  | Force a package manager: `yarn`, `npm`, `pnpm`, or `bun`    |
+| `--no-devtools`   | Skip the devtools question and leave `@alepha/devtools` out |
 
 ## After creating
 

@@ -75,7 +75,6 @@ import type {
   AggregateSelect,
 } from "../interfaces/AggregateQuery.ts";
 import type {
-  PgQuery,
   PgQueryRelations,
   PgRelationMap,
   PgStatic,
@@ -797,13 +796,6 @@ export abstract class Repository<T extends ZObject> {
   }
 
   /**
-   * Helper to create a type-safe query object.
-   */
-  public createQuery(): PgQuery<T> {
-    return {};
-  }
-
-  /**
    * Helper to create a type-safe where clause.
    */
   public createQueryWhere(): PgQueryWhere<T> {
@@ -1145,7 +1137,7 @@ export abstract class Repository<T extends ZObject> {
       for (const key of Object.keys(sample)) {
         if (targetKeys.includes(key as keyof Infer<T>)) continue;
         if (key === this.id.key) continue;
-        setData[key] = sql.raw(`excluded.${this.col(key).name}`);
+        setData[key] = sql`excluded.${sql.identifier(this.col(key).name)}`;
       }
     }
 
@@ -1163,9 +1155,8 @@ export abstract class Repository<T extends ZObject> {
     // nothing to set, and `DO NOTHING` would not return the conflicting rows.
     if (Object.keys(setData).length === 0) {
       for (const key of targetKeys) {
-        setData[key as string] = sql.raw(
-          `excluded.${this.col(key as string).name}`,
-        );
+        setData[key as string] =
+          sql`excluded.${sql.identifier(this.col(key as string).name)}`;
       }
     }
 
@@ -1708,11 +1699,18 @@ export abstract class Repository<T extends ZObject> {
     }
 
     // LIMIT / OFFSET
-    if (query.limit) {
-      builder = builder.limit(query.limit) as any;
-    }
+    let limit = query.limit;
     if (query.offset) {
       builder = builder.offset(query.offset) as any;
+
+      // Same guard as findMany: SQLite rejects OFFSET without LIMIT, so use
+      // an effectively unbounded limit rather than truncating or failing.
+      if (this.provider.dialect === "sqlite" && !limit) {
+        limit = Number.MAX_SAFE_INTEGER;
+      }
+    }
+    if (limit) {
+      builder = builder.limit(limit) as any;
     }
 
     try {
@@ -2073,6 +2071,11 @@ export abstract class Repository<T extends ZObject> {
     const scalarData: Record<string, unknown> = {};
     for (const key of Object.keys(data)) {
       const value = data[key];
+      // An explicit `undefined` is treated exactly like an absent key. Keeping
+      // it would make the update branch below re-encode the field, and for a
+      // defaulted column that re-applies the default instead of leaving the
+      // stored value alone.
+      if (value === undefined) continue;
       if (value != null && isSQLWrapper(value)) {
         sqlValues[key] = value;
       } else {

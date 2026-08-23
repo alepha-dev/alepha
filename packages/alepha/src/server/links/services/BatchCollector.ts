@@ -3,7 +3,7 @@ import { $logger } from "alepha/logger";
 import { HttpClient, HttpError } from "alepha/server";
 
 /**
- * Collects browser-side action calls within a microtask and
+ * Collects browser-side action calls made within a 10 ms window and
  * sends them as a single `POST /api/_batch` request.
  *
  * Key behaviors:

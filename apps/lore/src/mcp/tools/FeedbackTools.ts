@@ -21,9 +21,9 @@ import { AttachmentContentService } from "../services/AttachmentContentService.t
 
 /**
  * MCP tools for feedback — user-submitted bug/feature requests that the
- * project owner triages. Owner-only operations: list the inbox, inspect an
- * item, and accept or reject. Promoting feedback to a quest is a separate
- * quest_create call with `feedbackId` set.
+ * project owner triages. Any project member can list the inbox and inspect
+ * an item; accept and reject are owner-only. Promoting feedback to a quest
+ * is a separate quest_create call with `feedbackId` set.
  */
 export class FeedbackTools {
   protected readonly feedbackController = $inject(FeedbackController);
@@ -136,7 +136,7 @@ export class FeedbackTools {
 
   feedback_list = $tool({
     description:
-      "List feedback (user-submitted bug/feature requests) for a project. Owner-only. Defaults to status 'pending' — the inbox the owner needs to triage. Pass status='all' to see everything. " +
+      "List feedback (user-submitted bug/feature requests) for a project. Any project member can read it; accept/reject are owner-only. Defaults to status 'pending' — the inbox the owner needs to triage. Pass status='all' to see everything. " +
       "A row with a non-zero `attachmentCount` carries files: `feedback_get` lists them and `feedback_attachment_get` renders an image inline, so triage does not need a round-trip per row to find out which reports came with a screenshot.",
     title: "List feedback",
     annotations: { readOnlyHint: true, idempotentHint: true },

@@ -22,7 +22,9 @@ import { rewriteFolioWikiLinks } from "../../folios/rewriteFolioWikiLinks.ts";
 import type { ElementRef } from "./elementRef.ts";
 
 export interface ElementLinks {
-  /** What the `[[` picker offers in Edit mode. */
+  /**
+   * What the `[[` picker offers in Edit mode.
+   */
   suggestions: WikiLinkSuggestion[];
   /**
    * `content` with `[[…]]` turned into real markdown links and

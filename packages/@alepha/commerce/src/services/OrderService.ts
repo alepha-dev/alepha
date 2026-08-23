@@ -31,7 +31,9 @@ export interface CreateOrderInput {
    * is what the customer pays — see the note on that column.
    */
   shippingTotal?: number;
-  /** VAT contained in the total. Computed by the caller, which knows the rate. */
+  /**
+   * VAT contained in the total. Computed by the caller, which knows the rate.
+   */
   taxTotal?: number;
   notes?: string;
 }
@@ -240,6 +242,9 @@ export class OrderService {
    */
   public async cancel(id: string): Promise<OrderEntity> {
     return this.db.transactional(async () => {
+      // A paid order is not cancelled, it is refunded: cancelling one used
+      // to release units that were sold and leave the money taken.
+      await this.assertTransition(id, ["pending"], "cancelled");
       await this.stock.releaseFor(id);
       const order = await this.orderRepo.updateById(id, {
         status: "cancelled",
@@ -266,6 +271,13 @@ export class OrderService {
       if (current.status === "refunded") {
         return current;
       }
+      // Only money that moved can come back: a pending order has nothing to
+      // refund, and flipping it hid that no payment ever happened.
+      await this.assertTransition(
+        id,
+        ["paid", "fulfilled", "shipped", "delivered"],
+        "refunded",
+      );
       await this.stock.releaseOrder(id);
       const order = await this.orderRepo.updateById(id, {
         status: "refunded",

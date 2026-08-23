@@ -69,7 +69,7 @@ export class ProjectScaffolder {
    *
    * Converts the directory name to a valid module name:
    * - Converts to lowercase
-   * - Replaces spaces, dashes, underscores with nothing
+   * - Strips spaces, dashes, underscores, dots and digits
    * - Falls back to "app" if empty
    */
   public getAppName(root: string): string {
@@ -586,9 +586,6 @@ export class ProjectScaffolder {
   // ===========================================
 
   /**
-   * Full project init — scaffolds files, installs deps, sets up PM and git.
-   */
-  /**
    * Drop a foreign Yarn PnP runtime from a `NODE_OPTIONS` value.
    *
    * `yarn create alepha` runs create-alepha out of a **temporary PnP install**
@@ -658,6 +655,9 @@ export class ProjectScaffolder {
     return kept.length > 0 ? kept.join(" ") : undefined;
   }
 
+  /**
+   * Full project init: scaffolds files, installs deps, sets up PM and git.
+   */
   async init({
     run,
     root,

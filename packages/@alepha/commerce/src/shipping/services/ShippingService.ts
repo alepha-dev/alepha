@@ -10,14 +10,22 @@ import {
   shippingZones,
 } from "../entities/shippingZones.ts";
 
-/** One option offered to the buyer, priced for their cart. */
+/**
+ * One option offered to the buyer, priced for their cart.
+ */
 export interface ShippingQuote {
-  /** Written onto the order as `shippingMethod`. */
+  /**
+   * Written onto the order as `shippingMethod`.
+   */
   code: string;
   name: string;
-  /** What this cart actually pays — 0 when `freeAbove` is met. */
+  /**
+   * What this cart actually pays — 0 when `freeAbove` is met.
+   */
   price: number;
-  /** The rate's list price, so a UI can strike it through when free. */
+  /**
+   * The rate's list price, so a UI can strike it through when free.
+   */
   listPrice: number;
   free: boolean;
   minDays?: number;

@@ -1,6 +1,5 @@
 import { $inject, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $logger } from "alepha/logger";
 import { $repository, $sequence, $transactional } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
@@ -37,7 +36,6 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
  * never an epic's own view of itself. See `computeProgress` below.
  */
 export class EpicController {
-  log = $logger();
   epics = $repository(epics);
   quests = $repository(quests);
   folios = $repository(folios);

@@ -38,11 +38,9 @@ type Ref = FolioLinks["outbound"][number] | FolioLinks["inbound"][number];
  * Reads `folio.metadata?.links`, which the route loader already populates
  * via `withLinks: true`.
  *
- * This tab is load-bearing, not a sidebar afterthought: merging the old
- * read view into the always-editable workspace means `[[wiki-links]]` no
- * longer render as clickable links inside the body — MDXEditor has no
- * idea what that syntax means. This list is the only way left to
- * navigate them.
+ * This tab is load-bearing, not a sidebar afterthought: it lists every
+ * link of the folio in one place, whichever face of the document is
+ * showing, and it is the only place the inbound ones appear.
  *
  * One thing this restyle deliberately does NOT add: excerpts on the
  * Backlinks (inbound) rows. `FolioLinks["inbound"]` (see

@@ -10,9 +10,13 @@ export interface AnalyticsEngineSqlOptions {
    * be scoped to a single dataset.
    */
   token: string;
-  /** Override for tests. Defaults to the real Cloudflare endpoint. */
+  /**
+   * Override for tests. Defaults to the real Cloudflare endpoint.
+   */
   endpoint?: string;
-  /** Injected so a caller can supply a Worker-bound or instrumented fetch. */
+  /**
+   * Injected so a caller can supply a Worker-bound or instrumented fetch.
+   */
   fetch?: typeof globalThis.fetch;
 }
 
@@ -27,7 +31,9 @@ interface SqlApiResponse {
   rows?: number;
   meta?: Array<{ name: string; type: string }>;
   errors?: Array<{ message?: string }>;
-  /** Present on an envelope-shaped error response rather than a raw result. */
+  /**
+   * Present on an envelope-shaped error response rather than a raw result.
+   */
   success?: boolean;
 }
 
@@ -169,7 +175,9 @@ export class AnalyticsEngineSql {
     return `"${name.replace(/"/g, '""')}"`;
   }
 
-  /** `IN (…)` list, each element quoted. Empty stays empty — see the caller. */
+  /**
+   * `IN (…)` list, each element quoted. Empty stays empty — see the caller.
+   */
   static quoteList(values: Array<string | number>): string {
     return values.map((value) => AnalyticsEngineSql.quote(value)).join(", ");
   }
@@ -189,7 +197,9 @@ export class AnalyticsEngineSql {
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
-  /** Read a positional column off a row, as a string. */
+  /**
+   * Read a positional column off a row, as a string.
+   */
   static str(row: AnalyticsEngineRow, key: string): string {
     const value = row[key];
     return value === null || value === undefined ? "" : String(value);

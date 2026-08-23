@@ -1,5 +1,4 @@
 import { $inject, Alepha, AlephaError, type ZType, z } from "alepha";
-import { $logger } from "alepha/logger";
 
 import type {
   CloudflareAccount,
@@ -66,7 +65,6 @@ export type {
 export class CloudflareApi {
   protected static readonly BASE = "https://api.cloudflare.com/client/v4";
 
-  protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly wrangler = $inject(WranglerApi);
 
@@ -635,12 +633,25 @@ export class CloudflareApi {
       }
 
       const response = await globalThis.fetch(url, { method: "GET", headers });
-      const json = (await response.json()) as {
+      // Same guard as `fetch` above: a 5xx answers HTML, and a bare
+      // `response.json()` then threw a SyntaxError naming neither the URL
+      // nor the status.
+      const text = await response.text();
+      let json: {
         success: boolean;
         result: T[];
         errors: CloudflareApiError[];
         result_info?: { page: number; total_pages?: number };
       };
+      try {
+        json = JSON.parse(text);
+      } catch {
+        const snippet = text.slice(0, 200).replace(/\s+/g, " ").trim();
+        throw new AlephaError(
+          `Cloudflare API returned a non-JSON response (GET ${path}, ` +
+            `HTTP ${response.status}): ${snippet || "<empty body>"}`,
+        );
+      }
 
       if (!json.success) {
         const messages = json.errors.map((e) => e.message).join(", ");

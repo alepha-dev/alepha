@@ -60,31 +60,19 @@ const Notifications = () => {
             variant="outline"
             size="sm"
             onClick={() =>
-              run(
-                "sendEmail",
-                () =>
-                  (
-                    client as never as Record<string, () => Promise<unknown>>
-                  ).sendEmail?.() ?? Promise.resolve({ ok: true }),
-              )
+              run("pushWelcomeEmail", () => client.pushWelcomeEmail())
             }
           >
-            send email
+            push welcome email
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={() =>
-              run(
-                "sendSms",
-                () =>
-                  (
-                    client as never as Record<string, () => Promise<unknown>>
-                  ).sendSms?.() ?? Promise.resolve({ ok: true }),
-              )
+              run("pushPasswordReset", () => client.pushPasswordReset())
             }
           >
-            send sms
+            push password reset
           </Button>
         </CardContent>
       </Card>

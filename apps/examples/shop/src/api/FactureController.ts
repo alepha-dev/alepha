@@ -28,7 +28,7 @@ export class FactureController {
     handler: async ({ params, reply }) => {
       const invoice = await this.invoices.findByNumber(params.number);
       if (!invoice) {
-        throw new NotFoundError(`Aucune facture ${params.number}`);
+        throw new NotFoundError(`No invoice ${params.number}`);
       }
       const rendered = await this.renderer.render(invoice);
       this.serveAs(reply, rendered.contentType, rendered.filename);

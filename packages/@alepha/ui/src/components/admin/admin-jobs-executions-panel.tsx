@@ -1,4 +1,4 @@
-import { JobStatusBadge } from "@alepha/ui/components/admin/admin-jobs-status-badge";
+import { AdminJobsStatusBadge } from "@alepha/ui/components/admin/admin-jobs-status-badge";
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
@@ -38,7 +38,7 @@ function asPage<T>(items: T[]): Page<T> {
   };
 }
 
-export interface JobExecutionsPanelProps {
+export interface AdminJobsExecutionsPanelProps {
   jobName: string;
 }
 
@@ -48,7 +48,9 @@ export interface JobExecutionsPanelProps {
  * (gated server-side via `e.can.*`). Self-contained: resolves its own client,
  * i18n and dialogs rather than receiving them as props.
  */
-export const JobExecutionsPanel = (props: JobExecutionsPanelProps) => {
+export const AdminJobsExecutionsPanel = (
+  props: AdminJobsExecutionsPanelProps,
+) => {
   const { jobName } = props;
   const client = useClient<AdminJobController>();
   const { l, tr } = useI18n();
@@ -127,20 +129,25 @@ export const JobExecutionsPanel = (props: JobExecutionsPanelProps) => {
             )}
             triggerClassName="w-40"
             items={[
-              { value: "pending", label: "pending" },
-              { value: "running", label: "running" },
-              { value: "scheduled", label: "scheduled" },
-              { value: "ok", label: "ok" },
-              { value: "error", label: "error" },
-              { value: "cancelled", label: "cancelled" },
-            ]}
+              "pending",
+              "running",
+              "scheduled",
+              "ok",
+              "error",
+              "cancelled",
+            ].map((status) => ({
+              value: status,
+              label: String(
+                tr(`admin.jobs.status.${status}` as any, { default: status }),
+              ),
+            }))}
           />
         ),
       }}
       columns={{
         status: {
           label: tr("admin.jobs.colStatus", { default: "Status" }),
-          cell: (e) => <JobStatusBadge status={e.status} />,
+          cell: (e) => <AdminJobsStatusBadge status={e.status} />,
         },
         startedAt: {
           label: tr("admin.jobs.colStarted", { default: "Started" }),

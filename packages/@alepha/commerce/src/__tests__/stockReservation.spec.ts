@@ -40,7 +40,9 @@ const aRing = (catalog: CatalogService) =>
     config: { trackStock: true },
   });
 
-/** Take a cart to the payment page, returning the intent to settle or fail. */
+/**
+ * Take a cart to the payment page, returning the intent to settle or fail.
+ */
 const reachPayment = async (
   ctx: Awaited<ReturnType<typeof setup>>,
   productId: string,
@@ -153,8 +155,8 @@ describe("stock reservation", () => {
      * Sweep, but do not assert how many *this* call released.
      *
      * `AlephaCommerceCheckout` registers `StockReservationSweeper`, whose `$job`
-     * runs the very same method every five minutes. `CronProvider` schedules
-     * with `dateTime.wait()`, so the travel above — 31 minutes, six cron
+     * runs the very same method every fifteen minutes. `CronProvider` schedules
+     * with `dateTime.wait()`, so the travel above — 31 minutes, two cron
      * boundaries — fires that job rather than waiting out real time. Whether its
      * handler lands before or after the line below is a race decided by machine
      * load: the count was 1 when the spec ran alone and 0 under a loaded

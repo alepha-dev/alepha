@@ -552,6 +552,9 @@ export class NodeShellProvider implements ShellProvider {
     const result: string[] = [];
     let current = "";
     let inQuote: string | null = null;
+    // An empty quoted string (`""`) is an argument; tracking "is there a
+    // token" rather than "is current non-empty" keeps it.
+    let hasToken = false;
 
     for (let i = 0; i < command.length; i++) {
       const char = command[i];
@@ -564,17 +567,20 @@ export class NodeShellProvider implements ShellProvider {
         }
       } else if (char === '"' || char === "'") {
         inQuote = char;
-      } else if (char === " ") {
-        if (current) {
+        hasToken = true;
+      } else if (char === " " || char === "\t") {
+        if (hasToken) {
           result.push(current);
           current = "";
+          hasToken = false;
         }
       } else {
         current += char;
+        hasToken = true;
       }
     }
 
-    if (current) {
+    if (hasToken) {
       result.push(current);
     }
 

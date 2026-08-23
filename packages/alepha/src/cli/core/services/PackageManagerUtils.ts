@@ -72,7 +72,13 @@ export class PackageManagerUtils {
     if (pm) return pm;
 
     // Check current directory first
-    if (await this.fs.exists(this.fs.join(root, "bun.lock"))) return "bun";
+    // `bun.lockb` is the binary lockfile older Bun versions wrote.
+    if (
+      (await this.fs.exists(this.fs.join(root, "bun.lock"))) ||
+      (await this.fs.exists(this.fs.join(root, "bun.lockb")))
+    ) {
+      return "bun";
+    }
     if (await this.fs.exists(this.fs.join(root, "yarn.lock"))) return "yarn";
     if (await this.fs.exists(this.fs.join(root, "pnpm-lock.yaml")))
       return "pnpm";

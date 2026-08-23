@@ -36,7 +36,7 @@ type Usage struct {
 	Restarts int `json:"restarts"`
 	// StartedAt is when the current run began, so a restart a minute ago is
 	// distinguishable from an uptime of weeks.
-	StartedAt time.Time `json:"startedAt,omitempty"`
+	StartedAt time.Time `json:"startedAt,omitzero"`
 	// PID of the main process, for an operator who needs to go further.
 	PID int `json:"pid,omitempty"`
 }

@@ -46,7 +46,9 @@ export class BunRedisProvider extends RedisProvider {
   protected readonly env = $env(envSchema);
   protected client?: Bun.RedisClient;
 
-  /** Keys examined per SCAN round-trip — see NodeRedisProvider.SCAN_COUNT. */
+  /**
+   * Keys examined per SCAN round-trip — see NodeRedisProvider.SCAN_COUNT.
+   */
   protected static readonly SCAN_COUNT = 500;
 
   public get publisher(): Bun.RedisClient {

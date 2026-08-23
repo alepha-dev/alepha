@@ -157,10 +157,6 @@ func (s *State) migrateDomains() {
 type State struct {
 	Version int   `json:"version"`
 	Apps    []App `json:"apps"`
-	// No control-plane token any more: the API listens on a unix socket and
-	// authorizes by file mode. The field is gone rather than deprecated, so the
-	// next write drops the old secret from state.json instead of leaving it on
-	// disk for a reader who assumes anything still honours it.
 	// BaseDomain is what app subdomains are composed against. It belongs to the
 	// Bay installation, not to any artifact — the same artifact must be
 	// deployable on any Bay without editing it.
@@ -289,7 +285,6 @@ func (s *Store) Upsert(app App) error {
 	return s.flush()
 }
 
-// RecordBackupSuccess stamps a completed backup.
 /*
 RecordLastRequest stamps when an app last answered a request.
 
@@ -316,6 +311,7 @@ func (s *Store) RecordLastRequest(key string, at time.Time) error {
 	})
 }
 
+// RecordBackupSuccess stamps a completed backup.
 func (s *Store) RecordBackupSuccess(key, s3Key string, at time.Time) error {
 	return s.mutate(key, func(a *App) {
 		a.LastBackupAt = at.UTC().Format(time.RFC3339)

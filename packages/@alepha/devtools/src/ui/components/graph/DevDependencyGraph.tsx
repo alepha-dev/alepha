@@ -1,5 +1,3 @@
-import { devMetadataSchema } from "@alepha/devtools";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -8,11 +6,10 @@ import {
 } from "@xyflow/react";
 
 import "@xyflow/react/dist/style.css";
-import { useAction, useInject } from "alepha/react";
-import { HttpClient } from "alepha/server";
 import { AlertTriangle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { useMetadata } from "../../hooks/useMetadata.ts";
 import { getModuleColor } from "./constants.ts";
 import { GraphControls } from "./GraphControls.tsx";
 import {
@@ -36,8 +33,6 @@ const nodeTypes = {
 };
 
 export const DevDependencyGraph = () => {
-  useToast();
-  const http = useInject(HttpClient);
   const [nodes, setNodes, onNodesChange] = useNodesState<ProviderNodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<ProviderEdge>([]);
   const [selectedNode, setSelectedNode] = useState<{
@@ -52,18 +47,9 @@ export const DevDependencyGraph = () => {
     viewMode: "modules",
   });
 
-  const { loading, result } = useAction(
-    {
-      runOnInit: true,
-      handler: () =>
-        http.fetch("/__devtools/api/metadata", {
-          schema: { response: devMetadataSchema },
-        }),
-    },
-    [],
-  );
+  const { loading, data } = useMetadata();
 
-  const providers = result?.data.providers || [];
+  const providers = data?.providers || [];
 
   const modules = useMemo(() => {
     const moduleSet = new Set<string>();

@@ -28,7 +28,9 @@ export interface DetailNotFound {
 }
 
 export interface DetailLayoutProps {
-  /** The identity panel. Usually an {@link DetailAside}. */
+  /**
+   * The identity panel. Usually an {@link DetailAside}.
+   */
   aside: React.ReactNode;
   tabs: DetailTab[];
   tab: string;
@@ -49,7 +51,9 @@ export interface DetailLayoutProps {
    * a caller should gate this on "loading **and** no data yet".
    */
   loading?: boolean;
-  /** Replaces the whole shell with a message and a way back. */
+  /**
+   * Replaces the whole shell with a message and a way back.
+   */
   notFound?: DetailNotFound;
   children?: React.ReactNode;
 }

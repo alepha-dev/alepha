@@ -60,6 +60,15 @@ jobs:
       - name: DB Migrations Check
         run: yarn check:migrations
 
+      # The two checks `yarn v` runs that this job did not: a `throw new
+      # Error` / `Date.now()` regression or a doc-breaking JSDoc change used to
+      # reach main (and the Lore deploy) whenever nobody ran `yarn v` locally.
+      - name: Conventions Check
+        run: yarn check:conventions
+
+      - name: Docs Check
+        run: yarn check:docs
+
   # ──────────────────────────────────────────────────────────────────────
   # Unit + integration tests (Vitest, Bun providers).
   # Needs services for the integration tests that hit real backends.

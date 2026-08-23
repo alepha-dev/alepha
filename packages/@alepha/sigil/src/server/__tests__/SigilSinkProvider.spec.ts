@@ -17,7 +17,6 @@ import { SigilSinkProvider } from "../SigilSinkProvider.ts";
  */
 class RecordingHttpClient extends HttpClient {
   public calls: Array<{ url: string; body: any; headers: any }> = [];
-  public configResponse: any = {};
   public failNext = false;
 
   async fetch(url: string, opts: any): Promise<any> {
@@ -25,9 +24,6 @@ class RecordingHttpClient extends HttpClient {
     if (this.failNext) {
       this.failNext = false;
       throw new Error("sink unreachable");
-    }
-    if (url.endsWith("/sigils/config")) {
-      return { data: this.configResponse, status: 200 } as any;
     }
     return { data: {}, status: 204 } as any;
   }

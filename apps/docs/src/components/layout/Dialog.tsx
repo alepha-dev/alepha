@@ -6,7 +6,9 @@ import styles from "./Dialog.module.css";
 // DIALOG CONSTANTS
 // =============================================================================
 
-/** Duration of the close animation in milliseconds (matches CSS variable) */
+/**
+ * Duration of the close animation in milliseconds (matches CSS variable)
+ */
 export const DIALOG_CLOSE_DURATION = 120;
 
 // =============================================================================
@@ -14,29 +16,53 @@ export const DIALOG_CLOSE_DURATION = 120;
 // =============================================================================
 
 export interface DialogProps {
-  /** Whether the dialog is open */
+  /**
+   * Whether the dialog is open
+   */
   open: boolean;
-  /** Callback when the dialog should close */
+  /**
+   * Callback when the dialog should close
+   */
   onClose: () => void;
-  /** Dialog content */
+  /**
+   * Dialog content
+   */
   children: React.ReactNode;
-  /** Additional class name for the container */
+  /**
+   * Additional class name for the container
+   */
   className?: string;
-  /** Additional styles for the container */
+  /**
+   * Additional styles for the container
+   */
   style?: React.CSSProperties;
-  /** Whether to center the dialog vertically (default: false, aligns to top) */
+  /**
+   * Whether to center the dialog vertically (default: false, aligns to top)
+   */
   center?: boolean;
-  /** Padding for the overlay (default: "80px 16px 20px") */
+  /**
+   * Padding for the overlay (default: "80px 16px 20px")
+   */
   overlayPadding?: string;
-  /** Whether to close on Escape key (default: true) */
+  /**
+   * Whether to close on Escape key (default: true)
+   */
   closeOnEscape?: boolean;
-  /** Whether to close on overlay click (default: true) */
+  /**
+   * Whether to close on overlay click (default: true)
+   */
   closeOnOverlayClick?: boolean;
-  /** Accessible label for the dialog */
+  /**
+   * Accessible label for the dialog
+   */
   ariaLabel?: string;
-  /** ID of element that labels the dialog */
+  /**
+   * ID of element that labels the dialog
+   */
   ariaLabelledBy?: string;
-  /** ID of element that describes the dialog */
+  /**
+   * ID of element that describes the dialog
+   */
   ariaDescribedBy?: string;
 }
 
@@ -132,20 +158,32 @@ export default Dialog;
 // =============================================================================
 
 export interface UseDialogOptions {
-  /** Initial open state */
+  /**
+   * Initial open state
+   */
   defaultOpen?: boolean;
 }
 
 export interface UseDialogReturn {
-  /** Whether the dialog is open */
+  /**
+   * Whether the dialog is open
+   */
   open: boolean;
-  /** Open the dialog */
+  /**
+   * Open the dialog
+   */
   openDialog: () => void;
-  /** Close the dialog */
+  /**
+   * Close the dialog
+   */
   closeDialog: () => void;
-  /** Toggle the dialog */
+  /**
+   * Toggle the dialog
+   */
   toggleDialog: () => void;
-  /** Props to spread on the Dialog component */
+  /**
+   * Props to spread on the Dialog component
+   */
   dialogProps: {
     open: boolean;
     onClose: () => void;

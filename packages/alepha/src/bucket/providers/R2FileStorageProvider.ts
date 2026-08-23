@@ -321,6 +321,8 @@ export class R2FileStorageProvider implements FileStorageProvider {
    * `{prefix}/{bucketName}/{fileId}` layout is unchanged.
    */
   protected key(bucketName: string, fileId: string): string {
+    this.assertKeySegment(bucketName, "bucket name");
+    this.assertKeySegment(fileId, "file id");
     const parts = [bucketName, fileId];
     const tenantId = this.alepha.store.get(currentTenantAtom)?.id;
     if (tenantId) {
@@ -348,9 +350,23 @@ export class R2FileStorageProvider implements FileStorageProvider {
    * still not what anyone intended). Two backends also disagreed on the id
    * scheme for the same upload.
    */
+  /**
+   * File ids and bucket names are path segments of the object key. A
+   * separator or a dot-dot in either would read or delete outside the
+   * bucket (and outside the tenant prefix), so they are refused here, the
+   * same way the local provider refuses them for filesystem paths.
+   */
+  protected assertKeySegment(value: string, label: string): void {
+    // An empty id is allowed: `list()` addresses the container itself with
+    // one, and an empty key cannot leave it.
+    if (/[/\\]/.test(value) || value.includes("..") || value.startsWith(".")) {
+      throw new AlephaError(`Invalid ${label}: '${value}'`);
+    }
+  }
+
   protected createId(mimeType: string): string {
+    // `getExtensionFromMimeType` always answers (it falls back to "bin").
     const ext = this.fileDetector.getExtensionFromMimeType(mimeType);
-    const id = this.crypto.randomUUID();
-    return ext ? `${id}.${ext}` : id;
+    return `${this.crypto.randomUUID()}.${ext}`;
   }
 }

@@ -58,7 +58,10 @@ export class ProjectSecurityService {
       { cache: { ttl: ProjectSecurityService.PROJECT_CACHE_TTL_MS } },
     );
 
-    if (project.createdBy === user.id || !user.ownership) {
+    // `=== false`, not a falsy test: the token only carries `ownership` when
+    // `$secure` was given permissions. On a bare `$secure()` action it is
+    // `undefined`, and `!user.ownership` let every logged-in user through.
+    if (project.createdBy === user.id || user.ownership === false) {
       return { project };
     }
 
@@ -123,7 +126,8 @@ export class ProjectSecurityService {
       where: { id: { eq: projectId } },
     });
 
-    if (project.createdBy !== user.id && user.ownership) {
+    // Same rule as assertMember: undefined is NOT the privileged identity.
+    if (project.createdBy !== user.id && user.ownership !== false) {
       throw new ForbiddenError(
         "Only the project owner can perform this action",
       );

@@ -5,7 +5,7 @@ export const requestVerificationCodeResponseSchema = z.object({
   token: z
     .string()
     .describe(
-      "The verification token (6-digit code for phone, UUID for email). The caller should send this to the user via their preferred notification method.",
+      "The verification token: a numeric code, or a UUID for link-based verification. The caller should send this to the user via their preferred notification method.",
     ),
   codeExpiration: z
     .integer()

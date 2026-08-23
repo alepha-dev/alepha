@@ -1,6 +1,8 @@
 import { HttpError } from "./HttpError.ts";
 
 export class NotFoundError extends HttpError {
+  readonly name = "NotFoundError";
+
   constructor(message = "Resource not found", cause?: unknown) {
     super(
       {

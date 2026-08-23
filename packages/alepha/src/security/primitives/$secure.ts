@@ -182,10 +182,10 @@ export function $secure(options?: SecureOptions): Middleware {
 
             // 2b. Resolve from HTTP headers (JWT/API key)
             if (!user) {
-              user = await securityProvider.resolveUserFromServerRequest(
-                httpRequest,
-                { realm: options?.issuers?.[0] },
-              );
+              user =
+                await securityProvider.resolveUserFromServerRequest(
+                  httpRequest,
+                );
             }
           }
         }

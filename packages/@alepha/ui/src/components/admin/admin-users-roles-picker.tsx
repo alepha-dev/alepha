@@ -24,7 +24,12 @@ export interface AdminUsersRolesPickerProps {
    * permanently if it failed — the picker degrades rather than blocking.
    */
   availableRoles: ReadonlyArray<RoleMeta>;
-  onToggle: (role: string, checked: boolean) => Promise<void>;
+  /**
+   * Persist the row's full role list. The picker computes it: it is the only
+   * place that knows the roles already toggled on this row, since the table
+   * does not reload the row after a toggle.
+   */
+  onToggle: (roles: string[]) => Promise<void>;
   rolesLabel: string;
   noRolesLabel: string;
 }
@@ -98,15 +103,15 @@ export const AdminUsersRolesPicker = (props: AdminUsersRolesPickerProps) => {
                   onCheckedChange={async (next) => {
                     if (disabled) return;
                     setPending(role.name);
+                    // Derived from the optimistic list, not from the stale
+                    // row: the second toggle used to send a list missing the
+                    // first one while the picker showed both.
+                    const roles = next
+                      ? Array.from(new Set([...userRoles, role.name]))
+                      : userRoles.filter((r) => r !== role.name);
                     try {
-                      await props.onToggle(role.name, Boolean(next));
-                      // Reflect the change locally — the table no longer
-                      // reloads the row after a role toggle.
-                      setOptimisticRoles(
-                        next
-                          ? Array.from(new Set([...userRoles, role.name]))
-                          : userRoles.filter((r) => r !== role.name),
-                      );
+                      await props.onToggle(roles);
+                      setOptimisticRoles(roles);
                     } finally {
                       setPending(null);
                     }

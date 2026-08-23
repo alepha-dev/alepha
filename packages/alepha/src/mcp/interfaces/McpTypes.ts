@@ -79,7 +79,9 @@ export interface McpIcon {
    * single string: SEP-973 defines it that way.
    */
   sizes?: string[];
-  /** Which client theme this icon is drawn for. */
+  /**
+   * Which client theme this icon is drawn for.
+   */
   theme?: "light" | "dark";
 }
 
@@ -89,15 +91,25 @@ export interface McpIcon {
  * heuristically (e.g. to show a confirmation prompt for destructive tools).
  */
 export interface McpToolAnnotations {
-  /** Human-friendly display title (distinct from `name`, the programmatic id). */
+  /**
+   * Human-friendly display title (distinct from `name`, the programmatic id).
+   */
   title?: string;
-  /** Tool reads only; safe to auto-approve. */
+  /**
+   * Tool reads only; safe to auto-approve.
+   */
   readOnlyHint?: boolean;
-  /** Tool may delete or overwrite data; client should require confirmation. */
+  /**
+   * Tool may delete or overwrite data; client should require confirmation.
+   */
   destructiveHint?: boolean;
-  /** Calling the tool with the same args twice yields the same end state. */
+  /**
+   * Calling the tool with the same args twice yields the same end state.
+   */
   idempotentHint?: boolean;
-  /** Tool interacts with the open world (network, etc.) vs. a closed system. */
+  /**
+   * Tool interacts with the open world (network, etc.) vs. a closed system.
+   */
   openWorldHint?: boolean;
 }
 
@@ -119,17 +131,27 @@ export interface McpInitializeResult {
 
 export interface McpToolDescriptor {
   name: string;
-  /** Human-friendly display label (spec 2025-11-25). Distinct from `name`. */
+  /**
+   * Human-friendly display label (spec 2025-11-25). Distinct from `name`.
+   */
   title?: string;
   description: string;
   inputSchema: McpJsonSchema;
-  /** Output schema enabling `structuredContent` on call results (spec 2025-06-18). */
+  /**
+   * Output schema enabling `structuredContent` on call results (spec 2025-06-18).
+   */
   outputSchema?: McpJsonSchema;
-  /** Behavior hints (spec 2025-03-26+). */
+  /**
+   * Behavior hints (spec 2025-03-26+).
+   */
   annotations?: McpToolAnnotations;
-  /** Optional icons (spec 2025-11-25 / SEP-973). */
+  /**
+   * Optional icons (spec 2025-11-25 / SEP-973).
+   */
   icons?: McpIcon[];
-  /** Arbitrary metadata passthrough (spec 2025-06-18+). */
+  /**
+   * Arbitrary metadata passthrough (spec 2025-06-18+).
+   */
   _meta?: Record<string, unknown>;
 }
 
@@ -137,7 +159,9 @@ export interface McpJsonSchema {
   type: string;
   properties?: Record<string, unknown>;
   required?: string[];
-  /** JSON Schema dialect (spec 2025-11-25 / SEP-1613 — defaults to 2020-12). */
+  /**
+   * JSON Schema dialect (spec 2025-11-25 / SEP-1613 — defaults to 2020-12).
+   */
   $schema?: string;
   [key: string]: unknown;
 }
@@ -165,9 +189,13 @@ export interface McpToolCallResult {
  * All optional, all advisory (spec 2025-03-26+).
  */
 export interface McpAnnotations {
-  /** Who this is for. A client may hide `["assistant"]` content from the user. */
+  /**
+   * Who this is for. A client may hide `["assistant"]` content from the user.
+   */
   audience?: Array<"user" | "assistant">;
-  /** 0 (least) to 1 (most) important. */
+  /**
+   * 0 (least) to 1 (most) important.
+   */
   priority?: number;
   /**
    * ISO 8601 timestamp of the last change. This is what lets a client decide
@@ -178,7 +206,9 @@ export interface McpAnnotations {
 
 interface McpContentBase {
   annotations?: McpAnnotations;
-  /** Arbitrary metadata passthrough (spec 2025-06-18+). */
+  /**
+   * Arbitrary metadata passthrough (spec 2025-06-18+).
+   */
   _meta?: Record<string, unknown>;
 }
 
@@ -206,15 +236,23 @@ export type McpContent =
 export interface McpResourceDescriptor {
   uri: string;
   name: string;
-  /** Human-friendly display label (spec 2025-11-25). Distinct from `name`. */
+  /**
+   * Human-friendly display label (spec 2025-11-25). Distinct from `name`.
+   */
   title?: string;
   description?: string;
   mimeType?: string;
-  /** Optional icons (spec 2025-11-25 / SEP-973). */
+  /**
+   * Optional icons (spec 2025-11-25 / SEP-973).
+   */
   icons?: McpIcon[];
-  /** Audience / priority / lastModified hints (spec 2025-03-26+). */
+  /**
+   * Audience / priority / lastModified hints (spec 2025-03-26+).
+   */
   annotations?: McpAnnotations;
-  /** Arbitrary metadata passthrough (spec 2025-06-18+). */
+  /**
+   * Arbitrary metadata passthrough (spec 2025-06-18+).
+   */
   _meta?: Record<string, unknown>;
 }
 
@@ -226,15 +264,23 @@ export interface McpResourceDescriptor {
 export interface McpResourceTemplateDescriptor {
   uriTemplate: string;
   name: string;
-  /** Human-friendly display label (spec 2025-11-25). Distinct from `name`. */
+  /**
+   * Human-friendly display label (spec 2025-11-25). Distinct from `name`.
+   */
   title?: string;
   description?: string;
   mimeType?: string;
-  /** Optional icons (spec 2025-11-25 / SEP-973). */
+  /**
+   * Optional icons (spec 2025-11-25 / SEP-973).
+   */
   icons?: McpIcon[];
-  /** Audience / priority / lastModified hints (spec 2025-03-26+). */
+  /**
+   * Audience / priority / lastModified hints (spec 2025-03-26+).
+   */
   annotations?: McpAnnotations;
-  /** Arbitrary metadata passthrough (spec 2025-06-18+). */
+  /**
+   * Arbitrary metadata passthrough (spec 2025-06-18+).
+   */
   _meta?: Record<string, unknown>;
 }
 
@@ -259,13 +305,19 @@ export interface McpResourceContent {
 
 export interface McpPromptDescriptor {
   name: string;
-  /** Human-friendly display label (spec 2025-11-25). Distinct from `name`. */
+  /**
+   * Human-friendly display label (spec 2025-11-25). Distinct from `name`.
+   */
   title?: string;
   description?: string;
   arguments?: McpPromptArgument[];
-  /** Optional icons (spec 2025-11-25 / SEP-973). */
+  /**
+   * Optional icons (spec 2025-11-25 / SEP-973).
+   */
   icons?: McpIcon[];
-  /** Arbitrary metadata passthrough (spec 2025-06-18+). */
+  /**
+   * Arbitrary metadata passthrough (spec 2025-06-18+).
+   */
   _meta?: Record<string, unknown>;
 }
 
@@ -315,22 +367,30 @@ export type McpCompletionRef =
 
 export interface McpCompletionArgument {
   name: string;
-  /** What the user has typed so far — may be empty. */
+  /**
+   * What the user has typed so far — may be empty.
+   */
   value: string;
 }
 
 export interface McpCompletionResult {
   completion: {
     values: string[];
-    /** How many candidates exist in total, before the cap. */
+    /**
+     * How many candidates exist in total, before the cap.
+     */
     total?: number;
-    /** True when `values` was truncated. */
+    /**
+     * True when `values` was truncated.
+     */
     hasMore?: boolean;
   };
 }
 
 export interface CompletionHandlerArgs<TContext = unknown> {
-  /** The argument being completed and its partial value. */
+  /**
+   * The argument being completed and its partial value.
+   */
   argument: McpCompletionArgument;
   /**
    * Arguments the user has already filled in, when the client sends them
@@ -378,7 +438,7 @@ export interface PromptPrimitiveSchema {
  */
 export interface McpContext<T = unknown> {
   /**
-   * HTTP headers from the request (for SSE transport).
+   * HTTP headers from the request (for the Streamable HTTP transport).
    */
   headers?: Record<string, string | string[] | undefined>;
 

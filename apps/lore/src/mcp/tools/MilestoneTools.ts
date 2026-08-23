@@ -91,7 +91,7 @@ export class MilestoneTools {
    */
   milestone_list = $tool({
     description:
-      "List all milestones for a project, both active (open) and closed. Milestones are time-boxed cycles that capture completed quests. Sorted by milestone number ascending. Each entry includes id, number, title, description, questCount, createdAt, and closedAt (undefined for the active milestone).",
+      "List all milestones for a project, both active (open) and closed. Milestones are time-boxed cycles that capture completed quests. Sorted by milestone number, newest first. Each entry includes id, number, title, description, questCount, createdAt, and closedAt (undefined for the active milestone).",
     title: "List milestones",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {

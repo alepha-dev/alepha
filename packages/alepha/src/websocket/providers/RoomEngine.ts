@@ -9,7 +9,9 @@ import type {
 } from "../interfaces/RoomInterfaces.ts";
 import type { TWSObject } from "../primitives/$channel.ts";
 
-/** Dependencies a {@link RoomEngine} needs from whatever runtime hosts it. */
+/**
+ * Dependencies a {@link RoomEngine} needs from whatever runtime hosts it.
+ */
 export interface RoomEngineDeps<
   TClient extends TWSObject,
   TServer extends TWSObject,
@@ -18,9 +20,13 @@ export interface RoomEngineDeps<
   roomId: string;
   options: RoomPrimitiveOptions<TClient, TServer, TState>;
   clock: RoomClock;
-  /** Validate a client message against the channel `out` schema. Throws on invalid. */
+  /**
+   * Validate a client message against the channel `out` schema. Throws on invalid.
+   */
   validate?: (message: unknown) => void;
-  /** Best-effort structured logging; never throws. */
+  /**
+   * Best-effort structured logging; never throws.
+   */
   log?: (level: "warn" | "error", message: string, data?: unknown) => void;
 }
 
@@ -46,6 +52,12 @@ export class RoomEngine<
   protected state?: TState;
   protected alive = false;
   protected starting?: Promise<void>;
+  /**
+   * The in-flight teardown, when there is one: later leavers join it rather
+   * than running `onEmpty` again, and joiners wait for it before bringing
+   * the room back up from a clean state.
+   */
+  protected tearingDown?: Promise<void>;
   protected tickHandle?: unknown;
   protected lastTickAt = 0;
   /**
@@ -159,7 +171,9 @@ export class RoomEngine<
     this.context().broadcast(message as never, options);
   }
 
-  /** Server-initiated send to one connection. */
+  /**
+   * Server-initiated send to one connection.
+   */
   send(connectionId: string, message: unknown): void {
     this.context().send(connectionId, message as never);
   }
@@ -176,6 +190,10 @@ export class RoomEngine<
   // -------------------------------------------------------------------------
 
   protected async ensureAlive(): Promise<void> {
+    // A join that lands while onEmpty is still running used to be admitted
+    // into a room whose state was cleared a moment later; it now waits for
+    // the teardown and starts the room again.
+    if (this.tearingDown) await this.tearingDown;
     if (this.alive) return;
     if (!this.starting) {
       this.starting = (async () => {
@@ -193,7 +211,19 @@ export class RoomEngine<
     await this.starting;
   }
 
-  protected async teardown(): Promise<void> {
+  protected teardown(): Promise<void> {
+    // Two sockets leaving in the same tick both observe an empty room; the
+    // second joins the first teardown instead of running onEmpty (the
+    // persistence hook) a second time.
+    if (!this.tearingDown) {
+      this.tearingDown = this.runTeardown().finally(() => {
+        this.tearingDown = undefined;
+      });
+    }
+    return this.tearingDown;
+  }
+
+  protected async runTeardown(): Promise<void> {
     this.stopLoop();
     try {
       await this.options.onEmpty?.(this.context());

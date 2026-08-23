@@ -63,7 +63,9 @@ export class AdminNotificationController {
     return undefined;
   }
 
-  /** True when `exec` belongs to the acting tenant. */
+  /**
+   * True when `exec` belongs to the acting tenant.
+   */
   protected sameTenant(exec: { organizationId?: string | null }): boolean {
     const org = this.requireTenantScope();
     return !org || exec.organizationId === org;
