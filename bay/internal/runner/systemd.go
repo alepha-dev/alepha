@@ -352,10 +352,6 @@ func (s *Systemd) Usage(key string) (Usage, bool) {
 	return u, true
 }
 
-// StopAll is a no-op: units outlive Bay on purpose.
-//
-// Bay is the reverse proxy. If it crashes or is upgraded, the apps must keep
-// serving — that is exactly what moving supervision to systemd buys.
 // Logs reads the unit's journal.
 //
 // journald rather than a file: the unit is rendered with StandardOutput=journal,
@@ -391,6 +387,10 @@ func (s *Systemd) Logs(key string, n int) ([]LogLine, bool, error) {
 	return ParseJournal(out), true, nil
 }
 
+// StopAll is a no-op: units outlive Bay on purpose.
+//
+// Bay is the reverse proxy. If it crashes or is upgraded, the apps must keep
+// serving — that is exactly what moving supervision to systemd buys.
 func (s *Systemd) StopAll(time.Duration) {}
 
 func writeFileAtomic(path, content string, mode os.FileMode) error {

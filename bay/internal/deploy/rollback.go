@@ -9,7 +9,7 @@ import (
 
 // Releases lists an app instance's retained releases, newest first.
 //
-// Release directories are named `2006-01-02-150405` UTC, which sorts
+// Release directories are named `2006-01-02-150405.000` UTC, which sorts
 // lexicographically in chronological order — so a reverse string sort is the
 // chronological one, with no parsing and nothing to get wrong.
 func Releases(instance string) ([]string, error) {
@@ -27,10 +27,6 @@ func Releases(instance string) ([]string, error) {
 	return out, nil
 }
 
-// migrationNames collects every migration directory or file of one release,
-// keyed by dialect so `sqlite/0001_x` and `postgres/0001_x` never collide.
-//
-// An absent `migrations/` is not an error: plenty of apps have no database.
 // SwapRelease repoints `current` at another release.
 //
 // The same temp-symlink-then-rename as a deploy, so the switch is atomic and a

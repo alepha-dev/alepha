@@ -5,7 +5,7 @@
 #
 # Nothing caught that at the time, because Go was not in CI. It is now — the
 # `bay` job in .github/workflows/ci.yml builds and tests on ubuntu-latest, and
-# `yarn v` runs the same steps locally through `yarn w bay test:linux`.
+# `yarn v:go` runs the same steps locally.
 /bay
 /bay-data/
 

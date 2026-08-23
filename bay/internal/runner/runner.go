@@ -1,9 +1,8 @@
 // Package runner starts and stops app processes.
 //
-// On Linux the real implementation will generate systemd units (cgroups,
-// MemoryMax, journald, Restart=always come free). This PoC ships the child
-// process variant so `bay` is developable on macOS — the interface is what
-// matters, systemd slots in behind it.
+// Two implementations: systemd units on Linux (cgroups, MemoryMax, journald,
+// Restart=always come free) and plain child processes elsewhere, so `bay`
+// stays developable on macOS. The interface is what matters.
 package runner
 
 import (
@@ -35,7 +34,7 @@ type Spec struct {
 // Runner supervises app processes.
 //
 // Two implementations: systemd on Linux (per-app unix user, cgroups, journald,
-// full sandbox) and plain child processes elsewhere, so `bay dev` works on a
+// full sandbox) and plain child processes elsewhere, so Bay runs on a
 // laptop. Only the first is safe for multi-app hosting.
 type Runner interface {
 	Start(spec Spec) error
@@ -238,6 +237,11 @@ func LoadEnvFile(path string) (map[string]string, error) {
 	defer f.Close()
 
 	sc := bufio.NewScanner(f)
+	// The same ceiling as deploy.ParseAssignments (1 MiB): `bay env set`
+	// accepts a PEM key or a service-account JSON, and the default 64 KiB
+	// token made every later read of the file fail with "token too long",
+	// which left the instance unable to start.
+	sc.Buffer(make([]byte, 0, 64*1024), 1<<20)
 	for sc.Scan() {
 		line := strings.TrimSpace(sc.Text())
 		if line == "" || strings.HasPrefix(line, "#") {

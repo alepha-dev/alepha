@@ -156,13 +156,31 @@ func (s *server) handleMigrateStorage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := deploy.RepointStorage(instance, app.Name, app.Env, cfg); err != nil {
+	repoint := s.repoint
+	if repoint == nil {
+		repoint = deploy.RepointStorage
+	}
+	if err := repoint(instance, app.Name, app.Env, cfg); err != nil {
+		// The files are copied but `.env` is unchanged, so the app comes back
+		// on local storage: a failed migration must not also be an outage.
+		if wasRunning {
+			if startErr := s.start(app); startErr != nil {
+				s.log.Error("app did not restart after a failed migration",
+					"app", app.Key(), "err", startErr)
+			}
+		}
 		writeError(w, http.StatusInternalServerError, "rewriting .env failed: "+err.Error())
 		return
 	}
 	// Before starting, not after: the sandbox reads this to decide whether the
 	// app still gets a writable `storage/`.
 	if err := s.store.SetStorageBackend(app.Key(), deploy.BackendS3); err != nil {
+		if wasRunning {
+			if startErr := s.start(app); startErr != nil {
+				s.log.Error("app did not restart after a failed migration",
+					"app", app.Key(), "err", startErr)
+			}
+		}
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
