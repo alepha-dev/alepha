@@ -4,7 +4,9 @@ import { blights } from "../entities/blights.ts";
 import { sigilErrorGroups } from "../entities/sigilErrorGroups.ts";
 import { type Sigil, sigils } from "../entities/sigils.ts";
 
-/** What a scoped blight count answers, headline first. */
+/**
+ * What a scoped blight count answers, headline first.
+ */
 export interface OpenBlightCount {
   /**
    * Distinct bugs. One counted unit is one `blights` row, i.e. one
@@ -17,15 +19,23 @@ export interface OpenBlightCount {
    * than `count`; it belongs in a footer, never in the headline.
    */
   occurrences: number;
-  /** How many of the scoped apps contributed at least one counted bug. */
+  /**
+   * How many of the scoped apps contributed at least one counted bug.
+   */
   apps: number;
-  /** The project contributing the most counted bugs, for the drill-through. */
+  /**
+   * The project contributing the most counted bugs, for the drill-through.
+   */
   topProjectId?: number;
 }
 
-/** What to count. */
+/**
+ * What to count.
+ */
 export interface OpenBlightQuery {
-  /** Projects in scope. Already proven against the caller's memberships. */
+  /**
+   * Projects in scope. Already proven against the caller's memberships.
+   */
   projectIds: number[];
   /**
    * Apps in scope, when the card names a list of them. Absent means "every
@@ -33,11 +43,15 @@ export interface OpenBlightQuery {
    * differently rather than by the same query with a wider list.
    */
   sigilIds?: string[];
-  /** `open` excludes `resolved` and `quest:<id>`. */
+  /**
+   * `open` excludes `resolved` and `quest:<id>`.
+   */
   status: "open" | "all";
 }
 
-/** The identity of one blight row, which is the unit this service counts. */
+/**
+ * The identity of one blight row, which is the unit this service counts.
+ */
 export interface BlightKey {
   projectId: number;
   fingerprint: string;
@@ -207,7 +221,9 @@ export class OpenBlightCounter {
     return { rows: kept, occurrences };
   }
 
-  /** Every blight in the scoped projects, exactly as the inbox reads them. */
+  /**
+   * Every blight in the scoped projects, exactly as the inbox reads them.
+   */
   protected async countedAcrossProjects(
     query: OpenBlightQuery,
   ): Promise<{ rows: BlightKey[]; occurrences: number }> {
@@ -243,7 +259,9 @@ export class OpenBlightCounter {
     });
   }
 
-  /** Which project holds the most counted bugs. Drives the drill-through. */
+  /**
+   * Which project holds the most counted bugs. Drives the drill-through.
+   */
   protected topProject(rows: BlightKey[]): number | undefined {
     const tally = new Map<number, number>();
     for (const row of rows) {
@@ -260,7 +278,9 @@ export class OpenBlightCounter {
     return best;
   }
 
-  /** `(projectId, fingerprint)` as one comparable key. */
+  /**
+   * `(projectId, fingerprint)` as one comparable key.
+   */
   protected pair(projectId: number, fingerprint: string): string {
     return `${projectId} ${fingerprint}`;
   }

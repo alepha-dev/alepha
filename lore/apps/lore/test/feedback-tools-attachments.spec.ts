@@ -64,7 +64,9 @@ const setup = async () => {
     projectApi.createProject({ body: { title: "Test" } } as any),
   );
 
-  /** Submit a report, optionally carrying `count` screenshots. */
+  /**
+   * Submit a report, optionally carrying `count` screenshots.
+   */
   const report = async (title: string, count: number) => {
     const attachments: string[] = [];
     for (let i = 0; i < count; i++) {

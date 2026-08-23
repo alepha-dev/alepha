@@ -16,7 +16,9 @@ export class QuestJobs {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly quests = $repository(quests);
-  /** ...with the assignee and project a reminder email needs. */
+  /**
+   * ...with the assignee and project a reminder email needs.
+   */
   protected readonly questsWith = $repository(relations, "quests");
   protected readonly projects = $repository(projects);
   protected readonly users = $repository(users);
@@ -79,9 +81,11 @@ export class QuestJobs {
           if (!recipient?.email || !project) {
             // Assignee deleted or no email — clear the reminder so we
             // don't keep retrying a doomed send forever.
+            // `null`, not `undefined`: the repository strips undefined keys
+            // from an update, which left the reminder armed forever.
             await this.quests.updateById(quest.id, {
-              reminderNextAt: undefined,
-              reminderInterval: undefined,
+              reminderNextAt: null,
+              reminderInterval: null,
             });
             continue;
           }

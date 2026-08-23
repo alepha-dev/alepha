@@ -196,7 +196,7 @@ describe("$etag cache-control on viewer-mutable lists", () => {
       { user },
     );
 
-    expect(res.headers.get("etag")).toBeDefined();
+    expect(res.headers.get("etag")).toMatch(/\S/);
   });
 
   /**

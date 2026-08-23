@@ -21,7 +21,9 @@ export const AREA_DOT_CLASS: Record<AreaColor, string> = {
   pink: "bg-pink-400",
 };
 
-/** An area with no colour picked, and any area we cannot resolve. */
+/**
+ * An area with no colour picked, and any area we cannot resolve.
+ */
 export const AREA_DOT_FALLBACK = "bg-muted-foreground/50";
 
 export class QuestlineAreaColor {

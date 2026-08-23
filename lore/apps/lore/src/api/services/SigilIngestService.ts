@@ -2,7 +2,7 @@ import type { SigilForwarded } from "@alepha/sigil/envelope";
 import { sigilFingerprintSource } from "@alepha/sigil/fingerprint";
 import { sigilScrubUrl } from "@alepha/sigil/scrub";
 import { bucketIndex, type VitalMetric } from "@alepha/sigil/vitals";
-import { $inject, Alepha } from "alepha";
+import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, sql } from "alepha/orm";
@@ -24,9 +24,9 @@ import { LoreAnalyticsStore } from "./LoreAnalyticsStore.ts";
  * {@link SigilIngestService.gatesFor}, which is the definition this interface
  * only names.
  *
- * One answer for both the gate `absorb` applies and the answer
- * `GET /sigils/config` serves, so those two can never drift into disagreeing
- * about what the sink accepts.
+ * The one definition of what the sink accepts, applied by `absorb` on
+ * write. The `GET /sigils/config` advertisement that used to share it is
+ * gone.
  */
 export interface SigilGates {
   views: boolean;
@@ -65,7 +65,6 @@ export interface SigilGates {
  * per-app breakdown lives in the groups, where it is not lossy.
  */
 export class SigilIngestService {
-  protected readonly alepha = $inject(Alepha);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly rules = $inject(BlightRuleService);
@@ -101,9 +100,8 @@ export class SigilIngestService {
    *
    * Every section is gated on {@link gatesFor}: Blights, Beacon and Vitals on
    * the project's `sigils` master switch and the sigil's own kinds; Feedback
-   * additionally on the project's `feedback` flag. Enforcing here, not just
-   * advertising via `GET /sigils/config`, matters because the reporting client
-   * fails open on any config error — a well-behaved app stops sending at the
+   * additionally on the project's `feedback` flag. Enforcing here matters
+   * because the reporting client fails open on any config error — a well-behaved app stops sending at the
    * source, but this is the backstop, not a replacement for it.
    *
    * `lastSeenAt` is stamped whatever happens, including for a batch every gate
@@ -147,9 +145,9 @@ export class SigilIngestService {
   /**
    * What this sigil may report.
    *
-   * Answered in one place because it is one decision asked in two: here on
-   * write, and by `GET /sigils/config` on read. Stating it twice is how a sink
-   * ends up advertising a capability it then discards.
+   * Answered in one place. It used to be asked in two (here on write, and by
+   * the former `GET /sigils/config` on read), and stating it twice is how a
+   * sink ends up advertising a capability it then discards.
    *
    * Blights, Beacon and Vitals are **the sigil's own decision**, under the
    * project's `sigils` master switch. They used to be intersected with

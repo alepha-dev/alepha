@@ -41,14 +41,14 @@ export class InvitationController {
   public readonly listProjectInvitations = $action({
     path: `${this.url}/project/:projectId`,
     group: this.group,
-    use: [$secure()],
+    use: [$secure({ permissions: ["project:read"] })],
     description: "List pending invitations for a project the caller owns",
     schema: {
       params: z.object({ projectId: z.integer() }),
       response: z.array(invitationResourceSchema),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertOwner(params.projectId, user as any);
+      await this.security.assertOwner(params.projectId, user);
       return this.invitationService.findByResource(
         "project",
         String(params.projectId),

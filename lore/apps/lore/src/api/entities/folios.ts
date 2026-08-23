@@ -11,7 +11,7 @@ export const folios = $entity({
     id: db.primaryKey(z.uuid()),
     /**
      * Per-project sequential id, 1-based. Used in URLs
-     * (`/p/:projectId/folios/:shortId`) and UI display. Allocated by
+     * (`/:projectSlug/folios/:shortId`) and UI display. Allocated by
      * `$sequence(scope=projectId)` on insert. The global UUID `id` remains
      * the canonical PK.
      */

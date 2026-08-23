@@ -24,7 +24,9 @@ export const dashboardSettings = $entity({
   schema: z.object({
     id: db.primaryKey(z.integer()),
     userId: db.ref(z.uuid(), () => users.cols.id, { onDelete: "cascade" }),
-    /** When the default card set was first written for this user. */
+    /**
+     * When the default card set was first written for this user.
+     */
     seededAt: z.string(),
   }),
   indexes: [{ columns: ["userId"], unique: true }],

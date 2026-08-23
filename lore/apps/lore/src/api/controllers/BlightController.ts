@@ -1,5 +1,4 @@
 import { $inject, type Infer, z } from "alepha";
-import { $logger } from "alepha/logger";
 import { $repository, $transactional } from "alepha/orm";
 import { $secure } from "alepha/security";
 import {
@@ -20,7 +19,9 @@ import { BlightRuleService } from "../services/BlightRuleService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { QuestService } from "../services/QuestService.ts";
 
-/** Area every blight-forwarded quest is filed under — predictable triage. */
+/**
+ * Area every blight-forwarded quest is filed under — predictable triage.
+ */
 const BLIGHT_AREA = "Blights";
 
 /**
@@ -68,7 +69,9 @@ const blightSigilSchema = z.object({
   label: z.string(),
 });
 
-/** A project-wide blight ignore rule as exposed to the owner. */
+/**
+ * A project-wide blight ignore rule as exposed to the owner.
+ */
 const blightRuleResourceSchema = z.object({
   id: z.integer(),
   pattern: z.string(),
@@ -97,7 +100,6 @@ export type BlightRuleResource = Infer<typeof blightRuleResourceSchema>;
  * See folio #12.
  */
 export class BlightController {
-  protected log = $logger();
   protected currentBlights = $repository(blights);
   protected sigils = $repository(sigils);
   protected security = $inject(ProjectSecurityService);

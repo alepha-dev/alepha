@@ -226,14 +226,12 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
         {props.empty ? (
           <div className="bg-card min-w-0 flex-1">
             {/* The menubar is portalled up to the chrome slot from inside
-                MDXEditor's realm on every other state — so skipping the
-                content pane used to skip the whole chrome row, and the
-                workspace lost its identity exactly where you land on it.
-                Here there is no editor and no realm, so `FolioMenubar`
-                renders directly; the formatting toolbar stays absent by
-                design, since icon buttons that format nothing are noise.
-                `noFolio` keeps every menu's item list identical to the open
-                state and only flips enablement. */}
+                the document on every other state — so skipping the content
+                pane used to skip the whole chrome row, and the workspace
+                lost its identity exactly where you land on it. Here there is
+                no document, so `FolioMenubar` renders directly. `noFolio`
+                keeps every menu's item list identical to the open state and
+                only flips enablement. */}
             {chromeSlot &&
               createPortal(
                 <FolioMenubar

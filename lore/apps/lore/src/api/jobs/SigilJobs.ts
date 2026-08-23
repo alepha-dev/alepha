@@ -9,7 +9,9 @@ import {
   UNIQUES_COLLAPSED_HASH,
 } from "../entities/sigilUniquesDaily.ts";
 
-/** Milliseconds in a day — for the cutoff arithmetic. */
+/**
+ * Milliseconds in a day — for the cutoff arithmetic.
+ */
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -173,7 +175,9 @@ export class SigilJobs {
     return [...new Set(rows.map((row) => row.day))];
   }
 
-  /** UTC `YYYY-MM-DD` for a millisecond timestamp. */
+  /**
+   * UTC `YYYY-MM-DD` for a millisecond timestamp.
+   */
   protected dayString(ms: number): string {
     return new Date(ms).toISOString().slice(0, 10);
   }

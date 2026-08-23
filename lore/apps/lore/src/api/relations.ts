@@ -79,7 +79,9 @@ export const relations = $relations(schema, (r) => ({
       from: r.projects.id,
       to: r.members.projectId,
     }),
-    /** The other side of the same junction, subject to the same index. */
+    /**
+     * The other side of the same junction, subject to the same index.
+     */
     members: r.many.users({
       from: r.projects.id.through(r.members.projectId),
       to: r.users.id.through(r.members.userId),
@@ -155,7 +157,9 @@ export const relations = $relations(schema, (r) => ({
       to: r.users.id,
     }),
     shelvedByUser: r.one.users({ from: r.quests.shelvedBy, to: r.users.id }),
-    /** The self relation: a quest gated on another finishing first. */
+    /**
+     * The self relation: a quest gated on another finishing first.
+     */
     blockedBy: r.one.quests({ from: r.quests.dependsOn, to: r.quests.id }),
     blocks: r.many.quests({ from: r.quests.id, to: r.quests.dependsOn }),
   },
@@ -169,7 +173,9 @@ export const relations = $relations(schema, (r) => ({
       from: r.feedback.reporterUserId,
       to: r.users.id,
     }),
-    /** Quests raised from this feedback item, oldest first at the call site. */
+    /**
+     * Quests raised from this feedback item, oldest first at the call site.
+     */
     linkedQuests: r.many.quests({
       from: r.feedback.id,
       to: r.quests.feedbackId,

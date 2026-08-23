@@ -141,7 +141,16 @@ export class SigilVitals {
     try {
       const po = new PerformanceObserver((list) => cb(list.getEntries()));
       // buffered:true catches entries dispatched before observe() ran.
-      po.observe({ type: types[0], buffered: true } as any);
+      // The Event Timing API only delivers interactions slower than
+      // `durationThreshold`, 104 ms by default: every fast interaction
+      // used to be invisible, so a responsive page reported no INP at all
+      // and the p75 was taken over slow interactions only. 16 is the
+      // minimum the API accepts.
+      po.observe({
+        type: types[0],
+        buffered: true,
+        ...(types[0] === "event" ? { durationThreshold: 16 } : {}),
+      } as any);
     } catch {
       /* entry type unsupported in this browser — skip */
     }

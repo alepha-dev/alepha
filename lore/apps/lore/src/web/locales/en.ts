@@ -72,9 +72,6 @@ export default {
     "The encrypted content looks corrupt or was written by an older version.",
   "folios.protected.lost-passphrase-hint": "Lost the passphrase?",
   "folios.protected.delete-unrecoverable": "Delete folio",
-  "folio.type.directory": "Directory",
-  "folio.type.folio": "Folio",
-  "folio.type.blob": "File",
   "folio.action.duplicate": "Duplicate",
   "folio.action.duplicate-suffix": " (copy)",
   "folio.action.delete": "Delete",
@@ -98,12 +95,6 @@ export default {
   "folios.history.action.rename": "Renamed",
   "folios.history.action.tag-change": "Tags changed",
   "folios.history.action.revert": "Reverted",
-
-  "folios.activity.action.create": "created",
-  "folios.activity.action.edit": "edited",
-  "folios.activity.action.rename": "renamed",
-  "folios.activity.action.tag-change": "tagged",
-  "folios.activity.action.revert": "reverted",
 
   "folios.wikilink.broken.title": "Broken link",
   "folios.wikilink.broken.folioNotFound":

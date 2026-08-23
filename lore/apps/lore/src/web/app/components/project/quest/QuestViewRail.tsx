@@ -172,7 +172,9 @@ const QuestViewRail = (props: QuestViewRailProps) => {
           {quest.dueAt
             ? `${l(quest.dueAt, {
                 date:
-                  dt.of(quest.dueAt).diff(dt.now(), "day") < 7 ? "dddd" : "ll",
+                  Math.abs(dt.of(quest.dueAt).diff(dt.now(), "day")) < 7
+                    ? "dddd"
+                    : "ll",
               })} · ${dt.of(quest.dueAt).fromNow()}`
             : undefined}
         </QuestViewRailRow>

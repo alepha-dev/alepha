@@ -82,7 +82,7 @@ const AppLayout = () => {
   }
 
   const activeRoute = routerState.name ?? "";
-  const params = { projectId: String(project.id), appName: sigil.name };
+  const params = { projectSlug: project.slug, appName: sigil.name };
   // The app's own capability, not the project's. Analytics and Performance
   // both read what Beacon collects, and an app that does not carry it has
   // nothing behind either tab.

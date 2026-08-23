@@ -78,7 +78,9 @@ const createTestUser = async (
   return { id: response.data.id, roles: response.data.roles };
 };
 
-/** Stand-in for a `BrowserCryptoProvider` envelope — opaque to the server. */
+/**
+ * Stand-in for a `BrowserCryptoProvider` envelope — opaque to the server.
+ */
 const ENVELOPE = JSON.stringify({
   v: 1,
   salt: "c2FsdA==",

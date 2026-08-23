@@ -23,23 +23,41 @@
  * `@alepha/sigil/context`.
  */
 export const SIGIL_FEEDBACK_CONTEXT_PARAMS = [
-  /** → source.hostUrl   (location.href) */
+  /**
+   * → source.hostUrl   (location.href)
+   */
   "url",
-  /** → source.hostPath  (location.pathname + search) */
+  /**
+   * → source.hostPath  (location.pathname + search)
+   */
   "path",
-  /** → source.title     (document.title) */
+  /**
+   * → source.title     (document.title)
+   */
   "title",
-  /** → source.referrer  (document.referrer) */
+  /**
+   * → source.referrer  (document.referrer)
+   */
   "ref",
-  /** → source.userAgent (navigator.userAgent) */
+  /**
+   * → source.userAgent (navigator.userAgent)
+   */
   "ua",
-  /** → source.language  (navigator.language) */
+  /**
+   * → source.language  (navigator.language)
+   */
   "lang",
-  /** → source.viewport  (innerWidth x innerHeight) */
+  /**
+   * → source.viewport  (innerWidth x innerHeight)
+   */
   "vp",
-  /** → source.screen    (screen.width x screen.height) */
+  /**
+   * → source.screen    (screen.width x screen.height)
+   */
   "scr",
-  /** → source.timezone  (Intl resolved timeZone) */
+  /**
+   * → source.timezone  (Intl resolved timeZone)
+   */
   "tz",
 ] as const;
 

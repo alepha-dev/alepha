@@ -26,7 +26,9 @@ export const dashboardScopeSchema = z.object({
   kind: z
     .enum(["all", "projects", "apps", "epic", "milestone"])
     .meta({ mode: "text" }),
-  /** `kind: "projects"` — one or more project ids the caller is a member of. */
+  /**
+   * `kind: "projects"` — one or more project ids the caller is a member of.
+   */
   projectIds: z.array(z.integer()).max(50).optional(),
   /**
    * `kind: "apps"` — one or more sigil ids. **Not implicitly single-project**:
@@ -34,9 +36,13 @@ export const dashboardScopeSchema = z.object({
    * makes it the hardest picker in the set.
    */
   sigilIds: z.array(z.uuid()).max(50).optional(),
-  /** `kind: "epic"` — reserved for the deferred epic-progress tile. */
+  /**
+   * `kind: "epic"` — reserved for the deferred epic-progress tile.
+   */
   epicId: z.integer().optional(),
-  /** `kind: "milestone"` — reserved for the deferred milestone-burn tile. */
+  /**
+   * `kind: "milestone"` — reserved for the deferred milestone-burn tile.
+   */
   milestoneId: z.integer().optional(),
 });
 

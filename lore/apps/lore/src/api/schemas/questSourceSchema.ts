@@ -14,7 +14,7 @@ import { type Infer, z } from "alepha";
  */
 export const questSourceSchema = z.object({
   /**
-   * The `sigil_blights` row this quest was forwarded from. Set by the
+   * The `blights` row this quest was forwarded from. Set by the
    * Blights inbox forward-to-quest action; the matching blight carries
    * `status = "quest:<questId>"` so the link is bidirectional.
    */

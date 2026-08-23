@@ -107,7 +107,9 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
     return [...byGroup];
   }, [catalog, query, tr]);
 
-  /** Why a metric cannot be added right now, if it cannot. */
+  /**
+   * Why a metric cannot be added right now, if it cannot.
+   */
   const unavailable = (
     metric: DashboardMetricDescriptor,
   ): string | undefined => {

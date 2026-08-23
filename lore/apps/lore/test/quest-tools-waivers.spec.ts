@@ -75,11 +75,15 @@ const setup = async () => {
   const objectives = (await call(questTools.quest_get, { id: quest.id }))
     .objectives as Array<{ id: number; title: string }>;
 
-  /** The REST resource, where `metadata` and `history` live. */
+  /**
+   * The REST resource, where `metadata` and `history` live.
+   */
   const resource = () =>
     asUser(OWNER, () => questApi.getQuestById({ params: { id: quest.id } }));
 
-  /** Tick the code objective, which is the one that really was done. */
+  /**
+   * Tick the code objective, which is the one that really was done.
+   */
   const tickFirst = () =>
     call(questTools.quest_objective_set, {
       id: quest.id,

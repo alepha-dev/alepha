@@ -7,7 +7,9 @@ import type { I18n } from "../../services/I18n.ts";
 import { DASHBOARD_NO_VALUE } from "./dashboardChips.ts";
 
 export interface DashboardCardValueProps {
-  /** Absent until the first resolve returns. */
+  /**
+   * Absent until the first resolve returns.
+   */
   value?: CardValue;
 }
 

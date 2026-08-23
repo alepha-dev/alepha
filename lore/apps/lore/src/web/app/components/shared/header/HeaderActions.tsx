@@ -46,7 +46,7 @@ const HeaderActions = (props: HeaderActionsProps) => {
       labels={{
         language: String(tr("header.actions.language")),
         signIn: String(tr("header.actions.login")),
-        admin: String(tr("header.actions.admin" as never)),
+        admin: String(tr("header.actions.admin")),
         account: String(tr("header.actions.profile")),
         logout: String(tr("header.actions.logout")),
       }}

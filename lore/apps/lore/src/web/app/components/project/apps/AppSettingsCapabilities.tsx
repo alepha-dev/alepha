@@ -81,7 +81,7 @@ const ROWS: CapabilityRow[] = [
  * flag is off. A new sigil is minted carrying all four kinds, and a project
  * created through the wizard starts with `features.feedback: false` on purpose
  * — so the switch reads ON while `gatesFor` answers `feedback: false` and
- * `/sigils/config` omits `feedbackUrl` entirely. The switch is left usable (the
+ * ingest drops every feedback the app sends. The switch is left usable (the
  * per-app decision is real, and it takes effect the moment the module is turned
  * on) but it must not claim an effect it does not have.
  *
@@ -133,8 +133,8 @@ const AppSettingsCapabilities = () => {
       // currentSigilInsightsAtom is populated by the projectApp loader alone,
       // and a sibling-tab navigation (Settings → Analytics) reuses that
       // loader's layer instead of re-running it — so a flipped Beacon bit
-      // leaves the atom (and whichever of Dashboard/Analytics/Performance/
-      // Errors is rendered next) stale until something forces a reload.
+      // leaves the atom (and whichever of Dashboard/Analytics/Performance
+      // is rendered next) stale until something forces a reload.
       // Only Beacon needs this: Feedback, Blights and Vitals don't feed this
       // atom, and reloading on every toggle would throw away the range the
       // user picked for nothing.

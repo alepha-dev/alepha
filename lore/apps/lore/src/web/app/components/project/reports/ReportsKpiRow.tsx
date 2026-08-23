@@ -1,7 +1,9 @@
 export interface ReportsKpi {
   label: string;
   value: string | number;
-  /** Optional secondary line, e.g. "+3 vs last week". */
+  /**
+   * Optional secondary line, e.g. "+3 vs last week".
+   */
   hint?: string;
 }
 

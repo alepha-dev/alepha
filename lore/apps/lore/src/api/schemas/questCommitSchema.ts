@@ -14,11 +14,17 @@ import { type Infer, z } from "alepha";
  * row has no link target.
  */
 export const questCommitSchema = z.object({
-  /** Short or full hex sha, 7 to 40 characters. */
+  /**
+   * Short or full hex sha, 7 to 40 characters.
+   */
   sha: z.string().min(7).max(40),
-  /** The commit subject, when the caller has it. */
+  /**
+   * The commit subject, when the caller has it.
+   */
   message: z.string().max(500).optional(),
-  /** e.g. `feunard/alepha`. Free text; Lore never resolves it. */
+  /**
+   * e.g. `feunard/alepha`. Free text; Lore never resolves it.
+   */
   repo: z.string().max(200).optional(),
   at: z.datetime(),
   by: z.uuid(),

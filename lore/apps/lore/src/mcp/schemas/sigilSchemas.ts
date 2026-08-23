@@ -12,14 +12,22 @@ import { projectParamsSchema } from "./commonSchemas.ts";
 const sigilSchema = z.object({
   id: z.string(),
   projectId: z.integer(),
-  /** Display name of the app, e.g. `lore`. Unique within the project. */
+  /**
+   * Display name of the app, e.g. `lore`. Unique within the project.
+   */
   name: z.string(),
-  /** First characters of the token — enough to name it, not to use it. */
+  /**
+   * First characters of the token — enough to name it, not to use it.
+   */
   tokenPrefix: z.string(),
-  /** Capability buckets this sigil's ingest endpoint accepts. */
+  /**
+   * Capability buckets this sigil's ingest endpoint accepts.
+   */
   kinds: z.array(z.string()),
   createdAt: z.string(),
-  /** Last time this app reported anything. Absent means never. */
+  /**
+   * Last time this app reported anything. Absent means never.
+   */
   lastSeenAt: z.string().optional(),
 });
 

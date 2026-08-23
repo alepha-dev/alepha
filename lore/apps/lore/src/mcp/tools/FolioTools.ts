@@ -174,7 +174,7 @@ export class FolioTools {
 
   folio_list = $tool({
     description:
-      "List the project's folios (markdown notes that act as the project's shared memory), newest first. Returns id, title, summary, updatedAt and the `epic` the folio is filed under, if any — call `folio_get` to read full content. Pass `epic` to narrow the list to one epic's folios. For initial orientation on a project, prefer `project_context` — it returns this same index alongside the active quests in one round-trip.",
+      "List the project's folios (markdown notes that act as the project's shared memory), pinned first, then newest first. Returns id, title, summary, updatedAt and the `epic` the folio is filed under, if any — call `folio_get` to read full content. Pass `epic` to narrow the list to one epic's folios. For initial orientation on a project, prefer `project_context` — it returns this same index alongside the active quests in one round-trip.",
     title: "List folios",
     annotations: {
       readOnlyHint: true,
@@ -660,7 +660,6 @@ export class FolioTools {
     title: "Delete folio",
     annotations: {
       destructiveHint: true,
-      idempotentHint: true, // deleting an already-deleted folio is a no-op
     },
     schema: {
       params: folioRefParamsSchema,

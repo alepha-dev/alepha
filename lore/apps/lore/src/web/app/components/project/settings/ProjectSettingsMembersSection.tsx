@@ -16,6 +16,7 @@ import { cn } from "@alepha/ui/lib/utils";
 import { useClient } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { Localize, useI18n } from "alepha/react/i18n";
+import { useRouter } from "alepha/react/router";
 import { Mail, Plus, Users } from "lucide-react";
 import { useState } from "react";
 
@@ -24,6 +25,7 @@ import type { InvitationEntity } from "@/api/entities/invitations.ts";
 import type { Member } from "@/api/entities/members.ts";
 import type { Project } from "@/api/entities/projects.ts";
 import type { User } from "@/api/entities/users.ts";
+import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { MemberIdentity } from "@/web/app/components/shared/MemberIdentity.tsx";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
@@ -37,6 +39,7 @@ const ProjectSettingsMembersSection = (
   props: ProjectSettingsMembersSectionProps,
 ) => {
   const toaster = useToast();
+  const router = useRouter<AppRouter>();
   const invitationApi = useClient<InvitationController>();
   const auth = useAuth();
   const { tr } = useI18n<I18n, "en">();
@@ -65,7 +68,9 @@ const ProjectSettingsMembersSection = (
       toaster.success(`Invitation sent to ${email}`);
       setEmail("");
       setOpen(false);
-      window.location.reload();
+      // Re-run the loader for the new pending row; a hard reload threw the
+      // whole app state away for one list.
+      await router.push(router.pathname, { force: true });
     } catch (error: any) {
       toaster.error(error.message || "Failed to send invitation");
     } finally {

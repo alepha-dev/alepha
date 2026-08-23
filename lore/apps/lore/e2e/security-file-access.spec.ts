@@ -130,7 +130,9 @@ const uploadAvatar = async (page: Page): Promise<string> => {
   });
 };
 
-/** Fetch the anonymous public route WITHOUT credentials. */
+/**
+ * Fetch the anonymous public route WITHOUT credentials.
+ */
 const fetchPublic = async (page: Page, fileId: string): Promise<number> => {
   return await page.evaluate(async (id) => {
     const r = await fetch(`/api/public/files/${id}`);

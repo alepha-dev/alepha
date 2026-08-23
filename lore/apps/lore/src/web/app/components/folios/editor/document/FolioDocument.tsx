@@ -70,7 +70,9 @@ export interface FolioDocumentProps {
    * the identical string.
    */
   rendered: string;
-  /** `false` for a protected folio — see `LoreEditor.imageUpload`. */
+  /**
+   * `false` for a protected folio — see `LoreEditor.imageUpload`.
+   */
   imageUpload?: boolean;
   /**
    * Receives the live CodeMirror view so the workspace can dispatch

@@ -12,7 +12,9 @@ import { projectParamsSchema } from "./commonSchemas.ts";
  */
 const blightSchema = z.object({
   id: z.integer(),
-  /** Which app reported it last — see `sigils` in the same result. */
+  /**
+   * Which app reported it last — see `sigils` in the same result.
+   */
   sigilId: z.string().optional(),
   fingerprint: z.string(),
   name: z.string(),
@@ -20,7 +22,9 @@ const blightSchema = z.object({
   stack: z.string(),
   sourceUrl: z.string(),
   origin: z.enum(["client", "server"]),
-  /** How many times it happened, not how many rows exist. */
+  /**
+   * How many times it happened, not how many rows exist.
+   */
   count: z.integer(),
   firstSeenAt: z.string(),
   lastSeenAt: z.string(),
@@ -43,7 +47,9 @@ export const blightListParamsSchema = projectParamsSchema.extend({
 export const blightListResultSchema = z.object({
   blights: z.array(blightSchema),
   openCount: z.integer(),
-  /** The apps that report here, for reading `sigilId` back to a name. */
+  /**
+   * The apps that report here, for reading `sigilId` back to a name.
+   */
   sigils: z.array(
     z.object({
       id: z.string(),

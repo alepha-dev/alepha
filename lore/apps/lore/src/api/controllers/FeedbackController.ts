@@ -1,6 +1,5 @@
 import { $inject, z } from "alepha";
 import { $storage, FileService, files } from "alepha/api/files";
-import { $logger } from "alepha/logger";
 import {
   $repository,
   $sequence,
@@ -73,7 +72,6 @@ type MyFeedbackWithRelations = FeedbackWithRelations & {
  * the in-app request form after a one-tap Google login.
  */
 export class FeedbackController {
-  protected log = $logger();
   protected feedback = $repository(feedback);
   /**
    * The same table, with `include`. Reads that need a feedback row's
@@ -94,7 +92,9 @@ export class FeedbackController {
     linkedQuests: { orderBy: { column: "createdAt", direction: "asc" } },
   } as const;
 
-  /** ...plus the owning project, for the reporter's cross-project list. */
+  /**
+   * ...plus the owning project, for the reporter's cross-project list.
+   */
   protected static readonly withRelationsAndProject = {
     ...FeedbackController.withRelations,
     project: true,

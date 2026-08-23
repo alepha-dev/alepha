@@ -59,9 +59,13 @@ export const blights = $entity({
     ),
     firstSeenAt: z.string(),
     lastSeenAt: z.string(),
-    /** Total occurrences, summed across every batch received. */
+    /**
+     * Total occurrences, summed across every batch received.
+     */
     count: db.default(z.integer().min(1), 1),
-    /** `open`, `resolved`, or `quest:<id>` once promoted. */
+    /**
+     * `open`, `resolved`, or `quest:<id>` once promoted.
+     */
     status: db.default(z.string().max(64), "open"),
   }),
   indexes: [

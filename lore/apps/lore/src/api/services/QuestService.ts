@@ -35,25 +35,39 @@ import { AreaService } from "./AreaService.ts";
  */
 export interface CreateQuestInput {
   projectId: number;
-  /** Plain or rich-text title. */
+  /**
+   * Plain or rich-text title.
+   */
   title: string;
-  /** Rich-text description — sanitized inside the service before insert. */
+  /**
+   * Markdown description, stored as authored (see the class doc).
+   */
   description: string;
-  /** Target area. Created on the project if it does not exist yet. */
+  /**
+   * Target area. Created on the project if it does not exist yet.
+   */
   area: string;
   priority?: Quest["priority"];
-  /** Optional glanceable time estimate in minutes; `null`/`undefined` = none. */
+  /**
+   * Optional glanceable time estimate in minutes; `null`/`undefined` = none.
+   */
   estimateMinutes?: number | null;
-  /** Optional deadline; `undefined` = none. */
+  /**
+   * Optional deadline; `undefined` = none.
+   */
   dueAt?: string;
   objectives?: Array<{ id?: number; title: string; completed: boolean }>;
   attachments?: string[];
   tags?: string[];
   dependsOn?: number | null;
   feedbackId?: number;
-  /** Provenance marker, e.g. `{ sigilBlightId }` for blight-forwarded quests. */
+  /**
+   * Provenance marker, e.g. `{ sigilBlightId }` for blight-forwarded quests.
+   */
   source?: Quest["source"];
-  /** Id of the user creating the quest. */
+  /**
+   * Id of the user creating the quest.
+   */
   createdBy: string;
 }
 
@@ -116,7 +130,8 @@ export class QuestService {
    *
    * Runs server-side on every write that carries markdown (description,
    * note, completion message) so embedded images become quest
-   * attachments regardless of the author — web editor or MCP agent.
+   * attachments regardless of the author — web editor or MCP agent
+   * (the controller then keeps only ids the author uploaded).
    * Being listed in `quest.attachments` is what lets
    * `LoreFileAccessProvider` resolve the file to a project and grant
    * every member read access; an unmerged embed would 403 for anyone
@@ -141,9 +156,8 @@ export class QuestService {
   /**
    * Create a quest. Holds the shared mechanics:
    * 1. allocate the next per-project `shortId`,
-   * 2. sanitize the (attacker-controllable) rich-text description,
-   * 3. ensure `area` exists in the `areas` table, persisting it if not,
-   * 4. insert the `quests` row with the standard defaults.
+   * 2. ensure `area` exists in the `areas` table, persisting it if not,
+   * 3. insert the `quests` row with the standard defaults.
    *
    * The caller is responsible for its own auth check before calling this —
    * this service does no permission check of its own. Must run inside a
@@ -177,10 +191,9 @@ export class QuestService {
       estimateMinutes: input.estimateMinutes ?? undefined,
       dueAt: input.dueAt,
       objectives: this.ensureObjectiveIds(input.objectives ?? []),
-      attachments: this.mergeEmbeddedAttachments(
-        [input.description],
-        input.attachments ?? [],
-      ),
+      // Taken as given: the controller merges the description's embedded ids
+      // and vets the whole list against the author's own uploads first.
+      attachments: input.attachments ?? [],
       tags: normalizeQuestTags(input.tags ?? []),
       dependsOn: input.dependsOn ?? undefined,
       feedbackId: input.feedbackId,

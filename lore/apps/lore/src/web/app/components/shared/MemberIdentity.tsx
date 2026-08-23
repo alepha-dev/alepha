@@ -83,7 +83,9 @@ export const MemberIdentity = (props: MemberIdentityProps) => {
 interface AvatarProps {
   src: string | null;
   alt: string;
-  /** Tailwind size class number (matches `size-N`). */
+  /**
+   * Tailwind size class number (matches `size-N`).
+   */
   size: 6 | 10;
 }
 

@@ -1,6 +1,5 @@
 import { $inject, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $logger } from "alepha/logger";
 import { $repository, $sequence, $transactional } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
@@ -16,7 +15,6 @@ import {
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export class MilestoneController {
-  log = $logger();
   milestones = $repository(milestones);
   quests = $repository(quests);
   projects = $repository(projects);
@@ -266,7 +264,9 @@ export class MilestoneController {
       }),
       response: z.object({
         count: z.integer(),
-        /** `closedAt` of the last closed milestone, when there is one. */
+        /**
+         * `closedAt` of the last closed milestone, when there is one.
+         */
         since: z.datetime().optional(),
         lastNumber: z.integer().optional(),
         lastTitle: z.string().optional(),

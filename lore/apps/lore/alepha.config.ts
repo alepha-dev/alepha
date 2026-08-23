@@ -48,10 +48,6 @@ export default defineConfig({
       // catalog.
       scan: ["src", "../../packages/@alepha/ui/src"],
       dynamicPrefixes: [
-        // tr(`folio.type.${kind}`) — kind in directory/folio/blob.
-        "folio.type.",
-        // tr(`header.connections.state.${state}`) — live/stale/empty.
-        "header.connections.state.",
         // tr(`feedback.filter.${status}`) - pending/accepted/rejected.
         "feedback.filter.",
         // tr(`feedback.empty.detail.${status}.title` / `.body`) - the detail
@@ -63,10 +59,6 @@ export default defineConfig({
         "insights.vitals.",
         // tr(`insights.device.${d.device}`) — mobile/tablet/desktop.
         "insights.device.",
-        // tr(`folios.activity.action.${action}`) — create/edit/rename/tag-change/revert.
-        "folios.activity.action.",
-        // tr(`folios.editor.status.${draft.statusKey}`) — draft/saved/unsaved.
-        "folios.editor.status.",
         // tr(`blights.origin.${origin}`) — client/server crash provenance badge.
         "blights.origin.",
         // tr(`language.${code}`) — @alepha/ui button-language picker labels.
@@ -84,24 +76,23 @@ export default defineConfig({
         "dashboard.filterValue.",
       ],
     }),
-    () => ({
-      // Pulling the production D1 into the local dev SQLite is now a
-      // baseline command: `alepha platform db export [--env] [--tenant]
-      // [--output] [--keepSql]`. The old app-local `export:db` was
-      // promoted upstream (CloudflareAdapter.exportDb) — see Alepha quest
-      // #220.
-      // `icons:backfill` lived here on 2026-08-10 and was deleted once it had
-      // run. It downscaled the 15 project icons uploaded before
-      // `$storage({ image })` existed — 667 KB average, 2 MB peak, all of them
-      // rendered into a 32px box — to a 17 KB average, minting a new file id
-      // per icon so the `immutable` browser and edge caches missed instead of
-      // serving the old bytes for a year. There is no second set to fix; new
-      // uploads are bounded by the storage constraint. See Alepha folio #79.
-      // `export:r2` lived here until 2026-08-18. It mirrored the production
-      // R2 bucket into the local dev `buckets/` dir via `rclone`, and needed
-      // a hand-minted R2 API token in `.env` (S3_ACCESS_KEY_ID /
-      // S3_SECRET_ACCESS_KEY / S3_ENDPOINT) because Cloudflare exposes no
-      // REST CRUD for R2 tokens. There is no upstream replacement yet.
-    }),
+    // Retired app-local commands, kept as notes:
+    // Pulling the production D1 into the local dev SQLite is now a
+    // baseline command: `alepha platform db export [--env] [--tenant]
+    // [--output] [--keepSql]`. The old app-local `export:db` was
+    // promoted upstream (CloudflareAdapter.exportDb) — see Alepha quest
+    // #220.
+    // `icons:backfill` lived here on 2026-08-10 and was deleted once it had
+    // run. It downscaled the 15 project icons uploaded before
+    // `$storage({ image })` existed — 667 KB average, 2 MB peak, all of them
+    // rendered into a 32px box — to a 17 KB average, minting a new file id
+    // per icon so the `immutable` browser and edge caches missed instead of
+    // serving the old bytes for a year. There is no second set to fix; new
+    // uploads are bounded by the storage constraint. See Alepha folio #79.
+    // `export:r2` lived here until 2026-08-18. It mirrored the production
+    // R2 bucket into the local dev `buckets/` dir via `rclone`, and needed
+    // a hand-minted R2 API token in `.env` (S3_ACCESS_KEY_ID /
+    // S3_SECRET_ACCESS_KEY / S3_ENDPOINT) because Cloudflare exposes no
+    // REST CRUD for R2 tokens. There is no upstream replacement yet.
   ],
 });

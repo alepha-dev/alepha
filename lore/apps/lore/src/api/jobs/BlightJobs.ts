@@ -7,10 +7,14 @@ import { $repository } from "alepha/orm";
 import { blights } from "../entities/blights.ts";
 import { projects } from "../entities/projects.ts";
 
-/** Fallback Blights retention window when a project sets no `retentionDays`. */
+/**
+ * Fallback Blights retention window when a project sets no `retentionDays`.
+ */
 export const DEFAULT_RETENTION_DAYS = 30;
 
-/** Milliseconds in a day — for the retention-cutoff arithmetic. */
+/**
+ * Milliseconds in a day — for the retention-cutoff arithmetic.
+ */
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**

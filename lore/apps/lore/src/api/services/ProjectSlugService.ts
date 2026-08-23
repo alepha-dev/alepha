@@ -46,6 +46,10 @@ export class ProjectSlugService {
     "well-known",
     "version",
     "_batch",
+    // The locale prefixes: the router strips a leading "/fr" before matching,
+    // so a project slugged "fr" (title "Fr-") was served as the French home.
+    "fr",
+    "en",
   ]);
 
   /**

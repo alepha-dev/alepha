@@ -2,7 +2,7 @@ import { AdminPage } from "@alepha/ui/components/admin/admin-page";
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
-import { type Infer, z } from "alepha";
+import { AlephaError, type Infer, z } from "alepha";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
@@ -109,7 +109,7 @@ export const AdminProjects = () => {
         // Reported rather than assumed: the endpoint returns what it actually
         // removed, so a partial result is visible instead of implied by a 200.
         if (res.deleted.length !== projects.length) {
-          throw new Error(
+          throw new AlephaError(
             `Deleted ${res.deleted.length} of ${projects.length} projects`,
           );
         }

@@ -1,3 +1,5 @@
+import { $inject, AlephaError } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
 import { folioNames } from "../entities/folioNames.ts";
@@ -28,9 +30,13 @@ import { folioNames } from "../entities/folioNames.ts";
 export type FolioNodeKind = "folio" | "directory";
 
 export interface ScopeKey {
-  /** Directory UUID, or `undefined` when reserving at the project root. */
+  /**
+   * Directory UUID, or `undefined` when reserving at the project root.
+   */
   parentDirectoryId?: string;
-  /** Required when `parentDirectoryId` is undefined — `String(projectId)`. */
+  /**
+   * Required when `parentDirectoryId` is undefined — `String(projectId)`.
+   */
   rootScope?: string;
 }
 
@@ -38,6 +44,7 @@ const normalize = (name: string) => name.trim().toLowerCase();
 
 export class FolioNameService {
   protected readonly names = $repository(folioNames);
+  protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
    * Reserve `name` for `entityId` of `kind` under `scope`. Throws if
@@ -76,12 +83,14 @@ export class FolioNameService {
   protected dbParentId(scope: ScopeKey): string {
     if (scope.parentDirectoryId) return scope.parentDirectoryId;
     if (scope.rootScope === undefined) {
-      throw new Error("ScopeKey requires parentDirectoryId or rootScope");
+      throw new AlephaError("ScopeKey requires parentDirectoryId or rootScope");
     }
     return `root:${scope.rootScope}`;
   }
 
-  /** Drop the reservation for `entityId`. Idempotent (no-op if missing). */
+  /**
+   * Drop the reservation for `entityId`. Idempotent (no-op if missing).
+   */
   public async releaseByEntity(entityId: string): Promise<void> {
     await this.names.deleteMany({ entityId: { eq: entityId } });
   }
@@ -104,7 +113,8 @@ export class FolioNameService {
     }
     // Pathological: 10k collisions in one directory. Fall back to a
     // timestamp suffix so we always return something usable.
-    return ext ? `${stem} (${Date.now()})${ext}` : `${stem} (${Date.now()})`;
+    const stamp = this.dateTime.nowMillis();
+    return ext ? `${stem} (${stamp})${ext}` : `${stem} (${stamp})`;
   }
 
   /**

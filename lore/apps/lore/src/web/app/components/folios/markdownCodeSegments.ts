@@ -2,9 +2,13 @@
  * One markdown segment, tagged with whether it is code.
  */
 export interface MarkdownSegment {
-  /** The verbatim slice. Concatenating every `text` reproduces the input. */
+  /**
+   * The verbatim slice. Concatenating every `text` reproduces the input.
+   */
   text: string;
-  /** True for a fenced block (fence lines included) or an inline code span. */
+  /**
+   * True for a fenced block (fence lines included) or an inline code span.
+   */
   code: boolean;
 }
 

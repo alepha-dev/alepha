@@ -22,7 +22,9 @@ const EXPORT_LIMIT = 1000;
 
 export class ProjectQuestPortabilityController {
   protected readonly quests = $repository(quests);
-  /** ...with milestone and the three users a quest names, for the CSV export. */
+  /**
+   * ...with milestone and the three users a quest names, for the CSV export.
+   */
   protected readonly questsWith = $repository(relations, "quests");
   protected readonly projects = $repository(projects);
   protected readonly milestones = $repository(milestones);
@@ -37,7 +39,9 @@ export class ProjectQuestPortabilityController {
   protected readonly areaService = $inject(AreaService);
 
   exportQuests = $action({
-    use: [$secure()],
+    // A permission, so the token carries a computed `ownership` for the
+    // membership gate below (a bare `$secure()` leaves it undefined).
+    use: [$secure({ permissions: ["quest:read"] })],
     method: "GET",
     path: "/projects/:id/quests/export",
     schema: {
@@ -106,7 +110,7 @@ export class ProjectQuestPortabilityController {
   });
 
   importQuests = $action({
-    use: [$secure()],
+    use: [$secure({ permissions: ["project:update"] })],
     method: "POST",
     path: "/projects/:id/quests/import",
     schema: {
@@ -260,8 +264,8 @@ export class ProjectQuestPortabilityController {
           }
 
           // Create path — reuse QuestController.createQuest so we get sequence
-          // allocation, HTML sanitization, transactional wrapping, and history
-          // seeding. Then patch the extras the create body doesn't accept.
+          // allocation, transactional wrapping, and history seeding. Then
+          // patch the extras the create body doesn't accept.
           const createResponse = await this.quest.createQuest.fetch(
             {
               body: {
