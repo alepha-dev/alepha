@@ -7,6 +7,13 @@ import { questStatusSchema } from "../../api/schemas/questResourceSchema.ts";
  */
 export const prioritySchema = z.enum(["optional", "low", "medium", "high"]);
 
+/**
+ * Quest size as the ordinal the column stores. The label mapping lives in the
+ * field description rather than in the type, so the wire stays sortable and
+ * an agent still knows that `4` means L.
+ */
+export const questSizeSchema = z.integer().min(1).max(5);
+
 export { questStatusSchema };
 
 /**

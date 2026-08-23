@@ -57,6 +57,9 @@ export class TrelloParser {
       description: at("Card Description"),
       area: at("List"),
       priority: "medium",
+      // Trello carries no size axis, so every card lands on the neutral
+      // middle rather than on a value invented for it.
+      size: 3,
       kanbanColumn: "",
       milestone: "",
       createdBy: "",

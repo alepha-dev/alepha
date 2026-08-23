@@ -73,6 +73,9 @@ describe("AlephaLoreParser", () => {
       description: "Some <b>html</b>",
       area: "North",
       priority: "high",
+      // The header this row is parsed against predates the `size` column, so
+      // the parser fills the neutral middle rather than leaving it unset.
+      size: 3,
       kanbanColumn: "doing",
       milestone: "Milestone 1",
       createdBy: "alice@example.com",
@@ -124,6 +127,47 @@ describe("AlephaLoreParser", () => {
     if (!result.ok) throw new Error("unreachable");
     expect(result.row).not.toHaveProperty("difficulty");
     expect(result.row.title).toBe("Quest");
+  });
+
+  it("reads the size ordinal from its own column", ({ expect }) => {
+    const parser = setup();
+    const result = parser.parseRow(
+      ["shortId", "title", "priority", "size"],
+      ["", "Quest", "medium", "5"],
+      1,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("unreachable");
+    expect(result.row.size).toBe(5);
+  });
+
+  it("falls back to 3 when size is absent, empty or off the scale", ({
+    expect,
+  }) => {
+    const parser = setup();
+    // Three ways the cell can fail to name a size, all landing on the
+    // neutral middle rather than failing the row: a CSV taken before the
+    // column existed, an empty cell, and a value outside 1-5.
+    const cases: Array<[string[], string[]]> = [
+      [
+        ["title", "priority"],
+        ["Quest", "medium"],
+      ],
+      [
+        ["title", "priority", "size"],
+        ["Quest", "medium", ""],
+      ],
+      [
+        ["title", "priority", "size"],
+        ["Quest", "medium", "9"],
+      ],
+    ];
+    for (const [header, cells] of cases) {
+      const result = parser.parseRow(header, cells, 1);
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error("unreachable");
+      expect(result.row.size).toBe(3);
+    }
   });
 
   it("errors when objectives JSON is malformed", ({ expect }) => {

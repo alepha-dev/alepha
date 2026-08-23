@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
 } from "@alepha/ui/components/ui/dropdown-menu";
 import { Separator } from "@alepha/ui/components/ui/separator";
+import { z } from "alepha";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
@@ -42,6 +43,7 @@ import QuestAttachments from "./QuestAttachments.tsx";
 import QuestCreateObjectives from "./QuestCreateObjectives.tsx";
 import QuestDependencyPicker from "./QuestDependencyPicker.tsx";
 import QuestEstimateInput from "./QuestEstimateInput.tsx";
+import { DEFAULT_QUEST_SIZE, QUEST_SIZE_OPTIONS } from "./questSize.ts";
 import QuestTagInput from "./QuestTagInput.tsx";
 
 export interface QuestCreateProps {
@@ -78,10 +80,17 @@ const QuestCreate = (props: QuestCreateProps) => {
 
   const form = useForm({
     id: "quest-create",
-    schema: questCreateSchema.omit({ projectId: true, dependsOn: true }),
+    schema: questCreateSchema
+      .omit({ projectId: true, dependsOn: true })
+      // Size is optional on the wire (Lore's own programmatic creators have
+      // no basis for a value) but mandatory here, where a human is looking
+      // straight at the control. `initialValues` seeds M, so it is never
+      // actually empty; the override exists to draw the required marker.
+      .extend({ size: z.integer().min(1).max(5) }),
     initialValues: {
       ...(props.quest as QuestResource),
       priority: props.quest?.priority ?? "optional",
+      size: props.quest?.size ?? DEFAULT_QUEST_SIZE,
     },
     handler: async (data) => {
       if (props.quest?.id) {
@@ -221,15 +230,40 @@ const QuestCreate = (props: QuestCreateProps) => {
           custom={AttachmentsField as never}
         />
 
+        {/* Priority and Size share a row, the same 50/50 the Name and Area
+            pair above uses. They answer the two halves of "where does this
+            sit": how urgent it is, and how big it is. Both are mandatory and
+            both always render, so the grid is unconditional here. */}
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Control
+            input={form.input.priority}
+            label={tr("quest.create.priority")}
+            description={tr("quest.create.priority.helper")}
+            segmented
+          />
+
+          {/* The stored value is the ordinal 1-5; `items` supplies the
+              t-shirt labels the reader actually picks from. `ControlSelect`
+              matches options on strings and coerces back to a number
+              because the bound schema is an integer, so the form submits
+              `3`, not `"3"`. */}
+          <Control
+            input={form.input.size}
+            label={tr("quest.create.size")}
+            description={tr("quest.create.size.helper")}
+            segmented
+            items={QUEST_SIZE_OPTIONS}
+          />
+        </div>
+
         <Separator />
 
-        {/* Priority and Estimate share a row, the same 50/50 the Name and
-            Area pair above uses. They answer the two halves of "how does
-            this rank": how urgent, and how big.
+        {/* Tags and Estimate share the row below the divider: both are
+            optional trimmings rather than part of how the quest is framed.
 
             The grid is applied only when Estimate actually renders. Left on
             unconditionally, a project with estimation switched off would sit
-            Priority in a half-width column with dead space beside it. */}
+            Tags in a half-width column with dead space beside it. */}
         <div
           className={
             questEstimateEnabled
@@ -238,10 +272,19 @@ const QuestCreate = (props: QuestCreateProps) => {
           }
         >
           <Control
-            input={form.input.priority}
-            label={tr("quest.create.priority")}
-            description={tr("quest.create.priority.helper")}
-            segmented
+            label={tr("quest.create.tags")}
+            description={tr("quest.create.tags.helper")}
+            input={form.input.tags}
+            icon={TagsIcon}
+            custom={
+              ((p: { value?: string[]; onChange?: (v: string[]) => void }) => (
+                <QuestTagInput
+                  value={p.value}
+                  onChange={p.onChange}
+                  projectId={props.project.id}
+                />
+              )) as never
+            }
           />
 
           {/* Estimation is a methodology, not a default — see
@@ -259,22 +302,6 @@ const QuestCreate = (props: QuestCreateProps) => {
             />
           )}
         </div>
-
-        <Control
-          label={tr("quest.create.tags")}
-          description={tr("quest.create.tags.helper")}
-          input={form.input.tags}
-          icon={TagsIcon}
-          custom={
-            ((p: { value?: string[]; onChange?: (v: string[]) => void }) => (
-              <QuestTagInput
-                value={p.value}
-                onChange={p.onChange}
-                projectId={props.project.id}
-              />
-            )) as never
-          }
-        />
 
         <Control
           label={tr("quest.create.objectives")}

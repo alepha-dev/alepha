@@ -70,6 +70,16 @@ export class AlephaLoreParser {
 
     const priority = (at("priority") || "medium") as ImportRow["priority"];
 
+    // Export writes the ordinal, so import reads one. Anything absent, empty
+    // or off the 1-5 scale lands on 3 (M) instead of failing the row: a CSV
+    // taken before the column existed has to keep importing, and one bad
+    // cell is not worth rejecting a whole quest over.
+    const sizeCell = Number.parseInt(at("size"), 10);
+    const size =
+      Number.isInteger(sizeCell) && sizeCell >= 1 && sizeCell <= 5
+        ? sizeCell
+        : 3;
+
     const row: ImportRow = {
       rowIndex,
       writeMode: shortId ? "upsert" : "create",
@@ -84,6 +94,7 @@ export class AlephaLoreParser {
       // circulation.
       area: at("area") || at("zone"),
       priority,
+      size,
       // A `difficulty` header is accepted and ignored: the mechanic was
       // erased, but a CSV exported before that must still round-trip.
       // Same one-way ramp as the retired `zone` header above.

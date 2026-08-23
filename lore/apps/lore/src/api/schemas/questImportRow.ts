@@ -25,6 +25,15 @@ export const importRowSchema = z.object({
     .enum(["optional", "low", "medium", "high"])
     .meta({ mode: "text" }),
   /**
+   * T-shirt size ordinal, 1 (XS) to 5 (XL).
+   *
+   * Required here so every parser has to decide what it means for its own
+   * format, but no parser ever fails a row over it: an absent, empty or
+   * out-of-range cell lands on 3 (M), the same neutral middle the column
+   * defaults to. A CSV exported before the field existed must still import.
+   */
+  size: z.integer().min(1).max(5),
+  /**
    * Empty when null/unset.
    */
   kanbanColumn: z.string(),
