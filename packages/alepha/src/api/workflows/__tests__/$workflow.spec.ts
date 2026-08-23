@@ -287,7 +287,16 @@ describe("$workflow", () => {
 
   describe("retry", () => {
     /**
-     * TODO: fix and re-enable — skipped 2026-08-18.
+     * TODO: fix and re-enable — skipped 2026-08-18, re-enabled 2026-08-23 by
+     * the audit commit `b9c057f40`, skipped again the same day.
+     *
+     * The audit's fix (`dispatchScheduled` re-arming when its timer fires a
+     * millisecond early) is real and stays in, but it did not close this. The
+     * sibling repeat test in `$workflow-hardening.spec.ts` still failed 1 in 6
+     * under load after it; this one passed 16 in 16 on the same sweep, which
+     * is not enough to call it fixed given its history. The two share a root
+     * cause, so they go back to being skipped together and should return
+     * together.
      *
      * Flaky at roughly 1 in 3, in isolation as well as under full-suite load
      * (2/6 and 2/6 across two characterisation sweeps). It is not cosmetic: a
@@ -319,7 +328,8 @@ describe("$workflow", () => {
      * retrying on a short delay. That is why this is skipped rather than
      * tuned.
      */
-    it("should retry a step on failure with retries configured", async ({
+    // oxlint-disable-next-line vitest/no-disabled-tests -- deliberately parked, see the TODO above
+    it.skip("should retry a step on failure with retries configured", async ({
       expect,
     }) => {
       let callCount = 0;
@@ -467,6 +477,68 @@ describe("$workflow", () => {
         { label: "workflow cancelled" },
       );
       expect(exec?.status).toBe("cancelled");
+    });
+
+    it("should abort a step cancelled while the step is still starting", async ({
+      expect,
+    }) => {
+      let aborted = false;
+      let markStarting: () => void = () => {};
+      let releaseStarting: () => void = () => {};
+      const starting = new Promise<void>((r) => {
+        markStarting = r;
+      });
+      const held = new Promise<void>((r) => {
+        releaseStarting = r;
+      });
+
+      class App {
+        repo = $repository(workflowExecutions);
+        stepRepo = $repository(workflowStepExecutions);
+        myWorkflow = $workflow({
+          schema: z.object({ id: z.text() }),
+          steps: [
+            {
+              name: "long",
+              handler: async ({ signal }) => {
+                await new Promise<void>((resolve) => {
+                  const check = () => {
+                    if (signal.aborted) {
+                      aborted = true;
+                      resolve();
+                    } else setTimeout(check, 10);
+                  };
+                  check();
+                });
+              },
+            },
+          ],
+        });
+      }
+
+      const alepha = makeApp().with(App);
+      // Hold the engine inside the window between "step row says running"
+      // and "the step's AbortController is registered". A cancel() landing
+      // there must still abort the handler; CI hits this window for real.
+      alepha.events.on("workflow:step:begin", async () => {
+        markStarting();
+        await held;
+      });
+      await alepha.start();
+
+      const app = alepha.inject(App);
+      const executionId = await app.myWorkflow.start({ id: "test" });
+
+      await starting;
+      await app.myWorkflow.cancel(executionId);
+      releaseStarting();
+
+      await waitFor(
+        () => aborted,
+        (v) => v,
+        { label: "handler signal aborted", timeout: 5_000 },
+      );
+      expect(aborted).toBe(true);
     });
   });
 

@@ -390,44 +390,52 @@ export class WorkflowProvider {
     const workflowId = workflow.id;
     const stepName = stepExec.stepName;
 
-    await this.stepExecutions.updateById(stepExec.id, {
-      status: "running",
-      attempt: stepExec.attempt + 1,
-      startedAt: this.dt.nowISOString(),
-    });
-
-    await this.executions.updateById(workflowId, {
-      currentStep: stepName,
-    });
-
-    await this.alepha.events.emit(
-      "workflow:step:begin",
-      {
-        workflowName: workflow.workflowName,
-        workflowId,
-        stepName,
-      },
-      { catch: true },
-    );
-
+    // Registered BEFORE the row says `running`, and before any await that
+    // could let a cancel() in: cancel() aborts whatever it finds in this
+    // map, so a controller published later than the status it belongs to is
+    // a controller cancel() can miss. The handler then runs on a signal
+    // nobody will ever abort, and a handler that only ends on abort never
+    // ends at all - it holds `inFlight` and stalls shutdown's drain.
     const abortController = new AbortController();
     const abortKey = `${workflowId}:${stepName}`;
     this.abortControllers.set(abortKey, abortController);
 
-    const timeoutMs = stepDef.timeout
-      ? this.dt.duration(stepDef.timeout).as("milliseconds")
-      : this.config.defaultStepTimeout;
     // Remembered so the catch path can tell this timer's abort from an
     // external one (cancel(), the timeout sweep).
     let timedOut = false;
-    const timeoutId = setTimeout(() => {
-      timedOut = true;
-      abortController.abort();
-    }, timeoutMs);
-
-    const context = this.alepha.context.createContextId();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
     try {
+      await this.stepExecutions.updateById(stepExec.id, {
+        status: "running",
+        attempt: stepExec.attempt + 1,
+        startedAt: this.dt.nowISOString(),
+      });
+
+      await this.executions.updateById(workflowId, {
+        currentStep: stepName,
+      });
+
+      await this.alepha.events.emit(
+        "workflow:step:begin",
+        {
+          workflowName: workflow.workflowName,
+          workflowId,
+          stepName,
+        },
+        { catch: true },
+      );
+
+      const timeoutMs = stepDef.timeout
+        ? this.dt.duration(stepDef.timeout).as("milliseconds")
+        : this.config.defaultStepTimeout;
+      timeoutId = setTimeout(() => {
+        timedOut = true;
+        abortController.abort();
+      }, timeoutMs);
+
+      const context = this.alepha.context.createContextId();
+
       await this.alepha.context.run(
         async () => {
           try {
