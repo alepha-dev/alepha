@@ -11,9 +11,13 @@ export const CARD_H = 104;
 export const COL_GAP = 44;
 export const ROW_GAP = 22;
 
-/** Half a handle, so a connector stops at the dot rather than under it. */
+/**
+ * Half a handle, so a connector stops at the dot rather than under it.
+ */
 const HANDLE_R = 5;
-/** Where a fork turns from horizontal to vertical, inside the column gap. */
+/**
+ * Where a fork turns from horizontal to vertical, inside the column gap.
+ */
 const ELBOW = 32;
 
 export type QuestlineState =
@@ -26,20 +30,28 @@ export type QuestlineState =
 export interface QuestlineNode {
   quest: QuestResource;
   state: QuestlineState;
-  /** Column, 0-based: the distance from this questline's root. */
+  /**
+   * Column, 0-based: the distance from this questline's root.
+   */
   depth: number;
   x: number;
   y: number;
-  /** The single predecessor, when it is inside this set. */
+  /**
+   * The single predecessor, when it is inside this set.
+   */
   prevId?: number;
-  /** Dependents inside this set. Several means a fork. */
+  /**
+   * Dependents inside this set. Several means a fork.
+   */
   nextIds: number[];
 }
 
 export interface QuestlineTrack {
   rootId: number;
   nodes: QuestlineNode[];
-  /** Elbow paths, in the track's own coordinate space. */
+  /**
+   * Elbow paths, in the track's own coordinate space.
+   */
   edges: string[];
   width: number;
   height: number;

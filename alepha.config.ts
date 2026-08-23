@@ -107,6 +107,10 @@ export default (alepha: Alepha) => {
           `packages/*/dist`,
           `packages/*/node_modules`,
           `packages/*/coverage`,
+          // The scoped packages sit one level deeper.
+          `packages/*/*/dist`,
+          `packages/*/*/node_modules`,
+          `packages/*/*/coverage`,
         ]);
       },
     }),

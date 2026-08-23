@@ -33,7 +33,10 @@ import { join } from "node:path";
 const APP_ROOT = new URL("..", import.meta.url).pathname;
 const SOURCE = join(APP_ROOT, "migrations", "sqlite");
 const DEST = join(APP_ROOT, "dist", "migrations");
-const STATE = "/tmp/wrangler-state";
+// Inside the checkout, not /tmp: the e2e port allocation lets two worktrees
+// run this suite at once, and a shared state directory had the second run
+// wipe the first one's database mid-suite.
+const STATE = join(APP_ROOT, "node_modules", ".wrangler-e2e");
 const DB_NAME = "emerald";
 
 /**

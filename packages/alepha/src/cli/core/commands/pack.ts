@@ -27,6 +27,16 @@ export class PackCommand {
   protected readonly log = $logger();
 
   /**
+   * What an explicit `--name` may contain.
+   *
+   * It lands verbatim in a path, so a separator or a parent reference would
+   * write the archive outside the output directory. Deliberately the same
+   * shape Bay validates an app key against, so the platform name it hands
+   * over always passes.
+   */
+  protected readonly namePattern = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
+
+  /**
    * Make a package name safe to use as a filename.
    *
    * A scoped name like `@acme/app` carries a path separator, so the archive
@@ -37,16 +47,6 @@ export class PackCommand {
    * names, but `cli/core` must not depend on `platform-lib` — the dependency
    * runs the other way.
    */
-  /**
-   * What an explicit `--name` may contain.
-   *
-   * It lands verbatim in a path, so a separator or a parent reference would
-   * write the archive outside the output directory. Deliberately the same
-   * shape Bay validates an app key against, so the platform name it hands
-   * over always passes.
-   */
-  protected readonly namePattern = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
-
   protected slugify(name: string): string {
     return name
       .toLowerCase()

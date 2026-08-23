@@ -77,6 +77,19 @@ export class ProtobufSchemaCodec extends SchemaCodec {
    * Also converts enum integers back to their string values.
    */
   protected applyProto3Defaults(schema: JsonSchema, value: any): any {
+    // An enum at any position (a scalar, an array item, a nullable member)
+    // comes back as its wire number; only object properties used to be
+    // converted, so `z.array(z.enum(...))` failed validation after decode.
+    if (this.isEnum(schema)) {
+      return this.convertEnumValue(schema, value);
+    }
+    if (this.isUnion(schema)) {
+      const member = this.getNonNullMember(schema);
+      if (member) {
+        return this.applyProto3Defaults(member, value);
+      }
+    }
+
     if (!value || typeof value !== "object") {
       return value;
     }

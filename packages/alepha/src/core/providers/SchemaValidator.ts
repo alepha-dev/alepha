@@ -39,7 +39,9 @@ export class SchemaValidator {
     return schema.safeParse(value);
   }
 
-  /** Zod schemas are immutable — clone is a pass-through. */
+  /**
+   * Zod schemas are immutable — clone is a pass-through.
+   */
   public clone<T extends ZType>(schema: T): T {
     return schema;
   }

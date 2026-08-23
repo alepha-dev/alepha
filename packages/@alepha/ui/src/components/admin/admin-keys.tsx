@@ -20,7 +20,7 @@ import { useI18n } from "alepha/react/i18n";
 import { Plus, Trash2 } from "lucide-react";
 import { useCallback, useState } from "react";
 
-export function AdminKeys() {
+export const AdminKeys = () => {
   const client = useClient<AdminApiKeyController>();
   const userClient = useClient<ApiKeyController>();
   const toast = useToast();
@@ -208,6 +208,6 @@ export function AdminKeys() {
       />
     </AdminPage>
   );
-}
+};
 
 export default AdminKeys;

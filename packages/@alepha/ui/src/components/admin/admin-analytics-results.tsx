@@ -28,7 +28,7 @@ export interface AdminAnalyticsResultsProps {
  * numbers are reconstructed; `estimated` with an interval of 1 means the
  * backend samples but did not in this window.
  */
-export function AdminAnalyticsResults(props: AdminAnalyticsResultsProps) {
+export const AdminAnalyticsResults = (props: AdminAnalyticsResultsProps) => {
   const { tr } = useI18n();
   const columns = Object.keys(props.result.rows[0] ?? {});
   const sampleInterval = props.result.sampleInterval ?? 1;
@@ -90,6 +90,6 @@ export function AdminAnalyticsResults(props: AdminAnalyticsResultsProps) {
       )}
     </div>
   );
-}
+};
 
 export default AdminAnalyticsResults;

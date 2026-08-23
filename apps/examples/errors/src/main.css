@@ -2,9 +2,9 @@
  * Global styles for your application.
  *
  * Options:
- * - @alepha/ui: shadcn-based components from the Alepha registry
- * - Tailwind CSS: Use `alepha init --tailwind` to add Tailwind CSS
- * - Raw CSS: Write your own styles below
+ * - @alepha/ui: the shared shadcn components (a workspace package)
+ * - Tailwind CSS, which the default preset sets up
+ * - Raw CSS: write your own styles below
  */
 
 /* Add your styles here */

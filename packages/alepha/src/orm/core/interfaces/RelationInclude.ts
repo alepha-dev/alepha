@@ -27,7 +27,9 @@ export type RelationsFor<
     : {}
   : {};
 
-/** The schema key a relation points at. */
+/**
+ * The schema key a relation points at.
+ */
 export type TargetOf<R> = R extends Relation<any, infer T> ? T : never;
 
 /**
@@ -63,7 +65,9 @@ export interface RelationArgs<
    * capped relation reads only what it returns.
    */
   limit?: number;
-  /** Project the relation's rows. Narrows the result type too. */
+  /**
+   * Project the relation's rows. Narrows the result type too.
+   */
   select?: ReadonlyArray<keyof RowOf<ZType, K>>;
   include?: IncludeArg<ZType, TMap, K>;
 }
@@ -114,10 +118,14 @@ export type IncludeArg<
       >;
 };
 
-/** `true` carries no options; anything else is the options object. */
+/**
+ * `true` carries no options; anything else is the options object.
+ */
 type ArgsOf<TArg> = TArg extends true ? {} : TArg;
 
-/** The `include` map inside a relation's arguments, if any. */
+/**
+ * The `include` map inside a relation's arguments, if any.
+ */
 type IncludeOf<TArgs> = TArgs extends { include: infer I } ? I : {};
 
 /**
@@ -173,7 +181,9 @@ export type WithIncludes<
   TInclude,
 > = Resolve<ZType, TMap, K, { include: TInclude }>;
 
-/** A root query: the relation vocabulary plus paging. */
+/**
+ * A root query: the relation vocabulary plus paging.
+ */
 export interface RelationalQueryArgs<
   ZType extends EntitySchema,
   TMap extends RelationMapFor<ZType>,

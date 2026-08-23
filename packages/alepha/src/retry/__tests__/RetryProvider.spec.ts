@@ -1,4 +1,5 @@
 import { Alepha } from "alepha";
+import type { LogEntry } from "alepha/logger";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { RetryCancelError } from "../errors/RetryCancelError.ts";
@@ -183,17 +184,22 @@ describe("RetryProvider", () => {
       throw new Error("Test error");
     });
 
-    // Spy on the log method
-    // @ts-expect-error - accessing protected property for testing
-    const logSpy = vi.spyOn(retryProvider.log, "warn");
+    // Every entry is emitted on the `log` event whatever the active level,
+    // so the warning can be observed without spying on the provider's logger.
+    const warnings: LogEntry[] = [];
+    alepha.events.on("log", (event) => {
+      if (event.entry.message === "Retry attempt failed") {
+        warnings.push(event.entry);
+      }
+    });
 
     await expect(retryProvider.retry({ handler, max: 2 })).rejects.toThrowError(
       "Test error",
     );
 
-    expect(logSpy).toHaveBeenCalledTimes(2);
-    expect(logSpy).toHaveBeenCalledWith(
-      "Retry attempt failed",
+    expect(warnings).toHaveLength(2);
+    expect(warnings[0].level).toBe("WARN");
+    expect(warnings[0].data).toEqual(
       expect.objectContaining({
         attempt: 1,
         maxAttempts: 2,
@@ -456,5 +462,14 @@ describe("RetryProvider", () => {
       // Restore original
       AbortSignal.any = originalAny;
     }
+  });
+
+  test("should reject max below one with a clear error", async () => {
+    const handler = vi.fn(() => "never");
+
+    await expect(retryProvider.retry({ handler, max: 0 })).rejects.toThrowError(
+      /at least 1/,
+    );
+    expect(handler).not.toHaveBeenCalled();
   });
 });

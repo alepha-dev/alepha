@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	neturl "net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -157,6 +158,13 @@ func (s *server) handleBackup(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "unknown app")
 		return
 	}
+	// A static site has nothing Bay can snapshot. Trying anyway used to record
+	// a failure that only a success can clear, so `bay status` reported the
+	// site as broken on every run, forever.
+	if app.Static {
+		writeError(w, http.StatusPreconditionFailed, "a static site has no database to snapshot")
+		return
+	}
 	mgr, cfg, err := s.backupManager()
 	if err != nil || mgr == nil {
 		writeError(w, http.StatusPreconditionFailed, "backups are not configured: run `bay config s3:backups --endpoint URL --bucket NAME` with BAY_S3_ACCESS_KEY and BAY_S3_SECRET_KEY set")
@@ -292,7 +300,22 @@ func (s *server) handleRestore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := backup.Install(restored, dbPath); err != nil {
-		writeError(w, http.StatusInternalServerError, "install: "+err.Error())
+		// The app was stopped above; a refused install must not also be an
+		// outage. When the live database is still in place (setting it aside
+		// is the first step, and it is the one that failed) the app comes
+		// back on it. Otherwise the database is already set aside and the
+		// app stays stopped rather than booting on a half-written file.
+		msg := "install: " + err.Error()
+		if _, statErr := os.Stat(dbPath); statErr == nil {
+			if startErr := s.start(app); startErr != nil {
+				msg += "; and the app did not come back: " + startErr.Error()
+			} else {
+				msg += "; the app is back on its current database"
+			}
+		} else {
+			msg += "; the app is left stopped, its database is set aside next to " + dbPath
+		}
+		writeError(w, http.StatusInternalServerError, msg)
 		return
 	}
 	if err := s.start(app); err != nil {
@@ -382,7 +405,13 @@ func cmdConfigS3(args []string) error {
 		case "--region":
 			cfg.Region = args[i+1]
 		case "--keep":
-			cfg.Keep, _ = strconv.Atoi(args[i+1])
+			// Named, like --keep-releases: a typo used to mean "14" silently,
+			// and a negative value was stored and failed every retention run.
+			keep, err := strconv.Atoi(args[i+1])
+			if err != nil || keep < 1 {
+				return fmt.Errorf("--keep: %q is not a count of at least 1", args[i+1])
+			}
+			cfg.Keep = keep
 		}
 	}
 	// Credentials come from the environment, never argv: an access key on a
@@ -445,7 +474,7 @@ func cmdRestore(args []string) error {
 	url := controlHost + "/apps/" + key + "/restore?confirm=yes"
 	for i := 0; i < len(args)-1; i++ {
 		if args[i] == "--key" {
-			url += "&key=" + args[i+1]
+			url += "&key=" + neturl.QueryEscape(args[i+1])
 		}
 	}
 	res, err := call(http.MethodPost, url, nil)

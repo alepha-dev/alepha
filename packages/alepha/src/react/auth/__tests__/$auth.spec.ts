@@ -168,17 +168,23 @@ describe("$auth", () => {
     await alepha.start();
 
     const { data: tokens } = await login(alepha);
+    const before = (await userinfo(alepha, tokens.access_token)) as {
+      user: { sessionId: string };
+    };
 
     await alepha.inject(DateTimeProvider).travel(1, "hour");
 
     const { data: tokens2 } = await refresh(alepha, tokens);
 
+    // The refresh token carries the session id, so the refreshed access
+    // token stays bound to the session it came from instead of losing it.
     expect(await userinfo(alepha, tokens2.access_token)).toEqual({
       user: {
         id: user.id,
         name: user.name,
         roles: user.roles,
         username: user.username,
+        sessionId: before.user.sessionId,
         realm: "issuer",
       },
       api: {

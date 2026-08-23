@@ -1,4 +1,4 @@
-import { WorkflowStatusBadge } from "@alepha/ui/components/admin/admin-workflows-status-badge";
+import { AdminWorkflowsStatusBadge } from "@alepha/ui/components/admin/admin-workflows-status-badge";
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { Button } from "@alepha/ui/components/ui/button";
 import {
@@ -14,7 +14,7 @@ import { useI18n } from "alepha/react/i18n";
 import { Ban, Play, RotateCcw, Undo2 } from "lucide-react";
 import { useState } from "react";
 
-export interface WorkflowExecutionSheetProps {
+export interface AdminWorkflowsExecutionSheetProps {
   executionId: string | null;
   onClose: () => void;
 }
@@ -24,7 +24,9 @@ export interface WorkflowExecutionSheetProps {
  * the server-computed `can`, and the step timeline with per-step attempts,
  * durations, errors and results.
  */
-export const WorkflowExecutionSheet = (props: WorkflowExecutionSheetProps) => {
+export const AdminWorkflowsExecutionSheet = (
+  props: AdminWorkflowsExecutionSheetProps,
+) => {
   const client = useClient<AdminWorkflowController>();
   const { l, tr } = useI18n();
   const [refreshKey, setRefreshKey] = useState(0);
@@ -144,7 +146,7 @@ export const WorkflowExecutionSheet = (props: WorkflowExecutionSheetProps) => {
             <SheetHeader>
               <SheetTitle className="flex items-center gap-2">
                 <span className="truncate">{detail.workflowName}</span>
-                <WorkflowStatusBadge status={detail.status} />
+                <AdminWorkflowsStatusBadge status={detail.status} />
               </SheetTitle>
               <SheetDescription className="font-mono text-xs">
                 {detail.id}
@@ -202,7 +204,11 @@ export const WorkflowExecutionSheet = (props: WorkflowExecutionSheetProps) => {
             <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
               <ol className="flex flex-col gap-2">
                 {detail.steps.map((step) => (
-                  <WorkflowExecutionSheetStep key={step.id} step={step} l={l} />
+                  <AdminWorkflowsExecutionSheetStep
+                    key={step.id}
+                    step={step}
+                    l={l}
+                  />
                 ))}
               </ol>
             </div>
@@ -213,7 +219,7 @@ export const WorkflowExecutionSheet = (props: WorkflowExecutionSheetProps) => {
   );
 };
 
-interface WorkflowExecutionSheetStepProps {
+interface AdminWorkflowsExecutionSheetStepProps {
   step: {
     id: string;
     stepName: string;
@@ -231,7 +237,9 @@ interface WorkflowExecutionSheetStepProps {
   l: ReturnType<typeof useI18n>["l"];
 }
 
-const WorkflowExecutionSheetStep = (props: WorkflowExecutionSheetStepProps) => {
+const AdminWorkflowsExecutionSheetStep = (
+  props: AdminWorkflowsExecutionSheetStepProps,
+) => {
   const { step, l } = props;
   const durationMs =
     step.startedAt && step.completedAt
@@ -246,7 +254,7 @@ const WorkflowExecutionSheetStep = (props: WorkflowExecutionSheetStepProps) => {
           {step.stepIndex + 1}
         </span>
         <span className="truncate text-sm font-medium">{step.stepName}</span>
-        <WorkflowStatusBadge status={step.status} />
+        <AdminWorkflowsStatusBadge status={step.status} />
         <span className="text-muted-foreground ml-auto text-xs">
           {step.iteration && step.iteration > 0
             ? `×${step.iteration + 1} `

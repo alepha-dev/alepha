@@ -50,7 +50,9 @@ export const folioNames = $entity({
      * Undefined for non-root entries. See entity docstring.
      */
     rootScope: z.string().optional(),
-    /** `LOWER(name)` — case-insensitive uniqueness key. */
+    /**
+     * `LOWER(name)` — case-insensitive uniqueness key.
+     */
     lowerName: z.string(),
     /**
      * Discriminator for the entity table `entityId` lives in.

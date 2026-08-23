@@ -15,7 +15,7 @@ export const quests = $entity({
     id: db.primaryKey(z.integer()),
     /**
      * Per-project sequential id, 1-based. Stable user-facing reference used
-     * in URLs (`/p/:projectId/q/:shortId`) and UI display ("#42"). Allocated
+     * in URLs (`/:projectSlug/q/:shortId`) and UI display ("#42"). Allocated
      * by `$sequence(scope=projectId)` on insert. The global `id` remains the
      * canonical PK for foreign keys and stable MCP/agent references.
      */

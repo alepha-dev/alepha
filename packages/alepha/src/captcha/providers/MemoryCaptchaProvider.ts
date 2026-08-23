@@ -1,3 +1,5 @@
+import { $inject } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 
 import type { CaptchaProvider } from "./CaptchaProvider.ts";
@@ -16,6 +18,7 @@ export interface CaptchaRecord {
  */
 export class MemoryCaptchaProvider implements CaptchaProvider {
   protected readonly log = $logger();
+  protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
    * All verification attempts.
@@ -34,7 +37,7 @@ export class MemoryCaptchaProvider implements CaptchaProvider {
     this.records.push({
       token,
       ip,
-      verifiedAt: new Date(),
+      verifiedAt: this.dateTime.now().toDate(),
     });
 
     return this.shouldAccept;

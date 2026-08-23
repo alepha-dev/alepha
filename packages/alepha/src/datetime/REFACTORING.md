@@ -62,7 +62,7 @@ Currently wraps `dayjsDuration.Duration`. After the swap it wraps `Temporal.Dura
 | `toISOString()`         | `duration.toString()` (Temporal already emits ISO 8601) |
 | `toDayjs()`             | **Removed.**                                            |
 
-Constructor input normalization (number, `[n, unit]` tuple, ISO string `"PT5M"`, existing `Duration`) stays in `DateTimeProvider.duration()`. Temporal parses ISO strings natively via `Temporal.Duration.from()`; the tuple form needs a 3-line shim.
+Constructor input normalization (number, `[n, unit]` tuple, existing `Duration`) stays in `DateTimeProvider.duration()`. ISO strings such as `"PT5M"` are not parsed today; Temporal would add that for free via `Temporal.Duration.from()`, and the tuple form needs a 3-line shim.
 
 ## Format tokens — the one open decision
 
@@ -111,7 +111,7 @@ When Step 2 ships:
 ## Why not now
 
 - Polyfill weight: temporal-polyfill ~28 KB gz vs current dayjs+plugins+locales ~15–20 KB gz. Net regression until native lands.
-- No functional gain for users today — same behaviour, same wire format (ISO 8601 strings via `t.datetime()`), same testing affordances (`pause`/`travel`).
+- No functional gain for users today — same behaviour, same wire format (ISO 8601 strings via `z.datetime()`), same testing affordances (`pause`/`travel`).
 - The cost of waiting is zero: Step 1 already gave us the abstraction. The engine swap is mechanical when the time is right.
 
 ## Estimated effort when triggered

@@ -355,7 +355,7 @@ export class ApiKeyService {
   /**
    * Validate an API key token and return user info if valid.
    *
-   * @param validateOwner - Optional per-request owner check; a false return
+   * @param resolveOwner - Optional per-request owner check; a false return
    * refuses the key (owner disabled or deleted).
    */
   public async validate(

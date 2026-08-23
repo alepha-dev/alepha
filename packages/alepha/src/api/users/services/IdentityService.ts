@@ -1,6 +1,7 @@
 import { $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 import type { Page } from "alepha/orm";
+import { NotFoundError } from "alepha/server";
 
 import { UserAudits } from "../audits/UserAudits.ts";
 import type { IdentityEntity } from "../entities/identities.ts";
@@ -44,6 +45,21 @@ export class IdentityService {
       where.provider = { like: q.provider };
     }
 
+    // Identities carry no realm column: a listing filtered on a user of
+    // another realm must come back empty rather than leak that user's
+    // providers.
+    if (q.userId) {
+      const realm = this.realmProvider.getRealm(userRealmName);
+      const owner = await this.realmProvider
+        .userRepository(userRealmName)
+        .findOne({
+          where: { id: { eq: q.userId }, realm: { eq: realm.name } },
+        });
+      if (!owner) {
+        where.userId = { eq: "00000000-0000-0000-0000-000000000000" };
+      }
+    }
+
     const result = await this.identities(userRealmName).paginate(
       q,
       { where },
@@ -67,6 +83,16 @@ export class IdentityService {
   ): Promise<IdentityEntity> {
     this.log.trace("Getting identity by ID", { id, userRealmName });
     const identity = await this.identities(userRealmName).getById(id);
+    // Identities carry no realm column; the owner's realm decides.
+    const realm = this.realmProvider.getRealm(userRealmName);
+    const owner = await this.realmProvider
+      .userRepository(userRealmName)
+      .findOne({
+        where: { id: { eq: identity.userId }, realm: { eq: realm.name } },
+      });
+    if (!owner) {
+      throw new NotFoundError(`Identity '${id}' not found`);
+    }
     this.log.debug("Identity retrieved", {
       id,
       provider: identity.provider,

@@ -74,6 +74,18 @@ export class QueryManager {
           );
         }
 
+        // `null` is the same leak in JSON clothing: a request body or a saved
+        // view carries `null` where code carries `undefined`, and a bare
+        // `{ col: null }` reached the driver as no condition at all. NULL
+        // matching has an explicit spelling, `{ isNull: true }`.
+        if (operator === null) {
+          throw new AlephaError(
+            `Query filter '${key}' is null. ` +
+              `A null condition would be silently dropped from the WHERE clause; ` +
+              `use { isNull: true } to match NULL, or omit the key if the filter is optional.`,
+          );
+        }
+
         // Handle joins - check if this key matches a join at the current level
         if (
           typeof query[key] === "object" &&
@@ -345,6 +357,15 @@ export class QueryManager {
         `Query filter${columnName ? ` '${columnName}'` : ""} has 'eq: undefined'. ` +
           `An undefined condition would be silently dropped from the WHERE clause; ` +
           `omit the operator instead if the filter is optional.`,
+      );
+    }
+
+    // Same guard for `eq: null`: `operator.eq != null` below would drop it.
+    if ("eq" in operator && operator.eq === null) {
+      throw new AlephaError(
+        `Query filter${columnName ? ` '${columnName}'` : ""} has 'eq: null'. ` +
+          `A null condition would be silently dropped from the WHERE clause; ` +
+          `use { isNull: true } to match NULL, or omit the operator if the filter is optional.`,
       );
     }
 

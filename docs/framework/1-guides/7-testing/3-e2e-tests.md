@@ -57,7 +57,7 @@ test("home page loads", async ({ page }) => {
 });
 
 test("API returns data", async ({ request }) => {
-  const response = await request.get("/api/health");
+  const response = await request.get("/health");
   expect(response.ok()).toBeTruthy();
 });
 ```

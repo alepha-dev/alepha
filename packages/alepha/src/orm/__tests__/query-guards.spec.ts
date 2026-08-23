@@ -153,3 +153,44 @@ describe("text primary key insert schema", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("null in a where filter", () => {
+  // `undefined` already failed loudly; `null` is what the same mistake looks
+  // like once the filter has been through JSON (a request body, a saved
+  // view), and it used to reach the driver as no condition at all.
+  it("should reject a bare null value and point at isNull", async () => {
+    const alepha = Alepha.create({
+      env: { DATABASE_URL: "sqlite://:memory:" },
+    });
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    await expect(
+      app.repository.findMany({ where: { name: null as any } }),
+    ).rejects.toThrow(/isNull/);
+  });
+
+  it("should reject `eq: null` and point at isNull", async () => {
+    const alepha = Alepha.create({
+      env: { DATABASE_URL: "sqlite://:memory:" },
+    });
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    await expect(
+      app.repository.count({ name: { eq: null as any } }),
+    ).rejects.toThrow(/isNull/);
+  });
+
+  it("should still match NULL through isNull", async () => {
+    const alepha = Alepha.create({
+      env: { DATABASE_URL: "sqlite://:memory:" },
+    });
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    await app.repository.create({ id: 1, name: "a", tags: [] });
+    expect(await app.repository.count({ name: { isNull: true } })).toBe(0);
+    expect(await app.repository.count({ name: { isNotNull: true } })).toBe(1);
+  });
+});

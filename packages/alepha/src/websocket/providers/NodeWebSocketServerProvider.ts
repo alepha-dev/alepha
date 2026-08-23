@@ -51,14 +51,20 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     return `ws-${randomUUID()}`;
   }
 
-  /** Registered `$room` endpoints, keyed by channel path. */
+  /**
+   * Registered `$room` endpoints, keyed by channel path.
+   */
   protected roomEndpoints = new Map<
     string,
     RoomPrimitiveOptions<any, any, any>
   >();
-  /** Live room engines, keyed by `channelPath:roomId`. */
+  /**
+   * Live room engines, keyed by `channelPath:roomId`.
+   */
   protected roomEngines = new Map<string, RoomEngine<any, any, any>>();
-  /** Last time each engine was touched, for idle eviction. */
+  /**
+   * Last time each engine was touched, for idle eviction.
+   */
   protected roomEngineTouched = new Map<string, number>();
   /**
    * How long a socket-less room engine may sit idle before it is disposed.
@@ -80,9 +86,13 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
    * own account) and held room tick loops alive for a client that was gone.
    */
   protected static readonly HEARTBEAT_MS = 30_000;
-  /** Sockets that have not answered the last ping. */
+  /**
+   * Sockets that have not answered the last ping.
+   */
   protected readonly awaitingPong = new WeakSet<WebSocket>();
-  /** Every live socket, for the liveness sweep. */
+  /**
+   * Every live socket, for the liveness sweep.
+   */
   protected readonly sockets = new Set<WebSocket>();
 
   /**
@@ -106,7 +116,9 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     }
   }
 
-  /** Track a socket for the liveness sweep. */
+  /**
+   * Track a socket for the liveness sweep.
+   */
   protected trackSocket(ws: WebSocket): void {
     this.sockets.add(ws);
     ws.on("pong", () => this.awaitingPong.delete(ws));
@@ -159,7 +171,9 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     return vite?.httpServer ?? undefined;
   }
 
-  /** Real timers for the room tick loop. */
+  /**
+   * Real timers for the room tick loop.
+   */
   protected readonly roomClock: RoomClock = {
     setInterval: (fn, ms) => setInterval(fn, ms),
     clearInterval: (handle) =>
@@ -693,10 +707,6 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
   }
 
   /**
-   * Emit a `websocket:*` observability hook. Fire-and-forget: a subscriber
-   * must never be able to break the connection it is observing.
-   */
-  /**
    * Decode a `ws` frame to text.
    *
    * `RawData` is `Buffer | ArrayBuffer | Buffer[]`, and the array arm is not
@@ -715,6 +725,10 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     return Buffer.from(data).toString();
   }
 
+  /**
+   * Emit a `websocket:*` observability hook. Fire-and-forget: a subscriber
+   * must never be able to break the connection it is observing.
+   */
   protected emitHook<
     K extends
       | "websocket:connect"

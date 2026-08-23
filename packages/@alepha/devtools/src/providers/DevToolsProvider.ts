@@ -17,7 +17,7 @@ export class DevToolsProvider {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly serverProvider = $inject(ServerProvider);
-  protected readonly devCollectorProvider = $inject(DevToolsMetadataProvider);
+  protected readonly metadataProvider = $inject(DevToolsMetadataProvider);
   protected readonly logStore = $inject(DevLogStoreProvider);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly emailOptions = $store(localEmailOptions);
@@ -47,7 +47,7 @@ export class DevToolsProvider {
       response: devMetadataSchema,
     },
     handler: () => {
-      return this.devCollectorProvider.getMetadata();
+      return this.metadataProvider.getMetadata();
     },
   });
 
@@ -126,7 +126,13 @@ export class DevToolsProvider {
 
       if (atomEntry) {
         try {
-          this.alepha.store.set(atomEntry.atom, body.value);
+          // Every route runs inside a request context, and a plain `set`
+          // writes into that context's fork: the value used to die with the
+          // response while the UI reported "Saved". The app-level store is
+          // the one being edited.
+          this.alepha.store.set(atomEntry.atom, body.value, {
+            skipContext: true,
+          });
           return { success: true };
         } catch (error) {
           const message =
@@ -212,7 +218,14 @@ export class DevToolsProvider {
           const d = e.data as Record<string, unknown>;
           for (const t of types) {
             if (t === "http" || t === "http:request") {
-              if (d.status && d.method && d.path && d.duration) return true;
+              // `duration` can round to 0 and still be an HTTP entry.
+              if (
+                d.status &&
+                d.method &&
+                d.path &&
+                typeof d.duration === "number"
+              )
+                return true;
             } else if (t === "db" || t === "db:query") {
               if (d.type === "db:query") return true;
             } else if (d.type === t) {
@@ -598,10 +611,9 @@ export class DevToolsProvider {
   }
 
   protected stripAnsi(value: string): string {
-    // Matches CSI SGR sequences (ESC [ ... m) — the colour codes the pretty
+    // Matches CSI SGR sequences (ESC [ ... m), the colour codes the pretty
     // formatter emits. Written as \u001b rather than a literal control
     // byte so the source stays readable and copy-paste safe.
-    // ANSI sequences are defined by the ESC control character, so matching them requires it
     return value.replace(/\u001b\[[0-9;]*m/g, "");
   }
 

@@ -1,10 +1,18 @@
+import { useI18n } from "alepha/react/i18n";
+
 export interface DessinProps {
-  /** File id from `alepha/api/files`, or an absolute URL. */
+  /**
+   * File id from `alepha/api/files`, or an absolute URL.
+   */
   image?: string;
-  /** Alt text — the piece's name. */
+  /**
+   * Alt text — the piece's name.
+   */
   nom: string;
   className?: string;
-  /** Load eagerly for the piece a page is about; lazily for a catalogue row. */
+  /**
+   * Load eagerly for the piece a page is about; lazily for a catalogue row.
+   */
   priority?: boolean;
 }
 
@@ -23,6 +31,7 @@ export interface DessinProps {
  * and adding them would make it look like a product card instead of a drawing.
  */
 export const Dessin = (props: DessinProps) => {
+  const { tr } = useI18n();
   const { image, nom, className, priority } = props;
 
   if (!image) {
@@ -41,7 +50,7 @@ export const Dessin = (props: DessinProps) => {
   return (
     <img
       src={src}
-      alt={`${nom}, dessin d'atelier`}
+      alt={String(tr("piece.drawingAlt", { args: [nom] }))}
       className={`dessin ${className ?? ""}`}
       loading={priority ? "eager" : "lazy"}
       decoding="async"

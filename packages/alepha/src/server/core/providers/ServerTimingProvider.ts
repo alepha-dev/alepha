@@ -40,7 +40,7 @@ export class ServerTimingProvider {
       if (request.metadata.timing) {
         this.setDuration(this.handlerName, request.metadata.timing);
 
-        let timingHeader = "";
+        const timings: string[] = [];
 
         for (const [name, [start, duration]] of Object.entries(
           request.metadata.timing as TimingMap,
@@ -54,9 +54,15 @@ export class ServerTimingProvider {
 
           const formattedName =
             this.options.prefix + name.replace(/[^a-zA-Z0-9-]/g, "-");
-          timingHeader += `${formattedName};dur=${duration}, `;
+          timings.push(`${formattedName};dur=${duration}`);
         }
 
+        // Joined, not accumulated with a trailing separator: the header used
+        // to end with a dangling ", ".
+        const timingHeader = timings.join(", ");
+        if (!timingHeader) {
+          return;
+        }
         if (request.reply.headers["Server-Timing"]) {
           request.reply.headers["Server-Timing"] += `, ${timingHeader}`;
         } else {

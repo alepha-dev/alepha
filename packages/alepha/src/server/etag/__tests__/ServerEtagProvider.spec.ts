@@ -1242,40 +1242,35 @@ describe("ServerEtagProvider", () => {
 
   describe("Error response caching", () => {
     test("should NOT cache 500 error responses", async ({ expect }) => {
-      const response1 = await app.errorAction.fetch();
-      expect(response1.status).toBe(500);
-      expect(response1.data).toBe("error-0");
+      // An error status is thrown by the client; the body is its message.
+      const error1 = await app.errorAction.fetch().catch((e) => e);
+      expect(error1.status).toBe(500);
+      expect(error1.message).toBe("error-0");
 
       // Second request should execute handler again (not cached)
-      const response2 = await app.errorAction.fetch();
-      expect(response2.status).toBe(500);
-      expect(response2.data).toBe("error-1");
-
-      // Verify counter incremented (handler was called)
-      expect(response1.data).not.toBe(response2.data);
+      const error2 = await app.errorAction.fetch().catch((e) => e);
+      expect(error2.status).toBe(500);
+      expect(error2.message).toBe("error-1");
     });
 
     test("should NOT cache 404 error responses", async ({ expect }) => {
-      const response1 = await app.notFoundAction.fetch();
-      expect(response1.status).toBe(404);
-      expect(response1.data).toBe("not-found-0");
+      const error1 = await app.notFoundAction.fetch().catch((e) => e);
+      expect(error1.status).toBe(404);
+      expect(error1.message).toBe("not-found-0");
 
       // Second request should execute handler again (not cached)
-      const response2 = await app.notFoundAction.fetch();
-      expect(response2.status).toBe(404);
-      expect(response2.data).toBe("not-found-1");
-
-      // Verify counter incremented (handler was called)
-      expect(response1.data).not.toBe(response2.data);
+      const error2 = await app.notFoundAction.fetch().catch((e) => e);
+      expect(error2.status).toBe(404);
+      expect(error2.message).toBe("not-found-1");
     });
 
     test("should cache successful responses after error responses", async ({
       expect,
     }) => {
       // First request returns 500 error
-      const errorResponse = await app.conditionalErrorAction.fetch();
-      expect(errorResponse.status).toBe(500);
-      expect(errorResponse.data).toBe("error-0");
+      const error = await app.conditionalErrorAction.fetch().catch((e) => e);
+      expect(error.status).toBe(500);
+      expect(error.message).toBe("error-0");
 
       // Second request returns success and should be cached
       const successResponse1 = await app.conditionalErrorAction.fetch();
@@ -1298,7 +1293,10 @@ describe("ServerEtagProvider", () => {
       expect(ok.status).toBe(200);
       expect(ok.headers.get("cache-control")).toContain("immutable");
 
-      const missing = await app.immutableMissingFileAction.fetch();
+      // Raw fetch: the client throws on a 404 and an error carries no headers.
+      const missing = await fetch(
+        `${alepha.inject(ServerProvider).hostname}${app.immutableMissingFileAction.path}`,
+      );
       expect(missing.status).toBe(404);
       expect(missing.headers.get("cache-control")).toBeNull();
     });
@@ -1319,14 +1317,14 @@ describe("ServerEtagProvider", () => {
       ).action;
       await alepha.start();
 
-      const response1 = await badRequestAction.fetch();
-      expect(response1.status).toBe(400);
+      const error1 = await badRequestAction.fetch().catch((e) => e);
+      expect(error1.status).toBe(400);
 
-      const response2 = await badRequestAction.fetch();
-      expect(response2.status).toBe(400);
+      const error2 = await badRequestAction.fetch().catch((e) => e);
+      expect(error2.status).toBe(400);
 
       // Verify responses are different (not cached)
-      expect(response1.data).not.toBe(response2.data);
+      expect(error1.message).not.toBe(error2.message);
     });
   });
 });

@@ -24,7 +24,9 @@ const setup = async () => {
   return probe;
 };
 
-/** A stream that records how many chunks were actually pulled from it. */
+/**
+ * A stream that records how many chunks were actually pulled from it.
+ */
 const countingStream = (chunks: Buffer[]) => {
   let pulled = 0;
   const stream = Readable.from(

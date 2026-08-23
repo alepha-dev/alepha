@@ -9,7 +9,9 @@ import { parseFlowchart } from "./flowchartParser.ts";
 import { layoutFlowchart } from "./layoutFlowchart.ts";
 
 export interface MermaidFenceProps {
-  /** The raw text between the fence markers. */
+  /**
+   * The raw text between the fence markers.
+   */
   source: string;
   /**
    * What to render when the source is not a flowchart we can draw. Always

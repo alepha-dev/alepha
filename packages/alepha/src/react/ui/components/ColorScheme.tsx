@@ -13,7 +13,7 @@ import { useTheme } from "../hooks/useTheme.ts";
  * @example
  * <ColorScheme />
  */
-export function ColorScheme() {
+export const ColorScheme = () => {
   const { resolved } = useColorMode();
   const { theme } = useTheme();
 
@@ -34,4 +34,4 @@ export function ColorScheme() {
   }, [theme]);
 
   return null;
-}
+};

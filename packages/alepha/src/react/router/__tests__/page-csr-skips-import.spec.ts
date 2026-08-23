@@ -8,7 +8,9 @@ import {
   type ReactRouterState,
 } from "../providers/ReactPageProvider.ts";
 
-/** The minimum `ReactRouterState` `createLayers` reads. */
+/**
+ * The minimum `ReactRouterState` `createLayers` reads.
+ */
 const stateFor = (path: string): ReactRouterState =>
   ({
     layers: [],

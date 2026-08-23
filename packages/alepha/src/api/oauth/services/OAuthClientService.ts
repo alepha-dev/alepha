@@ -40,9 +40,13 @@ export interface RegisterClientOptions {
    * at the token endpoint. Defaults to `public` (PKCE only).
    */
   type?: "public" | "confidential";
-  /** First-party client — skip the consent screen (see the entity field). */
+  /**
+   * First-party client — skip the consent screen (see the entity field).
+   */
   trusted?: boolean;
-  /** Raw secret for a confidential client; stored as a scrypt hash. */
+  /**
+   * Raw secret for a confidential client; stored as a scrypt hash.
+   */
   secret?: string;
   source?: "dcr" | "user" | "admin";
   createdByUserId?: string;

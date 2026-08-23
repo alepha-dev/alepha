@@ -57,7 +57,9 @@ const aRing = (catalog: CatalogService) =>
     config: { trackStock: true },
   });
 
-/** Buy one, with an email on the checkout so the mailer has a recipient. */
+/**
+ * Buy one, with an email on the checkout so the mailer has a recipient.
+ */
 const buy = async (
   ctx: Awaited<ReturnType<typeof setup>>,
   productId: string,

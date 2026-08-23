@@ -30,7 +30,7 @@ const alepha = Alepha.create()
 
 const provider = alepha.inject(S3FileStorageProvider);
 
-describe("NodeS3BucketProvider", () => {
+describe("S3FileStorageProvider", () => {
   // The provider no longer creates buckets: containers are key prefixes
   // inside one bucket that you provision. Create it here so the suite is
   // self-contained (s3mock's `initialBuckets` env is not honoured by the

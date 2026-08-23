@@ -35,9 +35,13 @@ export interface WebhookEvent {
  * redirected to its hosted page.
  */
 export interface ElementSessionResult {
-  /** Per-payment secret the PSP's browser SDK confirms against. */
+  /**
+   * Per-payment secret the PSP's browser SDK confirms against.
+   */
   clientSecret: string;
-  /** Browser-safe key for the SDK. Never a secret key. */
+  /**
+   * Browser-safe key for the SDK. Never a secret key.
+   */
   publishableKey: string;
   /**
    * Which SDK the browser should load — `"stripe"`, `"mollie"`, … The front end
@@ -67,7 +71,9 @@ export abstract class PaymentProvider {
       authorize?: boolean;
       stripeAccount?: string;
       applicationFeeAmount?: number;
-      /** Pre-fill the payer's email on the hosted checkout page. */
+      /**
+       * Pre-fill the payer's email on the hosted checkout page.
+       */
       customerEmail?: string;
     },
   ): Promise<CreateSessionResult>;

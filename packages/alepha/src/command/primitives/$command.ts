@@ -309,7 +309,7 @@ export interface CommandHandlerArgs<
   E extends ZObject = ZObject,
 > {
   flags: Infer<T>;
-  args: A extends ZType ? Infer<A> : Array<string>;
+  args: Infer<A>;
   env: Infer<E>;
   run: RunnerMethod;
   ask: AskMethods;

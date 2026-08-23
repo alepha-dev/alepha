@@ -417,7 +417,13 @@ export class WorkflowProvider {
     const timeoutMs = stepDef.timeout
       ? this.dt.duration(stepDef.timeout).as("milliseconds")
       : this.config.defaultStepTimeout;
-    const timeoutId = setTimeout(() => abortController.abort(), timeoutMs);
+    // Remembered so the catch path can tell this timer's abort from an
+    // external one (cancel(), the timeout sweep).
+    let timedOut = false;
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      abortController.abort();
+    }, timeoutMs);
 
     const context = this.alepha.context.createContextId();
 
@@ -497,6 +503,22 @@ export class WorkflowProvider {
               error instanceof Error ? error : new Error(String(error));
 
             await this.writeStepLogs(stepExec.id);
+
+            if (abortController.signal.aborted && !timedOut) {
+              // Aborted from outside the step: cancel() or the timeout sweep
+              // has already decided the execution's fate. Retrying or
+              // compensating here would fight that decision (a plain cancel
+              // used to end as "compensated" with the error "Step timed out").
+              const current = await this.executions.findById(workflowId);
+              const timedOutByWorkflow = current?.status === "timed_out";
+              await this.stepExecutions.updateById(stepExec.id, {
+                status: timedOutByWorkflow ? "failed" : "cancelled",
+                error: timedOutByWorkflow
+                  ? "Workflow timed out"
+                  : "Step cancelled",
+              });
+              return;
+            }
 
             const failure = abortController.signal.aborted
               ? new Error("Step timed out")
@@ -747,6 +769,20 @@ export class WorkflowProvider {
   ): Promise<void> {
     const workflow = await this.executions.findById(workflowId);
     if (!workflow) throw new AlephaError(`Workflow not found: ${workflowId}`);
+
+    // Without a failure context this is the public/admin entry point, which
+    // has to be as strict as cancel()/retry(): compensating a completed or a
+    // running execution re-runs every compensation handler against work
+    // that was never undone.
+    if (
+      !context &&
+      workflow.status !== "failed" &&
+      workflow.status !== "timed_out"
+    ) {
+      throw new AlephaError(
+        `Cannot compensate workflow in '${workflow.status}' status`,
+      );
+    }
 
     const registration = this.getRegistration(workflow.workflowName);
 
@@ -1214,7 +1250,12 @@ export class WorkflowProvider {
     if (!logs || logs.length === 0) return;
 
     try {
-      await this.stepLogs.create({ id: stepExecutionId, logs });
+      // Upsert: a retried or repeated step writes under the same id, and a
+      // plain insert refused every attempt after the first.
+      await this.stepLogs.upsert(
+        { id: stepExecutionId, logs },
+        { target: ["id"], set: { logs } },
+      );
     } catch {
       this.log.warn(`Failed to write logs for step ${stepExecutionId}`);
     }
@@ -1446,7 +1487,9 @@ export class WorkflowProvider {
         );
 
         const reg = this.workflows.get(wf.workflowName);
-        if (reg?.options.onError === "compensate") {
+        // Same default as the failure path: `onError` is "compensate" unless
+        // the workflow says otherwise.
+        if ((reg?.options.onError ?? "compensate") === "compensate") {
           await this.compensate(wf.id, {
             error: new Error("Workflow timed out"),
           });

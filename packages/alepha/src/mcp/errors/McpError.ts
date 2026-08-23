@@ -60,7 +60,9 @@ export class McpToolNotFoundError extends McpError {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-/** See {@link McpToolNotFoundError} for why this is `-32602`. */
+/**
+ * See {@link McpToolNotFoundError} for why this is `-32602`.
+ */
 export class McpResourceNotFoundError extends McpError {
   name = "McpResourceNotFoundError";
   uri: string;
@@ -73,7 +75,9 @@ export class McpResourceNotFoundError extends McpError {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-/** See {@link McpToolNotFoundError} for why this is `-32602`. */
+/**
+ * See {@link McpToolNotFoundError} for why this is `-32602`.
+ */
 export class McpPromptNotFoundError extends McpError {
   name = "McpPromptNotFoundError";
   prompt: string;

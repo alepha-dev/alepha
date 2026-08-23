@@ -1,4 +1,4 @@
-import { $inject, Alepha, SchemaValidationError } from "alepha";
+import { $inject, Alepha, AlephaError, SchemaValidationError } from "alepha";
 import { $logger } from "alepha/logger";
 
 import {
@@ -112,6 +112,7 @@ export class McpServerProvider {
    */
   public registerTool(tool: ToolPrimitive<any>): void {
     this.log.trace(`Registering MCP tool: ${tool.name}`);
+    this.assertUnregistered(this.tools, tool.name, "tool");
     this.tools.set(tool.name, tool);
   }
 
@@ -120,6 +121,7 @@ export class McpServerProvider {
    */
   public registerResource(resource: ResourcePrimitive): void {
     this.log.trace(`Registering MCP resource: ${resource.uri}`);
+    this.assertUnregistered(this.resources, resource.uri, "resource");
     this.resources.set(resource.uri, resource);
   }
 
@@ -132,6 +134,11 @@ export class McpServerProvider {
     this.log.trace(
       `Registering MCP resource template: ${template.uriTemplate}`,
     );
+    this.assertUnregistered(
+      this.resourceTemplates,
+      template.uriTemplate,
+      "resource template",
+    );
     this.resourceTemplates.set(template.uriTemplate, template);
   }
 
@@ -140,7 +147,24 @@ export class McpServerProvider {
    */
   public registerPrompt(prompt: PromptPrimitive<any>): void {
     this.log.trace(`Registering MCP prompt: ${prompt.name}`);
+    this.assertUnregistered(this.prompts, prompt.name, "prompt");
     this.prompts.set(prompt.name, prompt);
+  }
+
+  /**
+   * Two primitives under one key used to be a silent overwrite: the second
+   * class to register won and the first tool simply disappeared from the
+   * list. The same name on two classes is a wiring mistake, and a boot-time
+   * error is the only place it can be caught.
+   */
+  protected assertUnregistered(
+    registry: Map<string, unknown>,
+    key: string,
+    kind: string,
+  ): void {
+    if (registry.has(key)) {
+      throw new AlephaError(`MCP ${kind} '${key}' is registered twice`);
+    }
   }
 
   // -----------------------------------------------------------------------------------------------------------------

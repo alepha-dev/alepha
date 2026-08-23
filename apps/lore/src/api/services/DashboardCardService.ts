@@ -59,7 +59,9 @@ export class DashboardCardService {
     return this.read(user);
   }
 
-  /** This user's cards, in grid order, without ever seeding. */
+  /**
+   * This user's cards, in grid order, without ever seeding.
+   */
   async read(user: UserAccountToken): Promise<DashboardCardResource[]> {
     const rows = await this.cards.findMany({
       where: { userId: { eq: user.id } },
@@ -113,7 +115,9 @@ export class DashboardCardService {
     return this.toResource(row);
   }
 
-  /** Change a card's metric configuration or its width. */
+  /**
+   * Change a card's metric configuration or its width.
+   */
   async update(
     user: UserAccountToken,
     cardId: number,
@@ -144,7 +148,9 @@ export class DashboardCardService {
     return this.toResource(row);
   }
 
-  /** Remove one card. Leaves the seeding marker alone. */
+  /**
+   * Remove one card. Leaves the seeding marker alone.
+   */
   async remove(user: UserAccountToken, cardId: number): Promise<void> {
     const current = await this.own(user, cardId);
     await this.cards.deleteMany({ id: { eq: current.id } });
@@ -245,7 +251,9 @@ export class DashboardCardService {
     return rows.find((it) => it.kinds?.includes("beacon"))?.id;
   }
 
-  /** One of this user's cards, or a 400 — never someone else's. */
+  /**
+   * One of this user's cards, or a 400 — never someone else's.
+   */
   protected async own(
     user: UserAccountToken,
     cardId: number,

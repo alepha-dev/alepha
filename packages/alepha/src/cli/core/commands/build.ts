@@ -9,7 +9,6 @@ import {
 } from "../atoms/buildOptions.ts";
 import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
 import { ViteBuildProvider } from "../providers/ViteBuildProvider.ts";
-import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
 import { BuildAssetsTask } from "../tasks/BuildAssetsTask.ts";
@@ -27,7 +26,6 @@ import type { BuildTaskContext } from "../tasks/BuildTask.ts";
 export class BuildCommand {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
-  protected readonly utils = $inject(AlephaCliUtils);
   protected readonly pm = $inject(PackageManagerUtils);
   protected readonly scaffolder = $inject(ProjectScaffolder);
   protected readonly boot = $inject(AppEntryProvider);

@@ -276,7 +276,9 @@ export class VerificationService {
   public generateToken(type: VerificationTypeEnum): string {
     if (type === "code") {
       const settings = this.verificationParameters.get("code");
-      return randomInt(0, 1_000_000)
+      // Bounded by the configured length: a fixed 1e6 range produced
+      // 5-6 digit codes for shorter settings and zero-padded ones for longer.
+      return randomInt(0, 10 ** settings.codeLength)
         .toString()
         .padStart(settings.codeLength, "0");
     } else if (type === "link") {

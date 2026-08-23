@@ -16,7 +16,9 @@ import type {
  * instead of reaching for `vi.mock`.
  */
 
-/** Never settles, standing in for a stalled D1 primary. */
+/**
+ * Never settles, standing in for a stalled D1 primary.
+ */
 export const stall = () => new Promise<never>(() => {});
 
 export const result = <T>(rows: T[]): D1Result<T> => ({
@@ -76,15 +78,23 @@ export class FakeStatement implements D1PreparedStatement {
 
 export class FakeD1 implements D1Database {
   public readonly prepared: string[] = [];
-  /** Values carried by each statement at the moment it actually ran. */
+  /**
+   * Values carried by each statement at the moment it actually ran.
+   */
   public readonly executed: unknown[][] = [];
-  /** Every constraint or bookmark `withSession` was opened with. */
+  /**
+   * Every constraint or bookmark `withSession` was opened with.
+   */
   public readonly sessions: Array<
     (D1SessionBookmark & {}) | D1SessionConstraint | undefined
   > = [];
-  /** Flip to make subsequent calls hang, simulating a primary that stalls. */
+  /**
+   * Flip to make subsequent calls hang, simulating a primary that stalls.
+   */
   public stalling = false;
-  /** What `getBookmark()` reports on sessions handed out from here. */
+  /**
+   * What `getBookmark()` reports on sessions handed out from here.
+   */
   public bookmark: D1SessionBookmark | null = null;
 
   protected readonly outcome: () => Promise<any>;

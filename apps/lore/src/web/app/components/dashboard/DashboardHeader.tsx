@@ -10,7 +10,9 @@ import HeaderActions from "../shared/header/HeaderActions.tsx";
 export interface DashboardHeaderProps {
   name: string;
   cardCount: number;
-  /** Absent until the first resolve returns. */
+  /**
+   * Absent until the first resolve returns.
+   */
   refreshedAt?: string;
   onReset: () => void;
   onAdd: () => void;

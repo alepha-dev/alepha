@@ -175,7 +175,9 @@ export const parseField = (
   };
 };
 
-/** Best-effort read of a `ZodString` regex pattern from its check list. */
+/**
+ * Best-effort read of a `ZodString` regex pattern from its check list.
+ */
 const readPattern = (schema: unknown): string | undefined => {
   const checks = (schema as any)?._zod?.def?.checks as
     | Array<{ _zod?: { def?: { pattern?: RegExp; format?: string } } }>

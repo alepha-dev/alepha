@@ -9,12 +9,10 @@ import { StockService } from "../services/StockService.ts";
 /**
  * A product as a storefront needs it.
  *
- * Spelled out rather than `products.schema.extend({ available })`, for two
- * reasons. The extend broke at runtime — the response encoder rejected every
- * payload with `'slug' is required at /slug` — because extending a schema whose
- * fields carry ORM attributes does not survive the round trip. And the entity
- * schema is the wrong contract for a public endpoint anyway: it would have
- * shipped `organizationId` and the row version to anyone who asked.
+ * Spelled out rather than `products.schema.extend({ available })`: the entity
+ * schema is the wrong contract for a public endpoint, it would ship
+ * `organizationId` and the row version to anyone who asked. (The admin
+ * controller does extend it, for an audience that may see those.)
  *
  * `available` and not `onHand`: what is in the drawer is nobody's business, and
  * quoting it would promise units already in someone else's checkout.

@@ -1299,7 +1299,9 @@ export class JobProvider {
     }
   }
 
-  /** Phase 1: due `scheduled` rows → pending + dispatch. */
+  /**
+   * Phase 1: due `scheduled` rows → pending + dispatch.
+   */
   protected async sweepDue(nowIso: string): Promise<void> {
     const dueWhere = this.executions.createQueryWhere();
     dueWhere.status = { eq: "scheduled" };
@@ -1314,7 +1316,9 @@ export class JobProvider {
     }
   }
 
-  /** Phase 2: stale `pending` rows → re-dispatch. */
+  /**
+   * Phase 2: stale `pending` rows → re-dispatch.
+   */
   protected async sweepStale(now: DateTime): Promise<void> {
     const staleIso = now
       .subtract(this.config.staleThreshold, "millisecond")
@@ -1332,7 +1336,9 @@ export class JobProvider {
     }
   }
 
-  /** Phase 3: crashed `running` rows → mark failed + apply retry. */
+  /**
+   * Phase 3: crashed `running` rows → mark failed + apply retry.
+   */
   protected async sweepCrashed(now: DateTime): Promise<void> {
     const runningWhere = this.executions.createQueryWhere();
     runningWhere.status = { eq: "running" };
@@ -1434,9 +1440,34 @@ export class JobProvider {
         },
         { status: "pending" },
       );
+    } catch {
+      // Either the row already transitioned (sweep ran, another worker
+      // claimed it), or the timer fired a millisecond EARLY: timers run on
+      // the monotonic loop clock while `scheduledAt` is compared with the
+      // wall clock, and the two disagree by a millisecond often enough that
+      // a 10 ms retry backoff used to strand its row until the next sweep.
+      // Re-arm for the remainder when the row is still waiting for us.
+      const row = await this.executions
+        .findById(executionId)
+        .catch(() => undefined);
+      if (row?.status === "scheduled" && row.scheduledAt) {
+        const remaining =
+          new Date(row.scheduledAt).getTime() - this.dt.nowMillis();
+        if (remaining <= this.maxOptimisticDelayMs) {
+          this.dt.createTimeout(
+            () => {
+              void this.dispatchScheduled(jobName, executionId);
+            },
+            Math.max(1, remaining),
+          );
+        }
+      }
+      return;
+    }
+    try {
       await this.dispatchSafe(jobName, executionId);
     } catch {
-      // Row already transitioned (sweep ran, another worker claimed, etc.)
+      // dispatchSafe reports its own failures; nothing to add here.
     }
   }
 

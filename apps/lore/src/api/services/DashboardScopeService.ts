@@ -14,10 +14,14 @@ import type { DashboardScope } from "../schemas/dashboardScopeSchema.ts";
  * these lists and never with anything the client sent.
  */
 export interface ResolvedDashboardScope {
-  /** Projects in scope. `all` expands to every project the caller belongs to. */
+  /**
+   * Projects in scope. `all` expands to every project the caller belongs to.
+   */
   projectIds: number[];
   projects: Project[];
-  /** Apps in scope. Only a `kind: "apps"` scope sets it. */
+  /**
+   * Apps in scope. Only a `kind: "apps"` scope sets it.
+   */
   sigilIds?: string[];
   sigils: Sigil[];
 }

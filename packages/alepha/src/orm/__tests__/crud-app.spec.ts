@@ -33,7 +33,9 @@ const userResourceSchema = userEntity.schema;
 class UserCrudApp {
   users = $repository(userEntity);
 
-  /** CREATE - Create a new user */
+  /**
+   * CREATE - Create a new user
+   */
   createUser = $action({
     method: "POST",
     path: "/users",
@@ -71,7 +73,9 @@ class UserCrudApp {
     },
   });
 
-  /** READ - Get a single user by ID */
+  /**
+   * READ - Get a single user by ID
+   */
   getUser = $action({
     method: "GET",
     path: "/users/:id",
@@ -87,7 +91,9 @@ class UserCrudApp {
     },
   });
 
-  /** LIST - Get all users with pagination and filtering */
+  /**
+   * LIST - Get all users with pagination and filtering
+   */
   listUsers = $action({
     method: "GET",
     path: "/users",
@@ -138,7 +144,9 @@ class UserCrudApp {
     },
   });
 
-  /** UPDATE - Update a user */
+  /**
+   * UPDATE - Update a user
+   */
   updateUser = $action({
     method: "PUT",
     path: "/users/:id",
@@ -177,7 +185,9 @@ class UserCrudApp {
     },
   });
 
-  /** DELETE - Delete a user */
+  /**
+   * DELETE - Delete a user
+   */
   deleteUser = $action({
     method: "DELETE",
     path: "/users/:id",
@@ -201,7 +211,9 @@ class UserCrudApp {
     },
   });
 
-  /** BULK CREATE - Create multiple users */
+  /**
+   * BULK CREATE - Create multiple users
+   */
   bulkCreateUsers = $action({
     method: "POST",
     path: "/users/bulk",
@@ -1081,7 +1093,7 @@ describe("CRUD Application - Complete Integration Tests", () => {
         },
       });
 
-      // TypeBox text fields trim leading/trailing whitespace
+      // z.text() fields trim leading/trailing whitespace
       expect(result.name).toBe("Spaced Name");
     });
 
@@ -1097,7 +1109,7 @@ describe("CRUD Application - Complete Integration Tests", () => {
         },
       });
 
-      // TypeBox text fields typically trim whitespace
+      // z.text() fields trim whitespace
       expect(result.name).toBe("X");
     });
 

@@ -33,6 +33,12 @@ describe("$interval", () => {
     await dt.travel([50, "seconds"]);
     expect(app.loop.called).toBe(6);
     expect(count.value).toBe(6);
+
+    // A second travel must keep firing: the interval is suspended after the
+    // first one, not dead.
+    await dt.travel([50, "seconds"]);
+    expect(app.loop.called).toBe(11);
+    expect(count.value).toBe(11);
   });
 
   it("should stop interval on abort", async () => {

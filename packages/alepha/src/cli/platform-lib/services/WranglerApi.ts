@@ -189,9 +189,6 @@ export class WranglerApi {
   }
 
   /**
-   * Apply D1 migrations remotely.
-   */
-  /**
    * Apply pending D1 migrations.
    *
    * Deliberately NOT `wrangler d1 migrations apply`. That command runs each

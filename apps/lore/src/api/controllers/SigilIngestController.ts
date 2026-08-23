@@ -1,6 +1,6 @@
 import { sigilForwarded } from "@alepha/sigil/envelope";
 import { SIGIL_INGEST_PATH } from "@alepha/sigil/paths";
-import { $inject, Alepha, z } from "alepha";
+import { $inject, z } from "alepha";
 import { $route, UnauthorizedError } from "alepha/server";
 
 import type { Sigil } from "../entities/sigils.ts";
@@ -10,10 +10,10 @@ import { SigilTokenService } from "../services/SigilTokenService.ts";
 /**
  * Where enrolled apps report, and where they ask how much to report.
  *
- * **A separate realm from everything else in Lore, in both directions.** These
- * two endpoints accept a sigil token and nothing else — an authenticated
- * project member is not enough to report into a project, and a sigil token
- * opens nothing but these two routes.
+ * **A separate realm from everything else in Lore, in both directions.** This
+ * endpoint accepts a sigil token and nothing else — an authenticated project
+ * member is not enough to report into a project, and a sigil token opens
+ * nothing but this route.
  *
  * The asymmetry matters more than it looks. A sigil token exists in cleartext
  * on every machine that runs the app it belongs to; treating it as an
@@ -29,7 +29,6 @@ import { SigilTokenService } from "../services/SigilTokenService.ts";
  * answers 404 to the very client it exists for. The cable posts to a root path.
  */
 export class SigilIngestController {
-  protected readonly alepha = $inject(Alepha);
   protected readonly tokens = $inject(SigilTokenService);
   protected readonly ingest = $inject(SigilIngestService);
 
@@ -37,9 +36,9 @@ export class SigilIngestController {
    * `POST /sigils/ingest` — one batch from an enrolled app.
    *
    * Answers 204 and nothing else. What the sink is willing to take is a
-   * standing answer, not a per-batch one, and it is served by `/sigils/config`
-   * — an app learns its vitals are being dropped from the kill-switch it polls,
-   * not from a receipt it would have to diff against what it sent.
+   * standing answer, not a per-batch one: an app declares what it collects
+   * in its own `SIGIL_CONFIG`, and the write gate in `SigilIngestService`
+   * drops the rest without a receipt to diff against.
    */
   push = $route({
     method: "POST",

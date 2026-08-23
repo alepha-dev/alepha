@@ -146,10 +146,10 @@ describe("QueryManager", () => {
       expect(result).toBeDefined();
     });
 
-    it("should return undefined for null values", () => {
-      const result = qm.toSQL({ age: null } as any, options);
-
-      expect(result).toBeUndefined();
+    it("should throw when a column is explicitly null", () => {
+      // A null condition used to be dropped from the WHERE clause, which is
+      // the same silent unfiltered query as the undefined case below.
+      expect(() => qm.toSQL({ age: null } as any, options)).toThrow(/null/);
     });
 
     it("should throw when a column is explicitly undefined", () => {

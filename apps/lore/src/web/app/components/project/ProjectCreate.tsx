@@ -6,7 +6,6 @@ import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject } from "alepha/react";
-import { useAuth } from "alepha/react/auth";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -22,6 +21,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
+import { projectTitleSchema } from "@/api/schemas/projectTitleSchema.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
@@ -58,7 +58,6 @@ const ProjectCreate = () => {
   const client = useClient<ProjectController>();
   const toaster = useToast();
   const router = useRouter<AppRouter>();
-  const auth = useAuth();
   const alepha = useAlepha();
   const dateTime = useInject(DateTimeProvider);
   const { tr } = useI18n<I18n, "en">();
@@ -87,11 +86,15 @@ const ProjectCreate = () => {
   const form = useForm({
     initialValues,
     schema: z.object({
-      title: z.string().min(3).max(24),
+      // The server's own rule, so a title it refuses is refused here first.
+      title: projectTitleSchema,
       icon: z.uuid().optional(),
     }),
     onError: (error) => {
       toaster.error(error.message);
+      // Back to the last step: the "building" screen has no controls, and a
+      // 409 (slug taken) or 403 (project cap) used to strand the user on it.
+      setStep(3);
     },
     handler: async (body) => {
       setStep(4);
@@ -126,14 +129,6 @@ const ProjectCreate = () => {
     const el = document.getElementById(titleInputId) as HTMLInputElement | null;
     el?.focus();
   }, [step, titleInputId]);
-
-  useEffect(() => {
-    if (!auth.user) {
-      void router.push("register", {
-        query: { r: router.path("projectCreate") },
-      });
-    }
-  }, [auth.user, router]);
 
   const goNext = () =>
     setStep((s) => Math.min(TOTAL_STEPS, s + 1) as 1 | 2 | 3);

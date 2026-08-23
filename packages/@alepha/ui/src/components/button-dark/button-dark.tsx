@@ -47,7 +47,7 @@ const NEXT: Record<"light" | "dark" | "system", "light" | "dark" | "system"> = {
  * three-state `light → dark → system` cycle with `withSystem`.
  * Reads/writes the persisted UI cookie via `useColorMode()`.
  */
-export function ButtonDark(props: ButtonDarkProps) {
+export const ButtonDark = (props: ButtonDarkProps) => {
   const { mode, resolved, setMode } = useColorMode();
   const onClick = () => {
     if (props.withSystem) {
@@ -75,4 +75,4 @@ export function ButtonDark(props: ButtonDarkProps) {
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
   );
-}
+};

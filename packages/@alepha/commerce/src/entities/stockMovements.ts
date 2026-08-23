@@ -2,7 +2,9 @@ import type { Infer } from "alepha";
 import { z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
-/** Why stock moved. */
+/**
+ * Why stock moved.
+ */
 export const stockReasonEnum = z.enum([
   "intake",
   "sale",
@@ -27,12 +29,16 @@ export const stockMovements = $entity({
 
     productId: z.uuid(),
 
-    /** Signed: negative for a sale, positive for an intake or a return. */
+    /**
+     * Signed: negative for a sale, positive for an intake or a return.
+     */
     delta: z.integer(),
 
     reason: stockReasonEnum,
 
-    /** Set when the movement was caused by an order. */
+    /**
+     * Set when the movement was caused by an order.
+     */
     orderId: z.uuid().optional(),
 
     note: z.text({ maxLength: 500 }).optional(),

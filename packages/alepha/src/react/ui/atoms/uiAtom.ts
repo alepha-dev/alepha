@@ -9,11 +9,17 @@ import { $atom, type Infer, z } from "alepha";
 export const uiAtom = $atom({
   name: "alepha.react.ui",
   schema: z.object({
-    /** Color mode preference. `"system"` follows the OS-level setting. */
+    /**
+     * Color mode preference. `"system"` follows the OS-level setting.
+     */
     mode: z.enum(["light", "dark", "system"]),
-    /** Theme palette name. UI consumers map this to a CSS class on the root. */
+    /**
+     * Theme palette name. UI consumers map this to a CSS class on the root.
+     */
     theme: z.string(),
-    /** Sidebar UI state. */
+    /**
+     * Sidebar UI state.
+     */
     sidebar: z.object({
       collapsed: z.boolean(),
     }),

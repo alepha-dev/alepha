@@ -1,3 +1,5 @@
+import { AlephaError } from "alepha";
+
 import type { EmbeddedPaymentRenderer } from "./payment-slot.tsx";
 
 /**
@@ -38,7 +40,9 @@ interface StripeLike {
  *   before it is.
  */
 export class StripePaymentRenderer implements EmbeddedPaymentRenderer {
-  /** Stripe requires their script be loaded from their domain, not bundled. */
+  /**
+   * Stripe requires their script be loaded from their domain, not bundled.
+   */
   protected static readonly SDK_URL = "https://js.stripe.com/v3/";
 
   public async mount(options: {
@@ -48,6 +52,7 @@ export class StripePaymentRenderer implements EmbeddedPaymentRenderer {
     returnUrl: string;
     onConfirmed: () => void;
     onError: (error: Error) => void;
+    labels?: { pay?: string; declined?: string };
   }): Promise<() => void> {
     const stripe = await this.load(options.publishableKey);
 
@@ -58,7 +63,7 @@ export class StripePaymentRenderer implements EmbeddedPaymentRenderer {
     const mountPoint = document.createElement("div");
     const submit = document.createElement("button");
     submit.type = "submit";
-    submit.textContent = "Payer";
+    submit.textContent = options.labels?.pay ?? "Pay";
     form.append(mountPoint, submit);
     options.container.append(form);
     paymentElement.mount(mountPoint);
@@ -78,7 +83,11 @@ export class StripePaymentRenderer implements EmbeddedPaymentRenderer {
           // the payer can try another one.
           submit.disabled = false;
           options.onError(
-            new Error(result.error.message ?? "Le paiement a été refusé."),
+            new AlephaError(
+              result.error.message ??
+                options.labels?.declined ??
+                "The payment was declined.",
+            ),
           );
           return;
         }
@@ -115,7 +124,7 @@ export class StripePaymentRenderer implements EmbeddedPaymentRenderer {
         if (existing) {
           existing.addEventListener("load", () => resolve());
           existing.addEventListener("error", () =>
-            reject(new Error("Failed to load stripe.js")),
+            reject(new AlephaError("Failed to load stripe.js")),
           );
           return;
         }
@@ -124,14 +133,16 @@ export class StripePaymentRenderer implements EmbeddedPaymentRenderer {
         script.async = true;
         script.addEventListener("load", () => resolve());
         script.addEventListener("error", () =>
-          reject(new Error("Failed to load stripe.js")),
+          reject(new AlephaError("Failed to load stripe.js")),
         );
         document.head.append(script);
       });
     }
 
     if (!globalScope.Stripe) {
-      throw new Error("stripe.js loaded but did not expose window.Stripe");
+      throw new AlephaError(
+        "stripe.js loaded but did not expose window.Stripe",
+      );
     }
     return globalScope.Stripe(publishableKey);
   }

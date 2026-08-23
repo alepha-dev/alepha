@@ -6,7 +6,9 @@ import { Component, type ReactNode } from "react";
 
 export interface DiagramErrorBoundaryProps {
   children: ReactNode;
-  /** Rendered instead of the children once anything below has thrown. */
+  /**
+   * Rendered instead of the children once anything below has thrown.
+   */
   fallback: ReactNode;
 }
 

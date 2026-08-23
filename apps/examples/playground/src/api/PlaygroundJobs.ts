@@ -1,4 +1,4 @@
-import { $inject, z } from "alepha";
+import { $inject, AlephaError, z } from "alepha";
 import { $job } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
@@ -15,7 +15,9 @@ export class PlaygroundJobs {
   // Cron jobs
   // ---------------------------------------------------------------------------
 
-  /** Daily tick — no DB row on success (record: 'error' default). */
+  /**
+   * Daily tick — no DB row on success (record: 'error' default).
+   */
   public readonly dailyTick = $job({
     description: "Runs daily at midnight — silent on success.",
     cron: "0 0 * * *",
@@ -24,7 +26,9 @@ export class PlaygroundJobs {
     },
   });
 
-  /** Hourly tick with full recording — every success kept (up to ring buffer). */
+  /**
+   * Hourly tick with full recording — every success kept (up to ring buffer).
+   */
   public readonly hourlyTick = $job({
     description: "Runs hourly — records every execution.",
     cron: "0 * * * *",
@@ -34,12 +38,14 @@ export class PlaygroundJobs {
     },
   });
 
-  /** Cron that always throws — exercises the error-recording path. */
+  /**
+   * Cron that always throws — exercises the error-recording path.
+   */
   public readonly boomCron = $job({
     description: "Cron that always throws — used to populate error history.",
     cron: "*/15 * * * *",
     handler: async () => {
-      throw new Error("boomCron intentionally failed");
+      throw new AlephaError("boomCron intentionally failed");
     },
   });
 
@@ -47,7 +53,9 @@ export class PlaygroundJobs {
   // Queue jobs
   // ---------------------------------------------------------------------------
 
-  /** Simple payload → log it. Keeps runs visible (record: 'all'). */
+  /**
+   * Simple payload → log it. Keeps runs visible (record: 'all').
+   */
   public readonly sendMail = $job({
     description: "Pretends to send an email. Every run kept (record: all).",
     schema: z.object({
@@ -66,7 +74,9 @@ export class PlaygroundJobs {
     },
   });
 
-  /** Bulk emails — used by the pushMany demo. */
+  /**
+   * Bulk emails — used by the pushMany demo.
+   */
   public readonly sendMarketing = $job({
     description: "Marketing email — low priority, keeps successes.",
     schema: z.object({
@@ -80,17 +90,21 @@ export class PlaygroundJobs {
     },
   });
 
-  /** Always fails — exercises sweep-driven retries (every ~5 minutes). */
+  /**
+   * Always fails — exercises sweep-driven retries (every ~5 minutes).
+   */
   public readonly flaky = $job({
     description: "Always throws — watch the sweep-driven retry cycle.",
     schema: z.object({ v: z.integer() }),
     retry: { retries: 3 },
     handler: async ({ attempt }) => {
-      throw new Error(`flaky failed on attempt ${attempt}`);
+      throw new AlephaError(`flaky failed on attempt ${attempt}`);
     },
   });
 
-  /** Takes 10s — lets you exercise cancel + timeout. */
+  /**
+   * Takes 10s — lets you exercise cancel + timeout.
+   */
   public readonly slow = $job({
     description: "Sleeps 10s — cancel it or let the timeout fire.",
     schema: z.object({ label: z.string() }),
@@ -100,7 +114,7 @@ export class PlaygroundJobs {
       for (let i = 0; i < 100; i++) {
         if (signal.aborted) {
           this.log.info("slow aborted", { at: i });
-          throw new Error("aborted");
+          throw new AlephaError("aborted");
         }
         await new Promise((r) => setTimeout(r, 100));
       }

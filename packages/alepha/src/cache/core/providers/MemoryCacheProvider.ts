@@ -107,7 +107,7 @@ export class MemoryCacheProvider extends CacheProvider {
   /**
    * Cache statistics.
    */
-  protected _stats: MemoryCacheStats = {
+  protected counters: MemoryCacheStats = {
     hits: 0,
     misses: 0,
     sets: 0,
@@ -154,9 +154,9 @@ export class MemoryCacheProvider extends CacheProvider {
     const data = this.store[name]?.[key]?.data;
 
     if (data !== undefined) {
-      this._stats.hits++;
+      this.counters.hits++;
     } else {
-      this._stats.misses++;
+      this.counters.misses++;
     }
 
     return data;
@@ -175,7 +175,7 @@ export class MemoryCacheProvider extends CacheProvider {
       ttl,
       timestamp: this.dateTimeProvider.nowMillis(),
     });
-    this._stats.sets++;
+    this.counters.sets++;
 
     if (this.setError) {
       throw this.setError;
@@ -212,7 +212,7 @@ export class MemoryCacheProvider extends CacheProvider {
       keys,
       timestamp: this.dateTimeProvider.nowMillis(),
     });
-    this._stats.deletes++;
+    this.counters.deletes++;
 
     if (this.delError) {
       throw this.delError;
@@ -339,7 +339,7 @@ export class MemoryCacheProvider extends CacheProvider {
    * ```
    */
   public stats(): MemoryCacheStats {
-    return { ...this._stats };
+    return { ...this.counters };
   }
 
   /**
@@ -444,7 +444,7 @@ export class MemoryCacheProvider extends CacheProvider {
     this.getCalls = [];
     this.setCalls = [];
     this.delCalls = [];
-    this._stats = { hits: 0, misses: 0, sets: 0, deletes: 0 };
+    this.counters = { hits: 0, misses: 0, sets: 0, deletes: 0 };
     this.getError = null;
     this.setError = null;
     this.delError = null;

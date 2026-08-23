@@ -963,8 +963,7 @@ describe("$workflow — repeat steps", () => {
    * does not exist yet, and the workflow then waits forever. Park on the
    * stamp, then travel.
    */
-  // oxlint-disable-next-line vitest/no-disabled-tests
-  it.skip("repeats durably until the handler stops asking, then falls through", async ({
+  it("repeats durably until the handler stops asking, then falls through", async ({
     expect,
   }) => {
     const runs: number[] = [];

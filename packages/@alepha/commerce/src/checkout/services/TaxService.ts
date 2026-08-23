@@ -1,10 +1,16 @@
 import type { PricedCart } from "../../cart/services/CartService.ts";
 
-/** What the tax computation returns. */
+/**
+ * What the tax computation returns.
+ */
 export interface TaxResult {
-  /** Total tax, in the smallest currency unit. */
+  /**
+   * Total tax, in the smallest currency unit.
+   */
   total: number;
-  /** Per-rate breakdown, in basis points → amount. What an invoice needs. */
+  /**
+   * Per-rate breakdown, in basis points → amount. What an invoice needs.
+   */
   byRate: Record<number, number>;
 }
 

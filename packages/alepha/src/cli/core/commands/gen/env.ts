@@ -54,7 +54,7 @@ export class GenEnvCommand {
           if (value.secret === false) {
             dotEnvFile += `# (public)\n`;
           }
-          dotEnvFile += `#${key}=${value.default || ""}\n\n`;
+          dotEnvFile += `#${key}=${value.default ?? ""}\n\n`;
         }
 
         if (flags.out) {

@@ -83,7 +83,9 @@ export const folioLinks = $entity({
      * second one to sync would fail.
      */
     { columns: ["fromType", "fromId", "toId"], unique: true },
-    /** Look up backlinks — every folio that points TO this one. */
+    /**
+     * Look up backlinks — every folio that points TO this one.
+     */
     { columns: ["toId"] },
   ],
 });

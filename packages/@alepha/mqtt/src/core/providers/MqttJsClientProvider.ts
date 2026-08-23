@@ -240,11 +240,53 @@ export class MqttJsClientProvider extends MqttClientProvider {
       return this.connecting;
     }
 
+    // A client that exists but is not connected is reconnecting on its own
+    // (mqtt.js `reconnectPeriod`, `resubscribe: true`). Opening a second
+    // socket here orphaned the first one with every subscription still bound
+    // to it: messages arrived twice and `disconnect()` ended only the new
+    // client, so the orphan kept the process alive after stop.
+    const reconnecting = this.client;
+    if (reconnecting) {
+      this.connecting = this.awaitReconnect(reconnecting).finally(() => {
+        this.connecting = undefined;
+      });
+      return this.connecting;
+    }
+
     this.connecting = this.openConnection().finally(() => {
       this.connecting = undefined;
     });
 
     return this.connecting;
+  }
+
+  /**
+   * Resolve when mqtt.js has reconnected the existing client, reject when it
+   * gives up (`end`) or reports an error meanwhile.
+   */
+  protected awaitReconnect(client: MqttClient): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const cleanup = () => {
+        client.off("connect", onConnect);
+        client.off("error", onError);
+        client.off("end", onEnd);
+      };
+      const onConnect = () => {
+        cleanup();
+        resolve();
+      };
+      const onError = (error: Error) => {
+        cleanup();
+        reject(error);
+      };
+      const onEnd = () => {
+        cleanup();
+        reject(new AlephaError("MQTT client ended while reconnecting"));
+      };
+      client.on("connect", onConnect);
+      client.on("error", onError);
+      client.on("end", onEnd);
+    });
   }
 
   /**
@@ -327,7 +369,20 @@ export class MqttJsClientProvider extends MqttClientProvider {
     // Awaited AFTER registering the callback: the SUBACK may be followed
     // immediately by a retained message, and a callback added afterwards
     // would miss it.
-    await subscription.ready;
+    try {
+      await subscription.ready;
+    } catch (error) {
+      // A refused SUBSCRIBE (ACL, invalid filter) must not leave a poisoned
+      // entry that every later subscribe() to the same filter awaits.
+      subscription.callbacks.delete(callback);
+      if (
+        this.subscriptions.get(topic) === subscription &&
+        subscription.callbacks.size === 0
+      ) {
+        this.subscriptions.delete(topic);
+      }
+      throw error;
+    }
 
     return async () => {
       await this.unsubscribeCallback(topic, callback);
@@ -344,8 +399,11 @@ export class MqttJsClientProvider extends MqttClientProvider {
 
     this.subscriptions.delete(topic);
 
-    if (this.client?.connected) {
-      await this.client.unsubscribeAsync(topic);
+    // Also while disconnected: mqtt.js queues the UNSUBSCRIBE for the
+    // reconnect, whereas skipping it left the filter in its resubscribe
+    // list and the broker kept pushing traffic `dispatch()` discarded.
+    if (this.client) {
+      await this.client.unsubscribeAsync(topic).catch(() => undefined);
     }
   }
 

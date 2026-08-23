@@ -1,9 +1,15 @@
-/** One delivery option, priced for a specific cart. */
+/**
+ * One delivery option, priced for a specific cart.
+ */
 export interface CheckoutShippingQuote {
-  /** Written onto the order as `shippingMethod`. */
+  /**
+   * Written onto the order as `shippingMethod`.
+   */
   code: string;
   name: string;
-  /** What this cart pays, in the smallest currency unit. */
+  /**
+   * What this cart pays, in the smallest currency unit.
+   */
   price: number;
   minDays?: number;
   maxDays?: number;

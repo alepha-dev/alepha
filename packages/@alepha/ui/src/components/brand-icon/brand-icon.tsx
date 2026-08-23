@@ -20,7 +20,7 @@ export interface BrandIconProps extends SVGProps<SVGSVGElement> {
  * color and read on both light and dark surfaces. Google uses its official
  * multicolor mark. Unknown providers fall back to a `currentColor` globe.
  */
-export function BrandIcon(props: BrandIconProps) {
+export const BrandIcon = (props: BrandIconProps) => {
   const { provider, className, ...rest } = props;
   const cls = cn("size-4 shrink-0", className);
 
@@ -101,4 +101,4 @@ export function BrandIcon(props: BrandIconProps) {
         </svg>
       );
   }
-}
+};

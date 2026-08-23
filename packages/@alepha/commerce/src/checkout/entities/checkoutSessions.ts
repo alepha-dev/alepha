@@ -41,7 +41,9 @@ export const checkoutSessions = $entity({
     updatedAt: db.updatedAt(),
     organizationId: db.organization(),
 
-    /** Plain uuid: a cart may be swept while an abandoned checkout lingers. */
+    /**
+     * Plain uuid: a cart may be swept while an abandoned checkout lingers.
+     */
     cartId: z.uuid(),
 
     userId: z.uuid().optional(),
@@ -50,20 +52,28 @@ export const checkoutSessions = $entity({
 
     email: z.text({ maxLength: 320 }).optional(),
 
-    /** Opaque while in flux — the shape is region-specific. */
+    /**
+     * Opaque while in flux — the shape is region-specific.
+     */
     shippingAddress: z.json().optional(),
 
-    /** Indexable choice; the carrier's own payload stays in the blob above. */
+    /**
+     * Indexable choice; the carrier's own payload stays in the blob above.
+     */
     shippingMethod: z.text({ maxLength: 64 }).optional(),
 
-    /** Totals as last computed. Recomputed before the order is created. */
+    /**
+     * Totals as last computed. Recomputed before the order is created.
+     */
     subtotal: db.default(z.integer().min(0), 0),
     shippingTotal: db.default(z.integer().min(0), 0),
     taxTotal: db.default(z.integer().min(0), 0),
     grandTotal: db.default(z.integer().min(0), 0),
     currency: db.default(z.text({ minLength: 3, maxLength: 3 }), "EUR"),
 
-    /** Set once {@link CheckoutService.pay} has run. */
+    /**
+     * Set once {@link CheckoutService.pay} has run.
+     */
     orderId: z.uuid().optional(),
     paymentIntentId: z.text().optional(),
   }),

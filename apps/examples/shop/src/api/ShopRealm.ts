@@ -36,24 +36,28 @@ export class ShopRealm {
     }),
   );
 
-  /** Opens the `/admin` shell. Distinct from the commerce permissions below. */
+  /**
+   * Opens the `/admin` shell. Distinct from the commerce permissions below.
+   */
   adminUi = $permission({
     group: "admin",
     name: "ui",
-    description: "Ouvre l'espace d'administration",
+    description: "Opens the administration area",
   });
 
-  /** Declared here because `@alepha/commerce/admin` requires them by name. */
+  /**
+   * Declared here because `@alepha/commerce/admin` requires them by name.
+   */
   commerceRead = $permission({
     group: "admin:commerce",
     name: "read",
-    description: "Consulter le catalogue et les commandes",
+    description: "View the catalogue and the orders",
   });
 
   commerceWrite = $permission({
     group: "admin:commerce",
     name: "write",
-    description: "Modifier le catalogue, expédier les commandes",
+    description: "Edit the catalogue, ship the orders",
   });
 
   /**
@@ -63,7 +67,7 @@ export class ShopRealm {
   commerceRefund = $permission({
     group: "admin:commerce",
     name: "refund",
-    description: "Rembourser une commande",
+    description: "Refund an order",
   });
 
   /**

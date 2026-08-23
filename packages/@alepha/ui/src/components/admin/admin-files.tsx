@@ -51,7 +51,7 @@ type AdminFileFilters = Infer<typeof filtersSchema>;
 
 const isImage = (mimeType?: string) => Boolean(mimeType?.startsWith("image/"));
 
-export function AdminFiles() {
+export const AdminFiles = () => {
   const client = useClient<FileController>();
   const statsClient = useClient<AdminFileStatsController>();
   const { l, tr } = useI18n();
@@ -333,6 +333,6 @@ export function AdminFiles() {
       />
     </AdminPage>
   );
-}
+};
 
 export default AdminFiles;

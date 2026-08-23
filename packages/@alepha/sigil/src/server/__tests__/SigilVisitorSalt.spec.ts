@@ -51,7 +51,7 @@ describe("visitor hash salting", () => {
     // hash. If this ever matches again, the column has gone back to being a
     // lookup table.
     const visitor = await visitorFor({
-      SIGIL_CONFIG: '{"project":"demo","sink":"https://sink.example.com"}',
+      SIGIL_SINK: "https://sink.example.com",
       SIGIL_KEY: "tk_secret",
       SIGIL_SALT: "salt_secret",
     });
@@ -95,11 +95,11 @@ describe("visitor hash salting", () => {
     // The reason the fallback is APP_SECRET and not SIGIL_KEY: rotating a
     // leaked token must not silently restart the day's unique count.
     const a = await visitorFor({
-      SIGIL_CONFIG: '{"project":"demo","sink":"https://sink.example.com"}',
+      SIGIL_SINK: "https://sink.example.com",
       SIGIL_KEY: "tk_before_rotation",
     });
     const b = await visitorFor({
-      SIGIL_CONFIG: '{"project":"demo","sink":"https://sink.example.com"}',
+      SIGIL_SINK: "https://sink.example.com",
       SIGIL_KEY: "tk_after_rotation",
     });
 

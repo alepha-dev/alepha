@@ -22,7 +22,8 @@ export interface IssuerResolver {
   /**
    * Resolve user from HTTP request.
    * Return UserInfo if authenticated, null to try next resolver.
-   * Throw UnauthorizedError to stop chain.
+   * A throwing resolver does not stop the chain: the error is logged at
+   * debug level and the next resolver is tried, so return null to decline.
    */
   onRequest: (req: ServerRequest) => Promise<UserInfo | null>;
 }

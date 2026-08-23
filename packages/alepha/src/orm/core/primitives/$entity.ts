@@ -255,16 +255,16 @@ export class EntityPrimitive<T extends ZObject = ZObject> {
     return this.options.schema;
   }
 
-  protected _insertSchema?: TObjectInsert<T>;
+  protected cachedInsertSchema?: TObjectInsert<T>;
   get insertSchema(): TObjectInsert<T> {
-    this._insertSchema ??= insertSchema(this.options.schema);
-    return this._insertSchema;
+    this.cachedInsertSchema ??= insertSchema(this.options.schema);
+    return this.cachedInsertSchema;
   }
 
-  protected _updateSchema?: TObjectUpdate<T>;
+  protected cachedUpdateSchema?: TObjectUpdate<T>;
   get updateSchema(): TObjectUpdate<T> {
-    this._updateSchema ??= updateSchema(this.options.schema);
-    return this._updateSchema;
+    this.cachedUpdateSchema ??= updateSchema(this.options.schema);
+    return this.cachedUpdateSchema;
   }
 }
 

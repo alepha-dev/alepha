@@ -45,7 +45,7 @@ export interface SmsPrimitiveOptions {
  * Usage:
  * ```typescript
  * class MyService {
- *   private readonly welcomeSms = $sms({ name: "welcome" });
+ *   protected readonly welcomeSms = $sms({ name: "welcome" });
  *
  *   async sendWelcome(phoneNumber: string, userName: string) {
  *     await this.welcomeSms.send({

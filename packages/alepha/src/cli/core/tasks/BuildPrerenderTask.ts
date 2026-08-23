@@ -43,7 +43,8 @@ export class BuildPrerenderTask extends BuildTask {
     await ctx.run({
       name: "pre-render",
       handler: async () => {
-        // TODO: running configure here is a temporary workaround
+        // `configure` has to run before pages can be rendered; the same
+        // emit is how BuildStaticTask and `gen openapi` boot the app.
         if (!ctx.alepha.isConfigured()) {
           await ctx.alepha.events.emit("configure", ctx.alepha);
         }

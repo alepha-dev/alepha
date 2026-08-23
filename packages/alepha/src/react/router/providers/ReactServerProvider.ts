@@ -100,8 +100,6 @@ export class ReactServerProvider {
       const ssrEnabled =
         pages.length > 0 && this.env.REACT_SSR_ENABLED !== false;
 
-      this.alepha.store.set("alepha.react.server.ssr", ssrEnabled);
-
       // production mode
       let root = "";
 
@@ -387,12 +385,6 @@ export class ReactServerProvider {
   }
 
   /**
-   * Create the request handler for a page route.
-   *
-   * When cacheMiddleware is provided, uses a non-streaming path that renders
-   * to a string so the result can be cached. Otherwise uses early HTML streaming.
-   */
-  /**
    * Turn a guard's refusal into the same answer a client-side navigation gives.
    *
    * A page's `use` chain runs here, wrapped around the whole route handler, so
@@ -488,6 +480,12 @@ export class ReactServerProvider {
     );
   }
 
+  /**
+   * Create the request handler for a page route.
+   *
+   * When cacheMiddleware is provided, uses a non-streaming path that renders
+   * to a string so the result can be cached. Otherwise uses early HTML streaming.
+   */
   protected createHandler(
     route: PageRoute,
     cacheMiddleware: Middleware[] = [],
@@ -667,20 +665,6 @@ export class ReactServerProvider {
   // ---------------------------------------------------------------------------
 
   /**
-   * Core page rendering logic shared between SSR handler and static prerendering.
-   *
-   * Handles:
-   * - Layer resolution (loaders)
-   * - Redirect detection
-   * - Head content filling
-   * - Preload link collection
-   * - React stream rendering
-   *
-   * @param route - The page route to render
-   * @param state - The router state
-   * @returns Render result with redirect or React stream
-   */
-  /**
    * Inject SEO `hreflang` alternate links for the current route when
    * locale-prefix routing is enabled. Each registered locale gets an absolute
    * alternate URL (the default locale stays unprefixed), plus an `x-default`
@@ -726,6 +710,20 @@ export class ReactServerProvider {
     };
   }
 
+  /**
+   * Core page rendering logic shared between SSR handler and static prerendering.
+   *
+   * Handles:
+   * - Layer resolution (loaders)
+   * - Redirect detection
+   * - Head content filling
+   * - Preload link collection
+   * - React stream rendering
+   *
+   * @param route - The page route to render
+   * @param state - The router state
+   * @returns Render result with redirect or React stream
+   */
   protected async renderPage(
     route: PageRoute,
     state: ReactRouterState,
@@ -933,20 +931,11 @@ const envSchema = z.object({
 
 declare module "alepha" {
   interface Env extends Partial<Infer<typeof envSchema>> {}
-  interface State {
-    "alepha.react.server.ssr"?: boolean;
-  }
 }
 
 /**
  * React server provider configuration atom
  */
-/**
- * Default pattern matching file-like URLs (e.g. /hello.txt, /wp-login.php).
- * Matches paths whose last segment contains a dot followed by 1-10 alphanumeric characters.
- */
-export const DEFAULT_STATIC_FILE_PATTERN = "\\.[a-zA-Z0-9]{1,10}$";
-
 export const reactServerOptions = $atom({
   name: "alepha.react.server.options",
   schema: z.object({

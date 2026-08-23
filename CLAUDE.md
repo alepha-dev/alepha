@@ -27,13 +27,13 @@ LOG_FORMAT=pretty LOG_LEVEL=trace yarn w @alepha/devtools build
 
 ### Core Commands
 
-- `yarn v` or `yarn alepha verify` - Full verification pipeline: clean, lint, typecheck, test, check:deps, check:i18n, check:migrations, build, e2e, clean. **JavaScript/TypeScript only — it does NOT run the Go suite.** Reach for it when the change can affect the build, SSR, or anything an e2e suite covers — `--fast` skips all three. Must complete within 10 minutes; always run it with a 10-minute timeout. If it exceeds 10 minutes, treat that as a failure (a hung step, usually e2e) and investigate, do not just wait longer.
+- `yarn v` or `yarn alepha verify` - Full verification pipeline: clean, copy, lint, check:docs, check:deps, check:conventions, typecheck, check:i18n, check:migrations, test, test:bun, build, e2e (+ e2e-cli), gen:llms, clean. **JavaScript/TypeScript only — it does NOT run the Go suite.** Reach for it when the change can affect the build, SSR, or anything an e2e suite covers — `--fast` skips all three. Must complete within 10 minutes; always run it with a 10-minute timeout. If it exceeds 10 minutes, treat that as a failure (a hung step, usually e2e) and investigate, do not just wait longer.
   - **Needs Docker running** for the service checks (postgres, redis, s3mock, emqx).
 - `yarn v:go` - The Go lane: `apps/bay`'s suite in a container (gofmt, vet, build, tests, cross-compile), reproducing the `bay` CI job. **Run it when you touch `apps/bay`** — `yarn v` will not, and a green `yarn v` says nothing about Go.
   - Separate rather than gated on a `git diff` because a heuristic that misfires skips silently. This one cannot be silently wrong.
   - Not `yarn w bay test`: the native pass is GREEN while skipping every test of `Systemd.render()`, whose files are `//go:build linux` and never compile on macOS.
   - The `bay` CI job runs unconditionally on every PR and push, so nothing reaches main unchecked either way.
-- `yarn v --fast` - Inner-loop sanity check: lint + (typecheck, test, test:bun, check:deps, check:i18n, check:migrations) in parallel. Skips clean/copy/build/e2e and, like `yarn v`, all Go. Use for tight iteration **and as the gate before a commit**; reach for the full `yarn v` only when the change touches build/e2e territory.
+- `yarn v --fast` - Inner-loop sanity check: lint + (typecheck, check:deps, check:conventions, check:docs, check:i18n, check:migrations) in parallel, then test + test:bun. Skips clean/copy/build/e2e and, like `yarn v`, all Go. Use for tight iteration **and as the gate before a commit**; reach for the full `yarn v` only when the change touches build/e2e territory.
 - `yarn clean` or `yarn alepha clean` - Remove all generated files and node_modules
 - `yarn build` - Build all workspace packages using `tsdown`
 - `yarn test` - Run all tests using Vitest
@@ -47,6 +47,8 @@ These fan out via `yarn workspaces foreach -Apt run …`, so every workspace tha
 - `yarn check:deps` - depcheck across every workspace (unused/missing deps)
 - `yarn check:i18n` - i18n catalog audit (each app's `alepha i18n check`)
 - `yarn check:migrations` - DB migration drift check (each app's `alepha db migrations check`)
+- `yarn check:docs` - the code samples of the guides and READMEs against the source (`apps/docs/scripts/check-docs.ts`)
+- `yarn check:conventions` - the conventions below, mechanically (`scripts/check-conventions.mjs`)
 
 The convention is `check:<thing>` at the app level → `yarn check:<thing>` at the root that fans out. To add a new check that spans apps, follow the same shape (workspace script + root aggregator + add it to the `verify` pipeline in `alepha.config.ts`).
 
@@ -159,7 +161,7 @@ Two disjoint bands, and they must stay disjoint:
 
 | band                                  | owner                                                                                                                                                                       |
 | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `3001-3004`                           | `apps/benchmark`                                                                                                                                                            |
+| `3001-3006`                           | `apps/benchmark`                                                                                                                                                            |
 | `3300-3399`                           | **dev servers** — `dev.port` in each app's `alepha.config.ts` (docs 3302, lore 3303, examples/playground 3304, examples/shop 3305, examples/errors 3306, examples/ssr 3311) |
 | `5173+`                               | dev servers with no `dev.port` (Vite default); also `alepha dev` in multi-app mode, which hands each child `5173 + index` via `SERVER_PORT` and so **overrides `dev.port`** |
 | `4300-4999`                           | **e2e, and nothing else**                                                                                                                                                   |
@@ -325,7 +327,7 @@ Conventions enforced by review, not by lint. They are not obvious from the code,
 - **Never destructure props in the parameter list:** use `(props: MyComponentProps)`, not `({ foo }: MyComponentProps)`. Destructure inside the body if you want.
 - **Props interfaces are named `MyComponentProps`** — always a named exported interface, never inline.
 - **No React Context** — use `$atom` + `useStore`, never `createContext` / `useContext`.
-- **`@alepha/ui/admin` is a separate sub-module** — importing from `@alepha/ui` inside admin code is correct, not a layering violation.
+- **`@alepha/ui/components/admin/*` is a separate sub-module** — importing from `@alepha/ui` inside admin code is correct, not a layering violation.
 
 ### Router and i18n
 

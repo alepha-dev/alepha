@@ -44,8 +44,9 @@ func (p *Probe) client() *http.Client {
 	if p.Client != nil {
 		return p.Client
 	}
-	p.Client = &http.Client{Timeout: 2 * time.Second}
-	return p.Client
+	// Not cached on the probe: one Probe is shared by every deploy handler and
+	// every watch goroutine, and the lazy write raced between them.
+	return &http.Client{Timeout: 2 * time.Second}
 }
 
 /*

@@ -1,3 +1,4 @@
+import { AlephaError } from "alepha";
 import { type Ref, useEffect, useImperativeHandle, useRef } from "react";
 
 /**
@@ -39,7 +40,7 @@ const loadTurnstile = (): Promise<void> => {
       existing.addEventListener("load", () => resolve());
       existing.addEventListener("error", () => {
         turnstileLoader = undefined;
-        reject(new Error("Turnstile script failed to load"));
+        reject(new AlephaError("Turnstile script failed to load"));
       });
       return;
     }
@@ -51,7 +52,7 @@ const loadTurnstile = (): Promise<void> => {
     s.onload = () => resolve();
     s.onerror = () => {
       turnstileLoader = undefined;
-      reject(new Error("Turnstile script failed to load"));
+      reject(new AlephaError("Turnstile script failed to load"));
     };
     document.head.appendChild(s);
   });
@@ -96,9 +97,9 @@ export interface TurnstileWidgetProps {
  * // on submit failure: widget.current?.reset();
  * ```
  */
-export function TurnstileWidget(
+export const TurnstileWidget = (
   props: TurnstileWidgetProps & { ref?: Ref<TurnstileWidgetHandle> },
-) {
+) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | undefined>(undefined);
   // The render effect must not re-run when the parent passes a fresh
@@ -154,4 +155,4 @@ export function TurnstileWidget(
   return (
     <div ref={containerRef} data-testid="captcha" className={props.className} />
   );
-}
+};

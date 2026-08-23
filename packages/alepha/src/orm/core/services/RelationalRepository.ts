@@ -61,7 +61,9 @@ export class RelationalRepository<
     public readonly key: TKey,
   ) {}
 
-  /** The entity this repository is bound to. */
+  /**
+   * The entity this repository is bound to.
+   */
   public get entity(): EntityPrimitive<EntityOf<ZType, TKey>> {
     return this.relations.schema[this.key] as EntityPrimitive<
       EntityOf<ZType, TKey>
@@ -100,7 +102,9 @@ export class RelationalRepository<
     return row;
   }
 
-  /** First match, or throw. */
+  /**
+   * First match, or throw.
+   */
   public async getOne<
     const TArgs extends RelationalQueryArgs<ZType, TMap, TKey> = {},
   >(query: TArgs = {} as TArgs): Promise<Resolve<ZType, TMap, TKey, TArgs>> {
@@ -235,7 +239,9 @@ export class RelationalRepository<
   // `select` work on a written row exactly as on a read one — which the
   // positional form had no room for.
 
-  /** Insert many rows. Relations are not nested here; use `create` per row. */
+  /**
+   * Insert many rows. Relations are not nested here; use `create` per row.
+   */
   public async createMany<
     const TArgs extends CreateManyArgs<ZType, TMap, TKey>,
   >(args: TArgs): Promise<Array<RowOf<ZType, TKey>>> {
@@ -259,7 +265,9 @@ export class RelationalRepository<
     return (await this.reread(row, args)) as never;
   }
 
-  /** Update by primary key. Sugar for the common case. */
+  /**
+   * Update by primary key. Sugar for the common case.
+   */
   public async updateById(
     id: string | number,
     data: UpdateOf<ZType, TKey>,
@@ -267,7 +275,9 @@ export class RelationalRepository<
     return (await this.base.updateById(id, data as never)) as never;
   }
 
-  /** Update every row matching `where`. Returns the affected ids. */
+  /**
+   * Update every row matching `where`. Returns the affected ids.
+   */
   public async updateMany(
     args: UpdateManyArgs<ZType, TKey>,
   ): Promise<Array<number | string>> {
@@ -307,7 +317,9 @@ export class RelationalRepository<
     await this.base.save(entity as never);
   }
 
-  /** Delete the first row matching `where`. Returns the affected ids. */
+  /**
+   * Delete the first row matching `where`. Returns the affected ids.
+   */
   public async delete(
     args: DeleteArgs<ZType, TKey>,
   ): Promise<Array<number | string>> {
@@ -316,7 +328,9 @@ export class RelationalRepository<
     });
   }
 
-  /** Delete by primary key. */
+  /**
+   * Delete by primary key.
+   */
   public async deleteById(
     id: string | number,
     options: { force?: boolean } = {},
@@ -324,7 +338,9 @@ export class RelationalRepository<
     return await this.base.deleteById(id, options);
   }
 
-  /** Delete every row matching `where`. */
+  /**
+   * Delete every row matching `where`.
+   */
   public async deleteMany(
     args: DeleteArgs<ZType, TKey>,
   ): Promise<Array<number | string>> {
@@ -335,12 +351,16 @@ export class RelationalRepository<
 
   // --- escape hatches -------------------------------------------------------
 
-  /** The drizzle table, for raw SQL. */
+  /**
+   * The drizzle table, for raw SQL.
+   */
   public get table() {
     return this.base.table;
   }
 
-  /** The primary key's name, type and column. */
+  /**
+   * The primary key's name, type and column.
+   */
   public get id() {
     return this.base.id;
   }
@@ -349,7 +369,9 @@ export class RelationalRepository<
     return this.base.tableName;
   }
 
-  /** Raw SQL, typed by an optional result schema. */
+  /**
+   * Raw SQL, typed by an optional result schema.
+   */
   public query(
     ...args: Parameters<Repository<EntityOf<ZType, TKey>>["query"]>
   ) {
@@ -382,14 +404,18 @@ export class RelationalRepository<
     });
   }
 
-  /** Grouped aggregates. */
+  /**
+   * Grouped aggregates.
+   */
   public aggregate(
     ...args: Parameters<Repository<EntityOf<ZType, TKey>>["aggregate"]>
   ) {
     return this.base.aggregate(...args);
   }
 
-  /** Run a callback inside a transaction. */
+  /**
+   * Run a callback inside a transaction.
+   */
   public transaction<R>(fn: (tx: any) => Promise<R>): Promise<R> {
     return this.base.transaction(fn as never) as Promise<R>;
   }
@@ -611,7 +637,9 @@ export class RelationalRepository<
 export type EntityOf<ZType extends EntitySchema, TKey extends keyof ZType> =
   ZType[TKey] extends EntityPrimitive<infer T extends ZObject> ? T : never;
 
-/** Kept for callers that referenced the previous name. */
+/**
+ * Kept for callers that referenced the previous name.
+ */
 export type RelationalQuery<
   ZType extends EntitySchema,
   TMap extends RelationMapFor<ZType>,

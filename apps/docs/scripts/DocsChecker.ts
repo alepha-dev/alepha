@@ -5,23 +5,33 @@ import { FileSystemProvider } from "alepha/system";
  * A fenced code block, located precisely enough to report on.
  */
 export interface DocFence {
-  /** Language tag, e.g. `ts`, `typescript`, `tsx`, `bash`. */
+  /**
+   * Language tag, e.g. `ts`, `typescript`, `tsx`, `bash`.
+   */
   lang: string;
 
-  /** Whether the fence opted in to compilation with the `check` marker. */
+  /**
+   * Whether the fence opted in to compilation with the `check` marker.
+   */
   checked: boolean;
 
-  /** 1-based line of the opening fence. */
+  /**
+   * 1-based line of the opening fence.
+   */
   line: number;
 
-  /** Fence body, including its trailing newline. */
+  /**
+   * Fence body, including its trailing newline.
+   */
   code: string;
 }
 
 export interface DocViolation {
   file: string;
 
-  /** 1-based line. */
+  /**
+   * 1-based line.
+   */
   line: number;
 
   message: string;
@@ -36,7 +46,9 @@ export interface DocUnit {
   line: number;
   code: string;
 
-  /** Fence language, so a `tsx` block keeps its extension on disk. */
+  /**
+   * Fence language, so a `tsx` block keeps its extension on disk.
+   */
   lang: string;
 }
 

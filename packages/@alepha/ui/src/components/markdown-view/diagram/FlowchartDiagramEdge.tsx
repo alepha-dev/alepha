@@ -8,7 +8,9 @@ import type { PositionedEdge } from "./layoutFlowchart.ts";
 
 export interface FlowchartDiagramEdgeProps {
   edge: PositionedEdge;
-  /** Instance-unique prefix for the arrowhead marker ids. */
+  /**
+   * Instance-unique prefix for the arrowhead marker ids.
+   */
   scope: string;
   fontSize: number;
 }

@@ -65,8 +65,10 @@ export const LogToolbar = (props: LogToolbarProps) => {
   const included = (lvl: string): boolean =>
     LEVELS.indexOf(lvl) >= LEVELS.indexOf(level);
 
+  // What `useLogTail` actually sends: the API takes one level as a floor,
+  // not the list of levels the floor includes.
   const queryEcho = [
-    `?level=${LEVELS.slice(LEVELS.indexOf(level)).join(",").toLowerCase()}`,
+    `?level=${level}`,
     f.type ? `&type=${f.type}` : "",
     f.module ? `&module=${f.module}` : "",
     f.slow ? `&slowerThan=${f.slow}` : "",

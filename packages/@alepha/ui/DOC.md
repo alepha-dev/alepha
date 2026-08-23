@@ -80,7 +80,7 @@ const profileSchema = z.object({
 export const ProfilePage = () => {
   const form = useForm({
     schema: profileSchema,
-    defaultValues: { username: "", email: "", newsletter: false },
+    initialValues: { username: "", email: "", newsletter: false },
     handler: (values) => save(values),
   });
 
@@ -158,7 +158,7 @@ anywhere else, but only a subset is drawn:
 | Header      | `flowchart` / `graph`, `TD` `TB` `LR` `RL` `BT`                                                                                                                             |
 | Nodes       | `[rect]` `(rounded)` `{diamond}` `((circle))`; `([ ])` `[[ ]]` `[( )]` `{{ }}` `> ]` `[/ /]` `[\ \]` `((( )))` are consumed and mapped onto those four                      |
 | Edges       | `-->` `---` `-.->` `==>` `<-->`; `--o` and `--x` parse, but the emitter has one end marker, so they draw the same arrowhead as `-->` rather than mermaid's circle and cross |
-| Edge labels | both `-->                                                                                                                                                                   | text | `and`-- text -->` |
+| Edge labels | both `-->\|text\|` and `-- text -->`                                                                                                                                        |
 | Structure   | chains `A --> B --> C`, fans `A & B --> C`, nested `subgraph`                                                                                                               |
 | Text        | `<br/>` becomes a line break; quoted and backtick-quoted labels                                                                                                             |
 

@@ -45,21 +45,27 @@ declare module "alepha" {
       userId?: string;
     };
 
-    /** An order has been refunded and its stock put back. */
+    /**
+     * An order has been refunded and its stock put back.
+     */
     "commerce:order:refunded": {
       orderId: string;
       total: number;
       currency: string;
     };
 
-    /** An order has been handed to a carrier. */
+    /**
+     * An order has been handed to a carrier.
+     */
     "commerce:order:shipped": {
       orderId: string;
       trackingNumber?: string;
       trackingUrl?: string;
     };
 
-    /** An unpaid order was cancelled and its holds released. */
+    /**
+     * An unpaid order was cancelled and its holds released.
+     */
     "commerce:order:cancelled": {
       orderId: string;
     };

@@ -21,7 +21,9 @@ import { uiFr } from "../i18n-fr.ts";
  */
 const SRC = join(import.meta.dirname, "..", "..");
 
-/** Every `tr("some.key"` or `tr(\`some.key\`` in the package sources. */
+/**
+ * Every `tr("some.key"` or `tr(\`some.key\`` in the package sources.
+ */
 const collectKeys = (dir: string, found = new Set<string>()): Set<string> => {
   for (const entry of readdirSync(dir)) {
     const path = join(dir, entry);

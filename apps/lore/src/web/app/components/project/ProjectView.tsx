@@ -126,6 +126,9 @@ const SECTION_LABEL_KEYS: Record<string, string> = {
   projectEpic: "project.menu.epics",
   projectMilestones: "project.menu.milestones",
   projectReports: "project.menu.reports",
+  reportsOverview: "project.menu.reports",
+  reportsQuests: "project.menu.reports",
+  reportsMembers: "project.menu.reports",
   projectFolios: "project.menu.folios",
   projectFoliosNew: "project.menu.folios",
   projectFoliosFolio: "project.menu.folios",
@@ -142,6 +145,10 @@ const SECTION_LABEL_KEYS: Record<string, string> = {
   projectSettingsKanban: "project.menu.settings",
   projectSettingsFolios: "project.menu.settings",
   projectSettingsMilestones: "project.menu.settings",
+  projectSettingsMembers: "project.menu.settings",
+  projectSettingsFeedback: "project.menu.settings",
+  projectSettingsSigils: "project.menu.settings",
+  projectSettingsQuests: "project.menu.settings",
 };
 
 const ProjectView = () => {
@@ -472,8 +479,7 @@ const ProjectView = () => {
     breadcrumbs.push({ label: `#${quest.shortId}` });
   }
   // Folio routes contribute their directory chain (and the folio
-  // title leaf) via `currentFolioPathAtom` — written by
-  // FolioBrowser on every refresh and by the folio loader on view.
+  // title leaf) via `currentFolioPathAtom`, written by the folio loaders.
   if (name.startsWith("projectFolios") && folioPath.length > 0) {
     for (const segment of folioPath) {
       breadcrumbs.push({

@@ -73,13 +73,10 @@ Replace a service with a different implementation. This is the core of Alepha's 
 
 ```typescript
 // In production: real emails via SMTP
-// In development: log to console
+// In development: kept in memory
 alepha.with({
   provide: EmailProvider,
-  use:
-    process.env.NODE_ENV === "production"
-      ? SmtpEmailProvider
-      : ConsoleEmailProvider,
+  use: alepha.isProduction() ? NodemailerEmailProvider : MemoryEmailProvider,
 });
 ```
 

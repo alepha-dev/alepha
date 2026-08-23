@@ -53,7 +53,9 @@ export const resolveFieldI18n = (
   return next;
 };
 
-/** Prefix for a child of `name`: `parameters.x.payg` + `dailyCapCents`. */
+/**
+ * Prefix for a child of `name`: `parameters.x.payg` + `dailyCapCents`.
+ */
 export const childI18nPrefix = (
   prefix: string | undefined,
   name: string,

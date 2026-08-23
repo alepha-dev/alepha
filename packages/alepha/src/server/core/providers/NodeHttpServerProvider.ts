@@ -72,7 +72,7 @@ export class NodeHttpServerProvider extends ServerProvider {
   };
 
   public get hostname(): string {
-    // sometimes hostname is called before .star(), so server may not be created yet (nor listening)
+    // sometimes hostname is called before .start(), so server may not be created yet (nor listening)
     if (this.server?.listening) {
       const address = this.server.address();
       if (typeof address === "object" && address !== null) {

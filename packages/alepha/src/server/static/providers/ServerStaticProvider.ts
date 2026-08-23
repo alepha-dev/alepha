@@ -160,7 +160,10 @@ export class ServerStaticProvider {
       let chosenEncoding = "";
       const encoding = headers["accept-encoding"];
       if (hasBr || hasGzip) {
-        reply.headers.vary = "accept-encoding";
+        // Append: the CORS hook may already have added `Origin`.
+        reply.headers.vary = reply.headers.vary
+          ? `${reply.headers.vary}, accept-encoding`
+          : "accept-encoding";
       }
       if (encoding) {
         if (hasBr && encoding.includes("br")) {
@@ -194,10 +197,13 @@ export class ServerStaticProvider {
         : etag;
 
       reply.headers.etag = variantEtag;
-      if (
-        headers["if-none-match"] === variantEtag ||
-        headers["if-modified-since"] === lastModified
-      ) {
+      // `If-None-Match` takes precedence (RFC 9110 12.2.2): a date match
+      // alone must not short-circuit when the etag names another encoding
+      // variant.
+      const notModified = headers["if-none-match"]
+        ? headers["if-none-match"] === variantEtag
+        : headers["if-modified-since"] === lastModified;
+      if (notModified) {
         reply.status = 304;
         return;
       }
@@ -308,7 +314,9 @@ export class ServerStaticProvider {
         }
 
         const fullPath = join(dir, dirent.name);
-        return dirent.isDirectory() ? this.getAllFiles(fullPath) : fullPath;
+        return dirent.isDirectory()
+          ? this.getAllFiles(fullPath, ignoreDotEnvFiles)
+          : fullPath;
       }),
     );
 

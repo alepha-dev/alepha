@@ -227,7 +227,9 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     await this.alepha.events.emit("server:onSend", payload, { catch: true });
 
     const reply = request.reply;
-    const status = reply.status ?? (reply.body ? 200 : 204); // default status: 200 if body is set, otherwise 204
+    // Default status: 200 when there is a body, 204 otherwise. `!= null`, not
+    // truthiness: an empty string is a body.
+    const status = reply.status ?? (reply.body != null ? 200 : 204);
     const response = {
       status,
       headers: reply.headers,
@@ -336,7 +338,7 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     }
 
     if (responseKind === "text") {
-      reply.body = String(reply.body);
+      reply.body = reply.body == null ? "" : String(reply.body);
       // Detect HTML responses (starts with <!DOCTYPE html>)
       if (reply.body.startsWith("<!DOCTYPE html>")) {
         headers["content-type"] ??= "text/html; charset=UTF-8";
@@ -418,9 +420,13 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
     request: ServerRequest,
     error: Error,
   ) {
-    // Reset body — it's likely invalid after an error
+    // Reset body AND status: both are what the handler produced before it
+    // threw. Keeping the status let a `setStatus(201)` that preceded the
+    // throw answer a blank 201, which the check below then mistook for a
+    // response written by a hook.
     const reply = request.reply;
     reply.body = null;
+    reply.status = undefined;
 
     // Let error hooks handle it first (e.g. custom error pages, Sentry)
     await this.alepha.events.emit("server:onError", { request, route, error });
@@ -585,9 +591,15 @@ export class ServerRouterProvider extends RouterProvider<ServerRouteMatcher> {
           );
         }
 
-        this.alepha.codec.validate(schemaHeaders, decoded);
+        // The validated object, not `decoded`: that is where a `.default()`
+        // or a transform lands, and merging the pre-validation values lost
+        // them (`query` already merges its validated value).
+        const validated = this.alepha.codec.validate(
+          schemaHeaders,
+          decoded,
+        ) as Record<string, unknown>;
 
-        for (const [key, value] of Object.entries(decoded)) {
+        for (const [key, value] of Object.entries(validated)) {
           (request.headers as Record<string, unknown>)[key.toLowerCase()] =
             value;
         }

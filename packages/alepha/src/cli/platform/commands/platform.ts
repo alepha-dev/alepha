@@ -1,4 +1,4 @@
-import { $inject, $store, AlephaError, z } from "alepha";
+import { $inject, AlephaError, z } from "alepha";
 import { type AppEntry, AppEntryProvider, ViteBuildProvider } from "alepha/cli";
 import {
   CloudflareAdapter,
@@ -9,19 +9,16 @@ import {
   PlatformOrchestrator,
   type PlatformPlanOutput,
   type PlatformStatusOutput,
-  platformOptions,
   type ResolvedPlatformConfig,
   resolveTenant,
   WranglerApi,
 } from "alepha/cli/platform-lib";
 import { $command, EnvUtils, type RunnerMethod } from "alepha/command";
-import { $logger, ConsoleColorProvider } from "alepha/logger";
+import { ConsoleColorProvider } from "alepha/logger";
 
 import { SecretsCommand } from "./SecretsCommand.ts";
 
 export class PlatformCommand {
-  protected readonly log = $logger();
-  protected readonly options = $store(platformOptions);
   protected readonly orchestrator = $inject(PlatformOrchestrator);
   protected readonly inspector = $inject(PlatformInspector);
   protected readonly naming = $inject(NamingService);
@@ -931,14 +928,12 @@ export class PlatformCommand {
   // -----------------------------------------------------------------------
 
   /**
-   * Resolve app definitions.
+   * Resolve the app definition for the workspace at `root` and introspect
+   * it for resources.
    *
-   * For standalone: returns a single app from the root.
-   * For monorepo: resolves each app path, introspects for resources.
-   *
-   * NOTE: Resource detection (hasDatabase, hasBucket, etc.) requires
-   * ViteBuildProvider.init() per app. This is expensive -- only done
-   * for up/down/status, not for plan.
+   * NOTE: Resource detection (hasDatabase, hasBucket, etc.) boots the app
+   * through Vite, which is expensive; every command that needs the
+   * topology (plan included) pays for it once.
    */
   protected async resolveApp(
     root: string,

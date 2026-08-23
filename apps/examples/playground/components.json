@@ -16,8 +16,5 @@
     "lib": "@alepha/ui/lib",
     "hooks": "@alepha/ui/hooks"
   },
-  "iconLibrary": "lucide",
-  "registries": {
-    "@alepha": "http://localhost:8765/r/{name}.json"
-  }
+  "iconLibrary": "lucide"
 }

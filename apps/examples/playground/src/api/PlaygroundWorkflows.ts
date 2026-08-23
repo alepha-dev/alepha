@@ -1,4 +1,4 @@
-import { z } from "alepha";
+import { AlephaError, z } from "alepha";
 import { $workflow } from "alepha/api/workflows";
 import { $logger } from "alepha/logger";
 
@@ -35,7 +35,7 @@ export class PlaygroundWorkflows {
         retry: { retries: 2, backoff: [2, "second"] },
         handler: async ({ payload, results }) => {
           if (payload.failAt === "charge") {
-            throw new Error("payment declined (demo)");
+            throw new AlephaError("payment declined (demo)");
           }
           return { chargeId: `ch-${payload.orderId}`, after: results };
         },
@@ -47,7 +47,7 @@ export class PlaygroundWorkflows {
         name: "ship",
         handler: async ({ payload }) => {
           if (payload.failAt === "ship") {
-            throw new Error("carrier unavailable (demo)");
+            throw new AlephaError("carrier unavailable (demo)");
           }
           return { trackingId: `trk-${payload.orderId}` };
         },

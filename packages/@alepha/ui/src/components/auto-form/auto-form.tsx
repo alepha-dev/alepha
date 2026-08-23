@@ -28,7 +28,7 @@ import {
   PopoverTrigger,
 } from "@alepha/ui/components/ui/popover";
 import { cn } from "@alepha/ui/lib/utils";
-import { type ZObject, z } from "alepha";
+import { type ZObject, type ZType, z } from "alepha";
 import { useAlepha } from "alepha/react";
 import {
   type BaseInputField,
@@ -46,9 +46,13 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
  */
 function isStringSchema(schema: unknown): boolean {
   if (!schema || typeof schema !== "object") return false;
-  const s = schema as { type?: unknown; anyOf?: unknown[] };
-  if (s.type === "string") return true;
-  if (Array.isArray(s.anyOf)) return s.anyOf.some(isStringSchema);
+  // Zod, not JSON Schema: `z.string().optional()` has no `type: "string"`,
+  // so the optional text fields of a form used to auto-save every keystroke.
+  const inner = z.schema.unwrap(schema as ZType);
+  if (z.schema.isString(inner)) return true;
+  if (z.schema.isUnion(inner)) {
+    return z.schema.options(inner).some(isStringSchema);
+  }
   return false;
 }
 
@@ -59,9 +63,11 @@ function isStringSchema(schema: unknown): boolean {
  */
 function isEnumSchema(schema: unknown): boolean {
   if (!schema || typeof schema !== "object") return false;
-  const s = schema as { enum?: unknown[]; anyOf?: unknown[] };
-  if (Array.isArray(s.enum)) return true;
-  if (Array.isArray(s.anyOf)) return s.anyOf.some(isEnumSchema);
+  const inner = z.schema.unwrap(schema as ZType);
+  if (z.schema.isEnum(inner)) return true;
+  if (z.schema.isUnion(inner)) {
+    return z.schema.options(inner).some(isEnumSchema);
+  }
   return false;
 }
 
@@ -581,7 +587,7 @@ interface GroupBlockProps {
   bottomBar?: ReactNode;
 }
 
-function GroupBlock(props: GroupBlockProps) {
+const GroupBlock = (props: GroupBlockProps) => {
   const { group } = props;
   const { tr } = useI18n();
   const Icon = group.icon ? iconFor(group.icon) : undefined;
@@ -728,7 +734,7 @@ function GroupBlock(props: GroupBlockProps) {
       </div>
     </div>
   );
-}
+};
 
 // ──────────────────────────────────────────────────────────────────────
 
@@ -750,7 +756,7 @@ interface BottomBarProps {
   bare?: boolean;
 }
 
-function BottomBar(props: BottomBarProps) {
+const BottomBar = (props: BottomBarProps) => {
   const { tr } = useI18n();
   return (
     <div
@@ -819,7 +825,7 @@ function BottomBar(props: BottomBarProps) {
       </div>
     </div>
   );
-}
+};
 
 // ──────────────────────────────────────────────────────────────────────
 
@@ -827,7 +833,7 @@ interface FormErrorPopoverProps {
   form: FormModel<ZObject>;
 }
 
-function FormErrorPopover(props: FormErrorPopoverProps) {
+const FormErrorPopover = (props: FormErrorPopoverProps) => {
   const { error } = useFormState(props.form, ["error"]);
   const { tr } = useI18n();
   const [open, setOpen] = useState(false);
@@ -881,7 +887,7 @@ function FormErrorPopover(props: FormErrorPopoverProps) {
       </PopoverContent>
     </Popover>
   );
-}
+};
 
 interface ErrorItem {
   path: string;
@@ -898,11 +904,25 @@ const collectErrors = (error: Error): ErrorItem[] => {
 };
 
 const focusError = (path: string, formId: string) => {
-  const fieldName = path.replace(/^\//, "").replace(/\//g, ".");
-  if (!fieldName) return;
+  const segments = path.split("/").filter(Boolean);
+  if (segments.length === 0) return;
+  const dotted = segments.join(".");
+  // ControlArray names its item fields `items[0].email` and joins their ids
+  // with `-`; the dotted forms are what every other control renders.
+  const bracketed = segments
+    .map((segment, i) =>
+      i === 0
+        ? segment
+        : /^\d+$/.test(segment)
+          ? `[${segment}]`
+          : `.${segment}`,
+    )
+    .join("");
   const el =
-    document.getElementById(`${formId}-${fieldName}`) ??
-    document.querySelector<HTMLElement>(`[name="${fieldName}"]`);
+    document.getElementById(`${formId}-${dotted}`) ??
+    document.getElementById(`${formId}-${segments.join("-")}`) ??
+    document.querySelector<HTMLElement>(`[name="${dotted}"]`) ??
+    document.querySelector<HTMLElement>(`[name="${bracketed}"]`);
   el?.focus();
 };
 
@@ -913,7 +933,9 @@ const autoGroupSchema = (
   opts: {
     defaultTitle?: string;
     defaultIcon?: string;
-    /** Translator for the fallback group title (the helper is hook-free). */
+    /**
+     * Translator for the fallback group title (the helper is hook-free).
+     */
     tr?: (key: string, options?: { default?: string }) => string;
   },
 ): AutoFormGroup[] => {
@@ -928,17 +950,15 @@ const autoGroupSchema = (
   const groups: AutoFormGroup[] = [];
 
   for (const [key, prop] of Object.entries(z.schema.shape(schema))) {
-    const p = prop as {
-      type?: string;
-      items?: unknown;
-      element?: unknown;
-    };
-    const isObject = p.type === "object";
+    // Classify the unwrapped schema: an optional object is still an object.
+    const inner = z.schema.unwrap(prop);
+    const isObject = z.schema.isObject(inner);
     // An array of a UNION of objects is a complex field too — without this it
     // lands in the "General" grid and gets a third of a row to render a list
     // of object editors in.
     const isArrayOfObjects =
-      p.type === "array" && isObjectOrUnionOfObjects(p.element);
+      z.schema.isArray(inner) &&
+      isObjectOrUnionOfObjects(z.schema.element(inner));
     if (isObject || isArrayOfObjects) {
       // Solo complex fields render their own header (label + description +
       // chevron + add/init), so we skip the group bar to avoid a

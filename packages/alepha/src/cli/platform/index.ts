@@ -36,7 +36,9 @@ import { SecretsCommand } from "./commands/SecretsCommand.ts";
  * - `alepha platform deploy`     — deploy to cloud
  * - `alepha platform db migrate` — run database migrations
  * - `alepha platform db export`  — pull the deployed DB into a local snapshot
+ * - `alepha platform db baseline mark` — mark a baseline on the deployed DB
  * - `alepha platform secrets`    — manage external secret stores
+ * - `alepha platform auth login|logout` — manage the stored provider token
  *
  * Configuration in `alepha.config.ts`:
  *

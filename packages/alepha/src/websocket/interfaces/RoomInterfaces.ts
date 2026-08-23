@@ -14,7 +14,9 @@ import type { ChannelPrimitive, TWSObject } from "../primitives/$channel.ts";
 export interface RoomClock {
   setInterval(fn: () => void, ms: number): unknown;
   clearInterval(handle: unknown): void;
-  /** Monotonic-ish milliseconds; only differences are used (for `dt`). */
+  /**
+   * Monotonic-ish milliseconds; only differences are used (for `dt`).
+   */
   now(): number;
 }
 
@@ -24,9 +26,13 @@ export interface RoomClock {
  * hibernation socket) to this shape.
  */
 export interface RoomSocket {
-  /** Stable per-connection id (survives hibernation on Cloudflare). */
+  /**
+   * Stable per-connection id (survives hibernation on Cloudflare).
+   */
   readonly id: string;
-  /** Authenticated user id, when the channel is `secure`. */
+  /**
+   * Authenticated user id, when the channel is `secure`.
+   */
   readonly userId?: string;
   /**
    * The upgrade URL's query parameters, verbatim (first value per key). The
@@ -42,9 +48,13 @@ export interface RoomSocket {
    * engine.
    */
   data: Record<string, unknown>;
-  /** Send an already-serialized frame to this one socket. */
+  /**
+   * Send an already-serialized frame to this one socket.
+   */
   sendRaw(data: string): void;
-  /** Close this one socket. */
+  /**
+   * Close this one socket.
+   */
   close(code?: number, reason?: string): void;
 }
 
@@ -55,7 +65,9 @@ export interface RoomSocket {
 export interface RoomConnection {
   readonly id: string;
   readonly userId?: string;
-  /** See {@link RoomSocket.query} — untrusted upgrade-URL query parameters. */
+  /**
+   * See {@link RoomSocket.query} — untrusted upgrade-URL query parameters.
+   */
   readonly query?: Readonly<Record<string, string>>;
   data: Record<string, unknown>;
 }
@@ -67,7 +79,9 @@ export interface RoomConnection {
  * Object.
  */
 export interface RoomContext<TClient extends TWSObject, TState> {
-  /** This room's id (e.g. lindocara's `partyId:mapId`). */
+  /**
+   * This room's id (e.g. lindocara's `partyId:mapId`).
+   */
   readonly roomId: string;
   /**
    * The room's in-memory state, created once by the `state` factory on first
@@ -75,18 +89,28 @@ export interface RoomContext<TClient extends TWSObject, TState> {
    * world lives (players, monsters, loot…).
    */
   readonly state: TState;
-  /** Live view of the connected sockets, for iteration during a tick. */
+  /**
+   * Live view of the connected sockets, for iteration during a tick.
+   */
   readonly connections: readonly RoomConnection[];
-  /** Number of connected sockets. */
+  /**
+   * Number of connected sockets.
+   */
   readonly size: number;
-  /** Send one message to one connection. Validated? No — trusted server frame. */
+  /**
+   * Send one message to one connection. Validated? No — trusted server frame.
+   */
   send(connectionId: string, message: Infer<TClient>): void;
-  /** Fan out one message to every connection, minus any excepted ids. */
+  /**
+   * Fan out one message to every connection, minus any excepted ids.
+   */
   broadcast(
     message: Infer<TClient>,
     options?: { exceptConnectionIds?: string[] },
   ): void;
-  /** Close one connection. */
+  /**
+   * Close one connection.
+   */
   close(connectionId: string, code?: number, reason?: string): void;
 }
 
@@ -116,7 +140,9 @@ export interface RoomPrimitiveOptions<
   TServer extends TWSObject,
   TState = undefined,
 > {
-  /** The channel (message schemas + path) this room speaks. */
+  /**
+   * The channel (message schemas + path) this room speaks.
+   */
   channel: ChannelPrimitive<TClient, TServer>;
 
   /**
@@ -133,13 +159,17 @@ export interface RoomPrimitiveOptions<
    */
   state?: (ctx: { roomId: string }) => TState | Promise<TState>;
 
-  /** A socket joined this room. */
+  /**
+   * A socket joined this room.
+   */
   onJoin?: (
     room: RoomContext<TClient, TState>,
     connection: RoomConnection,
   ) => void | Promise<void>;
 
-  /** A validated client message arrived. */
+  /**
+   * A validated client message arrived.
+   */
   onMessage?: (
     room: RoomContext<TClient, TState>,
     connection: RoomConnection,
@@ -156,7 +186,9 @@ export interface RoomPrimitiveOptions<
     dt: number,
   ) => void | Promise<void>;
 
-  /** A socket left this room. */
+  /**
+   * A socket left this room.
+   */
   onLeave?: (
     room: RoomContext<TClient, TState>,
     connection: RoomConnection,
@@ -174,9 +206,13 @@ export interface RoomPrimitiveOptions<
    */
   methods?: Record<string, RoomMethod<TClient, TState>>;
 
-  /** Enforce authentication on the handshake (via alepha/security). */
+  /**
+   * Enforce authentication on the handshake (via alepha/security).
+   */
   secure?: boolean;
 
-  /** Cap simultaneous connections per authenticated user. */
+  /**
+   * Cap simultaneous connections per authenticated user.
+   */
   maxConnectionsPerUser?: number;
 }

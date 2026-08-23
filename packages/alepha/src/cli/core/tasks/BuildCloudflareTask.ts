@@ -7,7 +7,6 @@ import { QUEUE_DEFAULT_BINDING, QUEUE_DEFAULT_MAX_RETRIES } from "alepha/queue";
 import type { CronProvider, WorkerdCronProvider } from "alepha/scheduler";
 import { FileSystemProvider } from "alepha/system";
 
-import { ViteUtils } from "../services/ViteUtils.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
 // Looked up by class name string (not by class identity) because
@@ -47,7 +46,6 @@ interface WranglerConfig {
  */
 export class BuildCloudflareTask extends BuildTask {
   protected readonly fs = $inject(FileSystemProvider);
-  protected readonly viteUtils = $inject(ViteUtils);
 
   protected readonly warningComment =
     "// This file was automatically generated. DO NOT MODIFY.\n" +
@@ -211,7 +209,9 @@ export class BuildCloudflareTask extends BuildTask {
     await this.writeWorkerEntryPoint(root, distDir);
   }
 
-  /** Worker-to-worker service bindings, from CLOUDFLARE_SERVICES (JSON). */
+  /**
+   * Worker-to-worker service bindings, from CLOUDFLARE_SERVICES (JSON).
+   */
   protected enhanceServices(wrangler: WranglerConfig): void {
     const raw = process.env.CLOUDFLARE_SERVICES;
     if (!raw) {
@@ -460,7 +460,10 @@ export class BuildCloudflareTask extends BuildTask {
     // `dead_letter_queue` — otherwise it burns `max_retries` and DISCARDS the
     // message, with no record and no signal. CF creates the DLQ on demand, so a
     // derived default is safe.
-    const maxRetries = Number(process.env.CLOUDFLARE_QUEUE_MAX_RETRIES);
+    // `Number("")` is 0, which would silently disable retries when the
+    // variable is exported but empty.
+    const rawMaxRetries = process.env.CLOUDFLARE_QUEUE_MAX_RETRIES;
+    const maxRetries = rawMaxRetries ? Number(rawMaxRetries) : Number.NaN;
 
     wrangler.queues.consumers = wrangler.queues.consumers || [];
     wrangler.queues.consumers.push({

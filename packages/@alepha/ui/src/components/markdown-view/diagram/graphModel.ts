@@ -20,24 +20,32 @@ export type GraphEdgeStyle = "solid" | "dashed" | "thick";
 
 export interface GraphNode {
   id: string;
-  /** The label, already split on `<br/>`. Never empty: a bare id is its own label. */
+  /**
+   * The label, already split on `<br/>`. Never empty: a bare id is its own label.
+   */
   lines: string[];
   shape: GraphNodeShape;
-  /** The id of the enclosing `subgraph`, if any. */
+  /**
+   * The id of the enclosing `subgraph`, if any.
+   */
   parent?: string;
 }
 
 export interface GraphCluster {
   id: string;
   label: string;
-  /** The id of the enclosing `subgraph`, for nested ones. */
+  /**
+   * The id of the enclosing `subgraph`, for nested ones.
+   */
   parent?: string;
 }
 
 export interface GraphEdge {
   from: string;
   to: string;
-  /** May contain `\n` when the author wrote `<br/>`. */
+  /**
+   * May contain `\n` when the author wrote `<br/>`.
+   */
   label?: string;
   style: GraphEdgeStyle;
   arrowStart: boolean;

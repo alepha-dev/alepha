@@ -540,7 +540,7 @@ export class DevToolsMetadataProvider {
       return "enum";
     }
 
-    // Use TypeBox's type guards
+    // Narrow on the schema type guards
     if (z.schema.isString(field)) {
       if (f.enum) return "enum";
       if (f.format === "uuid") return "uuid";
@@ -605,7 +605,6 @@ export class DevToolsMetadataProvider {
 
   public getSystem(): DevSystem {
     const isBun = typeof globalThis.Bun !== "undefined";
-    const port = Number(this.alepha.env.SERVER_PORT) || 3000;
     return {
       alephaVersion: String(this.alepha.env.npm_package_version ?? "unknown"),
       nodeVersion: isBun
@@ -613,10 +612,24 @@ export class DevToolsMetadataProvider {
         : process.version,
       runtime: isBun ? "bun" : "node",
       mode: this.alepha.isProduction() ? "production" : "development",
-      port,
+      port: this.boundPort(),
       uptime: (this.dateTime.nowMillis() - this.startedAt) / 1000,
       memoryUsage: process.memoryUsage?.()?.heapUsed ?? 0,
     };
+  }
+
+  /**
+   * The port the server actually bound, which `SERVER_PORT=0` or a
+   * CLI-assigned port never matches; the env value is only the fallback
+   * for a server that has not started yet.
+   */
+  protected boundPort(): number {
+    try {
+      const url = new URL(this.serverProvider.hostname);
+      return Number(url.port) || (url.protocol === "https:" ? 443 : 80);
+    } catch {
+      return Number(this.alepha.env.SERVER_PORT) || 3000;
+    }
   }
 
   public getMetadata(): DevMetadata {

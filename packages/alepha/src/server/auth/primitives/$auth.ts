@@ -226,7 +226,7 @@ export type LinkAccountFn = (tokens: LinkAccountOptions) => Async<UserAccount>;
 
 export interface OAuth2Options {
   /**
-   * URL of the OAuth2 authorization endpoint.
+   * Client id issued by the OAuth2 provider.
    */
   clientId: string;
 
@@ -253,12 +253,13 @@ export interface OAuth2Options {
   account?: LinkAccountFn;
 
   /**
-   * URL of the OAuth2 authorization endpoint.
+   * Redirect URI registered with the provider; defaults to the framework's
+   * callback route.
    */
   redirectUri?: string;
 
   /**
-   * URL of the OAuth2 authorization endpoint.
+   * Scopes requested from the provider, space-separated.
    */
   scope?: string;
 }

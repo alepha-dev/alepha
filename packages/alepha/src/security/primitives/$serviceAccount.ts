@@ -26,8 +26,6 @@ import type { AccessTokenResponse, IssuerPrimitive } from "./$issuer.ts";
  *
  *   async fetchData() {
  *     const token = await this.serviceAccount.token();
- *     // or
- *     const response = await this.serviceAccount.fetch("https://api.example.com/data");
  *   }
  * }
  * ```
@@ -42,10 +40,14 @@ export const $serviceAccount = (
   const dateTimeProvider = alepha.inject(DateTimeProvider);
   const gracePeriod = options.gracePeriod ?? 30;
 
-  const cacheToken = (response: Omit<AccessTokenResponse, "at">) => {
+  const cacheToken = (
+    response: Omit<AccessTokenResponse, "issued_at"> & { issued_at?: number },
+  ) => {
     store.cache = {
-      ...response,
+      // An OAuth2 response carries no issue time; a token minted by a local
+      // issuer already does, and that one wins.
       issued_at: dateTimeProvider.now().unix(),
+      ...response,
     };
   };
 
@@ -141,10 +143,7 @@ export const $serviceAccount = (
 
       const token = await options.issuer.createToken(options.user);
 
-      cacheToken({
-        ...token,
-        issued_at: dateTimeProvider.now().unix(),
-      });
+      cacheToken(token);
 
       return token.access_token;
     },

@@ -1,4 +1,4 @@
-import { delimiter, dirname } from "node:path";
+import { delimiter, dirname, isAbsolute } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { type Alepha, $inject, z } from "alepha";
@@ -13,7 +13,6 @@ import { FileSystemProvider } from "alepha/system";
 
 import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
-import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 import { ViteUtils } from "../services/ViteUtils.ts";
 
 const drizzleCommandFlags = z.object({
@@ -29,7 +28,6 @@ export class DbCommand {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly utils = $inject(AlephaCliUtils);
-  protected readonly pm = $inject(PackageManagerUtils);
   protected readonly entryProvider = $inject(AppEntryProvider);
   protected readonly viteUtil = $inject(ViteUtils);
 
@@ -195,11 +193,11 @@ export class DbCommand {
     handler: async ({ args, flags, root }) => {
       const parts: string[] = [];
       if (flags.custom) parts.push(`--custom=1`);
-      if (flags.name) parts.push(`--name=${flags.name}`);
+      // Both values travel through a shell string: a migration name with a
+      // space, or a hint containing a quote, has to be quoted to survive.
+      if (flags.name) parts.push(`--name=${this.quoteShellArg(flags.name)}`);
       if (flags.hints) {
-        // The hints value is a JSON array (double quotes only) — wrap it in
-        // single quotes so it survives the shell as one argument.
-        parts.push(`--hints='${flags.hints}'`);
+        parts.push(`--hints=${this.quoteShellArg(flags.hints)}`);
       }
       const commandFlags = parts.length > 0 ? parts.join(" ") : undefined;
 
@@ -428,11 +426,13 @@ export class DbCommand {
       })
       .optional(),
     flags: drizzleCommandFlags,
-    handler: async ({ root, run, mode }) => {
+    handler: async ({ root, run }) => {
       const entry = await this.entryProvider.getAppEntry(root);
 
       await run({
-        name: `db migrate (${mode || "development"})`,
+        // The app is always booted in production mode below (the documented
+        // behaviour of `db apply`); the label used to claim "development".
+        name: "db migrate (production)",
         handler: async () => {
           process.env.MIGRATE = "true";
 
@@ -511,9 +511,6 @@ export class DbCommand {
     },
   });
 
-  /**
-   * Run a drizzle-kit command for all database providers in an Alepha instance.
-   */
   /**
    * Run the drizzle-kit child, turning a non-zero exit into a
    * {@link CommandError}.
@@ -601,6 +598,16 @@ export class DbCommand {
     return repositoryProvider;
   }
 
+  /**
+   * Single-quote a value for a POSIX shell string.
+   */
+  protected quoteShellArg(value: string): string {
+    return `'${value.replace(/'/g, "'\\''")}'`;
+  }
+
+  /**
+   * Run a drizzle-kit command for all database providers in an Alepha instance.
+   */
   public async runDrizzleKitCommand(options: {
     root: string;
     args?: string;
@@ -1068,35 +1075,6 @@ if (typeof registerHooks === "function") {
   }
 
   /**
-   * Locate the most recently recorded schema snapshot for a migrations
-   * directory, across both layouts drizzle-kit has used:
-   *
-   * - pre-v1 (`meta/_journal.json` + `meta/<idx>_snapshot.json`): the format
-   *   every migration in this repo was generated in before the v1 upgrade.
-   * - v1 (one `<tag>/` folder per migration, each with its own
-   *   `snapshot.json`, no journal at all): what `drizzle-kit generate`
-   *   produces now. `drizzle-orm@1`'s own `readMigrationFiles` refuses to
-   *   even look at the old layout — it throws telling the caller to run
-   *   `drizzle-kit up` — so once a project's migrations are in the new
-   *   layout, this method must be too, or `check` silently stops comparing
-   *   anything.
-   *
-   * v1 folders are checked FIRST, journal second — not the other way
-   * around. A project mid-upgrade (pre-v1 history on disk, then `alepha db
-   * migrations create` run under v1) has both: a frozen `meta/_journal.json`
-   * that v1's `generate` never touches again, and a v1 folder that is
-   * unconditionally newer than anything the journal could describe the
-   * moment it exists. Treating the journal as authoritative whenever it's
-   * present — the previous behavior — would compare against the stale
-   * pre-v1 snapshot even after a v1 migration made it obsolete, reporting
-   * drift a migration already covers and risking a duplicate on `create`.
-   * The journal is therefore only consulted when there are no v1 folders
-   * at all, i.e. the project hasn't been touched by v1 yet.
-   *
-   * Returns `null` when nothing is recorded yet, so callers can tell that
-   * apart from "found a snapshot" without inspecting shape.
-   */
-  /**
    * Which on-disk layout a migrations folder uses.
    *
    * - `"v1"` — one directory per migration, each with its own `snapshot.json`.
@@ -1161,6 +1139,35 @@ if (typeof registerHooks === "function") {
     this.log.info("");
   }
 
+  /**
+   * Locate the most recently recorded schema snapshot for a migrations
+   * directory, across both layouts drizzle-kit has used:
+   *
+   * - pre-v1 (`meta/_journal.json` + `meta/<idx>_snapshot.json`): the format
+   *   every migration in this repo was generated in before the v1 upgrade.
+   * - v1 (one `<tag>/` folder per migration, each with its own
+   *   `snapshot.json`, no journal at all): what `drizzle-kit generate`
+   *   produces now. `drizzle-orm@1`'s own `readMigrationFiles` refuses to
+   *   even look at the old layout — it throws telling the caller to run
+   *   `drizzle-kit up` — so once a project's migrations are in the new
+   *   layout, this method must be too, or `check` silently stops comparing
+   *   anything.
+   *
+   * v1 folders are checked FIRST, journal second — not the other way
+   * around. A project mid-upgrade (pre-v1 history on disk, then `alepha db
+   * migrations create` run under v1) has both: a frozen `meta/_journal.json`
+   * that v1's `generate` never touches again, and a v1 folder that is
+   * unconditionally newer than anything the journal could describe the
+   * moment it exists. Treating the journal as authoritative whenever it's
+   * present — the previous behavior — would compare against the stale
+   * pre-v1 snapshot even after a v1 migration made it obsolete, reporting
+   * drift a migration already covers and risking a duplicate on `create`.
+   * The journal is therefore only consulted when there are no v1 folders
+   * at all, i.e. the project hasn't been touched by v1 yet.
+   *
+   * Returns `null` when nothing is recorded yet, so callers can tell that
+   * apart from "found a snapshot" without inspecting shape.
+   */
   protected async resolveLastSnapshot(migrationDir: string): Promise<any> {
     // v1 layout: folder names are timestamp-prefixed (YYYYMMDDHHMMSS_name),
     // so a plain string sort orders them chronologically — the same
@@ -1284,9 +1291,18 @@ if (typeof registerHooks === "function") {
       if (options.providerDriver === "d1") {
         // For D1, we need to fill D1 bindings in a way that drizzle-kit can use it, since D1 doesn't use a traditional connection URL
       } else {
-        let url = options.providerUrl;
-        url = url.replace("sqlite://", "").replace("file://", "");
-        url = this.fs.join(options.rootDir, url);
+        // Same normalisation as NodeSqliteProvider.connect(): strip every
+        // scheme it accepts (including the bare `sqlite:` one), keep
+        // `:memory:` as is, and never join an absolute path under the root.
+        // `path.join` concatenates even an absolute second segment, so
+        // `sqlite:///var/lib/app.db` used to push into `<root>/var/lib/...`.
+        let url = options.providerUrl
+          .replace("sqlite://", "")
+          .replace("sqlite:", "")
+          .replace("file://", "");
+        if (url !== ":memory:" && url !== "" && !isAbsolute(url)) {
+          url = this.fs.join(options.rootDir, url);
+        }
 
         config.dbCredentials = {
           url,

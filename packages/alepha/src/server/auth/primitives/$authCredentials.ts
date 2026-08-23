@@ -19,9 +19,10 @@ export const $authCredentials = (
 ) => {
   const name = "credentials";
 
-  const account: CredentialsFn | undefined = realm.login
-    ? realm.login(name)
-    : options.account;
+  // An explicit `account` wins over the realm's default, like every other
+  // provider.
+  const account: CredentialsFn | undefined =
+    options.account ?? (realm.login ? realm.login(name) : undefined);
 
   if (!account) {
     throw new AlephaError(

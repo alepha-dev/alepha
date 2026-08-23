@@ -42,7 +42,8 @@ export class ConsoleColorProvider {
       return false;
     }
 
-    if (this.alepha.env.FORCE_COLOR) {
+    // `FORCE_COLOR=0` means "off" (the chalk/Node convention), not "on".
+    if (this.alepha.isEnvEnabled("FORCE_COLOR")) {
       return true;
     }
 

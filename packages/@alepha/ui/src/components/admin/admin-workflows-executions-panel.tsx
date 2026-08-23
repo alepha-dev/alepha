@@ -1,5 +1,5 @@
-import { WorkflowExecutionSheet } from "@alepha/ui/components/admin/admin-workflows-execution-sheet";
-import { WorkflowStatusBadge } from "@alepha/ui/components/admin/admin-workflows-status-badge";
+import { AdminWorkflowsExecutionSheet } from "@alepha/ui/components/admin/admin-workflows-execution-sheet";
+import { AdminWorkflowsStatusBadge } from "@alepha/ui/components/admin/admin-workflows-status-badge";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { type Infer, z } from "alepha";
@@ -19,7 +19,7 @@ const execFiltersSchema = z.object({
 });
 type ExecFilters = Infer<typeof execFiltersSchema>;
 
-export interface WorkflowExecutionsPanelProps {
+export interface AdminWorkflowsExecutionsPanelProps {
   workflowName: string;
 }
 
@@ -27,8 +27,8 @@ export interface WorkflowExecutionsPanelProps {
  * Server-paginated executions table for a single workflow. Row click opens
  * the execution detail sheet (step timeline + admin actions).
  */
-export const WorkflowExecutionsPanel = (
-  props: WorkflowExecutionsPanelProps,
+export const AdminWorkflowsExecutionsPanel = (
+  props: AdminWorkflowsExecutionsPanelProps,
 ) => {
   const client = useClient<AdminWorkflowController>();
   const { l, tr } = useI18n();
@@ -78,23 +78,30 @@ export const WorkflowExecutionsPanel = (
               )}
               triggerClassName="w-48"
               items={[
-                { value: "pending", label: "pending" },
-                { value: "running", label: "running" },
-                { value: "completed", label: "completed" },
-                { value: "failed", label: "failed" },
-                { value: "timed_out", label: "timed_out" },
-                { value: "compensating", label: "compensating" },
-                { value: "compensated", label: "compensated" },
-                { value: "compensation_failed", label: "compensation_failed" },
-                { value: "cancelled", label: "cancelled" },
-              ]}
+                "pending",
+                "running",
+                "completed",
+                "failed",
+                "timed_out",
+                "compensating",
+                "compensated",
+                "compensation_failed",
+                "cancelled",
+              ].map((status) => ({
+                value: status,
+                label: String(
+                  tr(`admin.workflows.status.${status}` as any, {
+                    default: status,
+                  }),
+                ),
+              }))}
             />
           ),
         }}
         columns={{
           status: {
             label: tr("admin.workflows.colStatus", { default: "Status" }),
-            cell: (e) => <WorkflowStatusBadge status={e.status} />,
+            cell: (e) => <AdminWorkflowsStatusBadge status={e.status} />,
           },
           currentStep: {
             label: tr("admin.workflows.colStep", { default: "Step" }),
@@ -161,7 +168,7 @@ export const WorkflowExecutionsPanel = (
         )}
       />
 
-      <WorkflowExecutionSheet
+      <AdminWorkflowsExecutionSheet
         executionId={openExecution}
         onClose={() => setOpenExecution(null)}
       />

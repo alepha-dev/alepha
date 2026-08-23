@@ -26,9 +26,10 @@ import type { AdminShippingController } from "../controllers/AdminShippingContro
 import type { ShippingRateEntity } from "../entities/shippingRates.ts";
 
 const formatPrice = (cents: number) =>
-  new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(
-    (cents ?? 0) / 100,
-  );
+  new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: "EUR",
+  }).format((cents ?? 0) / 100);
 
 /**
  * Delivery zones and their rates.
@@ -37,7 +38,7 @@ const formatPrice = (cents: number) =>
  * a master/detail layout for three rows is more chrome than content. Selecting a
  * zone swaps the rate list beneath it.
  */
-export function AdminShipping() {
+export const AdminShipping = () => {
   const client = useClient<AdminShippingController>();
   const { tr } = useI18n();
 
@@ -193,8 +194,8 @@ export function AdminShipping() {
                 {r.minDays == null
                   ? "—"
                   : r.minDays === r.maxDays
-                    ? `${r.minDays} j`
-                    : `${r.minDays}–${r.maxDays} j`}
+                    ? `${r.minDays} d`
+                    : `${r.minDays}-${r.maxDays} d`}
               </span>
             ),
           },
@@ -227,7 +228,7 @@ export function AdminShipping() {
       ) : null}
     </AdminPage>
   );
-}
+};
 
 interface AdminRateSheetProps {
   zoneId: string;

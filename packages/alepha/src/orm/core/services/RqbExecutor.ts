@@ -59,7 +59,9 @@ export class RqbExecutor {
    */
   protected readonly built = new WeakMap<object, WeakMap<object, unknown>>();
 
-  /** One relation definition per declaration per provider. */
+  /**
+   * One relation definition per declaration per provider.
+   */
   protected readonly definitions = new WeakMap<
     object,
     WeakMap<object, unknown>
@@ -180,7 +182,14 @@ export class RqbExecutor {
     if (query.select) out.columns = this.toColumns(query.select);
     if (query.orderBy) out.orderBy = this.toOrderBy(query.orderBy);
     if (query.limit !== undefined) out.limit = query.limit;
-    if (query.offset !== undefined) out.offset = query.offset;
+    if (query.offset !== undefined) {
+      out.offset = query.offset;
+      // SQLite rejects OFFSET without LIMIT; mirror the plain repository and
+      // hand Drizzle an effectively unbounded limit instead.
+      if (provider.dialect === "sqlite" && query.limit === undefined) {
+        out.limit = Number.MAX_SAFE_INTEGER;
+      }
+    }
 
     if (query.include && Object.keys(query.include).length > 0) {
       out.with = this.toWith(relations, entityKey, provider, query.include);
@@ -353,7 +362,15 @@ export class RqbExecutor {
     const build = (table: any) =>
       this.queryManager.toSQL(scoped as never, {
         schema: entity.schema,
-        col: (name: string) => table[name],
+        col: (name: string) => {
+          const column = table[name];
+          if (!column) {
+            throw new AlephaError(
+              `Invalid access. Column '${name}' not found in table '${entityKey}'`,
+            );
+          }
+          return column;
+        },
         dialect: provider.dialect as never,
       });
 
@@ -546,7 +563,9 @@ export class RqbExecutor {
     return this.alepha.get("alepha.orm.tx") ?? (provider.db as any);
   }
 
-  /** Translate the declaration into Drizzle's own relation shape. */
+  /**
+   * Translate the declaration into Drizzle's own relation shape.
+   */
   protected toDefineRelations(
     relations: RelationsPrimitive<EntitySchema, RelationMapFor<EntitySchema>>,
     r: any,

@@ -16,6 +16,7 @@ import { RealmProvider } from "../providers/RealmProvider.ts";
 import type { CreateUser } from "../schemas/createUserSchema.ts";
 import type { UpdateUser } from "../schemas/updateUserSchema.ts";
 import type { UserQuery } from "../schemas/userQuerySchema.ts";
+import { CredentialService } from "./CredentialService.ts";
 
 export class UserService {
   protected readonly alepha = $inject(Alepha);
@@ -27,6 +28,7 @@ export class UserService {
   protected readonly verificationService = $inject(VerificationService);
   protected readonly realmProvider = $inject(RealmProvider);
   protected readonly cryptoProvider = $inject(CryptoProvider);
+  protected readonly credentialService = $inject(CredentialService);
 
   protected userAudits(realmName?: string) {
     const realm = this.realmProvider.getRealm(realmName);
@@ -52,8 +54,8 @@ export class UserService {
    * Request email verification for a user.
    * @param email - The email address to verify.
    * @param userRealmName - Optional realm name.
-   * @param method - The verification method: "code" (default) or "link".
-   * @param verifyUrl - Base URL for verification link (required when method is "link").
+   * @param method - The verification method: "code" (default) or "link";
+   * the link base URL comes from the realm's `verifyEmailUrl` setting.
    */
   public async requestEmailVerification(
     email: string,
@@ -67,7 +69,10 @@ export class UserService {
     });
 
     const user = await this.users(userRealmName).findOne({
-      where: { email: { eq: email } },
+      where: {
+        realm: { eq: this.realmProvider.getRealm(userRealmName).name },
+        email: { eq: email },
+      },
     });
 
     if (!user) {
@@ -152,10 +157,13 @@ export class UserService {
   ): Promise<void> {
     this.log.trace("Verifying email", { email, userRealmName });
 
-    // Detect verification type based on token format
-    // Codes are 6-digit numbers, links are UUIDs
-    const isCode = /^\d{6}$/.test(token);
-    const type = isCode ? "code" : "link";
+    // Detect verification type based on token format: links are UUIDs,
+    // codes are digit strings of the realm's configured length.
+    const isLink =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        token,
+      );
+    const type = isLink ? "link" : "code";
 
     const result = await this.verificationController
       .validateVerificationCode({
@@ -173,7 +181,10 @@ export class UserService {
     }
 
     const user = await this.users(userRealmName).getOne({
-      where: { email: { eq: email } },
+      where: {
+        realm: { eq: this.realmProvider.getRealm(userRealmName).name },
+        email: { eq: email },
+      },
     });
 
     await this.users(userRealmName).updateById(user.id, {
@@ -205,7 +216,10 @@ export class UserService {
     this.log.trace("Checking if email is verified", { email, userRealmName });
 
     const user = await this.users(userRealmName).findOne({
-      where: { email: { eq: email } },
+      where: {
+        realm: { eq: this.realmProvider.getRealm(userRealmName).name },
+        email: { eq: email },
+      },
     });
 
     return user?.emailVerified ?? false;
@@ -222,6 +236,9 @@ export class UserService {
     q.sort ??= "-createdAt";
 
     const where = this.users(userRealmName).createQueryWhere();
+
+    // Never list across realms, whatever the other filters say.
+    where.realm = { eq: this.realmProvider.getRealm(userRealmName).name };
 
     if (q.search) {
       const pattern = `%${q.search}%`;
@@ -271,7 +288,12 @@ export class UserService {
     userRealmName?: string,
   ): Promise<UserEntity> {
     this.log.trace("Getting user by ID", { id, userRealmName });
-    return await this.users(userRealmName).getById(id);
+    // Scoped to the realm: the users table is shared between realms, and a
+    // bare getById let a realm admin read, update or delete any account by id.
+    const realm = this.realmProvider.getRealm(userRealmName);
+    return await this.users(userRealmName).getOne({
+      where: { id: { eq: id }, realm: { eq: realm.name } },
+    });
   }
 
   /**
@@ -451,12 +473,13 @@ export class UserService {
     const realm = this.realmProvider.getRealm(userRealmName);
     const settings = await realm.getSettings();
     if (settings.passwordPolicy) {
-      const policy = settings.passwordPolicy;
-      if (policy.minLength && newPassword.length < policy.minLength) {
-        throw new BadRequestError(
-          `Password must be at least ${policy.minLength} characters`,
-        );
-      }
+      // The same check registration and password reset apply; this path
+      // used to verify `minLength` alone, so a password change could
+      // downgrade a policy-compliant password.
+      this.credentialService.validatePasswordPolicy(
+        newPassword,
+        settings.passwordPolicy,
+      );
     }
 
     const hash = await this.cryptoProvider.hashPassword(newPassword);
@@ -482,7 +505,7 @@ export class UserService {
       userRealm: realm.name,
       resourceId: id,
       severity: "warning",
-      description: "Password set by admin",
+      description: "Password set",
     });
   }
 

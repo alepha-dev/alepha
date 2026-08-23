@@ -105,11 +105,17 @@ export class WebSocketRoom {
    * Object (in practice a DO is a single room, but keyed for safety).
    */
   protected readonly roomEngines = new Map<string, RoomEngine<any, any, any>>();
-  /** Per-connection application data bags, keyed by connectionId. */
+  /**
+   * Per-connection application data bags, keyed by connectionId.
+   */
   protected readonly dataBags = new Map<string, Record<string, unknown>>();
-  /** Connection ids currently joined to their engine (for rehydrate). */
+  /**
+   * Connection ids currently joined to their engine (for rehydrate).
+   */
   protected readonly joined = new Set<string>();
-  /** Whether a watchdog alarm is currently scheduled. */
+  /**
+   * Whether a watchdog alarm is currently scheduled.
+   */
   protected alarmScheduled = false;
 
   constructor(
@@ -211,7 +217,9 @@ export class WebSocketRoom {
     }
   }
 
-  /** Arm the watchdog alarm, unless storage is unavailable or one is pending. */
+  /**
+   * Arm the watchdog alarm, unless storage is unavailable or one is pending.
+   */
   protected scheduleAlarm(): void {
     if (this.alarmScheduled || !this.ctx.storage) return;
     this.alarmScheduled = true;

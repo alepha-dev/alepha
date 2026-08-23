@@ -16,11 +16,9 @@ import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { currentProjectMemberAtom } from "./atoms/currentProjectMemberAtom.ts";
 import { currentQuestAtom } from "./atoms/currentQuestAtom.ts";
 import { dashboardAtom } from "./atoms/dashboardAtom.ts";
-import {
-  kanbanProjectAtom,
-  kanbanReloadAtom,
-} from "./atoms/kanbanProjectAtom.ts";
+import { kanbanReloadAtom } from "./atoms/kanbanReloadAtom.ts";
 import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
+import { questLogCollapsedAtom } from "./atoms/questLogCollapsedAtom.ts";
 import { questsViewAtom } from "./atoms/questsViewAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import AccountDeleteWarning from "./components/account/AccountDeleteWarning.tsx";
@@ -46,12 +44,13 @@ export const LoreWebApp = $module({
     currentProjectAtom,
     currentProjectMemberAtom,
     currentQuestAtom,
-    kanbanProjectAtom,
     kanbanReloadAtom,
-    // Registered here, unlike most of the `current*` atoms, because
-    // `persist: "cookie"` only binds for atoms the state manager knows
-    // about — an unregistered persisted atom is silently in-memory only.
+    // Registered here, unlike most of the `current*` atoms, so the cookie
+    // value is hydrated before the first render that reads it. An
+    // unregistered `persist: "cookie"` atom still persists, lazily, on its
+    // first read.
     questsViewAtom,
+    questLogCollapsedAtom,
     userProjectsAtom,
     dashboardAtom,
   ],

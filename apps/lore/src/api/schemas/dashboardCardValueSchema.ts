@@ -17,7 +17,9 @@ export const dashboardCardValueSchema = z.object({
    * unrelated tables.
    */
   ok: z.boolean(),
-  /** The headline figure. Absent when `ok` is false. */
+  /**
+   * The headline figure. Absent when `ok` is false.
+   */
   value: z.integer().optional(),
   /**
    * Percent change against the metric's own comparison window, when it has

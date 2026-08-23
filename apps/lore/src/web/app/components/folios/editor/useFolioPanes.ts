@@ -28,7 +28,7 @@ export interface FolioPanesState {
 
 export const TREE_MIN_WIDTH = 180;
 export const TREE_MAX_WIDTH = 480;
-const TREE_DEFAULT_WIDTH = 242;
+export const TREE_DEFAULT_WIDTH = 242;
 const TREE_WIDTH_KEY = "lor.folio.workspace.treeWidth";
 
 /**

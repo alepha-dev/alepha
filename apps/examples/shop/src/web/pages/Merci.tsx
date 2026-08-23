@@ -8,7 +8,9 @@ import { Prix } from "../components/Prix.tsx";
 export interface MerciProps {
   order: OrderEntity;
   items: OrderItemEntity[];
-  /** Invoice numbers issued for this order, oldest first. */
+  /**
+   * Invoice numbers issued for this order, oldest first.
+   */
   factures: string[];
 }
 

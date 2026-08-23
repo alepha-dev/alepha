@@ -31,7 +31,9 @@ export interface AdminAnalyticsQueryPanelProps {
  * is the declared dimensions plus the `day` / `hour` pseudo-dimensions, and
  * every measure is summed — the only aggregate the query language has.
  */
-export function AdminAnalyticsQueryPanel(props: AdminAnalyticsQueryPanelProps) {
+export const AdminAnalyticsQueryPanel = (
+  props: AdminAnalyticsQueryPanelProps,
+) => {
   const client = useClient<AdminAnalyticsController>();
   const alepha = useAlepha();
   const { tr } = useI18n();
@@ -143,6 +145,6 @@ export function AdminAnalyticsQueryPanel(props: AdminAnalyticsQueryPanelProps) {
       />
     </div>
   );
-}
+};
 
 export default AdminAnalyticsQueryPanel;

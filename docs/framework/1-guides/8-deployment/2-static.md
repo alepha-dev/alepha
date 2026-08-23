@@ -25,7 +25,7 @@ dist/
     200.html         # SPA fallback
     404.html         # Not-found fallback
     CNAME            # Surge domain
-    assets/          # JS, CSS, images
+    entry.*.js, chunk.*.js, asset.*   # JS, CSS, images, at the root
 ```
 
 ## Deploy

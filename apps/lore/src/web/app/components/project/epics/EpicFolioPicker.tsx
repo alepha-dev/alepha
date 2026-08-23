@@ -23,7 +23,9 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface EpicFolioPickerProps {
   projectId: number;
-  /** Folio ids already attached to this epic — excluded from the list. */
+  /**
+   * Folio ids already attached to this epic — excluded from the list.
+   */
   attachedIds: Set<string>;
   onAttach: (folioId: string) => void;
 }

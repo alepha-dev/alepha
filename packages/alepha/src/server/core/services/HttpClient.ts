@@ -7,6 +7,7 @@ import {
   isFileLike,
   type ZObject,
   type ZType,
+  z,
 } from "alepha";
 import { $cache } from "alepha/cache";
 import type { DurationLike } from "alepha/datetime";
@@ -158,7 +159,7 @@ export class HttpClient {
         });
 
         const fetchResponse: FetchResponse = {
-          data: await this.responseData(response, options),
+          data: await this.responseData(response, options, cacheKey),
           status: response.status,
           statusText: response.statusText,
           headers: response.headers,
@@ -291,7 +292,20 @@ export class HttpClient {
               type: value.type,
             }),
           );
+          continue;
         }
+        // Numbers, booleans, arrays and objects were silently dropped, and
+        // the server then refused the body for the missing field. The
+        // multipart parser decodes scalars through the codec, so a string is
+        // what it expects here.
+        if (value == null) {
+          continue;
+        }
+        if (typeof value === "object") {
+          formData.append(key, JSON.stringify(value));
+          continue;
+        }
+        formData.append(key, String(value as number | boolean | bigint));
       }
 
       init.body = formData;
@@ -300,6 +314,13 @@ export class HttpClient {
     }
 
     if (!init.body && action.schema?.body) {
+      // A `z.text()` body travels as plain text, the way the server's body
+      // parser reads it; JSON-encoding it sent `"\"Hello\""` with the quotes.
+      if (z.schema.isString(action.schema.body)) {
+        headers["content-type"] = "text/plain";
+        init.body = String(args.body);
+        return;
+      }
       headers["content-type"] = "application/json";
       init.body = this.alepha.codec.encode(action.schema?.body, args.body, {
         as: "string",
@@ -310,14 +331,17 @@ export class HttpClient {
   protected async responseData(
     response: Response,
     options: ResolvedFetchOptions,
+    cacheKey?: string,
   ): Promise<any> {
     if (response.status === 304) {
-      let cacheKey = response.url;
-      if (typeof window !== "undefined") {
-        cacheKey = cacheKey.replace(window.location.origin, "");
+      // The key the entry was stored under, identity scope included: the
+      // bare `response.url` missed every authenticated entry and answered "".
+      let key = cacheKey ?? response.url;
+      if (cacheKey === undefined && typeof window !== "undefined") {
+        key = key.replace(window.location.origin, "");
       }
 
-      const cached = await this.cache.get(cacheKey);
+      const cached = await this.cache.get(key);
       if (cached) {
         return cached.data;
       }
@@ -330,27 +354,24 @@ export class HttpClient {
       return;
     }
 
+    const contentType = response.headers.get("Content-Type") ?? "";
+
+    // Before any body branch: a text/html error page used to come back as
+    // DATA because the text branch ran first, so a 404 "Not Found" resolved.
+    if (response.status >= 400) {
+      throw await this.responseError(response, contentType);
+    }
+
     if (this.isMaybeFile(response)) {
       return this.createFileLike(response);
     }
 
-    if (response.headers.get("Content-Type")?.startsWith("text/")) {
+    if (contentType.startsWith("text/")) {
       return await response.text();
     }
 
-    if (response.headers.get("Content-Type")?.startsWith("application/json")) {
+    if (contentType.startsWith("application/json")) {
       const json = await response.json();
-
-      if (response.status >= 400) {
-        const jsonError = this.alepha.codec.decode(errorSchema, json);
-        const error = new HttpError(jsonError);
-
-        await this.alepha.events.emit("client:onError", {
-          error,
-        });
-
-        throw error;
-      }
 
       if (options.schema) {
         return this.alepha.codec.decode(options.schema, json);
@@ -359,20 +380,47 @@ export class HttpClient {
       return json;
     }
 
-    if (response.status >= 400) {
-      const error = new HttpError({
+    return response;
+  }
+
+  /**
+   * Build the error for a 4xx/5xx response and emit `client:onError`.
+   *
+   * A JSON body in the framework's own error shape is decoded as such; any
+   * other JSON (`{ "error": "invalid_grant" }` from a third party) keeps the
+   * HTTP status and its best message instead of failing schema validation,
+   * and a text body becomes the message, truncated.
+   */
+  protected async responseError(
+    response: Response,
+    contentType: string,
+  ): Promise<HttpError> {
+    let error: HttpError;
+    if (contentType.startsWith("application/json")) {
+      const json = await response.json().catch(() => undefined);
+      const parsed = errorSchema.safeParse(json);
+      error = parsed.success
+        ? new HttpError(parsed.data)
+        : new HttpError({
+            status: response.status,
+            message: String(
+              json?.message ?? json?.error ?? response.statusText,
+            ),
+          });
+    } else {
+      const text = await response.text().catch(() => "");
+      const snippet = text.replace(/\s+/g, " ").trim().slice(0, 200);
+      error = new HttpError({
         status: response.status,
-        message: `An error occurred while fetching the resource. (${response.statusText})`,
+        message:
+          snippet ||
+          `An error occurred while fetching the resource. (${response.statusText})`,
       });
-
-      await this.alepha.events.emit("client:onError", {
-        error,
-      });
-
-      throw error;
     }
 
-    return response;
+    await this.alepha.events.emit("client:onError", { error });
+
+    return error;
   }
 
   protected isMaybeFile(response: Response): boolean {
@@ -560,7 +608,6 @@ export interface HttpAction {
   prefix?: string;
   path: string;
   contentType?: string;
-  requestBodyType?: string;
   schema?: {
     params?: ZObject;
     query?: ZObject;

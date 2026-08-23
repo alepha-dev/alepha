@@ -20,7 +20,7 @@ export const folioDirectories = $entity({
     id: db.primaryKey(z.uuid()),
     /**
      * Per-project sequential id, 1-based. Powers the human-readable
-     * `/p/:projectId/folios/d/:shortId` URL and the MCP shortId form.
+     * `/:projectSlug/folios/d/:shortId` URL and the MCP shortId form.
      * Allocated by `$sequence(scope=projectId)` on insert.
      */
     shortId: z.integer().min(1),

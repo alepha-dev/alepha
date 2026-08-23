@@ -20,10 +20,14 @@ export const carts = $entity({
     updatedAt: db.updatedAt(),
     organizationId: db.organization(),
 
-    /** Opaque handle for an anonymous visitor. */
+    /**
+     * Opaque handle for an anonymous visitor.
+     */
     token: z.text({ minLength: 16, maxLength: 128 }),
 
-    /** Set once the visitor authenticates. */
+    /**
+     * Set once the visitor authenticates.
+     */
     userId: z.uuid().optional(),
 
     /**

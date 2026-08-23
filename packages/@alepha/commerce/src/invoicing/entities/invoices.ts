@@ -29,13 +29,19 @@ export const invoices = $entity({
      */
     number: z.text({ minLength: 1, maxLength: 40 }),
 
-    /** Year the sequence belongs to — part of the number's scope. */
+    /**
+     * Year the sequence belongs to — part of the number's scope.
+     */
     year: z.integer(),
 
-    /** Plain uuid: deleting an order must never delete its invoice. */
+    /**
+     * Plain uuid: deleting an order must never delete its invoice.
+     */
     orderId: z.uuid(),
 
-    /** Set on a credit note, pointing at the invoice it corrects. */
+    /**
+     * Set on a credit note, pointing at the invoice it corrects.
+     */
     creditsInvoiceId: z.uuid().optional(),
 
     /**
@@ -47,9 +53,13 @@ export const invoices = $entity({
 
     issuedAt: z.text(),
 
-    /** Frozen copy of the seller's legal identity. */
+    /**
+     * Frozen copy of the seller's legal identity.
+     */
     seller: z.json(),
-    /** Frozen copy of the buyer's name and address. */
+    /**
+     * Frozen copy of the buyer's name and address.
+     */
     buyer: z.json(),
 
     /**
@@ -71,7 +81,9 @@ export const invoices = $entity({
       }),
     ),
 
-    /** Frozen per-rate ventilation. */
+    /**
+     * Frozen per-rate ventilation.
+     */
     vatBuckets: z.array(
       z.object({
         rateBps: z.integer(),
@@ -80,7 +92,9 @@ export const invoices = $entity({
       }),
     ),
 
-    /** Totals, in the smallest currency unit. */
+    /**
+     * Totals, in the smallest currency unit.
+     */
     baseTotal: z.integer(),
     vatTotal: z.integer(),
     grandTotal: z.integer(),
@@ -95,13 +109,19 @@ export const invoices = $entity({
 
 export type InvoiceEntity = Infer<typeof invoices.schema>;
 
-/** A line as frozen onto an invoice. */
+/**
+ * A line as frozen onto an invoice.
+ */
 export interface InvoiceLine {
   description: string;
   quantity: number;
-  /** Tax-inclusive unit price. */
+  /**
+   * Tax-inclusive unit price.
+   */
   unitPrice: number;
-  /** Tax-inclusive line total. */
+  /**
+   * Tax-inclusive line total.
+   */
   lineTotal: number;
   rateBps: number;
 }

@@ -2498,7 +2498,9 @@ describe("$parameter multi-tenant isolation", () => {
 class FlakyParameterProvider extends ParameterProvider {
   public failuresLeft = 0;
 
-  /** Simulate a cold instance that has not loaded this parameter yet. */
+  /**
+   * Simulate a cold instance that has not loaded this parameter yet.
+   */
   public forgetLoaded(name: string): void {
     this.loaded.delete(this.cacheKey(name));
   }

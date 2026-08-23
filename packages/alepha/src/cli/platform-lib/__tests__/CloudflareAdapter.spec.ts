@@ -214,7 +214,9 @@ describe("CloudflareAdapter", () => {
     return { alepha, fs, shell, dateTime, adapter, naming, api };
   };
 
-  /** Same wiring, but with the probe subclass in place of the adapter. */
+  /**
+   * Same wiring, but with the probe subclass in place of the adapter.
+   */
   const createProbeEnv = () => {
     delete process.env.DATABASE_URL;
 

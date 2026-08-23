@@ -13,14 +13,22 @@ const PAGE_SIZE = 20;
 export type ColumnKind = "new" | "accepted" | "completed";
 
 export interface ColumnDescriptor {
-  /** Stable droppable id. */
+  /**
+   * Stable droppable id.
+   */
   key: string;
   kind: ColumnKind;
-  /** Free-form sub-column name when `kind === "accepted"`. */
+  /**
+   * Free-form sub-column name when `kind === "accepted"`.
+   */
   subColumn?: string;
-  /** Display label (already translated). */
+  /**
+   * Display label (already translated).
+   */
   label: string;
-  /** Tailwind class for the small status dot in the header. */
+  /**
+   * Tailwind class for the small status dot in the header.
+   */
   dotClass: string;
 }
 

@@ -334,7 +334,8 @@ export const uiFr: Record<string, string> = {
     "Choisissez un paramètre à gauche pour le modifier.",
   "admin.parameters.emptyTitle": "Aucun paramètre sélectionné",
   "admin.parameters.export": "Exporter",
-  "admin.parameters.factoryReset": "Paramètre réinitialisé",
+  "admin.parameters.factoryReset": "Réinitialisation d'usine",
+  "admin.parameters.factoryResetDone": "Paramètre réinitialisé",
   "admin.parameters.factoryResetConfirm":
     "Revenir aux valeurs compilées par défaut ? La modification ci-dessous sera enregistrée comme une nouvelle version.",
   "admin.parameters.factoryResetTitle": "Réinitialisation d'usine",
@@ -521,6 +522,7 @@ export const uiFr: Record<string, string> = {
   "admin.users.enableUser": "Réactiver l'utilisateur",
   "admin.users.enabled": "Utilisateur réactivé",
   "admin.users.noRoles": "Aucun rôle",
+  "admin.users.noneActive": "Aucun utilisateur actif dans la sélection",
   "admin.users.noneSelected": "Aucun utilisateur supprimable dans la sélection",
   "admin.users.rolesLabel": "Rôles",
   "admin.users.search": "Rechercher un utilisateur",

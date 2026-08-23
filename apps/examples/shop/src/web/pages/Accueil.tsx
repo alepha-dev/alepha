@@ -9,7 +9,9 @@ import { Prix } from "../components/Prix.tsx";
 
 export interface AccueilProps {
   produits: PublicProduct[];
-  /** The produit that opens the page, chosen by the atelier rather than by sort. */
+  /**
+   * The produit that opens the page, chosen by the atelier rather than by sort.
+   */
   hero?: PublicProduct;
 }
 

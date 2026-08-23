@@ -23,7 +23,9 @@ export const cartItems = $entity({
 
     cartId: db.ref(z.uuid(), () => carts.cols.id, { onDelete: "cascade" }),
 
-    /** Plain uuid: deleting a product must not cascade into live carts. */
+    /**
+     * Plain uuid: deleting a product must not cascade into live carts.
+     */
     productId: z.uuid(),
 
     quantity: z.integer().min(1),

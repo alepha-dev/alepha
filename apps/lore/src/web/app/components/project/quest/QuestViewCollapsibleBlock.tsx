@@ -21,9 +21,8 @@ export interface QuestViewCollapsibleBlockProps {
 }
 
 /**
- * Lightweight accordion block for QuestView sections (Objectives,
- * Rewards, History, Settings). State is local — no persistence — per
- * Lore quest #42's UX spec.
+ * Lightweight accordion block for QuestView sections. State is local, no
+ * persistence, per Lore quest #42's UX spec.
  */
 const QuestViewCollapsibleBlock = (props: QuestViewCollapsibleBlockProps) => {
   const [open, setOpen] = useState(props.defaultOpen ?? false);
@@ -41,9 +40,7 @@ const QuestViewCollapsibleBlock = (props: QuestViewCollapsibleBlockProps) => {
           {props.icon}
         </span>
         {/* The section-label face: 12px, 600, uppercase, +0.84px tracking,
-            muted. `SectionHeader` in QuestView mirrors it exactly — the two
-            shapes have to read as one family or collapsible and static
-            sections look like different kinds of thing. */}
+            muted. */}
         <span className="text-muted-foreground group-hover:text-foreground text-xs font-semibold tracking-[0.84px] whitespace-nowrap uppercase transition-colors">
           {props.label}
         </span>

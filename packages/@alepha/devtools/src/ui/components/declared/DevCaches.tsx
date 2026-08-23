@@ -6,13 +6,20 @@ import { toText } from "../shared/toText.ts";
 import { DeclaredScreen } from "./DeclaredScreen.tsx";
 import { DetailFields } from "./DetailFields.tsx";
 
+/**
+ * A bare number is milliseconds (what `$cache` hands to the datetime
+ * provider); a tuple is `[amount, unit]`. Rendering the number as seconds
+ * showed a one-minute cache as "16h".
+ */
 const formatTtl = (ttl?: unknown): string => {
   if (ttl === undefined || ttl === null) return "no expiry";
+  if (Array.isArray(ttl)) return ttl.join(" ");
   if (typeof ttl !== "number") return toText(ttl);
-  if (ttl < 60) return `${ttl}s`;
-  if (ttl < 3600) return `${Math.floor(ttl / 60)}m`;
-  if (ttl < 86400) return `${Math.floor(ttl / 3600)}h`;
-  return `${Math.floor(ttl / 86400)}d`;
+  const seconds = Math.round(ttl / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+  return `${Math.floor(seconds / 86400)}d`;
 };
 
 /**

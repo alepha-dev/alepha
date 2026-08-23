@@ -22,7 +22,9 @@ const address = {
   country: "FR",
 };
 
-/** With the shipping module wired in. */
+/**
+ * With the shipping module wired in.
+ */
 const withShipping = async () => {
   const alepha = Alepha.create()
     .with(AlephaOrmPostgres)
@@ -42,7 +44,9 @@ const withShipping = async () => {
   return ctx;
 };
 
-/** Checkout alone — the ticketing / downloads case. */
+/**
+ * Checkout alone — the ticketing / downloads case.
+ */
 const withoutShipping = async () => {
   const alepha = Alepha.create()
     .with(AlephaOrmPostgres)

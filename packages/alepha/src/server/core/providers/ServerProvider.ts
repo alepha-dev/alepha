@@ -53,30 +53,14 @@ export class ServerProvider {
   // Pre-bound error handler to avoid function allocation per request
   protected readonly handleInternalError = () => this.internalErrorResponse;
 
-  // ============================================================================
-  // P1: URL Base Cache - cache protocol+host per unique host header
-  // Avoids string concatenation on every request
-  // ============================================================================
-  protected readonly urlBaseCache = new Map<string, string>();
-
   /**
-   * Get cached URL base (protocol + host) for a given host header.
-   * Caches the result to avoid repeated string concatenation.
+   * URL base (protocol + host) for a request's headers.
    */
   protected getUrlBase(headers: Record<string, string>): string {
     const host = headers[HEADER_HOST];
     const proto =
       headers[HEADER_X_FORWARDED_PROTO] === "https" ? PROTO_HTTPS : PROTO_HTTP;
-    const cacheKey = proto + host;
-    let base = this.urlBaseCache.get(cacheKey);
-    if (!base) {
-      base = cacheKey;
-      // Limit cache size to prevent memory leaks from many unique hosts
-      if (this.urlBaseCache.size < 100) {
-        this.urlBaseCache.set(cacheKey, base);
-      }
-    }
-    return base;
+    return proto + host;
   }
 
   // ============================================================================
@@ -107,8 +91,10 @@ export class ServerProvider {
       const char = i < qs.length ? qs.charCodeAt(i) : 38; // '&' at end
 
       if (char === 61) {
-        // '='
-        eqIdx = i;
+        // '=': only the FIRST one splits the pair, the way URLSearchParams
+        // does on the other runtimes. Taking the last one turned
+        // `token=abc==` into the key `token=abc=` with an empty value.
+        if (eqIdx === -1) eqIdx = i;
       } else if (char === 38) {
         // '&'
         if (eqIdx !== -1 && eqIdx > start) {

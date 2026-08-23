@@ -11,7 +11,7 @@ import { useForm, useFormState } from "../index.ts";
  * (the reactive form-state API; the non-reactive `form.submitting` getter was
  * removed). This loading must:
  *  - turn ON while an async submit is in flight, and
- *  - turn OFF again afterwards — including after a TypeBox validation error.
+ *  - turn OFF again afterwards, including after a schema validation error.
  *
  * The OFF guarantee relies on `FormModel.submit` always emitting
  * `form:submit:end` (see FormModel-submit-loading.spec.ts).
@@ -61,7 +61,7 @@ describe("useFormState loading drives the submit button", () => {
     );
   });
 
-  it("clears loading after a TypeBox validation error", async ({ expect }) => {
+  it("clears loading after a schema validation error", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaLogger);
 
     const Form = () => {

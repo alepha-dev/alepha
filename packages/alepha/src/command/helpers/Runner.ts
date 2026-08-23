@@ -204,7 +204,7 @@ export class Runner {
   }
 
   /**
-   * Prints a summary of all executed tasks and their durations.
+   * Prints the total time once at least one task ran, then forgets them.
    */
   public end(): void {
     if (this.timers.length === 0) return;
@@ -247,8 +247,10 @@ export class Runner {
 
     const duration = ((this.dateTime.nowMillis() - now) / 1000).toFixed(1);
 
-    const message =
-      stdout && !stdout.includes("\n") ? stdout.trim() : undefined;
+    // Shell output ends with a newline, so test for a single line AFTER
+    // trimming or the suffix never shows.
+    const trimmed = stdout?.trim();
+    const message = trimmed && !trimmed.includes("\n") ? trimmed : undefined;
     const suffix = message ? ` - ${message}` : "";
     this.log.info(`Finished '${task.name}' after ${duration}s${suffix}`);
 

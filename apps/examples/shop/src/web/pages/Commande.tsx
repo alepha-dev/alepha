@@ -119,7 +119,9 @@ const Commande = () => {
   const { panier } = usePanier();
   const { tr } = useI18n();
 
-  /** Numbered because it genuinely is a sequence — each step needs the last. */
+  /**
+   * Numbered because it genuinely is a sequence — each step needs the last.
+   */
   const etapes = [
     { numero: 1, titre: tr("checkout.step1") },
     { numero: 2, titre: tr("checkout.step2") },

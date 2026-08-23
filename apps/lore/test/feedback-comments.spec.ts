@@ -64,7 +64,9 @@ const setup = async () => {
     projectApi.createProject({ body: { title: "Test" } } as any),
   );
 
-  /** Feedback is opt-in per project, and a submit needs the module on. */
+  /**
+   * Feedback is opt-in per project, and a submit needs the module on.
+   */
   const row = await (projectApi as any).projects.getOne({
     where: { id: { eq: project.id } },
   });

@@ -31,7 +31,7 @@ const labelFor = (code: string) =>
  * user switch. Reads the active language and the registered list directly from
  * `useI18n()`, so it stays in sync without extra wiring.
  */
-export function LanguageToggle() {
+export const LanguageToggle = () => {
   const i18n = useI18n();
   const languages = i18n.languages;
 
@@ -63,4 +63,4 @@ export function LanguageToggle() {
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
+};

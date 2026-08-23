@@ -15,8 +15,10 @@ export class CleanCommand {
     handler: async ({ run }) => {
       // `./dist` was hardcoded, so a project configuring `output.dist` got a
       // no-op clean and stale artifacts survived into the next build.
+      // Not `./${distDir}`: an absolute `output.dist` must be removed where
+      // the build writes it, which is how `build` resolves it too.
       const distDir = this.options.output?.dist ?? "dist";
-      await run.rm(`./${distDir}`);
+      await run.rm(distDir);
     },
   });
 }

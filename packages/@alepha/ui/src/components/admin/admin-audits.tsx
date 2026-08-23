@@ -23,7 +23,7 @@ const auditFiltersSchema = z.object({
 });
 type AuditFilters = Infer<typeof auditFiltersSchema>;
 
-export function AdminAudits() {
+export const AdminAudits = () => {
   const client = useClient<AdminAuditController>();
   const toast = useToast();
   const router = useRouter();
@@ -239,6 +239,6 @@ export function AdminAudits() {
       />
     </AdminPage>
   );
-}
+};
 
 export default AdminAudits;

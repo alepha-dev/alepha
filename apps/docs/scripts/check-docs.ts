@@ -58,6 +58,11 @@ export class CheckDocsCommand {
     "README.md",
     "packages/alepha/README.md",
     "packages/alepha/assets/agents-template.md",
+    // The llms.txt preamble: the page assistants read first, and the one
+    // whose entry-point sample passed a module as `run()` options unnoticed.
+    "apps/docs/public/llms-index.md",
+    // Private, so not under the scoped-package root below.
+    "packages/create-alepha/README.md",
   ];
 
   /**

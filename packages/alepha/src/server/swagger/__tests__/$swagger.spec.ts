@@ -497,7 +497,7 @@ describe("response types", () => {
     expect(content["text/plain"]).toBeDefined();
   });
 
-  it("should handle number response as application/json", () => {
+  it("should handle number response as text/plain", () => {
     class NumApp {
       count = $action({
         schema: { response: z.number() as any },
@@ -509,11 +509,11 @@ describe("response types", () => {
     const json = doc(app);
     const resp = json.paths["/api/count"].get.responses["200"];
 
-    expect(resp.content["application/json"]).toBeDefined();
-    expect(resp.content["application/json"].schema.type).toBe("number");
+    expect(resp.content["text/plain"]).toBeDefined();
+    expect(resp.content["text/plain"].schema.type).toBe("number");
   });
 
-  it("should handle integer response as application/json", () => {
+  it("should handle integer response as text/plain", () => {
     class IntApp {
       countInt = $action({
         schema: { response: z.integer() as any },
@@ -525,11 +525,11 @@ describe("response types", () => {
     const json = doc(app);
     const resp = json.paths["/api/countInt"].get.responses["200"];
 
-    expect(resp.content["application/json"]).toBeDefined();
-    expect(resp.content["application/json"].schema.type).toBe("integer");
+    expect(resp.content["text/plain"]).toBeDefined();
+    expect(resp.content["text/plain"].schema.type).toBe("integer");
   });
 
-  it("should handle boolean response as application/json", () => {
+  it("should handle boolean response as text/plain", () => {
     class BoolApp {
       check = $action({
         schema: { response: z.boolean() as any },
@@ -541,8 +541,8 @@ describe("response types", () => {
     const json = doc(app);
     const resp = json.paths["/api/check"].get.responses["200"];
 
-    expect(resp.content["application/json"]).toBeDefined();
-    expect(resp.content["application/json"].schema.type).toBe("boolean");
+    expect(resp.content["text/plain"]).toBeDefined();
+    expect(resp.content["text/plain"].schema.type).toBe("boolean");
   });
 
   it("should handle file response as application/octet-stream", () => {

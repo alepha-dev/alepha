@@ -26,9 +26,13 @@ import type { Folio } from "../entities/folios.ts";
 export type RevisionAction = FolioRevision["action"];
 
 interface RevisionInput {
-  /** New title after the change. */
+  /**
+   * New title after the change.
+   */
   title: string;
-  /** New content after the change (plaintext markdown or protected envelope). */
+  /**
+   * New content after the change (plaintext markdown or protected envelope).
+   */
   content: string;
   summary: string;
 }

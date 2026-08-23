@@ -88,7 +88,9 @@ const setup = async () => {
   };
 };
 
-/** A timestamp far enough in the past to be a sane window start. */
+/**
+ * A timestamp far enough in the past to be a sane window start.
+ */
 const anHourAgo = (dt: DateTimeProvider) =>
   new Date(dt.nowMillis() - 60 * 60 * 1000).toISOString();
 

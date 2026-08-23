@@ -15,32 +15,7 @@ export class CliFormatterProvider extends PrettyFormatterProvider {
   public override format(entry: LogEntry): string {
     const { data, timestamp, level } = entry;
 
-    const isError = data instanceof Error;
-    let details = "";
-
-    if (isError) {
-      details = this.formatError(data);
-    } else if (data) {
-      let error = "";
-      let jsonData = data;
-      if ("error" in data && data.error instanceof Error) {
-        error = this.formatError(data.error);
-        const { error: _, ...rest } = data;
-        jsonData = rest;
-      }
-
-      if (Object.keys(jsonData).length > 0) {
-        try {
-          details = JSON.stringify(jsonData);
-        } catch {
-          details = "[Unserializable Object]";
-        }
-      }
-
-      if (error) {
-        details += `\n${error}`;
-      }
-    }
+    const { details, isError } = this.formatDetails(data);
 
     let output = "";
 

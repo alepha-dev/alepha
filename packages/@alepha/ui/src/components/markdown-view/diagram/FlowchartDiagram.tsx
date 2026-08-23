@@ -12,7 +12,9 @@ import { DIAGRAM_FONT_FAMILY } from "./textMetrics.ts";
 
 export interface FlowchartDiagramProps {
   graph: PositionedGraph;
-  /** Read out to assistive technology as the diagram's name. */
+  /**
+   * Read out to assistive technology as the diagram's name.
+   */
   title?: string;
 }
 

@@ -55,15 +55,20 @@ const Panier = () => {
                     <span>{tr("cart.quantity")}</span>
                     <input
                       type="number"
-                      min={0}
+                      min={1}
                       max={99}
                       value={line.quantity}
-                      onChange={(event) =>
-                        void definirQuantite(
-                          line.productId,
-                          Number(event.target.value),
-                        )
-                      }
+                      onChange={(event) => {
+                        // An empty or partial field is not "zero": committing
+                        // `Number("")` removed the line while the buyer was
+                        // retyping it. The remove button is the way to 0.
+                        const quantity = Number.parseInt(
+                          event.target.value,
+                          10,
+                        );
+                        if (!Number.isInteger(quantity) || quantity < 1) return;
+                        void definirQuantite(line.productId, quantity);
+                      }}
                       className="border-input bg-background w-14 border px-2 py-1 text-center"
                       aria-label={tr("cart.quantityFor", { args: [line.name] })}
                     />

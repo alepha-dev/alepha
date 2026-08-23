@@ -1,6 +1,5 @@
 import { $inject, z } from "alepha";
 import { users } from "alepha/api/users";
-import { $logger } from "alepha/logger";
 import { $repository, $sequence, $transactional } from "alepha/orm";
 import { $secure } from "alepha/security";
 import {
@@ -65,12 +64,13 @@ const folioListQuerySchema = z.object({
 });
 
 export class FolioController {
-  log = $logger();
   folios = $repository(folios);
   protected readonly projects = $repository(projects);
   protected readonly directories = $repository(folioDirectories);
   protected readonly blobs = $repository(folioBlobs);
-  /** ...with the author attached, for the project activity feed. */
+  /**
+   * ...with the author attached, for the project activity feed.
+   */
   protected readonly revisionsWith = $repository(relations, "folioRevisions");
   protected readonly users = $repository(users);
   protected readonly linkService = $inject(FolioLinkService);
@@ -435,7 +435,9 @@ export class FolioController {
     const inboundQuestById = new Map(inboundQuestRefs.map((r) => [r.id, r]));
     const inboundEpicById = new Map(inboundEpicRefs.map((r) => [r.id, r]));
 
-    /** One inbound row: the element that CONTAINS a reference to this folio. */
+    /**
+     * One inbound row: the element that CONTAINS a reference to this folio.
+     */
     type InRef = {
       kind: LinkSourceKind;
       shortId: number;
@@ -584,7 +586,9 @@ export class FolioController {
          * plaintext through LIKE matches.
          */
         protected: z.boolean().optional(),
-        /** Pin the folio on creation. Defaults to false. */
+        /**
+         * Pin the folio on creation. Defaults to false.
+         */
         pinned: z.boolean().optional(),
       }),
       response: folios.schema,
@@ -657,7 +661,9 @@ export class FolioController {
          * false, crypto envelope when true).
          */
         protected: z.boolean().optional(),
-        /** Pin/unpin the folio. Omitted leaves the current state. */
+        /**
+         * Pin/unpin the folio. Omitted leaves the current state.
+         */
         pinned: z.boolean().optional(),
       }),
       response: folios.schema,
@@ -982,6 +988,16 @@ export class FolioController {
             }),
       });
 
+      // Same as `update`: folios are referenced by title, so a revert that
+      // restores an older title has to rewrite every `[[Old Title]]` pointing
+      // at this folio, or the next re-sync drops those links for good.
+      if (revision.titleSnapshot !== folio.title) {
+        await this.linkService.rewriteTitleRefs(
+          { id: updated.id, projectId: updated.projectId },
+          folio.title,
+          revision.titleSnapshot,
+        );
+      }
       if (!isProtected) {
         await this.linkService.syncLinks(
           this.folioSource(updated),

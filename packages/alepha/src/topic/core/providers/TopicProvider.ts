@@ -205,10 +205,11 @@ export abstract class TopicProvider {
   }
 
   /**
-   * Returns the list of $subscribers for this provider.
+   * Returns the list of $subscribers for this provider, each with the name
+   * of the topic it subscribes to.
    */
-  protected subscribers(): Array<() => Promise<unknown>> {
-    const handlers: Array<() => Promise<unknown>> = [];
+  protected subscribers(): Array<TopicSubscription> {
+    const handlers: Array<TopicSubscription> = [];
 
     const topics = this.alepha.primitives($topic);
 
@@ -218,8 +219,11 @@ export abstract class TopicProvider {
       }
 
       const handler = topic.options.handler;
-      if (handler && topic.provider === this) {
-        handlers.push(() => topic.subscribe(handler));
+      if (handler) {
+        handlers.push({
+          name: topic.name,
+          subscribe: () => topic.subscribe(handler),
+        });
       }
     }
 
@@ -230,11 +234,22 @@ export abstract class TopicProvider {
       }
 
       const handler = subscriber.handler.run.bind(subscriber.handler);
-      handlers.push(() => subscriber.options.topic.subscribe(handler));
+      handlers.push({
+        name: subscriber.options.topic.name,
+        subscribe: () => subscriber.options.topic.subscribe(handler),
+      });
     }
 
     return handlers;
   }
+}
+
+/**
+ * One declared subscription: the topic it targets and how to open it.
+ */
+export interface TopicSubscription {
+  name: string;
+  subscribe: () => Promise<unknown>;
 }
 
 export type SubscribeCallback = (

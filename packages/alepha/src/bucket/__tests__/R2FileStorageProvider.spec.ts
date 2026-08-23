@@ -110,7 +110,9 @@ class FakeR2Bucket {
     );
   }
 
-  /** A fresh object each time, so one download cannot drain another. */
+  /**
+   * A fresh object each time, so one download cannot drain another.
+   */
   async get(key: string) {
     const stored = this.objects.get(key);
     if (!stored) return null;
@@ -316,7 +318,9 @@ describe("R2FileStorageProvider", () => {
       expect(await provider.exists(TEST_IMAGES_BUCKET, id)).toBe(true);
     });
 
-    /** The container wraps a failing start hook, so assert on the cause. */
+    /**
+     * The container wraps a failing start hook, so assert on the cause.
+     */
     const startFailureCause = async (app: Alepha): Promise<string> => {
       try {
         await app.start();

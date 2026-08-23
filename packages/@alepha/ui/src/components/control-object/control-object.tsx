@@ -58,7 +58,9 @@ export interface ControlObjectProps {
    * Default expanded state. @default true
    */
   defaultExpanded?: boolean;
-  /** Dictionary prefix for this object's children (see `resolveFieldI18n`). */
+  /**
+   * Dictionary prefix for this object's children (see `resolveFieldI18n`).
+   */
   i18nPrefix?: string;
   /**
    * Allow the user to clear the object (sets value to undefined).
@@ -66,7 +68,7 @@ export interface ControlObjectProps {
   clearable?: boolean;
 }
 
-export function ControlObject(props: ControlObjectProps) {
+export const ControlObject = (props: ControlObjectProps) => {
   const form = useFormState(props.input, ["error"]);
   const [value, setValue] = useFieldValue(props.input);
   const [expanded, setExpanded] = useState(props.defaultExpanded ?? true);
@@ -198,4 +200,4 @@ export function ControlObject(props: ControlObjectProps) {
       {expanded && isInitialized && <div className="mt-3">{grid}</div>}
     </fieldset>
   );
-}
+};

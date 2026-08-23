@@ -3,7 +3,7 @@ import * as React from "react";
 void React;
 
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
-import { WorkflowExecutionsPanel } from "@alepha/ui/components/admin/admin-workflows-executions-panel";
+import { AdminWorkflowsExecutionsPanel } from "@alepha/ui/components/admin/admin-workflows-executions-panel";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
@@ -66,7 +66,7 @@ function applyWorkflowFilters(
   );
 }
 
-export function AdminWorkflows() {
+export const AdminWorkflows = () => {
   const client = useClient<AdminWorkflowController>();
   const { tr } = useI18n();
   const [openWorkflow, setOpenWorkflow] = useState<WorkflowRegistration | null>(
@@ -194,7 +194,9 @@ export function AdminWorkflows() {
                 </SheetDescription>
               </SheetHeader>
               <div className="flex min-h-0 flex-1 flex-col p-4">
-                <WorkflowExecutionsPanel workflowName={openWorkflow.name} />
+                <AdminWorkflowsExecutionsPanel
+                  workflowName={openWorkflow.name}
+                />
               </div>
             </>
           )}
@@ -202,6 +204,6 @@ export function AdminWorkflows() {
       </Sheet>
     </AdminPage>
   );
-}
+};
 
 export default AdminWorkflows;

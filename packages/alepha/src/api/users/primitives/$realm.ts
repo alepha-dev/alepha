@@ -187,19 +187,22 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
       refreshToken: {
         expiration: [30, "days"],
       },
+      // Every hook names its realm. Without it the default realm's tables
+      // were used, and a refresh token minted by another realm was accepted
+      // by this issuer, which then signed an access token for a foreign user.
       onCreateSession: async (user, config) => {
         return sessionService.createSession(
           user,
           config.expiresIn,
-          undefined,
+          name,
           config.clientId,
         );
       },
       onRefreshSession: async (refreshToken) => {
-        return sessionService.refreshSession(refreshToken);
+        return sessionService.refreshSession(refreshToken, name);
       },
       onDeleteSession: async (refreshToken) => {
-        await sessionService.deleteSession(refreshToken);
+        await sessionService.deleteSession(refreshToken, name);
       },
       ...options.issuer?.settings,
     },

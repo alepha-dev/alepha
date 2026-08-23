@@ -252,9 +252,12 @@ export class DateTimeProvider {
       }
 
       for (const interval of this.intervals) {
+        // Keep `duration`: it is the period, and a restart re-arms from it.
+        // Zeroing it here turned the next `setInterval` into a ~1ms hot loop
+        // after a failed start was retried.
         clearInterval(interval.timer);
-        interval.duration = 0;
         interval.timer = null;
+        interval.suspended = false;
       }
     },
   });
@@ -397,13 +400,12 @@ export class DateTimeProvider {
     } = {},
   ): Promise<void> {
     return new Promise((resolve) => {
-      let clearTimeout: any;
-      let callback: any;
+      let onAbort: (() => void) | undefined;
 
       const timeout = this.createTimeout(
         () => {
-          if (options.signal && clearTimeout) {
-            options.signal.removeEventListener("abort", callback);
+          if (options.signal && onAbort) {
+            options.signal.removeEventListener("abort", onAbort);
           }
           resolve();
         },
@@ -411,13 +413,16 @@ export class DateTimeProvider {
         options.now,
       );
 
-      if (options.signal) {
-        clearTimeout = () => this.clearTimeout(timeout);
-        callback = () => {
-          clearTimeout();
+      // An already-elapsed deadline (an anchored `now` in the past) fires the
+      // callback synchronously inside createTimeout, before `onAbort` exists.
+      // Registering a listener afterwards would never be removed, and a
+      // cron-style caller anchoring every tick leaked one per call.
+      if (options.signal && timeout.duration > 0) {
+        onAbort = () => {
+          this.clearTimeout(timeout);
           resolve();
         };
-        options.signal.addEventListener("abort", callback);
+        options.signal.addEventListener("abort", onAbort);
       }
     });
   }
@@ -651,7 +656,10 @@ export class DateTimeProvider {
     }
 
     for (const interval of this.intervals) {
-      if (!interval.timer) {
+      // A live timer, or one this method already suspended on a previous
+      // call: both keep firing through travel(). Only a stopped interval is
+      // skipped.
+      if (!interval.timer && !interval.suspended) {
         continue;
       }
 
@@ -662,8 +670,10 @@ export class DateTimeProvider {
         await interval.run();
       }
 
-      // Keep intervals suspended — they only fire during travel() calls
+      // Keep the interval suspended: from now on it fires through travel()
+      // only, which is what keeps a test deterministic.
       interval.timer = null;
+      interval.suspended = true;
     }
 
     await this.tick();
@@ -696,6 +706,11 @@ export interface Interval {
   timer?: any;
   duration: number;
   run: () => unknown;
+  /**
+   * Set once travel() has taken over the interval: there is no live timer,
+   * but the interval still fires on every later travel() call.
+   */
+  suspended?: boolean;
 }
 
 export interface Timeout {

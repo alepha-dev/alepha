@@ -14,8 +14,8 @@ import { useProjectFeatureToggle } from "./useProjectFeatureToggle.ts";
 type QuestFeatureKey = "questEstimate" | "questReminder" | "questChrono";
 
 /**
- * Compile-time guard — if a key gets renamed in the entity the
- * `satisfies` check forces this file to update.
+ * Compile-time guard: if a key gets renamed in the entity this conditional
+ * type resolves to `never` and the file fails to compile.
  */
 type _Check = QuestFeatureKey extends keyof ProjectFeatures ? true : never;
 const _questFeatureKeyCheck: _Check = true;

@@ -251,8 +251,8 @@ ENV
 bay env list myapp/production    # which variables are set, by NAME only
 ```
 
-Keys Bay writes itself (`APP_SECRET`, `DATABASE_URL`, `SERVER_PORT`, `APP_NAME`, `DATA_DIR`,
-`STORAGE_PATH`, `S3_*`) are **refused**, naming the key. `APP_SECRET` is the reason: it is generated
+Keys Bay writes itself (`NODE_ENV`, `APP_SECRET`, `DATABASE_URL`, `SERVER_PORT`, `SERVER_HOST`,
+`APP_NAME`, `DATA_DIR`, `STORAGE_PATH`, `S3_*`) are **refused**, naming the key. `APP_SECRET` is the reason: it is generated
 once per instance and never regenerated, because a new value signs every user out and the one it
 replaced is gone.
 

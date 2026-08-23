@@ -36,7 +36,9 @@ describe("migration foreign key handling", () => {
 
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-  /** parent with 1 row, child with 5 rows cascading off it. */
+  /**
+   * parent with 1 row, child with 5 rows cascading off it.
+   */
   const seed = () => {
     const db = new DatabaseSync(file);
     db.exec("PRAGMA foreign_keys=ON");
@@ -51,7 +53,9 @@ describe("migration foreign key handling", () => {
     return db;
   };
 
-  /** The shape drizzle-kit emits for a SQLite table rebuild. */
+  /**
+   * The shape drizzle-kit emits for a SQLite table rebuild.
+   */
   const rebuildParent = (db: DatabaseSync) => {
     db.exec("BEGIN");
     db.exec("CREATE TABLE __new_parent (id INTEGER PRIMARY KEY, name TEXT)");

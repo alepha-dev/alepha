@@ -136,11 +136,15 @@ export interface SchemaControl {
   // ── Array specifics ───────────────────────────────────────────────
   arrayProps?: {
     confirmDelete?: boolean | { title?: string; message?: string };
-    /** Computed label for each tab when an array uses tabs mode. */
+    /**
+     * Computed label for each tab when an array uses tabs mode.
+     */
     renderTabName?: (i: number, value: unknown) => string;
     sortable?: boolean;
     collapsible?: boolean;
-    /** Force grouped (CreateForm-style) tabs even for short arrays. */
+    /**
+     * Force grouped (CreateForm-style) tabs even for short arrays.
+     */
     forceTabs?: boolean;
   };
 

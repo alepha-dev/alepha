@@ -23,7 +23,7 @@ import { dirname, join } from "node:path";
  *
  * | band          | who owns it                                            |
  * |---------------|--------------------------------------------------------|
- * | 3001-3004     | `apps/benchmark`                                        |
+ * | 3001-3006     | `apps/benchmark`                                        |
  * | 3300-3399     | dev servers (`dev.port` in each `alepha.config.ts`)      |
  * | 5173+         | dev servers with no `dev.port` (Vite default, multi-app) |
  * | 11883/15432/16379/19090 | `compose.yml` test services                   |
@@ -128,20 +128,27 @@ export const candidatePorts = (root: string, app: E2eApp): number[] => {
  *
  * A child process because Playwright evaluates a config synchronously and node
  * has no synchronous bind — one spawn scans the whole list rather than one per
- * candidate. Binding with no host is deliberate: it fails whether the squatter
- * holds `0.0.0.0` (`node dist`) or `127.0.0.1` (`wrangler dev`), where probing
- * a single interface would miss one of them.
+ * candidate. Three binds per candidate: the wildcard catches a `node dist`
+ * squatter on Linux, but on macOS a wildcard bind SUCCEEDS while something
+ * holds `127.0.0.1` (`wrangler dev`), so the loopback addresses are probed
+ * too. An address family the host does not have counts as free.
  */
 const firstFreePort = (candidates: number[]): number | undefined => {
   const scan = `
 const net = require("node:net");
-const free = (port) =>
+const bindable = (port, host) =>
   new Promise((resolve) => {
     const server = net.createServer();
-    server.once("error", () => resolve(false));
+    server.once("error", (error) =>
+      resolve(error.code === "EADDRNOTAVAIL" || error.code === "EAFNOSUPPORT"),
+    );
     server.once("listening", () => server.close(() => resolve(true)));
-    server.listen(port);
+    host ? server.listen(port, host) : server.listen(port);
   });
+const free = async (port) =>
+  (await bindable(port)) &&
+  (await bindable(port, "127.0.0.1")) &&
+  (await bindable(port, "::1"));
 (async () => {
   for (const port of process.argv.slice(1)) {
     if (await free(Number(port))) {

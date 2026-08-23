@@ -41,13 +41,19 @@ import { SIGIL_FEEDBACK_POSITIONS } from "../sigilFeedbackPosition.ts";
  * is wanted, it arrives as its own numeric field.
  */
 export const sigilConfig = z.object({
-  /** Page views. */
+  /**
+   * Page views.
+   */
   analytics: z.boolean().default(true),
 
-  /** Client and server errors. */
+  /**
+   * Client and server errors.
+   */
   blights: z.boolean().default(true),
 
-  /** Web-vitals samples. */
+  /**
+   * Web-vitals samples.
+   */
   vitals: z.boolean().default(true),
 
   /**
@@ -63,7 +69,9 @@ export const sigilConfig = z.object({
    */
   feedback: z.boolean().default(true),
 
-  /** Where the built-in feedback button sits, or `hidden` to render none. */
+  /**
+   * Where the built-in feedback button sits, or `hidden` to render none.
+   */
   feedbackButton: z
     .enum(["hidden", ...SIGIL_FEEDBACK_POSITIONS])
     .default("bottom-right"),

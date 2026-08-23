@@ -532,7 +532,7 @@ Then point the client at the built binary:
   "mcpServers": {
     "my-app": {
       "command": "node",
-      "args": ["/path/to/my-app/dist/main.js"],
+      "args": ["/path/to/my-app/dist/index.js"],
       "env": { "DATABASE_URL": "..." }
     }
   }

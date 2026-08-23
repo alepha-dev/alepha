@@ -87,7 +87,9 @@ export const relations = $relations(schema, (r) => ({
      * The self relation. Nothing special is required to declare it.
      */
     blockedBy: r.one.quests({ from: r.quests.dependsOn, to: r.quests.id }),
-    /** The other side of the many-to-many. */
+    /**
+     * The other side of the many-to-many.
+     */
     watchers: r.many.users({
       from: r.quests.id.through(r.questWatchers.questId),
       to: r.users.id.through(r.questWatchers.userId),

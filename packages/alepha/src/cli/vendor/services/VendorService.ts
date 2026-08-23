@@ -301,11 +301,14 @@ export class VendorService {
           file.includes(`/${ignored}/`) ||
           file.endsWith(`/${ignored}`)
         ) {
-          // Extract the path to the ignored directory itself
-          const idx = file.indexOf(ignored);
+          // Extract the path to the ignored directory itself. By segment,
+          // not by substring: `redist/dist/x.js` must resolve to `redist/dist`,
+          // not to the `redist` that merely contains the word.
+          const segments = file.split("/");
+          const depth = segments.indexOf(ignored);
           const dirPath = this.fs.join(
             pkgDir,
-            file.substring(0, idx + ignored.length),
+            segments.slice(0, depth + 1).join("/"),
           );
           await this.fs.rm(dirPath, { recursive: true, force: true });
         }

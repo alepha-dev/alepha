@@ -78,8 +78,8 @@ export const projectContextParamsSchema = projectParamsSchema;
  *
  * - `id` (uuid) is intentionally omitted to save tokens — agents reference
  *   folios by `shortId` + project for any follow-up call.
- * - `summary` is reserved for Phase 3 of the "Folios as Claude's memory"
- *   feature; until that lands the field stays optional and unset.
+ * - `summary` is the agent-facing one-liner an author gave the folio;
+ *   web-created folios may leave it empty.
  */
 const folioIndexEntrySchema = z.object({
   shortId: z.integer(),
@@ -135,7 +135,9 @@ export const projectContextResultSchema = z.object({
    * relevant from this index.
    */
   folios: z.object({
-    /** Number of entries returned (≤ 30). */
+    /**
+     * Number of entries returned (≤ 30).
+     */
     shown: z.integer(),
     /**
      * `true` if the index was capped at the limit — the agent should call

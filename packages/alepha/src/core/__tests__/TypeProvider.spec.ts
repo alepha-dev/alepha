@@ -1577,8 +1577,8 @@ describe("TypeProvider", () => {
     it("should correctly identify uuid schemas", () => {
       const { schema } = z;
 
-      expect(schema.isUUID(z.uuid())).toBe(true);
-      expect(schema.isUUID(z.text())).toBe(false);
+      expect(schema.isUuid(z.uuid())).toBe(true);
+      expect(schema.isUuid(z.text())).toBe(false);
     });
 
     it("should correctly identify bigint schemas", () => {

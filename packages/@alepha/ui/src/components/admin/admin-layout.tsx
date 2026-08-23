@@ -3,7 +3,6 @@ import { NavShell } from "@alepha/ui/components/nav-shell/nav-shell";
 import { Spotlight } from "@alepha/ui/components/nav-shell/spotlight";
 import { cn } from "@alepha/ui/lib/utils";
 import { useStore } from "alepha/react";
-import { useRouter } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
 import { LayoutDashboard, Search } from "lucide-react";
 import { useState } from "react";
@@ -41,7 +40,6 @@ import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
  *   admin.
  */
 export const AdminLayout = () => {
-  useRouter<any>();
   const [options] = useStore(adminRouterOptionsAtom);
   const [spotlightOpen, setSpotlightOpen] = useState(false);
 

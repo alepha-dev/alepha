@@ -115,18 +115,18 @@ const renderPage = (opts: {
 <body>
   <div class="card">
     <div class="head">
-      <span class="badge">Mode test — paiement simulé</span>
-      <p class="label">Montant à payer</p>
+      <span class="badge">Test mode: simulated payment</span>
+      <p class="label">Amount to pay</p>
       <p class="amount">${escapeHtml(opts.amount)}</p>
     </div>
     <div class="body">
       <div class="field">
-        <label for="cc-num">Numéro de carte</label>
+        <label for="cc-num">Card number</label>
         <input id="cc-num" value="4242 4242 4242 4242" readonly />
       </div>
       <div class="grid">
         <div class="field">
-          <label for="cc-exp">Expiration</label>
+          <label for="cc-exp">Expiry</label>
           <input id="cc-exp" value="12 / 34" readonly />
         </div>
         <div class="field">
@@ -136,13 +136,13 @@ const renderPage = (opts: {
       </div>
       <form method="post" action="/payments/mock-checkout/${opts.intentId}/confirm">
         <input type="hidden" name="returnUrl" value="${escapeHtml(opts.returnUrl)}" />
-        <button type="submit" class="pay">Payer ${escapeHtml(opts.amount)}</button>
+        <button type="submit" class="pay">Pay ${escapeHtml(opts.amount)}</button>
       </form>
       <form method="post" action="/payments/mock-checkout/${opts.intentId}/cancel">
         <input type="hidden" name="returnUrl" value="${escapeHtml(opts.returnUrl)}" />
-        <button type="submit" class="cancel">Annuler et revenir au site</button>
+        <button type="submit" class="cancel">Cancel and return to the site</button>
       </form>
-      <p class="secure">&#128274; Aucune carte n'est débitée — environnement de développement</p>
+      <p class="secure">&#128274; No card is charged: development environment</p>
       <p class="meta">intent: ${opts.intentId}</p>
     </div>
   </div>

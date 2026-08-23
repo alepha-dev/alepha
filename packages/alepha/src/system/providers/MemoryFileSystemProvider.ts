@@ -513,9 +513,13 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
 
     let result = Array.from(entries);
 
-    // Filter hidden files unless requested
+    // Filter hidden files unless requested. Every segment counts: a
+    // recursive listing returns `sub/.git/config`, which the node provider
+    // hides and this one used to list.
     if (!options?.hidden) {
-      result = result.filter((entry) => !entry.startsWith("."));
+      result = result.filter(
+        (entry) => !entry.split("/").some((segment) => segment.startsWith(".")),
+      );
     }
 
     return result.sort();

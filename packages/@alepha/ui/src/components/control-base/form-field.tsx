@@ -15,16 +15,16 @@ export type FormFieldLayout = "stack" | "row";
  */
 const FormFieldLayoutContext = createContext<FormFieldLayout>("stack");
 
-export function FormFieldLayoutProvider(props: {
+export const FormFieldLayoutProvider = (props: {
   value: FormFieldLayout;
   children: ReactNode;
-}) {
+}) => {
   return (
     <FormFieldLayoutContext.Provider value={props.value}>
       {props.children}
     </FormFieldLayoutContext.Provider>
   );
-}
+};
 
 /**
  * Read the ambient layout (see {@link FormFieldLayoutProvider}).
@@ -44,16 +44,16 @@ export function useFormFieldLayout(): FormFieldLayout {
  */
 const FormFieldAutoSaveContext = createContext<boolean>(false);
 
-export function FormFieldAutoSaveProvider(props: {
+export const FormFieldAutoSaveProvider = (props: {
   value: boolean;
   children: ReactNode;
-}) {
+}) => {
   return (
     <FormFieldAutoSaveContext.Provider value={props.value}>
       {props.children}
     </FormFieldAutoSaveContext.Provider>
   );
-}
+};
 
 /**
  * Read the ambient auto-save flag (see {@link FormFieldAutoSaveProvider}).
@@ -76,16 +76,16 @@ export function useFormFieldAutoSave(): boolean {
  */
 const FormFieldRequiredMarkerContext = createContext<boolean>(true);
 
-export function FormFieldRequiredMarkerProvider(props: {
+export const FormFieldRequiredMarkerProvider = (props: {
   value: boolean;
   children: ReactNode;
-}) {
+}) => {
   return (
     <FormFieldRequiredMarkerContext.Provider value={props.value}>
       {props.children}
     </FormFieldRequiredMarkerContext.Provider>
   );
-}
+};
 
 /**
  * Read the ambient required-marker flag (see
@@ -221,7 +221,7 @@ export interface FormFieldProps {
  * `<textarea>`, or trigger button via the `data-invalid` attribute (so we
  * don't have to thread `error` through every leaf widget).
  */
-export function FormField(props: FormFieldProps) {
+export const FormField = (props: FormFieldProps) => {
   const ambient = useContext(FormFieldLayoutContext);
   const layout = props.layout ?? ambient;
   // Hook first, `&&` after: `props.required && useFormFieldRequiredMarker()`
@@ -329,4 +329,4 @@ export function FormField(props: FormFieldProps) {
       )}
     </div>
   );
-}
+};

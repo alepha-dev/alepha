@@ -31,7 +31,7 @@ export class VerificationController {
         target: z.text(),
         token: z.text({
           description:
-            "The verification token (6-digit code for phone, UUID for email).",
+            "The verification token: a numeric code, or a UUID for link-based verification.",
         }),
       }),
       response: validateVerificationCodeResponseSchema,

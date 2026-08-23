@@ -102,6 +102,9 @@ export class NodeRedisProvider extends RedisProvider {
    * Close the connection to the Redis server.
    */
   public override async close(): Promise<void> {
+    // A client that never connected (a start that failed before ready, a
+    // second stop) has nothing to close, and node-redis throws on it.
+    if (!this.client.isOpen) return;
     this.log.debug("Closing connection...");
     await this.client.close();
     this.log.info("Connection closed");

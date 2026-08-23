@@ -14,12 +14,18 @@ export interface CreateProduct {
   price: number;
   currency?: string;
   categoryId?: string;
-  /** VAT rate in basis points; omit to bill at the seller's default rate. */
+  /**
+   * VAT rate in basis points; omit to bill at the seller's default rate.
+   */
   vatRateBps?: number;
-  /** File ids or URLs; the first is the listing image. */
+  /**
+   * File ids or URLs; the first is the listing image.
+   */
   images?: string[];
   config?: Record<string, any>;
-  /** Descriptive display attributes; not validated by the kind. */
+  /**
+   * Descriptive display attributes; not validated by the kind.
+   */
   attributes?: Record<string, any>;
   published?: boolean;
 }

@@ -63,7 +63,9 @@ export class RedisCacheProvider extends CacheProvider {
     value: Uint8Array | string,
     ttl?: number,
   ): Promise<Uint8Array> {
-    if (!this.alepha.isReady()) {
+    // Started, not ready: a write issued from a start hook must land, the
+    // client is open by then. Gating on ready() silently dropped it.
+    if (!this.alepha.isStarted()) {
       return new Uint8Array(Buffer.from(value));
     }
 

@@ -35,10 +35,7 @@ export class MultipartChunker {
     let pendingSize = 0;
     let yielded = false;
 
-    for await (const raw of file.stream() as AsyncIterable<
-      Uint8Array | Buffer
-    >) {
-      const chunk = raw instanceof Uint8Array ? raw : new Uint8Array(raw);
+    for await (const chunk of file.stream() as AsyncIterable<Uint8Array>) {
       pending.push(chunk);
       pendingSize += chunk.length;
 

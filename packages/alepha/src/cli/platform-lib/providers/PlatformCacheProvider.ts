@@ -1,3 +1,5 @@
+import { dirname } from "node:path";
+
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { FileSystemProvider } from "alepha/system";
@@ -70,9 +72,7 @@ export class PlatformCacheProvider {
     cache: PlatformCache,
   ): Promise<void> {
     const path = this.cachePath(root);
-    const lastSlash = path.lastIndexOf("/");
-    const dir = lastSlash > 0 ? path.slice(0, lastSlash) : path;
-    await this.fs.mkdir(dir, { recursive: true }).catch(() => null);
+    await this.fs.mkdir(dirname(path), { recursive: true }).catch(() => null);
     await this.fs.writeFile(path, JSON.stringify(cache, null, 2));
   }
 }

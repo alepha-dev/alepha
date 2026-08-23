@@ -10,7 +10,9 @@ import QuestView from "../QuestView.tsx";
 import type { QuestlineNode } from "./questlineLayout.ts";
 
 export interface QuestlineDialogProps {
-  /** The quest on show, or `null` when the dialog is closed. */
+  /**
+   * The quest on show, or `null` when the dialog is closed.
+   */
   node: QuestlineNode | null;
   onClose: () => void;
   onQuestChange: (quest: QuestResource) => void;

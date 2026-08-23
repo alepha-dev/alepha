@@ -75,7 +75,7 @@ declare module "alepha" {
  * ```ts
  * alepha.with({
  *   provide: CheckoutPaymentProvider,
- *   use: StripeElementsCheckoutPayment,
+ *   use: EmbeddedCheckoutPayment,
  * });
  * ```
  *

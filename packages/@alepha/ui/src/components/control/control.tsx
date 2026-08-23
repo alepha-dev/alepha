@@ -248,7 +248,7 @@ export interface ControlProps {
  * `useForm`, evaluates `schema.$control` (object or function), merges the
  * result with explicit props, and dispatches to the right sub-control.
  */
-export function Control(props: ControlProps) {
+export const Control = (props: ControlProps) => {
   const form = useFormState(props.input, ["error", "dirty"]);
   const autoSaveEnabled = useFormFieldAutoSave();
   const rowLayout = useFormFieldLayout() === "row";
@@ -654,7 +654,7 @@ export function Control(props: ControlProps) {
       </div>
     </FormField>,
   );
-}
+};
 
 const useDynamicControlRefresh = (input: BaseInputField | undefined) => {
   const alepha = useAlepha();

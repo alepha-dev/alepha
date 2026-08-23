@@ -1,9 +1,13 @@
 import type { InvoiceEntity } from "../entities/invoices.ts";
 
-/** A rendered invoice, ready to serve or attach. */
+/**
+ * A rendered invoice, ready to serve or attach.
+ */
 export interface RenderedInvoice {
   contentType: string;
-  /** Suggested filename, extension included. */
+  /**
+   * Suggested filename, extension included.
+   */
   filename: string;
   body: string | Uint8Array;
 }

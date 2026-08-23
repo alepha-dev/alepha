@@ -31,7 +31,9 @@ class FakeClock implements RoomClock {
   }
 }
 
-/** Minimal hibernation socket + DO state fakes. */
+/**
+ * Minimal hibernation socket + DO state fakes.
+ */
 class FakeWs {
   public sent: string[] = [];
   public closed = false;

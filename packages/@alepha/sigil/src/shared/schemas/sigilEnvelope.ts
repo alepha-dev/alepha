@@ -1,17 +1,6 @@
 import { type Infer, z } from "alepha";
 
 /**
- * Mutualized sigil envelope the browser POSTs to the same-origin proxy,
- * and that the server forwards to the sink.
- *
- * The proxy stamps `country` + `visitor` server-side — the browser never sets
- * them, and the raw IP never leaves the app.
- *
- * Every array is capped. A payload over the cap is refused with 413 rather than
- * truncated: silently dropping the tail of a batch makes a sink look healthy
- * while it loses data.
- */
-/**
  * When the event happened, epoch milliseconds, as claimed by the client.
  *
  * The sink used to bucket everything at absorb time, which is when the batch
@@ -34,6 +23,17 @@ import { type Infer, z } from "alepha";
  */
 export const sigilEventTime = z.integer().min(0).optional();
 
+/**
+ * Mutualized sigil envelope the browser POSTs to the same-origin proxy,
+ * and that the server forwards to the sink.
+ *
+ * The proxy stamps `country`, `visitor` and `device` server-side: the
+ * browser never sets them, and the raw IP never leaves the app.
+ *
+ * Every array is capped. A payload over the cap is refused with 413 rather than
+ * truncated: silently dropping the tail of a batch makes a sink look healthy
+ * while it loses data.
+ */
 export const sigilEnvelope = z.object({
   views: z
     .array(

@@ -343,16 +343,20 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
         // -----------------------------------------------------------------------------------------------------------------
         // token based
 
+        // The session id travels inside the refresh token: `refresh()` reads
+        // it back so the next access token keeps the same `sid` instead of
+        // minting a fresh one per refresh.
+        sid = crypto.randomUUID();
         const payload = {
           sub: user.id,
           exp: iat + this.refreshTokenExpiration.asSeconds(),
           iat,
           aud: this.name,
+          sid,
         };
 
         this.log.trace("Creating refresh token", payload);
 
-        sid = crypto.randomUUID();
         refresh_token_expires_in = this.refreshTokenExpiration.asSeconds();
         refresh_token = await this.jwt.create(payload, this.name, {
           header: {

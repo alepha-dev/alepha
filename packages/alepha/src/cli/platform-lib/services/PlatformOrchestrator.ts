@@ -30,12 +30,14 @@ import {
  */
 export class PlatformOrchestrator {
   protected readonly log = $logger();
+  // Not read here: the adapter factories a test subclass overrides resolve
+  // their substitutes through it.
+  protected readonly alepha = $inject(Alepha);
   protected readonly color = $inject(ConsoleColorProvider);
   protected readonly inspector = $inject(PlatformInspector);
   protected readonly naming = $inject(NamingService);
   protected readonly bayAdapter = $inject(BayAdapter);
   protected readonly cloudflareAdapter = $inject(CloudflareAdapter);
-  protected readonly alepha = $inject(Alepha);
 
   // -------------------------------------------------------------------------
   // Adapter resolution
@@ -113,7 +115,9 @@ export class PlatformOrchestrator {
      * per-tenant overrides on every deploy.
      */
     prebuilt?: boolean;
-    /** Tenant slug (apps with tenancy optional|required). */
+    /**
+     * Tenant slug (apps with tenancy optional|required).
+     */
     tenant?: string;
   }): Promise<{ urls: string[]; domain?: string }> {
     const { root, env, entry, resources, run, prebuilt } = options;
@@ -205,7 +209,9 @@ export class PlatformOrchestrator {
     resources: DetectedResources;
     run: RunnerMethod;
     confirm: (prompt: string) => Promise<string>;
-    /** Tenant slug (apps with tenancy optional|required). */
+    /**
+     * Tenant slug (apps with tenancy optional|required).
+     */
     tenant?: string;
   }): Promise<boolean> {
     const { root, env, entry, resources, run, confirm } = options;
@@ -254,7 +260,9 @@ export class PlatformOrchestrator {
     root: string;
     env: string;
     resources: DetectedResources;
-    /** Tenant slug (apps with tenancy optional|required). */
+    /**
+     * Tenant slug (apps with tenancy optional|required).
+     */
     tenant?: string;
   }): Promise<{
     config: ResolvedPlatformConfig;
@@ -278,7 +286,9 @@ export class PlatformOrchestrator {
     entry: AppEntry;
     resources: DetectedResources;
     run: RunnerMethod;
-    /** Tenant slug (apps with tenancy optional|required). */
+    /**
+     * Tenant slug (apps with tenancy optional|required).
+     */
     tenant?: string;
   }): Promise<{ config: ResolvedPlatformConfig; state: PlatformState }> {
     const { root, env, entry, resources, run } = options;

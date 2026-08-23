@@ -46,7 +46,9 @@ const COMPRESSED_EXTENSIONS = new Set([
  * without a network.
  */
 export const folioZipEntries = (input: {
-  /** Base filename, no extension — from `folioExportFilename`. */
+  /**
+   * Base filename, no extension — from `folioExportFilename`.
+   */
   filename: string;
   markdown: string;
   attachments: FolioZipAttachment[];

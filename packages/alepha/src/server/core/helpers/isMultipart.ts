@@ -8,12 +8,8 @@ import type { RequestConfigSchema } from "../interfaces/ServerRequest.ts";
 export const isMultipart = (options: {
   schema?: RequestConfigSchema;
   contentType?: string;
-  requestBodyType?: string;
 }): boolean => {
-  if (
-    options.contentType === "multipart/form-data" ||
-    options.requestBodyType === "multipart/form-data"
-  ) {
+  if (options.contentType === "multipart/form-data") {
     return true;
   }
 

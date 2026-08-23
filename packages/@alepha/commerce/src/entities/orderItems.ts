@@ -27,7 +27,9 @@ export const orderItems = $entity({
      */
     productId: z.uuid(),
 
-    /** Snapshots — see the class note above. */
+    /**
+     * Snapshots — see the class note above.
+     */
     kind: z.text({ maxLength: 64 }),
     name: z.text({ maxLength: 200 }),
     unitPrice: z.integer().min(0),
@@ -44,7 +46,9 @@ export const orderItems = $entity({
 
     quantity: z.integer().min(1),
 
-    /** The product's `config` at order time — what `fulfil` consumes. */
+    /**
+     * The product's `config` at order time — what `fulfil` consumes.
+     */
     config: z.json().optional(),
   }),
   indexes: [{ columns: ["orderId"] }, { columns: ["productId"] }],

@@ -18,7 +18,7 @@ export const agentMd = (
 ## Devtools API (dev server only)
 
 \`alepha dev\` mounts a JSON API over the running app under
-\`http://localhost:3000/__devtools/api/\` (port follows \`SERVER_PORT\`). Prefer it
+\`http://localhost:5173/__devtools/api/\` (port follows \`SERVER_PORT\`). Prefer it
 over reading source when the question is about *runtime* state — it answers
 from the live container, so it cannot drift from the code.
 
@@ -34,9 +34,9 @@ from the live container, so it cannot drift from the code.
 | \`POST /jobs/:name/trigger\` | run a job now; \`POST /jobs/executions/:id/retry\` re-runs one |
 
 \`\`\`bash
-curl -s http://localhost:3000/__devtools/api/metadata
-curl -s "http://localhost:3000/__devtools/api/logs?level=error&limit=50"
-curl -s "http://localhost:3000/__devtools/api/db/user/records?size=10"
+curl -s http://localhost:5173/__devtools/api/metadata
+curl -s "http://localhost:5173/__devtools/api/logs?level=error&limit=50"
+curl -s "http://localhost:5173/__devtools/api/db/user/records?size=10"
 \`\`\`
 
 There is a UI at \`/__devtools/\` for humans. All of it is a Vite dev-server

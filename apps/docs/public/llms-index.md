@@ -181,7 +181,7 @@ import { run } from "alepha";
 import { ApiModule } from "./api/index.ts";
 import { WebModule } from "./web/index.ts"; // React only
 
-run(ApiModule, WebModule);
+run([ApiModule, WebModule]);
 
 // src/api/index.ts
 import { $module } from "alepha";

@@ -33,14 +33,18 @@ export interface LoreEditorProps {
    */
   mode?: MarkdownEditorMode;
   onModeChange?: (mode: MarkdownEditorMode) => void;
-  /** Hide the built-in toggle in uncontrolled mode (rare — a bare field). */
+  /**
+   * Hide the built-in toggle in uncontrolled mode (rare — a bare field).
+   */
   hideModeToggle?: boolean;
   /**
    * `false` suppresses image upload. A protected folio passes it: its bytes
    * must never be written in plaintext beside encrypted content.
    */
   imageUpload?: boolean;
-  /** Renders without the input frame — the folio body's full-bleed look. */
+  /**
+   * Renders without the input frame — the folio body's full-bleed look.
+   */
   bare?: boolean;
   onViewReady?: (view: EditorView | null) => void;
 }

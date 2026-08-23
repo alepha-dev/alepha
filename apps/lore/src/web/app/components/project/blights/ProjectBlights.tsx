@@ -425,7 +425,9 @@ const ProjectBlights = () => {
 
 export default ProjectBlights;
 
-/** Format an ISO timestamp for the `title` tooltip, falling back to raw. */
+/**
+ * Format an ISO timestamp for the `title` tooltip, falling back to raw.
+ */
 const formatDate = (iso: string) => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
@@ -455,7 +457,9 @@ const sortBlights = (
   return rows;
 };
 
-/** Empty `Page` returned before the project atom is hydrated. */
+/**
+ * Empty `Page` returned before the project atom is hydrated.
+ */
 const emptyPage = (page: number, size: number): Page<BlightResource> => ({
   content: [],
   page: {

@@ -90,12 +90,14 @@ const QuestCreate = (props: QuestCreateProps) => {
           // `dependsOn` rides alongside the form data; null clears the link.
           body: { ...data, dependsOn: dependsOnRef.current },
         });
-        alepha.store.set(currentAssignedQuestsAtom, [
-          resp,
-          ...(alepha.store.get(currentAssignedQuestsAtom) ?? []).filter(
-            (quest) => quest.id !== resp.id,
+        // Replace in place only: the atom holds the viewer's accepted quests,
+        // and prepending used to put any edited quest in the Quest Log.
+        alepha.store.set(
+          currentAssignedQuestsAtom,
+          (alepha.store.get(currentAssignedQuestsAtom) ?? []).map((quest) =>
+            quest.id === resp.id ? resp : quest,
           ),
-        ]);
+        );
         props.onSubmit(resp);
         return;
       }

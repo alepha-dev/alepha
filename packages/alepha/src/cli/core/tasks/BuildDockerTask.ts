@@ -334,7 +334,8 @@ CMD ["${command}", "index.js"]
     } else if (flagValue.includes(":")) {
       // A full `name:tag` is taken verbatim.
       imageTag = flagValue;
-      version = flagValue.split(":")[1];
+      // The last colon: `registry:5000/app:1.2` carries one in the host.
+      version = flagValue.slice(flagValue.lastIndexOf(":") + 1);
     } else {
       // A bare value is a VERSION, as the flag documents ("-i=<version> for
       // specific version"). It used to become the image *name*, so

@@ -13,9 +13,13 @@ export const uiThemeListAtom = $atom({
   name: "alepha.react.ui.themes",
   schema: z.array(
     z.object({
-      /** Stable id stored in `uiAtom.theme`. Mapped to a CSS class on `<html>`. */
+      /**
+       * Stable id stored in `uiAtom.theme`. Mapped to a CSS class on `<html>`.
+       */
       id: z.string(),
-      /** Human-readable label shown in the picker. */
+      /**
+       * Human-readable label shown in the picker.
+       */
       label: z.string(),
       /**
        * Optional 4-color preview swatch in 2×2 order (TL, TR, BL, BR). Any

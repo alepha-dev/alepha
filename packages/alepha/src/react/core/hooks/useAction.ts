@@ -132,7 +132,9 @@ export function useAction<Args extends any[], Result = void>(
   const [result, setResult] = useState<Result | undefined>();
   const isExecutingRef = useRef(false);
   const debounceTimerRef = useRef<Timeout | undefined>(undefined);
-  /** Resolves the promise handed to a debounced caller that got superseded. */
+  /**
+   * Resolves the promise handed to a debounced caller that got superseded.
+   */
   const pendingDebounce = useRef<(() => void) | undefined>(undefined);
   const abortControllerRef = useRef<AbortController | undefined>(undefined);
   const isMountedRef = useRef(true);

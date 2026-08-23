@@ -148,8 +148,6 @@ export class SessionService {
    */
   protected async generateUniqueUsername(
     profile: OAuth2Profile,
-    _realmSettings: any,
-    _users: any,
     realmName?: string,
   ): Promise<string> {
     const seed =
@@ -255,7 +253,11 @@ export class SessionService {
     const { name } = realm;
     const { loginRateLimit } = settings;
     const isEmail = username.includes("@");
-    const isPhone = /^[+\d][\d\s()-]+$/.test(username);
+    // Phone numbers are E.164 (`users.phoneNumber` is `z.e164()`), so they
+    // start with "+". Matching any digit string here classified an all-digit
+    // username as a phone number, and that user could never log in.
+    const isPhone =
+      settings.phoneNumber !== "none" && /^\+[\d\s()-]+$/.test(username);
     const isUsername = !isEmail && !isPhone;
     const identities = this.identities(userRealmName);
     const users = this.users(userRealmName);
@@ -564,13 +566,16 @@ export class SessionService {
   public async refreshSession(refreshToken: string, userRealmName?: string) {
     this.log.trace("Refreshing session");
 
-    // getOne() throws DbEntityNotFoundError if not found — never returns null.
-    // No null check needed here.
-    const session = await this.sessions(userRealmName).getOne({
+    // An unknown token is an authentication failure, not a missing entity:
+    // getOne() used to answer 404 with the table name in the message.
+    const session = await this.sessions(userRealmName).findOne({
       where: {
         refreshToken: { eq: refreshToken },
       },
     });
+    if (!session) {
+      throw new UnauthorizedError("Invalid refresh token");
+    }
 
     const now = this.dateTimeProvider.now();
     const expiresAt = this.dateTimeProvider.of(session.expiresAt);
@@ -610,6 +615,18 @@ export class SessionService {
         id: { eq: session.userId },
       },
     });
+
+    // The tables are shared between realms: a session row found here may
+    // belong to a user of another realm, and this issuer must not sign an
+    // access token (with that realm's roles) for it.
+    if (user.realm !== realm.name) {
+      this.log.warn("Session refresh across realms refused", {
+        sessionId: session.id,
+        userRealm: user.realm,
+        realm: realm.name,
+      });
+      throw new UnauthorizedError("Invalid refresh token");
+    }
 
     // Check if user account is still enabled
     if (!user.enabled) {
@@ -701,6 +718,23 @@ export class SessionService {
 
       const user = await users.getById(identity.userId);
 
+      // `login()` and `refreshSession()` refuse a disabled account; this
+      // path used to let one back in through its OAuth identity.
+      if (!user.enabled) {
+        this.log.warn("OAuth2 login refused for disabled account", {
+          provider,
+          userId: user.id,
+        });
+        await this.sessionAudits(userRealmName)?.auth.log("login", {
+          userId: user.id,
+          userRealm: realm.name,
+          success: false,
+          description: `OAuth2 login refused: account disabled (${provider})`,
+          metadata: { provider },
+        });
+        throw new BadRequestError("Account disabled");
+      }
+
       await this.sessionAudits(userRealmName)?.auth.log("login", {
         userId: user.id,
         userEmail: user.email ?? undefined,
@@ -717,14 +751,16 @@ export class SessionService {
     }
 
     if (!profile.email) {
-      this.log.debug("OAuth2 profile has no email, returning profile as-is", {
+      // Returning the bare profile used to send `profile.sub` down the
+      // session path as a user id, which ended in a foreign-key error (or,
+      // without FK enforcement, a token for a user row that does not exist).
+      this.log.warn("OAuth2 profile has no email, refusing login", {
         provider,
         profileSub: profile.sub,
       });
-      return {
-        id: profile.sub,
-        ...profile,
-      };
+      throw new BadRequestError(
+        "The identity provider did not supply an email address",
+      );
     }
 
     const existing = await users.findOne({
@@ -735,6 +771,14 @@ export class SessionService {
     });
 
     if (existing) {
+      if (!existing.enabled) {
+        this.log.warn("OAuth2 auto-link refused for disabled account", {
+          provider,
+          userId: existing.id,
+        });
+        throw new BadRequestError("Account disabled");
+      }
+
       // Auto-linking by email requires positive proof of ownership: a provider
       // that omits `email_verified` has NOT asserted the email is verified, and
       // linking on it would let an attacker who registered the victim's email
@@ -788,12 +832,7 @@ export class SessionService {
       throw new BadRequestError("Account doesn't exist");
     }
 
-    const username = await this.generateUniqueUsername(
-      profile,
-      realmSettings,
-      users,
-      userRealmName,
-    );
+    const username = await this.generateUniqueUsername(profile, userRealmName);
 
     const user = await users.create({
       realm: realm.name,

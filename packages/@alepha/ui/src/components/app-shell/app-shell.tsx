@@ -70,7 +70,7 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import type { ComponentType, ReactNode, SVGProps } from "react";
-import { Fragment, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 
 export interface NavigationProgressOptions {
   /**
@@ -83,7 +83,7 @@ export interface NavigationProgressOptions {
   height?: number;
 }
 
-function NavigationProgress(options: NavigationProgressOptions) {
+const NavigationProgress = (options: NavigationProgressOptions) => {
   const [progress, setProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -92,6 +92,9 @@ function NavigationProgress(options: NavigationProgressOptions) {
   useEvents(
     {
       "react:transition:begin": () => {
+        // A second transition before the first ends used to leave the
+        // first interval running for the page's lifetime.
+        if (intervalRef.current) clearInterval(intervalRef.current);
         setProgress(0);
         setVisible(true);
         setIsLoading(true);
@@ -117,6 +120,13 @@ function NavigationProgress(options: NavigationProgressOptions) {
     [],
   );
 
+  useEffect(
+    () => () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    },
+    [],
+  );
+
   if (!visible) return null;
   const height = options.height ?? 2;
   const barClassName = options.className ?? "bg-primary";
@@ -137,9 +147,9 @@ function NavigationProgress(options: NavigationProgressOptions) {
       />
     </div>
   );
-}
+};
 
-function StatefulSidebarTrigger() {
+const StatefulSidebarTrigger = () => {
   const { toggleSidebar, isMobile, openMobile, state } = useSidebar();
   const open = isMobile ? openMobile : state === "expanded";
   const Icon = open ? PanelLeftClose : PanelLeftOpen;
@@ -154,7 +164,7 @@ function StatefulSidebarTrigger() {
       <Icon className="size-4" />
     </Button>
   );
-}
+};
 
 type IconType = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -231,7 +241,7 @@ function renderNavIcon(icon: NavItem["icon"], className: string): ReactNode {
   return <Icon className={className} />;
 }
 
-function SidebarNavItem(props: { item: NavItem }) {
+const SidebarNavItem = (props: { item: NavItem }) => {
   const { item } = props;
   const { state, isMobile } = useSidebar();
   const children = item.children;
@@ -400,7 +410,7 @@ function SidebarNavItem(props: { item: NavItem }) {
       )}
     </SidebarMenuItem>
   );
-}
+};
 
 /**
  * The children of a collapsed nav group, as dropdown entries.
@@ -414,7 +424,7 @@ function SidebarNavItem(props: { item: NavItem }) {
  * `group-data-[collapsible=icon]:hidden`, so a collapsed sidebar drops every
  * count — and the count is usually why you opened the group.
  */
-function NavDropdownItems(props: { items: NavItem[] }) {
+const NavDropdownItems = (props: { items: NavItem[] }) => {
   return (
     <>
       {props.items.map((child, ci) => {
@@ -461,7 +471,7 @@ function NavDropdownItems(props: { items: NavItem[] }) {
       })}
     </>
   );
-}
+};
 
 export interface NavGroup {
   label?: string;
@@ -547,7 +557,7 @@ export interface AppShellProps {
  * Standard SaaS layout: collapsible sidebar + topbar with breadcrumbs.
  * Built on shadcn `<Sidebar>` + `<Breadcrumb>`.
  */
-export function AppShell(props: AppShellProps) {
+export const AppShell = (props: AppShellProps) => {
   const { collapsed, setCollapsed } = useSidebarState();
   const nav = props.nav ?? [];
   const variant = props.variant ?? "sidebar";
@@ -700,4 +710,4 @@ export function AppShell(props: AppShellProps) {
       </TooltipProvider>
     </DialogProvider>
   );
-}
+};

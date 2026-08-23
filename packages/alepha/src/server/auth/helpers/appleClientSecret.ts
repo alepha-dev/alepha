@@ -8,7 +8,9 @@ export interface AppleClientSecretOptions {
   ttlSeconds?: number; // default 300 (5 min)
 }
 
-/** Signs Apple's short-lived ES256 client_secret JWT on demand (no rotation job). */
+/**
+ * Signs Apple's short-lived ES256 client_secret JWT on demand (no rotation job).
+ */
 export async function signAppleClientSecret(
   opts: AppleClientSecretOptions,
 ): Promise<string> {

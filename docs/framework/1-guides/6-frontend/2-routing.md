@@ -193,8 +193,7 @@ Attach middlewares to the page - this is how you add server-side caching:
 use: [$cache({ ttl: [1, "hour"] })];
 ```
 
-> [!NOTE]
-> **`$secure` on a page is a real guard.** An anonymous visitor is refused at the router: with a `login` route declared, the result is a redirect to `/login?redirect=<path>`, and the loader's data never reaches the HTML; with no login route, the server answers 401. The two `$secure` variants refuse differently under the hood (the browser returns, the server throws), and the router normalises both into the redirect - which also means a page's own `errorHandler` cannot catch the refusal, because on the server the middleware chain wraps the render.
+> **Note.** **`$secure` on a page is a real guard.** An anonymous visitor is refused at the router: with a `login` route declared, the result is a redirect to `/login?redirect=<path>`, and the loader's data never reaches the HTML; with no login route, the server answers 401. The two `$secure` variants refuse differently under the hood (the browser returns, the server throws), and the router normalises both into the redirect - which also means a page's own `errorHandler` cannot catch the refusal, because on the server the middleware chain wraps the render.
 >
 > Keep `$secure` on the endpoints underneath as well. Defense in depth: the API answers 401 whatever the interface does.
 

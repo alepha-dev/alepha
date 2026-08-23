@@ -12,10 +12,10 @@ import {
  * Declaring `$repository(blightIgnoreRules)` here registers the
  * `blight_ignore_rules` table in the ORM/migration graph (the migration
  * generator scans instantiated repositories — same pattern as
- * {@link BlightIngestService}).
+ * {@link SigilIngestService}).
  *
  * Two consumers:
- * - {@link SigilIngestRunner} — calls {@link listForProject} once per batch
+ * - {@link SigilIngestService} — calls {@link listForProject} once per batch
  *   then {@link matches} per error to drop muted messages before they are
  *   recorded.
  * - `BlightController` — owner CRUD over the rule list.

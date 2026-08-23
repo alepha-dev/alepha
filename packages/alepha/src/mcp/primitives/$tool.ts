@@ -9,6 +9,7 @@ import {
   type ZType,
   z,
 } from "alepha";
+import { $logger } from "alepha/logger";
 
 import { McpToolOutputError } from "../errors/McpError.ts";
 import type {
@@ -158,6 +159,7 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
   ToolPrimitiveOptions<T>
 > {
   protected readonly mcpServer = $inject(McpServerProvider);
+  protected readonly log = $logger();
 
   /**
    * Returns the name of the tool.
@@ -287,24 +289,24 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
    * The JSON Schema shapes Alepha emits today are already 2020-12-compatible;
    * this is just the dialect declaration.
    */
-  protected schemaToJsonSchema(
-    schema: ZObject,
-    options?: { root?: boolean },
-  ): McpJsonSchema {
+  protected schemaToJsonSchema(schema: ZObject): McpJsonSchema {
     let json: any;
     try {
-      json = z.toJSONSchema(schema as any);
-    } catch {
+      // Input mode: the descriptor tells the client what to SEND. A field
+      // with `.default()` is optional on the way in, and a `.transform()`
+      // is described by its input type; the output mode (zod's default)
+      // marked the first as required and the second by what the handler
+      // receives, so clients rejected calls the server would have accepted.
+      json = z.toJSONSchema(schema as any, { io: "input" });
+    } catch (error) {
+      this.log.warn(
+        `Tool '${this.name}': params schema cannot be expressed as JSON Schema, advertising an open object`,
+        error,
+      );
       json = { type: "object", properties: {}, required: [] };
     }
 
-    // Annotate the 2020-12 dialect on the root schema only (avoid noise on
-    // nested sub-schemas where MCP doesn't expect $schema).
-    if (options?.root === false) {
-      json.$schema = undefined;
-    } else {
-      json.$schema = "https://json-schema.org/draft/2020-12/schema";
-    }
+    json.$schema = "https://json-schema.org/draft/2020-12/schema";
 
     return json as McpJsonSchema;
   }
@@ -317,7 +319,11 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
       const json: any = z.toJSONSchema(schema as any);
       json.$schema = undefined;
       return json;
-    } catch {
+    } catch (error) {
+      this.log.warn(
+        `Tool '${this.name}': result schema cannot be expressed as JSON Schema, advertising a string`,
+        error,
+      );
       return { type: "string" };
     }
   }

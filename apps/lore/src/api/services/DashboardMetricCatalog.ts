@@ -55,11 +55,17 @@ export interface DashboardCardTarget {
  * it holds repositories and this file must stay importable by the browser.
  */
 export interface DashboardMetricDescriptor {
-  /** Registry key, and the value stored in `dashboard_cards.metric`. */
+  /**
+   * Registry key, and the value stored in `dashboard_cards.metric`.
+   */
   key: string;
-  /** Catalogue section in the Add-card panel. */
+  /**
+   * Catalogue section in the Add-card panel.
+   */
   group: "quests" | "epics" | "inbox" | "apps";
-  /** i18n key for the catalogue row. */
+  /**
+   * i18n key for the catalogue row.
+   */
   labelKey: string;
   /**
    * i18n key for the card's own header, when it differs from the catalogue
@@ -70,9 +76,13 @@ export interface DashboardMetricDescriptor {
    * Optional: most metrics read the same in both places.
    */
   cardLabelKey?: string;
-  /** i18n key for the one-line hint under the catalogue row. */
+  /**
+   * i18n key for the one-line hint under the catalogue row.
+   */
   hintKey: string;
-  /** lucide-react icon name, as the mockup names it. */
+  /**
+   * lucide-react icon name, as the mockup names it.
+   */
   icon: string;
   presentation: DashboardPresentation;
   /**
@@ -81,7 +91,9 @@ export interface DashboardMetricDescriptor {
    * active quests take `projects`, never `apps`.
    */
   scopeKinds: DashboardScopeKind[];
-  /** This metric's own filter vocabulary. */
+  /**
+   * This metric's own filter vocabulary.
+   */
   filters: ZType;
   /**
    * Where clicking goes.
@@ -213,17 +225,23 @@ export class DashboardMetricCatalog {
     },
   ];
 
-  /** Every metric, catalogue order. */
+  /**
+   * Every metric, catalogue order.
+   */
   all(): DashboardMetricDescriptor[] {
     return this.metrics;
   }
 
-  /** One metric, or `undefined` for a key this build does not know. */
+  /**
+   * One metric, or `undefined` for a key this build does not know.
+   */
   find(key: string): DashboardMetricDescriptor | undefined {
     return this.metrics.find((metric) => metric.key === key);
   }
 
-  /** One metric, or a thrown error. Use where an unknown key is a bug. */
+  /**
+   * One metric, or a thrown error. Use where an unknown key is a bug.
+   */
   get(key: string): DashboardMetricDescriptor {
     const metric = this.find(key);
     if (!metric) {
@@ -232,7 +250,9 @@ export class DashboardMetricCatalog {
     return metric;
   }
 
-  /** Whether this metric can be pointed at this kind of thing. */
+  /**
+   * Whether this metric can be pointed at this kind of thing.
+   */
   accepts(key: string, kind: DashboardScopeKind): boolean {
     return this.find(key)?.scopeKinds.includes(kind) ?? false;
   }

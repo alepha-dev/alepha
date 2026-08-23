@@ -190,12 +190,12 @@ const ProjectQuestsTable = () => {
                   icon={CircleDot}
                   clearLabel={tr("board.filter.allStatuses")}
                   triggerClassName="w-full"
-                  items={[
-                    { label: "New", value: "new" },
-                    { label: "Accepted", value: "accepted" },
-                    { label: "Completed", value: "completed" },
-                    { label: "Shelved", value: "shelved" },
-                  ]}
+                  items={(
+                    ["new", "accepted", "completed", "shelved"] as const
+                  ).map((status) => ({
+                    label: String(tr(`quest.status.${status}`)),
+                    value: status,
+                  }))}
                   inputProps={{ "aria-label": tr("board.filter.status") }}
                 />
               </div>

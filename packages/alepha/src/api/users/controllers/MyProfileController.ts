@@ -1,11 +1,12 @@
 import { $inject } from "alepha";
 import { $secure } from "alepha/security";
-import { $action, ConflictError } from "alepha/server";
+import { $action, BadRequestError, ConflictError } from "alepha/server";
 
 import type { UserEntity } from "../entities/users.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import { myProfileSchema } from "../schemas/myProfileSchema.ts";
 import { updateMyProfileBodySchema } from "../schemas/updateMyProfileBodySchema.ts";
+import { UsernameSlugger } from "../services/UsernameSlugger.ts";
 import { UserProfileMapper } from "../services/UserProfileMapper.ts";
 
 /**
@@ -31,6 +32,7 @@ import { UserProfileMapper } from "../services/UserProfileMapper.ts";
 export class MyProfileController {
   protected readonly realmProvider = $inject(RealmProvider);
   protected readonly mapper = $inject(UserProfileMapper);
+  protected readonly usernameSlugger = $inject(UsernameSlugger);
 
   protected users(realm?: string) {
     return this.realmProvider.userRepository(realm);
@@ -80,10 +82,28 @@ export class MyProfileController {
         two strangers picking one name at the same instant.
       */
       if (body.username !== undefined) {
+        // The same rules registration applies: the format and the blocklist
+        // are realm settings, not this endpoint's.
+        const settings = await this.realmProvider
+          .getRealm(user.realm)
+          .getSettings();
+        if (
+          settings.usernameRegExp &&
+          !new RegExp(settings.usernameRegExp).test(body.username)
+        ) {
+          throw new BadRequestError(
+            "Username does not meet the required format",
+          );
+        }
+        if (await this.usernameSlugger.isBlocked(user.realm, body.username)) {
+          throw new BadRequestError("This username is not available");
+        }
+
         const taken = await repo.findOne({
           where: {
             realm: { eq: user.realm ?? "default" },
-            username: { eq: body.username },
+            // Case-insensitive, like the unique index it mirrors.
+            username: { eqInsensitive: body.username },
           },
         });
         if (taken && taken.id !== user.id) {

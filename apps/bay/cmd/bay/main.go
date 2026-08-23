@@ -1,9 +1,9 @@
 // Command bay is the Bay control plane: reverse proxy, app supervisor and
 // control API in one binary.
 //
-// PoC scope — no systemd (absent on macOS), so apps run as child processes
-// behind the runner interface. Everything else is the real design, TLS
-// included: point --acme-ca at Pebble to exercise ACME without a domain.
+// On Linux apps run as systemd units behind the runner interface; elsewhere
+// (macOS, development) as plain child processes. TLS included: point --acme-ca
+// at Pebble to exercise ACME without a domain.
 package main
 
 import (
@@ -83,6 +83,9 @@ const (
 	// stored here is what makes that untrue. Measured on the real host, five
 	// releases of one app was 245 MB.
 	defaultKeepReleases = 2
+	// How long a deploy may take once the artifact is on disk; it no longer
+	// follows the client's connection.
+	deployTimeout = 30 * time.Minute
 	// defaultControlGroup is the unix group whose members may reach the control
 	// socket. Membership is the whole authorization: joining it is equivalent to
 	// being handed the token.
@@ -192,7 +195,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprint(os.Stderr, `bay — Alepha application server (PoC)
+	fmt.Fprint(os.Stderr, `bay — Alepha application server
 
   bay serve   [--root DIR] [--runtimes DIR] [--addr :8080]
               [--base-domain bay.example.com]
@@ -200,7 +203,7 @@ func usage() {
               [--acme-ca-root FILE.pem]   # trust a private CA (Pebble, step-ca)
               [--acme-http-port N] [--acme-tls-port N]   # challenge ports, default 80/443
               [--backup-interval 24h]   # 0 disables; needs "bay config s3"
-            [--keep-releases 5]   # per app; min 2, the serving one is always kept
+              [--keep-releases 2]   # per app; min 2, the serving one is always kept
   bay deploy  (<app.tar.gz>|-) [--name NAME] [--env ENV] [--domain HOST]...
               [--secrets-file PATH]
               # --secrets-file names a 0600 file of KEY=VALUE lines holding the
@@ -324,6 +327,10 @@ type server struct {
 	// deploy can supersede the previous one's. See beginWatch.
 	watchMu sync.Mutex
 	watches map[string]context.CancelFunc
+	// repoint rewrites an instance's `.env` for blob storage; nil means
+	// deploy.RepointStorage. A seam rather than a permission trick because the
+	// failure path has to be testable as root, where mode bits mean nothing.
+	repoint func(instance, name, env string, storage *state.S3Target) error
 	log     *slog.Logger
 }
 
@@ -377,9 +384,19 @@ func cmdServe(args []string) error {
 		case "--acme-ca-root":
 			acmeCARoot = args[i+1]
 		case "--acme-http-port":
-			acmeHTTPPort, _ = strconv.Atoi(args[i+1])
+			// Named, like --keep-releases: a typo used to mean "80" silently,
+			// and the CA then validated on the wrong port.
+			port, err := strconv.Atoi(args[i+1])
+			if err != nil {
+				return fmt.Errorf("--acme-http-port: %q is not a port", args[i+1])
+			}
+			acmeHTTPPort = port
 		case "--acme-tls-port":
-			acmeTLSPort, _ = strconv.Atoi(args[i+1])
+			port, err := strconv.Atoi(args[i+1])
+			if err != nil {
+				return fmt.Errorf("--acme-tls-port: %q is not a port", args[i+1])
+			}
+			acmeTLSPort = port
 		case "--control-socket":
 			controlSocket = args[i+1]
 		case "--control-group":
@@ -426,9 +443,6 @@ func cmdServe(args []string) error {
 
 	log := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	store, err := state.Open(filepath.Join(root, "state.json"))
-	if err != nil {
-		return err
-	}
 	if err != nil {
 		return err
 	}
@@ -635,11 +649,6 @@ func (s *server) holdDuring(key string) func() {
 	return func() { s.router.Release(key) }
 }
 
-// start launches an app and waits for it to answer.
-//
-// Starting and being ready are different things: routing traffic at a process
-// that is still running migrations is exactly the mistake this separation
-// prevents.
 // instanceDir is where an app instance's durable state lives — its .env, its
 // database, its storage and its releases.
 func (s *server) instanceDir(app state.App) string {
@@ -671,6 +680,11 @@ func (s *server) pruneReleases(app state.App, protect ...string) []string {
 	return removed
 }
 
+// start launches an app and waits for it to answer.
+//
+// Starting and being ready are different things: routing traffic at a process
+// that is still running migrations is exactly the mistake this separation
+// prevents.
 func (s *server) start(app state.App) error {
 	// A static site has no process. It is serving the moment `current` points at
 	// the new release, because the proxy reads the files straight off disk —
@@ -753,8 +767,8 @@ func (s *server) start(app state.App) error {
 // control API — the single contract, consumed by every command but "serve"
 // ---------------------------------------------------------------------------
 
-// controlMux builds the routes. Authorization is applied per listener by the
-// caller: a bearer token on TCP, unix permissions on the socket.
+// controlMux builds the routes. Authorization is applied by the caller: unix
+// permissions on the socket.
 func (s *server) controlMux() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /apps", func(w http.ResponseWriter, _ *http.Request) {
@@ -893,7 +907,14 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	}
 	tmp.Close()
 
-	out, derr := s.deployArtifact(r.Context(), deployArtifactOptions{
+	// Detached from the request: once the artifact is uploaded the deploy has
+	// to finish whether or not the client is still listening. Bound to the
+	// request, the auto-restore was cancelled with a dropped connection (or the
+	// CLI's own timeout) and the app booted on the empty database it had just
+	// created, which nothing restores a second time.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), deployTimeout)
+	defer cancel()
+	out, derr := s.deployArtifact(ctx, deployArtifactOptions{
 		Artifact: tmp.Name(), Name: name, Env: env, Domains: domains,
 		SecretsFile: secretsFile,
 	})
@@ -1050,7 +1071,7 @@ func (s *server) deployArtifact(ctx context.Context, opts deployArtifactOptions)
 	// which does not cover it. It is whatever `state.Release` held before this
 	// deploy, and an automatic rollback sets that to the previous release
 	// chose — so after rollback-then-deploy the target of the watch started just
-	// above can sit well outside the newest five, with `current` already
+	// above can sit well outside the kept releases, with `current` already
 	// repointed here and no longer protecting it.
 	pruned := s.pruneReleases(res.App, res.Previous)
 
@@ -1201,6 +1222,12 @@ func (s *server) rollbackTo(app state.App, release string) error {
 		s.log.Error("rolled back on disk but not in state", "app", app.Key(), "err", err)
 	}
 	app.Release = release
+	// The bad release's process may still be alive (ready never came, or the
+	// health window failed while it kept answering). The systemd runner's
+	// restart replaces it; the child runner refuses to start a running key,
+	// so every automatic rollback used to fail there with the bad process
+	// still serving.
+	_ = s.runner.Stop(app.Key(), stopGrace)
 	if err := s.start(app); err != nil {
 		return fmt.Errorf("%s is current again but did not start: %w", release, err)
 	}
@@ -1506,9 +1533,11 @@ func cmdStatus(args []string) error {
 			asJSON = true
 		}
 		if arg == "--backup-interval" && i < len(args)-1 {
-			if d, err := time.ParseDuration(args[i+1]); err == nil {
-				interval = d
+			d, err := time.ParseDuration(args[i+1])
+			if err != nil {
+				return fmt.Errorf("--backup-interval: %q is not a duration", args[i+1])
 			}
+			interval = d
 		}
 	}
 
@@ -1736,9 +1765,8 @@ func readControlFlag(args []string) {
 
 // controlSocketPath returns the socket to prefer, if one is reachable.
 //
-// Tried before the token because on the host itself the socket is both the
-// simpler path and the safer one: no secret has to be fetched, exported, or left
-// in a shell history. `--control-socket` and $BAY_SOCKET override; otherwise the
+// On the host itself the socket is both the simpler path and the safer one:
+// no secret has to be fetched, exported, or left in a shell history. `--control-socket` and $BAY_SOCKET override; otherwise the
 // default sits next to the state file.
 func controlSocketPath() string {
 	if p := socketFlag; p != "" {

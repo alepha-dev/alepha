@@ -42,10 +42,6 @@ export interface BuildTaskContext {
   hasClient: boolean;
 
   /**
-   * Raw CLI flags passed through from the command.
-   * Tasks can read flags relevant to their domain.
-   */
-  /**
    * Build-time snapshot of primitive data, read from
    * `dist/manifest.json`. Populated only in `--prebuilt` mode when a
    * previous build's manifest is present — lets BuildCloudflareTask

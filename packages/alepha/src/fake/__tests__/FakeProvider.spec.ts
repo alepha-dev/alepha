@@ -612,7 +612,6 @@ describe("FakeProvider", () => {
 
   test("respects defaultArrayLength option", ({ expect }) => {
     // With defaultArrayLength: 3, arrays without maxItems should default to 3
-    // Note: Use TypeBox directly since Alepha's z.array() always sets maxItems: 1000
     const fake = new FakeProvider().configure({
       defaultArrayLength: 3,
       maxArrayLength: 100,
@@ -653,5 +652,64 @@ describe("FakeProvider", () => {
     const result3 = fake.generate(schema);
 
     expect(result3).not.toBe(result1);
+  });
+});
+
+describe("FakeProvider schema conformance", () => {
+  const fake = () => new FakeProvider().configure({ seed: 1 });
+  const isValid = (schema: any, value: unknown) =>
+    schema.safeParse(value).success;
+
+  test("generates finite numbers for an unbounded z.number()", ({ expect }) => {
+    const f = fake();
+    for (const schema of [z.number(), z.number().max(10), z.number().min(1)]) {
+      for (let i = 0; i < 20; i++) {
+        const value = f.generate(schema) as number;
+        expect(Number.isFinite(value)).toBe(true);
+        expect(isValid(schema, value)).toBe(true);
+      }
+    }
+  });
+
+  test("honours multipleOf", ({ expect }) => {
+    const f = fake();
+    const int = z.integer().multipleOf(5);
+    const float = z.number().min(0).max(100).multipleOf(0.5);
+    for (let i = 0; i < 20; i++) {
+      expect(isValid(int, f.generate(int))).toBe(true);
+      expect(isValid(float, f.generate(float))).toBe(true);
+    }
+  });
+
+  test("generates a valid z.time()", ({ expect }) => {
+    const f = fake();
+    for (let i = 0; i < 20; i++) {
+      expect(isValid(z.time(), f.generate(z.time()))).toBe(true);
+    }
+  });
+
+  test("meets minLength after z.text() trimming", ({ expect }) => {
+    const f = fake();
+    const schema = z.text({ minLength: 100 });
+    for (let i = 0; i < 20; i++) {
+      expect(isValid(schema, f.generate(schema))).toBe(true);
+    }
+  });
+
+  test("keeps key-name context through optional wrappers", ({ expect }) => {
+    const f = new FakeProvider().configure({
+      seed: 1,
+      optionalProbability: 0,
+      nullableProbability: 0,
+    });
+    const schema = z.object({
+      email: z.text().optional(),
+      website: z.text().nullable(),
+    });
+    for (let i = 0; i < 10; i++) {
+      const value = f.generate(schema) as { email: string; website: string };
+      expect(value.email).toMatch(/@/);
+      expect(value.website).toMatch(/^https?:\/\//);
+    }
   });
 });

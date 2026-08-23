@@ -37,10 +37,6 @@ class MyService {
 
   async fetchData() {
     const token = await this.serviceAccount.token();
-    // or
-    const response = await this.serviceAccount.fetch(
-      "https://api.example.com/data",
-    );
   }
 }
 ```

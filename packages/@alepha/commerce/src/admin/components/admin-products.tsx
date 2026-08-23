@@ -22,7 +22,7 @@ import type {
 } from "../controllers/AdminProductController.ts";
 
 const formatPrice = (cents: number, currency: string) =>
-  new Intl.NumberFormat("fr-FR", { style: "currency", currency }).format(
+  new Intl.NumberFormat(undefined, { style: "currency", currency }).format(
     (cents ?? 0) / 100,
   );
 
@@ -62,7 +62,7 @@ export interface AdminProductsProps {
  * and opens it. Naming and pricing happen on the page that opens, which is
  * where the operator was going anyway.
  */
-export function AdminProducts(props: AdminProductsProps) {
+export const AdminProducts = (props: AdminProductsProps) => {
   const client = useClient<AdminProductController>();
   const router = useRouter();
   const { l, tr } = useI18n();
@@ -346,4 +346,4 @@ export function AdminProducts(props: AdminProductsProps) {
       />
     </AdminPage>
   );
-}
+};

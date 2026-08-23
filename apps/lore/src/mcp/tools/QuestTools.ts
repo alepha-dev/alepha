@@ -83,7 +83,9 @@ export class QuestTools {
     "application/json",
   ];
 
-  /** 2 MB decoded. Screenshots and logs, not binaries. */
+  /**
+   * 2 MB decoded. Screenshots and logs, not binaries.
+   */
   protected readonly maxAttachmentBytes = 2 * 1024 * 1024;
 
   /**

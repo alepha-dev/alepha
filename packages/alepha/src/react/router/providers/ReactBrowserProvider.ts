@@ -91,7 +91,9 @@ export class ReactBrowserProvider {
    */
   protected readonly scrollPositions = new Map<number, number>();
 
-  /** Id of the entry currently on screen. */
+  /**
+   * Id of the entry currently on screen.
+   */
   protected historyKey = 0;
 
   protected nextHistoryKey = 1;
@@ -175,12 +177,9 @@ export class ReactBrowserProvider {
   }
 
   public get url(): string {
-    const url =
-      this.location.pathname + this.location.search + this.location.hash;
-    if (this.base) {
-      return url.replace(this.base, "");
-    }
-    return url;
+    return this.stripBase(
+      this.location.pathname + this.location.search + this.location.hash,
+    );
   }
 
   /**
@@ -250,7 +249,9 @@ export class ReactBrowserProvider {
     }
   }
 
-  /** Remember where the entry on screen is, before we leave it. */
+  /**
+   * Remember where the entry on screen is, before we leave it.
+   */
   protected saveScroll(): void {
     if (typeof window === "undefined" || this.alepha.isTest()) return;
     this.scrollPositions.set(this.historyKey, this.getScroll());
@@ -266,7 +267,7 @@ export class ReactBrowserProvider {
       const value = props[key];
 
       for (const layer of this.state.layers) {
-        if (layer.props?.[key]) {
+        if (layer.props && key in layer.props) {
           previous.push({
             ...layer,
             props: {
@@ -379,6 +380,12 @@ export class ReactBrowserProvider {
       // if redirect is an absolute URL, use window.location.href (full page reload)
       if (redirect.startsWith("http")) {
         window.location.href = redirect;
+        // The page is being left: nothing below applies, and bumping the
+        // transition id makes the caller's push() treat this navigation as
+        // superseded so it does not record a history entry for a page the
+        // user is already on.
+        this.transitionId++;
+        return;
       } else {
         // if redirect is a relative URL, use render() (single page app).
         // Inherit the current transitionId: a redirect is a continuation of

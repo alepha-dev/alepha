@@ -36,7 +36,7 @@ When using Alepha:
 - Keep dependencies updated
 - Use environment variables for secrets (never commit them)
 - Enable HTTPS in production
-- Use the built-in security features (`alepha/server/helmet`, `alepha/server/security`)
+- Use the built-in security features (`ServerHelmetProvider`, `alepha/server/cors`, `$rateLimit`)
 - Validate all user input (Alepha's schemas do this automatically)
 
 ## Thanks

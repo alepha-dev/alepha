@@ -22,7 +22,12 @@ export class ProtobufProvider {
    * Encode an object to a Uint8Array.
    */
   public encode(schema: ProtobufSchema, message: any): Uint8Array {
-    return this.parse(schema).encode(message).finish();
+    const type = this.parse(schema);
+    // `fromObject` first: it maps enum member names to their wire numbers
+    // and decimal strings to 64-bit longs. Encoding the user object directly
+    // wrote every enum member but the first as 0 (`"PENDING" >>> 0`), and the
+    // round trip "succeeded" with the wrong member.
+    return type.encode(type.fromObject(message)).finish();
   }
 
   /**
@@ -42,14 +47,17 @@ export class ProtobufProvider {
    * Parse a Protobuf definition into a Type ready for encoding/decoding.
    */
   public parse(schema: ProtobufSchema, typeName = "root.Target"): Type {
-    const exists = this.schemas.get(schema);
+    // Keyed on the type name too: a cache keyed on the schema text alone
+    // answered `parse(proto, "root.Other")` with the first type parsed.
+    const cacheKey = `${typeName}\n${schema}`;
+    const exists = this.schemas.get(cacheKey);
     if (exists) {
       return exists;
     }
 
     const result = this.protobuf.parse(schema);
     const type = result.root.lookupType(typeName);
-    this.schemas.set(schema, type);
+    this.schemas.set(cacheKey, type);
     return type;
   }
 
@@ -106,7 +114,7 @@ export class ProtobufProvider {
     for (const [enumName, values] of enumDefinitions) {
       proto += this.generateEnumDefinition(enumName, values);
     }
-    proto += subMessages.join("");
+    proto += this.dedupeSubMessages(subMessages).join("");
     proto += message;
 
     return proto;
@@ -246,6 +254,29 @@ export class ProtobufProvider {
       message: `message ${parentName} {\n${fields.join("\n")}\n}\n`,
       subMessages,
     };
+  }
+
+  /**
+   * A titled schema embedded twice is emitted twice under the same name, which
+   * protobufjs refuses as a duplicate. The same body is kept once; a different
+   * body under one name is a real conflict and is reported.
+   */
+  protected dedupeSubMessages(subMessages: string[]): string[] {
+    const bodies = new Map<string, string>();
+    const kept: string[] = [];
+    for (const subMessage of subMessages) {
+      const name = /^message (\w+)/.exec(subMessage)?.[1] ?? subMessage;
+      const previous = bodies.get(name);
+      if (previous === undefined) {
+        bodies.set(name, subMessage);
+        kept.push(subMessage);
+      } else if (previous !== subMessage) {
+        throw new AlephaError(
+          `Protobuf message '${name}' is defined twice with different fields; give one of the schemas another title.`,
+        );
+      }
+    }
+    return kept;
   }
 
   /**
@@ -410,8 +441,15 @@ export class ProtobufProvider {
       return existingEnum[0];
     }
 
-    enumDefinitions.set(enumName, values);
-    return enumName;
+    // Two fields named alike with different members used to share one
+    // definition: the second silently overwrote the first.
+    let uniqueName = enumName;
+    for (let n = 2; enumDefinitions.has(uniqueName); n++) {
+      uniqueName = `${enumName}${n}`;
+    }
+
+    enumDefinitions.set(uniqueName, values);
+    return uniqueName;
   }
 
   /**

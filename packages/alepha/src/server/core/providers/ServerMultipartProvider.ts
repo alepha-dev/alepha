@@ -264,7 +264,10 @@ export class ServerMultipartProvider {
       if (!isTypeFile(value) && !isTypeStream(value)) {
         continue;
       }
-      const declared = z.schema.meta(value).maxBytes;
+      // `unwrap` first: `.optional()` returns a wrapper whose own meta is
+      // empty, so the declared size of `z.file({ maxBytes }).optional()`
+      // was silently replaced by the default.
+      const declared = z.schema.meta(z.schema.unwrap(value)).maxBytes;
       if (
         typeof declared === "number" &&
         (largest === undefined || declared > largest)

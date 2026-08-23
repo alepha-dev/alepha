@@ -18,13 +18,13 @@ const APPS = Object.keys(E2E_SLOTS) as E2eApp[];
  * intersect. 3300-3399 is the `dev.port` band in each app's `alepha.config.ts`
  * (docs 3302 … examples/ssr 3311); 5173+ is what an app WITHOUT a `dev.port`
  * gets from Vite, and what `alepha dev` hands each child in multi-app mode
- * (`5173 + index`). 3001-3004 is `apps/benchmark`, and the four high ports are
+ * (`5173 + index`). 3001-3006 is `apps/benchmark`, and the four high ports are
  * `compose.yml`.
  */
 const RESERVED = new Set([
   ...range(3300, 3399),
   ...range(5173, 5199),
-  ...range(3001, 3004),
+  ...range(3001, 3006),
   11883,
   15432,
   16379,
@@ -136,14 +136,28 @@ describe("e2ePort", () => {
     else process.env.E2E_PORT = saved;
   });
 
-  const hold = async (port: number): Promise<void> => {
+  const hold = async (port: number, host?: string): Promise<void> => {
     const server = createServer();
     held.push(server);
     await new Promise<void>((resolve, reject) => {
       server.once("error", reject);
-      server.listen(port, () => resolve());
+      if (host) {
+        server.listen(port, host, () => resolve());
+      } else {
+        server.listen(port, () => resolve());
+      }
     });
   };
+
+  it("skips a port held on the loopback address only", async ({ expect }) => {
+    // `wrangler dev` binds 127.0.0.1, and on macOS a wildcard bind succeeds
+    // next to it, so the probe used to hand the suite the same port.
+    delete process.env.E2E_PORT;
+    const candidates = candidatePorts(process.cwd(), "docs");
+    await hold(candidates[0], "127.0.0.1");
+
+    expect(e2ePort("docs")).toBe(candidates[1]);
+  });
 
   it("skips a port something is already listening on", async ({ expect }) => {
     delete process.env.E2E_PORT;

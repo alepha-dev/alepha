@@ -319,8 +319,7 @@ describe("$workflow", () => {
      * retrying on a short delay. That is why this is skipped rather than
      * tuned.
      */
-    // oxlint-disable-next-line vitest/no-disabled-tests
-    it.skip("should retry a step on failure with retries configured", async ({
+    it("should retry a step on failure with retries configured", async ({
       expect,
     }) => {
       let callCount = 0;

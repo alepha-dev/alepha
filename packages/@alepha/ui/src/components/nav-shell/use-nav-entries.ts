@@ -25,21 +25,31 @@ export interface UseNavEntriesOptions {
  * ({@link Spotlight}) so both stay in sync from one source.
  */
 export interface NavEntry {
-  /** Route name — used for navigation (`router.push(name)`) and as a stable key. */
+  /**
+   * Route name — used for navigation (`router.push(name)`) and as a stable key.
+   */
   name: string;
-  /** Resolved pathname (the page's full `match`). */
+  /**
+   * Resolved pathname (the page's full `match`).
+   */
   href: string;
   label: ReactNode;
   icon?: ReactNode;
   group?: string;
-  /** `nav.order` within the group. */
+  /**
+   * `nav.order` within the group.
+   */
   order: number;
-  /** Smallest `order` in this entry's group — drives group ordering. */
+  /**
+   * Smallest `order` in this entry's group — drives group ordering.
+   */
   groupOrder: number;
   keywords?: string[];
   description?: ReactNode;
   badge?: ReactNode;
-  /** `can()` returned `"disabled"` — show muted, block navigation. */
+  /**
+   * `can()` returned `"disabled"` — show muted, block navigation.
+   */
   disabled: boolean;
   /**
    * The current route is on or under this entry, and no sibling entry matched

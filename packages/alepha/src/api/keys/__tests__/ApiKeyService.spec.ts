@@ -338,7 +338,9 @@ describe("ApiKeyService", () => {
       releaseRead = resolve;
     });
 
-    /** Holds the DB read open so a revocation can land in the middle of it. */
+    /**
+     * Holds the DB read open so a revocation can land in the middle of it.
+     */
     class RacingApiKeyService extends ApiKeyService {
       public raceNextRead = false;
 

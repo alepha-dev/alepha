@@ -1,6 +1,7 @@
 import { $inject } from "alepha";
 import { $logger } from "alepha/logger";
 import type { Page } from "alepha/orm";
+import { NotFoundError } from "alepha/server";
 
 import type { SessionEntity } from "../entities/sessions.ts";
 import { users } from "../entities/users.ts";
@@ -62,9 +63,19 @@ export class SessionCrudService {
       total: result.page.totalElements,
     });
 
+    // The listing joins the owner; rows of other realms' users are dropped
+    // here rather than in SQL, because the paginated count cannot filter on
+    // a joined column yet.
+    const realm = this.realmProvider.getRealm(userRealmName);
     return {
       ...result,
-      content: result.content.map((session) => this.toView(session)),
+      content: result.content
+        .filter(
+          (session) =>
+            (session as { user?: { realm?: string } }).user?.realm ===
+            realm.name,
+        )
+        .map((session) => this.toView(session)),
     };
   }
 
@@ -80,6 +91,12 @@ export class SessionCrudService {
       where: { id: { eq: id } },
       with: withUser,
     });
+    // Sessions carry no realm column; the owner's realm decides. A session
+    // of another realm's user is not this admin's to read or revoke.
+    const realm = this.realmProvider.getRealm(userRealmName);
+    if ((session as { user?: { realm?: string } }).user?.realm !== realm.name) {
+      throw new NotFoundError(`Session '${id}' not found`);
+    }
     this.log.debug("Session retrieved", { id, userId: session.userId });
     return this.toView(session);
   }

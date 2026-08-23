@@ -9,10 +9,14 @@ import { type Infer, z } from "alepha";
  * per-project lookups.
  */
 export const importRowSchema = z.object({
-  /** 1-based data row number (header is row 0). Used for error/warning reporting. */
+  /**
+   * 1-based data row number (header is row 0). Used for error/warning reporting.
+   */
   rowIndex: z.integer().min(1),
   writeMode: z.union([z.const("upsert"), z.const("create")]),
-  /** Empty string when absent. */
+  /**
+   * Empty string when absent.
+   */
   shortId: z.string(),
   title: z.string(),
   description: z.string(),
@@ -20,19 +24,29 @@ export const importRowSchema = z.object({
   priority: z
     .enum(["optional", "low", "medium", "high"])
     .meta({ mode: "text" }),
-  /** Empty when null/unset. */
+  /**
+   * Empty when null/unset.
+   */
   kanbanColumn: z.string(),
-  /** Milestone title (exact match). Empty when null/unset. */
+  /**
+   * Milestone title (exact match). Empty when null/unset.
+   */
   milestone: z.string(),
-  /** Emails. Empty when null/unset. */
+  /**
+   * Emails. Empty when null/unset.
+   */
   createdBy: z.string(),
   acceptedBy: z.string(),
   completedBy: z.string(),
-  /** ISO datetimes. Empty when null/unset. */
+  /**
+   * ISO datetimes. Empty when null/unset.
+   */
   createdAt: z.string(),
   acceptedAt: z.string(),
   completedAt: z.string(),
-  /** Array of `{ title, completed }`. Empty array on omission. */
+  /**
+   * Array of `{ title, completed }`. Empty array on omission.
+   */
   objectives: z.array(z.object({ title: z.string(), completed: z.boolean() })),
 });
 export type ImportRow = Infer<typeof importRowSchema>;

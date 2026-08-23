@@ -24,10 +24,14 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface QuestDependencyPickerProps {
   projectId: number;
-  /** Selected predecessor quest id, or null when there is no dependency. */
+  /**
+   * Selected predecessor quest id, or null when there is no dependency.
+   */
   value: number | null;
   onChange: (value: number | null) => void;
-  /** When editing, the quest itself is excluded — a quest can't depend on itself. */
+  /**
+   * When editing, the quest itself is excluded — a quest can't depend on itself.
+   */
   excludeQuestId?: number;
 }
 

@@ -180,10 +180,8 @@ export class ReactPageProvider {
 
   /**
    * Find a route by name anywhere in the tree (including nested children).
-   * Returns undefined if no page with that name exists.
-   */
-  /**
-   * Non-throwing counterpart to {@link page}.
+   * Returns undefined if no page with that name exists: the non-throwing
+   * counterpart to {@link page}.
    *
    * Public because callers that hold a possibly-synthetic layer name (the
    * `not-found` layer the router inserts when no route matched) need to ask
@@ -216,9 +214,6 @@ export class ReactPageProvider {
     } = {},
   ) {
     const page = this.page(name);
-    if (!page) {
-      throw new AlephaError(`Page ${name} not found`);
-    }
 
     let url = page.path ?? "";
     let parent = page.parent;
@@ -489,7 +484,10 @@ export class ReactPageProvider {
 
       acc += "/";
       acc += it.route.path ? this.compile(it.route.path, params) : "";
-      const path = acc.replace(/\/+/, "/");
+      // Every segment is prefixed with "/" above and most route paths start
+      // with one too, so the accumulator carries "//" at every level: collapse
+      // all of them, not only the first run (this path is the canonical URL).
+      const path = acc.replace(/\/+/g, "/");
       const localErrorHandler = this.getErrorHandler(it.route);
       if (localErrorHandler) {
         const onErrorParent = state.onError;
@@ -686,27 +684,6 @@ export class ReactPageProvider {
 
   public renderEmptyView(): ReactNode {
     return createElement(NestedView, {});
-  }
-
-  public href(
-    page: { options: { name?: string } },
-    params: Record<string, any> = {},
-  ): string {
-    const found = this.pages.find((it) => it.name === page.options.name);
-    if (!found) {
-      throw new AlephaError(`Page ${page.options.name} not found`);
-    }
-
-    let url = found.path ?? "";
-    let parent = found.parent;
-    while (parent) {
-      url = `${parent.path ?? ""}/${url}`;
-      parent = parent.parent;
-    }
-
-    url = this.compile(url, params);
-
-    return url.replace(/\/\/+/g, "/") || "/";
   }
 
   /**

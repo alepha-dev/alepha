@@ -44,3 +44,41 @@ describe("findMany offset without limit", () => {
     await testOffsetWithoutLimit(Alepha.create().with(AlephaOrmPostgres));
   });
 });
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * `aggregate()` builds its own statement and had no counterpart of the guard
+ * above, so the same query that findMany accepts threw on SQLite.
+ */
+const testAggregateOffsetWithoutLimit = async (alepha: Alepha) => {
+  const app = alepha.inject(App);
+  await alepha.start();
+
+  await app.repository.createMany(
+    Array.from({ length: 5 }, (_, n) => ({ n: n % 3 })),
+  );
+
+  const rows = await app.repository.aggregate({
+    select: { n: true, id: { count: true } },
+    groupBy: ["n"],
+    orderBy: { column: "n", direction: "asc" },
+    offset: 1,
+  });
+
+  expect(rows.map((r) => r.n)).toEqual([1, 2]);
+};
+
+describe("aggregate offset without limit", () => {
+  it("returns the remaining groups (sqlite)", async () => {
+    await testAggregateOffsetWithoutLimit(
+      Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+    );
+  });
+
+  it("returns the remaining groups (postgres)", async () => {
+    await testAggregateOffsetWithoutLimit(
+      Alepha.create().with(AlephaOrmPostgres),
+    );
+  });
+});

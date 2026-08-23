@@ -77,7 +77,7 @@ export interface UseFolioActionsInput {
   find: { show: () => void };
   /**
    * Flips the document between its rendered and raw faces — backs
-   * `view.mode` (⌘E). Owned by `FolioDocument`, which holds the mode state,
+   * `view.mode` (⌘E). Owned by `FolioWorkspaceContent`, which holds the mode state,
    * because the same value drives both the menubar entry and what the body
    * renders.
    */
@@ -216,9 +216,7 @@ export interface UseFolioActionsResult {
  * `folio.move`, `folio.pin` and `folio.delete` never send `content` at all,
  * so the server's protected-content guard never engages for them and
  * `protected` doesn't need to be sent (omitting it preserves the row's
- * current value). The meta bar's tag add/remove only mutate the draft
- * buffer — they go through `save()` like any other edit, not a separate
- * request.
+ * current value).
  *
  * ## The same "props.folio is frozen" premise, applied twice, with opposite
  * ## correct answers
@@ -295,8 +293,6 @@ export const useFolioActions = (
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [encryptDialogOpen, setEncryptDialogOpen] = useState(false);
 
-  // Edit▸Bold, Insert▸Table and friends dispatch MDXEditor's own realm
-  // commands, reachable ONLY from inside its realm provider —
   const locked = isProtected && !unlocked;
 
   // Writes the freshly decrypted plaintext into the draft AND re-baselines
@@ -345,9 +341,9 @@ export const useFolioActions = (
    * protection-domain invariant), so it has to be decrypted with the
    * cached key before it can be shown. If this session never unlocked
    * the folio (no cached key), there is no safe way to reflect the
-   * revert in THIS draft — the row IS reverted server-side regardless,
-   * and unlocking afterward decrypts the (already-reverted) content
-   * correctly, so nothing is lost, it just isn't shown until then.
+   * revert in THIS draft — the row IS reverted server-side regardless.
+   * Unlocking afterward still decrypts the content the route loaded, so
+   * the reverted text is only shown after a reload.
    *
    * Every branch below moves `draft.savedAt`, even the ones that can't
    * touch `content` (no cached key, or a decrypt failure) — the
@@ -549,7 +545,10 @@ export const useFolioActions = (
       ? folios.map((f) => (f.id === saved.id ? (saved as Folio) : f))
       : [saved as Folio, ...folios];
     setFolios(nextFolios);
-    input.draft.markSaved(saved.updatedAt, { ...values, title });
+    // Baseline on the live values, not on what was sent: the title is
+    // trimmed on the way out, and a baseline carrying the trimmed form kept
+    // `dirty` true for an untrimmed stored title, so autosave looped.
+    input.draft.markSaved(saved.updatedAt, values);
 
     if (!folio) {
       // Create mode: `router.push` below changes `FolioWorkspace`'s `key`
@@ -563,7 +562,7 @@ export const useFolioActions = (
       // silently discarded by the remount while the status line still
       // read "Saved".
       const latest = input.draft.getLiveValues();
-      if (!sameValues(latest, { ...values, title })) {
+      if (!sameValues(latest, values)) {
         const latestTitle =
           latest.title.trim() || tr("folios.title-placeholder");
         const caughtUp = await folioApi.update({
@@ -579,10 +578,7 @@ export const useFolioActions = (
           f.id === caughtUp.id ? (caughtUp as Folio) : f,
         );
         setFolios(nextFolios);
-        input.draft.markSaved(caughtUp.updatedAt, {
-          ...latest,
-          title: latestTitle,
-        });
+        input.draft.markSaved(caughtUp.updatedAt, latest);
       }
       await router.push(
         router.path("projectFoliosFolio", {
@@ -593,7 +589,7 @@ export const useFolioActions = (
   };
 
   const saveAction = useAction(
-    { handler: save, invalidates: [["folioTree", projectSlug]] },
+    { handler: save, invalidates: [["folioTree", project?.id]] },
     [
       isProtected,
       locked,
@@ -677,7 +673,7 @@ export const useFolioActions = (
           }),
         );
       },
-      invalidates: [["folioTree", projectSlug]],
+      invalidates: [["folioTree", project?.id]],
     },
     [
       input.folio,
@@ -715,7 +711,7 @@ export const useFolioActions = (
           folios.map((f) => (f.id === updated.id ? { ...f, ...updated } : f)),
         );
       },
-      invalidates: [["folioTree", projectSlug]],
+      invalidates: [["folioTree", project?.id]],
     },
     [input.folio, isPinned, folioApi, folios, setFolios, alepha, projectSlug],
   );
@@ -726,13 +722,17 @@ export const useFolioActions = (
         const folio = input.folio;
         if (!folio) return;
         await folioApi.delete({ params: { id: folio.id } });
+        // The keyed content unmounts on the navigation below with `dirty`
+        // still set, and its unmount save used to fire against the deleted
+        // id: a 404 toast after a successful delete.
+        input.draft.markSaved(folio.updatedAt, input.draft.getLiveValues());
         setFolios(folios.filter((f) => f.id !== folio.id));
         alepha.store.set(currentFolioAtom, undefined);
         await router.push(
           router.path("projectFolios", { params: { projectSlug } }),
         );
       },
-      invalidates: [["folioTree", projectSlug]],
+      invalidates: [["folioTree", project?.id]],
     },
     [input.folio, folios, setFolios, alepha, router, projectSlug, folioApi],
   );
@@ -777,7 +777,7 @@ export const useFolioActions = (
         );
         input.draft.markSaved(updated.updatedAt, values);
       },
-      invalidates: [["folioTree", projectSlug]],
+      invalidates: [["folioTree", project?.id]],
     },
     [
       input.folio,
@@ -794,7 +794,7 @@ export const useFolioActions = (
   );
 
   // `useAction`-wrapped (unlike the brief's given shape) so a failure gets
-  // `["folioTree", projectSlug]` invalidation and the same `react:action:error`
+  // `["folioTree", project?.id]` invalidation and the same `react:action:error`
   // event every other mutation here emits, instead of an unhandled
   // rejection. The try/catch stays INSIDE the handler and always returns a
   // string, never throws: `confirmEncrypt`'s contract
@@ -845,7 +845,7 @@ export const useFolioActions = (
           return tr("folios.protected.encrypt-failed");
         }
       },
-      invalidates: [["folioTree", projectSlug]],
+      invalidates: [["folioTree", project?.id]],
     },
     [
       input.folio,
@@ -887,7 +887,7 @@ export const useFolioActions = (
         setCurrentDirectoryId(directoryId ?? undefined);
         setMoveDialogOpen(false);
       },
-      invalidates: [["folioTree", projectSlug]],
+      invalidates: [["folioTree", project?.id]],
     },
     [input.folio, folioApi, folios, setFolios, alepha, projectSlug],
   );
@@ -903,8 +903,8 @@ export const useFolioActions = (
       toaster.error(tr("folios.protected.unlock-before-edit"));
       return;
     }
-    // Deliberate divergence from `FolioBrowser.tsx`'s row-level download,
-    // which refuses ANY protected folio outright (it only ever has the
+    // Deliberate divergence from the old directory table's row-level
+    // download, which refused ANY protected folio outright (it only ever had the
     // ciphertext `folioApi.get` returns, never a decrypted body). Here the
     // user has already unlocked this exact folio in this exact tab — the
     // plaintext is legitimately on screen — so exporting it is exporting
@@ -1089,8 +1089,8 @@ export const useFolioActions = (
 // ---------------------------------------------------------------------------
 // Protected-envelope helpers. Deliberately NOT reimplementing the crypto
 // ceremony (PBKDF2 derivation, AES-GCM) — these are the same hex/JSON
-// plumbing `FolioProtectedView.tsx` and the deleted `FolioEditor.tsx` each
-// already carried around a cached `CryptoKey`, duplicated here rather than
+// plumbing the deleted `FolioProtectedView.tsx` and `FolioEditor.tsx` each
+// carried around a cached `CryptoKey`, duplicated here rather than
 // imported because they are private helpers in a component, not exported
 // utilities.
 // ---------------------------------------------------------------------------

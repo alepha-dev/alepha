@@ -234,15 +234,6 @@ function parseAnimation(
         ? (anim.duration ?? DEFAULT_DURATION)
         : DEFAULT_DURATION;
     const name = typeof anim === "object" ? anim.name : anim;
-
-    if (type === "exit") {
-      const timing = typeof anim === "object" ? (anim.timing ?? "") : "";
-      return {
-        duration,
-        animation: `${duration}ms ${timing} ${name}`,
-      };
-    }
-
     const timing = typeof anim === "object" ? (anim.timing ?? "") : "";
 
     return {

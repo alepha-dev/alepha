@@ -42,7 +42,9 @@ export class MemoryFileStorageProvider implements FileStorageProvider {
       buffer,
       name: file.name,
       type: file.type,
-      size: file.size,
+      // The bytes actually stored, not the caller's claim: a File built
+      // from a stream reports 0 for `size`.
+      size: buffer.length,
     };
 
     return fileId;

@@ -59,7 +59,12 @@ const THEMES_PROVIDER = join(
   "src/web/app/services/ThemesProvider.ts",
 );
 
-await rm(OUT_DIR, { recursive: true, force: true });
+// Only the theme stylesheets are regenerated here. `public/fonts/` also
+// holds `folio.css` and the Literata / JetBrains Mono files behind it, which
+// are hand-placed: a recursive wipe used to delete them on every run.
+for (const theme of THEMES) {
+  await rm(join(OUT_DIR, `${theme.id}.css`), { force: true });
+}
 await mkdir(FILES_DIR, { recursive: true });
 
 const downloaded = new Map<string, string>(); // remote URL -> local path

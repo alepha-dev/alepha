@@ -165,3 +165,55 @@ describe("upsertMany", () => {
     await testDuplicateTargetsSqlite(sqlite());
   });
 });
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+const steps = $entity({
+  name: "test_upsert_many_steps",
+  schema: z.object({
+    id: db.primaryKey(z.integer()),
+    slug: z.text(),
+    // `order` is a reserved word on every dialect. The conflict target and the
+    // insert column list were always quoted; the generated `excluded.<col>`
+    // reference in the default SET was not, and failed to parse.
+    order: z.integer(),
+  }),
+  constraints: [{ columns: ["slug"], unique: true }],
+});
+
+class StepsApp {
+  repository = $repository(steps);
+}
+
+const testQuotesReservedWordColumns = async (alepha: Alepha) => {
+  const app = alepha.inject(StepsApp);
+  await alepha.start();
+
+  await app.repository.create({ slug: "intro", order: 1 });
+
+  await app.repository.upsertMany(
+    [
+      { slug: "intro", order: 3 },
+      { slug: "outro", order: 4 },
+    ],
+    { target: ["slug"] },
+  );
+
+  const rows = await app.repository.findMany({ orderBy: "slug" });
+  expect(rows.map((r) => [r.slug, r.order])).toEqual([
+    ["intro", 3],
+    ["outro", 4],
+  ]);
+};
+
+describe("upsertMany on reserved-word columns", () => {
+  it("quotes the generated excluded reference (sqlite)", async () => {
+    await testQuotesReservedWordColumns(sqlite());
+  });
+
+  it("quotes the generated excluded reference (postgres)", async () => {
+    await testQuotesReservedWordColumns(
+      Alepha.create().with(AlephaOrmPostgres),
+    );
+  });
+});

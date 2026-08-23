@@ -18,7 +18,9 @@ interface ChainQuest {
   title: string;
   status: Status;
   dependsOn?: number;
-  /** Depth in the chain — longest-path from any root. Drives the step number. */
+  /**
+   * Depth in the chain — longest-path from any root. Drives the step number.
+   */
   step: number;
 }
 

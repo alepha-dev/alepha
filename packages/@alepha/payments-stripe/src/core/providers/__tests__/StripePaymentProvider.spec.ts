@@ -56,6 +56,7 @@ const sessionEvent = (
   type: string,
   paymentIntent: string | null,
   account?: string,
+  paymentStatus: "paid" | "unpaid" = "paid",
 ) => ({
   id: "evt_2",
   object: "event",
@@ -66,6 +67,7 @@ const sessionEvent = (
       object: "checkout.session",
       id: "cs_test_123",
       payment_intent: paymentIntent,
+      payment_status: paymentStatus,
     },
   },
 });
@@ -146,6 +148,38 @@ describe("StripePaymentProvider", () => {
         webhookRequest(sessionEvent("checkout.session.expired", null)),
       );
       expect(event.status).toBe("failed");
+    });
+
+    it("does not treat an unpaid completion as a capture", async () => {
+      // A delayed-notification method (SEPA debit, bank transfer) completes
+      // the session before the money arrives; marking the order paid here
+      // shipped goods, issued the invoice and mailed the buyer on credit.
+      const event = await make().parseWebhook(
+        webhookRequest(
+          sessionEvent(
+            "checkout.session.completed",
+            "pi_777",
+            undefined,
+            "unpaid",
+          ),
+        ),
+      );
+      expect(event.status).not.toBe("captured");
+    });
+
+    it("maps the async payment outcome events", async () => {
+      const succeeded = await make().parseWebhook(
+        webhookRequest(
+          sessionEvent("checkout.session.async_payment_succeeded", "pi_777"),
+        ),
+      );
+      expect(succeeded.status).toBe("captured");
+      const failed = await make().parseWebhook(
+        webhookRequest(
+          sessionEvent("checkout.session.async_payment_failed", "pi_777"),
+        ),
+      );
+      expect(failed.status).toBe("failed");
     });
   });
 

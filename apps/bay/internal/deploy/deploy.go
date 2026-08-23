@@ -171,11 +171,6 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 	}
 
 	instance := filepath.Join(opts.Root, "apps", opts.Name, opts.Env)
-	// Second resolution, because a release name is something an operator types
-	// into a log or an incident note — but two deploys within the same second would then
-	// collide, and the failure was a bare `rename: file exists` naming two
-	// temporary paths. Suffixed only when it actually collides, so the common
-	// name stays clean.
 	// Millisecond precision, because a release name has to sort chronologically
 	// and a second is not fine enough for CI.
 	//
@@ -196,6 +191,16 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 	if err := os.Rename(staging, releaseDir); err != nil {
 		return nil, fmt.Errorf("place release: %w", err)
 	}
+	// Every refusal below this point (a domain conflict, a static site with
+	// secrets, a failed provision) used to leave the renamed directory behind
+	// as the newest release: it took a keep slot, the proxy served its files,
+	// and the startup prune evicted the real rollback target instead of it.
+	placed := false
+	defer func() {
+		if !placed {
+			_ = os.RemoveAll(releaseDir)
+		}
+	}()
 
 	// Two apps on one domain is not a conflict Bay may resolve by picking: the
 	// proxy would route to whichever matched first, so one deploy would silently
@@ -249,12 +254,17 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 			opts.Name, opts.Env, len(opts.Secrets))
 	}
 	if !m.IsStatic() {
-		port, err = allocatePort(store.UsedPorts())
-		if err != nil {
-			return nil, err
-		}
-		if isRedeploy {
-			port = existing.Port // keep the port stable across redeploys
+		// Kept stable across redeploys, unless the previous record was a static
+		// site: its port is 0, and a process app provisioned with
+		// `SERVER_PORT=0` binds a random port that the readiness probe never
+		// finds.
+		if isRedeploy && existing.Port != 0 {
+			port = existing.Port
+		} else {
+			port, err = allocatePort(store.UsedPorts())
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		dbPath, dbCreated, storageBackend, err = provision(opts, instance, m, port, existing.StorageBackend)
@@ -273,6 +283,7 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 	if err := os.Rename(tmpLink, current); err != nil {
 		return nil, fmt.Errorf("swap current: %w", err)
 	}
+	placed = true
 
 	app := state.App{
 		Name:    opts.Name,
@@ -595,8 +606,8 @@ func subdomain(name, env string) string {
 }
 
 // userSupplied reports whether a key was set by the user rather than by Bay.
-// Bay-written keys are recognisable because Bay wrote them; in the PoC we treat
-// any pre-existing non-Bay-shaped value as the user's.
+// Bay-written keys are recognisable because Bay wrote them; any pre-existing
+// non-Bay-shaped value is treated as the user's.
 func userSupplied(env map[string]string, key string) bool {
 	v, ok := env[key]
 	if !ok || v == "" {

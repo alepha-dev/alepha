@@ -447,17 +447,16 @@ export class SecurityProvider {
 
   /**
    * Resolve user from request using registered resolvers.
-   * Returns undefined if no resolver could authenticate (no auth provided).
-   * Throws UnauthorizedError if auth was provided but invalid.
+   * Returns undefined if no resolver could authenticate, whether none was
+   * given anything to read or one threw (logged at debug level, then the
+   * next resolver is tried).
    *
-   * Note: This method tries resolvers from ALL realms to find a match,
-   * regardless of the `realm` option. The `realm` option is only used for
-   * permission checking after the user is resolved.
+   * Resolvers from ALL realms are tried, in priority order; the realm the
+   * user ends up in is the one whose resolver accepted the request.
    */
   public async resolveUserFromServerRequest(
     req: { url: URL | string; headers: { authorization?: string } },
     options: {
-      realm?: string;
       permission?: Permission | string;
     } = {},
   ): Promise<UserAccountToken | undefined> {

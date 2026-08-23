@@ -29,16 +29,16 @@ export interface AuthVerifyEmailProps {
   logo?: ReactNode;
 }
 
-export function AuthVerifyEmail(props: AuthVerifyEmailProps) {
+export const AuthVerifyEmail = (props: AuthVerifyEmailProps) => {
   if (props.step) {
     return (
       <View step={props.step} loginPath={props.loginPath} logo={props.logo} />
     );
   }
   return <Stateful loginPath={props.loginPath} logo={props.logo} />;
-}
+};
 
-function Stateful(props: { loginPath?: string; logo?: ReactNode }) {
+const Stateful = (props: { loginPath?: string; logo?: ReactNode }) => {
   const state = useRouterState();
   const { tr } = useI18n();
   const userCtrl = useClient<UserController>();
@@ -85,14 +85,14 @@ function Stateful(props: { loginPath?: string; logo?: ReactNode }) {
       logo={props.logo}
     />
   );
-}
+};
 
-function View(props: {
+const View = (props: {
   step: VerifyEmailStep;
   error?: string | null;
   loginPath?: string;
   logo?: ReactNode;
-}) {
+}) => {
   const { tr } = useI18n();
   return (
     <div className="flex min-h-svh flex-1 items-center justify-center p-6">
@@ -176,4 +176,4 @@ function View(props: {
       </div>
     </div>
   );
-}
+};

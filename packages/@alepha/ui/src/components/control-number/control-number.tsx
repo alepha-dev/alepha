@@ -39,7 +39,7 @@ export interface ControlNumberProps {
    */
   max?: number;
   /**
-   * Step size. Falls back to schema `multipleOf`, then 1.
+   * Step size. Defaults to 1.
    */
   step?: number;
   /**
@@ -48,7 +48,7 @@ export interface ControlNumberProps {
   disabled?: boolean;
 }
 
-export function ControlNumber(props: ControlNumberProps) {
+export const ControlNumber = (props: ControlNumberProps) => {
   const form = useFormState(props.input, ["error"]);
   const [value, setValue] = useFieldValue(props.input);
 
@@ -133,4 +133,4 @@ export function ControlNumber(props: ControlNumberProps) {
       </div>
     </FormField>
   );
-}
+};
