@@ -1,3 +1,4 @@
+import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
@@ -11,6 +12,7 @@ import {
 import { Input } from "@alepha/ui/components/ui/input";
 import { Label } from "@alepha/ui/components/ui/label";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { cn } from "@alepha/ui/lib/utils";
 import { useClient } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { Localize, useI18n } from "alepha/react/i18n";
@@ -138,7 +140,7 @@ const ProjectSettingsMembersSection = (
 
         <div className="flex flex-col gap-2">
           {members.map((member) => (
-            <Card key={member.id} className="py-3 shadow">
+            <Card key={member.id} className={cn(settingsCardEdge, "py-3")}>
               <CardContent className="flex items-center gap-4 px-3">
                 <div className="flex flex-1 items-center gap-3">
                   <MemberIdentity member={member} variant="card" />
@@ -155,7 +157,10 @@ const ProjectSettingsMembersSection = (
           ))}
 
           {pendingInvitations.map((invitation) => (
-            <Card key={invitation.id} className="py-3 opacity-80 shadow">
+            <Card
+              key={invitation.id}
+              className={cn(settingsCardEdge, "py-3 opacity-80")}
+            >
               <CardContent className="flex items-center gap-4 px-3">
                 <div className="bg-muted flex size-10 items-center justify-center rounded-md">
                   <Mail className="size-5" />
@@ -176,7 +181,7 @@ const ProjectSettingsMembersSection = (
           ))}
 
           {members.length === 0 && pendingInvitations.length === 0 && (
-            <Card className="shadow">
+            <Card className={settingsCardEdge}>
               <CardContent className="flex flex-col items-center justify-center gap-2">
                 <Users className="size-8 opacity-50" />
                 <span className="text-muted-foreground text-center text-sm">
