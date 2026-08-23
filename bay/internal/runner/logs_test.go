@@ -56,11 +56,11 @@ func TestTailFile(t *testing.T) {
 		// The reason the scan runs forward. A reverse byte scan lands inside a
 		// UTF-8 sequence and splits it, turning an accent into two replacement
 		// characters.
-		got, err := TailFile(write(t, "démarrage terminé\nprêt à répondre\n"), 1)
+		got, err := TailFile(write(t, "Bjørn started\nZoë is ready\n"), 1)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got[0].Raw != "prêt à répondre" {
+		if got[0].Raw != "Zoë is ready" {
 			t.Fatalf("multi-byte characters were mangled: %q", got[0].Raw)
 		}
 	})

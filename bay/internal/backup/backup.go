@@ -181,6 +181,15 @@ func Install(restored, livePath string) error {
 		if err := os.Rename(livePath, aside); err != nil {
 			return fmt.Errorf("set aside existing database: %w", err)
 		}
+		// The WAL and SHM belong to the database just set aside: an app killed
+		// at the end of its grace period leaves committed frames in the WAL,
+		// and deleting it dropped them from the only safety copy. They follow
+		// the file under its new name, where SQLite looks for them.
+		for _, suffix := range []string{"-wal", "-shm"} {
+			if err := os.Rename(livePath+suffix, aside+suffix); err != nil && !os.IsNotExist(err) {
+				return fmt.Errorf("set aside %s: %w", livePath+suffix, err)
+			}
+		}
 	}
 
 	// A stale write-ahead log next to a fresh database is worse than either

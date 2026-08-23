@@ -129,7 +129,7 @@ func TestPruneNeverDeletesTheRollbackTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Five is `defaultKeepReleases`: the bug needs the default, not a contrived
+	// Two is `defaultKeepReleases`: the bug needs the default, not a contrived
 	// window, because it is the shipped configuration that loses the target.
 	previous := "2026-07-20-100000"
 	removed, err := Prune(instance, 5, previous)
