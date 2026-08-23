@@ -15,6 +15,7 @@ import {
   Layers,
   Link2,
   MapPin,
+  Ruler,
   User,
   UserMinus,
 } from "lucide-react";
@@ -31,6 +32,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 import { useProjectUsers } from "../../shared/useProjectUsers.ts";
 import { UserAvatar } from "../../shared/UserAvatar.tsx";
 import { formatEstimate } from "./questEstimate.ts";
+import { formatQuestSize } from "./questSize.ts";
 import QuestViewDuplicateButton from "./QuestViewDuplicateButton.tsx";
 import QuestViewRailRow from "./QuestViewRailRow.tsx";
 import QuestViewRailTags from "./QuestViewRailTags.tsx";
@@ -158,6 +160,13 @@ const QuestViewRail = (props: QuestViewRailProps) => {
 
         <QuestViewRailRow icon={Flame} label={tr("board.table.priority")}>
           <span className="capitalize">{quest.priority}</span>
+        </QuestViewRailRow>
+
+        {/* Directly under Priority, mirroring the create form where the two
+            share a row. Ungated: unlike Estimate, size is mandatory, so
+            there is always a value to show. */}
+        <QuestViewRailRow icon={Ruler} label={tr("quest.rail.size")}>
+          {formatQuestSize(quest.size) || undefined}
         </QuestViewRailRow>
 
         {questEstimateEnabled && (

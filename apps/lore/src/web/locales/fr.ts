@@ -240,6 +240,9 @@ export default {
   "quest.create.priority": "Priorité",
   "quest.create.priority.helper":
     "À quelle vitesse cette quête doit être accomplie",
+  "quest.create.size": "Taille",
+  "quest.create.size.helper":
+    "L'ampleur du travail que représente cette quête, de XS à XL",
   "quest.create.description": "Description de la quête",
   "quest.create.description.helper":
     "Décrivez le but, les épreuves et les détails importants.",
@@ -335,6 +338,7 @@ export default {
   "quest.status.completed": "Terminée",
   "quest.status.shelved": "Mise de côté",
   "quest.rail.estimate": "Estimation",
+  "quest.rail.size": "Taille",
   "quest.rail.epic": "Epic",
   "quest.rail.commits": "Commits",
   "quest.rail.due": "Échéance",

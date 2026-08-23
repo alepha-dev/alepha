@@ -30,6 +30,23 @@ export const quests = $entity({
       .enum(["optional", "low", "medium", "high"])
       .meta({ mode: "text" }),
     /**
+     * T-shirt size, 1 (XS) to 5 (XL). Answers "is this chunky work or is it
+     * ready-to-go", as a claim about scope rather than duration: `L` never
+     * promises a number of hours the way `estimateMinutes` does, so an agent
+     * filling it in picks a bucket instead of inventing a figure.
+     *
+     * Mandatory, defaulting to 3 (M): the value every pre-existing row was
+     * backfilled with, and the one the create form pre-selects. Storing the
+     * ordinal rather than the label keeps ordering in SQL; `priority` is a
+     * text enum, which is exactly why the questlog has to carry a
+     * `PRIORITY_ORDER` map to sort it client-side.
+     *
+     * Deliberately NOT the `difficulty` mechanic erased on 2026-08-20. That
+     * one graded the task, and implicitly whoever took it, on F/C/B/A/S rank
+     * letters no one could read without a glossary. Size describes the work.
+     */
+    size: db.default(z.integer().min(1).max(5), 3),
+    /**
      * Optional, glanceable time estimate in minutes — "how long might this
      * take". A motivation aid surfaced in the questlog as a small `~15m`
      * pill, so a viewer can pick a quest that fits the time they have.

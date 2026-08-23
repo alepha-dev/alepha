@@ -3,6 +3,12 @@ export interface ExportRow {
   title: string;
   status: "new" | "accepted" | "completed";
   priority: "optional" | "low" | "medium" | "high";
+  /**
+   * T-shirt size as the stored ordinal, 1 (XS) to 5 (XL). The number rather
+   * than the label so the column round-trips through import without a
+   * label-to-ordinal table on the server.
+   */
+  size: number;
   area: string;
   kanbanColumn: string;
   milestone: string;
@@ -21,6 +27,7 @@ export const QUEST_CSV_HEADER: ReadonlyArray<keyof ExportRow> = [
   "title",
   "status",
   "priority",
+  "size",
   "area",
   "kanbanColumn",
   "milestone",

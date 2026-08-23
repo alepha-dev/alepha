@@ -261,6 +261,8 @@ export default {
   "quest.create.update": "Update Quest",
   "quest.create.priority": "Priority",
   "quest.create.priority.helper": "How urgently this quest must be fulfilled",
+  "quest.create.size": "Size",
+  "quest.create.size.helper": "How much work this quest is, from XS to XL",
   "quest.create.description": "Description",
   "quest.create.description.helper":
     "Describe the quest, its objectives, and any relevant details",
@@ -328,6 +330,7 @@ export default {
   "quest.status.completed": "Completed",
   "quest.status.shelved": "Shelved",
   "quest.rail.estimate": "Estimate",
+  "quest.rail.size": "Size",
   "quest.rail.epic": "Epic",
   "quest.rail.commits": "Commits",
   "quest.rail.due": "Due",

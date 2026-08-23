@@ -7,6 +7,7 @@ import {
   objectiveSchema,
   prioritySchema,
   projectParamsSchema,
+  questSizeSchema,
   questStatusSchema,
 } from "./commonSchemas.ts";
 import { DIAGRAM_CAPABILITY } from "./diagramCapability.ts";
@@ -17,6 +18,11 @@ import { DIAGRAM_CAPABILITY } from "./diagramCapability.ts";
 
 const PRIORITY_DESCRIPTION =
   "Quest priority. Ordered low → high: optional < low < medium < high. `optional` is below `low`.";
+const SIZE_DESCRIPTION =
+  "Quest size on a 1-5 t-shirt scale: 1 = XS, 2 = S, 3 = M, 4 = L, 5 = XL. " +
+  "A claim about SCOPE, not duration: pick the bucket the work falls into rather than converting an estimate in hours into a number. " +
+  "Independent of `priority` (how urgent) and of `estimateMinutes` (how long, when the project practises estimation). " +
+  "Defaults to 3 (M) when omitted, which reads as 'nobody sized this'.";
 const AREA_DESCRIPTION =
   "The part of the system this quest touches — a module, a package, a surface (e.g. 'alepha/orm', '@alepha/ui', 'lore/folios'). Required; every quest has exactly one. " +
   "NOT the same axis as `epic` (a bounded initiative that spans areas and ends) or `tags` (the nature of the work: bug, feat, chore) — a quest carries all three independently. " +
@@ -101,6 +107,7 @@ export const questListResultSchema = z.object({
         .optional(),
       area: z.string(),
       priority: prioritySchema,
+      size: questSizeSchema,
       status: questStatusSchema,
       objectives: z
         .array(objectiveSchema)
@@ -301,6 +308,7 @@ export const questGetResultSchema = z.object({
   description: z.string(),
   area: z.string(),
   priority: prioritySchema,
+  size: questSizeSchema,
   status: questStatusSchema,
   objectives: z.array(objectiveSchema),
   projectId: z.integer(),
@@ -374,6 +382,7 @@ export const questCreateParamsSchema = projectParamsSchema.extend({
   description: z.string().describe(DESCRIPTION_DESCRIPTION),
   area: z.string().describe(AREA_DESCRIPTION),
   priority: prioritySchema.describe(PRIORITY_DESCRIPTION),
+  size: questSizeSchema.describe(SIZE_DESCRIPTION).optional(),
   objectives: z
     .array(objectiveInputSchema)
     .describe("List of objectives/subquests")
@@ -526,6 +535,7 @@ export const questUpdateParamsSchema = entityRefSchema.extend({
   description: z.string().describe(`New ${DESCRIPTION_DESCRIPTION}`).optional(),
   area: z.string().describe(`New ${AREA_DESCRIPTION}`).optional(),
   priority: prioritySchema.describe(`New ${PRIORITY_DESCRIPTION}`).optional(),
+  size: questSizeSchema.describe(`New ${SIZE_DESCRIPTION}`).optional(),
   objectives: z
     .array(objectiveInputSchema)
     .describe(

@@ -13,6 +13,17 @@ export const questCreateSchema = z.object({
   area: z.string().max(48),
   priority: z.enum(["optional", "low", "medium", "high"]),
   /**
+   * T-shirt size, 1 (XS) to 5 (XL). See the entity for what it claims.
+   *
+   * Optional on the wire with a server-side default of 3 (M), even though the
+   * form always sends one: Lore's own programmatic creators (blight
+   * forwarding, feedback acceptance) have no basis for a value, and forcing
+   * them to supply one is precisely what discredited the erased `difficulty`
+   * (its blight path hardcoded `2`). An absent size means "nobody sized it",
+   * and 3 is the same neutral middle the backfill used.
+   */
+  size: z.integer().min(1).max(5).optional(),
+  /**
    * Optional, glanceable time estimate in minutes (motivation aid, surfaced
    * as a `~15m` pill in the questlog). `null` clears it on update, a positive
    * integer sets it, omit to leave unchanged. Not tied to rewards.

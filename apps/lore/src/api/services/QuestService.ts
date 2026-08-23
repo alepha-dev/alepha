@@ -49,6 +49,10 @@ export interface CreateQuestInput {
   area: string;
   priority?: Quest["priority"];
   /**
+   * T-shirt size 1 (XS) to 5 (XL); `undefined` falls back to 3 (M).
+   */
+  size?: number;
+  /**
    * Optional glanceable time estimate in minutes; `null`/`undefined` = none.
    */
   estimateMinutes?: number | null;
@@ -188,6 +192,10 @@ export class QuestService {
       description: input.description,
       area: ensuredArea?.name ?? "",
       priority: input.priority ?? "medium",
+      // Mirrors the column default rather than relying on it, the same way
+      // `priority` above does: a caller that omits the size gets the neutral
+      // middle explicitly, not whatever the DDL happens to say.
+      size: input.size ?? 3,
       estimateMinutes: input.estimateMinutes ?? undefined,
       dueAt: input.dueAt,
       objectives: this.ensureObjectiveIds(input.objectives ?? []),
