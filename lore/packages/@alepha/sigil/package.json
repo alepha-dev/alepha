@@ -56,7 +56,7 @@
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
-    "alepha": "0.26.0",
+    "alepha": "0.27.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tsdown": "^0.22.14",
@@ -64,7 +64,7 @@
     "vitest": "^4.1.10"
   },
   "peerDependencies": {
-    "alepha": "^0.26.0",
+    "alepha": "^0.27.0",
     "react": "*",
     "react-dom": "*"
   },
