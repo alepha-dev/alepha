@@ -10,7 +10,7 @@
     "wrangler": "cd dist && wrangler"
   },
   "dependencies": {
-    "alepha": "^0.26.0"
+    "alepha": "^0.27.0"
   },
   "devDependencies": {
     "vite": "^8.2.1",

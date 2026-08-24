@@ -1,3 +1,58 @@
+## [0.27.0] - 2026-08-24
+
+### Features
+
+- **cli**: replace Biome with oxlint and oxfmt (`7a0d7c85`)
+- **api/users**: show when a session was last used, not just when it started (`a12f9c7f`)
+- **ui**: draw mermaid flowchart fences as themed diagrams (`5d416321`)
+- **orm**: bound D1 queries and support the Sessions API (`3522e858`)
+- **ui**: let AlephaTable take static data (`bc02a7c5`)
+- **ui**: let AppShell style its scrolling main (`3bcb86f1`)
+- **ui**: give AlephaTable a page-size picker and a sortable-column affordance (`d029589d`)
+- **ui**: give Badge a tint variant and a tone axis (`8fe26380`)
+- **ui**: bring the epics list and the questline dialog onto the quests table's shape (`761424b9`)
+- **devtools**: run Try It as the session, and keep logs across a restart (`a9c7e923`)
+- **ui/admin**: park the built-in nav in a 1000+ band, add a dashboard at /admin (`70160b7c`)
+- **react/head**: let a meta tag carry a media query (`dcb7dcf5`)
+- **react/router**: answer browser navigations with HTML error pages (`5e12817e`)
+- **cli**: add dev.port, bind it strictly, and fix dev with CSS modules (`c497b37c`)
+- **cli**: flag secrets pushed before the last env edit, and say a deploy is needed (`079940b0`)
+- **platform**: write placeholder blobs on `db export` (`6f3c1d39`)
+- **platform**: honour `secret: false` when pushing Cloudflare bindings (`18efd6dd`)
+- **react**: give every page its own canonical URL, og:url and twitter:url (`267eae33`)
+
+### Bug Fixes
+
+- **api/workflows**: publish a step's AbortController before the row says running (`febcafe7`)
+- **orm**: sqlite could not introspect its own case-insensitive index (`448bf6a3`)
+- **ui**: account cards were shaved by their own scroll column (`bc89c8d5`)
+- **ui**: the settings rail's active entry matched nothing (`93455af8`)
+- **ui**: settings cards had drifted into four different edges (`1b6af5f5`)
+- **cli**: report database command failures without a stack trace (`ac7d1424`)
+- **cli**: a stray word on a leaf command was silently ignored (`f1735bd8`)
+- **react**: static assets were cached for 3.6 seconds, not an hour (`5b178010`)
+- **ui**: settings cards drew a doubled edge next to the form card (`5aa7dbf6`)
+- **orm**: sqlite schema push was silently applying nothing (`02fa1661`)
+- **cli**: stop the linter from rewriting the project's dependencies (`47ac5c75`)
+- **devtools**: render structured values as JSON, not [object Object] (`fe1c8108`)
+- **react**: stop rebuilding accumulators inside loops (`8b3b9f3c`)
+- **websocket**: decode fragmented frames instead of stringifying the list (`94b63d4f`)
+- **react**: keep parameterized pages out of sitemap.xml (`a26b464f`)
+- **cli**: make a freshly scaffolded project work under yarn and pnpm (`842de36c`)
+- **core**: read an empty env string as an absent structured value (`1e84a7af`)
+- **platform**: let the deploy name the artifact it packs (`7c534a1c`)
+- **ui**: give tooltips a classic open delay (`802d97ea`)
+- **ui**: return a stable singleton from useToast (`fdb2b2a1`)
+- **orm,mcp**: make a failed relational read diagnosable (`18d70991`)
+- **react/router**: restore scroll on back instead of jumping to the top (`b95e4e12`)
+- **react/form**: replace the literal NUL byte in useFormQuerySync with \u0000 (`c7e0902c`)
+- **cli**: frame the init wizard's questions and trim its sign-off (`ac52fd6f`)
+- **react**: show the auth slide in GettingStarted again (`0daa9e51`)
+- **cli**: honour an absolute path in `alepha init` (`47f88c9e`)
+- **api/users**: refuse a realm that needs codes it cannot send (`74f67e98`)
+- **parameters**: skip the ready preload under multi-tenancy (`c8ce8209`)
+- **orm**: stop paginate leaking an unhandled rejection when count scoping throws (`aac3ef2f`)
+
 ## [0.26.0] - 2026-08-16
 
 ### Features
