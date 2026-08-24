@@ -1,6 +1,5 @@
 {
   "name": "@alepha/sigil",
-  "version": "0.20.1",
   "private": true,
   "description": "Reports page views, vitals and errors from an Alepha app to a Sigil instance.",
   "keywords": [

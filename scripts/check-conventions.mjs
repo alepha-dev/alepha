@@ -1,19 +1,21 @@
 #!/usr/bin/env node
 /**
- * Guards the two conventions that had quietly drifted, so they stop drifting.
+ * Guards the conventions that had quietly drifted, so they stop drifting.
  *
  *   1. Errors extend `AlephaError` — a bare `Error` loses the framework's
  *      `name` and the handling that keys off it.
  *   2. Time comes from `DateTimeProvider` — `Date.now()` in business logic is
  *      what makes a behaviour untestable with `travel()` / `pause()`.
+ *   3. A workspace declares a `version` if and only if it is published.
  *
- * Both rules have legitimate exceptions, and a guard that cannot express them
- * gets disabled the first time it is wrong. They are listed below, each with
- * the reason it is exempt — an unexplained entry is how an allowlist rots into
- * a list of things nobody dares touch.
+ * The first two have legitimate exceptions, and a guard that cannot express
+ * them gets disabled the first time it is wrong. They are listed below, each
+ * with the reason it is exempt — an unexplained entry is how an allowlist
+ * rots into a list of things nobody dares touch.
  *
- * Scope is deliberately narrow: framework sources only. Tests may do whatever
- * is convenient; that is the point of a test.
+ * Rules 1 and 2 read framework sources only. Tests may do whatever is
+ * convenient; that is the point of a test. Rule 3 spans every workspace,
+ * because that is the scope of the thing it protects.
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -109,6 +111,60 @@ if (stale.length > 0) {
     `\nStale exemption(s) in scripts/check-conventions.mjs — nothing to exempt:\n` +
       stale.map((f) => `  ${f}`).join("\n") +
       "\n\nRemove them.\n",
+  );
+  process.exit(1);
+}
+
+/**
+ * A workspace declares a `version` if and only if it is published.
+ *
+ * A private workspace ships as a GitHub release asset (`bay`) or a Cloudflare
+ * deploy (`lore`), never to the registry, so a number in its manifest is
+ * decoration that nothing bumps. `@alepha/commerce`, `payments-mollie` and
+ * `sigil` drifted to 0.1.0, 0.20.6 and 0.20.1 while `alepha` reached 0.26.0.
+ *
+ * The release job's bump step encodes the invariant directly, filtering with
+ * `--no-private`, so a violation stays invisible until someone dispatches a
+ * release: a private workspace that grows a version is skipped forever, and a
+ * published one that loses it aborts the whole bump. That is release 0.27.0,
+ * which failed on the root workspace. Checking it here moves the failure into
+ * `yarn v`, where it costs nothing.
+ */
+const workspaces = execFileSync("yarn", ["workspaces", "list", "--json"], {
+  encoding: "utf8",
+})
+  .trim()
+  .split("\n")
+  .map((line) => JSON.parse(line));
+
+const versionViolations = [];
+
+for (const workspace of workspaces) {
+  const manifest = JSON.parse(
+    readFileSync(`${workspace.location}/package.json`, "utf8"),
+  );
+  const location = `${workspace.location}/package.json`;
+
+  if (manifest.private === true && manifest.version !== undefined) {
+    versionViolations.push(
+      `  ${location}\n` +
+        `    → private, so it must not declare a version (found ${manifest.version})`,
+    );
+  }
+
+  if (manifest.private !== true && manifest.version === undefined) {
+    versionViolations.push(
+      `  ${location}\n    → published, so it must declare a version`,
+    );
+  }
+}
+
+if (versionViolations.length > 0) {
+  console.error(
+    `\n${versionViolations.length} workspace version violation(s):\n\n` +
+      `${versionViolations.join("\n")}\n\n` +
+      "A workspace declares a `version` if and only if it is published. The\n" +
+      "release job bumps with `--no-private` and relies on it.\n",
   );
   process.exit(1);
 }

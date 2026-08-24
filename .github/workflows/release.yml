@@ -108,18 +108,33 @@ jobs:
       - name: Install Dependencies
         run: yarn
 
-      # Deliberately NOT `--no-private`: the four products share one version
-      # number, and two of them (`bay`, `lore`) are private workspaces that
-      # ship as a GitHub release asset and a Cloudflare deploy rather than as
-      # npm packages. Filtering them out here is what left them on 0.1.0 while
-      # `alepha` reached 0.26.0. Publishing still filters them — see the
-      # `--no-private` on `npm publish` below, which is what keeps a private
-      # workspace out of the registry.
+      # `--no-private` here is NOT the registry guard. That is the identical
+      # flag on `npm publish` far below, and it is the only thing keeping a
+      # private workspace off the registry. Conflating the two cost a release.
+      #
+      # What this one encodes is the repository's version invariant: a
+      # workspace declares a `version` if and only if it is published. Private
+      # workspaces ship as a GitHub release asset (`bay`) or a Cloudflare
+      # deploy (`lore`), never as an npm package, so a number in their
+      # manifest is decoration, and decoration drifts. `@alepha/commerce`,
+      # `payments-mollie` and `sigil` sat at 0.1.0, 0.20.6 and 0.20.1 while
+      # `alepha` reached 0.26.0. They now carry no version at all.
+      #
+      # Dropping the flag to bump them anyway is what broke the first 0.27.0
+      # attempt: `--all` also reaches the root workspace and the example apps,
+      # and `yarn version` fails on a workspace with no version rather than
+      # skipping it, so `foreach` aborts on the first one. `bay` still gets a
+      # version in its binary, from the `alepha` number by way of the ldflags
+      # further down, which is where it always came from.
+      #
+      # `scripts/check-conventions.mjs` guards the invariant, so the next
+      # violation surfaces in `yarn v` instead of here, in a release someone
+      # dispatched by hand.
       - name: Bump Version
         env:
           VERSION_BUMP: ${{ inputs.version_bump }}
         run: |
-          yarn workspaces foreach --all version "${VERSION_BUMP}"
+          yarn workspaces foreach --no-private --all version "${VERSION_BUMP}"
 
       - name: Get New Version
         id: version

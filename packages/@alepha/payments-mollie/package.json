@@ -1,6 +1,5 @@
 {
   "name": "@alepha/payments-mollie",
-  "version": "0.20.6",
   "private": true,
   "description": "Mollie payment provider for alepha/payments.",
   "keywords": [

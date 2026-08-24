@@ -1,6 +1,5 @@
 {
   "name": "bay",
-  "version": "0.26.0",
   "private": true,
   "scripts": {
     "test": "go test ./...",

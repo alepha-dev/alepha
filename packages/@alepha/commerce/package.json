@@ -1,6 +1,5 @@
 {
   "name": "@alepha/commerce",
-  "version": "0.1.0",
   "private": true,
   "description": "Headless commerce for Alepha apps: catalog, cart, checkout. Extended by product-kind handlers.",
   "keywords": [

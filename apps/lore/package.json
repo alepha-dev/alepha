@@ -1,6 +1,5 @@
 {
   "name": "lore",
-  "version": "0.26.0",
   "private": true,
   "type": "module",
   "scripts": {
