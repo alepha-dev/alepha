@@ -11,6 +11,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 import QuestAttachmentChip from "./QuestAttachmentChip.tsx";
 import QuestAttachmentLightbox from "./QuestAttachmentLightbox.tsx";
 import { attachmentPreview } from "./questAttachmentPreview.ts";
+import { useExclusiveWindowPaste } from "./useExclusiveWindowPaste.ts";
 
 export interface QuestAttachmentsProps {
   /**
@@ -146,35 +147,31 @@ const QuestAttachments = (props: QuestAttachmentsProps) => {
   };
 
   // Ctrl/Cmd+V anywhere on the page, so a screenshot lands without hunting
-  // for a drop target first. Bound to `window` and gated on `kind === "file"`
-  // so pasting TEXT into the description beside this is untouched.
-  useEffect(() => {
-    if (props.disabled) return;
-    const onPaste = (e: ClipboardEvent) => {
-      const pasted: File[] = [];
-      for (const item of e.clipboardData?.items ?? []) {
-        if (item.kind !== "file") continue;
-        const file = item.getAsFile();
-        if (!file) continue;
-        // Browsers paste every screenshot as "image.png"; stamping it keeps
-        // the chips distinguishable when several are pasted in a row.
-        const ext = file.name.includes(".")
-          ? file.name.slice(file.name.lastIndexOf("."))
-          : ".png";
-        pasted.push(
-          new File([file], `pasted-${dateTime.nowMillis()}${ext}`, {
-            type: file.type,
-          }),
-        );
-      }
-      if (pasted.length > 0) {
-        e.preventDefault();
-        void upload(pasted);
-      }
-    };
-    window.addEventListener("paste", onPaste);
-    return () => window.removeEventListener("paste", onPaste);
-  });
+  // for a drop target first. Gated on `kind === "file"` so pasting TEXT into
+  // the description beside this is untouched, and EXCLUSIVE because the quest
+  // body and the edit sheet over it are both mounted - see the hook.
+  useExclusiveWindowPaste((e) => {
+    const pasted: File[] = [];
+    for (const item of e.clipboardData?.items ?? []) {
+      if (item.kind !== "file") continue;
+      const file = item.getAsFile();
+      if (!file) continue;
+      // Browsers paste every screenshot as "image.png"; stamping it keeps
+      // the chips distinguishable when several are pasted in a row.
+      const ext = file.name.includes(".")
+        ? file.name.slice(file.name.lastIndexOf("."))
+        : ".png";
+      pasted.push(
+        new File([file], `pasted-${dateTime.nowMillis()}${ext}`, {
+          type: file.type,
+        }),
+      );
+    }
+    if (pasted.length > 0) {
+      e.preventDefault();
+      void upload(pasted);
+    }
+  }, !props.disabled);
 
   const metaOf = (fileId: string) => meta.find((m) => m.fileId === fileId);
   const isImage = (fileId: string) =>
