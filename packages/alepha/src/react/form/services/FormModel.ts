@@ -171,6 +171,25 @@ export class FormModel<T extends ZObject> {
     return {
       id: this.id,
       noValidate: true,
+      /**
+       * Not decoration, and not about where the form posts: `onSubmit` still
+       * handles every submission this component ever sees.
+       *
+       * It is about the submissions it does NOT see. A `<form>` with no
+       * `method` defaults to GET, and with no `action` it targets the current
+       * URL, so any submit that happens before this handler is attached
+       * serialises every named input into the query string. That is reachable
+       * four ways: hydration still in flight on a slow connection, the bundle
+       * failing to load, a JS error breaking hydration, and Enter pressed in a
+       * text field, which fires implicit submission with no click involved.
+       *
+       * On a sign-in form the field is called `password`, so the credential
+       * lands in the address bar, in browser history, in the server's access
+       * log, and in the `Referer` header of the next request out. Declaring
+       * POST makes that same pre-hydration submit a request the server simply
+       * refuses, which is the correct outcome and leaks nothing.
+       */
+      method: "post" as const,
       onSubmit: (ev?: FormEventLike) => {
         ev?.preventDefault?.();
         void this.submit();
