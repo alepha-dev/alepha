@@ -235,4 +235,76 @@ describe("stock reservation", () => {
 
     expect(await ctx.stock.onHand(ring.id)).toBe(4);
   });
+
+  /**
+   * Concurrency, on the real Postgres provider.
+   *
+   * `reserve` and `recordSale` used to read the sum, compare in memory and
+   * write. At READ COMMITTED two transactions read the SAME sum before either
+   * commits, so both passed the check and both wrote — and there is no counter
+   * row to lock, since on-hand is a SUM over an append-only ledger.
+   */
+  describe("under concurrency", () => {
+    it("lets exactly five of twenty racers reserve the last five units", async ({
+      expect,
+    }) => {
+      const ctx = await setup();
+      const ring = await aRing(ctx.catalog);
+      await ctx.stock.recordIntake(ring.id, 5);
+
+      const outcomes = await Promise.all(
+        Array.from({ length: 20 }, () =>
+          ctx.stock
+            .reserve(ring.id, 1, { orderId: randomUUID() })
+            .then(() => "held" as const)
+            .catch(() => "refused" as const),
+        ),
+      );
+
+      expect(outcomes.filter((it) => it === "held")).toHaveLength(5);
+      expect(await ctx.stock.reserved(ring.id)).toBe(5);
+      expect(await ctx.stock.available(ring.id)).toBe(0);
+    });
+
+    it("never lets concurrent sales take the ledger below zero", async ({
+      expect,
+    }) => {
+      const ctx = await setup();
+      const ring = await aRing(ctx.catalog);
+      await ctx.stock.recordIntake(ring.id, 3);
+
+      const outcomes = await Promise.all(
+        Array.from({ length: 10 }, () =>
+          ctx.stock
+            .recordSale(ring.id, 1)
+            .then(() => "sold" as const)
+            .catch(() => "refused" as const),
+        ),
+      );
+
+      expect(outcomes.filter((it) => it === "sold")).toHaveLength(3);
+      expect(await ctx.stock.onHand(ring.id)).toBe(0);
+    });
+
+    it("respects multi-unit reservations at the boundary", async ({
+      expect,
+    }) => {
+      const ctx = await setup();
+      const ring = await aRing(ctx.catalog);
+      await ctx.stock.recordIntake(ring.id, 4);
+
+      // Three racers wanting two each: the ledger backs exactly two of them.
+      const outcomes = await Promise.all(
+        Array.from({ length: 3 }, () =>
+          ctx.stock
+            .reserve(ring.id, 2, { orderId: randomUUID() })
+            .then(() => "held" as const)
+            .catch(() => "refused" as const),
+        ),
+      );
+
+      expect(outcomes.filter((it) => it === "held")).toHaveLength(2);
+      expect(await ctx.stock.reserved(ring.id)).toBe(4);
+    });
+  });
 });
