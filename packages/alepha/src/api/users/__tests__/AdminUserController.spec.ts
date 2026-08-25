@@ -1,8 +1,8 @@
-import { Alepha } from "alepha";
+import { $hook, Alepha } from "alepha";
 import { DbEntityNotFoundError } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { AlephaSecurity, type UserAccountToken } from "alepha/security";
-import { BadRequestError } from "alepha/server";
+import { BadRequestError, ConflictError } from "alepha/server";
 import { describe, it } from "vitest";
 
 import {
@@ -21,7 +21,34 @@ const adminUser: UserAccountToken = {
 
 const asAdmin = { user: adminUser };
 
-const setup = async () => {
+/**
+ * The application's veto, the way a real app writes it - Lore's own hook is
+ * this shape, counting owned projects.
+ */
+class RefusingHook {
+  onUserDelete = $hook({
+    on: "user:delete:before",
+    handler: async () => {
+      throw new ConflictError("You still own 3 projects");
+    },
+  });
+}
+
+/**
+ * The other half of the seam: cleanup that succeeds and lets deletion through.
+ */
+class CleanupHook {
+  public ran: string[] = [];
+
+  onUserDelete = $hook({
+    on: "user:delete:before",
+    handler: async ({ userId }) => {
+      this.ran.push(userId);
+    },
+  });
+}
+
+const setup = async (options: { hook?: any } = {}) => {
   const alepha = Alepha.create({
     env: { LOG_LEVEL: "error" },
   });
@@ -29,6 +56,9 @@ const setup = async () => {
   alepha.with(AlephaOrmPostgres);
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaSecurity);
+  if (options.hook) {
+    alepha.with(options.hook);
+  }
 
   await alepha.start();
 
@@ -275,6 +305,65 @@ describe("alepha/api/users - AdminUserController CRUD", () => {
     await expect(
       controller.getUser({ params: { id: created.id } }, asAdmin),
     ).rejects.toThrowError(DbEntityNotFoundError);
+  });
+
+  it("should run user:delete:before for an admin deletion", async ({
+    expect,
+  }) => {
+    const { alepha, controller } = await setup({ hook: CleanupHook });
+
+    const created = await controller.createUser(
+      { body: { username: "hookdel", email: "hookdel@example.com" } },
+      asAdmin,
+    );
+
+    await controller.deleteUser({ params: { id: created.id } }, asAdmin);
+
+    // The hook used to fire only on the self-service path, so an app's
+    // cleanup was skipped whenever an operator did the deleting.
+    expect(alepha.inject(CleanupHook).ran).toEqual([created.id]);
+  });
+
+  it("should honour a user:delete:before veto on an admin deletion", async ({
+    expect,
+  }) => {
+    const { controller } = await setup({ hook: RefusingHook });
+
+    const created = await controller.createUser(
+      { body: { username: "vetodel", email: "vetodel@example.com" } },
+      asAdmin,
+    );
+
+    await expect(
+      controller.deleteUser({ params: { id: created.id } }, asAdmin),
+    ).rejects.toThrowError("You still own 3 projects");
+
+    // Refusing has to actually refuse, not report an error after the row is
+    // already gone.
+    const still = await controller.getUser(
+      { params: { id: created.id } },
+      asAdmin,
+    );
+    expect(still.id).toBe(created.id);
+  });
+
+  it("should honour a veto on a bulk admin deletion", async ({ expect }) => {
+    const { controller } = await setup({ hook: RefusingHook });
+
+    const created = await controller.createUser(
+      { body: { username: "bulkveto", email: "bulkveto@example.com" } },
+      asAdmin,
+    );
+
+    await expect(
+      controller.deleteUsers({ body: { ids: [created.id] } }, asAdmin),
+    ).rejects.toThrowError("You still own 3 projects");
+
+    const still = await controller.getUser(
+      { params: { id: created.id } },
+      asAdmin,
+    );
+    expect(still.id).toBe(created.id);
   });
 
   it("should find users with pagination", async ({ expect }) => {

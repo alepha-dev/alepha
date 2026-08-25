@@ -1,4 +1,4 @@
-import { $inject, Alepha } from "alepha";
+import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { $secure } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
@@ -23,8 +23,10 @@ import { UserService } from "../services/UserService.ts";
  * account holder authored inside *other people's* data — and it cannot,
  * because those foreign keys live in the application's own entities.
  *
- * So this emits {@link Hooks."user:delete:before"} first, and an application
- * subscribes with `$hook` to either clean up or refuse:
+ * So {@link UserService.deleteUser} emits {@link Hooks."user:delete:before"}
+ * and awaits it before touching anything - on this path and on the admin one
+ * alike - and an application subscribes with `$hook` to either clean up or
+ * refuse:
  *
  * ```ts
  * class UserDeletionHook {
@@ -32,8 +34,8 @@ import { UserService } from "../services/UserService.ts";
  *
  *   onUserDelete = $hook({
  *     on: "user:delete:before",
- *     handler: async ({ user }) => {
- *       const owned = await this.projects.count({ createdBy: { eq: user.id } });
+ *     handler: async ({ userId }) => {
+ *       const owned = await this.projects.count({ createdBy: { eq: userId } });
  *       if (owned > 0) {
  *         throw new ConflictError(`You still own ${owned} project(s).`);
  *       }
@@ -48,7 +50,6 @@ import { UserService } from "../services/UserService.ts";
  * third-party data loss, visible nowhere in a diff.
  */
 export class MyAccountController {
-  protected readonly alepha = $inject(Alepha);
   protected readonly realmProvider = $inject(RealmProvider);
   protected readonly userService = $inject(UserService);
   protected readonly crypto = $inject(CryptoProvider);
@@ -100,24 +101,11 @@ export class MyAccountController {
         }
       }
 
-      /*
-        ⚠️ Emitted WITHOUT `{ log: true }`, and that is load-bearing.
-
-        `EventManager.emit()`'s fast path rethrows a handler's error
-        untouched, so an application's `ConflictError("You still own 3
-        projects")` reaches the caller intact, with its own status and its own
-        message. The logging path instead wraps it in
-        `AlephaError("Failed during '…' hook for service: X", { cause })` —
-        which would bury the only sentence the person needed to read behind a
-        framework-internal one.
-
-        Nothing is deleted before this resolves.
-      */
-      await this.alepha.events.emit("user:delete:before", {
-        realm: user.realm,
-        userId: user.id,
-      });
-
+      // `deleteUser` emits `user:delete:before` and awaits it, so the
+      // application's veto applies to this path and to an admin deletion
+      // alike. Re-authentication above happens first on purpose: cleanup that
+      // runs before the caller has proven who they are is a way to destroy
+      // somebody else's data from an unattended browser.
       await this.userService.deleteUser(user.id, user.realm);
 
       return { ok: true };

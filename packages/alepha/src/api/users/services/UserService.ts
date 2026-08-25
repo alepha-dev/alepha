@@ -516,6 +516,29 @@ export class UserService {
     this.log.trace("Deleting user", { id, userRealmName });
     const user = await this.getUserById(id, userRealmName);
 
+    /*
+      The application's veto, and it belongs HERE rather than in a controller.
+      `MyAccountController` used to emit it on its way in, so an admin
+      deleting the same account through `AdminUserController` skipped it
+      entirely: the app's cleanup never ran and its refusal never applied,
+      even though the row and its cascades are identical either way.
+
+      ⚠️ Emitted WITHOUT `{ log: true }`, and that is load-bearing.
+
+      `EventManager.emit()`'s fast path rethrows a handler's error untouched,
+      so an application's `ConflictError("You still own 3 projects")` reaches
+      the caller intact, with its own status and its own message. The logging
+      path instead wraps it in `AlephaError("Failed during '…' hook for
+      service: X", { cause })` - which would bury the only sentence the person
+      needed to read behind a framework-internal one.
+
+      Nothing is deleted before this resolves.
+    */
+    await this.alepha.events.emit("user:delete:before", {
+      realm: userRealmName ?? user.realm,
+      userId: id,
+    });
+
     // Clean up related sessions and identities before deleting the user
     await this.realmProvider
       .sessionRepository(userRealmName)

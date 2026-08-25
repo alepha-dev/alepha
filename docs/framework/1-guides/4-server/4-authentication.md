@@ -234,7 +234,11 @@ confirmation stands alone.
 The framework only knows about users, identities and sessions. It cannot know
 what your application hangs off a user id, so it emits `user:delete:before`
 first and **awaits** it. A handler that throws aborts the deletion, and the
-error reaches the caller unwrapped - with its own status and message:
+error reaches the caller unwrapped - with its own status and message.
+
+The hook lives in `UserService.deleteUser`, which every deletion goes through:
+self-service, `AdminUserController`'s single delete, and its bulk delete. One
+account, one set of consequences, whoever pressed the button.
 
 ```typescript
 class UserDeletionHook {
