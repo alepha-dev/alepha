@@ -20,11 +20,7 @@ func instanceWithEnv(t *testing.T, lines string) string {
 
 func readEnv(t *testing.T, instance string) string {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join(instance, ".env"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(raw)
+	return flatEnv(t, filepath.Join(instance, ".env"))
 }
 
 func TestSetEnvMergesAndKeepsWhatItDidNotMention(t *testing.T) {

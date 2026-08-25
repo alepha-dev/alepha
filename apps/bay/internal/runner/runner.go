@@ -223,8 +223,9 @@ func flatten(env map[string]string) []string {
 
 // LoadEnvFile parses a .env file into a map.
 //
-// Values are taken literally apart from optional surrounding quotes; no shell
-// expansion, because a secret containing `$` must survive intact.
+// No shell expansion, because a secret containing `$` must survive intact.
+// Quoting and escapes follow [UnquoteEnvValue], which is the same grammar
+// systemd's EnvironmentFile uses and the same one [QuoteEnvValue] writes.
 func LoadEnvFile(path string) (map[string]string, error) {
 	env := map[string]string{}
 	f, err := os.Open(path)
@@ -253,13 +254,7 @@ func LoadEnvFile(path string) (map[string]string, error) {
 		}
 		key = strings.TrimSpace(key)
 		value = strings.TrimSpace(value)
-		if len(value) >= 2 {
-			if (value[0] == '"' && value[len(value)-1] == '"') ||
-				(value[0] == '\'' && value[len(value)-1] == '\'') {
-				value = value[1 : len(value)-1]
-			}
-		}
-		env[key] = value
+		env[key] = UnquoteEnvValue(value)
 	}
 	return env, sc.Err()
 }

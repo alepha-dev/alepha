@@ -50,11 +50,7 @@ func deployBucketApp(t *testing.T, root string, store *state.Store, storage *sta
 
 func envOf(t *testing.T, root string) string {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join(root, "apps", "demo", "production", ".env"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(raw)
+	return flatEnv(t, filepath.Join(root, "apps", "demo", "production", ".env"))
 }
 
 func newRoot(t *testing.T) (string, *state.Store) {
@@ -136,11 +132,8 @@ func TestAppNameCarriesTheEnvironment(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	raw, err := os.ReadFile(filepath.Join(root, "apps", "demo", "staging", ".env"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(raw), "APP_NAME=demo-staging") {
+	raw := flatEnv(t, filepath.Join(root, "apps", "demo", "staging", ".env"))
+	if !strings.Contains(raw, "APP_NAME=demo-staging") {
 		t.Fatalf("expected APP_NAME=demo-staging, .env was:\n%s", raw)
 	}
 }

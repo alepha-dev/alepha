@@ -155,11 +155,8 @@ func TestDeployedAppsRunInProductionMode(t *testing.T) {
 	runDeploy(t, root, store, "demo")
 
 	envPath := filepath.Join(root, "apps", "demo", "production", ".env")
-	raw, err := os.ReadFile(envPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(raw), "NODE_ENV=production") {
+	raw := flatEnv(t, envPath)
+	if !strings.Contains(raw, "NODE_ENV=production") {
 		t.Fatalf("a deployed app must run in production mode, .env was:\n%s", raw)
 	}
 }
@@ -185,14 +182,11 @@ func TestBayReclaimsNodeEnvFromAnAppThatOverrodeIt(t *testing.T) {
 
 	runDeploy(t, root, store, "demo")
 
-	raw, err := os.ReadFile(envPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(string(raw), "NODE_ENV=development") {
+	raw := flatEnv(t, envPath)
+	if strings.Contains(raw, "NODE_ENV=development") {
 		t.Error("Bay must reclaim NODE_ENV — it describes the deployment, not a preference")
 	}
-	if !strings.Contains(string(raw), "STRIPE_KEY=sk_live_keepme") {
+	if !strings.Contains(raw, "STRIPE_KEY=sk_live_keepme") {
 		t.Error("a user's own key must survive a redeploy")
 	}
 }
