@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 
 import { $command } from "../primitives/$command.ts";
 import { CliProvider } from "../providers/CliProvider.ts";
+import { ConsoleOutputProvider } from "../providers/ConsoleOutputProvider.ts";
+import { MemoryOutputProvider } from "../providers/MemoryOutputProvider.ts";
 
 /**
  * Test subclass that exposes protected methods for unit testing.
@@ -1479,6 +1481,263 @@ describe("CliProvider", () => {
       await cli.run(cmd.greet, "World");
 
       expect(capturedArgs).toBe("World");
+    });
+  });
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // `--` terminator
+  // ────────────────────────────────────────────────────────────────────────────
+
+  describe("-- terminator", () => {
+    const flagDefs = [
+      { key: "name", aliases: ["n", "name"], schema: z.text() },
+      { key: "verbose", aliases: ["v", "verbose"], schema: z.boolean() },
+    ];
+
+    it("should stop parsing flags at --", () => {
+      const cli = createTestCli();
+
+      const result = cli.testParseFlags(
+        ["--name", "hello", "--", "--verbose"],
+        flagDefs,
+      );
+
+      expect(result.name).toBe("hello");
+      expect(result.verbose).toBeUndefined();
+    });
+
+    it("should not reject an unknown flag after --", () => {
+      const cli = createTestCli();
+
+      expect(() =>
+        cli.testParseFlags(["--", "--not-a-flag"], flagDefs),
+      ).not.toThrow();
+    });
+
+    it("should keep -- so the terminator survives command path removal", () => {
+      const cli = createTestCli();
+
+      const result = cli.testRemoveConsumedArgs(
+        ["deploy", "--", "--raw"],
+        ["deploy"],
+      );
+
+      expect(result).toEqual(["--", "--raw"]);
+    });
+
+    it("should pass a dash-leading positional through", async () => {
+      let captured: unknown;
+
+      class TestCommands {
+        echo = $command({
+          name: "echo",
+          flags: z.object({ verbose: z.boolean().optional() }),
+          args: z.string(),
+          handler: async ({ args }) => {
+            captured = args;
+          },
+        });
+      }
+
+      const alepha = Alepha.create().with(TestCommands);
+      const cli = alepha.inject(CliProvider);
+      const cmd = alepha.inject(TestCommands);
+
+      await cli.run(cmd.echo, "--verbose -- --looks-like-a-flag");
+
+      expect(captured).toBe("--looks-like-a-flag");
+    });
+
+    it("should carry a dash-leading positional through a subcommand path", () => {
+      class TestCommands {
+        vercel = $command({
+          name: "vercel",
+          args: z.string(),
+          handler: () => {},
+        });
+
+        deploy = $command({
+          name: "deploy",
+          children: [this.vercel],
+          handler: () => {},
+        });
+      }
+
+      const alepha = Alepha.create().with(TestCommands);
+      const cli = alepha.inject(TestCliProvider);
+      const argv = ["deploy", "vercel", "--", "--raw"];
+
+      const { command, consumedArgs } = cli.testResolveCommandFromArgv(argv);
+      expect(command?.name).toBe("vercel");
+
+      const remaining = cli.testRemoveConsumedArgs(argv, consumedArgs);
+      expect(remaining).toEqual(["--", "--raw"]);
+
+      const args = cli.testParseCommandArgs(
+        remaining,
+        command?.options.args,
+        true,
+        command?.flags,
+      );
+      expect(args).toBe("--raw");
+    });
+
+    it("should not read a value across the terminator", () => {
+      const cli = createTestCli();
+
+      expect(() => cli.testParseFlags(["--name", "--"], flagDefs)).toThrow(
+        /requires a value/,
+      );
+    });
+
+    it("should ignore --mode after the terminator", () => {
+      const cli = createTestCli();
+
+      expect(
+        cli.testParseModeFlag(["--", "--mode", "production"]),
+      ).toBeUndefined();
+    });
+  });
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // --no-<flag> negation
+  // ────────────────────────────────────────────────────────────────────────────
+
+  describe("help footer", () => {
+    class TestCommands {
+      build = $command({
+        name: "build",
+        description: "Build the project",
+        flags: z.object({ compile: z.boolean().default(true) }),
+        handler: async () => {},
+      });
+    }
+
+    const capture = () => {
+      const alepha = Alepha.create()
+        .with(TestCommands)
+        .with({ provide: ConsoleOutputProvider, use: MemoryOutputProvider });
+
+      return {
+        cli: alepha.inject(TestCliProvider),
+        output: alepha.inject(MemoryOutputProvider),
+        commands: alepha.inject(TestCommands),
+      };
+    };
+
+    it("should document -- and --no-<flag> in command help", () => {
+      const { cli, output, commands } = capture();
+
+      cli.printHelp(commands.build);
+
+      expect(output.text).toContain("--no-<flag>");
+      expect(output.text).toContain("ends flag parsing");
+    });
+
+    it("should document -- and --no-<flag> in general help", () => {
+      const { cli, output } = capture();
+
+      cli.printHelp();
+
+      expect(output.text).toContain("--no-<flag>");
+      expect(output.text).toContain("ends flag parsing");
+    });
+  });
+
+  describe("--no-<flag> negation", () => {
+    it("should turn a boolean flag off", () => {
+      const cli = createTestCli();
+      const flagDefs = [
+        { key: "compile", aliases: ["compile"], schema: z.boolean() },
+      ];
+
+      const result = cli.testParseFlags(["--no-compile"], flagDefs);
+
+      expect(result.compile).toBe(false);
+    });
+
+    it("should turn an optional boolean flag off", () => {
+      const cli = createTestCli();
+      const flagDefs = [
+        {
+          key: "compile",
+          aliases: ["compile"],
+          schema: z.boolean().default(true),
+        },
+      ];
+
+      const result = cli.testParseFlags(["--no-compile"], flagDefs);
+
+      expect(result.compile).toBe(false);
+    });
+
+    it("should reject the negation of a non-boolean flag", () => {
+      const cli = createTestCli();
+      const flagDefs = [{ key: "name", aliases: ["name"], schema: z.text() }];
+
+      expect(() => cli.testParseFlags(["--no-name"], flagDefs)).toThrow(
+        /not a boolean flag/,
+      );
+    });
+
+    it("should reject a value on the negated form", () => {
+      const cli = createTestCli();
+      const flagDefs = [
+        { key: "compile", aliases: ["compile"], schema: z.boolean() },
+      ];
+
+      expect(() => cli.testParseFlags(["--no-compile=true"], flagDefs)).toThrow(
+        /does not take a value/,
+      );
+    });
+
+    it("should prefer a flag actually named no-<something>", () => {
+      const cli = createTestCli();
+      const flagDefs = [
+        { key: "noCache", aliases: ["no-cache"], schema: z.boolean() },
+        { key: "cache", aliases: ["cache"], schema: z.boolean() },
+      ];
+
+      const result = cli.testParseFlags(["--no-cache"], flagDefs);
+
+      expect(result.noCache).toBe(true);
+      expect(result.cache).toBeUndefined();
+    });
+
+    it("should not swallow the next token as a value", () => {
+      const cli = createTestCli();
+      const flagDefs = [
+        { key: "compile", aliases: ["compile"], schema: z.boolean() },
+      ];
+
+      const consumed = cli.testGetFlagConsumedIndices(
+        ["--no-compile", "target"],
+        flagDefs,
+      );
+
+      expect(consumed.has(1)).toBe(false);
+    });
+
+    it("should reach a command handler", async () => {
+      let captured: unknown;
+
+      class TestCommands {
+        build = $command({
+          name: "build",
+          flags: z.object({ compile: z.boolean().default(true) }),
+          handler: async ({ flags }) => {
+            captured = flags.compile;
+          },
+        });
+      }
+
+      const alepha = Alepha.create().with(TestCommands);
+      const cli = alepha.inject(CliProvider);
+      const cmd = alepha.inject(TestCommands);
+
+      await cli.run(cmd.build, "--no-compile");
+
+      expect(captured).toBe(false);
     });
   });
 });

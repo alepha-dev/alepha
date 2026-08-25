@@ -13,6 +13,11 @@ Declares a CLI command.
 This primitive allows you to define a command, its flags, and its handler
 within your Alepha application structure.
 
+A flag is passed as `--name value` or `--name=value`. A boolean flag needs
+no value: `--compile` turns it on, and either `--no-compile` or
+`--compile=false` turns it off. A `--` token ends flag parsing, so every
+token after it is an argument even when it starts with a dash.
+
 ## Options
 
 | Option        | Type                                 | Required | Description                                                    |

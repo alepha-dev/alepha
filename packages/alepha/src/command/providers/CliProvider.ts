@@ -483,18 +483,19 @@ export class CliProvider {
   ): string[] {
     const result: string[] = [];
     let consumedIndex = 0;
+    const end = this.terminatorIndex(argv);
 
-    let afterTerminator = false;
-    for (const arg of argv) {
-      // `--` ends flag parsing: everything after it is a positional, even if
-      // it starts with a dash.
-      if (arg === "--") {
-        afterTerminator = true;
-        continue;
+    argv.forEach((arg, index) => {
+      // From `--` on, every token is passed through untouched. The terminator
+      // itself has to survive too: it used to be dropped here, so the parsers
+      // that run on the returned argv could not tell where flags stopped.
+      if (index >= end) {
+        result.push(arg);
+        return;
       }
       // A negative number is a VALUE, not a flag — `--count -5` used to fail
       // because any token starting with `-` was treated as a flag name.
-      if (!afterTerminator && this.isFlagToken(arg)) {
+      if (this.isFlagToken(arg)) {
         result.push(arg);
       } else if (
         consumedIndex < consumedArgs.length &&
@@ -505,7 +506,7 @@ export class CliProvider {
       } else {
         result.push(arg);
       }
-    }
+    });
 
     return result;
   }
@@ -563,9 +564,7 @@ export class CliProvider {
 
     const consumedIndices = this.getFlagConsumedIndices(argv, flagDefs);
 
-    const positionalArgs = argv.filter(
-      (arg, idx) => !this.isFlagToken(arg) && !consumedIndices.has(idx),
-    );
+    const positionalArgs = this.extractPositionals(argv, consumedIndices);
 
     return { ...this.resolveCommand(positionalArgs), positionalArgs };
   }
@@ -923,7 +922,9 @@ export class CliProvider {
    * Parse --mode or -m flag from argv for environment file loading
    */
   protected parseModeFlag(argv: string[]): string | undefined {
-    for (let i = 0; i < argv.length; i++) {
+    const end = this.terminatorIndex(argv);
+
+    for (let i = 0; i < end; i++) {
       const arg = argv[i];
 
       // Handle --mode=value or -m=value
@@ -969,15 +970,16 @@ export class CliProvider {
   ): Record<string, any> {
     const { strict = true } = options;
     const result: Record<string, any> = {};
+    const end = this.terminatorIndex(argv);
 
-    for (let i = 0; i < argv.length; i++) {
+    for (let i = 0; i < end; i++) {
       const arg = argv[i];
       if (!this.isFlagToken(arg)) continue;
 
       const [rawKey, ...valueParts] = arg.replace(/^-{1,2}/, "").split("=");
       const value = valueParts.join("=");
 
-      const def = flagDefs.find((d) => d.aliases.includes(rawKey));
+      const { def, negated } = this.resolveFlagDef(rawKey, flagDefs);
       if (!def) {
         if (strict) {
           throw new UsageError(`Unknown flag: --${rawKey}`);
@@ -993,6 +995,21 @@ export class CliProvider {
       const isUnionWithBoolean =
         z.schema.isUnion(base) &&
         z.schema.options(base).some((s) => z.schema.isBoolean(s));
+
+      if (negated) {
+        // `--no-x` is the only way to turn a defaulted-true flag off besides
+        // `--x=false`, which reads like a mistake in a shell.
+        if (!z.schema.isBoolean(base) && !isUnionWithBoolean) {
+          throw new UsageError(
+            `Flag --${rawKey} is not available: --${rawKey.slice(3)} is not a boolean flag.`,
+          );
+        }
+        if (value) {
+          throw new UsageError(`Flag --${rawKey} does not take a value.`);
+        }
+        result[def.key] = false;
+        continue;
+      }
 
       if (z.schema.isBoolean(base)) {
         // `--flag=false` used to read as true: the value was never looked at.
@@ -1059,6 +1076,67 @@ export class CliProvider {
   }
 
   /**
+   * Index of the `--` terminator, or `argv.length` when there is none.
+   *
+   * Everything from there on is a positional, even a token that looks like a
+   * flag. Without it a dash-leading value could not be passed at all: it was
+   * read as a flag and rejected as unknown.
+   *
+   * Only FLAG parsing stops. The command path is resolved from positionals,
+   * and no command is named with a leading dash, so `--` has nothing to
+   * protect there.
+   */
+  protected terminatorIndex(argv: string[]): number {
+    const index = argv.indexOf("--");
+    return index === -1 ? argv.length : index;
+  }
+
+  /**
+   * The positional arguments of an argv: the tokens that are neither a flag
+   * nor a value already consumed by one, plus everything past the `--`
+   * terminator. The terminator itself is dropped.
+   */
+  protected extractPositionals(
+    argv: string[],
+    consumedIndices: Set<number>,
+  ): string[] {
+    const end = this.terminatorIndex(argv);
+
+    return argv.filter((arg, index) => {
+      if (index === end) {
+        return false;
+      }
+      if (index > end) {
+        return true;
+      }
+      return !this.isFlagToken(arg) && !consumedIndices.has(index);
+    });
+  }
+
+  /**
+   * Resolve the flag a token names, honouring the `--no-x` negation of a
+   * boolean `x`.
+   *
+   * A flag whose own name starts with `no-` wins over the negation reading,
+   * so declaring `--no-cache` keeps working as its own flag.
+   */
+  protected resolveFlagDef<T extends { key: string; aliases: string[] }>(
+    rawKey: string,
+    flagDefs: T[],
+  ): { def: T | undefined; negated: boolean } {
+    const def = flagDefs.find((d) => d.aliases.includes(rawKey));
+    if (def || !rawKey.startsWith("no-")) {
+      return { def, negated: false };
+    }
+
+    const negatedDef = flagDefs.find((d) =>
+      d.aliases.includes(rawKey.slice(3)),
+    );
+
+    return { def: negatedDef, negated: negatedDef !== undefined };
+  }
+
+  /**
    * Get indices of argv elements consumed by flags (for separating args from flags)
    */
   protected getFlagConsumedIndices(
@@ -1066,8 +1144,9 @@ export class CliProvider {
     flagDefs: { key: string; aliases: string[]; schema: ZType }[],
   ): Set<number> {
     const consumed = new Set<number>();
+    const end = this.terminatorIndex(argv);
 
-    for (let i = 0; i < argv.length; i++) {
+    for (let i = 0; i < end; i++) {
       const arg = argv[i];
       if (!this.isFlagToken(arg)) continue;
 
@@ -1076,8 +1155,11 @@ export class CliProvider {
       const [rawKey, ...valueParts] = arg.replace(/^-{1,2}/, "").split("=");
       const hasEqualValue = valueParts.length > 0;
 
-      const def = flagDefs.find((d) => d.aliases.includes(rawKey));
-      if (!def) continue;
+      const { def, negated } = this.resolveFlagDef(rawKey, flagDefs);
+      // `--no-x` never takes a value, so the token after it stays a
+      // positional. Falling through would let a union-with-boolean flag
+      // swallow it here while parseFlags left it alone.
+      if (!def || negated) continue;
 
       // Peel optional/nullable/default so boolean flags are recognised.
       const base = z.schema.unwrap(def.schema);
@@ -1121,9 +1203,7 @@ export class CliProvider {
     const consumedIndices = this.getFlagConsumedIndices(argv, flagDefs);
 
     // Extract positional arguments (non-flag arguments that aren't consumed as flag values)
-    const positionalArgs = argv.filter(
-      (arg, idx) => !this.isFlagToken(arg) && !consumedIndices.has(idx),
-    );
+    const positionalArgs = this.extractPositionals(argv, consumedIndices);
     // For root commands, there's no command name to remove; otherwise slice off the command name
     const argsOnly = isRootCommand ? positionalArgs : positionalArgs.slice(1);
 
@@ -1377,6 +1457,8 @@ export class CliProvider {
         out(`    ${coloredFlag}${padding}  ${formattedDesc}`);
       }
 
+      this.printFlagConventions();
+
       // Show environment variables if defined
       const envVars = Object.entries(z.schema.shape(command.env));
       if (envVars.length > 0) {
@@ -1451,8 +1533,22 @@ export class CliProvider {
         const formattedDesc = this.formatFlagDescription(description, schema);
         out(`    ${coloredFlag}${padding}  ${formattedDesc}`);
       }
+
+      this.printFlagConventions();
     }
     out(""); // Newline
+  }
+
+  /**
+   * The two argv conventions that no individual flag can advertise: the
+   * `--no-x` negation of a boolean, and the `--` terminator.
+   */
+  protected printFlagConventions(): void {
+    const c = this.color;
+    this.output.print("");
+    this.output.print(
+      `    ${c.set("GREY_DARK", "--no-<flag> turns a boolean flag off; -- ends flag parsing, everything after it is an argument.")}`,
+    );
   }
 
   /**
