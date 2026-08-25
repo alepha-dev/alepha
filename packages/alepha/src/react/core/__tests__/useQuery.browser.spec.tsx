@@ -7,6 +7,7 @@ import { AlephaContext } from "../contexts/AlephaContext.ts";
 import { useAction } from "../hooks/useAction.ts";
 import { useQuery } from "../hooks/useQuery.ts";
 import { AlephaReact } from "../index.ts";
+import { QueryCache } from "../services/QueryCache.ts";
 
 describe("useQuery", () => {
   test("runs on mount and exposes data/loading/error/refetch", async ({
@@ -329,5 +330,100 @@ describe("useQuery keyed cache", () => {
 
     await waitFor(() => expect(result.current.query.data).toBe("v2"));
     expect(calls).toBe(2);
+  });
+
+  /**
+   * A second run started on a KEYED query while the first is still in flight.
+   *
+   * The second run SUPERSEDES: it aborts the first's controller before
+   * calling the handler. `QueryCache.dedupe` then handed it the very promise
+   * it had just cancelled, so a handler that honours its abort signal
+   * rejected once for both runs and the query settled with `loading: false`
+   * and no data at all.
+   */
+  describe("a superseding run on a keyed query", () => {
+    /**
+     * A handler whose every call is resolved by hand, and which rejects with
+     * an `AbortError` the moment its signal fires — i.e. one that honours
+     * cancellation, which is the condition for the bug.
+     */
+    const deferredHandler = () => {
+      const calls: Array<{ resolve: () => void }> = [];
+      const handler = vi.fn(
+        (context?: { signal?: AbortSignal }) =>
+          new Promise<string>((resolve, reject) => {
+            const index = calls.length + 1;
+            calls.push({ resolve: () => resolve(`run-${index}`) });
+            context?.signal?.addEventListener("abort", () =>
+              reject(
+                Object.assign(new Error("aborted"), { name: "AbortError" }),
+              ),
+            );
+          }),
+      );
+      return { handler, calls };
+    };
+
+    test("settles with the newest run's data, not empty", async ({
+      expect,
+    }) => {
+      const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
+      await alepha.start();
+
+      const { handler, calls } = deferredHandler();
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <AlephaContext.Provider value={alepha}>
+          {children}
+        </AlephaContext.Provider>
+      );
+
+      const { result } = renderHook(
+        () => useQuery({ key: ["users"], handler }, []),
+        { wrapper },
+      );
+
+      await waitFor(() => expect(calls).toHaveLength(1));
+      await act(async () => calls[0].resolve());
+      await waitFor(() => expect(result.current.data).toBe("run-1"));
+
+      // Two refetches back to back: the second supersedes the first, which is
+      // still in flight.
+      await act(async () => {
+        void result.current.refetch();
+        void result.current.refetch();
+      });
+
+      await waitFor(() => expect(calls).toHaveLength(3));
+      await act(async () => calls[2].resolve());
+
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(result.current.data).toBe("run-3");
+      expect(result.current.error).toBe(undefined);
+    });
+
+    test("does not join a request that was already cancelled", async ({
+      expect,
+    }) => {
+      const alepha = Alepha.create().with(AlephaDateTime).with(AlephaReact);
+      await alepha.start();
+      const cache = alepha.inject(QueryCache);
+
+      const first = new AbortController();
+      const firstPromise = cache.dedupe(["k"], () => new Promise(() => {}), {
+        signal: first.signal,
+      });
+      void firstPromise.catch(() => {});
+
+      first.abort();
+
+      let secondRan = false;
+      const second = cache.dedupe(["k"], async () => {
+        secondRan = true;
+        return "ok";
+      });
+
+      expect(await second).toBe("ok");
+      expect(secondRan).toBe(true);
+    });
   });
 });

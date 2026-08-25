@@ -86,26 +86,47 @@ export class QueryCache {
    * and fire duplicate requests. Deduplication has to happen on the promise,
    * not the cached value.
    *
+   * **Pass `signal` whenever the caller has one.** A run that SUPERSEDES
+   * another aborts it and then arrives here: without the signal this handed
+   * it back the very promise it had just cancelled, so a handler that honours
+   * cancellation rejected once for both runs and the query settled with no
+   * data at all. Joining is only right while the pending request can still
+   * deliver.
+   *
    * Not stored in the atom: promises are not serializable, and this state is
    * meaningless outside the current tick.
    */
-  public async dedupe<T>(key: unknown[], fn: () => Promise<T>): Promise<T> {
+  public async dedupe<T>(
+    key: unknown[],
+    fn: () => Promise<T>,
+    options: { signal?: AbortSignal } = {},
+  ): Promise<T> {
     const serialized = this.serialize(key);
     const pending = this.inflight.get(serialized);
 
-    if (pending) {
-      return pending as Promise<T>;
+    if (pending && !pending.signal?.aborted) {
+      return pending.promise as Promise<T>;
     }
 
-    const promise = fn().finally(() => {
-      this.inflight.delete(serialized);
+    const entry: InflightRequest = {
+      signal: options.signal,
+      promise: undefined as never,
+    };
+
+    // Identity-checked, because this entry may already have been replaced by
+    // a superseding run: an unconditional delete would evict the newer
+    // request and let the run after that fire a duplicate.
+    entry.promise = fn().finally(() => {
+      if (this.inflight.get(serialized) === entry) {
+        this.inflight.delete(serialized);
+      }
     });
 
-    this.inflight.set(serialized, promise);
-    return promise;
+    this.inflight.set(serialized, entry);
+    return entry.promise as Promise<T>;
   }
 
-  protected readonly inflight = new Map<string, Promise<unknown>>();
+  protected readonly inflight = new Map<string, InflightRequest>();
 
   protected entries(): Record<string, QueryCacheEntry> {
     return this.alepha.store.get(queryCacheAtom) ?? {};
@@ -124,4 +145,14 @@ export interface QueryCacheEntry {
    * When it was stored, in epoch milliseconds — the basis for `staleTime`.
    */
   updatedAt: number;
+}
+
+/**
+ * One in-flight request, with the signal of the run that owns it.
+ *
+ * @see QueryCache.dedupe
+ */
+interface InflightRequest {
+  promise: Promise<unknown>;
+  signal?: AbortSignal;
 }

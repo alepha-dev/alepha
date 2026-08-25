@@ -133,8 +133,13 @@ export function useQuery<Result>(
       // request instead of both missing the not-yet-populated cache.
       handler: options.key
         ? (context) =>
-            cache!.dedupe(options.key!, async () =>
-              optionsRef.current.handler(context),
+            cache!.dedupe(
+              options.key!,
+              async () => optionsRef.current.handler(context),
+              // Without the signal, a run that superseded another was handed
+              // back the promise it had just aborted, and the query settled
+              // empty. See `QueryCache.dedupe`.
+              { signal: context?.signal },
             )
         : options.handler,
       runOnInit: shouldRun,
