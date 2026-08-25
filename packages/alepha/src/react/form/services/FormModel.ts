@@ -117,6 +117,13 @@ export class FormModel<T extends ZObject> {
   /**
    * Extract default values from a zod object schema.
    * Recursively handles nested objects, unwrapping optional/nullable/default.
+   *
+   * Recursion stops at an OPTIONAL or NULLABLE object. Its inner defaults are
+   * real, but they only apply once the object exists, and seeding them made it
+   * exist: an `address` the user never opened was submitted as
+   * `{ country: "FR" }` while `ControlObject` drew it as not initialised, so
+   * the payload disagreed with the screen. `set()` applies them at the moment
+   * the object is initialised instead.
    */
   protected extractSchemaDefaults(
     schema: ZObject,
@@ -136,6 +143,7 @@ export class FormModel<T extends ZObject> {
       // value and any nested object schema.
       let inner: any = propSchema;
       let defaultValue: unknown;
+      let absentByDefault = false;
       while (inner) {
         if (z.schema.isDefault(inner)) {
           const dv = inner._zod.def.defaultValue;
@@ -143,6 +151,10 @@ export class FormModel<T extends ZObject> {
           break;
         }
         if (z.schema.isOptional(inner) || z.schema.isNullable(inner)) {
+          // Checked after `isDefault`, so `z.object({…}).optional().default({})`
+          // still seeds: it declares a value for the absent case, which is the
+          // opposite of leaving it absent.
+          absentByDefault = true;
           inner = inner.unwrap();
           continue;
         }
@@ -151,6 +163,9 @@ export class FormModel<T extends ZObject> {
 
       if (defaultValue !== undefined) {
         defaults[fullKey] = defaultValue;
+      } else if (absentByDefault && z.schema.isObject(inner)) {
+        // Nothing: the object starts absent, and its inner defaults come with
+        // it when it is initialised.
       } else if (z.schema.isObject(inner)) {
         // Recursively extract defaults from nested objects
         Object.assign(
@@ -517,15 +532,33 @@ export class FormModel<T extends ZObject> {
     const set = (value: any) => {
       const typedValue = this.getValueFromInput(value, field);
       context.store[key] = typedValue;
-      if (
-        typedValue === undefined &&
-        z.schema.isObject(z.schema.unwrap(field))
-      ) {
+      const objectField = z.schema.unwrap(field);
+      if (typedValue === undefined && z.schema.isObject(objectField)) {
         // Clearing an object clears its flattened children too, or
         // `restructureValues` rebuilds the object from them at submit.
         for (const storeKey of Object.keys(context.store)) {
           if (storeKey.startsWith(`${key}.`)) delete context.store[storeKey];
         }
+      } else if (
+        typedValue != null &&
+        typeof typedValue === "object" &&
+        !Array.isArray(typedValue) &&
+        z.schema.isObject(objectField)
+      ) {
+        // The object exists from here on, so its inner defaults apply — this
+        // is the moment `extractSchemaDefaults` deliberately waited for. The
+        // value is flattened over them, so anything it names wins, and the
+        // nested controls read their own dotted keys rather than finding the
+        // object sitting there opaque.
+        Object.assign(
+          context.store,
+          this.extractSchemaDefaults(objectField as ZObject, key),
+          this.flattenObjectValues(
+            objectField as ZObject,
+            typedValue as Record<string, any>,
+            key,
+          ),
+        );
       }
       if (options.onChange) {
         options.onChange(key, typedValue, context.store);
