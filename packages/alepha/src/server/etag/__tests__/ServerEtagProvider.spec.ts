@@ -258,6 +258,35 @@ class TestApp {
     },
   });
 
+  /**
+   * Two independently cached actions plus a plain HTTP action that invokes
+   * both through `run()`. This is the `/api/_batch` and SSR `follow()`
+   * shape: the inner actions declare `$etag`, the outer route does not.
+   */
+  nestedCounterA = 0;
+  nestedCounterB = 0;
+
+  nestedInnerA = $action({
+    path: "/nested-inner-a",
+    use: [$etag({ store: true, control: { public: true, maxAge: 600 } })],
+    handler: () => `A-${this.nestedCounterA++}`,
+  });
+
+  nestedInnerB = $action({
+    path: "/nested-inner-b",
+    use: [$etag(true)],
+    handler: () => `B-${this.nestedCounterB++}`,
+  });
+
+  nestedOuter = $action({
+    path: "/nested-outer",
+    handler: async () => {
+      const a = await this.nestedInnerA.run();
+      const b = await this.nestedInnerB.run();
+      return `${a}|${b}`;
+    },
+  });
+
   reset() {
     this.counter = this.resetCounter++;
   }
@@ -1325,6 +1354,45 @@ describe("ServerEtagProvider", () => {
 
       // Verify responses are different (not cached)
       expect(error1.message).not.toBe(error2.message);
+    });
+  });
+
+  describe("Nested run() invocations", () => {
+    test("caches each inner action under its own key, not the outer route's", async ({
+      expect,
+    }) => {
+      const first = await app.nestedOuter.fetch();
+      expect(first.status).toBe(200);
+      expect(first.data).toBe("A-0|B-0");
+
+      // Second call: both inner actions answer from THEIR OWN cache entries,
+      // and the outer route — which declares no `$etag` — still answers 200
+      // with a body it computed itself. Before the fix the middleware
+      // resolved the container-wide `alepha.http.request`, so the outer body
+      // was stored under the OUTER route's key, and on this second call the
+      // first inner action found it, wrote a 304 onto the outer reply and
+      // returned the page's own body as its result.
+      const second = await app.nestedOuter.fetch();
+      expect(second.status).toBe(200);
+      expect(second.data).toBe("A-0|B-0");
+      expect(app.nestedCounterA).toBe(1);
+      expect(app.nestedCounterB).toBe(1);
+
+      // And each inner action's entry is its own: invalidating one leaves
+      // the other served from cache.
+      await etagProvider.invalidate(app.nestedInnerA.route);
+      expect(await app.nestedInnerA.run()).toBe("A-1");
+      expect(await app.nestedInnerB.run()).toBe("B-0");
+    });
+
+    test("leaves the outer response headers untouched", async ({ expect }) => {
+      const response = await app.nestedOuter.fetch();
+
+      // `nestedOuter` declares no `$etag`, so nothing an inner action asked
+      // for may reach the page's own response.
+      expect(response.status).toBe(200);
+      expect(response.headers.get("cache-control")).toBeNull();
+      expect(response.headers.get("etag")).toBeNull();
     });
   });
 });
