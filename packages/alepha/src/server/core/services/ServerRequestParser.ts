@@ -24,6 +24,29 @@ const envSchema = z.object({
     .describe("Trust proxy headers for client IP")
     .meta({ secret: false })
     .default(true),
+
+  /**
+   * How many reverse proxies sit in front of this server.
+   *
+   * `X-Forwarded-For` is append-only and client-writable: a request may
+   * arrive already carrying `X-Forwarded-For: 1.2.3.4` before any proxy
+   * touched it. Only the entries the trusted proxies appended can be
+   * believed, and those are the RIGHTMOST ones - so the client address is
+   * the entry this many hops from the right.
+   *
+   * The default of 1 is the single-proxy deployment (Cloudflare, one Nginx,
+   * one load balancer). Raise it only for a chain you actually control:
+   * setting it too high walks left into attacker-supplied entries, which is
+   * the very bug this exists to close.
+   *
+   * Ignored when `TRUST_PROXY` is false.
+   */
+  TRUST_PROXY_HOPS: z
+    .integer()
+    .min(1)
+    .describe("Number of trusted reverse proxies in front of this server")
+    .meta({ secret: false })
+    .default(1),
 });
 
 export class ServerRequestParser {
@@ -122,28 +145,78 @@ export class ServerRequestParser {
     return this.userAgentParser.parse(request.headers["user-agent"]);
   }
 
+  /**
+   * The client address, as far as it can be trusted.
+   *
+   * This value is the rate-limit key, so a client that can choose it can
+   * choose which bucket it spends. `X-Forwarded-For` is append-only and
+   * anyone may send one, so the LEFTMOST entry is whatever the client typed:
+   * reading it let `X-Forwarded-For: evil` name its own bucket, and rotating
+   * that string defeated the limiter entirely. Only the entries a trusted
+   * proxy appended count, and those are on the right.
+   */
   public getRequestIp(request: ServerRequestData): string | undefined {
     // Only trust proxy headers when explicitly configured
     if (this.env.TRUST_PROXY) {
       const headers = request.headers;
 
-      // X-Forwarded-For: standard proxy header (Cloudflare, Vercel, Nginx, etc.)
-      const forwardedFor = headers["x-forwarded-for"];
-      if (forwardedFor) {
-        return Array.isArray(forwardedFor)
-          ? forwardedFor[0]
-          : forwardedFor.split(",")[0].trim();
+      // Cloudflare overwrites (never appends) `cf-connecting-ip` with the
+      // address it accepted the connection from, so when it is present it is
+      // the one header in this list a client cannot influence.
+      const cfConnectingIp = this.firstHeaderValue(headers["cf-connecting-ip"]);
+      if (cfConnectingIp) {
+        return cfConnectingIp;
       }
 
-      // X-Real-IP: alternative proxy header
-      const xRealIP = headers["x-real-ip"];
+      // X-Forwarded-For: standard proxy header (Vercel, Nginx, ELB, ...).
+      const forwardedFor = this.parseForwardedFor(headers["x-forwarded-for"]);
+      if (forwardedFor.length) {
+        // Each trusted proxy appends the address it saw, so the client sits
+        // `TRUST_PROXY_HOPS` entries from the right. Clamped, because a chain
+        // shorter than the configured hop count means the request did not
+        // come through the whole chain and the leftmost entry we have is the
+        // furthest left we may believe.
+        const index = Math.max(
+          0,
+          forwardedFor.length - this.env.TRUST_PROXY_HOPS,
+        );
+        return forwardedFor[index];
+      }
+
+      // X-Real-IP: alternative proxy header. Overwritten rather than
+      // appended, so there is no chain to walk.
+      const xRealIP = this.firstHeaderValue(headers["x-real-ip"]);
       if (xRealIP) {
-        return Array.isArray(xRealIP) ? xRealIP[0] : xRealIP;
+        return xRealIP;
       }
     }
 
     // Default: use raw connection IP
     return this.getConnectionIp(request);
+  }
+
+  /**
+   * Every `X-Forwarded-For` entry, in order, flattened across repeated
+   * headers and comma-separated lists alike. Empty entries are dropped so a
+   * trailing comma cannot shift the hop arithmetic.
+   */
+  protected parseForwardedFor(value: string | string[] | undefined): string[] {
+    if (!value) {
+      return [];
+    }
+
+    return (Array.isArray(value) ? value : [value])
+      .flatMap((entry) => entry.split(","))
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0);
+  }
+
+  protected firstHeaderValue(
+    value: string | string[] | undefined,
+  ): string | undefined {
+    const raw = Array.isArray(value) ? value[0] : value;
+    const trimmed = raw?.trim();
+    return trimmed ? trimmed : undefined;
   }
 
   protected getConnectionIp(request: ServerRequestData): string | undefined {

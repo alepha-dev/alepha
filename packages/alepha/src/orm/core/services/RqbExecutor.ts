@@ -282,9 +282,20 @@ export class RqbExecutor {
     if (raw) Object.assign(out, raw);
 
     for (const [name, value] of Object.entries(nested)) {
-      if (value === undefined) continue;
+      // The column path refuses `undefined` and `null` (QueryManager.toSQL)
+      // because dropping either turns a scoped read into an unscoped one.
+      // This branch used to `continue` on undefined and reject null with a
+      // message about object shape, so the identical mistake one key over
+      // was answered two different ways, one of them silently.
+      if (value === undefined || value === null) {
+        throw new AlephaError(
+          `Filter on relation '${name}' of '${entityKey}' is ${value === null ? "null" : "undefined"}. ` +
+            `The condition would be silently dropped, leaving the query unfiltered; ` +
+            `omit the key instead if the filter is optional.`,
+        );
+      }
 
-      if (typeof value !== "object" || value === null) {
+      if (typeof value !== "object") {
         throw new AlephaError(
           `Filter on relation '${name}' of '${entityKey}' must be an object describing the related rows, e.g. { ${name}: { title: { eq: "x" } } }.`,
         );

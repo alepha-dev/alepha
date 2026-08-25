@@ -1,5 +1,6 @@
 import { $inject, Alepha, z } from "alepha";
 import { $tool } from "alepha/mcp";
+import { currentUserAtom } from "alepha/security";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
 import { pinnedContentAtom } from "../../api/atoms/pinnedContentAtom.ts";
@@ -127,12 +128,19 @@ export class ProjectTools {
     handler: async () => {
       const projects = await this.projectController.getMyProjects();
 
+      // `createdBy !== undefined` was true for every row, so a plain member
+      // was told it could run owner-only mutations and only found out when
+      // one failed. `getMyProjects` returns project resources, not the
+      // membership row, so ownership is read the way the web app reads it:
+      // the creator is the owner.
+      const me = this.alepha.store.get(currentUserAtom);
+
       return {
         projects: projects.map((p) => ({
           id: p.id,
           title: p.title,
           public: p.public ?? false,
-          isOwner: p.createdBy !== undefined, // Owner info from project
+          isOwner: me !== undefined && p.createdBy === me.id,
         })),
       };
     },

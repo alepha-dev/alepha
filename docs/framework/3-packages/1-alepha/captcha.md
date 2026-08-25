@@ -25,3 +25,4 @@ Captcha verification for bot protection.
 - [`CaptchaProvider`](/docs/reference-providers-captchaprovider) - Captcha verification provider interface.
 - [`MemoryCaptchaProvider`](/docs/reference-providers-memorycaptchaprovider) - In-memory captcha provider for testing.
 - [`TurnstileCaptchaProvider`](/docs/reference-providers-turnstilecaptchaprovider) - Cloudflare Turnstile captcha verification provider.
+- [`UnconfiguredCaptchaProvider`](/docs/reference-providers-unconfiguredcaptchaprovider) - The captcha provider an app gets when it registered none.

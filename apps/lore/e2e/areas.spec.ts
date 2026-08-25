@@ -139,6 +139,17 @@ test.describe("Areas", () => {
     await page.getByRole("button", { name: "Merge" }).click();
     await merged;
 
+    // The route now points at the SURVIVING area, but React reconciles the
+    // same component types in place: every child seeded from `area` at mount
+    // used to keep the merged-away area's values. So this page showed
+    // "folio"'s description under "Folio"'s name, one Save wrote it onto the
+    // target, and reopening the rename dialog renamed the target back.
+    await expect(page.getByRole("textbox").first()).toHaveValue("");
+
+    await page.getByRole("button", { name: "Rename" }).click();
+    await expect(page.getByLabel("New name")).toHaveValue("Folio");
+    await page.getByRole("button", { name: "Cancel" }).click();
+
     // One area survives, holding both quests.
     await page.goto(`/${slug}/settings/areas`);
     await expect(

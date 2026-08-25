@@ -43,7 +43,7 @@ const aRing = (catalog: CatalogService) =>
 /**
  * Take a cart to the payment page, returning the intent to settle or fail.
  */
-const reachPayment = async (
+const reachPaymentWithSession = async (
   ctx: Awaited<ReturnType<typeof setup>>,
   productId: string,
   quantity = 1,
@@ -54,8 +54,10 @@ const reachPayment = async (
   const { session, handoff } = await ctx.checkout.pay(opened.id, {
     returnUrl: "https://bijoux.example/merci",
   });
-  return { session, handoff };
+  return { session, handoff, sessionId: opened.id };
 };
+
+const reachPayment = reachPaymentWithSession;
 
 describe("stock reservation", () => {
   it("distinguishes on-hand, reserved and available", async ({ expect }) => {
@@ -234,5 +236,161 @@ describe("stock reservation", () => {
     await ctx.payments.handleWebhookEvent(handoff.intentId, "captured");
 
     expect(await ctx.stock.onHand(ring.id)).toBe(4);
+  });
+
+  /**
+   * Concurrency, on the real Postgres provider.
+   *
+   * `reserve` and `recordSale` used to read the sum, compare in memory and
+   * write. At READ COMMITTED two transactions read the SAME sum before either
+   * commits, so both passed the check and both wrote - and there is no counter
+   * row to lock, since on-hand is a SUM over an append-only ledger.
+   */
+  describe("under concurrency", () => {
+    it("lets exactly five of twenty racers reserve the last five units", async ({
+      expect,
+    }) => {
+      const ctx = await setup();
+      const ring = await aRing(ctx.catalog);
+      await ctx.stock.recordIntake(ring.id, 5);
+
+      const outcomes = await Promise.all(
+        Array.from({ length: 20 }, () =>
+          ctx.stock
+            .reserve(ring.id, 1, { orderId: randomUUID() })
+            .then(() => "held" as const)
+            .catch(() => "refused" as const),
+        ),
+      );
+
+      expect(outcomes.filter((it) => it === "held")).toHaveLength(5);
+      expect(await ctx.stock.reserved(ring.id)).toBe(5);
+      expect(await ctx.stock.available(ring.id)).toBe(0);
+    });
+
+    it("never lets concurrent sales take the ledger below zero", async ({
+      expect,
+    }) => {
+      const ctx = await setup();
+      const ring = await aRing(ctx.catalog);
+      await ctx.stock.recordIntake(ring.id, 3);
+
+      const outcomes = await Promise.all(
+        Array.from({ length: 10 }, () =>
+          ctx.stock
+            .recordSale(ring.id, 1)
+            .then(() => "sold" as const)
+            .catch(() => "refused" as const),
+        ),
+      );
+
+      expect(outcomes.filter((it) => it === "sold")).toHaveLength(3);
+      expect(await ctx.stock.onHand(ring.id)).toBe(0);
+    });
+
+    it("respects multi-unit reservations at the boundary", async ({
+      expect,
+    }) => {
+      const ctx = await setup();
+      const ring = await aRing(ctx.catalog);
+      await ctx.stock.recordIntake(ring.id, 4);
+
+      // Three racers wanting two each: the ledger backs exactly two of them.
+      const outcomes = await Promise.all(
+        Array.from({ length: 3 }, () =>
+          ctx.stock
+            .reserve(ring.id, 2, { orderId: randomUUID() })
+            .then(() => "held" as const)
+            .catch(() => "refused" as const),
+        ),
+      );
+
+      expect(outcomes.filter((it) => it === "held")).toHaveLength(2);
+      expect(await ctx.stock.reserved(ring.id)).toBe(4);
+    });
+  });
+
+  /**
+   * A PSP intent OUTLIVES the checkout session that created it, so a capture
+   * can land after the checkout is over. Settling it marked an order paid
+   * whose stock had already been released to other buyers: the customer was
+   * charged, the order stayed cancelled, and the session flipped to completed.
+   */
+  describe("a capture that arrives too late", () => {
+    it("closes the payment when the checkout is abandoned", async ({
+      expect,
+    }) => {
+      const ctx = await setup();
+      const ring = await aRing(ctx.catalog);
+      await ctx.stock.recordIntake(ring.id, 2);
+
+      const { sessionId, handoff } = await reachPaymentWithSession(
+        ctx,
+        ring.id,
+        1,
+      );
+      await ctx.checkout.abandonWithOrder(sessionId);
+
+      // The intent is closed, so the capture cannot happen at all.
+      expect((await ctx.payments.getIntent(handoff.intentId)).status).toBe(
+        "expired",
+      );
+
+      // And a webhook arriving anyway is refused by the transition table.
+      await ctx.payments.handleWebhookEvent(handoff.intentId, "captured");
+
+      const session = await ctx.checkout.getById(sessionId);
+      expect(session.status).toBe("abandoned");
+      expect((await ctx.orders.getById(session.orderId!)).status).toBe(
+        "cancelled",
+      );
+      // The hold is gone, so the unit is back on sale.
+      expect(await ctx.stock.available(ring.id)).toBe(2);
+    });
+
+    it("records a capture for an order that was cancelled behind the session", async ({
+      expect,
+    }) => {
+      const ctx = await setup();
+      const ring = await aRing(ctx.catalog);
+      await ctx.stock.recordIntake(ring.id, 2);
+
+      const { sessionId, handoff } = await reachPaymentWithSession(
+        ctx,
+        ring.id,
+        1,
+      );
+      const session = await ctx.checkout.getById(sessionId);
+
+      // The order is cancelled while the session is still `paying` and the
+      // intent still live - an admin cancellation, a support action. The
+      // capture that follows is money for something that is no longer for
+      // sale.
+      await ctx.orders.cancel(session.orderId!);
+
+      const strays: Array<{ orderId: string }> = [];
+      ctx.alepha.events.on("commerce:capture:stray", (event) => {
+        strays.push(event);
+      });
+
+      await ctx.payments.handleWebhookEvent(handoff.intentId, "captured");
+
+      const order = await ctx.orders.getById(session.orderId!);
+      // NOT paid: the stock is already back on sale, so settling would sell
+      // it twice.
+      expect(order.status).toBe("cancelled");
+      expect((await ctx.checkout.getById(sessionId)).status).not.toBe(
+        "completed",
+      );
+
+      // But the customer HAS been charged, so it is recorded and announced.
+      expect(order.strayCaptures).toHaveLength(1);
+      expect((order.strayCaptures as any[])[0]).toMatchObject({
+        paymentIntentId: handoff.intentId,
+        orderStatus: "cancelled",
+        amount: order.total,
+      });
+      expect(strays.map((it) => it.orderId)).toEqual([order.id]);
+    });
   });
 });

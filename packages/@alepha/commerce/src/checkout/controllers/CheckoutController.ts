@@ -58,7 +58,13 @@ export class CheckoutController {
     },
     handler: async ({ body }) => {
       const cart = await this.cartController.resolveCart();
-      return this.checkout.start(cart.id, { email: body.email });
+      // From the CART, not from the request: `resolveCart` has already decided
+      // whose cart this is, including folding a guest basket into an account
+      // one. Re-reading the identity here could disagree with it.
+      return this.checkout.start(cart.id, {
+        userId: cart.userId,
+        email: body.email,
+      });
     },
   });
 

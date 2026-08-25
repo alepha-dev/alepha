@@ -1,4 +1,5 @@
 import { $inject, Alepha } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, DatabaseProvider } from "alepha/orm";
 
@@ -42,6 +43,7 @@ export class CheckoutService {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly db = $inject(DatabaseProvider);
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly repo = $repository(checkoutSessions);
   protected readonly carts = $inject(CartService);
   protected readonly orders = $inject(OrderService);
@@ -346,11 +348,74 @@ export class CheckoutService {
         );
       }
 
+      // Money for an order that is no longer taking it. The PSP intent
+      // outlives the session, so a capture can land after the checkout was
+      // abandoned - and settling it would mark an order paid whose stock has
+      // already been released to other buyers.
+      //
+      // `paid` is NOT this case: that is a re-delivered webhook, and it must
+      // still complete the session, which is what makes settle() idempotent.
+      const order = await this.orders.getById(session.orderId);
+      if (order.status === "cancelled" || order.status === "refunded") {
+        await this.recordStrayCapture(order, options.paymentIntentId);
+        return session;
+      }
+
       await this.orders.markPaid(session.orderId, options);
       await this.carts.clear(session.cartId);
 
       return this.repo.updateById(sessionId, { status: "completed" });
     });
+  }
+
+  /**
+   * Keep a capture that arrived too late, and say so.
+   *
+   * Deliberately does NOT refund: whether a stray capture is refunded, kept as
+   * credit or escalated is a business decision this package cannot make. It
+   * records and announces; the application decides.
+   *
+   * Appends rather than overwrites, because a retrying PSP can deliver more
+   * than one.
+   */
+  protected async recordStrayCapture(
+    order: { id: string; status: string; total: number; currency: string },
+    paymentIntentId?: string,
+  ): Promise<void> {
+    this.log.warn(
+      `Capture arrived for order ${order.id}, which is '${order.status}' - recording as a stray capture`,
+      { orderId: order.id, paymentIntentId },
+    );
+
+    const existing = await this.orders.getById(order.id);
+    const captures = Array.isArray(existing.strayCaptures)
+      ? (existing.strayCaptures as Array<Record<string, any>>)
+      : [];
+
+    await this.orders.recordStrayCapture(order.id, [
+      ...captures,
+      {
+        at: this.dateTime.nowISOString(),
+        paymentIntentId,
+        orderStatus: order.status,
+        amount: order.total,
+        currency: order.currency,
+      },
+    ]);
+
+    await this.db.afterCommit(() =>
+      this.alepha.events.emit(
+        "commerce:capture:stray",
+        {
+          orderId: order.id,
+          orderStatus: order.status,
+          paymentIntentId,
+          total: order.total,
+          currency: order.currency,
+        },
+        { catch: true },
+      ),
+    );
   }
 
   /**
@@ -414,16 +479,42 @@ export class CheckoutService {
   public async abandonWithOrder(
     sessionId: string,
   ): Promise<CheckoutSessionEntity> {
-    return this.db.transactional(async () => {
+    const abandoned = await this.db.transactional(async () => {
       const session = await this.repo.getById(sessionId);
       if (session.status === "abandoned" || session.status === "completed") {
-        return session;
+        return { session, closed: false };
       }
       if (session.orderId) {
         await this.orders.cancel(session.orderId);
       }
-      return this.repo.updateById(sessionId, { status: "abandoned" });
+      return {
+        session: await this.repo.updateById(sessionId, {
+          status: "abandoned",
+        }),
+        closed: true,
+      };
     });
+
+    // Close the payment too. The intent OUTLIVES this session: releasing the
+    // stock and cancelling the order leaves the PSP page open in the buyer's
+    // other tab, and a capture landing afterwards charges them for an order
+    // that no longer exists.
+    //
+    // Outside the transaction, and failure is swallowed: an unreachable PSP
+    // must not un-abandon a checkout, and a capture that gets through anyway
+    // is caught by the stray-capture guard in `settle()`.
+    if (abandoned.closed && abandoned.session.paymentIntentId) {
+      try {
+        await this.payment.abandon(abandoned.session.paymentIntentId);
+      } catch (error) {
+        this.log.warn(
+          `Failed to close the payment for abandoned checkout ${sessionId}`,
+          { error },
+        );
+      }
+    }
+
+    return abandoned.session;
   }
 
   public async getById(sessionId: string): Promise<CheckoutSessionEntity> {

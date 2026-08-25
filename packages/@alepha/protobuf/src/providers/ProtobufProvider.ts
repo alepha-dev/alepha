@@ -303,7 +303,9 @@ export class ProtobufProvider {
     if (this.isBigInt(schema)) return "int64";
 
     if (this.isBoolean(schema)) return "bool";
-    if (this.isInteger(schema)) return "int32";
+    if (this.isInteger(schema)) {
+      return this.fitsInt32(schema) ? "int32" : "int64";
+    }
     if (this.isNumber(schema) && schema.format === "int64") return "int64";
     if (this.isNumber(schema)) return "double";
     if (this.isString(schema)) return "string";
@@ -371,6 +373,50 @@ export class ProtobufProvider {
 
   protected isBigInt(schema: JsonSchema): boolean {
     return schema?.format === "bigint";
+  }
+
+  /**
+   * Whether an integer field's DECLARED bounds keep it inside int32.
+   *
+   * Every `z.integer()` used to be emitted as `int32`, so a millisecond
+   * timestamp, an id past 2^31-1 or any large counter wrapped silently on
+   * encode. The default is `int64` now, and int32 is kept only for a field
+   * whose schema says it cannot overflow one.
+   *
+   * Both bounds are required, and a bare `z.integer().max(1000)` therefore
+   * does NOT qualify: zod emits `minimum: -(2^53-1)` for every integer, so
+   * that schema still admits values that wrap. Widening on the strength of
+   * one bound would keep this bug, only narrower.
+   *
+   * Costs nothing on the wire: proto3 varint-encodes both, identically for
+   * every value an int32 could have held.
+   */
+  protected fitsInt32(schema: JsonSchema): boolean {
+    const min = this.lowerBound(schema);
+    const max = this.upperBound(schema);
+
+    return (
+      min !== undefined &&
+      max !== undefined &&
+      min >= -2_147_483_648 &&
+      max <= 2_147_483_647
+    );
+  }
+
+  protected lowerBound(schema: JsonSchema): number | undefined {
+    if (typeof schema.minimum === "number") return schema.minimum;
+    if (typeof schema.exclusiveMinimum === "number") {
+      return schema.exclusiveMinimum + 1;
+    }
+    return undefined;
+  }
+
+  protected upperBound(schema: JsonSchema): number | undefined {
+    if (typeof schema.maximum === "number") return schema.maximum;
+    if (typeof schema.exclusiveMaximum === "number") {
+      return schema.exclusiveMaximum - 1;
+    }
+    return undefined;
   }
 
   protected isBoolean(schema: JsonSchema): boolean {

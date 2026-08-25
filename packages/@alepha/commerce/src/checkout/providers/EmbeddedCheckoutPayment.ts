@@ -74,4 +74,11 @@ export class EmbeddedCheckoutPayment extends CheckoutPaymentProvider {
       intentId: intent.id,
     };
   }
+
+  /**
+   * @see CheckoutPaymentProvider.abandon
+   */
+  public override async abandon(intentId: string): Promise<void> {
+    await this.payments.expireIntent(await this.payments.getIntent(intentId));
+  }
 }

@@ -38,6 +38,19 @@ const ProjectSettingsAreaPage = (props: ProjectSettingsAreaPageProps) => {
   const [siblings] = useStore(currentAreasAtom);
   const [renaming, setRenaming] = useState(false);
 
+  // A rename or a merge navigates to another area, but React reconciles the
+  // same component types in place: every child seeded from `props.area` at
+  // mount kept the PREVIOUS area's values. One Save then wrote the old
+  // description onto the merge target, and reopening the rename dialog
+  // renamed it back. The root div below is keyed on the area id so the
+  // subtree remounts; the dialog's open flag lives here rather than there, so
+  // it is reset the way React documents for state that must follow a prop.
+  const [shownArea, setShownArea] = useState(props.area.id);
+  if (shownArea !== props.area.id) {
+    setShownArea(props.area.id);
+    setRenaming(false);
+  }
+
   const remove = async () => {
     const ok = await dialog.confirm({
       title: String(tr("project.settings.areas.delete.confirm")),
@@ -53,7 +66,7 @@ const ProjectSettingsAreaPage = (props: ProjectSettingsAreaPageProps) => {
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4" key={props.area.id}>
       <ProjectSettingsAreaHeader
         area={props.area}
         onRename={() => setRenaming(true)}

@@ -116,7 +116,7 @@ export class SettlementWorkflows {
           backoff: { initial: [1, "minute"], factor: 4 },
         },
         handler: async ({ payload }) => {
-          await this.payments.syncIntent(payload.intentId);
+          const intentStatus = await this.payments.syncIntent(payload.intentId);
 
           // syncIntent may have settled or failed the checkout through
           // the regular event listeners — re-read before deciding.
@@ -126,6 +126,25 @@ export class SettlementWorkflows {
           }
           if (session.status !== "paying") {
             return { outcome: "already-resolved" };
+          }
+
+          // Captured, yet the session never completed: `settle()` threw inside
+          // the `captured` webhook - a transient DB error, an invoice sequence
+          // hiccup - and nothing retried it, because `syncIntent` returns
+          // early on a terminal intent status and so has nothing left to
+          // replay. Reaching the abandon below would cancel an order the
+          // customer has already paid for, which is the one outcome this
+          // workflow must never produce.
+          //
+          // `settle()` is idempotent (it returns a `completed` session
+          // untouched, and `OrderService.markPaid` is idempotent one level
+          // down), so replaying it is safe even when the earlier attempt got
+          // part of the way through.
+          if (intentStatus === "captured") {
+            await this.checkout.settle(payload.sessionId, {
+              paymentIntentId: payload.intentId,
+            });
+            return { outcome: "recovered-paid" };
           }
 
           await this.checkout.abandonWithOrder(payload.sessionId);

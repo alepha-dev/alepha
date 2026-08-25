@@ -179,7 +179,24 @@ export class FormModel<T extends ZObject> {
     };
   }
 
-  public readonly setInitialValues = (values: Record<string, any>) => {
+  /**
+   * Replace the form's baseline, and by default everything on screen with it.
+   *
+   * `keepDirty` keeps the fields the user has actually edited. A page that
+   * refetches after a save calls this with the server's answer, and without it
+   * anything typed between submit and response was overwritten by data that
+   * predates it - the user watched their own words disappear.
+   *
+   * "Edited" is derived, not tracked: a key is dirty when its current value
+   * differs from the baseline it was seeded with. That is also why the flag
+   * needs no reset after a submit - this very call installs the new baseline,
+   * so a field the server echoed back unchanged becomes clean again on its
+   * own.
+   */
+  public readonly setInitialValues = (
+    values: Record<string, any>,
+    options: { keepDirty?: boolean } = {},
+  ) => {
     // Same partial-decode rationale as the constructor — initial values may be
     // incomplete; full schema is enforced only at submit time.
     const decoded = this.flattenObjectValues(
@@ -195,6 +212,15 @@ export class FormModel<T extends ZObject> {
     // value. Mirrors the union-of-keys pattern in reset() below.
     const oldKeys = new Set(Object.keys(this.values));
 
+    const dirty: Record<string, any> = {};
+    if (options.keepDirty) {
+      for (const key of oldKeys) {
+        if (!this.sameValue(this.values[key], this.initialValues[key])) {
+          dirty[key] = this.values[key];
+        }
+      }
+    }
+
     for (const key in this.initialValues) {
       delete (this.initialValues as Record<string, any>)[key];
     }
@@ -203,7 +229,7 @@ export class FormModel<T extends ZObject> {
     for (const key in this.values) {
       delete this.values[key];
     }
-    Object.assign(this.values, { ...this.initialValues });
+    Object.assign(this.values, { ...this.initialValues, ...dirty });
 
     const keys = new Set<string>([...oldKeys, ...Object.keys(this.values)]);
     for (const key of keys) {
@@ -215,6 +241,23 @@ export class FormModel<T extends ZObject> {
       );
     }
   };
+
+  /**
+   * Structural equality for two form values.
+   *
+   * Values are plain data (strings, numbers, arrays, plain objects), so
+   * `JSON.stringify` is exact enough and cheap; anything exotic falls back to
+   * reference equality rather than throwing.
+   */
+  protected sameValue(a: unknown, b: unknown): boolean {
+    if (a === b) return true;
+    if (a == null || b == null) return false;
+    try {
+      return JSON.stringify(a) === JSON.stringify(b);
+    } catch {
+      return false;
+    }
+  }
 
   public readonly reset = (event?: FormEventLike) => {
     event?.preventDefault?.();
@@ -777,6 +820,20 @@ export type FormCtrlOptions<T extends ZObject> = {
    * This can be used to pre-populate the form with existing data.
    */
   initialValues?: Partial<Infer<T>>;
+
+  /**
+   * When `initialValues` changes, keep the fields the user has edited.
+   *
+   * On by default, because the common reason `initialValues` changes at all
+   * is a refetch after a save - and re-seeding from it overwrote anything
+   * typed between submit and response with data that predates it.
+   *
+   * Set to `false` for a form that must always mirror its source exactly. To
+   * swap the whole subject (editing record A, then record B), pass the id in
+   * `useForm`'s `deps` instead: that rebuilds the model, which is a cleaner
+   * answer than re-seeding one.
+   */
+  keepDirty?: boolean;
 
   /**
    * Optional function to create custom field attributes.

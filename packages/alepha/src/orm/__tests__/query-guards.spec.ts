@@ -182,6 +182,25 @@ describe("null in a where filter", () => {
     ).rejects.toThrow(/isNull/);
   });
 
+  it("should delete nothing when deleteMany is handed a null filter", async () => {
+    // The worst shape of the bug: no WHERE at all reaches the driver, so the
+    // call deletes the table instead of the row it named.
+    const alepha = Alepha.create({
+      env: { DATABASE_URL: "sqlite://:memory:" },
+    });
+    const app = alepha.inject(App);
+    await alepha.start();
+
+    await app.repository.create({ id: 1, name: "a", tags: [] });
+    await app.repository.create({ id: 2, name: "b", tags: [] });
+
+    await expect(
+      app.repository.deleteMany({ name: null as any }),
+    ).rejects.toThrow(/isNull/);
+
+    expect(await app.repository.count()).toBe(2);
+  });
+
   it("should still match NULL through isNull", async () => {
     const alepha = Alepha.create({
       env: { DATABASE_URL: "sqlite://:memory:" },

@@ -495,6 +495,14 @@ export class RelationalRepository<
       if (nested === undefined) continue;
 
       if (relation.kind === "one") {
+        if (relation.through) {
+          // A to-one across a junction has no foreign key on this row to
+          // fill, so there is nothing `scalars[relation.from]` could mean.
+          throw new AlephaError(
+            `Nested create through the to-one relation '${field}' of '${entityKey}' is not supported: the link lives in the junction table '${relation.through.entity}', not on this row. Create the related row, then link it.`,
+          );
+        }
+
         // Must exist before this row, because this row's FK points at it.
         const related = await this.createDeep(
           relation.target,
@@ -522,6 +530,20 @@ export class RelationalRepository<
 
     for (const [relation, items] of toMany) {
       for (const item of items) {
+        if (relation.through) {
+          // A many-to-many child owns its own key and carries no column
+          // pointing back here - the link is a junction row. Stamping
+          // `[relation.to]` the way the one-to-many branch does overwrote the
+          // child's PRIMARY KEY with the parent's id and wrote no junction
+          // row at all, so the graph came out wrong with nothing raised.
+          const child = await this.createDeep(
+            relation.target,
+            item as CreateInput,
+          );
+          await this.linkThrough(relation, row, child);
+          continue;
+        }
+
         // The child's link column is filled from the parent, so a value passed
         // for it would be silently overridden — the type omits it for exactly
         // that reason.
@@ -533,6 +555,32 @@ export class RelationalRepository<
     }
 
     return row;
+  }
+
+  /**
+   * Write the junction row that links a many-to-many child to its parent.
+   *
+   * Runs inside `create()`'s transaction like every other write here, so a
+   * child inserted without its link never survives.
+   */
+  protected async linkThrough(
+    relation: ResolvedRelation,
+    parent: Record<string, any>,
+    child: Record<string, any>,
+  ): Promise<void> {
+    const through = relation.through!;
+    const junction = this.relations.schema[through.entity];
+
+    if (!junction) {
+      throw new AlephaError(
+        `Junction '${through.entity}' is not in the schema passed to $relations().`,
+      );
+    }
+
+    await this.repositories.getRepository(junction).create({
+      [through.fromColumn]: parent[relation.from],
+      [through.toColumn]: child[relation.to],
+    } as never);
   }
 
   // -------------------------------------------------------------------------------------------------------------------

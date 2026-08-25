@@ -68,6 +68,11 @@ export class TurnstileCaptchaProvider implements CaptchaProvider {
   protected readonly secretKey: string;
   protected readonly siteKey: string;
 
+  /**
+   * @see CaptchaProvider.configured
+   */
+  public readonly configured = true;
+
   constructor() {
     const { alepha } = $context();
 

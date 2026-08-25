@@ -108,6 +108,21 @@ export const orders = $entity({
     shippingAddress: z.json().optional(),
 
     notes: z.text({ maxLength: 2000 }).optional(),
+
+    /**
+     * Money that arrived for an order that was no longer taking it.
+     *
+     * A PSP intent outlives the checkout session it was created for, so a
+     * capture can land after the session was abandoned or its order cancelled.
+     * The order must NOT flip to paid on the strength of it - the stock is
+     * gone, the holds are released, and quietly settling would sell something
+     * that is not there. But the customer HAS been charged, so it cannot be
+     * dropped either: it is recorded here and announced as
+     * `commerce:capture:stray` for a refund or a manual review.
+     *
+     * An array, because a retrying PSP can deliver more than one.
+     */
+    strayCaptures: z.array(z.json()).optional(),
   }),
   indexes: [
     { columns: ["organizationId"] },

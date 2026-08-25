@@ -80,4 +80,20 @@ export abstract class CheckoutPaymentProvider {
     session: CheckoutSessionEntity,
     options: { returnUrl: string; email?: string },
   ): Promise<PaymentHandoff>;
+
+  /**
+   * Close the payment this session handed off, because the checkout is over.
+   *
+   * A PSP intent OUTLIVES the session that created it: abandoning the
+   * checkout releases the stock and cancels the order, but leaves the payment
+   * page open in the buyer's other tab. A capture landing afterwards charges
+   * a customer for an order that no longer exists.
+   *
+   * Non-abstract and a no-op by default, so a provider whose rail has nothing
+   * to close is not forced to say so. Failure is swallowed by the
+   * implementations: an abandon that cannot reach the PSP must still abandon
+   * the checkout, and the late capture is caught by the second guard in
+   * `CheckoutService.settle`.
+   */
+  public async abandon(_intentId: string): Promise<void> {}
 }

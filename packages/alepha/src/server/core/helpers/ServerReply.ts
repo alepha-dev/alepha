@@ -37,6 +37,19 @@ export class ServerReply {
   }
 
   /**
+   * Drop a response header a previous pass had set.
+   *
+   * Needed by anything that decides a header rather than merely contributing
+   * one: a later, stricter resolution must be able to take back what an
+   * earlier, more permissive one wrote, and `setHeader` alone can only
+   * overwrite with a value.
+   */
+  public removeHeader(name: string): this {
+    delete this.headers[name.toLowerCase() as keyof typeof this.headers];
+    return this;
+  }
+
+  /**
    * Set the response body.
    */
   public setBody(body: any): this {

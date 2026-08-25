@@ -341,7 +341,6 @@ export class QuestTools {
       );
 
       const size = params.limit ?? 20;
-      const page = params.offset ? Math.floor(params.offset / size) : 0;
 
       const result = await this.questController.getQuests({
         params: { projectId },
@@ -351,7 +350,10 @@ export class QuestTools {
           tag: params.tag,
           epic: params.epic,
           size,
-          page,
+          // Honoured as given. It used to be divided into a page number, so
+          // `offset: 25, limit: 20` returned rows 20-39 while the tool doc
+          // promised 25-44.
+          offset: params.offset,
           // MCP is deliberately NOT gated (spec §5.3): an agent that files a
           // quest into a planned epic must see it in its own next call, or
           // this tool looks as though it silently failed. The UI's listing

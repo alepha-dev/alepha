@@ -42,6 +42,18 @@ const AreaRenameDialog = (props: AreaRenameDialogProps) => {
   const [value, setValue] = useState(props.area.name);
   const [submitting, setSubmitting] = useState(false);
 
+  // The dialog stays mounted while closed, so its draft outlived every close:
+  // typing a name, cancelling and reopening showed the abandoned draft, and a
+  // navigation to another area showed the previous area's name. Re-seed on
+  // each open, the way React documents for state that must follow a prop.
+  const [wasOpen, setWasOpen] = useState(props.open);
+  if (wasOpen !== props.open) {
+    setWasOpen(props.open);
+    if (props.open) {
+      setValue(props.area.name);
+    }
+  }
+
   const trimmed = value.trim();
   const collision = props.siblings.find(
     (s) => s.id !== props.area.id && s.name === trimmed,

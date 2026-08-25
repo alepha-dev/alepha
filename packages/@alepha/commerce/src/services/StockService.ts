@@ -25,11 +25,19 @@ import { InsufficientStockError } from "../errors/CommerceError.ts";
  *
  * Ported from Club's `StockService`, which learned the hard way that a counter
  * column oversells: two concurrent sales read the same snapshot, both see
- * enough, both write. Every mutating method here expects to be called inside
- * the transaction that writes. That serialises the check on SQLite and D1
- * (one writer at a time); on Postgres at READ COMMITTED two transactions can
- * still read the same sum before either commits, and a per-product row lock
- * is what would close that window.
+ * enough, both write.
+ *
+ * ### How the same race is closed here
+ *
+ * Checking before writing cannot close it: on Postgres at READ COMMITTED two
+ * transactions read the same sum before either commits, and there is no
+ * counter row to lock - on-hand is a SUM over an append-only ledger.
+ *
+ * So the write comes first and the check second. Every racer inserts its claim,
+ * then reads the claims back in one deterministic order - `(createdAt, id)`,
+ * which every racer computes identically - and keeps its own only if it fits.
+ * Exactly as many claims survive as there is stock for, whoever ran first, and
+ * it needs no row lock, so it behaves the same on SQLite and D1.
  */
 export class StockService {
   /**
@@ -127,13 +135,16 @@ export class StockService {
     quantity: number,
     options: { orderId: string; ttlMinutes?: number },
   ): Promise<StockReservationEntity> {
+    // A fast pre-check only: it rejects the obviously impossible without
+    // writing anything, but two racers can both pass it. The claim below is
+    // what actually decides.
     const available = await this.available(productId);
     if (available < quantity) {
       throw new InsufficientStockError(productId, quantity, available);
     }
 
     const ttl = options.ttlMinutes ?? StockService.RESERVATION_TTL_MINUTES;
-    return this.reservations.create({
+    const hold = await this.reservations.create({
       productId,
       quantity,
       orderId: options.orderId,
@@ -142,6 +153,61 @@ export class StockService {
         this.dateTime.nowMillis() + ttl * 60_000,
       ).toISOString(),
     });
+
+    if (!(await this.holdFits(productId, hold.id))) {
+      await this.reservations.updateById(hold.id, { status: "released" });
+      throw new InsufficientStockError(
+        productId,
+        quantity,
+        Math.max(0, await this.available(productId)),
+      );
+    }
+
+    return hold;
+  }
+
+  /**
+   * Whether a hold just written is one the stock can actually back.
+   *
+   * Every live hold is read back in one order every racer computes the same
+   * way, and the quantities are summed up to and including this one. The hold
+   * survives if that running total still fits within on-hand - so N racers for
+   * M units leave exactly as many holds standing as M allows, and the ones
+   * that lose are the ones that arrived last.
+   *
+   * A hold that is no longer in the list at all (expired or released between
+   * the write and this read) loses too: it is no longer holding anything.
+   */
+  protected async holdFits(
+    productId: string,
+    holdId: string,
+  ): Promise<boolean> {
+    const now = this.dateTime.nowISOString();
+    const [onHand, holds] = await Promise.all([
+      this.onHand(productId),
+      this.reservations.findMany({
+        where: {
+          productId: { eq: productId },
+          status: { eq: "held" },
+          expiresAt: { gte: now },
+        },
+        orderBy: [
+          { column: "createdAt", direction: "asc" },
+          { column: "id", direction: "asc" },
+        ],
+        columns: ["id", "quantity"],
+      }),
+    ]);
+
+    let running = 0;
+    for (const hold of holds) {
+      running += hold.quantity;
+      if (hold.id === holdId) {
+        return running <= onHand;
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -181,21 +247,75 @@ export class StockService {
     quantity: number,
     context: { orderId?: string } = {},
   ): Promise<void> {
+    // Fast pre-check, same as `reserve`: it rejects the obviously impossible
+    // without writing, but two racers can both pass it.
     const onHand = await this.onHand(productId);
     if (onHand < quantity) {
       throw new InsufficientStockError(productId, quantity, onHand);
     }
 
-    await this.movements.create({
+    const movement = await this.movements.create({
       productId,
       delta: -quantity,
       reason: "sale",
       orderId: context.orderId,
     });
 
+    if (!(await this.movementFits(productId, movement.id))) {
+      await this.movements.deleteById(movement.id);
+      throw new InsufficientStockError(
+        productId,
+        quantity,
+        Math.max(0, await this.onHand(productId)),
+      );
+    }
+
     if (context.orderId) {
       await this.consumeHold(context.orderId, productId, quantity);
     }
+  }
+
+  /**
+   * Whether a sale just written is one the ledger can actually back.
+   *
+   * The whole ledger is replayed in one order every racer computes the same
+   * way, and the balance is summed up to and including this movement. The sale
+   * survives if the running balance never went negative at its own row.
+   *
+   * A PREFIX, not a snapshot, and that distinction is the whole correctness
+   * argument: rows written after this one cannot change the sum before it, and
+   * rows written before it are already committed. So the answer does not
+   * depend on how many racers happen to have landed by the time this runs -
+   * an earlier version compared against a live `onHand` and let a racer that
+   * checked early survive a deficit that later racers then had to absorb,
+   * which oversold under load.
+   *
+   * Rolling back a loser only lifts the balance for rows after it, so it can
+   * never turn a survivor into a loser; and a winner never re-checks. The
+   * count that survives is therefore exact, not merely safe.
+   */
+  protected async movementFits(
+    productId: string,
+    movementId: string,
+  ): Promise<boolean> {
+    const movements = await this.movements.findMany({
+      where: { productId: { eq: productId } },
+      orderBy: [
+        { column: "createdAt", direction: "asc" },
+        { column: "id", direction: "asc" },
+      ],
+      columns: ["id", "delta"],
+    });
+
+    let running = 0;
+    for (const movement of movements) {
+      running += movement.delta;
+      if (movement.id === movementId) {
+        return running >= 0;
+      }
+    }
+
+    return false;
   }
 
   /**

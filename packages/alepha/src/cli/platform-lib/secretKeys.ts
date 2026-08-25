@@ -40,6 +40,7 @@ export const EXCLUDED_SECRET_KEYS: ReadonlySet<string> = new Set([
   "SERVER_HOST",
   "SERVER_PORT",
   "TRUST_PROXY",
+  "TRUST_PROXY_HOPS",
   "REACT_SSR_ENABLED",
   "DATABASE_SYNC",
   "DEBUG",

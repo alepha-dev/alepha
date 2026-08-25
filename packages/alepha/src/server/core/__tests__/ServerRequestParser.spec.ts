@@ -19,7 +19,9 @@ const createMockRequestData = (
 
 describe("ServerRequestParser", () => {
   describe("getRequestIp", () => {
-    it("should use X-Forwarded-For when TRUST_PROXY is true", ({ expect }) => {
+    it("should use the last X-Forwarded-For entry when TRUST_PROXY is true", ({
+      expect,
+    }) => {
       const alepha = Alepha.create({ env: { TRUST_PROXY: "true" } });
       const parser = alepha.inject(ServerRequestParser);
 
@@ -27,18 +29,74 @@ describe("ServerRequestParser", () => {
         "x-forwarded-for": "203.0.113.195, 70.41.3.18, 150.172.238.178",
       });
 
+      // One trusted proxy by default, so only the entry IT appended counts.
+      expect(parser.getRequestIp(request)).toBe("150.172.238.178");
+    });
+
+    it("should ignore a client-supplied X-Forwarded-For prefix", ({
+      expect,
+    }) => {
+      const alepha = Alepha.create({ env: { TRUST_PROXY: "true" } });
+      const parser = alepha.inject(ServerRequestParser);
+
+      // The client sent `X-Forwarded-For: evil`; the proxy appended the
+      // address it actually accepted the connection from.
+      const request = createMockRequestData({
+        "x-forwarded-for": "evil, 10.0.0.1",
+      });
+
+      expect(parser.getRequestIp(request)).toBe("10.0.0.1");
+    });
+
+    it("should walk TRUST_PROXY_HOPS entries from the right", ({ expect }) => {
+      const alepha = Alepha.create({
+        env: { TRUST_PROXY: "true", TRUST_PROXY_HOPS: "2" },
+      });
+      const parser = alepha.inject(ServerRequestParser);
+
+      const request = createMockRequestData({
+        "x-forwarded-for": "evil, 203.0.113.195, 10.0.0.1",
+      });
+
       expect(parser.getRequestIp(request)).toBe("203.0.113.195");
     });
 
-    it("should use first IP from X-Forwarded-For chain", ({ expect }) => {
+    it("should clamp when the chain is shorter than TRUST_PROXY_HOPS", ({
+      expect,
+    }) => {
+      const alepha = Alepha.create({
+        env: { TRUST_PROXY: "true", TRUST_PROXY_HOPS: "4" },
+      });
+      const parser = alepha.inject(ServerRequestParser);
+
+      const request = createMockRequestData({
+        "x-forwarded-for": "203.0.113.195, 10.0.0.1",
+      });
+
+      expect(parser.getRequestIp(request)).toBe("203.0.113.195");
+    });
+
+    it("should flatten repeated X-Forwarded-For headers", ({ expect }) => {
       const alepha = Alepha.create({ env: { TRUST_PROXY: "true" } });
       const parser = alepha.inject(ServerRequestParser);
 
       const request = createMockRequestData({
-        "x-forwarded-for": "192.168.1.1, 10.0.0.1",
+        "x-forwarded-for": ["evil, 203.0.113.195", "10.0.0.1"] as any,
       });
 
-      expect(parser.getRequestIp(request)).toBe("192.168.1.1");
+      expect(parser.getRequestIp(request)).toBe("10.0.0.1");
+    });
+
+    it("should prefer cf-connecting-ip over X-Forwarded-For", ({ expect }) => {
+      const alepha = Alepha.create({ env: { TRUST_PROXY: "true" } });
+      const parser = alepha.inject(ServerRequestParser);
+
+      const request = createMockRequestData({
+        "cf-connecting-ip": "198.51.100.7",
+        "x-forwarded-for": "evil, 10.0.0.1",
+      });
+
+      expect(parser.getRequestIp(request)).toBe("198.51.100.7");
     });
 
     it("should use X-Real-IP as fallback", ({ expect }) => {
@@ -59,6 +117,7 @@ describe("ServerRequestParser", () => {
       const parser = alepha.inject(ServerRequestParser);
 
       const request = createMockRequestData({
+        "cf-connecting-ip": "198.51.100.7",
         "x-forwarded-for": "203.0.113.195",
         "x-real-ip": "192.168.1.100",
       });

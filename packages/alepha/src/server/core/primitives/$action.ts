@@ -358,6 +358,16 @@ export class ActionPrimitive<
     // we use localhost as the base URL for the action
     const url = new URL(`http://localhost${this.path ?? ""}`);
 
+    // The caller's address, when this call happens inside one.
+    //
+    // A nested invocation (`/api/_batch`, an SSR loader) has no socket of its
+    // own, so `ip` used to be undefined and every such call keyed the rate
+    // limiter on `ip:unknown` - one bucket shared by every client in the
+    // world, and no client ever limited per address. The HTTP request that
+    // is actually paying for this work is on an ancestor context layer;
+    // inherit its address so the budget comes out of the right bucket.
+    const parentIp = this.alepha.store.get("alepha.http.request")?.ip;
+
     const serverActionRequest: Partial<ServerRequest> = {
       method,
       url,
@@ -366,6 +376,7 @@ export class ActionPrimitive<
       query,
       headers,
       reply,
+      ip: parentIp,
       metadata: {
         routePath: this.route.path,
         routeMethod: this.route.method,

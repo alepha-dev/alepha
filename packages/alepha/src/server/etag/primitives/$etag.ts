@@ -54,7 +54,21 @@ export const $etag = (options?: EtagMiddlewareOptions): Middleware => {
       const etagProvider = alepha.inject(ServerEtagProvider);
 
       return async (...args) => {
-        const request = alepha.get("alepha.http.request") ?? args[0];
+        // Resolution order matters, and it is the same one `$secure` uses.
+        //
+        // Inside a nested `run()` - SSR `follow()`, `/api/_batch` - the
+        // container-wide `alepha.http.request` is the OUTER request. Reading
+        // it first stamped this action's etag options onto the page's own
+        // request, so the page response inherited this action's
+        // Cache-Control and ETag, and `checkCache` wrote this action's
+        // cached body straight onto the outer reply, keyed by the OUTER
+        // route. `run()` publishes its per-call request on its own fork
+        // layer, so `"current"` finds the action that actually declared this
+        // middleware and nothing else.
+        const request =
+          alepha.store.get("alepha.action.request", "current") ??
+          alepha.get("alepha.http.request") ??
+          args[0];
 
         // Set etag options on request metadata for hooks to read
         if (request?.metadata) {

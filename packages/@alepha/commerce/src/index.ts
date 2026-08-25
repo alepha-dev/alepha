@@ -69,6 +69,29 @@ declare module "alepha" {
     "commerce:order:cancelled": {
       orderId: string;
     };
+
+    /**
+     * Money arrived for an order that was no longer taking it.
+     *
+     * A PSP intent outlives the checkout session it was created for, so a
+     * capture can land after the session was abandoned. The order is left as
+     * it was - settling it would sell stock that has already been released -
+     * and this is emitted so the application can refund or review.
+     *
+     * **Nobody is refunded automatically.** Whether a stray capture is
+     * refunded, kept as credit or escalated is a business decision this
+     * package cannot make, so it reports rather than acts.
+     */
+    "commerce:capture:stray": {
+      orderId: string;
+      /**
+       * The order's status at the moment the capture arrived.
+       */
+      orderStatus: string;
+      paymentIntentId?: string;
+      total: number;
+      currency: string;
+    };
   }
 }
 

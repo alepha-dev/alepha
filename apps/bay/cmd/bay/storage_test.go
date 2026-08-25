@@ -516,15 +516,19 @@ func TestMigrateSwitchesTheAppOver(t *testing.T) {
 	if app.StorageBackend != "s3" {
 		t.Fatalf("expected the app to be on s3, got %q", app.StorageBackend)
 	}
-	raw, err := os.ReadFile(filepath.Join(f.root, "apps", "demo", "production", ".env"))
+	// Through the reader, not the raw bytes: the file is quoted for systemd's
+	// EnvironmentFile grammar, and this test is about WHERE the blobs go.
+	env, err := runner.LoadEnvFile(
+		filepath.Join(f.root, "apps", "demo", "production", ".env"),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(raw), "S3_KEY_PREFIX=apps/demo/production/blobs") {
-		t.Fatalf("the app was not repointed at the bucket:\n%s", raw)
+	if env["S3_KEY_PREFIX"] != "apps/demo/production/blobs" {
+		t.Fatalf("the app was not repointed at the bucket:\n%v", env)
 	}
-	if strings.Contains(string(raw), "STORAGE_PATH=") {
-		t.Fatalf("STORAGE_PATH must be gone once blobs are in the bucket:\n%s", raw)
+	if _, ok := env["STORAGE_PATH"]; ok {
+		t.Fatalf("STORAGE_PATH must be gone once blobs are in the bucket:\n%v", env)
 	}
 }
 

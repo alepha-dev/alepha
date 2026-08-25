@@ -1,4 +1,5 @@
-import { $inject, z } from "alepha";
+import { $inject, Alepha, z } from "alepha";
+import { currentUserAtom } from "alepha/security";
 import { $action } from "alepha/server";
 import { $cookie } from "alepha/server/cookies";
 
@@ -33,6 +34,7 @@ export class CartController {
   protected readonly url = "/commerce/cart";
   protected readonly group = "commerce:cart";
   protected readonly carts = $inject(CartService);
+  protected readonly alepha = $inject(Alepha);
 
   protected readonly cartCookie = $cookie({
     name: "cart",
@@ -104,15 +106,54 @@ export class CartController {
   });
 
   /**
-   * Read the cart the cookie points at, minting one if this visitor has none.
+   * Read the cart the cookie points at, minting one if this visitor has none -
+   * and, when the visitor is signed in, make sure it is THEIR cart.
+   *
+   * The ownership half is not decoration. A cart's `userId` is copied to the
+   * checkout session and from there to the order, so a cart that never learned
+   * who its owner was produced an order belonging to nobody: "my orders"
+   * answered empty for every customer, and the address book, keyed on the same
+   * id, was dead.
+   *
+   * The guest-cart merge happens here rather than on a sign-in event, because
+   * this is the first moment BOTH facts are in hand - the cookie (a browser
+   * fact) and the identity (a token fact). It runs on the first cart request
+   * after signing in, is idempotent, and needs no hook into the auth flow.
    */
   public async resolveCart() {
+    const userId = this.alepha.store.get(currentUserAtom)?.id;
     let token = this.cartCookie.get();
+
     if (!token) {
+      // A returning customer whose cookie is gone still owns their cart.
+      const owned = userId ? await this.carts.forUser(userId) : undefined;
+      if (owned) {
+        this.cartCookie.set(owned.token);
+        return owned;
+      }
       token = this.carts.newToken();
       this.cartCookie.set(token);
     }
-    return this.carts.resolve(token);
+
+    const cart = await this.carts.resolve(token, { userId });
+
+    if (!userId) {
+      return cart;
+    }
+
+    const owned = await this.carts.forUser(userId);
+
+    // No account cart yet, or this IS it: claim it and we are done.
+    if (!owned || owned.id === cart.id) {
+      return cart.userId === userId ? cart : this.carts.claim(cart.id, userId);
+    }
+
+    // Two carts: the guest basket folds into the account one, and the cookie
+    // follows. Dropping the guest lines instead would silently empty a basket
+    // the customer filled before signing in.
+    await this.carts.merge(cart.id, owned.id);
+    this.cartCookie.set(owned.token);
+    return owned;
   }
 
   protected async priced() {

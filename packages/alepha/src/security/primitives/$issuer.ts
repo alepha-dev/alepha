@@ -185,18 +185,24 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
   }
 
   protected onInit() {
-    const roles =
-      this.options.roles?.map((it) => {
-        if (typeof it === "string") {
-          const role = this.getRoles().find((role) => role.name === it);
-          if (!role) {
-            throw new SecurityError(`Role '${it}' not found`);
-          }
-          return role;
-        }
+    // A name is resolved AFTER the realm exists, not here.
+    //
+    // `getRoles()` scopes its lookup to this realm, and this realm is created
+    // three lines below - so the lookup was empty by construction and
+    // `roles: ["admin"]` could only ever throw "Role 'admin' not found". The
+    // name is handed to the provider instead, which resolves it against every
+    // declared role and, if the matching `$role` has not been declared yet,
+    // waits for it. Unresolved names fail the boot at `ready`.
+    const named: string[] = [];
+    const roles: Role[] = [];
 
-        return it;
-      }) ?? [];
+    for (const it of this.options.roles ?? []) {
+      if (typeof it === "string") {
+        named.push(it);
+      } else {
+        roles.push(it);
+      }
+    }
 
     this.securityProvider.createRealm({
       name: this.name,
@@ -206,6 +212,10 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
       roles,
       resolvers: [],
     });
+
+    for (const name of named) {
+      this.securityProvider.referenceRole(this.name, name);
+    }
 
     // Register custom resolvers first (they usually have lower priority)
     for (const resolver of this.options.resolvers ?? []) {

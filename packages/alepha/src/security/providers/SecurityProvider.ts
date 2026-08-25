@@ -2,6 +2,7 @@ import {
   $hook,
   $inject,
   Alepha,
+  AlephaError,
   AppNotStartedError,
   ContainerLockedError,
 } from "alepha";
@@ -68,6 +69,31 @@ export class SecurityProvider {
         },
       ]
     : [];
+
+  /**
+   * Every role declared through {@link createRole}, with the realms it named.
+   *
+   * Kept because declaration order is not something the declaring code can
+   * control: `$role` and `$issuer` are class fields, and whichever class the
+   * container instantiates first wins. A role used to be pushed into the
+   * realms that happened to exist at that instant, so one declared before its
+   * issuer landed in no realm at all - and under test it was worse, because it
+   * landed in the implicit `default` realm that `createRealm` then popped.
+   * Either way, silently.
+   *
+   * `realms: undefined` means every realm, including realms created later.
+   */
+  protected readonly declaredRoles: DeclaredRole[] = [];
+
+  /**
+   * Roles an issuer named by string rather than by reference.
+   *
+   * `$issuer({ roles: ["admin"] })` cannot resolve its own names: the realm
+   * does not exist until the line that creates it, so a lookup scoped to that
+   * realm is empty by construction. The reference is recorded instead and
+   * resolved whenever either side turns up.
+   */
+  protected readonly roleReferences: RoleReference[] = [];
 
   protected start = $hook({
     on: "start",
@@ -159,67 +185,177 @@ export class SecurityProvider {
   /**
    * Adds a role to one or more realms.
    *
+   * Naming a realm that does not exist yet is NOT an error before the
+   * container starts - that is the ordinary `$role`-before-`$issuer` case.
+   * The role is recorded and attached when the realm turns up; if it never
+   * does, the boot fails at `ready` naming both. After start every realm is
+   * known, so an unknown name is a real mistake and still throws at once.
+   *
    * @param role
    * @param realms
    */
   public createRole(role: Role, ...realms: string[]): Role {
-    const list = realms.length
-      ? realms.map((it) => {
-          const item = this.realms.find((realm) => realm.name === it);
-          if (!item) {
-            throw new RealmNotFoundError(it);
-          }
-          return item;
-        })
-      : this.realms;
+    this.assertRolePermissions(role);
 
-    for (const realm of list) {
-      for (const { name } of role.permissions) {
-        if (this.alepha.isStarted()) {
-          // Check if permission exists or matches a wildcard pattern
-          if (name === "*") {
-            // Global wildcard is always allowed
-            continue;
-          }
-
-          // Check for exact match first
-          const existingExact = this.permissions.find(
-            (it) => this.permissionToString(it) === name,
-          );
-          if (existingExact) {
-            continue;
-          }
-
-          // Check if it's a wildcard pattern (e.g., "admin:api:*")
-          if (name.endsWith(":*")) {
-            const groupPrefix = name.slice(0, -2); // Remove ":*"
-            // Check if any permission exists with this group prefix
-            const existingWithPrefix = this.permissions.find((it) => {
-              if (!it.group) return false;
-              return (
-                it.group === groupPrefix ||
-                it.group.startsWith(`${groupPrefix}:`)
-              );
-            });
-            if (existingWithPrefix) {
-              continue;
-            }
-          }
-
-          // Permission not found
-          throw new SecurityError(`Permission '${name}' not found`);
-        } else {
-          if (name !== "*" && !this.PERMISSION_REGEXP_WILDCARD.test(name)) {
-            throw new InvalidPermissionError(name);
-          }
+    if (this.alepha.isStarted()) {
+      for (const name of realms) {
+        if (!this.realms.some((realm) => realm.name === name)) {
+          throw new RealmNotFoundError(name);
         }
       }
-
-      realm.roles.push(role);
     }
+
+    const declared: DeclaredRole = {
+      role,
+      realms: realms.length ? realms : undefined,
+    };
+
+    this.declaredRoles.push(declared);
+    this.reconcileRoles();
 
     return role;
   }
+
+  /**
+   * Validate a role's permissions once, independently of which realms it
+   * lands in.
+   *
+   * It used to run inside the realm loop, so a role that matched no realm was
+   * not validated at all - the one case where the declaration is already
+   * wrong was the one case nothing checked.
+   */
+  protected assertRolePermissions(role: Role): void {
+    for (const { name } of role.permissions) {
+      if (!this.alepha.isStarted()) {
+        if (name !== "*" && !this.PERMISSION_REGEXP_WILDCARD.test(name)) {
+          throw new InvalidPermissionError(name);
+        }
+        continue;
+      }
+
+      // Global wildcard is always allowed
+      if (name === "*") {
+        continue;
+      }
+
+      // Check for exact match first
+      const existingExact = this.permissions.find(
+        (it) => this.permissionToString(it) === name,
+      );
+      if (existingExact) {
+        continue;
+      }
+
+      // Check if it's a wildcard pattern (e.g., "admin:api:*")
+      if (name.endsWith(":*")) {
+        const groupPrefix = name.slice(0, -2); // Remove ":*"
+        // Check if any permission exists with this group prefix
+        const existingWithPrefix = this.permissions.find((it) => {
+          if (!it.group) return false;
+          return (
+            it.group === groupPrefix || it.group.startsWith(`${groupPrefix}:`)
+          );
+        });
+        if (existingWithPrefix) {
+          continue;
+        }
+      }
+
+      // Permission not found
+      throw new SecurityError(`Permission '${name}' not found`);
+    }
+  }
+
+  /**
+   * Record that a realm wants a role it knows only by name.
+   *
+   * @see roleReferences
+   */
+  public referenceRole(realm: string, role: string): void {
+    this.roleReferences.push({ realm, role });
+    this.reconcileRoles();
+  }
+
+  /**
+   * Attach every declared role and named reference that can be attached now.
+   *
+   * Idempotent, and cheap enough to run on every declaration: both lists are
+   * the size of an application's security declarations, and running it eagerly
+   * is what makes declaration order stop mattering.
+   */
+  protected reconcileRoles(): void {
+    for (const declared of this.declaredRoles) {
+      for (const realm of this.realms) {
+        if (declared.realms && !declared.realms.includes(realm.name)) {
+          continue;
+        }
+        if (!realm.roles.includes(declared.role)) {
+          realm.roles.push(declared.role);
+        }
+      }
+    }
+
+    for (const reference of this.roleReferences) {
+      const realm = this.realms.find((it) => it.name === reference.realm);
+      const declared = this.declaredRoles.find(
+        (it) => it.role.name === reference.role,
+      );
+
+      if (!realm || !declared) {
+        continue;
+      }
+
+      if (!realm.roles.includes(declared.role)) {
+        realm.roles.push(declared.role);
+      }
+      reference.resolved = true;
+    }
+  }
+
+  /**
+   * Refuse to finish booting with a security declaration that reached
+   * nothing.
+   *
+   * A role in no realm grants nothing and an issuer naming a role that does
+   * not exist protects nothing, and both used to be silent - which is the
+   * failure mode a security primitive can least afford.
+   */
+  protected readonly assertRolesAttached = $hook({
+    on: "ready",
+    handler: () => {
+      const problems: string[] = [];
+
+      for (const declared of this.declaredRoles) {
+        const attached = this.realms.some((realm) =>
+          realm.roles.includes(declared.role),
+        );
+        if (attached) {
+          continue;
+        }
+
+        problems.push(
+          declared.realms
+            ? `Role '${declared.role.name}' names realm(s) ${declared.realms
+                .map((it) => `'${it}'`)
+                .join(", ")}, which no $issuer declared.`
+            : `Role '${declared.role.name}' belongs to no realm - declare an $issuer.`,
+        );
+      }
+
+      for (const reference of this.roleReferences) {
+        if (reference.resolved) {
+          continue;
+        }
+        problems.push(
+          `Issuer '${reference.realm}' names role '${reference.role}', which no $role declared.`,
+        );
+      }
+
+      if (problems.length) {
+        throw new AlephaError(problems.join(" "));
+      }
+    },
+  });
 
   /**
    * Adds a permission to the security provider.
@@ -291,6 +427,10 @@ export class SecurityProvider {
     }
 
     this.realms.push(realm);
+
+    // Roles declared before this realm existed - including any the pop above
+    // just took with it - land here.
+    this.reconcileRoles();
   }
 
   /**
@@ -1124,4 +1264,28 @@ export interface Realm {
 export interface SecurityCheckResult {
   isAuthorized: boolean;
   ownership: string | boolean | undefined;
+}
+
+/**
+ * A role as declared, before it is known which realms will exist.
+ *
+ * @see SecurityProvider.declaredRoles
+ */
+interface DeclaredRole {
+  role: Role;
+  /**
+   * The realms named at declaration, or `undefined` for every realm.
+   */
+  realms?: string[];
+}
+
+/**
+ * A realm's reference to a role it knows only by name.
+ *
+ * @see SecurityProvider.roleReferences
+ */
+interface RoleReference {
+  realm: string;
+  role: string;
+  resolved?: boolean;
 }
