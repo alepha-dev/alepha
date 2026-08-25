@@ -207,3 +207,100 @@ describe("ServerRateLimitProvider Module Integration", () => {
     }
   });
 });
+
+describe("Nested run() invocations", () => {
+  let alepha: Alepha;
+
+  /**
+   * The `/api/_batch` and SSR-loader shape: an action carrying its own
+   * `rateLimit`, reached through `run()` rather than over the wire. It has no
+   * socket of its own, so the address has to come from the HTTP request that
+   * is paying for the work.
+   */
+  class BatchApp {
+    hits = 0;
+
+    limited = $action({
+      path: "/limited",
+      rateLimit: { max: 2, windowMs: 60_000 },
+      handler: () => {
+        this.hits++;
+        return "ok";
+      },
+    });
+
+    limitedFour = $action({
+      path: "/limited-four",
+      rateLimit: { max: 4, windowMs: 60_000 },
+      handler: () => {
+        this.hits++;
+        return "ok";
+      },
+    });
+  }
+
+  beforeEach(async () => {
+    alepha = Alepha.create()
+      .with(AlephaCache)
+      .with(AlephaServer)
+      .with(AlephaServerRateLimit)
+      .with(BatchApp);
+    await alepha.start();
+  });
+
+  afterEach(async () => {
+    await alepha.stop();
+  });
+
+  /**
+   * One HTTP request from `ip`, batching `times` nested calls, the way
+   * `ServerLinksProvider.batch` does.
+   */
+  const batchOf = (
+    pick: (app: BatchApp) => { run: () => Promise<any> },
+    ip: string,
+    times: number,
+  ): Promise<Array<string | number>> =>
+    alepha.context.run(async () => {
+      alepha.set("alepha.http.request", { ip, headers: {} } as any);
+
+      const action = pick(alepha.inject(BatchApp));
+      const outcomes: Array<string | number> = [];
+      for (let i = 0; i < times; i++) {
+        outcomes.push(
+          await action.run().catch((error: any) => error.status ?? -1),
+        );
+      }
+      return outcomes;
+    });
+
+  const batchAs = (ip: string, times: number) =>
+    batchOf((app) => app.limited, ip, times);
+
+  const batchAs4 = (ip: string, times: number) =>
+    batchOf((app) => app.limitedFour, ip, times);
+
+  it("spends the caller's own bucket, not one shared by everybody", async () => {
+    // Before the fix the synthetic request had no `ip`, so every nested call
+    // from every client in the world keyed on `ip:unknown` — the second
+    // client here would have started already exhausted.
+    expect(await batchAs("10.0.0.1", 3)).toEqual(["ok", "ok", 429]);
+    expect(await batchAs("10.0.0.2", 3)).toEqual(["ok", "ok", 429]);
+  });
+
+  it("counts one token per nested call, not one per batch", async () => {
+    const app = alepha.inject(BatchApp);
+
+    // Four tokens each. Three go on the first batch...
+    expect(await batchAs4("10.0.0.3", 3)).toEqual(["ok", "ok", "ok"]);
+    expect(app.hits).toBe(3);
+
+    // ...another client's batch of three is served in full, because it is
+    // drawing on its own bucket...
+    expect(await batchAs4("10.0.0.4", 3)).toEqual(["ok", "ok", "ok"]);
+
+    // ...and the first client has exactly one token left, so a batch of two
+    // is half served. One token per call, one bucket per address.
+    expect(await batchAs4("10.0.0.3", 2)).toEqual(["ok", 429]);
+  });
+});
