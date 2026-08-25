@@ -33,6 +33,7 @@ import {
 
 import { alephaServerAuthRoutes } from "../constants/routes.ts";
 import { MfaRequiredError } from "../errors/MfaRequiredError.ts";
+import { safeRedirectPath } from "../helpers/safeRedirectPath.ts";
 import {
   $auth,
   type AccessToken,
@@ -65,11 +66,16 @@ export class ServerAuthProvider {
    * Prevents open redirect attacks by rejecting any other absolute URL.
    */
   protected validateRedirectUri(uri: string): string {
-    // Reject backslashes: browsers normalize `/\evil.com` to `//evil.com`,
-    // turning a "relative" path into a protocol-relative open redirect.
-    if (uri.startsWith("/") && !uri.startsWith("//") && !uri.includes("\\")) {
-      return uri;
+    // The relative rule (single leading slash, no `//host`, no backslash a
+    // browser would normalise into one) lives in `safeRedirectPath`, which is
+    // the one place it is written and specced. An empty fallback rather than
+    // "/" so a rejected path falls through to the parent-domain branch below
+    // instead of stopping short of it.
+    const relative = safeRedirectPath(uri, "");
+    if (relative) {
+      return relative;
     }
+
     const parent = this.alepha.env.COOKIE_PARENT_DOMAIN;
     if (typeof parent === "string" && parent) {
       try {

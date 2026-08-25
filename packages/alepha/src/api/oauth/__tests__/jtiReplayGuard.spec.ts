@@ -1,23 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import { JtiReplayGuard } from "../helpers/jtiReplayGuard.ts";
-import { safeRedirectPath } from "../helpers/safeRedirectPath.ts";
-
-describe("safeRedirectPath", () => {
-  it("keeps a simple absolute path", () => {
-    expect(safeRedirectPath("/me")).toBe("/me");
-    expect(safeRedirectPath("/admin/pages?x=1")).toBe("/admin/pages?x=1");
-  });
-
-  it("rejects protocol-relative, absolute, backslash, and empty → fallback", () => {
-    expect(safeRedirectPath("//evil.com")).toBe("/");
-    expect(safeRedirectPath("https://evil.com")).toBe("/");
-    expect(safeRedirectPath("/\\evil.com")).toBe("/");
-    expect(safeRedirectPath("evil")).toBe("/");
-    expect(safeRedirectPath(undefined)).toBe("/");
-    expect(safeRedirectPath(undefined, "/home")).toBe("/home");
-  });
-});
 
 describe("JtiReplayGuard", () => {
   it("accepts a jti once, rejects the replay", () => {
@@ -42,5 +25,17 @@ describe("JtiReplayGuard", () => {
     };
     for (let i = 0; i < 50; i++) g.check(`j${i}`, 1_000);
     expect(g.seen.size).toBeLessThanOrEqual(5);
+  });
+
+  it("reports a used jti without spending an unused one", () => {
+    const g = new JtiReplayGuard();
+
+    // `wasUsed` is the read a caller does before it has finished validating:
+    // asking must not consume, or a request that fails a LATER check would
+    // burn a token it never got to use.
+    expect(g.wasUsed("a", 1_000)).toBe(false);
+    expect(g.wasUsed("a", 1_000)).toBe(false);
+    expect(g.check("a", 1_000)).toBe(true);
+    expect(g.wasUsed("a", 1_000)).toBe(true);
   });
 });

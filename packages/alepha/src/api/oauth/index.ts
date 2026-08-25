@@ -11,6 +11,7 @@ export {
 export type { OAuthClientEntity } from "./entities/oauthClientEntity.ts";
 export { oauthClientEntity } from "./entities/oauthClientEntity.ts";
 export { buildOpenIdConfiguration } from "./helpers/oidcMetadata.ts";
+export * from "./helpers/jtiReplayGuard.ts";
 export * from "./services/DeviceCodeService.ts";
 export type { RegisterClientOptions } from "./services/OAuthClientService.ts";
 export { OAuthClientService } from "./services/OAuthClientService.ts";

@@ -8,6 +8,7 @@ import { ServerAuthProvider } from "./providers/ServerAuthProvider.ts";
 
 export * from "./errors/MfaRequiredError.ts";
 export * from "./helpers/appleClientSecret.ts";
+export * from "./helpers/safeRedirectPath.ts";
 export * from "./index.shared.ts";
 export * from "./primitives/$auth.ts";
 export * from "./primitives/$authApple.ts";

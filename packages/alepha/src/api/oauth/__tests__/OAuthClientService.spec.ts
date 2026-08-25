@@ -195,6 +195,107 @@ describe("OAuthClientService authorization code", () => {
     ).rejects.toThrow();
   });
 
+  it("names the replay when a spent code comes back", async ({ expect }) => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const jwt = alepha.inject(JwtProvider);
+    jwt.setKeyLoader("users", "test-secret-for-oauth-code-tests");
+    const service = alepha.inject(OAuthClientService);
+    await alepha.start();
+
+    const verifier = "a".repeat(64);
+    const challenge = createHash("sha256").update(verifier).digest("base64url");
+    const grant = {
+      userId: "user-1",
+      clientId: "mcp_x",
+      redirectUri: "https://claude.ai/cb",
+      codeChallenge: challenge,
+      scopes: ["mcp"],
+    };
+    const check = {
+      clientId: "mcp_x",
+      redirectUri: "https://claude.ai/cb",
+      codeVerifier: verifier,
+    };
+
+    const code = await service.createAuthorizationCode("users", grant);
+    await service.consumeAuthorizationCode("users", code, check);
+
+    await expect(
+      service.consumeAuthorizationCode("users", code, check),
+    ).rejects.toThrow("Authorization code already used");
+  });
+
+  it("does not spend a code that fails PKCE", async ({ expect }) => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const jwt = alepha.inject(JwtProvider);
+    jwt.setKeyLoader("users", "test-secret-for-oauth-code-tests");
+    const service = alepha.inject(OAuthClientService);
+    await alepha.start();
+
+    const verifier = "a".repeat(64);
+    const challenge = createHash("sha256").update(verifier).digest("base64url");
+    const code = await service.createAuthorizationCode("users", {
+      userId: "user-1",
+      clientId: "mcp_x",
+      redirectUri: "https://claude.ai/cb",
+      codeChallenge: challenge,
+      scopes: ["mcp"],
+    });
+
+    await expect(
+      service.consumeAuthorizationCode("users", code, {
+        clientId: "mcp_x",
+        redirectUri: "https://claude.ai/cb",
+        codeVerifier: "b".repeat(64),
+      }),
+    ).rejects.toThrow("PKCE verification failed");
+
+    // The replay guard is read before the other checks and written after
+    // them, so a failed attempt leaves the code redeemable by whoever
+    // legitimately holds the verifier.
+    const claims = await service.consumeAuthorizationCode("users", code, {
+      clientId: "mcp_x",
+      redirectUri: "https://claude.ai/cb",
+      codeVerifier: verifier,
+    });
+    expect(claims.userId).toBe("user-1");
+  });
+
+  it("does not grow its replay guard without bound", async ({ expect }) => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const jwt = alepha.inject(JwtProvider);
+    jwt.setKeyLoader("users", "test-secret-for-oauth-code-tests");
+    const service = alepha.inject(OAuthClientService);
+    await alepha.start();
+
+    const guard = (
+      service as unknown as { usedCodes: { seen: Map<string, number> } }
+    ).usedCodes;
+
+    const verifier = "a".repeat(64);
+    const challenge = createHash("sha256").update(verifier).digest("base64url");
+
+    for (let i = 0; i < 40; i++) {
+      const code = await service.createAuthorizationCode("users", {
+        userId: `user-${i}`,
+        clientId: "mcp_x",
+        redirectUri: "https://claude.ai/cb",
+        codeChallenge: challenge,
+        scopes: ["mcp"],
+      });
+      await service.consumeAuthorizationCode("users", code, {
+        clientId: "mcp_x",
+        redirectUri: "https://claude.ai/cb",
+        codeVerifier: verifier,
+      });
+    }
+
+    // The plain Set this replaced kept every uuid it had ever seen, for the
+    // life of the process, while calling itself bounded.
+    expect(guard.seen.size).toBeLessThanOrEqual(10_000);
+    expect(guard.seen.size).toBe(40);
+  });
+
   it("rejects a wrong PKCE verifier", async ({ expect }) => {
     const alepha = Alepha.create().with(AlephaOrmPostgres);
     const jwt = alepha.inject(JwtProvider);

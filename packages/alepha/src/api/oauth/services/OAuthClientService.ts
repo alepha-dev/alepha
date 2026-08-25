@@ -15,6 +15,7 @@ import {
   type OAuthClientEntity,
   oauthClientEntity,
 } from "../entities/oauthClientEntity.ts";
+import { JtiReplayGuard } from "../helpers/jtiReplayGuard.ts";
 
 /**
  * The user projection a realm's `loadUser` hands to the OAuth module —
@@ -74,11 +75,16 @@ export class OAuthClientService {
 
   /**
    * Codes already redeemed in this process. Single-use enforcement only
-   * needs to cover the ~60s code lifetime, so a bounded in-memory set is
+   * needs to cover the ~60s code lifetime, so an in-memory guard is
    * sufficient even on serverless — an expired code fails JWT verification
    * regardless.
+   *
+   * A plain `Set` here was described as bounded and was not: nothing ever
+   * removed an entry, so a long-lived process accumulated one uuid per
+   * authorization code it had ever issued, forever. `JtiReplayGuard` prunes
+   * on expiry and caps its own size.
    */
-  protected readonly usedCodes = new Set<string>();
+  protected readonly usedCodes = new JtiReplayGuard();
 
   /**
    * Stand-in label substituted for the `*` of a registered redirect_uri so the
@@ -502,7 +508,7 @@ export class OAuthClientService {
     const payload = result.payload as Record<string, unknown>;
 
     const jti = payload.jti as string;
-    if (this.usedCodes.has(jti)) {
+    if (this.usedCodes.wasUsed(jti, this.dateTime.nowMillis())) {
       throw new AlephaError("Authorization code already used");
     }
     if (payload.client_id !== check.clientId) {
@@ -519,7 +525,7 @@ export class OAuthClientService {
       throw new AlephaError("PKCE verification failed");
     }
 
-    this.usedCodes.add(jti);
+    this.usedCodes.check(jti, this.dateTime.nowMillis());
     return {
       userId: payload.sub as string,
       scopes: (payload.scopes as string[]) ?? [],

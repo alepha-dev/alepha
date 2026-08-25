@@ -30,6 +30,19 @@ export class JtiReplayGuard {
     return true;
   }
 
+  /**
+   * Whether `jti` has been recorded and not yet expired, WITHOUT recording it.
+   *
+   * For a caller that has more validation to do before it is willing to spend
+   * the token: it can refuse a replay up front and still leave a first-time
+   * `jti` unspent if one of its own checks fails afterwards. Consuming is
+   * still `check`.
+   */
+  wasUsed(jti: string, now: number): boolean {
+    this.prune(now);
+    return this.seen.has(jti);
+  }
+
   protected prune(now: number): void {
     for (const [k, exp] of this.seen) {
       if (exp <= now) {
