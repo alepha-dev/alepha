@@ -63,6 +63,25 @@ class PaidButWebhooklessProvider extends MemoryPaymentProvider {
   }
 }
 
+/**
+ * A checkout whose FIRST `settle()` throws, the way a transient DB error or an
+ * invoice-sequence hiccup would inside the `captured` webhook.
+ */
+class FlakySettleCheckoutService extends CheckoutService {
+  public failNextSettle = true;
+
+  public override async settle(
+    sessionId: string,
+    options: { paymentIntentId?: string } = {},
+  ) {
+    if (this.failNextSettle) {
+      this.failNextSettle = false;
+      throw new Error("transient failure while settling");
+    }
+    return super.settle(sessionId, options);
+  }
+}
+
 const injectCtx = (alepha: Alepha) => ({
   alepha,
   catalog: alepha.inject(CatalogService),
@@ -313,4 +332,60 @@ describe("checkout reconciliation", () => {
     const order = await ctx.probe.orders.findById(session!.orderId!);
     expect(order?.status).toBe("paid");
   });
+
+  /**
+   * `settle()` threw inside the `captured` webhook.
+   *
+   * Nothing retries it: the intent is already captured, and `syncIntent`
+   * returns early on a terminal status, so it has nothing left to replay. The
+   * reconcile step then saw a `paying` session with an old intent and
+   * abandoned it — cancelling an order the customer had paid for.
+   */
+  it(
+    "settles a checkout whose captured webhook failed, instead of cancelling it",
+    { timeout: 30_000 },
+    async ({ expect }) => {
+      const alepha = Alepha.create()
+        .with({ provide: CheckoutService, use: FlakySettleCheckoutService })
+        .with(AlephaOrmPostgres)
+        .with(AlephaCommerceSettlement);
+      const ctx = injectCtx(alepha);
+      await alepha.start();
+
+      const { sessionId, intentId } = await payWithoutWebhook(ctx);
+      const scheduled = await waitFor(
+        () => reconciliationFor(ctx.probe, sessionId),
+        (e) => Boolean(e),
+        { label: "reconciliation scheduled" },
+      );
+      await waitForParkedReconcile(ctx.probe, scheduled!.id);
+
+      // The capture lands, and settling it fails.
+      await ctx.payments
+        .handleWebhookEvent(intentId, "captured")
+        .catch(() => undefined);
+
+      // The money is taken and the checkout is stranded — exactly the state
+      // reconcile has to resolve.
+      expect((await ctx.probe.sessions.findById(sessionId))?.status).toBe(
+        "paying",
+      );
+      expect((await ctx.payments.getIntent(intentId)).status).toBe("captured");
+
+      await ctx.dt.travel([26, "minute"]);
+
+      await waitFor(
+        async () => {
+          await ctx.alepha.inject(WorkflowProvider).recoverySweep();
+          return (await ctx.probe.sessions.findById(sessionId))?.status;
+        },
+        (s) => s === "completed",
+        { label: "reconcile settled the captured checkout" },
+      );
+
+      const session = await ctx.probe.sessions.findById(sessionId);
+      const order = await ctx.probe.orders.findById(session!.orderId!);
+      expect(order?.status).toBe("paid");
+    },
+  );
 });
