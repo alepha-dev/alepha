@@ -251,8 +251,9 @@ export class EventManager {
           if (result && typeof result === "object" && "then" in result) {
             if (catchErrors) {
               await (result as Promise<void>).catch((error) => {
-                this.log?.error(
-                  `${String(event)}(${hook.caller?.name ?? "unknown"}) ERROR`,
+                this.reportListenerError(
+                  String(event),
+                  hook.caller?.name,
                   error,
                 );
               });
@@ -262,10 +263,7 @@ export class EventManager {
           }
         } catch (error) {
           if (catchErrors) {
-            this.log?.error(
-              `${String(event)}(${hook.caller?.name ?? "unknown"}) ERROR`,
-              error,
-            );
+            this.reportListenerError(String(event), hook.caller?.name, error);
           } else {
             throw error;
           }
@@ -285,8 +283,9 @@ export class EventManager {
             if (catchErrors) {
               return (result as Promise<void>)
                 .catch((error) => {
-                  this.log?.error(
-                    `${String(event)}(${hook.caller?.name ?? "unknown"}) ERROR`,
+                  this.reportListenerError(
+                    String(event),
+                    hook.caller?.name,
                     error,
                   );
                 })
@@ -298,10 +297,7 @@ export class EventManager {
           }
         } catch (error) {
           if (catchErrors) {
-            this.log?.error(
-              `${String(event)}(${hook.caller?.name ?? "unknown"}) ERROR`,
-              error,
-            );
+            this.reportListenerError(String(event), hook.caller?.name, error);
           } else {
             throw error;
           }
@@ -316,6 +312,33 @@ export class EventManager {
    * Auto-compiles and caches an optimized executor on first call per event.
    * Use `{ log: true }` for startup events that need timing information.
    */
+  /**
+   * Report a listener that threw, without feeding the failure back into the
+   * event it came from.
+   *
+   * A `log` listener that threw used to be reported through the logger, and
+   * the logger's own emit dispatches `log` again - so the same listener threw
+   * again, and again, until the stack ran out. One misbehaving devtools or
+   * telemetry subscriber took the process down on the first log line after it
+   * registered.
+   *
+   * `console.error` loses nothing here: the logger writes to its destination
+   * independently of the event, so the failing entry has already been printed.
+   * Only the second dispatch is dropped, which is the loop.
+   */
+  protected reportListenerError(
+    event: string,
+    caller: string | undefined,
+    error: unknown,
+  ): void {
+    const message = `${event}(${caller ?? "unknown"}) ERROR`;
+    if (event === "log") {
+      console.error(message, error);
+      return;
+    }
+    this.log?.error(message, error);
+  }
+
   public async emit<T extends keyof Hooks>(
     event: T,
     payload: Hooks[T],
@@ -367,7 +390,7 @@ export class EventManager {
         }
       } catch (error) {
         if (options.catch) {
-          this.log?.error(`${String(event)}(${name}) ERROR`, error);
+          this.reportListenerError(String(event), name, error);
           continue;
         }
         throw new AlephaError(
