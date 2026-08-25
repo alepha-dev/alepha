@@ -58,12 +58,20 @@ export class PermissionPrimitive extends Primitive<PermissionPrimitiveOptions> {
 
   /**
    * Check if the user has the permission.
+   *
+   * Role names are resolved inside the user's own realm. Without that scope,
+   * a realm whose "admin" grants nothing would inherit the permissions of
+   * whichever homonymous role another realm declared first.
    */
-  public can(user?: UserAccount): boolean {
+  public can(user?: UserAccount & { realm?: string }): boolean {
     if (!user?.roles) {
       return false;
     }
-    const check = this.securityProvider.checkPermission(this, ...user.roles);
+    const check = this.securityProvider.checkPermissionInRealm(
+      user.realm,
+      this,
+      ...user.roles,
+    );
     return check.isAuthorized;
   }
 }

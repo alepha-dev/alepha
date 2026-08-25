@@ -52,9 +52,81 @@ describe("SecurityProvider", () => {
     );
     expect(allowed.isAuthorized).toBe(true);
 
-    // Without a realm, the old cross-realm behavior is preserved.
+    // Without a realm the check resolves in the default realm, which here is
+    // realm-a, so its "*" admin still answers.
     expect(sec.checkPermission("users:delete", "admin").isAuthorized).toBe(
       true,
+    );
+  });
+
+  it("should not resolve a role that exists only in a non-default realm", () => {
+    const sec = Alepha.create().inject(SecurityProvider);
+
+    sec.createRealm({ name: "realm-a", roles: [], resolvers: [] });
+    sec.createRealm({ name: "realm-b", roles: [], resolvers: [] });
+
+    // realm-a is the default realm and knows nothing about "admin".
+    sec.createRole(
+      { name: "user", permissions: [{ name: "reports:read" }] },
+      "realm-a",
+    );
+    sec.createRole({ name: "admin", permissions: [{ name: "*" }] }, "realm-b");
+
+    // A user carrying no realm must not reach realm-b's "*" admin.
+    expect(() => sec.checkPermission("users:delete", "admin")).toThrow(
+      SecurityError,
+    );
+
+    // The default realm still resolves normally.
+    expect(sec.checkPermission("reports:read", "user").isAuthorized).toBe(true);
+  });
+
+  it("should not fall back to other realms when the named realm has no roles", () => {
+    const sec = Alepha.create().inject(SecurityProvider);
+
+    sec.createRealm({ name: "realm-a", roles: [], resolvers: [] });
+    sec.createRealm({ name: "realm-b", roles: [], resolvers: [] });
+
+    sec.createRole({ name: "admin", permissions: [{ name: "*" }] }, "realm-a");
+
+    // realm-b declares no role at all. A custom resolver on realm-b returning
+    // roles: ["admin"] must not borrow realm-a's admin.
+    expect(() =>
+      sec.checkPermissionInRealm("realm-b", "users:delete", "admin"),
+    ).toThrow(SecurityError);
+
+    // A name no $issuer declared is the realm-less case wearing a name, not a
+    // licence to scan: it resolves in the default realm. `alepha/api/users`
+    // stamps its own realm names on the account without creating a security
+    // realm for each.
+    expect(
+      sec.checkPermissionInRealm("tenant-42", "users:delete", "admin")
+        .isAuthorized,
+    ).toBe(true);
+  });
+
+  it("should list permissions from the default realm when the user has none", () => {
+    const sec = Alepha.create().inject(SecurityProvider);
+
+    sec.createRealm({ name: "realm-a", roles: [], resolvers: [] });
+    sec.createRealm({ name: "realm-b", roles: [], resolvers: [] });
+
+    sec.createPermission("reports:read");
+    sec.createRole(
+      { name: "reader", permissions: [{ name: "reports:read" }] },
+      "realm-a",
+    );
+    sec.createRole(
+      { name: "superadmin", permissions: [{ name: "*" }] },
+      "realm-b",
+    );
+
+    expect(sec.getPermissions({ roles: ["reader"] })).toEqual([
+      { group: "reports", name: "read" },
+    ]);
+
+    expect(() => sec.getPermissions({ roles: ["superadmin"] })).toThrow(
+      SecurityError,
     );
   });
 

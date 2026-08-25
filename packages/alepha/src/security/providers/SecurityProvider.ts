@@ -671,19 +671,42 @@ export class SecurityProvider {
     ...roleEntries: string[]
   ): SecurityCheckResult {
     // A realm carried on the permission object scopes role-name resolution
-    // to that realm (see checkPermissionInRealm). Unknown/empty realms fall
-    // back to the cross-realm list so substituted providers in tests keep
-    // working.
+    // to that realm (see checkPermissionInRealm).
     const realm =
       typeof permissionLike === "object"
         ? (permissionLike as Permission & { realm?: string }).realm
         : undefined;
-    let candidates = realm ? this.getRoles(realm) : this.getRoles();
-    if (realm && candidates.length === 0) {
-      candidates = this.getRoles();
+
+    return this.checkRoles(
+      this.rolesForRealm(realm),
+      permissionLike,
+      roleEntries,
+    );
+  }
+
+  /**
+   * The roles a check may resolve against, given the realm it names.
+   *
+   * A DECLARED realm answers with its own roles and nothing else, empty list
+   * included: scanning the other realms when it happened to declare none let
+   * a resolver on that realm borrow whatever homonymous role - up to and
+   * including a "*" admin - some other realm had registered.
+   *
+   * No realm, or a name no `$issuer` declared, falls back to the DEFAULT
+   * realm alone. `alepha/api/users` names its own realms on the user account
+   * without necessarily creating a security realm for each, and that is the
+   * realm-less case wearing a name: it must land where a realm-less caller
+   * lands, not in every realm at once.
+   */
+  protected rolesForRealm(realm?: string): Role[] {
+    if (realm) {
+      const declared = this.realms.find((it) => it.name === realm);
+      if (declared) {
+        return [...declared.roles];
+      }
     }
 
-    return this.checkRoles(candidates, permissionLike, roleEntries);
+    return this.getRoles(this.realms[0]?.name);
   }
 
   /**
@@ -701,12 +724,20 @@ export class SecurityProvider {
     permissionLike: string | Permission,
     ...roleEntries: string[]
   ): SecurityCheckResult {
-    const permission: Permission =
-      typeof permissionLike === "string"
-        ? { name: permissionLike }
-        : permissionLike;
+    if (!realm) {
+      return this.checkPermission(permissionLike, ...roleEntries);
+    }
+
+    // Reduced to its string form on purpose. Spreading `permissionLike` to
+    // attach the realm looks equivalent, but `$permission` hands us a class
+    // instance whose `name` and `group` are prototype getters: a spread keeps
+    // neither, and the permission silently became "undefined". The string is
+    // all the check reads anyway.
     return this.checkPermission(
-      realm ? ({ ...permission, realm } as Permission) : permission,
+      {
+        name: this.permissionToString(permissionLike),
+        realm,
+      } as Permission,
       ...roleEntries,
     );
   }
@@ -991,7 +1022,9 @@ export class SecurityProvider {
       for (const roleOrString of roles) {
         const role =
           typeof roleOrString === "string"
-            ? this.getRoles(user.realm).find((it) => it.name === roleOrString)
+            ? this.rolesForRealm(user.realm).find(
+                (it) => it.name === roleOrString,
+              )
             : roleOrString;
 
         if (!role) {
