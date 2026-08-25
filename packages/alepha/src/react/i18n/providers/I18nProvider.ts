@@ -8,6 +8,10 @@ import {
 } from "alepha";
 import { type DateTime, DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+// One-directional dependency, `i18n → head`: the head module never looks at
+// i18n, it just receives the language through the same `$head` extension point
+// an application would use.
+import { $head, BrowserHeadProvider } from "alepha/react/head";
 // Locale-prefix routing is optional: the router module (one-directional
 // dependency, `i18n → router`) is only consulted when it is also registered.
 import { RouterLocaleProvider } from "alepha/react/router";
@@ -22,6 +26,25 @@ export class I18nProvider<
   protected log = $logger();
   protected alepha = $inject(Alepha);
   protected dateTimeProvider = $inject(DateTimeProvider);
+  protected browserHead = $inject(BrowserHeadProvider);
+
+  /**
+   * `<html lang>` names the language the markup is actually written in.
+   *
+   * `HeadProvider` defaults it to a hardcoded `en`, which is only ever right
+   * for an app that registered no dictionary at all: a French page announced
+   * itself as English to every screen reader and every crawler.
+   *
+   * A function entry rather than a literal, because there is no single answer
+   * to bake in. The language is decided per request on the server (cookie,
+   * `Accept-Language`, or the locale prefix) and can change at runtime in the
+   * browser, so it has to be re-read every time the head is resolved. An
+   * application that sets `htmlAttributes.lang` itself still wins: its own
+   * `$head` registers after this one.
+   */
+  protected readonly htmlLang = $head(() => ({
+    htmlAttributes: { lang: this.lang },
+  }));
 
   /**
    * `prefix: false` because this cookie is written by the BROWSER (`setLang`)
@@ -297,6 +320,16 @@ export class I18nProvider<
     this.dateFormat = new Intl.DateTimeFormat(this.lang);
     this.dateTimeProvider.setLocale(this.lang);
     TypeProvider.setLocale(this.lang);
+
+    // Re-apply the global head so `<html lang>` follows the switch. Nothing
+    // else does: choosing a language in cookie mode does not navigate, and the
+    // head is otherwise only re-rendered per navigation.
+    //
+    // `isStarted` because the constructor calls this too, before any `$head`
+    // has registered and before there is a document worth writing to.
+    if (this.alepha.isBrowser() && this.alepha.isStarted()) {
+      this.browserHead.refreshGlobalHead();
+    }
   }
 
   /**

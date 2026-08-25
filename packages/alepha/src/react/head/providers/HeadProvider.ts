@@ -37,6 +37,9 @@ export class HeadProvider {
    */
   public resolveGlobalHead(): Head {
     const head: Head = {
+      // Only the answer for an app with no i18n: `alepha/react/i18n` registers
+      // a global `$head` reporting the language it resolved, which lands in
+      // the loop below and overrides this.
       htmlAttributes: { lang: "en" },
     };
 
@@ -99,7 +102,9 @@ export class HeadProvider {
 
     this.fillCanonicalUrl(state);
 
-    // Defaults if none were set by global $head or page head
+    // Defaults if none were set by global $head or page head. `lang` is one of
+    // those defaults, not a decision: an app with i18n has already merged the
+    // resolved language in above, through i18n's own global `$head`.
     state.head.title ??= "App";
     state.head.htmlAttributes = {
       lang: "en",
