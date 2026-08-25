@@ -12,7 +12,7 @@ import {
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { ZipArchive } from "alepha/system";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
@@ -27,6 +27,7 @@ import {
   ensureProtectedKeysAutoLock,
   forgetProtectedKey,
   getProtectedKey,
+  onProtectedKeysChange,
   rememberProtectedKey,
 } from "../protectedFolioKeys.ts";
 import {
@@ -280,6 +281,22 @@ export const useFolioActions = (
       ? (parseProtectedEnvelope(input.folio.content)?.salt ?? undefined)
       : undefined,
   );
+  // The envelope currently on the server, for the same reason as
+  // `protectedSalt`: `input.folio.content` is the route-loader snapshot and
+  // never moves again for this mount.
+  //
+  // `unlock()` decrypts THIS. A revert performed while the folio was locked
+  // takes the no-cached-key branch of `applyReverted`, which cannot decrypt
+  // and so leaves the buffer alone - so `input.folio.content` was still the
+  // PRE-revert envelope. Unlocking then showed the old content and the next
+  // autosave wrote it back over the revert, undoing it silently.
+  //
+  // A REF, not state: nothing renders from it, and a state value would be
+  // read through whichever render's closure the caller happens to hold - so
+  // an unlock in the same tick as the revert that moved it would still see
+  // the old envelope. That is the staleness class this whole file exists to
+  // avoid, and a ref cannot have it.
+  const currentContent = useRef<string | undefined>(input.folio?.content);
   // Same reasoning again, caught this round by actually clicking through
   // the move flow: `input.folio.directoryId` is ALSO a route-loader
   // snapshot. Without this, `confirmMove` correctly persists the new
@@ -383,6 +400,11 @@ export const useFolioActions = (
     const syncAtoms = (): void => {
       alepha.store.set(currentFolioAtom, reverted);
       setFolios(folios.map((f) => (f.id === reverted.id ? reverted : f)));
+      // In BOTH branches, including the locked one that cannot decrypt: a
+      // later `unlock()` must decrypt what the server now holds. Without
+      // this it decrypted the pre-revert envelope, showed the old content,
+      // and the next autosave wrote it back over the revert.
+      currentContent.current = reverted.content;
     };
     // Move `savedAt` alone — see this function's own doc for why this is
     // NOT `markSaved(reverted.updatedAt, input.draft.getLiveValues())`.
@@ -448,10 +470,34 @@ export const useFolioActions = (
     };
   }, [input.folio?.id]);
 
+  // The auto-lock empties the key cache on a timer, with no user action
+  // behind it and nothing to re-render. `unlocked` stayed true: the fields
+  // stayed editable, every autosave failed with a toast, the locked panel
+  // never appeared, and a reload lost whatever had been typed since.
+  //
+  // The DRAFT is deliberately untouched here. Losing the key is a reason to
+  // stop saving, never a reason to discard what is in the buffer - `unlock`
+  // keeps a dirty buffer and lets the resumed autosave persist it.
+  //
+  // Gated on `isProtected` (local state), NOT `input.folio.protected` - the
+  // same frozen-prop trap this whole file is about. A folio protected
+  // in-session by `confirmEncrypt` has a prop that still says `false`, so
+  // reading it here would leave exactly the newly-encrypted folios unwatched.
+  const folioId = input.folio?.id;
+  useEffect(() => {
+    if (!folioId || !isProtected) return;
+    return onProtectedKeysChange(() => {
+      setUnlocked(!!getProtectedKey(folioId));
+    });
+  }, [folioId, isProtected]);
+
   const unlock = async (passphrase: string): Promise<string | null> => {
     const folio = input.folio;
     if (!folio) return null;
-    const envelope = parseProtectedEnvelope(folio.content);
+    // The envelope this hook believes is current, NOT the route-loader
+    // snapshot - see `currentContent`'s declaration.
+    const content = currentContent.current ?? folio.content;
+    const envelope = parseProtectedEnvelope(content);
     if (!envelope) return tr("folios.protected.invalid-envelope");
     try {
       const key = await cryptoProvider.deriveKeyFromPassphrase(
@@ -459,10 +505,19 @@ export const useFolioActions = (
         envelope.salt,
         envelope.iterations,
       );
-      const plaintext = await decryptEnvelopeWithKey(key, folio.content);
+      const plaintext = await decryptEnvelopeWithKey(key, content);
       rememberProtectedKey(folio.id, key);
       ensureProtectedKeysAutoLock();
-      applyDecryptedContent(folio, plaintext);
+      // A buffer that diverged while the key was gone is the user's own
+      // unsaved work, not a stale copy of the server's: the auto-lock evicts
+      // the key mid-edit, and writing the server's plaintext over it here
+      // would discard everything typed since. Keep it, take the key back, and
+      // let the autosave that resumes persist it.
+      if (input.draft.dirty) {
+        setUnlocked(true);
+      } else {
+        applyDecryptedContent(folio, plaintext);
+      }
       return null;
     } catch {
       // Web Crypto throws a generic OperationError on a bad passphrase or
@@ -541,6 +596,9 @@ export const useFolioActions = (
         });
 
     alepha.store.set(currentFolioAtom, saved as Folio);
+    // What the server now holds, so a later unlock decrypts THIS envelope
+    // rather than the route-loader snapshot.
+    currentContent.current = contentToSend;
     let nextFolios = folio
       ? folios.map((f) => (f.id === saved.id ? (saved as Folio) : f))
       : [saved as Folio, ...folios];
@@ -770,6 +828,7 @@ export const useFolioActions = (
         forgetProtectedKey(folio.id);
         setIsProtected(false);
         setUnlocked(true);
+        currentContent.current = values.content;
         setProtectedSalt(undefined);
         alepha.store.set(currentFolioAtom, updated as Folio);
         setFolios(
@@ -834,6 +893,7 @@ export const useFolioActions = (
           setIsProtected(true);
           setUnlocked(true);
           setProtectedSalt(saltHex);
+          currentContent.current = envelope;
           alepha.store.set(currentFolioAtom, updated as Folio);
           setFolios(
             folios.map((f) => (f.id === updated.id ? (updated as Folio) : f)),
