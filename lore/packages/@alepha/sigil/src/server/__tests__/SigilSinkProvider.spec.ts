@@ -460,7 +460,10 @@ describe("SigilSinkProvider — half-configured", () => {
       expect(sent).toHaveLength(2);
 
       const byVisitor = new Map(sent.map((e) => [e.visitor, e]));
-      expect([...byVisitor.keys()].sort()).toEqual(["alice", "bob"]);
+      expect([...byVisitor.keys()].sort((a, b) => a.localeCompare(b))).toEqual([
+        "alice",
+        "bob",
+      ]);
       expect(byVisitor.get("alice")).toMatchObject({
         country: "FR",
         device: "desktop",

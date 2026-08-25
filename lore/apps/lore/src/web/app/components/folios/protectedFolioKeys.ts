@@ -24,7 +24,11 @@ type ProtectedKeysListener = () => void;
 const listeners = new Set<ProtectedKeysListener>();
 
 const notify = (): void => {
-  for (const listener of [...listeners]) listener();
+  // Iterated directly: a listener that unsubscribes from inside its own call
+  // is the ordinary case (an unmounting editor), and a Set entry deleted
+  // during iteration is simply not visited. Only an ADD during notify would
+  // loop, and nothing here adds.
+  for (const listener of listeners) listener();
 };
 
 /**
