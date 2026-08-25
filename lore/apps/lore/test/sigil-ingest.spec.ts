@@ -618,6 +618,32 @@ describe("sigil ingest", () => {
     expect(rows).toHaveLength(2);
   });
 
+  /**
+   * The sink half of the per-stamp batching fix (`SigilSinkProvider`).
+   *
+   * A reporter used to fold a whole flush window into one envelope carrying
+   * one stamp, so several visitors arrived as one. The sink already attributes
+   * per envelope, and this pins that: two envelopes, two visitors, two
+   * countries, and neither borrowing the other's.
+   */
+  it("attributes each envelope to its own visitor and country", async () => {
+    const { analytics, probe, sigil, post } = await setup();
+
+    await post({ views: [{ path: "/a" }], visitor: "alice", country: "FR" });
+    await post({ views: [{ path: "/b" }], visitor: "bob", country: "JP" });
+
+    const uniques = await probe.uniques.findMany({
+      where: { sigilId: { eq: sigil.id } },
+    });
+    expect(uniques).toHaveLength(2);
+
+    const rows = await readViews(analytics, sigil.id);
+    expect(rows.map((r) => `${r.path}:${r.country}`).sort()).toEqual([
+      "/a:FR",
+      "/b:JP",
+    ]);
+  });
+
   it("strips the query string so storage stays bounded by page count", async () => {
     const { analytics, sigil, post } = await setup();
 

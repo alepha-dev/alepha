@@ -5,6 +5,7 @@
 import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
 import { render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext } from "alepha/react";
 import { LinkProvider } from "alepha/server/links";
@@ -12,7 +13,10 @@ import { describe, it } from "vitest";
 
 import type { Folio } from "@/api/entities/folios.ts";
 
-import { forgetProtectedKey } from "../protectedFolioKeys.ts";
+import {
+  forgetAllProtectedKeys,
+  forgetProtectedKey,
+} from "../protectedFolioKeys.ts";
 import {
   type UseFolioActionsResult,
   useFolioActions,
@@ -416,5 +420,183 @@ describe("useFolioActions — applyReverted syncs the draft after a history reve
       "live edit nobody saved yet",
     );
     expect(getByTestId("dirty").textContent).toBe("true");
+  });
+});
+
+/**
+ * The auto-lock empties the key cache on a timer
+ * (`ensureProtectedKeysAutoLock`), with no user action behind it and nothing
+ * to re-render. `unlocked` stayed `true`, so the editor believed it was still
+ * unlocked: its fields stayed editable, every autosave failed with a toast,
+ * the locked panel never appeared, and a reload lost whatever had been typed
+ * since the eviction.
+ *
+ * And separately: after a revert performed while locked, `unlock()` decrypted
+ * `input.folio.content` - the route-loader snapshot, i.e. the PRE-revert
+ * envelope - so the editor showed the old content and the next autosave wrote
+ * it back over the revert.
+ */
+describe("useFolioActions — the key cache and the current envelope", () => {
+  const mount = (alepha: Alepha, ui: React.ReactNode) =>
+    render(
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>{ui}</DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
+  const Widget = (props: {
+    folio: Folio;
+    onActions: (actions: UseFolioActionsResult) => void;
+    onDraft?: (draft: FolioDraft) => void;
+  }) => {
+    const draft = useFolioDraft(props.folio);
+    props.onDraft?.(draft);
+    const actions = useFolioActions({
+      folio: props.folio,
+      draft,
+      panes: {
+        tree: false,
+        inspector: false,
+        toggleTree: () => {},
+        toggleInspector: () => {},
+        toggleFocus: () => {},
+        openHistory: () => {},
+      },
+      find: { show: () => {} },
+      mode: { editing: true, toggle: () => {} },
+      format: { run: () => {} },
+    });
+    props.onActions(actions);
+    return (
+      <div>
+        <div data-testid="content">{draft.values.content}</div>
+        <div data-testid="dirty">{String(draft.dirty)}</div>
+        <div data-testid="locked">{String(actions.locked)}</div>
+      </div>
+    );
+  };
+
+  const setup = () => {
+    const folio = baseFolio();
+    const alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with({ provide: LinkProvider, use: FakeLinkProvider });
+    const link = alepha.inject(FakeLinkProvider);
+    link.currentFolio = folio;
+
+    let actions: UseFolioActionsResult | undefined;
+    let draft: FolioDraft | undefined;
+    const dom = mount(
+      alepha,
+      <Widget
+        folio={folio}
+        onActions={(a) => (actions = a)}
+        onDraft={(d) => (draft = d)}
+      />,
+    );
+
+    return {
+      alepha,
+      link,
+      folio,
+      dom,
+      actions: () => actions!,
+      draft: () => draft!,
+    };
+  };
+
+  it("flips the editor back to locked when the key is evicted", async ({
+    expect,
+  }) => {
+    const ctx = setup();
+    expect(await ctx.actions().confirmEncrypt("a real passphrase")).toBeNull();
+    await waitFor(() =>
+      expect(ctx.dom.getByTestId("locked").textContent).toBe("false"),
+    );
+
+    // Exactly what the idle timer does.
+    forgetAllProtectedKeys();
+
+    await waitFor(() =>
+      expect(ctx.dom.getByTestId("locked").textContent).toBe("true"),
+    );
+  });
+
+  it("keeps the pending draft when the key comes back", async ({ expect }) => {
+    const ctx = setup();
+    expect(await ctx.actions().confirmEncrypt("a real passphrase")).toBeNull();
+
+    // Mid-edit when the auto-lock fires.
+    ctx.draft().form.input.content.set("typed after the encrypt");
+    await waitFor(() =>
+      expect(ctx.dom.getByTestId("dirty").textContent).toBe("true"),
+    );
+    forgetAllProtectedKeys();
+    await waitFor(() =>
+      expect(ctx.dom.getByTestId("locked").textContent).toBe("true"),
+    );
+
+    expect(await ctx.actions().unlock("a real passphrase")).toBeNull();
+
+    await waitFor(() =>
+      expect(ctx.dom.getByTestId("locked").textContent).toBe("false"),
+    );
+    // The buffer is the user's own unsaved work, not a stale copy of the
+    // server's. Overwriting it with the decrypted plaintext here would
+    // discard everything typed since the eviction.
+    expect(ctx.dom.getByTestId("content").textContent).toBe(
+      "typed after the encrypt",
+    );
+    // And still unsaved, so the autosave that resumes persists it.
+    expect(ctx.dom.getByTestId("dirty").textContent).toBe("true");
+  });
+
+  it("unlocks into the reverted envelope, not the one the route loaded", async ({
+    expect,
+  }) => {
+    const ctx = setup();
+    expect(await ctx.actions().confirmEncrypt("a real passphrase")).toBeNull();
+
+    // The envelope `confirmEncrypt` just wrote, so a second one can be built
+    // in the same family (same salt, same iterations, same passphrase).
+    const stored = ctx.link.updates.at(-1)!.body.content as string;
+    const envelope = JSON.parse(stored) as {
+      salt: string;
+      kdf: { iterations: number };
+    };
+    const crypto = ctx.alepha.inject(CryptoProvider);
+    const key = await crypto.deriveKeyFromPassphrase(
+      "a real passphrase",
+      envelope.salt,
+      envelope.kdf.iterations,
+    );
+    const revertedEnvelope = await crypto.encryptWithPassphrase(
+      "the reverted body",
+      key,
+      envelope.salt,
+      envelope.kdf.iterations,
+    );
+
+    // Lock, then revert. The locked branch of `applyReverted` cannot
+    // decrypt, so it leaves the buffer alone - which is correct, and is
+    // exactly why `unlock` has to know the envelope moved.
+    forgetAllProtectedKeys();
+    await waitFor(() =>
+      expect(ctx.dom.getByTestId("locked").textContent).toBe("true"),
+    );
+    await ctx.actions().applyReverted({
+      ...ctx.folio,
+      protected: true,
+      content: revertedEnvelope,
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    });
+
+    expect(await ctx.actions().unlock("a real passphrase")).toBeNull();
+
+    await waitFor(() =>
+      expect(ctx.dom.getByTestId("content").textContent).toBe(
+        "the reverted body",
+      ),
+    );
   });
 });

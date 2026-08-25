@@ -662,3 +662,56 @@ describe("Lore MCP — epics", () => {
     });
   });
 });
+
+describe("Lore MCP - quest_list paging", () => {
+  it("honours a raw offset instead of flooring it to a page", async ({
+    expect,
+  }) => {
+    const { alepha, project, questTools, call } = await setup();
+
+    // Titles carry their creation order, and the default sort is
+    // `-updatedAt`, so the newest is first.
+    for (let i = 0; i < 10; i++) {
+      await createTestQuest(alepha, project, { title: `Q${i}` });
+    }
+
+    const all = await call(questTools.quest_list, {
+      project: project.id,
+      limit: 10,
+    });
+    expect(all.quests).toHaveLength(10);
+
+    // `offset: 3, limit: 4` used to become `page: 0` (3 / 4 floored), so it
+    // returned rows 0-3 while the tool doc promised 3-6.
+    const window = await call(questTools.quest_list, {
+      project: project.id,
+      limit: 4,
+      offset: 3,
+    });
+
+    expect(window.quests.map((q: any) => q.shortId)).toEqual(
+      all.quests.slice(3, 7).map((q: any) => q.shortId),
+    );
+  });
+
+  it("keeps a page-aligned offset working", async ({ expect }) => {
+    const { alepha, project, questTools, call } = await setup();
+    for (let i = 0; i < 6; i++) {
+      await createTestQuest(alepha, project, { title: `Q${i}` });
+    }
+
+    const all = await call(questTools.quest_list, {
+      project: project.id,
+      limit: 6,
+    });
+    const second = await call(questTools.quest_list, {
+      project: project.id,
+      limit: 2,
+      offset: 2,
+    });
+
+    expect(second.quests.map((q: any) => q.shortId)).toEqual(
+      all.quests.slice(2, 4).map((q: any) => q.shortId),
+    );
+  });
+});

@@ -686,6 +686,19 @@ export class QuestController {
         includePlanned: z.boolean().optional(),
         area: z.string().optional(),
         tag: z.string().optional(),
+        /**
+         * Rows to skip, when `page` cannot express it.
+         *
+         * MCP `quest_list` offers a raw `offset` and used to convert it to a
+         * page with integer division, so `offset: 25, limit: 20` silently
+         * returned rows 20-39 - the tool answered a question next to the one
+         * it was asked, and an agent paging by anything other than a multiple
+         * of its own limit re-read rows it had already seen.
+         *
+         * Wins over `page` when both are given, because it is the more
+         * specific of the two.
+         */
+        offset: z.integer().min(0).optional(),
       }),
       response: db.page(questResourceSchema),
     },
@@ -770,6 +783,9 @@ export class QuestController {
         query,
         {
           where,
+          // Passed through rather than folded into `page`: `paginate` already
+          // prefers `query.offset` over `page * limit`.
+          ...(query.offset !== undefined ? { offset: query.offset } : {}),
         },
         { count: true },
       );
