@@ -856,6 +856,21 @@ export class ReactPageProvider {
     } as PageRoute;
   }
 
+  /**
+   * Every registered page, flattened, each carrying in `match` the full path
+   * the router resolves it on.
+   *
+   * Exposed because a page's own `path` is only its last segment: a page under
+   * two layouts declares `/intro` and answers on `/docs/guides/intro`. Anything
+   * enumerating the application's URLs from the `$page` primitives instead
+   * (the sitemap did) publishes addresses that 404. Reading the compiled
+   * routes is what keeps the two from disagreeing, since this is the same
+   * composition `createMatch` hands the matcher.
+   */
+  public get routes(): readonly PageRoute[] {
+    return this.pages;
+  }
+
   public add(entry: PageRouteEntry) {
     if (this.alepha.isReady()) {
       throw new AlephaError("Router is already initialized");

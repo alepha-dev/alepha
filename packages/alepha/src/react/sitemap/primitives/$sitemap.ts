@@ -1,5 +1,6 @@
 import { $inject, createPrimitive, KIND, Primitive } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { ReactPageProvider } from "alepha/react/router";
 import { type ServerRequest, ServerRouterProvider } from "alepha/server";
 
 /**
@@ -57,6 +58,7 @@ export interface SitemapPrimitiveOptions {
 
 export class SitemapPrimitive extends Primitive<SitemapPrimitiveOptions> {
   protected readonly router = $inject(ServerRouterProvider);
+  protected readonly pageProvider = $inject(ReactPageProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   protected onInit() {
@@ -96,15 +98,20 @@ export class SitemapPrimitive extends Primitive<SitemapPrimitiveOptions> {
   /**
    * Select the pages that should appear in the sitemap.
    *
-   * Excludes layout pages (with `children`), wildcard paths, and `/404`.
+   * Reads the router's compiled routes rather than the `$page` primitives, so
+   * every decision below is made on the path a visitor would actually request.
+   * A page's own `path` is only its last segment - `/intro` under two layouts
+   * answers on `/docs/guides/intro` - and every one of these rules changes
+   * answer depending on which of the two it is asked about: a parameter can sit
+   * anywhere in the chain, and so can a wildcard.
+   *
+   * Excludes layout pages (those with children), wildcard paths, and `/404`.
    * Parameterized pages are included only when they declare `static.entries`.
    */
   protected getSitemapPages(): any[] {
-    const pages = this.alepha.primitives("page") as any[];
-    return pages.filter((page) => {
-      const options = page.options;
-      const path: string = options.path ?? "";
-      if (options.children) {
+    return this.pageProvider.routes.filter((route: any) => {
+      const path: string = route.match ?? "";
+      if (route.children?.length) {
         return false;
       }
       if (path.includes("*")) {
@@ -113,41 +120,45 @@ export class SitemapPrimitive extends Primitive<SitemapPrimitiveOptions> {
       if (path === "/404") {
         return false;
       }
-      if (!this.hasParams(options)) {
+      if (!this.hasParams(route)) {
         return true;
       }
       if (
-        options.static &&
-        typeof options.static === "object" &&
-        options.static.entries
+        route.static &&
+        typeof route.static === "object" &&
+        route.static.entries
       ) {
         return true;
       }
       return false;
-    });
+    }) as any[];
   }
 
   protected generateSitemapFromPages(pages: any[], baseUrl: string): string {
     const urls: string[] = [];
     const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
 
-    for (const page of pages) {
-      const options = page.options;
-
-      if (!this.hasParams(options)) {
-        const path = options.path || "";
+    for (const route of pages) {
+      if (!this.hasParams(route)) {
+        const path = route.match || "";
         const url = `${normalizedBaseUrl}${path === "" ? "/" : path}`;
         urls.push(url);
       } else if (
-        options.static &&
-        typeof options.static === "object" &&
-        options.static.entries
+        route.static &&
+        typeof route.static === "object" &&
+        route.static.entries
       ) {
-        for (const entry of options.static.entries) {
+        for (const entry of route.static.entries) {
           const path = this.buildPathFromParams(
-            options.path || "",
+            route.match || "",
             entry.params || {},
           );
+          // An entry naming only the page's own parameters leaves a parent's
+          // `:orgId` sitting in the path. A `<loc>` with a colon token in it is
+          // not a URL, so there is nothing to publish.
+          if (this.containsParam(path)) {
+            continue;
+          }
           const url = `${normalizedBaseUrl}${path}`;
           urls.push(url);
         }
@@ -165,14 +176,29 @@ export class SitemapPrimitive extends Primitive<SitemapPrimitiveOptions> {
    * optional: `$page({ path: "/blog/:slug" })` routes perfectly well without
    * one, and used to reach the sitemap as the literal `/blog/:slug`. Nothing
    * failed, nothing warned, and the 404 surfaced only in Search Console.
+   *
+   * The FULL path, not the page's own segment: a page can be entirely static
+   * and still have no concrete URL, because a layout above it holds the
+   * parameter. `schema` only ever describes a page's own parameters, so it
+   * cannot answer this on its own.
    */
-  protected hasParams(options: { path?: string; schema?: any }): boolean {
-    if (options.schema?.params) {
+  protected hasParams(route: {
+    match?: string;
+    path?: string;
+    schema?: any;
+  }): boolean {
+    if (route.schema?.params) {
       return true;
     }
-    // Anchored on the slash so a literal colon inside a segment ("/foo:bar")
-    // stays a static URL. Route parameters are always "/:name".
-    return /\/:[^/]+/.test(options.path ?? "");
+    return this.containsParam(route.match ?? route.path ?? "");
+  }
+
+  /**
+   * Anchored on the slash so a literal colon inside a segment ("/foo:bar")
+   * stays a static URL. Route parameters are always "/:name".
+   */
+  protected containsParam(path: string): boolean {
+    return /\/:[^/]+/.test(path);
   }
 
   /**

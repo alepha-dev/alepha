@@ -1,5 +1,6 @@
 import { $module } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
+import { AlephaReactRouter } from "alepha/react/router";
 import { AlephaServer } from "alepha/server";
 
 import { $sitemap } from "./primitives/$sitemap.ts";
@@ -21,6 +22,9 @@ export * from "./primitives/$sitemap.ts";
  */
 export const AlephaReactSitemap = $module({
   name: "alepha.react.sitemap",
-  imports: [AlephaServer, AlephaDateTime],
+  // The router is a real dependency, not an assumption: the sitemap lists the
+  // paths `ReactPageProvider` compiled, which is the only place a nested page's
+  // full URL exists.
+  imports: [AlephaServer, AlephaDateTime, AlephaReactRouter],
   primitives: [$sitemap],
 });

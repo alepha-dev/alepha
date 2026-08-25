@@ -150,4 +150,123 @@ describe("$sitemap", () => {
     const { body } = sitemapOf(alepha).prerender();
     expect(body).toContain(`<lastmod>${expected}</lastmod>`);
   });
+
+  describe("nested pages", () => {
+    /**
+     * The sitemap listed each page's own segment and never walked up, so a page
+     * under a layout with a prefix was advertised at a URL that 404s.
+     */
+    class NestedApp {
+      sitemap = $sitemap({ hostname: "https://example.com" });
+
+      docs = $page({
+        path: "/docs",
+        component: () => "docs",
+        children: () => [this.guides],
+      });
+
+      guides = $page({
+        path: "/guides",
+        component: () => "guides",
+        children: () => [this.intro],
+      });
+
+      intro = $page({
+        path: "/intro",
+        static: true,
+        component: () => "intro",
+      });
+
+      /**
+       * Linked from the child side, the other way an edge is declared.
+       */
+      settings = $page({
+        parent: this.docs,
+        path: "/settings",
+        static: true,
+        component: () => "settings",
+      });
+
+      /**
+       * Static segment of its own, but the parent carries the parameter, so
+       * there is still no concrete URL to list.
+       */
+      org = $page({
+        path: "/org/:orgId",
+        component: () => "org",
+        children: () => [this.members],
+      });
+
+      members = $page({
+        path: "/members",
+        static: true,
+        component: () => "members",
+      });
+
+      /**
+       * Enumerates its own URLs, and they have to be built from the full path.
+       */
+      post = $page({
+        parent: this.guides,
+        path: "/post/:slug",
+        schema: { params: z.object({ slug: z.text() }) },
+        static: { entries: [{ params: { slug: "hello" } }] },
+        component: () => "post",
+      });
+    }
+
+    const startNested = async () => {
+      const alepha = Alepha.create()
+        .with(AlephaReactRouter)
+        .with(AlephaReactSitemap);
+      alepha.inject(NestedApp);
+      await alepha.start();
+      return alepha;
+    };
+
+    it("lists a page two layouts deep at its real url", async ({ expect }) => {
+      const alepha = await startNested();
+      const { body } = sitemapOf(alepha).prerender();
+
+      expect(body).toContain(
+        "<loc>https://example.com/docs/guides/intro</loc>",
+      );
+      expect(body).not.toContain("<loc>https://example.com/intro</loc>");
+    });
+
+    it("composes an edge declared from the child", async ({ expect }) => {
+      const alepha = await startNested();
+      const { body } = sitemapOf(alepha).prerender();
+
+      expect(body).toContain("<loc>https://example.com/docs/settings</loc>");
+      expect(body).not.toContain("<loc>https://example.com/settings</loc>");
+    });
+
+    it("skips a page whose parent carries the parameter", async ({
+      expect,
+    }) => {
+      const alepha = await startNested();
+      const { body } = sitemapOf(alepha).prerender();
+
+      expect(body).not.toContain("/members");
+      expect(body).not.toContain(":orgId");
+    });
+
+    it("expands static.entries against the full path", async ({ expect }) => {
+      const alepha = await startNested();
+      const { body } = sitemapOf(alepha).prerender();
+
+      expect(body).toContain(
+        "<loc>https://example.com/docs/guides/post/hello</loc>",
+      );
+    });
+
+    it("still excludes the layouts themselves", async ({ expect }) => {
+      const alepha = await startNested();
+      const { body } = sitemapOf(alepha).prerender();
+
+      expect(body).not.toContain("<loc>https://example.com/docs</loc>");
+      expect(body).not.toContain("<loc>https://example.com/docs/guides</loc>");
+    });
+  });
 });
