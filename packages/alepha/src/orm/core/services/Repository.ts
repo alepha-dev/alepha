@@ -1723,7 +1723,17 @@ export abstract class Repository<T extends ZObject> {
           if (flatKey.includes(AGG_SEPARATOR)) {
             const [col, op] = flatKey.split(AGG_SEPARATOR);
             if (!result[col]) result[col] = {};
-            result[col][op] = value != null ? Number(value) : 0;
+            // Only the numeric aggregates are coerced. `min` / `max` return
+            // the column's own value - drizzle already decoded it with the
+            // column's mapper, so a timestamp arrives as a Date - and running
+            // that through Number() turned every non-numeric min/max into NaN.
+            // Their empty-set answer stays null, because SQL has none.
+            result[col][op] =
+              op === "count" || op === "sum" || op === "avg"
+                ? value != null
+                  ? Number(value)
+                  : 0
+                : (value ?? null);
           } else {
             result[flatKey] = value;
           }

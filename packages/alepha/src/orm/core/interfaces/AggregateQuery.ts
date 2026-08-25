@@ -16,16 +16,36 @@ export type AggregateSelect<T extends ZObject> = {
 };
 
 /**
+ * The type one aggregate operation produces over a column of type `TValue`.
+ *
+ * `count`, `sum` and `avg` are numbers whatever the column holds. `min` and
+ * `max` are the column's OWN type: the maximum of a date column is a date and
+ * of a text column a string, and calling either of those a number is how they
+ * became `NaN`.
+ */
+export type AggregateOpValue<Op extends AggregateOp, TValue> = Op extends
+  | "count"
+  | "sum"
+  | "avg"
+  ? number
+  : TValue;
+
+/**
  * Maps a single column's select definition to its result type.
  * - `true` → original column type
  * - `{ sum: true, avg: true }` → `{ sum: number; avg: number }`
+ * - `{ max: true }` on a date column → `{ max: Date | null }`
+ *
+ * `min` / `max` carry `null` because SQL does: over an empty set they have no
+ * answer. `count` / `sum` / `avg` are reported as `0` there instead, which is
+ * the answer callers have always been given.
  */
 export type AggregateColumnResult<TValue, TSelect> = TSelect extends true
   ? TValue
   : {
       [
         Op in AggregateOp as TSelect extends Record<Op, true> ? Op : never
-      ]: number;
+      ]: Op extends "count" | "sum" | "avg" ? number : TValue | null;
     };
 
 /**
@@ -47,12 +67,12 @@ export type AggregateHaving<T extends ZObject, S extends AggregateSelect<T>> = {
     ? never
     : {
         [Op in AggregateOp as S[K] extends Record<Op, true> ? Op : never]?: {
-          gt?: number;
-          gte?: number;
-          lt?: number;
-          lte?: number;
-          eq?: number;
-          ne?: number;
+          gt?: AggregateOpValue<Op, Infer<T>[K]>;
+          gte?: AggregateOpValue<Op, Infer<T>[K]>;
+          lt?: AggregateOpValue<Op, Infer<T>[K]>;
+          lte?: AggregateOpValue<Op, Infer<T>[K]>;
+          eq?: AggregateOpValue<Op, Infer<T>[K]>;
+          ne?: AggregateOpValue<Op, Infer<T>[K]>;
         };
       };
 };
