@@ -487,7 +487,9 @@ export class SigilSinkProvider {
     // is dropped from the map while we iterate it.
     const outgoing: Array<{ stamp: SigilStamp; envelope: SigilEnvelope }> = [];
 
-    for (const [key, batch] of [...this.pending.entries()]) {
+    // Iterated directly: deleting the entry being visited is defined, and the
+    // only entries deleted below are this one and ones already visited.
+    for (const [key, batch] of this.pending) {
       if (!this.batchHasPending(batch)) {
         this.pending.delete(key);
         continue;

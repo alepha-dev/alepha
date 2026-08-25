@@ -1,5 +1,3 @@
-// oxlint-disable react/globals -- Test harness: each case renders throwaway
-// components whose only job is to record that their handler ran.
 import { render } from "@testing-library/react";
 import { act } from "react";
 import { describe, it } from "vitest";
