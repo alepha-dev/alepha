@@ -60,4 +60,11 @@ export class RedirectCheckoutPayment extends CheckoutPaymentProvider {
 
     return { mode: "redirect", url, intentId: intent.id };
   }
+
+  /**
+   * @see CheckoutPaymentProvider.abandon
+   */
+  public override async abandon(intentId: string): Promise<void> {
+    await this.payments.expireIntent(await this.payments.getIntent(intentId));
+  }
 }

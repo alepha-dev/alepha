@@ -261,7 +261,7 @@ export class StockService {
       orderId: context.orderId,
     });
 
-    if (await this.movementOverdraws(productId, movement.id)) {
+    if (!(await this.movementFits(productId, movement.id))) {
       await this.movements.deleteById(movement.id);
       throw new InsufficientStockError(
         productId,
@@ -276,40 +276,42 @@ export class StockService {
   }
 
   /**
-   * Whether a sale just written is one of the ones that has to go.
+   * Whether a sale just written is one the ledger can actually back.
    *
-   * On-hand below zero means the ledger is overdrawn by that much. The
-   * outgoing movements are walked NEWEST first — every racer computes the same
-   * order — and taken back until the overdraft is covered; a racer rolls back
-   * only if its own row falls inside that set. So the writer that arrived last
-   * is the one that loses, and exactly enough of them do.
+   * The whole ledger is replayed in one order every racer computes the same
+   * way, and the balance is summed up to and including this movement. The sale
+   * survives if the running balance never went negative at its own row.
+   *
+   * A PREFIX, not a snapshot, and that distinction is the whole correctness
+   * argument: rows written after this one cannot change the sum before it, and
+   * rows written before it are already committed. So the answer does not
+   * depend on how many racers happen to have landed by the time this runs —
+   * an earlier version compared against a live `onHand` and let a racer that
+   * checked early survive a deficit that later racers then had to absorb,
+   * which oversold under load.
+   *
+   * Rolling back a loser only lifts the balance for rows after it, so it can
+   * never turn a survivor into a loser; and a winner never re-checks. The
+   * count that survives is therefore exact, not merely safe.
    */
-  protected async movementOverdraws(
+  protected async movementFits(
     productId: string,
     movementId: string,
   ): Promise<boolean> {
-    const onHand = await this.onHand(productId);
-    if (onHand >= 0) {
-      return false;
-    }
-
-    const outgoing = await this.movements.findMany({
-      where: { productId: { eq: productId }, delta: { lt: 0 } },
+    const movements = await this.movements.findMany({
+      where: { productId: { eq: productId } },
       orderBy: [
-        { column: "createdAt", direction: "desc" },
-        { column: "id", direction: "desc" },
+        { column: "createdAt", direction: "asc" },
+        { column: "id", direction: "asc" },
       ],
       columns: ["id", "delta"],
     });
 
-    let covered = 0;
-    for (const movement of outgoing) {
-      if (covered >= -onHand) {
-        return false;
-      }
-      covered += -movement.delta;
+    let running = 0;
+    for (const movement of movements) {
+      running += movement.delta;
       if (movement.id === movementId) {
-        return true;
+        return running >= 0;
       }
     }
 

@@ -190,6 +190,22 @@ export class OrderService {
    * Idempotent on the order's status — a re-delivered payment webhook finds the
    * order already `paid` and does nothing, rather than fulfilling twice.
    */
+  /**
+   * Keep a capture that arrived for an order no longer taking money.
+   *
+   * A plain write, deliberately: the order's STATUS does not move. Money that
+   * arrived too late is a fact to record and act on, not a reason to sell
+   * stock that has already been released to somebody else.
+   *
+   * @see CheckoutService.settle
+   */
+  public async recordStrayCapture(
+    id: string,
+    captures: Array<Record<string, any>>,
+  ): Promise<OrderEntity> {
+    return this.orderRepo.updateById(id, { strayCaptures: captures });
+  }
+
   public async markPaid(
     id: string,
     options: { paymentIntentId?: string } = {},
