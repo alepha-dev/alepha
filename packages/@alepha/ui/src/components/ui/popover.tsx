@@ -2,7 +2,7 @@
 
 import { cn } from "@alepha/ui/lib/utils";
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
-import type * as React from "react";
+import * as React from "react";
 
 function Popover({ ...props }: PopoverPrimitive.Root.Props) {
   return <PopoverPrimitive.Root data-slot="popover" {...props} />;

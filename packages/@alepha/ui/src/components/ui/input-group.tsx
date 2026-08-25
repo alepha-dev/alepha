@@ -5,7 +5,7 @@ import { Input } from "@alepha/ui/components/ui/input";
 import { Textarea } from "@alepha/ui/components/ui/textarea";
 import { cn } from "@alepha/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
-import type * as React from "react";
+import * as React from "react";
 
 function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
@@ -154,7 +154,7 @@ export {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
-  InputGroupInput,
   InputGroupText,
+  InputGroupInput,
   InputGroupTextarea,
 };

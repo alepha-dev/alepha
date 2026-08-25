@@ -3,17 +3,9 @@
 import { cn } from "@alepha/ui/lib/utils";
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
 
-/**
- * LOCAL PATCH (do not lose on `yarn w @alepha/ui sync`): the shadcn registry
- * ships `delay = 0`, which makes every tooltip fire the instant the pointer
- * touches a trigger. 600ms is Base UI's own default, and the provider's
- * grouping keeps adjacent tooltips instant once one has opened, so scanning a
- * toolbar still feels immediate while a stray hover no longer flashes.
- *
- * `Tooltip.Root` has no `delay` prop, so this provider is the only place the
- * open delay can be set for the whole app.
- */
 function TooltipProvider({
+  // 600ms rather than the registry's 0. Re-applied by `scripts/sync.mjs`,
+  // which carries the reasoning; this file is overwritten wholesale.
   delay = 600,
   ...props
 }: TooltipPrimitive.Provider.Props) {
@@ -72,4 +64,4 @@ function TooltipContent({
   );
 }
 
-export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger };
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider };

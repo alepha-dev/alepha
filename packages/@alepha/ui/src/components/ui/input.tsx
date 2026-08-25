@@ -1,6 +1,6 @@
 import { cn } from "@alepha/ui/lib/utils";
 import { Input as InputPrimitive } from "@base-ui/react/input";
-import type * as React from "react";
+import * as React from "react";
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (

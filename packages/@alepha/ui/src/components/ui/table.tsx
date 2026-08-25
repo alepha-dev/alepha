@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@alepha/ui/lib/utils";
-import type * as React from "react";
+import * as React from "react";
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
@@ -22,11 +22,8 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
-      // The header keeps the tint a row only borrows on hover. It is not a
-      // row you can act on, so lighting up under the cursor promised an
-      // interaction it does not have; as a permanent fill the same colour
-      // does useful work instead, separating the column labels from the
-      // data without adding a second border.
+      // The permanent header tint is local. Re-applied by `scripts/sync.mjs`,
+      // which carries the reasoning; this file is overwritten wholesale.
       className={cn("bg-muted/50 [&_tr]:border-b", className)}
       {...props}
     />
@@ -110,11 +107,11 @@ function TableCaption({
 
 export {
   Table,
+  TableHeader,
   TableBody,
-  TableCaption,
-  TableCell,
   TableFooter,
   TableHead,
-  TableHeader,
   TableRow,
+  TableCell,
+  TableCaption,
 };
