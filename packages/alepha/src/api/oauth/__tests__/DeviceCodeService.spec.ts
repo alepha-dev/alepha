@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   DEVICE_POLL_INTERVAL_SECONDS,
+  DEVICE_USER_CODE_MAX_ATTEMPTS,
   DeviceCodeService,
 } from "../services/DeviceCodeService.ts";
 
@@ -131,12 +132,60 @@ describe("DeviceCodeService", () => {
     expect(await service.poll("nope")).toEqual({ status: "expired" });
   });
 
-  it("compares user codes without leaking length-independent timing", async () => {
+  it("stops answering an approver past the wrong-code ceiling", async () => {
     const { service } = await start();
     const record = await service.start(anyClient);
-    expect(service.matches(record.userCode, record.userCode)).toBe(true);
-    expect(service.matches(record.userCode, "CDFG-HJKM")).toBe(false);
-    // Different lengths must not throw — timingSafeEqual does, on its own.
-    expect(service.matches(record.userCode, "SHORT")).toBe(false);
+
+    for (let i = 0; i < DEVICE_USER_CODE_MAX_ATTEMPTS; i++) {
+      expect(await service.byUserCode("XXXX-XXXX", "guesser")).toBeUndefined();
+    }
+
+    expect(await service.failureCount("guesser")).toBe(
+      DEVICE_USER_CODE_MAX_ATTEMPTS,
+    );
+
+    // Even the RIGHT code, once the ceiling is reached. Answering it would
+    // make the ceiling a speed bump rather than a limit.
+    expect(
+      await service.byUserCode(record.userCode, "guesser"),
+    ).toBeUndefined();
+
+    // And `decide` counts against the approver, so the same ceiling reaches
+    // the endpoint an application actually exposes.
+    await expect(
+      service.decide(record.userCode, "approve", "guesser"),
+    ).rejects.toThrowError("Unknown or expired code");
+  });
+
+  it("counts wrong codes per asker, not globally", async () => {
+    const { service } = await start();
+    const record = await service.start(anyClient);
+
+    for (let i = 0; i < DEVICE_USER_CODE_MAX_ATTEMPTS; i++) {
+      await service.byUserCode("XXXX-XXXX", "guesser");
+    }
+
+    // Somebody else's spree must not lock out the person holding the code.
+    const found = await service.byUserCode(record.userCode, "innocent");
+    expect(found?.deviceCode).toBe(record.deviceCode);
+  });
+
+  it("does not count a correct code against the asker", async () => {
+    const { service } = await start();
+    const record = await service.start(anyClient);
+
+    await service.byUserCode(record.userCode, "typist");
+    expect(await service.failureCount("typist")).toBe(0);
+  });
+
+  it("leaves the ceiling off when nobody is named", async () => {
+    const { service } = await start();
+
+    // No `by`, no accountability, no counter — an application that wants the
+    // ceiling has to say who is asking.
+    for (let i = 0; i < DEVICE_USER_CODE_MAX_ATTEMPTS + 3; i++) {
+      expect(await service.byUserCode("XXXX-XXXX")).toBeUndefined();
+    }
+    expect(await service.failureCount("")).toBe(0);
   });
 });

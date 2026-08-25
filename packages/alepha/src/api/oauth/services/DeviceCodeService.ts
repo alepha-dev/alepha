@@ -1,4 +1,4 @@
-import { randomBytes, randomInt, timingSafeEqual } from "node:crypto";
+import { randomBytes, randomInt } from "node:crypto";
 
 import { $inject, AlephaError } from "alepha";
 import { $cache } from "alepha/cache";
@@ -17,6 +17,16 @@ export const DEVICE_CODE_TTL_SECONDS = 600;
  * Seconds a client must wait between polls.
  */
 export const DEVICE_POLL_INTERVAL_SECONDS = 5;
+
+/**
+ * Wrong user codes one approver may try before the service stops answering.
+ *
+ * RFC 8628 §5.2 asks for a ceiling here, and 35 bits of entropy over a ten
+ * minute window makes guessing hopeless on paper - but "hopeless on paper" is
+ * what every unthrottled endpoint says right up until the alphabet or the TTL
+ * changes. Five is generous for someone squinting at another screen.
+ */
+export const DEVICE_USER_CODE_MAX_ATTEMPTS = 5;
 
 /**
  * Alphabet for the code a human retypes.
@@ -46,10 +56,6 @@ export interface DeviceAuthorization {
    * Last poll, used to enforce the interval.
    */
   lastPolledAt?: number;
-  /**
-   * Wrong user codes tried against this record's slot.
-   */
-  attempts: number;
 }
 
 /**
@@ -106,6 +112,19 @@ export class DeviceCodeService {
   });
 
   /**
+   * Failed user-code lookups, keyed by whoever was doing the looking.
+   *
+   * Not on the authorization record, which is where a counter first looks
+   * like it belongs: a wrong code resolves to no record at all, so there is
+   * nothing there to increment. The guess has to be counted against the
+   * guesser instead. Same TTL as the codes, so the window closes on its own.
+   */
+  protected readonly failures = $cache<number>({
+    name: "oauth-device-user-code-failures",
+    ttl: [DEVICE_CODE_TTL_SECONDS, "seconds"],
+  });
+
+  /**
    * Begins a device authorization.
    */
   async start(args: {
@@ -123,7 +142,6 @@ export class DeviceCodeService {
       resource: args.resource,
       status: "pending",
       createdAt: this.dateTime.nowMillis(),
-      attempts: 0,
     };
     await this.byDevice.set(record.deviceCode, record);
     // Indexed under the NORMALIZED code: `byUserCode` normalizes what a human
@@ -137,13 +155,39 @@ export class DeviceCodeService {
    *
    * Returns undefined for unknown or expired codes without saying which — the
    * approval page must not become an oracle for guessing valid codes.
+   *
+   * @param by Who is asking, when the caller knows: the approver's user id,
+   * or an address for an approval page that has not signed anyone in yet.
+   * Passing it arms {@link DEVICE_USER_CODE_MAX_ATTEMPTS}; leaving it out asks
+   * a question nobody is accountable for and gets no ceiling. `decide` always
+   * passes the approver.
    */
-  async byUserCode(userCode: string): Promise<DeviceAuthorization | undefined> {
-    const deviceCode = await this.byUser.get(this.normalize(userCode));
-    if (!deviceCode) {
+  async byUserCode(
+    userCode: string,
+    by?: string,
+  ): Promise<DeviceAuthorization | undefined> {
+    if (by && (await this.failureCount(by)) >= DEVICE_USER_CODE_MAX_ATTEMPTS) {
+      // Indistinguishable from a wrong code on purpose. Saying "too many
+      // attempts" would tell someone enumerating codes that they are being
+      // counted, and which of their guesses were even considered.
       return undefined;
     }
-    return await this.byDevice.get(deviceCode);
+
+    const deviceCode = await this.byUser.get(this.normalize(userCode));
+    const record = deviceCode ? await this.byDevice.get(deviceCode) : undefined;
+
+    if (!record && by) {
+      await this.failures.incr(by);
+    }
+
+    return record;
+  }
+
+  /**
+   * Wrong codes tried by this asker so far in the current window.
+   */
+  async failureCount(by: string): Promise<number> {
+    return (await this.failures.get(by)) ?? 0;
   }
 
   /**
@@ -158,7 +202,10 @@ export class DeviceCodeService {
     decision: "approve" | "deny",
     userId: string,
   ): Promise<DeviceAuthorization> {
-    const record = await this.byUserCode(userCode);
+    // The approver is the guesser: a brute force here is someone signed in,
+    // posting codes at the approval endpoint. Counting against `userId` is
+    // what makes the ceiling reachable at all.
+    const record = await this.byUserCode(userCode, userId);
     if (!record) {
       throw new AlephaError("Unknown or expired code");
     }
@@ -227,21 +274,6 @@ export class DeviceCodeService {
    */
   normalize(userCode: string): string {
     return userCode.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  }
-
-  /**
-   * Compares two user codes without leaking timing.
-   *
-   * The codes are short enough that a timing side channel is worth closing
-   * rather than argued about.
-   */
-  matches(a: string, b: string): boolean {
-    const left = Buffer.from(this.normalize(a));
-    const right = Buffer.from(this.normalize(b));
-    if (left.length !== right.length) {
-      return false;
-    }
-    return timingSafeEqual(left, right);
   }
 
   /**
