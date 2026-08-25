@@ -40,11 +40,11 @@ export class DevCommand {
         )
         .optional(),
     }),
-    handler: async ({ root, flags }) => {
+    handler: async ({ root, flags, mode }) => {
       const apps = await this.discoverApps(root);
 
       if (apps.length > 0) {
-        await this.runMultiple(root, apps, flags);
+        await this.runMultiple(root, apps, flags, mode);
       } else {
         await this.runSingle(root);
       }
@@ -150,6 +150,7 @@ export class DevCommand {
     root: string,
     apps: Array<{ name: string; path: string }>,
     flags: Record<string, unknown>,
+    mode?: string,
   ): Promise<void> {
     const selected = this.selectApps(apps, flags.only as string | undefined);
 
@@ -164,7 +165,7 @@ export class DevCommand {
 
     const packageManager = await this.pm.getPackageManager(root);
     const processes = selected.map((app) =>
-      this.spawnApp(app, app.port, packageManager),
+      this.spawnApp(app, app.port, packageManager, mode),
     );
 
     // Handle graceful shutdown
@@ -189,22 +190,43 @@ export class DevCommand {
   }
 
   /**
+   * The argv of a child `alepha dev`.
+   *
+   * `yarn` was hardcoded once, so npm/pnpm/bun workspaces failed outright.
+   * npm needs `run` before the script name, and a `--` before the script's
+   * own arguments: it reads anything flag-shaped after the script name as one
+   * of its own configs, so `--mode` would never reach the child. The others
+   * take the binary and its arguments as they are.
+   */
+  protected spawnArgs(
+    packageManager: "yarn" | "pnpm" | "npm" | "bun",
+    mode?: string,
+  ): string[] {
+    const args = ["dev", ...(mode ? ["--mode", mode] : [])];
+
+    return packageManager === "npm"
+      ? ["run", "alepha", "--", ...args]
+      : ["alepha", ...args];
+  }
+
+  /**
    * Spawn a single app process with inherited stdio.
    *
    * Each child process gets APP_NAME set, so the Alepha logger
    * handles prefixing automatically.
+   *
+   * `mode` is forwarded rather than left to the inherited environment: the
+   * children do inherit whatever the workspace `.env.<mode>` exported, but
+   * each app's own `.env.<mode>` is read by the child and only when the child
+   * is told which mode it is running in.
    */
   protected spawnApp(
     app: { name: string; path: string },
     port: number,
     packageManager: "yarn" | "pnpm" | "npm" | "bun" = "yarn",
+    mode?: string,
   ): ReturnType<typeof spawn> {
-    // `yarn` was hardcoded, so npm/pnpm/bun workspaces failed outright. npm
-    // needs `run` before the script name; the others accept it bare.
-    const args =
-      packageManager === "npm" ? ["run", "alepha", "dev"] : ["alepha", "dev"];
-
-    const proc = spawn(packageManager, args, {
+    const proc = spawn(packageManager, this.spawnArgs(packageManager, mode), {
       cwd: app.path,
       // Windows package managers are `.cmd` shims, which `spawn` cannot
       // execute without a shell.
