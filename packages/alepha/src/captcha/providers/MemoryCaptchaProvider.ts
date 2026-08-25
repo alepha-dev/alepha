@@ -21,6 +21,14 @@ export class MemoryCaptchaProvider implements CaptchaProvider {
   protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
+   * @see CaptchaProvider.configured
+   *
+   * True: under test this IS the configured provider, and a spec that turns
+   * captcha on expects it to answer rather than refuse at boot.
+   */
+  public readonly configured = true;
+
+  /**
    * All verification attempts.
    */
   public records: CaptchaRecord[] = [];

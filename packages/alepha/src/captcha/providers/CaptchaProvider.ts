@@ -7,6 +7,16 @@
  */
 export abstract class CaptchaProvider {
   /**
+   * Whether this provider can actually verify a token against a service.
+   *
+   * `false` only for {@link UnconfiguredCaptchaProvider}, the fail-closed
+   * stand-in bound when the app registered no provider. Anything that turns
+   * captcha ON reads this to refuse at boot rather than discover at the first
+   * registration that the protection was never there.
+   */
+  public readonly configured: boolean = true;
+
+  /**
    * Verify a captcha token.
    *
    * @param token - The captcha response token submitted by the client.

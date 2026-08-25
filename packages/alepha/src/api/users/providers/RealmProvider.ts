@@ -1,5 +1,6 @@
 import { $inject, Alepha, AlephaError } from "alepha";
 import type { ParameterPrimitive } from "alepha/api/parameters";
+import { CaptchaProvider } from "alepha/captcha";
 import { $repository, type Repository } from "alepha/orm";
 
 import {
@@ -32,6 +33,7 @@ export class RealmProvider {
   protected readonly defaultIdentities = $repository(identities);
   protected readonly defaultSessions = $repository(sessions);
   protected readonly defaultUsers = $repository(users);
+  protected readonly captcha = $inject(CaptchaProvider);
 
   protected realms = new Map<string, Realm>();
 
@@ -54,6 +56,7 @@ export class RealmProvider {
     };
 
     this.assertNotificationsCoverSettings(realmName, features, realmOptions);
+    this.assertCaptchaProviderRegistered(realmName, realmOptions);
 
     const realm: Realm = {
       name: realmName,
@@ -139,6 +142,40 @@ export class RealmProvider {
       `Realm "${realmName}" sets ${contradictions.join(", ")} but features.notifications is off. ` +
         `Each of these completes by sending a code, so none of them can work. ` +
         `Set features: { notifications: true } on the realm, or drop the setting.`,
+    );
+  }
+
+  /**
+   * Rejects a realm that requires a captcha nothing can verify.
+   *
+   * Same shape as {@link assertNotificationsCoverSettings}, and for the same
+   * reason: a security setting that silently does nothing is worse than one
+   * that refuses. `alepha/captcha` binds `UnconfiguredCaptchaProvider` when
+   * the app registered no provider, and that one refuses every token — so
+   * without this, a production realm with `captchaRequired: true` would boot,
+   * render the widget, and reject every single signup.
+   *
+   * Only an explicit `captchaRequired: true` can trip this; the atom defaults
+   * it to `false`, so a container that merely registered `alepha/captcha`
+   * still starts.
+   */
+  protected assertCaptchaProviderRegistered(
+    realmName: string,
+    realmOptions: RealmOptions,
+  ): void {
+    const settings = realmOptions.settings as
+      | Record<string, unknown>
+      | undefined;
+
+    if (settings?.captchaRequired !== true || this.captcha.configured) {
+      return;
+    }
+
+    throw new AlephaError(
+      `Realm "${realmName}" sets captchaRequired but no CaptchaProvider is registered, ` +
+        `so every token would be refused. Register one, e.g. ` +
+        `alepha.with({ provide: CaptchaProvider, use: TurnstileCaptchaProvider }) ` +
+        `with TURNSTILE_SECRET_KEY and TURNSTILE_SITE_KEY set, or drop the setting.`,
     );
   }
 
