@@ -38,12 +38,6 @@ export class DbCommand {
     name: "check",
     mode: true,
     description: "Check if migration files are up to date",
-    args: z
-      .text({
-        title: "path",
-        description: "Path to the Alepha server entry file",
-      })
-      .optional(),
     flags: drizzleCommandFlags,
     handler: async ({ flags, root }) => {
       const rootDir = root;
@@ -160,12 +154,6 @@ export class DbCommand {
     name: "create",
     mode: true,
     description: "Generate migration files from current schema",
-    args: z
-      .text({
-        title: "path",
-        description: "Path to the Alepha server entry file",
-      })
-      .optional(),
     flags: drizzleCommandFlags.extend({
       custom: z
         .boolean()
@@ -190,7 +178,7 @@ export class DbCommand {
         })
         .optional(),
     }),
-    handler: async ({ args, flags, root }) => {
+    handler: async ({ flags, root }) => {
       const parts: string[] = [];
       if (flags.custom) parts.push(`--custom=1`);
       // Both values travel through a shell string: a migration name with a
@@ -203,7 +191,6 @@ export class DbCommand {
 
       await this.runDrizzleKitCommand({
         root,
-        args,
         command: "generate",
         commandFlags,
         provider: flags.provider,
@@ -221,14 +208,8 @@ export class DbCommand {
     mode: true,
     description:
       "Archive existing migrations and generate a single baseline migration from the current schema",
-    args: z
-      .text({
-        title: "path",
-        description: "Path to the Alepha server entry file",
-      })
-      .optional(),
     flags: drizzleCommandFlags,
-    handler: async ({ args, flags, root }) => {
+    handler: async ({ flags, root }) => {
       const entry = await this.entryProvider.getAppEntry(root);
       const alepha = await this.utils.loadAlephaFromServerEntryFile({
         mode: "development",
@@ -252,7 +233,6 @@ export class DbCommand {
 
       await this.runDrizzleKitCommand({
         root,
-        args,
         command: "generate",
         commandFlags: "--name=baseline",
         provider: flags.provider,
@@ -270,12 +250,6 @@ export class DbCommand {
     mode: true,
     description:
       "Record the baseline migration as already applied, without executing it",
-    args: z
-      .text({
-        title: "path",
-        description: "Path to the Alepha server entry file",
-      })
-      .optional(),
     flags: drizzleCommandFlags,
     handler: async ({ flags, root }) => {
       const entry = await this.entryProvider.getAppEntry(root);
@@ -330,12 +304,6 @@ export class DbCommand {
     name: "push",
     mode: true,
     description: "Push database schema changes directly to the database",
-    args: z
-      .text({
-        title: "path",
-        description: "Path to the Alepha server entry file",
-      })
-      .optional(),
     flags: drizzleCommandFlags.extend({
       dryRun: z
         .boolean()
@@ -343,7 +311,7 @@ export class DbCommand {
         .meta({ aliases: ["dry-run"] })
         .optional(),
     }),
-    handler: async ({ root, args, flags }) => {
+    handler: async ({ root, flags }) => {
       if (flags.dryRun) {
         const entry = await this.entryProvider.getAppEntry(root);
         const alepha = await this.utils.loadAlephaFromServerEntryFile({
@@ -403,7 +371,6 @@ export class DbCommand {
 
       await this.runDrizzleKitCommand({
         root,
-        args,
         command: "push",
         provider: flags.provider,
         logMessage: (providerName, dialect) =>
@@ -419,12 +386,6 @@ export class DbCommand {
     name: "apply",
     mode: true,
     description: "Apply pending migrations to the database",
-    args: z
-      .text({
-        title: "path",
-        description: "Path to the Alepha server entry file",
-      })
-      .optional(),
     flags: drizzleCommandFlags,
     handler: async ({ root, run }) => {
       const entry = await this.entryProvider.getAppEntry(root);
@@ -454,17 +415,10 @@ export class DbCommand {
     name: "studio",
     mode: true,
     description: "Launch Drizzle Studio database browser",
-    args: z
-      .text({
-        title: "path",
-        description: "Path to the Alepha server entry file",
-      })
-      .optional(),
     flags: drizzleCommandFlags,
-    handler: async ({ root, args, flags }) => {
+    handler: async ({ root, flags }) => {
       await this.runDrizzleKitCommand({
         root,
-        args,
         command: "studio",
         provider: flags.provider,
         logMessage: (providerName, dialect) =>
@@ -610,7 +564,6 @@ export class DbCommand {
    */
   public async runDrizzleKitCommand(options: {
     root: string;
-    args?: string;
     command: string;
     commandFlags?: string;
     provider?: string;

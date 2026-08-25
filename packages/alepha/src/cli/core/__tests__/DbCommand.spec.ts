@@ -875,4 +875,48 @@ describe("DbCommand", () => {
       }
     });
   });
+
+  /**
+   * Every `db` command declared an optional positional `path` that no handler
+   * had read since 9bc0f640e: `alepha db push ./other` silently ran against
+   * the default root, and the help advertised an argument that did nothing.
+   *
+   * With the declaration gone, `CliProvider`'s "takes no positional
+   * arguments" gate covers them — so this asserts the declaration is absent
+   * rather than re-testing the gate, which `$command.spec.ts` already pins.
+   */
+  describe("positional arguments", () => {
+    const walk = (command: any): any[] => [
+      command,
+      ...(command.options.children ?? []).flatMap(walk),
+    ];
+
+    it("declares none, on any command in the tree", () => {
+      const { db } = create();
+
+      const withArgs = walk(db.db)
+        .filter((it) => it.options.args)
+        .map((it) => it.options.name);
+
+      expect(withArgs).toEqual([]);
+    });
+
+    it("still covers every command — the walk is not vacuous", () => {
+      const { db } = create();
+
+      expect(walk(db.db).map((it) => it.options.name)).toEqual(
+        expect.arrayContaining([
+          "db",
+          "migrations",
+          "check",
+          "create",
+          "apply",
+          "baseline",
+          "mark",
+          "push",
+          "studio",
+        ]),
+      );
+    });
+  });
 });

@@ -273,8 +273,8 @@ export class CliProvider {
     // `command` truthy.
     //
     // The gate is "declares no positional args of its own", and nothing more.
-    // `alepha db push [path]` and `alepha test [filter]` legitimately keep
-    // their word, and a leftover there is data, not a typo.
+    // `alepha test [filter]` legitimately keeps its word, and a leftover there
+    // is data, not a typo.
     //
     // It used to also require `hasChildren`, which left every leaf command
     // outside the guard: `alepha verify fast` (meaning `--fast`),
