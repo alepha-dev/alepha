@@ -12,9 +12,9 @@ Create a new role.
 
 ## Options
 
-| Option        | Type                        | Required | Description        |
-| ------------- | --------------------------- | -------- | ------------------ |
-| `name`        | `string`                    | No       | Name of the role.  |
-| `description` | `string`                    | No       | Describe the role. |
-| `issuer`      | `string \| IssuerPrimitive` | No       |                    |
-| `permissions` | `Array&lt;`                 | No       |                    |
+| Option        | Type                        | Required | Description                    |
+| ------------- | --------------------------- | -------- | ------------------------------ |
+| `name`        | `string`                    | No       | Name of the role.              |
+| `description` | `string`                    | No       | Describe the role.             |
+| `issuer`      | `string \| IssuerPrimitive` | No       | The realm this role belongs to |
+| `permissions` | `Array&lt;`                 | No       |                                |
