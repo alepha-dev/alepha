@@ -9,6 +9,7 @@ import {
   AdminUserController,
   AlephaApiUsers,
   SessionService,
+  updateUserSchema,
   UserService,
 } from "../index.ts";
 
@@ -209,6 +210,44 @@ describe("alepha/api/users - AdminUserController CRUD", () => {
     );
 
     expect(result.roles).toEqual(["admin", "moderator"]);
+  });
+
+  it("should not let an admin move a user to another realm or organization", async ({
+    expect,
+  }) => {
+    const { alepha, controller } = await setup();
+
+    const created = await controller.createUser(
+      {
+        body: {
+          username: "stayput",
+          email: "stayput@example.com",
+        },
+      },
+      asAdmin,
+    );
+
+    // The payload as it arrives on the wire. `validateRequest` runs it through
+    // the route's body schema before the handler ever sees it, which is where
+    // the two fields have to disappear - the handler writes what it is given
+    // straight to the row.
+    const body = alepha.codec.validate(updateUserSchema, {
+      firstName: "Stay",
+      realm: "somebody-elses-realm",
+      organizationId: "00000000-0000-0000-0000-0000000000ff",
+    });
+
+    expect(body).not.toHaveProperty("realm");
+    expect(body).not.toHaveProperty("organizationId");
+
+    const result = await controller.updateUser(
+      { params: { id: created.id }, body },
+      asAdmin,
+    );
+
+    expect(result.firstName).toBe("Stay");
+    expect(result.realm).toBe(created.realm);
+    expect(result.organizationId).toBe(created.organizationId);
   });
 
   it("should delete a user", async ({ expect }) => {
