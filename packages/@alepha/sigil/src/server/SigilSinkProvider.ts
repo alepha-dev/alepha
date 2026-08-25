@@ -79,20 +79,22 @@ export class SigilSinkProvider {
   protected env = $env(sigilEnv);
 
   /**
-   * Errors waiting to be sent, keyed by fingerprint source.
+   * What is waiting to be sent, **one batch per stamp**.
+   *
+   * There used to be one batch and one `pendingStamp`, last writer wins, on the
+   * reasoning that stamps rarely differ. That is true in a browser, where a
+   * batch belongs to one visitor by construction. It is false on the server,
+   * where a batch spans requests: every visitor in the flush window was
+   * attributed to whoever happened to be last, so uniques collapsed toward one
+   * and the geography was that of the final request. Under any real load the
+   * numbers were not merely noisy, they were wrong in a direction.
+   *
+   * Keyed by the stamp rather than carried per event, so the wire contract is
+   * untouched: the sink already reads the stamp off the envelope, and one
+   * envelope per stamp is a shape it and every deployed client already
+   * understand.
    */
-  protected readonly pendingErrors = new Map<string, AggregatedError>();
-  protected pendingViews: NonNullable<SigilEnvelope["views"]> = [];
-  protected pendingVitals: NonNullable<SigilEnvelope["vitals"]> = [];
-  protected pendingEngagements: NonNullable<SigilEnvelope["engagements"]> = [];
-  /**
-   * Stamps of the batch being built. Last writer wins; they rarely differ.
-   */
-  protected pendingStamp: {
-    country?: string;
-    visitor?: string;
-    device?: string;
-  } = {};
+  protected readonly pending = new Map<string, PendingBatch>();
   protected oldestPendingAt?: number;
 
   /**
@@ -300,30 +302,28 @@ export class SigilSinkProvider {
    */
   public async ingest(
     envelope: SigilEnvelope,
-    stamp: { country?: string; visitor?: string; device?: string } = {},
+    stamp: SigilStamp = {},
   ): Promise<void> {
     const enabled = this.enabledTrackers();
     const now = this.dateTime.nowMillis();
+    const batch = this.batchFor(stamp);
 
     if (envelope.views?.length && enabled.views) {
-      this.pendingViews.push(...envelope.views);
+      batch.views.push(...envelope.views);
     }
     if (envelope.vitals?.length && enabled.vitals) {
-      this.pendingVitals.push(...envelope.vitals);
+      batch.vitals.push(...envelope.vitals);
     }
     // Behind the views gate, not one of its own: engagement is a fact about a
     // view, and an `engaged` total that outlived the `count` it divides into
     // would be worse than not collecting it.
     if (envelope.engagements?.length && enabled.views) {
-      this.pendingEngagements.push(...envelope.engagements);
+      batch.engagements.push(...envelope.engagements);
     }
     if (envelope.errors?.length && enabled.errors) {
       for (const error of envelope.errors) {
-        this.aggregate(error);
+        this.aggregate(batch, error);
       }
-    }
-    if (stamp.country || stamp.visitor || stamp.device) {
-      this.pendingStamp = stamp;
     }
 
     if (this.oldestPendingAt === undefined && this.hasPending()) {
@@ -341,14 +341,17 @@ export class SigilSinkProvider {
    * Replacing the sample would make the stored stack drift toward the most
    * recent occurrence, which is never the informative one.
    */
-  protected aggregate(error: NonNullable<SigilEnvelope["errors"]>[number]) {
+  protected aggregate(
+    batch: PendingBatch,
+    error: NonNullable<SigilEnvelope["errors"]>[number],
+  ) {
     const key = sigilFingerprintSource(error.name, error.stack);
-    const existing = this.pendingErrors.get(key);
+    const existing = batch.errors.get(key);
     if (existing) {
       existing.count += error.count ?? 1;
       return;
     }
-    this.pendingErrors.set(key, {
+    batch.errors.set(key, {
       name: error.name,
       message: error.message,
       stack: error.stack,
@@ -400,13 +403,44 @@ export class SigilSinkProvider {
     },
   });
 
-  protected hasPending(): boolean {
+  /**
+   * The batch a stamp writes into, created on first sight.
+   *
+   * Identity is the three stamp fields together: two visitors from the same
+   * country on the same kind of device are still two visitors, and a country
+   * that arrives on one request and not the next is a different batch rather
+   * than an update to the first.
+   */
+  protected batchFor(stamp: SigilStamp): PendingBatch {
+    const key = `${stamp.visitor ?? ""}\u0000${stamp.country ?? ""}\u0000${stamp.device ?? ""}`;
+    let batch = this.pending.get(key);
+    if (!batch) {
+      batch = {
+        stamp,
+        views: [],
+        vitals: [],
+        engagements: [],
+        errors: new Map(),
+      };
+      this.pending.set(key, batch);
+    }
+    return batch;
+  }
+
+  protected batchHasPending(batch: PendingBatch): boolean {
     return (
-      this.pendingErrors.size > 0 ||
-      this.pendingViews.length > 0 ||
-      this.pendingVitals.length > 0 ||
-      this.pendingEngagements.length > 0
+      batch.errors.size > 0 ||
+      batch.views.length > 0 ||
+      batch.vitals.length > 0 ||
+      batch.engagements.length > 0
     );
+  }
+
+  protected hasPending(): boolean {
+    for (const batch of this.pending.values()) {
+      if (this.batchHasPending(batch)) return true;
+    }
+    return false;
   }
 
   /**
@@ -415,10 +449,13 @@ export class SigilSinkProvider {
    */
   protected isDue(now: number): boolean {
     if (!this.hasPending()) return false;
-    if (this.pendingErrors.size >= this.caps.errors) return true;
-    if (this.pendingViews.length >= this.caps.views) return true;
-    if (this.pendingVitals.length >= this.caps.vitals) return true;
-    if (this.pendingEngagements.length >= this.caps.engagements) return true;
+    // Per batch, because the caps bound one ENVELOPE and each batch is one.
+    for (const batch of this.pending.values()) {
+      if (batch.errors.size >= this.caps.errors) return true;
+      if (batch.views.length >= this.caps.views) return true;
+      if (batch.vitals.length >= this.caps.vitals) return true;
+      if (batch.engagements.length >= this.caps.engagements) return true;
+    }
     return now - (this.oldestPendingAt ?? now) >= this.flushWindowMs;
   }
 
@@ -446,43 +483,61 @@ export class SigilSinkProvider {
   public async flush(): Promise<void> {
     if (!this.hasPending()) return;
 
-    const views = this.pendingViews.splice(0, this.caps.views);
-    const vitals = this.pendingVitals.splice(0, this.caps.vitals);
-    const engagements = this.pendingEngagements.splice(
-      0,
-      this.caps.engagements,
-    );
-    // Entries, so the surviving ones are deleted by the key they were stored
-    // under rather than by a recomputed fingerprint.
-    const errorEntries = [...this.pendingErrors.entries()].slice(
-      0,
-      this.caps.errors,
-    );
-    for (const [key] of errorEntries) this.pendingErrors.delete(key);
+    // One envelope per stamp. Snapshotted first, because a batch that empties
+    // is dropped from the map while we iterate it.
+    const outgoing: Array<{ stamp: SigilStamp; envelope: SigilEnvelope }> = [];
 
-    const envelope: SigilEnvelope = {
-      ...(views.length ? { views } : {}),
-      ...(vitals.length ? { vitals } : {}),
-      ...(engagements.length ? { engagements } : {}),
-      ...(errorEntries.length
-        ? { errors: errorEntries.map(([, error]) => error) }
-        : {}),
-    };
-    const stamp = this.pendingStamp;
-    // The stamp belongs to the remainder too — same visitor, same batch.
-    if (!this.hasPending()) this.reset();
+    for (const [key, batch] of [...this.pending.entries()]) {
+      if (!this.batchHasPending(batch)) {
+        this.pending.delete(key);
+        continue;
+      }
+
+      const views = batch.views.splice(0, this.caps.views);
+      const vitals = batch.vitals.splice(0, this.caps.vitals);
+      const engagements = batch.engagements.splice(0, this.caps.engagements);
+      // Entries, so the surviving ones are deleted by the key they were stored
+      // under rather than by a recomputed fingerprint.
+      const errorEntries = [...batch.errors.entries()].slice(
+        0,
+        this.caps.errors,
+      );
+      for (const [errorKey] of errorEntries) batch.errors.delete(errorKey);
+
+      outgoing.push({
+        stamp: batch.stamp,
+        envelope: {
+          ...(views.length ? { views } : {}),
+          ...(vitals.length ? { vitals } : {}),
+          ...(engagements.length ? { engagements } : {}),
+          ...(errorEntries.length
+            ? { errors: errorEntries.map(([, error]) => error) }
+            : {}),
+        },
+      });
+
+      // Anything over the cap stays under the SAME stamp, which is the point:
+      // a remainder carried under whoever flushes next would be the original
+      // bug in slow motion.
+      if (!this.batchHasPending(batch)) this.pending.delete(key);
+    }
+
+    if (!this.hasPending()) this.oldestPendingAt = undefined;
 
     if (!this.hasSink()) {
-      this.report(envelope);
+      for (const { envelope } of outgoing) this.report(envelope);
       return;
     }
 
-    try {
-      await this.deliver({ ...envelope, ...stamp });
-    } catch (error) {
-      // A sink that refuses or is unreachable must never surface as an app
-      // error: the app is working, its observer is not.
-      this.log.warn(`Sigil flush failed for ${this.sinkOrigin()}`, error);
+    for (const { stamp, envelope } of outgoing) {
+      try {
+        await this.deliver({ ...envelope, ...stamp });
+      } catch (error) {
+        // A sink that refuses or is unreachable must never surface as an app
+        // error: the app is working, its observer is not. Per envelope, so one
+        // failing stamp does not take the others with it.
+        this.log.warn(`Sigil flush failed for ${this.sinkOrigin()}`, error);
+      }
     }
   }
 
@@ -501,13 +556,7 @@ export class SigilSinkProvider {
    * It used to have a sibling, `fetchConfig`, for the GET that asked the sink
    * what to collect. There is no such GET any more.
    */
-  protected async deliver(
-    payload: SigilEnvelope & {
-      country?: string;
-      visitor?: string;
-      device?: string;
-    },
-  ): Promise<void> {
+  protected async deliver(payload: SigilEnvelope & SigilStamp): Promise<void> {
     await this.http.fetch(`${this.sinkOrigin()}${SIGIL_INGEST_PATH}`, {
       method: "POST",
       headers: {
@@ -536,11 +585,33 @@ export class SigilSinkProvider {
   }
 
   protected reset(): void {
-    this.pendingErrors.clear();
-    this.pendingViews = [];
-    this.pendingVitals = [];
-    this.pendingEngagements = [];
-    this.pendingStamp = {};
+    this.pending.clear();
     this.oldestPendingAt = undefined;
   }
+}
+
+/**
+ * Who an event is attributed to. Stamped by the app's own server, never by the
+ * browser.
+ */
+export interface SigilStamp {
+  country?: string;
+  visitor?: string;
+  device?: string;
+}
+
+/**
+ * One stamp's worth of pending events.
+ *
+ * @see SigilSinkProvider.pending
+ */
+interface PendingBatch {
+  stamp: SigilStamp;
+  views: NonNullable<SigilEnvelope["views"]>;
+  vitals: NonNullable<SigilEnvelope["vitals"]>;
+  engagements: NonNullable<SigilEnvelope["engagements"]>;
+  /**
+   * Errors waiting to be sent, keyed by fingerprint source.
+   */
+  errors: Map<string, AggregatedError>;
 }
