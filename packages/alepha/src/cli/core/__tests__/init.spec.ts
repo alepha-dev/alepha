@@ -557,6 +557,54 @@ describe("alepha init", () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // Emptiness
+  //
+  // A bare `alepha init` scaffolds in place when the directory is empty, and
+  // creates `my-app/` when it is not. What counts as empty is the whole
+  // question: `ls` hides dotfiles, so a directory holding only `.git` is
+  // still empty. Windows has no dotfile convention, it has a hidden attribute,
+  // so the same reasoning has to cover the files it produces.
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe("emptiness", () => {
+    it("should scaffold in place when the directory holds only a dotfile", async () => {
+      const { fs, cli, cmd } = createTestEnv();
+      await fs.writeFile("/project/.gitignore", "node_modules");
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(fs.wasWritten("/project/src/api/index.ts")).toBe(true);
+      expect(fs.wasWritten("/project/my-app/src/api/index.ts")).toBe(false);
+    });
+
+    /**
+     * Windows creates `desktop.ini` on its own whenever a folder gets a custom
+     * icon or view, and inside OneDrive-synced trees. It is hidden by
+     * attribute, not by a leading dot, so Explorer shows the folder as empty
+     * while `ls` reports one entry. Counting it turns
+     * `mkdir my-app && cd my-app && alepha init` into `my-app/my-app/`.
+     */
+    it("should scaffold in place when the directory holds only Windows shell metadata", async () => {
+      const { fs, cli, cmd } = createTestEnv();
+      await fs.writeFile("/project/desktop.ini", "[.ShellClassInfo]");
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(fs.wasWritten("/project/src/api/index.ts")).toBe(true);
+      expect(fs.wasWritten("/project/my-app/src/api/index.ts")).toBe(false);
+    });
+
+    it("should still create my-app/ for a file that is real content", async () => {
+      const { fs, cli, cmd } = createTestEnv();
+      await fs.writeFile("/project/notes.txt", "x");
+
+      await cli.run(cmd.init, { root: "/project" });
+
+      expect(fs.wasWritten("/project/my-app/src/api/index.ts")).toBe(true);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // Non-empty directory guard
   //
   // Only applies when a target path is named. A bare `alepha init` is the
@@ -583,6 +631,19 @@ describe("alepha init", () => {
         "/project/subdir/package.json",
         json.stringify({ name: "subdir-app" }),
       );
+
+      await cli.run(cmd.init, { argv: "subdir", root: "/project" });
+
+      expect(fs.wasWritten("/project/subdir/src/api/index.ts")).toBe(true);
+    });
+
+    /**
+     * Same notion of content as the bare-init emptiness check: shell metadata
+     * is not something a person put there, so refusing on it is a false alarm.
+     */
+    it("should allow a named directory holding only Windows shell metadata", async () => {
+      const { fs, cli, cmd } = createTestEnv();
+      await fs.writeFile("/project/subdir/desktop.ini", "[.ShellClassInfo]");
 
       await cli.run(cmd.init, { argv: "subdir", root: "/project" });
 
