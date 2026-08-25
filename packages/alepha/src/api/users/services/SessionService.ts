@@ -21,6 +21,7 @@ import type { UserEntity } from "../entities/users.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import { UsernameSlugger } from "./UsernameSlugger.ts";
+import { UserService } from "./UserService.ts";
 
 export class SessionService {
   protected readonly alepha = $inject(Alepha);
@@ -48,6 +49,7 @@ export class SessionService {
    */
   protected readonly cacheProvider = $inject(DatabaseCacheProvider);
   protected readonly usernameSlugger = $inject(UsernameSlugger);
+  protected readonly userService = $inject(UserService);
 
   protected userAudits(realmName?: string) {
     const realm = this.realmProvider.getRealm(realmName);
@@ -834,16 +836,34 @@ export class SessionService {
 
     const username = await this.generateUniqueUsername(profile, userRealmName);
 
+    // A provider that sends `email_verified` is believed either way. One that
+    // omits it has asserted nothing, and the account used to be created
+    // verified regardless: anyone able to register the victim's address at
+    // such a provider got a verified local account for it, which is the
+    // credential every "sign in with your email" flow downstream trusts.
+    const emailVerified =
+      profile.email_verified ?? realmSettings.trustProviderEmail !== false;
+
     const user = await users.create({
       realm: realm.name,
       username,
       email: profile.email,
       firstName: profile.given_name,
       lastName: profile.family_name,
-      // we trust the OAuth2 provider
-      emailVerified: true,
+      emailVerified,
       roles: realmSettings.defaultRoles,
     });
+
+    if (!emailVerified && profile.email) {
+      this.log.debug("OAuth2 profile email unverified, sending verification", {
+        provider,
+        userId: user.id,
+      });
+      await this.userService.requestEmailVerification(
+        profile.email,
+        userRealmName,
+      );
+    }
 
     if (profile.picture) {
       this.log.debug("Fetching user profile picture from OAuth2 provider", {

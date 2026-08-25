@@ -161,6 +161,33 @@ realm = $realm({
 });
 ```
 
+### An OAuth Sign-Up Is Only as Verified as the Provider Says
+
+A first OAuth login creates the local account, and its `emailVerified` flag
+follows the provider's `email_verified` claim. A provider that sends `false`
+produces an unverified account and the ordinary verification is sent.
+
+A provider that sends no claim has asserted nothing at all.
+`trustProviderEmail` decides what to do with those, and defaults to `true`, so
+the major providers (Google, Microsoft, Apple, GitHub all send the claim) are
+unaffected either way. Turn it off for a realm that accepts logins from a
+provider where anyone can claim an address they do not own:
+
+```typescript check
+import { $realm } from "alepha/api/users";
+
+class App {
+  realm = $realm({
+    features: { notifications: true },
+    // A provider that stays silent about the address is not believed.
+    settings: { trustProviderEmail: false },
+  });
+}
+```
+
+A claim of `false` is honoured whatever this setting says. It only ever
+decides the silent case.
+
 ## Self-Service Account Endpoints
 
 `alepha/api/users` ships the endpoints an account area needs, all under

@@ -102,6 +102,14 @@ export const realmAuthSettingsAtom = $atom({
     verifyEmailRequired: z
       .boolean()
       .describe("Require email verification for user accounts"),
+    trustProviderEmail: z
+      .boolean()
+      .describe(
+        "Whether an OAuth2 provider that does NOT send an `email_verified` claim " +
+          "is trusted about the address anyway. A provider that sends the claim is " +
+          "always believed, `false` included. Turn this off for realms that accept " +
+          "logins from providers where anyone can claim an address they do not own.",
+      ),
     verifyPhoneRequired: z
       .boolean()
       .describe("Require phone verification for user accounts"),
@@ -217,6 +225,9 @@ export const realmAuthSettingsAtom = $atom({
     phoneNumber: "none" as FieldRequirement,
     verifyEmailRequired: false,
     verifyPhoneRequired: false,
+    // The major providers (Google, Microsoft, Apple, GitHub) all send the
+    // claim, so this only decides what happens with the ones that do not.
+    trustProviderEmail: true,
     resetPasswordAllowed: false,
     captchaRequired: false,
     firstNameLastName: "none" as FieldRequirement,
