@@ -3,6 +3,7 @@ import { $action, AlephaServer, ServerProvider } from "alepha/server";
 import { afterEach, describe, expect, test } from "vitest";
 
 import {
+  $cors,
   AlephaServerCors,
   corsOptions,
   type ServerCorsProviderOptions,
@@ -16,6 +17,17 @@ class TestApp {
   });
   ping = $action({
     handler: () => "pong",
+  });
+
+  /**
+   * A route whose own `$cors` allow-list is NARROWER than the global one.
+   * The preflight and the request must agree about it.
+   */
+  scoped = $action({
+    method: "POST",
+    path: "/scoped",
+    use: [$cors({ origin: "https://scoped.example.com", credentials: true })],
+    handler: () => "scoped",
   });
 }
 
@@ -236,5 +248,74 @@ describe("ServerCorsProvider", () => {
     const response = await fetch(`${server.hostname}/api/hello`); // No Origin header
 
     expect(response.headers.get("access-control-allow-origin")).toBeNull();
+  });
+
+  test("should send neither Allow-Origin nor Allow-Credentials to a rejected origin", async () => {
+    await setupServer({
+      origin: "https://allowed.example.com",
+      credentials: true,
+    });
+
+    const response = await fetch(`${server.hostname}/api/hello`, {
+      method: "POST",
+      headers: { Origin: "https://evil.example.com" },
+    });
+
+    expect(response.headers.get("access-control-allow-origin")).toBeNull();
+    // The browser blocks on the missing Allow-Origin either way, but a
+    // refused origin must not be told its credentials are welcome.
+    expect(response.headers.get("access-control-allow-credentials")).toBeNull();
+  });
+
+  test("a per-action $cors allow-list overrides the global one on the request", async () => {
+    await setupServer({ origin: "https://global.example.com" });
+
+    // Allowed globally, refused by the action's own list.
+    const refused = await fetch(`${server.hostname}/api/scoped`, {
+      method: "POST",
+      headers: { Origin: "https://global.example.com" },
+    });
+    expect(refused.headers.get("access-control-allow-origin")).toBeNull();
+
+    // Refused globally, allowed by the action's own list.
+    const accepted = await fetch(`${server.hostname}/api/scoped`, {
+      method: "POST",
+      headers: { Origin: "https://scoped.example.com" },
+    });
+    expect(accepted.headers.get("access-control-allow-origin")).toBe(
+      "https://scoped.example.com",
+    );
+    expect(accepted.headers.get("access-control-allow-credentials")).toBe(
+      "true",
+    );
+  });
+
+  test("a per-action $cors allow-list overrides the global one on the preflight", async () => {
+    await setupServer({ origin: "https://global.example.com" });
+
+    // The generated OPTIONS twin carries no middleware of its own, so before
+    // the fix it answered from the global options and contradicted the
+    // request it was preflighting.
+    const refused = await fetch(`${server.hostname}/api/scoped`, {
+      method: "OPTIONS",
+      headers: {
+        Origin: "https://global.example.com",
+        "Access-Control-Request-Method": "POST",
+      },
+    });
+    expect(refused.status).toBe(204);
+    expect(refused.headers.get("access-control-allow-origin")).toBeNull();
+
+    const accepted = await fetch(`${server.hostname}/api/scoped`, {
+      method: "OPTIONS",
+      headers: {
+        Origin: "https://scoped.example.com",
+        "Access-Control-Request-Method": "POST",
+      },
+    });
+    expect(accepted.status).toBe(204);
+    expect(accepted.headers.get("access-control-allow-origin")).toBe(
+      "https://scoped.example.com",
+    );
   });
 });
