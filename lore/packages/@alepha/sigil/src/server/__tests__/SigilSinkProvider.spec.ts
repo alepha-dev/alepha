@@ -431,4 +431,95 @@ describe("SigilSinkProvider — half-configured", () => {
 
     expect(sink.sinkOrigin()).toBe("http://localhost:3303");
   });
+
+  /**
+   * On the server a batch spans REQUESTS, so the flush window routinely holds
+   * events from several visitors. There used to be one `pendingStamp` per
+   * batch, last writer wins, so every visitor in the window was attributed to
+   * whoever happened to be last: uniques collapsed toward one and the
+   * geography was that of the final request.
+   */
+  describe("several visitors in one batch", () => {
+    it("sends one envelope per stamp, each with its own visitor and country", async () => {
+      const alepha = withSink();
+      const sink = alepha.inject(SigilSinkProvider);
+      const http = alepha.inject(HttpClient) as RecordingHttpClient;
+      await alepha.start();
+
+      await sink.ingest(
+        { views: [{ path: "/a" }] },
+        { visitor: "alice", country: "FR", device: "desktop" },
+      );
+      await sink.ingest(
+        { views: [{ path: "/b" }] },
+        { visitor: "bob", country: "JP", device: "mobile" },
+      );
+      await sink.flush();
+
+      const sent = ingests(http).map((c) => JSON.parse(c.body));
+      expect(sent).toHaveLength(2);
+
+      const byVisitor = new Map(sent.map((e) => [e.visitor, e]));
+      expect([...byVisitor.keys()].sort()).toEqual(["alice", "bob"]);
+      expect(byVisitor.get("alice")).toMatchObject({
+        country: "FR",
+        device: "desktop",
+        views: [{ path: "/a" }],
+      });
+      expect(byVisitor.get("bob")).toMatchObject({
+        country: "JP",
+        device: "mobile",
+        views: [{ path: "/b" }],
+      });
+    });
+
+    it("keeps one visitor's events together across requests", async () => {
+      const alepha = withSink();
+      const sink = alepha.inject(SigilSinkProvider);
+      const http = alepha.inject(HttpClient) as RecordingHttpClient;
+      await alepha.start();
+
+      await sink.ingest({ views: [{ path: "/a" }] }, { visitor: "alice" });
+      await sink.ingest({ views: [{ path: "/x" }] }, { visitor: "bob" });
+      await sink.ingest({ views: [{ path: "/b" }] }, { visitor: "alice" });
+      await sink.flush();
+
+      const sent = ingests(http).map((c) => JSON.parse(c.body));
+      expect(sent).toHaveLength(2);
+
+      const alice = sent.find((e) => e.visitor === "alice");
+      // Both of Alice's views, in one envelope, not split across two.
+      expect(alice.views.map((v: any) => v.path)).toEqual(["/a", "/b"]);
+    });
+
+    it("carries a remainder forward under its own stamp", async () => {
+      const alepha = withSink();
+      const sink = alepha.inject(SigilSinkProvider);
+      const http = alepha.inject(HttpClient) as RecordingHttpClient;
+      await alepha.start();
+
+      // Over the 50-view cap for alice, one view for bob.
+      await sink.ingest(
+        { views: Array.from({ length: 50 }, (_, i) => ({ path: `/a${i}` })) },
+        { visitor: "alice" },
+      );
+      await sink.ingest(
+        { views: Array.from({ length: 30 }, (_, i) => ({ path: `/z${i}` })) },
+        { visitor: "alice" },
+      );
+      await sink.ingest({ views: [{ path: "/b" }] }, { visitor: "bob" });
+
+      await sink.flush();
+      await sink.flush();
+
+      const sent = ingests(http).map((c) => JSON.parse(c.body));
+      const alice = sent.filter((e) => e.visitor === "alice");
+      // 80 views over a cap of 50: two envelopes, and the remainder is still
+      // Alice's rather than whoever flushes next.
+      expect(alice).toHaveLength(2);
+      expect(alice[0].views).toHaveLength(50);
+      expect(alice[1].views).toHaveLength(30);
+      expect(sent.filter((e) => e.visitor === "bob")).toHaveLength(1);
+    });
+  });
 });
