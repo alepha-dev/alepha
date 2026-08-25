@@ -11,19 +11,52 @@
  */
 const cache = new Map<string, CryptoKey>();
 
+/**
+ * Anyone that needs to know when a key appears or disappears.
+ *
+ * The cache is not React state, and the auto-lock below empties it on a timer
+ * with no user action behind it, so nothing re-rendered when it did. The
+ * editor went on believing it was unlocked: its fields stayed editable, every
+ * autosave failed with a toast, the locked panel never appeared, and a reload
+ * lost whatever had been typed since the eviction.
+ */
+type ProtectedKeysListener = () => void;
+const listeners = new Set<ProtectedKeysListener>();
+
+const notify = (): void => {
+  for (const listener of [...listeners]) listener();
+};
+
+/**
+ * Subscribe to key cache changes. Returns the unsubscribe.
+ *
+ * @see listeners
+ */
+export const onProtectedKeysChange = (
+  listener: ProtectedKeysListener,
+): (() => void) => {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+};
+
 export const getProtectedKey = (folioId: string): CryptoKey | undefined =>
   cache.get(folioId);
 
 export const rememberProtectedKey = (folioId: string, key: CryptoKey): void => {
   cache.set(folioId, key);
+  notify();
 };
 
 export const forgetProtectedKey = (folioId: string): void => {
-  cache.delete(folioId);
+  if (cache.delete(folioId)) notify();
 };
 
 export const forgetAllProtectedKeys = (): void => {
+  if (cache.size === 0) return;
   cache.clear();
+  notify();
 };
 
 /**
