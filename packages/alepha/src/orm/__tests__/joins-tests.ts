@@ -946,6 +946,65 @@ export const testPaginateWithJoins = async (alepha: Alepha) => {
   expect(page.page.isLast).toBe(false);
 };
 
+/**
+ * The count half of `paginate(..., { count: true })` was built straight off
+ * the table, with none of the joins the data half uses. A `where` on a
+ * relation key therefore worked for the rows and threw for the total.
+ */
+export const testPaginateCountWithJoinFilter = async (alepha: Alepha) => {
+  const app = alepha.inject(App);
+  await alepha.start();
+
+  await setupTestData(app);
+
+  const page = await app.users.paginate(
+    { page: 0, size: 2 },
+    {
+      with: {
+        city: {
+          join: cities,
+          on: ["cityId", cities.cols.id],
+        },
+      },
+      where: { city: { name: { eq: "Toronto" } } } as never,
+      orderBy: { column: "name", direction: "asc" },
+    },
+    { count: true },
+  );
+
+  // Bob and Diana live in Toronto.
+  expect(page.content.map((it) => it.name)).toEqual(["Bob", "Diana"]);
+  expect(page.page.totalElements).toBe(2);
+  expect(page.page.totalPages).toBe(1);
+};
+
+/**
+ * A join that multiplies rows must not multiply the total. Alice authored two
+ * posts, so joining posts gives two rows for one user.
+ */
+export const testPaginateCountWithFanOutJoin = async (alepha: Alepha) => {
+  const app = alepha.inject(App);
+  await alepha.start();
+
+  const { users: testUsers } = await setupTestData(app);
+
+  const page = await app.users.paginate(
+    { page: 0, size: 10 },
+    {
+      with: {
+        post: {
+          join: posts,
+          on: ["id", posts.cols.authorId],
+        },
+      },
+      where: { id: { eq: testUsers.alice.id } } as never,
+    },
+    { count: true },
+  );
+
+  expect(page.page.totalElements).toBe(1);
+};
+
 export const testPaginateWithNestedJoins = async (alepha: Alepha) => {
   const app = alepha.inject(App);
   await alepha.start();

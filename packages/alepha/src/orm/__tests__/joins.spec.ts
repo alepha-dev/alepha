@@ -24,6 +24,8 @@ import {
   testNestedJoin2LevelsPostAuthorCity,
   testNestedJoin2LevelsUserCityCountry,
   testNestedJoin3LevelsPostAuthorCityCountry,
+  testPaginateCountWithFanOutJoin,
+  testPaginateCountWithJoinFilter,
   testPaginateWithJoins,
   testPaginateWithNestedJoins,
   testPostWithAuthorCommentsAndCommentAuthors,
@@ -295,6 +297,28 @@ describe("joins", () => {
     });
     it("should paginate with joins (postgres)", async () => {
       await testPaginateWithJoins(Alepha.create().with(AlephaOrmPostgres));
+    });
+
+    it("should count with a relation-key filter (sqlite)", async () => {
+      await testPaginateCountWithJoinFilter(
+        Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+      );
+    });
+    it("should count with a relation-key filter (postgres)", async () => {
+      await testPaginateCountWithJoinFilter(
+        Alepha.create().with(AlephaOrmPostgres),
+      );
+    });
+
+    it("should not let a fan-out join inflate the total (sqlite)", async () => {
+      await testPaginateCountWithFanOutJoin(
+        Alepha.create({ env: { DATABASE_URL: "sqlite://:memory:" } }),
+      );
+    });
+    it("should not let a fan-out join inflate the total (postgres)", async () => {
+      await testPaginateCountWithFanOutJoin(
+        Alepha.create().with(AlephaOrmPostgres),
+      );
     });
 
     it("should paginate with nested joins (sqlite)", async () => {

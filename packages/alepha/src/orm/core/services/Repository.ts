@@ -21,6 +21,7 @@ import {
   asc,
   avg,
   count,
+  countDistinct,
   desc,
   and as drizzleAnd,
   eq as drizzleEq,
@@ -715,16 +716,14 @@ export abstract class Repository<T extends ZObject> {
 
     if (opts.count) {
       tasks.push(
-        // Same db resolution as `count()`: `this.db` ignored an explicit
-        // `opts.tx`, so `paginate(..., { count: true, tx })` ran its count
-        // OUTSIDE the transaction — reading rows the transaction had not
-        // committed, or missing rows it had written.
-        (opts.tx === null ? this.provider.db : (opts.tx ?? this.db))
-          .$count(this.table, this.toSQL(countWhere as PgQueryWhereOrSQL<T>))
-          .then((it: number) => {
-            timers.count = this.dateTimeProvider.nowMillis() - timers.count;
-            return it;
-          }),
+        this.countForPage(
+          countWhere as PgQueryWhereOrSQL<T>,
+          query.with,
+          opts,
+        ).then((it: number) => {
+          timers.count = this.dateTimeProvider.nowMillis() - timers.count;
+          return it;
+        }),
       );
     }
 
@@ -746,6 +745,52 @@ export abstract class Repository<T extends ZObject> {
     }
 
     return response as Page<PgStatic<T, R>>;
+  }
+
+  /**
+   * The count half of {@link paginate}, over the SAME joins as the row half.
+   *
+   * It used to be a bare `$count(this.table, where)`. A `where` on a relation
+   * key then resolved against the base table, where a key like `city` happens
+   * to exist as a column reference, so the comparison compiled and matched
+   * nothing: the rows came back correct and the total came back 0. Silently.
+   *
+   * With joins in play the count has to be DISTINCT over the primary key. A
+   * one-to-many join returns one row per child, and counting those would
+   * report a user with three posts as three users.
+   */
+  protected async countForPage(
+    where: PgQueryWhereOrSQL<T>,
+    withRelations: PgRelationMap<T> | undefined,
+    opts: StatementOptions = {},
+  ): Promise<number> {
+    // Same db resolution as `count()`: `this.db` ignored an explicit
+    // `opts.tx`, so `paginate(..., { count: true, tx })` ran its count
+    // OUTSIDE the transaction — reading rows the transaction had not
+    // committed, or missing rows it had written.
+    const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
+
+    if (!withRelations) {
+      return await db.$count(this.table, this.toSQL(where));
+    }
+
+    const builder = db
+      .select({ total: countDistinct(this.col(this.id.key)) })
+      .from(this.table as PgTable);
+
+    const joins: Array<PgJoin> = [];
+    this.relationManager.buildJoins(
+      this.provider,
+      builder as never,
+      joins,
+      withRelations as PgRelationMap<ZObject>,
+      this.table,
+    );
+
+    builder.where(this.toSQL(where, joins));
+
+    const rows = await builder.execute();
+    return Number(rows[0]?.total ?? 0);
   }
 
   /**
