@@ -83,6 +83,36 @@ export class CartService {
   }
 
   /**
+   * The cart a signed-in customer already owns, if any.
+   *
+   * Most recently touched first: a customer who checked out from one device
+   * and came back on another has more than one, and the live one is the one
+   * they last touched.
+   */
+  public async forUser(userId: string): Promise<CartEntity | undefined> {
+    // `findMany` rather than `findOne`, which takes no `orderBy` — and the
+    // order is the point: without it "the user's cart" is whichever row the
+    // database happened to return.
+    const [cart] = await this.cartRepo.findMany({
+      where: { userId: { eq: userId } },
+      orderBy: { column: "updatedAt", direction: "desc" },
+      limit: 1,
+    });
+    return cart;
+  }
+
+  /**
+   * Attach an anonymous cart to the customer who just signed in.
+   *
+   * This is what makes "my orders" work: the cart's `userId` is copied to the
+   * checkout session and from there to the order, so a cart that never learned
+   * who its owner was produced an order nobody owned.
+   */
+  public async claim(cartId: string, userId: string): Promise<CartEntity> {
+    return this.cartRepo.updateById(cartId, { userId });
+  }
+
+  /**
    * Mint a token for a visitor who has none. The caller is responsible for
    * putting it in a signed cookie — this service never touches HTTP.
    */
