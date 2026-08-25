@@ -9,6 +9,7 @@ import { MyAccountController } from "./controllers/MyAccountController.ts";
 import { MyAvatarController } from "./controllers/MyAvatarController.ts";
 import { MyConnectionController } from "./controllers/MyConnectionController.ts";
 import { MyIdentityController } from "./controllers/MyIdentityController.ts";
+import { MyMfaController } from "./controllers/MyMfaController.ts";
 import { MyPasswordController } from "./controllers/MyPasswordController.ts";
 import { MyProfileController } from "./controllers/MyProfileController.ts";
 import { MySessionController } from "./controllers/MySessionController.ts";
@@ -19,9 +20,11 @@ import { UserNotifications } from "./notifications/UserNotifications.ts";
 import { RealmProvider } from "./providers/RealmProvider.ts";
 import { CredentialService } from "./services/CredentialService.ts";
 import { IdentityService } from "./services/IdentityService.ts";
+import { MfaService } from "./services/MfaService.ts";
 import { RegistrationService } from "./services/RegistrationService.ts";
 import { SessionCrudService } from "./services/SessionCrudService.ts";
 import { SessionService } from "./services/SessionService.ts";
+import { TotpService } from "./services/TotpService.ts";
 import { UsernameSlugger } from "./services/UsernameSlugger.ts";
 import { UserProfileMapper } from "./services/UserProfileMapper.ts";
 import { UserService } from "./services/UserService.ts";
@@ -39,6 +42,7 @@ export * from "./controllers/MyAccountController.ts";
 export * from "./controllers/MyAvatarController.ts";
 export * from "./controllers/MyConnectionController.ts";
 export * from "./controllers/MyIdentityController.ts";
+export * from "./controllers/MyMfaController.ts";
 export * from "./controllers/MyPasswordController.ts";
 export * from "./controllers/MyProfileController.ts";
 export * from "./controllers/MySessionController.ts";
@@ -59,6 +63,7 @@ export * from "./schemas/identityQuerySchema.ts";
 export * from "./schemas/identityResourceSchema.ts";
 export * from "./schemas/myConnectionSchema.ts";
 export * from "./schemas/myIdentitySchema.ts";
+export * from "./schemas/myMfaStatusSchema.ts";
 export * from "./schemas/myProfileSchema.ts";
 export * from "./schemas/passwordResetIntentResponseSchema.ts";
 export * from "./schemas/realmConfigSchema.ts";
@@ -72,11 +77,13 @@ export * from "./schemas/userQuerySchema.ts";
 export * from "./schemas/userResourceSchema.ts";
 export * from "./services/CredentialService.ts";
 export * from "./services/IdentityService.ts";
+export * from "./services/MfaService.ts";
 export * from "./services/RegistrationService.ts";
 export * from "./services/SessionCrudService.ts";
 export * from "./services/SessionService.ts";
 export * from "./services/UsernameSlugger.ts";
 export * from "./services/UserProfileMapper.ts";
+export * from "./services/TotpService.ts";
 export * from "./services/UserService.ts";
 export * from "./storage/UserStorage.ts";
 
@@ -105,6 +112,8 @@ export const AlephaApiUsers = $module({
     SessionCrudService,
     CredentialService,
     RegistrationService,
+    MfaService,
+    TotpService,
     UserService,
     UsernameSlugger,
     UserProfileMapper,
@@ -112,6 +121,7 @@ export const AlephaApiUsers = $module({
     UserController,
     AdminUserController,
     AdminSessionController,
+    MyMfaController,
     MyPasswordController,
     MySessionController,
     MyProfileController,

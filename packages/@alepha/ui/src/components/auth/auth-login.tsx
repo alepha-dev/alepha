@@ -10,14 +10,15 @@ import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { Separator } from "@alepha/ui/components/ui/separator";
 import { AlephaError, SchemaValidationError, z } from "alepha";
 import type { RealmConfig } from "alepha/api/users";
-import { useAuth } from "alepha/react/auth";
+import { isMfaRequired, type MfaChallenge, useAuth } from "alepha/react/auth";
 import { FormValidationError, useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { HttpError } from "alepha/server";
 import { AlertCircle, Mail, User } from "lucide-react";
-import { type ReactNode, useEffect, useMemo } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
+import { AuthMfaStep } from "./auth-mfa-step.tsx";
 import { safeRedirect } from "./safe-redirect.ts";
 
 export interface AuthLoginProps {
@@ -62,6 +63,12 @@ export const AuthLogin = (props: AuthLoginProps) => {
   const { tr } = useI18n();
   const redirect = safeRedirect(router.query.redirect);
   const error = router.query.error;
+
+  /**
+   * Set once the password has been accepted and a second factor is owed.
+   * While it is set, the code step replaces the credentials form.
+   */
+  const [challenge, setChallenge] = useState<MfaChallenge>();
 
   const credentialsProvider = props.realmConfig.authenticationMethods.find(
     (it) => it.type === "CREDENTIALS",
@@ -135,6 +142,12 @@ export const AuthLogin = (props: AuthLoginProps) => {
           force: true,
         });
       } catch (err) {
+        // The password was right and the realm wants a second factor. Not a
+        // failure: swap the form for the code step and carry on.
+        if (isMfaRequired(err)) {
+          setChallenge(err.data);
+          return;
+        }
         if (
           err instanceof HttpError &&
           err.error === "InvalidCredentialsError"
@@ -187,7 +200,8 @@ export const AuthLogin = (props: AuthLoginProps) => {
     formState.error && !(formState.error instanceof SchemaValidationError)
       ? formState.error.message
       : undefined;
-  const showDivider = credentialsProvider && externalMethods.length > 0;
+  const showDivider =
+    !challenge && credentialsProvider && externalMethods.length > 0;
   // Propagate BOTH realm and the post-auth redirect to the register / reset
   // links — dropping `redirect` here strands a user who signs up mid-flow
   // (e.g. an OIDC authorize continuation) on the home page. Mirrors the
@@ -238,7 +252,19 @@ export const AuthLogin = (props: AuthLoginProps) => {
             </Alert>
           )}
 
-          {credentialsProvider && (
+          {challenge && (
+            <AuthMfaStep
+              challenge={challenge}
+              onVerified={async () => {
+                await router.push(safeRedirect(router.query.redirect), {
+                  force: true,
+                });
+              }}
+              onCancel={() => setChallenge(undefined)}
+            />
+          )}
+
+          {!challenge && credentialsProvider && (
             <form {...form.props} className="flex flex-col gap-4">
               <Control
                 label={identifierLabel}
@@ -279,7 +305,7 @@ export const AuthLogin = (props: AuthLoginProps) => {
             </div>
           )}
 
-          {externalMethods.length > 0 && (
+          {!challenge && externalMethods.length > 0 && (
             <div className="flex flex-col gap-2">
               {externalMethods.map((method) => {
                 const provider =
@@ -306,7 +332,7 @@ export const AuthLogin = (props: AuthLoginProps) => {
             </div>
           )}
 
-          {settings.registrationAllowed && (
+          {!challenge && settings.registrationAllowed && (
             <p className="text-muted-foreground text-center text-sm">
               {tr("auth.login.noAccount", {
                 default: "Don't have an account?",

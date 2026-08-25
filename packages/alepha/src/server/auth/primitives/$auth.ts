@@ -22,6 +22,7 @@ import {
 } from "openid-client";
 
 import type { OAuth2Profile } from "../providers/ServerAuthProvider.ts";
+import type { SecondFactorMethod } from "../schemas/secondFactorMethodSchema.ts";
 import type { Tokens } from "../schemas/tokensSchema.ts";
 
 /**
@@ -534,4 +535,44 @@ export interface WithLoginFn {
   login?: (
     provider: string,
   ) => (creds: Credentials) => Async<UserAccount | undefined>;
+}
+
+/**
+ * The seam through which an issuer declares that a password is not enough.
+ *
+ * Filled in by `$realm`, exactly like {@link WithLoginFn} and
+ * {@link WithLinkFn}. It exists so the login route can ask "does this user
+ * owe a second factor" without `alepha/server/auth` importing
+ * `alepha/api/users`, which would couple the two modules and break the
+ * `alepha` barrel.
+ *
+ * An issuer that fills none of these has no second factor, and the login
+ * route behaves exactly as it did before.
+ */
+export interface WithSecondFactorFn {
+  /**
+   * Which factors this user must clear. An empty list means the primary
+   * credential was enough.
+   */
+  secondFactor?: (user: UserAccount) => Async<SecondFactorMethod[]>;
+
+  /**
+   * Begin a factor: a no-op for TOTP, and what sends the message for any
+   * out-of-band method. The returned `sentTo` is a masked destination for
+   * the UI to display, never the full address.
+   */
+  startSecondFactor?: (
+    user: UserAccount,
+    method: SecondFactorMethod,
+  ) => Async<{ sentTo?: string }>;
+
+  /**
+   * Check a submitted code. Returns a plain boolean because every failure
+   * has to look identical from the outside.
+   */
+  verifySecondFactor?: (
+    user: UserAccount,
+    method: SecondFactorMethod,
+    code: string,
+  ) => Async<boolean>;
 }

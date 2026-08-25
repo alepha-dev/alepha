@@ -81,6 +81,10 @@ export class RealmProvider {
           ...realmAuthSettingsAtom.options.default.refreshToken,
           ...realmOptions.settings?.refreshToken,
         },
+        mfa: {
+          ...realmAuthSettingsAtom.options.default.mfa,
+          ...realmOptions.settings?.mfa,
+        },
       },
       features,
       getSettings: async function () {

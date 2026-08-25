@@ -37,6 +37,21 @@ const usernameFieldRequirement = (description: string) =>
     .describe(description);
 
 /**
+ * Availability of a second authentication factor.
+ *
+ * - `"disabled"`: the method is not offered at all.
+ * - `"optional"`: users may enroll, and are challenged once they have.
+ * - `"required"`: every user must clear this factor, and is pushed through
+ *   enrollment after their first successful password login if they have not.
+ */
+export type SecondFactorRequirement = "disabled" | "optional" | "required";
+
+const secondFactorRequirement = (description: string) =>
+  z
+    .union([z.const("disabled"), z.const("optional"), z.const("required")])
+    .describe(description);
+
+/**
  * Full realm auth configuration — the server's view.
  *
  * `serverOnly` because this is the unredacted record: `adminEmails` and
@@ -163,6 +178,19 @@ export const realmAuthSettingsAtom = $atom({
         "Max registration attempts per IP before temporary lockout. Default 10 protects against signup abuse; raise it in dev/e2e environments where a single localhost IP spawns many test users.",
       )
       .default(10),
+    mfa: z.object({
+      totp: secondFactorRequirement(
+        "Authenticator-app codes (TOTP, RFC 6238). 'optional' lets a user " +
+          "enroll from their account page; 'required' forces enrollment " +
+          "after the first successful password login.",
+      ),
+      emailCode: secondFactorRequirement(
+        "One-time codes sent by email. Needs `features.notifications` and a " +
+          "verified email address on the account. Weaker than TOTP: when " +
+          "password reset also goes through email, a compromised mailbox is " +
+          "both factors at once.",
+      ),
+    }),
     refreshToken: z.object({
       expirationIdle: z
         .integer()
@@ -208,6 +236,12 @@ export const realmAuthSettingsAtom = $atom({
       windowMs: 15 * 60 * 1000,
     },
     registrationIpMaxAttempts: 10,
+    mfa: {
+      // Off by default: a second factor is a deployment decision, and turning
+      // one on silently would lock out every existing account.
+      totp: "disabled" as SecondFactorRequirement,
+      emailCode: "disabled" as SecondFactorRequirement,
+    },
     refreshToken: {
       // expirationIdle: undefined — opt-in
     },

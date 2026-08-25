@@ -5,4 +5,6 @@ export const alephaServerAuthRoutes = {
   token: "/_auth/token",
   refresh: "/_auth/refresh",
   userinfo: "/_auth/userinfo",
+  mfa: "/_auth/mfa",
+  mfaResend: "/_auth/mfa/resend",
 };

@@ -4667,6 +4667,7 @@ __metadata:
     tsdown: "npm:^0.22.14"
     tsx: "npm:^4.23.12"
     typescript: "npm:^7.0.2"
+    uqr: "npm:^0.1.3"
     vite: "npm:^8.2.1"
     vite-bundle-analyzer: "npm:^1.3.9"
     vitest: "npm:^4.1.10"
@@ -13470,6 +13471,13 @@ __metadata:
   bin:
     update-browserslist-db: cli.js
   checksum: 10c0/13a00355ea822388f68af57410ce3255941d5fb9b7c49342c4709a07c9f230bbef7f7499ae0ca7e0de532e79a82cc0c4edbd125f1a323a1845bf914efddf8bec
+  languageName: node
+  linkType: hard
+
+"uqr@npm:^0.1.3":
+  version: 0.1.3
+  resolution: "uqr@npm:0.1.3"
+  checksum: 10c0/7e0ef173b736fb5c93179659b4fe0720c803d45fa8628aaf2715a399b33a15a3d26d9001e05e026421d544a814e971cf0fa66b481edb649d256e7a17d79777c0
   languageName: node
   linkType: hard
 

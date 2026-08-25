@@ -41,6 +41,31 @@ export const useAuth = <T extends object = any>() => {
       await alepha.inject(ReactAuth).login(provider as string, options);
     },
     /**
+     * Clear a second-factor challenge that `login()` refused with, and
+     * finish signing in.
+     *
+     * @example
+     * ```typescript
+     * try {
+     *   await login("credentials", { username, password });
+     * } catch (error) {
+     *   if (isMfaRequired(error)) {
+     *     await loginMfa(error.data.challenge, code);
+     *   }
+     * }
+     * ```
+     */
+    loginMfa: async (challenge: string, code: string) => {
+      await alepha.inject(ReactAuth).loginMfa(challenge, code);
+    },
+    /**
+     * Send an out-of-band code again. Does nothing useful for a factor whose
+     * code is generated on the user's own device.
+     */
+    resendMfaCode: async (challenge: string) => {
+      return alepha.inject(ReactAuth).resendMfaCode(challenge);
+    },
+    /**
      * UI permission check — does the current user hold this permission?
      * Supports exact and wildcard names (e.g. `"admin:*"`, `"admin:user:read"`).
      *

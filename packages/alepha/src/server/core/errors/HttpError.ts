@@ -38,6 +38,7 @@ export class HttpError extends AlephaError {
     };
 
     if (error.details) json.details = error.details;
+    if (error.data) json.data = error.data;
     if (error.requestId) json.requestId = error.requestId;
     if (error.reason) json.cause = error.reason;
 
@@ -49,6 +50,14 @@ export class HttpError extends AlephaError {
 
   public readonly requestId?: string;
   public readonly details?: string;
+
+  /**
+   * Machine-readable payload for an error the client has to act on rather
+   * than merely display. Survives the round trip: the server serializes it
+   * in {@link HttpError.toJSON} and `HttpClient` reads it back through
+   * `errorSchema`.
+   */
+  public readonly data?: Record<string, any>;
   public readonly reason?: {
     name: string;
     message: string;
@@ -61,6 +70,7 @@ export class HttpError extends AlephaError {
 
     this.status = options.status ?? 500;
     this.details = options.details;
+    this.data = options.data;
     this.requestId = options.requestId;
 
     if (typeof options.cause === "object") {

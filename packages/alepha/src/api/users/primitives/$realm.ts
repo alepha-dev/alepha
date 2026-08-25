@@ -31,6 +31,7 @@ import {
   type LinkAccountOptions,
   type WithLinkFn,
   type WithLoginFn,
+  type WithSecondFactorFn,
 } from "alepha/server/auth";
 
 import {
@@ -46,10 +47,14 @@ import { DEFAULT_USER_REALM_NAME, type users } from "../entities/users.ts";
 import { UserJobs } from "../jobs/UserJobs.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
+import { MfaService } from "../services/MfaService.ts";
 import { SessionService } from "../services/SessionService.ts";
 import { UserStorage } from "../storage/UserStorage.ts";
 
-export type RealmPrimitive = IssuerPrimitive & WithLinkFn & WithLoginFn;
+export type RealmPrimitive = IssuerPrimitive &
+  WithLinkFn &
+  WithLoginFn &
+  WithSecondFactorFn;
 
 /**
  * Already configured realm for user management.
@@ -70,6 +75,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
   const sessionService = alepha.inject(SessionService);
   const securityProvider = alepha.inject(SecurityProvider);
   const realmProvider = alepha.inject(RealmProvider);
+  const mfaService = alepha.inject(MfaService);
 
   const name = options.issuer?.name ?? DEFAULT_USER_REALM_NAME;
 
@@ -276,6 +282,17 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
     return (ctx: LinkAccountOptions) =>
       sessionService.link(name, ctx.user, realm.name);
   };
+
+  // Second factor. Filled the same way as `login` and `link`: the login route
+  // lives in `alepha/server/auth` and must not import this module, so the
+  // realm hands it three closures instead.
+  realm.secondFactor = (user) => mfaService.methodsFor(user.id, realm.name);
+
+  realm.startSecondFactor = (user, method) =>
+    mfaService.start(user.id, method, realm.name);
+
+  realm.verifySecondFactor = (user, method, code) =>
+    mfaService.verify(user.id, method, code, realm.name);
 
   realm.login = (name: string) => {
     return async (credentials: Credentials) => {

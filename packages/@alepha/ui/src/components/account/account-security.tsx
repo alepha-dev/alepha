@@ -1,4 +1,5 @@
 import { AccountDeleteDialog } from "@alepha/ui/components/account/account-delete-dialog";
+import { AccountMfaDialog } from "@alepha/ui/components/account/account-mfa-dialog";
 import { AccountPasswordDialog } from "@alepha/ui/components/account/account-password-dialog";
 import { SettingsDangerSection } from "@alepha/ui/components/settings/settings-danger-section";
 import { SettingsRow } from "@alepha/ui/components/settings/settings-row";
@@ -6,11 +7,16 @@ import { SettingsSection } from "@alepha/ui/components/settings/settings-section
 import { Button } from "@alepha/ui/components/ui/button";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import type { MyIdentity, MyIdentityController } from "alepha/api/users";
-import { useClient } from "alepha/react";
+import type {
+  MyIdentity,
+  MyIdentityController,
+  MyMfaController,
+  MyMfaStatus,
+} from "alepha/api/users";
+import { useClient, useQuery } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
-import { KeyRound, Trash2 } from "lucide-react";
+import { KeyRound, ShieldCheck, ShieldOff, Trash2 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
 import { PROVIDER_LABELS } from "../auth/provider-labels.ts";
@@ -36,6 +42,7 @@ export interface AccountSecurityProps {
  */
 const AccountSecurity = (props: AccountSecurityProps) => {
   const api = useClient<MyIdentityController>();
+  const mfaApi = useClient<MyMfaController>();
   const auth = useAuth();
   const dialog = useDialog();
   const toaster = useToast();
@@ -46,10 +53,48 @@ const AccountSecurity = (props: AccountSecurityProps) => {
   );
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [mfaOpen, setMfaOpen] = useState(false);
+
+  const { data: mfa, refetch: reloadMfa } = useQuery<MyMfaStatus>(
+    { handler: () => mfaApi.getMyMfa() as Promise<MyMfaStatus> },
+    [],
+  );
 
   const hasPassword = identities.some((it) => it.provider === "credentials");
 
+  /**
+   * A TOTP enrollment is stored as an identity row, but it is not a way to
+   * sign in. Listing it here would both duplicate the two-factor row below
+   * and offer a Remove button that strips the factor without asking for a
+   * code, which is exactly what `disableTotp` refuses to do.
+   */
+  const signInMethods = identities.filter((it) => it.provider !== "totp");
+
   const reload = async () => setIdentities(await api.listMyIdentities());
+
+  /**
+   * Turning it off asks for a current code rather than just a confirmation.
+   * A session alone is not proof: someone at an unattended signed-in browser
+   * could otherwise strip the factor and come back later at leisure.
+   */
+  const disableMfa = async () => {
+    const code = await dialog.prompt({
+      title: "Turn off two-factor authentication?",
+      description:
+        "Enter a code from your authenticator app, or one of your recovery codes.",
+      confirmLabel: "Turn off",
+    });
+    if (!code) {
+      return;
+    }
+    try {
+      await mfaApi.disableTotp({ body: { code: String(code) } });
+      await reloadMfa();
+      toaster.show("Two-factor authentication is off", "success");
+    } catch (error: any) {
+      toaster.show(error?.message ?? "That code is not valid", "danger");
+    }
+  };
 
   const unlink = async (identity: MyIdentity) => {
     const label = PROVIDER_LABELS[identity.provider] ?? identity.provider;
@@ -77,13 +122,13 @@ const AccountSecurity = (props: AccountSecurityProps) => {
         title="Sign-in methods"
         description="At least one must remain. Removing the last would lock you out permanently."
       >
-        {identities.map((identity) => (
+        {signInMethods.map((identity) => (
           <SettingsRow
             key={identity.id}
             label={PROVIDER_LABELS[identity.provider] ?? identity.provider}
             description={`Added ${String(l(identity.createdAt, { date: "ll" }))}`}
           >
-            {identities.length > 1 ? (
+            {signInMethods.length > 1 ? (
               <Button
                 variant="ghost"
                 size="sm"
@@ -95,6 +140,31 @@ const AccountSecurity = (props: AccountSecurityProps) => {
             ) : null}
           </SettingsRow>
         ))}
+
+        <SettingsRow
+          label="Two-factor authentication"
+          description={
+            mfa?.totp.enabled
+              ? `On. ${mfa.totp.recoveryCodesLeft} recovery ${mfa.totp.recoveryCodesLeft === 1 ? "code" : "codes"} left.`
+              : "Ask for a code from an authenticator app as well as your password."
+          }
+        >
+          {mfa?.totp.enabled ? (
+            <Button variant="secondary" size="sm" onClick={disableMfa}>
+              <ShieldOff className="size-4" />
+              Turn off
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setMfaOpen(true)}
+            >
+              <ShieldCheck className="size-4" />
+              Set up
+            </Button>
+          )}
+        </SettingsRow>
 
         <SettingsRow
           label="Password"
@@ -135,6 +205,14 @@ const AccountSecurity = (props: AccountSecurityProps) => {
         hasPassword={hasPassword}
         onOpenChange={setPasswordOpen}
         onDone={reload}
+      />
+
+      <AccountMfaDialog
+        open={mfaOpen}
+        onOpenChange={setMfaOpen}
+        onDone={async () => {
+          await reloadMfa();
+        }}
       />
 
       <AccountDeleteDialog

@@ -129,6 +129,19 @@ export const uiFr: Record<string, string> = {
   "auth.login.signUp": "Créer un compte",
   "auth.login.submit": "Se connecter",
   "auth.login.username": "Identifiant",
+  "auth.mfa.back": "Retour à la connexion",
+  "auth.mfa.emailHint": "Saisissez le code que nous avons envoyé à $1.",
+  "auth.mfa.emailHintGeneric":
+    "Saisissez le code que nous avons envoyé à votre adresse e-mail.",
+  "auth.mfa.error": "Une erreur est survenue. Merci de réessayer.",
+  "auth.mfa.invalid": "Ce code n'est pas valide. Réessayez.",
+  "auth.mfa.resend": "Envoyer un nouveau code",
+  "auth.mfa.resendFailed":
+    "Impossible d'envoyer un nouveau code. Réessayez dans un instant.",
+  "auth.mfa.submit": "Valider",
+  "auth.mfa.title": "Vérification en deux étapes",
+  "auth.mfa.totpHint":
+    "Saisissez le code affiché par votre application d'authentification.",
   "auth.register.backToSignIn": "Retour à la connexion",
   "auth.register.cancel": "Annuler",
   "auth.register.continueWith": "Continuer avec $1",

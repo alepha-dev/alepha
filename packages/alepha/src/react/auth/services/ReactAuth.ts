@@ -5,6 +5,7 @@ import { currentUserAtom, type UserAccountToken } from "alepha/security";
 import { HttpClient } from "alepha/server";
 import {
   alephaServerAuthRoutes,
+  mfaResendResponseSchema,
   type Tokens,
   tokenResponseSchema,
   userinfoResponseSchema,
@@ -129,6 +130,54 @@ export class ReactAuth {
     throw new Redirection(
       `${alephaServerAuthRoutes.login}?provider=${provider}${realmParam}&redirect_uri=${options.redirect || "/"}`,
     );
+  }
+
+  /**
+   * Finish a sign-in that was interrupted by a second-factor challenge.
+   *
+   * Takes the challenge that {@link ReactAuth.login} refused with, plus the
+   * code the user produced, and mints the real session.
+   */
+  public async loginMfa(
+    challenge: string,
+    code: string,
+    options: { hostname?: string } = {},
+  ): Promise<Tokens> {
+    const { data } = await this.httpClient.fetch(
+      `${options.hostname || ""}${alephaServerAuthRoutes.mfa}`,
+      {
+        method: "POST",
+        body: JSON.stringify({ challenge, code }),
+        schema: { response: tokenResponseSchema },
+      },
+    );
+
+    this.alepha.store.set("alepha.server.request.apiLinks", data.api);
+    this.alepha.store.set(currentUserAtom, data.user);
+
+    return data;
+  }
+
+  /**
+   * Ask for another copy of an out-of-band code. A no-op for TOTP, whose
+   * code never left the user's device in the first place.
+   */
+  public async resendMfaCode(
+    challenge: string,
+    options: { hostname?: string } = {},
+  ): Promise<{ sentTo?: string }> {
+    const { data } = await this.httpClient.fetch(
+      `${options.hostname || ""}${alephaServerAuthRoutes.mfaResend}`,
+      {
+        method: "POST",
+        body: JSON.stringify({ challenge }),
+        schema: {
+          response: mfaResendResponseSchema,
+        },
+      },
+    );
+
+    return data;
   }
 
   public logout() {

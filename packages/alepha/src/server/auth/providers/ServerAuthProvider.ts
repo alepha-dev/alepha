@@ -1,10 +1,12 @@
 import { $hook, $inject, Alepha, z } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider, type Duration } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import {
   InvalidCredentialsError,
   type IssuerPrimitive,
   SecurityError,
+  SecurityProvider,
   type UserAccount,
 } from "alepha/security";
 import {
@@ -30,12 +32,16 @@ import {
 } from "openid-client";
 
 import { alephaServerAuthRoutes } from "../constants/routes.ts";
+import { MfaRequiredError } from "../errors/MfaRequiredError.ts";
 import {
   $auth,
   type AccessToken,
   type AuthPrimitive,
+  type WithSecondFactorFn,
 } from "../primitives/$auth.ts";
 import type { AuthenticationProvider } from "../schemas/authenticationProviderSchema.ts";
+import { mfaResendResponseSchema } from "../schemas/mfaResendResponseSchema.ts";
+import type { SecondFactorMethod } from "../schemas/secondFactorMethodSchema.ts";
 import { tokenResponseSchema } from "../schemas/tokenResponseSchema.ts";
 import { type Tokens, tokensSchema } from "../schemas/tokensSchema.ts";
 import { userinfoResponseSchema } from "../schemas/userinfoResponseSchema.ts";
@@ -47,6 +53,8 @@ export class ServerAuthProvider {
   protected readonly cookieParser = $inject(CookieParser);
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
   protected readonly serverLinksProvider = $inject(ServerLinksProvider);
+  protected readonly securityProvider = $inject(SecurityProvider);
+  protected readonly cryptoProvider = $inject(CryptoProvider);
 
   /**
    * Validates that a redirect URI is a safe relative path, or — when
@@ -290,6 +298,20 @@ export class ServerAuthProvider {
         throw new InvalidCredentialsError();
       }
 
+      // The password checked out. Before minting anything, ask the issuer
+      // whether it wants a second factor. An issuer that does not fill the
+      // seam answers with an empty list and nothing here changes.
+      const methods = await this.secondFactorMethods(issuer, user);
+      if (methods.length > 0) {
+        throw await this.challengeSecondFactor({
+          issuer,
+          user,
+          methods,
+          provider: query.provider,
+          realm: query.realm,
+        });
+      }
+
       const tokens = {
         provider: query.provider,
         ...(await issuer.createToken(user)),
@@ -310,6 +332,217 @@ export class ServerAuthProvider {
       };
     },
   });
+
+  /**
+   * Clear a second-factor challenge and mint the session it was standing in
+   * for.
+   *
+   * Separate from `/_auth/token` so the token route keeps its exact response
+   * contract: this one answers with the same `tokenResponseSchema` any
+   * successful login does, so a client only has to branch once.
+   */
+  public readonly mfa = $route({
+    path: alephaServerAuthRoutes.mfa,
+    method: "POST",
+    schema: {
+      body: z.object({
+        challenge: z.text({ size: "rich" }),
+        code: z.text(),
+      }),
+      response: tokenResponseSchema,
+    },
+    handler: async ({ body, cookies }) => {
+      const challenge = this.readChallenge(body.challenge);
+      if (!challenge) {
+        // Same error an expired or forged challenge gets: a caller must not
+        // be able to tell which of the two it hit.
+        throw new InvalidCredentialsError();
+      }
+
+      const provider = this.provider({
+        provider: challenge.provider,
+        realm: challenge.realm,
+      });
+      const issuer = provider.issuer as
+        | (IssuerPrimitive & WithSecondFactorFn)
+        | undefined;
+
+      if (!issuer?.verifySecondFactor) {
+        throw new SecurityError(
+          `Auth provider '${challenge.provider}' cannot verify a second factor`,
+        );
+      }
+
+      const method = challenge.methods[0]!;
+      const passed = await issuer.verifySecondFactor(
+        challenge.user,
+        method,
+        body.code,
+      );
+
+      if (!passed) {
+        throw new InvalidCredentialsError();
+      }
+
+      const tokens = {
+        provider: challenge.provider,
+        ...(await issuer.createToken(challenge.user)),
+      };
+
+      this.setTokens(tokens, cookies);
+
+      const api = await this.serverLinksProvider.getUserApiLinks({
+        user: challenge.user,
+      });
+
+      return {
+        ...tokens,
+        user: challenge.user,
+        api,
+      };
+    },
+  });
+
+  /**
+   * Send an out-of-band code again, for the user who did not get the first
+   * one. A no-op for TOTP, whose code is generated on the user's device.
+   */
+  public readonly mfaResend = $route({
+    path: alephaServerAuthRoutes.mfaResend,
+    method: "POST",
+    schema: {
+      body: z.object({
+        challenge: z.text({ size: "rich" }),
+      }),
+      response: mfaResendResponseSchema,
+    },
+    handler: async ({ body }) => {
+      const challenge = this.readChallenge(body.challenge);
+      if (!challenge) {
+        throw new InvalidCredentialsError();
+      }
+
+      const provider = this.provider({
+        provider: challenge.provider,
+        realm: challenge.realm,
+      });
+      const issuer = provider.issuer as
+        | (IssuerPrimitive & WithSecondFactorFn)
+        | undefined;
+
+      const started = await issuer?.startSecondFactor?.(
+        challenge.user,
+        challenge.methods[0]!,
+      );
+
+      return { sentTo: started?.sentTo };
+    },
+  });
+
+  /**
+   * Ask the issuer which second factors this user owes, tolerating an issuer
+   * that does not implement the seam at all.
+   */
+  protected async secondFactorMethods(
+    issuer: IssuerPrimitive,
+    user: UserAccount,
+  ): Promise<SecondFactorMethod[]> {
+    const withSecondFactor = issuer as IssuerPrimitive & WithSecondFactorFn;
+    if (!withSecondFactor.secondFactor) {
+      return [];
+    }
+    return (await withSecondFactor.secondFactor(user)) ?? [];
+  }
+
+  /**
+   * Start the first applicable factor and build the error that carries the
+   * challenge back to the caller.
+   */
+  protected async challengeSecondFactor(options: {
+    issuer: IssuerPrimitive;
+    user: UserAccount;
+    methods: SecondFactorMethod[];
+    provider: string;
+    realm?: string;
+  }): Promise<MfaRequiredError> {
+    const withSecondFactor = options.issuer as IssuerPrimitive &
+      WithSecondFactorFn;
+
+    const method = options.methods[0]!;
+    const started = await withSecondFactor.startSecondFactor?.(
+      options.user,
+      method,
+    );
+
+    return new MfaRequiredError({
+      challenge: this.signChallenge({
+        sub: options.user.id,
+        user: options.user,
+        provider: options.provider,
+        realm: options.realm,
+        methods: options.methods,
+        exp:
+          this.dateTimeProvider.now().unix() +
+          ServerAuthProvider.MFA_CHALLENGE_TTL_SECONDS,
+      }),
+      methods: options.methods,
+      sentTo: started?.sentTo,
+    });
+  }
+
+  /**
+   * How long a challenge stays usable. Long enough to fetch a code out of an
+   * email, short enough that a challenge left in a log is worthless.
+   */
+  protected static readonly MFA_CHALLENGE_TTL_SECONDS = 300;
+
+  /**
+   * Sign a challenge payload.
+   *
+   * Stateless on purpose: the alternative is a server-side store, which
+   * would give `alepha/server/auth` a cache dependency it does not otherwise
+   * have. Nothing is lost by it, because the challenge is only a proof that
+   * the first factor passed, and the second factor is independently single
+   * use (a TOTP step is burned when accepted, a recovery code is consumed,
+   * an emailed code is marked verified).
+   */
+  protected signChallenge(payload: MfaChallengePayload): string {
+    const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
+    return `${encoded}.${this.cryptoProvider.hmac(encoded, this.securityProvider.secretKey)}`;
+  }
+
+  /**
+   * Verify and decode a challenge, or return undefined for anything that is
+   * forged, malformed or expired.
+   */
+  protected readChallenge(challenge: string): MfaChallengePayload | undefined {
+    const [encoded, signature] = challenge.split(".");
+    if (!encoded || !signature) {
+      return undefined;
+    }
+
+    const expected = this.cryptoProvider.hmac(
+      encoded,
+      this.securityProvider.secretKey,
+    );
+    if (!this.cryptoProvider.equals(expected, signature)) {
+      return undefined;
+    }
+
+    try {
+      const payload = JSON.parse(
+        Buffer.from(encoded, "base64url").toString("utf8"),
+      ) as MfaChallengePayload;
+
+      if (payload.exp <= this.dateTimeProvider.now().unix()) {
+        return undefined;
+      }
+
+      return payload;
+    } catch {
+      return undefined;
+    }
+  }
 
   /**
    * Resolve an {@link AccessToken} to the string that goes in the header.
@@ -1034,4 +1267,25 @@ export interface OAuth2Profile {
   updated_at?: number; // seconds since epoch
   // Allow additional fields (provider-specific)
   [key: string]: unknown;
+}
+
+/**
+ * What a signed second-factor challenge carries.
+ *
+ * The whole {@link UserAccount} is embedded rather than just an id so that
+ * clearing the challenge needs no second lookup, and so `alepha/server/auth`
+ * needs no way to load a user. The payload is signed, so none of it can be
+ * altered; it is not encrypted, but it only ever describes the account of
+ * the person who just typed that account's password.
+ */
+export interface MfaChallengePayload {
+  sub: string;
+  user: UserAccount;
+  provider: string;
+  realm?: string;
+  methods: SecondFactorMethod[];
+  /**
+   * Expiry, in seconds since the epoch.
+   */
+  exp: number;
 }

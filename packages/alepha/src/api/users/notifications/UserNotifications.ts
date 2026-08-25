@@ -2,6 +2,56 @@ import { z } from "alepha";
 import { $notification } from "alepha/api/notifications";
 
 export class UserNotifications {
+  /**
+   * The second-factor code, for realms that verify by email rather than with
+   * an authenticator app.
+   */
+  public readonly mfaCode = $notification({
+    category: "security",
+    description:
+      "Email sent during sign-in with a one-time code, when the realm uses email as a second authentication factor.",
+    critical: true,
+    sensitive: true,
+    email: {
+      subject: "Your sign-in code",
+      body: (it) => `
+			<h1>Your sign-in code</h1>
+			<p>Use the code below to finish signing in:</p>
+			<p style="margin: 30px 0; text-align: center;">
+				<span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; font-family: monospace; background-color: #f5f5f5; padding: 16px 24px; border-radius: 8px; display: inline-block;">
+					${it.code}
+				</span>
+			</p>
+			<p>This code will expire in ${it.expiresInMinutes} minutes.</p>
+			<p>If you did not just try to sign in, someone else knows your password. Change it as soon as you can.</p>
+			<p>Best regards,<br>The Team</p>
+		`,
+    },
+    translations: {
+      fr: {
+        email: {
+          subject: "Votre code de connexion",
+          body: (it) => `
+				<h1>Votre code de connexion</h1>
+				<p>Utilisez le code ci-dessous pour terminer votre connexion :</p>
+				<p style="margin: 30px 0; text-align: center;">
+					<span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; font-family: monospace; background-color: #f5f5f5; padding: 16px 24px; border-radius: 8px; display: inline-block;">
+						${it.code}
+					</span>
+				</p>
+				<p>Ce code expire dans ${it.expiresInMinutes} minutes.</p>
+				<p>Si vous n'êtes pas à l'origine de cette connexion, quelqu'un connaît votre mot de passe. Changez-le dès que possible.</p>
+			`,
+        },
+      },
+    },
+    schema: z.object({
+      email: z.string().meta({ format: "email" }),
+      code: z.string(),
+      expiresInMinutes: z.number(),
+    }),
+  });
+
   // Code-based notifications (preferred)
   public readonly passwordReset = $notification({
     category: "security",

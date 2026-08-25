@@ -14,6 +14,14 @@ export const errorSchema = z
         size: "rich",
       })
       .optional(),
+    data: z
+      .record(z.text(), z.any())
+      .describe(
+        "Structured payload an error carries when the client has to act on " +
+          "it rather than just display it. `details` is prose; this is the " +
+          "machine-readable half. Used by the second-factor challenge.",
+      )
+      .optional(),
     requestId: z.text().optional(),
     cause: z
       .object({
