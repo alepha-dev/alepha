@@ -33,6 +33,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -52,6 +53,18 @@ const SHADCN_BASE = "https://ui.shadcn.com/r/styles/base-nova";
  * the UI weeks later.
  */
 const check = process.argv.includes("--check");
+
+/**
+ * Where `--check` stages its rendered files. Under the package rather than the
+ * OS temp dir so `oxfmt` resolves the repo's `.oxfmtrc.json`: formatted with
+ * anything else, every file compares as drifted.
+ *
+ * Deliberately NOT gitignored. oxfmt honours a nested `.gitignore` whatever
+ * `--ignore-path` says, so an ignored scratch directory is one it refuses to
+ * format. The directory is removed on every exit path; if a killed run ever
+ * leaves one behind, showing up in `git status` is the right outcome.
+ */
+const SCRATCH_DIR_REL = ".sync-check";
 
 const log = (msg) => console.log(`[36m→[0m ${msg}`);
 
@@ -338,8 +351,9 @@ const writeFiles = (plan) => {
 };
 
 /**
- * Dry run. Renders every file the same way `writeFiles` would, writes nothing,
- * and reports three things separately, because they need different reactions:
+ * Dry run. Renders every file the same way a real sync would, writes nothing
+ * into `src/`, and reports two things separately because they need different
+ * reactions:
  *
  * - a `LOCAL_PATCHES` entry that no longer applies, or a `KEEP_LOCAL` file that
  *   is not in the tree: the protection is broken and the next sync WILL lose
@@ -347,41 +361,71 @@ const writeFiles = (plan) => {
  * - upstream drift: the registry has moved on for a file we do not protect.
  *   Information, not a failure - taking those updates is what this script is
  *   for. It is listed so `sync` is never the first time anyone sees it.
+ *
+ * The rendered files go through oxfmt in a scratch directory before being
+ * compared. Registry content is unformatted (no semicolons, unsorted imports)
+ * while the tree is oxfmt output, so comparing the two directly reported every
+ * single file as drifted - a list that says everything and therefore nothing.
  */
-const checkFiles = (item, report) => {
-  for (const file of item.files ?? []) {
-    if (!file.path && !file.target) continue;
-    const rel = relOf(file);
-    let next;
-    try {
-      next = renderFile(file);
-    } catch (error) {
-      if (!(error instanceof LocalPatchError)) throw error;
-      report.broken.push(error.message);
-      continue;
-    }
-    if (next == null) {
-      if (!existsSync(destOf(file))) {
-        report.broken.push(
-          `protected file missing from the tree: ${rel} — ${KEEP_LOCAL.get(rel)}`,
-        );
-      } else {
-        report.protected.push(rel);
+const checkFiles = (items) => {
+  const report = { broken: [], protected: [], drift: [] };
+  const scratch = join(uiDir, SCRATCH_DIR_REL);
+  rmSync(scratch, { recursive: true, force: true });
+  mkdirSync(scratch, { recursive: true });
+  const pending = [];
+  try {
+    for (const item of items) {
+      for (const file of item.files ?? []) {
+        if (!file.path && !file.target) continue;
+        const rel = relOf(file);
+        let next;
+        try {
+          next = renderFile(file);
+        } catch (error) {
+          if (!(error instanceof LocalPatchError)) throw error;
+          report.broken.push(error.message);
+          continue;
+        }
+        if (next == null) {
+          if (existsSync(destOf(file))) {
+            report.protected.push(rel);
+          } else {
+            report.broken.push(
+              `protected file missing from the tree: ${rel} — ${KEEP_LOCAL.get(rel)}`,
+            );
+          }
+          continue;
+        }
+        const staged = join(scratch, rel);
+        mkdirSync(dirname(staged), { recursive: true });
+        writeFileSync(staged, next);
+        pending.push([rel, staged, destOf(file)]);
       }
-      continue;
     }
-    let current;
-    try {
-      current = readFileSync(destOf(file), "utf8");
-    } catch {
-      report.drift.push(`${rel} (not in the tree)`);
-      continue;
+
+    if (pending.length) {
+      // From the repo root, like the write path: `oxfmt` is a root
+      // devDependency and `yarn oxfmt` does not resolve from the package.
+      run("yarn", ["oxfmt", `packages/@alepha/ui/${SCRATCH_DIR_REL}`], {
+        cwd: repoRoot,
+        stdio: "ignore",
+      });
     }
-    // Compared with whitespace collapsed: the tree is oxfmt output and this is
-    // raw registry content, so an exact match would report every file forever
-    // and say nothing.
-    const normalize = (s) => s.replace(/\s+/g, " ").trim();
-    if (normalize(current) !== normalize(next)) report.drift.push(rel);
+
+    for (const [rel, staged, dest] of pending) {
+      let current;
+      try {
+        current = readFileSync(dest, "utf8");
+      } catch {
+        report.drift.push(`${rel} (not in the tree)`);
+        continue;
+      }
+      if (readFileSync(staged, "utf8") !== current) report.drift.push(rel);
+    }
+
+    return report;
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
   }
 };
 
@@ -416,10 +460,7 @@ if (skipped.length) {
   log(`Not in registry, left untouched: ${skipped.join(", ")}`);
 }
 if (check) {
-  const report = { broken: [], protected: [], drift: [] };
-  for (const [, item] of results) {
-    if (item) checkFiles(item, report);
-  }
+  const report = checkFiles(results.map(([, item]) => item).filter(Boolean));
 
   log(`${report.protected.length} files kept local (see KEEP_LOCAL).`);
   if (report.drift.length) {
