@@ -65,6 +65,21 @@ export class ProjectScaffolder {
   protected readonly initialMigrationName = "initial_schema";
 
   /**
+   * Files an operating system creates unprompted, which never count as
+   * something a person put in a directory.
+   *
+   * POSIX conventions are already covered: `ls` hides anything starting with a
+   * dot, so `.DS_Store` and `.git` never reach these checks. Windows has no
+   * such convention. It hides by file attribute, and Node's `Stats` does not
+   * expose attributes, so its metadata has to be named instead.
+   */
+  protected readonly shellMetadata = [
+    "desktop.ini",
+    "thumbs.db",
+    "ehthumbs.db",
+  ];
+
+  /**
    * Get the app name from the directory name.
    *
    * Converts the directory name to a valid module name:
@@ -72,6 +87,21 @@ export class ProjectScaffolder {
    * - Strips spaces, dashes, underscores, dots and digits
    * - Falls back to "app" if empty
    */
+  /**
+   * Whether a directory listing holds anything a person put there.
+   *
+   * Windows creates `desktop.ini` on its own whenever a folder gets a custom
+   * icon or view, and throughout OneDrive-synced trees. Explorer shows such a
+   * folder as empty, so counting it turns `mkdir my-app && cd my-app &&
+   * alepha init` into `my-app/my-app/`, which is the exact surprise the
+   * emptiness rule exists to avoid.
+   */
+  public hasProjectContent(entries: string[]): boolean {
+    return entries.some(
+      (entry) => !this.shellMetadata.includes(entry.toLowerCase()),
+    );
+  }
+
   public getAppName(root: string): string {
     const dirName = basename(root);
     const appName = dirName.toLowerCase().replace(/[\s\-_.\d]/g, "");
@@ -720,7 +750,7 @@ export class ProjectScaffolder {
         newProject = true;
 
         const entries = await this.fs.ls(root);
-        if (entries.length > 0) {
+        if (this.hasProjectContent(entries)) {
           args = "my-app";
         }
       }
@@ -743,7 +773,7 @@ export class ProjectScaffolder {
       const files = await this.fs.ls(root);
       // Allow a directory that only has package.json (common for monorepo packages)
       const meaningful = files.filter((f) => f !== "package.json");
-      if (meaningful.length > 0) {
+      if (this.hasProjectContent(meaningful)) {
         throw new AlephaError(
           `Target directory is not empty (${root}). Use --force to overwrite existing files.`,
         );
