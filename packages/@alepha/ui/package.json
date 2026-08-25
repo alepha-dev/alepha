@@ -50,6 +50,7 @@
   },
   "scripts": {
     "sync": "node scripts/sync.mjs",
+    "sync:check": "node scripts/sync.mjs --check",
     "build": "tsdown && tsc -p tsconfig.build.json && node scripts/copy-css.mjs",
     "typecheck": "tsc --noEmit"
   },
