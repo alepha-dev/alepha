@@ -46,6 +46,11 @@ export interface ControlNumberProps {
    * Disable the input.
    */
   disabled?: boolean;
+  /**
+   * Autofocus the input on mount. Ignored by the slider variant, which is not
+   * a text field and has nothing to type into.
+   */
+  autoFocus?: boolean;
 }
 
 export const ControlNumber = (props: ControlNumberProps) => {
@@ -123,6 +128,8 @@ export const ControlNumber = (props: ControlNumberProps) => {
           max={max}
           step={props.step}
           disabled={props.disabled}
+          // oxlint-disable-next-line jsx-a11y/no-autofocus
+          autoFocus={props.autoFocus}
           value={value ?? ""}
           onChange={(e) => {
             const v = e.target.value;

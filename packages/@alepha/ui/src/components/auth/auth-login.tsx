@@ -16,7 +16,7 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { HttpError } from "alepha/server";
 import { AlertCircle, Mail, User } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 
 import { AuthMfaStep } from "./auth-mfa-step.tsx";
 import { safeRedirect } from "./safe-redirect.ts";
@@ -180,20 +180,11 @@ export const AuthLogin = (props: AuthLoginProps) => {
     (m) => m.type !== "CREDENTIALS",
   );
 
-  // Autofocus the identifier field on mount — but only when credentials is the
+  // Autofocus the identifier field on mount - but only when credentials is the
   // *sole* login method. With OAuth/external buttons present we don't steal
   // focus (and trigger the browser's autofill popup) from a user who came to
-  // click "Continue with …". `<Control>` has no `autoFocus` prop, so we grab
-  // the id the form assigned and focus it.
-  const identifierId = form.input.identifier.props.id;
-  useEffect(() => {
-    if (!credentialsProvider || externalMethods.length > 0 || !identifierId) {
-      return;
-    }
-    (
-      document.getElementById(String(identifierId)) as HTMLInputElement | null
-    )?.focus();
-  }, [credentialsProvider, externalMethods.length, identifierId]);
+  // click "Continue with ...".
+  const autoFocusIdentifier = !!credentialsProvider && !externalMethods.length;
 
   const formState = useFormState(form, ["error", "loading"]);
   const formError =
@@ -271,6 +262,8 @@ export const AuthLogin = (props: AuthLoginProps) => {
                 input={form.input.identifier}
                 icon={identifierIcon}
                 autoComplete={identifierAutoComplete}
+                // oxlint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus={autoFocusIdentifier}
               />
               <Control
                 label={tr("auth.login.password", {

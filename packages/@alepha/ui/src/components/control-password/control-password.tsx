@@ -59,7 +59,8 @@ export const ControlPassword = (props: ControlPasswordProps) => {
           name={props.name}
           type={reveal ? "text" : "password"}
           autoComplete={props.autoComplete ?? "current-password"}
-
+          // oxlint-disable-next-line jsx-a11y/no-autofocus
+          autoFocus={props.autoFocus}
           disabled={props.disabled}
           required={props.required}
           minLength={props.minLength}

@@ -179,8 +179,17 @@ export interface ControlProps {
    */
   placeholder?: string;
   /**
-   * Autofocus the control on mount. Forwarded to the text input,
-   * textarea, or password input the control renders.
+   * Autofocus the control on mount. Forwarded to the text, number, password
+   * or textarea input the control renders. Ignored by the variants that are
+   * not a single focusable field (select, date, upload, array, object).
+   *
+   * Every forward site carries an `oxlint-disable-next-line
+   * jsx-a11y/no-autofocus`. That rule is right about a page that grabs focus
+   * unbidden and wrong here: nothing focuses unless a caller passed this prop,
+   * and it is the caller the rule should be asking. Left to fire, it did real
+   * damage once - a lint pass deleted the forwarding and left the prop
+   * declared, so login and dialog forms silently stopped focusing their first
+   * field and two components grew `getElementById(...).focus()` workarounds.
    */
   autoFocus?: boolean;
   /**
@@ -370,6 +379,8 @@ export const Control = (props: ControlProps) => {
         description={merged.description ?? props.description}
         slider={merged.slider}
         disabled={merged.disabled}
+        // oxlint-disable-next-line jsx-a11y/no-autofocus
+        autoFocus={merged.autoFocus}
       />,
     );
   }
@@ -509,7 +520,8 @@ export const Control = (props: ControlProps) => {
           disabled={merged.disabled}
           maxLength={maxLength || undefined}
           autoComplete={merged.autoComplete}
-
+          // oxlint-disable-next-line jsx-a11y/no-autofocus
+          autoFocus={merged.autoFocus}
           placeholder={merged.placeholder}
           value={String(value ?? "")}
           onChange={(e) => setValue(e.target.value)}
@@ -535,7 +547,8 @@ export const Control = (props: ControlProps) => {
         required={meta.required}
         disabled={merged.disabled}
         autoComplete={merged.autoComplete}
-
+        // oxlint-disable-next-line jsx-a11y/no-autofocus
+        autoFocus={merged.autoFocus}
         inputProps={merged.inputProps}
         icon={resolveIcon(merged.icon, "password")}
         value={String(value ?? "")}
@@ -607,7 +620,8 @@ export const Control = (props: ControlProps) => {
           type={htmlType}
           disabled={merged.disabled}
           autoComplete={autoComplete}
-
+          // oxlint-disable-next-line jsx-a11y/no-autofocus
+          autoFocus={merged.autoFocus}
           placeholder={merged.placeholder}
           value={String(value ?? "")}
           minLength={meta.constraints.minLength}
