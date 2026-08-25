@@ -652,7 +652,10 @@ func writeEnvFile(path string, env map[string]string) error {
 	b.WriteString("# Managed by Bay. Keys below are Bay-owned; anything else is yours.\n")
 	b.WriteString("# Bay-owned: " + strings.Join(bayOwnedKeys, ", ") + "\n\n")
 	for _, k := range keys {
-		fmt.Fprintf(&b, "%s=%s\n", k, env[k])
+		// Quoted, because this file is ALSO read by systemd as an
+		// EnvironmentFile, whose grammar eats backslashes and honours quotes.
+		// See runner.QuoteEnvValue.
+		fmt.Fprintf(&b, "%s=%s\n", k, runner.QuoteEnvValue(env[k]))
 	}
 
 	tmp, err := os.CreateTemp(filepath.Dir(path), ".env-*.tmp")
