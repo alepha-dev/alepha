@@ -125,6 +125,17 @@ const colsClass: Record<number, string> = {
   4: "grid-cols-4",
 };
 
+/**
+ * The keys of a plain object, or nothing.
+ *
+ * An item that is not an object has no per-field inputs, so there is nothing
+ * below it to notify.
+ */
+const objectKeys = (value: unknown): string[] =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? Object.keys(value as Record<string, unknown>)
+    : [];
+
 const useArrayItems = (input: BaseInputField | undefined) => {
   const alepha = useAlepha();
   const counter = useRef(0);
@@ -135,22 +146,81 @@ const useArrayItems = (input: BaseInputField | undefined) => {
       : [];
   });
 
-  const sync = useCallback((next: unknown[] | undefined) => {
-    if (!Array.isArray(next)) {
-      setItemsState([]);
-      return;
-    }
-    setItemsState((prev) => {
+  // The list as last rendered, so a write can diff against it without
+  // `setItems` depending on `items` (which would rebuild the callback, and
+  // with it every row, on each keystroke).
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+
+  /**
+   * Tell the CHILD paths what changed.
+   *
+   * `input.set()` writes the whole array and `FormModel` emits `form:change`
+   * for the array's own path only. The per-item and per-field inputs this
+   * component builds carry paths of their own (`.../2/name`), so a child
+   * subscribed through `useFieldValue` never heard about its own edit and
+   * kept re-rendering the value it had at mount.
+   *
+   * Only what actually differs is emitted: this event is how a row avoids
+   * re-rendering when a sibling changes, and announcing every path on every
+   * keystroke would give that up.
+   */
+  const emitChanged = useCallback(
+    (prev: ArrayItem[], next: ArrayItem[]) => {
+      const form = input?.form;
+      if (!form || !input) return;
+
+      const emit = (path: string, value: unknown) =>
+        void alepha.events.emit(
+          "form:change",
+          { id: form.id, path, value },
+          { catch: true },
+        );
+
+      for (let i = 0; i < Math.max(prev.length, next.length); i++) {
+        const before = prev[i]?.value;
+        const after = next[i]?.value;
+        if (before === after) continue;
+
+        emit(`${input.path}/${i}`, after);
+
+        for (const key of new Set([
+          ...objectKeys(before),
+          ...objectKeys(after),
+        ])) {
+          const beforeField = (before as Record<string, unknown>)?.[key];
+          const afterField = (after as Record<string, unknown>)?.[key];
+          if (beforeField !== afterField) {
+            emit(`${input.path}/${i}/${key}`, afterField);
+          }
+        }
+      }
+    },
+    [alepha, input],
+  );
+
+  const sync = useCallback(
+    (next: unknown[] | undefined) => {
+      if (!Array.isArray(next)) {
+        emitChanged(itemsRef.current, []);
+        setItemsState([]);
+        return;
+      }
       if (
-        prev.length === next.length &&
-        prev.every((it, i) => it.value === next[i])
+        itemsRef.current.length === next.length &&
+        itemsRef.current.every((it, i) => it.value === next[i])
       ) {
-        return prev;
+        return;
       }
       counter.current = 0;
-      return next.map((value) => ({ key: counter.current++, value }));
-    });
-  }, []);
+      const rebuilt = next.map((value) => ({ key: counter.current++, value }));
+      // A reset or a `setInitialValues` writes the array whole, so the child
+      // paths need telling here too — same reason as an edit.
+      emitChanged(itemsRef.current, rebuilt);
+      setItemsState(rebuilt);
+    },
+    [emitChanged],
+  );
 
   useEffect(() => {
     if (!input?.form) return;
@@ -163,10 +233,12 @@ const useArrayItems = (input: BaseInputField | undefined) => {
 
   const setItems = useCallback(
     (next: ArrayItem[]) => {
+      const prev = itemsRef.current;
       setItemsState(next);
       input?.set(next.map((it) => it.value));
+      emitChanged(prev, next);
     },
-    [input],
+    [input, emitChanged],
   );
 
   return { items, setItems, nextKey: () => counter.current++ };
