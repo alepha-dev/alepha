@@ -334,7 +334,6 @@ Conventions enforced by review, not by lint. They are not obvious from the code,
 - **`useRouter<T>()` navigates with `router.push("pageName", { params })`** — there is no `router.navigate()`.
 - **`useI18n().l()` returns `string | number`** — wrap in `String()` for string fields.
 - **`I18nLocalizeOptions` has `date` and `number` only, no `time`** — for date+time pass a dayjs format string such as `"lll"` to `date`.
-- **Name route params uniquely across the whole route table.** Two routes with different param names at the same path position silently lose the inner value.
 - **`$route` never lives under `/api`** — it is the raw level below `$action`, does not prefix `/api`, and the `$action` dispatcher shadows anything under `/api/*` (404s). Root paths only.
 
 ### Repository / query API

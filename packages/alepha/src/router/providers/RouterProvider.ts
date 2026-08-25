@@ -7,13 +7,25 @@ export abstract class RouterProvider<T extends Route = Route> {
   protected cache = new Map<string, RouteMatch<T>>();
   protected maxCacheSize = 10_000;
 
+  /**
+   * Each route's OWN param names, by segment index.
+   *
+   * The tree cannot hold these. One position is one node, shared by every
+   * route that passes through it, and a node can only remember one name - so
+   * `/p/:projectId/x` and `/p/:projectSlug/y` had to agree on which. Captures
+   * are collected by position during the search and named from here once a
+   * route has actually matched, which is the only point at which the right
+   * names are known.
+   */
+  protected readonly paramNames = new WeakMap<T, Map<number, string>>();
+
   public match(path: string): RouteMatch<T> {
     const pathname = path.split("?", 1)[0];
     const hit = this.cache.get(pathname);
     if (hit) {
       return { route: hit.route, params: { ...hit.params } };
     }
-    const result = this.mapParams(this.createRouteMatch(pathname));
+    const result = this.createRouteMatch(pathname);
     if (this.cache.size >= this.maxCacheSize) this.cache.clear();
     this.cache.set(pathname, result);
     return { route: result.route, params: { ...result.params } };
@@ -59,14 +71,21 @@ export abstract class RouterProvider<T extends Route = Route> {
         if (!name) {
           throw new AlephaError(`Route '${path}' has an empty param name`);
         }
+
+        // Two routes may disagree about what this position is called, and
+        // that is fine: the node keeps whichever name arrived first, purely
+        // as a description of the shape, while the name that will be USED is
+        // recorded against this route at this index.
         if (!cursor.param) {
           cursor.param = { name, children: {} };
-        } else if (cursor.param.name !== name) {
-          // damn, 2 url params with different names
-          // got this case with /customers/:id and /customers/:userId/payments
-          route.mapParams ??= {};
-          route.mapParams[cursor.param.name] = name;
         }
+
+        let names = this.paramNames.get(route);
+        if (!names) {
+          names = new Map();
+          this.paramNames.set(route, names);
+        }
+        names.set(i, name);
 
         if (isLast) {
           cursor.param.route = route;
@@ -94,8 +113,30 @@ export abstract class RouterProvider<T extends Route = Route> {
     }
 
     const parts = this.createParts(path);
+    const hit = this.search(this.tree, parts, 0);
 
-    return this.search(this.tree, parts, 0) ?? { route: undefined, params: {} };
+    if (!hit) {
+      return { route: undefined, params: {} };
+    }
+
+    const params: Record<string, string> = {};
+    const names = hit.route ? this.paramNames.get(hit.route) : undefined;
+
+    for (const [index, value] of hit.captures) {
+      const name = names?.get(index);
+      // A position the matched route does not name is a position it does not
+      // want: only a route registered UNDER a param node can be reached
+      // through one, so this only skips a wildcard's trailing segments.
+      if (name) {
+        params[name] = value;
+      }
+    }
+
+    if (hit.wildcard !== undefined) {
+      params["*"] = hit.wildcard;
+    }
+
+    return { route: hit.route, params };
   }
 
   /**
@@ -113,14 +154,14 @@ export abstract class RouterProvider<T extends Route = Route> {
     node: Tree<T>,
     parts: string[],
     index: number,
-  ): RouteMatch<T> | undefined {
+  ): InternalMatch<T> | undefined {
     if (index === parts.length) {
       if (node.route) {
-        return { route: node.route, params: {} };
+        return { route: node.route, captures: [] };
       }
       // "/a/*" also answers "/a" — with an empty capture.
       if (node.wildcard) {
-        return { route: node.wildcard.route, params: { "*": "" } };
+        return { route: node.wildcard.route, captures: [], wildcard: "" };
       }
       return undefined;
     }
@@ -138,8 +179,10 @@ export abstract class RouterProvider<T extends Route = Route> {
     if (node.param) {
       const hit = this.search(node.param as Tree<T>, parts, index + 1);
       if (hit) {
-        hit.params ??= {};
-        hit.params[node.param.name] = this.decodeParam(parts[index]);
+        // By POSITION, not by the node's name. Two segments of one path used
+        // to collide whenever the tree happened to call them the same thing,
+        // and the outer one, applied last on the way out, won.
+        hit.captures.push([index, this.decodeParam(parts[index])]);
         return hit;
       }
     }
@@ -150,12 +193,11 @@ export abstract class RouterProvider<T extends Route = Route> {
     if (node.wildcard) {
       return {
         route: node.wildcard.route,
-        params: {
-          "*": parts
-            .slice(index)
-            .map((it) => this.decodeParam(it))
-            .join("/"),
-        },
+        captures: [],
+        wildcard: parts
+          .slice(index)
+          .map((it) => this.decodeParam(it))
+          .join("/"),
       };
     }
 
@@ -182,19 +224,6 @@ export abstract class RouterProvider<T extends Route = Route> {
     }
   }
 
-  protected mapParams(match: RouteMatch<T>): RouteMatch<T> {
-    if (match.route?.mapParams && match.params) {
-      for (const [key, value] of Object.entries(match.route.mapParams)) {
-        if (match.params[key]) {
-          match.params[value] = match.params[key];
-          delete match.params[key];
-        }
-      }
-    }
-
-    return match;
-  }
-
   protected createParts(path: string): string[] {
     let pathname = path.split("?")[0].replaceAll("//", "/");
 
@@ -214,15 +243,22 @@ export interface RouteMatch<T extends Route> {
 
 export interface Route {
   path: string;
+}
 
+/**
+ * A match on its way out of the tree, before the captures have names.
+ *
+ * Positions rather than names, because the names belong to the route and the
+ * route is only known once the walk reaches one.
+ */
+interface InternalMatch<T extends Route> {
+  route?: T;
+  captures: Array<[index: number, value: string]>;
   /**
-   * Rename a param in the route.
-   * This is automatically filled when you have scenarios like:
-   * `/customers/:id` and `/customers/:userId/payments`
-   *
-   * In this case, `:id` will be renamed to `:userId` in the second route.
+   * The tail a `*` segment swallowed, when one matched. `""` when the
+   * wildcard answered for its own prefix.
    */
-  mapParams?: Record<string, string>;
+  wildcard?: string;
 }
 
 export interface Tree<T extends Route> {
@@ -232,6 +268,11 @@ export interface Tree<T extends Route> {
   };
   param?: {
     route?: T;
+    /**
+     * Whichever route named this position first. Descriptive only: what a
+     * capture here is CALLED depends on the route that matches, not on the
+     * node - see `paramNames`.
+     */
     name: string;
     children: {
       [key: string]: Tree<T>;

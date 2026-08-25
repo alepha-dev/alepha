@@ -37,6 +37,60 @@ const playground = () => {
   };
 };
 
+describe("RouterProvider param names", () => {
+  it("gives each route its own names at a shared position", ({ expect }) => {
+    const { add, match } = playground();
+
+    add("/p/:projectId/settings", "by-id");
+    add("/p/:projectSlug/public", "by-slug");
+
+    expect(match("/p/42/settings")).toEqual({
+      name: "by-id",
+      params: { projectId: "42" },
+    });
+    expect(match("/p/alepha/public")).toEqual({
+      name: "by-slug",
+      params: { projectSlug: "alepha" },
+    });
+  });
+
+  it("keeps an inner capture whose name is taken at an outer position", ({
+    expect,
+  }) => {
+    const { add, match } = playground();
+
+    // The first route fixes the name of the position it occupies. The second
+    // reuses that name further in, and its own outer param is called
+    // something else - so both segments captured under one key and the inner
+    // one won.
+    add("/customers/:id", "customer");
+    add("/customers/:userId/payments/:id", "payment");
+
+    expect(match("/customers/7")).toEqual({
+      name: "customer",
+      params: { id: "7" },
+    });
+    expect(match("/customers/7/payments/9")).toEqual({
+      name: "payment",
+      params: { userId: "7", id: "9" },
+    });
+  });
+
+  it("keeps names unique per route across three routes at one position", ({
+    expect,
+  }) => {
+    const { add, match } = playground();
+
+    add("/x/:a", "a");
+    add("/x/:b/one", "b");
+    add("/x/:c/two", "c");
+
+    expect(match("/x/1")).toEqual({ name: "a", params: { a: "1" } });
+    expect(match("/x/2/one")).toEqual({ name: "b", params: { b: "2" } });
+    expect(match("/x/3/two")).toEqual({ name: "c", params: { c: "3" } });
+  });
+});
+
 describe("RouterProvider", () => {
   it("should match routes with static paths, params, and wildcards", ({
     expect,
