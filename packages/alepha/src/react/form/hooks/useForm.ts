@@ -97,7 +97,12 @@ export const useForm = <T extends ZObject>(
     }
     initialValuesRef.current = options.initialValues;
     if (options.initialValues) {
-      form.setInitialValues(options.initialValues as Record<string, any>);
+      form.setInitialValues(options.initialValues as Record<string, any>, {
+        // The reason `initialValues` changes at all is usually a refetch
+        // after a save, and re-seeding wholesale overwrote whatever the user
+        // typed between submit and response with data that predates it.
+        keepDirty: options.keepDirty ?? true,
+      });
     }
   }, [options.initialValues]);
 

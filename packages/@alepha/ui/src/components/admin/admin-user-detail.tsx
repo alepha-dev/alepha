@@ -258,21 +258,12 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
     },
   });
 
-  // Reset the form's initial values whenever the loaded user changes.
-  // setInitialValues (vs per-field .set) is required so the AutoForm
-  // "Reset" button snaps the form back to the server snapshot rather
-  // than the empty values captured at mount.
-  useEffect(() => {
-    if (!user) return;
-    form.setInitialValues({
-      username: user.username ?? "",
-      email: user.email ?? "",
-      firstName: user.firstName ?? "",
-      lastName: user.lastName ?? "",
-      emailVerified: user.emailVerified ?? false,
-      roles: user.roles ?? [],
-    });
-  }, [userQuery.data]);
+  // No `useEffect` re-seeding the form from `userQuery.data` here: the same
+  // object is already `useForm`'s `initialValues` above, and `useForm` re-seeds
+  // itself when it changes — keeping the fields the user has edited, which the
+  // hand-rolled effect could not do. It re-seeded wholesale, so anything typed
+  // between pressing Save and the refetch landing was overwritten by data that
+  // predates it.
 
   // -- Set password ---------------------------------------------------------
 
