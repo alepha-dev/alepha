@@ -90,7 +90,7 @@ export class CartService {
    * they last touched.
    */
   public async forUser(userId: string): Promise<CartEntity | undefined> {
-    // `findMany` rather than `findOne`, which takes no `orderBy` — and the
+    // `findMany` rather than `findOne`, which takes no `orderBy` - and the
     // order is the point: without it "the user's cart" is whichever row the
     // database happened to return.
     const [cart] = await this.cartRepo.findMany({

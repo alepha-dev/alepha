@@ -282,7 +282,7 @@ describe("Nested run() invocations", () => {
 
   it("spends the caller's own bucket, not one shared by everybody", async () => {
     // Before the fix the synthetic request had no `ip`, so every nested call
-    // from every client in the world keyed on `ip:unknown` — the second
+    // from every client in the world keyed on `ip:unknown` - the second
     // client here would have started already exhausted.
     expect(await batchAs("10.0.0.1", 3)).toEqual(["ok", "ok", 429]);
     expect(await batchAs("10.0.0.2", 3)).toEqual(["ok", "ok", 429]);

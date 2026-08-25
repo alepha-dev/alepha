@@ -36,7 +36,7 @@ export const useFieldValue = (
 
   // A moved row renders the value of the row that used to be at this path, so
   // it has to be re-seeded. `initialValue` is recomputed from live form state
-  // on every render, so it is what this path holds now — not a mount-time
+  // on every render, so it is what this path holds now - not a mount-time
   // snapshot, despite the name.
   const seededPath = useRef(path);
   useEffect(() => {

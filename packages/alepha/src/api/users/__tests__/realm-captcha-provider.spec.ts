@@ -14,7 +14,7 @@ import { AlephaApiUsers, RealmProvider } from "../index.ts";
  * A realm that requires a captcha nothing can verify is refused at boot.
  *
  * The old default was `MemoryCaptchaProvider` in EVERY environment, and it
- * accepts every token — so `captchaRequired: true` with no provider bound was
+ * accepts every token - so `captchaRequired: true` with no provider bound was
  * captcha theatre: the setting on, the widget rendered, and any string
  * accepted. The default outside test now refuses instead, which makes the
  * contradiction worth catching at boot rather than at the first signup.
@@ -30,7 +30,7 @@ import { AlephaApiUsers, RealmProvider } from "../index.ts";
 describe("alepha/api/users - realm captcha provider", () => {
   const container = async (captcha: typeof CaptchaProvider) => {
     const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
-    // Before anything resolves it — the container refuses a late substitution.
+    // Before anything resolves it - the container refuses a late substitution.
     alepha.with({ provide: CaptchaProvider, use: captcha });
     alepha.with(AlephaOrmPostgres);
     alepha.with(AlephaSecurity);

@@ -532,7 +532,7 @@ export class RelationalRepository<
       for (const item of items) {
         if (relation.through) {
           // A many-to-many child owns its own key and carries no column
-          // pointing back here — the link is a junction row. Stamping
+          // pointing back here - the link is a junction row. Stamping
           // `[relation.to]` the way the one-to-many branch does overwrote the
           // child's PRIMARY KEY with the parent's id and wrote no junction
           // row at all, so the graph came out wrong with nothing raised.

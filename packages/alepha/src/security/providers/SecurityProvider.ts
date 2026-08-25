@@ -77,7 +77,7 @@ export class SecurityProvider {
    * control: `$role` and `$issuer` are class fields, and whichever class the
    * container instantiates first wins. A role used to be pushed into the
    * realms that happened to exist at that instant, so one declared before its
-   * issuer landed in no realm at all — and under test it was worse, because it
+   * issuer landed in no realm at all - and under test it was worse, because it
    * landed in the implicit `default` realm that `createRealm` then popped.
    * Either way, silently.
    *
@@ -186,7 +186,7 @@ export class SecurityProvider {
    * Adds a role to one or more realms.
    *
    * Naming a realm that does not exist yet is NOT an error before the
-   * container starts — that is the ordinary `$role`-before-`$issuer` case.
+   * container starts - that is the ordinary `$role`-before-`$issuer` case.
    * The role is recorded and attached when the realm turns up; if it never
    * does, the boot fails at `ready` naming both. After start every realm is
    * known, so an unknown name is a real mistake and still throws at once.
@@ -221,7 +221,7 @@ export class SecurityProvider {
    * lands in.
    *
    * It used to run inside the realm loop, so a role that matched no realm was
-   * not validated at all — the one case where the declaration is already
+   * not validated at all - the one case where the declaration is already
    * wrong was the one case nothing checked.
    */
   protected assertRolePermissions(role: Role): void {
@@ -317,7 +317,7 @@ export class SecurityProvider {
    * nothing.
    *
    * A role in no realm grants nothing and an issuer naming a role that does
-   * not exist protects nothing, and both used to be silent — which is the
+   * not exist protects nothing, and both used to be silent - which is the
    * failure mode a security primitive can least afford.
    */
   protected readonly assertRolesAttached = $hook({
@@ -338,7 +338,7 @@ export class SecurityProvider {
             ? `Role '${declared.role.name}' names realm(s) ${declared.realms
                 .map((it) => `'${it}'`)
                 .join(", ")}, which no $issuer declared.`
-            : `Role '${declared.role.name}' belongs to no realm — declare an $issuer.`,
+            : `Role '${declared.role.name}' belongs to no realm - declare an $issuer.`,
         );
       }
 
@@ -428,8 +428,8 @@ export class SecurityProvider {
 
     this.realms.push(realm);
 
-    // Roles declared before this realm existed — including any the pop above
-    // just took with it — land here.
+    // Roles declared before this realm existed - including any the pop above
+    // just took with it - land here.
     this.reconcileRoles();
   }
 

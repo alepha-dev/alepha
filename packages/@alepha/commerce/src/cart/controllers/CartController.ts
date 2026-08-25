@@ -106,7 +106,7 @@ export class CartController {
   });
 
   /**
-   * Read the cart the cookie points at, minting one if this visitor has none —
+   * Read the cart the cookie points at, minting one if this visitor has none -
    * and, when the visitor is signed in, make sure it is THEIR cart.
    *
    * The ownership half is not decoration. A cart's `userId` is copied to the
@@ -116,7 +116,7 @@ export class CartController {
    * id, was dead.
    *
    * The guest-cart merge happens here rather than on a sign-in event, because
-   * this is the first moment BOTH facts are in hand — the cookie (a browser
+   * this is the first moment BOTH facts are in hand - the cookie (a browser
    * fact) and the identity (a token fact). It runs on the first cart request
    * after signing in, is idempotent, and needs no hook into the auth flow.
    */

@@ -58,8 +58,8 @@ const postgres = () => Alepha.create().with(AlephaOrmPostgres);
  * A nested create through a junction table.
  *
  * `createDeep` used to ignore `relation.through` entirely and take the
- * one-to-many branch: it stamped the child's `relation.to` column — which for
- * a many-to-many is the child's own PRIMARY KEY — with the parent's id, and
+ * one-to-many branch: it stamped the child's `relation.to` column - which for
+ * a many-to-many is the child's own PRIMARY KEY - with the parent's id, and
  * wrote no junction row. The graph came out wrong, with nothing raised.
  */
 const testCreateThroughJunction = async (alepha: Alepha) => {

@@ -1366,7 +1366,7 @@ describe("ServerEtagProvider", () => {
       expect(first.data).toBe("A-0|B-0");
 
       // Second call: both inner actions answer from THEIR OWN cache entries,
-      // and the outer route — which declares no `$etag` — still answers 200
+      // and the outer route - which declares no `$etag` - still answers 200
       // with a body it computed itself. Before the fix the middleware
       // resolved the container-wide `alepha.http.request`, so the outer body
       // was stored under the OUTER route's key, and on this second call the

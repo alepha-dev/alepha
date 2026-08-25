@@ -31,7 +31,7 @@ const envSchema = z.object({
    * `X-Forwarded-For` is append-only and client-writable: a request may
    * arrive already carrying `X-Forwarded-For: 1.2.3.4` before any proxy
    * touched it. Only the entries the trusted proxies appended can be
-   * believed, and those are the RIGHTMOST ones — so the client address is
+   * believed, and those are the RIGHTMOST ones - so the client address is
    * the entry this many hops from the right.
    *
    * The default of 1 is the single-proxy deployment (Cloudflare, one Nginx,

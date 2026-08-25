@@ -79,7 +79,7 @@ const setup = async () => {
   return { alepha, projectTools, project, call, OWNER, addNonOwnerMember };
 };
 
-describe("Lore MCP — projects", () => {
+describe("Lore MCP - projects", () => {
   describe("project_list", () => {
     it("reports isOwner true for the creator", async ({ expect }) => {
       const { projectTools, project, call } = await setup();

@@ -142,8 +142,8 @@ export class PipelineHandler {
    *
    * `PipelinePrimitive.middlewares` answers the same question, but only for
    * something holding the primitive. A `ServerRoute` carries the handler
-   * alone, so anything reasoning about a route from the router's side — which
-   * is where preflights and other out-of-band responses are generated — had no
+   * alone, so anything reasoning about a route from the router's side - which
+   * is where preflights and other out-of-band responses are generated - had no
    * way to see what the route's own middleware was configured with.
    */
   public get metadata(): MiddlewareMetadata[] {

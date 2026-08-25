@@ -188,7 +188,7 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
     // A name is resolved AFTER the realm exists, not here.
     //
     // `getRoles()` scopes its lookup to this realm, and this realm is created
-    // three lines below — so the lookup was empty by construction and
+    // three lines below - so the lookup was empty by construction and
     // `roles: ["admin"]` could only ever throw "Role 'admin' not found". The
     // name is handed to the provider instead, which resolves it against every
     // declared role and, if the matching `$role` has not been declared yet,

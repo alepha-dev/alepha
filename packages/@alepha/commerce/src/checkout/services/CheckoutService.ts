@@ -350,7 +350,7 @@ export class CheckoutService {
 
       // Money for an order that is no longer taking it. The PSP intent
       // outlives the session, so a capture can land after the checkout was
-      // abandoned — and settling it would mark an order paid whose stock has
+      // abandoned - and settling it would mark an order paid whose stock has
       // already been released to other buyers.
       //
       // `paid` is NOT this case: that is a re-delivered webhook, and it must
@@ -383,7 +383,7 @@ export class CheckoutService {
     paymentIntentId?: string,
   ): Promise<void> {
     this.log.warn(
-      `Capture arrived for order ${order.id}, which is '${order.status}' — recording as a stray capture`,
+      `Capture arrived for order ${order.id}, which is '${order.status}' - recording as a stray capture`,
       { orderId: order.id, paymentIntentId },
     );
 

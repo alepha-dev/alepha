@@ -305,7 +305,7 @@ describe("SecurityProvider", () => {
     // Naming a realm that does not exist is no longer refused HERE: before
     // start it is the ordinary $role-before-$issuer case, and refusing it was
     // what made declaration order matter. It fails the boot at `ready`
-    // instead — pinned in `role-issuer-order.spec.ts`.
+    // instead - pinned in `role-issuer-order.spec.ts`.
 
     sec.createRole(
       {

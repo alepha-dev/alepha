@@ -339,7 +339,7 @@ describe("checkout reconciliation", () => {
    * Nothing retries it: the intent is already captured, and `syncIntent`
    * returns early on a terminal status, so it has nothing left to replay. The
    * reconcile step then saw a `paying` session with an old intent and
-   * abandoned it — cancelling an order the customer had paid for.
+   * abandoned it - cancelling an order the customer had paid for.
    */
   it(
     "settles a checkout whose captured webhook failed, instead of cancelling it",
@@ -365,7 +365,7 @@ describe("checkout reconciliation", () => {
         .handleWebhookEvent(intentId, "captured")
         .catch(() => undefined);
 
-      // The money is taken and the checkout is stranded — exactly the state
+      // The money is taken and the checkout is stranded - exactly the state
       // reconcile has to resolve.
       expect((await ctx.probe.sessions.findById(sessionId))?.status).toBe(
         "paying",

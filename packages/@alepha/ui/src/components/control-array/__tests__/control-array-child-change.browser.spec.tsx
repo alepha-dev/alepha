@@ -11,13 +11,13 @@ import { AutoForm } from "../../auto-form/auto-form.tsx";
 
 /**
  * `ControlArray` builds an input of its own for each item and each item field,
- * with a path of its own (`.../1/name`), but wrote through `input.set()` —
+ * with a path of its own (`.../1/name`), but wrote through `input.set()` -
  * which sets the ARRAY and makes `FormModel` emit `form:change` for the
  * array's path alone.
  *
  * So a child subscribed through `useFieldValue` never heard about its own
  * edit. It kept rendering the value it had at mount, and the moment anything
- * forced a re-render — removing a sibling, adding a row — the typed value
+ * forced a re-render - removing a sibling, adding a row - the typed value
  * snapped back.
  */
 describe("ControlArray child changes", () => {

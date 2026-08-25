@@ -882,7 +882,7 @@ describe("DbCommand", () => {
    * the default root, and the help advertised an argument that did nothing.
    *
    * With the declaration gone, `CliProvider`'s "takes no positional
-   * arguments" gate covers them — so this asserts the declaration is absent
+   * arguments" gate covers them - so this asserts the declaration is absent
    * rather than re-testing the gate, which `$command.spec.ts` already pins.
    */
   describe("positional arguments", () => {
@@ -901,7 +901,7 @@ describe("DbCommand", () => {
       expect(withArgs).toEqual([]);
     });
 
-    it("still covers every command — the walk is not vacuous", () => {
+    it("still covers every command - the walk is not vacuous", () => {
       const { db } = create();
 
       expect(walk(db.db).map((it) => it.options.name)).toEqual(

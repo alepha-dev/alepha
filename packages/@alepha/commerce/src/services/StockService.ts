@@ -31,11 +31,11 @@ import { InsufficientStockError } from "../errors/CommerceError.ts";
  *
  * Checking before writing cannot close it: on Postgres at READ COMMITTED two
  * transactions read the same sum before either commits, and there is no
- * counter row to lock — on-hand is a SUM over an append-only ledger.
+ * counter row to lock - on-hand is a SUM over an append-only ledger.
  *
  * So the write comes first and the check second. Every racer inserts its claim,
- * then reads the claims back in one deterministic order — `(createdAt, id)`,
- * which every racer computes identically — and keeps its own only if it fits.
+ * then reads the claims back in one deterministic order - `(createdAt, id)`,
+ * which every racer computes identically - and keeps its own only if it fits.
  * Exactly as many claims survive as there is stock for, whoever ran first, and
  * it needs no row lock, so it behaves the same on SQLite and D1.
  */
@@ -171,7 +171,7 @@ export class StockService {
    *
    * Every live hold is read back in one order every racer computes the same
    * way, and the quantities are summed up to and including this one. The hold
-   * survives if that running total still fits within on-hand — so N racers for
+   * survives if that running total still fits within on-hand - so N racers for
    * M units leave exactly as many holds standing as M allows, and the ones
    * that lose are the ones that arrived last.
    *
@@ -285,7 +285,7 @@ export class StockService {
    * A PREFIX, not a snapshot, and that distinction is the whole correctness
    * argument: rows written after this one cannot change the sum before it, and
    * rows written before it are already committed. So the answer does not
-   * depend on how many racers happen to have landed by the time this runs —
+   * depend on how many racers happen to have landed by the time this runs -
    * an earlier version compared against a live `onHand` and let a racer that
    * checked early survive a deficit that later racers then had to absorb,
    * which oversold under load.

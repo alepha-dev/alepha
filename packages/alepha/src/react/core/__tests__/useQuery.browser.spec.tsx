@@ -344,7 +344,7 @@ describe("useQuery keyed cache", () => {
   describe("a superseding run on a keyed query", () => {
     /**
      * A handler whose every call is resolved by hand, and which rejects with
-     * an `AbortError` the moment its signal fires — i.e. one that honours
+     * an `AbortError` the moment its signal fires - i.e. one that honours
      * cancellation, which is the condition for the bug.
      */
     const deferredHandler = () => {

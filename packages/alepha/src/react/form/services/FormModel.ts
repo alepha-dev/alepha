@@ -185,11 +185,11 @@ export class FormModel<T extends ZObject> {
    * `keepDirty` keeps the fields the user has actually edited. A page that
    * refetches after a save calls this with the server's answer, and without it
    * anything typed between submit and response was overwritten by data that
-   * predates it — the user watched their own words disappear.
+   * predates it - the user watched their own words disappear.
    *
    * "Edited" is derived, not tracked: a key is dirty when its current value
    * differs from the baseline it was seeded with. That is also why the flag
-   * needs no reset after a submit — this very call installs the new baseline,
+   * needs no reset after a submit - this very call installs the new baseline,
    * so a field the server echoed back unchanged becomes clean again on its
    * own.
    */
@@ -825,7 +825,7 @@ export type FormCtrlOptions<T extends ZObject> = {
    * When `initialValues` changes, keep the fields the user has edited.
    *
    * On by default, because the common reason `initialValues` changes at all
-   * is a refetch after a save — and re-seeding from it overwrote anything
+   * is a refetch after a save - and re-seeding from it overwrote anything
    * typed between submit and response with data that predates it.
    *
    * Set to `false` for a form that must always mirror its source exactly. To

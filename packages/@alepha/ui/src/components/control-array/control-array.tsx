@@ -215,7 +215,7 @@ const useArrayItems = (input: BaseInputField | undefined) => {
       counter.current = 0;
       const rebuilt = next.map((value) => ({ key: counter.current++, value }));
       // A reset or a `setInitialValues` writes the array whole, so the child
-      // paths need telling here too — same reason as an edit.
+      // paths need telling here too - same reason as an edit.
       emitChanged(itemsRef.current, rebuilt);
       setItemsState(rebuilt);
     },

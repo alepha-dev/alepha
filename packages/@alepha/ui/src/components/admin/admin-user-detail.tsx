@@ -40,7 +40,7 @@ import {
   UserCheck,
   UserX,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { PROVIDER_LABELS } from "../auth/provider-labels.ts";
 import { passwordSchema } from "./admin-user-detail-password-schema.ts";
@@ -260,7 +260,7 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
 
   // No `useEffect` re-seeding the form from `userQuery.data` here: the same
   // object is already `useForm`'s `initialValues` above, and `useForm` re-seeds
-  // itself when it changes — keeping the fields the user has edited, which the
+  // itself when it changes - keeping the fields the user has edited, which the
   // hand-rolled effect could not do. It re-seeded wholesale, so anything typed
   // between pressing Save and the refetch landing was overwritten by data that
   // predates it.

@@ -5,7 +5,7 @@ import { $issuer, $role, SecurityProvider } from "../index.ts";
 
 /**
  * `$role` and `$issuer` are class fields, so which one runs first is decided
- * by whichever class the container instantiates first — nothing the declaring
+ * by whichever class the container instantiates first - nothing the declaring
  * code controls.
  *
  * A role used to be pushed into the realms that happened to exist at that
@@ -15,7 +15,7 @@ import { $issuer, $role, SecurityProvider } from "../index.ts";
  * and nobody was told.
  *
  * The mirror image was `$issuer({ roles: ["admin"] })`, which resolved its
- * names against a realm created on the next line — empty by construction, so
+ * names against a realm created on the next line - empty by construction, so
  * the string form could only ever throw "Role not found".
  */
 describe("$role / $issuer declaration order", () => {

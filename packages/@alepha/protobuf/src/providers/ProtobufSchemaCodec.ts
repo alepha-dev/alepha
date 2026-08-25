@@ -84,7 +84,7 @@ export class ProtobufSchemaCodec extends SchemaCodec {
       return this.convertEnumValue(schema, value);
     }
     // Before the object guard below, so an int64 inside an array is converted
-    // too — `applyProto3Defaults(schema.items, item)` is how array elements
+    // too - `applyProto3Defaults(schema.items, item)` is how array elements
     // arrive here, and a scalar element would otherwise fall straight through.
     if (this.isInteger(schema)) {
       return this.toSafeInteger(schema, value);
@@ -115,7 +115,7 @@ export class ProtobufSchemaCodec extends SchemaCodec {
         // here is the first thing `applyProto3Defaults` does, and gating on
         // `typeof === "object"` meant a SCALAR needing conversion was skipped
         // whenever its schema was not one of the two spelled out here. That is
-        // how `z.integer().nullable()` slipped through — a union, so neither
+        // how `z.integer().nullable()` slipped through - a union, so neither
         // the enum branch nor the object branch, and its decoded int64 string
         // reached validation as a string.
         result[key] = this.applyProto3Defaults(propSchema, result[key]);
@@ -147,7 +147,7 @@ export class ProtobufSchemaCodec extends SchemaCodec {
    * Turn an int64 field back into the number its schema declares.
    *
    * `decode()` passes `longs: String` so 64-bit fields survive as decimal
-   * strings — which is what `z.bigint()` wants, and exactly what a
+   * strings - which is what `z.bigint()` wants, and exactly what a
    * `z.integer()` field does not: the schema says `type: "integer"`, so a
    * string fails validation on the way back in.
    *
@@ -161,7 +161,7 @@ export class ProtobufSchemaCodec extends SchemaCodec {
     value: unknown,
     field?: string,
   ): unknown {
-    // `z.bigint()` is carried as a string ON PURPOSE — it is declared
+    // `z.bigint()` is carried as a string ON PURPOSE - it is declared
     // `type: "string", format: "bigint"`, so it never reaches here, but the
     // guard keeps that true if the mapping ever changes.
     if (typeof value !== "string" || schema.format === "bigint") {

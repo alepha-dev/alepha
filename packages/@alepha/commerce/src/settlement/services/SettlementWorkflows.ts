@@ -129,8 +129,8 @@ export class SettlementWorkflows {
           }
 
           // Captured, yet the session never completed: `settle()` threw inside
-          // the `captured` webhook — a transient DB error, an invoice sequence
-          // hiccup — and nothing retried it, because `syncIntent` returns
+          // the `captured` webhook - a transient DB error, an invoice sequence
+          // hiccup - and nothing retried it, because `syncIntent` returns
           // early on a terminal intent status and so has nothing left to
           // replay. Reaching the abandon below would cancel an order the
           // customer has already paid for, which is the one outcome this

@@ -75,7 +75,7 @@ declare module "alepha" {
      *
      * A PSP intent outlives the checkout session it was created for, so a
      * capture can land after the session was abandoned. The order is left as
-     * it was — settling it would sell stock that has already been released —
+     * it was - settling it would sell stock that has already been released -
      * and this is emitted so the application can refund or review.
      *
      * **Nobody is refunded automatically.** Whether a stray capture is

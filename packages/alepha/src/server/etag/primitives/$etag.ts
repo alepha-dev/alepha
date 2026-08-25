@@ -56,7 +56,7 @@ export const $etag = (options?: EtagMiddlewareOptions): Middleware => {
       return async (...args) => {
         // Resolution order matters, and it is the same one `$secure` uses.
         //
-        // Inside a nested `run()` — SSR `follow()`, `/api/_batch` — the
+        // Inside a nested `run()` - SSR `follow()`, `/api/_batch` - the
         // container-wide `alepha.http.request` is the OUTER request. Reading
         // it first stamped this action's etag options onto the page's own
         // request, so the page response inherited this action's

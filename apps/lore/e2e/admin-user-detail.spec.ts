@@ -31,7 +31,7 @@ test.describe("admin user detail", () => {
   //     so `form:submit:end` never fired for the PREVIOUS save. That event is
   //     in submit()'s `finally`, after `await options.handler(...)`, and the
   //     "Profile saved" toast (emitted before `await userQuery.refetch()`) IS
-  //     visible — so the handler is hung inside `userQuery.refetch()`;
+  //     visible - so the handler is hung inside `userQuery.refetch()`;
   //   - Last name still reads "Smith" although `fill("")` ran and left the
   //     input focused, i.e. the value was set and then reverted.
   //

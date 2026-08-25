@@ -100,7 +100,7 @@ export interface ServerRequest<
    *
    * With `TRUST_PROXY=true` (the default), read from `cf-connecting-ip` when
    * present, otherwise from the `X-Forwarded-For` entry `TRUST_PROXY_HOPS`
-   * places from the RIGHT — the header is append-only, so only the entries
+   * places from the RIGHT - the header is append-only, so only the entries
    * the trusted proxies added can be believed. Falls back to `X-Real-IP` and
    * then the socket address.
    */

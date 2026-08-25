@@ -8,7 +8,7 @@ import type { CaptchaProvider } from "./CaptchaProvider.ts";
  *
  * Refuses every token. That is the whole point: the default used to be
  * {@link MemoryCaptchaProvider}, which accepts every token, in every
- * environment — so a realm with `captchaRequired: true` and no provider bound
+ * environment - so a realm with `captchaRequired: true` and no provider bound
  * had captcha "on" and no captcha at all, and nothing said so. A protection
  * that is absent must refuse, not wave through.
  *

@@ -10,7 +10,7 @@ import { useForm, useFormValues } from "../index.ts";
 /**
  * A page that refetches after a save hands `useForm` new `initialValues`,
  * and re-seeding from them wholesale overwrote whatever the user had typed
- * between pressing submit and the response landing — with data that predates
+ * between pressing submit and the response landing - with data that predates
  * their own edit.
  *
  * The rule is per FIELD, not per form: the server's answer wins everywhere

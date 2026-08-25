@@ -20,7 +20,7 @@ import { StockService } from "../services/StockService.ts";
  * A cart's `userId` is copied to the checkout session and from there to the
  * order. Neither controller ever wrote it, so every order belonged to nobody:
  * "my orders" answered empty for every customer, `CartService.merge` could
- * never run, and the address book — keyed on the same id — was dead.
+ * never run, and the address book - keyed on the same id - was dead.
  */
 describe("cart ownership", () => {
   const setup = async () => {
@@ -46,7 +46,7 @@ describe("cart ownership", () => {
 
   /**
    * One browser: its own cookie jar, carried between calls the way a browser
-   * carries it — what the response SET becomes what the next request SENDS.
+   * carries it - what the response SET becomes what the next request SENDS.
    * Without that the cart handle is lost after every call and each request
    * mints a new cart.
    */
@@ -97,7 +97,7 @@ describe("cart ownership", () => {
     const userId = randomUUID();
     const claimed = await visit(userId, () => ctx.cartController.resolveCart());
 
-    // The SAME cart, now owned — not a second one.
+    // The SAME cart, now owned - not a second one.
     expect(claimed.id).toBe(guest.id);
     expect(claimed.userId).toBe(userId);
   });

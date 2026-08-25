@@ -362,7 +362,7 @@ export class ActionPrimitive<
     //
     // A nested invocation (`/api/_batch`, an SSR loader) has no socket of its
     // own, so `ip` used to be undefined and every such call keyed the rate
-    // limiter on `ip:unknown` — one bucket shared by every client in the
+    // limiter on `ip:unknown` - one bucket shared by every client in the
     // world, and no client ever limited per address. The HTTP request that
     // is actually paying for this work is on an ancestor context layer;
     // inherit its address so the budget comes out of the right bucket.

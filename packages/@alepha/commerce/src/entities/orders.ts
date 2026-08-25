@@ -114,7 +114,7 @@ export const orders = $entity({
      *
      * A PSP intent outlives the checkout session it was created for, so a
      * capture can land after the session was abandoned or its order cancelled.
-     * The order must NOT flip to paid on the strength of it — the stock is
+     * The order must NOT flip to paid on the strength of it - the stock is
      * gone, the holds are released, and quietly settling would sell something
      * that is not there. But the customer HAS been charged, so it cannot be
      * dropped either: it is recorded here and announced as

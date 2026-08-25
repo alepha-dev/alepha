@@ -243,7 +243,7 @@ describe("stock reservation", () => {
    *
    * `reserve` and `recordSale` used to read the sum, compare in memory and
    * write. At READ COMMITTED two transactions read the SAME sum before either
-   * commits, so both passed the check and both wrote — and there is no counter
+   * commits, so both passed the check and both wrote - and there is no counter
    * row to lock, since on-hand is a SUM over an append-only ledger.
    */
   describe("under concurrency", () => {
@@ -363,7 +363,7 @@ describe("stock reservation", () => {
       const session = await ctx.checkout.getById(sessionId);
 
       // The order is cancelled while the session is still `paying` and the
-      // intent still live — an admin cancellation, a support action. The
+      // intent still live - an admin cancellation, a support action. The
       // capture that follows is money for something that is no longer for
       // sale.
       await ctx.orders.cancel(session.orderId!);

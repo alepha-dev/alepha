@@ -151,7 +151,7 @@ export class RealmProvider {
    * Same shape as {@link assertNotificationsCoverSettings}, and for the same
    * reason: a security setting that silently does nothing is worse than one
    * that refuses. `alepha/captcha` binds `UnconfiguredCaptchaProvider` when
-   * the app registered no provider, and that one refuses every token — so
+   * the app registered no provider, and that one refuses every token - so
    * without this, a production realm with `captchaRequired: true` would boot,
    * render the widget, and reject every single signup.
    *
