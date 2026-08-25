@@ -28,12 +28,12 @@ syntax = "proto3";
 message Target {
   string username = 1;
   string createdAt = 2;
-  int32 age = 3;
+  int64 age = 3;
   bool isActive = 4;
   double score = 5;
   int64 bigNumber = 6;
-  int32 level = 7;
-  int32 points = 8;
+  int64 level = 7;
+  int64 points = 8;
 }
 `,
       );
@@ -109,7 +109,7 @@ syntax = "proto3";
 
 message Target_users {
   string name = 1;
-  int32 age = 2;
+  int64 age = 2;
 }
 message Target {
   repeated Target_users users = 1;
@@ -239,7 +239,7 @@ syntax = "proto3";
 message Target {
   string name = 1;
   string email = 2;
-  int32 age = 3;
+  int64 age = 3;
 }
 `,
       );
@@ -265,7 +265,7 @@ syntax = "proto3";
 message Target {
   string name = 1;
   string nickname = 2;
-  int32 age = 3;
+  int64 age = 3;
 }
 `,
       );
@@ -686,6 +686,80 @@ message User {
       expect(() =>
         alepha.codec.decode(schema, 42 as any, { encoder: "protobuf" }),
       ).toThrow(/Unsupported value type/);
+    });
+  });
+
+  /**
+   * `z.integer()` used to be emitted as `int32`, so a millisecond timestamp,
+   * an id past 2^31-1 or any large counter wrapped silently on encode.
+   */
+  describe("integer width", () => {
+    it("round-trips a timestamp-sized integer exactly", async ({ expect }) => {
+      const schema = z.object({ at: z.integer() });
+      const data = { at: 1_787_667_245_237 };
+
+      const buf = alepha.codec.encode(schema, data, {
+        as: "binary",
+        encoder: "protobuf",
+      });
+
+      expect(alepha.codec.decode(schema, buf, { encoder: "protobuf" })).toEqual(
+        data,
+      );
+    });
+
+    it("round-trips a negative integer past the int32 floor", async ({
+      expect,
+    }) => {
+      const schema = z.object({ delta: z.integer() });
+      const data = { delta: -3_000_000_000 };
+
+      const buf = alepha.codec.encode(schema, data, {
+        as: "binary",
+        encoder: "protobuf",
+      });
+
+      expect(alepha.codec.decode(schema, buf, { encoder: "protobuf" })).toEqual(
+        data,
+      );
+    });
+
+    it("round-trips a large integer inside an array and a nullable", async ({
+      expect,
+    }) => {
+      const schema = z.object({
+        stamps: z.array(z.integer()),
+        maybe: z.integer().nullable(),
+      });
+      const data = { stamps: [1_787_667_245_237, 2], maybe: 9_000_000_000 };
+
+      const buf = alepha.codec.encode(schema, data, {
+        as: "binary",
+        encoder: "protobuf",
+      });
+
+      expect(alepha.codec.decode(schema, buf, { encoder: "protobuf" })).toEqual(
+        data,
+      );
+    });
+
+    it("keeps int32 when both declared bounds fit", async ({ expect }) => {
+      const schema = z.object({ level: z.integer().min(0).max(1000) });
+
+      expect(protobuf.createProtobufSchema(schema)).toContain(
+        "int32 level = 1;",
+      );
+    });
+
+    it("widens when only the upper bound is declared", async ({ expect }) => {
+      // zod emits `minimum: -(2^53-1)` for every integer, so `.max(1000)`
+      // alone still admits values that wrap an int32. Narrowing on the
+      // strength of one bound would keep the bug this exists to close.
+      const schema = z.object({ level: z.integer().max(1000) });
+
+      expect(protobuf.createProtobufSchema(schema)).toContain(
+        "int64 level = 1;",
+      );
     });
   });
 });

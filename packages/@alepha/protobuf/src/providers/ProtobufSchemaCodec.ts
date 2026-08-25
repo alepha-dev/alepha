@@ -83,6 +83,12 @@ export class ProtobufSchemaCodec extends SchemaCodec {
     if (this.isEnum(schema)) {
       return this.convertEnumValue(schema, value);
     }
+    // Before the object guard below, so an int64 inside an array is converted
+    // too — `applyProto3Defaults(schema.items, item)` is how array elements
+    // arrive here, and a scalar element would otherwise fall straight through.
+    if (this.isInteger(schema)) {
+      return this.toSafeInteger(schema, value);
+    }
     if (this.isUnion(schema)) {
       const member = this.getNonNullMember(schema);
       if (member) {
@@ -105,11 +111,14 @@ export class ProtobufSchemaCodec extends SchemaCodec {
           continue;
         }
 
-        if (this.isEnum(propSchema)) {
-          result[key] = this.convertEnumValue(propSchema, result[key]);
-        } else if (typeof result[key] === "object" && result[key] !== null) {
-          result[key] = this.applyProto3Defaults(propSchema, result[key]);
-        }
+        // Unconditional recursion: every per-kind branch that used to live
+        // here is the first thing `applyProto3Defaults` does, and gating on
+        // `typeof === "object"` meant a SCALAR needing conversion was skipped
+        // whenever its schema was not one of the two spelled out here. That is
+        // how `z.integer().nullable()` slipped through — a union, so neither
+        // the enum branch nor the object branch, and its decoded int64 string
+        // reached validation as a string.
+        result[key] = this.applyProto3Defaults(propSchema, result[key]);
       }
 
       return result;
@@ -132,6 +141,41 @@ export class ProtobufSchemaCodec extends SchemaCodec {
 
   protected isEnum(schema: JsonSchema): boolean {
     return Array.isArray(schema?.enum);
+  }
+
+  /**
+   * Turn an int64 field back into the number its schema declares.
+   *
+   * `decode()` passes `longs: String` so 64-bit fields survive as decimal
+   * strings — which is what `z.bigint()` wants, and exactly what a
+   * `z.integer()` field does not: the schema says `type: "integer"`, so a
+   * string fails validation on the way back in.
+   *
+   * A value that cannot be a JS number is refused rather than rounded. Losing
+   * the low bits of an id while reporting success is the failure this whole
+   * change exists to stop, and returning it as a `bigint` instead would fail
+   * the same validation for the same reason.
+   */
+  protected toSafeInteger(
+    schema: JsonSchema,
+    value: unknown,
+    field?: string,
+  ): unknown {
+    // `z.bigint()` is carried as a string ON PURPOSE — it is declared
+    // `type: "string", format: "bigint"`, so it never reaches here, but the
+    // guard keeps that true if the mapping ever changes.
+    if (typeof value !== "string" || schema.format === "bigint") {
+      return value;
+    }
+
+    const parsed = Number(value);
+    if (!Number.isSafeInteger(parsed)) {
+      throw new AlephaError(
+        `Protobuf field ${field ? `'${field}' ` : ""}decoded to ${value}, which is outside the safe integer range. Declare it as z.bigint() to carry it exactly.`,
+      );
+    }
+
+    return parsed;
   }
 
   protected isUnion(schema: JsonSchema): boolean {
