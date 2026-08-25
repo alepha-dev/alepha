@@ -1,14 +1,18 @@
 import { execSync } from "node:child_process";
-import { readFileSync } from "node:fs";
 
 import { defineConfig } from "alepha/cli/config";
 import { devtools } from "alepha/cli/devtools";
 import { i18n } from "alepha/cli/i18n";
 import { platform } from "alepha/cli/platform";
 
-const pkg = JSON.parse(
-  readFileSync(new URL("./package.json", import.meta.url), "utf-8"),
-);
+// The FRAMEWORK's manifest, not Lore's own - the same source `apps/docs` uses.
+// Lore is private and therefore carries no version of its own: the release job
+// bumps with `--no-private`, so a number here would be decoration that nothing
+// maintains. Reading its own manifest silently published `"undefined"` on
+// /version, and the framework version is the more useful answer anyway - what
+// a continuously deployed app is running.
+import pkg from "../../packages/alepha/package.json" with { type: "json" };
+
 let gitCommit = "unknown";
 try {
   gitCommit = execSync("git rev-parse --short HEAD").toString().trim();
