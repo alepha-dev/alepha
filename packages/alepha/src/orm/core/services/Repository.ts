@@ -1784,6 +1784,16 @@ export abstract class Repository<T extends ZObject> {
   }
 
   protected handleError(error: unknown, message: string): DbError {
+    // Our own error, not the driver's answer. The write paths wrap everything
+    // around the statement, including the query guards that run before it, so
+    // `deleteMany({ col: null })` reported "Delete query has failed" and the
+    // one message that says to use `{ isNull: true }` was thrown away. A
+    // `DbError` is caught by the same test and passes through for the same
+    // reason: it has already been classified.
+    if (error instanceof AlephaError) {
+      return error as DbError;
+    }
+
     // Before any pattern matching: drizzle demotes the driver's error to
     // `cause` and throws its own, so a timeout arrives here disguised as a
     // generic `Failed query: ...`. Classifying it by message would be

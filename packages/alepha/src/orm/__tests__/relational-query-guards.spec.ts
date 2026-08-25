@@ -72,4 +72,27 @@ describe("relational queries on sqlite", () => {
       }),
     ).rejects.toThrow(/Column 'nope' not found/);
   });
+
+  it("rejects a null relation filter and does not run unfiltered", async () => {
+    // The column path already refuses `null` and `undefined` because either
+    // one silently drops the condition. This branch used to `continue` on
+    // undefined and answer null with a message about object shape, so the
+    // identical mistake one key over got two different answers, one silent.
+    const app = await boot();
+
+    await expect(
+      app.posts.findMany({ where: { author: null } as any }),
+    ).rejects.toThrow(/is null/);
+  });
+
+  it("rejects an undefined relation filter", async () => {
+    const app = await boot();
+
+    await expect(
+      app.posts.findMany({
+        include: { author: true },
+        where: { author: undefined } as any,
+      }),
+    ).rejects.toThrow(/is undefined/);
+  });
 });
