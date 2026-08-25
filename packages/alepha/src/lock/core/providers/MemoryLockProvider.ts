@@ -59,6 +59,36 @@ export class MemoryLockProvider extends LockProvider {
     }
   }
 
+  /**
+   * Same compare-and-delete as the base class, minus the `await` between the
+   * read and the delete: another task scheduled in that gap could take the
+   * lock over and have it deleted out from under it. Nothing here is I/O, so
+   * there is no reason to yield at all.
+   */
+  public override async delIfOwner(
+    key: string,
+    ownerId: string,
+  ): Promise<boolean> {
+    const value = this.store[key];
+    if (value == null) {
+      return false;
+    }
+
+    const sep = value.indexOf(",");
+    const owner = sep === -1 ? value : value.slice(0, sep);
+    if (owner !== ownerId) {
+      return false;
+    }
+
+    delete this.store[key];
+    if (this.storeTimeout[key] != null) {
+      this.storeTimeout[key].clear();
+      delete this.storeTimeout[key];
+    }
+
+    return true;
+  }
+
   protected ttl(key: string, ms: number): void {
     if (this.storeTimeout[key] != null) {
       this.storeTimeout[key].clear();

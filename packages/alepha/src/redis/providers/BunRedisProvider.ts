@@ -399,6 +399,25 @@ export class BunRedisProvider extends RedisProvider {
     return result;
   }
 
+  // ---------------------------------------------------------
+  // Scripting
+  // ---------------------------------------------------------
+
+  public override async eval(
+    script: string,
+    keys: string[],
+    args: string[],
+  ): Promise<unknown> {
+    const reply = await this.publisher.send("EVAL", [
+      script,
+      String(keys.length),
+      ...keys,
+      ...args,
+    ]);
+
+    return reply instanceof Uint8Array ? Buffer.from(reply).toString() : reply;
+  }
+
   /**
    * Get the Redis connection URL.
    */

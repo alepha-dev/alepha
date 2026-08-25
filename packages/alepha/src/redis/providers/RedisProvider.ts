@@ -130,6 +130,31 @@ export abstract class RedisProvider {
     amount: number,
     ttl?: number,
   ): Promise<number>;
+
+  // ---------------------------------------------------------
+  // Scripting
+  // ---------------------------------------------------------
+
+  /**
+   * Run a Lua script on the server.
+   *
+   * The point is atomicity: Redis runs the whole script as one command, so a
+   * read and the write that depends on it cannot be interleaved by another
+   * client. Anything expressed as a GET followed by a conditional DEL/SET
+   * over two round-trips has a window between them, and `alepha/lock` lived
+   * in exactly that window (see `RedisLockProvider.delIfOwner`).
+   *
+   * @param script The Lua source. `KEYS[n]` and `ARGV[n]` are 1-based.
+   * @param keys Keys the script touches, exposed as `KEYS`.
+   * @param args Everything else, exposed as `ARGV`.
+   * @returns The script's reply, converted to JS by the client. Numbers come
+   * back as numbers, `nil` as null or undefined depending on the runtime.
+   */
+  public abstract eval(
+    script: string,
+    keys: string[],
+    args: string[],
+  ): Promise<unknown>;
 }
 
 /**

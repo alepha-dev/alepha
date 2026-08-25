@@ -237,6 +237,24 @@ describe("BunRedisSubscriberProvider", () => {
     expect(received).toEqual(["before"]);
   });
 
+  it("should run a Lua script atomically", async () => {
+    const key = `test:bun:eval:${randomUUID()}`;
+    await redis.set(key, "mine");
+
+    const script = `
+if redis.call("GET", KEYS[1]) == ARGV[1] then
+  return redis.call("DEL", KEYS[1])
+end
+return 0
+`;
+
+    expect(Number(await redis.eval(script, [key], ["theirs"]))).toBe(0);
+    expect((await redis.get(key))?.toString()).toBe("mine");
+
+    expect(Number(await redis.eval(script, [key], ["mine"]))).toBe(1);
+    expect(await redis.get(key)).toBeUndefined();
+  });
+
   it("should clean up connections on stop", async () => {
     const fresh = Alepha.create({
       env: { REDIS_URL: "redis://localhost:16379" },

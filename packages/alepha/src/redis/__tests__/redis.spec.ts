@@ -21,6 +21,24 @@ describe("Redis", () => {
     expect(value?.toString()).toBe(uuid);
   });
 
+  it("should run a Lua script atomically", async ({ expect }) => {
+    const key = `test:eval:${randomUUID()}`;
+    await redis.set(key, "mine");
+
+    const script = `
+if redis.call("GET", KEYS[1]) == ARGV[1] then
+  return redis.call("DEL", KEYS[1])
+end
+return 0
+`;
+
+    expect(Number(await redis.eval(script, [key], ["theirs"]))).toBe(0);
+    expect((await redis.get(key))?.toString()).toBe("mine");
+
+    expect(Number(await redis.eval(script, [key], ["mine"]))).toBe(1);
+    expect(await redis.get(key)).toBeUndefined();
+  });
+
   it("should support pub/sub messaging", async ({ expect }) => {
     const stack: string[] = [];
     await sub.subscribe("test", (message: string) => {

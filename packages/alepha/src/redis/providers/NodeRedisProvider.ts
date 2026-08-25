@@ -295,6 +295,21 @@ export class NodeRedisProvider extends RedisProvider {
     return result;
   }
 
+  // ---------------------------------------------------------
+  // Scripting
+  // ---------------------------------------------------------
+
+  public override async eval(
+    script: string,
+    keys: string[],
+    args: string[],
+  ): Promise<unknown> {
+    return await this.publisher.eval(script, {
+      keys,
+      arguments: args,
+    });
+  }
+
   /**
    * Get the Redis connection URL.
    */
