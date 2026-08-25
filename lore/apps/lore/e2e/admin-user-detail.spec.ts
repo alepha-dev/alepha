@@ -19,14 +19,25 @@ test.describe("admin user detail", () => {
   const adminEmail = "admin@example.com";
   const adminPassword = "GoodPassw0rd";
 
-  // SKIPPED (2026-05-28): times out at the "clear lastName → save" step
-  // (line ~93). At failure the Last name input still shows "Smith" even
-  // though `fill("")` ran, so clearing an *optional* string field to empty
-  // doesn't propagate to the controlled input — the form stays pristine and
-  // the `disabledIfPristine` Save button never enables, so `.click()` hangs.
-  // Suspected bug in the @alepha/ui Control / FormModel clear-to-empty path
-  // (a non-empty value works fine; only empty-clear fails). Not yet
-  // root-caused; un-skip once the empty-clear propagation is fixed.
+  // SKIPPED. The 2026-05-28 note that used to sit here blamed the
+  // clear-to-empty path; that is wrong, and re-verified as wrong on
+  // 2026-08-25 (a browser spec clears an optional string field through
+  // AutoForm and it propagates fine). The keep-dirty fix for #1393 moved this
+  // three steps further: the first clear + save now passes, and the failure
+  // is at the SECOND clear, line ~98.
+  //
+  // What is actually observed at the timeout:
+  //   - the Save button is `disabled aria-busy="true" data-loading="true"`,
+  //     so `form:submit:end` never fired for the PREVIOUS save. That event is
+  //     in submit()'s `finally`, after `await options.handler(...)`, and the
+  //     "Profile saved" toast (emitted before `await userQuery.refetch()`) IS
+  //     visible — so the handler is hung inside `userQuery.refetch()`;
+  //   - Last name still reads "Smith" although `fill("")` ran and left the
+  //     input focused, i.e. the value was set and then reverted.
+  //
+  // Not reproduced in isolation: a browser spec doing submit → await
+  // refetch → re-seed completes both cycles cleanly, so it needs something
+  // more from this page. Un-skip once that is root-caused.
   test.skip("profile edit / validation / conflicts", async ({ page }) => {
     const stamp = Date.now();
     const victimEmail = `victim-${stamp}@example.com`;
