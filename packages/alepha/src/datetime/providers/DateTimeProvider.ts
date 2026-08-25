@@ -258,6 +258,7 @@ export class DateTimeProvider {
         clearInterval(interval.timer);
         interval.timer = null;
         interval.suspended = false;
+        interval.elapsed = 0;
       }
     },
   });
@@ -665,13 +666,19 @@ export class DateTimeProvider {
 
       clearInterval(interval.timer);
 
-      const repeat = Math.floor(ms / interval.duration);
+      // Travelled time that did not complete a period is carried, not lost:
+      // three travel([20, "minutes"]) calls owe a 30-minute interval two
+      // ticks, and flooring each call in isolation delivered none of them.
+      const elapsed = (interval.elapsed ?? 0) + ms;
+      const repeat = Math.floor(elapsed / interval.duration);
+      interval.elapsed = elapsed - repeat * interval.duration;
+
       for (let i = 0; i < repeat; i++) {
         await interval.run();
       }
 
       // Keep the interval suspended: from now on it fires through travel()
-      // only, which is what keeps a test deterministic.
+      // only, which is what keeps a test deterministic. reset() undoes this.
       interval.timer = null;
       interval.suspended = true;
     }
@@ -692,6 +699,21 @@ export class DateTimeProvider {
    */
   public reset(): void {
     this.ref = null;
+
+    // Give every interval travel() took over back to the real clock, or a
+    // suspended one would stay dead for the rest of the process. The carried
+    // remainder is dropped rather than shortening the first real period: the
+    // clock has just jumped BACK to now, so travelled progress toward the
+    // next tick no longer describes any elapsed time.
+    for (const interval of this.intervals) {
+      if (!interval.suspended) {
+        continue;
+      }
+
+      interval.suspended = false;
+      interval.elapsed = 0;
+      this.armInterval(interval);
+    }
   }
 }
 
@@ -708,9 +730,15 @@ export interface Interval {
   run: () => unknown;
   /**
    * Set once travel() has taken over the interval: there is no live timer,
-   * but the interval still fires on every later travel() call.
+   * but the interval still fires on every later travel() call. Cleared by
+   * reset(), which hands the interval back to the real clock.
    */
   suspended?: boolean;
+  /**
+   * Travelled milliseconds that did not complete a period, carried to the
+   * next travel() call so short hops still add up to a tick.
+   */
+  elapsed?: number;
 }
 
 export interface Timeout {
