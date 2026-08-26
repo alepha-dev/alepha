@@ -262,6 +262,7 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
             treeOpen={panes.treeOpen}
             onToggleTree={panes.toggleTree}
             onToggleFocus={panes.toggleFocus}
+            onCreateDirectory={() => treeActions?.createDirectory()}
           />
         )}
       </div>

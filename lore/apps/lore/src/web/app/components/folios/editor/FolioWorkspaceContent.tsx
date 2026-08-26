@@ -72,6 +72,13 @@ export interface FolioWorkspaceContentProps {
   treeOpen: boolean;
   onToggleTree: () => void;
   /**
+   * Folio ▸ New directory. Threaded from `FolioWorkspace.tsx` for the same
+   * reason as `treeOpen`: the tree pane, and the model that opens a freshly
+   * created directory into inline rename, mount one level up and outside
+   * this component's per-folio `key`.
+   */
+  onCreateDirectory: () => void;
+  /**
    * Focus mode (⌘.) — hides both side panes and restores them on a second
    * press. Owned by `useFolioPanes` one level up, like every other pane
    * command, because it moves the tree as well as the inspector.
@@ -185,6 +192,7 @@ const FolioWorkspaceContent = (
     folio: props.folio,
     directoryId: props.directoryId,
     draft,
+    createDirectory: props.onCreateDirectory,
     panes: {
       tree: props.treeOpen,
       inspector: props.inspectorOpen,

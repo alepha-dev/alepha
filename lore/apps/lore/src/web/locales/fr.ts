@@ -147,9 +147,6 @@ export default {
   "folios.editor.action.toggle-inspector": "Inspecteur",
   "folios.editor.action.focus-mode": "Mode concentration",
   "folios.editor.action.revisions": "Révisions",
-  "folios.editor.action.compare": "Comparer avec la précédente",
-  "folios.editor.action.restore": "Restaurer…",
-  "folios.editor.action.keep-version": "Conserver cette version",
 
   "folios.editor.summary.label": "Résumé pour les agents",
   "folios.editor.summary.unavailable": "indisponible",

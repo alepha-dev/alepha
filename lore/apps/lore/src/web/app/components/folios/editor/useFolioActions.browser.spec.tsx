@@ -131,6 +131,7 @@ describe("useFolioActions — envelope salt survives an in-session encrypt", () 
       actions = useFolioActions({
         folio,
         draft,
+        createDirectory: () => {},
         panes: {
           tree: false,
           inspector: false,
@@ -201,6 +202,7 @@ describe("useFolioActions — applyReverted syncs the draft after a history reve
     folio: Folio;
     onActions: (actions: UseFolioActionsResult) => void;
     onDraft?: (draft: FolioDraft) => void;
+    onCreateDirectory?: () => void;
   }) => {
     const draft = useFolioDraft(props.folio);
     props.onDraft?.(draft);
@@ -208,6 +210,7 @@ describe("useFolioActions — applyReverted syncs the draft after a history reve
       useFolioActions({
         folio: props.folio,
         draft,
+        createDirectory: () => props.onCreateDirectory?.(),
         panes: {
           tree: false,
           inspector: false,
@@ -270,6 +273,34 @@ describe("useFolioActions — applyReverted syncs the draft after a history reve
     // revert nobody has touched yet.
     expect(getByTestId("dirty").textContent).toBe("false");
     expect(getByTestId("savedAt").textContent).toBe("2026-01-02T00:00:00.000Z");
+  });
+
+  it("routes Folio ▸ New directory to the tree, instead of nowhere", async ({
+    expect,
+  }) => {
+    const folio = baseFolio({ title: "Anything" });
+    const alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with({ provide: LinkProvider, use: FakeLinkProvider });
+    alepha.inject(FakeLinkProvider).currentFolio = folio;
+
+    let actions: UseFolioActionsResult | undefined;
+    let created = 0;
+    mount(
+      alepha,
+      <Widget
+        folio={folio}
+        onActions={(a) => (actions = a)}
+        onCreateDirectory={() => created++}
+      />,
+    );
+
+    // The menubar renders this entry enabled. It was bound to a shared
+    // no-op on the document path, so clicking it did nothing at all — while
+    // the workspace's own empty state had the same id wired to the same
+    // tree action the whole time.
+    void actions?.handlers["folio.newDirectory"]();
+    expect(created).toBe(1);
   });
 
   it("does not paint ciphertext as if it were plaintext when a protected folio is reverted while locked", async ({
@@ -454,6 +485,7 @@ describe("useFolioActions — the key cache and the current envelope", () => {
     const actions = useFolioActions({
       folio: props.folio,
       draft,
+      createDirectory: () => {},
       panes: {
         tree: false,
         inspector: false,
