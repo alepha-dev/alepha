@@ -1,0 +1,10 @@
+@import "@alepha/ui/styles.css";
+
+/*
+ * No theme of its own on purpose.
+ *
+ * `@alepha/ui/styles.css` already registers the package's own components as a
+ * Tailwind source, which is what makes the account, auth and admin screens
+ * compile their classes here. This example adds no components of its own worth
+ * restyling, and a bespoke palette would only obscure what it is demonstrating.
+ */

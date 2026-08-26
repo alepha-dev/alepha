@@ -1,0 +1,34 @@
+{
+  "name": "totp-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "alepha dev",
+    "build": "alepha build --stats",
+    "deploy": "alepha platform up -e production",
+    "typecheck": "tsc --noEmit",
+    "check:migrations": "alepha db migrations check",
+    "db:generate": "alepha db migrations create",
+    "start": "yarn build && LOG_LEVEL=info LOG_FORMAT=pretty node dist"
+  },
+  "dependencies": {
+    "@alepha/devtools": "workspace:*",
+    "@alepha/ui": "workspace:*",
+    "alepha": "workspace:^",
+    "lucide-react": "^1.31.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "better-sqlite3": "^13.0.3",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.2.1",
+    "wrangler": "^4.123.0"
+  },
+  "dependenciesMeta": {
+    "better-sqlite3": {
+      "built": true
+    }
+  }
+}
