@@ -217,10 +217,17 @@ export class AppRouter {
     path: "/commande/:sessionId",
     head: { title: "Merci · Atelier Aurore" },
     schema: { params: z.object({ sessionId: z.uuid() }) },
-    loader: async ({ params }) =>
-      this.checkoutApi.commerceCheckoutOrder({
+    /*
+     * `sessionId` rides along because the page polls itself with it while the
+     * payment or the invoice is still in flight, and nothing on the order row
+     * points back at the session that produced it.
+     */
+    loader: async ({ params }) => ({
+      ...(await this.checkoutApi.commerceCheckoutOrder({
         params: { id: params.sessionId },
-      }),
+      })),
+      sessionId: params.sessionId,
+    }),
     lazy: () => import("./pages/Merci.tsx"),
   });
 

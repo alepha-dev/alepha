@@ -100,6 +100,11 @@ const renderPage = (opts: {
       box-shadow:0 6px 20px rgba(249,115,22,.35); transition:transform .15s, box-shadow .15s;
     }
     .pay:hover { transform:translateY(-1px); box-shadow:0 10px 26px rgba(249,115,22,.45); }
+    .later {
+      width:100%; margin-top:.6rem; padding:.7rem 1rem; border-radius:999px; cursor:pointer;
+      background:#fff; border:1px solid #e2e8f0; color:#334155; font-size:.9rem; font-family:inherit;
+    }
+    .later:hover { border-color:#cbd5e1; }
     .cancel {
       width:100%; margin-top:.6rem; padding:.7rem 1rem; border-radius:999px; cursor:pointer;
       background:transparent; border:0; color:#64748b; font-size:.85rem; font-family:inherit;
@@ -138,6 +143,10 @@ const renderPage = (opts: {
         <input type="hidden" name="returnUrl" value="${escapeHtml(opts.returnUrl)}" />
         <button type="submit" class="pay">Pay ${escapeHtml(opts.amount)}</button>
       </form>
+      <form method="post" action="/payments/mock-checkout/${opts.intentId}/defer">
+        <input type="hidden" name="returnUrl" value="${escapeHtml(opts.returnUrl)}" />
+        <button type="submit" class="later">Settle later (bank transfer)</button>
+      </form>
       <form method="post" action="/payments/mock-checkout/${opts.intentId}/cancel">
         <input type="hidden" name="returnUrl" value="${escapeHtml(opts.returnUrl)}" />
         <button type="submit" class="cancel">Cancel and return to the site</button>
@@ -149,7 +158,10 @@ const renderPage = (opts: {
 </body>
 </html>`;
 
-const appendStatusParam = (returnUrl: string, status: "success" | "cancel") => {
+const appendStatusParam = (
+  returnUrl: string,
+  status: "success" | "cancel" | "pending",
+) => {
   try {
     const url = new URL(returnUrl, "http://placeholder.local");
     url.searchParams.set("booking", status);
@@ -214,6 +226,33 @@ export class MockCheckoutController {
       if (!this.isMemoryProvider()) return this.forbidden(reply);
       await this.payments.handleWebhookEvent(params.id, "captured");
       reply.redirect(appendStatusParam(body.returnUrl ?? "/", "success"), 302);
+    },
+  });
+
+  /**
+   * Return to the site with the payment still open — the asynchronous rail.
+   *
+   * A bank redirect, a transfer or any delayed method sends the buyer back
+   * BEFORE the money moves, and the confirmation page has to cope with an
+   * order that is still `pending` and settle itself when the capture lands.
+   * Without this the mock could only produce the instant outcomes, so nothing
+   * downstream could be exercised against the case its own copy promises to
+   * handle ("this page will update").
+   *
+   * It touches nothing: the intent stays open and is confirmed later by the
+   * ordinary `/confirm` endpoint, which is exactly the shape a real webhook
+   * arrives in.
+   */
+  public readonly mockCheckoutDefer = $route({
+    method: "POST",
+    path: `${this.url}/:id/defer`,
+    schema: {
+      params: z.object({ id: z.uuid() }),
+      body: z.object({ returnUrl: z.text({ size: "rich" }).optional() }),
+    },
+    handler: async ({ body, reply }) => {
+      if (!this.isMemoryProvider()) return this.forbidden(reply);
+      reply.redirect(appendStatusParam(body.returnUrl ?? "/", "pending"), 302);
     },
   });
 

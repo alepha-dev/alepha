@@ -2,11 +2,14 @@ import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 
 /**
- * Walk the funnel up to the PSP redirect and confirm the payment.
+ * Walk the funnel up to the PSP redirect and finish the payment there.
  *
- * Shared because five specs need a paid order and none of them is *about* the
+ * Shared because six specs need an order and none of them is *about* the
  * funnel. Written against visible text rather than test ids on purpose: if the
  * button a customer must find stops saying "Payer", these tests should fail.
+ *
+ * Returns the confirmation URL and the payment intent id — the latter is what
+ * `settlePayment` needs when the payment was deferred.
  */
 export const buy = async (
   page: Page,
@@ -17,6 +20,13 @@ export const buy = async (
     locality?: string;
     shippingCode?: string;
     email?: string;
+    /**
+     * `"now"` confirms the payment on the PSP page, the way a card does.
+     * `"later"` returns to the shop with the intent still open — a bank
+     * redirect or a transfer — so the order lands on the confirmation page
+     * `pending` and is settled afterwards through `settlePayment`.
+     */
+    settle?: "now" | "later";
   } = {},
 ) => {
   const {
@@ -25,6 +35,7 @@ export const buy = async (
     locality = "Paris",
     shippingCode,
     email = "camille@example.test",
+    settle = "now",
   } = options;
 
   await page.goto(`/produit/${slug}`);
@@ -66,10 +77,43 @@ export const buy = async (
   // Step 3 — pay, which redirects to the mock PSP.
   await page.getByRole("button", { name: "Payer" }).click();
   await page.waitForURL(/\/payments\/mock-checkout\//);
-  await page.getByRole("button", { name: /Pay|Confirm|Payer/ }).click();
+
+  /*
+   * The intent id is read off the PSP's own URL before leaving it: it is what
+   * a webhook is keyed on, so it is what `settlePayment` needs to capture an
+   * intent the buyer left open.
+   */
+  const intentId = page.url().match(/mock-checkout\/([0-9a-f-]{36})/)?.[1];
+
+  if (settle === "later") {
+    // Deliberately not named "Pay …": the confirm button below is matched by a
+    // loose regex, and a second button with "Pay" in it would make it
+    // ambiguous.
+    await page
+      .getByRole("button", { name: "Settle later (bank transfer)" })
+      .click();
+  } else {
+    await page.getByRole("button", { name: /Pay|Confirm|Payer/ }).click();
+  }
 
   await page.waitForURL(/\/commande\/[0-9a-f-]{36}/);
-  return page.url();
+  return { url: page.url(), intentId: intentId as string };
+};
+
+/**
+ * Capture a payment out of band, the way a PSP webhook does.
+ *
+ * Through `page.request` rather than a second tab: the point is that the
+ * confirmation page finds out on its own, so nothing may touch the tab that is
+ * showing it. `maxRedirects: 0` because the endpoint answers a browser with a
+ * 302 back to the shop, which is of no use here.
+ */
+export const settlePayment = async (page: Page, intentId: string) => {
+  const response = await page.request.post(
+    `/payments/mock-checkout/${intentId}/confirm`,
+    { form: { returnUrl: "/" }, maxRedirects: 0 },
+  );
+  expect(response.status()).toBe(302);
 };
 
 /**

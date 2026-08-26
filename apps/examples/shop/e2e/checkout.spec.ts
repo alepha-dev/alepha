@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { buy, selectCountry } from "./helpers.ts";
+import { buy, selectCountry, settlePayment } from "./helpers.ts";
 
 /**
  * The checkout, which is where the money and the law are.
@@ -142,6 +142,45 @@ test.describe("payment and confirmation", () => {
     await expect(invoice).toContainText("TVA 20 %");
     await expect(invoice).toContainText("Total TTC");
     await expect(invoice).toContainText("rétractation");
+  });
+
+  test("an asynchronous payment confirms the page without a reload", async ({
+    page,
+  }) => {
+    /*
+     * The promise the confirmation makes, kept.
+     *
+     * A bank redirect returns the buyer BEFORE the money moves, so the page
+     * opens on a pending order and says "Cette page se mettra à jour". It did
+     * not: the loader ran once and nothing re-read it, so the customer sat in
+     * front of "Paiement en cours" until they thought to reload.
+     */
+    const { intentId } = await buy(page, "collier-aurore", {
+      shippingCode: "retrait",
+      settle: "later",
+    });
+
+    await expect(
+      page.getByRole("heading", { name: "Paiement en cours" }),
+    ).toBeVisible();
+
+    // The capture lands out of band, the way a PSP webhook does — nothing
+    // touches the tab showing the confirmation.
+    await settlePayment(page, intentId);
+
+    // No `page.reload()` anywhere: the page has to notice on its own.
+    await expect(page.getByRole("heading", { name: "Merci" })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(
+      page.getByRole("heading", { name: "Paiement en cours" }),
+    ).toHaveCount(0);
+
+    // And the same poll picks up the invoice, which is issued by a hook on
+    // `commerce:order:paid` and so cannot exist at the moment the page loaded.
+    await expect(page.getByRole("link", { name: /Facture FA-/ })).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
   test("the cart is emptied, so a back button cannot re-buy it", async ({
