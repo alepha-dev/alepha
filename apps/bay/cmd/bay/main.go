@@ -323,6 +323,15 @@ type server struct {
 	// keepReleases is how many releases survive a prune. Zero in the CLI paths
 	// that never deploy, where `deploy.Prune` treats it as "delete nothing".
 	keepReleases int
+	// backupInterval is what `serve` was actually started with, so `bay
+	// status` can judge staleness against the schedule that is running rather
+	// than the one this binary was compiled with.
+	//
+	// It reaches `status` over the control API rather than out of the state
+	// file: `status` may run as an operator who can reach the socket but not
+	// read a root-owned 0600 document, and it needs the server up regardless
+	// — every one of its numbers comes from `GET /apps`.
+	backupInterval time.Duration
 	// watches holds the cancel of each app's in-flight rollback watch, so a new
 	// deploy can supersede the previous one's. See beginWatch.
 	watchMu sync.Mutex
@@ -461,7 +470,8 @@ func cmdServe(args []string) error {
 	}
 	srv := &server{root: root, runtimes: runtimesDir, store: store, runner: sup,
 		isolated: isolated, log: log, controlSocket: controlSocket,
-		keepReleases: keepReleases, probe: &health.Probe{}}
+		keepReleases: keepReleases, backupInterval: backupInterval,
+		probe: &health.Probe{}}
 
 	router := proxy.New(root, store, log)
 	srv.router = router
@@ -785,6 +795,16 @@ func (s *server) controlMux() *http.ServeMux {
 		writeJSON(w, http.StatusOK, map[string]string{"stopped": key})
 	})
 	mux.HandleFunc("GET /apps/{name}/{env}/logs", s.handleLogs)
+	// What this server was started with, for the commands that have to judge
+	// against it. `bay status` used the compiled default, so a host backing up
+	// every 6 hours was called stale after 24, and one backing up weekly was
+	// never called stale at all — the column that exists to notice a stopped
+	// schedule was answering about a different schedule.
+	mux.HandleFunc("GET /settings", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, serverSettings{
+			BackupInterval: s.backupInterval.String(),
+		})
+	})
 	s.registerBackupRoutes(mux)
 	s.registerStorageRoutes(mux)
 	s.registerEnvRoutes(mux)
@@ -841,6 +861,17 @@ func (s *server) handleLogs(w http.ResponseWriter, r *http.Request) {
 		Static:     known && app.Static,
 		Lines:      entries,
 	})
+}
+
+// serverSettings is what the running `serve` was configured with, for the
+// client commands that have to judge against it rather than against whatever
+// this binary's defaults happen to be.
+//
+// A durations-as-strings document on purpose: `time.Duration` marshals as a
+// nanosecond integer, which is neither readable in a `curl` nor safe to widen
+// later.
+type serverSettings struct {
+	BackupInterval string `json:"backupInterval"`
 }
 
 // listedApp is a registered app plus whether it is actually answering.
@@ -1526,7 +1557,11 @@ func cmdList([]string) error {
 // reading JSON. So the age is spelled out, and a stale one is called out rather
 // than left for the reader to compute.
 func cmdStatus(args []string) error {
-	interval := defaultBackupInterval
+	// The server's own schedule, not this binary's default. Overridden below
+	// by an explicit `--backup-interval`: someone who states one is asking
+	// what WOULD be stale under it, which is a different and legitimate
+	// question from what is stale now.
+	interval := serveBackupInterval()
 	asJSON := false
 	for i, arg := range args {
 		if arg == "--json" {
@@ -1853,3 +1888,26 @@ func appKeyArg(args []string, usage string) (string, error) {
 }
 
 func bytesReader(b []byte) io.Reader { return bytes.NewReader(b) }
+
+// serveBackupInterval asks the running server what it backs up on.
+//
+// Falls back to the compiled default rather than failing: an older `serve`
+// has no `/settings` route, and a status report that refuses to print because
+// one column cannot be judged perfectly is worse than one that judges that
+// column the way it always used to. Every other number in the report comes
+// from a separate call that fails loudly on its own.
+func serveBackupInterval() time.Duration {
+	raw, err := call(http.MethodGet, controlHost+"/settings", nil)
+	if err != nil {
+		return defaultBackupInterval
+	}
+	var settings serverSettings
+	if err := json.Unmarshal([]byte(raw), &settings); err != nil {
+		return defaultBackupInterval
+	}
+	d, err := time.ParseDuration(settings.BackupInterval)
+	if err != nil {
+		return defaultBackupInterval
+	}
+	return d
+}
