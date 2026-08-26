@@ -16,15 +16,17 @@ import { WranglerApi } from "./services/WranglerApi.ts";
  * Framework-agnostic platform deploy services.
  *
  * Exports `PlatformOrchestrator` + adapters + secret stores + the
- * `platformOptions` atom — everything needed to drive a deploy
+ * `platformOptions` atom: everything needed to drive a deploy
  * programmatically. **No `$command` instances** and **no
- * `AppEntryProvider` / `ViteBuildProvider` dependency** — so consumers
+ * `AppEntryProvider` / `ViteBuildProvider` dependency**, so consumers
  * importing this subpath don't pull in the CLI argv-parser or Vite.
  *
  * Used by Alepha Rocket (and other non-CLI deploy orchestrators) to
  * call `orchestrator.up({ ... })` directly. For CLI usage
  * (`alepha platform up`), import `AlephaCliPlatformPlugin` from
- * `alepha/cli/platform` — that one adds the command layer on top.
+ * `alepha/cli/platform`, which adds the command layer on top.
+ *
+ * @module alepha.cli.platform-lib
  */
 export const AlephaPlatformLibPlugin = $module({
   name: "alepha.cli.platform-lib",

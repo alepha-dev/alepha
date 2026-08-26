@@ -169,4 +169,94 @@ if (versionViolations.length > 0) {
   process.exit(1);
 }
 
+/**
+ * A subpath is a module.
+ *
+ * Every entry in a package's `exports` names a documented module: the file it
+ * resolves to carries an `@module` JSDoc block, which is what gives it a page
+ * on the docs site and a line in llms.txt. An export without one is a file that
+ * was handed a public path, and `package.json` is the one place in this repo
+ * where that decision is permanent - a published subpath is a compatibility
+ * promise, and there is no taking it back.
+ *
+ * `@alepha/sigil` is why this exists. It reached the eve of its first release
+ * with 14 subpaths and one module: `./key` was `src/shared/sigilKey.ts`,
+ * `./paths` was `src/shared/sigilPaths.ts`, ten more of the same. None of them
+ * saved a consumer anything, because every importer already loaded the module
+ * from the same bundle, and `./react` had no importer at all. Nothing in the
+ * repo could see it: inside the monorepo the dev `exports` point at `src` and
+ * always resolve, so 13 of 14 subpaths pointed at files the tarball did not
+ * contain while every test stayed green.
+ *
+ * The exemptions below are the two shapes that legitimately have no `@module`.
+ */
+const SUBPATH_EXEMPT = {
+  // A component library, not a module: many subpaths on purpose, one per
+  // component, so an app pulls only what it renders. Wildcards - there is no
+  // file to hold a block.
+  "@alepha/ui": "*",
+  // A container, not a module. `.` is the DI kernel itself; `$module` is
+  // declared *by* it.
+  alepha: ["."],
+  "@alepha/payments-mollie": ["."],
+  // `./vat` is `services/VatCalculator.ts` - a class handed a public path,
+  // the same mistake sigil spent 13 subpaths on. Exempt rather than fixed
+  // because commerce is private and its whole surface is already queued for
+  // restructure: 15 subpaths, a build that emits one entry, and no
+  // `publishConfig` at all, so 14 of them would resolve to nothing in a
+  // tarball. Delete this line when that lands - it must not outlive it.
+  "@alepha/commerce": ["./vat"],
+};
+
+const subpathViolations = [];
+
+for (const workspace of workspaces) {
+  if (workspace.location === ".") continue;
+
+  const manifest = JSON.parse(
+    readFileSync(`${workspace.location}/package.json`, "utf8"),
+  );
+  const exempt = SUBPATH_EXEMPT[manifest.name];
+  if (exempt === "*") continue;
+
+  for (const [subpath, value] of Object.entries(manifest.exports ?? {})) {
+    if (subpath === "./package.json" || subpath === "./tsconfig.base") continue;
+    if (exempt?.includes(subpath)) continue;
+
+    const target =
+      typeof value === "string" ? value : (value.types ?? value.import);
+    // Only source entries are modules. A `.css` or a wildcard is an asset.
+    if (!target?.startsWith("./src/") || !/\.tsx?$/.test(target)) continue;
+    if (target.includes("*")) continue;
+
+    const file = `${workspace.location}/${target.slice(2)}`;
+    let body;
+    try {
+      body = readFileSync(file, "utf8");
+    } catch {
+      subpathViolations.push(
+        `  ${manifest.name} ${subpath}\n    → resolves to ${target}, which does not exist`,
+      );
+      continue;
+    }
+
+    if (!/@module\s/.test(body)) {
+      subpathViolations.push(
+        `  ${manifest.name} ${subpath}\n    → ${target} has no \`@module\` block`,
+      );
+    }
+  }
+}
+
+if (subpathViolations.length > 0) {
+  console.error(
+    `\n${subpathViolations.length} subpath violation(s):\n\n` +
+      `${subpathViolations.join("\n")}\n\n` +
+      "Every export subpath is a module and carries an `@module` JSDoc block.\n" +
+      "If a symbol does not deserve a module, export it from one that exists\n" +
+      "rather than giving it a path - a published subpath cannot be withdrawn.\n",
+  );
+  process.exit(1);
+}
+
 console.log("conventions OK");
