@@ -1,5 +1,5 @@
 import { useStore } from "alepha/react";
-import { useRouter } from "alepha/react/router";
+import { useRouter, useRouterState } from "alepha/react/router";
 import { type ReactElement, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -133,6 +133,20 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
   // frame before that effect runs, and whenever the project has not loaded.
   const [treeActions, setTreeActions] = useState<FolioTreeActions>();
 
+  // `/folios?dir=<shortId>` — the breadcrumb's directory segments and the
+  // tree's own Open / Open in new tab both build that link. Nothing read it
+  // until now, so both landed on the workspace's default state.
+  //
+  // Read off the URL here rather than resolved in the route loader: the
+  // tree already holds the directory list the shortId resolves against, so
+  // a loader round-trip would buy nothing, and this way the parameter also
+  // works on a navigation that does not re-run the loader.
+  useRouterState();
+  const dirParam = Number.parseInt(String(router.query.dir ?? ""), 10);
+  const revealDirectoryShortId = Number.isFinite(dirParam)
+    ? dirParam
+    : undefined;
+
   // Start fetching the editor chunk as soon as the workspace mounts, rather
   // than when something first renders the editor. It matters most on the empty
   // `/folios`, where the next click is almost certainly a folio and nothing has
@@ -212,6 +226,7 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
               projectId={project.id}
               projectSlug={project.slug}
               currentFolioId={props.folio?.id}
+              revealDirectoryShortId={revealDirectoryShortId}
               width={panes.treeWidth}
               onActions={setTreeActions}
             />

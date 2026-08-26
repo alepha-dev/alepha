@@ -173,6 +173,9 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
           // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
           <div
             data-slot="folio-tree-row"
+            // Selection is otherwise only a background class, which is not
+            // something a test (or a future stylesheet) can address.
+            data-selected={isSelected || undefined}
             draggable={!isRenaming}
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
