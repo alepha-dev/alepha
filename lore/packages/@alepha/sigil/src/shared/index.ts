@@ -20,6 +20,7 @@ export * from "./sigilFeedbackContext.ts";
 export * from "./sigilFeedbackPosition.ts";
 export * from "./sigilFingerprint.ts";
 export * from "./sigilGlobMatch.ts";
+export * from "./sigilHost.ts";
 export * from "./sigilKey.ts";
 export * from "./sigilMessages.ts";
 export * from "./sigilPaths.ts";

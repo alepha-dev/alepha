@@ -8,7 +8,7 @@ import {
   useRouter,
   useRouterState,
 } from "alepha/react/router";
-import { Loader2 } from "lucide-react";
+import { ExternalLink, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 import type { InsightsController } from "@/api/controllers/InsightsController.ts";
@@ -18,6 +18,7 @@ import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
 import { currentSigilInsightsAtom } from "../../../atoms/currentSigilInsightsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { appUrl, appUrlLabel } from "./appUrl.ts";
 
 type RouteName = "app" | "appAnalytics" | "appPerformance" | "appSettings";
 
@@ -83,6 +84,7 @@ const AppLayout = () => {
 
   const activeRoute = routerState.name ?? "";
   const params = { projectSlug: project.slug, appName: sigil.name };
+  const url = appUrl(sigil);
   // The app's own capability, not the project's. Analytics and Performance
   // both read what Beacon collects, and an app that does not carry it has
   // nothing behind either tab.
@@ -128,6 +130,29 @@ const AppLayout = () => {
     <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-4 overflow-y-auto p-4 md:pt-10">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h1 className="text-xl font-semibold">{sigil.name}</h1>
+        {/*
+          The app's own address, beside its name. A plain `<a>` rather than the
+          router's `Link`: this is the one link on the page that leaves Lore.
+          `noopener` because `_blank` otherwise hands `window.opener` to a page
+          Lore does not control, and `nofollow` because an enrolled app is not
+          an endorsement Lore is making.
+
+          Absent when nothing knows the address yet, which is a real state: an
+          app that has never reported and whose operator has pinned nothing has
+          no address to show, and an empty slot says that better than a
+          placeholder would.
+        */}
+        {url && (
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer nofollow"
+            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs transition-colors"
+          >
+            {appUrlLabel(url)}
+            <ExternalLink className="size-3" aria-hidden />
+          </a>
+        )}
         <span className="text-muted-foreground text-xs">
           {sigil.lastSeenAt
             ? tr("sigils.lastSeen", {

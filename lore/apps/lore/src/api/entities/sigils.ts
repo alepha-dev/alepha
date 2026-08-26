@@ -56,12 +56,51 @@ export const sigils = $entity({
      * documented in CLAUDE.md.
      */
     feedbackPosition: z.enum(SIGIL_FEEDBACK_POSITIONS).optional(),
+    /**
+     * Where this app lives, as the operator typed it.
+     *
+     * The override half of the answer, and the reason there are two columns
+     * rather than one: {@link lastSeenHost} is the address the app reports
+     * from, which is right almost always and cannot be right for everyone. An
+     * app served on an apex and a `www` has two, and whichever reported last
+     * would win; an app that only ever uses the Feedback capability never
+     * posts to the ingest at all and so reports none. Neither is a bug to fix
+     * in the detection - they are cases where only the operator knows the
+     * canonical answer.
+     *
+     * A full URL, not a host, because this one is typed: someone pinning an
+     * address may well want a path on it, and refusing that would be refusing
+     * the only thing the manual field is for.
+     *
+     * Optional, and deliberately without a `db.default` - the same shape
+     * {@link feedbackPosition} carries, for the same reason. `sigils` is the
+     * CASCADE parent of the four analytics tables, and a nullable `ADD COLUMN`
+     * is the one shape that does not make drizzle rebuild the table. See
+     * `apps/lore/CLAUDE.md`.
+     */
+    url: z.string().max(2048).optional(),
     createdBy: db.ref(z.uuid().optional(), () => users.cols.id),
     createdAt: db.createdAt(),
     /**
      * Last time this sigil reported anything. Drives the "silent" badge.
      */
     lastSeenAt: z.string().optional(),
+    /**
+     * The host the last batch was sent from, as the app's own server named it.
+     *
+     * Stamped beside {@link lastSeenAt} on every accepted batch, from the
+     * `host` field of the envelope. It is what makes the app's address
+     * something Lore knows rather than something an operator maintains: an app
+     * that moves domain says so on its next report, with nothing to update
+     * here.
+     *
+     * A host, never a URL - the `Host` header carries no scheme, and the UI
+     * renders `https://` in front of it rather than pretending to know.
+     * {@link url} wins wherever it is set.
+     *
+     * Nullable for the same table-rebuild reason as {@link url}.
+     */
+    lastSeenHost: z.string().max(253).optional(),
   }),
   indexes: [
     { columns: ["projectId"] },

@@ -25,11 +25,26 @@ export const sigilResourceSchema = z.object({
    * Which corner this app's feedback button sits in. Absent = bottom-right.
    */
   feedbackPosition: z.string().optional(),
+  /**
+   * Where this app lives, as its operator pinned it. Absent means "use
+   * whatever the app reports" — see {@link lastSeenHost}.
+   */
+  url: z.string().optional(),
   createdAt: z.string(),
   /**
    * Last time this app reported. Absent means never.
    */
   lastSeenAt: z.string().optional(),
+  /**
+   * The host the app last reported from. A host, not a URL: the `Host` header
+   * carries no scheme.
+   *
+   * Both halves cross rather than a single resolved address, because the UI
+   * needs to tell them apart — the Settings field shows the detected host as
+   * its placeholder, which is how an empty field can honestly read as "using
+   * the one the app reports" instead of as "unset".
+   */
+  lastSeenHost: z.string().optional(),
 });
 
 export type SigilResource = Infer<typeof sigilResourceSchema>;

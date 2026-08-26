@@ -6,6 +6,7 @@ import { $action } from "alepha/server";
 import { sigilEnvelope } from "../shared/schemas/sigilEnvelope.ts";
 import { sigilClientAtom } from "../shared/sigilClientAtom.ts";
 import { sigilDeviceClass } from "../shared/sigilDeviceClass.ts";
+import { sigilHost } from "../shared/sigilHost.ts";
 import { sigilEnv } from "../sigilEnv.ts";
 import { SigilSinkProvider } from "./SigilSinkProvider.ts";
 
@@ -120,7 +121,19 @@ export class SigilProxyController {
 
       // The kill-switches are applied by the sink provider. Filtering here too
       // would be a second place to keep in sync with the fetched config.
-      await this.sink.ingest(request.body, { country, visitor, device });
+      //
+      // `host` is the same header the salt above is built from, kept this time
+      // rather than hashed away. It is the app naming its own address, which
+      // is the one thing a sink cannot work out for itself: it only ever sees
+      // the app's outbound request. Normalized here so the wire carries an
+      // authority or nothing - and normalized AGAIN by the sink, which cannot
+      // trust a sender holding a token any further than it can trust a browser.
+      await this.sink.ingest(request.body, {
+        country,
+        visitor,
+        device,
+        host: sigilHost(host),
+      });
 
       // The config rides back on the call the browser was making anyway. A page
       // served from a file or a cache carries one older than the visit, and

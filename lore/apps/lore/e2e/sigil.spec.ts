@@ -329,6 +329,10 @@ test.describe("Sigils", () => {
           country: "FR",
           device: "mobile",
           visitor: `v-${t}`,
+          // Where the app answers, which its own server is the only party that
+          // knows. Stamped by `SigilProxyController` in a real app; sent by
+          // hand here for the same reason `visitor` and `country` are.
+          host: "docs.alepha.dev",
           ...errorBatch(blightMessage, 3),
         },
       });
@@ -449,6 +453,56 @@ test.describe("Sigils", () => {
           tabs.getByRole("link", { name: label, exact: true }),
         ).toBeVisible();
       }
+    });
+
+    await test.step("the header names where the app answers, from what it reported", async () => {
+      // Nobody typed this. It is the `host` of the batch three steps up,
+      // stamped onto the sigil beside `lastSeenAt` — which is the whole point
+      // of detecting it rather than asking for it.
+      const link = page.getByRole("link", {
+        name: "docs.alepha.dev",
+        exact: true,
+      });
+      await expect(link).toBeVisible({ timeout: 15_000 });
+      await expect(link).toHaveAttribute("href", "https://docs.alepha.dev");
+      // It leaves Lore, so it must not hand `window.opener` to a page Lore
+      // does not control.
+      await expect(link).toHaveAttribute("rel", /noopener/);
+    });
+
+    await test.step("an operator can pin a different URL, and take it back off", async () => {
+      await page
+        .getByTestId("app-tabs")
+        .getByRole("link", { name: "Settings", exact: true })
+        .click();
+
+      const field = page.getByRole("textbox", { name: "App URL", exact: true });
+      await expect(field).toBeVisible({ timeout: 15_000 });
+      // The detected host as the placeholder is what makes an empty field read
+      // as "using what the app reports" instead of as "nobody filled this in".
+      await expect(field).toHaveAttribute(
+        "placeholder",
+        "https://docs.alepha.dev",
+      );
+
+      await field.fill("https://alepha.dev/docs");
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+
+      const pinned = page.getByRole("link", {
+        name: "alepha.dev/docs",
+        exact: true,
+      });
+      await expect(pinned).toBeVisible({ timeout: 15_000 });
+      await expect(pinned).toHaveAttribute("href", "https://alepha.dev/docs");
+
+      // And back: clearing the field returns the answer to the reported host,
+      // which is the only reason an empty value has to mean something.
+      await field.fill("");
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+
+      await expect(
+        page.getByRole("link", { name: "docs.alepha.dev", exact: true }),
+      ).toBeVisible({ timeout: 15_000 });
     });
 
     await test.step("the Analytics tab renders what was just reported", async () => {
