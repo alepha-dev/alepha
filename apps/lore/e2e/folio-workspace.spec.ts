@@ -790,25 +790,33 @@ test.describe("Folio workspace", () => {
     // An unresolved reference keeps the text the author typed, which is the
     // signal that it did not resolve.
     //
-    // ⚠️ It no longer keeps its `lore-broken:` href, and that is a real
-    // capability loss worth stating plainly. `rewriteFolioWikiLinks` still
-    // EMITS `[label](lore-broken:folio-not-found)`, but View mode renders
-    // through `MarkdownView`, and react-markdown's default `urlTransform`
-    // allows only http/https/mailto/tel and relative URLs — a custom scheme
-    // is stripped to `""`. The old editor decorated broken links itself, in
-    // Lexical, and could style them and explain the reason on hover.
+    // The marker reaches the DOM intact, reason included, which is what the
+    // hover card and the wavy red underline both key on.
     //
-    // Not "fixed" here on purpose: the options are to teach `@alepha/ui`
-    // about a Lore-specific scheme (wrong layering, it is a shared package)
-    // or to change the marker syntax (a reader-side change affecting quest
-    // descriptions too). Either is its own decision. The quest reader has
-    // always behaved this way, so this makes the two surfaces consistent
-    // rather than introducing a new inconsistency.
+    // It did not, for a long time, and this assertion used to pin `href=""`
+    // with a comment explaining the loss as accepted. `rewriteFolioWikiLinks`
+    // always EMITTED the marker, but View mode renders through `MarkdownView`
+    // and react-markdown's default `urlTransform` drops any scheme outside
+    // its safe list, so `lore-broken:` arrived as nothing at all. The two
+    // ways out considered then were teaching `@alepha/ui` about a
+    // Lore-specific scheme (wrong layering) or changing the marker syntax
+    // (a reader-side change reaching quest descriptions too).
+    //
+    // There was a third: a FRAGMENT is a relative URL, so the transform
+    // keeps it verbatim, colons and all. `#lore-broken:` costs nothing
+    // anywhere else. See `folioWikiLinkResolver.BROKEN_HREF_PREFIX`.
     const brokenLink = body.getByRole("link", {
       name: `[[No Such Folio ${stamp}]]`,
     });
     await expect(brokenLink).toHaveCount(1);
-    await expect(brokenLink).toHaveAttribute("href", "");
+    await expect(brokenLink).toHaveAttribute(
+      "href",
+      "#lore-broken:folio-not-found",
+    );
+    // Rendered as broken, not as an ordinary link: the styling is an
+    // attribute-selector variant on the prefix, so it only works while the
+    // href survives.
+    await expect(brokenLink).toHaveCSS("text-decoration-style", "wavy");
 
     await test.step("the [[ picker inserts a reference", async () => {
       // The picker lives in Edit mode now — it is a `@codemirror/autocomplete`
