@@ -136,6 +136,19 @@ export class SigilSinkProvider {
         return;
       }
 
+      // Said out loud for the same reason the origin is: a decision nobody can
+      // see is how an app ends up reporting somewhere, or nowhere, its
+      // operator never chose. This is the line a developer reads when their
+      // staging dashboard stays empty.
+      if (!this.reports()) {
+        this.log.info(
+          "Sigil holds off outside production - capturing locally, sending " +
+            'nothing. Set {"reportOutsideProduction":true} in SIGIL_CONFIG ' +
+            "to report from this process.",
+        );
+        return;
+      }
+
       // The sink carries a default, and a default nobody can see is how an app
       // ends up reporting somewhere its operator never chose. Naming the
       // resolved origin AND where it came from is the whole mitigation: a
@@ -232,6 +245,33 @@ export class SigilSinkProvider {
    */
   public hasSink(): boolean {
     return !!this.env.SIGIL_KEY;
+  }
+
+  /**
+   * Whether this process may actually deliver to the sink.
+   *
+   * Two conditions, and the second is what this method exists for: a
+   * credential is not permission to report from anywhere. With only
+   * {@link hasSink} gating delivery, every `alepha dev` session, test
+   * container and CI job counted as traffic on the project's own dashboard —
+   * so the numbers an operator reads to decide things included the developer
+   * refreshing a page. The module's own documentation said "active in
+   * production only" the whole time; only the browser half was.
+   *
+   * `reportOutsideProduction` turns it back on deliberately, for the one real
+   * case: a staging deployment proving its enrolment works before production
+   * has to.
+   *
+   * Distinct from {@link hasSink}, which stays "is there a credential": the
+   * feedback URL is built from the key and is a LINK, not a report, so it
+   * keeps working in development where it is useful.
+   */
+  public reports(): boolean {
+    return (
+      this.hasSink() &&
+      (this.alepha.isProduction() ||
+        this.config?.reportOutsideProduction === true)
+    );
   }
 
   /**
@@ -526,7 +566,10 @@ export class SigilSinkProvider {
 
     if (!this.hasPending()) this.oldestPendingAt = undefined;
 
-    if (!this.hasSink()) {
+    // Not `hasSink`: a credential is not permission to report from a
+    // development machine. Everything still goes to the logger, which is the
+    // same treatment an app with no key at all gets.
+    if (!this.reports()) {
       for (const { envelope } of outgoing) this.report(envelope);
       return;
     }

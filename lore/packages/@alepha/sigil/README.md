@@ -39,7 +39,7 @@ anything.
 | `SIGIL_CONFIG` | JSON object of switches over what to collect. Every field optional.              |
 | `SIGIL_SALT`   | overrides the secret salting the daily visitor hash. Falls back to `APP_SECRET`. |
 
-`SIGIL_CONFIG` turns things off, never on:
+`SIGIL_CONFIG` turns things off, with one exception:
 
 ```
 SIGIL_CONFIG={"vitals":false,"feedbackButton":"hidden"}
@@ -48,6 +48,13 @@ SIGIL_CONFIG={"vitals":false,"feedbackButton":"hidden"}
 Fields: `analytics`, `blights`, `vitals`, `feedback` (booleans, all default
 true), `feedbackButton` (a corner, or `hidden`), and
 `feedbackButtonExcludedPaths` (path globs the button stays off).
+
+The exception is `reportOutsideProduction` (default `false`), which turns
+something **on**. Both halves are production-only: a key is a credential, not
+permission to report from a laptop, and without the gate every `alepha dev`
+session counted as traffic on the project's dashboard. A staging deployment
+proving its enrolment sets `{"reportOutsideProduction":true}`, which turns the
+server half on and says so at boot. The browser half does not read it.
 
 It is deliberately an environment variable rather than something fetched from
 the sink. A config fetched at runtime cannot survive a serverless isolate, which

@@ -26,8 +26,16 @@ export * from "./sigilEnv.ts";
  * public Lore instance and is only needed to self-host, `SIGIL_CONFIG` is
  * optional switches over what to collect, and `SIGIL_SALT` falls back to
  * `APP_SECRET`. Without a key the module still captures, but nothing leaves
- * the machine: errors go to the logger instead, aggregated. Active in
- * production only.
+ * the machine: errors go to the logger instead, aggregated.
+ *
+ * **Production only, on both halves.** The browser bootstrap returns early
+ * outside production; the server sink captures locally and sends nothing. A
+ * key is a credential, not permission to report from a laptop — with only the
+ * key gating delivery, every `alepha dev` session and CI job counted as
+ * traffic on the project's own dashboard. A staging deployment that needs to
+ * prove its enrolment before production does sets
+ * `{"reportOutsideProduction":true}` in `SIGIL_CONFIG`, which turns the server
+ * half on and says so at boot.
  *
  * **The feedback button mounts itself.** `<SigilRoot />` is pushed into
  * {@link RootComponentsProvider}, so importing this module is the whole
