@@ -424,6 +424,11 @@ export default {
   "project.settings.members.invite.email": "Adresse e-mail",
   "project.settings.members.invite.cancel": "Annuler",
   "project.settings.members.invite.submit": "Envoyer l'invitation",
+  "project.settings.members.invite.emailRequired":
+    "Veuillez saisir une adresse e-mail.",
+  "project.settings.members.invite.sent": "Invitation envoyée à $1.",
+  "project.settings.members.invite.failed":
+    "Impossible d'envoyer l'invitation.",
 
   "project.settings.danger.title": "Zone à risques",
   "project.settings.actions.delete": "Détruire ce projet",

@@ -11,22 +11,20 @@ import {
 } from "@alepha/ui/components/ui/dialog";
 import { Input } from "@alepha/ui/components/ui/input";
 import { Label } from "@alepha/ui/components/ui/label";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { cn } from "@alepha/ui/lib/utils";
-import { useClient } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { Localize, useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Mail, Plus, Users } from "lucide-react";
 import { useState } from "react";
 
-import type { InvitationController } from "@/api/controllers/InvitationController.ts";
 import type { InvitationEntity } from "@/api/entities/invitations.ts";
 import type { Member } from "@/api/entities/members.ts";
 import type { Project } from "@/api/entities/projects.ts";
 import type { User } from "@/api/entities/users.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { MemberIdentity } from "@/web/app/components/shared/MemberIdentity.tsx";
+import { useInviteMember } from "@/web/app/components/shared/useInviteMember.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface ProjectSettingsMembersSectionProps {
@@ -38,44 +36,24 @@ export interface ProjectSettingsMembersSectionProps {
 const ProjectSettingsMembersSection = (
   props: ProjectSettingsMembersSectionProps,
 ) => {
-  const toaster = useToast();
   const router = useRouter<AppRouter>();
-  const invitationApi = useClient<InvitationController>();
+  const inviteMember = useInviteMember();
   const auth = useAuth();
   const { tr } = useI18n<I18n, "en">();
 
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const members = props.members;
   const pendingInvitations = props.pendingInvitations ?? [];
 
   const handleInvite = async () => {
-    if (!email.trim()) {
-      toaster.error("Please enter an email address");
-      return;
-    }
-    setLoading(true);
-    try {
-      await invitationApi.createInvitation({
-        body: {
-          email: email.trim(),
-          resourceType: "project",
-          resourceId: String(props.project.id),
-        },
-      });
-      toaster.success(`Invitation sent to ${email}`);
-      setEmail("");
-      setOpen(false);
-      // Re-run the loader for the new pending row; a hard reload threw the
-      // whole app state away for one list.
-      await router.push(router.pathname, { force: true });
-    } catch (error: any) {
-      toaster.error(error.message || "Failed to send invitation");
-    } finally {
-      setLoading(false);
-    }
+    if (!(await inviteMember.invite(props.project.id, email))) return;
+    setEmail("");
+    setOpen(false);
+    // Re-run the loader for the new pending row; a hard reload threw the
+    // whole app state away for one list.
+    await router.push(router.pathname, { force: true });
   };
 
   return (
@@ -113,7 +91,7 @@ const ProjectSettingsMembersSection = (
             <Button variant="outline" onClick={() => setOpen(false)}>
               {tr("project.settings.members.invite.cancel")}
             </Button>
-            <Button onClick={handleInvite} disabled={loading}>
+            <Button onClick={handleInvite} disabled={inviteMember.loading}>
               {tr("project.settings.members.invite.submit")}
             </Button>
           </DialogFooter>

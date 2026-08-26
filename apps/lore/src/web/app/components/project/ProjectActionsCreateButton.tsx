@@ -21,7 +21,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@alepha/ui/components/ui/sheet";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
@@ -37,7 +36,6 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
-import type { InvitationController } from "@/api/controllers/InvitationController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
@@ -45,6 +43,7 @@ import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { kanbanReloadAtom } from "../../atoms/kanbanReloadAtom.ts";
 import { questsViewAtom } from "../../atoms/questsViewAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
+import { useInviteMember } from "../shared/useInviteMember.ts";
 import EpicCreateSheet from "./epics/EpicCreateSheet.tsx";
 import QuestCreate from "./quest/QuestCreate.tsx";
 
@@ -53,12 +52,10 @@ const ProjectActionsCreateButton = () => {
   const [showEpic, setShowEpic] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteLoading, setInviteLoading] = useState(false);
+  const inviteMember = useInviteMember();
   const { tr } = useI18n<I18n, "en">();
   const client = useClient<QuestController>();
-  const invitationApi = useClient<InvitationController>();
   const auth = useAuth();
-  const toaster = useToast();
   const router = useRouter<AppRouter>();
   const [project] = useStore(currentProjectAtom);
   const [reloadKey, setReloadKey] = useStore(kanbanReloadAtom);
@@ -84,27 +81,9 @@ const ProjectActionsCreateButton = () => {
   const hasSecondaryAction = hasCreateAction || isOwner;
 
   const handleInvite = async () => {
-    if (!inviteEmail.trim()) {
-      toaster.error("Please enter an email address");
-      return;
-    }
-    setInviteLoading(true);
-    try {
-      await invitationApi.createInvitation({
-        body: {
-          email: inviteEmail.trim(),
-          resourceType: "project",
-          resourceId: String(project.id),
-        },
-      });
-      toaster.success(`Invitation sent to ${inviteEmail}`);
-      setInviteEmail("");
-      setShowInvite(false);
-    } catch (error: any) {
-      toaster.error(error.message || "Failed to send invitation");
-    } finally {
-      setInviteLoading(false);
-    }
+    if (!(await inviteMember.invite(project.id, inviteEmail))) return;
+    setInviteEmail("");
+    setShowInvite(false);
   };
 
   const mainLabel = tr("project.menu.create-quest");
@@ -254,7 +233,7 @@ const ProjectActionsCreateButton = () => {
             <Button variant="outline" onClick={() => setShowInvite(false)}>
               {tr("project.settings.members.invite.cancel")}
             </Button>
-            <Button onClick={handleInvite} disabled={inviteLoading}>
+            <Button onClick={handleInvite} disabled={inviteMember.loading}>
               {tr("project.settings.members.invite.submit")}
             </Button>
           </DialogFooter>
