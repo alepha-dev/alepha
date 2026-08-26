@@ -170,6 +170,24 @@ describe("AlephaLoreParser", () => {
     }
   });
 
+  it("drops the export's leading apostrophe back off every cell", ({
+    expect,
+  }) => {
+    const parser = setup();
+    const header = ["title", "priority", "area", "description"];
+    const result = parser.parseRow(
+      header,
+      ['\'=HYPERLINK("x")', "medium", "'+North", "''tis a description"],
+      1,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("unreachable");
+    expect(result.row.title).toBe('=HYPERLINK("x")');
+    expect(result.row.area).toBe("+North");
+    // Doubled on export precisely so one strip leaves the original.
+    expect(result.row.description).toBe("'tis a description");
+  });
+
   it("errors when objectives JSON is malformed", ({ expect }) => {
     const parser = setup();
     const header = ["title", "priority", "difficulty", "objectives"];

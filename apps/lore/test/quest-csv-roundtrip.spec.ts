@@ -177,6 +177,55 @@ describe("Quest CSV roundtrip", () => {
     expect(result2.updated).toBe(3);
   });
 
+  it("neutralises a formula title on export and re-imports it unchanged", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const project = await createTestProject(ctx, owner, "Injection");
+
+    const title = '=HYPERLINK("https://evil.example","Click me")';
+    await ctx.questController.createQuest.fetch(
+      {
+        body: {
+          projectId: project.id,
+          title,
+          description: "",
+          area: "",
+          priority: "medium",
+        },
+      },
+      { user: owner },
+    );
+
+    const exportResponse = await ctx.portController.exportQuests.fetch(
+      { params: { id: project.id } },
+      { user: owner },
+    );
+    const csv = await exportResponse.data.text();
+
+    // What a spreadsheet opens: the cell no longer starts on `=`, so it is
+    // text rather than a formula.
+    expect(csv).toContain(`"'${title.replace(/"/g, '""')}"`);
+
+    // ...and the apostrophe is the export's, not the title's.
+    const target = await createTestProject(ctx, owner, "Injection Target");
+    const importResponse = await ctx.portController.importQuests.fetch(
+      {
+        params: { id: target.id },
+        body: { file: new File([csv], "quests.csv", { type: "text/csv" }) },
+      },
+      { user: owner },
+    );
+    expect(importResponse.data.created).toBe(1);
+    expect(importResponse.data.errors).toEqual([]);
+
+    const imported = await ctx.questController.getQuests.fetch(
+      { params: { projectId: target.id }, query: {} },
+      { user: owner },
+    );
+    expect(imported.data.content.map((q) => q.title)).toEqual([title]);
+  });
+
   it("registers a new area when an upsert-mode import changes an existing quest onto it", async ({
     expect,
   }) => {
