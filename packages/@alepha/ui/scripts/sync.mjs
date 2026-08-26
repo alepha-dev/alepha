@@ -141,12 +141,12 @@ const resolveIconPlaceholders = (content) => {
  * Files this script must NOT overwrite.
  *
  * A `LOCAL_PATCHES` entry below is a find/replace, which only works when the
- * divergence is a short, stable string. These six are not: they add whole
- * features (a `loading` button, badge tones, a locale-aware calendar) or wrap
- * upstream code in `useMemo` to satisfy lint rules this repo enforces and the
- * registry does not. Expressed as find/replace they would break on the first
- * upstream reformat, and the break would land as a failed sync rather than as
- * anything a reader could act on.
+ * divergence is a short, stable string. These are not: they add whole features
+ * (a `loading` button, badge tones, a locale-aware calendar) or wrap upstream
+ * code in `useMemo` to satisfy lint rules this repo enforces and the registry
+ * does not. Expressed as find/replace they would break on the first upstream
+ * reformat, and the break would land as a failed sync rather than as anything
+ * a reader could act on.
  *
  * The cost is real and deliberate: these files stop receiving upstream fixes,
  * and updating one means diffing it by hand against `--check` output. That is
@@ -166,14 +166,9 @@ const KEEP_LOCAL = new Map([
     "month and weekday names follow the app's active language through `useI18n` and a date-fns locale map",
   ],
   [
-    "ui/carousel.tsx",
-    "`useMemo` on the context value and the derived-during-render fix for `react/set-state-in-effect`",
-  ],
-  [
     "ui/chart.tsx",
     "`useMemo` on the context value plus the `restrict-template-expressions` fixes",
   ],
-  ["ui/toggle-group.tsx", "`useMemo` on the context value"],
 ]);
 
 /**
@@ -444,6 +439,14 @@ const fetchJson = async (url) => {
 // Fetch every primitive currently in src/components/ui/ from the public
 // shadcn Base UI Nova registry. Our own blocks live one level up in
 // src/components/<name>/ and are not refetched.
+//
+// The directory listing IS the list: a primitive nothing imports is deleted
+// rather than kept warm, and comes back with one `sync` the day it is needed.
+// Three of them have no importer in this repo and are kept for downstream:
+// `button-group` (club), `resizable` (lindocara), `spinner` (ticketing).
+// Anything else with no importer anywhere is dead weight - eleven were removed
+// on 2026-08-26 after scanning club, ticketing, lindocara and papers by import
+// path and by symbol.
 const stock = readdirSync(join(srcDir, "components/ui"))
   .filter((f) => f.endsWith(".tsx"))
   .map((f) => f.replace(/\.tsx$/, ""));
