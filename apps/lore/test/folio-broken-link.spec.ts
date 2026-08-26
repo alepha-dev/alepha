@@ -30,7 +30,7 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
       [folio(1, "Roadmap")],
       [],
     );
-    expect(out).toBe("See [\\[\\[#999\\]\\]](lore-broken:folio-not-found).");
+    expect(out).toBe("See [\\[\\[#999\\]\\]](#lore-broken:folio-not-found).");
   });
 
   it("[[#N]] with no folio N but a quest N → names the quest form (#192)", () => {
@@ -44,7 +44,7 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
     // destination depend on which folios happen to exist. The shortId rides
     // along so the hover card can name `[[quest:#156]]`.
     expect(out).toBe(
-      "See [\\[\\[#156\\]\\]](lore-broken:folio-not-found-quest-exists:156).",
+      "See [\\[\\[#156\\]\\]](#lore-broken:folio-not-found-quest-exists:156).",
     );
   });
 
@@ -55,7 +55,7 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
       [folio(1, "Roadmap")],
       [{ shortId: 7, title: "Unrelated" }],
     );
-    expect(out).toBe("See [\\[\\[#156\\]\\]](lore-broken:folio-not-found).");
+    expect(out).toBe("See [\\[\\[#156\\]\\]](#lore-broken:folio-not-found).");
   });
 
   it("an unresolved TITLE never suggests a quest — the namespaces are unrelated", () => {
@@ -66,7 +66,7 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
       [{ shortId: 156, title: "Some quest" }],
     );
     expect(out).toBe(
-      "Cf. [\\[\\[Some quest\\]\\]](lore-broken:folio-not-found).",
+      "Cf. [\\[\\[Some quest\\]\\]](#lore-broken:folio-not-found).",
     );
   });
 
@@ -78,7 +78,7 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
       [],
     );
     expect(out).toBe(
-      "Cf. [\\[\\[Nonexistent\\]\\]](lore-broken:folio-not-found).",
+      "Cf. [\\[\\[Nonexistent\\]\\]](#lore-broken:folio-not-found).",
     );
   });
 
@@ -89,7 +89,7 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
       [folio(1, "Notes"), folio(2, "Notes")],
       [],
     );
-    expect(out).toBe("Cf. [\\[\\[Notes\\]\\]](lore-broken:ambiguous-title).");
+    expect(out).toBe("Cf. [\\[\\[Notes\\]\\]](#lore-broken:ambiguous-title).");
   });
 
   it("unresolved quest shortId → quest-not-found marker", () => {
@@ -100,7 +100,7 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
       [{ shortId: 1, title: "Onboard" }],
     );
     expect(out).toBe(
-      "Cf. [\\[\\[quest:#999\\]\\]](lore-broken:quest-not-found).",
+      "Cf. [\\[\\[quest:#999\\]\\]](#lore-broken:quest-not-found).",
     );
   });
 
@@ -115,7 +115,7 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
       ],
     );
     expect(out).toBe(
-      "Cf. [\\[\\[quest:Fix\\]\\]](lore-broken:ambiguous-title).",
+      "Cf. [\\[\\[quest:Fix\\]\\]](#lore-broken:ambiguous-title).",
     );
   });
 
@@ -129,7 +129,7 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
       [],
     );
     expect(out).toBe(
-      "Cf. [\\[\\[blob:#999\\]\\]](lore-broken:blob-not-found).",
+      "Cf. [\\[\\[blob:#999\\]\\]](#lore-broken:blob-not-found).",
     );
   });
 
@@ -195,7 +195,9 @@ describe("rewriteFolioWikiLinks — epic targets", () => {
       [],
       epics,
     );
-    expect(out).toBe("See [\\[\\[epic:#99\\]\\]](lore-broken:epic-not-found).");
+    expect(out).toBe(
+      "See [\\[\\[epic:#99\\]\\]](#lore-broken:epic-not-found).",
+    );
   });
 
   it("a bare [[#3]] stays a FOLIO ref even when epic 3 exists", () => {
@@ -210,6 +212,6 @@ describe("rewriteFolioWikiLinks — epic targets", () => {
       [],
       epics,
     );
-    expect(out).toBe("See [\\[\\[#3\\]\\]](lore-broken:folio-not-found).");
+    expect(out).toBe("See [\\[\\[#3\\]\\]](#lore-broken:folio-not-found).");
   });
 });

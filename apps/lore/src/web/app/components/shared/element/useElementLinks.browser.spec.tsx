@@ -93,7 +93,7 @@ describe("useElementLinks — a planned epic's quest is direct addressing", () =
       expect(result.current.rendered).toContain("(/acme/quests/7)");
     });
     expect(result.current.rendered).not.toContain(
-      "lore-broken:quest-not-found",
+      "#lore-broken:quest-not-found",
     );
   });
 
