@@ -48,7 +48,7 @@ export class InsightsTools {
 
       const res = await this.insights.getInsights({
         params: { projectId },
-        query: { range: params.range },
+        query: { range: params.range, traffic: params.traffic },
       });
 
       // All three unless asked otherwise. A caller that wants one question
@@ -59,6 +59,7 @@ export class InsightsTools {
 
       return {
         range: res.range,
+        traffic: res.traffic,
         since: res.since,
         ...(wanted.has("errors") ? { errorGroups: res.errorGroups } : {}),
         ...(wanted.has("vitals") ? { vitals: res.vitals } : {}),

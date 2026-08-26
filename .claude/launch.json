@@ -30,6 +30,12 @@
       "runtimeExecutable": "yarn",
       "runtimeArgs": ["w", "errors", "dev"],
       "port": 3306
+    },
+    {
+      "name": "totp",
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": ["w", "totp-example", "dev"],
+      "port": 3307
     }
   ]
 }

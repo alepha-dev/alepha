@@ -132,6 +132,7 @@ export class SigilIngestService {
         envelope.engagements ?? [],
         envelope.country,
         envelope.device,
+        envelope.traffic,
         envelope.visitor,
         now,
       );
@@ -368,6 +369,7 @@ export class SigilIngestService {
     engagements: NonNullable<SigilForwarded["engagements"]>,
     country: string | undefined,
     device: string | undefined,
+    traffic: string | undefined,
     visitor: string | undefined,
     now: string,
   ): Promise<void> {
@@ -385,6 +387,7 @@ export class SigilIngestService {
       referrer: string;
       campaign: string;
       device: string;
+      traffic: string;
       count: number;
       engaged: number;
       entries: number;
@@ -396,6 +399,11 @@ export class SigilIngestService {
     // an older app's proxy does not send at all.
     const iso = country || "ZZ";
     const dev = device || "desktop";
+    // `human` for the same reason `desktop` is the device fallback, and for one
+    // more: an app whose proxy predates this stamp sends nothing, and counting
+    // every such app's readers as crawlers would be the one direction this
+    // classification is not allowed to be wrong in. Unknown is a person.
+    const kind = traffic || "human";
 
     const bucketFor = (
       hour: string,
@@ -403,7 +411,7 @@ export class SigilIngestService {
       referrer: string,
       campaign: string,
     ): Bucket => {
-      const key = `${hour}|${path}|${iso}|${referrer}|${campaign}|${dev}`;
+      const key = `${hour}|${path}|${iso}|${referrer}|${campaign}|${dev}|${kind}`;
       let bucket = buckets.get(key);
       if (!bucket) {
         bucket = {
@@ -413,6 +421,7 @@ export class SigilIngestService {
           referrer,
           campaign,
           device: dev,
+          traffic: kind,
           count: 0,
           engaged: 0,
           entries: 0,
@@ -452,7 +461,7 @@ export class SigilIngestService {
       // counterpart here anymore — it stays bespoke, see `LoreAnalyticsStore`'s
       // class doc.
       uniques: visitor
-        ? [{ sigilId: sigil.id, day, visitorHash: visitor }]
+        ? [{ sigilId: sigil.id, day, visitorHash: visitor, traffic: kind }]
         : [],
     });
 
@@ -469,6 +478,7 @@ export class SigilIngestService {
         referrer: bucket.referrer,
         campaign: bucket.campaign,
         device: bucket.device,
+        traffic: bucket.traffic,
         count: bucket.count,
         engaged: bucket.engaged,
         entries: bucket.entries,

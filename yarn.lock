@@ -12906,6 +12906,27 @@ __metadata:
   languageName: node
   linkType: hard
 
+"totp-example@workspace:apps/examples/totp":
+  version: 0.0.0-use.local
+  resolution: "totp-example@workspace:apps/examples/totp"
+  dependencies:
+    "@alepha/devtools": "workspace:*"
+    "@alepha/ui": "workspace:*"
+    "@tailwindcss/vite": "npm:^4.3.3"
+    alepha: "workspace:^"
+    better-sqlite3: "npm:^13.0.3"
+    lucide-react: "npm:^1.31.0"
+    react: "npm:^19.2.8"
+    react-dom: "npm:^19.2.8"
+    tailwindcss: "npm:^4.3.3"
+    vite: "npm:^8.2.1"
+    wrangler: "npm:^4.123.0"
+  dependenciesMeta:
+    better-sqlite3:
+      built: true
+  languageName: unknown
+  linkType: soft
+
 "tough-cookie@npm:^6.0.2":
   version: 6.0.2
   resolution: "tough-cookie@npm:6.0.2"

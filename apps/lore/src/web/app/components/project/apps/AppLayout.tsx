@@ -1,3 +1,8 @@
+import {
+  TooltipContent,
+  TooltipTrigger,
+  Tooltip as UiTooltip,
+} from "@alepha/ui/components/ui/tooltip";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { cn } from "@alepha/ui/lib/utils";
 import { useClient, useStore } from "alepha/react";
@@ -53,9 +58,12 @@ const TABS: AppTab[] = [
 type Range = "1d" | "7d" | "30d";
 const RANGES: Range[] = ["1d", "7d", "30d"];
 
+type Traffic = "all" | "humans" | "bots";
+const TRAFFICS: Traffic[] = ["all", "humans", "bots"];
+
 /**
- * One enrolled app: a header naming it, a tab bar, and the range toggle every
- * tab below shares.
+ * One enrolled app: a header naming it, a tab bar, and the two toggles that
+ * decide what the tabs below are looking at.
  *
  * The range lives here rather than on each tab because it is one question asked
  * of one app — moving between Analytics and Performance should not silently reset it
@@ -63,6 +71,12 @@ const RANGES: Range[] = ["1d", "7d", "30d"];
  * the tabs render; a failed one rolls the toggle back to the range the data on
  * screen actually belongs to and says so, rather than leaving the two
  * disagreeing.
+ *
+ * The traffic toggle sits beside it and keeps its state the same way, but
+ * renders on Analytics alone: `sigil_vitals` declares no `traffic` dimension,
+ * so on Performance the control would be present and inert. Its state still
+ * lives here rather than in the tab, so crossing to Performance and back does
+ * not reset it either.
  */
 const AppLayout = () => {
   const { tr, l } = useI18n<I18n, "en">();
@@ -76,6 +90,7 @@ const AppLayout = () => {
   const [insights, setInsights] = useStore(currentSigilInsightsAtom);
 
   const [range, setRange] = useState<Range>(insights?.range ?? "7d");
+  const [traffic, setTraffic] = useState<Traffic>(insights?.traffic ?? "all");
   const [loading, setLoading] = useState(false);
 
   if (!project || !sigil) {
@@ -91,21 +106,34 @@ const AppLayout = () => {
   const collectsBeacon = sigil.kinds.includes("beacon");
   const tabs = TABS.filter((tab) => !tab.needsBeacon || collectsBeacon);
 
-  const changeRange = async (next: Range) => {
-    if (next === range) return;
-    const previous = range;
-    setRange(next);
+  /**
+   * One fetch for both toggles, because they ask one question together: the
+   * payload is a window AND a population, and firing a request per control
+   * would let a slow first response overwrite a fresh second one.
+   *
+   * A failure rolls BOTH controls back, for the reason the range toggle
+   * already did on its own: stale data under a control that names something
+   * else is worse than an error, since nothing on screen looks wrong.
+   */
+  const reload = async (next: { range: Range; traffic: Traffic }) => {
+    if (next.range === range && next.traffic === traffic) return;
+    const previous = { range, traffic };
+    setRange(next.range);
+    setTraffic(next.traffic);
     setLoading(true);
     try {
       const res = await insightsApi.getInsights({
         params: { projectId: project.id },
-        query: { range: next, sigilId: sigil.id },
+        query: {
+          range: next.range,
+          sigilId: sigil.id,
+          traffic: next.traffic,
+        },
       });
       setInsights(res);
     } catch (error) {
-      // A failed range fetch leaves stale data on screen — surface it and roll
-      // the toggle back so it names the range the data actually covers.
-      setRange(previous);
+      setRange(previous.range);
+      setTraffic(previous.traffic);
       toaster.error(
         error instanceof Error ? error.message : tr("insights.error"),
       );
@@ -192,12 +220,55 @@ const AppLayout = () => {
             {loading && (
               <Loader2 className="text-muted-foreground size-4 animate-spin" />
             )}
+            {/*
+              Analytics only. Web vitals carry no `traffic` dimension - a
+              histogram of what a crawler's headless Chrome measured is not a
+              question anyone has - so on Performance this control would be
+              present and inert, which reads as broken rather than as absent.
+            */}
+            {activeRoute === "appAnalytics" && (
+              <UiTooltip>
+                {/*
+                  The caveat rides on the control itself, because that is where
+                  the claim is made. "Humans" means "did not declare itself a
+                  crawler" - a scraper driving a real browser sits in that
+                  bucket, and only the engagement rate gives it away.
+                */}
+                <TooltipTrigger
+                  render={
+                    <div
+                      data-testid="app-traffic"
+                      className="bg-muted flex gap-0.5 rounded-md p-0.5"
+                    >
+                      {TRAFFICS.map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => void reload({ range, traffic: t })}
+                          className={
+                            t === traffic
+                              ? "bg-background rounded px-3 py-1 text-xs font-medium shadow-sm"
+                              : "text-muted-foreground rounded px-3 py-1 text-xs"
+                          }
+                        >
+                          {tr(`insights.traffic.${t}`)}
+                        </button>
+                      ))}
+                    </div>
+                  }
+                />
+                <TooltipContent className="max-w-xs">
+                  {tr("insights.traffic.note")}
+                </TooltipContent>
+              </UiTooltip>
+            )}
+
             <div className="bg-muted flex gap-0.5 rounded-md p-0.5">
               {RANGES.map((r) => (
                 <button
                   key={r}
                   type="button"
-                  onClick={() => void changeRange(r)}
+                  onClick={() => void reload({ range: r, traffic })}
                   className={
                     r === range
                       ? "bg-background rounded px-3 py-1 text-xs font-medium shadow-sm"

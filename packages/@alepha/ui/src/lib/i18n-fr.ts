@@ -450,6 +450,9 @@ export const uiFr: Record<string, string> = {
   "admin.userDetail.bulkRevokeTitle": "Révoquer des sessions",
   "admin.userDetail.cancel": "Annuler",
   "admin.userDetail.changePassword": "Changer le mot de passe",
+  "admin.userDetail.clearTotpConfirm":
+    "Ce compte se connectera avec son seul mot de passe jusqu'à ce que l'utilisateur enregistre à nouveau une application d'authentification. Ne le faites que s'il a perdu à la fois l'appareil et ses codes de secours.",
+  "admin.userDetail.clearTotpTitle": "Supprimer le second facteur",
   "admin.userDetail.colAction": "Action",
   "admin.userDetail.colAuditStatus": "Statut",
   "admin.userDetail.colDevice": "Appareil",
@@ -496,6 +499,14 @@ export const uiFr: Record<string, string> = {
   "admin.userDetail.lastLogin": "Dernière connexion",
   "admin.userDetail.lastName": "Nom",
   "admin.userDetail.loadError": "L'utilisateur n'a pas pu être chargé",
+  "admin.userDetail.mfa": "Double authentification",
+  "admin.userDetail.mfaClear": "Supprimer le second facteur",
+  "admin.userDetail.mfaOff":
+    "Aucune application d'authentification enregistrée.",
+  "admin.userDetail.mfaOn":
+    "Une application d'authentification est enregistrée. Ne la supprimez que si l'utilisateur a perdu l'appareil et ses codes de secours : il se connectera avec son seul mot de passe jusqu'à un nouvel enregistrement.",
+  "admin.userDetail.mfaSub":
+    "Une application d'authentification vérifiée après le mot de passe.",
   "admin.userDetail.name": "Nom",
   "admin.userDetail.never": "Jamais",
   "admin.userDetail.newPassword": "Nouveau mot de passe",
@@ -529,6 +540,7 @@ export const uiFr: Record<string, string> = {
   "admin.userDetail.tabSecurity": "Sécurité",
   "admin.userDetail.tabSessions": "Sessions",
   "admin.userDetail.thisUser": "cet utilisateur",
+  "admin.userDetail.totpCleared": "Second facteur supprimé",
   "admin.userDetail.username": "Identifiant",
   "admin.userDetail.usernameCannotBeCleared":
     "L'identifiant ne peut pas être supprimé une fois renseigné",
@@ -770,6 +782,8 @@ export const uiFr: Record<string, string> = {
     "Saisissez un code de votre application d'authentification, ou l'un de vos codes de secours.",
   "account.security.mfaDisableTitle": "Désactiver la double authentification ?",
   "account.security.mfaDisabled": "Double authentification désactivée",
+  "account.security.mfaNoLongerUsed":
+    "Ce site ne demande plus de code. Vous pouvez la supprimer.",
   "account.security.mfaOff":
     "Demander un code d'une application d'authentification en plus de votre mot de passe.",
   "account.security.mfaOnCodes": "Activée. $1 codes de secours restants.",

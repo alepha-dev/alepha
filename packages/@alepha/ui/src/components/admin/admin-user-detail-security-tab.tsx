@@ -15,7 +15,7 @@ import {
 import type { IdentityResource } from "alepha/api/users";
 import type { UseActionReturn } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { KeyRound, Trash2 } from "lucide-react";
+import { KeyRound, ShieldOff, Trash2 } from "lucide-react";
 
 import { PROVIDER_LABELS } from "../auth/provider-labels.ts";
 
@@ -25,20 +25,44 @@ export interface AdminUserDetailSecurityTabProps {
    */
   hasPassword: boolean;
   /**
-   * Every identity except `credentials`, which has its own card.
+   * Every identity except `credentials`, which has its own card. The `totp`
+   * row may be in here; this component splits it out rather than trusting a
+   * caller to, because listing a second factor as a connection is exactly the
+   * mistake to avoid.
    */
   socialIdentities: ReadonlyArray<IdentityResource>;
   removeIdentity: UseActionReturn<[IdentityResource], void>;
+  /**
+   * Clears the authenticator-app enrollment. Separate from
+   * {@link removeIdentity} because the confirmation has to say something
+   * different: this one does not take away a way in, it takes away a check.
+   */
+  clearTotp: UseActionReturn<[IdentityResource], void>;
   onChangePassword: () => void;
 }
 
 /**
- * Security tab: password sign-in and linked OAuth providers.
+ * Security tab: password sign-in, the second factor, and linked OAuth
+ * providers.
  */
 export const AdminUserDetailSecurityTab = (
   props: AdminUserDetailSecurityTabProps,
 ) => {
   const { tr } = useI18n();
+
+  /*
+   * A TOTP enrollment is stored as an ordinary identity row, so it arrives in
+   * the same list as Google and GitHub. It is not a way to sign in, and
+   * offering to "remove the connection" would both misdescribe it and hand
+   * over the one action a locked-out user's attacker wants most, under the
+   * wrong label.
+   */
+  const totpIdentity = props.socialIdentities.find(
+    (it) => it.provider === "totp",
+  );
+  const connections = props.socialIdentities.filter(
+    (it) => it.provider !== "totp",
+  );
 
   return (
     <div className="min-h-0 flex-1 overflow-auto">
@@ -86,6 +110,47 @@ export const AdminUserDetailSecurityTab = (
         <Card>
           <CardHeader>
             <CardTitle>
+              {tr("admin.userDetail.mfa", {
+                default: "Two-factor authentication",
+              })}
+            </CardTitle>
+            <CardDescription>
+              {tr("admin.userDetail.mfaSub", {
+                default: "An authenticator app checked after the password.",
+              })}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground text-sm">
+              {totpIdentity
+                ? tr("admin.userDetail.mfaOn", {
+                    default:
+                      "An authenticator app is enrolled. Clear it only if the user has lost the device and their recovery codes. They will sign in with their password alone until they enroll again.",
+                  })
+                : tr("admin.userDetail.mfaOff", {
+                    default: "No authenticator app is enrolled.",
+                  })}
+            </p>
+          </CardContent>
+          {totpIdentity ? (
+            <CardFooter>
+              <Button
+                variant="destructive"
+                loading={props.clearTotp.loading}
+                onClick={() => props.clearTotp.run(totpIdentity)}
+              >
+                <ShieldOff className="size-4" />
+                {tr("admin.userDetail.mfaClear", {
+                  default: "Clear second factor",
+                })}
+              </Button>
+            </CardFooter>
+          ) : null}
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>
               {tr("admin.userDetail.identities", {
                 default: "Connected accounts",
               })}
@@ -97,7 +162,7 @@ export const AdminUserDetailSecurityTab = (
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {props.socialIdentities.length === 0 ? (
+            {connections.length === 0 ? (
               <p className="text-muted-foreground text-sm">
                 {tr("admin.userDetail.noIdentities", {
                   default: "No connected accounts.",
@@ -105,7 +170,7 @@ export const AdminUserDetailSecurityTab = (
               </p>
             ) : (
               <ul className="flex flex-col gap-2">
-                {props.socialIdentities.map((id) => {
+                {connections.map((id) => {
                   const label = PROVIDER_LABELS[id.provider] ?? id.provider;
                   return (
                     <li

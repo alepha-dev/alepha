@@ -806,6 +806,11 @@ export default {
   "insights.range.1d": "Today",
   "insights.range.7d": "7 days",
   "insights.range.30d": "30 days",
+  "insights.traffic.all": "All",
+  "insights.traffic.humans": "Humans",
+  "insights.traffic.bots": "Bots",
+  "insights.traffic.note":
+    "Crawlers that identify themselves are counted as bots. One driving a real browser and sending an ordinary user-agent is not, and only the engagement rate gives it away.",
   "insights.uniqueVisitors": "Unique visitors",
   "insights.uniqueVisitors.note":
     "Cookieless distinct visitors, the trustworthy headline.",

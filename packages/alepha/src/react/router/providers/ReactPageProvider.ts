@@ -113,13 +113,12 @@ export class ReactPageProvider {
 
       if (!hasNotFoundHandler && pages.length > 0) {
         // add a default 404 page if not already defined
+        // `add` is what stamps the 404 status onto any `/*` page, this one
+        // included - see the comment there for why it does not live here.
         this.add({
           path: "/*",
           name: "notFound",
           component: NotFoundPage,
-          onServerResponse: ({ reply }) => {
-            reply.status = 404;
-          },
         });
       }
     },
@@ -880,6 +879,34 @@ export class ReactPageProvider {
     const page = entry as PageRoute;
 
     page.match = this.createMatch(page);
+
+    /*
+     * A `/*` page IS the not-found page, so it answers 404 unless the app says
+     * otherwise.
+     *
+     * The framework already treats the catch-all that way everywhere else: the
+     * `configure` hook above skips its built-in 404 page as soon as one exists
+     * (`hasNotFoundHandler`), and `ReactServerProvider.resolveNotFoundRoute`
+     * falls back to `/*` by design. Only the status disagreed, and it did so
+     * exactly when an app customized the page: the built-in carries an
+     * `onServerResponse` setting 404, an app-declared `/*` replaces it
+     * wholesale, and nothing puts the status back. So designing your own 404
+     * page silently downgraded it to a 200 - which is worse than no 404 page
+     * at all, because a crawler indexes a soft 404 as a real page.
+     *
+     * Setting it here rather than in the `configure` hook covers both: the
+     * built-in no longer needs to repeat itself, and a `/*` added through this
+     * public method gets the same treatment.
+     *
+     * `??=` is the escape hatch. A `/*` that resolves real content (a CMS
+     * slug, a proxy) declares its own `onServerResponse` and keeps its 200.
+     */
+    if (page.match === "/*" || page.path === "/*") {
+      page.onServerResponse ??= ({ reply }) => {
+        reply.status = 404;
+      };
+    }
+
     this.pages.push(page);
 
     if (page.children) {

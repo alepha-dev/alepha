@@ -451,14 +451,19 @@ export class SigilSinkProvider {
    * arrives on one request and not the next is a different batch rather than
    * an update to the first.
    *
-   * `host` is in the key for a different reason than the other three. They
+   * `traffic` is in the key even though it is derived from the same user-agent
+   * the visitor hash already closes over, so it cannot differ within one
+   * visitor. Leaving it out would make that redundancy load-bearing, and it
+   * holds only for as long as the hash keeps its current inputs.
+   *
+   * `host` is in the key for a different reason than any of the others. They
    * separate visitors; it separates addresses. An app answering on both an
    * apex and a `www` is one app with two front doors, and merging their events
    * into whichever batch existed first would file some of them under the
    * wrong one.
    */
   protected batchFor(stamp: SigilStamp): PendingBatch {
-    const key = `${stamp.visitor ?? ""}\u0000${stamp.country ?? ""}\u0000${stamp.device ?? ""}\u0000${stamp.host ?? ""}`;
+    const key = `${stamp.visitor ?? ""}\u0000${stamp.country ?? ""}\u0000${stamp.device ?? ""}\u0000${stamp.traffic ?? ""}\u0000${stamp.host ?? ""}`;
     let batch = this.pending.get(key);
     if (!batch) {
       batch = {
@@ -650,11 +655,16 @@ export interface SigilStamp {
   visitor?: string;
   device?: string;
   /**
+   * `bot` | `human`, from the user-agent. See {@link sigilTrafficKind} for what
+   * that claim is and is not worth.
+   */
+  traffic?: string;
+  /**
    * Where this app answers, from its own inbound `Host` header.
    *
-   * The odd one out: the other three describe the visitor, this one describes
-   * the app. It rides with them because it comes from the same place and is
-   * knowable at the same moment - the request the app's own server is
+   * The odd one out: every other field here describes the visitor, this one
+   * describes the app. It rides with them because it comes from the same place
+   * and is knowable at the same moment - the request the app's own server is
    * handling - and because a batch is only ever flushed under one stamp, so
    * carrying it here is what keeps an app served on two hosts from reporting
    * both under whichever one flushed last.

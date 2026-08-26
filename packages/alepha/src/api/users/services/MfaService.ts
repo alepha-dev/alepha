@@ -7,6 +7,7 @@ import { $logger } from "alepha/logger";
 import { SecurityProvider } from "alepha/security";
 import { BadRequestError } from "alepha/server";
 
+import type { RealmAuthSettings } from "../atoms/realmAuthSettingsAtom.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
 import { RealmProvider } from "../providers/RealmProvider.ts";
 import { TotpService } from "./TotpService.ts";
@@ -111,6 +112,36 @@ export class MfaService {
    */
   protected static readonly RECOVERY_CODE_COUNT = 10;
 
+  /**
+   * Refuse anything that would create a TOTP enrollment on a realm that has
+   * turned TOTP off.
+   *
+   * Only {@link methodsFor} used to read this setting, and it runs at login,
+   * long after the user was told enrollment succeeded. Everything in between
+   * happened: a QR was scanned, ten recovery codes were written down, and the
+   * account page reported the factor as on, while the login gate never asked
+   * for it. Claiming a protection that is not applied is worse than offering
+   * none, so the refusal belongs at the point of enrollment.
+   *
+   * Deliberately not applied to {@link disableTotp} or {@link statusFor}: an
+   * enrollment made before the setting changed has to stay visible and
+   * removable, or the user is left with a factor they can neither see nor
+   * clear.
+   */
+  protected async assertTotpAllowed(
+    realm?: string,
+  ): Promise<RealmAuthSettings> {
+    const settings = await this.realmProvider.getRealm(realm).getSettings();
+    if (settings.mfa.totp === "disabled") {
+      throw new BadRequestError(
+        "Two-factor authentication with an authenticator app is not available on this realm",
+      );
+    }
+    // Returned rather than discarded so a caller that also needs the settings
+    // does not fetch them a second time.
+    return settings;
+  }
+
   protected identities(realm?: string) {
     return this.realmProvider.identityRepository(realm);
   }
@@ -182,7 +213,25 @@ export class MfaService {
     userId: string,
     realm?: string,
   ): Promise<{ secret: string; uri: string; qrSvg: string }> {
-    const realmName = this.realmProvider.getRealm(realm).name;
+    const settings = await this.assertTotpAllowed(realm);
+
+    /*
+     * What the authenticator app lists the entry under, and the only branding
+     * this realm ever shows the user once they leave the browser.
+     *
+     * `displayName` first, `realm.name` only as a fallback. The realm name is
+     * an internal identifier: every single-realm application calls it
+     * `default`, so using it put "default" on every phone: useless on its
+     * own, and indistinguishable from the next application that does the
+     * same. `displayName` is already the value shown on the auth pages, so
+     * this is the same brand in both places.
+     *
+     * Only new enrollments are affected. An `otpauth://` URI is consumed once,
+     * at scan time, so entries already on a phone keep the label they were
+     * created with. Renaming those is a matter of re-enrolling.
+     */
+    const realmName =
+      settings.displayName || this.realmProvider.getRealm(realm).name;
     const user = await this.realmProvider
       .userRepository(realm)
       .findById(userId);
@@ -240,6 +289,11 @@ export class MfaService {
     code: string,
     realm?: string,
   ): Promise<{ recoveryCodes: string[] }> {
+    // Checked again rather than only at enrollment: the realm can be turned
+    // off while a user still has the QR on screen, and activating then would
+    // mint a factor the login gate is never going to ask for.
+    await this.assertTotpAllowed(realm);
+
     const identity = await this.findTotpIdentity(userId, realm);
 
     if (!identity) {

@@ -1,5 +1,6 @@
 import type { VitalMetric } from "@alepha/sigil";
 import { $inject, z } from "alepha";
+import type { AnalyticsFilter } from "alepha/api/analytics";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
@@ -12,6 +13,10 @@ import {
   type InsightsResource,
   insightsResourceSchema,
 } from "../schemas/insightsResourceSchema.ts";
+import {
+  type TrafficFilter,
+  trafficFilterSchema,
+} from "../schemas/trafficFilterSchema.ts";
 import { DailyVisitorsService } from "../services/DailyVisitorsService.ts";
 import { LoreAnalyticsStore } from "../services/LoreAnalyticsStore.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
@@ -42,6 +47,25 @@ const TOP_N = 10;
  * shows up before it is anyone's top ten.
  */
 const TOP_ERROR_GROUPS = 20;
+
+/**
+ * Every `traffic` value that counts as a person.
+ *
+ * Two of them, and the second one is the whole reason this is a set. A row
+ * written before the `traffic` dimension existed carries `""` - a default fills
+ * a column on write, it does not rewrite rows already stored - and the filter
+ * has to decide what those legacy rows are. They are people: the dimension is
+ * an addition to what is recorded, not a reclassification of what was, and
+ * dropping every view older than the deploy out of the humans view would look
+ * exactly like the traffic collapsing on that date.
+ *
+ * A `notInArray` on `bot` would say the same thing in one term, and
+ * `AnalyticsFilter` deliberately has no negation: equality and set membership
+ * only, on both backends. Enumerating the positive side is the shape that seam
+ * accepts, and it fails loudly if a third value is ever introduced without
+ * being classified here - which is the better failure.
+ */
+const HUMAN_TRAFFIC = ["human", ""];
 
 /**
  * The reading surface for what `SigilIngestService` writes.
@@ -121,6 +145,20 @@ export class InsightsController {
          * pages that never show a delta should not pay for one.
          */
         compare: z.boolean().optional(),
+        /**
+         * Which traffic to count: everything, people, or crawlers.
+         *
+         * Omitted means `all`, which is what every caller predating this got
+         * and is deliberately still the default. A dashboard that silently
+         * hid part of the traffic would be a worse lie than one that mixes
+         * it: the mixing is at least visible in the engagement rate.
+         *
+         * `humans` is the interesting one and the reason this exists. On this
+         * project's own docs app roughly 85% of recorded views are automated,
+         * measured over 30 days, and reading that number as readership is
+         * how a documentation site convinces itself it has an audience.
+         */
+        traffic: trafficFilterSchema.optional(),
       }),
       response: insightsResourceSchema,
     },
@@ -128,6 +166,9 @@ export class InsightsController {
       await this.security.assertMember(params.projectId, user);
 
       const range = query.range ?? "7d";
+      // Resolved once, then echoed back on the payload: the page renders the
+      // filter from what it received, not from what it asked for.
+      const traffic = query.traffic ?? "all";
       const days = RANGE_DAYS[range] ?? 7;
 
       // The window ends today unless the caller asked for whole days only.
@@ -173,6 +214,7 @@ export class InsightsController {
       if (sigilIds.length === 0) {
         return {
           range,
+          traffic,
           since,
           until,
           // No apps means no traffic in either window. The comparison is
@@ -209,8 +251,24 @@ export class InsightsController {
       // this handler cannot tell which one it is talking to. Unique visitors
       // and the error budget stay on `LoreAnalyticsStore` / `sigilErrorGroups`
       // — see the class doc for why those two could not move.
-      const window = { sigilIds, since, until };
+      const window = { sigilIds, since, until, traffic };
       const analyticsWhere = { sigilId: { inArray: sigilIds } };
+      // Two `where`s, because `traffic` is a dimension of exactly one dataset.
+      // Every view query takes `viewsWhere` and inherits the filter without
+      // having to remember to; the vitals query keeps the plain one, and must
+      // - `sigil_vitals` does not declare `traffic`, and the query planner
+      // rejects a filter naming a dimension a dataset does not have, so
+      // sharing one object here is a 500 on the Performance tab rather than a
+      // silently wider answer.
+      //
+      // `uniqueVisitors` IS filtered, through `window` rather than through
+      // either of these: it is read from `sigil_uniques_daily`, which carries
+      // its own `traffic` column. The error budget is not, because an error is
+      // not a view and a crawler's crash is still this app's crash.
+      const viewsWhere = {
+        ...analyticsWhere,
+        ...this.trafficFilter(traffic),
+      };
       const [
         uniqueVisitors,
         viewsTotal,
@@ -227,13 +285,13 @@ export class InsightsController {
         this.datasets.views.query({
           since,
           until,
-          where: analyticsWhere,
+          where: viewsWhere,
           select: { count: "sum", engaged: "sum", entries: "sum" },
         }),
         this.datasets.views.query({
           since,
           until,
-          where: analyticsWhere,
+          where: viewsWhere,
           groupBy: ["country"],
           select: { count: "sum" },
           orderBy: { key: "count", direction: "desc" },
@@ -242,7 +300,7 @@ export class InsightsController {
         this.datasets.views.query({
           since,
           until,
-          where: analyticsWhere,
+          where: viewsWhere,
           groupBy: ["path"],
           select: { count: "sum" },
           orderBy: { key: "count", direction: "desc" },
@@ -254,7 +312,7 @@ export class InsightsController {
         this.datasets.views.query({
           since,
           until,
-          where: analyticsWhere,
+          where: viewsWhere,
           groupBy: ["path"],
           select: { entries: "sum" },
           orderBy: { key: "entries", direction: "desc" },
@@ -266,7 +324,7 @@ export class InsightsController {
         this.datasets.views.query({
           since,
           until,
-          where: analyticsWhere,
+          where: viewsWhere,
           groupBy: ["campaign"],
           select: { entries: "sum" },
           orderBy: { key: "entries", direction: "desc" },
@@ -275,7 +333,7 @@ export class InsightsController {
         this.datasets.views.query({
           since,
           until,
-          where: analyticsWhere,
+          where: viewsWhere,
           groupBy: ["device"],
           select: { count: "sum" },
           orderBy: { key: "count", direction: "desc" },
@@ -290,7 +348,7 @@ export class InsightsController {
         this.datasets.views.query({
           since,
           until,
-          where: analyticsWhere,
+          where: viewsWhere,
           groupBy: ["referrer"],
           select: { count: "sum" },
           orderBy: { key: "count", direction: "desc" },
@@ -299,7 +357,7 @@ export class InsightsController {
         this.datasets.views.query({
           since,
           until,
-          where: analyticsWhere,
+          where: viewsWhere,
           groupBy: ["day"],
           select: { count: "sum" },
           orderBy: { key: "day", direction: "asc" },
@@ -390,11 +448,12 @@ export class InsightsController {
       );
 
       const previous = query.compare
-        ? await this.readPreviousWindow(sigilIds, previousWindow)
+        ? await this.readPreviousWindow(sigilIds, previousWindow, traffic)
         : undefined;
 
       return {
         range,
+        traffic,
         since,
         until,
         previous,
@@ -485,6 +544,28 @@ export class InsightsController {
   }
 
   /**
+   * The `where` terms that narrow a view query to one traffic population.
+   *
+   * Empty for `all`, which is what an omitted parameter means, so a caller
+   * that never heard of this filter builds the same query it always did.
+   *
+   * Only the `views` dataset carries a `traffic` dimension, so this is never
+   * spread onto a uniques or an error-group read. Both of those answer a
+   * different question about a different table, and silently applying a
+   * filter that one of them cannot honour would be worse than not offering
+   * it.
+   */
+  protected trafficFilter(traffic: TrafficFilter | undefined): AnalyticsFilter {
+    if (traffic === "bots") {
+      return { traffic: "bot" };
+    }
+    if (traffic === "humans") {
+      return { traffic: { inArray: HUMAN_TRAFFIC } };
+    }
+    return {};
+  }
+
+  /**
    * The preceding window, measured the same way as the current one.
    *
    * Uniques and views only. A comparison needs a magnitude, not a second copy
@@ -500,13 +581,19 @@ export class InsightsController {
   protected async readPreviousWindow(
     sigilIds: string[],
     window: { since: string; until: string },
+    traffic: TrafficFilter | undefined,
   ): Promise<NonNullable<InsightsResource["previous"]>> {
     const [uniqueVisitors, views] = await Promise.all([
-      this.analytics.uniqueVisitors({ sigilIds, ...window }),
+      this.analytics.uniqueVisitors({ sigilIds, traffic, ...window }),
       this.datasets.views.query({
         since: window.since,
         until: window.until,
-        where: { sigilId: { inArray: sigilIds } },
+        // The same filter the current window carries. A delta between two
+        // windows measured on different populations is not a delta.
+        where: {
+          sigilId: { inArray: sigilIds },
+          ...this.trafficFilter(traffic),
+        },
         select: { count: "sum" },
       }),
     ]);
