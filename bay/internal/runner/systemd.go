@@ -78,21 +78,6 @@ type Sandbox struct {
 	StopGrace time.Duration
 }
 
-func unitName(key string) string {
-	// "lore/production" -> "bay-lore-production"
-	return "bay-" + strings.ReplaceAll(key, "/", "-")
-}
-
-// UserName returns the dedicated unix user for an app instance.
-func UserName(key string) string {
-	name := unitName(key)
-	// useradd refuses names over 32 characters on most systems.
-	if len(name) > 32 {
-		name = name[:32]
-	}
-	return name
-}
-
 // EnsureUser creates the app's unix user if it does not exist.
 //
 // System account, no home, no login shell: it exists to own files and run one
