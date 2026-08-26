@@ -1,4 +1,4 @@
-import { SIGIL_INGEST_PATH } from "@alepha/sigil/paths";
+import { SIGIL_INGEST_PATH } from "@alepha/sigil";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

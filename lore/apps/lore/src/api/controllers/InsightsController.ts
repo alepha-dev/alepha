@@ -1,6 +1,4 @@
-import type { AnalyticsVitalHistograms } from "@alepha/sigil/ingest";
-import { summariseVitals } from "@alepha/sigil/ingest";
-import type { VitalMetric } from "@alepha/sigil/vitals";
+import type { VitalMetric } from "@alepha/sigil";
 import { $inject, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
@@ -17,6 +15,8 @@ import {
 import { DailyVisitorsService } from "../services/DailyVisitorsService.ts";
 import { LoreAnalyticsStore } from "../services/LoreAnalyticsStore.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
+import type { AnalyticsVitalHistograms } from "../vitalsPercentile.ts";
+import { summariseVitals } from "../vitalsPercentile.ts";
 
 export type { InsightsResource };
 
@@ -372,7 +372,7 @@ export class InsightsController {
 
       // Rebuild the `bucket -> samples` histogram `summariseVitals` expects
       // from the flat `(metric, bucket)` rows the dataset returns. The walk
-      // and the CLS un-scaling live in `@alepha/sigil/ingest`: every backend
+      // and the CLS un-scaling live in `../vitalsPercentile.ts`: every backend
       // returns histograms and none of them should re-derive either.
       const histograms: AnalyticsVitalHistograms = {};
       for (const row of vitalsResult.rows) {

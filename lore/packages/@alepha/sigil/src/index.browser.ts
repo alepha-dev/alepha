@@ -6,8 +6,8 @@ import { SigilRoot } from "./browser/components/SigilRoot.tsx";
 import { SigilBrowserProvider } from "./browser/SigilBrowserProvider.ts";
 import { sigilClientAtom } from "./shared/sigilClientAtom.ts";
 
-export * from "./shared/sigilClientAtom.ts";
-export * from "./shared/sigilFeatures.ts";
+export * from "./browser/react.ts";
+export * from "./shared/index.ts";
 export * from "./sigilEnv.ts";
 
 /**
@@ -27,7 +27,7 @@ export * from "./sigilEnv.ts";
  * hydrate a tree the server did not render.
  *
  * The React surface is still deliberately **not** re-exported here. It lives at
- * `@alepha/sigil/react`, a condition-free subpath, so that it resolves the same
+ * `@alepha/sigil`, a condition-free subpath, so that it resolves the same
  * way on an SSR server pass as in a client bundle. Exporting it from a
  * `browser`-only entry made it unimportable under `types` / `import` /
  * `default`, which is a compile error in every host that is not a browser

@@ -1,4 +1,4 @@
-import { SIGIL_FEEDBACK_POSITIONS } from "@alepha/sigil/feedback-position";
+import { SIGIL_FEEDBACK_POSITIONS } from "@alepha/sigil";
 import { $inject, z } from "alepha";
 import { $repository, DbConflictError } from "alepha/orm";
 import { $secure } from "alepha/security";
