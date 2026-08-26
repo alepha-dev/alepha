@@ -32,9 +32,11 @@ class AuthService {
 
 Each method takes `"disabled"`, `"optional"` or `"required"`:
 
-- `disabled` (the default): never offered.
+- `disabled` (the default): never offered. Enrollment is refused server-side, and the account page hides the row.
 - `optional`: users may enroll from their account page, and are challenged once they have.
 - `required`: the same, plus your UI should push an unenrolled user through enrollment.
+
+Turning `totp` back to `disabled` does not delete the enrollments already made. Those accounts are no longer challenged, so the factor stops applying, but the row stays on the account page saying the site no longer asks for a code, with the option to remove it. Hiding it would leave a user with a factor they can neither see nor clear.
 
 ::: warning `required` does not block an unenrolled user
 An account with nothing enrolled has no second factor to be challenged on, so it signs in on the password alone. This is deliberate: enforcing it at the login route would lock out every existing account the moment you switched the setting on, which is nobody's intended rollout.
@@ -99,6 +101,26 @@ The QR is rendered on the server, so an application does not need a QR encoder i
 
 `@alepha/ui`'s account security page has the whole dialog already. Nothing to build if you use it.
 
+### What the authenticator app shows
+
+The scanned entry is labelled `<issuer>: <account>`, and both come from the realm:
+
+- **issuer** is `settings.displayName`, falling back to the realm's internal name.
+- **account** is the user's email, or their username, or their id, in that order.
+
+Set `displayName`. Without it the issuer is the realm name, which for every single-realm application is `default`, so the phone lists the entry as "default". That identifies nothing, and it collides with the next application that skips it too.
+
+```typescript
+realm = $realm({
+  settings: {
+    displayName: "Customer Portal", // ← what the phone will show
+    mfa: { totp: "required" },
+  },
+});
+```
+
+An `otpauth://` URI is consumed once, at scan time, so changing `displayName` later only affects new enrollments. Entries already on a phone keep the label they were created with.
+
 ### Why disabling asks for a code
 
 A live session is not proof that the person at the keyboard still holds the second factor. Without the check, an unattended signed-in browser is enough to strip the factor off an account and come back later.
@@ -107,7 +129,9 @@ A live session is not proof that the person at the keyboard still holds the seco
 
 Activation returns ten single-use codes. They are stored hashed, so that response is the only time they can ever be displayed, and a user who does not keep them has no way back in without an administrator.
 
-An administrator resets a locked-out user by deleting their `totp` identity row through `AdminIdentityController`, which appears in the admin UI as the "Authenticator app" sign-in method.
+An administrator resets a locked-out user from the "Two-factor authentication" card on that user's Security tab in the admin UI. It is deliberately its own card rather than a row among the connected accounts: an authenticator app is not a way to sign in, and removing it does not take a way in away, it takes a check away.
+
+Underneath it is `AdminIdentityController`, deleting the user's `totp` identity row on the `admin:identity:delete` permission, and the deletion is recorded in the audit log.
 
 ## What is stored
 

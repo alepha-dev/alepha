@@ -403,6 +403,47 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
     [props.userRealmName],
   );
 
+  // -- Clear the second factor ----------------------------------------------
+
+  /*
+   * Same endpoint as `removeIdentity`: a TOTP enrollment is an identity row,
+   * and `admin:identity:delete` already means "can take away a way into this
+   * account". What differs is what the operator is told: this does not remove
+   * a sign-in method, it removes the check that sits after one, so the wording
+   * of `removeIdentity` would be actively wrong here.
+   *
+   * It is also the single action an attacker holding an admin session wants
+   * most, which is why it confirms rather than firing on one click.
+   */
+  const clearTotp = useAction<[IdentityResource]>(
+    {
+      handler: async (identity) => {
+        const ok = await dialog.confirm({
+          title: tr("admin.userDetail.clearTotpTitle", {
+            default: "Clear second factor",
+          }),
+          description: tr("admin.userDetail.clearTotpConfirm", {
+            default:
+              "This account will sign in with its password alone until the user enrolls an authenticator app again. Do this only when they have lost both the device and their recovery codes.",
+          }),
+          destructive: true,
+        });
+        if (!ok) return;
+        await identityClient.deleteIdentity({
+          params: { id: identity.id },
+          query: { userRealmName: props.userRealmName },
+        });
+        toast.success(
+          tr("admin.userDetail.totpCleared", {
+            default: "Second factor cleared",
+          }),
+        );
+        await identitiesQuery.refetch();
+      },
+    },
+    [props.userRealmName],
+  );
+
   // -- Sessions / audits fetchers -------------------------------------------
 
   const sessionsFetcher = useCallback(
@@ -572,6 +613,7 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
             hasPassword={hasPassword}
             socialIdentities={socialIdentities}
             removeIdentity={removeIdentity}
+            clearTotp={clearTotp}
             onChangePassword={() => setPasswordOpen(true)}
           />
         )}

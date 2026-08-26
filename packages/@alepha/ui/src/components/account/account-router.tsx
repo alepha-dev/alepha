@@ -173,9 +173,19 @@ export class AccountRouter {
       order: 2,
       keywords: ["password", "identities", "sign-in", "delete account"],
     },
-    loader: async () => ({
-      identities: await this.identityApi.listMyIdentities(),
-    }),
+    /*
+     * `realmConfig` rides along for the same reason it does on {@link profile}:
+     * one row here is realm-dependent. A realm with `mfa.totp: "disabled"` must
+     * not be offered the two-factor row, or the user enrolls into a factor the
+     * login gate will never ask for.
+     */
+    loader: async () => {
+      const [identities, realmConfig] = await Promise.all([
+        this.identityApi.listMyIdentities(),
+        this.realmApi.getRealmConfig(),
+      ]);
+      return { identities, realmConfig };
+    },
     lazy: () => import("./account-security.tsx"),
     props: () => this.options.pages?.security ?? {},
   });

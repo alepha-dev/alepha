@@ -12,6 +12,7 @@ import type {
   MyIdentityController,
   MyMfaController,
   MyMfaStatus,
+  RealmConfig,
 } from "alepha/api/users";
 import { useClient, useQuery } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
@@ -23,6 +24,17 @@ import { PROVIDER_LABELS } from "../auth/provider-labels.ts";
 
 export interface AccountSecurityProps {
   identities?: MyIdentity[];
+
+  /**
+   * Carries `settings.mfa`, which decides whether the two-factor row is
+   * offered at all.
+   *
+   * Optional for the same reason it is on Profile. Absent, the row renders:
+   * the historical behaviour, and the safer guess, since hiding a factor a realm
+   * does want is a worse failure than showing one it does not, because the
+   * server refuses the enrollment either way.
+   */
+  realmConfig?: RealmConfig;
 
   /**
    * Rendered inside the delete-account dialog, above the confirmation field.
@@ -69,6 +81,20 @@ const AccountSecurity = (props: AccountSecurityProps) => {
    * code, which is exactly what `disableTotp` refuses to do.
    */
   const signInMethods = identities.filter((it) => it.provider !== "totp");
+
+  /**
+   * A realm can turn the authenticator-app factor off. Offering a Set up
+   * button then walks the user through a QR, ten recovery codes and an "On"
+   * badge for a factor the login gate will never ask for, so the row is not
+   * offered at all.
+   *
+   * An enrollment that predates the setting is the exception: it stays
+   * visible, because hiding it would strand a factor the user can neither see
+   * nor remove.
+   */
+  const totpDisabled = props.realmConfig?.settings?.mfa?.totp === "disabled";
+  const totpStranded = totpDisabled && !!mfa?.totp.enabled;
+  const showMfaRow = !totpDisabled || totpStranded;
 
   const reload = async () => setIdentities(await api.listMyIdentities());
 
@@ -179,46 +205,53 @@ const AccountSecurity = (props: AccountSecurityProps) => {
           </SettingsRow>
         ))}
 
-        <SettingsRow
-          label={tr("account.security.mfa", {
-            default: "Two-factor authentication",
-          })}
-          description={
-            mfa?.totp.enabled
-              ? // Two calls, not one with a computed key: the FR coverage spec
-                // finds keys by matching a literal right after `tr(`, so a key
-                // chosen at runtime is invisible to it and would rot silently.
-                mfa.totp.recoveryCodesLeft === 1
-                ? tr("account.security.mfaOnOneCode", {
-                    default: "On. $1 recovery code left.",
-                    args: [String(mfa.totp.recoveryCodesLeft)],
+        {showMfaRow ? (
+          <SettingsRow
+            label={tr("account.security.mfa", {
+              default: "Two-factor authentication",
+            })}
+            description={
+              totpStranded
+                ? tr("account.security.mfaNoLongerUsed", {
+                    default:
+                      "This site no longer asks for a code. You can remove it.",
                   })
-                : tr("account.security.mfaOnCodes", {
-                    default: "On. $1 recovery codes left.",
-                    args: [String(mfa.totp.recoveryCodesLeft)],
-                  })
-              : tr("account.security.mfaOff", {
-                  default:
-                    "Ask for a code from an authenticator app as well as your password.",
-                })
-          }
-        >
-          {mfa?.totp.enabled ? (
-            <Button variant="secondary" size="sm" onClick={disableMfa}>
-              <ShieldOff className="size-4" />
-              {tr("account.security.mfaTurnOff", { default: "Turn off" })}
-            </Button>
-          ) : (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setMfaOpen(true)}
-            >
-              <ShieldCheck className="size-4" />
-              {tr("account.security.mfaSetUp", { default: "Set up" })}
-            </Button>
-          )}
-        </SettingsRow>
+                : mfa?.totp.enabled
+                  ? // Two calls, not one with a computed key: the FR coverage spec
+                    // finds keys by matching a literal right after `tr(`, so a key
+                    // chosen at runtime is invisible to it and would rot silently.
+                    mfa.totp.recoveryCodesLeft === 1
+                    ? tr("account.security.mfaOnOneCode", {
+                        default: "On. $1 recovery code left.",
+                        args: [String(mfa.totp.recoveryCodesLeft)],
+                      })
+                    : tr("account.security.mfaOnCodes", {
+                        default: "On. $1 recovery codes left.",
+                        args: [String(mfa.totp.recoveryCodesLeft)],
+                      })
+                  : tr("account.security.mfaOff", {
+                      default:
+                        "Ask for a code from an authenticator app as well as your password.",
+                    })
+            }
+          >
+            {mfa?.totp.enabled ? (
+              <Button variant="secondary" size="sm" onClick={disableMfa}>
+                <ShieldOff className="size-4" />
+                {tr("account.security.mfaTurnOff", { default: "Turn off" })}
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setMfaOpen(true)}
+              >
+                <ShieldCheck className="size-4" />
+                {tr("account.security.mfaSetUp", { default: "Set up" })}
+              </Button>
+            )}
+          </SettingsRow>
+        ) : null}
 
         <SettingsRow
           label={tr("account.security.password", { default: "Password" })}
