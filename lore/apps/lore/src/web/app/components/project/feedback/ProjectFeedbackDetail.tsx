@@ -63,8 +63,26 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
   };
 
   const handleQuestCreated = () => {
-    setQuestCreateOpen(false);
-    props.onChanged();
+    setQuestSheetOpen(false);
+  };
+
+  /**
+   * Accepting is the first half of promoting, and it is already committed
+   * by the time this sheet opens — so the list has to be told when the
+   * sheet goes away, whichever way it goes away.
+   *
+   * `onChanged` cannot be called at accept time: it refetches the list and
+   * moves the selection to the next pending item, which would swap this
+   * pane, and the open sheet with it, out from under the user mid-flow. So
+   * the notification waits here, at the one point where nothing is left to
+   * interrupt. Before this, only the create-a-quest path notified: accept
+   * then dismiss left the row reading `pending` against a feedback the
+   * server had already triaged, and pressing Accept again answered
+   * "already triaged".
+   */
+  const setQuestSheetOpen = (open: boolean) => {
+    setQuestCreateOpen(open);
+    if (!open) props.onChanged();
   };
 
   const handleReject = async () => {
@@ -314,7 +332,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
         </div>
       )}
 
-      <Sheet open={questCreateOpen} onOpenChange={setQuestCreateOpen}>
+      <Sheet open={questCreateOpen} onOpenChange={setQuestSheetOpen}>
         <SheetContent
           side="right"
           className="flex w-full flex-col gap-0 p-0 data-[side=right]:sm:max-w-[50vw]"
