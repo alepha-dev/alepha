@@ -23,15 +23,21 @@ export class DirectoryController {
 
   /**
    * List the immediate children of `parentDirectoryId` (or the
-   * project root when omitted). Mixed contents — folios + blobs +
+   * project root when omitted). Mixed contents — folios +
    * sub-directories under a single `entries` array, each tagged with
    * `kind`. That's the natural Drive-like response: the UI renders
    * them in one table.
+   *
+   * Attachments are not children of a folder. They belong to one folio,
+   * and `folio_blobs.directoryId` has been dead since that became true,
+   * so the blob query this used to run always came back empty and every
+   * caller was reading a `"blob"` entry kind that could not occur. To
+   * list a folio's attachments, ask `BlobController`.
    */
   listContents = $action({
     use: [$secure({ permissions: ["folio:read"] })],
     path: "/projects/:projectId/folio/contents",
-    description: "List directories + folios + blobs in a directory (or root).",
+    description: "List directories + folios in a directory (or root).",
     schema: {
       params: z.object({ projectId: z.integer() }),
       query: z.object({
@@ -48,19 +54,16 @@ export class DirectoryController {
         ),
         entries: z.array(
           z.object({
-            kind: z.enum(["directory", "folio", "blob"]),
+            kind: z.enum(["directory", "folio"]),
             id: z.string(),
             shortId: z.integer(),
             name: z.string(),
             updatedAt: z.string(),
-            // Folio extras (omitted on directory + blob)
+            // Folio extras (omitted on directory)
             tags: z.array(z.string()).optional(),
             protected: z.boolean().optional(),
             pinned: z.boolean().optional(),
             summary: z.string().optional(),
-            // Blob extras (omitted on directory + folio)
-            size: z.number().optional(),
-            mimeType: z.string().optional(),
           }),
         ),
       }),
@@ -77,7 +80,7 @@ export class DirectoryController {
         throw new NotFoundError("Directory not found");
       }
 
-      const [childDirs, childFolios, childBlobs] = await Promise.all([
+      const [childDirs, childFolios] = await Promise.all([
         this.directoryService.listChildren(params.projectId, query.parentId),
         this.folios.findMany({
           where: query.parentId
@@ -88,21 +91,7 @@ export class DirectoryController {
               },
           orderBy: [{ column: "title", direction: "asc" }],
         }),
-        this.blobs.findMany({
-          where: query.parentId
-            ? { directoryId: { eq: query.parentId } }
-            : {
-                projectId: { eq: params.projectId },
-                directoryId: { isNull: true },
-              },
-          orderBy: [{ column: "name", direction: "asc" }],
-        }),
       ]);
-
-      // Blob `size` / `mimeType` aren't hydrated here — clients that
-      // need them fetch via `BlobController.getBlob` (or `blob_get`).
-      // Folding the framework `files` join into this multi-table query
-      // bloats the response for users browsing a deep tree.
 
       // Breadcrumb: walk up from the current directory.
       const breadcrumb: { id: string; shortId: number; name: string }[] = [];
@@ -139,13 +128,6 @@ export class DirectoryController {
           pinned: f.pinned,
           summary: f.summary || undefined,
         })),
-        ...childBlobs.map((b) => ({
-          kind: "blob" as const,
-          id: b.fileId,
-          shortId: b.shortId,
-          name: b.name,
-          updatedAt: b.updatedAt,
-        })),
       ];
 
       return { directory, breadcrumb, entries };
@@ -159,8 +141,10 @@ export class DirectoryController {
    * (folios — title + tags + summary + content). Capped at 50 results
    * per kind so the response stays small.
    *
-   * Returns the same Entry shape as `listContents` so the table
-   * renders search results without a separate UI path.
+   * Returns the `listContents` Entry shape widened with `"blob"`: an
+   * attachment is not a child of any folder, so it can never appear in
+   * a listing, but finding one by name across the project is exactly
+   * what a search is for.
    */
   searchFolio = $action({
     use: [$secure({ permissions: ["folio:read"] })],
