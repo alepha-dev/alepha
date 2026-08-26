@@ -1,15 +1,21 @@
+import { existsSync, mkdtempSync, readdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { Alepha, AlephaError, z } from "alepha";
 import {
   LogDestinationProvider,
   MemoryDestinationProvider,
 } from "alepha/logger";
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, it, test, vi } from "vitest";
 
 import {
   $command,
+  CliProvider,
   CommandError,
   ConsoleOutputProvider,
   cliOptions,
+  ExclusiveProvider,
   MemoryOutputProvider,
 } from "../index.ts";
 
@@ -1849,6 +1855,86 @@ describe("$command", () => {
       const output = mockOutput.text;
       expect(output).toContain("-m, --mode");
       expect(output).toContain("default: production");
+    });
+  });
+
+  describe("exclusive", () => {
+    it("holds one slot for the whole pre-hook, handler and post-hook run", async () => {
+      const dir = mkdtempSync(join(tmpdir(), "alepha-exclusive-cmd-"));
+      process.env.ALEPHA_EXCLUSIVE_DIR = dir;
+
+      try {
+        const seen: string[] = [];
+
+        class ExclusiveCommands {
+          prework = $command({
+            pre: "work",
+            handler: async () => {
+              seen.push("pre");
+            },
+          });
+
+          work = $command({
+            name: "work",
+            exclusive: "test:work",
+            handler: async () => {
+              seen.push("handler");
+            },
+          });
+
+          postwork = $command({
+            post: "work",
+            handler: async () => {
+              seen.push("post");
+            },
+          });
+        }
+
+        const { alepha } = await setupTestCommands(["work"], (a) =>
+          a.with(ExclusiveCommands),
+        );
+
+        expect(seen).toEqual(["pre", "handler", "post"]);
+
+        // The slot was taken and released, so the queue is empty again.
+        const exclusive = alepha.inject(ExclusiveProvider);
+        const queue = exclusive.queueDir("test:work");
+        expect(existsSync(queue)).toBe(true);
+        expect(
+          readdirSync(queue).filter((f) => f.endsWith(".json")),
+        ).toHaveLength(0);
+      } finally {
+        delete process.env.ALEPHA_EXCLUSIVE_DIR;
+      }
+    });
+
+    it("does not queue from CliProvider.run(), the programmatic path", async () => {
+      const dir = mkdtempSync(join(tmpdir(), "alepha-exclusive-cmd-"));
+      process.env.ALEPHA_EXCLUSIVE_DIR = dir;
+
+      try {
+        class RunCommands {
+          work = $command({
+            name: "work",
+            exclusive: "test:run",
+            handler: async () => {},
+          });
+        }
+
+        const alepha = Alepha.create();
+        const commands = alepha.inject(RunCommands);
+        const cli = alepha.inject(CliProvider);
+        const exclusive = alepha.inject(ExclusiveProvider);
+
+        await cli.run(commands.work);
+
+        // run() is documented as the lightweight path: no runner session, no
+        // context wrapper, no .env loading. Queueing there would make every
+        // unit test that drives a command wait on a real filesystem queue.
+        expect(existsSync(exclusive.queueDir("test:run"))).toBe(false);
+      } finally {
+        delete process.env.ALEPHA_EXCLUSIVE_DIR;
+      }
     });
   });
 });
