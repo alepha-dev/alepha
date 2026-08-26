@@ -262,17 +262,66 @@ export class FolioBlobService {
   }
 
   /**
-   * Delete the blob row AND the underlying framework file (so storage
-   * is reclaimed). Caller may want a soft-delete flow later; for v1
-   * delete is hard delete.
+   * Delete the blob row AND the underlying framework file, so the bytes
+   * are reclaimed. For v1 delete is hard delete.
+   *
+   * ⚠️ **There is no physical foreign key from `folio_blobs.fileId` to
+   * `files.id`**, whatever this file used to say. It claimed the delete
+   * cascaded from the framework row down to the overlay; nothing did,
+   * so every attachment deleted here left its `folio_blobs` row behind
+   * pointing at a file that no longer existed. Adding the constraint
+   * means a table rebuild, and a rebuild on D1 is the cascade-wipe this
+   * app has already been bitten by once — see "Migration safety on D1"
+   * in `apps/lore/CLAUDE.md`. The relationship is therefore logical, and
+   * this method is what enforces it.
+   *
+   * The overlay goes first. The reverse order leaves, on a failure in
+   * between, a row that resolves to nothing — which the folio renders as
+   * a broken attachment. Losing the bytes and keeping nothing is the
+   * better half of that trade.
    */
   public async delete(fileId: string): Promise<void> {
     const blob = await this.findById(fileId);
     if (!blob) throw new NotFoundError("Blob not found");
-    // FK from folio_blobs.fileId → files.id has CASCADE: deleting
-    // the framework file row also drops the folio_blobs row. Use the
-    // framework service so storage gets reclaimed too.
-    await this.fileService.deleteFile(fileId);
+
+    await this.blobs.deleteById(fileId);
+
+    // Checked rather than caught: the framework row may already be gone
+    // (this is exactly the orphan state that existed before), and
+    // `deleteFile` answers a missing row with a throw.
+    const file = await this.frameworkFiles.findOne({
+      where: { id: { eq: fileId } },
+    });
+    if (file) {
+      await this.fileService.deleteFile(fileId);
+    }
+  }
+
+  /**
+   * Reclaim every attachment of a folio: the overlay rows, the framework
+   * file rows, and the bytes behind them.
+   *
+   * Called BEFORE the folio row goes, and that ordering is the whole
+   * point: `folio_blobs.folioId` cascades, so once the folio is deleted
+   * the overlay rows are gone and with them the only record of which
+   * files belonged to it. Deleting a folio used to leave its images in
+   * the bucket forever, paid for and unreachable.
+   *
+   * Returns how many were reclaimed, which is what makes it assertable.
+   */
+  public async deleteByFolio(folioId: string): Promise<number> {
+    const blobs = await this.blobs.findMany({
+      where: { folioId: { eq: folioId } },
+      columns: ["fileId"],
+    });
+    if (blobs.length === 0) return 0;
+
+    const ids = blobs.map((blob) => blob.fileId);
+    await this.blobs.deleteMany({ fileId: { inArray: ids } });
+    // One round trip per bucket, and it tolerates ids whose file row has
+    // already gone.
+    await this.fileService.deleteFiles(ids);
+    return ids.length;
   }
 }
 

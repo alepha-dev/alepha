@@ -819,6 +819,14 @@ export class FolioController {
       // a broken reference, which the reader renders as such; deleting it
       // would silently rewrite what the author wrote.
       await this.linkService.deleteLinksFrom({ kind: "folio", id: params.id });
+      /*
+       * Before the folio row, not after. `folio_blobs.folioId` cascades, so
+       * the moment the folio is gone so is the only record of which files
+       * belonged to it — and those files, and their bytes, are in a bucket
+       * nothing else references. Every folio deleted before this left its
+       * attachments there, paid for and unreachable.
+       */
+      await this.blobService.deleteByFolio(params.id);
       await this.folios.deleteById(params.id);
       return { ok: true };
     },
