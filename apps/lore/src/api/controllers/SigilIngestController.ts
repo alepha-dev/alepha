@@ -1,5 +1,5 @@
-import { sigilForwarded } from "@alepha/sigil/envelope";
-import { SIGIL_INGEST_PATH } from "@alepha/sigil/paths";
+import { sigilForwarded } from "@alepha/sigil";
+import { SIGIL_INGEST_PATH } from "@alepha/sigil";
 import { $inject, z } from "alepha";
 import { $route, UnauthorizedError } from "alepha/server";
 

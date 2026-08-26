@@ -197,10 +197,10 @@ no JSX to place. Control it from `SIGIL_CONFIG` - `feedbackButton: "hidden"`
 keeps it out of the tree, `feedbackButtonExcludedPaths` keeps it off specific
 routes.
 
-To render your own link instead, `@alepha/sigil/react` re-exports the pieces:
+To render your own link instead, `@alepha/sigil` re-exports the pieces:
 
 ```tsx
-import { useFeedbackUrl } from "@alepha/sigil/react";
+import { useFeedbackUrl } from "@alepha/sigil";
 
 // Renders only when the sink hands out a feedback URL
 // and the current path is not excluded.

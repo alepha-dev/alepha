@@ -6,7 +6,7 @@ import { sigilAnalytics } from "./sigilAnalytics.ts";
  * Page views, rolled up on write — one row per `(sigilId, hour, path,
  * country)`.
  *
- * Declared by `@alepha/sigil/ingest`'s entity factory; see
+ * Declared in `sigilAnalytics.ts`; see
  * `sigilAnalytics.ts` for why the schema lives in the package while the
  * foreign key into `sigils` stays here.
  *

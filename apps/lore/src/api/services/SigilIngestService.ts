@@ -1,7 +1,7 @@
-import type { SigilForwarded } from "@alepha/sigil/envelope";
-import { sigilFingerprintSource } from "@alepha/sigil/fingerprint";
-import { sigilScrubUrl } from "@alepha/sigil/scrub";
-import { bucketIndex, type VitalMetric } from "@alepha/sigil/vitals";
+import type { SigilForwarded } from "@alepha/sigil";
+import { sigilFingerprintSource } from "@alepha/sigil";
+import { sigilScrubUrl } from "@alepha/sigil";
+import { bucketIndex, type VitalMetric } from "@alepha/sigil";
 import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
@@ -72,7 +72,7 @@ export class SigilIngestService {
   /**
    * Uniques only. `LoreAnalyticsStore` used to hold views and vitals too,
    * behind the now-deleted `AnalyticsStore` interface from
-   * `@alepha/sigil/ingest` — see that class's doc for why a distinct visitor
+   * `../entities/sigilAnalytics.ts` — see that class's doc for why a distinct visitor
    * count is the one question storage-swappable `$analytics()` datasets
    * cannot answer, and so is the one thing that stayed on a repository.
    * Error groups and blights stay on repositories for an unrelated reason:

@@ -18,7 +18,7 @@
     "verify:go": "yarn alepha verify:go",
     "v:go": "yarn alepha verify:go",
     "clean": "yarn alepha clean",
-    "copy": "yarn workspaces foreach -Apt run copy",
+    "copy": "yarn workspaces foreach -Apt run copy && yarn lint",
     "lint": "yarn alepha lint",
     "typecheck": "yarn workspaces foreach -Apt -j 4 run typecheck",
     "test": "yarn vitest run",

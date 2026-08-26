@@ -10,15 +10,14 @@ import { SigilServerErrors } from "./server/SigilServerErrors.ts";
 import { SigilSinkProvider } from "./server/SigilSinkProvider.ts";
 import { sigilClientAtom } from "./shared/sigilClientAtom.ts";
 
+export * from "./browser/react.ts";
 export * from "./server/SigilSinkProvider.ts";
-export * from "./shared/sigilClientAtom.ts";
-export * from "./shared/sigilFeatures.ts";
-export * from "./shared/sigilPaths.ts";
+export * from "./shared/index.ts";
 export * from "./sigilEnv.ts";
 
 /**
  * The sigil an Alepha app reports under: page views, web vitals, and client
- * and server errors — pushed to a sink that the app names.
+ * and server errors, pushed to a sink that the app names.
  *
  * Import this module in your WebModule and set `SIGIL_KEY`. That is the whole
  * enrolment: the key authorises the reporting and names the project reported
@@ -39,16 +38,16 @@ export * from "./sigilEnv.ts";
  *
  * **The feedback button mounts itself.** `<SigilRoot />` is pushed into
  * {@link RootComponentsProvider}, so importing this module is the whole
- * integration — there is no second module and no JSX to place. The component
+ * integration: there is no second module and no JSX to place. The component
  * renders `null` unless the sink hands out a `feedbackUrl` and the current path
  * is not excluded, so an app with no sink configured sees nothing.
  *
  * This entry therefore pulls React. That was once avoided so a headless API app
  * could import the module without it, but `react` and `react-dom` are already
- * peer dependencies of this package, so such an app had to install them anyway
- * — the split bought one unused import at the cost of a second module every
- * host had to know about. If a genuinely React-free consumer ever appears, move
- * the `register` below into its own module behind `@alepha/sigil/react`.
+ * peer dependencies of this package, so such an app had to install them anyway.
+ * The split bought one unused import at the cost of a second module every host
+ * had to know about. If a genuinely React-free consumer ever appears, move
+ * the `register` below into its own module behind `@alepha/sigil`.
  *
  * An app that wants the link somewhere else in its own layout can still render
  * it from `useFeedbackUrl()`; `<SigilRoot />` hides itself when there is no URL,
@@ -56,6 +55,8 @@ export * from "./sigilEnv.ts";
  *
  * Server services self-guard to the server; the browser bootstrap guards the
  * browser.
+ *
+ * @module alepha.sigil
  */
 export const AlephaSigil = $module({
   name: "alepha.sigil",

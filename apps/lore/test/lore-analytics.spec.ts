@@ -1,4 +1,4 @@
-import { SIGIL_INGEST_PATH } from "@alepha/sigil/paths";
+import { SIGIL_INGEST_PATH } from "@alepha/sigil";
 import { Alepha, AlephaError } from "alepha";
 import {
   type AnalyticsDataset,

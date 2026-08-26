@@ -1,4 +1,4 @@
-import { sigilKeyProject } from "@alepha/sigil/key";
+import { sigilKeyProject } from "@alepha/sigil";
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

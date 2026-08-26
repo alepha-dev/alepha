@@ -49,7 +49,7 @@ export interface LoreAnalyticsWindow {
  * written directly.
  *
  * Views and vitals used to live here too, behind the now-deleted
- * `AnalyticsStore` interface from `@alepha/sigil/ingest` — a question-shaped
+ * `AnalyticsStore` interface the sigil package used to ship — a question-shaped
  * contract closed over three tables so the storage backend could be swapped
  * per runtime. That contract is gone: `SigilIngestService` writes views and
  * vitals straight into `LoreAnalytics`'s `$analytics()` datasets now, and
