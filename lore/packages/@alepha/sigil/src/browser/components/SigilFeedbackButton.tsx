@@ -86,7 +86,7 @@ export const SigilFeedbackButton = (props: SigilFeedbackButtonProps) => {
 
     const features = `width=${width},height=${height},left=${left},top=${top}`;
     // Carry the host page's context to the feedback form via the popup URL.
-    // The Lore feedback page (`@alepha/sigil/context`) reads this same
+    // The Lore feedback page (`@alepha/sigil`) reads this same
     // whitelist back off the query string.
     const context = collectPageContext();
     const separator = feedbackUrl.includes("?") ? "&" : "?";

@@ -1,6 +1,6 @@
 {
   "name": "@alepha/sigil",
-  "private": true,
+  "version": "0.27.0",
   "description": "Reports page views, vitals and errors from an Alepha app to a Sigil instance.",
   "keywords": [
     "alepha",
@@ -31,19 +31,20 @@
       "import": "./src/index.ts",
       "default": "./src/index.ts"
     },
-    "./server": "./src/server/index.ts",
-    "./ingest": "./src/ingest/index.ts",
-    "./react": "./src/browser/react.ts",
-    "./messages": "./src/shared/sigilMessages.ts",
-    "./context": "./src/shared/sigilFeedbackContext.ts",
-    "./feedback-position": "./src/shared/sigilFeedbackPosition.ts",
-    "./vitals": "./src/shared/schemas/sigilVitalsBuckets.ts",
-    "./fingerprint": "./src/shared/sigilFingerprint.ts",
-    "./key": "./src/shared/sigilKey.ts",
-    "./envelope": "./src/shared/schemas/sigilEnvelope.ts",
-    "./config": "./src/shared/schemas/sigilConfig.ts",
-    "./paths": "./src/shared/sigilPaths.ts",
-    "./scrub": "./src/shared/sigilScrubUrl.ts"
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "browser": "./dist/index.browser.js",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      },
+      "./package.json": "./package.json"
+    }
   },
   "scripts": {
     "lint": "alepha lint",

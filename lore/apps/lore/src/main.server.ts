@@ -1,4 +1,4 @@
-import { SigilSinkProvider } from "@alepha/sigil/server";
+import { SigilSinkProvider } from "@alepha/sigil";
 import { adminRouterOptionsAtom } from "@alepha/ui/components/admin/admin-router-options";
 import { Alepha, run } from "alepha";
 import { FileAccessProvider } from "alepha/api/files";

@@ -1,7 +1,4 @@
-import {
-  VITALS_BUCKETS,
-  type VitalMetric,
-} from "../shared/schemas/sigilVitalsBuckets.ts";
+import { VITALS_BUCKETS, type VitalMetric } from "@alepha/sigil";
 
 /**
  * Bucket index → how many samples, per metric. Absent metrics saw none.

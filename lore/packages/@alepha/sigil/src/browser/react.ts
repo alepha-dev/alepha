@@ -1,5 +1,5 @@
 /**
- * The React surface of the package: `@alepha/sigil/react`.
+ * The React surface of the package: `@alepha/sigil`.
  *
  * A subpath of its own, and **condition-free** — `types`, `import`, `default`
  * and `browser` all resolve this same file. That is the whole point. These

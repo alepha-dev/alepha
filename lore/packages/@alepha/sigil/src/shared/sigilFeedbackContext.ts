@@ -20,7 +20,7 @@
  *
  * Kept React-free and browser-API-free (pure constants) so either side can
  * import it without pulling the other's globals. Importable via
- * `@alepha/sigil/context`.
+ * `@alepha/sigil`.
  */
 export const SIGIL_FEEDBACK_CONTEXT_PARAMS = [
   /**
