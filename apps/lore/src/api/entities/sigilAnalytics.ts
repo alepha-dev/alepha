@@ -152,9 +152,33 @@ const uniques = $entity({
      * rows. See `apps/lore/CLAUDE.md`.
      */
     count: db.default(z.integer().min(1), 1),
+    /**
+     * `human` | `bot`, as the app's own proxy classified the user-agent.
+     *
+     * Defaulted for the same reason `count` is - this table has production
+     * rows and SQLite refuses `ADD COLUMN … NOT NULL` without a default - and
+     * `human` is also the right value for every row written before the
+     * dimension existed: they were not classified, and unclassified is a
+     * person. See `sigilTrafficKind` for why the tie never goes the other way.
+     */
+    traffic: db.default(z.string().min(1).max(16), "human"),
   }),
   indexes: [
-    { columns: ["sigilId", "day", "visitorHash"], unique: true },
+    /**
+     * `traffic` is IN the unique index, and it has to be.
+     *
+     * A hash row would not need it: `visitorHash` closes over the user-agent
+     * and `traffic` is derived from that same user-agent, so one hash can only
+     * ever carry one traffic kind. The proxy is the only writer, which is what
+     * makes that hold.
+     *
+     * The collapsed rows are what force it. A collapsed row stands in for a
+     * whole day with {@link UNIQUES_COLLAPSED_HASH} where its hash would be,
+     * and a day now needs one per traffic kind - two rows sharing
+     * `(sigilId, day, '*')`. Without `traffic` in the index they collide and
+     * the sweep cannot write the second.
+     */
+    { columns: ["sigilId", "day", "visitorHash", "traffic"], unique: true },
     { columns: ["sigilId", "day"] },
   ],
 });

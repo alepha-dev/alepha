@@ -504,6 +504,59 @@ test.describe("Sigils", () => {
       await expect(page.getByText("Estimated")).toHaveCount(0);
     });
 
+    await test.step("the traffic toggle separates crawlers from readers", async () => {
+      // A second batch, stamped `bot` the way an app's own proxy stamps it
+      // from the user-agent. Posted AFTER the assertions above so it cannot
+      // move the numbers they pin.
+      const crawl = await request.post(ingest, {
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${token}`,
+        },
+        data: {
+          views: [{ path: "/crawled", entry: true }],
+          country: "US",
+          device: "desktop",
+          traffic: "bot",
+          visitor: `v-bot-${t}`,
+        },
+      });
+      expect(crawl.status()).toBe(204);
+
+      // The route loader is what fills the insights atom, so the new row only
+      // exists on screen after a reload.
+      await page.reload();
+      await page.waitForLoadState("networkidle");
+
+      const traffic = page.getByTestId("app-traffic");
+      const topPaths = page.getByTestId("insights-top-paths");
+      const visitors = page.getByTestId("insights-unique-visitors");
+      await expect(topPaths).toBeVisible({ timeout: 15_000 });
+
+      // `all` is the default, and both populations are in it. Two visitors:
+      // the reader from the batch above and the crawler from this one.
+      await expect(topPaths.getByText("/crawled")).toBeVisible();
+      await expect(topPaths.getByText("/checkout")).toBeVisible();
+      await expect(visitors.getByText("2", { exact: true })).toBeVisible();
+
+      await traffic.getByRole("button", { name: "Bots", exact: true }).click();
+      await expect(topPaths.getByText("/crawled")).toBeVisible();
+      await expect(topPaths.getByText("/checkout")).toHaveCount(0);
+      // The headline moves with the rest. It did not, until it did.
+      await expect(visitors.getByText("1", { exact: true })).toBeVisible();
+
+      await traffic
+        .getByRole("button", { name: "Humans", exact: true })
+        .click();
+      await expect(topPaths.getByText("/checkout")).toBeVisible();
+      await expect(topPaths.getByText("/crawled")).toHaveCount(0);
+      await expect(visitors.getByText("1", { exact: true })).toBeVisible();
+
+      // Back to `all`, so the steps after this one see the page they expect.
+      await traffic.getByRole("button", { name: "All", exact: true }).click();
+      await expect(topPaths.getByText("/crawled")).toBeVisible();
+    });
+
     await test.step("the Performance tab reports the vitals p75", async () => {
       // The 2100 ms LCP sample lands in the ≤2500 bucket, and p75 reports that
       // bucket's upper boundary. The thousands separator is whatever the

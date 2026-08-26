@@ -1,5 +1,7 @@
 import { type Infer, z } from "alepha";
 
+import { trafficFilterSchema } from "./trafficFilterSchema.ts";
+
 /**
  * One app's (or one project's) analytics over a 1d / 7d / 30d window.
  *
@@ -15,6 +17,16 @@ import { type Infer, z } from "alepha";
  */
 export const insightsResourceSchema = z.object({
   range: z.enum(["1d", "7d", "30d"]),
+  /**
+   * Which population these numbers describe, echoed back from the request.
+   *
+   * Here for the same reason `range` is: the page renders from the payload,
+   * not from the control that produced it, so the control can be restored
+   * from a response the page did not itself ask for. `all` when the caller
+   * asked for nothing, so a reader never has to treat absence as a third
+   * state.
+   */
+  traffic: trafficFilterSchema,
   /**
    * First UTC day included in the window, `YYYY-MM-DD`.
    */

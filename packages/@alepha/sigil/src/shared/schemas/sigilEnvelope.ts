@@ -159,6 +159,21 @@ export const sigilForwarded = sigilEnvelope.extend({
    * change between two views of one session.
    */
   device: z.string().max(16).optional(),
+  /**
+   * `bot` | `human`, classified from the user-agent by the app's own proxy.
+   *
+   * Stamped next to `country` and `device` for the same reason, and it stamps
+   * the whole batch for the same reason too: a client does not stop being a
+   * crawler between two views of one session.
+   *
+   * **`human` means "did not declare itself a bot", not "verified human".** A
+   * scraper driving real headless Chrome sends an ordinary Chrome user-agent
+   * and is counted here as a person; what gives it away is that it never
+   * scrolls, which is what {@link sigilEnvelope}'s `engagements` measures.
+   * The two are complementary and neither replaces the other. See
+   * {@link sigilTrafficKind}.
+   */
+  traffic: z.string().max(16).optional(),
 });
 
 export type SigilForwarded = Infer<typeof sigilForwarded>;
