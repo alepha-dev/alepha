@@ -9,7 +9,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { z } from "alepha";
-import { useAlepha, useClient, useStore } from "alepha/react";
+import { useClient, useStore } from "alepha/react";
 import { useFieldValue, useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Loader2 } from "lucide-react";
@@ -21,10 +21,10 @@ import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
 import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
-import { currentAssignedQuestsAtom } from "../../atoms/currentAssignedQuestsAtom.ts";
 import { kanbanReloadAtom } from "../../atoms/kanbanReloadAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import QuestView from "../project/quest/QuestView.tsx";
+import { useQuestMutations } from "../shared/useQuestMutations.ts";
 import KanbanColumn, {
   type ColumnDescriptor,
   type ColumnKind,
@@ -47,7 +47,6 @@ export interface KanbanBoardProps {
 
 const KanbanBoard = (props: KanbanBoardProps) => {
   const { project, quests: initialQuests } = props;
-  const alepha = useAlepha();
   const [quests, setQuests] = useState<QuestResource[]>(initialQuests);
   const [loading, setLoading] = useState(false);
   const [currentAreas] = useStore(currentAreasAtom);
@@ -73,6 +72,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   );
   const [reloadKey] = useStore(kanbanReloadAtom);
   const questApi = useClient<QuestController>();
+  const questMutations = useQuestMutations();
   const kanbanApi = useClient<KanbanController>();
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
@@ -215,10 +215,15 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     }
 
     try {
+      // Every branch goes through `useQuestMutations`, which owns what each
+      // transition does to the Quest Log and the sidebar badge. Dragging is
+      // the surface where that mattered most and was answered least: a
+      // board accept never reached the assigned list at all, and a board
+      // completion never refreshed the count.
       if (fromStatus === "new" && toKind === "accepted") {
         // Accept the quest then (if needed) move it to the chosen sub-column;
         // acceptQuest drops it in the first column by default.
-        await questApi.acceptQuest({ params: { id: quest.id } });
+        await questMutations.accept(quest.id);
         if (toSubColumn && toSubColumn !== subColumns[0]) {
           await questApi.setQuestKanbanColumn({
             params: { id: quest.id },
@@ -226,7 +231,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
           });
         }
       } else if (fromStatus === "accepted" && toKind === "new") {
-        await questApi.abandonQuest({ params: { id: quest.id } });
+        await questMutations.unassign(quest.id);
       } else if (fromStatus === "accepted" && toKind === "accepted") {
         if (!toSubColumn) return;
         await questApi.setQuestKanbanColumn({
@@ -234,18 +239,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
           body: { kanbanColumn: toSubColumn },
         });
       } else if (fromStatus === "accepted" && toKind === "completed") {
-        await questApi.completeQuest({
-          params: { id: quest.id },
-          body: {},
-        });
-        // Drop the quest from the viewer's assigned list, exactly as
-        // QuestView does on the normal completion path.
-        alepha.store.set(
-          currentAssignedQuestsAtom,
-          (alepha.store.get(currentAssignedQuestsAtom) ?? []).filter(
-            (q) => q.id !== quest.id,
-          ),
-        );
+        await questMutations.complete(quest.id, {});
       }
       await reload();
     } catch (error: any) {

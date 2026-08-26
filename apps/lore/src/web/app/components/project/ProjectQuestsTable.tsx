@@ -9,7 +9,7 @@ import {
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { useAlepha, useClient, useInject, useStore } from "alepha/react";
+import { useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
@@ -37,12 +37,11 @@ import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
-import { currentAssignedQuestsAtom } from "../../atoms/currentAssignedQuestsAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
-import { currentQuestCountAtom } from "../../atoms/currentQuestCountAtom.ts";
 import { descriptionSnippet } from "../../services/descriptionSnippet.ts";
 import { displayName } from "../../services/displayName.ts";
 import type { I18n } from "../../services/I18n.ts";
+import { useQuestMutations } from "../shared/useQuestMutations.ts";
 import { UserAvatar } from "../shared/UserAvatar.tsx";
 import { QUEST_PRIORITY_TONE } from "./quest/questChips.ts";
 
@@ -81,10 +80,10 @@ const boardFiltersSchema = z.object({
 const SEEDABLE_STATUSES = ["new", "accepted", "completed", "shelved"] as const;
 
 const ProjectQuestsTable = () => {
-  const alepha = useAlepha();
   const [project] = useStore(currentProjectAtom);
   const [currentAreas] = useStore(currentAreasAtom);
   const questApi = useClient<QuestController>();
+  const questMutations = useQuestMutations();
   const projectApi = useClient<ProjectController>();
   const dateFormatter = useInject(DateTimeProvider);
   const router = useRouter<AppRouter>();
@@ -128,20 +127,6 @@ const ProjectQuestsTable = () => {
     return (
       <UserAvatar fileId={user?.picture} className="size-6" alt="user avatar" />
     );
-  };
-
-  /**
-   * The sidebar's Quests badge is filled once by the `project` route loader,
-   * which does not re-run on a row action. Shelving or deleting from the list
-   * changes the number it shows, so refresh it here — otherwise the badge and
-   * the table it links to disagree until the next full navigation.
-   */
-  const reloadQuestCount = async () => {
-    if (!project?.id) return;
-    await questApi
-      .countOpenQuests({ params: { projectId: project.id } })
-      .then(({ count }) => alepha.store.set(currentQuestCountAtom, { count }))
-      .catch(() => null);
   };
 
   if (!project) return null;
@@ -448,13 +433,7 @@ const ProjectQuestsTable = () => {
                     _quest: QuestResource,
                     { refresh }: { refresh: () => void },
                   ) => {
-                    const updated = await questApi.acceptQuest({
-                      params: { id: quest.id },
-                    });
-                    alepha.store.set(currentAssignedQuestsAtom, [
-                      ...(alepha.store.get(currentAssignedQuestsAtom) ?? []),
-                      updated,
-                    ]);
+                    await questMutations.accept(quest.id);
                     refresh();
                   },
                 },
@@ -493,8 +472,7 @@ const ProjectQuestsTable = () => {
                       cancelLabel: tr("common.cancel"),
                     });
                     if (!confirmed) return;
-                    await questApi.shelveQuest({ params: { id: quest.id } });
-                    await reloadQuestCount();
+                    await questMutations.shelve(quest.id);
                     refresh();
                   },
                 },
@@ -509,8 +487,7 @@ const ProjectQuestsTable = () => {
                     _quest: QuestResource,
                     { refresh }: { refresh: () => void },
                   ) => {
-                    await questApi.unshelveQuest({ params: { id: quest.id } });
-                    await reloadQuestCount();
+                    await questMutations.unshelve(quest.id);
                     refresh();
                   },
                 },
@@ -532,8 +509,7 @@ const ProjectQuestsTable = () => {
                       destructive: true,
                     });
                     if (!confirmed) return;
-                    await questApi.deleteQuest({ params: { id: quest.id } });
-                    await reloadQuestCount();
+                    await questMutations.remove(quest.id);
                     refresh();
                   },
                 },

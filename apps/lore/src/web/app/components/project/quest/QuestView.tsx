@@ -22,9 +22,9 @@ import { useEffect, useState } from "react";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
-import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuestsAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentQuestAtom } from "@/web/app/atoms/currentQuestAtom.ts";
+import { useQuestMutations } from "@/web/app/components/shared/useQuestMutations.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import QuestAttachments from "./QuestAttachments.tsx";
@@ -69,6 +69,7 @@ export interface QuestViewProps {
 const QuestView = (props: QuestViewProps) => {
   const alepha = useAlepha();
   const questApi = useClient<QuestController>();
+  const questMutations = useQuestMutations();
   const router = useRouter<AppRouter>();
   const { tr, l } = useI18n<I18n, "en">();
   const dialog = useDialog();
@@ -224,16 +225,8 @@ const QuestView = (props: QuestViewProps) => {
       });
       if (!ok) return;
 
-      const updatedQuest = await questApi.abandonQuest({
-        params: { id: quest.id },
-      });
+      const updatedQuest = await questMutations.unassign(quest.id);
       updateQuest(updatedQuest);
-      alepha.store.set(
-        currentAssignedQuestsAtom,
-        (alepha.store.get(currentAssignedQuestsAtom) ?? []).filter(
-          (t) => t.id !== quest.id,
-        ),
-      );
       // Deliberately stays put. Unassigning releases the quest, it does not
       // remove it, so navigating back to the list read as "that is gone"
       // for something still sitting right there with its assignee cleared.
@@ -259,9 +252,7 @@ const QuestView = (props: QuestViewProps) => {
       });
       if (!ok) return;
 
-      const updatedQuest = await questApi.shelveQuest({
-        params: { id: quest.id },
-      });
+      const updatedQuest = await questMutations.shelve(quest.id);
       updateQuest(updatedQuest);
       alepha.store.set(currentQuestAtom, updatedQuest);
     },
@@ -270,9 +261,7 @@ const QuestView = (props: QuestViewProps) => {
   const unshelveQuest = {
     disabled: !questApi.unshelveQuest.can(),
     onClick: async () => {
-      const updatedQuest = await questApi.unshelveQuest({
-        params: { id: quest.id },
-      });
+      const updatedQuest = await questMutations.unshelve(quest.id);
       updateQuest(updatedQuest);
       alepha.store.set(currentQuestAtom, updatedQuest);
     },
@@ -501,15 +490,11 @@ const QuestView = (props: QuestViewProps) => {
                     className="bg-blue-600 text-white hover:bg-blue-700"
                     disabled={!questApi.acceptQuest.can()}
                     onClick={async () => {
-                      const updatedQuest = await questApi.acceptQuest({
-                        params: { id: quest.id },
-                      });
+                      const updatedQuest = await questMutations.accept(
+                        quest.id,
+                      );
                       updateQuest(updatedQuest);
                       alepha.store.set(currentQuestAtom, updatedQuest);
-                      alepha.store.set(currentAssignedQuestsAtom, [
-                        ...(alepha.store.get(currentAssignedQuestsAtom) ?? []),
-                        updatedQuest,
-                      ]);
                     }}
                   >
                     <Signature className="size-4" />
@@ -687,18 +672,12 @@ const QuestView = (props: QuestViewProps) => {
         onConfirm={async (message, waive) => {
           setCompleting(true);
           try {
-            const updatedQuest = await questApi.completeQuest({
-              params: { id: quest.id },
-              body: { message, waive },
+            const updatedQuest = await questMutations.complete(quest.id, {
+              message,
+              waive,
             });
             updateQuest(updatedQuest);
             alepha.store.set(currentQuestAtom, updatedQuest);
-            alepha.store.set(
-              currentAssignedQuestsAtom,
-              (alepha.store.get(currentAssignedQuestsAtom) ?? []).filter(
-                (t) => t.id !== quest.id,
-              ),
-            );
             setShowCompleteDialog(false);
             // The page mount STAYS. Completing used to push back to the
             // list, which threw away the summary that was just written —
