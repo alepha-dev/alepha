@@ -226,3 +226,129 @@ describe("SigilQueue — holding the opening envelope", () => {
     expect(sent[0].engagements).toHaveLength(1);
   });
 });
+
+/**
+ * The 64 KiB keepalive cap.
+ *
+ * Browsers count every in-flight keepalive body in a document against one
+ * 64 KiB quota and refuse the `fetch` SYNCHRONOUSLY past it — no status code,
+ * no retry, the batch is simply gone. The envelope's own caps allow far more:
+ * twenty errors at a 4096-byte stack each is over 170 KiB, so a page that
+ * threw a handful of times reported nothing at all.
+ */
+describe("SigilQueue envelope budget", () => {
+  const bytesOf = (env: any) =>
+    new TextEncoder().encode(JSON.stringify(env)).length;
+
+  /**
+   * Twenty errors carrying a near-maximal stack: about 200 KiB, the batch the
+   * finding is about.
+   */
+  const fillWithErrors = (q: SigilQueue) => {
+    for (let i = 0; i < 20; i++) {
+      q.addError({
+        name: `Error${i}`,
+        message: "x".repeat(2000),
+        stack: "y".repeat(4096),
+        sourceUrl: "https://example.test/app.js",
+      });
+    }
+  };
+
+  it("splits a 200 KiB batch into envelopes that each fit", async () => {
+    const sent: any[] = [];
+    const q = new SigilQueue(async (env) => {
+      sent.push(env);
+    });
+    fillWithErrors(q);
+
+    await q.flush();
+
+    expect(sent.length).toBeGreaterThan(1);
+    for (const env of sent) {
+      expect(bytesOf(env)).toBeLessThan(64 * 1024);
+    }
+
+    // Split, not truncated: every error still arrives.
+    const names = sent.flatMap((env) =>
+      (env.errors ?? []).map((e: any) => e.name),
+    );
+    expect(names).toHaveLength(20);
+    expect(new Set(names).size).toBe(20);
+  });
+
+  it("still drains, so a second flush sends nothing", async () => {
+    const sent: any[] = [];
+    const q = new SigilQueue(async (env) => {
+      sent.push(env);
+    });
+    fillWithErrors(q);
+
+    await q.flush();
+    const first = sent.length;
+    await q.flush();
+
+    expect(sent).toHaveLength(first);
+  });
+
+  it("keeps a small batch in one envelope", async () => {
+    const sent: any[] = [];
+    const q = new SigilQueue(async (env) => {
+      sent.push(env);
+    });
+    q.addView("/a", 1);
+    q.addEngagement("/a", 2);
+    q.addError({ name: "E", message: "m", stack: "s", sourceUrl: "u" });
+    q.addVital({ path: "/a", metric: "lcp", value: 1, ts: 3 });
+
+    await q.flush();
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({
+      views: [{ path: "/a" }],
+      engagements: [{ path: "/a" }],
+      errors: [{ name: "E" }],
+      vitals: [{ metric: "lcp" }],
+    });
+  });
+
+  /**
+   * `force` exists so an app whose trackers are all off can still hear that
+   * they were switched back on. The split must not cost it that.
+   */
+  it("still asks for the config when nothing is queued", async () => {
+    const sent: any[] = [];
+    const q = new SigilQueue(async (env) => {
+      sent.push(env);
+    });
+
+    await q.flush({ force: true });
+
+    expect(sent).toEqual([{}]);
+  });
+});
+
+describe("SigilQueue keepalive", () => {
+  const flushWith = async (options: { keepalive?: boolean } | undefined) => {
+    const calls: Array<{ keepalive: boolean }> = [];
+    const q = new SigilQueue(async (_env, o) => {
+      calls.push(o);
+    });
+    q.addView("/a", 1);
+    await (options ? q.flush(options) : q.flush());
+    return calls;
+  };
+
+  /**
+   * `keepalive` is what lets a request outlive the document, and it is also
+   * what the 64 KiB cap applies to. Spending it on every debounced flush cost
+   * the quota for nothing: those have a live page to be answered on.
+   */
+  it("sends an ordinary request on a debounced flush", async () => {
+    expect(await flushWith(undefined)).toEqual([{ keepalive: false }]);
+  });
+
+  it("keeps the page alive only for the flush on the way out", async () => {
+    expect(await flushWith({ keepalive: true })).toEqual([{ keepalive: true }]);
+  });
+});
