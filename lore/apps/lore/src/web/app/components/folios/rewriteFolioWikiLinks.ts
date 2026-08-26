@@ -32,7 +32,7 @@ export {
  * drift, and the reader would see a live link the editor calls broken.
  *
  * Unresolved references render as a "broken link" marker — a real markdown
- * link with a synthetic `lore-broken:<reason>` href that the hover-preview
+ * link with a synthetic `#lore-broken:<reason>` href that the hover-preview
  * wrapper styles distinctly and explains on hover (#107). The original
  * `[[...]]` text is preserved as the label so the author still sees what
  * they typed.

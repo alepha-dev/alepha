@@ -78,12 +78,22 @@ export type BrokenWikiLinkReason =
   | "folio-not-found-quest-exists";
 
 /**
- * Synthetic href scheme for a reference that resolved to nothing. It is not
- * a URL anybody navigates to — the reader-side hover card and the editor's
- * own click handler both recognise the prefix and explain the failure
- * instead of following it (#107).
+ * Synthetic href for a reference that resolved to nothing. It is not a URL
+ * anybody navigates to — the reader-side hover card and the editor's own
+ * click handler both recognise the prefix and explain the failure instead of
+ * following it (#107).
+ *
+ * ⚠️ The leading `#` is load-bearing, and this used to be a bare
+ * `lore-broken:` scheme. react-markdown runs every href through
+ * `defaultUrlTransform`, which drops any scheme outside its safe list — so
+ * every broken link reached the DOM as `href=""` and NONE of the machinery
+ * downstream of it ever ran: not the wavy red underline keyed on the prefix,
+ * not the hover card explaining the reason, not the localised messages in
+ * both catalogues. A fragment is a relative URL, so the transform keeps it
+ * verbatim, colons and all. Anything that replaces this must survive that
+ * transform; a custom scheme cannot without a change to `MarkdownView`.
  */
-export const BROKEN_HREF_PREFIX = "lore-broken:";
+export const BROKEN_HREF_PREFIX = "#lore-broken:";
 
 /**
  * What one `[[...]]` token points at.

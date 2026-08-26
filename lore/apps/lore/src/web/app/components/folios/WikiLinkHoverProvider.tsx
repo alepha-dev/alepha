@@ -73,7 +73,7 @@ type HoverTarget =
 interface HoverState {
   target: HoverTarget;
   /**
-   * The `<a href>` (reader) or `[data-wiki-href]` span (editor) hovered.
+   * The `<a href>` hovered.
    */
   anchorEl: HTMLElement;
 }
@@ -211,17 +211,16 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
   const handleEnter = useCallback(
     (target: EventTarget | null) => {
       const el = target as HTMLElement | null;
-      // Two markups, one preview. The reader side renders a rewritten
-      // markdown link, so the target is on `href`; the editor decorates the
-      // token in place and puts it on `data-wiki-href`, because an `<a>`
-      // inside a `contenteditable` brings its own drag and selection
-      // behaviour along with it (see `WikiLinkNode`).
-      const anchor = el?.closest(
-        "a[href], [data-wiki-href]",
-      ) as HTMLElement | null;
+      // One markup. `[data-wiki-href]` used to be the other: the Lexical
+      // editor decorated the `[[token]]` in place rather than rendering an
+      // `<a>`, because an anchor inside a `contenteditable` brings its own
+      // drag and selection behaviour along with it. That editor is gone —
+      // Edit mode is raw markdown in CodeMirror now, and View mode is the
+      // rewritten markdown this delegates over — so nothing has emitted the
+      // attribute for a long time.
+      const anchor = el?.closest("a[href]") as HTMLElement | null;
       if (!anchor) return;
-      const href =
-        anchor.getAttribute("data-wiki-href") ?? anchor.getAttribute("href");
+      const href = anchor.getAttribute("href");
       const t = parseHref(href, projectSlug);
       if (!t) return;
       cancelClose();
@@ -265,9 +264,14 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
     const anchor = el.closest("a[href]") as HTMLAnchorElement | null;
     if (!anchor) return;
     const href = anchor.getAttribute("href");
-    // A broken wiki-link renders with an EMPTY href (react-markdown strips
-    // the custom scheme), and the browser's default for `<a href="">` is a
-    // navigation to the current URL: a full reload of the workspace.
+    // A broken wiki-link points at a fragment nothing on the page answers
+    // to. Following it would scroll nowhere and leave the token in the URL.
+    //
+    // The `href === ""` arm is not redundant: an empty href is what a
+    // broken link rendered as while the prefix was a custom scheme
+    // react-markdown stripped, and `<a href="">` navigates to the current
+    // URL — a full reload of the workspace. Kept as the belt to that
+    // braces, for any other href markdown reduces to nothing.
     if (href === "" || href?.startsWith(BROKEN_HREF_PREFIX)) {
       e.preventDefault();
     }
@@ -279,7 +283,7 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
     // is the anchors' own.
     // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
     <div
-      className="[&_a[href^='lore-broken:']]:text-destructive [&_a[href^='lore-broken:']]:decoration-destructive/40 relative [&_a[href^='lore-broken:']]:cursor-help [&_a[href^='lore-broken:']]:decoration-wavy"
+      className="[&_a[href^='#lore-broken:']]:text-destructive [&_a[href^='#lore-broken:']]:decoration-destructive/40 relative [&_a[href^='#lore-broken:']]:cursor-help [&_a[href^='#lore-broken:']]:decoration-wavy"
       onMouseOver={(e) => handleEnter(e.target)}
       onFocus={(e) => handleEnter(e.target)}
       onMouseOut={(e) => handleLeave(e.relatedTarget as Node | null)}

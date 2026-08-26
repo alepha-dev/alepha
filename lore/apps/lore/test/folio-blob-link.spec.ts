@@ -74,7 +74,7 @@ describe("rewriteFolioWikiLinks — blob references (Phase 1)", () => {
       [imagePng],
     );
     expect(out).toBe(
-      "Stale: [\\[\\[blob:#999\\]\\]](lore-broken:blob-not-found).",
+      "Stale: [\\[\\[blob:#999\\]\\]](#lore-broken:blob-not-found).",
     );
   });
 
@@ -229,7 +229,7 @@ describe("rewriteFolioWikiLinks — assets/ references", () => {
     );
     // Deliberately not left as a raw `assets/missing.png` src: that renders
     // as a broken-image icon with no explanation of why.
-    expect(out).toContain("lore-broken:blob-not-found");
+    expect(out).toContain("#lore-broken:blob-not-found");
   });
 
   it("rewrites a plain link to an attachment, not just an embed", ({

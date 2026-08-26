@@ -211,10 +211,11 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
             onDelete={() => props.actions.handlers["folio.delete"]()}
           />
         ) : (
-          // Same hover card the reader gets. The provider delegates on both
-          // `a[href]` and `[data-wiki-href]`, so one component serves the
-          // rewritten markdown of `MarkdownView` and the decorated tokens of
-          // the editor without either knowing about the other.
+          // Same hover card the reader gets. The provider delegates over the
+          // anchors `MarkdownView` renders, so one component serves View
+          // mode here and the read-only surfaces without either knowing
+          // about the other. Edit mode has no anchors to delegate over — it
+          // is raw markdown in CodeMirror.
           <WikiLinkHoverProvider
             projectId={project?.id ?? 0}
             projectSlug={project?.slug ?? ""}
