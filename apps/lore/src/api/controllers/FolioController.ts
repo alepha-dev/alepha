@@ -822,7 +822,7 @@ export class FolioController {
       /*
        * Before the folio row, not after. `folio_blobs.folioId` cascades, so
        * the moment the folio is gone so is the only record of which files
-       * belonged to it — and those files, and their bytes, are in a bucket
+       * belonged to it - and those files, and their bytes, are in a bucket
        * nothing else references. Every folio deleted before this left its
        * attachments there, paid for and unreachable.
        */

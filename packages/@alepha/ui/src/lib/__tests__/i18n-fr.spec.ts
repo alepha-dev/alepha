@@ -27,7 +27,7 @@ const SRC = join(import.meta.dirname, "..", "..");
  * `tr("some.key"` / `tr(\`some.key\`` is the call site itself. `labelKey:` and
  * `groupKey:` are the declarative form the nav shell needs: a `$page`'s class
  * field is evaluated once, outside React, so a router names the key and the
- * sidebar resolves it later with `tr(nav.labelKey)` — a computed argument no
+ * sidebar resolves it later with `tr(nav.labelKey)` - a computed argument no
  * regex over call sites can read. Missing that form here would report every
  * nav translation as an unused extra, which is how a "coverage" check ends up
  * arguing for deleting the coverage.

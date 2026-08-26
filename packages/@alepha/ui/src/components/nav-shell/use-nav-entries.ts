@@ -40,8 +40,8 @@ export interface NavEntry {
   group?: string;
   /**
    * Section heading, already localised. `nav.group` stays the raw grouping key
-   * — two entries are in the same section when they agree on it, in every
-   * language — so the text a consumer renders is this, never `group`.
+   * - two entries are in the same section when they agree on it, in every
+   * language - so the text a consumer renders is this, never `group`.
    */
   groupLabel?: string;
   /**
@@ -83,7 +83,7 @@ export function useNavEntries(options: UseNavEntriesOptions): NavEntry[] {
   // `tr` is a stable bound field on the provider, so it can never be what
   // tells the memo below that the labels changed: the active language has to
   // be a dependency in its own right. (`has` happens to be a fresh closure per
-  // render today, which recomputes everything anyway — that is an accident of
+  // render today, which recomputes everything anyway - that is an accident of
   // `useAuth`, not something the labels may rely on.)
   const lang = i18n.lang;
 

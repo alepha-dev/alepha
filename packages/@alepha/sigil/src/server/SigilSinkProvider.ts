@@ -253,7 +253,7 @@ export class SigilSinkProvider {
    * Two conditions, and the second is what this method exists for: a
    * credential is not permission to report from anywhere. With only
    * {@link hasSink} gating delivery, every `alepha dev` session, test
-   * container and CI job counted as traffic on the project's own dashboard —
+   * container and CI job counted as traffic on the project's own dashboard -
    * so the numbers an operator reads to decide things included the developer
    * refreshing a page. The module's own documentation said "active in
    * production only" the whole time; only the browser half was.

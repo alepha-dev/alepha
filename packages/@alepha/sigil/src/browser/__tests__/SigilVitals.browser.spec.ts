@@ -163,7 +163,7 @@ const hide = () => {
  * Every accumulating metric is finalised when the tab is hidden, which in a
  * client-routed app is usually several pages after the one it measured. The
  * path was read at that moment, so `/a`'s paint, `/a`'s layout shift and
- * `/a`'s slow click were all filed under `/b` — and the page that was actually
+ * `/a`'s slow click were all filed under `/b` - and the page that was actually
  * slow looked fine.
  */
 describe("SigilVitals path attribution", () => {
@@ -271,7 +271,7 @@ describe("SigilVitals path attribution", () => {
 
   /**
    * The dedup guard now keys on metric AND path. A visitor who tabs away and
-   * comes back must not report the same page twice — but a second page is a
+   * comes back must not report the same page twice - but a second page is a
    * second sample, not a duplicate.
    */
   it("reports a page once however often the tab is hidden", () => {

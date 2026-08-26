@@ -98,7 +98,7 @@ describe("keepDeepestActive", () => {
 /**
  * Only the fields the labelling chain reads. `PageRoute` is far wider, and a
  * literal cast keeps the cases legible. `nav` is the shell's own
- * {@link NavMeta} — the framework types it as the narrower `PageNav`, which is
+ * {@link NavMeta} - the framework types it as the narrower `PageNav`, which is
  * exactly the widening `navMeta` performs at runtime.
  */
 const route = (

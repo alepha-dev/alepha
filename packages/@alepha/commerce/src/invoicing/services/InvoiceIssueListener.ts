@@ -27,7 +27,7 @@ export class InvoiceIssueListener {
        * A credit note here credits the WHOLE invoice, so it may only answer a
        * refund that undoes the whole sale. Issuing one for a ten percent
        * goodwill gesture would put a document on the books saying the customer
-       * owes nothing — the accounting version of the bug that made the order
+       * owes nothing - the accounting version of the bug that made the order
        * itself read `refunded`. Crediting a partial refund needs an
        * amount-aware credit note, which is the refund-saga follow-up this
        * class's own note already points at.

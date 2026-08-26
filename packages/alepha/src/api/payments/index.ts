@@ -65,7 +65,7 @@ declare module "alepha" {
        */
       amount: number;
       /**
-       * Every refund recorded against the intent, summed — the same figure the
+       * Every refund recorded against the intent, summed - the same figure the
        * intent's own `refunded` / `partially_refunded` status is derived from.
        *
        * Carried because this event is delivered at least once, and a

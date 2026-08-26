@@ -23,7 +23,7 @@ import { LoreApi } from "../src/api/index.ts";
  * both ways. It is neither, so deleting an attachment left the overlay row
  * pointing at a file that no longer existed, and deleting a folio cascaded
  * the overlay rows away while the framework files and their bytes stayed in
- * the bucket forever — paid for and unreachable.
+ * the bucket forever - paid for and unreachable.
  *
  * The constraint is not added: it needs a table rebuild, and a rebuild on D1
  * is the cascade-wipe that cost this app production once. The service is the
@@ -185,7 +185,7 @@ describe("folio blob reclamation", () => {
       { user: owner },
     );
 
-    // The overlay went with the folio either way — the FK cascades. The file
+    // The overlay went with the folio either way - the FK cascades. The file
     // row and its bytes are what nothing reclaimed.
     expect(await blobExists(fileId)).toBe(false);
     expect(await fileExists(fileId)).toBe(false);

@@ -548,7 +548,7 @@ describe("SigilSinkProvider outside production", () => {
     await sink.ingest({ errors: [anError("boom")] });
     await sink.flush();
 
-    // The credential is there — this is a decision about the environment, not
+    // The credential is there - this is a decision about the environment, not
     // a missing key.
     expect(sink.hasSink()).toBe(true);
     expect(sink.reports()).toBe(false);

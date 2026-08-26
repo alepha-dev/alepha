@@ -25,7 +25,7 @@ export const JOB_EXECUTION_STATUSES: JobExecutionStatus[] = [
  * One literal `tr()` per status, rather than the
  * `tr(\`admin.jobs.status.${status}\`)` this replaces. A computed key is
  * invisible to `i18n-fr.spec.ts`, which finds keys by matching a literal
- * after `tr(` — so the French entries could not be added at all: the spec
+ * after `tr(` - so the French entries could not be added at all: the spec
  * would have reported every one of them as a translation nothing asks for.
  * The statuses rendered raw in French as a result (`ok`, `error`,
  * `cancelled`), which reads as a bug rather than as a missing translation.

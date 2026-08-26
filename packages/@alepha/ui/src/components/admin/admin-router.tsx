@@ -119,7 +119,7 @@ import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
  *
  * Every `nav` here carries a `labelKey` (and a `groupKey` where it has a
  * group) beside its English `label`. A class field is evaluated once, at
- * construction, outside React — so a label written as `tr(...)` would be
+ * construction, outside React - so a label written as `tr(...)` would be
  * frozen in whatever language happened to be active then, which is why the
  * whole admin chrome stayed English inside a French application while the
  * pages under it were translated.
@@ -288,7 +288,7 @@ export class AdminRouter {
   });
 
   /**
-   * `nav.hidden` — a secured route that is not a sidebar entry, but still a
+   * `nav.hidden` - a secured route that is not a sidebar entry, but still a
    * breadcrumb. It carries a `nav` only so the crumb has a `labelKey`: without
    * one the label falls back to `head.title`, which is a plain string
    * evaluated here and so permanently English.

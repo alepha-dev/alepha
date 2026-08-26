@@ -31,7 +31,7 @@ export const orderStatusEnum = z.enum([
    * ⚠️ It says something ORTHOGONAL to the rest. `paid`, `shipped` and
    * `delivered` are fulfilment; this one is money. An order that is partially
    * refunded and then shipped reads `shipped`, and the partial refund survives
-   * only in `refundedTotal` — which is the field to trust when the two
+   * only in `refundedTotal` - which is the field to trust when the two
    * disagree.
    */
   "partially_refunded",

@@ -17,7 +17,7 @@ export interface MerciProps {
    */
   factures: string[];
   /**
-   * The checkout session this page is showing — its own `:sessionId`.
+   * The checkout session this page is showing - its own `:sessionId`.
    *
    * Passed down rather than read off the order: `orders` has no link back to
    * the session it came from (the payment rail is substitutable, so nothing
@@ -65,7 +65,7 @@ const Merci = (props: MerciProps) => {
   /*
    * The page said "this page will update" and then never did.
    *
-   * An asynchronous rail — a bank redirect, a transfer — leaves the order
+   * An asynchronous rail - a bank redirect, a transfer - leaves the order
    * `pending` at the moment the buyer lands here, and the invoice is issued by
    * a hook on `commerce:order:paid`, so it can arrive a beat after a payment
    * that settled instantly. The copy promises both will appear on their own.
@@ -214,7 +214,7 @@ const Merci = (props: MerciProps) => {
  *
  * Two conditions, not one: a payment that has not settled, and a settled one
  * whose invoice has not been issued yet. Both are things the copy says will
- * turn up by themselves — `thanks.pendingLede` and `thanks.invoiceSoon` — so
+ * turn up by themselves - `thanks.pendingLede` and `thanks.invoiceSoon` - so
  * both are reasons to keep asking.
  *
  * A cancelled or refunded order is neither: no invoice is coming for it, and

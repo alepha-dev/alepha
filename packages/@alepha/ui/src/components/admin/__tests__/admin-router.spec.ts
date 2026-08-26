@@ -235,7 +235,7 @@ describe("AdminRouter", () => {
   });
 
   /**
-   * A class field is evaluated once, at construction, outside React — so the
+   * A class field is evaluated once, at construction, outside React - so the
    * label a page declares here can never follow a language switch on its own.
    * The `labelKey` beside it is what the sidebar, breadcrumbs and palette
    * resolve at render time, and a page added without one is silently

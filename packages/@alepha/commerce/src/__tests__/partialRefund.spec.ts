@@ -21,7 +21,7 @@ import { AlephaCommerceSettlement } from "../settlement/index.ts";
  *
  * Every refund event, whatever its amount, used to move the order to
  * `refunded`: a ten percent goodwill gesture looked, in the back office and in
- * the customer's own history, exactly like a cancelled sale — with the stock
+ * the customer's own history, exactly like a cancelled sale - with the stock
  * put back on the shelf and a credit note on the books saying nothing was
  * owed.
  *
@@ -130,7 +130,7 @@ describe("partial refund", () => {
 
     /*
      * The same event again, exactly as an at-least-once rail would deliver it
-     * — `checkoutSessionId` included, or the listener would drop it on the
+     * - `checkoutSessionId` included, or the listener would drop it on the
      * floor and this would prove nothing.
      *
      * The order SETS its refunded total from the rail's own sum rather than
@@ -178,7 +178,7 @@ describe("partial refund", () => {
     /*
      * A credit note credits the WHOLE invoice. Issuing one for a partial
      * refund would put a document on the books saying the customer owes
-     * nothing — the accounting version of the same bug.
+     * nothing - the accounting version of the same bug.
      */
     expect(await ctx.invoices.listForOrder(order.id)).toHaveLength(1);
 

@@ -459,7 +459,7 @@ export class CheckoutService {
    * Record a refund against the order behind a checkout.
    *
    * `refundedTotal` is everything given back on it so far, not this refund's
-   * share — see `OrderService.refund`. Omitted, it refunds the order in full
+   * share - see `OrderService.refund`. Omitted, it refunds the order in full
    * and its stock goes back.
    */
   public async refundOrder(

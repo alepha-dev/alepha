@@ -50,7 +50,7 @@ export class CheckoutSettlementListener {
    * the sum lets the order SET its refunded total instead of adding to it. A
    * redelivered event then changes nothing.
    *
-   * Before this, any refund event whatsoever moved the order to `refunded` —
+   * Before this, any refund event whatsoever moved the order to `refunded` -
    * so a ten percent goodwill gesture read, in the back office and in the
    * customer's own history, exactly like a sale that had been undone.
    */

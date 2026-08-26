@@ -8,7 +8,7 @@ import { expect } from "@playwright/test";
  * funnel. Written against visible text rather than test ids on purpose: if the
  * button a customer must find stops saying "Payer", these tests should fail.
  *
- * Returns the confirmation URL and the payment intent id — the latter is what
+ * Returns the confirmation URL and the payment intent id - the latter is what
  * `settlePayment` needs when the payment was deferred.
  */
 export const buy = async (
@@ -22,8 +22,8 @@ export const buy = async (
     email?: string;
     /**
      * `"now"` confirms the payment on the PSP page, the way a card does.
-     * `"later"` returns to the shop with the intent still open — a bank
-     * redirect or a transfer — so the order lands on the confirmation page
+     * `"later"` returns to the shop with the intent still open - a bank
+     * redirect or a transfer - so the order lands on the confirmation page
      * `pending` and is settled afterwards through `settlePayment`.
      */
     settle?: "now" | "later";

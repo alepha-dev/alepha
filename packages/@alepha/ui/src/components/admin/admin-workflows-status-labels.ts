@@ -22,8 +22,8 @@ export const WORKFLOW_EXECUTION_STATUSES = [
 /**
  * Localised workflow status labels, keyed by status.
  *
- * Covers both vocabularies — `workflowExecutions` and `workflowStepExecutions`
- * differ only on `timed_out` / `skipped` — because the badge takes either.
+ * Covers both vocabularies - `workflowExecutions` and `workflowStepExecutions`
+ * differ only on `timed_out` / `skipped` - because the badge takes either.
  *
  * One literal `tr()` per status: see {@link useJobStatusLabels} for why a
  * computed key could never have been translated.

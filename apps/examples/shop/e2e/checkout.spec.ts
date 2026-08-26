@@ -164,7 +164,7 @@ test.describe("payment and confirmation", () => {
       page.getByRole("heading", { name: "Paiement en cours" }),
     ).toBeVisible();
 
-    // The capture lands out of band, the way a PSP webhook does — nothing
+    // The capture lands out of band, the way a PSP webhook does - nothing
     // touches the tab showing the confirmation.
     await settlePayment(page, intentId);
 

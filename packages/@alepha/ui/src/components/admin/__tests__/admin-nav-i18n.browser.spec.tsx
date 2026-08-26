@@ -15,7 +15,7 @@ import { AdminRouter } from "../admin-router.tsx";
  * The shell chrome must follow a language switch with no reload.
  *
  * `admin-router.spec.ts` pins that every entry NAMES a catalogue key; this
- * pins that naming one is enough — that the sidebar, the section headings and
+ * pins that naming one is enough - that the sidebar, the section headings and
  * the brand are resolved inside React rather than frozen at the moment the
  * router's class fields ran. That freeze is the bug: an application in French
  * had a French back office wrapped in an English shell.
@@ -74,7 +74,7 @@ describe("admin shell labels follow the language", () => {
   it("re-labels the sidebar and its section headings on setLang", async () => {
     await mount();
 
-    // English first — the `label` beside each key, which is also what an
+    // English first - the `label` beside each key, which is also what an
     // application spreading no catalogue keeps seeing.
     expect(screen.getByText("Dashboard")).toBeTruthy();
     expect(screen.getByText("Users")).toBeTruthy();
@@ -96,7 +96,7 @@ describe("admin shell labels follow the language", () => {
 
   /**
    * The breadcrumb trail is the only "title" the shell puts on screen, and it
-   * reads the same `navLabel` — including for `userDetail`, which is not a
+   * reads the same `navLabel` - including for `userDetail`, which is not a
    * sidebar entry and carries a `nav` purely so its crumb has a key.
    */
   it("re-labels the breadcrumb trail", async () => {
@@ -138,7 +138,7 @@ describe("admin shell labels follow the language", () => {
     await mount();
 
     // The brand and the ⌘K affordance, declared in the layout rather than on
-    // a route — the other half of "the chrome is English".
+    // a route - the other half of "the chrome is English".
     expect(screen.getByText("Admin")).toBeTruthy();
     expect(screen.getByText("Search…")).toBeTruthy();
 

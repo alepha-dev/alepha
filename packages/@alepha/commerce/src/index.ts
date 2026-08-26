@@ -51,7 +51,7 @@ declare module "alepha" {
     "commerce:order:refunded": {
       orderId: string;
       /**
-       * The order's own total — what a full refund would come to.
+       * The order's own total - what a full refund would come to.
        */
       total: number;
       /**

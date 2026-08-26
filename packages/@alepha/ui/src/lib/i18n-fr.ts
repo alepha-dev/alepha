@@ -209,7 +209,7 @@ export const uiFr: Record<string, string> = {
     "Merci de patienter pendant la vérification de votre adresse.",
 
   // The nav shell shared by the admin console and the account rail: the
-  // command palette's own chrome. Entry labels are not here — they come from
+  // command palette's own chrome. Entry labels are not here - they come from
   // each router's `nav.labelKey`, below.
   "nav.spotlight.description": "Aller à une page",
   "nav.spotlight.empty": "Aucun résultat.",

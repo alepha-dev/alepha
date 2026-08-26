@@ -294,7 +294,7 @@ export class OrderService {
    * only mirrors it.
    *
    * The order reaches `refunded` only when that total covers `total`. Anything
-   * short of it is `partially_refunded` — a ten percent goodwill gesture used
+   * short of it is `partially_refunded` - a ten percent goodwill gesture used
    * to read, in the back office and in the customer's history, exactly like a
    * sale that had been undone.
    */
@@ -316,7 +316,7 @@ export class OrderService {
         current.total,
       );
       if (refundedTotal <= current.refundedTotal) {
-        // Nothing new — a redelivered event, or a refund already recorded.
+        // Nothing new - a redelivered event, or a refund already recorded.
         return current;
       }
       const full = refundedTotal >= current.total;

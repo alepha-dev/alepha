@@ -230,7 +230,7 @@ export class MockCheckoutController {
   });
 
   /**
-   * Return to the site with the payment still open — the asynchronous rail.
+   * Return to the site with the payment still open - the asynchronous rail.
    *
    * A bank redirect, a transfer or any delayed method sends the buyer back
    * BEFORE the money moves, and the confirmation page has to cope with an

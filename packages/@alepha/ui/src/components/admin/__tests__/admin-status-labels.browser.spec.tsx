@@ -25,7 +25,7 @@ import {
  *
  * They used to be looked up with `tr(\`admin.jobs.status.${status}\`)`, a
  * computed key: `i18n-fr.spec.ts` matches a literal after `tr(`, so those
- * keys were invisible to it in BOTH directions — nothing reported them as
+ * keys were invisible to it in BOTH directions - nothing reported them as
  * untranslated, and adding the French would have been reported as a
  * translation nothing asks for. French users read `ok`, `error`,
  * `compensation_failed` raw.
@@ -43,7 +43,7 @@ describe("admin status labels", () => {
    *
    * Through the DOM rather than a captured variable: assigning to an outer
    * binding during render is a side effect, and the lint rule that says so is
-   * right — the point here is what the component actually rendered.
+   * right - the point here is what the component actually rendered.
    */
   const renderWith = async (
     useLabels: () => Record<string, string>,
@@ -101,7 +101,7 @@ describe("admin status labels", () => {
     const labels = await renderWith(useWorkflowStatusLabels, "fr");
 
     // The badge takes either an execution or a step status, so the labels
-    // have to span the union — the two enums differ on `timed_out`/`skipped`.
+    // have to span the union - the two enums differ on `timed_out`/`skipped`.
     const union = new Set([
       ...statusesOf(workflowExecutions),
       ...statusesOf(workflowStepExecutions),

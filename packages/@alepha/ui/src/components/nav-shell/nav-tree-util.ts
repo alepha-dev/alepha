@@ -18,7 +18,7 @@ import type { ReactNode } from "react";
  * so this is the one place that has to know.
  *
  * A key is optional and additive: `label` stays the English text and is used
- * verbatim when no key is declared, and as the `tr` default when one is — so
+ * verbatim when no key is declared, and as the `tr` default when one is - so
  * an application that registers no French catalogue sees exactly what it saw
  * before.
  */
@@ -28,14 +28,14 @@ export interface NavMeta extends PageNav {
    * entry follows a language switch.
    *
    * A `$page`'s class field is evaluated once, at construction, outside React
-   * — which is why the label cannot simply be `tr(...)` there. Declaring the
+   * - which is why the label cannot simply be `tr(...)` there. Declaring the
    * key instead moves the lookup to {@link navLabel}, which the sidebar,
    * breadcrumbs and command palette all call from inside a component.
    */
   labelKey?: string;
 
   /**
-   * Catalogue key for {@link PageNav.group} — the sidebar section heading.
+   * Catalogue key for {@link PageNav.group} - the sidebar section heading.
    *
    * `group` itself stays the untranslated string because it is the grouping
    * KEY: entries are bucketed by it, and two pages in the same section must
@@ -50,7 +50,7 @@ export interface NavMeta extends PageNav {
 
 /**
  * Looks up a catalogue key. Structurally `I18nProvider.tr`, redeclared here so
- * this module stays a plain utility — it is called from hooks, which is where
+ * this module stays a plain utility - it is called from hooks, which is where
  * the real `tr` comes from.
  */
 export type NavTranslate = (
@@ -73,7 +73,7 @@ export function navMeta(page: PageRoute): NavMeta | undefined {
  * then a static `head.title`, then the route name as a last resort.
  *
  * With `tr` and a `nav.labelKey`, the catalogue wins and the chain above
- * becomes the default passed to it — so a missing entry still renders the
+ * becomes the default passed to it - so a missing entry still renders the
  * English text the page declared, never a raw key.
  */
 export function navLabel(page: PageRoute, tr?: NavTranslate): ReactNode {
@@ -82,7 +82,7 @@ export function navLabel(page: PageRoute, tr?: NavTranslate): ReactNode {
   if (tr && key) {
     return tr(key, {
       // `tr` needs a string; a label declared as an element cannot be one, so
-      // the route name stands in — it is what the chain ends on anyway.
+      // the route name stands in - it is what the chain ends on anyway.
       default: typeof fallback === "string" ? fallback : page.name,
     });
   }
