@@ -9,6 +9,11 @@ import { useI18n } from "alepha/react/i18n";
 import { Ban, CircleDot, RotateCcw } from "lucide-react";
 import { useCallback } from "react";
 
+import {
+  JOB_EXECUTION_STATUSES,
+  useJobStatusLabels,
+} from "./admin-jobs-status-labels.ts";
+
 const EXEC_POLL_MS = 10_000;
 
 const execFiltersSchema = z.object({
@@ -54,6 +59,7 @@ export const AdminJobsExecutionsPanel = (
   const { jobName } = props;
   const client = useClient<AdminJobController>();
   const { l, tr } = useI18n();
+  const statusLabels = useJobStatusLabels();
 
   const fetcher = useCallback(
     async (params: { filters?: ExecFilters }) => {
@@ -128,18 +134,9 @@ export const AdminJobsExecutionsPanel = (
               tr("admin.jobs.statusAll", { default: "All statuses" }),
             )}
             triggerClassName="w-40"
-            items={[
-              "pending",
-              "running",
-              "scheduled",
-              "ok",
-              "error",
-              "cancelled",
-            ].map((status) => ({
+            items={JOB_EXECUTION_STATUSES.map((status) => ({
               value: status,
-              label: String(
-                tr(`admin.jobs.status.${status}` as any, { default: status }),
-              ),
+              label: statusLabels[status],
             }))}
           />
         ),

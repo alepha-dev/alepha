@@ -12,6 +12,11 @@ import { useI18n } from "alepha/react/i18n";
 import { CircleDot } from "lucide-react";
 import { useCallback, useState } from "react";
 
+import {
+  useWorkflowStatusLabels,
+  WORKFLOW_EXECUTION_STATUSES,
+} from "./admin-workflows-status-labels.ts";
+
 const EXEC_POLL_MS = 10_000;
 
 const execFiltersSchema = z.object({
@@ -32,6 +37,7 @@ export const AdminWorkflowsExecutionsPanel = (
 ) => {
   const client = useClient<AdminWorkflowController>();
   const { l, tr } = useI18n();
+  const statusLabels = useWorkflowStatusLabels();
   const [openExecution, setOpenExecution] = useState<string | null>(null);
 
   const fetcher = useCallback(
@@ -77,23 +83,9 @@ export const AdminWorkflowsExecutionsPanel = (
                 tr("admin.workflows.statusAll", { default: "All statuses" }),
               )}
               triggerClassName="w-48"
-              items={[
-                "pending",
-                "running",
-                "completed",
-                "failed",
-                "timed_out",
-                "compensating",
-                "compensated",
-                "compensation_failed",
-                "cancelled",
-              ].map((status) => ({
+              items={WORKFLOW_EXECUTION_STATUSES.map((status) => ({
                 value: status,
-                label: String(
-                  tr(`admin.workflows.status.${status}` as any, {
-                    default: status,
-                  }),
-                ),
+                label: statusLabels[status],
               }))}
             />
           ),

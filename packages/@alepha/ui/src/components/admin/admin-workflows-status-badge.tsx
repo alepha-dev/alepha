@@ -1,5 +1,6 @@
 import { Badge } from "@alepha/ui/components/ui/badge";
-import { useI18n } from "alepha/react/i18n";
+
+import { useWorkflowStatusLabels } from "./admin-workflows-status-labels.ts";
 
 export interface AdminWorkflowsStatusBadgeProps {
   /**
@@ -31,12 +32,10 @@ const VARIANTS: Record<
 export const AdminWorkflowsStatusBadge = (
   props: AdminWorkflowsStatusBadgeProps,
 ) => {
-  const { tr } = useI18n();
+  const labels = useWorkflowStatusLabels();
   return (
     <Badge variant={VARIANTS[props.status] ?? "outline"}>
-      {tr(`admin.workflows.status.${props.status}` as any, {
-        default: props.status,
-      })}
+      {labels[props.status] ?? props.status}
     </Badge>
   );
 };
