@@ -95,7 +95,7 @@ export const sigilConfig = z.object({
    *
    * Off by default, and that default is the point: with a key set, every
    * `alepha dev` session, every test container and every CI job counted as
-   * traffic on the project's own dashboard — the numbers an operator reads to
+   * traffic on the project's own dashboard - the numbers an operator reads to
    * decide things included the developer refreshing a page.
    *
    * The escape hatch is here rather than absent because a staging deployment

@@ -104,7 +104,7 @@ const setup = async (
        * sink provider captures locally and sends nothing, so that a developer
        * refreshing a page stops counting as traffic on the project's own
        * dashboard. This container is testing the delivery path itself, so it
-       * says so — rather than pretending to be production, which would move
+       * says so - rather than pretending to be production, which would move
        * everything else in Lore too.
        */
       SIGIL_CONFIG: JSON.stringify({ reportOutsideProduction: true }),

@@ -30,7 +30,7 @@ export * from "./sigilEnv.ts";
  *
  * **Production only, on both halves.** The browser bootstrap returns early
  * outside production; the server sink captures locally and sends nothing. A
- * key is a credential, not permission to report from a laptop — with only the
+ * key is a credential, not permission to report from a laptop - with only the
  * key gating delivery, every `alepha dev` session and CI job counted as
  * traffic on the project's own dashboard. A staging deployment that needs to
  * prove its enrolment before production does sets

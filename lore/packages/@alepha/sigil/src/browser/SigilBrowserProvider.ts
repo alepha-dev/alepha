@@ -144,7 +144,7 @@ export class SigilBrowserProvider {
              * flush on `pagehide` needs it. Everything else was paying its
              * price for nothing: the browser caps every keepalive body in a
              * document at 64 KiB TOGETHER and refuses the `fetch`
-             * synchronously past it — no status, no retry, the batch is
+             * synchronously past it - no status, no retry, the batch is
              * simply gone. A debounced flush has a live page to be answered
              * on, so it goes as an ordinary request and leaves the quota to
              * the one that genuinely races the unload.

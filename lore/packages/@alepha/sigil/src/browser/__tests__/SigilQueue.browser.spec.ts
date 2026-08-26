@@ -231,7 +231,7 @@ describe("SigilQueue — holding the opening envelope", () => {
  * The 64 KiB keepalive cap.
  *
  * Browsers count every in-flight keepalive body in a document against one
- * 64 KiB quota and refuse the `fetch` SYNCHRONOUSLY past it — no status code,
+ * 64 KiB quota and refuse the `fetch` SYNCHRONOUSLY past it - no status code,
  * no retry, the batch is simply gone. The envelope's own caps allow far more:
  * twenty errors at a 4096-byte stack each is over 170 KiB, so a page that
  * threw a handful of times reported nothing at all.

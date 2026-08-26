@@ -271,12 +271,12 @@ export class FolioBlobService {
    * so every attachment deleted here left its `folio_blobs` row behind
    * pointing at a file that no longer existed. Adding the constraint
    * means a table rebuild, and a rebuild on D1 is the cascade-wipe this
-   * app has already been bitten by once — see "Migration safety on D1"
+   * app has already been bitten by once - see "Migration safety on D1"
    * in `apps/lore/CLAUDE.md`. The relationship is therefore logical, and
    * this method is what enforces it.
    *
    * The overlay goes first. The reverse order leaves, on a failure in
-   * between, a row that resolves to nothing — which the folio renders as
+   * between, a row that resolves to nothing - which the folio renders as
    * a broken attachment. Losing the bytes and keeping nothing is the
    * better half of that trade.
    */

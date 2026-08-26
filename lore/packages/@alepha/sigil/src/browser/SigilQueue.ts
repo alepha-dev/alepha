@@ -26,7 +26,7 @@ type Envelope = {
  *
  * Sized against the browsers' `keepalive` cap, which is 64 KiB for the whole
  * document's in-flight keepalive bodies and is enforced by rejecting the
- * `fetch` SYNCHRONOUSLY — no status, no retry, the batch is simply gone. The
+ * `fetch` SYNCHRONOUSLY - no status, no retry, the batch is simply gone. The
  * envelope's own caps allow far more than that: twenty errors at a 4096-byte
  * stack each is upwards of 170 KiB, so a page that threw a handful of times
  * reported nothing at all.
@@ -55,7 +55,7 @@ const sizeOf = (item: unknown): number => {
  * and flushes them as envelopes (debounced, plus an explicit flush on
  * pagehide). Draining on flush makes a double-flush a no-op.
  *
- * One flush may produce SEVERAL envelopes — see {@link ENVELOPE_BUDGET}.
+ * One flush may produce SEVERAL envelopes - see {@link ENVELOPE_BUDGET}.
  */
 export class SigilQueue {
   protected views: View[] = [];
@@ -239,7 +239,7 @@ export class SigilQueue {
    * Greedy and in order: an item goes into the envelope being filled unless it
    * would push it over, in which case a new one starts. An item larger than
    * the whole budget still gets an envelope of its own rather than looping
-   * forever — the schema caps every field, so that can only be a near-maximal
+   * forever - the schema caps every field, so that can only be a near-maximal
    * error, and an oversized request refused by the server is a better outcome
    * than a batch dropped without one.
    *

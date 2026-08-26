@@ -7,7 +7,7 @@ type Sink = (m: { metric: Metric; value: number; path: string }) => void;
  *
  * That distinction is the whole point. LCP, CLS and INP are finalised when the
  * page is hidden, and in a client-routed app the visitor has usually moved on
- * by then — so reading the path at report time filed the numbers of the page
+ * by then - so reading the path at report time filed the numbers of the page
  * they measured under whatever page happened to be on screen when the tab lost
  * focus.
  */
@@ -52,7 +52,7 @@ export class SigilVitals {
    *   the page has settled enough to talk to the server.
    * @param currentPath answers "which page is on screen right now". Supplied
    *   by the caller rather than read from `location` here, because the caller
-   *   is the one that knows about client-side navigation — and because
+   *   is the one that knows about client-side navigation - and because
    *   reading `location` inside a `buffered: true` observer callback can land
    *   after a navigation the entry predates.
    */
@@ -70,7 +70,7 @@ export class SigilVitals {
     this.lcp = value;
     // The path as of the paint, not as of the report. LCP entries stop
     // arriving at the first interaction, so in practice this is the document's
-    // own path — which is exactly the one it should be filed under.
+    // own path - which is exactly the one it should be filed under.
     this.lcpPath ??= this.currentPath();
     if (this.lcpNotified) return;
     this.lcpNotified = true;
@@ -150,7 +150,7 @@ export class SigilVitals {
       }
     });
 
-    // INP: max event "interactionId" duration (approx — max event duration),
+    // INP: max event "interactionId" duration (approx - max event duration),
     // per path. An interaction belongs to the page it was made on.
     const inp = new Map<string, number>();
     this.safeObserve(["event"], (entries) => {
@@ -175,7 +175,7 @@ export class SigilVitals {
       if (document.visibilityState !== "hidden") return;
       if (this.lcp) this.report("lcp", this.lcp, this.lcpPath);
       // Zero shift is a result, so a path with no entries at all still reports
-      // one — but only the current one: a page nothing shifted on and nobody
+      // one - but only the current one: a page nothing shifted on and nobody
       // is looking at any more has nothing to say.
       if (!cls.has(this.currentPath())) cls.set(this.currentPath(), 0);
       for (const [path, value] of cls) this.report("cls", value, path);
