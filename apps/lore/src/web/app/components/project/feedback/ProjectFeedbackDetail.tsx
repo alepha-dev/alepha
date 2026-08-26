@@ -68,7 +68,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
 
   /**
    * Accepting is the first half of promoting, and it is already committed
-   * by the time this sheet opens — so the list has to be told when the
+   * by the time this sheet opens - so the list has to be told when the
    * sheet goes away, whichever way it goes away.
    *
    * `onChanged` cannot be called at accept time: it refetches the list and

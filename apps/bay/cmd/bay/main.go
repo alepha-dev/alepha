@@ -330,7 +330,7 @@ type server struct {
 	// It reaches `status` over the control API rather than out of the state
 	// file: `status` may run as an operator who can reach the socket but not
 	// read a root-owned 0600 document, and it needs the server up regardless
-	// — every one of its numbers comes from `GET /apps`.
+	// - every one of its numbers comes from `GET /apps`.
 	backupInterval time.Duration
 	// watches holds the cancel of each app's in-flight rollback watch, so a new
 	// deploy can supersede the previous one's. See beginWatch.
@@ -798,7 +798,7 @@ func (s *server) controlMux() *http.ServeMux {
 	// What this server was started with, for the commands that have to judge
 	// against it. `bay status` used the compiled default, so a host backing up
 	// every 6 hours was called stale after 24, and one backing up weekly was
-	// never called stale at all — the column that exists to notice a stopped
+	// never called stale at all - the column that exists to notice a stopped
 	// schedule was answering about a different schedule.
 	mux.HandleFunc("GET /settings", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, serverSettings{

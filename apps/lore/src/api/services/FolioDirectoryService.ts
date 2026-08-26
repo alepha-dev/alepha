@@ -170,16 +170,16 @@ export class FolioDirectoryService {
 
   /**
    * Delete a directory. Refuses if not empty (folios + child dirs)
-   * unless `cascade: true` — in which case we walk the subtree and
+   * unless `cascade: true` - in which case we walk the subtree and
    * release every reservation explicitly before letting the FK CASCADE
    * wipe the rows. (`folio_names` has no FK to the entity tables on
-   * purpose — it discriminates by `kind` — so it can't piggy-back on the
+   * purpose - it discriminates by `kind` - so it can't piggy-back on the
    * DB cascade. Explicit walk keeps the reservation table consistent.)
    *
    * Attachments are not counted and not walked. A blob belongs to a
    * folio, not to a folder: `folio_blobs.directoryId` has been dead
    * since attachments became folio-scoped, so a query on it always came
-   * back empty, and the release loop it fed had nothing to release —
+   * back empty, and the release loop it fed had nothing to release -
    * blobs left the `folio_names` namespace in the same change. The
    * attachments of the folios below are reclaimed through
    * `deleteByFolio` in the loop that follows.

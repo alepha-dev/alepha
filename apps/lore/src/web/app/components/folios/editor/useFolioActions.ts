@@ -76,7 +76,7 @@ export interface UseFolioActionsInput {
     toggleFocus: () => void;
     /**
      * Opens the inspector pane (if closed) and switches it to the History
-     * tab — backs `history.revisions` (⌘Y), the only `history.*` id there
+     * tab - backs `history.revisions` (⌘Y), the only `history.*` id there
      * is. Compare / Restore / Keep this version were removed from the
      * menubar rather than left enabled and no-op: each acts on a SPECIFIC
      * revision, which only exists as a concept inside the History tab's own
@@ -1059,7 +1059,7 @@ export const useFolioActions = (
         router.path("projectFoliosNew", { params: { projectSlug } }),
       );
     },
-    // The tree pane owns directory creation — it is the only thing that can
+    // The tree pane owns directory creation - it is the only thing that can
     // put the new row into inline rename, which is the whole flow. It lives
     // one level up, outside this component's per-folio `key`, so it reaches
     // here as a callback. `FolioWorkspace`'s empty state has wired the same

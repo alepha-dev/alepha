@@ -76,7 +76,7 @@ class FakeLinkProvider extends LinkProvider {
 /**
  * The table refreshed the open count and forgot the assigned list, the
  * detail view did the opposite, and the board did half of one and none of
- * the other — so the sidebar badge and the Quest Log lagged behind whichever
+ * the other - so the sidebar badge and the Quest Log lagged behind whichever
  * surface the reader happened to act from.
  *
  * These cases pin which atom each transition moves, which is the part that
@@ -89,7 +89,7 @@ describe("useQuestMutations", () => {
       .with(AlephaLogger)
       .with(AlephaDateTime)
       .with(AlephaFake)
-      // Before the modules that reach for it — a substitution after
+      // Before the modules that reach for it - a substitution after
       // `LinkProvider` has been instantiated is a `TooLateSubstitutionError`.
       .with({ provide: LinkProvider, use: FakeLinkProvider })
       .with(AlephaReact);
@@ -136,7 +136,7 @@ describe("useQuestMutations", () => {
     await ctx.result.current.accept(5);
 
     expect(ctx.assigned()).toEqual([5]);
-    // An accepted quest is still open, so the number did not move — and a
+    // An accepted quest is still open, so the number did not move - and a
     // request that cannot change anything is not worth making.
     expect(ctx.count()).toBe(99);
     expect(ctx.fake.counted).toBe(0);

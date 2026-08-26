@@ -57,7 +57,7 @@ import QuestLog from "./QuestLog.tsx";
  * quest its width when a reader does not want it.
  *
  * This set also drives the view bar, so both routes get it. Dropping it on
- * the detail route would shift the log up the moment a quest opened — which
+ * the detail route would shift the log up the moment a quest opened - which
  * is why, on that route, the bar navigates instead of switching in place.
  */
 const ROUTES_WITH_QUEST_LOG = new Set(["projectQuests", "projectQuest"]);
@@ -172,8 +172,8 @@ const ProjectView = () => {
   const fullWidth = ROUTES_FULL_WIDTH.has(name) || kanbanView;
   // Both routes, for the same reason the quest log gets both: dropping the
   // bar on the detail route would shift the log up by the bar's height the
-  // moment a quest opened. What it does there is not switch the page — the
-  // detail route has no two views — but go back up to the one that does; see
+  // moment a quest opened. What it does there is not switch the page - the
+  // detail route has no two views - but go back up to the one that does; see
   // `selectView`.
   const showViewBar = ROUTES_WITH_QUEST_LOG.has(name);
 

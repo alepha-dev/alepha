@@ -219,7 +219,7 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 	// Each instance runs as its own Unix user, and that user is what keeps one
 	// app out of another's `.env` and database. `runner.UserName` squeezes long
 	// keys through a hash to stay inside useradd's 32-character limit, so a
-	// collision is astronomically unlikely rather than impossible — and the
+	// collision is astronomically unlikely rather than impossible - and the
 	// failure it would produce is two apps sharing an identity, which is not a
 	// thing to leave to probability. State knows the mapping, so ask it.
 	if owner, taken := userNameOwner(store, key); taken {
@@ -824,7 +824,7 @@ func writeEntry(tr *tar.Reader, target string, size int64) error {
 // would be given, if it is not `key` itself.
 //
 // Mirrors `state.Store.ClaimedBy` for domains: the same shape of question,
-// asked of the same store, and refused for the same reason — two apps that
+// asked of the same store, and refused for the same reason - two apps that
 // cannot both have a thing must not both be given it silently.
 func userNameOwner(store *state.Store, key string) (string, bool) {
 	user := runner.UserName(key)

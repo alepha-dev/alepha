@@ -10,8 +10,8 @@ import { currentQuestCountAtom } from "@/web/app/atoms/currentQuestCountAtom.ts"
  * The five quest transitions, plus the bookkeeping the two sidebar atoms
  * need, in one place.
  *
- * Three surfaces run these — the table, the detail view and the kanban
- * board — and each had grown its own partial answer to "what else changed".
+ * Three surfaces run these - the table, the detail view and the kanban
+ * board - and each had grown its own partial answer to "what else changed".
  * The table refreshed the open count and forgot the assigned list; the view
  * updated the assigned list and forgot the count; the board did half of one
  * and none of the other. So the sidebar badge and the Quest Log lagged
@@ -22,7 +22,7 @@ import { currentQuestCountAtom } from "@/web/app/atoms/currentQuestCountAtom.ts"
  *
  * `currentAssignedQuestsAtom` is "not completed, and accepted by me"
  * (`ProjectController.getProjectBySlug`). So accept adds, unassign and
- * complete remove — and **shelve does not touch it**: the server's own
+ * complete remove - and **shelve does not touch it**: the server's own
  * query does not filter `shelvedAt`, so a shelved quest you hold is still
  * yours. Removing it here would make the atom disagree with the list the
  * next navigation fetches.
@@ -34,7 +34,7 @@ import { currentQuestCountAtom } from "@/web/app/atoms/currentQuestCountAtom.ts"
  * ## Why the count is refetched rather than adjusted
  *
  * A local `count - 1` would be wrong for any quest behind the backlog gate,
- * which is not counted in the first place — the caller cannot know whether
+ * which is not counted in the first place - the caller cannot know whether
  * the quest it just closed was in the number without re-deriving the gate.
  * One request, on the transitions that actually move it. The table already
  * paid it; the other two now do too.
@@ -124,7 +124,7 @@ export interface QuestMutations {
   remove: (id: number) => Promise<void>;
   /**
    * Re-derive the open-quest badge. Exposed for the one caller that changes
-   * the number without going through a transition here — the table's own
+   * the number without going through a transition here - the table's own
    * bulk paths.
    */
   refreshCount: () => Promise<void>;

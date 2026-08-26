@@ -70,7 +70,7 @@ export class FolioNameService {
    *
    * SQLite gotcha: NULLs are distinct in UNIQUE indexes, so a row with a
    * NULL anywhere in the index can be inserted twice over. Both indexed
-   * scope columns are therefore always non-null — `parent_directory_id`
+   * scope columns are therefore always non-null - `parent_directory_id`
    * takes a `root:<projectId>` sentinel at the project root, and
    * `root_scope` takes `""` inside a directory. `root_scope` used to be
    * left NULL there, which meant the index bit at the root and nowhere

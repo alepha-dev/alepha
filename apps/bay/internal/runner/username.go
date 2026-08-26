@@ -19,7 +19,7 @@ func unitName(key string) string {
 
 // UserName returns the dedicated unix user for an app instance.
 //
-// The obvious squeeze — cut the unit name at 32 characters — makes the name
+// The obvious squeeze - cut the unit name at 32 characters - makes the name
 // a many-to-one function of the key. Two instances whose names differ only
 // past the cut become the same Unix user, and that user owns both `.env`
 // files and both databases: each app can read the other's secrets. The
@@ -35,7 +35,7 @@ func unitName(key string) string {
 // A name that already fits is returned unchanged, deliberately. Every
 // instance provisioned before this owns files as `bay-<app>-<env>`, and
 // changing what `UserName` answers for them would orphan that ownership on
-// the next deploy — the app would start as a user with no access to its own
+// the next deploy - the app would start as a user with no access to its own
 // database. Only the names that were being truncated move, and those were
 // the broken ones.
 func UserName(key string) string {
@@ -44,7 +44,7 @@ func UserName(key string) string {
 		return name
 	}
 	// 32 bits of the key's digest. Not collision-proof on its own, which is
-	// why `Deploy` also refuses a name another instance already holds —
+	// why `Deploy` also refuses a name another instance already holds -
 	// astronomically unlikely is not the same as impossible, and the failure
 	// mode here is two apps reading each other's secrets.
 	sum := sha256.Sum256([]byte(key))

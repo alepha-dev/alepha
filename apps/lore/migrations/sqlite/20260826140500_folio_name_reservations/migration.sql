@@ -1,4 +1,4 @@
--- Folio name reservations, backfilled — see quest #1435.
+-- Folio name reservations, backfilled - see quest #1435.
 --
 -- Two changes, both additive. No DROP TABLE, no table rebuild, so this is
 -- safe on D1 (see "Migration safety on D1" in apps/lore/CLAUDE.md).
@@ -13,7 +13,7 @@ UPDATE `folio_names` SET `root_scope` = '' WHERE `root_scope` IS NULL;--> statem
 --    exists is unreserved and a new folio could silently take its name.
 --    Reserve them all. `OR IGNORE` because a folio whose name is already
 --    held by a sibling directory (possible precisely because folios were
---    never checked) must not fail the deploy — it keeps the name it has,
+--    never checked) must not fail the deploy - it keeps the name it has,
 --    and the directory keeps the reservation.
 --
 --    The id is a v4 UUID built out of `randomblob`: `folio_names.id` is

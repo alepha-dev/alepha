@@ -34,7 +34,7 @@ export interface FolioTreeProps {
    */
   onActions?: (actions: FolioTreeActions) => void;
   /**
-   * `/folios?dir=<shortId>` — open the tree at that directory. Threaded
+   * `/folios?dir=<shortId>` - open the tree at that directory. Threaded
    * from `FolioWorkspace`, which reads it off the URL; see
    * `UseFolioTreeModelInput.revealDirectoryShortId`.
    */
