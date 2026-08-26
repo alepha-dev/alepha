@@ -2,12 +2,12 @@ import type { Infer } from "alepha";
 
 import { sigilAnalytics } from "./sigilAnalytics.ts";
 
-export { UNIQUES_COLLAPSED_HASH } from "@alepha/sigil/ingest";
+export { UNIQUES_COLLAPSED_HASH } from "./sigilAnalytics.ts";
 
 /**
  * One row per visitor per sigil per day — the cookieless unique count.
  *
- * Declared by `@alepha/sigil/ingest`'s entity factory (read its docstring for
+ * Declared in `sigilAnalytics.ts` (read its docstring for
  * the visitor-hash construction and why the daily salt must come from a
  * secret); see `sigilAnalytics.ts` for why the schema lives in the package
  * while the foreign key into `sigils` stays here.

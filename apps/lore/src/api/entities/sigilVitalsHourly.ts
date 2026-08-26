@@ -6,13 +6,13 @@ export {
   VITALS_BUCKET_COUNT,
   type VitalsBucketColumn,
   vitalsBucketColumn,
-} from "@alepha/sigil/ingest";
+} from "./sigilAnalytics.ts";
 
 /**
  * Web-vitals samples, kept as bucket counts rather than values — seven integer
  * columns, one per bucket index, so a whole batch increments in one statement.
  *
- * Declared by `@alepha/sigil/ingest`'s entity factory; see `sigilAnalytics.ts`
+ * Declared in `sigilAnalytics.ts`; see that file
  * for why the schema lives in the package while the foreign key into `sigils`
  * stays here.
  *

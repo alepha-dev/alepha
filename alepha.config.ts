@@ -71,6 +71,7 @@ export default (alepha: Alepha) => {
       "mqtt",
       "payments-stripe",
       "protobuf",
+      "sigil",
       "ui",
       // surfaces that live inside a module and are named on their own
       "auth",
@@ -241,12 +242,20 @@ export default (alepha: Alepha) => {
         // exhausting it. The only pairing below that pays is e2e.
         await run(`yarn copy`);
 
-        // After `copy`, not before it. `gen:docs` writes docs/2-reference,
-        // docs/3-packages and every package README straight out of the JSDoc,
-        // and its output is not formatted — oxfmt formats markdown, so linting
-        // first left those files dirty in the working tree and handed the next
-        // person a diff on files they had not touched. CI has always run
-        // `copy` before `lint`; this is the local pipeline catching up.
+        // Redundant in this lane, and kept anyway.
+        //
+        // `gen:docs` writes docs/2-reference, docs/3-packages and every
+        // package README straight out of the JSDoc, and its output is not
+        // formatted. That used to make `yarn copy` leave ~290 files dirty in
+        // the working tree, so ordering it before `lint` here was the whole
+        // fix, and anyone who ran `yarn copy` on its own still got the diff.
+        // The root `copy` script now ends in `yarn lint` itself, which fixes
+        // it everywhere instead of only inside this pipeline.
+        //
+        // So this is a second pass over an already-clean tree, costing a few
+        // seconds. It stays because it is the lint gate the `--fast` lane
+        // runs too, and a pipeline whose linting is a side effect of a step
+        // named `copy` is one rename away from having none.
         await run(`yarn lint`);
 
         // After `copy` for the same reason: checking before it would validate

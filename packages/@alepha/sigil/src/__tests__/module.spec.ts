@@ -75,7 +75,12 @@ describe("sigil envelope scope", () => {
   });
 
   it("does not export a metrics provider", async () => {
-    const mod = await import("../server/index.ts");
+    // Was `../server/index.ts`, the barrel behind the `./server` subpath. That
+    // subpath is gone: its only symbol, `SigilSinkProvider`, was already on the
+    // root entry, and its three importers all sat in a bundle that loads the
+    // root anyway, so the split saved nobody a byte. The assertion moves to the
+    // one public entry, which is now the only place a provider could leak from.
+    const mod = await import("../index.ts");
     expect(Object.keys(mod)).not.toContain("SigilMetricsProvider");
   });
 });
