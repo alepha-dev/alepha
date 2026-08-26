@@ -2,7 +2,12 @@ import { $inject, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, $sequence, $transactional } from "alepha/orm";
 import { $secure } from "alepha/security";
-import { $action, BadRequestError, okSchema } from "alepha/server";
+import {
+  $action,
+  BadRequestError,
+  ForbiddenError,
+  okSchema,
+} from "alepha/server";
 import { $etag } from "alepha/server/etag";
 
 import { type Milestone, milestones } from "../entities/milestones.ts";
@@ -12,6 +17,7 @@ import {
   type MilestoneChangelogArea,
   milestoneChangelogAreaSchema,
 } from "../schemas/milestoneChangelogAreaSchema.ts";
+import { ProjectLimits } from "../services/ProjectLimits.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export class MilestoneController {
@@ -20,6 +26,7 @@ export class MilestoneController {
   projects = $repository(projects);
   dt = $inject(DateTimeProvider);
   security = $inject(ProjectSecurityService);
+  limits = $inject(ProjectLimits);
 
   /**
    * Per-project sequence for `milestones.number`. Replaces the old MAX+1
@@ -106,6 +113,20 @@ export class MilestoneController {
         );
       }
 
+      // Closed milestones count too: the cap bounds the table, and the
+      // one-active rule above already bounds what is open.
+      const maxMilestonesPerProject =
+        await this.limits.maxMilestonesPerProject();
+      const milestoneCount = await this.milestones.count({
+        projectId: { eq: params.projectId },
+      });
+      if (milestoneCount >= maxMilestonesPerProject) {
+        throw new ForbiddenError(
+          `This project has reached the maximum number of milestones allowed (${maxMilestonesPerProject}).`,
+        );
+      }
+
+      // After the caps, so a refused start does not burn a number.
       const number = await this.milestoneNumber.next(String(params.projectId));
 
       const project = await this.projects.getById(params.projectId);
