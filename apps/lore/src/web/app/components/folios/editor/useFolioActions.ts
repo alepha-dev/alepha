@@ -58,6 +58,16 @@ export interface UseFolioActionsInput {
    */
   directoryId?: string;
   draft: FolioDraft;
+  /**
+   * Creates a directory from the menubar's Folio ▸ New directory.
+   *
+   * A callback rather than something this hook does itself: the flow is not
+   * one API call, it is create-then-open-the-new-row-in-inline-rename, and
+   * only the tree pane's model holds the `renamingId` that second half
+   * needs. The tree mounts one level up, outside the per-folio `key`, so
+   * `FolioWorkspace` threads its published action down.
+   */
+  createDirectory: () => void;
   panes: {
     tree: boolean;
     inspector: boolean;
@@ -66,12 +76,11 @@ export interface UseFolioActionsInput {
     toggleFocus: () => void;
     /**
      * Opens the inspector pane (if closed) and switches it to the History
-     * tab — backs `history.revisions` (⌘Y). The other three `history.*`
-     * ids (`compare`, `restore`, `keep`) have no generic implementation:
-     * they act on a SPECIFIC revision, which only exists as a concept
-     * inside the History tab's own per-row UI (Task 10) — a top-level
-     * menu/shortcut has no "which revision" to act on, so those three stay
-     * unwired. See the task report for the full reasoning.
+     * tab — backs `history.revisions` (⌘Y), the only `history.*` id there
+     * is. Compare / Restore / Keep this version were removed from the
+     * menubar rather than left enabled and no-op: each acts on a SPECIFIC
+     * revision, which only exists as a concept inside the History tab's own
+     * per-row UI, so a top-level entry has no "which revision" to mean.
      */
     openHistory: () => void;
   };
@@ -1043,15 +1052,6 @@ export const useFolioActions = (
     }
   };
 
-  // `history.compare` / `history.restore` / `history.keep` are not this
-  // task's job to wire (see the report): each acts on a SPECIFIC revision,
-  // a concept that only exists inside the History tab's own per-row UI
-  // (Task 10) — there is no generic "the current one" a top-level
-  // menu/shortcut could mean. `folio.newDirectory` needs a name-prompt +
-  // directory-create flow that more naturally belongs with the tree pane's
-  // own creation UI (Task 9).
-  const notYetWired = (): void => {};
-
   const handlers: FolioActionHandlers = {
     "folio.new": () => {
       if (!project) return;
@@ -1059,7 +1059,13 @@ export const useFolioActions = (
         router.path("projectFoliosNew", { params: { projectSlug } }),
       );
     },
-    "folio.newDirectory": notYetWired,
+    // The tree pane owns directory creation — it is the only thing that can
+    // put the new row into inline rename, which is the whole flow. It lives
+    // one level up, outside this component's per-folio `key`, so it reaches
+    // here as a callback. `FolioWorkspace`'s empty state has wired the same
+    // menu id to the same place all along; only the document path was left
+    // on a no-op.
+    "folio.newDirectory": () => input.createDirectory(),
     "folio.save": () => {
       void saveAction.run();
     },
@@ -1115,9 +1121,6 @@ export const useFolioActions = (
     "view.inspector": () => input.panes.toggleInspector(),
     "view.focus": () => input.panes.toggleFocus(),
     "history.revisions": () => input.panes.openHistory(),
-    "history.compare": notYetWired,
-    "history.restore": notYetWired,
-    "history.keep": notYetWired,
   };
 
   const actionState: FolioActionState = {

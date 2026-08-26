@@ -27,6 +27,19 @@ describe("FOLIO_MENUS", () => {
     }
   });
 
+  it("offers nothing under History but Revisions", () => {
+    // Compare / Restore / Keep this version used to sit here, rendered
+    // enabled and bound to a no-op: three menu entries that opened and did
+    // nothing. Each acts on a SPECIFIC revision, a concept that exists only
+    // inside the History tab's own per-row UI, so there is no "the current
+    // one" a top-level entry could mean. They come back with that UI, not
+    // before — an enabled no-op is worse than an absence.
+    const history = FOLIO_MENUS.find((m) => m.id === "history");
+    expect(history?.entries.map((e) => ("id" in e ? e.id : "—"))).toEqual([
+      "history.revisions",
+    ]);
+  });
+
   it("gives every item a unique action id", () => {
     const ids = folioMenuItems().map((i) => i.id);
     expect(new Set(ids).size).toBe(ids.length);

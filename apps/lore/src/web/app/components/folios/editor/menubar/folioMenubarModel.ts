@@ -30,10 +30,7 @@ export type FolioActionId =
   | "view.tree"
   | "view.inspector"
   | "view.focus"
-  | "history.revisions"
-  | "history.compare"
-  | "history.restore"
-  | "history.keep";
+  | "history.revisions";
 
 export interface FolioMenuItem {
   id: FolioActionId;
@@ -280,16 +277,18 @@ export const FOLIO_MENUS: FolioMenu[] = [
     id: "history",
     labelKey: "folios.editor.menu.history",
     entries: [
+      // Compare / Restore / Keep this version used to sit here, enabled and
+      // bound to a no-op. Each acts on a SPECIFIC revision, which is a
+      // concept that only exists inside the History tab's own per-row UI —
+      // there is no "the current one" a top-level menu entry could mean. An
+      // entry that opens and does nothing is worse than one that is not
+      // there, so they are gone until that UI is designed.
       {
         id: "history.revisions",
         labelKey: "folios.editor.action.revisions",
         shortcut: "⌘Y",
         binding: "mod+y",
       },
-      { id: "history.compare", labelKey: "folios.editor.action.compare" },
-      { id: "history.restore", labelKey: "folios.editor.action.restore" },
-      sep,
-      { id: "history.keep", labelKey: "folios.editor.action.keep-version" },
     ],
   },
 ];
@@ -322,9 +321,6 @@ const NEEDS_SAVED_FOLIO = new Set<FolioActionId>([
   "folio.export",
   "folio.encrypt",
   "history.revisions",
-  "history.compare",
-  "history.restore",
-  "history.keep",
 ]);
 
 /**
