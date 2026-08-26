@@ -2,11 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/alepha/bay/internal/runner"
+	"github.com/alepha/bay/internal/schedule"
 	"github.com/alepha/bay/internal/state"
 )
 
@@ -168,4 +171,70 @@ func TestPrintStatusJSONProblems(t *testing.T) {
 			t.Fatalf("BYO database must not be a problem, got %v", err)
 		}
 	})
+}
+
+// `bay status` judged backup staleness against `defaultBackupInterval` — the
+// value this BINARY was compiled with — rather than the one the running
+// `serve` was started with. A host backing up every 6 hours was reported
+// stale after 24, and a host backing up weekly was never reported stale at
+// all. The column exists to notice a schedule that stopped, and it was
+// answering about a different schedule.
+func TestSettingsRouteReportsTheIntervalServeIsRunning(t *testing.T) {
+	f := newDeployFixture(t)
+	f.server.backupInterval = 6 * time.Hour
+
+	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
+	rec := httptest.NewRecorder()
+	f.server.controlMux().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /settings answered %d: %s", rec.Code, rec.Body.String())
+	}
+	var settings serverSettings
+	if err := json.Unmarshal(rec.Body.Bytes(), &settings); err != nil {
+		t.Fatal(err)
+	}
+	// A duration string, not a nanosecond integer: readable in a `curl`, and
+	// the only shape that stays sane if the document ever grows a second one.
+	if settings.BackupInterval != "6h0m0s" {
+		t.Fatalf("want the configured interval, got %q", settings.BackupInterval)
+	}
+	got, err := time.ParseDuration(settings.BackupInterval)
+	if err != nil {
+		t.Fatalf("the wire value must round-trip through ParseDuration: %v", err)
+	}
+	if got != 6*time.Hour {
+		t.Fatalf("round trip lost the value: %s", got)
+	}
+	if got == defaultBackupInterval {
+		t.Fatal("fixture error: the configured interval must differ from the compiled default")
+	}
+}
+
+// Backups switched off (`--backup-interval 0`) must not report every app as
+// stale. `schedule.Stale` already answers false for a non-positive interval —
+// what was missing is that `status` never saw the zero, so it judged a host
+// with backups deliberately off against 24 hours and flagged all of them.
+func TestSettingsRouteCarriesADisabledSchedule(t *testing.T) {
+	f := newDeployFixture(t)
+	f.server.backupInterval = 0
+
+	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
+	rec := httptest.NewRecorder()
+	f.server.controlMux().ServeHTTP(rec, req)
+
+	var settings serverSettings
+	if err := json.Unmarshal(rec.Body.Bytes(), &settings); err != nil {
+		t.Fatal(err)
+	}
+	got, err := time.ParseDuration(settings.BackupInterval)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got > 0 {
+		t.Fatalf("a disabled schedule must cross the wire as zero, got %s", got)
+	}
+	if stale, _ := schedule.Stale("", time.Now(), got); stale {
+		t.Fatal("an app on a host with backups switched off must not read as stale")
+	}
 }
