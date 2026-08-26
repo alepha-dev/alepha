@@ -109,10 +109,18 @@ export const testLockWait = async (
 ): Promise<void> => {
   let count = 0;
 
+  // One key per invocation, shared by the three apps below. Without it the
+  // primitive falls back to `TestLockWait:migrateLock`, a fixed key that
+  // outlives the process: a run killed mid-handler leaves it in the shared
+  // redis container for the rest of its maxDuration (5 minutes by default),
+  // and every later run of this test then waits on a lock nobody holds.
+  const lockName = `test-lock-wait-${randomUUID()}`;
+
   class TestLockWait {
     dt = $inject(DateTimeProvider);
 
     migrateLock = createPrimitive(LockPrimitive, {
+      name: lockName,
       wait: true,
       handler: async () => {
         count++;
@@ -168,6 +176,10 @@ export const testLockGracePeriod = async (
   } = {};
   let count = 0;
 
+  // Same reason as testLockWait: the default key would be the fixed
+  // `TestApp:fn`, which survives an interrupted run inside redis.
+  const lockName = `test-lock-grace-period-${randomUUID()}`;
+
   const createApp = () => {
     const alepha = Alepha.create()
       .with({
@@ -181,6 +193,7 @@ export const testLockGracePeriod = async (
 
     class TestApp {
       fn = createPrimitive(LockPrimitive, {
+        name: lockName,
         gracePeriod: config.gracePeriod,
         handler: async () => {
           count += 1;
