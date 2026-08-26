@@ -13,6 +13,11 @@ export type ParseRowResult =
  * `shortId`, `title`, and `priority` (the three columns Alepha-Lore exports
  * unconditionally). Per-row, returns an `ImportRow` with `writeMode = upsert`
  * when `shortId` is set, else `create`.
+ *
+ * Undoes the export's CSV-injection guard: one leading apostrophe comes back
+ * off every cell, so a title of `=HYPERLINK(...)`, exported as
+ * `'=HYPERLINK(...)`, re-imports as itself. A value already opening on an
+ * apostrophe was doubled on the way out, so it survives the same strip.
  */
 export class AlephaLoreParser {
   public canParse(header: string[]): boolean {
@@ -30,7 +35,12 @@ export class AlephaLoreParser {
   ): ParseRowResult {
     const at = (name: string): string => {
       const i = header.indexOf(name);
-      return i < 0 || i >= cells.length ? "" : cells[i].trim();
+      if (i < 0 || i >= cells.length) return "";
+      const cell = cells[i].trim();
+      // `QuestCsvFormatter.neutralize` is the other half of this: it prefixes
+      // an apostrophe onto anything a spreadsheet would evaluate, and onto an
+      // apostrophe itself, so dropping exactly one here is its inverse.
+      return cell.startsWith("'") ? cell.slice(1) : cell;
     };
 
     const title = at("title");

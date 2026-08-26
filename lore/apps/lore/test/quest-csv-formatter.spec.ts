@@ -89,6 +89,68 @@ describe("QuestCsvFormatter", () => {
     expect(rows[1][15]).toBe("line one\nline two");
   });
 
+  it("neutralises cells a spreadsheet would evaluate", ({ expect }) => {
+    const { formatter, parser } = setup();
+    const text = formatter.format([
+      {
+        shortId: 4,
+        title: '=HYPERLINK("https://evil.example","click")',
+        status: "new",
+        priority: "medium",
+        size: 3,
+        // Each of the other openings Excel and Sheets treat as a formula.
+        area: "+North",
+        kanbanColumn: "-Todo",
+        milestone: "@here",
+        createdBy: "\tleading-tab",
+        acceptedBy: "",
+        completedBy: "",
+        createdAt: "",
+        acceptedAt: "",
+        completedAt: "",
+        objectives: [],
+        description: "Harmless",
+      },
+    ]);
+    const rows = parser.parse(text);
+    expect(rows[1][1]).toBe('\'=HYPERLINK("https://evil.example","click")');
+    expect(rows[1][5]).toBe("'+North");
+    expect(rows[1][6]).toBe("'-Todo");
+    expect(rows[1][7]).toBe("'@here");
+    expect(rows[1][8]).toBe("'\tleading-tab");
+    // Untouched: nothing to defuse, and the header is never rewritten.
+    expect(rows[1][15]).toBe("Harmless");
+    expect(rows[0][1]).toBe("title");
+  });
+
+  it("doubles a leading apostrophe so the import-side strip is lossless", ({
+    expect,
+  }) => {
+    const { formatter, parser } = setup();
+    const text = formatter.format([
+      {
+        shortId: 5,
+        title: "'tis the season",
+        status: "new",
+        priority: "medium",
+        size: 3,
+        area: "",
+        kanbanColumn: "",
+        milestone: "",
+        createdBy: "",
+        acceptedBy: "",
+        completedBy: "",
+        createdAt: "",
+        acceptedAt: "",
+        completedAt: "",
+        objectives: [],
+        description: "",
+      },
+    ]);
+    const rows = parser.parse(text);
+    expect(rows[1][1]).toBe("''tis the season");
+  });
+
   it("serializes objectives as JSON", ({ expect }) => {
     const { formatter, parser } = setup();
     const text = formatter.format([
