@@ -42,6 +42,18 @@ export class CheckoutSettlementListener {
     },
   });
 
+  /**
+   * Record a refund against the order, at the amount the rail reports.
+   *
+   * `refundedTotal`, not `amount`: the event is delivered at least once, and
+   * the intent already holds the ledger of every refund against it, so passing
+   * the sum lets the order SET its refunded total instead of adding to it. A
+   * redelivered event then changes nothing.
+   *
+   * Before this, any refund event whatsoever moved the order to `refunded` —
+   * so a ten percent goodwill gesture read, in the back office and in the
+   * customer's own history, exactly like a sale that had been undone.
+   */
   protected readonly onRefunded = $hook({
     on: "payments:refunded",
     handler: async (event) => {
@@ -53,7 +65,9 @@ export class CheckoutSettlementListener {
 
       const session = await this.checkout.getById(sessionId);
       if (session.orderId) {
-        await this.checkout.refundOrder(session.orderId);
+        await this.checkout.refundOrder(session.orderId, {
+          refundedTotal: event.refundedTotal,
+        });
       }
     },
   });

@@ -37,6 +37,11 @@ const formatPrice = (cents: number, currency: string) =>
 /**
  * How each status reads at a glance. `pending` and `refunded` are the two an
  * operator must spot without reading, so they carry the loud variants.
+ *
+ * `partially_refunded` is not one of them: the sale still stands, some money
+ * went back, and the amount is on the row's total. Painting it like `refunded`
+ * would recreate, in colour, exactly the confusion the status was added to
+ * end.
  */
 const STATUS_VARIANT: Record<
   OrderStatus,
@@ -49,6 +54,7 @@ const STATUS_VARIANT: Record<
   delivered: "secondary",
   cancelled: "outline",
   refunded: "destructive",
+  partially_refunded: "outline",
 };
 
 const STATUSES: OrderStatus[] = [
@@ -58,6 +64,7 @@ const STATUSES: OrderStatus[] = [
   "shipped",
   "delivered",
   "cancelled",
+  "partially_refunded",
   "refunded",
 ];
 
@@ -259,9 +266,25 @@ export const AdminOrders = () => {
             align: "right",
             sortable: true,
             cell: (o) => (
-              <span className="font-medium tabular-nums">
-                {formatPrice(o.total, o.currency)}
-              </span>
+              <div className="flex flex-col items-end">
+                <span className="font-medium tabular-nums">
+                  {formatPrice(o.total, o.currency)}
+                </span>
+                {/*
+                  What came back, where the figure it came off is. A partial
+                  refund is otherwise a status and nothing else: the operator
+                  can see that some money went out and not how much, which is
+                  the first question they will ask.
+                */}
+                {o.refundedTotal > 0 ? (
+                  <span className="text-muted-foreground text-xs tabular-nums">
+                    {tr("commerce.admin.refundedAmount", {
+                      default: "-$1 refunded",
+                      args: [formatPrice(o.refundedTotal, o.currency)],
+                    })}
+                  </span>
+                ) : null}
+              </div>
             ),
           },
           shippingMethod: {

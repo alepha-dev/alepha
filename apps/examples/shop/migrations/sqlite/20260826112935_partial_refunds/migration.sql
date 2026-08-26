@@ -1,0 +1,1 @@
+ALTER TABLE `commerce_orders` ADD `refunded_total` integer DEFAULT 0 NOT NULL;

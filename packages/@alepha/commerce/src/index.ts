@@ -50,7 +50,21 @@ declare module "alepha" {
      */
     "commerce:order:refunded": {
       orderId: string;
+      /**
+       * The order's own total — what a full refund would come to.
+       */
       total: number;
+      /**
+       * What THIS refund gave back.
+       */
+      amount: number;
+      /**
+       * Everything given back on the order so far, this refund included.
+       * Compare it against {@link total} to tell a partial refund from the
+       * one that undoes the sale; a subscriber that acts only on the latter
+       * (a credit note, for instance) has to make that check.
+       */
+      refundedTotal: number;
       currency: string;
     };
 

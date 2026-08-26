@@ -456,10 +456,17 @@ export class CheckoutService {
   }
 
   /**
-   * Refund the order behind a checkout and put its stock back.
+   * Record a refund against the order behind a checkout.
+   *
+   * `refundedTotal` is everything given back on it so far, not this refund's
+   * share — see `OrderService.refund`. Omitted, it refunds the order in full
+   * and its stock goes back.
    */
-  public async refundOrder(orderId: string): Promise<void> {
-    await this.orders.refund(orderId);
+  public async refundOrder(
+    orderId: string,
+    options: { refundedTotal?: number } = {},
+  ): Promise<void> {
+    await this.orders.refund(orderId, options);
   }
 
   public async abandon(sessionId: string): Promise<CheckoutSessionEntity> {

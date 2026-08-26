@@ -279,24 +279,67 @@ export class OrderService {
   }
 
   /**
-   * Refund a paid order and put its stock back.
+   * Record what has been given back on a paid order.
+   *
+   * `refundedTotal` is a TOTAL, not a delta: the amount the payment rail says
+   * has come back on this order altogether, including refunds recorded before
+   * this call. Omit it and the whole order is refunded, which is what the
+   * admin's own "Refund" action means and what every caller meant before
+   * partial refunds existed.
+   *
+   * Writing a total rather than adding a delta is what makes this idempotent.
+   * `payments:refunded` is delivered at least once, and an accumulator would
+   * turn a redelivered event into a second refund on paper; the payment rail
+   * already keeps the per-intent ledger, so its sum is the authority and this
+   * only mirrors it.
+   *
+   * The order reaches `refunded` only when that total covers `total`. Anything
+   * short of it is `partially_refunded` — a ten percent goodwill gesture used
+   * to read, in the back office and in the customer's history, exactly like a
+   * sale that had been undone.
    */
-  public async refund(id: string): Promise<OrderEntity> {
+  public async refund(
+    id: string,
+    options: { refundedTotal?: number } = {},
+  ): Promise<OrderEntity> {
     return this.db.transactional(async () => {
       const current = await this.orderRepo.getById(id);
       if (current.status === "refunded") {
         return current;
       }
+
+      // Capped at the order: a rail that reports more than was charged (a
+      // rounding difference, a manual over-refund) must not leave a negative
+      // remainder behind.
+      const refundedTotal = Math.min(
+        options.refundedTotal ?? current.total,
+        current.total,
+      );
+      if (refundedTotal <= current.refundedTotal) {
+        // Nothing new — a redelivered event, or a refund already recorded.
+        return current;
+      }
+      const full = refundedTotal >= current.total;
+
       // Only money that moved can come back: a pending order has nothing to
-      // refund, and flipping it hid that no payment ever happened.
+      // refund, and flipping it hid that no payment ever happened. A partially
+      // refunded order can be refunded again, up to the rest.
       await this.assertTransition(
         id,
-        ["paid", "fulfilled", "shipped", "delivered"],
-        "refunded",
+        ["paid", "fulfilled", "shipped", "delivered", "partially_refunded"],
+        full ? "refunded" : "partially_refunded",
       );
-      await this.stock.releaseOrder(id);
+
+      // Stock comes back only when the sale is undone. A partial refund is a
+      // price adjustment on goods the customer keeps, so releasing units here
+      // would put things back on the shelf that never returned.
+      if (full) {
+        await this.stock.releaseOrder(id);
+      }
+
       const order = await this.orderRepo.updateById(id, {
-        status: "refunded",
+        status: full ? "refunded" : "partially_refunded",
+        refundedTotal,
       });
 
       // Only on the transition, and deferred for the same reason as in
@@ -306,6 +349,8 @@ export class OrderService {
         this.alepha.events.emit("commerce:order:refunded", {
           orderId: order.id,
           total: order.total,
+          amount: refundedTotal - current.refundedTotal,
+          refundedTotal,
           currency: order.currency,
         }),
       );
@@ -319,7 +364,13 @@ export class OrderService {
    * can move straight from `paid` to `shipped`.
    */
   public async markFulfilled(id: string): Promise<OrderEntity> {
-    await this.assertTransition(id, ["paid"], "fulfilled");
+    // `partially_refunded` too: a goodwill refund is a price adjustment, and
+    // the parcel it applies to still has to be packed.
+    await this.assertTransition(
+      id,
+      ["paid", "partially_refunded"],
+      "fulfilled",
+    );
     return this.orderRepo.updateById(id, { status: "fulfilled" });
   }
 
@@ -335,7 +386,11 @@ export class OrderService {
     id: string,
     options: { trackingNumber?: string; trackingUrl?: string } = {},
   ): Promise<OrderEntity> {
-    await this.assertTransition(id, ["paid", "fulfilled"], "shipped");
+    await this.assertTransition(
+      id,
+      ["paid", "fulfilled", "partially_refunded"],
+      "shipped",
+    );
 
     const order = await this.orderRepo.updateById(id, {
       status: "shipped",

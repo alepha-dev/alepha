@@ -23,6 +23,18 @@ export const orderStatusEnum = z.enum([
   "delivered",
   "cancelled",
   "refunded",
+  /*
+   * Appended rather than filed next to `refunded`, because on Postgres this
+   * enum becomes a real type and adding a value in the middle of one is a
+   * different, heavier statement than adding it at the end.
+   *
+   * ⚠️ It says something ORTHOGONAL to the rest. `paid`, `shipped` and
+   * `delivered` are fulfilment; this one is money. An order that is partially
+   * refunded and then shipped reads `shipped`, and the partial refund survives
+   * only in `refundedTotal` — which is the field to trust when the two
+   * disagree.
+   */
+  "partially_refunded",
 ]);
 
 /**
@@ -76,6 +88,22 @@ export const orders = $entity({
     taxTotal: db.default(z.integer().min(0), 0),
 
     currency: db.default(z.text({ minLength: 3, maxLength: 3 }), "EUR"),
+
+    /**
+     * Everything given back on this order so far, in the same unit as
+     * {@link total}.
+     *
+     * The durable answer to "how much of this sale came back", and the only
+     * one: `status` can only ever carry the headline, and loses even that as
+     * soon as a partially refunded order ships.
+     *
+     * Written as a TOTAL, never accumulated: the payment rail already keeps
+     * the ledger of refunds per intent and reports its sum, so setting it here
+     * makes a re-delivered `payments:refunded` a no-op instead of a
+     * double-count. An accumulator plus at-least-once delivery is how an order
+     * ends up refunded twice on paper.
+     */
+    refundedTotal: db.default(z.integer().min(0), 0),
 
     /**
      * Set once the payment rail hands back a reference. Plain text, not a

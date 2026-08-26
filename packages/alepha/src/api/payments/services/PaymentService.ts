@@ -627,6 +627,7 @@ export class PaymentService {
       intentId: intent.id,
       refundId: refund.id,
       amount,
+      refundedTotal: newTotalRefunded,
       currency: intent.currency,
       metadata: intent.metadata,
     });
