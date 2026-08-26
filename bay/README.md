@@ -1,95 +1,75 @@
-# Bay — PoC
+# Bay
 
-Self-hosted application server for Alepha apps. The full design lives in the
-**Bay** folio of the Alepha project in Lore.
+Self-hosted application server for Alepha apps. One static Go binary and a data
+directory: it is the reverse proxy, the deployer, the supervisor and the
+backup schedule for every app on the host.
 
-This PoC proves the vertical slice: **an `app.zip` goes in, an HTTPS URL comes out.**
-
-> Installing Bay on a real host: **[INSTALL.md](./INSTALL.md)**. The install itself is four steps;
-> granting a user the right to deploy over SSH is a fifth, and it is the one that produces every
-> confusing first-deploy failure — an empty `bay-control` group, a `bay` missing from the
-> non-interactive PATH, and a host binary too old to read the artifact from stdin.
-
-## What's inside
-
-|               |                                                                                              |
-| ------------- | -------------------------------------------------------------------------------------------- |
-| Reverse proxy | routing by `Host`, _file-first / fallback app_                                               |
-| Static assets | served from **every kept release**, `.br`/`.gz` negotiation, immutable cache on hashed names |
-| Deployment    | unzip (with zip-slip guard), manifest read, atomic `current` switch                          |
-| Provisioning  | SQLite file, stable `APP_SECRET`, `.env` written atomically at `0600`                        |
-| Supervision   | start/stop, graceful shutdown (SIGTERM then SIGKILL), process group                          |
-| State         | one JSON file, written `temp + rename`, with a `.bak`                                        |
-| Control API   | HTTP on loopback, bearer token required                                                      |
-| CLI           | thin client of that same API — **one contract**                                              |
-
-| TLS / ACME | CertMagic, testable **without a public domain or root** via Pebble |
-| Observability | `bay status`, `bay logs` — nothing is stored |
-
-## Observing an app without storing anything
-
-Two commands, no time series, no job, no table. That is deliberate: a series
-database that has to be administered, pruned and backed up to answer two fixed
-questions costs more than the answers.
+An artifact goes in over SSH, an HTTPS URL comes out.
 
 ```bash
-bay status --json            # up, restarts, traffic, backup freshness
-bay logs lore/production --since 15m --grep 'ECONN' --json
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bay ./cmd/bay
+scp bay root@HOST:/opt/bay/bin/bay
 ```
 
-**`bay logs` emits JSON Lines.** Its primary reader is an agent over SSH, not
-an eyeball: `--json`, `--since`, `--grep` (a regular expression). On a real
-host the entries come from journald, which brings its own retention; under the
-child runner they come from `logs/app.log`, rotated at 32 MiB.
+**→ [INSTALL.md](./INSTALL.md) is the guide.** Four steps to a running Bay, and
+a fifth - granting a human or a CI job the right to deploy - that is the one
+people miss and the source of every confusing first-deploy failure.
 
-⚠️ `--since` **keeps** lines with no timestamp and says so at the end of the
-output. An app writing plain text to stdout produces none, and hiding them
-would suppress exactly the `console.log` you just added.
+The full design lives in the **bay** directory of the Alepha project in Lore.
 
-## What backups cover, and what they do not
+## The shape of it
 
-**The database, and nothing else.**
+|                   |                                                                                                 |
+| ----------------- | ----------------------------------------------------------------------------------------------- |
+| **Artifact**      | the `tar.gz` `alepha pack` already produces - no Bay-specific format, no manifest to hand-write |
+| **Deployment**    | untar under guard, provision, atomic `current` switch, health-gated rollback watch              |
+| **Supervision**   | a systemd unit per instance, each running as its own unix user, in its own sandbox              |
+| **Reverse proxy** | routing by `Host`, file-first then app, statics from every kept release with `.br`/`.gz`        |
+| **TLS**           | CertMagic + ACME, exercisable end to end without a public domain or root (Pebble)               |
+| **Provisioning**  | SQLite file, stable `APP_SECRET`, per-instance `.env` written atomically at `0600`              |
+| **Backups**       | scheduled snapshot of the database, verified, compressed, uploaded, pruned                      |
+| **Control API**   | HTTP over a **unix socket**, authorized by the file mode. No port, no token                     |
+| **CLI**           | every command except `serve` is a thin client of that same API - one contract                   |
 
-|                      |                                                                        |
-| -------------------- | ---------------------------------------------------------------------- |
-| SQLite database      | ✅ snapshot through SQLite's own backup API, verified, then compressed |
-| `storage/` (uploads) | ❌ **never** — see below                                               |
-| `.env`               | ❌ **never** — secrets come from the deployment                        |
+`bay` with no arguments prints the full command list, and that usage text is
+the reference for flags - this table is the map, not the manual.
 
-Every backup response says what it did not cover, in words. The worst failure of
-a backup system is somebody believing it covers more than it does, and that
-belief is cheapest to prevent at the moment they run the command.
+## Two things worth knowing before reading the code
 
-### Why uploads are not archived
+**There is no inbound control port and no bearer token.** The control API can
+create users, read every app's secrets and delete every backup, so it is
+root-equivalent. A loopback port with a shared secret is the wrong shape for
+that: any process on the host can reach the port, the secret ends up in a shell
+history, and a bind-address typo publishes it. The socket's authorization is
+the file mode, enforced by the kernel. Remote access is SSH and nothing else.
 
-Bay used to tar `storage/` nightly. That looked like protection and was not:
+**Backups cover the database and nothing else**, and every backup response says
+so in words. `storage/` (uploads) and `.env` are never archived - uploads are
+shared by putting them in a bucket (`bay config s3:apps`, a _second_ credential
+that is never the backup one) or they are not shared at all, and secrets come
+from the deploy. The worst failure of a backup system is somebody believing it
+covers more than it does.
 
-- **nothing could restore it** — `bay restore` puts the database back and says
-  `notRestored: ["storage/"]`;
-- **nothing pruned it** — retention only ever walked the `db/` prefix, so the
-  archives grew in the bucket forever;
-- **it was capped by RAM** — the whole tar was held in memory, so it refused
-  anything over 1 GiB and an app that grew past that silently had no coverage.
+## Working on Bay
 
-A one-directional, unprunable, memory-bound copy is not a backup. So uploads are
-shared by putting them **in a bucket**, or they are not shared at all:
+⚠️ **`yarn v` does not run any of this.** It is the JavaScript pipeline; a
+green `yarn v` says nothing about the Go. The Go lane is its own command, and
+it runs in a Linux container because that is the only place the whole suite
+compiles:
 
 ```bash
-bay config s3:apps --endpoint URL --bucket NAME   # a SECOND credential, never the backup one
-bay storage migrate <name/env>                    # copies what is on disk, keeps the originals
+yarn v:go     # gofmt, vet, build, tests, cross-compile - reproduces the CI job
 ```
 
-An app left on local storage keeps its files in exactly one place, on this
-host's disk. `bay backup` says so every time rather than letting silence imply
-otherwise.
+`go test ./...` on a Mac is **not** a substitute. Every file under
+`internal/runner` that renders or applies a systemd unit is `//go:build linux`,
+so a native run skips them silently and reports success. Docker must be
+running.
 
-⚠️ A bucket is durable, not point-in-time: deleting the wrong key deletes it
-everywhere. **Enable versioning on the storage bucket.**
+### Testing ACME without a domain
 
-## Testing ACME without a domain
-
-Pebble is Let's Encrypt's test ACME server. It runs the real RFC 8555 locally:
-account creation, order, challenge, issuance, renewal (ARI included).
+Pebble is Let's Encrypt's test ACME server, running the real RFC 8555 locally:
+account, order, challenge, issuance, renewal (ARI included).
 
 ```bash
 GOBIN=/tmp/baybin go install github.com/letsencrypt/pebble/v2/cmd/pebble@latest
@@ -99,76 +79,43 @@ BAY_PEBBLE_BIN=/tmp/baybin go test ./internal/tlsconf/ -v
 ```
 
 The test generates its own CA, starts Pebble and challtestsrv, obtains a real
-certificate and verifies it resolves via SNI. Without Pebble on the `PATH` it
-is **skipped** — `go test ./...` stays green on a bare checkout.
+certificate and verifies it resolves over SNI. Without Pebble on the `PATH` the
+suite skips it, so a bare checkout stays green.
 
 ⚠️ Never add Pebble's CA to the system trust store: its private key is public.
 
-For Let's Encrypt, **always staging first** (`--acme-ca https://acme-staging-v02.api.letsencrypt.org/directory`).
-Production quotas are shared and burn fast — and if the domain is on
-`sslip.io`, the quota is **pooled across all of its users**.
+⚠️ **The challenge ports have to be configurable and to agree with what is
+announced to the CA.** Left at their defaults, CertMagic serves the challenge on
+80/443 while the CA looks elsewhere, and the failure says only `connection
+refused`. Hence `--acme-http-port` / `--acme-tls-port`.
 
-## What is not here, and why
+For Let's Encrypt, **always staging first**
+(`--acme-ca https://acme-staging-v02.api.letsencrypt.org/directory`). Production
+quotas are shared and burn fast - and on `sslip.io` the quota is pooled across
+every user of the domain.
 
-- **systemd** — does not exist on macOS. The PoC supervises child processes;
-  the `runner.Runner` interface exists so systemd can slot in behind it
-  (cgroups, `MemoryMax`, journald, `Restart=always` become free).
-- **Runtime management** — the PoC borrows the `node` on the `PATH`. The real
-  Bay ships its own and handles `bay runtime update`.
-- Rollback, backups, scale-to-zero: later phases.
+## Structure
 
-### TODO — application metrics (req/s, latency, event loop)
-
-A `bay top` command existed, reading the Prometheus `/metrics` that
-`alepha/server/metrics` exposes. **Removed**, for a reason only visible when
-running it on a real machine: that module is **opt-in**, and none of the
-deployed apps import it. The feature worked on zero apps out of two, and an
-example had to be deployed on purpose just to see it function.
-
-Two observations that will decide the retry:
-
-1. **Bay is already in the right place to count.** The proxy sees every request
-   with its status code (`proxy.go`, where `lastSeen.touch` is called) and the
-   cgroup gives memory, CPU and restarts. Req/s, err/s and _client-observed_
-   latency therefore ask nothing of the app — and would work for all of them,
-   non-Alepha included.
-2. **What only the app can say**: event-loop lag (the best early signal of a
-   Node app about to fall over, invisible from outside), the heap / RSS
-   distinction, and business metrics.
-
-When this comes back, it will not be by re-parsing Prometheus text: it will be
-an `@alepha/telemetry` built on OpenTelemetry.
-
-## Trying it
-
-```bash
-go build -o bay ./cmd/bay
-
-# produce the artifact — no manifest to write, `alepha build` derives it
-cd ../example-api
-yarn alepha build          # emits dist/ + dist/manifest.json
-yarn alepha pack -o /tmp   # emits /tmp/example-api-latest.tar.gz
-cd -
-
-./bay serve --root /tmp/bay-root --base-domain bay.localhost &
-# No token: the control API listens on /tmp/bay-root/control.sock, and
-# `bay deploy` finds it on its own. So you must be on the Bay machine, root
-# or a member of the `bay-control` group.
-./bay deploy /tmp/example-api-latest.tar.gz --name example-api \
-  --control-socket /tmp/bay-root/control.sock
-
-curl -H "Host: example-api.bay.localhost" http://127.0.0.1:8080/
 ```
-
-⚠️ **`--target=bare` (the default), not `cloudflare`.** A workerd bundle is
-resolved against Cloudflare's export conditions and has no entry point node can
-execute. Bay refuses it at deploy time and names the fix — otherwise the app
-deploys, never boots, and the only message is "never became ready".
+cmd/bay/          CLI + server + control API
+internal/
+  backup/         snapshot, verify, upload, prune
+  control/        the unix socket the control API is reached through
+  deploy/         untar, provisioning, release switch, rollback
+  health/         "is this app serving?", which is not "is a port open?"
+  manifest/       manifest.json reading and validation
+  proxy/          host routing, statics, reverse proxy
+  runner/         instance lifecycle - systemd on Linux, child processes elsewhere
+  runtimes/       which interpreter runs an app - Bay ships them, never borrows PATH
+  s3/             the S3-compatible client backups and app storage share
+  schedule/       when a backup is due, and when one is stale
+  state/          one JSON document, atomic writes, kept at 0600
+  tlsconf/        CertMagic wiring, ACME, private-CA trust for tests
+```
 
 ## The artifact
 
-Bay consumes **the format the framework already produces**, not a format of its
-own:
+Bay consumes the format the framework already produces:
 
 ```
 example-api-latest.tar.gz
@@ -180,61 +127,59 @@ example-api-latest.tar.gz
 ```
 
 `dist/manifest.json` is the contract between the build and all of its
-consumers — `alepha platform up --prebuilt`, Alepha Rocket, and Bay. Declaring
+consumers - `alepha platform up --prebuilt`, Alepha Rocket, and Bay. Declaring
 `$repository` is what puts `hasDatabase: true` in it, and that `true` is what
 provisions the database **and** grants write access in the sandbox. Nobody
-writes the same thing twice, so code ↔ infra drift is impossible by
+writes the same fact twice, so code ↔ infra drift is impossible by
 construction.
 
-A tar unzipped as root earns its guards: absolute paths and `..` refused,
-symlinks / hardlinks / devices refused (the classic tar escape is planting a
-link to `/etc` then writing "through" it on the next entry), archive mode bits
+⚠️ **`--target=bare` (the default), not `cloudflare`.** A workerd bundle is
+resolved against Cloudflare's export conditions and has no entry point node can
+execute. Bay refuses it at deploy time and names the fix - otherwise the app
+deploys, never boots, and the only message is "never became ready".
+
+A tar untarred as root earns its guards: absolute paths and `..` refused,
+symlinks / hardlinks / devices refused (the classic escape is planting a link
+to `/etc` then writing "through" it on the next entry), archive mode bits
 ignored (a setuid bit in an uploaded tarball would be a privilege-escalation
 primitive), and a per-entry size cap (a full disk takes down every app, not
 just the one being deployed).
 
-## Measured on this PoC
+## Observing an app without storing anything
 
-- `bay` binary: **9.5 MB** (without CertMagic)
-- Lore's `app.zip`: **7.79 MB** (zip; 6.34 MB as zstd)
-- full deployment, app ready to answer: **0.4 s**
-- SSR through the proxy: **43 ms**
-- CSS asset: **204 KB** raw → **26 KB** as brotli (−87%)
+Two commands. No time series, no job, no table - a series database that has to
+be administered, pruned and backed up to answer two fixed questions costs more
+than the answers.
 
-## What the PoC corrected in the design
-
-1. **The build emits `dist/public/`**, not a `public/` at the archive root.
-   Hoisting would mean moving hundreds of files at packaging time for nothing.
-2. **Assets are served flat from the web root** (`/entry.DyJ8G-7l.js`), so a
-   cache rule keyed on an `/assets/` prefix **never fires**. Detection is done
-   on the hashed-name pattern `name.HASH8.ext`.
-3. **The build already produces the `.br`/`.gz`** — serving them is nearly free
-   and divides the transfer by eight.
-4. **ACME challenge ports must be configurable and consistent with what is
-   announced to the CA.** Left at defaults, CertMagic serves the challenge on
-   80/443 while the CA looks elsewhere, and the failure does not say why
-   (`connection refused`). Hence `--acme-http-port` / `--acme-tls-port`.
-
-## Structure
-
-```
-cmd/bay/          CLI + server + control API
-internal/
-  manifest/       manifest.json reading and validation
-  state/          JSON state, atomic writes
-  deploy/         unzip, provisioning, release switch
-  runner/         process lifecycle (systemd behind this interface)
-  proxy/          host routing, statics, reverse proxy
+```bash
+bay status --json            # up, restarts, traffic, backup freshness
+bay logs lore/production --since 15m --grep 'ECONN' --json
 ```
 
-## Invariants under test
+`bay logs`' primary reader is an agent over SSH, not an eyeball, hence `--json`,
+`--since` and `--grep` (a regular expression). Entries come from journald on a
+real host, and from `logs/app.log` (rotated at 32 MiB) under the child runner.
 
-`go test ./...`
+⚠️ `--since` **keeps** lines with no timestamp and says so at the end of the
+output. An app writing plain text to stdout produces none, and hiding them
+would suppress exactly the `console.log` you just added.
 
-- a `runtimeVersion` pinned to an exact version is **refused** — it would
-  recreate the problem Bay solves (patching a CVE without redeploying every
-  app)
-- an app declaring crons is **never** eligible for scale-to-zero
-- state survives a restart, is written at `0600`, leaves a `.bak` and no
-  temporary files
-- the token is generated once and persists
+### Application metrics are deliberately absent
+
+A `bay top` reading the Prometheus `/metrics` of `alepha/server/metrics` existed
+and was removed: that module is opt-in and none of the deployed apps imported
+it, so the feature worked on zero apps out of two and an example had to be
+deployed on purpose to see it run at all.
+
+Two observations that will decide the retry:
+
+1. **Bay is already in the right place to count.** The proxy sees every request
+   with its status code, and the cgroup gives memory, CPU and restarts. Req/s,
+   err/s and _client-observed_ latency therefore ask nothing of the app, and
+   would work for all of them - non-Alepha included.
+2. **What only the app can say**: event-loop lag (the best early signal of a
+   Node app about to fall over, and invisible from outside), the heap/RSS
+   distinction, and business metrics.
+
+When it returns it will not be by re-parsing Prometheus text; it will be an
+`@alepha/telemetry` built on OpenTelemetry.
