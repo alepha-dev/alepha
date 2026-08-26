@@ -43,6 +43,39 @@ const setup = async () => {
   return ctx;
 };
 
+/**
+ * A container whose payment rail refuses every refund.
+ */
+class RefusingPaymentService extends PaymentService {
+  override async refund(): Promise<any> {
+    throw new Error("rail said no");
+  }
+}
+
+const setupWithRefusingRail = async () => {
+  // Substituted BEFORE the modules that inject it: the container refuses a
+  // swap once a service has been resolved.
+  const alepha = Alepha.create()
+    .with({ provide: PaymentService, use: RefusingPaymentService })
+    .with(AlephaOrmPostgres)
+    .with(AlephaCommerceCheckout)
+    .with(AlephaCommerceAdmin);
+
+  const ctx = {
+    alepha,
+    products: alepha.inject(AdminProductController),
+    ordersCtrl: alepha.inject(AdminOrderController),
+    catalog: alepha.inject(CatalogService),
+    carts: alepha.inject(CartService),
+    checkout: alepha.inject(CheckoutService),
+    orders: alepha.inject(OrderService),
+    stock: alepha.inject(StockService),
+    payments: alepha.inject(PaymentService),
+  };
+  await alepha.start();
+  return ctx;
+};
+
 const buy = async (
   ctx: Awaited<ReturnType<typeof setup>>,
   productId: string,
@@ -212,6 +245,42 @@ describe("admin orders", () => {
   it("leaves the order untouched when the payment rail refuses", async ({
     expect,
   }) => {
+    /*
+     * The rail is asked FIRST, and its refusal aborts everything after it:
+     * the customer's money and our record disagreeing is the one outcome to
+     * avoid. Driven through a refusing `PaymentService` rather than by
+     * refunding twice, which is how this used to be provoked - a second
+     * refund now asks for what is LEFT, which is nothing, so the rail is
+     * never called and there is no refusal to observe.
+     */
+    const ctx = await setupWithRefusingRail();
+    const ring = await ctx.catalog.create({
+      slug: `ring-${randomUUID()}`,
+      name: "Bague Aurore",
+      price: 8900,
+      published: true,
+      config: { trackStock: true },
+    });
+    await ctx.stock.recordIntake(ring.id, 2);
+    const orderId = await buy(ctx, ring.id);
+
+    const onHandBefore = await ctx.stock.onHand(ring.id);
+
+    await expect(
+      ctx.ordersCtrl.commerceAdminOrderRefund(
+        { params: { id: orderId }, body: {} },
+        { user: admin },
+      ),
+    ).rejects.toThrow(/rail said no/);
+
+    // No restock, and the order never moved: the domain never ran.
+    expect(await ctx.stock.onHand(ring.id)).toBe(onHandBefore);
+    expect((await ctx.orders.getById(orderId)).status).toBe("paid");
+  });
+
+  it("is a no-op once there is nothing left to give back", async ({
+    expect,
+  }) => {
     const ctx = await setup();
     const ring = await ctx.catalog.create({
       slug: `ring-${randomUUID()}`,
@@ -223,23 +292,22 @@ describe("admin orders", () => {
     await ctx.stock.recordIntake(ring.id, 2);
     const orderId = await buy(ctx, ring.id);
 
-    // Refund it once, so the second attempt is refused by the rail.
     await ctx.ordersCtrl.commerceAdminOrderRefund(
       { params: { id: orderId }, body: {} },
       { user: admin },
     );
     const onHandAfterFirst = await ctx.stock.onHand(ring.id);
 
-    await expect(
-      ctx.ordersCtrl.commerceAdminOrderRefund(
-        { params: { id: orderId }, body: {} },
-        {
-          user: admin,
-        },
-      ),
-    ).rejects.toThrow();
+    // Asking again refunds the remainder, which is zero: the rail is not
+    // called and nothing moves. It used to reach the rail for the whole
+    // total and come back as an error the operator could do nothing about.
+    const again = await ctx.ordersCtrl.commerceAdminOrderRefund(
+      { params: { id: orderId }, body: {} },
+      { user: admin },
+    );
 
-    // No second restock: the domain never ran because the rail said no.
+    expect(again.status).toBe("refunded");
+    expect(again.refundedTotal).toBe(again.total);
     expect(await ctx.stock.onHand(ring.id)).toBe(onHandAfterFirst);
   });
 

@@ -164,16 +164,24 @@ export const AdminOrders = () => {
 
   const refund = useConfirmedAction<[OrderEntity, () => void]>(
     {
-      confirm: (order) => ({
-        title: String(tr("commerce.admin.refundTitle", { default: "Refund" })),
-        description: String(
-          tr("commerce.admin.refundConfirm", {
-            default: `Refund ${formatPrice(order.total, order.currency)} to the customer? The money goes back to them and the stock is released. A credit note is issued.`,
-            args: [formatPrice(order.total, order.currency)],
-          }),
-        ),
-        destructive: true,
-      }),
+      confirm: (order) => {
+        // What the button will actually take back: the rest, on an order that
+        // has already had part of it refunded. The amount is the fact the
+        // operator is agreeing to, so it has to be the real one.
+        const remaining = Math.max(0, order.total - order.refundedTotal);
+        return {
+          title: String(
+            tr("commerce.admin.refundTitle", { default: "Refund" }),
+          ),
+          description: String(
+            tr("commerce.admin.refundConfirm", {
+              default: `Refund ${formatPrice(remaining, order.currency)} to the customer? The money goes back to them and the stock is released. A credit note is issued.`,
+              args: [formatPrice(remaining, order.currency)],
+            }),
+          ),
+          destructive: true,
+        };
+      },
       handler: async (order, refresh) => {
         await client.commerceAdminOrderRefund({
           params: { id: order.id },

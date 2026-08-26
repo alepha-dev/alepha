@@ -102,12 +102,24 @@ export class AdminOrderController {
     handler: async ({ params, body }) => {
       const order = await this.orders.getById(params.id);
 
-      // The PSP first. If it refuses, the order stays as it was — the customer's
-      // money and our record disagreeing is the one outcome to avoid.
-      if (order.paymentIntentId) {
+      /*
+       * What is LEFT, not the whole total.
+       *
+       * `PaymentService.refund` refuses an amount over the remaining
+       * refundable amount, so asking for the full total on an order that has
+       * already had part of it back is not an over-refund - it is a throw,
+       * and the operator is left with a Refund button that only fails. On an
+       * untouched order the two are the same number.
+       */
+      const remaining = Math.max(0, order.total - order.refundedTotal);
+
+      // The PSP first. If it refuses, the order stays as it was - the
+      // customer's money and our record disagreeing is the one outcome to
+      // avoid.
+      if (order.paymentIntentId && remaining > 0) {
         await this.payments.refund(
           order.paymentIntentId,
-          order.total,
+          remaining,
           body.reason,
         );
       }

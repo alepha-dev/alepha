@@ -5,6 +5,7 @@ import { PaymentService } from "alepha/api/payments";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
 
+import { AdminOrderController } from "../admin/controllers/AdminOrderController.ts";
 import { CartService } from "../cart/services/CartService.ts";
 import { CheckoutService } from "../checkout/services/CheckoutService.ts";
 import { AlephaCommerceInvoicing } from "../invoicing/index.ts";
@@ -53,6 +54,9 @@ const setup = async () => {
     stock: alepha.inject(StockService),
     payments: alepha.inject(PaymentService),
     invoices: alepha.inject(InvoiceService),
+    // The back office's own Refund action. Injected before `start`, because
+    // the container locks there.
+    adminOrders: alepha.inject(AdminOrderController),
   };
   await alepha.start();
   return ctx;
@@ -187,5 +191,35 @@ describe("partial refund", () => {
     const issued = await ctx.invoices.listForOrder(order.id);
     expect(issued).toHaveLength(2);
     expect(issued[1]!.creditsInvoiceId).toBe(issued[0]!.id);
+  });
+});
+
+/**
+ * The admin's own Refund action, once a partial refund exists.
+ *
+ * It used to ask the rail for the whole `order.total`, which was the same
+ * number as "everything left" for as long as a partial refund could not
+ * happen. `PaymentService.refund` refuses an amount over the remaining
+ * refundable amount, so the moment one could, that button stopped being an
+ * over-refund and became a throw.
+ */
+describe("admin refund after a partial one", () => {
+  it("takes back what is left and completes the refund", async ({ expect }) => {
+    const ctx = await setup();
+    const { order, intentId } = await buy(ctx);
+
+    await ctx.payments.refund(intentId, 890, "geste commercial");
+
+    const refunded = await ctx.adminOrders.commerceAdminOrderRefund.fetch(
+      { params: { id: order.id }, body: {} },
+      { user: { id: crypto.randomUUID(), roles: ["admin"] } },
+    );
+
+    expect(refunded.data.status).toBe("refunded");
+    expect(refunded.data.refundedTotal).toBe(order.total);
+
+    // And the rail agrees: one 890 plus one for the rest, never total + 890.
+    const intent = await ctx.payments.getIntent(intentId);
+    expect(intent.status).toBe("refunded");
   });
 });
