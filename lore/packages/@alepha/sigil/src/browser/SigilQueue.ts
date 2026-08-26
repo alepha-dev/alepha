@@ -22,9 +22,40 @@ type Envelope = {
 };
 
 /**
+ * How large one envelope may get, in bytes.
+ *
+ * Sized against the browsers' `keepalive` cap, which is 64 KiB for the whole
+ * document's in-flight keepalive bodies and is enforced by rejecting the
+ * `fetch` SYNCHRONOUSLY — no status, no retry, the batch is simply gone. The
+ * envelope's own caps allow far more than that: twenty errors at a 4096-byte
+ * stack each is upwards of 170 KiB, so a page that threw a handful of times
+ * reported nothing at all.
+ *
+ * 48 KiB rather than 64 leaves room for the JSON wrapper and for the gap
+ * between the characters counted here and the bytes a multi-byte message
+ * actually costs where `TextEncoder` is unavailable.
+ */
+const ENVELOPE_BUDGET = 48 * 1024;
+
+/**
+ * Bytes `item` will cost inside an envelope, comma included.
+ *
+ * `TextEncoder` where there is one, because `String.length` counts UTF-16
+ * code units: an error message in Japanese is three bytes per character and
+ * would be undercounted by two thirds.
+ */
+const sizeOf = (item: unknown): number => {
+  const json = JSON.stringify(item);
+  if (typeof TextEncoder === "undefined") return json.length + 1;
+  return new TextEncoder().encode(json).length + 1;
+};
+
+/**
  * Browser-side batcher: accumulates pageviews, client errors, and vitals,
- * and flushes them as ONE envelope (debounced, plus an explicit flush on
+ * and flushes them as envelopes (debounced, plus an explicit flush on
  * pagehide). Draining on flush makes a double-flush a no-op.
+ *
+ * One flush may produce SEVERAL envelopes — see {@link ENVELOPE_BUDGET}.
  */
 export class SigilQueue {
   protected views: View[] = [];
@@ -50,7 +81,10 @@ export class SigilQueue {
   protected held = false;
 
   constructor(
-    protected readonly send: (env: Envelope) => Promise<void>,
+    protected readonly send: (
+      env: Envelope,
+      options: { keepalive: boolean },
+    ) => Promise<void>,
     protected readonly opts: { debounceMs: number } = { debounceMs: 5000 },
   ) {}
 
@@ -144,21 +178,32 @@ export class SigilQueue {
    * complete, and a fresh debounce window on top of that would be exactly the
    * wait this mechanism exists to remove.
    */
-  public async release(options: { force?: boolean } = {}): Promise<void> {
+  public async release(
+    options: { force?: boolean; keepalive?: boolean } = {},
+  ): Promise<void> {
     this.held = false;
     await this.flush(options);
   }
 
   /**
-   * Sends what is queued.
+   * Sends what is queued, in as many envelopes as the budget requires.
    *
    * `force` sends even when there is nothing to send. That is not a debugging
    * affordance: the response carries the current config, so an app whose
    * trackers are all switched off has no other way to hear that they were
    * switched back on. Without it, "collect nothing" would be a state a page
    * could enter and never leave.
+   *
+   * `keepalive` asks for a request that outlives the document, and is for the
+   * flush on the way out and nothing else. It is not free: the browser caps
+   * every keepalive body in the document at 64 KiB together, and refuses the
+   * `fetch` synchronously past it. A debounced flush has a live page to be
+   * answered on, so it uses an ordinary request and leaves the whole quota to
+   * the one that genuinely races the unload.
    */
-  public async flush(options: { force?: boolean } = {}): Promise<void> {
+  public async flush(
+    options: { force?: boolean; keepalive?: boolean } = {},
+  ): Promise<void> {
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;
@@ -171,12 +216,63 @@ export class SigilQueue {
       !this.engagements.length
     )
       return;
-    const env: Envelope = {};
-    if (this.views.length) env.views = this.views.splice(0);
-    if (this.errors.length) env.errors = this.errors.splice(0);
-    if (this.vitals.length) env.vitals = this.vitals.splice(0);
-    if (this.engagements.length) env.engagements = this.engagements.splice(0);
-    await this.send(env).catch(() => {});
+
+    const envelopes = this.pack({
+      views: this.views.splice(0),
+      errors: this.errors.splice(0),
+      vitals: this.vitals.splice(0),
+      engagements: this.engagements.splice(0),
+    });
+
+    const keepalive = options.keepalive === true;
+    // Sequentially: several keepalive requests in flight at once share the one
+    // 64 KiB document quota, which is the very cap this split exists to stay
+    // under.
+    for (const env of envelopes) {
+      await this.send(env, { keepalive }).catch(() => {});
+    }
+  }
+
+  /**
+   * Split one flush into envelopes that each fit {@link ENVELOPE_BUDGET}.
+   *
+   * Greedy and in order: an item goes into the envelope being filled unless it
+   * would push it over, in which case a new one starts. An item larger than
+   * the whole budget still gets an envelope of its own rather than looping
+   * forever — the schema caps every field, so that can only be a near-maximal
+   * error, and an oversized request refused by the server is a better outcome
+   * than a batch dropped without one.
+   *
+   * Always at least one envelope, so `force` still asks the sink for its
+   * config when nothing is queued.
+   */
+  protected pack(batch: Required<Envelope>): Envelope[] {
+    const envelopes: Envelope[] = [];
+    let current: Envelope = {};
+    let size = 0;
+
+    const add = <K extends keyof Envelope>(
+      key: K,
+      item: Required<Envelope>[K][number],
+    ) => {
+      const cost = sizeOf(item);
+      if (size > 0 && size + cost > ENVELOPE_BUDGET) {
+        envelopes.push(current);
+        current = {};
+        size = 0;
+      }
+      const bucket = (current[key] ??= [] as any) as any[];
+      bucket.push(item);
+      size += cost;
+    };
+
+    for (const view of batch.views) add("views", view);
+    for (const engagement of batch.engagements) add("engagements", engagement);
+    for (const error of batch.errors) add("errors", error);
+    for (const vital of batch.vitals) add("vitals", vital);
+
+    envelopes.push(current);
+    return envelopes;
   }
 
   /**

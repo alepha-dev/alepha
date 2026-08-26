@@ -128,13 +128,28 @@ export class SigilBrowserProvider {
       // Every response carries the current config, so the app's own server —
       // which reads it from env on each request — is what keeps a long-lived
       // page current. No second endpoint, and no call that exists only to ask.
-      const send = async (env: object): Promise<void> => {
+      const send = async (
+        env: object,
+        options: { keepalive: boolean } = { keepalive: false },
+      ): Promise<void> => {
         try {
           const res = await fetch("/api/sigil/ingest", {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify(env),
-            keepalive: true,
+            /*
+             * Only on the way out.
+             *
+             * `keepalive` is what lets a request outlive the document, and the
+             * flush on `pagehide` needs it. Everything else was paying its
+             * price for nothing: the browser caps every keepalive body in a
+             * document at 64 KiB TOGETHER and refuses the `fetch`
+             * synchronously past it — no status, no retry, the batch is
+             * simply gone. A debounced flush has a live page to be answered
+             * on, so it goes as an ordinary request and leaves the quota to
+             * the one that genuinely races the unload.
+             */
+            keepalive: options.keepalive,
             credentials: "same-origin",
           } as any);
           const body = await res.json();
@@ -205,13 +220,14 @@ export class SigilBrowserProvider {
 
       this.observeEngagement();
 
+      // The two ways out, and the only two flushes that may outlive the page.
       (window as any).addEventListener("pagehide", () => {
-        void this.queue!.flush();
+        void this.queue!.flush({ keepalive: true });
       });
 
       (document as any).addEventListener("visibilitychange", () => {
         if ((document as any).visibilityState === "hidden") {
-          void this.queue!.flush();
+          void this.queue!.flush({ keepalive: true });
         }
       });
 
