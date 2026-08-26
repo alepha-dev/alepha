@@ -27,6 +27,7 @@ import {
   FolioHistoryService,
 } from "../services/FolioHistoryService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
+import { FolioNameService } from "../services/FolioNameService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 const idParamsSchema = z.object({ id: z.uuid() });
@@ -76,6 +77,7 @@ export class FolioController {
   protected readonly linkService = $inject(FolioLinkService);
   protected readonly blobService = $inject(FolioBlobService);
   protected readonly historyService = $inject(FolioHistoryService);
+  protected readonly nameService = $inject(FolioNameService);
   protected readonly security = $inject(ProjectSecurityService);
 
   /**
@@ -543,9 +545,9 @@ export class FolioController {
    * in the same project and returns the canonical UUID. `null` /
    * `undefined` → root (returns `undefined`).
    *
-   * Cross-type name uniqueness (folio vs blob vs other-folio in the
-   * same directory) is enforced separately via the `folio_names`
-   * reservation table — see `FolioDirectoryService` (Phase B).
+   * Sibling-name uniqueness (a folio against the other folios AND the
+   * directories in the same folder) is enforced separately, through the
+   * `folio_names` reservation table — see `reserveTitle` below.
    */
   protected async resolveDirectoryId(
     directoryId: string | null | undefined,
@@ -603,11 +605,19 @@ export class FolioController {
         body.directoryId,
         body.projectId,
       );
+      // Drive-style: a title already taken in this folder is suffixed
+      // rather than refused, exactly as `FolioDirectoryService.create`
+      // does for a directory. The reservation goes in after the insert
+      // so it can carry the folio's id; the action is `$transactional`,
+      // so a losing race on the UNIQUE index rolls the folio back with
+      // it.
+      const scope = this.nameService.scopeOf(body.projectId, directoryId);
+      const title = await this.nameService.autoSuffix(body.title, scope);
       const shortId = await this.folioShortId.next(String(body.projectId));
       const folio = await this.folios.create({
         projectId: body.projectId,
         shortId,
-        title: body.title,
+        title,
         content,
         summary,
         directoryId,
@@ -621,11 +631,12 @@ export class FolioController {
             // title-LIKE path in the sidebar filter.
             ""
           : buildFolioSearchText({
-              title: body.title,
+              title,
               summary,
               content,
             }),
       });
+      await this.nameService.reserve(title, "folio", folio.id, scope);
       // Sync outbound `[[...]]` references. Skipped for protected folios
       // since `content` is ciphertext — scanning it for `[[...]]` would
       // generate noisy junk links from base64 chars.
@@ -701,7 +712,7 @@ export class FolioController {
         );
       }
 
-      const title = body.title ?? existing.title;
+      const desiredTitle = body.title ?? existing.title;
       const content = body.content ?? existing.content;
       const summary =
         body.summary !== undefined ? body.summary.trim() : existing.summary;
@@ -727,6 +738,20 @@ export class FolioController {
       const isProtected =
         body.protected !== undefined ? body.protected : existing.protected;
       const pinned = body.pinned !== undefined ? body.pinned : existing.pinned;
+
+      // Re-reserve whenever the title or the folder changes — the scope
+      // key is (folder, name), so either one moving invalidates the old
+      // row. Release first, or `autoSuffix` counts the folio's own
+      // reservation as a sibling and renaming "Abc" to "abc" lands on
+      // "abc (1)"; the action is `$transactional`, so a collision in
+      // `reserve` rolls the release back with it. Same shape, and the
+      // same reasoning, as `FolioDirectoryService.rename`.
+      const title = await this.reserveTitle(
+        params.id,
+        existing,
+        desiredTitle,
+        directoryId,
+      );
 
       const updated = await this.folios.updateById(params.id, {
         title,
@@ -827,10 +852,43 @@ export class FolioController {
        * attachments there, paid for and unreachable.
        */
       await this.blobService.deleteByFolio(params.id);
+      // Hand the name back to the folder. `folio_names` has no foreign
+      // key to `folios` (it discriminates by `kind`), so nothing frees
+      // it on cascade — the reservation would outlive the folio and
+      // block the name forever.
+      await this.nameService.releaseByEntity(params.id);
       await this.folios.deleteById(params.id);
       return { ok: true };
     },
   });
+
+  /**
+   * Keep a folio's `folio_names` reservation in step with its title and
+   * its folder, and return the title it actually got.
+   *
+   * A no-op when neither moved: a pin-only or content-only update must
+   * not churn the reservation row, and must not risk suffixing a title
+   * away from itself.
+   */
+  protected async reserveTitle(
+    id: string,
+    existing: { projectId: number; title: string; directoryId?: string },
+    desiredTitle: string,
+    directoryId: string | null | undefined,
+  ): Promise<string> {
+    const nextDirectoryId = directoryId ?? undefined;
+    if (
+      desiredTitle === existing.title &&
+      nextDirectoryId === existing.directoryId
+    ) {
+      return existing.title;
+    }
+    const scope = this.nameService.scopeOf(existing.projectId, nextDirectoryId);
+    await this.nameService.releaseByEntity(id);
+    const title = await this.nameService.autoSuffix(desiredTitle, scope);
+    await this.nameService.reserve(title, "folio", id, scope);
+    return title;
+  }
 
   /**
    * A folio as a link SOURCE. Exists so the four `syncLinks` call sites in

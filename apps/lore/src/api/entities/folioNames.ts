@@ -12,7 +12,9 @@ import { $entity, db } from "alepha/orm";
  * index, so using `parent_directory_id = NULL` for root-level entries
  * wouldn't catch collisions. To work around that:
  * - non-root entries set `parentDirectoryId` to the parent's UUID and
- *   leave `rootScope` undefined.
+ *   `rootScope` to `""`. Not undefined: a NULL anywhere in the index
+ *   makes the whole row distinct from every other, so leaving it NULL
+ *   turned the index off for every name inside a directory.
  * - root entries set `parentDirectoryId` to a sentinel string
  *   `root:<projectId>` (computed by `FolioNameService.dbParentId`)
  *   AND set `rootScope = String(projectId)`. The redundant `rootScope`
@@ -47,7 +49,7 @@ export const folioNames = $entity({
     parentDirectoryId: z.string().optional(),
     /**
      * Mirror of `parentDirectoryId` for root entries — `String(projectId)`.
-     * Undefined for non-root entries. See entity docstring.
+     * `""` for non-root entries, never NULL. See entity docstring.
      */
     rootScope: z.string().optional(),
     /**

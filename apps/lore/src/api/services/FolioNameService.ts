@@ -47,17 +47,36 @@ export class FolioNameService {
   protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
+   * Build the `ScopeKey` for a node sitting under `parentDirectoryId`, or
+   * at `projectId`'s root when there is no parent.
+   *
+   * Lives here rather than on either caller because both the folio and the
+   * directory side have to agree on it exactly: a scope built one way at
+   * create time and another at rename time reserves under two different
+   * keys, and the reservation silently guards nothing.
+   */
+  public scopeOf(projectId: number, parentDirectoryId?: string): ScopeKey {
+    return parentDirectoryId
+      ? { parentDirectoryId }
+      : { rootScope: String(projectId) };
+  }
+
+  /**
    * Reserve `name` for `entityId` of `kind` under `scope`. Throws if
    * another sibling already owns the name (case-insensitive). Caller
    * should run this inside the same transaction that inserts the
    * entity row so the reservation rolls back together with the entity
    * on failure.
    *
-   * SQLite gotcha: NULLs are distinct in UNIQUE indexes, so two root-
-   * level reservations with `parent_directory_id = NULL` wouldn't
-   * collide. We always populate `parent_directory_id` with a non-null
-   * sentinel string (`root:<projectId>` for root rows) so the index
-   * actually enforces uniqueness.
+   * SQLite gotcha: NULLs are distinct in UNIQUE indexes, so a row with a
+   * NULL anywhere in the index can be inserted twice over. Both indexed
+   * scope columns are therefore always non-null — `parent_directory_id`
+   * takes a `root:<projectId>` sentinel at the project root, and
+   * `root_scope` takes `""` inside a directory. `root_scope` used to be
+   * left NULL there, which meant the index bit at the root and nowhere
+   * else: every reservation inside a folder could be duplicated freely,
+   * so the "one of the two racing writers rolls back" guarantee this
+   * class documents held only for root-level names.
    */
   public async reserve(
     name: string,
@@ -67,7 +86,7 @@ export class FolioNameService {
   ): Promise<void> {
     await this.names.create({
       parentDirectoryId: this.dbParentId(scope),
-      rootScope: scope.parentDirectoryId ? undefined : (scope.rootScope ?? ""),
+      rootScope: scope.rootScope ?? "",
       lowerName: normalize(name),
       kind,
       entityId,

@@ -678,7 +678,7 @@ export class FolioTools {
 
   directory_list = $tool({
     description:
-      "List the contents of a directory (folios + blobs + child directories) in one call. Pass `directory_shortId` to drill in, or omit for the project root. Returns the directory metadata, the breadcrumb (root → … → parent), and `entries` tagged by `kind`. This is the Drive-like browse endpoint for AI agents.",
+      "List the contents of a directory (folios + child directories) in one call. Pass `directory_shortId` to drill in, or omit for the project root. Returns the directory metadata, the breadcrumb (root → … → parent), and `entries` tagged by `kind`. This is the Drive-like browse endpoint for AI agents. Attachments are not listed here: a blob belongs to one folio rather than to a folder, so ask `blob_list` for a folio's.",
     title: "List directory contents",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -694,7 +694,10 @@ export class FolioTools {
         ),
         entries: z.array(
           z.object({
-            kind: z.enum(["directory", "folio", "blob"]),
+            // No `"blob"`: an attachment belongs to a folio, not to a
+            // folder, so it is never a child of a directory. Ask
+            // `blob_list` for a folio's attachments.
+            kind: z.enum(["directory", "folio"]),
             shortId: z.integer(),
             name: z.string(),
             updatedAt: z.string(),

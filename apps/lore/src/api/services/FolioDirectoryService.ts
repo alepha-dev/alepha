@@ -2,7 +2,6 @@ import { $inject } from "alepha";
 import { $repository, $sequence } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
-import { folioBlobs } from "../entities/folioBlobs.ts";
 import {
   type FolioDirectory,
   folioDirectories,
@@ -27,7 +26,6 @@ const MAX_DEPTH = 8;
 export class FolioDirectoryService {
   protected readonly directories = $repository(folioDirectories);
   protected readonly folios = $repository(folios);
-  protected readonly blobs = $repository(folioBlobs);
   protected readonly names = $inject(FolioNameService);
   protected readonly blobService = $inject(FolioBlobService);
   protected readonly directoryShortId = $sequence();
@@ -171,18 +169,25 @@ export class FolioDirectoryService {
   }
 
   /**
-   * Delete a directory. Refuses if not empty (folios + blobs + child
-   * dirs) unless `cascade: true` — in which case we walk the subtree
-   * and release every reservation explicitly before letting the FK
-   * CASCADE wipe the rows. (`folio_names` has no FK to the entity
-   * tables on purpose — it discriminates by `kind` — so it can't piggy-
-   * back on the DB cascade. Explicit walk keeps the reservation table
-   * consistent.)
+   * Delete a directory. Refuses if not empty (folios + child dirs)
+   * unless `cascade: true` — in which case we walk the subtree and
+   * release every reservation explicitly before letting the FK CASCADE
+   * wipe the rows. (`folio_names` has no FK to the entity tables on
+   * purpose — it discriminates by `kind` — so it can't piggy-back on the
+   * DB cascade. Explicit walk keeps the reservation table consistent.)
+   *
+   * Attachments are not counted and not walked. A blob belongs to a
+   * folio, not to a folder: `folio_blobs.directoryId` has been dead
+   * since attachments became folio-scoped, so a query on it always came
+   * back empty, and the release loop it fed had nothing to release —
+   * blobs left the `folio_names` namespace in the same change. The
+   * attachments of the folios below are reclaimed through
+   * `deleteByFolio` in the loop that follows.
    */
   public async delete(id: string, opts?: { cascade?: boolean }): Promise<void> {
     const directory = await this.findById(id);
     if (!directory) throw new NotFoundError("Directory not found");
-    const [childDirs, childFolios, childBlobs] = await Promise.all([
+    const [childDirs, childFolios] = await Promise.all([
       this.directories.findMany({
         where: { parentId: { eq: id } },
         columns: ["id"],
@@ -191,15 +196,8 @@ export class FolioDirectoryService {
         where: { directoryId: { eq: id } },
         columns: ["id"],
       }),
-      this.blobs.findMany({
-        where: { directoryId: { eq: id } },
-        columns: ["fileId"],
-      }),
     ]);
-    const isEmpty =
-      childDirs.length === 0 &&
-      childFolios.length === 0 &&
-      childBlobs.length === 0;
+    const isEmpty = childDirs.length === 0 && childFolios.length === 0;
     if (!isEmpty && !opts?.cascade) {
       throw new BadRequestError(
         "Directory is not empty. Pass cascade=true to delete recursively.",
@@ -217,9 +215,6 @@ export class FolioDirectoryService {
         // `folio_blobs` rows with it and leaves the framework files behind.
         // Same reclamation `FolioController.delete` does for one folio.
         await this.blobService.deleteByFolio(folio.id);
-      }
-      for (const blob of childBlobs) {
-        await this.names.releaseByEntity(blob.fileId);
       }
     }
     await this.names.releaseByEntity(id);
@@ -246,11 +241,11 @@ export class FolioDirectoryService {
   }
 
   /**
-   * Build the ScopeKey for the name-reservation table.
+   * Build the ScopeKey for the name-reservation table. Delegates so the
+   * folio side and the directory side cannot drift apart on what a scope
+   * key is.
    */
   public scopeOf(projectId: number, parentDirectoryId?: string) {
-    return parentDirectoryId
-      ? { parentDirectoryId }
-      : { rootScope: String(projectId) };
+    return this.names.scopeOf(projectId, parentDirectoryId);
   }
 }
