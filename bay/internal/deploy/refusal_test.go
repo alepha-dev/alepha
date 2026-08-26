@@ -119,7 +119,7 @@ func TestStaticToProcessRedeployAllocatesAPort(t *testing.T) {
 // user owns each app's `.env` and database, so a shared one hands each of
 // them the other's secrets.
 //
-// The pair below needs no truncation and no hash collision to get there —
+// The pair below needs no truncation and no hash collision to get there -
 // the "/" in a key becomes a "-", so `demo-staging/eu` and `demo/staging-eu`
 // are two instances with one unit name, both comfortably inside useradd's
 // limit. `runner.UserName` deliberately leaves short names alone (changing
@@ -140,7 +140,7 @@ func TestDeployRefusesAUnixUserAnotherInstanceHolds(t *testing.T) {
 	// Explicit, distinct domains. The derived one is built from the same key
 	// with the same lossy "/" replacement, so leaving them to Bay makes the
 	// two instances collide on DOMAIN first and the domain claim refuses them
-	// before the user check is ever consulted — which is worth knowing (that
+	// before the user check is ever consulted - which is worth knowing (that
 	// guard catches the sub-case) and useless for reaching this one.
 	if _, err := Run(Options{
 		Root:       root,

@@ -173,8 +173,8 @@ func TestPrintStatusJSONProblems(t *testing.T) {
 	})
 }
 
-// `bay status` judged backup staleness against `defaultBackupInterval` — the
-// value this BINARY was compiled with — rather than the one the running
+// `bay status` judged backup staleness against `defaultBackupInterval` - the
+// value this BINARY was compiled with - rather than the one the running
 // `serve` was started with. A host backing up every 6 hours was reported
 // stale after 24, and a host backing up weekly was never reported stale at
 // all. The column exists to notice a schedule that stopped, and it was
@@ -212,7 +212,7 @@ func TestSettingsRouteReportsTheIntervalServeIsRunning(t *testing.T) {
 }
 
 // Backups switched off (`--backup-interval 0`) must not report every app as
-// stale. `schedule.Stale` already answers false for a non-positive interval —
+// stale. `schedule.Stale` already answers false for a non-positive interval -
 // what was missing is that `status` never saw the zero, so it judged a host
 // with backups deliberately off against 24 hours and flagged all of them.
 func TestSettingsRouteCarriesADisabledSchedule(t *testing.T) {

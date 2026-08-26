@@ -39,7 +39,7 @@ func TestUserNameKeepsTwoLongInstancesApart(t *testing.T) {
 	}
 }
 
-// The same key must always answer the same name — the user owns files across
+// The same key must always answer the same name - the user owns files across
 // deploys, so an answer that drifts orphans them.
 func TestUserNameIsStable(t *testing.T) {
 	key := "analytics-ingestion-service/production"
@@ -86,7 +86,7 @@ func TestUserNameHashesOnlyPastTheLimit(t *testing.T) {
 // `demo/staging-eu` are different instances with the same unit name, both
 // well inside the limit, so both are returned unchanged. Making them
 // distinct would mean changing the name of every instance that already owns
-// files under it — orphaning that ownership on the next deploy, for the sake
+// files under it - orphaning that ownership on the next deploy, for the sake
 // of a pair that `Deploy` refuses outright.
 //
 // So this pins the shape of the remaining hole, and
@@ -96,7 +96,7 @@ func TestUserNameCanCollideOnShortKeysAndIsRefusedElsewhere(t *testing.T) {
 	b := "demo/staging-eu"
 	if UserName(a) != UserName(b) {
 		t.Fatalf(
-			"`UserName` became injective for short keys (%q vs %q) — good, but the deploy-time "+
+			"`UserName` became injective for short keys (%q vs %q) - good, but the deploy-time "+
 				"refusal's own test uses this pair to reach the refusal branch, so give it another",
 			UserName(a), UserName(b))
 	}
