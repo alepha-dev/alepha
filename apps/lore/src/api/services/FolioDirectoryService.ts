@@ -8,6 +8,7 @@ import {
   folioDirectories,
 } from "../entities/folioDirectories.ts";
 import { folios } from "../entities/folios.ts";
+import { FolioBlobService } from "./FolioBlobService.ts";
 import { FolioNameService } from "./FolioNameService.ts";
 
 /**
@@ -28,6 +29,7 @@ export class FolioDirectoryService {
   protected readonly folios = $repository(folios);
   protected readonly blobs = $repository(folioBlobs);
   protected readonly names = $inject(FolioNameService);
+  protected readonly blobService = $inject(FolioBlobService);
   protected readonly directoryShortId = $sequence();
 
   public async findById(id: string): Promise<FolioDirectory | undefined> {
@@ -211,6 +213,10 @@ export class FolioDirectoryService {
       }
       for (const folio of childFolios) {
         await this.names.releaseByEntity(folio.id);
+        // The folio is about to be cascaded away by the FK, which takes its
+        // `folio_blobs` rows with it and leaves the framework files behind.
+        // Same reclamation `FolioController.delete` does for one folio.
+        await this.blobService.deleteByFolio(folio.id);
       }
       for (const blob of childBlobs) {
         await this.names.releaseByEntity(blob.fileId);

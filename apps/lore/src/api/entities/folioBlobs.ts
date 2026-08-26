@@ -11,10 +11,22 @@ import { projects } from "./projects.ts";
  * metadata (size, mime, checksum/sha256, originalName, tags); Lore
  * owns the project-scoping + folio tree position.
  *
- * `fileId` is both the PK and the FK back to `files`. One folio_blob
- * row per file, one file per folio_blob row. Cascade-delete in both
- * directions — wiping the framework file row wipes the overlay; wiping
- * the project wipes both.
+ * `fileId` is the PK, and a LOGICAL reference back to `files.id` — one
+ * folio_blob row per file, one file per folio_blob row. There is no
+ * physical foreign key and no cascade between the two: this file used to
+ * claim both, and the claim was the bug. Deleting a framework file left
+ * the overlay row behind, and deleting a folio cascaded the overlay rows
+ * away while the files and their bytes stayed in the bucket forever.
+ *
+ * Adding the constraint means a table rebuild, and a rebuild on D1 is the
+ * cascade-wipe this app has already been bitten by once — see "Migration
+ * safety on D1" in `apps/lore/CLAUDE.md`. `FolioBlobService.delete` and
+ * `FolioBlobService.deleteByFolio` are the enforcement instead, and are
+ * the only two ways an attachment may be removed.
+ *
+ * `projectId` and `folioId` below ARE physical and DO cascade: wiping the
+ * project or the folio wipes the overlay rows. That is what makes
+ * `deleteByFolio` have to run first.
  *
  * An attachment belongs to exactly ONE folio and dies with it. It used
  * to sit in the folio tree beside folios and directories, scoped by
