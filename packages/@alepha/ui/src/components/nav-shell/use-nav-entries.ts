@@ -1,4 +1,5 @@
 import { useAuth } from "alepha/react/auth";
+import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
@@ -8,6 +9,7 @@ import {
   isActivePath,
   isDescendantOf,
   keepDeepestActive,
+  navGroupLabel,
   navLabel,
 } from "./nav-tree-util.ts";
 
@@ -36,6 +38,12 @@ export interface NavEntry {
   label: ReactNode;
   icon?: ReactNode;
   group?: string;
+  /**
+   * Section heading, already localised. `nav.group` stays the raw grouping key
+   * — two entries are in the same section when they agree on it, in every
+   * language — so the text a consumer renders is this, never `group`.
+   */
+  groupLabel?: string;
   /**
    * `nav.order` within the group.
    */
@@ -69,8 +77,15 @@ export function useNavEntries(options: UseNavEntriesOptions): NavEntry[] {
   const router = useRouter<any>();
   const state = useRouterState();
   const { has } = useAuth();
+  const i18n = useI18n();
   const pages = router.pages;
   const current = state.url?.pathname ?? "/";
+  // `tr` is a stable bound field on the provider, so it can never be what
+  // tells the memo below that the labels changed: the active language has to
+  // be a dependency in its own right. (`has` happens to be a fresh closure per
+  // render today, which recomputes everything anyway — that is an accident of
+  // `useAuth`, not something the labels may rely on.)
+  const lang = i18n.lang;
 
   return useMemo(() => {
     const entries: NavEntry[] = [];
@@ -95,9 +110,10 @@ export function useNavEntries(options: UseNavEntriesOptions): NavEntry[] {
       entries.push({
         name: page.name,
         href: page.match,
-        label: navLabel(page),
+        label: navLabel(page, i18n.tr),
         icon: nav.icon,
         group: nav.group,
+        groupLabel: navGroupLabel(page, i18n.tr),
         order,
         groupOrder: 0,
         keywords: nav.keywords,
@@ -117,5 +133,5 @@ export function useNavEntries(options: UseNavEntriesOptions): NavEntry[] {
     // matched more specifically. Only now, with the whole set in hand, can the
     // shallower matches be dropped.
     return keepDeepestActive(entries);
-  }, [pages, current, has, options.root]);
+  }, [pages, current, has, options.root, lang]);
 }

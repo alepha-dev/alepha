@@ -22,8 +22,21 @@ import { uiFr } from "../i18n-fr.ts";
 const SRC = join(import.meta.dirname, "..", "..");
 
 /**
- * Every `tr("some.key"` or `tr(\`some.key\`` in the package sources.
+ * Every key the package asks for, in either of the two forms it declares one.
+ *
+ * `tr("some.key"` / `tr(\`some.key\`` is the call site itself. `labelKey:` and
+ * `groupKey:` are the declarative form the nav shell needs: a `$page`'s class
+ * field is evaluated once, outside React, so a router names the key and the
+ * sidebar resolves it later with `tr(nav.labelKey)` — a computed argument no
+ * regex over call sites can read. Missing that form here would report every
+ * nav translation as an unused extra, which is how a "coverage" check ends up
+ * arguing for deleting the coverage.
  */
+const KEY_PATTERNS = [
+  /\btr\(\s*(?:`([a-zA-Z][\w.]*)`|"([a-zA-Z][\w.]*)")/g,
+  /\b(?:labelKey|groupKey):\s*"([a-zA-Z][\w.]*)"/g,
+];
+
 const collectKeys = (dir: string, found = new Set<string>()): Set<string> => {
   for (const entry of readdirSync(dir)) {
     const path = join(dir, entry);
@@ -37,10 +50,10 @@ const collectKeys = (dir: string, found = new Set<string>()): Set<string> => {
       continue;
     }
     const source = readFileSync(path, "utf8");
-    for (const match of source.matchAll(
-      /\btr\(\s*(?:`([a-zA-Z][\w.]*)`|"([a-zA-Z][\w.]*)")/g,
-    )) {
-      found.add((match[1] ?? match[2]) as string);
+    for (const pattern of KEY_PATTERNS) {
+      for (const match of source.matchAll(pattern)) {
+        found.add((match[1] ?? match[2]) as string);
+      }
     }
   }
   return found;
@@ -53,6 +66,15 @@ describe("uiFr", () => {
     // Guards the guard: a regex that silently matches nothing would make every
     // assertion below pass for the wrong reason.
     expect(keys.size).toBeGreaterThan(300);
+  });
+
+  it("finds keys declared as nav metadata, not only as tr() calls", () => {
+    // The `labelKey` / `groupKey` pattern specifically: it is the only source
+    // for the whole admin and account chrome, and nothing else in the suite
+    // would notice it silently matching nothing.
+    expect(keys).toContain("admin.nav.users");
+    expect(keys).toContain("admin.nav.group.identity");
+    expect(keys).toContain("account.nav.profile");
   });
 
   it("translates every key the components ask for", () => {

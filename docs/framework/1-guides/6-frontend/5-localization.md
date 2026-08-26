@@ -89,9 +89,33 @@ class AppI18n {
 
 It is a plain object rather than a `$dictionary` because `@alepha/ui` is a component library with no module of its own - nothing to register into.
 
-`uiFr` covers **every** `tr()` key in the package - dialogs, tables, generated forms and controls, the auth screens, and the whole `@alepha/ui/components/admin/*` back office. A test asserts that parity in both directions, so a component that gains a key fails the suite until the translation lands: a missing key would otherwise fall back to its English default, which looks deliberate and is how an entire back office once stayed in English inside a French application.
+`uiFr` covers **every** key the package asks for - `tr()` calls and the `labelKey` / `groupKey` declarations below - across dialogs, tables, generated forms and controls, the auth screens, the account kit, and the whole `@alepha/ui/components/admin/*` back office. A test asserts that parity in both directions, so a component that gains a key fails the suite until the translation lands: a missing key would otherwise fall back to its English default, which looks deliberate and is how an entire back office once stayed in English inside a French application.
 
 There is no `uiEn`, since the components already default to English. For any other language, copy `uiFr` as a starting point.
+
+### Nav labels: name a key, don't call `tr()`
+
+A page's `nav` is a class field, evaluated once when the router is constructed - outside React, where `tr()` does not exist and where the active language is whatever it happened to be at startup. Writing the label as a `tr()` call there freezes it; that is how the admin sidebar stayed English inside an otherwise French back office.
+
+So a shell page names the key instead, and the sidebar, breadcrumbs and command palette resolve it at render time:
+
+```tsx
+products = $pageAdmin({
+  path: "/products",
+  nav: {
+    label: "Catalogue",
+    labelKey: "shop.nav.products",
+    group: "Commerce",
+    groupKey: "shop.nav.group.commerce",
+    order: 100,
+  },
+  lazy: () => import("./AdminProducts.tsx"),
+});
+```
+
+`label` stays the English text and becomes the default passed to `tr()`, so a page whose key nobody translated renders exactly what it rendered before - never a raw key. `group` is untouched by the translation: it is the grouping _key_, and two pages are in the same section when they agree on it, in every language. Only `groupKey` decides what the heading says.
+
+`labelKey` and `groupKey` are `@alepha/ui`'s own additions to `$page`'s `nav`, available through `$pageNav`, `$pageAdmin` and `$pageAccount`. The framework's router never reads them.
 
 ## Lazy Loading
 

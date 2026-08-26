@@ -1,3 +1,4 @@
+import { useI18n } from "alepha/react/i18n";
 import { useRouterState } from "alepha/react/router";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
@@ -31,6 +32,12 @@ export function useNavBreadcrumbs(
   options: UseNavBreadcrumbsOptions,
 ): NavCrumb[] {
   const state = useRouterState();
+  const i18n = useI18n();
+  // Load-bearing, and pinned by `admin-nav-i18n.browser.spec.tsx`: `tr` never
+  // changes identity and `state.layers` does not move on a language switch, so
+  // without `lang` in the list below the trail keeps its first language until
+  // the next navigation.
+  const lang = i18n.lang;
 
   return useMemo(() => {
     const layers = state.layers ?? [];
@@ -41,7 +48,7 @@ export function useNavBreadcrumbs(
     for (const layer of chain) {
       const route = layer.route;
       if (!route) continue;
-      crumbs.push({ label: navLabel(route), href: route.match });
+      crumbs.push({ label: navLabel(route, i18n.tr), href: route.match });
     }
 
     // The current page is a label, not a link.
@@ -49,5 +56,5 @@ export function useNavBreadcrumbs(
       crumbs[crumbs.length - 1] = { label: crumbs[crumbs.length - 1].label };
     }
     return crumbs;
-  }, [state.layers, options.root]);
+  }, [state.layers, options.root, lang]);
 }

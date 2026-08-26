@@ -8,11 +8,19 @@ import {
 } from "alepha/react/router";
 import { $secure } from "alepha/security";
 
+import type { NavMeta } from "./nav-tree-util.ts";
+
 export interface PageNavOptions<
   TConfig extends PageConfigSchema = PageConfigSchema,
   TProps extends object = TPropsDefault,
   TPropsParent extends object = TPropsParentDefault,
 > extends PagePrimitiveOptions<TConfig, TProps, TPropsParent> {
+  /**
+   * Nav metadata, widened to {@link NavMeta} so an entry can name the
+   * catalogue keys the shell resolves for its label and its group heading.
+   * Everything else is `$page`'s own `nav`.
+   */
+  nav?: NavMeta;
   /**
    * Permission(s) required for this page — wired into BOTH the route gate
    * (`use: [$secure({ permissions })]`) and the nav-entry gate

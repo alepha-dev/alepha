@@ -40,7 +40,10 @@ export function useNavTree(options: UseNavTreeOptions): NavGroup[] {
         byKey.set(key, items);
         // Entries are pre-sorted by (groupOrder, order), so the first time we
         // see a group it lands in the right position.
-        groups.push({ label: entry.group || undefined, items });
+        groups.push({
+          label: entry.groupLabel || entry.group || undefined,
+          items,
+        });
       }
       items.push(toNavItem(entry));
     }

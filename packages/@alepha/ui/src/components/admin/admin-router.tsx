@@ -15,8 +15,7 @@ import type {
   AdminUserController,
 } from "alepha/api/users";
 import type { AdminWorkflowController } from "alepha/api/workflows";
-import { $page } from "alepha/react/router";
-import { $secure } from "alepha/security";
+import { Translate } from "alepha/react/i18n";
 import { $client } from "alepha/server/links";
 import {
   Bell,
@@ -116,6 +115,24 @@ import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
  * initializer — injects `AdminRouter` and sets `parent: this.admin.layout`
  * directly, the same way `$pageAdmin` does internally.
  *
+ * ### Labels are catalogue keys, not text
+ *
+ * Every `nav` here carries a `labelKey` (and a `groupKey` where it has a
+ * group) beside its English `label`. A class field is evaluated once, at
+ * construction, outside React — so a label written as `tr(...)` would be
+ * frozen in whatever language happened to be active then, which is why the
+ * whole admin chrome stayed English inside a French application while the
+ * pages under it were translated.
+ *
+ * The keys are resolved by `navLabel` / `navGroupLabel`, which the sidebar,
+ * the breadcrumbs and the palette all call from inside a component, so a
+ * language switch re-labels the shell with no reload. `label` stays the
+ * English text and becomes the `tr` default, so an application that registers
+ * no catalogue sees exactly what it saw before.
+ *
+ * A page added here without a `labelKey` is untranslatable, and
+ * `admin-router.spec.ts` fails for it.
+ *
  * ### Group order is a contract
  *
  * The built-in pages are parked in a reserved high band: `Identity`
@@ -172,11 +189,11 @@ export class AdminRouter {
    * `/admin` contributes `dashboardCards` rather than redirecting away from
    * it.
    */
-  layout = $page({
+  layout = $pageNav({
     name: "admin",
     path: "/admin",
-    use: [$secure({ permissions: ["admin:ui"] })],
-    nav: { label: "Admin" },
+    permission: "admin:ui",
+    nav: { label: "Admin", labelKey: "admin.nav.admin" },
     lazy: () => import("./admin-layout.tsx"),
   });
 
@@ -201,6 +218,7 @@ export class AdminRouter {
     head: { title: "Dashboard" },
     nav: {
       label: "Dashboard",
+      labelKey: "admin.nav.dashboard",
       icon: createElement(LayoutDashboard),
       order: 0,
     },
@@ -231,7 +249,14 @@ export class AdminRouter {
         can: () => this.userApi.findUsers.can(),
         render: () =>
           createElement(AdminDashboardCountCard, {
-            label: "Users",
+            // `render` runs inside `AdminDashboard`'s render but not inside a
+            // hook-safe position, so the label is an element that looks the
+            // key up itself rather than a `tr` call here. Same key as the nav
+            // entry: it is the same word on the same subject.
+            label: createElement(Translate, {
+              k: "admin.nav.users",
+              fallback: "Users",
+            }),
             href: "/admin/users",
             icon: createElement(UsersIcon, { className: "size-4" }),
             load: async () =>
@@ -252,8 +277,10 @@ export class AdminRouter {
     can: () => this.userApi.findUsers.can(),
     nav: {
       label: "Users",
+      labelKey: "admin.nav.users",
       icon: createElement(UsersIcon),
       group: "Identity",
+      groupKey: "admin.nav.group.identity",
       order: 1000,
     },
     lazy: () => import("./admin-users.tsx"),
@@ -261,14 +288,17 @@ export class AdminRouter {
   });
 
   /**
-   * No `nav` — a secured route that is not a sidebar entry. The breadcrumb
-   * label falls back to `head.title`.
+   * `nav.hidden` — a secured route that is not a sidebar entry, but still a
+   * breadcrumb. It carries a `nav` only so the crumb has a `labelKey`: without
+   * one the label falls back to `head.title`, which is a plain string
+   * evaluated here and so permanently English.
    */
   userDetail = $pageNav({
     parent: this.layout,
     path: "/users/:userId",
     name: "userDetail",
     head: { title: "User" },
+    nav: { hidden: true, label: "User", labelKey: "admin.nav.userDetail" },
     permission: "admin:user:read",
     can: () => this.userApi.getUser.can(),
     schema: {
@@ -289,8 +319,10 @@ export class AdminRouter {
     can: () => this.sessionApi.findSessions.can(),
     nav: {
       label: "Sessions",
+      labelKey: "admin.nav.sessions",
       icon: createElement(ShieldCheck),
       group: "Identity",
+      groupKey: "admin.nav.group.identity",
       order: 1001,
     },
     lazy: () => import("./admin-sessions.tsx"),
@@ -305,8 +337,10 @@ export class AdminRouter {
     can: () => this.apiKeyApi.findApiKeys.can(),
     nav: {
       label: "API keys",
+      labelKey: "admin.nav.keys",
       icon: createElement(KeyRound),
       group: "Identity",
+      groupKey: "admin.nav.group.identity",
       order: 1003,
       keywords: ["tokens", "credentials"],
     },
@@ -322,8 +356,10 @@ export class AdminRouter {
     can: () => this.jobApi.listJobs.can(),
     nav: {
       label: "Jobs",
+      labelKey: "admin.nav.jobs",
       icon: createElement(Timer),
       group: "System",
+      groupKey: "admin.nav.group.system",
       order: 1010,
     },
     lazy: () => import("./admin-jobs.tsx"),
@@ -338,8 +374,10 @@ export class AdminRouter {
     can: () => this.notificationApi.findNotifications.can(),
     nav: {
       label: "Notifications",
+      labelKey: "admin.nav.notifications",
       icon: createElement(Bell),
       group: "System",
+      groupKey: "admin.nav.group.system",
       order: 1011,
     },
     lazy: () => import("./admin-notifications.tsx"),
@@ -354,8 +392,10 @@ export class AdminRouter {
     can: () => this.auditApi.findAudits.can(),
     nav: {
       label: "Audit log",
+      labelKey: "admin.nav.audits",
       icon: createElement(ShieldAlert),
       group: "Identity",
+      groupKey: "admin.nav.group.identity",
       order: 1002,
     },
     lazy: () => import("./admin-audits.tsx"),
@@ -370,8 +410,10 @@ export class AdminRouter {
     can: () => this.fileApi.findFiles.can(),
     nav: {
       label: "Files",
+      labelKey: "admin.nav.files",
       icon: createElement(Files),
       group: "System",
+      groupKey: "admin.nav.group.system",
       order: 1012,
     },
     lazy: () => import("./admin-files.tsx"),
@@ -386,8 +428,10 @@ export class AdminRouter {
     can: () => this.parameterApi.getParameterTree.can(),
     nav: {
       label: "Parameters",
+      labelKey: "admin.nav.parameters",
       icon: createElement(SlidersHorizontal),
       group: "System",
+      groupKey: "admin.nav.group.system",
       order: 1015,
       keywords: ["settings", "config", "configuration"],
     },
@@ -409,8 +453,10 @@ export class AdminRouter {
     can: () => this.paymentApi.listIntents.can(),
     nav: {
       label: "Payments",
+      labelKey: "admin.nav.payments",
       icon: createElement(CreditCard),
       group: "System",
+      groupKey: "admin.nav.group.system",
       order: 1013,
     },
     lazy: () => import("./admin-payments.tsx"),
@@ -425,8 +471,10 @@ export class AdminRouter {
     can: () => this.analyticsApi.listDatasets.can(),
     nav: {
       label: "Analytics",
+      labelKey: "admin.nav.analytics",
       icon: createElement(ChartLine),
       group: "System",
+      groupKey: "admin.nav.group.system",
       order: 1016,
     },
     lazy: () => import("./admin-analytics.tsx"),
@@ -441,8 +489,10 @@ export class AdminRouter {
     can: () => this.workflowApi.getWorkflowRegistry.can(),
     nav: {
       label: "Workflows",
+      labelKey: "admin.nav.workflows",
       icon: createElement(Workflow),
       group: "System",
+      groupKey: "admin.nav.group.system",
       order: 1014,
       keywords: ["saga", "steps", "executions"],
     },

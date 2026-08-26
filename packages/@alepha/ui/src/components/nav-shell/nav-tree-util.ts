@@ -1,4 +1,4 @@
-import type { PageRoute } from "alepha/react/router";
+import type { PageNav, PageRoute } from "alepha/react/router";
 import type { ReactNode } from "react";
 
 /**
@@ -9,10 +9,87 @@ import type { ReactNode } from "react";
  */
 
 /**
+ * A page's `nav` metadata plus the catalogue keys the shell resolves for it.
+ *
+ * The keys live here rather than in the framework's own {@link PageNav}
+ * because they mean nothing to the router: `$page` never reads them, and
+ * `alepha/react/router` must not learn about i18n to carry a string. Every
+ * surface that turns nav metadata into visible text goes through this module,
+ * so this is the one place that has to know.
+ *
+ * A key is optional and additive: `label` stays the English text and is used
+ * verbatim when no key is declared, and as the `tr` default when one is — so
+ * an application that registers no French catalogue sees exactly what it saw
+ * before.
+ */
+export interface NavMeta extends PageNav {
+  /**
+   * Catalogue key for {@link PageNav.label}, resolved at render time so the
+   * entry follows a language switch.
+   *
+   * A `$page`'s class field is evaluated once, at construction, outside React
+   * — which is why the label cannot simply be `tr(...)` there. Declaring the
+   * key instead moves the lookup to {@link navLabel}, which the sidebar,
+   * breadcrumbs and command palette all call from inside a component.
+   */
+  labelKey?: string;
+
+  /**
+   * Catalogue key for {@link PageNav.group} — the sidebar section heading.
+   *
+   * `group` itself stays the untranslated string because it is the grouping
+   * KEY: entries are bucketed by it, and two pages in the same section must
+   * agree on it in every language. Only the heading is translated.
+   *
+   * Declared per page, like `group`, rather than once per section: there is no
+   * section object to hang it on, and the pair reads as one decision at the
+   * call site.
+   */
+  groupKey?: string;
+}
+
+/**
+ * Looks up a catalogue key. Structurally `I18nProvider.tr`, redeclared here so
+ * this module stays a plain utility — it is called from hooks, which is where
+ * the real `tr` comes from.
+ */
+export type NavTranslate = (
+  key: string,
+  options?: { default?: string },
+) => string;
+
+/**
+ * A page's nav metadata, widened to the shell's own {@link NavMeta}.
+ *
+ * `$page` types `nav` as {@link PageNav} and copies it through untouched, so
+ * the extra keys are there at runtime; only the type has to be re-stated.
+ */
+export function navMeta(page: PageRoute): NavMeta | undefined {
+  return page.nav as NavMeta | undefined;
+}
+
+/**
  * Resolve the display label for a page: `nav.label`, then the page `label`,
  * then a static `head.title`, then the route name as a last resort.
+ *
+ * With `tr` and a `nav.labelKey`, the catalogue wins and the chain above
+ * becomes the default passed to it — so a missing entry still renders the
+ * English text the page declared, never a raw key.
  */
-export function navLabel(page: PageRoute): ReactNode {
+export function navLabel(page: PageRoute, tr?: NavTranslate): ReactNode {
+  const fallback = navLabelFallback(page);
+  const key = navMeta(page)?.labelKey;
+  if (tr && key) {
+    return tr(key, {
+      // `tr` needs a string; a label declared as an element cannot be one, so
+      // the route name stands in — it is what the chain ends on anyway.
+      default: typeof fallback === "string" ? fallback : page.name,
+    });
+  }
+  return fallback;
+}
+
+function navLabelFallback(page: PageRoute): ReactNode {
   if (page.nav?.label != null) return page.nav.label;
   if (page.label != null) return page.label;
   const head = page.head;
@@ -22,6 +99,22 @@ export function navLabel(page: PageRoute): ReactNode {
     return head.title;
   }
   return page.name;
+}
+
+/**
+ * Resolve the sidebar / palette heading for a page's section: the catalogue
+ * entry named by `nav.groupKey`, defaulting to `nav.group` itself.
+ */
+export function navGroupLabel(
+  page: PageRoute,
+  tr?: NavTranslate,
+): string | undefined {
+  const nav = navMeta(page);
+  if (!nav?.group) return undefined;
+  if (tr && nav.groupKey) {
+    return tr(nav.groupKey, { default: nav.group });
+  }
+  return nav.group;
 }
 
 /**

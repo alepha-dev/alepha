@@ -7,6 +7,7 @@ import {
 import { describe, expect, it } from "vitest";
 
 import { AdminRouter } from "../../admin/admin-router.tsx";
+import type { NavMeta } from "../../nav-shell/nav-tree-util.ts";
 import { $pageAccount } from "../account-router-page.tsx";
 import { AccountRouter } from "../account-router.tsx";
 
@@ -125,6 +126,30 @@ describe("AccountRouter", () => {
     expect(router.sessions.options.can!({ has: () => true })).toBe(true);
     expect(router.connections.options.can!({ has: () => true })).toBe(true);
     expect(router.keys.options.can!({ has: () => true })).toBe(false);
+  });
+
+  /**
+   * Same rule as `AdminRouter`: a class field is evaluated once, outside
+   * React, so the rail follows a language switch only through the key. See
+   * `admin-router.spec.ts`.
+   */
+  it("names a catalogue key for every label and every group heading", async () => {
+    const alepha = Alepha.create().with(AlephaReactRouter);
+    alepha.inject(AccountRouter);
+    await alepha.start();
+
+    const navs = alepha
+      .primitives($page)
+      .map((page) => page.options.nav as NavMeta | undefined)
+      .filter((nav): nav is NavMeta => nav !== undefined);
+
+    expect(navs.length).toBeGreaterThan(0);
+    for (const nav of navs) {
+      expect(nav.labelKey).toMatch(/^account\.nav\./);
+      if (nav.group) {
+        expect(nav.groupKey).toMatch(/^account\.nav\.group\./);
+      }
+    }
   });
 
   it("does not collide with the admin router's route names", async () => {

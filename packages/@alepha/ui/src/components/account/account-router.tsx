@@ -8,7 +8,6 @@ import type {
   MySessionController,
   RealmController,
 } from "alepha/api/users";
-import { $page } from "alepha/react/router";
 import { $secure } from "alepha/security";
 import { $client } from "alepha/server/links";
 import { KeyRound, Plug, RadioTower, ShieldCheck, User } from "lucide-react";
@@ -115,11 +114,11 @@ export class AccountRouter {
    * `/account` resolves to it directly. `AdminRouter` now anchors its
    * dashboard the same way.
    */
-  layout = $page({
+  layout = $pageNav({
     name: "account",
     path: "/account",
     use: [$secure()],
-    nav: { label: "Account" },
+    nav: { label: "Account", labelKey: "account.nav.account" },
     lazy: () => import("./account-layout.tsx"),
   });
 
@@ -131,8 +130,10 @@ export class AccountRouter {
     can: () => this.profileApi.getMyProfile.can(),
     nav: {
       label: "Profile",
+      labelKey: "account.nav.profile",
       icon: createElement(User),
       group: "Account",
+      groupKey: "account.nav.group.account",
       order: 1,
     },
     /*
@@ -165,8 +166,10 @@ export class AccountRouter {
     can: () => this.identityApi.listMyIdentities.can(),
     nav: {
       label: "Security",
+      labelKey: "account.nav.security",
       icon: createElement(ShieldCheck),
       group: "Security",
+      groupKey: "account.nav.group.security",
       order: 2,
       keywords: ["password", "identities", "sign-in", "delete account"],
     },
@@ -185,8 +188,10 @@ export class AccountRouter {
     can: () => this.sessionApi.listMySessions.can(),
     nav: {
       label: "Sessions",
+      labelKey: "account.nav.sessions",
       icon: createElement(RadioTower),
       group: "Security",
+      groupKey: "account.nav.group.security",
       order: 3,
       keywords: ["devices", "sign out"],
     },
@@ -203,8 +208,10 @@ export class AccountRouter {
     can: () => this.apiKeyApi.listApiKeys.can(),
     nav: {
       label: "API keys",
+      labelKey: "account.nav.keys",
       icon: createElement(KeyRound),
       group: "Security",
+      groupKey: "account.nav.group.security",
       order: 4,
       keywords: ["tokens", "credentials"],
     },
@@ -221,8 +228,10 @@ export class AccountRouter {
     can: () => this.connectionApi.listMyConnections.can(),
     nav: {
       label: "Connected apps",
+      labelKey: "account.nav.connections",
       icon: createElement(Plug),
       group: "Security",
+      groupKey: "account.nav.group.security",
       order: 5,
       keywords: ["oauth", "mcp", "integrations"],
     },

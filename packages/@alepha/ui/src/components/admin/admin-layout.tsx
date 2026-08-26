@@ -3,6 +3,7 @@ import { NavShell } from "@alepha/ui/components/nav-shell/nav-shell";
 import { Spotlight } from "@alepha/ui/components/nav-shell/spotlight";
 import { cn } from "@alepha/ui/lib/utils";
 import { useStore } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { ColorScheme } from "alepha/react/ui";
 import { LayoutDashboard, Search } from "lucide-react";
 import { useState } from "react";
@@ -42,6 +43,7 @@ import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
 export const AdminLayout = () => {
   const [options] = useStore(adminRouterOptionsAtom);
   const [spotlightOpen, setSpotlightOpen] = useState(false);
+  const { tr } = useI18n();
 
   return (
     <div className={cn("flex h-svh flex-col", options.className)}>
@@ -55,7 +57,7 @@ export const AdminLayout = () => {
             <div className="flex items-center gap-2 px-2 py-1.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:px-0">
               <LayoutDashboard className="size-4 shrink-0" />
               <span className="text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
-                Admin
+                {tr("admin.nav.admin", { default: "Admin" })}
               </span>
             </div>
           )
@@ -68,7 +70,7 @@ export const AdminLayout = () => {
               className="text-muted-foreground hover:bg-accent hover:text-foreground hidden h-8 items-center gap-2 rounded-md border px-2 text-sm transition-colors sm:flex"
             >
               <Search className="size-4 shrink-0" />
-              <span>Search…</span>
+              <span>{tr("nav.spotlight.search", { default: "Search…" })}</span>
               <kbd className="bg-muted text-muted-foreground pointer-events-none ml-2 hidden rounded px-1.5 font-mono text-[10px] md:inline">
                 ⌘K
               </kbd>
@@ -88,7 +90,11 @@ export const AdminLayout = () => {
                   an operator should see.
                 */
                 adminRouteName={options.homeRouteName ?? "home"}
-                labels={{ admin: "Back to site" }}
+                labels={{
+                  admin: tr("admin.nav.backToSite", {
+                    default: "Back to site",
+                  }),
+                }}
               />
             )}
           </div>

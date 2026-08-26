@@ -208,6 +208,14 @@ export const uiFr: Record<string, string> = {
   "auth.verify.verifyingHint":
     "Merci de patienter pendant la vérification de votre adresse.",
 
+  // The nav shell shared by the admin console and the account rail: the
+  // command palette's own chrome. Entry labels are not here — they come from
+  // each router's `nav.labelKey`, below.
+  "nav.spotlight.description": "Aller à une page",
+  "nav.spotlight.empty": "Aucun résultat.",
+  "nav.spotlight.search": "Rechercher…",
+  "nav.spotlight.title": "Rechercher",
+
   // The `@alepha/ui/admin` back office: users, sessions, API keys, files, jobs,
   // audits, notifications, payments and parameters.
   "admin.analytics.empty": "Aucune donnée pour cette requête.",
@@ -324,6 +332,27 @@ export const uiFr: Record<string, string> = {
     "Copiez ce jeton maintenant : il n'est affiché qu'une seule fois et ne peut pas être récupéré.",
   "admin.keys.tokenDone": "Terminé",
   "admin.keys.tokenTitle": "Clé d'API créée",
+  // The shell's own chrome: sidebar entries, section headings and breadcrumbs.
+  // `nav.*Key` on `AdminRouter` names these; the English `label` beside the key
+  // is the default an application without this catalogue keeps seeing.
+  "admin.nav.admin": "Administration",
+  "admin.nav.analytics": "Analytique",
+  "admin.nav.audits": "Journal d'audit",
+  "admin.nav.backToSite": "Retour au site",
+  "admin.nav.dashboard": "Tableau de bord",
+  "admin.nav.files": "Fichiers",
+  "admin.nav.group.identity": "Identité",
+  "admin.nav.group.system": "Système",
+  "admin.nav.jobs": "Tâches",
+  "admin.nav.keys": "Clés d'API",
+  "admin.nav.notifications": "Notifications",
+  "admin.nav.parameters": "Paramètres",
+  "admin.nav.payments": "Paiements",
+  "admin.nav.sessions": "Sessions",
+  "admin.nav.userDetail": "Utilisateur",
+  "admin.nav.users": "Utilisateurs",
+  "admin.nav.workflows": "Workflows",
+
   "admin.notifications.bulkDelete": "Supprimer la sélection",
   "admin.notifications.bulkDeleteConfirm":
     "Supprimer $1 notification(s) ? L'opération est irréversible.",
@@ -656,6 +685,16 @@ export const uiFr: Record<string, string> = {
     "Scannez ceci avec votre application d'authentification, puis saisissez le code à six chiffres qu'elle affiche.",
   "account.mfa.setupTitle": "Activer la double authentification",
   "account.mfa.turnOn": "Activer",
+  // The account rail's own chrome, same mechanism as `admin.nav.*`.
+  "account.nav.account": "Compte",
+  "account.nav.connections": "Applications connectées",
+  "account.nav.group.account": "Compte",
+  "account.nav.group.security": "Sécurité",
+  "account.nav.keys": "Clés d'API",
+  "account.nav.profile": "Profil",
+  "account.nav.security": "Sécurité",
+  "account.nav.sessions": "Sessions",
+
   "account.password.cancel": "Annuler",
   "account.password.change": "Changer le mot de passe",
   "account.password.changeDescription":

@@ -6,6 +6,7 @@ import {
 } from "alepha/react/router";
 import { describe, expect, it } from "vitest";
 
+import type { NavMeta } from "../../nav-shell/nav-tree-util.ts";
 import { AdminRouter } from "../admin-router.tsx";
 
 /**
@@ -230,6 +231,32 @@ describe("AdminRouter", () => {
     for (const nav of grouped) {
       expect(nav!.order).toBeGreaterThanOrEqual(1000);
       expect(["Identity", "System"]).toContain(nav!.group);
+    }
+  });
+
+  /**
+   * A class field is evaluated once, at construction, outside React — so the
+   * label a page declares here can never follow a language switch on its own.
+   * The `labelKey` beside it is what the sidebar, breadcrumbs and palette
+   * resolve at render time, and a page added without one is silently
+   * English-only in every application.
+   */
+  it("names a catalogue key for every label and every group heading", async () => {
+    const alepha = Alepha.create().with(AlephaReactRouter);
+    alepha.inject(AdminRouter);
+    await alepha.start();
+
+    const navs = alepha
+      .primitives($page)
+      .map((page) => page.options.nav as NavMeta | undefined)
+      .filter((nav): nav is NavMeta => nav !== undefined);
+
+    expect(navs.length).toBeGreaterThan(0);
+    for (const nav of navs) {
+      expect(nav.labelKey).toMatch(/^admin\.nav\./);
+      if (nav.group) {
+        expect(nav.groupKey).toMatch(/^admin\.nav\.group\./);
+      }
     }
   });
 

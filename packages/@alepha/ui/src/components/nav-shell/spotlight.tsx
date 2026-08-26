@@ -7,6 +7,7 @@ import {
   CommandItem,
   CommandList,
 } from "@alepha/ui/components/ui/command";
+import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
   type ReactNode,
@@ -33,11 +34,12 @@ export interface SpotlightProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   /**
-   * Search input placeholder.
+   * Search input placeholder. Defaults to the localised `nav.spotlight.search`.
    */
   placeholder?: string;
   /**
-   * Message shown when nothing matches the query.
+   * Message shown when nothing matches the query. Defaults to the localised
+   * `nav.spotlight.empty`.
    */
   emptyMessage?: ReactNode;
   /**
@@ -54,9 +56,12 @@ export interface SpotlightProps {
  * sidebar, so it never drifts from the routes.
  */
 export const Spotlight = (props: SpotlightProps) => {
-  const { root, placeholder = "Search…", shortcut = true } = props;
+  const { root, shortcut = true } = props;
   const router = useRouter<any>();
+  const { tr } = useI18n();
   const entries = useNavEntries({ root });
+  const placeholder =
+    props.placeholder ?? tr("nav.spotlight.search", { default: "Search…" });
 
   const isControlled = props.open !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
@@ -92,7 +97,11 @@ export const Spotlight = (props: SpotlightProps) => {
       if (!items) {
         items = [];
         byKey.set(key, items);
-        out.push({ key, label: entry.group || undefined, items });
+        out.push({
+          key,
+          label: entry.groupLabel || entry.group || undefined,
+          items,
+        });
       }
       items.push(entry);
     }
@@ -112,13 +121,18 @@ export const Spotlight = (props: SpotlightProps) => {
     <CommandDialog
       open={open}
       onOpenChange={setOpen}
-      title="Search"
-      description="Jump to a page"
+      title={tr("nav.spotlight.title", { default: "Search" })}
+      description={tr("nav.spotlight.description", {
+        default: "Jump to a page",
+      })}
     >
       <Command>
         <CommandInput placeholder={placeholder} />
         <CommandList>
-          <CommandEmpty>{props.emptyMessage ?? "No results."}</CommandEmpty>
+          <CommandEmpty>
+            {props.emptyMessage ??
+              tr("nav.spotlight.empty", { default: "No results." })}
+          </CommandEmpty>
           {groups.map((group) => (
             <CommandGroup key={group.key || "_ungrouped"} heading={group.label}>
               {group.items.map((entry) => (
@@ -131,7 +145,7 @@ export const Spotlight = (props: SpotlightProps) => {
                     toText(entry.label),
                     toText(entry.description),
                     ...(entry.keywords ?? []),
-                    entry.group ?? "",
+                    entry.groupLabel ?? entry.group ?? "",
                   ].filter(Boolean)}
                   disabled={entry.disabled}
                   onSelect={() => onSelect(entry)}

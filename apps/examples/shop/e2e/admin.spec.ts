@@ -411,20 +411,28 @@ test.describe("the admin sidebar", () => {
         ),
       );
 
+    /*
+     * French throughout, the shop's own entries and the framework's alike.
+     * The built-ins used to read "Dashboard / Users / Audit log" here: their
+     * labels were class fields evaluated once, outside React, so the shell
+     * could not follow the language the rest of the shop was in. They now
+     * name a catalogue key that `navLabel` resolves at render time, and the
+     * shop spreads `uiFr`, so this list is the whole fix stated as text.
+     */
     expect(entries).toEqual([
-      "/admin Dashboard",
+      "/admin Tableau de bord",
       "/admin/produits Produits",
       "/admin/commandes Commandes",
       "/admin/livraison Livraison",
-      "/admin/users Users",
+      "/admin/users Utilisateurs",
       "/admin/sessions Sessions",
-      "/admin/audits Audit log",
-      "/admin/jobs Jobs",
+      "/admin/audits Journal d'audit",
+      "/admin/jobs Tâches",
       "/admin/notifications Notifications",
-      "/admin/files Files",
-      "/admin/payments Payments",
+      "/admin/files Fichiers",
+      "/admin/payments Paiements",
       "/admin/workflows Workflows",
-      "/admin/parameters Parameters",
+      "/admin/parameters Paramètres",
     ]);
   });
 
@@ -455,7 +463,9 @@ test.describe("the admin sidebar", () => {
     expect(tiles.map((tile) => tile.trim())).toEqual([
       "Produits",
       "Commandes",
-      "Users",
+      // The built-in tile reads its label from the same key as the sidebar
+      // entry it links to, so it is French here too.
+      "Utilisateurs",
     ]);
   });
 });

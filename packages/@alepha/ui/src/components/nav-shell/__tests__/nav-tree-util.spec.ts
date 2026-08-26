@@ -1,6 +1,13 @@
+import type { PageRoute } from "alepha/react/router";
 import { describe, expect, it } from "vitest";
 
-import { isActivePath, keepDeepestActive } from "../nav-tree-util.ts";
+import {
+  isActivePath,
+  keepDeepestActive,
+  type NavMeta,
+  navGroupLabel,
+  navLabel,
+} from "../nav-tree-util.ts";
 
 /**
  * Entries as `useNavEntries` builds them: `href` is the page's resolved
@@ -85,5 +92,104 @@ describe("keepDeepestActive", () => {
     expect(activeHrefs("/admin/keys", ["/admin/users", "/admin/keys"])).toEqual(
       ["/admin/keys"],
     );
+  });
+});
+
+/**
+ * Only the fields the labelling chain reads. `PageRoute` is far wider, and a
+ * literal cast keeps the cases legible. `nav` is the shell's own
+ * {@link NavMeta} — the framework types it as the narrower `PageNav`, which is
+ * exactly the widening `navMeta` performs at runtime.
+ */
+const route = (
+  page: Partial<Omit<PageRoute, "nav">> & { nav?: NavMeta },
+): PageRoute => ({ name: "page", ...page }) as PageRoute;
+
+/**
+ * A catalogue holding French for two keys and nothing else, behaving like
+ * `I18nProvider.tr`: a hit wins, a miss falls back to the caller's default.
+ */
+const tr = (key: string, options?: { default?: string }) => {
+  const fr: Record<string, string> = {
+    "admin.nav.users": "Utilisateurs",
+    "admin.nav.group.identity": "Identité",
+  };
+  return fr[key] ?? options?.default ?? key;
+};
+
+describe("navLabel", () => {
+  it("falls back through label, page label, head title, then the name", () => {
+    expect(navLabel(route({ nav: { label: "Users" } }))).toBe("Users");
+    expect(navLabel(route({ label: "Users" }))).toBe("Users");
+    expect(navLabel(route({ head: { title: "Users" } }))).toBe("Users");
+    expect(navLabel(route({ name: "users" }))).toBe("users");
+  });
+
+  it("resolves the catalogue key when one is declared", () => {
+    const page = route({
+      nav: { label: "Users", labelKey: "admin.nav.users" },
+    });
+    expect(navLabel(page, tr)).toBe("Utilisateurs");
+  });
+
+  /*
+    The whole point of keeping `label` beside the key: an application that
+    spreads no catalogue must keep seeing what it saw before, never a raw key.
+  */
+  it("renders the English label when the catalogue has no entry", () => {
+    const page = route({ nav: { label: "Jobs", labelKey: "admin.nav.jobs" } });
+    expect(navLabel(page, tr)).toBe("Jobs");
+  });
+
+  it("ignores the key when no translator is supplied", () => {
+    // Server-side and in the specs, `navLabel` is called without one.
+    const page = route({
+      nav: { label: "Users", labelKey: "admin.nav.users" },
+    });
+    expect(navLabel(page)).toBe("Users");
+  });
+
+  it("uses the route name as the default when the label is an element", () => {
+    // `tr` needs a string default; a node cannot be one, and the raw key must
+    // never reach the sidebar.
+    const page = route({
+      name: "widgets",
+      nav: { label: { type: "span" } as any, labelKey: "unknown.key" },
+    });
+    expect(navLabel(page, tr)).toBe("widgets");
+  });
+});
+
+describe("navGroupLabel", () => {
+  it("has nothing to say about an ungrouped page", () => {
+    expect(navGroupLabel(route({ nav: { label: "Dashboard" } }), tr)).toBe(
+      undefined,
+    );
+  });
+
+  it("translates the heading while `group` stays the grouping key", () => {
+    const page = route({
+      nav: {
+        label: "Users",
+        group: "Identity",
+        groupKey: "admin.nav.group.identity",
+      },
+    });
+    expect(navGroupLabel(page, tr)).toBe("Identité");
+    // The bucket key itself must not move, or two pages in one section would
+    // stop agreeing on it as soon as the language changed.
+    expect(page.nav?.group).toBe("Identity");
+  });
+
+  it("falls back to the group name", () => {
+    expect(navGroupLabel(route({ nav: { group: "Commerce" } }), tr)).toBe(
+      "Commerce",
+    );
+    expect(
+      navGroupLabel(
+        route({ nav: { group: "System", groupKey: "unknown.key" } }),
+        tr,
+      ),
+    ).toBe("System");
   });
 });
