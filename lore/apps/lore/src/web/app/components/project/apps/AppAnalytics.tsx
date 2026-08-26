@@ -74,7 +74,7 @@ const AppAnalytics = () => {
       {/* Headline metrics */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {/* Unique visitors — the trustworthy headline. */}
-        <Card>
+        <Card data-testid="insights-unique-visitors">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
               <Users className="size-4" />

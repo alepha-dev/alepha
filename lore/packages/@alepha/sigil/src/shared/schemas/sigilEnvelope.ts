@@ -160,13 +160,28 @@ export const sigilForwarded = sigilEnvelope.extend({
    */
   device: z.string().max(16).optional(),
   /**
+   * `bot` | `human`, classified from the user-agent by the app's own proxy.
+   *
+   * Stamped next to `country` and `device` for the same reason, and it stamps
+   * the whole batch for the same reason too: a client does not stop being a
+   * crawler between two views of one session.
+   *
+   * **`human` means "did not declare itself a bot", not "verified human".** A
+   * scraper driving real headless Chrome sends an ordinary Chrome user-agent
+   * and is counted here as a person; what gives it away is that it never
+   * scrolls, which is what {@link sigilEnvelope}'s `engagements` measures.
+   * The two are complementary and neither replaces the other. See
+   * {@link sigilTrafficKind}.
+   */
+  traffic: z.string().max(16).optional(),
+  /**
    * The host this app is served on, from its own inbound `Host` header.
    *
    * The one field here that describes the SENDER rather than the visitor, and
-   * it is here for the same reason the other three are: only the app's own
-   * server knows it. The browser posts same-origin, so it never has to name
-   * the host; the sink sees only the app's outbound request, which says
-   * nothing about where the app answers.
+   * it is here for the same reason the others are: only the app's own server
+   * knows it. The browser posts same-origin, so it never has to name the host;
+   * the sink sees only the app's outbound request, which says nothing about
+   * where the app answers.
    *
    * What it buys is a sink that can show an operator where an enrolled app
    * actually lives without asking them to type it - and that keeps up on its

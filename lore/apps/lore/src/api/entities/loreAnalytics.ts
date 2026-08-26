@@ -90,6 +90,37 @@ export class LoreAnalytics {
        * everywhere else on this dataset.
        */
       device: z.string().default("desktop"),
+      /**
+       * `bot` | `human`, classified by the app's own proxy from the
+       * user-agent it already holds. See `sigilTrafficKind` for what that
+       * claim is worth: it catches a crawler that announces itself, and the
+       * largest automated population on this project's own docs app announces
+       * nothing at all. `human` therefore means "did not declare itself a
+       * bot", and `engaged` remains the honest discriminator for the rest.
+       *
+       * **The name is doing load-bearing work, and it is not decoration.**
+       * Slots derive from alphabetically sorted dimension names, so a new
+       * dimension only avoids re-slotting the wire format if it sorts LAST.
+       * `traffic` sorts after `sigilId`, takes `blob9`, and leaves `blob3`
+       * through `blob8` exactly where every stored row already put them.
+       * Almost any other name for this - `bot`, `kind`, `agent`, `class` -
+       * sorts before `sigilId` and would silently misread every view ever
+       * recorded, which is not a hypothetical: adding `referrer` did exactly
+       * that, and those rows are still in the dataset, unreadable, carrying a
+       * sigil id in the slot now read as a referrer. See `AnalyticsSlotMap`.
+       *
+       * Rows written before this dimension existed hold `""` here rather than
+       * the default - a default applies when a row is written, not when an old
+       * one is read. That is why the humans filter matches a SET rather than
+       * one value; see `InsightsController.HUMAN_TRAFFIC`.
+       *
+       * The default is not decoration either, and it is the same trap
+       * `referrer` and `engaged` both hit: on the relational backend this is
+       * `ALTER TABLE ... ADD traffic text NOT NULL`, which SQLite refuses
+       * outright on a table that already holds rows unless the column carries
+       * a non-null default.
+       */
+      traffic: z.string().default("human"),
     }),
     /**
      * Three measures, and the two new ones cost nothing on the wire.

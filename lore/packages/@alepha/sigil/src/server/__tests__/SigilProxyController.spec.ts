@@ -64,6 +64,34 @@ describe("SigilProxyController.ingest", () => {
     expect(fwd.ingested[0].stamp.visitor).toBe(fwd.ingested[1].stamp.visitor);
   });
 
+  it("stamps the traffic kind from the same user-agent", async () => {
+    const alepha = make();
+    const ctrl = alepha.inject(SigilProxyController);
+    await alepha.start();
+
+    await ctrl.ingest.run({
+      body: { views: [{ path: "/" }] },
+      headers: {
+        "user-agent":
+          "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+      },
+    });
+    await ctrl.ingest.run({
+      body: { views: [{ path: "/" }] },
+      headers: {
+        "user-agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
+      },
+    });
+
+    // Server-side, next to `country` and `device`, for the reason those two
+    // are: the header is already in hand, so the envelope spends no bytes on
+    // a question the app can answer for free.
+    const fwd = alepha.inject(SigilSinkProvider) as FakeSink;
+    expect(fwd.ingested[0].stamp.traffic).toBe("bot");
+    expect(fwd.ingested[1].stamp.traffic).toBe("human");
+  });
+
   it("accepts even when there is no sink configured", async () => {
     // The browser must not learn anything about the app's sigil setup from
     // this endpoint, and a 200 costs nothing: whether the batch travels is the
