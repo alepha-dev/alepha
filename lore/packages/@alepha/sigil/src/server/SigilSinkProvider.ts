@@ -446,13 +446,18 @@ export class SigilSinkProvider {
   /**
    * The batch a stamp writes into, created on first sight.
    *
-   * Identity is the three stamp fields together: two visitors from the same
-   * country on the same kind of device are still two visitors, and a country
-   * that arrives on one request and not the next is a different batch rather
-   * than an update to the first.
+   * Identity is the stamp fields together: two visitors from the same country
+   * on the same kind of device are still two visitors, and a country that
+   * arrives on one request and not the next is a different batch rather than
+   * an update to the first.
+   *
+   * `traffic` is in the key even though it is derived from the same user-agent
+   * the visitor hash already closes over, so it cannot differ within one
+   * visitor. Leaving it out would make that redundancy load-bearing, and it
+   * holds only for as long as the hash keeps its current inputs.
    */
   protected batchFor(stamp: SigilStamp): PendingBatch {
-    const key = `${stamp.visitor ?? ""}\u0000${stamp.country ?? ""}\u0000${stamp.device ?? ""}`;
+    const key = `${stamp.visitor ?? ""}\u0000${stamp.country ?? ""}\u0000${stamp.device ?? ""}\u0000${stamp.traffic ?? ""}`;
     let batch = this.pending.get(key);
     if (!batch) {
       batch = {
@@ -643,6 +648,11 @@ export interface SigilStamp {
   country?: string;
   visitor?: string;
   device?: string;
+  /**
+   * `bot` | `human`, from the user-agent. See {@link sigilTrafficKind} for what
+   * that claim is and is not worth.
+   */
+  traffic?: string;
 }
 
 /**

@@ -197,6 +197,75 @@ describe("SigilJobs", () => {
       expect(rows.find((r) => r.sigilId === ctx.sigilB)?.count).toBe(1);
     });
 
+    it("keeps readers and crawlers apart through the fold", async ({
+      expect,
+    }) => {
+      await ctx.probe.uniques.createMany([
+        {
+          sigilId: ctx.sigilA,
+          day: dayUtc(ctx, 5),
+          visitorHash: "aa",
+          traffic: "human",
+        },
+        {
+          sigilId: ctx.sigilA,
+          day: dayUtc(ctx, 5),
+          visitorHash: "bb",
+          traffic: "human",
+        },
+        {
+          sigilId: ctx.sigilA,
+          day: dayUtc(ctx, 5),
+          visitorHash: "cc",
+          traffic: "bot",
+        },
+      ]);
+
+      await jobs.collapseAnalytics.run();
+
+      // TWO sentinel rows for one `(sigilId, day)`, which is the whole reason
+      // `traffic` had to join the unique index. Folding them into one would
+      // not fail anywhere - it would quietly make the Insights traffic filter
+      // report the unfiltered total for every day older than 48 hours.
+      const rows = await ctx.probe.uniques.findMany({});
+      expect(rows).toHaveLength(2);
+      expect(rows.every((r) => r.visitorHash === UNIQUES_COLLAPSED_HASH)).toBe(
+        true,
+      );
+      const byTraffic = new Map(rows.map((r) => [r.traffic, r.count]));
+      expect(byTraffic.get("human")).toBe(2);
+      expect(byTraffic.get("bot")).toBe(1);
+    });
+
+    it("folds a late crawler into a day already collapsed for humans", async ({
+      expect,
+    }) => {
+      await ctx.probe.uniques.create({
+        sigilId: ctx.sigilA,
+        day: dayUtc(ctx, 5),
+        visitorHash: "aa",
+        traffic: "human",
+      });
+      await jobs.collapseAnalytics.run();
+
+      // A row arriving for an already-collapsed day carries a real hash, so
+      // the day re-qualifies. It must land beside the existing sentinel rather
+      // than colliding with it or replacing it.
+      await ctx.probe.uniques.create({
+        sigilId: ctx.sigilA,
+        day: dayUtc(ctx, 5),
+        visitorHash: "zz",
+        traffic: "bot",
+      });
+      await jobs.collapseAnalytics.run();
+
+      const rows = await ctx.probe.uniques.findMany({});
+      expect(rows).toHaveLength(2);
+      const byTraffic = new Map(rows.map((r) => [r.traffic, r.count]));
+      expect(byTraffic.get("human")).toBe(1);
+      expect(byTraffic.get("bot")).toBe(1);
+    });
+
     it("folds several stale days in one sweep, one row each", async ({
       expect,
     }) => {

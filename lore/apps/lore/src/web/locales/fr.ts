@@ -815,6 +815,11 @@ export default {
   "insights.range.1d": "Aujourd'hui",
   "insights.range.7d": "7 jours",
   "insights.range.30d": "30 jours",
+  "insights.traffic.all": "Tout",
+  "insights.traffic.humans": "Humains",
+  "insights.traffic.bots": "Robots",
+  "insights.traffic.note":
+    "Les robots qui s’annoncent sont comptés comme tels. Celui qui pilote un vrai navigateur et envoie un user-agent ordinaire ne l’est pas : seul le taux d’engagement le trahit.",
   "insights.uniqueVisitors": "Visiteurs uniques",
   "insights.uniqueVisitors.note":
     "Visiteurs distincts sans cookie, la mesure de référence.",
