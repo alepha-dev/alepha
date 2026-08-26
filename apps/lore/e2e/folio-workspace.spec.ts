@@ -622,6 +622,57 @@ test.describe("Folio workspace", () => {
     await page.keyboard.press("Enter");
   });
 
+  test("09d — /folios?dir=<shortId> opens the tree at that directory", async () => {
+    // The breadcrumb's directory segments and the tree's own Open / Open in
+    // new tab both build this link. Nothing read the parameter, so both
+    // landed on the workspace's default state — every directory collapsed
+    // and nothing selected.
+    const stampd = `${stamp}d`;
+    const dirTitle = `Deep-${stampd}`.slice(0, 24);
+    const insideTitle = `In-${stampd}`.slice(0, 24);
+
+    const dir = await page.evaluate(
+      async ({ pid, name }) => {
+        const res = await fetch(`/api/projects/${pid}/folio/directories`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ name }),
+        });
+        return (await res.json()) as { id: string; shortId: number };
+      },
+      { pid: projectId, name: dirTitle },
+    );
+    await apiPost(page, "create", {
+      title: insideTitle,
+      content: "",
+      projectId,
+      directoryId: dir.id,
+    });
+
+    const row = (name: string) =>
+      page
+        .locator('[data-slot="folio-tree-row"]', {
+          hasText: new RegExp(`^${name}$`),
+        })
+        .first();
+
+    // Plain `/folios` first, to establish that the directory is closed by
+    // default — otherwise the assertion below would pass on a tree that
+    // simply expands everything.
+    await page.goto(`/${projectSlug}/folios`);
+    await expect(row(dirTitle)).toBeVisible({ timeout: 15_000 });
+    await expect(row(insideTitle)).toHaveCount(0);
+    await expect(row(dirTitle)).not.toHaveAttribute("data-selected", "true");
+
+    await page.goto(`/${projectSlug}/folios?dir=${dir.shortId}`);
+    // Expanded: its contents are on screen, which is what "opens at that
+    // directory" has to mean to a reader.
+    await expect(row(insideTitle)).toBeVisible({ timeout: 15_000 });
+    // ...and selected, so it is obvious which folder the link meant.
+    await expect(row(dirTitle)).toHaveAttribute("data-selected", "true");
+  });
+
   test("10 — the tree's New folio button starts a folio", async () => {
     await page.goto(`/${projectSlug}/folios`);
     await expect(page.locator('[data-slot="folio-tree"]')).toBeVisible({

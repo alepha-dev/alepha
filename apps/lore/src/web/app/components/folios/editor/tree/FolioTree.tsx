@@ -33,6 +33,12 @@ export interface FolioTreeProps {
    * instance would create the row and then fail to focus it.
    */
   onActions?: (actions: FolioTreeActions) => void;
+  /**
+   * `/folios?dir=<shortId>` — open the tree at that directory. Threaded
+   * from `FolioWorkspace`, which reads it off the URL; see
+   * `UseFolioTreeModelInput.revealDirectoryShortId`.
+   */
+  revealDirectoryShortId?: number;
 }
 
 export interface FolioTreeActions {
@@ -62,6 +68,7 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
     projectId: props.projectId,
     projectSlug: props.projectSlug,
     currentFolioId: props.currentFolioId,
+    revealDirectoryShortId: props.revealDirectoryShortId,
   });
 
   // Published through a ref, and the published closures read through it too.

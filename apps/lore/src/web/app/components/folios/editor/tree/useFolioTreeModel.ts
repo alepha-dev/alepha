@@ -37,6 +37,20 @@ export interface UseFolioTreeModelInput {
    * navigation — see the file doc below.
    */
   currentFolioId?: string;
+  /**
+   * A directory to reveal, by per-project shortId — `/folios?dir=<n>`.
+   *
+   * The breadcrumb and the tree's own Open / Open in new tab both build
+   * that link, and it went nowhere: the route never read the parameter, so
+   * both landed on the workspace's default state. Revealing means the
+   * directory AND its ancestors expand, and its row is the selected one
+   * when no folio is open.
+   *
+   * A shortId rather than a UUID because that is what the URL carries and
+   * this hook already holds the directory list to resolve it against — a
+   * loader round-trip would buy nothing.
+   */
+  revealDirectoryShortId?: number;
 }
 
 export interface FolioTreeState {
@@ -242,42 +256,72 @@ export const useFolioTreeModel = (
     return ancestors;
   }, [nodeById, input.currentFolioId]);
 
-  // One-time seed: collapse every directory except the current folio's
-  // ancestor chain. Ported from `FolioTreePanel.tsx` — without the
-  // `initializedRef` guard this re-ran on every folio→folio navigation and
-  // re-collapsed whatever the user had opened (feedback #14).
+  /**
+   * The `?dir=<shortId>` directory, as a node id. Resolved here rather than
+   * in the route loader: this hook already holds the whole directory list,
+   * so the lookup is local and the URL stays the only carrier.
+   */
+  const revealedDirectoryId = useMemo(() => {
+    if (input.revealDirectoryShortId === undefined) return undefined;
+    return directories.find((d) => d.shortId === input.revealDirectoryShortId)
+      ?.id;
+  }, [directories, input.revealDirectoryShortId]);
+
+  /**
+   * Everything that must be open: the current folio's ancestors, plus the
+   * revealed directory and its own ancestors — the directory ITSELF too,
+   * since "open this directory" means seeing what is in it.
+   */
+  const expandDirIds = useMemo(() => {
+    if (!revealedDirectoryId) return ancestorDirIds;
+    const ids = new Set(ancestorDirIds);
+    let cursor: string | undefined = revealedDirectoryId;
+    const seen = new Set<string>();
+    while (cursor && !seen.has(cursor)) {
+      seen.add(cursor);
+      ids.add(cursor);
+      cursor = nodeById.get(cursor)?.parentId;
+    }
+    return ids;
+  }, [ancestorDirIds, nodeById, revealedDirectoryId]);
+
+  // One-time seed: collapse every directory except the ones that must be
+  // open. Ported from `FolioTreePanel.tsx` — without the `initializedRef`
+  // guard this re-ran on every folio→folio navigation and re-collapsed
+  // whatever the user had opened (feedback #14).
   useEffect(() => {
     if (initializedRef.current) return;
     if (directories.length === 0 && folios.length === 0) return; // await data
     initializedRef.current = true;
     const defaultCollapsed = new Set<string>();
     for (const d of directories) {
-      if (!ancestorDirIds.has(d.id)) defaultCollapsed.add(d.id);
+      if (!expandDirIds.has(d.id)) defaultCollapsed.add(d.id);
     }
     // One-time initialisation, guarded by `initializedRef` above, so it cannot
     // cascade.
     // oxlint-disable-next-line react/set-state-in-effect
     setCollapsed(defaultCollapsed);
-  }, [ancestorDirIds, directories, folios]);
+  }, [expandDirIds, directories, folios]);
 
-  // Later navigations only ever EXPAND the new folio's ancestor path —
-  // never collapse anything else. This is what keeps a directory open when
-  // jumping from one of its folios to an unrelated root-level folio.
+  // Later navigations only ever EXPAND the new target's path — never
+  // collapse anything else. This is what keeps a directory open when
+  // jumping from one of its folios to an unrelated root-level folio, and
+  // what makes a `?dir=` link work when the workspace is already mounted.
   useEffect(() => {
     if (!initializedRef.current) return;
-    if (ancestorDirIds.size === 0) return;
+    if (expandDirIds.size === 0) return;
     // One-time initialisation, guarded by `initializedRef` above, so it cannot
     // cascade.
     // oxlint-disable-next-line react/set-state-in-effect
     setCollapsed((prev) => {
       let changed = false;
       const next = new Set(prev);
-      for (const id of ancestorDirIds) {
+      for (const id of expandDirIds) {
         if (next.delete(id)) changed = true;
       }
       return changed ? next : prev;
     });
-  }, [ancestorDirIds]);
+  }, [expandDirIds]);
 
   const toggle = (id: string): void => {
     setCollapsed((prev) => {
@@ -685,7 +729,9 @@ export const useFolioTreeModel = (
     rows,
     loading: fetching,
     collapsed,
-    selectedId: input.currentFolioId,
+    // The open folio wins: a `?dir=` that survives into a folio navigation
+    // must not keep highlighting the folder instead of the document.
+    selectedId: input.currentFolioId ?? revealedDirectoryId,
     renamingId,
     dragId,
     drop,
