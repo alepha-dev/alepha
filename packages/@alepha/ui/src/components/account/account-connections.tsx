@@ -6,6 +6,7 @@ import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import type { MyConnection, MyConnectionController } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { Plug } from "lucide-react";
 import { useState } from "react";
 
@@ -27,6 +28,7 @@ const AccountConnections = (props: AccountConnectionsProps) => {
   const dt = useInject(DateTimeProvider);
   const dialog = useDialog();
   const toaster = useToast();
+  const { tr } = useI18n();
 
   const [connections, setConnections] = useState<MyConnection[]>(
     props.connections ?? [],
@@ -34,10 +36,17 @@ const AccountConnections = (props: AccountConnectionsProps) => {
 
   const revoke = async (connection: MyConnection) => {
     const ok = await dialog.confirm({
-      title: `Disconnect ${connection.clientName}?`,
-      description:
-        "It loses access immediately and has to be authorized again to come back.",
-      confirmLabel: "Disconnect",
+      title: tr("account.connections.revokeTitle", {
+        default: "Disconnect $1?",
+        args: [connection.clientName],
+      }),
+      description: tr("account.connections.revokeDescription", {
+        default:
+          "It loses access immediately and has to be authorized again to come back.",
+      }),
+      confirmLabel: tr("account.connections.revoke", {
+        default: "Disconnect",
+      }),
       destructive: true,
     });
     if (!ok) {
@@ -47,7 +56,13 @@ const AccountConnections = (props: AccountConnectionsProps) => {
       await api.revokeMyConnection({ params: { id: connection.id } });
       setConnections((prev) => prev.filter((it) => it.id !== connection.id));
     } catch (error: any) {
-      toaster.show(error?.message ?? "Could not disconnect it", "danger");
+      toaster.show(
+        error?.message ??
+          tr("account.connections.revokeError", {
+            default: "Could not disconnect it",
+          }),
+        "danger",
+      );
     }
   };
 
@@ -59,17 +74,23 @@ const AccountConnections = (props: AccountConnectionsProps) => {
     */
     return (
       <SettingsSection
-        title="Connected apps"
-        description="Applications that can act on your behalf."
+        title={tr("account.connections.title", { default: "Connected apps" })}
+        description={tr("account.connections.description", {
+          default: "Applications that can act on your behalf.",
+        })}
       >
         <SettingsRow
           label={
             <span className="text-muted-foreground flex items-center gap-2">
               <Plug className="size-4" />
-              Nothing is connected
+              {tr("account.connections.empty", {
+                default: "Nothing is connected",
+              })}
             </span>
           }
-          description="Applications you authorize will appear here."
+          description={tr("account.connections.emptyDescription", {
+            default: "Applications you authorize will appear here.",
+          })}
         />
       </SettingsSection>
     );
@@ -77,8 +98,10 @@ const AccountConnections = (props: AccountConnectionsProps) => {
 
   return (
     <SettingsSection
-      title="Connected apps"
-      description="Applications that can act on your behalf."
+      title={tr("account.connections.title", { default: "Connected apps" })}
+      description={tr("account.connections.description", {
+        default: "Applications that can act on your behalf.",
+      })}
     >
       {connections.map((connection) => (
         <SettingsRow
@@ -88,19 +111,28 @@ const AccountConnections = (props: AccountConnectionsProps) => {
               {connection.clientName}
               {connection.current ? (
                 <span className="text-muted-foreground text-xs">
-                  (this one)
+                  {tr("account.connections.current", { default: "(this one)" })}
                 </span>
               ) : null}
             </span>
           }
-          description={`Connected ${dt.of(connection.createdAt).fromNow()}${
-            connection.lastUsedAt
-              ? ` · last used ${dt.of(connection.lastUsedAt).fromNow()}`
-              : " · never used"
-          }`}
+          description={
+            tr("account.connections.connectedAt", {
+              default: "Connected $1",
+              args: [dt.of(connection.createdAt).fromNow()],
+            }) +
+            (connection.lastUsedAt
+              ? tr("account.connections.lastUsedAt", {
+                  default: " · last used $1",
+                  args: [dt.of(connection.lastUsedAt).fromNow()],
+                })
+              : tr("account.connections.neverUsed", {
+                  default: " · never used",
+                }))
+          }
         >
           <Button variant="ghost" size="sm" onClick={() => revoke(connection)}>
-            Disconnect
+            {tr("account.connections.revoke", { default: "Disconnect" })}
           </Button>
         </SettingsRow>
       ))}

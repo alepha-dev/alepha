@@ -46,7 +46,7 @@ const AccountSecurity = (props: AccountSecurityProps) => {
   const auth = useAuth();
   const dialog = useDialog();
   const toaster = useToast();
-  const { l } = useI18n();
+  const { l, tr } = useI18n();
 
   const [identities, setIdentities] = useState<MyIdentity[]>(
     props.identities ?? [],
@@ -79,10 +79,14 @@ const AccountSecurity = (props: AccountSecurityProps) => {
    */
   const disableMfa = async () => {
     const code = await dialog.prompt({
-      title: "Turn off two-factor authentication?",
-      description:
-        "Enter a code from your authenticator app, or one of your recovery codes.",
-      confirmLabel: "Turn off",
+      title: tr("account.security.mfaDisableTitle", {
+        default: "Turn off two-factor authentication?",
+      }),
+      description: tr("account.security.mfaDisableDescription", {
+        default:
+          "Enter a code from your authenticator app, or one of your recovery codes.",
+      }),
+      confirmLabel: tr("account.security.mfaTurnOff", { default: "Turn off" }),
     });
     if (!code) {
       return;
@@ -90,18 +94,35 @@ const AccountSecurity = (props: AccountSecurityProps) => {
     try {
       await mfaApi.disableTotp({ body: { code: String(code) } });
       await reloadMfa();
-      toaster.show("Two-factor authentication is off", "success");
+      toaster.show(
+        tr("account.security.mfaDisabled", {
+          default: "Two-factor authentication is off",
+        }),
+        "success",
+      );
     } catch (error: any) {
-      toaster.show(error?.message ?? "That code is not valid", "danger");
+      toaster.show(
+        error?.message ??
+          tr("account.security.invalidCode", {
+            default: "That code is not valid",
+          }),
+        "danger",
+      );
     }
   };
 
   const unlink = async (identity: MyIdentity) => {
     const label = PROVIDER_LABELS[identity.provider] ?? identity.provider;
     const ok = await dialog.confirm({
-      title: `Remove ${label}?`,
-      description: `You will no longer be able to sign in with ${label}.`,
-      confirmLabel: "Remove",
+      title: tr("account.security.unlinkTitle", {
+        default: "Remove $1?",
+        args: [label],
+      }),
+      description: tr("account.security.unlinkDescription", {
+        default: "You will no longer be able to sign in with $1.",
+        args: [label],
+      }),
+      confirmLabel: tr("account.security.unlink", { default: "Remove" }),
       destructive: true,
     });
     if (!ok) {
@@ -112,28 +133,45 @@ const AccountSecurity = (props: AccountSecurityProps) => {
       await reload();
     } catch (error: any) {
       // Includes the last-identity refusal, whose message is the whole point.
-      toaster.show(error?.message ?? "Could not remove that method", "danger");
+      toaster.show(
+        error?.message ??
+          tr("account.security.unlinkError", {
+            default: "Could not remove that method",
+          }),
+        "danger",
+      );
     }
   };
 
   return (
     <>
       <SettingsSection
-        title="Sign-in methods"
-        description="At least one must remain. Removing the last would lock you out permanently."
+        title={tr("account.security.methodsTitle", {
+          default: "Sign-in methods",
+        })}
+        description={tr("account.security.methodsDescription", {
+          default:
+            "At least one must remain. Removing the last would lock you out permanently.",
+        })}
       >
         {signInMethods.map((identity) => (
           <SettingsRow
             key={identity.id}
             label={PROVIDER_LABELS[identity.provider] ?? identity.provider}
-            description={`Added ${String(l(identity.createdAt, { date: "ll" }))}`}
+            description={tr("account.security.addedAt", {
+              default: "Added $1",
+              args: [String(l(identity.createdAt, { date: "ll" }))],
+            })}
           >
             {signInMethods.length > 1 ? (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => unlink(identity)}
-                aria-label={`Remove ${identity.provider}`}
+                aria-label={tr("account.security.unlinkAria", {
+                  default: "Remove $1",
+                  args: [identity.provider],
+                })}
               >
                 <Trash2 className="size-4" />
               </Button>
@@ -142,17 +180,33 @@ const AccountSecurity = (props: AccountSecurityProps) => {
         ))}
 
         <SettingsRow
-          label="Two-factor authentication"
+          label={tr("account.security.mfa", {
+            default: "Two-factor authentication",
+          })}
           description={
             mfa?.totp.enabled
-              ? `On. ${mfa.totp.recoveryCodesLeft} recovery ${mfa.totp.recoveryCodesLeft === 1 ? "code" : "codes"} left.`
-              : "Ask for a code from an authenticator app as well as your password."
+              ? // Two calls, not one with a computed key: the FR coverage spec
+                // finds keys by matching a literal right after `tr(`, so a key
+                // chosen at runtime is invisible to it and would rot silently.
+                mfa.totp.recoveryCodesLeft === 1
+                ? tr("account.security.mfaOnOneCode", {
+                    default: "On. $1 recovery code left.",
+                    args: [String(mfa.totp.recoveryCodesLeft)],
+                  })
+                : tr("account.security.mfaOnCodes", {
+                    default: "On. $1 recovery codes left.",
+                    args: [String(mfa.totp.recoveryCodesLeft)],
+                  })
+              : tr("account.security.mfaOff", {
+                  default:
+                    "Ask for a code from an authenticator app as well as your password.",
+                })
           }
         >
           {mfa?.totp.enabled ? (
             <Button variant="secondary" size="sm" onClick={disableMfa}>
               <ShieldOff className="size-4" />
-              Turn off
+              {tr("account.security.mfaTurnOff", { default: "Turn off" })}
             </Button>
           ) : (
             <Button
@@ -161,17 +215,22 @@ const AccountSecurity = (props: AccountSecurityProps) => {
               onClick={() => setMfaOpen(true)}
             >
               <ShieldCheck className="size-4" />
-              Set up
+              {tr("account.security.mfaSetUp", { default: "Set up" })}
             </Button>
           )}
         </SettingsRow>
 
         <SettingsRow
-          label="Password"
+          label={tr("account.security.password", { default: "Password" })}
           description={
             hasPassword
-              ? "Changing it signs out every other device."
-              : "This account signs in without a password. Add one as a fallback."
+              ? tr("account.security.passwordChangeHint", {
+                  default: "Changing it signs out every other device.",
+                })
+              : tr("account.security.passwordSetHint", {
+                  default:
+                    "This account signs in without a password. Add one as a fallback.",
+                })
           }
         >
           <Button
@@ -180,22 +239,39 @@ const AccountSecurity = (props: AccountSecurityProps) => {
             onClick={() => setPasswordOpen(true)}
           >
             <KeyRound className="size-4" />
-            {hasPassword ? "Change password" : "Set a password"}
+            {hasPassword
+              ? tr("account.security.passwordChange", {
+                  default: "Change password",
+                })
+              : tr("account.security.passwordSet", {
+                  default: "Set a password",
+                })}
           </Button>
         </SettingsRow>
       </SettingsSection>
 
-      <SettingsDangerSection description="This cannot be undone.">
+      <SettingsDangerSection
+        description={tr("account.security.dangerDescription", {
+          default: "This cannot be undone.",
+        })}
+      >
         <SettingsRow
-          label="Delete this account"
-          description="Removes your account, its sign-in methods and every session."
+          label={tr("account.security.delete", {
+            default: "Delete this account",
+          })}
+          description={tr("account.security.deleteDescription", {
+            default:
+              "Removes your account, its sign-in methods and every session.",
+          })}
         >
           <Button
             variant="destructive"
             size="sm"
             onClick={() => setDeleteOpen(true)}
           >
-            Delete account
+            {tr("account.security.deleteButton", {
+              default: "Delete account",
+            })}
           </Button>
         </SettingsRow>
       </SettingsDangerSection>

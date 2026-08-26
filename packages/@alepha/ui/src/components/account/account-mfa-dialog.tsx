@@ -14,6 +14,7 @@ import {
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import type { MyMfaController } from "alepha/api/users";
 import { useClient, useQuery } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
 
@@ -49,6 +50,7 @@ export interface AccountMfaDialogProps {
 export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
   const api = useClient<MyMfaController>();
   const toaster = useToast();
+  const { tr } = useI18n();
 
   const [code, setCode] = useState("");
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>();
@@ -87,7 +89,11 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
       await props.onDone?.();
     } catch (error: any) {
       setCode("");
-      toaster.show(error?.message ?? "That code is not valid", "danger");
+      toaster.show(
+        error?.message ??
+          tr("account.mfa.invalidCode", { default: "That code is not valid" }),
+        "danger",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -99,8 +105,12 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
         <DialogHeader>
           <DialogTitle>
             {recoveryCodes
-              ? "Save your recovery codes"
-              : "Set up two-factor authentication"}
+              ? tr("account.mfa.recoveryTitle", {
+                  default: "Save your recovery codes",
+                })
+              : tr("account.mfa.setupTitle", {
+                  default: "Set up two-factor authentication",
+                })}
           </DialogTitle>
         </DialogHeader>
 
@@ -109,8 +119,10 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
             <Alert>
               <AlertTriangle className="size-4" />
               <AlertDescription>
-                Keep these somewhere safe. Each one works once, and this is the
-                only time they can be shown.
+                {tr("account.mfa.recoveryDescription", {
+                  default:
+                    "Keep these somewhere safe. Each one works once, and this is the only time they can be shown.",
+                })}
               </AlertDescription>
             </Alert>
 
@@ -124,26 +136,38 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
               variant="secondary"
               onClick={() => {
                 void navigator.clipboard?.writeText(recoveryCodes.join("\n"));
-                toaster.show("Recovery codes copied", "success");
+                toaster.show(
+                  tr("account.mfa.recoveryCopied", {
+                    default: "Recovery codes copied",
+                  }),
+                  "success",
+                );
               }}
             >
-              Copy codes
+              {tr("account.mfa.copyCodes", { default: "Copy codes" })}
             </Button>
 
-            <Button onClick={() => setOpen(false)}>I have saved them</Button>
+            <Button onClick={() => setOpen(false)}>
+              {tr("account.mfa.saved", { default: "I have saved them" })}
+            </Button>
           </div>
         ) : (
           <div className="flex flex-col gap-4">
             <p className="text-muted-foreground text-sm">
-              Scan this with your authenticator app, then type the six-digit
-              code it shows.
+              {tr("account.mfa.setupDescription", {
+                default:
+                  "Scan this with your authenticator app, then type the six-digit code it shows.",
+              })}
             </p>
 
             {error && (
               <Alert variant="destructive">
                 <AlertTriangle className="size-4" />
                 <AlertDescription>
-                  Could not start the enrollment. Close this and try again.
+                  {tr("account.mfa.enrollError", {
+                    default:
+                      "Could not start the enrollment. Close this and try again.",
+                  })}
                 </AlertDescription>
               </Alert>
             )}
@@ -159,7 +183,9 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
 
                 <details className="text-muted-foreground text-center text-xs">
                   <summary className="cursor-pointer">
-                    Cannot scan the code?
+                    {tr("account.mfa.cannotScan", {
+                      default: "Cannot scan the code?",
+                    })}
                   </summary>
                   <p className="mt-2 font-mono break-all">
                     {enrollment.secret}
@@ -191,12 +217,12 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
                   disabled={code.length !== 6}
                   onClick={() => activate(code)}
                 >
-                  Turn on
+                  {tr("account.mfa.turnOn", { default: "Turn on" })}
                 </Button>
               </>
             ) : (
               <p className="text-muted-foreground text-center text-sm">
-                Preparing...
+                {tr("account.mfa.preparing", { default: "Preparing..." })}
               </p>
             )}
           </div>

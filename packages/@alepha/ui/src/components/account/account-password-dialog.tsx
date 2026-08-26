@@ -12,6 +12,7 @@ import type {
   MyPasswordController,
 } from "alepha/api/users";
 import { useClient } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { type FormEvent, useState } from "react";
 
 export interface AccountPasswordDialogProps {
@@ -51,6 +52,7 @@ export const AccountPasswordDialog = (props: AccountPasswordDialogProps) => {
   const passwordApi = useClient<MyPasswordController>();
   const identityApi = useClient<MyIdentityController>();
   const toaster = useToast();
+  const { tr } = useI18n();
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
@@ -67,7 +69,12 @@ export const AccountPasswordDialog = (props: AccountPasswordDialogProps) => {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (password !== confirmPassword) {
-      toaster.show("The two passwords do not match", "danger");
+      toaster.show(
+        tr("account.password.mismatch", {
+          default: "The two passwords do not match",
+        }),
+        "danger",
+      );
       return;
     }
     setSubmitting(true);
@@ -78,26 +85,40 @@ export const AccountPasswordDialog = (props: AccountPasswordDialogProps) => {
         });
         toaster.show(
           otherSessionsRevoked > 0
-            ? `Password changed — ${otherSessionsRevoked} other session(s) signed out`
-            : "Password changed",
+            ? tr("account.password.changedWithSessions", {
+                default: "Password changed - $1 other session(s) signed out",
+                args: [String(otherSessionsRevoked)],
+              })
+            : tr("account.password.changed", { default: "Password changed" }),
           "success",
         );
       } else {
         await identityApi.setMyFirstPassword({ body: { password } });
-        toaster.show("Password set", "success");
+        toaster.show(
+          tr("account.password.set", { default: "Password set" }),
+          "success",
+        );
       }
       await props.onDone?.();
       close();
     } catch (error: any) {
       // The realm's password policy and the wrong-current-password refusal
       // both arrive here with messages worth showing verbatim.
-      toaster.show(error?.message ?? "Could not save that password", "danger");
+      toaster.show(
+        error?.message ??
+          tr("account.password.error", {
+            default: "Could not save that password",
+          }),
+        "danger",
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
-  const title = props.hasPassword ? "Change password" : "Set a password";
+  const title = props.hasPassword
+    ? tr("account.password.change", { default: "Change password" })
+    : tr("account.password.setTitle", { default: "Set a password" });
 
   return (
     <Dialog open={props.open} onOpenChange={(next) => !next && close()}>
@@ -108,13 +129,20 @@ export const AccountPasswordDialog = (props: AccountPasswordDialogProps) => {
         <form onSubmit={submit} className="flex flex-col gap-4">
           <span className="text-muted-foreground text-sm">
             {props.hasPassword
-              ? "Every other device will be signed out."
-              : "You will be able to sign in with your password as well as your existing method."}
+              ? tr("account.password.changeDescription", {
+                  default: "Every other device will be signed out.",
+                })
+              : tr("account.password.setDescription", {
+                  default:
+                    "You will be able to sign in with your password as well as your existing method.",
+                })}
           </span>
           {props.hasPassword ? (
             <ControlPassword
               id="currentPassword"
-              label="Current password"
+              label={tr("account.password.current", {
+                default: "Current password",
+              })}
               value={currentPassword}
               onChange={setCurrentPassword}
               autoComplete="current-password"
@@ -123,7 +151,7 @@ export const AccountPasswordDialog = (props: AccountPasswordDialogProps) => {
           ) : null}
           <ControlPassword
             id="newPassword"
-            label="New password"
+            label={tr("account.password.new", { default: "New password" })}
             value={password}
             onChange={setPassword}
             autoComplete="new-password"
@@ -131,7 +159,9 @@ export const AccountPasswordDialog = (props: AccountPasswordDialogProps) => {
           />
           <ControlPassword
             id="confirmPassword"
-            label="Confirm new password"
+            label={tr("account.password.confirm", {
+              default: "Confirm new password",
+            })}
             value={confirmPassword}
             onChange={setConfirmPassword}
             autoComplete="new-password"
@@ -139,7 +169,7 @@ export const AccountPasswordDialog = (props: AccountPasswordDialogProps) => {
           />
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={close}>
-              Cancel
+              {tr("account.password.cancel", { default: "Cancel" })}
             </Button>
             <Button type="submit" disabled={submitting}>
               {title}

@@ -525,9 +525,15 @@ export class I18nProvider<
       default?: string;
     } = {},
   ) => {
-    const translation = this.translate(key as string, options.args || []);
+    const args = options.args || [];
+    const translation = this.translate(key as string, args);
     if (translation === (key as string) && options.default) {
-      return options.default;
+      // The default goes through `render` too. It used to be returned raw, so
+      // every `tr(key, { default: "$1 rows", args })` whose key was not in a
+      // catalogue displayed the literal `$1` - and the default's whole job is
+      // to be what an application without that key shows. It was the admin
+      // kit's own analytics counts, among others.
+      return this.render(options.default, args);
     }
     return translation;
   };

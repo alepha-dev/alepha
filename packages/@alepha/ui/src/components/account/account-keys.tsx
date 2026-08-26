@@ -15,6 +15,7 @@ import type { Infer } from "alepha";
 import type { ApiKeyController, listApiKeyItemSchema } from "alepha/api/keys";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { Check, Clipboard, Plus, Trash2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
 
@@ -43,6 +44,7 @@ const AccountKeys = (props: AccountKeysProps) => {
   const dt = useInject(DateTimeProvider);
   const dialog = useDialog();
   const toaster = useToast();
+  const { tr } = useI18n();
 
   const [keys, setKeys] = useState<ApiKeyRow[]>(props.apiKeys ?? []);
   const [createOpen, setCreateOpen] = useState(false);
@@ -61,7 +63,13 @@ const AccountKeys = (props: AccountKeysProps) => {
       setName("");
       setCreateOpen(false);
     } catch (error: any) {
-      toaster.show(error?.message ?? "Could not create that key", "danger");
+      toaster.show(
+        error?.message ??
+          tr("account.keys.createError", {
+            default: "Could not create that key",
+          }),
+        "danger",
+      );
     } finally {
       setCreating(false);
     }
@@ -69,10 +77,15 @@ const AccountKeys = (props: AccountKeysProps) => {
 
   const revoke = async (key: ApiKeyRow) => {
     const ok = await dialog.confirm({
-      title: `Revoke ${key.name}?`,
-      description:
-        "Anything still using this key stops working immediately. This cannot be undone.",
-      confirmLabel: "Revoke",
+      title: tr("account.keys.revokeTitle", {
+        default: "Revoke $1?",
+        args: [key.name],
+      }),
+      description: tr("account.keys.revokeDescription", {
+        default:
+          "Anything still using this key stops working immediately. This cannot be undone.",
+      }),
+      confirmLabel: tr("account.keys.revoke", { default: "Revoke" }),
       destructive: true,
     });
     if (!ok) {
@@ -82,7 +95,13 @@ const AccountKeys = (props: AccountKeysProps) => {
       await api.revokeMyApiKey({ params: { id: key.id } });
       setKeys((prev) => prev.filter((it) => it.id !== key.id));
     } catch (error: any) {
-      toaster.show(error?.message ?? "Could not revoke that key", "danger");
+      toaster.show(
+        error?.message ??
+          tr("account.keys.revokeError", {
+            default: "Could not revoke that key",
+          }),
+        "danger",
+      );
     }
   };
 
@@ -97,26 +116,36 @@ const AccountKeys = (props: AccountKeysProps) => {
   return (
     <>
       <SettingsSection
-        title="API keys"
-        description="Keys act as you. Revoke any you no longer recognise."
+        title={tr("account.keys.title", { default: "API keys" })}
+        description={tr("account.keys.description", {
+          default: "Keys act as you. Revoke any you no longer recognise.",
+        })}
       >
         {keys.map((key) => (
           <SettingsRow
             key={key.id}
             label={key.name}
-            description={`…${key.tokenSuffix} · created ${dt
-              .of(key.createdAt)
-              .fromNow()}${
-              key.lastUsedAt
-                ? ` · last used ${dt.of(key.lastUsedAt).fromNow()}`
-                : " · never used"
-            }`}
+            description={
+              tr("account.keys.createdAt", {
+                default: "…$1 · created $2",
+                args: [key.tokenSuffix, dt.of(key.createdAt).fromNow()],
+              }) +
+              (key.lastUsedAt
+                ? tr("account.keys.lastUsedAt", {
+                    default: " · last used $1",
+                    args: [dt.of(key.lastUsedAt).fromNow()],
+                  })
+                : tr("account.keys.neverUsed", { default: " · never used" }))
+            }
           >
             <Button
               variant="ghost"
               size="sm"
               onClick={() => revoke(key)}
-              aria-label={`Revoke ${key.name}`}
+              aria-label={tr("account.keys.revokeAria", {
+                default: "Revoke $1",
+                args: [key.name],
+              })}
             >
               <Trash2 className="size-4" />
             </Button>
@@ -124,8 +153,11 @@ const AccountKeys = (props: AccountKeysProps) => {
         ))}
 
         <SettingsRow
-          label="Create a key"
-          description="Shown once, at creation. It cannot be recovered afterwards."
+          label={tr("account.keys.create", { default: "Create a key" })}
+          description={tr("account.keys.createDescription", {
+            default:
+              "Shown once, at creation. It cannot be recovered afterwards.",
+          })}
         >
           <Button
             variant="secondary"
@@ -133,7 +165,7 @@ const AccountKeys = (props: AccountKeysProps) => {
             onClick={() => setCreateOpen(true)}
           >
             <Plus className="size-4" />
-            New key
+            {tr("account.keys.new", { default: "New key" })}
           </Button>
         </SettingsRow>
       </SettingsSection>
@@ -141,16 +173,22 @@ const AccountKeys = (props: AccountKeysProps) => {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New API key</DialogTitle>
+            <DialogTitle>
+              {tr("account.keys.newTitle", { default: "New API key" })}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={create} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="apiKeyName">Name</Label>
+              <Label htmlFor="apiKeyName">
+                {tr("account.keys.name", { default: "Name" })}
+              </Label>
               <Input
                 id="apiKeyName"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                placeholder="CI pipeline"
+                placeholder={tr("account.keys.namePlaceholder", {
+                  default: "CI pipeline",
+                })}
                 required
               />
             </div>
@@ -160,10 +198,10 @@ const AccountKeys = (props: AccountKeysProps) => {
                 variant="ghost"
                 onClick={() => setCreateOpen(false)}
               >
-                Cancel
+                {tr("account.keys.cancel", { default: "Cancel" })}
               </Button>
               <Button type="submit" disabled={creating}>
-                Create
+                {tr("account.keys.submit", { default: "Create" })}
               </Button>
             </div>
           </form>
@@ -183,12 +221,16 @@ const AccountKeys = (props: AccountKeysProps) => {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Copy your key now</DialogTitle>
+            <DialogTitle>
+              {tr("account.keys.revealTitle", { default: "Copy your key now" })}
+            </DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-4">
             <span className="text-muted-foreground text-sm">
-              This is the only time it is shown. Store it somewhere safe before
-              closing this dialog.
+              {tr("account.keys.revealDescription", {
+                default:
+                  "This is the only time it is shown. Store it somewhere safe before closing this dialog.",
+              })}
             </span>
             <code className="bg-muted rounded-md border p-3 font-mono text-xs break-all">
               {freshToken}
@@ -200,7 +242,9 @@ const AccountKeys = (props: AccountKeysProps) => {
                 ) : (
                   <Clipboard className="size-4" />
                 )}
-                {copied ? "Copied" : "Copy"}
+                {copied
+                  ? tr("account.keys.copied", { default: "Copied" })
+                  : tr("account.keys.copy", { default: "Copy" })}
               </Button>
               <Button
                 onClick={() => {
@@ -208,7 +252,7 @@ const AccountKeys = (props: AccountKeysProps) => {
                   setCopied(false);
                 }}
               >
-                Done
+                {tr("account.keys.done", { default: "Done" })}
               </Button>
             </div>
           </div>

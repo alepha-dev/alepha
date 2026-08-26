@@ -1,5 +1,6 @@
 import { AppActions } from "@alepha/ui/components/app-actions/app-actions";
 import { Button } from "@alepha/ui/components/ui/button";
+import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { ArrowLeft } from "lucide-react";
 
@@ -38,6 +39,7 @@ export interface AccountHeaderProps {
  */
 export const AccountHeader = (props: AccountHeaderProps) => {
   const router = useRouter<any>();
+  const { tr } = useI18n();
   const home = props.homeRouteName ?? "home";
 
   return (
@@ -54,7 +56,8 @@ export const AccountHeader = (props: AccountHeaderProps) => {
         role="link"
       >
         <ArrowLeft className="size-4" />
-        {props.backLabel ?? "Back to site"}
+        {props.backLabel ??
+          tr("account.header.back", { default: "Back to site" })}
       </Button>
       <AppActions />
     </div>

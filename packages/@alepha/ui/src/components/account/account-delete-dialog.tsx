@@ -14,6 +14,7 @@ import type {
   MyProfileController,
 } from "alepha/api/users";
 import { useClient } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 
 export interface AccountDeleteDialogProps {
@@ -66,6 +67,7 @@ export const AccountDeleteDialog = (props: AccountDeleteDialogProps) => {
   const accountApi = useClient<MyAccountController>();
   const profileApi = useClient<MyProfileController>();
   const toaster = useToast();
+  const { tr } = useI18n();
 
   const [expected, setExpected] = useState<string | undefined>();
   const [confirm, setConfirm] = useState("");
@@ -118,7 +120,13 @@ export const AccountDeleteDialog = (props: AccountDeleteDialogProps) => {
         message unwrapped. Showing it verbatim is the entire reason the emit
         avoids `{ log: true }`; a generic "could not delete" would waste it.
       */
-      toaster.show(error?.message ?? "Could not delete your account", "danger");
+      toaster.show(
+        error?.message ??
+          tr("account.delete.error", {
+            default: "Could not delete your account",
+          }),
+        "danger",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -130,12 +138,16 @@ export const AccountDeleteDialog = (props: AccountDeleteDialogProps) => {
     <Dialog open={props.open} onOpenChange={(next) => !next && close()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete your account</DialogTitle>
+          <DialogTitle>
+            {tr("account.delete.title", { default: "Delete your account" })}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={submit} className="flex flex-col gap-4">
           <span className="text-muted-foreground text-sm">
-            This permanently removes your account, its sign-in methods and every
-            session. It cannot be undone.
+            {tr("account.delete.description", {
+              default:
+                "This permanently removes your account, its sign-in methods and every session. It cannot be undone.",
+            })}
           </span>
 
           {props.warning}
@@ -143,7 +155,9 @@ export const AccountDeleteDialog = (props: AccountDeleteDialogProps) => {
           {props.hasPassword ? (
             <ControlPassword
               id="deleteCurrentPassword"
-              label="Current password"
+              label={tr("account.delete.currentPassword", {
+                default: "Current password",
+              })}
               value={currentPassword}
               onChange={setCurrentPassword}
               autoComplete="current-password"
@@ -153,8 +167,9 @@ export const AccountDeleteDialog = (props: AccountDeleteDialogProps) => {
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="deleteConfirm">
-              Type <span className="font-mono">{expected ?? "…"}</span> to
-              confirm
+              {tr("account.delete.confirmBefore", { default: "Type" })}{" "}
+              <span className="font-mono">{expected ?? "…"}</span>{" "}
+              {tr("account.delete.confirmAfter", { default: "to confirm" })}
             </Label>
             <Input
               id="deleteConfirm"
@@ -167,14 +182,14 @@ export const AccountDeleteDialog = (props: AccountDeleteDialogProps) => {
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={close}>
-              Cancel
+              {tr("account.delete.cancel", { default: "Cancel" })}
             </Button>
             <Button
               type="submit"
               variant="destructive"
               disabled={submitting || !ready}
             >
-              Delete account
+              {tr("account.delete.submit", { default: "Delete account" })}
             </Button>
           </div>
         </form>

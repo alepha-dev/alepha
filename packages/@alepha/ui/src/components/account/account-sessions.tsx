@@ -6,6 +6,7 @@ import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import type { MySession, MySessionController } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { Circle, Monitor, Smartphone, Tablet } from "lucide-react";
 import { useState } from "react";
 
@@ -28,6 +29,7 @@ const AccountSessions = (props: AccountSessionsProps) => {
   const dt = useInject(DateTimeProvider);
   const dialog = useDialog();
   const toaster = useToast();
+  const { tr } = useI18n();
   const [sessions, setSessions] = useState<MySession[]>(props.sessions ?? []);
 
   const deviceIcon = (session: MySession) => {
@@ -43,9 +45,14 @@ const AccountSessions = (props: AccountSessionsProps) => {
   const label = (session: MySession) => {
     const agent = session.userAgent;
     if (!agent) {
-      return "Unknown device";
+      return tr("account.sessions.unknownDevice", {
+        default: "Unknown device",
+      });
     }
-    return `${agent.browser} on ${agent.os}`;
+    return tr("account.sessions.deviceLabel", {
+      default: "$1 on $2",
+      args: [agent.browser, agent.os],
+    });
   };
 
   /**
@@ -58,11 +65,19 @@ const AccountSessions = (props: AccountSessionsProps) => {
    */
   const description = (session: MySession) => {
     const parts = [
-      session.ip ?? "unknown IP",
-      `signed in ${dt.of(session.createdAt).fromNow()}`,
+      session.ip ?? tr("account.sessions.unknownIp", { default: "unknown IP" }),
+      tr("account.sessions.signedInAt", {
+        default: "signed in $1",
+        args: [dt.of(session.createdAt).fromNow()],
+      }),
     ];
     if (session.lastUsedAt && !session.current) {
-      parts.push(`last used ${dt.of(session.lastUsedAt).fromNow()}`);
+      parts.push(
+        tr("account.sessions.lastUsedAt", {
+          default: "last used $1",
+          args: [dt.of(session.lastUsedAt).fromNow()],
+        }),
+      );
     }
     return parts.join(" · ");
   };
@@ -72,16 +87,28 @@ const AccountSessions = (props: AccountSessionsProps) => {
       await api.deleteMySession({ params: { id: session.id } });
       setSessions((prev) => prev.filter((it) => it.id !== session.id));
     } catch (error: any) {
-      toaster.show(error?.message ?? "Could not revoke that session", "danger");
+      toaster.show(
+        error?.message ??
+          tr("account.sessions.revokeError", {
+            default: "Could not revoke that session",
+          }),
+        "danger",
+      );
     }
   };
 
   const revokeOthers = async () => {
     const ok = await dialog.confirm({
-      title: "Sign out everywhere else?",
-      description:
-        "Every other browser and device will be signed out. This one stays signed in.",
-      confirmLabel: "Sign out everywhere else",
+      title: tr("account.sessions.revokeOthersTitle", {
+        default: "Sign out everywhere else?",
+      }),
+      description: tr("account.sessions.revokeOthersDescription", {
+        default:
+          "Every other browser and device will be signed out. This one stays signed in.",
+      }),
+      confirmLabel: tr("account.sessions.revokeOthers", {
+        default: "Sign out everywhere else",
+      }),
       destructive: true,
     });
     if (!ok) {
@@ -92,12 +119,23 @@ const AccountSessions = (props: AccountSessionsProps) => {
       setSessions((prev) => prev.filter((it) => it.current));
       toaster.show(
         revoked === 1
-          ? "1 session signed out"
-          : `${revoked} sessions signed out`,
+          ? tr("account.sessions.revokedOne", {
+              default: "1 session signed out",
+            })
+          : tr("account.sessions.revokedMany", {
+              default: "$1 sessions signed out",
+              args: [String(revoked)],
+            }),
         "success",
       );
     } catch (error: any) {
-      toaster.show(error?.message ?? "Could not sign out the others", "danger");
+      toaster.show(
+        error?.message ??
+          tr("account.sessions.revokeOthersError", {
+            default: "Could not sign out the others",
+          }),
+        "danger",
+      );
     }
   };
 
@@ -105,8 +143,10 @@ const AccountSessions = (props: AccountSessionsProps) => {
 
   return (
     <SettingsSection
-      title="Active sessions"
-      description="Revoke any session you do not recognise."
+      title={tr("account.sessions.title", { default: "Active sessions" })}
+      description={tr("account.sessions.description", {
+        default: "Revoke any session you do not recognise.",
+      })}
     >
       {sessions.map((session) => (
         <SettingsRow
@@ -125,7 +165,7 @@ const AccountSessions = (props: AccountSessionsProps) => {
               {label(session)}
               {session.current ? (
                 <span className="text-muted-foreground text-xs">
-                  (this device)
+                  {tr("account.sessions.current", { default: "(this device)" })}
                 </span>
               ) : null}
             </span>
@@ -134,7 +174,7 @@ const AccountSessions = (props: AccountSessionsProps) => {
         >
           {session.current ? null : (
             <Button variant="ghost" size="sm" onClick={() => revoke(session)}>
-              Revoke
+              {tr("account.sessions.revoke", { default: "Revoke" })}
             </Button>
           )}
         </SettingsRow>
@@ -142,11 +182,22 @@ const AccountSessions = (props: AccountSessionsProps) => {
 
       {others > 0 ? (
         <SettingsRow
-          label="Sign out everywhere else"
-          description="Ends every session except this one."
+          label={tr("account.sessions.revokeOthers", {
+            default: "Sign out everywhere else",
+          })}
+          description={tr("account.sessions.revokeOthersHint", {
+            default: "Ends every session except this one.",
+          })}
         >
           <Button variant="destructive" size="sm" onClick={revokeOthers}>
-            Sign out {others} other{others === 1 ? "" : "s"}
+            {others === 1
+              ? tr("account.sessions.signOutOne", {
+                  default: "Sign out 1 other",
+                })
+              : tr("account.sessions.signOutMany", {
+                  default: "Sign out $1 others",
+                  args: [String(others)],
+                })}
           </Button>
         </SettingsRow>
       ) : null}

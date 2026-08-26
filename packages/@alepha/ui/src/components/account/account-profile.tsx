@@ -47,7 +47,7 @@ const AccountProfile = (props: AccountProfileProps) => {
   const api = useClient<MyProfileController>();
   const avatarApi = useClient<MyAvatarController>();
   const toaster = useToast();
-  const { l } = useI18n();
+  const { l, tr } = useI18n();
   const fileInput = useRef<HTMLInputElement>(null);
 
   const [profile, setProfile] = useState<MyProfile | undefined>(props.profile);
@@ -131,14 +131,20 @@ const AccountProfile = (props: AccountProfileProps) => {
             },
           }),
         );
-        toaster.show("Profile updated", "success");
+        toaster.show(
+          tr("account.profile.updated", { default: "Profile updated" }),
+          "success",
+        );
       } catch (error: any) {
         // The username-taken 409 arrives here with its own message, which is
         // the only one worth showing. Toasted *and* rethrown: the toast is
         // what the user reads, and the throw is what keeps the form dirty and
         // errored so Save stays actionable for the retry.
         toaster.show(
-          error?.message ?? "Could not update your profile",
+          error?.message ??
+            tr("account.profile.updateError", {
+              default: "Could not update your profile",
+            }),
           "danger",
         );
         throw error;
@@ -158,9 +164,18 @@ const AccountProfile = (props: AccountProfileProps) => {
     setUploading(true);
     try {
       setProfile(await avatarApi.updateMyAvatar({ body: { file } }));
-      toaster.show("Avatar updated", "success");
+      toaster.show(
+        tr("account.profile.avatarUpdated", { default: "Avatar updated" }),
+        "success",
+      );
     } catch (error: any) {
-      toaster.show(error?.message ?? "Could not upload that image", "danger");
+      toaster.show(
+        error?.message ??
+          tr("account.profile.avatarUploadError", {
+            default: "Could not upload that image",
+          }),
+        "danger",
+      );
     } finally {
       setUploading(false);
       // Reset so picking the same file again still fires a change event.
@@ -175,7 +190,13 @@ const AccountProfile = (props: AccountProfileProps) => {
     try {
       setProfile(await avatarApi.deleteMyAvatar());
     } catch (error: any) {
-      toaster.show(error?.message ?? "Could not remove your avatar", "danger");
+      toaster.show(
+        error?.message ??
+          tr("account.profile.avatarRemoveError", {
+            default: "Could not remove your avatar",
+          }),
+        "danger",
+      );
     } finally {
       setUploading(false);
     }
@@ -193,19 +214,27 @@ const AccountProfile = (props: AccountProfileProps) => {
       {canEditAvatar && (
         <>
           <SettingsSection
-            title="Profile picture"
-            description="Shown next to your name wherever you appear."
+            title={tr("account.profile.pictureTitle", {
+              default: "Profile picture",
+            })}
+            description={tr("account.profile.pictureDescription", {
+              default: "Shown next to your name wherever you appear.",
+            })}
           >
             <SettingsRow
-              label="Avatar"
-              description="PNG, JPEG, GIF or WebP, up to 5 MB."
+              label={tr("account.profile.avatar", { default: "Avatar" })}
+              description={tr("account.profile.avatarDescription", {
+                default: "PNG, JPEG, GIF or WebP, up to 5 MB.",
+              })}
             >
               <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() => fileInput.current?.click()}
                   disabled={uploading}
-                  aria-label="Change avatar"
+                  aria-label={tr("account.profile.avatarChange", {
+                    default: "Change avatar",
+                  })}
                   className="relative size-14 shrink-0 cursor-pointer"
                 >
                   {/* Only the image is clipped to a circle; the camera badge sits
@@ -235,7 +264,7 @@ const AccountProfile = (props: AccountProfileProps) => {
                     disabled={uploading}
                   >
                     <Trash2 className="size-4" />
-                    Remove
+                    {tr("account.profile.avatarRemove", { default: "Remove" })}
                   </Button>
                 ) : null}
               </div>
@@ -264,8 +293,10 @@ const AccountProfile = (props: AccountProfileProps) => {
         disabledIfPristine
         groups={[
           {
-            title: "Name",
-            description: "How you are identified to other people.",
+            title: tr("account.profile.nameTitle", { default: "Name" }),
+            description: tr("account.profile.nameDescription", {
+              default: "How you are identified to other people.",
+            }),
             fields: hasUsername
               ? ["username", "firstName", "lastName"]
               : ["firstName", "lastName"],
@@ -281,8 +312,10 @@ const AccountProfile = (props: AccountProfileProps) => {
           // label that already said so. A field earns an icon by having one
           // that means something: `@` is what a handle looks like everywhere.
           username: {
-            label: "Username",
-            description: "Unique across this site.",
+            label: tr("account.profile.username", { default: "Username" }),
+            description: tr("account.profile.usernameDescription", {
+              default: "Unique across this site.",
+            }),
             autoComplete: "username",
             icon: AtSign,
             // No clear button: `updateMyProfile` has no "unset" for a
@@ -292,12 +325,12 @@ const AccountProfile = (props: AccountProfileProps) => {
             clearable: false,
           },
           firstName: {
-            label: "First name",
+            label: tr("account.profile.firstName", { default: "First name" }),
             autoComplete: "given-name",
             icon: User,
           },
           lastName: {
-            label: "Last name",
+            label: tr("account.profile.lastName", { default: "Last name" }),
             autoComplete: "family-name",
             icon: User,
           },
@@ -305,18 +338,24 @@ const AccountProfile = (props: AccountProfileProps) => {
       />
 
       <SettingsSection
-        title="Account"
-        description="Details you cannot change from this page."
+        title={tr("account.profile.accountTitle", { default: "Account" })}
+        description={tr("account.profile.accountDescription", {
+          default: "Details you cannot change from this page.",
+        })}
       >
         <SettingsRow
-          label="Email"
-          description="Changing your email needs verification, so it is not a profile edit."
+          label={tr("account.profile.email", { default: "Email" })}
+          description={tr("account.profile.emailDescription", {
+            default:
+              "Changing your email needs verification, so it is not a profile edit.",
+          })}
         >
           <span className="text-muted-foreground text-sm">
-            {profile.email ?? "Not set"}
+            {profile.email ??
+              tr("account.profile.emailUnset", { default: "Not set" })}
           </span>
         </SettingsRow>
-        <SettingsRow label="Roles">
+        <SettingsRow label={tr("account.profile.roles", { default: "Roles" })}>
           <div className="flex flex-wrap gap-1">
             {profile.roles.length > 0 ? (
               profile.roles.map((role) => (
@@ -329,7 +368,9 @@ const AccountProfile = (props: AccountProfileProps) => {
             )}
           </div>
         </SettingsRow>
-        <SettingsRow label="Member since">
+        <SettingsRow
+          label={tr("account.profile.memberSince", { default: "Member since" })}
+        >
           <span className="text-muted-foreground text-sm">
             {String(l(profile.createdAt, { date: "LL" }))}
           </span>
