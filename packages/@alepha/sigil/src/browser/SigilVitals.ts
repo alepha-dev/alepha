@@ -1,5 +1,17 @@
 type Metric = "lcp" | "cls" | "inp" | "fcp" | "ttfb";
-type Sink = (m: { metric: Metric; value: number }) => void;
+type Sink = (m: { metric: Metric; value: number; path: string }) => void;
+
+/**
+ * The path a metric belongs to, asked for at the moment the metric is
+ * measured rather than at the moment it is reported.
+ *
+ * That distinction is the whole point. LCP, CLS and INP are finalised when the
+ * page is hidden, and in a client-routed app the visitor has usually moved on
+ * by then — so reading the path at report time filed the numbers of the page
+ * they measured under whatever page happened to be on screen when the tab lost
+ * focus.
+ */
+type PathResolver = () => string;
 
 /**
  * Collects Core Web Vitals via PerformanceObserver and reports finalized
@@ -8,16 +20,22 @@ type Sink = (m: { metric: Metric; value: number }) => void;
  */
 export class SigilVitals {
   /**
-   * Metrics already emitted for this page load. Every metric here is measured
-   * once per load, so a second report is always a duplicate, never an update.
+   * Metric/path pairs already emitted, keyed `metric:path`.
+   *
+   * Keyed by both because CLS and INP are now measured PER PATH: a visitor who
+   * reads three pages has three page layouts to have shifted and three sets of
+   * interactions to have been slow, and one sample each is the honest reading.
+   * `lcp`, `fcp` and `ttfb` still happen once, at load, so their key never
+   * repeats either way.
    */
-  protected readonly reported = new Set<Metric>();
+  protected readonly reported = new Set<string>();
 
   /**
    * The largest contentful paint seen so far, reported at hidden like the
-   * other accumulating metrics.
+   * other accumulating metrics, and the path it painted on.
    */
   protected lcp = 0;
+  protected lcpPath?: string;
 
   /**
    * Whether {@link onLcp} has already run. LCP is dispatched once per larger
@@ -32,10 +50,17 @@ export class SigilVitals {
    *   *timing* signal, not a measurement — the value still goes to `sink` at
    *   hidden, where it is final. `SigilBrowserProvider` uses it to decide when
    *   the page has settled enough to talk to the server.
+   * @param currentPath answers "which page is on screen right now". Supplied
+   *   by the caller rather than read from `location` here, because the caller
+   *   is the one that knows about client-side navigation — and because
+   *   reading `location` inside a `buffered: true` observer callback can land
+   *   after a navigation the entry predates.
    */
   constructor(
     protected readonly sink: Sink,
     protected readonly onLcp?: () => void,
+    protected readonly currentPath: PathResolver = () =>
+      typeof location === "undefined" ? "/" : location.pathname,
   ) {}
 
   /**
@@ -43,13 +68,17 @@ export class SigilVitals {
    */
   protected noteLcp(value: number) {
     this.lcp = value;
+    // The path as of the paint, not as of the report. LCP entries stop
+    // arriving at the first interaction, so in practice this is the document's
+    // own path — which is exactly the one it should be filed under.
+    this.lcpPath ??= this.currentPath();
     if (this.lcpNotified) return;
     this.lcpNotified = true;
     this.onLcp?.();
   }
 
   /**
-   * Emits a metric, at most once per page load.
+   * Emits a metric, at most once per metric AND path.
    *
    * The guard is not defensive tidying — two of the three callers fired twice
    * in production. `ttfb` arrived on every page view as two identical samples
@@ -66,12 +95,18 @@ export class SigilVitals {
    * visitor starts counting as two. Reporting `cls` only at the first hidden
    * does forfeit shift that accrues after a return to the tab; that is the
    * cheaper error, and the one a histogram can actually survive.
+   *
+   * The key includes the path because a second PAGE genuinely is a second
+   * sample: three pages read means three layouts that could have shifted. What
+   * the guard still catches is the same page reported twice, which is the
+   * duplicate that inflates the population.
    */
-  public report(metric: Metric, raw: number) {
-    if (this.reported.has(metric)) return;
-    this.reported.add(metric);
+  public report(metric: Metric, raw: number, path = this.currentPath()) {
+    const key = `${metric}:${path}`;
+    if (this.reported.has(key)) return;
+    this.reported.add(key);
     const value = metric === "cls" ? Math.round(raw * 1000) : Math.round(raw);
-    this.sink({ metric, value });
+    this.sink({ metric, value, path });
   }
 
   /**
@@ -103,20 +138,27 @@ export class SigilVitals {
         );
     });
 
-    // CLS: sum of layout-shift values without recent input.
-    let cls = 0;
+    // CLS: sum of layout-shift values without recent input, per path. One
+    // running total across a visit would attribute one page's jumpiness to
+    // every other page the visitor went on to read.
+    const cls = new Map<string, number>();
     this.safeObserve(["layout-shift"], (entries) => {
       for (const e of entries) {
-        if (!(e as any).hadRecentInput) cls += (e as any).value || 0;
+        if ((e as any).hadRecentInput) continue;
+        const path = this.currentPath();
+        cls.set(path, (cls.get(path) ?? 0) + ((e as any).value || 0));
       }
     });
 
-    // INP: max event "interactionId" duration (approx — max event duration).
-    let inp = 0;
+    // INP: max event "interactionId" duration (approx — max event duration),
+    // per path. An interaction belongs to the page it was made on.
+    const inp = new Map<string, number>();
     this.safeObserve(["event"], (entries) => {
       for (const e of entries) {
         const dur = (e as any).duration || 0;
-        if ((e as any).interactionId && dur > inp) inp = dur;
+        if (!(e as any).interactionId) continue;
+        const path = this.currentPath();
+        if (dur > (inp.get(path) ?? 0)) inp.set(path, dur);
       }
     });
 
@@ -127,12 +169,19 @@ export class SigilVitals {
       if (nav?.responseStart) this.report("ttfb", nav.responseStart);
     });
 
-    // Finalize accumulating metrics on hidden.
+    // Finalize accumulating metrics on hidden, each under the path it was
+    // measured on rather than the one on screen at this moment.
     const finalize = () => {
       if (document.visibilityState !== "hidden") return;
-      if (this.lcp) this.report("lcp", this.lcp);
-      this.report("cls", cls);
-      if (inp) this.report("inp", inp);
+      if (this.lcp) this.report("lcp", this.lcp, this.lcpPath);
+      // Zero shift is a result, so a path with no entries at all still reports
+      // one — but only the current one: a page nothing shifted on and nobody
+      // is looking at any more has nothing to say.
+      if (!cls.has(this.currentPath())) cls.set(this.currentPath(), 0);
+      for (const [path, value] of cls) this.report("cls", value, path);
+      for (const [path, value] of inp) {
+        if (value) this.report("inp", value, path);
+      }
     };
     document.addEventListener("visibilitychange", finalize);
   }
