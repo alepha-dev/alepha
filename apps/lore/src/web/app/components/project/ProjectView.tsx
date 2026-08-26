@@ -57,7 +57,8 @@ import QuestLog from "./QuestLog.tsx";
  * quest its width when a reader does not want it.
  *
  * This set also drives the view bar, so both routes get it. Dropping it on
- * the detail route would shift the log up the moment a quest opened.
+ * the detail route would shift the log up the moment a quest opened — which
+ * is why, on that route, the bar navigates instead of switching in place.
  */
 const ROUTES_WITH_QUEST_LOG = new Set(["projectQuests", "projectQuest"]);
 
@@ -169,12 +170,11 @@ const ProjectView = () => {
   const kanbanView = name === "projectQuests" && questsView.view === "kanban";
   const showQuestLog = ROUTES_WITH_QUEST_LOG.has(name) && !kanbanView;
   const fullWidth = ROUTES_FULL_WIDTH.has(name) || kanbanView;
-  // The view bar belongs to the quest LIST, which is now the only route in
-  // that set. It used to render on the detail route as well, to stop the log
-  // jumping up by the bar's height the moment a quest opened — with the log
-  // gone from detail there is nothing left to keep in place, and a bar that
-  // switches between two views the page does not have is chrome without a
-  // job.
+  // Both routes, for the same reason the quest log gets both: dropping the
+  // bar on the detail route would shift the log up by the bar's height the
+  // moment a quest opened. What it does there is not switch the page — the
+  // detail route has no two views — but go back up to the one that does; see
+  // `selectView`.
   const showViewBar = ROUTES_WITH_QUEST_LOG.has(name);
 
   const [project] = useStore(currentProjectAtom);
@@ -201,11 +201,17 @@ const ProjectView = () => {
 
   // The view is state, not a destination, so picking one is a plain write —
   // no navigation, no history entry, and nothing for a later render to undo.
-  // (There used to be a branch here that navigated back to the list when the
-  // bar was picked from the quest detail route. The bar no longer renders
-  // there, so the only caller is the list itself.)
+  //
+  // Except from the quest DETAIL route, which renders the bar (to keep the
+  // quest log from jumping) but has no list and no board of its own. The
+  // write alone left the pressed entry moving and the page not: a control
+  // that answers a click by doing nothing visible. So going up to the page
+  // the chosen view belongs to is the second half of picking one there.
   const selectView = (view: QuestsView) => {
     setQuestsView({ view });
+    if (name === "projectQuest") {
+      void router.push("projectQuests", { params: { projectSlug } });
+    }
   };
 
   // Four unlabelled groups (`NavGroup.label` omitted on purpose, see the great

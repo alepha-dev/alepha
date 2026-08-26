@@ -1072,7 +1072,7 @@ test.describe("Quest", () => {
   test("view switcher reaches the kanban board and remembers the choice", async ({
     page,
   }) => {
-    test.setTimeout(60_000);
+    test.setTimeout(90_000);
 
     const t = Date.now();
     const email = `viewrail${t}@example.com`;
@@ -1219,6 +1219,53 @@ test.describe("Quest", () => {
         timeout: 10_000,
       });
       await expect(page.getByTestId("quests-view-switcher")).toBeVisible();
+    });
+
+    await test.step("picking a view from a quest detail lands on that view", async () => {
+      // The bar renders on the detail route to keep the log from jumping,
+      // but the detail route has no list and no board of its own. It used
+      // to answer a click by writing `questsViewAtom` and staying put — the
+      // pressed entry moved and nothing else did. Picking a view there now
+      // means going up to the page that has one.
+      const { shortId } = await apiPost<{ shortId: number }>(
+        page,
+        "createQuest",
+        {
+          projectId,
+          title: `ViewJump${t}`,
+          description: "Seeded so the detail route has something to open",
+          area: "Main",
+          priority: "low",
+          objectives: [],
+          attachments: [],
+        },
+      );
+
+      await page.goto(`/${projectSlug}/quests/${shortId}`);
+      await expect(page.getByTestId("quests-view-switcher")).toBeVisible({
+        timeout: 10_000,
+      });
+      await page.getByTestId("quests-view-kanban").click();
+      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/?$`), {
+        timeout: 10_000,
+      });
+      await expect(page.getByTestId("kanban-board")).toBeVisible({
+        timeout: 10_000,
+      });
+
+      // ...and the same in the other direction, so this is not just "any
+      // click leaves the detail route".
+      await page.goto(`/${projectSlug}/quests/${shortId}`);
+      await expect(page.getByTestId("quests-view-switcher")).toBeVisible({
+        timeout: 10_000,
+      });
+      await page.getByTestId("quests-view-list").click();
+      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/?$`), {
+        timeout: 10_000,
+      });
+      await expect(page.getByTestId("quests-table")).toBeVisible({
+        timeout: 10_000,
+      });
     });
 
     await test.step("the view bar disappears when kanban is off", async () => {
