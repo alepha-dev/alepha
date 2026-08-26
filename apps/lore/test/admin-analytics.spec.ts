@@ -24,12 +24,29 @@ describe("Lore admin analytics surface", () => {
     expect(names).toEqual(["sigil_views", "sigil_vitals"]);
 
     const views = service.listDatasets().find((d) => d.name === "sigil_views");
-    expect(Object.keys(views?.dimensions.properties ?? {}).sort()).toEqual(
-      ["campaign", "country", "device", "path", "referrer", "sigilId"].sort(),
+    const dimensions = Object.keys(views?.dimensions.properties ?? {}).sort();
+    expect(dimensions).toEqual(
+      [
+        "campaign",
+        "country",
+        "device",
+        "path",
+        "referrer",
+        "sigilId",
+        "traffic",
+      ].sort(),
     );
     expect(Object.keys(views?.measures.properties ?? {}).sort()).toEqual(
       ["count", "engaged", "entries"].sort(),
     );
+
+    // `traffic` sorts LAST, and that is load-bearing rather than incidental.
+    // `AnalyticsSlotMap` derives Analytics Engine slots from this sorted list,
+    // so a dimension added anywhere but the end shifts every slot after it and
+    // silently misreads every row already stored. Adding `referrer` did
+    // exactly that once. A rename that moves this name earlier in the sort is
+    // the same mistake wearing different clothes, so it fails here first.
+    expect(dimensions.at(-1)).toBe("traffic");
   });
 
   it("answers a recorded view through the admin query path", async () => {

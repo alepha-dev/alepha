@@ -69,7 +69,7 @@ const readMeasures = async (analytics: LoreAnalytics, sigilId: string) => {
 const readBy = async (
   analytics: LoreAnalytics,
   sigilId: string,
-  dimension: "campaign" | "device",
+  dimension: "campaign" | "device" | "traffic",
 ) => {
   const result = await analytics.views.query({
     since: "2000-01-01",
@@ -419,6 +419,56 @@ describe("sigil ingest", () => {
       { value: "desktop", count: 1 },
       { value: "mobile", count: 1 },
     ]);
+  });
+
+  it("stores the traffic kind the proxy stamped, defaulting to human", async () => {
+    const { analytics, sigil, post } = await setup();
+
+    expect(
+      (await post({ views: [{ path: "/" }], traffic: "bot" })).status,
+    ).toBe(204);
+    expect(
+      (await post({ views: [{ path: "/docs" }], traffic: "human" })).status,
+    ).toBe(204);
+    // An app whose proxy predates the stamp sends nothing. Counting its
+    // readers as crawlers is the one direction this may not be wrong in, so
+    // silence reads as a person.
+    expect((await post({ views: [{ path: "/about" }] })).status).toBe(204);
+
+    expect(await readBy(analytics, sigil.id, "traffic")).toEqual([
+      { value: "bot", count: 1 },
+      { value: "human", count: 2 },
+    ]);
+  });
+
+  it("stamps the traffic kind on the visitor row as well as the view", async () => {
+    const { probe, sigil, post } = await setup();
+
+    // Same stamp, second destination. The views dataset and
+    // `sigil_uniques_daily` are written by two different calls in
+    // `absorbViews`, so a kind that reaches one and not the other is exactly
+    // the failure that leaves the headline unfiltered while everything below
+    // it moves.
+    expect(
+      (await post({ views: [{ path: "/" }], traffic: "bot", visitor: "v-bot" }))
+        .status,
+    ).toBe(204);
+    expect(
+      (
+        await post({
+          views: [{ path: "/" }],
+          traffic: "human",
+          visitor: "v-human",
+        })
+      ).status,
+    ).toBe(204);
+
+    const rows = await probe.uniques.findMany({
+      where: { sigilId: { eq: sigil.id } },
+    });
+    const byHash = new Map(rows.map((r) => [r.visitorHash, r.traffic]));
+    expect(byHash.get("v-bot")).toBe("bot");
+    expect(byHash.get("v-human")).toBe("human");
   });
 
   it("refuses an unknown token", async () => {

@@ -5,6 +5,7 @@ import {
   sigilUniquesDaily,
   UNIQUES_COLLAPSED_HASH,
 } from "../entities/sigilUniquesDaily.ts";
+import type { TrafficFilter } from "../schemas/trafficFilterSchema.ts";
 
 /**
  * One visitor, once, on one day, for one app — what `absorb` accepts.
@@ -16,6 +17,11 @@ export interface LoreAnalyticsUniqueSample {
    */
   day: string;
   visitorHash: string;
+  /**
+   * `human` | `bot`. Omitted means `human`, which is what an app whose proxy
+   * predates the stamp sends.
+   */
+  traffic?: string;
 }
 
 /**
@@ -27,6 +33,12 @@ export interface LoreAnalyticsUniqueSample {
  */
 export interface LoreAnalyticsWindow {
   sigilIds: string[];
+  /**
+   * Which population to count. Omitted means `all`, so every caller that
+   * predates the filter - the dashboard tiles, `DailyVisitorsService` - keeps
+   * counting everyone.
+   */
+  traffic?: TrafficFilter;
   /**
    * First UTC day included, `YYYY-MM-DD`.
    */
@@ -89,9 +101,15 @@ export class LoreAnalyticsStore {
         sigilId: sample.sigilId,
         day: sample.day,
         visitorHash: sample.visitorHash,
+        traffic: sample.traffic || "human",
       })),
       {
-        target: ["sigilId", "day", "visitorHash"],
+        // Four columns, matching the unique index exactly - an `ON CONFLICT`
+        // target that does not name a real index is a runtime error, not a
+        // wider match. Including `traffic` costs nothing in practice: the
+        // hash closes over the user-agent the kind is derived from, so a
+        // returning visitor conflicts on all four or none.
+        target: ["sigilId", "day", "visitorHash", "traffic"],
         set: {
           day: sql`excluded.${sql.raw(this.uniques.table.day.name)}`,
         },
@@ -137,10 +155,35 @@ export class LoreAnalyticsStore {
               ? sql`AND ${this.uniques.table.day} <= ${window.until}`
               : sql``
           }
+          ${this.trafficClause(window.traffic)}
       `,
       z.object({ uniques: z.coerce.number() }),
     );
     return Number(row?.uniques) || 0;
+  }
+
+  /**
+   * The `AND traffic …` term, or nothing at all for `all`.
+   *
+   * `humans` is expressed as **not a bot** rather than as an equality, which
+   * is the honest definition and the one that survives a value nobody has
+   * thought of yet: an unclassified row is a person, and so is a row carrying
+   * a kind this code has never heard of.
+   *
+   * Worth noting that the view filter in `InsightsController` cannot do this
+   * and enumerates the positive side instead. Not an inconsistency: that one
+   * goes through `AnalyticsFilter`, which deliberately offers equality and set
+   * membership only, on a seam two backends have to honour. This is SQL
+   * against one table.
+   */
+  protected trafficClause(traffic: TrafficFilter | undefined) {
+    if (traffic === "bots") {
+      return sql`AND ${this.uniques.table.traffic} = ${"bot"}`;
+    }
+    if (traffic === "humans") {
+      return sql`AND ${this.uniques.table.traffic} <> ${"bot"}`;
+    }
+    return sql``;
   }
 
   protected scope(window: LoreAnalyticsWindow) {

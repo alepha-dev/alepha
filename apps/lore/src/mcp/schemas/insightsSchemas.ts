@@ -46,10 +46,20 @@ export const insightsReadParamsSchema = projectParamsSchema.extend({
       "Which segments to return. Defaults to all three. Narrow it when only one question is being asked — the analytics segment is the largest and the least often needed.",
     )
     .optional(),
+  traffic: z
+    .enum(["all", "humans", "bots"])
+    .describe(
+      "Which population the analytics segment counts, `uniqueVisitors` included. Defaults to `all`. `humans` excludes crawlers that identify themselves in their user-agent; one driving a real browser is counted as human whatever it does, so a low engagement rate under `humans` still means automation. Does not touch the `errors` segment: a crawler's crash is still the app's crash.",
+    )
+    .optional(),
 });
 
 export const insightsReadResultSchema = z.object({
   range: z.string(),
+  /**
+   * Which population the analytics segment counts, echoed back.
+   */
+  traffic: z.string(),
   /**
    * First day included, `YYYY-MM-DD`.
    */

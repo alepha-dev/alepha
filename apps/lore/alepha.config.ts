@@ -59,6 +59,10 @@ export default defineConfig({
         "feedback.empty.detail.",
         // tr(`insights.range.${r}`) — 1d/7d/30d.
         "insights.range.",
+        // tr(`insights.traffic.${t}`) — all/humans/bots, the Analytics tab's
+        // population filter. `.note` under the same prefix is written out in
+        // full, so it is exempted here without being hidden by it.
+        "insights.traffic.",
         // tr(`insights.vitals.${key}`) — lcp/cls/inp/fcp/ttfb (Web Vitals p75 cards).
         "insights.vitals.",
         // tr(`insights.device.${d.device}`) — mobile/tablet/desktop.

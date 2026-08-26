@@ -6,6 +6,7 @@ import { $action } from "alepha/server";
 import { sigilEnvelope } from "../shared/schemas/sigilEnvelope.ts";
 import { sigilClientAtom } from "../shared/sigilClientAtom.ts";
 import { sigilDeviceClass } from "../shared/sigilDeviceClass.ts";
+import { sigilTrafficKind } from "../shared/sigilTrafficKind.ts";
 import { sigilEnv } from "../sigilEnv.ts";
 import { SigilSinkProvider } from "./SigilSinkProvider.ts";
 
@@ -118,9 +119,21 @@ export class SigilProxyController {
       // envelope bytes on something the app can read for free would be waste.
       const device = sigilDeviceClass(ua);
 
+      // Same header, second question, and the same argument for asking it here:
+      // the app's server already holds the user-agent. Only a client that runs
+      // JavaScript ever reaches this endpoint, so what this separates is the
+      // crawler that renders from the reader - not the crawler that merely
+      // fetches, which never arrives.
+      const traffic = sigilTrafficKind(ua);
+
       // The kill-switches are applied by the sink provider. Filtering here too
       // would be a second place to keep in sync with the fetched config.
-      await this.sink.ingest(request.body, { country, visitor, device });
+      await this.sink.ingest(request.body, {
+        country,
+        visitor,
+        device,
+        traffic,
+      });
 
       // The config rides back on the call the browser was making anyway. A page
       // served from a file or a cache carries one older than the visit, and

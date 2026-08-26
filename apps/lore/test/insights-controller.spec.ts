@@ -63,6 +63,13 @@ class Probe {
       referrer?: string;
       campaign?: string;
       device?: string;
+      /**
+       * `human` | `bot`, or `""` to stand in for a row written before the
+       * dimension existed. Optional and defaulted on the dataset, like
+       * `referrer`, so every fixture that predates the traffic filter keeps
+       * reading as it did.
+       */
+      traffic?: string;
       count?: number;
       engaged?: number;
       entries?: number;
@@ -602,6 +609,168 @@ describe("InsightsController", () => {
       { device: "desktop", count: 12 },
       { device: "mobile", count: 7 },
     ]);
+  });
+
+  it("narrows every view number to one traffic population", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const projectId = await createProject(ctx, owner);
+    const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
+
+    await ctx.probe.views.create({
+      sigilId,
+      hour: hourUtc(ctx, 0, 8),
+      path: "/guides",
+      country: "FR",
+      traffic: "human",
+      count: 3,
+      entries: 1,
+      engaged: 2,
+    });
+    await ctx.probe.views.create({
+      sigilId,
+      hour: hourUtc(ctx, 0, 8),
+      path: "/reference",
+      country: "US",
+      traffic: "bot",
+      count: 7,
+      entries: 7,
+      engaged: 0,
+    });
+
+    const query = { range: "30d" } as const;
+    const all = await ctx.insightsController.getInsights.fetch(
+      { params: { projectId }, query },
+      { user: owner },
+    );
+    const humans = await ctx.insightsController.getInsights.fetch(
+      { params: { projectId }, query: { ...query, traffic: "humans" } },
+      { user: owner },
+    );
+    const bots = await ctx.insightsController.getInsights.fetch(
+      { params: { projectId }, query: { ...query, traffic: "bots" } },
+      { user: owner },
+    );
+
+    expect(all.data.totalViews).toBe(10);
+    expect(humans.data.totalViews).toBe(3);
+    expect(bots.data.totalViews).toBe(7);
+
+    // Not just the headline: the filter rides on the shared `where`, so the
+    // leaderboards and the derived rates move with it. A page that filtered
+    // the total and not the top-pages list would be worse than no filter.
+    expect(humans.data.topPaths.map((p) => p.path)).toEqual(["/guides"]);
+    expect(bots.data.topPaths.map((p) => p.path)).toEqual(["/reference"]);
+    expect(humans.data.entries).toBe(1);
+    expect(bots.data.engagementRate).toBe(0);
+
+    // Echoed back, because the page renders the caveat from the payload.
+    expect(all.data.traffic).toBe("all");
+    expect(humans.data.traffic).toBe("humans");
+  });
+
+  it("counts a view recorded before the dimension existed as human", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const projectId = await createProject(ctx, owner);
+    const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
+
+    // What a row written before `traffic` shipped actually holds. The
+    // dimension's default fills a column on write; it does not reach back.
+    await ctx.probe.views.create({
+      sigilId,
+      hour: hourUtc(ctx, 0, 8),
+      path: "/",
+      country: "FR",
+      traffic: "",
+      count: 5,
+    });
+
+    const humans = await ctx.insightsController.getInsights.fetch(
+      { params: { projectId }, query: { range: "30d", traffic: "humans" } },
+      { user: owner },
+    );
+    const bots = await ctx.insightsController.getInsights.fetch(
+      { params: { projectId }, query: { range: "30d", traffic: "bots" } },
+      { user: owner },
+    );
+
+    // Dropping history out of the humans view would read as the traffic
+    // collapsing on the deploy date.
+    expect(humans.data.totalViews).toBe(5);
+    expect(bots.data.totalViews).toBe(0);
+  });
+
+  it("narrows the unique-visitor count too", async ({ expect }) => {
+    const owner = await createTestUser(ctx);
+    const projectId = await createProject(ctx, owner);
+    const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
+
+    const day = dayUtc(ctx, 0);
+    await ctx.probe.uniques.create({
+      sigilId,
+      day,
+      visitorHash: "hash-reader",
+      traffic: "human",
+    });
+    await ctx.probe.uniques.create({
+      sigilId,
+      day,
+      visitorHash: "hash-crawler",
+      traffic: "bot",
+    });
+
+    const query = { range: "30d" } as const;
+    const all = await ctx.insightsController.getInsights.fetch(
+      { params: { projectId }, query },
+      { user: owner },
+    );
+    const humans = await ctx.insightsController.getInsights.fetch(
+      { params: { projectId }, query: { ...query, traffic: "humans" } },
+      { user: owner },
+    );
+    const bots = await ctx.insightsController.getInsights.fetch(
+      { params: { projectId }, query: { ...query, traffic: "bots" } },
+      { user: owner },
+    );
+
+    // The headline the page leads with. Leaving it unfiltered while every
+    // number beside it moved was the whole reason this was worth doing: two
+    // populations rendered side by side look comparable and are not.
+    expect(all.data.uniqueVisitors).toBe(2);
+    expect(humans.data.uniqueVisitors).toBe(1);
+    expect(bots.data.uniqueVisitors).toBe(1);
+  });
+
+  it("counts a visitor recorded before the column existed as human", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const projectId = await createProject(ctx, owner);
+    const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
+
+    // The column default is what every pre-existing row was backfilled to, so
+    // this is what production's 219 rows look like the moment the migration
+    // lands. Written without a `traffic` to prove the default carries it.
+    await ctx.probe.uniques.create({
+      sigilId,
+      day: dayUtc(ctx, 0),
+      visitorHash: "hash-legacy",
+    });
+
+    const humans = await ctx.insightsController.getInsights.fetch(
+      { params: { projectId }, query: { range: "30d", traffic: "humans" } },
+      { user: owner },
+    );
+    const bots = await ctx.insightsController.getInsights.fetch(
+      { params: { projectId }, query: { range: "30d", traffic: "bots" } },
+      { user: owner },
+    );
+
+    expect(humans.data.uniqueVisitors).toBe(1);
+    expect(bots.data.uniqueVisitors).toBe(0);
   });
 
   it("folds hour buckets into a zero-filled daily timeline", async ({
