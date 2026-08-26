@@ -96,6 +96,18 @@ export class SigilBrowserProvider {
    */
   protected engagementPath?: string;
   protected engagementSettled = false;
+
+  /**
+   * The page on screen right now, as the router sees it.
+   *
+   * Kept for vitals attribution: LCP, CLS and INP are finalised when the tab
+   * is hidden, and reading `location.pathname` at that moment filed the
+   * numbers of the page they measured under whatever page the visitor had
+   * navigated to since. Separate from {@link engagementPath}, which looks
+   * identical but belongs to engagement's own lifecycle and is free to change
+   * shape with it.
+   */
+  protected currentPath?: string;
   protected dwellTimer?: ReturnType<typeof setTimeout>;
 
   /**
@@ -147,6 +159,7 @@ export class SigilBrowserProvider {
         if (!this.initialRenderCounted) return;
         if (!this.wants("views")) return;
         const path = ev.state?.url?.pathname ?? (location as any).pathname;
+        this.currentPath = path;
         // A new path is a new thing to have engaged with, so the flag resets
         // and the dwell timer restarts. Without the reset, a visitor who
         // scrolled the landing page would be counted as engaged with every
@@ -175,14 +188,18 @@ export class SigilBrowserProvider {
       const vitals = new SigilVitals(
         (m) => {
           if (!this.wants("vitals")) return;
+          // `m.path`, not `location.pathname`: the metric carries the page it
+          // was measured on, which by the time it is reported is usually not
+          // the page on screen.
           this.queue!.addVital({
-            path: (location as any).pathname,
+            path: m.path,
             metric: m.metric,
             value: m.value,
             ts: this.dateTime.nowMillis(),
           });
         },
         () => this.onLcpArrived(),
+        () => this.currentPath ?? (location as any).pathname,
       );
       vitals.observe();
 
@@ -214,6 +231,7 @@ export class SigilBrowserProvider {
         // spent, and the page would then report nothing until `pagehide`.
         if (!this.firstIngestArmed) this.queue!.hold();
 
+        this.currentPath = (location as any).pathname;
         this.resetEngagement((location as any).pathname);
         if (this.wants("views")) {
           // The referrer rides on this view and no other. `document.referrer`

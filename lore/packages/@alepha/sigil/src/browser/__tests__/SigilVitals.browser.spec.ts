@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { SigilVitals } from "../SigilVitals.ts";
 
@@ -19,8 +19,8 @@ describe("SigilVitals", () => {
     v.report("lcp", 2345.6);
     v.report("cls", 0.123);
     expect(got).toEqual([
-      { metric: "lcp", value: 2346 },
-      { metric: "cls", value: 123 },
+      { metric: "lcp", value: 2346, path: "/" },
+      { metric: "cls", value: 123, path: "/" },
     ]);
   });
 
@@ -37,7 +37,7 @@ describe("SigilVitals", () => {
     v.report("ttfb", 76);
     v.report("ttfb", 76);
 
-    expect(got).toEqual([{ metric: "ttfb", value: 76 }]);
+    expect(got).toEqual([{ metric: "ttfb", value: 76, path: "/" }]);
   });
 
   /**
@@ -53,7 +53,7 @@ describe("SigilVitals", () => {
     v.report("cls", 0.05);
     v.report("cls", 0.42);
 
-    expect(got).toEqual([{ metric: "cls", value: 50 }]);
+    expect(got).toEqual([{ metric: "cls", value: 50, path: "/" }]);
   });
 
   it("observe() is a no-op when PerformanceObserver is unavailable", () => {
@@ -98,7 +98,7 @@ describe("SigilVitals", () => {
     v.testNoteLcp(2400);
     v.report("lcp", 2400);
 
-    expect(got).toEqual([{ metric: "lcp", value: 2400 }]);
+    expect(got).toEqual([{ metric: "lcp", value: 2400, path: "/" }]);
   });
 
   /**
@@ -118,5 +118,181 @@ describe("SigilVitals", () => {
     v.testNoteLcp(1500);
 
     expect(notified).toBe(1);
+  });
+});
+
+/**
+ * A `PerformanceObserver` jsdom does not have, kept simple enough to be
+ * obviously right: it hands each entry type's callback back to the test so
+ * entries can be delivered on demand.
+ */
+class FakePerformanceObserver {
+  static byType = new Map<string, (entries: any[]) => void>();
+
+  constructor(
+    protected readonly cb: (list: { getEntries: () => any[] }) => void,
+  ) {}
+
+  observe(options: { type: string }) {
+    FakePerformanceObserver.byType.set(options.type, (entries) =>
+      this.cb({ getEntries: () => entries }),
+    );
+  }
+
+  disconnect() {}
+}
+
+const deliver = (type: string, entries: any[]) => {
+  const cb = FakePerformanceObserver.byType.get(type);
+  if (!cb) throw new Error(`nothing observed '${type}'`);
+  cb(entries);
+};
+
+const hide = () => {
+  Object.defineProperty(document, "visibilityState", {
+    value: "hidden",
+    configurable: true,
+  });
+  document.dispatchEvent(new Event("visibilitychange"));
+};
+
+/**
+ * The finding, end to end: a load on `/a` followed by a client navigation to
+ * `/b`.
+ *
+ * Every accumulating metric is finalised when the tab is hidden, which in a
+ * client-routed app is usually several pages after the one it measured. The
+ * path was read at that moment, so `/a`'s paint, `/a`'s layout shift and
+ * `/a`'s slow click were all filed under `/b` — and the page that was actually
+ * slow looked fine.
+ */
+describe("SigilVitals path attribution", () => {
+  let realPO: any;
+
+  beforeEach(() => {
+    realPO = (globalThis as any).PerformanceObserver;
+    (globalThis as any).PerformanceObserver = FakePerformanceObserver;
+    FakePerformanceObserver.byType.clear();
+    Object.defineProperty(document, "visibilityState", {
+      value: "visible",
+      configurable: true,
+    });
+  });
+
+  afterEach(() => {
+    (globalThis as any).PerformanceObserver = realPO;
+  });
+
+  it("files LCP under the page that painted, not the one on screen at hidden", () => {
+    const got: any[] = [];
+    let path = "/a";
+    const v = new SigilVitals(
+      (m) => got.push(m),
+      undefined,
+      () => path,
+    );
+    v.observe();
+
+    deliver("largest-contentful-paint", [{ startTime: 1800 }]);
+
+    // The visitor reads on.
+    path = "/b";
+    hide();
+
+    expect(got).toContainEqual({ metric: "lcp", value: 1800, path: "/a" });
+    expect(got.filter((m) => m.metric === "lcp")).toHaveLength(1);
+  });
+
+  it("splits layout shift between the pages that shifted", () => {
+    const got: any[] = [];
+    let path = "/a";
+    const v = new SigilVitals(
+      (m) => got.push(m),
+      undefined,
+      () => path,
+    );
+    v.observe();
+
+    deliver("layout-shift", [{ value: 0.02 }, { value: 0.03 }]);
+    path = "/b";
+    deliver("layout-shift", [{ value: 0.2 }]);
+    hide();
+
+    const cls = got.filter((m) => m.metric === "cls");
+    expect(cls).toEqual([
+      { metric: "cls", value: 50, path: "/a" },
+      { metric: "cls", value: 200, path: "/b" },
+    ]);
+  });
+
+  it("attributes an interaction to the page it was made on", () => {
+    const got: any[] = [];
+    let path = "/a";
+    const v = new SigilVitals(
+      (m) => got.push(m),
+      undefined,
+      () => path,
+    );
+    v.observe();
+
+    deliver("event", [{ interactionId: 1, duration: 320 }]);
+    path = "/b";
+    deliver("event", [{ interactionId: 2, duration: 40 }]);
+    hide();
+
+    const inp = got.filter((m) => m.metric === "inp");
+    expect(inp).toEqual([
+      { metric: "inp", value: 320, path: "/a" },
+      { metric: "inp", value: 40, path: "/b" },
+    ]);
+  });
+
+  /**
+   * A shift ignored because it followed a click is not a shift. Kept here
+   * because the per-path rewrite moved this check, and dropping it would let
+   * every scroll-triggered reflow count.
+   */
+  it("still ignores a shift that followed an interaction", () => {
+    const got: any[] = [];
+    const v = new SigilVitals(
+      (m) => got.push(m),
+      undefined,
+      () => "/a",
+    );
+    v.observe();
+
+    deliver("layout-shift", [{ value: 0.4, hadRecentInput: true }]);
+    hide();
+
+    expect(got.filter((m) => m.metric === "cls")).toEqual([
+      { metric: "cls", value: 0, path: "/a" },
+    ]);
+  });
+
+  /**
+   * The dedup guard now keys on metric AND path. A visitor who tabs away and
+   * comes back must not report the same page twice — but a second page is a
+   * second sample, not a duplicate.
+   */
+  it("reports a page once however often the tab is hidden", () => {
+    const got: any[] = [];
+    let path = "/a";
+    const v = new SigilVitals(
+      (m) => got.push(m),
+      undefined,
+      () => path,
+    );
+    v.observe();
+
+    deliver("layout-shift", [{ value: 0.05 }]);
+    hide();
+    hide();
+    path = "/b";
+    hide();
+
+    expect(got.filter((m) => m.metric === "cls")).toEqual([
+      { metric: "cls", value: 50, path: "/a" },
+      { metric: "cls", value: 0, path: "/b" },
+    ]);
   });
 });
