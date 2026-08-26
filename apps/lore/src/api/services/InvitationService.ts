@@ -12,6 +12,7 @@ import { projects } from "../entities/projects.ts";
 import type { CreateInvitation } from "../schemas/createInvitationSchema.ts";
 import { invitationConfigAtom } from "../schemas/invitationConfigAtom.ts";
 import type { InvitationQuery } from "../schemas/invitationQuerySchema.ts";
+import { ProjectLimits } from "../services/ProjectLimits.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 declare module "alepha" {
@@ -47,6 +48,7 @@ export class InvitationService {
   protected readonly members = $repository(members);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly security = $inject(ProjectSecurityService);
+  protected readonly limits = $inject(ProjectLimits);
 
   public async getById(id: string): Promise<InvitationEntity> {
     return this.repo.getById(id);
@@ -93,6 +95,8 @@ export class InvitationService {
         "A pending invitation already exists for this email and resource",
       );
     }
+
+    await this.assertRoomForOneMore(data.resourceId);
 
     const config = this.alepha.store.get(invitationConfigAtom);
 
@@ -256,6 +260,11 @@ export class InvitationService {
       acceptedBy.id,
     );
     if (!alreadyMember) {
+      // Checked again here, not only at invite time: pending invitations
+      // are capped separately and independently, so a project one seat
+      // short of the limit can still hold several of them, and whichever
+      // arrives second must be the one refused.
+      await this.assertRoomForOneMore(invitation.resourceId);
       await this.members.create({
         projectId: Number(invitation.resourceId),
         userId: acceptedBy.id,
@@ -281,6 +290,26 @@ export class InvitationService {
     });
 
     return { projectId: invitation.resourceId };
+  }
+
+  /**
+   * Refuse when the project already holds every member it is allowed.
+   *
+   * Called on both sides of an invitation: at create so the owner is told
+   * before anyone is emailed, and at accept because that is where the
+   * member row is actually written and where two invitations racing for
+   * the last seat have to be separated.
+   */
+  protected async assertRoomForOneMore(resourceId: string): Promise<void> {
+    const maxMembersPerProject = await this.limits.maxMembersPerProject();
+    const memberCount = await this.members.count({
+      projectId: { eq: Number(resourceId) },
+    });
+    if (memberCount >= maxMembersPerProject) {
+      throw new ForbiddenError(
+        `This project has reached the maximum number of members allowed (${maxMembersPerProject}).`,
+      );
+    }
   }
 
   /**

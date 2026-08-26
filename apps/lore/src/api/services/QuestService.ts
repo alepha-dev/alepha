@@ -1,9 +1,11 @@
 import { $inject } from "alepha";
 import { $repository, $sequence } from "alepha/orm";
+import { ForbiddenError } from "alepha/server";
 
 import { projects } from "../entities/projects.ts";
 import { normalizeQuestTags, type Quest, quests } from "../entities/quests.ts";
 import { AreaService } from "./AreaService.ts";
+import { ProjectLimits } from "./ProjectLimits.ts";
 
 /**
  * Quest rich-text fields (`description`, `note`, `completionMessage`) are
@@ -94,6 +96,7 @@ export class QuestService {
   protected readonly quests = $repository(quests);
   protected readonly projects = $repository(projects);
   protected readonly areaService = $inject(AreaService);
+  protected readonly limits = $inject(ProjectLimits);
 
   /**
    * Per-project sequence for `quests.shortId`. Advances inside the caller's
@@ -168,6 +171,21 @@ export class QuestService {
    * `$transactional()` block — the `shortId` sequence relies on it.
    */
   async createQuest(input: CreateQuestInput): Promise<Quest> {
+    // Before the sequence, so a refused create does not burn a shortId.
+    // Here rather than in the controllers because this is the single
+    // creation path — the quest form, the MCP tool, the CSV import and
+    // blight forwarding all land on it, and a cap enforced in only some
+    // of them is not a cap.
+    const maxQuestsPerProject = await this.limits.maxQuestsPerProject();
+    const questCount = await this.quests.count({
+      projectId: { eq: input.projectId },
+    });
+    if (questCount >= maxQuestsPerProject) {
+      throw new ForbiddenError(
+        `This project has reached the maximum number of quests allowed (${maxQuestsPerProject}).`,
+      );
+    }
+
     const shortId = await this.questShortId.next(String(input.projectId));
 
     // Only register non-empty areas — an empty `area` is a valid quest
