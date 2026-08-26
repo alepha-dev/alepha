@@ -137,4 +137,36 @@ describe("SigilProxyController.ingest", () => {
       fwd.ingested[1].stamp.visitor,
     );
   });
+
+  it("stamps the host, so the sink can name where this app answers", async () => {
+    const alepha = make();
+    const ctrl = alepha.inject(SigilProxyController);
+    await alepha.start();
+
+    await ctrl.ingest.run({
+      body: { views: [{ path: "/" }] },
+      headers: { host: "Alepha.DEV" },
+    });
+
+    const fwd = alepha.inject(SigilSinkProvider) as FakeSink;
+    expect(fwd.ingested[0].stamp.host).toBe("alepha.dev");
+  });
+
+  it("stamps no host rather than a junk one", async () => {
+    // The sink renders this as a link. An absent address is a blank line; a
+    // wrong one is a link to somewhere else.
+    const alepha = make();
+    const ctrl = alepha.inject(SigilProxyController);
+    await alepha.start();
+
+    await ctrl.ingest.run({
+      body: { views: [] },
+      headers: { host: "alepha.dev/evil" },
+    });
+    await ctrl.ingest.run({ body: { views: [] }, headers: {} });
+
+    const fwd = alepha.inject(SigilSinkProvider) as FakeSink;
+    expect(fwd.ingested[0].stamp.host).toBeUndefined();
+    expect(fwd.ingested[1].stamp.host).toBeUndefined();
+  });
 });

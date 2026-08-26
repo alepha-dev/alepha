@@ -216,6 +216,16 @@ export class SigilController {
           .enum([...SIGIL_FEEDBACK_POSITIONS])
           .meta({ mode: "text" })
           .optional(),
+        /**
+         * Where this app lives, overriding the host it reports from.
+         *
+         * The empty string is the way to clear it, and it has to be: every
+         * other field here is a choice among values, this one is free text
+         * whose absence is meaningful. With omission as the only "no", an
+         * operator who pinned the wrong address could never get back to the
+         * detected one.
+         */
+        url: z.string().max(2048).optional(),
       }),
       response: sigilResourceSchema,
     },
@@ -223,10 +233,10 @@ export class SigilController {
       await this.security.assertOwner(params.projectId, user);
       const sigil = await this.loadSigil(params.projectId, params.sigilId);
 
-      // Both fields optional now that this endpoint carries more than `kinds`,
+      // Every field optional now that this endpoint carries more than `kinds`,
       // so an omitted key means "leave it alone" rather than "clear it" — the
-      // capabilities card and the position control are separate surfaces and
-      // each PATCHes only what it owns.
+      // capabilities card, the position control and the URL field are separate
+      // surfaces and each PATCHes only what it owns.
       await this.sigils.updateById(sigil.id, {
         // De-duplicated so a caller that sends `["beacon", "beacon"]` cannot
         // make the stored set disagree with the one it asked for.
@@ -234,6 +244,7 @@ export class SigilController {
         ...(body.feedbackPosition
           ? { feedbackPosition: body.feedbackPosition }
           : {}),
+        ...(body.url === undefined ? {} : { url: this.readUrl(body.url) }),
       });
 
       return this.toResource(
@@ -266,6 +277,45 @@ export class SigilController {
       return { ok: true };
     },
   });
+
+  /**
+   * Reads the operator's app URL, or refuses it.
+   *
+   * `null` for blank, which is what clears the override and hands the answer
+   * back to the host the app reports from.
+   *
+   * Only `http` and `https` are accepted, and that is the whole point of
+   * parsing rather than storing the string: this value becomes an `href` on a
+   * page a project's members read, so `javascript:` — which `new URL()` parses
+   * perfectly happily — has to be refused here rather than escaped there.
+   * Relative input is refused too: a link that resolves against Lore's own
+   * origin points at Lore, which is never what the operator meant.
+   */
+  protected readUrl(raw: string): string | null {
+    const value = raw.trim();
+    if (!value) {
+      return null;
+    }
+
+    let parsed: URL;
+    try {
+      parsed = new URL(value);
+    } catch {
+      throw new BadRequestError(
+        "An app URL must be absolute, like https://example.com",
+      );
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      throw new BadRequestError("An app URL must be http or https");
+    }
+
+    // A bare origin keeps no trailing slash: `https://example.com/` and
+    // `https://example.com` are the same address, and only one of them should
+    // ever be shown.
+    return parsed.pathname === "/" && !parsed.search && !parsed.hash
+      ? parsed.origin
+      : parsed.href;
+  }
 
   /**
    * Works out which unique index refused the insert, and says so.
@@ -327,8 +377,10 @@ export class SigilController {
       tokenPrefix: sigil.tokenPrefix,
       kinds: sigil.kinds ?? [],
       feedbackPosition: sigil.feedbackPosition,
+      url: sigil.url,
       createdAt: sigil.createdAt,
       lastSeenAt: sigil.lastSeenAt,
+      lastSeenHost: sigil.lastSeenHost,
     };
   }
 }

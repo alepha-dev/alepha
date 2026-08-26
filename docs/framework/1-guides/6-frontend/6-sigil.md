@@ -116,6 +116,26 @@ browser ──(same-origin)──▶ /api/sigil/ingest ──(server→server, S
 So the key never reaches the page, there is no CORS to configure, and no
 third-party origin appears in your app.
 
+## Four things the server adds, and the browser never sends
+
+On the way through, your app's own server stamps what only it can know:
+
+| stamped   | from                                                   |
+| --------- | ------------------------------------------------------ |
+| `country` | the edge's `cf-ipcountry`                              |
+| `visitor` | a daily-rotating hash of the request - see below       |
+| `device`  | `mobile` / `tablet` / `desktop`, from the user-agent   |
+| `host`    | your app's own `Host` header - where the app is served |
+
+The first three describe the visitor. `host` describes the app, and it is the
+one thing a sink cannot work out for itself: it only ever sees your app's
+outbound request. It is what lets a sink show an operator where an enrolled app
+actually lives, and keep up on its own when a domain changes, instead of asking
+someone to type an address and remember to update it.
+
+It is a host, never a URL: no path, no query, and no scheme, because a `Host`
+header carries none. The raw IP behind `visitor` never leaves your machine.
+
 ## Cookieless by construction
 
 Visitor identity is a hash of the request, salted with a value that rotates

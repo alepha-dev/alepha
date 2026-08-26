@@ -798,6 +798,12 @@ export default {
     "Ce que cette application peut remonter. Désactiver une capacité empêche le point d'ingestion de l'accepter, pour cette application seulement, pas pour les autres.",
   "app.settings.capabilities.feedbackModuleOff":
     "Le module Retours du projet est désactivé : le lien de cette application reste masqué quoi qu'indique cet interrupteur. Activez le module dans Paramètres ▸ Retours.",
+  "app.settings.url.title": "URL de l'application",
+  "app.settings.url.description":
+    "L'adresse de cette application. Laissé vide, Lore utilise celle depuis laquelle l'application remonte ses données : il n'y a donc en général rien à saisir ici.",
+  "app.settings.url.detected":
+    "Utilise $1, l'adresse depuis laquelle cette application a remonté ses dernières données. Saisissez une URL pour en afficher une autre, ou videz le champ pour revenir à l'adresse détectée.",
+  "app.settings.url.save": "Enregistrer",
   "app.settings.feedbackPosition.title": "Position du bouton de retour",
   "app.settings.feedbackPosition.description":
     "Le coin dans lequel se place le bouton flottant de cette application. Déplacez-le s'il recouvre un élément ; la pagination occupe souvent le coin inférieur droit.",

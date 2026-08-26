@@ -524,6 +524,46 @@ describe("SigilSinkProvider — half-configured", () => {
       expect(alice[1].views).toHaveLength(30);
       expect(sent.filter((e) => e.visitor === "bob")).toHaveLength(1);
     });
+
+    it("forwards the host, so the sink learns where the app answers", async () => {
+      const alepha = withSink();
+      const sink = alepha.inject(SigilSinkProvider);
+      const http = alepha.inject(HttpClient) as RecordingHttpClient;
+      await alepha.start();
+
+      await sink.ingest({ views: [{ path: "/a" }] }, { host: "alepha.dev" });
+      await sink.flush();
+
+      const sent = ingests(http).map((c) => JSON.parse(c.body));
+      expect(sent).toHaveLength(1);
+      expect(sent[0].host).toBe("alepha.dev");
+    });
+
+    it("keeps two front doors of one app apart", async () => {
+      // Same visitor, two hosts: an apex and its `www`. Merging them would
+      // file one address's events under the other, which is the same bug the
+      // per-visitor batching exists to prevent, one field over.
+      const alepha = withSink();
+      const sink = alepha.inject(SigilSinkProvider);
+      const http = alepha.inject(HttpClient) as RecordingHttpClient;
+      await alepha.start();
+
+      await sink.ingest(
+        { views: [{ path: "/a" }] },
+        { visitor: "alice", host: "alepha.dev" },
+      );
+      await sink.ingest(
+        { views: [{ path: "/b" }] },
+        { visitor: "alice", host: "www.alepha.dev" },
+      );
+      await sink.flush();
+
+      const sent = ingests(http).map((c) => JSON.parse(c.body));
+      expect(sent).toHaveLength(2);
+      expect(new Set(sent.map((e) => e.host))).toEqual(
+        new Set(["alepha.dev", "www.alepha.dev"]),
+      );
+    });
   });
 });
 

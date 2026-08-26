@@ -29,6 +29,7 @@ import type { I18n } from "../../../services/I18n.ts";
 import TokenReveal from "../../shared/TokenReveal.tsx";
 import AppSettingsCapabilities from "./AppSettingsCapabilities.tsx";
 import AppSettingsFeedbackPosition from "./AppSettingsFeedbackPosition.tsx";
+import AppSettingsUrl from "./AppSettingsUrl.tsx";
 
 /**
  * What can be done to one app: rotate its token, or delete it.
@@ -149,6 +150,15 @@ const AppSettings = () => {
           onDismiss={() => setFreshToken(undefined)}
         />
       )}
+
+      {/*
+        Keyed by the app, because this is the one card here that holds a draft
+        of its own. Moving between two apps' Settings tabs swaps
+        `currentSigilAtom` without unmounting anything, so an unkeyed field
+        would keep showing — and on Save, write — the URL of the app you just
+        left. The other cards read the atom directly and have nothing to stale.
+      */}
+      <AppSettingsUrl key={sigil.id} />
 
       <AppSettingsCapabilities />
 

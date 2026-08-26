@@ -159,6 +159,29 @@ export const sigilForwarded = sigilEnvelope.extend({
    * change between two views of one session.
    */
   device: z.string().max(16).optional(),
+  /**
+   * The host this app is served on, from its own inbound `Host` header.
+   *
+   * The one field here that describes the SENDER rather than the visitor, and
+   * it is here for the same reason the other three are: only the app's own
+   * server knows it. The browser posts same-origin, so it never has to name
+   * the host; the sink sees only the app's outbound request, which says
+   * nothing about where the app answers.
+   *
+   * What it buys is a sink that can show an operator where an enrolled app
+   * actually lives without asking them to type it - and that keeps up on its
+   * own when a domain changes.
+   *
+   * Optional, and it stays optional. A browser bundle and the sink it reports
+   * to deploy independently, so a sender that predates this field must keep
+   * working; and a batch flushed from somewhere with no inbound request at all
+   * (a cron, a queue worker, a server error raised at boot) has no host to
+   * name and must not invent one.
+   *
+   * See {@link sigilHost} for the shape, and for why a sink must normalize it
+   * again on arrival rather than trust what arrives.
+   */
+  host: z.string().max(253).optional(),
 });
 
 export type SigilForwarded = Infer<typeof sigilForwarded>;

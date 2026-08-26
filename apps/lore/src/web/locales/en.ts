@@ -784,6 +784,12 @@ export default {
     "What this app may report. Turning one off stops the ingest endpoint accepting it, for this app only, not for the others.",
   "app.settings.capabilities.feedbackModuleOff":
     "The project's Feedback module is off, so this app's link stays hidden whatever this switch says. Turn the module on under Settings ▸ Feedback.",
+  "app.settings.url.title": "App URL",
+  "app.settings.url.description":
+    "Where this app lives. Left empty, Lore uses the address the app itself reports from, so there is usually nothing to fill in here.",
+  "app.settings.url.detected":
+    "Using $1, the address this app last reported from. Set a URL here to show a different one, or clear the field to go back to the detected address.",
+  "app.settings.url.save": "Save",
   "app.settings.feedbackPosition.title": "Feedback button position",
   "app.settings.feedbackPosition.description":
     "Which corner this app's floating feedback button sits in. Move it if it covers something; pagination usually lives bottom-right.",

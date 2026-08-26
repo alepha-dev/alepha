@@ -1,4 +1,4 @@
-import type { SigilEnvelope } from "@alepha/sigil";
+import type { SigilEnvelope, SigilStamp } from "@alepha/sigil";
 import { SigilSinkProvider } from "@alepha/sigil";
 import { $inject, AlephaError } from "alepha";
 
@@ -37,8 +37,16 @@ export class LoreSigilSinkProvider extends SigilSinkProvider {
   protected readonly tokens = $inject(SigilTokenService);
   protected readonly ingestService = $inject(SigilIngestService);
 
+  /**
+   * `SigilStamp` rather than the two fields spelled out, which is what this
+   * used to take. The stamp is the base class's own definition of what a
+   * flush carries, and restating a subset of it here meant every field added
+   * upstream — `device`, then `host` — arrived at `absorb` untyped and
+   * unnoticed. Naming the type is what keeps the in-process path from drifting
+   * away from the networked one it exists to imitate.
+   */
   protected override async deliver(
-    payload: SigilEnvelope & { country?: string; visitor?: string },
+    payload: SigilEnvelope & SigilStamp,
   ): Promise<void> {
     await this.ingestService.absorb(await this.ownSigil(), payload);
   }

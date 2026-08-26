@@ -1,5 +1,6 @@
 import type { SigilForwarded } from "@alepha/sigil";
 import { sigilFingerprintSource } from "@alepha/sigil";
+import { sigilHost } from "@alepha/sigil";
 import { sigilScrubUrl } from "@alepha/sigil";
 import { bucketIndex, type VitalMetric } from "@alepha/sigil";
 import { $inject } from "alepha";
@@ -139,7 +140,26 @@ export class SigilIngestService {
       await this.absorbVitals(sigil, envelope.vitals, now);
     }
 
-    await this.sigils.updateById(sigil.id, { lastSeenAt: now });
+    // `lastSeenHost` rides along on the update `lastSeenAt` was already
+    // making, so knowing where an app answers costs no extra statement — which
+    // against D1 is a network round-trip, not a function call.
+    //
+    // Normalized again here rather than trusted. `sigilHost` already ran on
+    // the sender, but the sender is whoever holds this token: the header it
+    // read is whatever the inbound request claimed, and the field on the wire
+    // is whatever the process chose to put there. The value ends up in an
+    // `href` on this app's own pages, so it is checked where it is stored.
+    //
+    // An envelope with no host leaves the column alone rather than clearing
+    // it. A batch from a cron or a server error raised at boot has no inbound
+    // request to name, and letting that erase a known address would mean the
+    // UI blinked empty every time an app reported from somewhere other than a
+    // page view.
+    const host = sigilHost(envelope.host);
+    await this.sigils.updateById(sigil.id, {
+      lastSeenAt: now,
+      ...(host ? { lastSeenHost: host } : {}),
+    });
   }
 
   /**

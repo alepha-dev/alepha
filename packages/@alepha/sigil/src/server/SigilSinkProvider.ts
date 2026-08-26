@@ -446,13 +446,19 @@ export class SigilSinkProvider {
   /**
    * The batch a stamp writes into, created on first sight.
    *
-   * Identity is the three stamp fields together: two visitors from the same
-   * country on the same kind of device are still two visitors, and a country
-   * that arrives on one request and not the next is a different batch rather
-   * than an update to the first.
+   * Identity is the stamp fields together: two visitors from the same country
+   * on the same kind of device are still two visitors, and a country that
+   * arrives on one request and not the next is a different batch rather than
+   * an update to the first.
+   *
+   * `host` is in the key for a different reason than the other three. They
+   * separate visitors; it separates addresses. An app answering on both an
+   * apex and a `www` is one app with two front doors, and merging their events
+   * into whichever batch existed first would file some of them under the
+   * wrong one.
    */
   protected batchFor(stamp: SigilStamp): PendingBatch {
-    const key = `${stamp.visitor ?? ""}\u0000${stamp.country ?? ""}\u0000${stamp.device ?? ""}`;
+    const key = `${stamp.visitor ?? ""}\u0000${stamp.country ?? ""}\u0000${stamp.device ?? ""}\u0000${stamp.host ?? ""}`;
     let batch = this.pending.get(key);
     if (!batch) {
       batch = {
@@ -643,6 +649,17 @@ export interface SigilStamp {
   country?: string;
   visitor?: string;
   device?: string;
+  /**
+   * Where this app answers, from its own inbound `Host` header.
+   *
+   * The odd one out: the other three describe the visitor, this one describes
+   * the app. It rides with them because it comes from the same place and is
+   * knowable at the same moment - the request the app's own server is
+   * handling - and because a batch is only ever flushed under one stamp, so
+   * carrying it here is what keeps an app served on two hosts from reporting
+   * both under whichever one flushed last.
+   */
+  host?: string;
 }
 
 /**
