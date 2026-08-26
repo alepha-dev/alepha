@@ -414,6 +414,10 @@ export default {
   "project.settings.members.invite.email": "Email Address",
   "project.settings.members.invite.cancel": "Cancel",
   "project.settings.members.invite.submit": "Send Invitation",
+  "project.settings.members.invite.emailRequired":
+    "Please enter an email address.",
+  "project.settings.members.invite.sent": "Invitation sent to $1.",
+  "project.settings.members.invite.failed": "Could not send the invitation.",
 
   "project.settings.danger.title": "Danger Zone",
   "project.settings.actions.delete": "Delete this project",
