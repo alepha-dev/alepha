@@ -20,7 +20,7 @@ const statementsOnly = (sql: string): string =>
 /**
  * The reservation backfill is hand-written and cannot be regenerated: it
  * carries no schema change at all, only data. Nothing else in the pipeline
- * executes it, so this spec applies it against a seeded database — the same
+ * executes it, so this spec applies it against a seeded database - the same
  * reasoning as `folio-blob-scope-migration.spec.ts`.
  *
  * What it has to get right: existing folios come out reserved under the
@@ -79,7 +79,7 @@ describe("folio name reservation backfill migration", () => {
     );
     // The directory's own reservation, written the pre-migration way with a
     // NULL root_scope for a nested row (this one is at the root, so it has
-    // the sentinel) — plus one nested NULL row to repair.
+    // the sentinel) - plus one nested NULL row to repair.
     db.exec(
       `INSERT INTO folio_names (id, parent_directory_id, root_scope, lower_name, kind, entity_id)
        VALUES ('n1', 'root:7', '7', 'specs', 'directory', 'd1')`,
@@ -123,7 +123,7 @@ describe("folio name reservation backfill migration", () => {
     // The pre-existing nested NULL is repaired.
     expect(byEntity.get("d2")?.root_scope).toBe("");
 
-    // Every generated id is a v4 UUID — the entity schema reads the column
+    // Every generated id is a v4 UUID - the entity schema reads the column
     // back as one, so `hex(randomblob(16))` would not have done.
     for (const row of rows) {
       if (row.id === "n1" || row.id === "n2") continue;

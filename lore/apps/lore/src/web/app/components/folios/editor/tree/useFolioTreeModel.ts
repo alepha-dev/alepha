@@ -38,7 +38,7 @@ export interface UseFolioTreeModelInput {
    */
   currentFolioId?: string;
   /**
-   * A directory to reveal, by per-project shortId — `/folios?dir=<n>`.
+   * A directory to reveal, by per-project shortId - `/folios?dir=<n>`.
    *
    * The breadcrumb and the tree's own Open / Open in new tab both build
    * that link, and it went nowhere: the route never read the parameter, so
@@ -47,7 +47,7 @@ export interface UseFolioTreeModelInput {
    * when no folio is open.
    *
    * A shortId rather than a UUID because that is what the URL carries and
-   * this hook already holds the directory list to resolve it against — a
+   * this hook already holds the directory list to resolve it against - a
    * loader round-trip would buy nothing.
    */
   revealDirectoryShortId?: number;
@@ -269,7 +269,7 @@ export const useFolioTreeModel = (
 
   /**
    * Everything that must be open: the current folio's ancestors, plus the
-   * revealed directory and its own ancestors — the directory ITSELF too,
+   * revealed directory and its own ancestors - the directory ITSELF too,
    * since "open this directory" means seeing what is in it.
    */
   const expandDirIds = useMemo(() => {
@@ -286,7 +286,7 @@ export const useFolioTreeModel = (
   }, [ancestorDirIds, nodeById, revealedDirectoryId]);
 
   // One-time seed: collapse every directory except the ones that must be
-  // open. Ported from `FolioTreePanel.tsx` — without the `initializedRef`
+  // open. Ported from `FolioTreePanel.tsx` - without the `initializedRef`
   // guard this re-ran on every folio→folio navigation and re-collapsed
   // whatever the user had opened (feedback #14).
   useEffect(() => {
@@ -303,7 +303,7 @@ export const useFolioTreeModel = (
     setCollapsed(defaultCollapsed);
   }, [expandDirIds, directories, folios]);
 
-  // Later navigations only ever EXPAND the new target's path — never
+  // Later navigations only ever EXPAND the new target's path - never
   // collapse anything else. This is what keeps a directory open when
   // jumping from one of its folios to an unrelated root-level folio, and
   // what makes a `?dir=` link work when the workspace is already mounted.

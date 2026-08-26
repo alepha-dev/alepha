@@ -547,7 +547,7 @@ export class FolioController {
    *
    * Sibling-name uniqueness (a folio against the other folios AND the
    * directories in the same folder) is enforced separately, through the
-   * `folio_names` reservation table — see `reserveTitle` below.
+   * `folio_names` reservation table - see `reserveTitle` below.
    */
   protected async resolveDirectoryId(
     directoryId: string | null | undefined,
@@ -739,7 +739,7 @@ export class FolioController {
         body.protected !== undefined ? body.protected : existing.protected;
       const pinned = body.pinned !== undefined ? body.pinned : existing.pinned;
 
-      // Re-reserve whenever the title or the folder changes — the scope
+      // Re-reserve whenever the title or the folder changes - the scope
       // key is (folder, name), so either one moving invalidates the old
       // row. Release first, or `autoSuffix` counts the folio's own
       // reservation as a sibling and renaming "Abc" to "abc" lands on
@@ -854,7 +854,7 @@ export class FolioController {
       await this.blobService.deleteByFolio(params.id);
       // Hand the name back to the folder. `folio_names` has no foreign
       // key to `folios` (it discriminates by `kind`), so nothing frees
-      // it on cascade — the reservation would outlive the folio and
+      // it on cascade - the reservation would outlive the folio and
       // block the name forever.
       await this.nameService.releaseByEntity(params.id);
       await this.folios.deleteById(params.id);

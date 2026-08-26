@@ -23,7 +23,7 @@ export class DirectoryController {
 
   /**
    * List the immediate children of `parentDirectoryId` (or the
-   * project root when omitted). Mixed contents — folios +
+   * project root when omitted). Mixed contents - folios +
    * sub-directories under a single `entries` array, each tagged with
    * `kind`. That's the natural Drive-like response: the UI renders
    * them in one table.

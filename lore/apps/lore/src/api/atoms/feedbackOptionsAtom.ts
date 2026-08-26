@@ -10,12 +10,12 @@ import { $atom, type Infer, z } from "alepha";
  *
  * ⚠️ There is deliberately no per-sigil cap. One was declared here for a
  * long time, described as capping the blast radius of a leaked sigil token,
- * and read by nothing — because it cannot be computed. A sigil token opens
+ * and read by nothing - because it cannot be computed. A sigil token opens
  * exactly one route, `POST /sigils/ingest`, and that route does not accept
  * feedback: `SigilIngestService.absorb` never consults its own
  * `gates.feedback`. Feedback arrives only through
  * `POST /projects/:projectId/feedback`, which requires a signed-in Lore
- * account and carries no sigil identity at all — `source.sigilId` is
+ * account and carries no sigil identity at all - `source.sigilId` is
  * declared optional precisely because the widget's popup-redirect flow keeps
  * the sigil id server-side, so the browser could not send it, and anything
  * the browser did send would be attacker-controlled and therefore forgeable
@@ -23,8 +23,8 @@ import { $atom, type Infer, z } from "alepha";
  *
  * What actually bounds a flood here is `maxFeedbackPerUserPerDay`, which is
  * enforced. Re-adding a per-sigil cap means first giving the submission an
- * unforgeable sigil identity — a signed token in the widget URL, or a
- * feedback kind on the ingest endpoint — not writing `source.sigilId` from
+ * unforgeable sigil identity - a signed token in the widget URL, or a
+ * feedback kind on the ingest endpoint - not writing `source.sigilId` from
  * the request body.
  */
 export const feedbackOptionsAtom = $atom({

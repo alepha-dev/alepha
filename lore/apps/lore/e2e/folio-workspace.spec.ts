@@ -622,10 +622,10 @@ test.describe("Folio workspace", () => {
     await page.keyboard.press("Enter");
   });
 
-  test("09d — /folios?dir=<shortId> opens the tree at that directory", async () => {
+  test("09d - /folios?dir=<shortId> opens the tree at that directory", async () => {
     // The breadcrumb's directory segments and the tree's own Open / Open in
     // new tab both build this link. Nothing read the parameter, so both
-    // landed on the workspace's default state — every directory collapsed
+    // landed on the workspace's default state - every directory collapsed
     // and nothing selected.
     const stampd = `${stamp}d`;
     const dirTitle = `Deep-${stampd}`.slice(0, 24);
@@ -658,7 +658,7 @@ test.describe("Folio workspace", () => {
         .first();
 
     // Plain `/folios` first, to establish that the directory is closed by
-    // default — otherwise the assertion below would pass on a tree that
+    // default - otherwise the assertion below would pass on a tree that
     // simply expands everything.
     await page.goto(`/${projectSlug}/folios`);
     await expect(row(dirTitle)).toBeVisible({ timeout: 15_000 });

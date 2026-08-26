@@ -72,7 +72,7 @@ const createTestUser = async (
 };
 
 /**
- * Folios share one namespace with directories, per folder — the promise
+ * Folios share one namespace with directories, per folder - the promise
  * `FolioNameService` and the `folio_names` entity both document. Until
  * this spec, only directories ever wrote a reservation, so the guard was
  * a claim rather than a rule: two folios could take the same name in one
@@ -239,7 +239,7 @@ describe("Folio name reservations", () => {
 
     // `autoSuffix` is the convenience layer; this is the guarantee under
     // it, the one two racing writers land on. It held only at the project
-    // root until `root_scope` stopped being NULL inside a directory —
+    // root until `root_scope` stopped being NULL inside a directory -
     // SQLite counts a row with a NULL in the index as distinct from every
     // other, so the index was simply off for every name in a folder.
     const scope = { parentDirectoryId: dir.data.id };

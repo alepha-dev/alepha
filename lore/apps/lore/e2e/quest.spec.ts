@@ -1224,7 +1224,7 @@ test.describe("Quest", () => {
     await test.step("picking a view from a quest detail lands on that view", async () => {
       // The bar renders on the detail route to keep the log from jumping,
       // but the detail route has no list and no board of its own. It used
-      // to answer a click by writing `questsViewAtom` and staying put — the
+      // to answer a click by writing `questsViewAtom` and staying put - the
       // pressed entry moved and nothing else did. Picking a view there now
       // means going up to the page that has one.
       const { shortId } = await apiPost<{ shortId: number }>(

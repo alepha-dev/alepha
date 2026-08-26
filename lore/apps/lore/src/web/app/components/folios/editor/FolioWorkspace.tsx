@@ -133,7 +133,7 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
   // frame before that effect runs, and whenever the project has not loaded.
   const [treeActions, setTreeActions] = useState<FolioTreeActions>();
 
-  // `/folios?dir=<shortId>` — the breadcrumb's directory segments and the
+  // `/folios?dir=<shortId>` - the breadcrumb's directory segments and the
   // tree's own Open / Open in new tab both build that link. Nothing read it
   // until now, so both landed on the workspace's default state.
   //

@@ -69,10 +69,10 @@ const pendingFeedback: FeedbackResource = {
  * commits the triage immediately and then opens the create-a-quest sheet.
  * Only the sheet's SUBMIT path used to notify the list, so dismissing the
  * sheet instead left the row reading `pending` against a feedback the
- * server had already accepted — and pressing Accept again answered
+ * server had already accepted - and pressing Accept again answered
  * "already triaged".
  */
-describe("ProjectFeedbackDetail — accept then dismiss", () => {
+describe("ProjectFeedbackDetail - accept then dismiss", () => {
   /**
    * jsdom implements no `ResizeObserver`, and the create-a-quest sheet
    * mounts `@alepha/ui`'s segmented control, which measures itself with
@@ -92,7 +92,7 @@ describe("ProjectFeedbackDetail — accept then dismiss", () => {
     const alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
-      // Before the modules that reach for it — `AlephaReactRouter`
+      // Before the modules that reach for it - `AlephaReactRouter`
       // instantiates `LinkProvider`, and a substitution after that is too
       // late.
       .with({ provide: LinkProvider, use: FakeLinkProvider })
@@ -146,7 +146,7 @@ describe("ProjectFeedbackDetail — accept then dismiss", () => {
     // the selection and takes the open sheet with it.
     expect(changes).toEqual([]);
 
-    // Dismiss the sheet with Escape — the path a user takes when they
+    // Dismiss the sheet with Escape - the path a user takes when they
     // accepted the report but do not want a quest out of it.
     view.baseElement.ownerDocument.dispatchEvent(
       new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),

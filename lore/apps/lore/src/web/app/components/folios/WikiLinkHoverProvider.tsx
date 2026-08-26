@@ -214,9 +214,9 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
       // One markup. `[data-wiki-href]` used to be the other: the Lexical
       // editor decorated the `[[token]]` in place rather than rendering an
       // `<a>`, because an anchor inside a `contenteditable` brings its own
-      // drag and selection behaviour along with it. That editor is gone —
+      // drag and selection behaviour along with it. That editor is gone -
       // Edit mode is raw markdown in CodeMirror now, and View mode is the
-      // rewritten markdown this delegates over — so nothing has emitted the
+      // rewritten markdown this delegates over - so nothing has emitted the
       // attribute for a long time.
       const anchor = el?.closest("a[href]") as HTMLElement | null;
       if (!anchor) return;
@@ -270,7 +270,7 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
     // The `href === ""` arm is not redundant: an empty href is what a
     // broken link rendered as while the prefix was a custom scheme
     // react-markdown stripped, and `<a href="">` navigates to the current
-    // URL — a full reload of the workspace. Kept as the belt to that
+    // URL - a full reload of the workspace. Kept as the belt to that
     // braces, for any other href markdown reduces to nothing.
     if (href === "" || href?.startsWith(BROKEN_HREF_PREFIX)) {
       e.preventDefault();

@@ -35,7 +35,7 @@ class FakeLinkProvider extends LinkProvider {
 
 /**
  * The header's create menu and the members settings card had a copy each of
- * this mutation, its blank-email guard and three hardcoded English toasts —
+ * this mutation, its blank-email guard and three hardcoded English toasts -
  * which is why the strings were never translated. One hook owns it now, and
  * reports back whether the invite went through so each caller can decide
  * what that means for its own form.
@@ -45,7 +45,7 @@ describe("useInviteMember", () => {
     const alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
-      // Before the modules that reach for it — a substitution after
+      // Before the modules that reach for it - a substitution after
       // `LinkProvider` has been instantiated is a `TooLateSubstitutionError`.
       .with({ provide: LinkProvider, use: FakeLinkProvider })
       .with(AlephaReact)

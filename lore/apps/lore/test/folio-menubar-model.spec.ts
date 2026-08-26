@@ -33,9 +33,9 @@ describe("FOLIO_MENUS", () => {
     // nothing. Each acts on a SPECIFIC revision, a concept that exists only
     // inside the History tab's own per-row UI, so there is no "the current
     // one" a top-level entry could mean. They come back with that UI, not
-    // before — an enabled no-op is worse than an absence.
+    // before - an enabled no-op is worse than an absence.
     const history = FOLIO_MENUS.find((m) => m.id === "history");
-    expect(history?.entries.map((e) => ("id" in e ? e.id : "—"))).toEqual([
+    expect(history?.entries.map((e) => ("id" in e ? e.id : "-"))).toEqual([
       "history.revisions",
     ]);
   });

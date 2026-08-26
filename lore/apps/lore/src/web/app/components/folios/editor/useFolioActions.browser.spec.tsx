@@ -296,7 +296,7 @@ describe("useFolioActions — applyReverted syncs the draft after a history reve
     );
 
     // The menubar renders this entry enabled. It was bound to a shared
-    // no-op on the document path, so clicking it did nothing at all — while
+    // no-op on the document path, so clicking it did nothing at all - while
     // the workspace's own empty state had the same id wired to the same
     // tree action the whole time.
     void actions?.handlers["folio.newDirectory"]();

@@ -279,7 +279,7 @@ export const FOLIO_MENUS: FolioMenu[] = [
     entries: [
       // Compare / Restore / Keep this version used to sit here, enabled and
       // bound to a no-op. Each acts on a SPECIFIC revision, which is a
-      // concept that only exists inside the History tab's own per-row UI —
+      // concept that only exists inside the History tab's own per-row UI -
       // there is no "the current one" a top-level menu entry could mean. An
       // entry that opens and does nothing is worse than one that is not
       // there, so they are gone until that UI is designed.

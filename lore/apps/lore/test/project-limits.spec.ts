@@ -82,8 +82,8 @@ const createTestUser = async (
 };
 
 /**
- * `ProjectLimits` declared four caps and only one of them — projects per
- * user — was ever read. The other three were parameters an admin could set
+ * `ProjectLimits` declared four caps and only one of them - projects per
+ * user - was ever read. The other three were parameters an admin could set
  * from `/admin/parameters` and watch do nothing.
  *
  * Each case tightens the cap through the parameter rather than creating
@@ -188,7 +188,7 @@ describe("ProjectLimits enforcement", () => {
       { user: owner },
     );
     // Closed, so the "one active at a time" rule is not what refuses the
-    // second one — the cap is.
+    // second one - the cap is.
     await ctx.milestoneController.closeMilestone.fetch(
       { params: { id: first.data.id }, body: {} },
       { user: owner },

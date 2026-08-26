@@ -173,7 +173,7 @@ export class QuestService {
   async createQuest(input: CreateQuestInput): Promise<Quest> {
     // Before the sequence, so a refused create does not burn a shortId.
     // Here rather than in the controllers because this is the single
-    // creation path — the quest form, the MCP tool, the CSV import and
+    // creation path - the quest form, the MCP tool, the CSV import and
     // blight forwarding all land on it, and a cap enforced in only some
     // of them is not a cap.
     const maxQuestsPerProject = await this.limits.maxQuestsPerProject();
