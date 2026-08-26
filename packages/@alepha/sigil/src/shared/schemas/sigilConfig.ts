@@ -89,6 +89,27 @@ export const sigilConfig = z.object({
    * the site rather than building it.
    */
   feedbackButtonExcludedPaths: z.array(z.text()).default([]),
+
+  /**
+   * Send from a non-production process too.
+   *
+   * Off by default, and that default is the point: with a key set, every
+   * `alepha dev` session, every test container and every CI job counted as
+   * traffic on the project's own dashboard — the numbers an operator reads to
+   * decide things included the developer refreshing a page.
+   *
+   * The escape hatch is here rather than absent because a staging deployment
+   * is a real case: it wants to prove its enrolment works before production
+   * does, and the only honest way to prove it is to send something. Naming it
+   * in `SIGIL_CONFIG` makes that a deliberate, visible act rather than a side
+   * effect of having a credential.
+   *
+   * The browser half is gated separately, on `alepha.isProduction()` in
+   * `SigilBrowserProvider`, and does not read this: a page is either a
+   * production page or it is not, and a switch that made a dev page report
+   * would put a developer's own browsing in the same numbers.
+   */
+  reportOutsideProduction: z.boolean().default(false),
 });
 
 export type SigilConfig = Infer<typeof sigilConfig>;

@@ -526,3 +526,75 @@ describe("SigilSinkProvider — half-configured", () => {
     });
   });
 });
+
+/**
+ * A credential is not permission to report from anywhere.
+ *
+ * The module's own documentation said "active in production only" while only
+ * the BROWSER half was gated: with `SIGIL_KEY` set, every `alepha dev`
+ * session, test container and CI job delivered to the sink, so the numbers an
+ * operator reads to decide things included the developer refreshing a page.
+ */
+describe("SigilSinkProvider outside production", () => {
+  const inDev = (config: Record<string, any> = {}) =>
+    withSink(config, { NODE_ENV: "development" });
+
+  it("captures locally and sends nothing", async () => {
+    const alepha = inDev();
+    const sink = alepha.inject(SigilSinkProvider);
+    const http = alepha.inject(HttpClient) as RecordingHttpClient;
+    await alepha.start();
+
+    await sink.ingest({ errors: [anError("boom")] });
+    await sink.flush();
+
+    // The credential is there — this is a decision about the environment, not
+    // a missing key.
+    expect(sink.hasSink()).toBe(true);
+    expect(sink.reports()).toBe(false);
+    expect(ingests(http)).toHaveLength(0);
+  });
+
+  /**
+   * The one real case for turning it back on: a staging deployment proving its
+   * enrolment works before production has to.
+   */
+  it("reports when SIGIL_CONFIG says to", async () => {
+    const alepha = inDev({ reportOutsideProduction: true });
+    const sink = alepha.inject(SigilSinkProvider);
+    const http = alepha.inject(HttpClient) as RecordingHttpClient;
+    await alepha.start();
+
+    await sink.ingest({ errors: [anError("boom")] });
+    await sink.flush();
+
+    expect(sink.reports()).toBe(true);
+    expect(ingests(http)).toHaveLength(1);
+  });
+
+  it("reports in production without being asked", async () => {
+    const alepha = withSink();
+    const sink = alepha.inject(SigilSinkProvider);
+    const http = alepha.inject(HttpClient) as RecordingHttpClient;
+    await alepha.start();
+
+    await sink.ingest({ errors: [anError("boom")] });
+    await sink.flush();
+
+    expect(sink.reports()).toBe(true);
+    expect(ingests(http)).toHaveLength(1);
+  });
+
+  /**
+   * The feedback URL is a LINK to the sink's own page, not a report, and it is
+   * built from the key. Gating it on the environment too would take the button
+   * away exactly where it is most useful.
+   */
+  it("still offers the feedback link in development", async () => {
+    const alepha = inDev();
+    const sink = alepha.inject(SigilSinkProvider);
+    await alepha.start();
+
+    expect(sink.feedbackUrl()).toBe("https://sigil.example.com/demo/request");
+  });
+});

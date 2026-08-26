@@ -57,7 +57,8 @@ Rotate it on the sink to get one back.
 
 ## Turning things off
 
-`SIGIL_CONFIG` is optional, and every field in it turns something **off**:
+`SIGIL_CONFIG` is optional, and every field in it turns something **off** -
+except `reportOutsideProduction`, the one switch that turns something on:
 
 ```bash
 SIGIL_CONFIG={"vitals":false,"feedbackButton":"hidden"}
@@ -71,6 +72,7 @@ SIGIL_CONFIG={"vitals":false,"feedbackButton":"hidden"}
 | `feedback`                    | `true`           | whether there is a feedback link at all                                  |
 | `feedbackButton`              | `"bottom-right"` | `"hidden"`, `"bottom-left"` or `"bottom-right"`                          |
 | `feedbackButtonExcludedPaths` | `[]`             | path globs the button stays off - `*` within a segment, `**` across them |
+| `reportOutsideProduction`     | `false`          | send from a non-production process too - see below                       |
 
 `feedback` and `feedbackButton` are separate on purpose: `feedback: false` means
 there is no URL at all, while `feedback: true` with the button `hidden` gives
@@ -79,7 +81,28 @@ you the URL through `useFeedbackUrl()` to render wherever you like.
 The resolved sink and where it came from are logged at boot, so a default is
 never a surprise.
 
-Active in production only.
+## Production only, on both halves
+
+A key is a credential, not permission to report from a laptop. Outside
+production the browser bootstrap returns early and the server sink captures
+locally and sends nothing - the same treatment an app with no key gets, errors
+going to the logger instead. Without that gate every `alepha dev` session, test
+container and CI job counted as traffic on the project's own dashboard, so the
+numbers you read to decide things included you refreshing a page.
+
+A staging deployment that needs to prove its enrolment before production does
+turns the server half back on:
+
+```bash
+SIGIL_CONFIG={"reportOutsideProduction":true}
+```
+
+The decision is logged at boot either way, so an empty staging dashboard has a
+line explaining itself.
+
+The browser half does not read that switch. A page is either a production page
+or it is not, and a switch that made a dev page report would put your own
+browsing in the same numbers.
 
 ## The browser never holds the key
 
