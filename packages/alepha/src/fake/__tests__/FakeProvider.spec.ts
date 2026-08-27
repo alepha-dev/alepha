@@ -1,6 +1,7 @@
 import { z } from "alepha";
 import { describe, test } from "vitest";
 
+import { fake } from "../index.ts";
 import { FakeProvider } from "../providers/FakeProvider.ts";
 
 describe("FakeProvider", () => {
@@ -711,5 +712,58 @@ describe("FakeProvider schema conformance", () => {
       expect(value.email).toMatch(/@/);
       expect(value.website).toMatch(/^https?:\/\//);
     }
+  });
+});
+
+/**
+ * Each provider seeds its OWN faker.
+ *
+ * It used to seed the `faker` singleton the library exports, in its
+ * constructor, so building one provider reset the sequence of every other one
+ * in the process - and of any application code using the `fake` export from
+ * `alepha/fake`, which is that same singleton.
+ */
+describe("FakeProvider seeding", () => {
+  const schema = z.text();
+
+  test("a second provider does not disturb the first one's sequence", ({
+    expect,
+  }) => {
+    // What seed 1 produces when nothing else is happening.
+    const alone = new FakeProvider().configure({ seed: 1 });
+    const expected = [
+      alone.generate(schema),
+      alone.generate(schema),
+      alone.generate(schema),
+    ];
+
+    // The same three, with another provider built and used in the middle.
+    const first = new FakeProvider().configure({ seed: 1 });
+    const actual = [first.generate(schema)];
+    const second = new FakeProvider().configure({ seed: 2 });
+    second.generate(schema);
+    actual.push(first.generate(schema), first.generate(schema));
+
+    expect(actual).toEqual(expected);
+  });
+
+  test("does not touch the shared faker singleton", ({ expect }) => {
+    fake.seed(4242);
+    const expected = fake.string.alpha(10);
+
+    fake.seed(4242);
+    // Constructing AND using a provider must leave the singleton where it was.
+    new FakeProvider().generate(schema);
+
+    expect(fake.string.alpha(10)).toBe(expected);
+  });
+
+  test("the same seed still reproduces the same data", ({ expect }) => {
+    // Per-instance seeding must not cost determinism, which is the whole
+    // point of being able to set a seed at all.
+    const a = new FakeProvider().configure({ seed: 7 });
+    const b = new FakeProvider().configure({ seed: 7 });
+
+    expect(a.generate(schema)).toBe(b.generate(schema));
   });
 });

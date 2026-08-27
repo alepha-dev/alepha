@@ -1,4 +1,4 @@
-import { allLocales, Faker, faker } from "@faker-js/faker";
+import { allLocales, Faker } from "@faker-js/faker";
 import type {
   Infer,
   ZObject,
@@ -73,7 +73,18 @@ export interface FakeOptions {
  * ```
  */
 export class FakeProvider {
-  protected faker = faker;
+  /**
+   * This provider's OWN faker, never the `faker` singleton the library
+   * exports.
+   *
+   * It used to be that singleton, and the constructor seeded it. So every new
+   * container reset the sequence of every other one in the process - two
+   * containers in a test file, a test and the module it imports - and
+   * "random" data repeated between them. It also reset the sequence of any
+   * application code using the `fake` export from `alepha/fake`, which is
+   * that same singleton, from a provider it never asked for.
+   */
+  protected faker = new Faker({ locale: [allLocales.en, allLocales.base] });
   protected readonly guard = z.schema;
   protected options: Required<FakeOptions> = {
     locale: "en",
@@ -117,7 +128,13 @@ export class FakeProvider {
           `Unknown faker locale '${options.locale}'. Use one of: ${Object.keys(allLocales).slice(0, 8).join(", ")}, …`,
         );
       }
-      this.faker = new Faker({ locale: [locale as never, allLocales.en] });
+      // `base` last, and it is not optional: locale-independent data lives
+      // only there, so a chain without it throws on `internet.emoji` and its
+      // neighbours. The exported singleton has always had it; a hand-built
+      // instance has to say so.
+      this.faker = new Faker({
+        locale: [locale as never, allLocales.en, allLocales.base],
+      });
       this.faker.seed(this.options.seed);
     }
 
