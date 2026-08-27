@@ -140,6 +140,8 @@ class ChatChannels {
 
 Schemas use the `z` builder - the same one used by `$action`.
 
+`schema.roomId` is enforced at the handshake on both engines: a join naming a room the schema rejects is closed with code `1008` and the reason `Invalid room id`, and every id of a multi-room join is checked, not just the first. A client that names no room at all joins `default`, which is never validated - it is the framework's fallback, not a choice, so declaring `z.uuid()` does not refuse connections that simply omit the parameter.
+
 ## Server Handler
 
 `$websocket` turns a channel into a live server endpoint: it accepts connections, validates inbound messages against `schema.out`, and calls your handler.

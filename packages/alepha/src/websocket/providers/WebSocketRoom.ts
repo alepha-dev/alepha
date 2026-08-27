@@ -138,21 +138,21 @@ export class WebSocketRoom {
       request.headers.get("x-alepha-ws-conn") ?? `ws-${crypto.randomUUID()}`;
     const query = Object.fromEntries(url.searchParams);
 
-    // Counted BEFORE accepting, so the new socket is not in the tally.
-    const overLimit = await this.isOverConnectionLimit(channelPath, userId);
+    // Decided BEFORE accepting, so the new socket is not in its own tally.
+    const refusal = await this.refuseUpgrade(channelPath, roomId, userId);
 
     const { client, server } = this.createSocketPair();
     this.ctx.acceptWebSocket(server);
 
-    if (overLimit) {
+    if (refusal) {
       // Accepted and then closed, rather than answering a non-101 status:
       // that is how the client learns WHY. Node closes with 1008 after the
-      // upgrade for the same reason, and this is the same code and reason,
-      // so a client cannot tell the two engines apart.
+      // upgrade for the same reasons, and these are the same codes and
+      // reasons, so a client cannot tell the two engines apart.
       //
       // No attachment is ever serialized on this socket, so `webSocketClose`
       // sees a null attachment and leaves it alone.
-      server.close(1008, "Max connections per user exceeded");
+      server.close(refusal.code, refusal.reason);
       return this.upgradeResponse(client);
     }
 
@@ -531,6 +531,55 @@ export class WebSocketRoom {
    * then run fn with the endpoint registered for channelPath. No-op if no
    * such endpoint is registered.
    */
+  /**
+   * Why this upgrade must not be admitted, or `undefined` to let it through.
+   *
+   * One place, so `fetch` cannot grow a check that some callers skip, and so
+   * every refusal leaves by the same door: accepted, then closed with a code
+   * the client can read.
+   */
+  protected async refuseUpgrade(
+    channelPath: string,
+    roomId: string,
+    userId: string | undefined,
+  ): Promise<{ code: number; reason: string } | undefined> {
+    if (await this.isInvalidRoomId(channelPath, roomId)) {
+      return { code: 1008, reason: "Invalid room id" };
+    }
+    if (await this.isOverConnectionLimit(channelPath, userId)) {
+      return { code: 1008, reason: "Max connections per user exceeded" };
+    }
+    return undefined;
+  }
+
+  /**
+   * Whether the channel declares a `schema.roomId` this id does not satisfy.
+   *
+   * The literal `default` is never checked: it is the framework's own
+   * fallback for a client that named no room, not something a client chose,
+   * and a channel declaring `z.uuid()` would otherwise refuse every
+   * connection that simply omitted the parameter.
+   */
+  protected async isInvalidRoomId(
+    channelPath: string,
+    roomId: string,
+  ): Promise<boolean> {
+    if (roomId === "default") return false;
+
+    const alepha = await this.ensureStarted();
+    const provider = alepha.inject(WebSocketServerProvider);
+    const channel =
+      provider.getRoomEndpoint(channelPath)?.channel ??
+      provider.getEndpoint(channelPath)?.channel;
+    const schema = channel?.options.schema.roomId;
+    if (!schema) return false;
+
+    if (schema.safeParse(roomId).success) return false;
+
+    this.safeLog("warn", `Rejected room id '${roomId}' on ${channelPath}`);
+    return true;
+  }
+
   /**
    * Whether this user already holds this room's per-user cap.
    *

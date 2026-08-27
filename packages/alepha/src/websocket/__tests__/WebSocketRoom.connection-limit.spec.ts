@@ -59,6 +59,7 @@ class TestWebSocketRoom extends WebSocketRoom {
 
 const ROOM_PATH = "/ws/game";
 const PLAIN_PATH = "/ws/chat";
+const STRICT_PATH = "/ws/lobby";
 
 const setup = async (sockets: FakeWs[]) => {
   class App {
@@ -73,6 +74,20 @@ const setup = async (sockets: FakeWs[]) => {
     room = $room<any, any, { tick: number }>({
       channel: this.game,
       maxConnectionsPerUser: 2,
+      state: () => ({ tick: 0 }),
+    });
+
+    lobby = $channel({
+      path: STRICT_PATH,
+      schema: {
+        roomId: z.uuid(),
+        in: z.object({ type: z.text() }),
+        out: z.object({ type: z.text() }),
+      },
+    });
+
+    lobbyRoom = $room<any, any, { tick: number }>({
+      channel: this.lobby,
       state: () => ({ tick: 0 }),
     });
 
@@ -104,12 +119,17 @@ const setup = async (sockets: FakeWs[]) => {
   return new TestWebSocketRoom(ctx as any, {});
 };
 
-const upgrade = (room: TestWebSocketRoom, path: string, userId: string) =>
+const upgrade = (
+  room: TestWebSocketRoom,
+  path: string,
+  userId: string,
+  roomId = "r",
+) =>
   room.fetch(
     new Request(`https://do.internal${path}`, {
       headers: {
         "x-alepha-ws-channel": path,
-        "x-alepha-ws-room": "r",
+        "x-alepha-ws-room": roomId,
         "x-alepha-ws-user": userId,
         "x-alepha-ws-conn": "c-new",
       },
@@ -198,5 +218,55 @@ describe("WebSocketRoom per-user connection limit", () => {
     const room = await setup(sockets);
 
     expect(await over(room, "/ws/unknown", "ada")).toBe(false);
+  });
+});
+
+/**
+ * `schema.roomId` was documented on `$channel` and shown in the guide, and
+ * nothing read it. A channel could declare `z.uuid()` and take any string
+ * a client asked for.
+ */
+describe("WebSocketRoom room id validation", () => {
+  it("refuses a room id the channel schema rejects", async () => {
+    const room = await setup([]);
+
+    await upgrade(room, STRICT_PATH, "ada", "not-a-uuid");
+
+    expect(room.lastServer?.closedWith).toEqual({
+      code: 1008,
+      reason: "Invalid room id",
+    });
+  });
+
+  it("admits a room id the schema accepts", async () => {
+    const room = await setup([]);
+
+    await upgrade(
+      room,
+      STRICT_PATH,
+      "ada",
+      "9f1c2c62-6a3f-4a26-9a4e-2f0a1d7c9b11",
+    );
+
+    expect(room.lastServer?.closedWith).toBeUndefined();
+  });
+
+  // `default` is the framework's fallback for a client that named no room,
+  // not something a client chose. Validating it would refuse every
+  // connection that simply omitted the parameter.
+  it("never validates the implicit default room", async () => {
+    const room = await setup([]);
+
+    await upgrade(room, STRICT_PATH, "ada", "default");
+
+    expect(room.lastServer?.closedWith).toBeUndefined();
+  });
+
+  it("admits anything on a channel that declares no roomId schema", async () => {
+    const room = await setup([]);
+
+    await upgrade(room, ROOM_PATH, "ada", "whatever-you-like");
+
+    expect(room.lastServer?.closedWith).toBeUndefined();
   });
 });
