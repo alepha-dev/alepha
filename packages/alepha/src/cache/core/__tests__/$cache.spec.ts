@@ -19,6 +19,7 @@ import {
   testCacheKeys,
   testCacheMissingProvider,
   testCachePrimitiveIncr,
+  testCacheContainerIsolation,
   testCacheProviderClear,
   testCacheReturnTypes,
   testCacheSetDisabled,
@@ -115,6 +116,10 @@ describe("$cache", () => {
 
   it("should clear provider cache", async () => {
     await testCacheProviderClear();
+  });
+
+  it("should keep containers whose names differ only by a colon apart", async () => {
+    await testCacheContainerIsolation();
   });
 
   it("should increment values atomically", async () => {

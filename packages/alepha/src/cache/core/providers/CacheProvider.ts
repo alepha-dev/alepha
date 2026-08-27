@@ -147,6 +147,47 @@ export abstract class CacheProvider {
     await this.del(name, ...keysToDelete);
   }
 
+  // ---------------------------------------------------------------------------
+  // Flat-key helpers - for backends that join (name, key) into one string
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Escape a cache key for a backend that flattens `(name, key)` into a single
+   * `:`-joined string, so the boundary between the two is unambiguous.
+   *
+   * The name is the half that stays readable: this class documents it as a
+   * "some:group:name" shape, `$cache` defaults it to `Service:property`, and
+   * operators scan on it (`KEYS cache:MyService:*`). So the key is the half
+   * that gets escaped. Without this, container `svc` with key `list:1` and
+   * container `svc:list` with key `1` both flattened to `cache:svc:list:1`:
+   * they read each other's entries.
+   *
+   * `%` is escaped first, which is what makes the mapping reversible. The
+   * transform is per-character, so an escaped filter prefixes an escaped key
+   * exactly when the raw filter prefixes the raw key - that is what keeps
+   * wildcard invalidation working on a key containing `:`.
+   */
+  protected escapeKey(key: string): string {
+    return key.includes("%") || key.includes(":")
+      ? key.replaceAll("%", "%25").replaceAll(":", "%3A")
+      : key;
+  }
+
+  /**
+   * Of the entries a prefix scan returned, the ones that belong to `prefix`
+   * itself rather than to a container nested below it.
+   *
+   * A scan of `cache:svc:*` also matches every key of container `svc:list`,
+   * which is why clearing one container used to wipe its colon-suffixed
+   * siblings. Escaped keys carry no `:` of their own, so one left in the
+   * remainder means the entry belongs to a deeper container.
+   *
+   * @param prefix The scanned prefix, trailing `:` included.
+   */
+  protected ownKeys(prefix: string, keys: string[]): string[] {
+    return keys.filter((key) => !key.slice(prefix.length).includes(":"));
+  }
+
   /**
    * Serialize a value to a typed Uint8Array with a leading type marker byte.
    */

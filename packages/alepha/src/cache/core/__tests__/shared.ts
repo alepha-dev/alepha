@@ -651,3 +651,72 @@ export const testCacheCompressTypes = async (
   expect(await test.bool()).toBe(true);
   expect(await test.bool()).toBe(true);
 };
+
+/**
+ * Two containers whose names differ only by where the `:` falls must not share
+ * a slot.
+ *
+ * Redis and KV flatten `(name, key)` into one `:`-joined string, so container
+ * `svc` with key `list:1` and container `svc:list` with key `1` both landed on
+ * `cache:svc:list:1`: they read each other's entries, and clearing either one
+ * wiped the other. Memory and Database key by container natively and were
+ * never affected - they run this too, as the reference behaviour the flat
+ * backends have to match.
+ */
+export const testCacheContainerIsolation = async (
+  configure: (app: Alepha) => void = () => {},
+  cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
+): Promise<void> => {
+  const app = Alepha.create().with({
+    provide: CacheProvider,
+    use: cacheProvider,
+  });
+  configure(app);
+
+  const provider = app.inject(CacheProvider);
+  await app.start();
+
+  await assertCacheContainerIsolation(provider);
+};
+
+/**
+ * The assertions of {@link testCacheContainerIsolation}, against a provider
+ * that is already started. CloudflareKVProvider needs this form: it resolves
+ * its binding in a start hook that gives up unless a `$cache` primitive is
+ * using it, so its spec has to boot the container itself.
+ */
+export const assertCacheContainerIsolation = async (
+  provider: CacheProvider,
+): Promise<void> => {
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  const read = async (name: string, key: string) => {
+    const value = await provider.get(name, key);
+    return value ? decoder.decode(value) : undefined;
+  };
+
+  await provider.set("svc", "list:1", encoder.encode("outer"));
+  await provider.set("svc:list", "1", encoder.encode("inner"));
+
+  expect(await read("svc", "list:1")).toBe("outer");
+  expect(await read("svc:list", "1")).toBe("inner");
+  expect(await provider.has("svc", "list:1")).toBe(true);
+
+  // `keys` reports one container, not its sibling's entries as well.
+  expect(await provider.keys("svc")).toHaveLength(1);
+  expect(await provider.keys("svc:list")).toHaveLength(1);
+
+  // A wildcard still matches a key containing `:` - escaping is per-character,
+  // so an escaped filter prefixes an escaped key exactly when the raw one does.
+  await provider.set("svc", "list:2", encoder.encode("outer2"));
+  await provider.invalidateKeys("svc", ["list:*"]);
+  expect(await read("svc", "list:1")).toBeUndefined();
+  expect(await read("svc", "list:2")).toBeUndefined();
+  expect(await read("svc:list", "1")).toBe("inner");
+
+  // And clearing a whole container leaves the sibling alone.
+  await provider.set("svc", "list:3", encoder.encode("outer3"));
+  await provider.del("svc");
+  expect(await read("svc", "list:3")).toBeUndefined();
+  expect(await read("svc:list", "1")).toBe("inner");
+};

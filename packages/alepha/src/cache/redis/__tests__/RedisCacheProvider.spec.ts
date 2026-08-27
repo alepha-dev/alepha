@@ -19,6 +19,7 @@ import {
   testCacheKeys,
   testCacheMissingProvider,
   testCachePrimitiveIncr,
+  testCacheContainerIsolation,
   testCacheProviderClear,
   testCacheReturnTypes,
   testCacheSetDisabled,
@@ -79,6 +80,10 @@ describe("$cache - redis", () => {
 
   it("should clear provider cache", async () => {
     await testCacheProviderClear(configure(), provider);
+  });
+
+  it("should keep containers whose names differ only by a colon apart", async () => {
+    await testCacheContainerIsolation(configure(), provider);
   });
 
   it("should increment values atomically", async () => {

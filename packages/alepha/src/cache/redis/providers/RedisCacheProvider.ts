@@ -43,7 +43,7 @@ export class RedisCacheProvider extends CacheProvider {
       return;
     }
 
-    const keyWithPrefix = this.prefix(name, key);
+    const keyWithPrefix = this.prefix(name, this.escapeKey(key));
     const buffer = await this.redisProvider.get(keyWithPrefix);
     if (!buffer) {
       return;
@@ -70,7 +70,7 @@ export class RedisCacheProvider extends CacheProvider {
     }
 
     const buffer = Buffer.from(value);
-    const prefix = this.prefix(name, key);
+    const prefix = this.prefix(name, this.escapeKey(key));
 
     if (ttl) {
       return new Uint8Array(
@@ -87,7 +87,10 @@ export class RedisCacheProvider extends CacheProvider {
     const nameKey = this.prefix(name);
 
     if (keys.length === 0) {
-      const matched = await this.redisProvider.keys(`${nameKey}:*`);
+      const matched = this.ownKeys(
+        `${nameKey}:`,
+        await this.redisProvider.keys(`${nameKey}:*`),
+      );
       if (matched.length > 0) {
         await this.redisProvider.del(matched);
       }
@@ -95,7 +98,7 @@ export class RedisCacheProvider extends CacheProvider {
     }
 
     const prefixed = keys.map((key) =>
-      key.startsWith(nameKey) ? key : this.prefix(name, key),
+      key.startsWith(nameKey) ? key : this.prefix(name, this.escapeKey(key)),
     );
     if (prefixed.length > 0) {
       await this.redisProvider.del(prefixed);
@@ -103,14 +106,15 @@ export class RedisCacheProvider extends CacheProvider {
   }
 
   public async has(name: string, key: string): Promise<boolean> {
-    return this.redisProvider.has(this.prefix(name, key));
+    return this.redisProvider.has(this.prefix(name, this.escapeKey(key)));
   }
 
   public async keys(name: string, filter?: string): Promise<string[]> {
-    if (filter) {
-      return await this.redisProvider.keys(`${this.prefix(name)}:${filter}*`);
-    }
-    return this.redisProvider.keys(`${this.prefix(name)}:*`);
+    const prefix = `${this.prefix(name)}:`;
+    const pattern = filter
+      ? `${prefix}${this.escapeKey(filter)}*`
+      : `${prefix}*`;
+    return this.ownKeys(prefix, await this.redisProvider.keys(pattern));
   }
 
   public async clear(): Promise<void> {
@@ -128,7 +132,7 @@ export class RedisCacheProvider extends CacheProvider {
     amount: number,
     ttl?: number,
   ): Promise<number> {
-    const keyWithPrefix = this.prefix(name, key);
+    const keyWithPrefix = this.prefix(name, this.escapeKey(key));
     return this.redisProvider.incr(keyWithPrefix, amount, ttl);
   }
 

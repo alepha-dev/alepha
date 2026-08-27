@@ -7,9 +7,11 @@ import { CacheProvider } from "../providers/CacheProvider.ts";
 import {
   CloudflareKVProvider,
   KV_DEFAULT_BINDING,
+  type KVListOptions,
   type KVListResult,
   type KVPutOptions,
 } from "../providers/CloudflareKVProvider.ts";
+import { assertCacheContainerIsolation } from "./shared.ts";
 
 /**
  * Records what reached the KV binding, so the test can assert on the
@@ -40,8 +42,14 @@ class FakeKV {
     this.store.delete(key);
   }
 
-  async list(): Promise<KVListResult> {
-    return { keys: [], list_complete: true };
+  async list(options?: KVListOptions): Promise<KVListResult> {
+    const prefix = options?.prefix ?? "";
+    return {
+      keys: [...this.store.keys()]
+        .filter((name) => name.startsWith(prefix))
+        .map((name) => ({ name })),
+      list_complete: true,
+    };
   }
 }
 
@@ -111,6 +119,14 @@ describe("CloudflareKVProvider", () => {
 
       expect(kv.puts).toHaveLength(3);
       expect(warnings(alepha)).toHaveLength(1);
+    });
+  });
+
+  describe("container isolation", () => {
+    it("should keep containers whose names differ only by a colon apart", async () => {
+      const { alepha } = await boot();
+
+      await assertCacheContainerIsolation(alepha.inject(CacheProvider));
     });
   });
 });
