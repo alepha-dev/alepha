@@ -1,4 +1,4 @@
-import { $inject, Alepha, z } from "alepha";
+import { $inject, Alepha, type ZType, z } from "alepha";
 import {
   AuditService,
   audits as auditEntity,
@@ -12,6 +12,7 @@ import {
   jobExecutionResourceSchema,
   jobRegistrationSchema,
 } from "alepha/api/jobs";
+import { FakeProvider } from "alepha/fake";
 import { $repository } from "alepha/orm";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
@@ -34,6 +35,15 @@ export class PlaygroundController {
   protected readonly auditService = $inject(AuditService);
   protected readonly auditRepo = $repository(auditEntity);
   protected readonly notifications = $inject(PlaygroundNotifications);
+
+  /**
+   * Every optional field present, so a sample payload is a shape to edit
+   * rather than a lottery over which keys turned up.
+   */
+  protected readonly fake = $inject(FakeProvider).configure({
+    optionalProbability: 0,
+    nullableProbability: 0,
+  });
 
   // --- Unauthenticated read proxies (the admin API requires permissions) ---
 
@@ -75,10 +85,16 @@ export class PlaygroundController {
         .primitives($job)
         .find((j) => j.name === params.name);
       if (!prim) return { sample: undefined };
-      const opts = (prim as unknown as { options: { schema?: unknown } })
-        .options;
+      const opts = (prim as unknown as { options: { schema?: ZType } }).options;
       if (!opts.schema) return { sample: undefined };
-      return { sample: sampleFromSchema(opts.schema) ?? undefined };
+
+      // `FakeProvider` walks zod. The hand-rolled walker that used to live
+      // here read `type` / `properties` / `anyOf` off the schema object, which
+      // is JSON Schema shaped: TypeBox carried those, zod does not, so every
+      // sample came back `{}` after the migration.
+      return {
+        sample: this.fake.generate(opts.schema) as Record<string, unknown>,
+      };
     },
   });
 
@@ -475,51 +491,4 @@ export class PlaygroundController {
       return { ok: true };
     },
   });
-}
-
-/**
- * Walk a TypeBox schema and emit a placeholder value for every field.
- * Strings → "string", numbers → 0, booleans → true, arrays → [sample of item],
- * objects → recurse, unions → first variant, enum → first value.
- */
-function sampleFromSchema(schema: unknown): unknown {
-  if (!schema || typeof schema !== "object") return null;
-  const s = schema as Record<string, unknown>;
-
-  // TypeBox Optional wraps the inner schema in s[Symbol.for("TypeBox.Kind")] = "Optional"
-  // but properties of objects already have the inner type — we just include every
-  // property regardless of required/optional to give users a ready-to-edit shape.
-
-  if (s.enum && Array.isArray(s.enum) && s.enum.length > 0) return s.enum[0];
-  if ("const" in s) return s.const;
-
-  const type = s.type;
-  if (type === "string") {
-    if (s.format === "email") return "user@example.com";
-    if (s.format === "uri" || s.format === "url") return "https://example.com";
-    if (s.format === "uuid") return "00000000-0000-0000-0000-000000000000";
-    if (s.format === "date-time") return new Date().toISOString();
-    return "string";
-  }
-  if (type === "number" || type === "integer") return 0;
-  if (type === "boolean") return true;
-  if (type === "null") return null;
-  if (type === "array") return [sampleFromSchema(s.items)];
-  if (type === "object") {
-    const out: Record<string, unknown> = {};
-    const props = (s.properties ?? {}) as Record<string, unknown>;
-    for (const [k, v] of Object.entries(props)) {
-      out[k] = sampleFromSchema(v);
-    }
-    return out;
-  }
-
-  if (Array.isArray(s.anyOf) && s.anyOf.length > 0)
-    return sampleFromSchema(s.anyOf[0]);
-  if (Array.isArray(s.oneOf) && s.oneOf.length > 0)
-    return sampleFromSchema(s.oneOf[0]);
-  if (Array.isArray(s.allOf) && s.allOf.length > 0)
-    return sampleFromSchema(s.allOf[0]);
-
-  return null;
 }

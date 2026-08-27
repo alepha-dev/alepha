@@ -16,6 +16,7 @@ import {
   Megaphone,
   MessageSquareWarning,
   Table2,
+  Terminal,
   Upload,
   UserPlus,
   Zap,
@@ -44,6 +45,7 @@ const NAV: NavGroup[] = [
         icon: Bell,
       },
       { href: "/playgrounds/audits", label: "Audits", icon: FileSearch },
+      { href: "/playgrounds/ops", label: "Ops", icon: Terminal },
     ],
   },
   {
