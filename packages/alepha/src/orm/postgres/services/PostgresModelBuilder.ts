@@ -219,7 +219,11 @@ export class PostgresModelBuilder extends ModelBuilder {
         col = col.generatedAlwaysAs(gen.expression);
       }
 
-      if (z.schema.requiredKeys(schema).includes(key)) {
+      // `isOptional`, not `requiredKeys`: they answer different questions.
+      // `requiredKeys` asks whether a caller must supply the key, so it drops
+      // defaulted fields - but a defaulted column is still NOT NULL, since the
+      // default is exactly what fills it.
+      if (!z.schema.isOptional(value)) {
         col = col.notNull();
       }
 

@@ -587,15 +587,41 @@ export const z = {
       return undefined;
     },
     /**
-     * typebox-compat: the object's required (non-optional) field names.
+     * typebox-compat: the object's required field names, meaning the keys a
+     * caller has to supply for the object to parse.
+     *
+     * A key is required unless its schema is optional or carries a default,
+     * with `.optional()` / `.nullable()` / `.default()` peeled in any order:
+     * `.default()` answers for the caller, so a defaulted field is no more
+     * required than an optional one.
+     *
+     * Plain `.nullable()` stays required: `null` is a value, and the key still
+     * has to be there to carry it.
+     *
+     * This is NOT the question "may this column be NULL". A defaulted column
+     * is still `NOT NULL` - the default is what fills it - so the ORM model
+     * builders ask `isOptional` directly rather than reading this array.
      */
     requiredKeys: (s: any): string[] => {
       const shape = s?.shape;
-      return shape
-        ? Object.keys(shape).filter(
-            (k) => !(shape[k] instanceof zod.ZodOptional),
-          )
-        : [];
+      if (!shape) return [];
+      return Object.keys(shape).filter((k) => {
+        let cur = shape[k];
+        while (cur) {
+          if (cur instanceof zod.ZodOptional || cur instanceof zod.ZodDefault) {
+            return false;
+          }
+          if (cur instanceof zod.ZodNullable) {
+            cur =
+              typeof cur.unwrap === "function"
+                ? cur.unwrap()
+                : cur?._zod?.def?.innerType;
+            continue;
+          }
+          return true;
+        }
+        return true;
+      });
     },
   },
 };
