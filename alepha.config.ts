@@ -117,6 +117,8 @@ export default (alepha: Alepha) => {
     }),
     "verify:go": $command({
       aliases: ["v:go"],
+      // Shares one slot with `verify`, see the note there.
+      exclusive: "alepha:verify",
       description: "Run the Go suite (apps/bay) on the platform it ships for.",
       handler: async ({ run }) => {
         // A lane of its own rather than a step inside `verify`, because the two
@@ -148,6 +150,19 @@ export default (alepha: Alepha) => {
     }),
     verify: $command({
       aliases: ["v"],
+      // One machine-wide slot, shared with `verify:go`, because what these two
+      // contend for is the machine rather than the lane. `vitest.config.ts`
+      // points every checkout at the SAME services: postgres on 15432, redis
+      // on 16379, s3mock on 19090, emqx on 11883, one database and one bucket
+      // between them. Two worktrees running `yarn v` at once therefore
+      // interleave writes into a single postgres, which is the likeliest cause
+      // of the intermittent, never-the-same-spec failures this pipeline used
+      // to produce. The CPU cost of two concurrent typecheck/test/build runs
+      // is the smaller half of the problem.
+      //
+      // An explicit key rather than `true`: `true` derives from the command
+      // name, which would hand these two lanes separate slots.
+      exclusive: "alepha:verify",
       description:
         "Run linter, checker and tests (JavaScript/TypeScript only — Go lives in `v:go`).",
       flags: z.object({
