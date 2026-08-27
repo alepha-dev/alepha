@@ -1,7 +1,9 @@
-import { $atom, $inject, $store, z } from "alepha";
+import { $atom, $inject, $store, Alepha, z } from "alepha";
+import { $cache } from "alepha/cache";
+import { DatabaseCacheProvider } from "alepha/cache/database";
 import { $logger } from "alepha/logger";
 import { JwtProvider } from "alepha/security";
-import { $route } from "alepha/server";
+import { $route, HttpError } from "alepha/server";
 
 import { renderConsentPage } from "../helpers/consentPage.ts";
 import {
@@ -60,6 +62,7 @@ export const oauthOptions = $atom({
  * authorization.
  */
 export class OAuthController {
+  protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly options = $store(oauthOptions);
   protected readonly clients = $inject(OAuthClientService);
@@ -114,11 +117,54 @@ export class OAuthController {
     },
   });
 
+  /**
+   * Per-address budget for dynamic client registration.
+   *
+   * DCR is unauthenticated by design (RFC 7591 allows it, and an MCP client
+   * discovering this server has no credential yet), which leaves the write
+   * path open: every call creates a row, and nothing bounded how many.
+   *
+   * The SQL-backed cache, for the same reason the registration limiter uses
+   * it: `incr()` is atomic there, and Cloudflare KV coalesces concurrent
+   * writes to one key, which is precisely the burst a limiter exists to stop.
+   */
+  protected readonly registerRateLimit = $cache<number>({
+    provider: DatabaseCacheProvider,
+    name: "api:oauth:dcr-rate-limit",
+    ttl: [15, "minutes"],
+  });
+
+  /**
+   * How many clients one address may register per window. Conservative: a
+   * real client registers ONCE and keeps its id, so anything above a handful
+   * is a retry loop or an attack, never normal use.
+   */
+  protected readonly registerMaxPerWindow = 10;
+
   register = $route({
     method: "POST",
     path: "/oauth/register",
     schema: { body: registerClientBodySchema },
     handler: async ({ body, reply }) => {
+      // Read off the request atom, the same way the registration limiter
+      // reaches the address: a `$route` handler's context does not carry it.
+      const ip = this.alepha.store.get("alepha.http.request")?.ip;
+      if (ip) {
+        const count = await this.registerRateLimit.incr(`dcr:ip:${ip}`);
+        if (count > this.registerMaxPerWindow) {
+          this.log.warn("Dynamic client registration rate limit exceeded", {
+            ip,
+          });
+          // 429, not the 400 the registration limiter answers: a caller that
+          // waits and retries is doing the right thing, and only this status
+          // says so.
+          throw new HttpError({
+            message: "Too many client registrations, please try again later",
+            status: 429,
+          });
+        }
+      }
+
       const client = await this.clients.register({
         realm: this.options.realm,
         clientName: body.client_name ?? "MCP Client",

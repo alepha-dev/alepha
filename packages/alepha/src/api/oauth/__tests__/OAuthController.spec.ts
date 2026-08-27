@@ -18,6 +18,21 @@ describe("oauth helpers", () => {
     expect(m.code_challenge_methods_supported).toEqual(["S256"]);
   });
 
+  // The token endpoint accepts a `client_secret` in the form body, and this
+  // document advertised `["none"]` alone: it told a conforming confidential
+  // client that its secret would be refused, and contradicted the server's own
+  // OpenID configuration, which has always listed both.
+  it("advertises the auth methods the token endpoint really accepts", ({
+    expect,
+  }) => {
+    const m = buildAuthorizationServerMetadata("https://app.com");
+    expect(m.token_endpoint_auth_methods_supported).toEqual([
+      "none",
+      "client_secret_post",
+    ]);
+    expect(m.grant_types_supported).toContain("refresh_token");
+  });
+
   it("escapes client name in the consent page", ({ expect }) => {
     const html = renderConsentPage({
       clientName: "<script>x</script>",
@@ -83,6 +98,48 @@ describe("OAuthController", () => {
     expect(resp.status).toBe(201);
     const body = (await resp.json()) as Record<string, string>;
     expect(body.client_id).toMatch(/^mcp_/);
+  });
+
+  /**
+   * Dynamic client registration is unauthenticated by design - a client
+   * discovering this server has no credential yet - which leaves the write
+   * path open: every call creates a row, and nothing bounded how many.
+   */
+  it("throttles a burst of registrations from one address", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+    });
+    await alepha.start();
+
+    const { hostname } = alepha.inject(ServerProvider);
+    const register = () =>
+      fetch(`${hostname}/oauth/register`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          client_name: "Burst",
+          redirect_uris: ["https://example.com/cb"],
+        }),
+      });
+
+    const statuses: number[] = [];
+    for (let i = 0; i < 12; i++) {
+      statuses.push((await register()).status);
+    }
+
+    // A real client registers once and keeps its id, so the budget is small.
+    expect(statuses.filter((s) => s === 201)).toHaveLength(10);
+    // 429, not 400: a caller that waits and retries is doing the right thing,
+    // and only this status tells it so.
+    expect(statuses.filter((s) => s === 429)).toHaveLength(2);
   });
 });
 
