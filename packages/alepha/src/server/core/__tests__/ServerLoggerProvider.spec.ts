@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { Alepha, z } from "alepha";
 import {
   $logger,
   LogDestinationProvider,
@@ -40,6 +40,16 @@ class App {
     handler: () => {
       throw new Error("kaboom");
     },
+  });
+  callback = $action({
+    schema: {
+      query: z.object({
+        code: z.text().optional(),
+        state: z.text().optional(),
+        redirect: z.text().optional(),
+      }),
+    },
+    handler: () => "ok",
   });
 }
 
@@ -104,6 +114,44 @@ describe("ServerLoggerProvider", () => {
     expect(log.logs[0].message).toBe("Incoming request");
     expect(log.logs[1].message).toBe("Request has failed");
     expect(log.logs[1].level).toBe("ERROR");
+  });
+
+  /**
+   * The path is logged at info level, so an OAuth callback wrote a live
+   * authorization code straight into production logs. The key stays - knowing
+   * which parameters a request carried is most of what the line is for - and
+   * only the value goes.
+   */
+  it("redacts credential-bearing query values from both log lines", async ({
+    expect,
+  }) => {
+    await app.callback.fetch({
+      query: { code: "live-authorization-code", state: "csrf-state" },
+    });
+
+    const paths = log.logs
+      .filter(
+        (l) =>
+          l.message.startsWith("Incoming request") ||
+          l.message.startsWith("Request completed"),
+      )
+      .map((l) => (l.data as { path: string }).path);
+
+    expect(paths).toHaveLength(2);
+    for (const path of paths) {
+      expect(path).toContain("code=[redacted]");
+      expect(path).toContain("state=[redacted]");
+      expect(path).not.toContain("live-authorization-code");
+      expect(path).not.toContain("csrf-state");
+    }
+  });
+
+  it("leaves an ordinary query untouched", async ({ expect }) => {
+    await app.callback.fetch({ query: { redirect: "/home" } });
+
+    const path = (log.logs[0].data as { path: string }).path;
+    expect(path).toContain("redirect=%2Fhome");
+    expect(path).not.toContain("redacted");
   });
 
   it("should not log request lifecycle for silent actions but still log custom messages", async ({

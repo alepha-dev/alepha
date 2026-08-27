@@ -219,3 +219,49 @@ describe("HttpClient", () => {
     );
   });
 });
+
+/**
+ * The trace line printed every request header verbatim, so a request carrying
+ * a session cookie or a bearer token wrote the credential itself into the
+ * log. Either is enough to act as the user, so neither can be there whatever
+ * the level is set to.
+ */
+describe("HttpClient trace redaction", () => {
+  class TestHttpClient extends HttpClient {
+    public testRedactHeaders = (headers: HeadersInit | undefined) =>
+      this.redactHeaders(headers) as Record<string, string> | undefined;
+  }
+
+  const client = () => Alepha.create().inject(TestHttpClient);
+
+  it("redacts every credential-bearing header", ({ expect }) => {
+    expect(
+      client().testRedactHeaders({
+        authorization: "Bearer super-secret",
+        cookie: "tokens=super-secret",
+        "content-type": "application/json",
+      }),
+    ).toEqual({
+      authorization: "[redacted]",
+      cookie: "[redacted]",
+      "content-type": "application/json",
+    });
+  });
+
+  it("handles every HeadersInit shape, and lowercases the names", ({
+    expect,
+  }) => {
+    // A caller may pass a plain object, an entry array or a `Headers`, and a
+    // header name is case-insensitive: `Cookie` must redact like `cookie`.
+    expect(client().testRedactHeaders(new Headers({ Cookie: "a=b" }))).toEqual({
+      cookie: "[redacted]",
+    });
+    expect(client().testRedactHeaders([["Authorization", "Bearer x"]])).toEqual(
+      { authorization: "[redacted]" },
+    );
+  });
+
+  it("leaves an absent header list alone", ({ expect }) => {
+    expect(client().testRedactHeaders(undefined)).toBeUndefined();
+  });
+});
