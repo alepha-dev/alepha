@@ -169,11 +169,11 @@ describe("alepha/api/users - MyAccountController", () => {
 
   it("should deliver the handler's own error unwrapped", async ({ expect }) => {
     /*
-      `EventManager.emit()`'s fast path rethrows untouched; the `{ log: true }`
-      path wraps in `AlephaError("Failed during '…' hook for service: X")`.
-      This pins that the emit stays on the fast path — otherwise the only
-      sentence the person needed to read gets buried behind a
-      framework-internal one, and the status collapses to 500.
+      `EventManager.emit()` rethrows a hook's error untouched on every path.
+      It used to wrap on the `{ log: true }` one, and this pinned that the
+      emit stayed off it; now it pins the guarantee itself, which is that the
+      only sentence the person needed to read is the one they get, with the
+      handler's own status rather than a 500.
     */
     const ctx = await setup({ hook: RefusingHook });
 

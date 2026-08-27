@@ -332,9 +332,8 @@ export class CliProvider {
    * `UsageError`'s own doc justifies the split by saying a `CommandError` from
    * {@link Runner} means a task genuinely failed "and its stack is the useful
    * part". That holds for the stack of whatever *threw* — but by the time this
-   * reaches the `ready` hook it has been wrapped twice, and what the user got
-   * was ~30 lines under "Alepha failed to start / Failed during 'ready()' hook
-   * for service: CliProvider", every frame of it inside
+   * reaches the `ready` hook it has been wrapped, and what the user got
+   * was ~30 lines under "Alepha failed to start", every frame of it inside
    * `alepha/dist/command/index.js`. None of those frames are the user's code,
    * and the tool that actually failed — tsc, vitest, oxlint — has already
    * printed its diagnostics above.

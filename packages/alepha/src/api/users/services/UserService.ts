@@ -523,14 +523,15 @@ export class UserService {
       entirely: the app's cleanup never ran and its refusal never applied,
       even though the row and its cascades are identical either way.
 
-      ⚠️ Emitted WITHOUT `{ log: true }`, and that is load-bearing.
+      An application's `ConflictError("You still own 3 projects")` reaches the
+      caller intact, with its own status and its own message.
 
-      `EventManager.emit()`'s fast path rethrows a handler's error untouched,
-      so an application's `ConflictError("You still own 3 projects")` reaches
-      the caller intact, with its own status and its own message. The logging
-      path instead wraps it in `AlephaError("Failed during '…' hook for
-      service: X", { cause })` - which would bury the only sentence the person
-      needed to read behind a framework-internal one.
+      That used to depend on this emit staying off the `{ log: true }` path,
+      which wrapped a handler's error in `AlephaError("Failed during '…' hook
+      for service: X")` and buried the only sentence the person needed to read
+      behind a framework-internal one. `EventManager` no longer wraps on
+      either path, so the guarantee is the engine's rather than this call
+      site's.
 
       Nothing is deleted before this resolves.
     */

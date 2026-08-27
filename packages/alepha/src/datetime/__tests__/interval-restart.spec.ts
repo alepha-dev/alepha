@@ -30,9 +30,9 @@ describe("$interval across a failed start", () => {
     const alepha = Alepha.create();
     alepha.inject(App);
 
-    await expect(alepha.start()).rejects.toThrow(
-      /Failed during 'start\(\)' hook/,
-    );
+    // The hook's own message: `start()` used to wrap a failing hook, and no
+    // longer does, so what a caller sees is what the hook threw.
+    await expect(alepha.start()).rejects.toThrow("first boot fails");
     await alepha.start();
 
     // The `stop` emitted by the failed boot used to zero the period, so the
