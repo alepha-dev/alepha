@@ -702,6 +702,74 @@ describe("$workflow — timeout sweep", () => {
 
 // -----------------------------------------------------------------------------------------------------------------
 
+describe("$workflow - restart", () => {
+  /**
+   * A restart is usually clicked by an admin, and it used to call `start()`
+   * bare: the new execution captured THEIR ambient atoms and dropped the
+   * original's key, tags, priority and triggeredBy on the floor.
+   */
+  it("takes its metadata and context from the stored row, not from the caller", async ({
+    expect,
+  }) => {
+    class App {
+      alepha = $inject(Alepha);
+      repo = $repository(workflowExecutions);
+      doomed = $workflow({
+        schema: z.object({ id: z.text() }),
+        context: [specTenantAtom],
+        onError: "fail",
+        priority: "low",
+        tags: ["billing"],
+        steps: [
+          {
+            name: "only",
+            handler: async () => {
+              throw new Error("boom");
+            },
+          },
+        ],
+      });
+    }
+
+    const alepha = makeApp().with(App);
+    await alepha.start();
+    const app = alepha.inject(App);
+
+    alepha.store.set(specTenantAtom, { id: "org-1" });
+    const executionId = await app.doomed.start(
+      { id: "x" },
+      { key: "invoice-42", triggeredBy: "user-1", triggeredByName: "Ada" },
+    );
+
+    const original = await waitFor(
+      () => app.repo.findById(executionId),
+      (e) => e?.status === "failed",
+      { label: "workflow failed" },
+    );
+    // "low", so a restart that recomputed the priority would land on the
+    // default 2 and the assertion below would not be about anything.
+    expect(original?.priority).toBe(3);
+
+    // The admin who clicks restart carries their own tenant.
+    alepha.store.set(specTenantAtom, { id: "org-admin" });
+    const newId = await app.doomed.restart(executionId);
+    expect(newId).not.toBe(executionId);
+
+    const restarted = await app.repo.findById(newId);
+    expect(restarted?.key).toBe("invoice-42");
+    expect(restarted?.tags).toEqual(["billing"]);
+    expect(restarted?.priority).toBe(3);
+    expect(restarted?.triggeredBy).toBe("user-1");
+    expect(restarted?.triggeredByName).toBe("Ada");
+    expect(restarted?.context).toEqual({
+      "alepha.test.workflowTenant": { id: "org-1" },
+    });
+    expect(restarted?.restartedFrom).toBe(executionId);
+  });
+});
+
+// -----------------------------------------------------------------------------------------------------------------
+
 describe("$workflow — dedup race", () => {
   it("concurrent same-key starts resolve to a single execution", async ({
     expect,

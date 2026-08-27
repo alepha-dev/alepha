@@ -1,0 +1,1 @@
+ALTER TABLE `workflow_executions` ADD `restarted_from` text;

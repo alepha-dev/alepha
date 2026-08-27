@@ -40,6 +40,31 @@ interface WorkflowRuntimeRegistration {
   options: WorkflowPrimitiveOptions;
 }
 
+/**
+ * What a restart carries over from the execution it replaces, rather than
+ * recomputing from whoever asked for the restart.
+ */
+interface WorkflowInheritedStart {
+  /**
+   * The original's captured context. A restart is usually clicked by an
+   * admin, and re-capturing would put THEIR ambient atoms - their tenant -
+   * on someone else's workflow.
+   */
+  context?: Record<string, unknown>;
+
+  /**
+   * The stored numeric priority. `WorkflowStartOptions.priority` is a name
+   * (`"high"`), and the row keeps what it mapped to, so the two cannot be
+   * expressed through the same field.
+   */
+  priority?: number;
+
+  /**
+   * Id of the execution this one replaces.
+   */
+  restartedFrom?: string;
+}
+
 export interface CancelOptions {
   compensate?: boolean;
   cancelledBy?: string;
@@ -119,12 +144,26 @@ export class WorkflowProvider {
     payload: unknown,
     options?: WorkflowStartOptions,
   ): Promise<string> {
+    return this.startExecution(workflowName, payload, options);
+  }
+
+  /**
+   * The body of {@link start}, with the fields a restart carries over from
+   * the execution it replaces split out - see {@link WorkflowInheritedStart}.
+   */
+  protected async startExecution(
+    workflowName: string,
+    payload: unknown,
+    options?: WorkflowStartOptions,
+    inherited?: WorkflowInheritedStart,
+  ): Promise<string> {
     const registration = this.getRegistration(workflowName);
     const opts = registration.options;
 
     const validated = this.alepha.codec.validate(opts.schema, payload);
 
     const priority =
+      inherited?.priority ??
       this.priorityMap[options?.priority ?? opts.priority ?? "normal"];
     const status: WorkflowStatus = options?.delay ? "pending" : "running";
 
@@ -178,7 +217,8 @@ export class WorkflowProvider {
       execution = await this.executions.create({
         workflowName,
         payload: validated as Record<string, unknown>,
-        context: this.captureContext(opts),
+        context: inherited?.context ?? this.captureContext(opts),
+        restartedFrom: inherited?.restartedFrom,
         status,
         priority,
         deadlineAt,
@@ -1134,7 +1174,30 @@ export class WorkflowProvider {
       );
     }
 
-    return this.start(workflow.workflowName, workflow.payload);
+    // Everything comes off the stored row. Restarting used to call `start()`
+    // bare, which meant the new execution took its context from whoever
+    // clicked restart (an admin's tenant, on someone else's workflow) and
+    // dropped the key, tags, priority and triggeredBy entirely.
+    //
+    // The key comes along too, so a restart re-arms the same dedup slot. If
+    // something else has since started a live execution under it, the dedup
+    // check in `startExecution` returns that one rather than creating a
+    // second - which is what the key is for.
+    return this.startExecution(
+      workflow.workflowName,
+      workflow.payload,
+      {
+        key: workflow.key ?? undefined,
+        tags: workflow.tags,
+        triggeredBy: workflow.triggeredBy,
+        triggeredByName: workflow.triggeredByName,
+      },
+      {
+        context: workflow.context,
+        priority: workflow.priority,
+        restartedFrom: workflow.id,
+      },
+    );
   }
 
   // --- Query ------------------------------------------------------------------------------------------------------
