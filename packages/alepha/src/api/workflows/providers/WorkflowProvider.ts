@@ -1090,11 +1090,25 @@ export class WorkflowProvider {
       scheduledAt: undefined,
     });
 
+    // Recomputed from the retry instant, exactly as `start()` computes it.
+    // Carried over, a `timed_out` execution went back to `running` with a
+    // deadline already in the past, and the very next sweep killed it before
+    // the retried step could run: retrying a timeout was a no-op that looked
+    // like a failure of the handler.
+    let deadlineAt: string | undefined;
+    const { timeout } = this.getRegistration(workflow.workflowName).options;
+    if (timeout) {
+      deadlineAt = this.dt.now().add(this.dt.duration(timeout)).toISOString();
+    }
+
     await this.executions.updateById(workflowId, {
       status: "running",
       error: undefined,
       errorStep: undefined,
       completedAt: undefined,
+      // Cleared when the workflow declares no timeout, which is the state
+      // `start()` would have left it in.
+      deadlineAt,
     });
 
     await this.dispatchStep(
