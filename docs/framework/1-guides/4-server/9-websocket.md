@@ -284,6 +284,8 @@ Identity is resolved from the WebSocket handshake through `alepha/security`'s us
 
 An unauthenticated connection to a `secure: true` endpoint is rejected before the upgrade completes. This works identically on both the Node and Cloudflare providers.
 
+**What `maxConnectionsPerUser` counts differs by engine.** On Node the server holds every connection, so the cap is per endpoint: three connections total, whichever rooms they joined. On Cloudflare a Durable Object IS one room and only knows its own sockets, so the cap is per room: the same user may hold three in each room they join. Counting across rooms would put a second coordinator object on the path of every upgrade, which is a real cost for a limit that exists to stop one user opening tabs without end. Both engines refuse the same way, closing the socket with code `1008` and the reason `Max connections per user exceeded`, so a client cannot tell them apart. An unauthenticated connection is never capped on either, since there is no identity to count against.
+
 ## Node / VPS
 
 On Node, `alepha/websocket` runs on top of the `ws` package, attached to the same HTTP server as the rest of your app. A connection can join multiple rooms at once (e.g. `?roomIds=room-1,room-2`) - `useRoom`/`WebSocketClient` sends all active room subscriptions as query params when it connects.

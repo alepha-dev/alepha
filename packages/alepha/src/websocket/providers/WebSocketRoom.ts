@@ -138,12 +138,24 @@ export class WebSocketRoom {
       request.headers.get("x-alepha-ws-conn") ?? `ws-${crypto.randomUUID()}`;
     const query = Object.fromEntries(url.searchParams);
 
-    // @ts-expect-error WebSocketPair is a Workers runtime global, not available in Node's lib.dom types.
-    const pair = new WebSocketPair();
-    const client = pair[0];
-    const server = pair[1];
+    // Counted BEFORE accepting, so the new socket is not in the tally.
+    const overLimit = await this.isOverConnectionLimit(channelPath, userId);
 
+    const { client, server } = this.createSocketPair();
     this.ctx.acceptWebSocket(server);
+
+    if (overLimit) {
+      // Accepted and then closed, rather than answering a non-101 status:
+      // that is how the client learns WHY. Node closes with 1008 after the
+      // upgrade for the same reason, and this is the same code and reason,
+      // so a client cannot tell the two engines apart.
+      //
+      // No attachment is ever serialized on this socket, so `webSocketClose`
+      // sees a null attachment and leaves it alone.
+      server.close(1008, "Max connections per user exceeded");
+      return this.upgradeResponse(client);
+    }
+
     const attachment: WsAttachment = {
       connectionId,
       userId,
@@ -155,6 +167,29 @@ export class WebSocketRoom {
 
     await this.onSocketOpen(server, attachment);
 
+    return this.upgradeResponse(client);
+  }
+
+  /**
+   * Build the pair of sockets an upgrade hands out.
+   *
+   * A seam, not indirection for its own sake: `WebSocketPair` is a workerd
+   * global with no Node equivalent, so without it `fetch` cannot be reached
+   * from a spec at all - which is how the per-user cap came to be wired into
+   * `fetch` on one engine and nowhere on the other.
+   */
+  protected createSocketPair(): { client: any; server: any } {
+    // @ts-expect-error WebSocketPair is a Workers runtime global, not available in Node's lib.dom types.
+    const pair = new WebSocketPair();
+    return { client: pair[0], server: pair[1] };
+  }
+
+  /**
+   * The 101 handshake response. A seam for the same reason as
+   * {@link createSocketPair}: Node's `Response` rejects a 101 status outright,
+   * and `webSocket` is a Workers-only `ResponseInit` extension.
+   */
+  protected upgradeResponse(client: any): Response {
     // @ts-expect-error `webSocket` on ResponseInit is a Workers-only extension not present in lib.dom's Response type.
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -496,6 +531,44 @@ export class WebSocketRoom {
    * then run fn with the endpoint registered for channelPath. No-op if no
    * such endpoint is registered.
    */
+  /**
+   * Whether this user already holds this room's per-user cap.
+   *
+   * ⚠️ The cap is PER ROOM here, where Node's is per endpoint. A Durable
+   * Object is one `channelPath:roomId`, and it is the only thing that knows
+   * its own sockets: counting across rooms would need a second coordinator
+   * object on the path of every upgrade, which is a real cost for a limit
+   * meant to stop one user opening tabs without end. The guide says so.
+   *
+   * Within the room the count is exact, because the DO owns every socket in
+   * it - including hibernated ones, which is why this reads
+   * `getWebSockets()` rather than any in-memory map.
+   */
+  protected async isOverConnectionLimit(
+    channelPath: string,
+    userId: string | undefined,
+  ): Promise<boolean> {
+    if (!userId) return false;
+
+    const alepha = await this.ensureStarted();
+    const provider = alepha.inject(WebSocketServerProvider);
+    const limit =
+      provider.getRoomEndpoint(channelPath)?.maxConnectionsPerUser ??
+      provider.getEndpoint(channelPath)?.maxConnectionsPerUser;
+    if (!limit) return false;
+
+    let held = 0;
+    for (const ws of this.ctx.getWebSockets()) {
+      const att = ws.deserializeAttachment() as WsAttachment | null;
+      if (att?.userId === userId) held++;
+    }
+
+    if (held < limit) return false;
+
+    this.safeLog("warn", `User ${userId} exceeded max connections (${limit})`);
+    return true;
+  }
+
   protected async withEndpoint(
     channelPath: string,
     fn: (endpoint: WebSocketPrimitiveOptions<any, any>) => Promise<void>,
