@@ -19,26 +19,24 @@ test.describe("admin user detail", () => {
   const adminEmail = "admin@example.com";
   const adminPassword = "GoodPassw0rd";
 
-  // SKIPPED. The 2026-05-28 note that used to sit here blamed the
-  // clear-to-empty path; that is wrong, and re-verified as wrong on
-  // 2026-08-25 (a browser spec clears an optional string field through
-  // AutoForm and it propagates fine). The keep-dirty fix for #1393 moved this
-  // three steps further: the first clear + save now passes, and the failure
-  // is at the SECOND clear, line ~98.
+  // Un-skipped 2026-08-27. It had been skipped since 2026-05-28 under two
+  // successive wrong diagnoses; what it was catching all along is a real
+  // `keepDirty` bug, now fixed in `FormModel.setInitialValues`.
   //
-  // What is actually observed at the timeout:
-  //   - the Save button is `disabled aria-busy="true" data-loading="true"`,
-  //     so `form:submit:end` never fired for the PREVIOUS save. That event is
-  //     in submit()'s `finally`, after `await options.handler(...)`, and the
-  //     "Profile saved" toast (emitted before `await userQuery.refetch()`) IS
-  //     visible - so the handler is hung inside `userQuery.refetch()`;
-  //   - Last name still reads "Smith" although `fill("")` ran and left the
-  //     input focused, i.e. the value was set and then reverted.
+  // The trap: the clear at "can remove firstName + lastName" puts `lastName`
+  // back to the "" it held before the previous save, and `keepDirty` decided
+  // "edited" by comparing the value against exactly that baseline. So the
+  // user's clear was indistinguishable from an untouched field, the refetch
+  // put "Smith" back, the form went pristine, and a Save button gated on
+  // `dirty` never enabled again.
   //
-  // Not reproduced in isolation: a browser spec doing submit → await
-  // refetch → re-seed completes both cycles cleanly, so it needs something
-  // more from this page. Un-skip once that is root-caused.
-  test.skip("profile edit / validation / conflicts", async ({ page }) => {
+  // The last note blamed a hung `userQuery.refetch()`, on the evidence of a
+  // Save button reading `aria-busy="true"`. Instrumenting the run showed the
+  // refetch completing normally every time: that attribute was a transient
+  // state Playwright happened to sample, and the button stayed disabled
+  // afterwards because the form was pristine, not because it was loading.
+  // See `useForm-keep-dirty.browser.spec.tsx` for the unit-level case.
+  test("profile edit / validation / conflicts", async ({ page }) => {
     const stamp = Date.now();
     const victimEmail = `victim-${stamp}@example.com`;
     const otherEmail = `other-${stamp}@example.com`;
@@ -124,20 +122,27 @@ test.describe("admin user detail", () => {
     // "cannot be removed", not as "required".
     await page.locator('input[name="username"]').fill("");
     await page.getByRole("button", { name: /save changes/i }).click();
-    await expect(page.getByText(/username cannot be removed/i)).toBeVisible();
+    // Twice on screen: the inline field error and the toast. Either proves
+    // the refusal, so the assertion picks one rather than demanding one.
+    await expect(
+      page.getByText(/username cannot be removed/i).first(),
+    ).toBeVisible();
     // Re-fill so subsequent tests aren't blocked by validation.
     await page.locator('input[name="username"]').fill(victim!.username ?? "");
 
     // -- can't remove email (required) --------------------------------
     await page.locator('input[name="email"]').fill("");
     await page.getByRole("button", { name: /save changes/i }).click();
-    await expect(page.getByText(/email is required/i)).toBeVisible();
+    await expect(page.getByText(/email is required/i).first()).toBeVisible();
     await page.locator('input[name="email"]').fill(victim!.email);
 
     // -- toast error on duplicate email -------------------------------
     await page.locator('input[name="email"]').fill(otherEmail);
     await page.getByRole("button", { name: /save changes/i }).click();
-    await expect(page.getByText(/email already exists/i)).toBeVisible({
+    // `.first()`: the page toasts the friendly message itself AND rethrows,
+    // which the framework's ActionErrorToaster turns into a second toast of
+    // the same text. One is enough to prove the refusal reached the user.
+    await expect(page.getByText(/email already exists/i).first()).toBeVisible({
       timeout: 5_000,
     });
     await page.locator('input[name="email"]').fill(victim!.email);
@@ -145,7 +150,9 @@ test.describe("admin user detail", () => {
     // -- toast error on duplicate username ----------------------------
     await page.locator('input[name="username"]').fill(other!.username ?? "");
     await page.getByRole("button", { name: /save changes/i }).click();
-    await expect(page.getByText(/username already exists/i)).toBeVisible({
+    await expect(
+      page.getByText(/username already exists/i).first(),
+    ).toBeVisible({
       timeout: 5_000,
     });
     await page.locator('input[name="username"]').fill(victim!.username ?? "");
@@ -154,12 +161,26 @@ test.describe("admin user detail", () => {
     const newEmail = `victim-${stamp}-renamed@example.com`;
     await page.locator('input[name="email"]').fill(newEmail);
     await page.getByRole("button", { name: /save changes/i }).click();
-    await expect(page.getByText("Profile saved").last()).toBeVisible();
-    const refreshed = await page.evaluate(async (id) => {
-      const res = await fetch(`/api/users/${id}`);
-      return res.json();
-    }, victim!.id);
-    expect(refreshed.email).toBe(newEmail);
-    expect(refreshed.emailVerified).toBe(false);
+
+    // Polled rather than read once after the toast. "Profile saved" is not a
+    // reliable "this save has landed" signal: `.last()` matches a toast an
+    // EARLIER save left on screen, and the read then raced the write it was
+    // supposed to observe.
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            (id) =>
+              fetch(`/api/users/${id}`)
+                .then((r) => r.json())
+                .then((u) => ({
+                  email: u.email,
+                  emailVerified: u.emailVerified,
+                })),
+            victim!.id,
+          ),
+        { timeout: 10_000 },
+      )
+      .toEqual({ email: newEmail, emailVerified: false });
   });
 });

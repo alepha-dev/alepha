@@ -5,7 +5,7 @@ import { AlephaContext } from "alepha/react";
 import { useState } from "react";
 import { describe, it } from "vitest";
 
-import { useForm, useFormValues } from "../index.ts";
+import { useForm, useFormState, useFormValues } from "../index.ts";
 
 /**
  * A page that refetches after a save hands `useForm` new `initialValues`,
@@ -99,5 +99,92 @@ describe("useForm keeps dirty fields when initialValues change", () => {
       expect((getByTestId("last") as HTMLInputElement).value).toBe("King"),
     );
     expect((getByTestId("first") as HTMLInputElement).value).toBe("Ada");
+  });
+});
+
+/**
+ * The half `keepDirty` still got wrong: it decided "edited" by comparing the
+ * current value against the baseline it is about to replace. An edit that
+ * happens to restore that baseline is then indistinguishable from an
+ * untouched field, so the server's answer overwrites it.
+ *
+ * It reads as an impossible sequence until you say it out loud: type a value,
+ * save, change your mind and clear the field while the save is still in
+ * flight. The clear puts the field back to what it held before the save, and
+ * the response then puts the saved value back on screen. The user watches
+ * their own deletion undone - which is the exact failure `keepDirty` exists
+ * to prevent.
+ *
+ * The form has to stay DIRTY too. Keeping the value while reporting the form
+ * pristine is barely better: a Save button gated on `dirty` never enables,
+ * so the edit cannot be sent.
+ */
+describe("useForm keeps an edit that restores the previous value", () => {
+  const mount = (alepha: Alepha, ui: React.ReactNode) =>
+    render(
+      <AlephaContext.Provider value={alepha}>{ui}</AlephaContext.Provider>,
+    );
+
+  const schema = z.object({ last: z.string() });
+
+  const Widget = () => {
+    // Starts empty, and the save being simulated sets it to "Smith".
+    const [server, setServer] = useState({ last: "" });
+
+    const form = useForm({
+      schema,
+      initialValues: server,
+      keepDirty: true,
+      handler: async () => {},
+    });
+    const values = useFormValues(form);
+    const { dirty } = useFormState(form, ["dirty"]);
+
+    return (
+      <div>
+        <input
+          data-testid="last"
+          value={(values.last as string) ?? ""}
+          onChange={(e) => form.input.last.set(e.target.value)}
+        />
+        <span data-testid="dirty">{dirty ? "dirty" : "pristine"}</span>
+        <button
+          type="button"
+          data-testid="refetch"
+          onClick={() => setServer({ last: "Smith" })}
+        >
+          refetch
+        </button>
+      </div>
+    );
+  };
+
+  it("keeps a field cleared back to its old value while the save was in flight", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaLogger);
+    await alepha.start();
+    const { getByTestId } = mount(alepha, <Widget />);
+
+    // Typed, saved (the button press is not modelled - only its effect on the
+    // server, below), then cleared again before the response lands. The clear
+    // puts the field back to the "" it was seeded with.
+    fireEvent.change(getByTestId("last"), { target: { value: "Smith" } });
+    await waitFor(() =>
+      expect((getByTestId("last") as HTMLInputElement).value).toBe("Smith"),
+    );
+    fireEvent.change(getByTestId("last"), { target: { value: "" } });
+    await waitFor(() =>
+      expect((getByTestId("last") as HTMLInputElement).value).toBe(""),
+    );
+
+    // The save lands and answers with what it stored.
+    fireEvent.click(getByTestId("refetch"));
+
+    await waitFor(() =>
+      expect((getByTestId("last") as HTMLInputElement).value).toBe(""),
+    );
+    // And the form knows it has something left to send.
+    expect(getByTestId("dirty").textContent).toBe("dirty");
   });
 });
