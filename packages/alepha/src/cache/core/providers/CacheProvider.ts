@@ -174,6 +174,37 @@ export abstract class CacheProvider {
   }
 
   /**
+   * Undo {@link escapeKey}, in the reverse order, so a key the caller wrote is
+   * what comes back out of `keys()`.
+   *
+   * `%3A` first and `%25` second is the only order that round-trips: a raw
+   * `%3A` escapes to `%253A`, which contains no `%3A` of its own, so unescaping
+   * the colon marker first cannot corrupt it.
+   */
+  protected unescapeKey(key: string): string {
+    return key.includes("%")
+      ? key.replaceAll("%3A", ":").replaceAll("%25", "%")
+      : key;
+  }
+
+  /**
+   * Turn the storage keys a scan returned back into the keys the caller
+   * wrote: drop the container prefix and unescape what is left.
+   *
+   * `keys()` is documented as returning identifiers, and Memory and Database
+   * always did. Redis and KV returned their own storage keys, so `del()` had
+   * to guess which of the two forms it had been handed - and any caller doing
+   * anything else with the result got a different answer per backend.
+   *
+   * @param prefix The scanned prefix, trailing `:` included.
+   */
+  protected callerKeys(prefix: string, keys: string[]): string[] {
+    return this.ownKeys(prefix, keys).map((key) =>
+      this.unescapeKey(key.slice(prefix.length)),
+    );
+  }
+
+  /**
    * Of the entries a prefix scan returned, the ones that belong to `prefix`
    * itself rather than to a container nested below it.
    *

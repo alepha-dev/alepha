@@ -190,12 +190,9 @@ export class CloudflareKVProvider extends CacheProvider {
       return;
     }
 
-    const nameKey = this.prefix(name);
+    // Caller-side keys, always - see the same change in RedisCacheProvider.
     for (const key of keys) {
-      const fullKey = key.startsWith(nameKey)
-        ? key
-        : this.prefix(name, this.escapeKey(key));
-      await kv.delete(fullKey);
+      await kv.delete(this.prefix(name, this.escapeKey(key)));
     }
   }
 
@@ -209,7 +206,7 @@ export class CloudflareKVProvider extends CacheProvider {
     const container = `${this.prefix(name)}:`;
     const prefix = filter ? `${container}${this.escapeKey(filter)}` : container;
 
-    return this.ownKeys(container, await this.listAllKeys(prefix));
+    return this.callerKeys(container, await this.listAllKeys(prefix));
   }
 
   public async clear(): Promise<void> {

@@ -720,3 +720,65 @@ export const assertCacheContainerIsolation = async (
   expect(await read("svc", "list:3")).toBeUndefined();
   expect(await read("svc:list", "1")).toBe("inner");
 };
+
+/**
+ * `keys()` returns the keys the CALLER wrote, and `del()` takes them back.
+ *
+ * Memory and Database always did. Redis and KV returned their own storage
+ * keys - container prefix and all - so `del()` carried a heuristic guessing
+ * which of the two forms it had been handed, and a caller doing anything else
+ * with the result got a different answer per backend.
+ *
+ * Run by all four, so the contract cannot drift apart again.
+ */
+export const testCacheKeyContract = async (
+  configure: (app: Alepha) => void = () => {},
+  cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
+): Promise<void> => {
+  const app = Alepha.create().with({
+    provide: CacheProvider,
+    use: cacheProvider,
+  });
+  configure(app);
+
+  const provider = app.inject(CacheProvider);
+  await app.start();
+
+  await assertCacheKeyContract(provider);
+};
+
+/**
+ * The assertions of {@link testCacheKeyContract}, against a provider that is
+ * already started - CloudflareKVProvider's spec boots its own container, for
+ * the reason given on {@link assertCacheContainerIsolation}.
+ */
+export const assertCacheKeyContract = async (
+  provider: CacheProvider,
+): Promise<void> => {
+  const encoder = new TextEncoder();
+  const container = "contract";
+
+  await provider.set(container, "plain", encoder.encode("1"));
+  await provider.set(container, "user:42", encoder.encode("2"));
+  await provider.set(container, "100%:sure", encoder.encode("3"));
+
+  // Exactly what was written, in any order, with nothing prefixed or escaped.
+  expect((await provider.keys(container)).sort()).toEqual([
+    "100%:sure",
+    "plain",
+    "user:42",
+  ]);
+
+  // A filter matches on the caller's key, not on any storage form of it.
+  expect(await provider.keys(container, "user:")).toEqual(["user:42"]);
+
+  // And what came out of `keys()` goes straight back into `del()`.
+  const [first] = await provider.keys(container, "user:");
+  await provider.del(container, first);
+  expect(await provider.has(container, "user:42")).toBe(false);
+  expect(await provider.has(container, "plain")).toBe(true);
+
+  // The same round trip through the wildcard path.
+  await provider.invalidateKeys(container, ["100%:*"]);
+  expect((await provider.keys(container)).sort()).toEqual(["plain"]);
+};

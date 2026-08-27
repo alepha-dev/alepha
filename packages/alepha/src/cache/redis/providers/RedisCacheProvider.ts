@@ -97,9 +97,12 @@ export class RedisCacheProvider extends CacheProvider {
       return;
     }
 
-    const prefixed = keys.map((key) =>
-      key.startsWith(nameKey) ? key : this.prefix(name, this.escapeKey(key)),
-    );
+    // Caller-side keys, always. This used to accept either form and guess
+    // between them with `key.startsWith(nameKey)`, because `keys()` handed
+    // back storage keys; now that it does not, there is one form and no
+    // guess - and a caller whose own key happened to start with the
+    // container prefix is no longer silently mistaken for a storage key.
+    const prefixed = keys.map((key) => this.prefix(name, this.escapeKey(key)));
     if (prefixed.length > 0) {
       await this.redisProvider.del(prefixed);
     }
@@ -114,7 +117,7 @@ export class RedisCacheProvider extends CacheProvider {
     const pattern = filter
       ? `${prefix}${this.escapeKey(filter)}*`
       : `${prefix}*`;
-    return this.ownKeys(prefix, await this.redisProvider.keys(pattern));
+    return this.callerKeys(prefix, await this.redisProvider.keys(pattern));
   }
 
   public async clear(): Promise<void> {

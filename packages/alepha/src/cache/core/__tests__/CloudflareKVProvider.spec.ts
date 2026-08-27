@@ -11,7 +11,10 @@ import {
   type KVListResult,
   type KVPutOptions,
 } from "../providers/CloudflareKVProvider.ts";
-import { assertCacheContainerIsolation } from "./shared.ts";
+import {
+  assertCacheContainerIsolation,
+  assertCacheKeyContract,
+} from "./shared.ts";
 
 /**
  * Records what reached the KV binding, so the test can assert on the
@@ -127,6 +130,12 @@ describe("CloudflareKVProvider", () => {
       const { alepha } = await boot();
 
       await assertCacheContainerIsolation(alepha.inject(CacheProvider));
+    });
+
+    it("should return and accept caller-side keys", async () => {
+      const { alepha } = await boot();
+
+      await assertCacheKeyContract(alepha.inject(CacheProvider));
     });
   });
 });

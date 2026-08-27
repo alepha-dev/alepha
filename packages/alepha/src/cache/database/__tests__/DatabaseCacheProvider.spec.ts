@@ -18,6 +18,7 @@ import {
   testCacheMissingProvider,
   testCachePrimitiveIncr,
   testCacheContainerIsolation,
+  testCacheKeyContract,
   testCacheProviderClear,
   testCacheReturnTypes,
   testCacheSetDisabled,
@@ -90,6 +91,10 @@ describe("$cache - database (sqlite)", () => {
 
   it("should keep containers whose names differ only by a colon apart", async () => {
     await testCacheContainerIsolation(sqlite(), provider);
+  });
+
+  it("should return and accept caller-side keys", async () => {
+    await testCacheKeyContract(sqlite(), provider);
   });
 
   it("should increment values atomically", async () => {
