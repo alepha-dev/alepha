@@ -485,3 +485,118 @@ describe("$tool descriptor hygiene", () => {
     expect(descriptor?.inputSchema.properties).toHaveProperty("~options");
   });
 });
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * MCP requires `structuredContent` to be an object. A tool whose declared
+ * result is not one - `result: z.number()`, which is what the MCP guide's
+ * quick start returns - used to advertise an EMPTY open object and then put
+ * the bare number in `structuredContent`, so the envelope matched neither the
+ * spec nor its own descriptor.
+ */
+describe("$tool structured output", () => {
+  const boot = async (Tools: new () => object) => {
+    const alepha = Alepha.create().with(AlephaMcp).with(Tools);
+    await alepha.start();
+    const provider = alepha.inject(McpServerProvider);
+    const call = async (name: string) =>
+      (
+        await provider.handleMessage({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: { name, arguments: {} },
+        })
+      )?.result as {
+        content: Array<{ type: string; text: string }>;
+        structuredContent?: Record<string, unknown>;
+      };
+    return {
+      descriptor: (name: string) => provider.getTool(name)?.toDescriptor(),
+      call,
+    };
+  };
+
+  it("wraps a scalar result under `result`, and says so in the schema", async () => {
+    class Tools {
+      answer = $tool({
+        description: "The answer",
+        schema: { result: z.number() },
+        handler: async () => 42,
+      });
+    }
+
+    const { descriptor, call } = await boot(Tools);
+
+    expect(descriptor("answer")?.outputSchema).toMatchObject({
+      type: "object",
+      properties: { result: { type: "number" } },
+      required: ["result"],
+    });
+
+    const result = await call("answer");
+    expect(result.structuredContent).toEqual({ result: 42 });
+    // The text block still carries the bare value, as it always did.
+    expect(result.content[0].text).toBe("42");
+  });
+
+  it("wraps a union root too", async () => {
+    class Tools {
+      status = $tool({
+        description: "A union",
+        schema: {
+          result: z.union([z.object({ ok: z.boolean() }), z.text()]),
+        },
+        handler: async () => ({ ok: true }),
+      });
+    }
+
+    const { descriptor, call } = await boot(Tools);
+
+    // No `type` at the root of a union's JSON Schema, so it cannot be
+    // advertised as the object MCP demands.
+    expect(descriptor("status")?.outputSchema).toMatchObject({
+      type: "object",
+      required: ["result"],
+    });
+
+    expect((await call("status")).structuredContent).toEqual({
+      result: { ok: true },
+    });
+  });
+
+  it("leaves an object result exactly as declared", async () => {
+    class Tools {
+      profile = $tool({
+        description: "An object",
+        schema: { result: z.object({ name: z.text() }) },
+        handler: async () => ({ name: "Ada" }),
+      });
+    }
+
+    const { descriptor, call } = await boot(Tools);
+
+    // Not wrapped: the declared schema is already the object, so nesting it
+    // would break every tool that has one.
+    expect(descriptor("profile")?.outputSchema).toMatchObject({
+      type: "object",
+      properties: { name: { type: "string" } },
+    });
+    expect((await call("profile")).structuredContent).toEqual({ name: "Ada" });
+  });
+
+  it("emits no structuredContent without a result schema", async () => {
+    class Tools {
+      ping = $tool({
+        description: "No result schema",
+        handler: async () => "pong",
+      });
+    }
+
+    const { descriptor, call } = await boot(Tools);
+
+    expect(descriptor("ping")?.outputSchema).toBeUndefined();
+    expect((await call("ping")).structuredContent).toBeUndefined();
+  });
+});
