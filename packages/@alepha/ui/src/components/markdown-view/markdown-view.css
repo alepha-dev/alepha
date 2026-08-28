@@ -31,6 +31,30 @@
   color: var(--hljs-number);
 }
 
+/*
+ * Object property names — `roles:`, `name:`, `scope:`.
+ *
+ * `.hljs-attr` was reachable only through `.hljs-tag .hljs-attr` above,
+ * which is an attribute inside an HTML tag. A BARE `hljs-attr`, which is
+ * what highlight.js emits for every key in a JS/TS object literal or a
+ * JSON document, matched no rule at all and fell through to `.hljs`'s
+ * plain foreground. The effect was a code block where the strings were
+ * coloured and every key was body text — subtle enough to read as "the
+ * theme is a bit washed out" rather than as a missing selector.
+ *
+ * `--hljs-builtin` (#79c0ff dark / #005cc5 light) is what GitHub uses for
+ * property names, and it is what the CodeMirror side already gives
+ * `tags.propertyName`, so the two faces agree.
+ *
+ * Specificity keeps the HTML case intact: `.hljs-tag .hljs-attr` is (0,2,0)
+ * against this rule's (0,1,0), so a tag attribute stays on `--hljs-number`
+ * no matter which rule comes last.
+ */
+.hljs-attr,
+.hljs-property {
+  color: var(--hljs-builtin);
+}
+
 .hljs-string,
 .hljs-doctag,
 .hljs-regexp,

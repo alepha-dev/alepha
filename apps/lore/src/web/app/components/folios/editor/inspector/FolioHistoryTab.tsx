@@ -22,11 +22,25 @@ import {
   RotateCcw,
   Tag,
   Type,
+  User,
 } from "lucide-react";
 import { type ReactElement, useEffect, useRef, useState } from "react";
 
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { FolioRevision } from "@/api/entities/folioRevisions.ts";
+
+/**
+ * What `listHistory` actually returns, which is the revision row PLUS the
+ * resolved author and the per-revision line/word numbers.
+ *
+ * Derived from the action rather than written out, so adding a field to
+ * that response schema cannot leave this drifting behind it - the
+ * silent-serialisation trap in CLAUDE.md cuts both ways, and a hand-copied
+ * interface here would compile happily while missing whatever was added.
+ */
+type HistoryRevision = Awaited<
+  ReturnType<FolioController["listHistory"]>
+>[number];
 import type { Folio } from "@/api/entities/folios.ts";
 
 import type { I18n } from "../../../../services/I18n.ts";
@@ -140,7 +154,7 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
   const dialog = useDialog();
   const folioApi = useClient<FolioController>();
 
-  const [revisions, setRevisions] = useState<FolioRevision[]>([]);
+  const [revisions, setRevisions] = useState<HistoryRevision[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // Whether the first fetch has come back. Separate from `revisions`
@@ -249,10 +263,9 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
       <div className="divide-border flex flex-col divide-y">
         {revisions.map((revision, index) => {
           const isExpanded = expandedId === revision.id;
-          // Diff against the next-older revision so the user sees what
-          // *this* edit changed. The newest entry (index 0) cannot be
-          // reverted onto itself.
-          const previous = revisions[index + 1];
+          // The comparison against the next-older revision happens on the
+          // SERVER now - `listHistory` returns the line and word deltas
+          // already computed, so nothing here needs the neighbouring row.
           const isNewest = index === 0;
           const toggle = () => setExpandedId(isExpanded ? null : revision.id);
           return (
@@ -359,7 +372,7 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
               >
                 <div className="overflow-hidden">
                   <div className="border-t px-3 py-2.5">
-                    <DiffView revision={revision} previous={previous} />
+                    <RevisionSummary revision={revision} />
                   </div>
                 </div>
               </div>
@@ -375,51 +388,92 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
 };
 
 /**
- * Side-by-side "before / after" snapshot view. Not a token-level diff —
- * the spec calls for a "markdown-aware diff" but that's its own feature.
- * Two readable blocks, tinted `--destructive` (before) / `--primary`
- * (after) at low alpha, are enough for v1.
+ * One revision, as a short list of facts rather than as text.
+ *
+ * It replaces a side-by-side before/after view of the two snapshots. That
+ * view was honest but unusable: two `<pre>` columns inside a 320px
+ * inspector gave each about 140px, so every line wrapped two or three
+ * times and both boxes scrolled independently. Reading it meant comparing
+ * two ~140px-wide walls of pink and grey, which is harder than opening the
+ * folio.
+ *
+ * The questions it actually has to answer are "who touched this" and "how
+ * much moved", and both fit on one line each. The snapshots are still
+ * fetched (`folio_history` serves them to agents) and reverting still
+ * works from the row menu - what is gone is drawing them.
+ *
+ * ⚠️ No new i18n keys, deliberately. Every row here is a name, a signed
+ * number or an arrow between two values, all of which read the same in
+ * every locale. A key-value list would have needed a label per row in
+ * both catalogues to say things the values already say.
  */
-const DiffView = (props: {
-  revision: FolioRevision;
-  previous?: FolioRevision;
-}) => {
+const RevisionSummary = (props: { revision: HistoryRevision }) => {
   const { tr } = useI18n<I18n, "en">();
+  const r = props.revision;
+  const changed = r.linesAdded > 0 || r.linesRemoved > 0;
+
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-      {props.previous && (
-        <div>
-          <div className="text-muted-foreground mb-1 text-[10px] tracking-wider uppercase">
-            {tr("folios.history.diff-before")}
-          </div>
-          <SnapshotBlock revision={props.previous} tone="before" />
+    <dl className="flex flex-col gap-2 text-xs">
+      <div className="flex items-center gap-2">
+        <dt className="sr-only">{tr("folios.history.action.edit")}</dt>
+        <dd className="flex min-w-0 items-center gap-2">
+          {r.byAvatarUrl ? (
+            <img
+              src={r.byAvatarUrl}
+              alt=""
+              className="size-5 shrink-0 rounded-full object-cover"
+            />
+          ) : (
+            <span className="bg-muted text-muted-foreground flex size-5 shrink-0 items-center justify-center rounded-full">
+              <User className="size-3" />
+            </span>
+          )}
+          <span className="truncate font-medium">
+            {/* A revision outlives its author: `byUserId` is `set null` on
+                user deletion so the content survives the account. Reusing
+                the string the feedback threads already show for the same
+                situation rather than minting a second one. */}
+            {r.byUsername ?? String(tr("feedback.thread.unknownAuthor"))}
+          </span>
+        </dd>
+      </div>
+
+      {changed && (
+        <div className="flex items-center gap-2">
+          <dt className="sr-only">Lines</dt>
+          <dd className="flex items-center gap-2 font-mono">
+            <span className="text-emerald-600 dark:text-emerald-400">
+              +{r.linesAdded}
+            </span>
+            <span className="text-destructive">−{r.linesRemoved}</span>
+            <span className="text-muted-foreground/70">
+              {r.wordsBefore} → {r.words}
+            </span>
+          </dd>
         </div>
       )}
-      <div>
-        <div className="text-muted-foreground mb-1 text-[10px] tracking-wider uppercase">
-          {tr("folios.history.diff-after")}
+
+      {r.previousTitle !== undefined && (
+        <div className="flex min-w-0 items-start gap-2">
+          <dt className="sr-only">{tr("folios.history.action.rename")}</dt>
+          <dd className="text-muted-foreground min-w-0 truncate">
+            <span className="line-through">{r.previousTitle}</span>
+            <span className="mx-1.5">→</span>
+            <span className="text-foreground">{r.titleSnapshot}</span>
+          </dd>
         </div>
-        <SnapshotBlock revision={props.revision} tone="after" />
-      </div>
-    </div>
+      )}
+
+      {/* A revision that moved no lines and no title changed the summary,
+          which is the only other field `decideRevisionAction` records.
+          Saying so beats an empty panel that looks broken. */}
+      {!changed && r.previousTitle === undefined && (
+        <div className="text-muted-foreground/70">
+          {r.words} · {tr("folios.history.action.edit")}
+        </div>
+      )}
+    </dl>
   );
 };
-
-const SnapshotBlock = (props: {
-  revision: FolioRevision;
-  tone: "before" | "after";
-}) => (
-  <pre
-    className={cn(
-      "max-h-72 overflow-auto rounded p-2 text-[11px] whitespace-pre-wrap",
-      props.tone === "before" ? "bg-destructive/10" : "bg-primary/10",
-    )}
-  >
-    <div className="text-foreground/80 mb-1 text-xs font-semibold">
-      {props.revision.titleSnapshot}
-    </div>
-    {props.revision.contentSnapshot}
-  </pre>
-);
 
 export default FolioHistoryTab;

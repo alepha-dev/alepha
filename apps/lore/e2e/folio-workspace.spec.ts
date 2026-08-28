@@ -518,14 +518,26 @@ test.describe("Folio workspace", () => {
   });
 
   /**
-   * The numbered gutter, which only the folio BODY opts into.
+   * The folio body has NO numbered gutter.
+   *
+   * This used to assert the opposite: `variant="document"` turned
+   * `lineNumbers()` on, on the argument that "the table around line 40" is a
+   * usable coordinate in a long folio. It was removed on 2026-08-28 because
+   * nothing in the product ever references a folio line number, and a
+   * numbered column down the left is the single strongest cue that you are
+   * reading source rather than a page.
+   *
+   * Kept as a test rather than deleted, with the assertion inverted: the
+   * option still exists on `CodeMirrorEditor` and `createMarkdownExtensions`
+   * for any surface that wants it, so "the folio does not pass it" is a
+   * decision that can be undone by one prop and needs a guard.
    *
    * Asserted here rather than in `codeMirrorSetup.browser.spec.ts` because a
    * gutter is DOM: that spec builds a bare `EditorState` on purpose (a view
    * measures layout, and jsdom has no `Range.getClientRects`), so it can see
    * the extension list but never what the extension renders.
    */
-  test("08d — the folio body shows line numbers, and only in edit mode", async () => {
+  test("08d — the folio body has no line-number gutter, in either mode", async () => {
     await page.goto(folioUrl);
     const toggle = page.getByTestId("markdown-mode-toggle");
     await expect(toggle).toBeVisible({ timeout: 15_000 });
@@ -536,13 +548,11 @@ test.describe("Folio workspace", () => {
     }
     await expect(toggle).toHaveAttribute("data-mode", "edit");
 
-    const gutter = page.locator(".cm-lineNumbers");
-    await expect(gutter).toBeVisible({ timeout: 15_000 });
-    // A real number, not just the element: `lineNumbers()` mounted with no
-    // document would render an empty gutter and still match the locator.
-    await expect(gutter.getByText("1", { exact: true })).toBeVisible();
+    // The editor is really mounted — without this the assertion below would
+    // pass just as well on a pane that failed to render anything at all.
+    await expect(page.locator(".cm-content")).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(".cm-lineNumbers")).toHaveCount(0);
 
-    // Back to view and it goes away with the whole editor.
     await toggle.click();
     await expect(toggle).toHaveAttribute("data-mode", "view");
     await expect(page.locator(".cm-lineNumbers")).toHaveCount(0);

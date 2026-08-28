@@ -1,7 +1,22 @@
 import { Button } from "@alepha/ui/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@alepha/ui/components/ui/tooltip";
 import type { EditorView } from "@codemirror/view";
 import { useI18n } from "alepha/react/i18n";
-import { Bold, Code, Italic } from "lucide-react";
+import {
+  Bold,
+  Code,
+  Heading1,
+  Heading2,
+  Heading3,
+  Italic,
+  List,
+  Quote,
+  SquareCode,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import type { I18n } from "@/web/app/services/I18n.ts";
@@ -24,17 +39,78 @@ interface ToolbarPosition {
   top: number;
 }
 
-const ACTIONS: Array<{
+interface ToolbarAction {
   id: MarkdownCommandId;
+  /**
+   * ⚠️ These are `folios.editor.*` keys in a component the quest surfaces
+   * mount too. They are reused rather than duplicated under `markdown.*`
+   * because both locales already carry every one of them and the words are
+   * generic ("Heading 1", "Quote") - a parallel namespace would be twelve
+   * new strings saying the same thing. If this toolbar ever needs a label
+   * the menubar does not have, take the group list as a prop from the
+   * caller instead of growing this union.
+   */
   labelKey:
-    | "markdown.mode.bold"
-    | "markdown.mode.italic"
-    | "markdown.mode.code";
+    | "folios.editor.action.bold"
+    | "folios.editor.action.italic"
+    | "folios.editor.action.code"
+    | "folios.editor.action.heading1"
+    | "folios.editor.action.heading2"
+    | "folios.editor.action.heading3"
+    | "folios.editor.action.bullet-list"
+    | "folios.editor.action.quote"
+    | "folios.editor.action.code-block";
   Icon: typeof Bold;
-}> = [
-  { id: "edit.bold", labelKey: "markdown.mode.bold", Icon: Bold },
-  { id: "edit.italic", labelKey: "markdown.mode.italic", Icon: Italic },
-  { id: "edit.code", labelKey: "markdown.mode.code", Icon: Code },
+}
+
+/**
+ * Grouped, and rendered with a rule between groups, because nine
+ * undifferentiated icons stop being a quick gesture and start being a
+ * ribbon. The order is inline formatting → block structure → containers.
+ *
+ * Every command already existed in `markdownCommands` and was reachable
+ * only from the Insert menu; nothing here is a new transform.
+ */
+const ACTION_GROUPS: ToolbarAction[][] = [
+  [
+    { id: "edit.bold", labelKey: "folios.editor.action.bold", Icon: Bold },
+    {
+      id: "edit.italic",
+      labelKey: "folios.editor.action.italic",
+      Icon: Italic,
+    },
+    { id: "edit.code", labelKey: "folios.editor.action.code", Icon: Code },
+  ],
+  [
+    {
+      id: "insert.heading1",
+      labelKey: "folios.editor.action.heading1",
+      Icon: Heading1,
+    },
+    {
+      id: "insert.heading2",
+      labelKey: "folios.editor.action.heading2",
+      Icon: Heading2,
+    },
+    {
+      id: "insert.heading3",
+      labelKey: "folios.editor.action.heading3",
+      Icon: Heading3,
+    },
+  ],
+  [
+    {
+      id: "insert.bulletList",
+      labelKey: "folios.editor.action.bullet-list",
+      Icon: List,
+    },
+    { id: "insert.quote", labelKey: "folios.editor.action.quote", Icon: Quote },
+    {
+      id: "insert.codeBlock",
+      labelKey: "folios.editor.action.code-block",
+      Icon: SquareCode,
+    },
+  ],
 ];
 
 /**
@@ -103,28 +179,59 @@ const MarkdownSelectionToolbar = (props: MarkdownSelectionToolbarProps) => {
       className="bg-popover border-border pointer-events-auto fixed z-50 flex -translate-x-1/2 -translate-y-full items-center gap-0.5 rounded-md border p-0.5 shadow-md"
       style={{ left: position.left, top: position.top - 6 }}
     >
-      {ACTIONS.map(({ id, labelKey, Icon }) => {
-        const label = String(tr(labelKey));
-        return (
-          <Button
-            key={id}
-            type="button"
-            size="icon-xs"
-            variant="ghost"
-            aria-label={label}
-            title={label}
-            // `mousedown`, not `click`, and prevented: a click would blur
-            // the editor first, collapsing the very selection the command
-            // is about to act on.
-            onMouseDown={(event) => {
-              event.preventDefault();
-              markdownCommands[id](props.view);
-            }}
-          >
-            <Icon className="size-3" />
-          </Button>
-        );
-      })}
+      {ACTION_GROUPS.map((group) => (
+        <div
+          key={group[0].id}
+          className="border-border flex items-center gap-0.5 border-l pl-1 first:border-l-0 first:pl-0"
+        >
+          {group.map(({ id, labelKey, Icon }) => {
+            const label = String(tr(labelKey));
+            return (
+              <Tooltip key={id}>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      type="button"
+                      size="icon-xs"
+                      variant="ghost"
+                      aria-label={label}
+                      // ⚠️ No `title`. A real tooltip and the browser's own
+                      // would both fire, and the native one draws a second
+                      // black box a beat later, next to this one.
+                      //
+                      // The lift and its curves live in
+                      // `.lore-md-toolbar-button` — two properties, two
+                      // easings, which `duration-*` cannot express.
+                      //
+                      // `hover:bg-accent` twice, the second behind `dark:`,
+                      // to defeat the ghost variant's own
+                      // `dark:hover:bg-muted/50`. A half-opacity muted is
+                      // near-invisible on this bar specifically: the bar is
+                      // `bg-popover`, which in dark sits at L 0.22, and
+                      // muted at 50% over it lands within a couple of
+                      // percent of the surface. Accent is L 0.33 and reads
+                      // cleanly. Everywhere else the ghost variant sits on
+                      // `background`, where its default is fine - this is a
+                      // property of the surface, not a fault in the variant.
+                      className="lore-md-toolbar-button hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent"
+                      // `mousedown`, not `click`, and prevented: a click
+                      // would blur the editor first, collapsing the very
+                      // selection the command is about to act on.
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        markdownCommands[id](props.view);
+                      }}
+                    >
+                      <Icon className="size-3" />
+                    </Button>
+                  }
+                />
+                <TooltipContent>{label}</TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 };

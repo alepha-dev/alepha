@@ -93,6 +93,11 @@ export interface MarkdownViewProps {
 export const MarkdownView = (props: MarkdownViewProps) => {
   return (
     <div
+      // `data-slot`, matching every other block here, so a host page can
+      // reach the prose root without a wrapper class. Lore's folio
+      // document uses it to make this inherit the reading size instead
+      // of the `text-sm` default below.
+      data-slot="markdown-view"
       className={`max-w-none text-sm leading-relaxed ${props.className ?? ""}`}
     >
       <ReactMarkdown

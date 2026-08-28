@@ -6,6 +6,7 @@ import {
   DIAGRAM_BLOCK,
   insertBlock,
   TABLE_BLOCK,
+  toggleFencedCode,
   toggleInlineMarker,
   toggleLinePrefix,
 } from "./markdownTransforms.ts";
@@ -142,5 +143,62 @@ describe("DIAGRAM_BLOCK", () => {
     expect(applied(state, insertBlock(state, DIAGRAM_BLOCK))).toContain(
       "flowchart TD",
     );
+  });
+});
+
+describe("toggleFencedCode", () => {
+  it("wraps every line the selection touches", () => {
+    const doc = "one\ntwo\nthree";
+    // Selection starts mid-first-line and ends mid-last, which is what a
+    // drag-select actually produces - the fence still has to take whole
+    // lines or the markers land inside the text.
+    const s = at(doc, 1, 11);
+    expect(applied(s, toggleFencedCode(s))).toBe("```\none\ntwo\nthree\n```");
+  });
+
+  it("wraps a single selected line", () => {
+    const s = at("hello", 0, 5);
+    expect(applied(s, toggleFencedCode(s))).toBe("```\nhello\n```");
+  });
+
+  it("keeps the wrapped text selected so the next command acts on it", () => {
+    const s = at("one\ntwo", 0, 7);
+    const next = s.update(toggleFencedCode(s)).state;
+    expect(
+      next.doc.sliceString(next.selection.main.from, next.selection.main.to),
+    ).toBe("one\ntwo");
+  });
+
+  it("unwraps a fence that is already there", () => {
+    const doc = "```\none\ntwo\n```";
+    const s = at(doc, 0, doc.length);
+    expect(applied(s, toggleFencedCode(s))).toBe("one\ntwo");
+  });
+
+  it("unwraps when the selection is only the fenced CONTENT", () => {
+    // Selecting the code without its markers is the commonest way to ask
+    // for this, exactly as with the inline toggle.
+    const doc = "```\none\ntwo\n```";
+    expect(applied(at(doc, 4, 11), toggleFencedCode(at(doc, 4, 11)))).toBe(
+      "one\ntwo",
+    );
+  });
+
+  it("preserves the info string when unwrapping is not asked for", () => {
+    const doc = "```tsx\nconst a = 1;\n```";
+    const s = at(doc, 0, doc.length);
+    expect(applied(s, toggleFencedCode(s))).toBe("const a = 1;");
+  });
+
+  it("inserts an empty fence when nothing is selected", () => {
+    const s = at("", 0);
+    expect(applied(s, toggleFencedCode(s))).toBe("```\n\n```");
+  });
+
+  it("puts the caret inside the fence when nothing is selected", () => {
+    const s = at("", 0);
+    const next = s.update(toggleFencedCode(s)).state;
+    // Right after the opening "```\n".
+    expect(next.selection.main.anchor).toBe(4);
   });
 });
