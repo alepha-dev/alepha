@@ -2,11 +2,25 @@ import { Button } from "@alepha/ui/components/ui/button";
 import { useI18n } from "alepha/react/i18n";
 import { Columns3, List } from "lucide-react";
 
-import type { QuestsView } from "../../atoms/questsViewAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 
+/**
+ * The two surfaces a project's quests can be read on.
+ *
+ * This used to be the schema of `questsViewAtom`, a cookie holding which one
+ * the Quests page rendered. Both are routes now, so the only thing left that
+ * needs the union is this bar. The per-project preference for which one a
+ * bare `/:projectSlug` lands on is `project.defaultSurface`.
+ */
+export type QuestsView = "list" | "kanban";
+
 export interface ProjectQuestsViewSwitcherProps {
-  view: QuestsView;
+  /**
+   * The surface currently open, or `undefined` on a route that is neither —
+   * the quest detail page, where both entries are live links back up to a
+   * list rather than a pressed state.
+   */
+  view: QuestsView | undefined;
   /**
    * `false` when the project has the kanban feature off — the bar then
    * renders nothing at all rather than a single dead entry, and no empty
@@ -17,11 +31,16 @@ export interface ProjectQuestsViewSwitcherProps {
 }
 
 /**
- * The horizontal bar across the top of the project content area, and the only
- * way to reach the kanban board: the 2026-08 rename turned kanban from its own
- * route into a view of the Quests page and took the sidebar entry with it,
- * leaving the board unreachable from the UI at all. The view itself lives in
- * `questsViewAtom` since #156 — there is no URL to type.
+ * The horizontal bar across the top of the project content area, switching
+ * between the quest table and the Kanban board.
+ *
+ * It was once the ONLY way to reach the board: the 2026-08 rename turned
+ * kanban from its own route into a view of the Quests page and took the
+ * sidebar entry with it. The board is `projectKanban` again, with an entry
+ * of its own, so the bar is a convenience rather than the sole door — kept
+ * because switching surfaces is a one-click gesture people expect next to
+ * the content, not a trip to the sidebar. Its buttons navigate; nothing is
+ * stored, and there is no `?view=` (see #156).
  *
  * Rendered by `ProjectView`, as the first child of the content area and
  * OUTSIDE its `showQuestLog / fullWidth / else` branch (#153). It first lived
