@@ -15,6 +15,7 @@ import { useRouter } from "alepha/react/router";
 import {
   ChevronDown,
   FileText,
+  CalendarClock,
   Hourglass,
   Link2,
   ListChecks,
@@ -42,6 +43,7 @@ import { useLoreEditorControl } from "../../shared/element/useLoreEditorControl.
 import QuestAttachments from "./QuestAttachments.tsx";
 import QuestCreateObjectives from "./QuestCreateObjectives.tsx";
 import QuestDependencyPicker from "./QuestDependencyPicker.tsx";
+import QuestDueDateInput from "./QuestDueDateInput.tsx";
 import QuestEstimateInput from "./QuestEstimateInput.tsx";
 import { DEFAULT_QUEST_SIZE, QUEST_SIZE_OPTIONS } from "./questSize.ts";
 import QuestTagInput from "./QuestTagInput.tsx";
@@ -301,6 +303,17 @@ const QuestCreate = (props: QuestCreateProps) => {
               custom={QuestEstimateInput as never}
             />
           )}
+
+          {/* A deadline, not a duration — `estimateMinutes` above answers
+              "how long", this answers "by when". Ungated: unlike estimation,
+              a due date is not a methodology anyone has to opt into. */}
+          <Control
+            label={tr("quest.create.due")}
+            description={tr("quest.create.due.helper")}
+            input={form.input.dueAt}
+            icon={CalendarClock}
+            custom={QuestDueDateInput as never}
+          />
         </div>
 
         <Control
