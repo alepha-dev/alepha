@@ -1,12 +1,16 @@
 import { Button } from "@alepha/ui/components/ui/button";
 import { useDroppable } from "@dnd-kit/core";
 import { useI18n } from "alepha/react/i18n";
+import { ChevronsLeftRight } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import type { PaletteColor } from "@/api/schemas/paletteColorSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
 import type { I18n } from "../../services/I18n.ts";
+import type { ProjectUser } from "../shared/useProjectUsers.ts";
 import KanbanCard from "./KanbanCard.tsx";
+import KanbanColumnComposer from "./KanbanColumnComposer.tsx";
 
 const PAGE_SIZE = 20;
 
@@ -17,7 +21,6 @@ export interface ColumnDescriptor {
    * Stable droppable id.
    */
   key: string;
-  kind: ColumnKind;
   /**
    * Free-form sub-column name when `kind === "accepted"`.
    */
@@ -30,6 +33,16 @@ export interface ColumnDescriptor {
    * Tailwind class for the small status dot in the header.
    */
   dotClass: string;
+  /**
+   * Which lifecycle state a card dropped here collapses to. The lifecycle
+   * triple stays the truth; this is the column's mapping onto it.
+   */
+  kind: ColumnKind;
+  /**
+   * Soft cap. The header reads `3/5` past nothing and warns on a drop past
+   * it; it never refuses.
+   */
+  wipLimit?: number;
 }
 
 export interface KanbanColumnProps {
@@ -37,6 +50,36 @@ export interface KanbanColumnProps {
   quests: QuestResource[];
   last?: boolean;
   onSelect: (quest: QuestResource) => void;
+  /**
+   * Area name → dot class. Resolved once by the board for the whole set,
+   * so a column of 20 cards does not rebuild the lookup 20 times.
+   */
+  areaDotClass: (area: string) => string;
+  /**
+   * The project's tag → colour map, passed straight through to the card.
+   */
+  tagColors?: Record<string, PaletteColor>;
+  /**
+   * Ids of quests whose predecessor is not complete. Computed by the board
+   * because the rule needs every quest, not just this column's.
+   */
+  blockedIds?: Set<number>;
+  /**
+   * Resolves `acceptedBy` to a member, for the card's avatar.
+   */
+  assigneeOf: (quest: QuestResource) => ProjectUser | undefined;
+  /**
+   * Creates a card at one end of THIS column. Absent on a column that
+   * cannot compose — Completed, where a card would have to be created and
+   * immediately finished to belong there.
+   */
+  onCompose?: (title: string, position: "head" | "foot") => Promise<void>;
+  /**
+   * How long each card has sat here, by quest id.
+   */
+  agingOf: (quest: QuestResource) => "fresh" | "aging" | "stale";
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 }
 
 const KanbanColumn = (props: KanbanColumnProps) => {
@@ -58,8 +101,41 @@ const KanbanColumn = (props: KanbanColumnProps) => {
   );
   const hasMore = quests.length > visibleCount;
 
+  // A collapsed column keeps its header, rotated into a narrow strip, so a
+  // five-column board fits a laptop without horizontal scrolling. It is
+  // NOT a droppable while collapsed: dropping into a lane you cannot see
+  // the contents of is a move you cannot check.
+  if (props.collapsed) {
+    return (
+      <button
+        type="button"
+        data-testid="kanban-column"
+        data-column-key={descriptor.key}
+        data-collapsed="true"
+        aria-label={descriptor.label}
+        onClick={props.onToggleCollapsed}
+        className={`hover:bg-muted flex w-10 shrink-0 flex-col items-center gap-2 py-2 transition-colors ${
+          last ? "" : "border-border border-r"
+        }`}
+      >
+        <span
+          className={`size-2 shrink-0 rounded-full ${descriptor.dotClass}`}
+        />
+        <span className="text-muted-foreground text-xs">{quests.length}</span>
+        <span
+          className="text-muted-foreground truncate text-xs font-semibold"
+          style={{ writingMode: "vertical-rl" }}
+        >
+          {descriptor.label}
+        </span>
+      </button>
+    );
+  }
+
   return (
     <div
+      data-testid="kanban-column"
+      data-column-key={descriptor.key}
       className={`flex min-w-[260px] flex-1 flex-col overflow-hidden ${
         last ? "" : "border-border border-r"
       }`}
@@ -72,7 +148,32 @@ const KanbanColumn = (props: KanbanColumnProps) => {
         <span className="truncate text-sm font-semibold">
           {descriptor.label}
         </span>
-        <span className="text-muted-foreground text-xs">{quests.length}</span>
+        <span
+          data-testid="kanban-column-count"
+          data-over-limit={
+            descriptor.wipLimit != null && quests.length > descriptor.wipLimit
+          }
+          className={`text-xs ${
+            descriptor.wipLimit != null && quests.length > descriptor.wipLimit
+              ? "font-semibold text-amber-500"
+              : "text-muted-foreground"
+          }`}
+        >
+          {descriptor.wipLimit != null
+            ? `${quests.length}/${descriptor.wipLimit}`
+            : quests.length}
+        </span>
+        {props.onToggleCollapsed && (
+          <button
+            type="button"
+            data-testid="kanban-column-collapse"
+            aria-label={String(tr("kanban.column.collapse"))}
+            className="text-muted-foreground hover:text-foreground ml-auto shrink-0"
+            onClick={props.onToggleCollapsed}
+          >
+            <ChevronsLeftRight className="size-3.5" />
+          </button>
+        )}
       </div>
 
       {/* Column body — scrollable */}
@@ -83,6 +184,12 @@ const KanbanColumn = (props: KanbanColumnProps) => {
         }`}
       >
         <div className="flex min-h-[100px] flex-col gap-0.5 p-1">
+          {props.onCompose && (
+            <KanbanColumnComposer
+              position="head"
+              onCreate={(title) => props.onCompose!(title, "head")}
+            />
+          )}
           {quests.length === 0 && (
             <div className="flex items-center justify-center py-8 opacity-40">
               <span className="text-muted-foreground text-sm">
@@ -91,8 +198,23 @@ const KanbanColumn = (props: KanbanColumnProps) => {
             </div>
           )}
           {visibleQuests.map((quest) => (
-            <KanbanCard key={quest.id} quest={quest} onSelect={onSelect} />
+            <KanbanCard
+              key={quest.id}
+              quest={quest}
+              onSelect={onSelect}
+              areaDotClass={props.areaDotClass(quest.area)}
+              tagColors={props.tagColors}
+              blocked={props.blockedIds?.has(quest.id)}
+              assignee={props.assigneeOf(quest)}
+              aging={props.agingOf(quest)}
+            />
           ))}
+          {props.onCompose && quests.length > 0 && (
+            <KanbanColumnComposer
+              position="foot"
+              onCreate={(title) => props.onCompose!(title, "foot")}
+            />
+          )}
           {hasMore && (
             <div className="flex justify-center py-2">
               <Button
