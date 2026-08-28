@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { registerAndVerify } from "./_helpers.ts";
+import { signInAsAdmin } from "./_helpers.ts";
 
 /**
  * Admin analytics page (`/admin/analytics`).
@@ -14,28 +14,9 @@ import { registerAndVerify } from "./_helpers.ts";
  * webServer — same pattern as `admin-user-detail.spec.ts`.
  */
 test.describe("admin analytics", () => {
-  const adminEmail = "admin@example.com";
-  const adminPassword = "GoodPassw0rd";
-
   test("lists datasets and runs an empty query", async ({ page }) => {
-    await registerAndVerify(page, adminEmail, adminPassword);
-    // Force a fresh sign-in so the role-promotion path fires (registration
-    // already logged them in once, but the slug-derived role refresh happens
-    // on every login, not on register).
-    await page.goto("/auth/logout");
-    await page.waitForLoadState("domcontentloaded");
-
-    await page.goto("/auth/login");
-    await page
-      .getByRole("textbox", { name: /identifier|email/i })
-      .first()
-      .fill(adminEmail);
-    await page
-      .getByRole("textbox", { name: /password/i })
-      .first()
-      .fill(adminPassword);
-    await page.getByRole("button", { name: /sign in/i }).click();
-    await page.waitForURL(/^http:\/\/[^/]+\/$/, { timeout: 15_000 });
+    // The account is created once by `global-setup.ts`; this only signs in.
+    await signInAsAdmin(page);
 
     await page.goto("/admin/analytics");
     await page.waitForLoadState("domcontentloaded");
