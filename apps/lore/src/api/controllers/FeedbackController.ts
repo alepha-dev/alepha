@@ -1,3 +1,4 @@
+import { sigilScrubUrl } from "@alepha/sigil";
 import { $inject, z } from "alepha";
 import { $storage, FileService, files } from "alepha/api/files";
 import {
@@ -27,7 +28,10 @@ import {
   type FeedbackResource,
   feedbackResourceSchema,
 } from "../schemas/feedbackResourceSchema.ts";
-import { feedbackSourceSchema } from "../schemas/feedbackSourceSchema.ts";
+import {
+  type FeedbackSource,
+  feedbackSourceSchema,
+} from "../schemas/feedbackSourceSchema.ts";
 import {
   type MyFeedbackResource,
   myFeedbackResourceSchema,
@@ -182,12 +186,34 @@ export class FeedbackController {
         status: "pending",
         attachments,
         tags: (body.tags ?? []).slice(0, 20),
-        source: body.source,
+        source: this.scrubSource(body.source),
       });
 
       return { id: created.id };
     },
   });
+
+  /**
+   * Strips query strings and fragments from the two URL fields of an embedded
+   * submission, before they reach a record that every project member can read
+   * and that survives the retention sweep once resolved.
+   *
+   * The sigil button scrubs both before the popup even opens, so this is the
+   * second line rather than the fix. It has to exist all the same: an older
+   * sigil bundle sits on pages this app cannot redeploy, and every field of
+   * `source` is attacker-controlled regardless of what the button does. Same
+   * reasoning, and the same helper, as an error's `sourceUrl`.
+   */
+  protected scrubSource(
+    source: FeedbackSource | undefined,
+  ): FeedbackSource | undefined {
+    if (!source) return source;
+    return {
+      ...source,
+      hostUrl: sigilScrubUrl(source.hostUrl),
+      hostPath: sigilScrubUrl(source.hostPath),
+    };
+  }
 
   /**
    * Minimal public project info for the feedback request page. The page is

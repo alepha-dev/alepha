@@ -155,8 +155,8 @@ describe("feedback source field", () => {
           description: "From a partner site",
           // The sigil-button flow never carries the secret sigil id.
           source: {
-            hostUrl: "https://shop.example.com/checkout?step=2",
-            hostPath: "/checkout?step=2",
+            hostUrl: "https://shop.example.com/checkout",
+            hostPath: "/checkout",
             title: "Checkout — Step 2",
             referrer: "https://google.com/",
             userAgent: "Mozilla/5.0",
@@ -177,12 +177,50 @@ describe("feedback source field", () => {
 
     const source = detail.data.source;
     expect(source?.sigilId ?? null).toBeNull();
-    expect(source?.hostUrl).toBe("https://shop.example.com/checkout?step=2");
+    expect(source?.hostUrl).toBe("https://shop.example.com/checkout");
     expect(source?.title).toBe("Checkout — Step 2");
     expect(source?.referrer).toBe("https://google.com/");
     expect(source?.language).toBe("en-US");
     expect(source?.viewport).toBe("1280x720");
     expect(source?.screen).toBe("1920x1080");
     expect(source?.timezone).toBe("Europe/Paris");
+  });
+
+  it("strips the query string and fragment from the two URL fields", async ({
+    expect,
+  }) => {
+    // The sigil button scrubs both before the popup opens, so a current
+    // bundle never sends this. An older one, sitting on a page this app
+    // cannot redeploy, does, and the record it writes is readable by every
+    // project member and survives the retention sweep once resolved.
+    const owner = await createTestUser(ctx);
+    const projectId = await createProject(ctx, owner);
+
+    const created = await ctx.feedbackController.submitFeedback.fetch(
+      {
+        params: { projectId },
+        body: {
+          title: "Reset is broken",
+          description: "Sent from a page holding a one-time token",
+          source: {
+            hostUrl: "https://shop.example.com/reset?token=abc123#at=xyz789",
+            hostPath: "/reset?token=abc123",
+            userAgent: "Chrome 141 on macOS",
+          },
+        },
+      },
+      { user: owner },
+    );
+
+    const detail = await ctx.feedbackController.getFeedback.fetch(
+      { params: { projectId, feedbackId: created.data.id } },
+      { user: owner },
+    );
+
+    const source = detail.data.source;
+    expect(source?.hostUrl).toBe("https://shop.example.com/reset");
+    expect(source?.hostPath).toBe("/reset");
+    expect(JSON.stringify(source)).not.toContain("abc123");
+    expect(JSON.stringify(source)).not.toContain("xyz789");
   });
 });

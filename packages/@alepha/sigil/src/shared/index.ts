@@ -27,3 +27,4 @@ export * from "./sigilPaths.ts";
 export * from "./sigilReferrerHost.ts";
 export * from "./sigilScrubUrl.ts";
 export * from "./sigilTrafficKind.ts";
+export * from "./sigilUserAgent.ts";

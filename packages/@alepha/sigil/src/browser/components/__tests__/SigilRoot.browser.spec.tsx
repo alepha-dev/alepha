@@ -11,6 +11,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { sigilClientAtom } from "../../../shared/sigilClientAtom.ts";
 import { SIGIL_FEEDBACK_SUBMITTED_MESSAGE } from "../../../shared/sigilMessages.ts";
+import { sigilUserAgent } from "../../../shared/sigilUserAgent.ts";
 import { SigilRoot } from "../SigilRoot.tsx";
 
 const renderRoot = async (config: {
@@ -158,6 +159,41 @@ describe("SigilRoot", () => {
     const target = open.mock.calls[0][0] as string;
     const params = new URLSearchParams(target.split("?")[1]);
     expect(params.get("url")).toBe(window.location.href);
-    expect(params.get("ua")).toBe(navigator.userAgent);
+    expect(params.get("path")).toBe("/");
+  });
+
+  it("strips the query string and fragment from the captured URL", async () => {
+    // A reset token in the query used to travel through the popup URL onto a
+    // third-party form, which persists it verbatim and shows it to every
+    // member of the receiving project. Same treatment an error's `sourceUrl`
+    // gets, via `sigilScrubUrl`.
+    const open = vi.fn((..._args: unknown[]) => ({}) as Window);
+    vi.stubGlobal("open", open);
+    window.history.pushState({}, "", "/reset?token=abc123#access_token=xyz");
+
+    await renderRoot({ feedbackUrl: "https://lore.alepha.dev/c/2/request" });
+    fireEvent.click(screen.getByLabelText("Feedback"));
+
+    const target = open.mock.calls[0][0] as string;
+    const params = new URLSearchParams(target.split("?").slice(1).join("?"));
+    expect(params.get("url")).toBe(`${window.location.origin}/reset`);
+    expect(params.get("path")).toBe("/reset");
+    expect(target).not.toContain("abc123");
+    expect(target).not.toContain("xyz");
+  });
+
+  it("reduces the user agent to the browser family and the OS", async () => {
+    // The full string is one of the highest-entropy identifiers a browser
+    // hands out, and it was being persisted whole on a third-party form.
+    const open = vi.fn((..._args: unknown[]) => ({}) as Window);
+    vi.stubGlobal("open", open);
+
+    await renderRoot({ feedbackUrl: "https://lore.alepha.dev/c/2/request" });
+    fireEvent.click(screen.getByLabelText("Feedback"));
+
+    const target = open.mock.calls[0][0] as string;
+    const params = new URLSearchParams(target.split("?")[1]);
+    expect(params.get("ua")).not.toBe(navigator.userAgent);
+    expect(params.get("ua")).toBe(sigilUserAgent(navigator.userAgent));
   });
 });

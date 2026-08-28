@@ -24,11 +24,11 @@
  */
 export const SIGIL_FEEDBACK_CONTEXT_PARAMS = [
   /**
-   * → source.hostUrl   (location.href)
+   * → source.hostUrl   (location.href, scrubbed of query and fragment)
    */
   "url",
   /**
-   * → source.hostPath  (location.pathname + search)
+   * → source.hostPath  (location.pathname, with no search)
    */
   "path",
   /**
@@ -40,7 +40,7 @@ export const SIGIL_FEEDBACK_CONTEXT_PARAMS = [
    */
   "ref",
   /**
-   * → source.userAgent (navigator.userAgent)
+   * → source.userAgent (navigator.userAgent, reduced to browser + OS)
    */
   "ua",
   /**
