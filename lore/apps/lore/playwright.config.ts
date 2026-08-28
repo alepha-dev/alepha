@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 import { e2ePort } from "../../playwright.port.ts";
+import { ADMIN_EMAIL } from "./e2e/_helpers.ts";
 
 /*
  * The e2e port comes from the 4300-4999 band, which is reserved for e2e and
@@ -15,6 +16,9 @@ const port = e2ePort("lore");
 
 export default defineConfig({
   testDir: "./e2e",
+  // Registers the shared realm admin once, after `webServer` is up and before
+  // any spec runs. See `e2e/global-setup.ts`.
+  globalSetup: "./e2e/global-setup.ts",
   timeout: 60_000,
   globalTimeout: 600_000,
   // Email verification is delivered by a fire-and-forget background job
@@ -55,9 +59,12 @@ export default defineConfig({
       // Lift the per-IP registration cap — the full suite registers dozens
       // of users from a single localhost IP. Default 10 trips mid-run.
       REGISTRATION_IP_MAX_ATTEMPTS: "1000",
-      // Fixed admin email so the admin-user-detail spec can register an
-      // account and have it auto-promoted to `admin` on first login.
-      ADMIN_EMAIL: "admin@example.com",
+      // The realm promotes exactly this one address, so every admin spec
+      // shares the account. Read from `e2e/_helpers.ts` rather than repeated
+      // here: the server's `adminEmails` and the address the specs sign in as
+      // have to be the same string, and a literal in each place is a silent
+      // 403 the day one of them changes.
+      ADMIN_EMAIL,
     },
   },
 });
