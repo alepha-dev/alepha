@@ -63,6 +63,9 @@ export class ShopSeed {
         vatNumber: "FR91234567800",
         email: "contact@atelier-aurore.test",
         numberPrefix: "FA",
+        // A Paris atelier bills on Paris dates: a sale at 00:30 on 1 January
+        // is a January sale, not a 31 December one.
+        timezone: "Europe/Paris",
       });
 
       await this.seedShipping();

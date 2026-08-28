@@ -116,7 +116,9 @@ export class InvoiceService {
     // The number and the row are written in one transaction, so a failure here
     // cannot consume a number.
     return this.db.transactional(async () => {
-      const year = Number(this.dateTime.nowISOString().slice(0, 4));
+      // In the seller's timezone, not UTC — see `issuedOn`.
+      const issuedAt = this.issuedOn(seller.timezone);
+      const year = Number(issuedAt.slice(0, 4));
       const seq = await this.invoiceNumber.next(
         `${order.organizationId ?? "default"}:${year}`,
       );
@@ -125,7 +127,7 @@ export class InvoiceService {
         number: this.formatNumber(seller.numberPrefix, year, seq),
         year,
         orderId,
-        issuedAt: this.dateTime.nowISOString(),
+        issuedAt,
         seller,
         buyer: (order.shippingAddress as Record<string, any>) ?? {
           fullName: "Client",
@@ -166,18 +168,19 @@ export class InvoiceService {
     );
 
     return this.db.transactional(async () => {
-      const year = Number(this.dateTime.nowISOString().slice(0, 4));
+      const seller = this.seller;
+      const issuedAt = this.issuedOn(seller.timezone);
+      const year = Number(issuedAt.slice(0, 4));
       const seq = await this.invoiceNumber.next(
         `${original.organizationId ?? "default"}:${year}`,
       );
-      const seller = this.seller;
 
       return this.repo.create({
         number: this.formatNumber(seller.numberPrefix, year, seq),
         year,
         orderId: original.orderId,
         creditsInvoiceId: original.id,
-        issuedAt: this.dateTime.nowISOString(),
+        issuedAt,
         seller: original.seller,
         buyer: original.buyer,
         lines,
@@ -212,6 +215,24 @@ export class InvoiceService {
    * `FA-2026-000001`. Zero-padded so a plain text sort matches issue order,
    * which is what anyone reading a folder of invoices expects.
    */
+  /**
+   * Now, as an ISO instant carrying the seller's offset rather than `Z`.
+   *
+   * Both things this feeds are calendar facts in the seller's jurisdiction:
+   * the invoice's printed date, and the year its number belongs to. Derived
+   * from UTC, an invoice issued at 23:30 on 31 December in Paris was dated
+   * 31 December and numbered in the closing year's series, when both should
+   * have been the new one.
+   *
+   * Still an unambiguous instant - `2027-01-01T00:30:00+01:00`, not a naive
+   * local time - so nothing that parses it loses information. What changes is
+   * that `slice(0, 10)` now yields the legal date, which is what both this
+   * service and `HtmlInvoiceRenderer` read.
+   */
+  protected issuedOn(timezone: string): string {
+    return this.dateTime.now().tz(timezone).format();
+  }
+
   protected formatNumber(
     prefix: string,
     year: number,

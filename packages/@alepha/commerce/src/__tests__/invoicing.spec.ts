@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
+import { type DateTime, DateTimeProvider } from "alepha/datetime";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
 
@@ -27,12 +28,29 @@ const seller = {
   numberPrefix: "FA",
 };
 
+/**
+ * A clock that runs normally until pinned.
+ *
+ * Freezing the whole container is not an option here: issuance rides the
+ * settlement workflow, whose scheduling reads the same provider. So the test
+ * lets the workflow run on the real clock and pins only the instant the credit
+ * note is issued in - which is the call under test.
+ */
+class PinnableClock extends DateTimeProvider {
+  public pinned?: string;
+
+  public override now(): DateTime {
+    return this.pinned ? this.of(this.pinned) : super.now();
+  }
+}
+
 const setup = async (
   identity: Partial<typeof seller> & { vatExemptionNotice?: string } = {},
 ) => {
   // Settlement drives the paid-side invoice since the paid-path moved
   // onto the workflow; invoicing alone covers only credit notes.
   const alepha = Alepha.create()
+    .with({ provide: DateTimeProvider, use: PinnableClock })
     .with(AlephaOrmPostgres)
     .with(AlephaCommerceInvoicing)
     .with(AlephaCommerceSettlement);
@@ -50,6 +68,7 @@ const setup = async (
     invoices: alepha.inject(InvoiceService),
     renderer: alepha.inject(InvoiceRenderer),
     vat: alepha.inject(VatCalculator),
+    clock: alepha.inject(DateTimeProvider) as PinnableClock,
   };
   await alepha.start();
   return ctx;
@@ -492,5 +511,40 @@ describe("invoice rendering", () => {
     await alepha.start();
 
     expect(renderer).toBeInstanceOf(FakePdfRenderer);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("invoice dating", () => {
+  it("dates and numbers in the seller's timezone, not UTC", async ({
+    expect,
+  }) => {
+    const ctx = await setup({ timezone: "Europe/Paris" } as never);
+    const ring = await aRing(ctx.catalog);
+    await ctx.stock.recordIntake(ring.id, 1);
+    const orderId = await sell(ctx, ring.id);
+    const [invoice] = await invoiceFor(ctx, orderId);
+
+    // 23:30 UTC on New Year's Eve is already 00:30 on 1 January in Paris.
+    // Derived from UTC, the credit note was dated 31 December and took a
+    // number in the closing year's series - a gap in one, a stranger in the
+    // other, which is exactly what an audit asks about.
+    ctx.clock.pinned = "2026-12-31T23:30:00Z";
+    const credit = await ctx.invoices.creditNote(invoice.id, {
+      reason: "New Year's Eve",
+    });
+    ctx.clock.pinned = undefined;
+
+    expect(credit.year).toBe(2027);
+    expect(credit.number).toContain("-2027-");
+    expect(credit.issuedAt.slice(0, 10)).toBe("2027-01-01");
+
+    // Still an unambiguous instant, not a naive local time.
+    expect(new Date(credit.issuedAt).toISOString()).toBe(
+      "2026-12-31T23:30:00.000Z",
+    );
+
+    await ctx.alepha.stop();
   });
 });

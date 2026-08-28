@@ -46,12 +46,23 @@ export const sellerIdentityAtom = $atom({
      * Prefix of the invoice number.
      */
     numberPrefix: z.text({ maxLength: 8 }).default("FA"),
+    /**
+     * The seller's own timezone, and the one an invoice is dated in.
+     *
+     * Not cosmetic. An invoice's date and the year its number belongs to are
+     * calendar facts in the seller's jurisdiction, not in UTC: a sale at 00:30
+     * on 1 January in Paris is a January sale, and numbering it in the
+     * previous year's series puts a gap in one series and a stranger in the
+     * other - which is exactly what an audit asks about.
+     */
+    timezone: z.text({ maxLength: 64 }).default("Europe/Paris"),
   }),
   default: {
     name: "Unnamed seller",
     address: "Unknown address",
     registrationNumber: "000 000 000 00000",
     numberPrefix: "FA",
+    timezone: "Europe/Paris",
   },
   serverOnly: true,
 });
