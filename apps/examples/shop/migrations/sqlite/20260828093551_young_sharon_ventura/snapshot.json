@@ -1,8 +1,10 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "cd985043-f83f-4388-b024-a502492b0207",
-  "prevIds": ["85ccdf61-aeb0-4db8-b959-a672ad83d579"],
+  "id": "51cc0fa1-15d9-498d-b14e-edf4a26f3dd6",
+  "prevIds": [
+    "dc60a792-6b07-4c09-911a-f7179c08a3ec"
+  ],
   "ddl": [
     {
       "name": "alepha_sequences",
@@ -74,6 +76,10 @@
     },
     {
       "name": "job_executions",
+      "entityType": "tables"
+    },
+    {
+      "name": "notification_deliveries",
       "entityType": "tables"
     },
     {
@@ -2408,6 +2414,196 @@
       "generated": null,
       "name": "id",
       "entityType": "columns",
+      "table": "notification_deliveries"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(unixepoch('subsec') * 1000)",
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "notification_deliveries"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(unixepoch('subsec') * 1000)",
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "notification_deliveries"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "execution_id",
+      "entityType": "columns",
+      "table": "notification_deliveries"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "organization_id",
+      "entityType": "columns",
+      "table": "notification_deliveries"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "message_id",
+      "entityType": "columns",
+      "table": "notification_deliveries"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "provider",
+      "entityType": "columns",
+      "table": "notification_deliveries"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "channel",
+      "entityType": "columns",
+      "table": "notification_deliveries"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "contact",
+      "entityType": "columns",
+      "table": "notification_deliveries"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "template",
+      "entityType": "columns",
+      "table": "notification_deliveries"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "category",
+      "entityType": "columns",
+      "table": "notification_deliveries"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "false",
+      "generated": null,
+      "name": "critical",
+      "entityType": "columns",
+      "table": "notification_deliveries"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "status",
+      "entityType": "columns",
+      "table": "notification_deliveries"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "skip_reason",
+      "entityType": "columns",
+      "table": "notification_deliveries"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "subject",
+      "entityType": "columns",
+      "table": "notification_deliveries"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "body",
+      "entityType": "columns",
+      "table": "notification_deliveries"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "last_event_at",
+      "entityType": "columns",
+      "table": "notification_deliveries"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "smtp_status_code",
+      "entityType": "columns",
+      "table": "notification_deliveries"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "error",
+      "entityType": "columns",
+      "table": "notification_deliveries"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
       "table": "notification_suppressions"
     },
     {
@@ -3591,6 +3787,16 @@
       "table": "workflow_executions"
     },
     {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "restarted_from",
+      "entityType": "columns",
+      "table": "workflow_executions"
+    },
+    {
       "type": "integer",
       "notNull": true,
       "autoincrement": false,
@@ -3771,9 +3977,13 @@
       "table": "workflow_step_logs"
     },
     {
-      "columns": ["cart_id"],
+      "columns": [
+        "cart_id"
+      ],
       "tableTo": "commerce_carts",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -3782,9 +3992,13 @@
       "table": "commerce_cart_items"
     },
     {
-      "columns": ["order_id"],
+      "columns": [
+        "order_id"
+      ],
       "tableTo": "commerce_orders",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -3793,9 +4007,13 @@
       "table": "commerce_order_items"
     },
     {
-      "columns": ["zone_id"],
+      "columns": [
+        "zone_id"
+      ],
       "tableTo": "commerce_shipping_zones",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -3804,9 +4022,13 @@
       "table": "commerce_shipping_rates"
     },
     {
-      "columns": ["user_id"],
+      "columns": [
+        "user_id"
+      ],
       "tableTo": "users",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -3815,9 +4037,13 @@
       "table": "identities"
     },
     {
-      "columns": ["user_id"],
+      "columns": [
+        "user_id"
+      ],
       "tableTo": "users",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -3826,9 +4052,13 @@
       "table": "sessions"
     },
     {
-      "columns": ["workflow_execution_id"],
+      "columns": [
+        "workflow_execution_id"
+      ],
       "tableTo": "workflow_executions",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -3837,203 +4067,270 @@
       "table": "workflow_step_executions"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "alepha_sequences_pk",
       "table": "alepha_sequences",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "audits_pk",
       "table": "audits",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "cache_entries_pk",
       "table": "cache_entries",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "commerce_addresses_pk",
       "table": "commerce_addresses",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "commerce_cart_items_pk",
       "table": "commerce_cart_items",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "commerce_carts_pk",
       "table": "commerce_carts",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "commerce_checkout_sessions_pk",
       "table": "commerce_checkout_sessions",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "commerce_invoices_pk",
       "table": "commerce_invoices",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "commerce_order_items_pk",
       "table": "commerce_order_items",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "commerce_orders_pk",
       "table": "commerce_orders",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "commerce_products_pk",
       "table": "commerce_products",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "commerce_shipping_rates_pk",
       "table": "commerce_shipping_rates",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "commerce_shipping_zones_pk",
       "table": "commerce_shipping_zones",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "commerce_stock_movements_pk",
       "table": "commerce_stock_movements",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "commerce_stock_reservations_pk",
       "table": "commerce_stock_reservations",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "files_pk",
       "table": "files",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "identities_pk",
       "table": "identities",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "job_executions_pk",
       "table": "job_executions",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "notification_deliveries_pk",
+      "table": "notification_deliveries",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "notification_suppressions_pk",
       "table": "notification_suppressions",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "parameters_pk",
       "table": "parameters",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "payment_intents_pk",
       "table": "payment_intents",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "payment_methods_pk",
       "table": "payment_methods",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "refunds_pk",
       "table": "refunds",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "sessions_pk",
       "table": "sessions",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "users_pk",
       "table": "users",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "verification_pk",
       "table": "verification",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "workflow_executions_pk",
       "table": "workflow_executions",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "workflow_step_executions_pk",
       "table": "workflow_step_executions",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "workflow_step_logs_pk",
       "table": "workflow_step_logs",
@@ -5024,6 +5321,52 @@
       "name": "job_executions_job_name_key_idx",
       "entityType": "indexes",
       "table": "job_executions"
+    },
+    {
+      "columns": [
+        {
+          "value": "execution_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "origin": "manual",
+      "name": "notification_deliveries_execution_id_idx",
+      "entityType": "indexes",
+      "table": "notification_deliveries"
+    },
+    {
+      "columns": [
+        {
+          "value": "message_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "notification_deliveries_message_id_idx",
+      "entityType": "indexes",
+      "table": "notification_deliveries"
+    },
+    {
+      "columns": [
+        {
+          "value": "organization_id",
+          "isExpression": false
+        },
+        {
+          "value": "created_at",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "notification_deliveries_organization_id_created_at_idx",
+      "entityType": "indexes",
+      "table": "notification_deliveries"
     },
     {
       "columns": [
