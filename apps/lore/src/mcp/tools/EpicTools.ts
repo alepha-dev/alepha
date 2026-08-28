@@ -158,7 +158,7 @@ export class EpicTools {
    */
   epic_create = $tool({
     description:
-      "Create a new epic in the project, in the 'planned' status. Quests filed under a planned epic (quest_create / quest_update's `epic_number`) stay out of the human-facing backlog, kanban and reports until the epic is activated (epic_set_status); quest_list keeps returning them regardless, since MCP is deliberately not gated. Owner-only.",
+      "Create a new epic in the project, in the 'planned' status. Quests filed under a planned epic (quest_create / quest_update's `epic_number`) stay out of the human-facing backlog, kanban and reports until the epic is activated (epic_set_status); quest_list keeps returning them regardless, since MCP is deliberately not gated. Any project member may create one.",
     title: "Create epic",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
@@ -194,7 +194,7 @@ export class EpicTools {
    */
   epic_update = $tool({
     description:
-      "Update an epic's title or description. Omitted fields stay unchanged. Owner-only.",
+      "Update an epic's title or description. Omitted fields stay unchanged.",
     title: "Update epic",
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {
@@ -232,7 +232,7 @@ export class EpicTools {
    */
   epic_set_status = $tool({
     description:
-      "Change an epic's status: planned, active, or done. All transitions are legal; there is no forbidden edge. Moving to 'active' for the first time stamps activatedAt (kept across later swings; it marks when the epic began, not when it was last active); moving to 'done' stamps completedAt; moving away from 'done' clears it. Never writes to any quest row. This only changes what the backlog gate matches. Owner-only.",
+      "Change an epic's status: planned, active, or done. All transitions are legal; there is no forbidden edge. Moving to 'active' for the first time stamps activatedAt (kept across later swings; it marks when the epic began, not when it was last active); moving to 'done' stamps completedAt; moving away from 'done' clears it. Never writes to any quest row. This only changes what the backlog gate matches.",
     title: "Set epic status",
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {

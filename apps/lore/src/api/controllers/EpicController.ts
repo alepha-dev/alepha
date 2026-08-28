@@ -17,13 +17,24 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 /**
  * CRUD, the status lifecycle, and attach/detach for quests and folios.
  *
- * Modelled on `MilestoneController`: same `$secure` permission strings
+ * Same `$secure` permission strings as `MilestoneController`
  * (`quest:read` to read, `quest:create` to mutate, `quest:delete` on
  * `deleteEpic` — matching `MilestoneController.deleteMilestone` and
  * `QuestController.deleteQuest`, both of which gate delete on its own
- * permission rather than `quest:create`), the same
- * `security.assertMember` (read) / `security.assertOwner` (mutate) split,
- * `$transactional()` on create.
+ * permission rather than `quest:create`), and `$transactional()` on create.
+ *
+ * **Every endpoint here is `security.assertMember`, read and write alike** —
+ * the `QuestController` / `FolioController` rule, not the
+ * `MilestoneController` one it was originally modelled on. An epic groups
+ * quests and folios, both of which any member may already create, rename
+ * and delete; gating the grouping on ownership meant the header's "Create
+ * epic" entry (shown to every member, `ProjectActionsCreateButton`) answered
+ * 403, and an epic a member could not activate or attach anything to would
+ * be inert anyway. `deleteEpic` follows `QuestController.deleteQuest`, which
+ * is member-gated for the same reason.
+ *
+ * Project *configuration* stays owner-only — that split lives in
+ * `ProjectController` and `MilestoneController`, not here.
  *
  * **This class is now the sole `$repository(epics)` holder.** It replaces
  * `EpicTableRegistration`, the temporary scaffolding Task 1 left behind
@@ -145,7 +156,7 @@ export class EpicController {
       response: epicResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      await this.security.assertOwner(params.projectId, user);
+      await this.security.assertMember(params.projectId, user);
       const number = await this.epicNumber.next(String(params.projectId));
       const epic = await this.epics.create({
         projectId: params.projectId,
@@ -172,7 +183,7 @@ export class EpicController {
     },
     handler: async ({ params, body, user }) => {
       const epic = await this.epics.getById(params.id);
-      await this.security.assertOwner(epic.projectId, user);
+      await this.security.assertMember(epic.projectId, user);
 
       const updated = await this.epics.updateById(params.id, {
         ...(body.title !== undefined ? { title: body.title } : {}),
@@ -210,7 +221,7 @@ export class EpicController {
     },
     handler: async ({ params, body, user }) => {
       const epic = await this.epics.getById(params.id);
-      await this.security.assertOwner(epic.projectId, user);
+      await this.security.assertMember(epic.projectId, user);
 
       const updated = await this.epics.updateById(params.id, {
         status: body.status,
@@ -245,7 +256,7 @@ export class EpicController {
     },
     handler: async ({ params, user }) => {
       const epic = await this.epics.getById(params.id);
-      await this.security.assertOwner(epic.projectId, user);
+      await this.security.assertMember(epic.projectId, user);
 
       // `folio_links.from_id` is not a foreign key, so the FK cascade this
       // delete relies on for quests and folios does not reach the link
@@ -266,7 +277,7 @@ export class EpicController {
     },
     handler: async ({ params, body, user }) => {
       const epic = await this.epics.getById(params.id);
-      await this.security.assertOwner(epic.projectId, user);
+      await this.security.assertMember(epic.projectId, user);
 
       const quest = await this.quests.getById(body.questId);
       if (quest.projectId !== epic.projectId) {
@@ -291,7 +302,7 @@ export class EpicController {
     },
     handler: async ({ params, user }) => {
       const epic = await this.epics.getById(params.id);
-      await this.security.assertOwner(epic.projectId, user);
+      await this.security.assertMember(epic.projectId, user);
 
       const quest = await this.quests.getById(params.questId);
       if (quest.epicId === epic.id) {
@@ -311,7 +322,7 @@ export class EpicController {
     },
     handler: async ({ params, body, user }) => {
       const epic = await this.epics.getById(params.id);
-      await this.security.assertOwner(epic.projectId, user);
+      await this.security.assertMember(epic.projectId, user);
 
       const folio = await this.folios.getById(body.folioId);
       if (folio.projectId !== epic.projectId) {
@@ -336,7 +347,7 @@ export class EpicController {
     },
     handler: async ({ params, user }) => {
       const epic = await this.epics.getById(params.id);
-      await this.security.assertOwner(epic.projectId, user);
+      await this.security.assertMember(epic.projectId, user);
 
       const folio = await this.folios.getById(params.folioId);
       if (folio.epicId === epic.id) {

@@ -3,6 +3,7 @@ import { expect, type Page, test } from "@playwright/test";
 import {
   apiPost,
   createProjectViaWizard,
+  newUserContext,
   registerAndVerify,
   setProjectFeature,
 } from "./_helpers.ts";
@@ -596,5 +597,143 @@ test.describe("Epics — the questline", () => {
       });
       await expect(card(root)).toBeVisible();
     });
+  });
+});
+
+/**
+ * The gate on epic mutations, end to end, with two real accounts.
+ *
+ * Every epic endpoint was owner-only until 2026-08-28, which contradicted
+ * two things at once: the header's "Create epic" entry is shown to every
+ * member (`ProjectActionsCreateButton` gates only the invite item on
+ * ownership), and an epic exists to group quests and folios that any member
+ * may already create. So a member clicking the entry they were shown got a
+ * 403.
+ *
+ * Unit specs pin the gate on the controller; this pins it over real HTTP
+ * with a real member session, which is the only place the whole chain —
+ * session, `$secure` permissions, `assertMember` — is exercised together.
+ *
+ * The calls go through `fetch` from the member's own page rather than the
+ * creation dialogs: what is under test is authorization, and driving three
+ * dialogs would only add ways to fail for reasons that are not the gate.
+ */
+test.describe("Epics — a member, not just the owner", () => {
+  test("an invited member creates an epic and files a quest and a folio under it", async ({
+    page,
+    browser,
+    baseURL,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `epicowner${t}@example.com`, "GoodPassw0rd");
+    const projectTitle = `Mem${t}`.slice(0, 20);
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
+    await setProjectFeature(page, projectId, "epics", true);
+
+    const member = await newUserContext(browser, baseURL!, "epicmember");
+    try {
+      await test.step("owner invites, member accepts", async () => {
+        await page.goto(`/${slug}/settings/members`);
+        await page.waitForLoadState("domcontentloaded");
+        await page.getByRole("button", { name: /^invite$/i }).click();
+        await page.getByPlaceholder("user@example.com").fill(member.email);
+        const invited = page.waitForResponse(
+          (r) =>
+            r.request().method() === "POST" &&
+            r.url().endsWith("/api/invitations"),
+          { timeout: 15_000 },
+        );
+        await page.getByRole("button", { name: /send invitation/i }).click();
+        expect((await invited).ok()).toBe(true);
+
+        await member.page.goto("/account/invitations");
+        await member.page.waitForLoadState("domcontentloaded");
+        const accepted = member.page.waitForResponse(
+          (r) =>
+            r.request().method() === "POST" &&
+            /\/api\/invitations\/[^/]+\/accept$/.test(r.url()),
+          { timeout: 15_000 },
+        );
+        await member.page.getByRole("button", { name: /^accept$/i }).click();
+        expect((await accepted).ok()).toBe(true);
+      });
+
+      // Land on the project first: `apiPost` reads the action table out of
+      // the SSR payload, which only the project pages carry.
+      await member.page.goto(`/${slug}/`);
+      await member.page.waitForLoadState("domcontentloaded");
+
+      // `createEpic` and `attachQuest` carry their id in the path, which
+      // `apiPost` cannot fill in — raw `fetch`, same as the gate test above.
+      const post = async <T>(path: string, body: unknown): Promise<T> =>
+        member.page.evaluate(
+          async ({ path, body }) => {
+            const r = await fetch(path, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify(body),
+            });
+            if (!r.ok)
+              throw new Error(`${path} → ${r.status} ${await r.text()}`);
+            return r.json();
+          },
+          { path, body },
+        ) as Promise<T>;
+
+      const epic = await test.step("the member creates an epic", async () => {
+        const created = await post<{
+          id: number;
+          number: number;
+          status: string;
+        }>(`/api/createEpic/${projectId}`, { title: `MemberEpic${t}` });
+        expect(created.status).toBe("planned");
+        return created;
+      });
+
+      await test.step("and files a quest under it", async () => {
+        const quest = await apiPost<{ id: number }>(
+          member.page,
+          "createQuest",
+          {
+            projectId,
+            title: `MemberQuest${t}`,
+            description: "Filed by a member",
+            area: "orm",
+            priority: "high",
+            objectives: [],
+            attachments: [],
+          },
+        );
+        const attached = await post<{ questCount: number }>(
+          `/api/attachQuest/${epic.id}`,
+          { questId: quest.id },
+        );
+        expect(attached.questCount).toBe(1);
+      });
+
+      await test.step("and a folio", async () => {
+        const folio = await apiPost<{ id: string }>(member.page, "create", {
+          projectId,
+          title: `MemberFolio${t}`,
+          content: "Written by a member",
+        });
+        expect(folio.id).toBeTruthy();
+      });
+
+      await test.step("the epic is then visible to the owner", async () => {
+        await page.goto(`/${slug}/epics`);
+        await expect(page.getByText(`MemberEpic${t}`).first()).toBeVisible({
+          timeout: 15_000,
+        });
+      });
+    } finally {
+      await member.ctx.close();
+    }
   });
 });

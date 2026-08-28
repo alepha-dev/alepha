@@ -474,18 +474,19 @@ export class QuestTools {
       });
 
       // File the quest into its epic. `QuestController.createQuest` has no
-      // `epicId` field of its own — `EpicController` owns that mutation
-      // (owner-gated, same as every other epic mutation), so this is a
-      // second call rather than part of the create body.
+      // `epicId` field of its own — `EpicController` owns that mutation, so
+      // this is a second call rather than part of the create body.
       //
-      // `attachQuest` is owner-gated, but `createQuest` above only needed
-      // `quest:create` — a member who created the quest can also delete it
-      // (`QuestController.deleteQuest`'s `createdBy === user.id` check), so
-      // a non-owner member with `epic_number` set can reach this attach and
-      // have it refused. Clean up rather than leave an orphaned, unlinked
-      // quest behind: an agent that sees the error and retries would
-      // otherwise create a duplicate every time. The original error (not
-      // any delete failure) is what the caller sees.
+      // Two calls means the second can fail on its own. Clean up rather
+      // than leave an orphaned, unlinked quest behind: an agent that sees
+      // the error and retries would otherwise create a duplicate every
+      // time. The original error (not any delete failure) is what the
+      // caller sees. The refusal this was written for was the epic gate
+      // (`attachQuest` was owner-only while `createQuest` needed
+      // `quest:create`); epic mutations are member-gated now, so the
+      // compensation is no longer reachable that way — it stays because
+      // the second call can still fail, and a half-written create is the
+      // worst thing to hand an agent.
       if (epicId != null) {
         try {
           await this.epicController.attachQuest({
@@ -1051,8 +1052,7 @@ export class QuestTools {
       // (a no-op if it has none), integer = resolve to a global epic id
       // within the quest's project and attach. Unlike `dependsOn` /
       // `feedbackId` above, this mutation goes through `EpicController`
-      // (owner-gated, same as every other epic mutation) rather than this
-      // action's own body — it has no `epicId` field.
+      // rather than this action's own body — it has no `epicId` field.
       let epicAttachId: number | undefined;
       let epicDetachId: number | undefined;
       if (params.epic_number === 0) {
@@ -1067,11 +1067,13 @@ export class QuestTools {
       }
 
       // Apply the epic mutation BEFORE the general field update, not after.
-      // `attachQuest`/`detachQuest` are owner-gated while `updateQuestById`
-      // only needs `quest:update` (a non-owner member who can edit the
-      // quest can still be refused here) — doing this first means a
-      // refusal throws before any other field is written, so there is no
-      // window where some fields land and the epic link silently does not.
+      // It is a separate call to a separate controller and can fail on its
+      // own; doing it first means such a failure throws before any other
+      // field is written, so there is no window where some fields land and
+      // the epic link silently does not. (The refusal originally in view
+      // was the owner gate on `attachQuest`/`detachQuest`, which is now
+      // membership like `updateQuestById`'s — the ordering argument does
+      // not depend on which failure it is.)
       if (epicAttachId != null) {
         await this.epicController.attachQuest({
           params: { id: epicAttachId },
