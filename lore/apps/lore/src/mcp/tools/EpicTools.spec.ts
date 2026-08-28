@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake } from "alepha/fake";
@@ -14,6 +14,7 @@ import {
   createTestQuest,
   TestEntityRepositories,
 } from "../../../test/fixtures/entities.ts";
+import { EpicController } from "../../api/controllers/EpicController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import { members } from "../../api/entities/members.ts";
 import { LoreApi } from "../../api/index.ts";
@@ -37,6 +38,36 @@ class MembersProbe {
 }
 
 /**
+ * An `EpicController` whose attach always fails.
+ *
+ * The refusal the partial-write guards below need used to come free from
+ * authorization: `attachQuest` / `attachFolio` were owner-only while
+ * `quest_create` / `folio_create` needed membership, so a non-owner member
+ * reached the attach and was refused. Epic mutations are member-gated now
+ * (an epic groups quests and folios, both of which a member already
+ * creates), so that path succeeds and can no longer produce the failure.
+ *
+ * What those guards are about is the COMPENSATION, not the gate: an attach
+ * that fails for ANY reason must not leave a half-written row behind.
+ * Injecting the failure is what keeps them alive independently of who is
+ * allowed to attach — and substituting the service is how this codebase
+ * mocks, `vi.mock` being banned.
+ *
+ * The two `$action` fields are replaced by plain async functions. Nothing
+ * here calls them over HTTP — the MCP tools invoke the method directly —
+ * so losing their route registration costs this spec nothing.
+ */
+class FailingAttachEpicController extends EpicController {
+  attachQuest = (async () => {
+    throw new AlephaError("attach refused");
+  }) as unknown as EpicController["attachQuest"];
+
+  attachFolio = (async () => {
+    throw new AlephaError("attach refused");
+  }) as unknown as EpicController["attachFolio"];
+}
+
+/**
  * The epic surface over MCP, plus the gap it closes: Task 2 made the
  * backlog gate default-on inside `QuestController.getQuests`, and
  * `QuestTools.quest_list` called that same action — so before this file,
@@ -50,10 +81,16 @@ class MembersProbe {
  * provider rejects outright. A bare `Alepha.create()` passes under
  * `yarn w lore test` and fails under `yarn test`.
  */
-const setup = async () => {
+const setup = async (options: { failEpicAttach?: boolean } = {}) => {
   const alepha = Alepha.create({
     env: { LOG_LEVEL: "error", SERVER_PORT: 0, DATABASE_URL: ":memory:" },
   });
+  if (options.failEpicAttach) {
+    alepha.with({
+      provide: EpicController,
+      use: FailingAttachEpicController,
+    });
+  }
   alepha.with(AlephaOrm);
   alepha.with(AlephaServer);
   alepha.with(AlephaSecurity);
@@ -108,9 +145,8 @@ const setup = async () => {
    * A member with no owner bit set — direct repo insert, bypassing the
    * invitation flow (same as `insights-controller.spec.ts` /
    * `folio-permissions.spec.ts`'s `addMember` helpers). `resolveProjectId`
-   * only needs `getMyProjects` to list this project for the member to reach
-   * any tool at all; `EpicController`'s `assertOwner` is what then refuses
-   * the epic mutation.
+   * needs `getMyProjects` to list this project for the member to reach any
+   * tool at all, which is what the membership row buys.
    */
   const addNonOwnerMember = async (): Promise<string> => {
     const member = await users.createUser({
@@ -139,6 +175,60 @@ const setup = async () => {
 };
 
 describe("Lore MCP — epics", () => {
+  /**
+   * The whole agent-facing loop, driven by somebody who does not own the
+   * project: forge an epic, file a quest under it, file a folio under it.
+   * Epic mutations were owner-only until 2026-08-28, so every one of these
+   * calls answered 403 for a member — including through the web UI, whose
+   * "Create epic" entry has always been shown to every member.
+   */
+  it("a non-owner member can create an epic and file work under it", async ({
+    expect,
+  }) => {
+    const {
+      repos,
+      project,
+      epicTools,
+      questTools,
+      folioTools,
+      call,
+      addNonOwnerMember,
+    } = await setup();
+    const memberId = await addNonOwnerMember();
+
+    const epic = await call(
+      epicTools.epic_create,
+      { project: project.id, title: "Member's epic" },
+      memberId,
+    );
+
+    const quest = await call(
+      questTools.quest_create,
+      {
+        project: project.id,
+        title: "Member's quest",
+        description: "",
+        area: "Deploy",
+        priority: "medium",
+        epic_number: epic.number,
+      },
+      memberId,
+    );
+
+    const folio = await call(
+      folioTools.folio_create,
+      {
+        project: project.id,
+        title: "Member's folio",
+        epic_number: epic.number,
+      },
+      memberId,
+    );
+
+    expect((await repos.quests.getById(quest.id)).epicId).toBe(epic.id);
+    expect((await repos.folios.getById(folio.id)).epicId).toBe(epic.id);
+  });
+
   it("quest_list is NOT gated — an agent still sees planned-epic quests", async ({
     expect,
   }) => {
@@ -353,42 +443,40 @@ describe("Lore MCP — epics", () => {
     });
   });
 
-  describe("epic_number failure does not leave a partial write (non-owner member)", () => {
+  describe("epic_number failure does not leave a partial write", () => {
     /*
-      `attachQuest`/`detachQuest` are owner-gated (`EpicController.assertOwner`),
-      but `quest_create`/`quest_update` only need `quest:create`/`quest:update`
-      — and `QuestController.deleteQuest`'s own check
-      (`quest.createdBy !== user.id && project.createdBy !== user.id`) means the
-      member who just created a quest is allowed to delete it too. So a member
-      who is not the project owner can reach `quest_create`/`quest_update` with
-      `epic_number` set, and the attach/detach is refused. These guard against
-      that refusal leaving a half-done side effect behind.
+      `quest_create` / `quest_update` set `epicId` through a SECOND call to
+      `EpicController`, because the quest actions have no such field. That
+      second call can fail on its own, and these guard against the failure
+      leaving a half-done side effect behind: a created-but-unattached quest
+      an agent would duplicate on every retry, or a title written when the
+      epic move it was paired with did not happen.
+
+      The failure is injected (`failEpicAttach`) rather than borrowed from
+      authorization — see `FailingAttachEpicController`. It used to come
+      from the owner gate on `attachQuest`, which is membership now.
     */
 
     it("quest_create: a refused attach leaves no quest row behind", async ({
       expect,
     }) => {
-      const { alepha, repos, project, questTools, call, addNonOwnerMember } =
-        await setup();
-      const memberId = await addNonOwnerMember();
+      const { alepha, repos, project, questTools, call } = await setup({
+        failEpicAttach: true,
+      });
       const epic = await createTestEpic(alepha, project);
       const before = await repos.quests.count({
         projectId: { eq: project.id },
       });
 
       await expect(
-        call(
-          questTools.quest_create,
-          {
-            project: project.id,
-            title: "Should not survive",
-            description: "",
-            area: "Deploy",
-            priority: "medium",
-            epic_number: epic.number,
-          },
-          memberId,
-        ),
+        call(questTools.quest_create, {
+          project: project.id,
+          title: "Should not survive",
+          description: "",
+          area: "Deploy",
+          priority: "medium",
+          epic_number: epic.number,
+        }),
       ).rejects.toThrowError();
 
       const after = await repos.quests.count({
@@ -400,38 +488,29 @@ describe("Lore MCP — epics", () => {
     it("quest_update: a refused attach leaves the other fields unchanged", async ({
       expect,
     }) => {
-      const { alepha, repos, project, questTools, call, addNonOwnerMember } =
-        await setup();
-      const memberId = await addNonOwnerMember();
+      const { alepha, repos, project, questTools, call } = await setup({
+        failEpicAttach: true,
+      });
       const epic = await createTestEpic(alepha, project);
 
-      // The member creates their OWN quest (no epic_number here — this call
-      // must succeed) so `updateQuestById`'s own creator check would ALSO
-      // pass below. That is what makes the next assertion prove the
-      // reorder: without it, `title` would already be refused for an
-      // unrelated reason and the test would not distinguish the two.
-      const created = await call(
-        questTools.quest_create,
-        {
-          project: project.id,
-          title: "Original title",
-          description: "",
-          area: "Deploy",
-          priority: "medium",
-        },
-        memberId,
-      );
+      // No `epic_number` on the create — that call must succeed, so the
+      // only thing the update below can be refused for is the epic move.
+      // Without it the title would be unchanged for an unrelated reason
+      // and the test would not distinguish the two.
+      const created = await call(questTools.quest_create, {
+        project: project.id,
+        title: "Original title",
+        description: "",
+        area: "Deploy",
+        priority: "medium",
+      });
 
       await expect(
-        call(
-          questTools.quest_update,
-          {
-            id: created.id,
-            title: "Changed title",
-            epic_number: epic.number,
-          },
-          memberId,
-        ),
+        call(questTools.quest_update, {
+          id: created.id,
+          title: "Changed title",
+          epic_number: epic.number,
+        }),
       ).rejects.toThrowError();
 
       expect((await repos.quests.getById(created.id)).title).toBe(
@@ -468,31 +547,24 @@ describe("Lore MCP — epics", () => {
       });
     });
 
-    it("a refused attach leaves no folio row behind (non-owner member)", async ({
-      expect,
-    }) => {
-      // `attachFolio` is owner-gated while `folio_create` only needs
-      // membership, so a non-owner member reaches the attach and is refused.
+    it("a refused attach leaves no folio row behind", async ({ expect }) => {
       // Same cleanup contract as quest_create: no orphaned, unlinked folio
-      // for an agent to duplicate on retry.
-      const { alepha, repos, project, folioTools, call, addNonOwnerMember } =
-        await setup();
-      const memberId = await addNonOwnerMember();
+      // for an agent to duplicate on retry. Failure injected, see
+      // `FailingAttachEpicController`.
+      const { alepha, repos, project, folioTools, call } = await setup({
+        failEpicAttach: true,
+      });
       const epic = await createTestEpic(alepha, project);
       const before = await repos.folios.count({
         projectId: { eq: project.id },
       });
 
       await expect(
-        call(
-          folioTools.folio_create,
-          {
-            project: project.id,
-            title: "Should not survive",
-            epic_number: epic.number,
-          },
-          memberId,
-        ),
+        call(folioTools.folio_create, {
+          project: project.id,
+          title: "Should not survive",
+          epic_number: epic.number,
+        }),
       ).rejects.toThrowError();
 
       const after = await repos.folios.count({
@@ -533,27 +605,26 @@ describe("Lore MCP — epics", () => {
       expect(updated.epic).toBeUndefined();
     });
 
-    it("a refused attach leaves the other fields unchanged (non-owner member)", async ({
+    it("a refused attach leaves the other fields unchanged", async ({
       expect,
     }) => {
-      // The epic move runs BEFORE the field update, so an owner-gate
-      // refusal throws before `title` is written.
-      const { alepha, repos, project, folioTools, call, addNonOwnerMember } =
-        await setup();
-      const memberId = await addNonOwnerMember();
+      // The epic move runs BEFORE the field update, so a failed attach
+      // throws before `title` is written.
+      const { alepha, repos, project, folioTools, call } = await setup({
+        failEpicAttach: true,
+      });
       const epic = await createTestEpic(alepha, project);
-      const created = await call(
-        folioTools.folio_create,
-        { project: project.id, title: "Original title" },
-        memberId,
-      );
+      const created = await call(folioTools.folio_create, {
+        project: project.id,
+        title: "Original title",
+      });
 
       await expect(
-        call(
-          folioTools.folio_update,
-          { id: created.id, title: "Changed title", epic_number: epic.number },
-          memberId,
-        ),
+        call(folioTools.folio_update, {
+          id: created.id,
+          title: "Changed title",
+          epic_number: epic.number,
+        }),
       ).rejects.toThrowError();
 
       expect((await repos.folios.getById(created.id)).title).toBe(

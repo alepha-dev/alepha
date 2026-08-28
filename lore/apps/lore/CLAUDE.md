@@ -239,6 +239,18 @@ being on instead of membership, so any logged-in Lore user can submit
 feedback to a project that opts in. The feedback module toggle is the
 owner's opt-in/out lever.
 
+**Which side of the split an endpoint belongs on is "is this the work, or
+the project's configuration".** The work is member-gated end to end —
+quests, folios (with their directories and blobs), kanban moves, and
+**epics** (`EpicController`, member-gated since 2026-08-28; it was
+owner-only, which made the header's "Create epic" entry answer 403 for
+every member it was shown to, and left an epic nobody but the owner could
+activate or attach anything to). Configuration is owner-only: areas
+(rename / merge / delete), milestones, kanban columns, sigils, invitations,
+project settings and portability, plus the triage decisions on feedback
+and blights. Adding an endpoint means placing it on that line, not copying
+whichever neighbouring controller was read first.
+
 ### Drag & Drop
 
 Uses `@dnd-kit/core`. Cards are `useDraggable`, columns are `useDroppable`. Status transitions: `new → accepted → completed`. Completed quests cannot be moved back. New quests must be accepted before completing.

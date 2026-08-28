@@ -123,9 +123,9 @@ export class FolioTools {
 
   /**
    * Resolve an `epic_number` MCP input to the global epic id, scoped to the
-   * given project. A read-only lookup, so any project member can resolve
-   * it; `EpicController.attachFolio` / `detachFolio` (owner-gated, like
-   * every epic mutation) are what then decide whether the move happens.
+   * given project. A read-only lookup; `EpicController.attachFolio` /
+   * `detachFolio` are what then perform the move. Both are member-gated,
+   * like every epic mutation and like folio creation itself.
    */
   protected async resolveEpicId(
     projectId: number,
@@ -312,7 +312,7 @@ export class FolioTools {
 
   folio_create = $tool({
     description:
-      "Create a new folio in a project — a markdown note that becomes part of the project's memory for AI agents. Provide `project` (id) or `project_name`. `content` is markdown. Pass `epic_number` to file the folio under an epic (it then shows on the epic's Folios tab and in `epic_get`), the same way quest_create does; attaching is owner-only, like every epic mutation. **Always set `summary`** — a 1-2 sentence (~200 chars) description of what the folio is for. It's the field other agents (and future calls of yours) read in `project_context` to decide whether to fetch the body. Without a summary, the index falls back to the title and orientation suffers. " +
+      "Create a new folio in a project — a markdown note that becomes part of the project's memory for AI agents. Provide `project` (id) or `project_name`. `content` is markdown. Pass `epic_number` to file the folio under an epic (it then shows on the epic's Folios tab and in `epic_get`), the same way quest_create does. **Always set `summary`** — a 1-2 sentence (~200 chars) description of what the folio is for. It's the field other agents (and future calls of yours) read in `project_context` to decide whether to fetch the body. Without a summary, the index falls back to the title and orientation suffers. " +
       DIAGRAM_CAPABILITY,
     title: "Create folio",
     annotations: { readOnlyHint: false, destructiveHint: false },
@@ -344,7 +344,7 @@ export class FolioTools {
         epic_number: z
           .integer()
           .describe(
-            "Per-project number of the epic to file this folio under (see epic_list). A design or outcome folio of an epic belongs here; left unattached it never shows on the epic. Owner-only (same gate as every other epic mutation).",
+            "Per-project number of the epic to file this folio under (see epic_list). A design or outcome folio of an epic belongs here; left unattached it never shows on the epic.",
           )
           .optional(),
       }),
@@ -377,11 +377,10 @@ export class FolioTools {
       });
 
       // File the folio under its epic. `FolioController.create` has no
-      // `epicId` field of its own: `EpicController` owns that mutation
-      // (owner-gated), so this is a second call, exactly as quest_create.
+      // `epicId` field of its own: `EpicController` owns that mutation, so
+      // this is a second call, exactly as quest_create.
       //
-      // `create` only needs membership, so a non-owner member can reach
-      // this attach and have it refused. Clean up rather than leave an
+      // A second call can fail on its own. Clean up rather than leave an
       // orphaned, unlinked folio behind: an agent that sees the error and
       // retries would otherwise create a duplicate every time. The
       // original error (not any delete failure) is what the caller sees.
@@ -412,7 +411,7 @@ export class FolioTools {
 
   folio_update = $tool({
     description:
-      "Update a folio. Any omitted field stays unchanged. `epic_number` files the folio under an epic, and 0 detaches it from its current one (owner-only, like every epic mutation). Updating `content` is a good moment to also refresh `summary` so the orientation index in `project_context` stays accurate. " +
+      "Update a folio. Any omitted field stays unchanged. `epic_number` files the folio under an epic, and 0 detaches it from its current one. Updating `content` is a good moment to also refresh `summary` so the orientation index in `project_context` stays accurate. " +
       DIAGRAM_CAPABILITY,
     title: "Update folio",
     annotations: { readOnlyHint: false, idempotentHint: true },
@@ -442,7 +441,7 @@ export class FolioTools {
         epic_number: z
           .integer()
           .describe(
-            "Move the folio under the epic with this per-project number (see epic_list). Pass 0 to detach it from its current epic. Omit to leave the epic untouched. Owner-only (same gate as every other epic mutation).",
+            "Move the folio under the epic with this per-project number (see epic_list). Pass 0 to detach it from its current epic. Omit to leave the epic untouched.",
           )
           .optional(),
       }),
@@ -469,10 +468,10 @@ export class FolioTools {
       // Translate `epic_number`: 0 = detach from the folio's current epic
       // (a no-op if it has none), integer = resolve within the folio's own
       // project and attach. Applied BEFORE the field update, not after:
-      // `attachFolio` / `detachFolio` are owner-gated while `update` only
-      // needs membership, so doing this first means a refusal throws
-      // before any other field is written, and there is no window where
-      // the title lands and the epic link silently does not.
+      // `attachFolio` / `detachFolio` are separate calls that can fail on
+      // their own, so doing this first means such a failure throws before
+      // any other field is written, and there is no window where the title
+      // lands and the epic link silently does not.
       if (params.epic_number != null) {
         const current = await this.folioController.get({ params: { id } });
         if (params.epic_number === 0) {
