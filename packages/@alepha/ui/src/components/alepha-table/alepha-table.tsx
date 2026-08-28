@@ -279,6 +279,12 @@ export interface AlephaTableBaseProps<T> {
   pageSizes?: number[];
   /**
    * Stable row identifier. Defaults to `item.id`.
+   *
+   * Rows with neither fall back to their position in the current page, which
+   * is stable across renders but NOT across sorting or paging - the same row
+   * sorted into a different slot becomes a different row as far as React and
+   * the selection are concerned. Pass this whenever rows can be selected or
+   * hold an inline input and the data has no `id`.
    */
   rowKey?: (item: T) => string;
   /**
@@ -388,12 +394,6 @@ export interface AlephaTableBaseProps<T> {
   autoApplyFilters?: boolean;
 }
 
-const defaultRowKey = (item: unknown): string =>
-  // Coercion at a boundary: the value is a form/route/chart primitive whose
-  // declared type is wider than what can reach here.
-  // oxlint-disable-next-line typescript/no-base-to-string
-  String((item as { id?: unknown })?.id ?? Math.random());
-
 const EMPTY_FILTERS_SCHEMA = z.object({}) as ZObject;
 
 /**
@@ -448,8 +448,6 @@ const writePersisted = (key: string, suffix: string, value: unknown): void => {
 export const PAGE_SIZES = [10, 20, 50, 100];
 
 export function AlephaTable<T>(props: AlephaTableProps<T>) {
-  const rowKey = props.rowKey ?? defaultRowKey;
-
   // State, not a constant. It was `props.defaultSize ?? 20` read once, so a
   // reader had no way to see more rows than the call site had decided for
   // them. Already in `load`'s dependency array, so changing it refetches.
@@ -758,6 +756,48 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     }, props.pollMs);
     return () => clearInterval(id);
   }, [props.pollMs]);
+
+  // -- Row identity ----------------------------------------------------------
+
+  /**
+   * A row's key, in order of preference: the caller's `rowKey`, the row's own
+   * `id`, then where the row sits.
+   *
+   * The last one used to be `Math.random()`, which is not an identity at all.
+   * Every render produced a new key, so React saw every id-less row as a new
+   * row and remounted it: focus in an inline input was lost the moment
+   * anything else re-rendered, and the list re-animated on every keystroke.
+   * Selection was broken by the same thing - `selection.has(rowKey(item))`
+   * compared against a key generated one render earlier, so it never matched.
+   */
+  const rowKeys = useMemo(
+    () =>
+      data.map((item, index) => {
+        if (props.rowKey) return props.rowKey(item);
+        const id = (item as { id?: unknown })?.id;
+        // Coercion at a boundary: the value is a form/route/chart primitive
+        // whose declared type is wider than what can reach here.
+        // oxlint-disable-next-line typescript/no-base-to-string
+        return id != null ? String(id) : `page-${page}-row-${index}`;
+      }),
+    [data, page, props.rowKey],
+  );
+
+  /**
+   * Selection asks for a key by item, not by index. Every item it can ask
+   * about is one of `data`'s, so a lookup keyed on identity covers it without
+   * an O(n) scan per call.
+   */
+  const rowKeyByItem = useMemo(() => {
+    const map = new Map<T, string>();
+    data.forEach((item, index) => map.set(item, rowKeys[index]));
+    return map;
+  }, [data, rowKeys]);
+
+  const rowKey = useCallback(
+    (item: T): string => rowKeyByItem.get(item) ?? "",
+    [rowKeyByItem],
+  );
 
   // -- Selection -------------------------------------------------------------
 
@@ -1202,8 +1242,8 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                   </TableCell>
                 </TableRow>
               ) : (
-                data.map((item) => {
-                  const key = rowKey(item);
+                data.map((item, rowIndex) => {
+                  const key = rowKeys[rowIndex];
                   const isSelected = selection.has(key);
                   return (
                     <TableRow
