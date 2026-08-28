@@ -172,10 +172,12 @@ describe("UserDeletionHook", () => {
 
   it("names the count in a message the person can act on", async () => {
     /*
-      `MyAccountController` emits without `{ log: true }` precisely so this
-      message survives unwrapped — the logging path would bury it inside
-      `AlephaError("Failed during '…' hook for service: X")` and collapse the
-      status to 500. If that ever regresses, this is what goes red.
+      This message has to reach the person unwrapped, with the handler's own
+      status rather than a 500. It used to depend on the emit avoiding
+      `{ log: true }`, whose path wrapped a hook's error in
+      `AlephaError("Failed during '…' hook for service: X")`; `EventManager`
+      no longer wraps on any path. If that ever regresses, this is what goes
+      red.
     */
     const user = await createTestUser(ctx);
     for (const title of ["One", "Two"]) {
