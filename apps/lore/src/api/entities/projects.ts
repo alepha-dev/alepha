@@ -1,6 +1,9 @@
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
+import { kanbanColumnConfigSchema } from "../schemas/kanbanColumnSchema.ts";
+import { paletteColorSchema } from "../schemas/paletteColorSchema.ts";
+
 export const projectFeaturesSchema = z.object({
   kanban: z.boolean(),
   folios: z.boolean(),
@@ -183,15 +186,71 @@ export const projects = $entity({
      */
     retentionDays: z.integer().min(1).max(3_650).optional(),
     /**
-     * Sub-columns rendered between "New" and "Completed" on the Kanban board.
-     * Only meaningful when `features.kanban` is on. Capped at 5 columns by
-     * the controller. Default is a single "In Progress" lane so existing
+     * The Kanban board's configurable column NAMES, in order. Only
+     * meaningful when `features.kanban` is on. Capped at 5 by the
+     * controller. Default is a single "In Progress" lane so existing
      * accepted quests keep a coherent column to live in.
+     *
+     * Deliberately still a bare `string[]`. Quest #1227 needed each column
+     * to carry a lifecycle state and #1228 needed a WIP limit, and both
+     * live in `kanbanColumnConfig` below rather than turning this into an
+     * array of objects — see that field for why.
      */
     kanbanColumns: db.default(
       z.array(z.string().min(1).max(24)).min(1).max(5),
       ["In Progress"],
     ),
+    /**
+     * Per-column settings, keyed by column name: which lifecycle state the
+     * column collapses to, and its WIP limit.
+     *
+     * Absent, or absent for a given column, reproduces exactly the board
+     * that existed before this column: `New | <every configured column,
+     * accepted> | Completed`.
+     *
+     * NB: `z.optional` with NO `db.default(...)`, like `retentionDays`,
+     * `defaultSurface` and `tagColors` above — a column DEFAULT triggers
+     * the `projects` table rebuild that cascade-wipes children on D1.
+     */
+    kanbanColumnConfig: kanbanColumnConfigSchema.optional(),
+    /**
+     * Which surface bare `/:projectSlug` lands on: the grouped quest table
+     * or the Kanban board. Absent means the table.
+     *
+     * Per-project rather than per-browser on purpose. This replaced
+     * `questsViewAtom`, a cookie: a team that works kanban-first had to
+     * rediscover the toggle on every machine, and an invited member
+     * inherited nothing. The board being a real route (`/kanban`) is what
+     * made a stored preference a redirect target rather than a rendering
+     * mode.
+     *
+     * NB: `z.optional` with NO `db.default(...)`, for the same reason as
+     * `retentionDays` above — a column DEFAULT triggers a `projects` table
+     * rebuild on D1, and `projects` is the CASCADE parent that wiped
+     * production on 2026-05-13. The "list" fallback lives in the index
+     * route, not in the column.
+     */
+    defaultSurface: z.enum(["list", "kanban"]).optional(),
+    /**
+     * Colour token per quest tag, e.g. `{ "bug": "red", "chore": "slate" }`.
+     * A tag with no entry renders neutral.
+     *
+     * Stored here rather than in a `tags` table because tags have no table:
+     * `quests.tags` is a denormalized `string[]` with no identity of its
+     * own, so a table would exist purely to hold a colour and would need a
+     * rename path, a delete path and a backfill to earn it. A map on the
+     * project is the smaller thing that answers the actual question, and an
+     * entry for a tag nobody uses any more is inert rather than wrong.
+     *
+     * A hash of the tag name was rejected: it needs no storage, but the
+     * moment anyone wants to change one colour it becomes a migration, and
+     * the palette and its picker already exist for `areas.color`.
+     *
+     * NB: `z.optional` with NO `db.default(...)`, like `retentionDays` and
+     * `defaultSurface` above — a column DEFAULT triggers the `projects`
+     * table rebuild that cascade-wipes children on D1.
+     */
+    tagColors: z.record(z.text(), paletteColorSchema).optional(),
     /**
      * @deprecated — the gold Shop / feature paywall was removed. Every
      * feature it used to sell (Reports, Quest Reminder, Quest Gating)

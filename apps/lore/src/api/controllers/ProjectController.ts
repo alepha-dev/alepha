@@ -35,6 +35,8 @@ import {
 import { quests } from "../entities/quests.ts";
 import type { User } from "../entities/users.ts";
 import { relations } from "../relations.ts";
+import { kanbanColumnConfigSchema } from "../schemas/kanbanColumnSchema.ts";
+import { paletteColorSchema } from "../schemas/paletteColorSchema.ts";
 import { projectActivityResultSchema } from "../schemas/projectActivitySchema.ts";
 import {
   projectOverviewResourceSchema,
@@ -433,6 +435,17 @@ export class ProjectController {
         // Blights retention window in days (Quest #90). `null` clears the
         // override → the purge cron falls back to the global 30-day default.
         retentionDays: z.integer().min(1).max(3_650).nullable().optional(),
+        // Which surface bare `/:projectSlug` lands on. `null` clears the
+        // override → the index route falls back to the quest table.
+        defaultSurface: z.enum(["list", "kanban"]).nullable().optional(),
+        // Colour token per quest tag. Sent whole, not merged: the settings
+        // picker holds the full map, and a partial merge gives no way to
+        // clear one tag's colour without inventing a "none" token.
+        tagColors: z.record(z.text(), paletteColorSchema).nullable().optional(),
+        // Per-column board settings, keyed by column name. Sent whole, not
+        // merged: removing a key is how a column's setting is cleared, and
+        // a server-side merge has no way to express that.
+        kanbanColumnConfig: kanbanColumnConfigSchema.nullable().optional(),
       }),
       response: projectResourceSchema,
     },
@@ -471,6 +484,18 @@ export class ProjectController {
 
       if ("retentionDays" in body) {
         project.retentionDays = body.retentionDays ?? undefined;
+      }
+
+      if ("defaultSurface" in body) {
+        project.defaultSurface = body.defaultSurface ?? undefined;
+      }
+
+      if ("tagColors" in body) {
+        project.tagColors = body.tagColors ?? undefined;
+      }
+
+      if ("kanbanColumnConfig" in body) {
+        project.kanbanColumnConfig = body.kanbanColumnConfig ?? undefined;
       }
 
       if ("preferredLanguage" in body) {
@@ -828,7 +853,19 @@ export class ProjectController {
       }
 
       const updated = current.map((c) => (c === body.oldName ? newName : c));
-      await this.projects.updateById(params.id, { kanbanColumns: updated });
+      // The settings map is keyed by name, so a rename has to carry the
+      // entry across or the column silently loses its status and its WIP
+      // limit — which for a `completed` column would quietly turn it back
+      // into an in-progress lane.
+      const config = { ...project.kanbanColumnConfig };
+      if (config[body.oldName]) {
+        config[newName] = config[body.oldName];
+        delete config[body.oldName];
+      }
+      await this.projects.updateById(params.id, {
+        kanbanColumns: updated,
+        kanbanColumnConfig: Object.keys(config).length ? config : undefined,
+      });
       return updated;
     },
   });
@@ -862,7 +899,17 @@ export class ProjectController {
       }
 
       const updated = current.filter((c) => c !== body.name);
-      await this.projects.updateById(params.id, { kanbanColumns: updated });
+      // Drop the deleted column's settings too. Leaving them would be inert
+      // today, but re-creating a column with the same name would silently
+      // resurrect a status and a WIP limit nobody asked for.
+      const remainingConfig = { ...project.kanbanColumnConfig };
+      delete remainingConfig[body.name];
+      await this.projects.updateById(params.id, {
+        kanbanColumns: updated,
+        kanbanColumnConfig: Object.keys(remainingConfig).length
+          ? remainingConfig
+          : undefined,
+      });
       return updated;
     },
   });
