@@ -5,13 +5,27 @@ export const notificationQuerySchema = pageQuerySchema.extend({
   /**
    * Filter by delivery state.
    *
-   * These are the `job_executions.status` values the notification outbox
-   * actually writes — `ok` and `error` are terminal, `scheduled` means a retry
-   * is pending. The enum previously advertised `retrying` / `completed` /
-   * `dead`, which nothing ever produced.
+   * ⚠️ These are the **receipt** statuses, not the job's. The admin list is
+   * backed by `notification_deliveries` rather than by `job_executions`,
+   * because "the provider accepted it" (`ok`) is not the question an
+   * operator is asking. `sent` means accepted; `delivered`, `bounced` and
+   * `complained` arrive later from the transport; `skipped` means the gate
+   * refused it and no message was ever sent.
+   *
+   * The previous vocabulary was the job's own (`pending`, `ok`, `error`, …)
+   * and is gone with the table it described.
    */
   status: z
-    .enum(["pending", "scheduled", "running", "ok", "error", "cancelled"])
+    .enum([
+      "sent",
+      "delivered",
+      "deferred",
+      "bounced",
+      "complained",
+      "failed",
+      "rejected",
+      "skipped",
+    ])
     .optional(),
 });
 

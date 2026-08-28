@@ -3,6 +3,7 @@ import {
   EmailError,
   type EmailProvider,
   type EmailSendOptions,
+  type EmailSendResult,
 } from "alepha/email";
 import { $logger } from "alepha/logger";
 
@@ -45,8 +46,8 @@ export class BrevoEmailProvider implements EmailProvider {
   protected readonly env = $env(envSchema);
   protected readonly log = $logger();
 
-  public async send(options: EmailSendOptions): Promise<void> {
-    const { to, subject, body } = options;
+  public async send(options: EmailSendOptions): Promise<EmailSendResult> {
+    const { to, subject, body, text, replyTo, headers, attachments } = options;
     this.log.info("Sending email via Brevo", { to, subject });
 
     const recipients = Array.isArray(to) ? to : [to];
@@ -64,18 +65,39 @@ export class BrevoEmailProvider implements EmailProvider {
           to: recipients.map((email) => ({ email })),
           subject,
           htmlContent: body,
+          // Brevo rejects an explicit null, so every optional field is
+          // omitted rather than sent empty. JSON.stringify drops undefined.
+          textContent: text,
+          replyTo: replyTo ? { email: replyTo } : undefined,
+          headers,
+          attachment: attachments?.length
+            ? attachments.map((file) => ({
+                name: file.filename,
+                content: this.toBase64(file.content),
+              }))
+            : undefined,
         }),
       });
 
       if (!response.ok) {
-        const text = await response.text();
-        throw new EmailError(`Brevo API returned ${response.status}: ${text}`);
+        const errorBody = await response.text();
+        throw new EmailError(
+          `Brevo API returned ${response.status}: ${errorBody}`,
+        );
       }
+
+      // The success body carries the id Brevo assigned, which the delivery
+      // receipts match inbound webhook events against. It used to be read on
+      // the failure path only and thrown away here.
+      const messageId = await this.readMessageId(response);
 
       this.log.info("Email sent successfully via Brevo", {
         to,
         subject,
+        messageId,
       });
+
+      return { messageId };
     } catch (error) {
       if (error instanceof EmailError) {
         throw error;
@@ -83,6 +105,46 @@ export class BrevoEmailProvider implements EmailProvider {
       const message = `Failed to send email via Brevo: ${error instanceof Error ? error.message : String(error)}`;
       this.log.error(message, { to, subject });
       throw new EmailError(message, error instanceof Error ? error : undefined);
+    }
+  }
+
+  /**
+   * Brevo wants attachment bytes base64'd into the JSON request.
+   *
+   * Hand-rolled rather than `Buffer`: this provider runs on workerd too.
+   * A string payload is encoded as UTF-8 first, so a text attachment does
+   * not arrive mangled.
+   */
+  protected toBase64(content: Uint8Array | string): string {
+    const bytes =
+      typeof content === "string" ? new TextEncoder().encode(content) : content;
+    let binary = "";
+    for (const byte of bytes) {
+      binary += String.fromCharCode(byte);
+    }
+    return btoa(binary);
+  }
+
+  /**
+   * Read Brevo's `messageId` out of an accepted response.
+   *
+   * A malformed or empty body is not a send failure: the API already
+   * answered 2xx, so the mail is on its way and only the receipt's ability
+   * to match a later webhook event is lost. Return undefined rather than
+   * throwing, which would make the job retry and send the mail twice.
+   */
+  protected async readMessageId(
+    response: Response,
+  ): Promise<string | undefined> {
+    try {
+      const payload = (await response.json()) as {
+        messageId?: string;
+        messageIds?: string[];
+      };
+      return payload?.messageId ?? payload?.messageIds?.[0];
+    } catch {
+      this.log.warn("Brevo accepted the message but returned no readable id");
+      return undefined;
     }
   }
 }

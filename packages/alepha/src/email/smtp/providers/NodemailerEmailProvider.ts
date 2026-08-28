@@ -1,8 +1,11 @@
+import { Buffer } from "node:buffer";
+
 import { $atom, $env, $hook, $store, type Infer, z } from "alepha";
 import {
   EmailError,
   type EmailProvider,
   type EmailSendOptions,
+  type EmailSendResult,
 } from "alepha/email";
 import { $logger } from "alepha/logger";
 import type { Transporter } from "nodemailer";
@@ -171,8 +174,8 @@ export class NodemailerEmailProvider implements EmailProvider {
     return this.transporter;
   }
 
-  public async send(options: EmailSendOptions): Promise<void> {
-    const { to, subject, body } = options;
+  public async send(options: EmailSendOptions): Promise<EmailSendResult> {
+    const { to, subject, body, text, replyTo, headers, attachments } = options;
     this.log.debug("Sending email via Nodemailer", { to, subject });
 
     try {
@@ -181,6 +184,22 @@ export class NodemailerEmailProvider implements EmailProvider {
         to,
         subject,
         html: body,
+        text,
+        replyTo,
+        headers,
+        // Mapped rather than passed through: nodemailer's `content` union is
+        // string | Buffer | Readable and does not include Uint8Array, which
+        // is what the runtime-neutral `EmailAttachment` carries. This
+        // provider is Node-only (it is nodemailer), so Buffer is available.
+        attachments: attachments?.map((file) => ({
+          filename: file.filename,
+          content:
+            typeof file.content === "string"
+              ? file.content
+              : Buffer.from(file.content),
+          contentType: file.contentType,
+          cid: file.cid,
+        })),
       });
 
       this.log.info("Email sent successfully", {
@@ -189,6 +208,8 @@ export class NodemailerEmailProvider implements EmailProvider {
         messageId: result.messageId,
         response: result.response,
       });
+
+      return { messageId: result.messageId };
     } catch (error) {
       const message = `Failed to send email via Nodemailer: ${error instanceof Error ? error.message : String(error)}`;
       this.log.error(message, { to, subject });

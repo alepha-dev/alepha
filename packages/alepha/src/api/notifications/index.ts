@@ -3,22 +3,61 @@ import { AlephaApiJobs } from "alepha/api/jobs";
 import { AlephaApiParameters } from "alepha/api/parameters";
 
 import { AdminNotificationController } from "./controllers/AdminNotificationController.ts";
+import { NotificationUnsubscribeController } from "./controllers/NotificationUnsubscribeController.ts";
+import { NotificationWebhookController } from "./controllers/NotificationWebhookController.ts";
 import { NotificationJobs } from "./jobs/NotificationJobs.ts";
 import { $notification } from "./primitives/$notification.ts";
+import { NotificationPreferenceProvider } from "./providers/NotificationPreferenceProvider.ts";
+import type { NotificationDeliveryEvent } from "./schemas/notificationDeliveryEventSchema.ts";
+import { NotificationAttachmentService } from "./services/NotificationAttachmentService.ts";
+import { NotificationDeliveryService } from "./services/NotificationDeliveryService.ts";
+import { NotificationIngestService } from "./services/NotificationIngestService.ts";
 import { NotificationSenderService } from "./services/NotificationSenderService.ts";
+import { NotificationSettings } from "./services/NotificationSettings.ts";
+import { NotificationSuppressionService } from "./services/NotificationSuppressionService.ts";
+import { NotificationUnsubscribeService } from "./services/NotificationUnsubscribeService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "./controllers/AdminNotificationController.ts";
+export * from "./controllers/NotificationUnsubscribeController.ts";
+export * from "./controllers/NotificationWebhookController.ts";
+export * from "./entities/notificationDeliveryEntity.ts";
+export * from "./entities/notificationSuppressionEntity.ts";
 export * from "./jobs/NotificationJobs.ts";
 export * from "./primitives/$notification.ts";
+export * from "./providers/NotificationPreferenceProvider.ts";
+export * from "./schemas/notificationAttachmentSchema.ts";
 export * from "./schemas/notificationContactPreferencesSchema.ts";
-export * from "./schemas/notificationContactSchema.ts";
+export * from "./schemas/notificationDeliveryEventSchema.ts";
 export * from "./schemas/notificationDetailResourceSchema.ts";
 export * from "./schemas/notificationPayloadSchema.ts";
 export * from "./schemas/notificationQuerySchema.ts";
 export * from "./schemas/notificationResourceSchema.ts";
+export * from "./schemas/notificationSuppressionResourceSchema.ts";
+export * from "./services/NotificationAttachmentService.ts";
+export * from "./services/NotificationDeliveryService.ts";
+export * from "./services/NotificationIngestService.ts";
 export * from "./services/NotificationSenderService.ts";
+export * from "./services/NotificationSettings.ts";
+export * from "./services/NotificationSuppressionService.ts";
+export * from "./services/NotificationUnsubscribeService.ts";
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+declare module "alepha" {
+  interface Hooks {
+    /**
+     * A transport reported something about a message it took earlier.
+     *
+     * Emitted by the ingestion consumers (Cloudflare Queues events, the
+     * Brevo webhook), consumed by the receipt writer and by the suppression
+     * writer. Nothing in the send path emits it: a send already knows its
+     * own outcome and writes the receipt directly.
+     */
+    "notification:delivery": NotificationDeliveryEvent;
+  }
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -49,7 +88,16 @@ export const AlephaApiNotifications = $module({
   primitives: [$notification],
   services: [
     NotificationSenderService,
+    NotificationSettings,
+    NotificationSuppressionService,
+    NotificationDeliveryService,
+    NotificationAttachmentService,
+    NotificationIngestService,
+    NotificationUnsubscribeService,
+    NotificationPreferenceProvider,
     NotificationJobs,
     AdminNotificationController,
+    NotificationUnsubscribeController,
+    NotificationWebhookController,
   ],
 });

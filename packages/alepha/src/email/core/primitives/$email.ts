@@ -6,9 +6,13 @@ import {
   Primitive,
 } from "alepha";
 
-import type { EmailSendOptions } from "../providers/EmailProvider.ts";
+import type {
+  EmailSendOptions,
+  EmailSendResult,
+} from "../providers/EmailProvider.ts";
 import { EmailProvider } from "../providers/EmailProvider.ts";
 import { MemoryEmailProvider } from "../providers/MemoryEmailProvider.ts";
+import { EmailHeaderPolicy } from "../services/EmailHeaderPolicy.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -67,6 +71,7 @@ export interface EmailPrimitiveOptions {
  */
 export class EmailPrimitive extends Primitive<EmailPrimitiveOptions> {
   protected readonly provider = this.$provider();
+  protected readonly headerPolicy = this.alepha.inject(EmailHeaderPolicy);
 
   public get name() {
     return this.options.name ?? `${this.config.propertyKey}`;
@@ -74,8 +79,15 @@ export class EmailPrimitive extends Primitive<EmailPrimitiveOptions> {
 
   /**
    * Send an email using the configured provider.
+   *
+   * @return the transport's receipt, whose `messageId` identifies the
+   * message (not the recipient) for later delivery events.
    */
-  public async send(options: EmailSendOptions): Promise<void> {
+  public async send(options: EmailSendOptions): Promise<EmailSendResult> {
+    // Before the hook, so a refused header never produces an
+    // `email:sending` a listener would have to compensate for.
+    this.headerPolicy.assertSafe(options.headers);
+
     await this.alepha.events.emit("email:sending", {
       to: options.to,
       template: this.name,
@@ -85,13 +97,16 @@ export class EmailPrimitive extends Primitive<EmailPrimitiveOptions> {
       },
     });
 
-    await this.provider.send(options);
+    const result = await this.provider.send(options);
 
     await this.alepha.events.emit("email:sent", {
       to: options.to,
       template: this.name,
       provider: this.provider,
+      messageId: result.messageId,
     });
+
+    return result;
   }
 
   protected $provider(): EmailProvider {

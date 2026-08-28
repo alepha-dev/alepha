@@ -35,3 +35,15 @@ Direct mode is the recommended default for small / cheap deployments
 ### Primitives
 
 - [`$notification`](/docs/reference-primitives-$notification) - Creates a notification primitive for managing email/SMS notification templates.
+
+### Providers
+
+- [`NotificationPreferenceProvider`](/docs/reference-providers-notificationpreferenceprovider) - The seam through which an app answers "does this contact accept this
+
+### Environment Variables
+
+Environment variables used to configure this module. These can be set in your `.env` file or through your deployment configuration.
+
+| Variable               | Type | Default | Description                                                                                                                                           |
+| ---------------------- | ---- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BREVO_WEBHOOK_SECRET` | text | -       | Shared secret Brevo must present on its transactional webhook, as ?secret= on the URL you register. Unset means the webhook route refuses every call. |

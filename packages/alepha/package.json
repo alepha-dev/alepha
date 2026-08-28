@@ -304,6 +304,11 @@
       "import": "./src/react/core/index.ts",
       "default": "./src/react/core/index.ts"
     },
+    "./react/email": {
+      "types": "./src/react/email/index.ts",
+      "import": "./src/react/email/index.ts",
+      "default": "./src/react/email/index.ts"
+    },
     "./react/form": {
       "types": "./src/react/form/index.ts",
       "import": "./src/react/form/index.ts",
@@ -755,6 +760,11 @@
         "types": "./dist/react/core/index.d.ts",
         "import": "./dist/react/core/index.js",
         "default": "./dist/react/core/index.js"
+      },
+      "./react/email": {
+        "types": "./dist/react/email/index.d.ts",
+        "import": "./dist/react/email/index.js",
+        "default": "./dist/react/email/index.js"
       },
       "./react/form": {
         "types": "./dist/react/form/index.d.ts",

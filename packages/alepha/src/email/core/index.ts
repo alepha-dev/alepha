@@ -7,6 +7,8 @@ import {
   localEmailOptions,
 } from "./providers/LocalEmailProvider.ts";
 import { MemoryEmailProvider } from "./providers/MemoryEmailProvider.ts";
+import { EmailHeaderPolicy } from "./services/EmailHeaderPolicy.ts";
+import { EmailTextRenderer } from "./services/EmailTextRenderer.ts";
 
 // Exports
 export * from "./errors/EmailError.ts";
@@ -14,6 +16,8 @@ export * from "./primitives/$email.ts";
 export * from "./providers/EmailProvider.ts";
 export * from "./providers/LocalEmailProvider.ts";
 export * from "./providers/MemoryEmailProvider.ts";
+export * from "./services/EmailHeaderPolicy.ts";
+export * from "./services/EmailTextRenderer.ts";
 
 // Hook declarations
 declare module "alepha" {
@@ -31,6 +35,16 @@ declare module "alepha" {
       to: string | string[];
       template: string;
       provider: EmailProvider;
+      /**
+       * The transport's id for the message, when it reported one. It
+       * identifies the message rather than the recipient: a send to several
+       * addresses carries one id.
+       *
+       * Notification mail does NOT reach this hook. The notification sender
+       * calls `EmailProvider.send()` directly rather than going through
+       * `$email`, so it reads the returned `EmailSendResult` instead.
+       */
+      messageId?: string;
     };
   }
 }
@@ -57,7 +71,7 @@ declare module "alepha" {
 export const AlephaEmail = $module({
   name: "alepha.email",
   primitives: [$email],
-  services: [EmailProvider],
+  services: [EmailProvider, EmailHeaderPolicy, EmailTextRenderer],
   variants: [MemoryEmailProvider, LocalEmailProvider],
   register: (alepha) => {
     if (alepha.isTest()) {

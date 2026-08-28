@@ -18,19 +18,10 @@ export * from "./providers/WorkerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-declare module "alepha" {
-  interface Hooks {
-    /**
-     * Cloudflare Workers queue message event.
-     *
-     * Emitted when a queue consumer receives a message in Cloudflare Workers.
-     */
-    "cloudflare:queue": {
-      queue: string;
-      message: string;
-    };
-  }
-}
+// The `cloudflare:queue` hook is declared in `index.ts`, not here: a
+// listener can live in any module, and those modules are typechecked
+// without this workerd-only entry. Declared only here, the hook name would
+// not exist as far as their compiler is concerned.
 
 // ---------------------------------------------------------------------------------------------------------------------
 

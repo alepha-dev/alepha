@@ -3,6 +3,7 @@ import {
   EmailError,
   type EmailProvider,
   type EmailSendOptions,
+  type EmailSendResult,
 } from "alepha/email";
 import { $logger } from "alepha/logger";
 
@@ -70,6 +71,12 @@ export interface CloudflareEmailSendMessage {
   bcc?: string | string[];
   reply_to?: string | string[];
   headers?: Record<string, string>;
+  attachments?: Array<{
+    filename: string;
+    content: string;
+    content_type?: string;
+    content_id?: string;
+  }>;
 }
 
 export interface CloudflareEmailSendResult {
@@ -151,8 +158,8 @@ export class CloudflareEmailProvider implements EmailProvider {
     },
   });
 
-  public async send(options: EmailSendOptions): Promise<void> {
-    const { to, subject, body } = options;
+  public async send(options: EmailSendOptions): Promise<EmailSendResult> {
+    const { to, subject, body, text, replyTo, headers, attachments } = options;
     if (!this.env.EMAIL_FROM) {
       throw new EmailError(
         "Cannot send email via Cloudflare: EMAIL_FROM env var is not set.",
@@ -160,11 +167,24 @@ export class CloudflareEmailProvider implements EmailProvider {
     }
     this.log.info("Sending email via Cloudflare", { to, subject });
 
+    // The wire interface has declared `text`, `reply_to` and `headers` since
+    // the binding shipped; this call simply never populated them.
     const message: CloudflareEmailSendMessage = {
       to: Array.isArray(to) ? to : [to],
       from: this.resolveFrom(this.env.EMAIL_FROM),
       subject,
       html: body,
+      text,
+      reply_to: replyTo,
+      headers,
+      attachments: attachments?.length
+        ? attachments.map((file) => ({
+            filename: file.filename,
+            content: this.toBase64(file.content),
+            content_type: file.contentType,
+            content_id: file.cid,
+          }))
+        : undefined,
     };
 
     try {
@@ -187,6 +207,10 @@ export class CloudflareEmailProvider implements EmailProvider {
         id: result?.id,
         status: result?.status,
       });
+
+      // One id per message, not per recipient: Cloudflare takes the whole
+      // `to` array as a single message (limit 50).
+      return { messageId: result?.id };
     } catch (error) {
       if (error instanceof EmailError) {
         throw error;
@@ -199,6 +223,22 @@ export class CloudflareEmailProvider implements EmailProvider {
       this.log.error(message, { to, subject });
       throw new EmailError(message, error instanceof Error ? error : undefined);
     }
+  }
+
+  /**
+   * Attachment bytes go on the wire base64'd.
+   *
+   * Hand-rolled rather than `Buffer`: this provider's whole point is that it
+   * runs on workerd.
+   */
+  protected toBase64(content: Uint8Array | string): string {
+    const bytes =
+      typeof content === "string" ? new TextEncoder().encode(content) : content;
+    let binary = "";
+    for (const byte of bytes) {
+      binary += String.fromCharCode(byte);
+    }
+    return btoa(binary);
   }
 
   /**

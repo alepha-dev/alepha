@@ -443,6 +443,11 @@ export class BuildCloudflareTask extends BuildTask {
   }
 
   protected enhanceQueue(wrangler: WranglerConfig): void {
+    // Consuming a queue this app does not produce to, so it is deliberately
+    // NOT gated on CLOUDFLARE_QUEUE_NAME: an app running jobs in direct mode
+    // still wants its bounce and complaint events.
+    this.enhanceEmailEventsQueue(wrangler);
+
     const queueName = process.env.CLOUDFLARE_QUEUE_NAME;
     if (!queueName) {
       return;
@@ -473,6 +478,35 @@ export class BuildCloudflareTask extends BuildTask {
       max_retries: Number.isSafeInteger(maxRetries)
         ? maxRetries
         : QUEUE_DEFAULT_MAX_RETRIES,
+    });
+  }
+
+  /**
+   * A second consumer, for the queue Cloudflare's Email Sending event
+   * subscription publishes to.
+   *
+   * **Consumer only, no producer binding.** This app does not write to that
+   * queue; Cloudflare does. It also does not need `CloudflareQueueProvider`,
+   * which throws on start when the `JOBS_QUEUE` binding is missing, so an
+   * app with no job queue at all can still ingest bounces.
+   *
+   * The subscription itself (queue, Email Sending source, one sending
+   * domain) is created in the dashboard or through the API, and is per
+   * domain: a marketing subdomain added later needs its own.
+   */
+  protected enhanceEmailEventsQueue(wrangler: WranglerConfig): void {
+    const queueName = process.env.CLOUDFLARE_EMAIL_EVENTS_QUEUE;
+    if (!queueName) {
+      return;
+    }
+
+    wrangler.queues ??= {};
+    wrangler.queues.consumers = wrangler.queues.consumers || [];
+    wrangler.queues.consumers.push({
+      queue: queueName,
+      dead_letter_queue:
+        process.env.CLOUDFLARE_EMAIL_EVENTS_DLQ_NAME || `${queueName}-dlq`,
+      max_retries: QUEUE_DEFAULT_MAX_RETRIES,
     });
   }
 

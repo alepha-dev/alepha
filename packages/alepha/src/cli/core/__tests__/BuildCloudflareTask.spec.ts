@@ -55,6 +55,8 @@ describe("BuildCloudflareTask", () => {
     "CLOUDFLARE_QUEUE_DLQ_NAME",
     "CLOUDFLARE_QUEUE_MAX_RETRIES",
     "CLOUDFLARE_ANALYTICS_DATASET",
+    "CLOUDFLARE_EMAIL_EVENTS_QUEUE",
+    "CLOUDFLARE_EMAIL_EVENTS_DLQ_NAME",
   ] as const;
   const saved: Record<string, string | undefined> = {};
   beforeEach(() => {
@@ -186,6 +188,49 @@ describe("BuildCloudflareTask", () => {
       createTask().testEnhanceQueue(wrangler);
 
       expect(wrangler.queues.consumers[0].max_retries).toBe(3);
+    });
+
+    /**
+     * Bounce and complaint ingestion consumes a queue Cloudflare fills, not
+     * one this app produces to. It therefore needs a consumer entry and no
+     * producer binding, and must not be gated on the job queue existing: an
+     * app running jobs in direct mode still wants its delivery events.
+     */
+    it("adds an email-events consumer with no producer binding", () => {
+      process.env.CLOUDFLARE_EMAIL_EVENTS_QUEUE = "email-events";
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceQueue(wrangler);
+
+      expect(wrangler.queues.consumers).toEqual([
+        {
+          queue: "email-events",
+          dead_letter_queue: "email-events-dlq",
+          max_retries: 3,
+        },
+      ]);
+      expect(wrangler.queues.producers).toBeUndefined();
+    });
+
+    it("declares both consumers when the app also has a job queue", () => {
+      process.env.CLOUDFLARE_QUEUE_NAME = "my-queue";
+      process.env.CLOUDFLARE_EMAIL_EVENTS_QUEUE = "email-events";
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceQueue(wrangler);
+
+      expect(
+        wrangler.queues.consumers.map((c: { queue: string }) => c.queue).sort(),
+      ).toEqual(["email-events", "my-queue"]);
+      // Still exactly one producer: the app writes to its job queue only.
+      expect(wrangler.queues.producers).toHaveLength(1);
+    });
+
+    it("adds nothing when neither queue is configured", () => {
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceQueue(wrangler);
+
+      expect(wrangler.queues).toBeUndefined();
     });
   });
 

@@ -356,7 +356,7 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
   if (features.parameters) {
     alepha.with(AlephaApiParameters);
     const settingsParam = $parameter({
-      name: `api.realms.settings.${name}`,
+      name: `api.realms.${name}`,
       description: `Authentication and registration settings for realm "${name}"`,
       schema: realmAuthSettingsAtom.schema,
       default: realmRegistration.settings,

@@ -110,7 +110,9 @@ class App {
 ```
 
 The feature flag is all it takes - it registers the notifications module
-itself, so there is no separate import to remember:
+itself, so there is no separate import to remember. What that module then
+does with the mail (templates, suppression, unsubscribe, delivery receipts)
+is covered in [Notifications and Email](/docs/guides-server-notifications).
 
 ```typescript check
 import { $realm } from "alepha/api/users";

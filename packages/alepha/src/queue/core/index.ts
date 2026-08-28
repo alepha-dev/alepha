@@ -15,6 +15,48 @@ export * from "./providers/WorkerProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+declare module "alepha" {
+  interface Hooks {
+    /**
+     * Cloudflare Workers queue message event.
+     *
+     * Emitted for every message a queue consumer receives, with the body
+     * passed through verbatim. Only the workerd build ever emits it, but the
+     * NAME is declared here as well as in `index.workerd.ts`: a listener can
+     * live in any module (bounce ingestion does), and those modules are
+     * typechecked without the workerd entry. Declared in one place only, the
+     * hook name does not exist as far as their compiler is concerned.
+     *
+     * ⚠️ **The body is not always alepha's envelope.** `{ queue, message }`
+     * is what `$job` puts on its own queue, but a Worker can consume queues
+     * it did not fill: Cloudflare's Email Sending event subscriptions
+     * deliver `{ type: "cf.email.sending.…", source, payload, metadata }` to
+     * the same handler. Both shapes arrive here, so every field is optional
+     * and every listener must recognise its own body and return quietly on
+     * anything else. A listener that warns about bodies meant for another
+     * one is how a log budget disappears.
+     */
+    "cloudflare:queue": {
+      /**
+       * Present on alepha's own envelope, absent on a provider event.
+       */
+      queue?: string;
+      message?: string;
+      /**
+       * Present on a Cloudflare event subscription message, e.g.
+       * `cf.email.sending.message.bounced`.
+       */
+      type?: string;
+      /**
+       * Anything else the producer put on the wire.
+       */
+      [key: string]: unknown;
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 /**
  * Message transport used under `$job`. **Not an application-facing API.**
  *

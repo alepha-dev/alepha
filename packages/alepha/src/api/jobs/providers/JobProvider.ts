@@ -72,6 +72,14 @@ export interface PushManyItem<T extends ZType = ZType> {
   delay?: DurationLike;
   priority?: JobPriority;
   scheduledAt?: Date;
+  /**
+   * Owning tenant for this row, per item.
+   *
+   * `pushMany` takes no batch-level options, so per-item is the only place
+   * it can go. A fan-out over a roster is usually one tenant repeated, but
+   * nothing here assumes that.
+   */
+  organizationId?: string;
 }
 
 export interface JobTriggerContext<T extends ZType = ZType> {
@@ -815,6 +823,7 @@ export class JobProvider {
       priority: number;
       maxAttempts: number;
       scheduledAt?: string;
+      organizationId?: string;
     }> = [];
 
     for (const item of items) {
@@ -841,6 +850,7 @@ export class JobProvider {
         priority: PRIORITY_MAP[item.priority ?? opts.priority ?? "normal"],
         maxAttempts,
         scheduledAt,
+        organizationId: item.organizationId,
       });
     }
 
@@ -852,6 +862,11 @@ export class JobProvider {
         delay: item.delay,
         priority: item.priority,
         scheduledAt: item.scheduledAt,
+        // The third place. Adding the field to `PushManyItem` and to the
+        // bulk builder is not enough: keyed items never touch the bulk
+        // insert, so without this line every keyed row silently loses its
+        // tenant and the admin list stops showing it.
+        organizationId: item.organizationId,
       });
       ids.push(id);
     }

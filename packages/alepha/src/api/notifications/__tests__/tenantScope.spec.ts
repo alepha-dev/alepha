@@ -1,7 +1,6 @@
 import { Alepha, AlephaError } from "alepha";
-import { AlephaApiJobs, type jobExecutionEntity } from "alepha/api/jobs";
+import { AlephaApiJobs } from "alepha/api/jobs";
 import { AlephaEmail } from "alepha/email";
-import type { Repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import {
   AlephaSecurity,
@@ -13,21 +12,20 @@ import { describe, expect, it } from "vitest";
 
 import { AdminNotificationController } from "../controllers/AdminNotificationController.ts";
 import { AlephaApiNotifications } from "../index.ts";
+import { NotificationDeliveryService } from "../services/NotificationDeliveryService.ts";
 
 /**
- * `job_executions` is deliberately not an org-scoped entity, so the ORM's own
- * fail-closed guard never fires on it: this controller's own checks are the
- * whole gate. All three were written as `if (org) { filter }`, which turns an
- * unresolved tenant into *no filter* — on a pooled multi-tenant worker, an
- * admin reading and deleting every tenant's notifications.
+ * Neither `job_executions` nor `notification_deliveries` is an org-scoped
+ * entity, so the ORM's own fail-closed guard never fires on them: this
+ * controller's own checks are the whole gate. They were once written as
+ * `if (org) { filter }`, which turns an unresolved tenant into *no filter* -
+ * on a pooled multi-tenant worker, an admin reading and deleting every
+ * tenant's notifications.
+ *
+ * The list moved from the outbox to the receipts in #1269. The gate did not,
+ * and this suite is what says so.
  */
 class TestAdminController extends AdminNotificationController {
-  public get repo(): Repository<typeof jobExecutionEntity.schema> {
-    return this.executions as never;
-  }
-  public get job(): string {
-    return this.jobName;
-  }
   public listPage(query: Record<string, unknown>) {
     return this.list(query as never);
   }
@@ -46,15 +44,21 @@ const setup = async () => {
     .with(AlephaApiNotifications);
 
   const controller = alepha.inject(TestAdminController);
+  const deliveries = alepha.inject(NotificationDeliveryService);
   await alepha.start();
 
+  let n = 0;
   const seed = async (organizationId?: string) => {
-    await controller.repo.create({
-      jobName: controller.job,
-      status: "ok",
-      payload: { template: "welcome" },
-      ...(organizationId ? { organizationId } : {}),
-    } as never);
+    n += 1;
+    await deliveries.record({
+      executionId: `exec-${n}`,
+      organizationId: organizationId ?? null,
+      provider: "MemoryEmailProvider",
+      channel: "email",
+      contact: "a@example.com",
+      template: "welcome",
+      status: "sent",
+    });
   };
 
   return { alepha, controller, seed };
@@ -63,7 +67,7 @@ const setup = async () => {
 const ORG_A = "a0000000-0000-0000-0000-000000000001";
 const ORG_B = "b0000000-0000-0000-0000-000000000002";
 
-describe("admin notification outbox — tenant scope", () => {
+describe("admin notification list — tenant scope", () => {
   it("single-tenant: no tenant resolved, everything is this app's", async () => {
     const { controller, seed } = await setup();
     await seed();

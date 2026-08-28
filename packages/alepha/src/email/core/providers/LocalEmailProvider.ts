@@ -3,7 +3,11 @@ import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
 import { EmailError } from "../errors/EmailError.ts";
-import type { EmailProvider, EmailSendOptions } from "./EmailProvider.ts";
+import type {
+  EmailProvider,
+  EmailSendOptions,
+  EmailSendResult,
+} from "./EmailProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -61,14 +65,19 @@ export class LocalEmailProvider implements EmailProvider {
     },
   });
 
-  public async send(options: EmailSendOptions): Promise<void> {
-    const { to, subject, body } = options;
+  public async send(options: EmailSendOptions): Promise<EmailSendResult> {
+    const { to, subject, body, text, replyTo, headers, attachments } = options;
 
     this.log.debug("Sending email to local file", {
       to,
       subject,
       directory: this.directory,
     });
+
+    // One id for the message, shared by every per-recipient file this call
+    // writes, matching what a real transport reports for a multi-recipient
+    // send.
+    const messageId = crypto.randomUUID();
 
     try {
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -77,7 +86,23 @@ export class LocalEmailProvider implements EmailProvider {
         const filename = `${sanitizedEmail},${timestamp}.eml.json`;
         const filepath = this.fs.join(this.directory, filename);
 
-        const content = this.createEmailJson({ to: recipient, subject, body });
+        const content = this.createEmailJson({
+          to: recipient,
+          subject,
+          body,
+          text,
+          replyTo,
+          headers,
+          // Names and sizes, never the bytes. This file is for a human to
+          // read in the dev outbox, and a base64'd PDF in it makes the whole
+          // capture unreadable.
+          attachments: attachments?.map((file) => ({
+            filename: file.filename,
+            contentType: file.contentType,
+            bytes: file.content.length,
+          })),
+          messageId,
+        });
         await this.fs.writeFile(filepath, JSON.stringify(content, null, 2));
 
         this.log.info("Email saved to local file", { filepath, to, subject });
@@ -87,17 +112,47 @@ export class LocalEmailProvider implements EmailProvider {
       this.log.error(message, { to, subject, directory: this.directory });
       throw new EmailError(message, error instanceof Error ? error : undefined);
     }
+
+    return { messageId };
   }
 
   public createEmailJson(options: {
     to: string;
     subject: string;
     body: string;
-  }): { to: string; subject: string; body: string; sentAt: string } {
+    text?: string;
+    replyTo?: string;
+    headers?: Record<string, string>;
+    attachments?: Array<{
+      filename: string;
+      contentType?: string;
+      bytes: number;
+    }>;
+    messageId?: string;
+  }): {
+    to: string;
+    subject: string;
+    body: string;
+    text?: string;
+    replyTo?: string;
+    headers?: Record<string, string>;
+    attachments?: Array<{
+      filename: string;
+      contentType?: string;
+      bytes: number;
+    }>;
+    messageId?: string;
+    sentAt: string;
+  } {
     return {
       to: options.to,
       subject: options.subject,
       body: options.body,
+      text: options.text,
+      replyTo: options.replyTo,
+      headers: options.headers,
+      attachments: options.attachments,
+      messageId: options.messageId,
       sentAt: new Date().toISOString(),
     };
   }

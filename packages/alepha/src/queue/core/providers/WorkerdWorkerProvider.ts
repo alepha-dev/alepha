@@ -60,7 +60,22 @@ export class WorkerdWorkerProvider extends WorkerProvider {
    */
   protected readonly onQueueMessage = $hook({
     on: "cloudflare:queue",
-    handler: async (event: { queue: string; message: string }) => {
+    handler: async (event) => {
+      if (
+        typeof event.queue !== "string" ||
+        typeof event.message !== "string"
+      ) {
+        // Not alepha's envelope. A Worker can consume queues it did not
+        // fill - Cloudflare's Email Sending events land on this same hook -
+        // and those belong to another listener. Debug, never warn: two
+        // consumers sharing one hook means every message reaches both, and
+        // a warn per message per consumer is a log budget gone.
+        this.log.debug("Ignoring a queue message that is not alepha's", {
+          type: typeof event.type === "string" ? event.type : undefined,
+        });
+        return;
+      }
+
       const consumer = this.consumers.find((c) => c.name === event.queue);
 
       if (!consumer) {

@@ -27,7 +27,7 @@ describe("alepha/api/users - $realm with parameters", () => {
     const realm = realmProvider.getRealm();
 
     expect(realm.settingsParameter).toBeDefined();
-    expect(realm.settingsParameter!.name).toBe("api.realms.settings.default");
+    expect(realm.settingsParameter!.name).toBe("api.realms.default");
   });
 
   it("should not create settingsParameter when features.parameters is false", async ({
