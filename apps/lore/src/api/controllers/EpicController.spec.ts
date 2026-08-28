@@ -11,10 +11,12 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import {
   createTestEpic,
   createTestFolio,
+  createTestMember,
   createTestProject,
   createTestQuest,
   TestEntityRepositories,
 } from "../../../test/fixtures/entities.ts";
+import type { Project } from "../entities/projects.ts";
 import { LoreApi } from "../index.ts";
 import { EpicController } from "./EpicController.ts";
 
@@ -76,6 +78,25 @@ const strangerToken = (): UserAccountToken => ({
   id: crypto.randomUUID(),
   roles: ["user"],
 });
+
+/**
+ * A token for somebody who belongs to the project without owning it.
+ *
+ * Unlike {@link strangerToken} this has to touch the database: `members`
+ * carries a real FK on `userId`, so a membership row for an invented uuid
+ * fails the insert. `owner: false` is what makes the token meaningful —
+ * `createTestMember` defaults that flag to `true`, and while
+ * `ProjectSecurityService` reads only `project.createdBy`, a row claiming
+ * ownership would make the fixture lie about what it is testing.
+ */
+const memberToken = async (
+  ctx: TestContext,
+  project: Project,
+): Promise<UserAccountToken> => {
+  const user = await ctx.repos.users.create({});
+  await createTestMember(ctx.alepha, project, user.id, { owner: false });
+  return { id: user.id, roles: ["user"] };
+};
 
 describe("EpicController", () => {
   let ctx: TestContext;
@@ -390,7 +411,7 @@ describe("EpicController", () => {
     ).rejects.toThrowError(BadRequestError);
   });
 
-  it("refuses to mutate an epic for a non-owner", async ({ expect }) => {
+  it("refuses to mutate an epic for a non-member", async ({ expect }) => {
     const project = await createTestProject(ctx.alepha);
     const epic = await createTestEpic(ctx.alepha, project);
     const stranger = strangerToken();
@@ -401,6 +422,53 @@ describe("EpicController", () => {
         { user: stranger },
       ),
     ).rejects.toThrowError(ForbiddenError);
+  });
+
+  /**
+   * The gate is membership, not ownership — a plain member creates epics
+   * exactly as they create the quests and folios an epic groups.
+   */
+  it("lets a plain member create, rename and activate an epic", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const member = await memberToken(ctx, project);
+
+    const created = await ctx.controller.createEpic(
+      {
+        params: { projectId: project.id },
+        body: { title: "Member's epic" },
+      },
+      { user: member },
+    );
+    expect(created.title).toBe("Member's epic");
+
+    const renamed = await ctx.controller.updateEpic(
+      { params: { id: created.id }, body: { title: "Renamed by member" } },
+      { user: member },
+    );
+    expect(renamed.title).toBe("Renamed by member");
+
+    const activated = await ctx.controller.setEpicStatus(
+      { params: { id: created.id }, body: { status: "active" } },
+      { user: member },
+    );
+    expect(activated.status).toBe("active");
+  });
+
+  it("lets a plain member attach a quest to an epic", async ({ expect }) => {
+    const project = await createTestProject(ctx.alepha);
+    const member = await memberToken(ctx, project);
+
+    const epic = await createTestEpic(ctx.alepha, project);
+    const quest = await createTestQuest(ctx.alepha, project);
+
+    const withQuest = await ctx.controller.attachQuest(
+      { params: { id: epic.id }, body: { questId: quest.id } },
+      { user: member },
+    );
+
+    expect(withQuest.questCount).toBe(1);
   });
 
   it("counts only planned epics, and only this project's", async ({
