@@ -8,7 +8,9 @@ import {
   $job,
   AlephaApiJobs,
   AlephaApiJobsQueue,
+  DirectJobDispatcher,
   JobProvider,
+  type SweepEntry,
   jobConfig,
   jobExecutionEntity,
 } from "../index.ts";
@@ -400,5 +402,113 @@ describe("$job — lease renewal for long-running jobs", () => {
       { label: "lease renewed while running", timeout: 1400 },
     );
     expect(renewed[0].updatedAt > leaseAtClaim).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+/**
+ * Accepts every dispatch and does nothing with it, so a swept row keeps the
+ * status the sweep left it in.
+ */
+class SilentJobDispatcher extends DirectJobDispatcher {
+  public override async dispatch(): Promise<void> {}
+}
+
+/**
+ * Records which sweep phase claimed which row, without changing what any
+ * phase actually does.
+ */
+class SweepTableJobProvider extends JobProvider {
+  public readonly claimed: Array<{ label: string; id: string }> = [];
+  public testSweep = this.sweep.bind(this);
+
+  protected override sweepTable(): SweepEntry[] {
+    return super.sweepTable().map((entry) => ({
+      ...entry,
+      act: async (exec, registration) => {
+        this.claimed.push({ label: entry.label, id: exec.id });
+        await entry.act(exec, registration);
+      },
+    }));
+  }
+}
+
+describe("$job — the sweep table", () => {
+  it("claims each status at most once per tick, and never a terminal one", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with({ provide: JobProvider, use: SweepTableJobProvider })
+      // Nothing may run behind the sweep's back. A real dispatcher takes the
+      // row it was just handed out of `pending` within milliseconds, so a
+      // later phase looking at `pending` would find nothing and the test
+      // would pass whether or not the phases overlap.
+      .with({ provide: DirectJobDispatcher, use: SilentJobDispatcher })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs);
+
+    class SweepTableApp {
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        schema: z.object({ v: z.integer() }),
+        handler: async () => {},
+      });
+    }
+    const app = alepha.inject(SweepTableApp);
+    await alepha.start();
+
+    // Old enough for every threshold in the table at once. Anything left
+    // unclaimed below is unclaimed because of its status, never its age.
+    const longAgo = alepha
+      .inject(DateTimeProvider)
+      .now()
+      .subtract(4, "hour")
+      .toISOString();
+
+    const statuses = [
+      "pending",
+      "running",
+      "scheduled",
+      "ok",
+      "error",
+      "cancelled",
+    ] as const;
+
+    const rows: Record<string, string> = {};
+    for (const status of statuses) {
+      const row = await app.executions.create({
+        jobName: "SweepTableApp.work",
+        status,
+        priority: 2,
+        attempt: 1,
+        maxAttempts: 1,
+        payload: { v: 1 },
+        createdAt: longAgo,
+        updatedAt: longAgo,
+        scheduledAt: longAgo,
+        startedAt: longAgo,
+      });
+      rows[status] = row.id;
+    }
+
+    const jobs = alepha.inject(JobProvider) as SweepTableJobProvider;
+    await jobs.testSweep();
+
+    const claimsFor = (id: string) =>
+      jobs.claimed.filter((c) => c.id === id).map((c) => c.label);
+
+    expect(claimsFor(rows.pending)).toEqual(["redispatch-stale"]);
+    expect(claimsFor(rows.running)).toEqual(["recover-crashed"]);
+
+    // The regression this table exists for: promote-due lifts the scheduled
+    // row to `pending`, and redispatch-stale must NOT then claim the row it
+    // has just touched. It used to, because it aged rows by `createdAt`.
+    expect(claimsFor(rows.scheduled)).toEqual(["promote-due"]);
+
+    // Terminal rows are owned by no entry at all.
+    expect(claimsFor(rows.ok)).toEqual([]);
+    expect(claimsFor(rows.error)).toEqual([]);
+    expect(claimsFor(rows.cancelled)).toEqual([]);
   });
 });

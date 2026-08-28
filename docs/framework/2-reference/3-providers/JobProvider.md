@@ -27,11 +27,12 @@ Cron flow:
 scheduler tick → claim the instant → acquire lock → executeInline (no retry)
 → enqueue + dispatch (retry declared)
 
-Sweep responsibilities (every `sweepCron`):
+Sweep responsibilities (every `sweepCron`), one per status, declared in
+`sweepTable()`:
 
-- re-enqueue pending rows older than `staleThreshold`
-- mark crashed running rows as failed and apply retry policy
-- move `scheduled` rows with `scheduledAt <= now` to pending + dispatch
+- `scheduled` with `scheduledAt <= now` → pending + dispatch
+- `pending` untouched for `staleThreshold` → re-dispatch
+- `running` past its lease → failed, then the retry policy
 
 Trim runs on its own cron (`trimCron`, default hourly):
 

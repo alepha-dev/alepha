@@ -23,6 +23,7 @@ import {
 import { CronProvider } from "alepha/scheduler";
 
 import {
+  type JobExecutionEntity,
   type JobStatus,
   jobExecutionEntity,
 } from "../entities/jobExecutionEntity.ts";
@@ -102,7 +103,7 @@ export interface CancelContext {
  * the admin schema. Don't conflate the two: a `queue` kind can run as
  * `direct` at runtime when no queue dispatcher is loaded.
  */
-interface JobRuntimeRegistration {
+export interface JobRuntimeRegistration {
   name: string;
   options: JobPrimitiveOptions;
   kind: "cron" | "queue";
@@ -111,6 +112,43 @@ interface JobRuntimeRegistration {
 export type JobEffectiveMode = "cron" | "queue" | "direct";
 
 // -----------------------------------------------------------------------------------------------------------------
+
+/**
+ * One row of the sweep's recovery table — see `JobProvider.sweepTable()`.
+ */
+export interface SweepEntry {
+  /** Phase name, used for log lines and failure containment. */
+  label: string;
+
+  /**
+   * The single status this entry owns. No two entries share one: that is
+   * what makes "at most one phase claims a row per tick" structural rather
+   * than something each phase has to remember.
+   */
+  status: JobStatus;
+
+  /** Narrow further, in SQL. Mutates the where object in place. */
+  where: (where: Record<string, any>, now: DateTime) => void;
+
+  /** Optional ordering, for phases where priority should be respected. */
+  orderBy?: {
+    column: keyof JobExecutionEntity;
+    direction: "asc" | "desc";
+  };
+
+  /** Anything SQL cannot express, evaluated per row. Defaults to "yes". */
+  claims?: (
+    exec: JobExecutionEntity,
+    registration: JobRuntimeRegistration,
+    now: DateTime,
+  ) => boolean;
+
+  /** What to do with a claimed row. */
+  act: (
+    exec: JobExecutionEntity,
+    registration: JobRuntimeRegistration,
+  ) => Promise<void>;
+}
 
 /**
  * Coordinates cron and push jobs with a durable outbox table and a single
@@ -132,10 +170,11 @@ export type JobEffectiveMode = "cron" | "queue" | "direct";
  *   scheduler tick → claim the instant → acquire lock → executeInline (no retry)
  *                                                     → enqueue + dispatch (retry declared)
  *
- * Sweep responsibilities (every `sweepCron`):
- *   - re-enqueue pending rows older than `staleThreshold`
- *   - mark crashed running rows as failed and apply retry policy
- *   - move `scheduled` rows with `scheduledAt <= now` to pending + dispatch
+ * Sweep responsibilities (every `sweepCron`), one per status, declared in
+ * `sweepTable()`:
+ *   - `scheduled` with `scheduledAt <= now` → pending + dispatch
+ *   - `pending` untouched for `staleThreshold` → re-dispatch
+ *   - `running` past its lease → failed, then the retry policy
  *
  * Trim runs on its own cron (`trimCron`, default hourly):
  *   - per-job history trimmed beyond `keepLastSuccess` / `keepLastError`
@@ -1370,14 +1409,136 @@ export class JobProvider {
     if (this.stopping) return;
     this.log.trace("Starting job sweep");
     const now = this.dt.now();
-    const nowIso = now.toISOString();
 
     // Each phase is contained independently: one failing phase (or one bad
     // row inside it) must not skip the others until the next tick, which is
     // 15 minutes away by default.
-    await this.sweepPhase("promote-due", () => this.sweepDue(nowIso));
-    await this.sweepPhase("redispatch-stale", () => this.sweepStale(now));
-    await this.sweepPhase("recover-crashed", () => this.sweepCrashed(now));
+    for (const entry of this.sweepTable()) {
+      await this.sweepPhase(entry.label, () => this.runSweepEntry(entry, now));
+    }
+  }
+
+  /**
+   * The sweep's recovery table: one entry per status the sweep may act on.
+   *
+   * This is data rather than three hand-written phases because the three used
+   * to disagree with each other. `redispatch-stale` measured age from
+   * `createdAt`, a column that never moves, so a row that `promote-due` had
+   * just lifted to `pending` in the SAME tick looked stale immediately and
+   * was dispatched a second time - every delayed job and every retry was
+   * delivered twice, forever, because `createdAt` only gets older.
+   *
+   * Two rules keep the entries honest, and both are visible here rather than
+   * spread across three methods:
+   *
+   * - **The statuses are disjoint.** No row can be claimed by two entries in
+   *   one tick. `ok`, `error` and `cancelled` appear nowhere, which is what
+   *   makes "the sweep never touches a terminal row" a property of the table
+   *   instead of an accident.
+   * - **One clock.** Staleness is `updatedAt`, the same value the lease
+   *   heartbeat renews, never `createdAt`.
+   */
+  protected sweepTable(): SweepEntry[] {
+    return [
+      {
+        label: "promote-due",
+        status: "scheduled",
+        orderBy: { column: "priority", direction: "asc" },
+        // Due when its own scheduledAt has arrived.
+        where: (where, now) => {
+          where.scheduledAt = { lte: now.toISOString() };
+        },
+        act: (exec) => this.promoteDue(exec),
+      },
+      {
+        label: "redispatch-stale",
+        status: "pending",
+        orderBy: { column: "priority", direction: "asc" },
+        // Pending and untouched for `staleThreshold`: the delivery was lost.
+        // `updatedAt` is the clock; the `createdAt` bound is redundant with
+        // it (a row is never updated before it is created) and is there only
+        // so the (jobName, status, createdAt) index can still be seeked.
+        where: (where, now) => {
+          const staleIso = now
+            .subtract(this.config.staleThreshold, "millisecond")
+            .toISOString();
+          where.createdAt = { lte: staleIso };
+          where.updatedAt = { lte: staleIso };
+        },
+        act: (exec) => this.dispatchSafe(exec.jobName, exec.id),
+      },
+      {
+        label: "recover-crashed",
+        status: "running",
+        // No SQL bound: the lease length is per job, so the threshold cannot
+        // be expressed as one comparison across the whole result set.
+        where: () => {},
+        claims: (exec, registration, now) => {
+          if (this.abortControllers.has(exec.id)) return false; // alive here
+          // The lease is whichever is fresher: the claim (startedAt) or the
+          // last heartbeat (updatedAt). A legitimately long-running job on
+          // another instance keeps renewing; only a stale lease is a crash.
+          const lastAliveMs = Math.max(
+            exec.startedAt ? new Date(exec.startedAt).getTime() : 0,
+            exec.updatedAt ? new Date(exec.updatedAt).getTime() : 0,
+          );
+          if (lastAliveMs === 0) return false;
+          return (
+            now.valueOf() - lastAliveMs > this.crashThresholdMs(registration)
+          );
+        },
+        act: (exec, registration) => this.recoverCrashed(exec, registration),
+      },
+    ];
+  }
+
+  /**
+   * Run one entry of the sweep table: read the rows it owns, drop the ones
+   * its own predicate rejects, and act on the rest. Per-row containment lives
+   * in the actions, so one unrecoverable row cannot strand the others.
+   */
+  protected async runSweepEntry(
+    entry: SweepEntry,
+    now: DateTime,
+  ): Promise<void> {
+    const where = this.executions.createQueryWhere();
+    where.status = { eq: entry.status };
+    entry.where(where, now);
+
+    const rows = await this.executions.findMany({
+      where,
+      ...(entry.orderBy ? { orderBy: entry.orderBy } : {}),
+    });
+
+    for (const exec of rows) {
+      const registration = this.jobs.get(exec.jobName);
+      if (!registration) continue;
+      if (entry.claims && !entry.claims(exec, registration, now)) continue;
+      await entry.act(exec, registration);
+    }
+  }
+
+  /**
+   * Sweep action for `recover-crashed`: the instance that claimed this row is
+   * gone, so fail it here and let the retry policy decide what happens next.
+   */
+  protected async recoverCrashed(
+    exec: JobExecutionEntity,
+    registration: JobRuntimeRegistration,
+  ): Promise<void> {
+    this.log.warn(
+      `Sweep: marking crashed ${exec.jobName} (${exec.id}) as failed`,
+    );
+    const error = new Error("Execution assumed crashed (recovered by sweep)");
+    // Per-row containment: one unrecoverable row must not strand the
+    // remaining crashed executions until the next tick.
+    try {
+      await this.handleFailure(exec.id, registration, exec.attempt, error);
+    } catch (e) {
+      this.log.error(`Sweep failed to recover crashed execution ${exec.id}`, {
+        error: e,
+      });
+    }
   }
 
   protected async sweepPhase(
@@ -1388,85 +1549,6 @@ export class JobProvider {
       await phase();
     } catch (error) {
       this.log.error(`Sweep phase '${label}' failed`, { error });
-    }
-  }
-
-  /**
-   * Phase 1: due `scheduled` rows → pending + dispatch.
-   */
-  protected async sweepDue(nowIso: string): Promise<void> {
-    const dueWhere = this.executions.createQueryWhere();
-    dueWhere.status = { eq: "scheduled" };
-    dueWhere.scheduledAt = { lte: nowIso };
-    const due = await this.executions.findMany({
-      where: dueWhere,
-      orderBy: { column: "priority", direction: "asc" },
-    });
-    for (const exec of due) {
-      if (!this.jobs.has(exec.jobName)) continue;
-      await this.promoteDue(exec);
-    }
-  }
-
-  /**
-   * Phase 2: stale `pending` rows → re-dispatch.
-   */
-  protected async sweepStale(now: DateTime): Promise<void> {
-    const staleIso = now
-      .subtract(this.config.staleThreshold, "millisecond")
-      .toISOString();
-    const staleWhere = this.executions.createQueryWhere();
-    staleWhere.status = { eq: "pending" };
-    staleWhere.createdAt = { lte: staleIso };
-    const stale = await this.executions.findMany({
-      where: staleWhere,
-      orderBy: { column: "priority", direction: "asc" },
-    });
-    for (const exec of stale) {
-      if (!this.jobs.has(exec.jobName)) continue;
-      await this.dispatchSafe(exec.jobName, exec.id);
-    }
-  }
-
-  /**
-   * Phase 3: crashed `running` rows → mark failed + apply retry.
-   */
-  protected async sweepCrashed(now: DateTime): Promise<void> {
-    const runningWhere = this.executions.createQueryWhere();
-    runningWhere.status = { eq: "running" };
-    const running = await this.executions.findMany({ where: runningWhere });
-    const nowMs = now.valueOf();
-    for (const exec of running) {
-      const reg = this.jobs.get(exec.jobName);
-      if (!reg) continue;
-      if (this.abortControllers.has(exec.id)) continue; // still alive locally
-      const crashThresholdMs = this.crashThresholdMs(reg);
-      const startedAtMs = exec.startedAt
-        ? new Date(exec.startedAt).getTime()
-        : 0;
-      // The lease is whichever is fresher: the claim (startedAt) or the
-      // last heartbeat (updatedAt). A legitimately long-running job on
-      // another instance keeps renewing; only a stale lease is a crash.
-      const heartbeatMs = exec.updatedAt
-        ? new Date(exec.updatedAt).getTime()
-        : 0;
-      const lastAliveMs = Math.max(startedAtMs, heartbeatMs);
-      if (lastAliveMs > 0 && nowMs - lastAliveMs > crashThresholdMs) {
-        this.log.warn(
-          `Sweep: marking crashed ${exec.jobName} (${exec.id}) as failed`,
-        );
-        const err = new Error("Execution assumed crashed (recovered by sweep)");
-        // Per-row containment: one unrecoverable row must not strand the
-        // remaining crashed executions until the next tick.
-        try {
-          await this.handleFailure(exec.id, reg, exec.attempt, err);
-        } catch (error) {
-          this.log.error(
-            `Sweep failed to recover crashed execution ${exec.id}`,
-            { error },
-          );
-        }
-      }
     }
   }
 
