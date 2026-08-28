@@ -2,6 +2,7 @@ import { cn } from "@alepha/ui/lib/utils";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 
+import { byPriorityDesc } from "@/api/schemas/questPriority.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
 import QuestItem from "./QuestItem.tsx";
@@ -34,9 +35,7 @@ const QuestGroup = (props: QuestGroupProps) => {
   // Highest priority first. This used to sort by difficulty, which is
   // gone — priority is the field that actually answers "which of these
   // first", and it is the same order the table offers.
-  const quests = [...props.quests].sort(
-    (a, b) => PRIORITY_ORDER[b.priority] - PRIORITY_ORDER[a.priority],
-  );
+  const quests = [...props.quests].sort(byPriorityDesc);
 
   return (
     <div className="flex flex-col gap-0.5">
@@ -72,17 +71,6 @@ const QuestGroup = (props: QuestGroupProps) => {
       )}
     </div>
   );
-};
-
-/**
- * Rank of each priority for sorting, high first. Mirrors the ordering the
- * MCP tools and the quest table already state: optional < low < medium < high.
- */
-const PRIORITY_ORDER: Record<QuestResource["priority"], number> = {
-  optional: 0,
-  low: 1,
-  medium: 2,
-  high: 3,
 };
 
 export default QuestGroup;

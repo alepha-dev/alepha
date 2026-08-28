@@ -1,6 +1,7 @@
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
+import { paletteColorSchema } from "../schemas/paletteColorSchema.ts";
 import { projects } from "./projects.ts";
 
 /**
@@ -41,19 +42,7 @@ export const areas = $entity({
      * palette later is a code-only change with no migration. Same
      * reasoning as `epics.status` and `folioLinks.targetType`.
      */
-    color: z
-      .enum([
-        "slate",
-        "blue",
-        "green",
-        "amber",
-        "red",
-        "violet",
-        "cyan",
-        "pink",
-      ])
-      .meta({ mode: "text" })
-      .optional(),
+    color: paletteColorSchema.meta({ mode: "text" }).optional(),
   }),
   indexes: [{ columns: ["projectId", "name"], unique: true }],
 });

@@ -41,7 +41,6 @@ import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { kanbanReloadAtom } from "../../atoms/kanbanReloadAtom.ts";
-import { questsViewAtom } from "../../atoms/questsViewAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { useInviteMember } from "../shared/useInviteMember.ts";
 import EpicCreateSheet from "./epics/EpicCreateSheet.tsx";
@@ -60,12 +59,10 @@ const ProjectActionsCreateButton = () => {
   const [project] = useStore(currentProjectAtom);
   const [reloadKey, setReloadKey] = useStore(kanbanReloadAtom);
   const routerState = useRouterState();
-  const [questsView] = useStore(questsViewAtom);
-  // Kanban is not its own route (the great rename, Task 8), and since #156
-  // it is not a query param either — detect it off the stored view plus the
-  // route name.
-  const onKanban =
-    routerState.name === "projectQuests" && questsView.view === "kanban";
+  // Kanban is its own route again, so this is just the route name. It used
+  // to be `projectQuests` plus the stored view, because the board was a mode
+  // of the Quests page rather than a place.
+  const onKanban = routerState.name === "projectKanban";
 
   if (!project) {
     return null;

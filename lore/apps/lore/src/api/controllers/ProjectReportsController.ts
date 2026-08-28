@@ -14,6 +14,7 @@ import { $etag } from "alepha/server/etag";
 import { members } from "../entities/members.ts";
 import { projects } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
+import { QUEST_PRIORITY_ORDER } from "../schemas/questPriority.ts";
 import {
   reportsMembersSchema,
   reportsOverviewSchema,
@@ -334,12 +335,16 @@ export class ProjectReportsController {
         this.quests.table.acceptedAt,
         "hours",
       )}), 0)`;
+      // Built from the shared ordinal rather than restating it, so the one
+      // place that knows `priority` is a text enum stays the only place
+      // that knows. Negated because higher rank means higher urgency and
+      // this ORDER BY is ascending.
       const priorityOrder = sql`
 				CASE ${this.quests.table.priority}
-					WHEN 'high' THEN 1
-					WHEN 'medium' THEN 2
-					WHEN 'low' THEN 3
-					WHEN 'optional' THEN 4
+					WHEN 'high' THEN ${-QUEST_PRIORITY_ORDER.high}
+					WHEN 'medium' THEN ${-QUEST_PRIORITY_ORDER.medium}
+					WHEN 'low' THEN ${-QUEST_PRIORITY_ORDER.low}
+					WHEN 'optional' THEN ${-QUEST_PRIORITY_ORDER.optional}
 				END
 			`;
 

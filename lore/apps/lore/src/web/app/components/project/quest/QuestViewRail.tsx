@@ -26,11 +26,9 @@ import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentMilestonesAtom } from "@/web/app/atoms/currentMilestonesAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import { displayName } from "@/web/app/services/displayName.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import { useProjectUsers } from "../../shared/useProjectUsers.ts";
-import { UserAvatar } from "../../shared/UserAvatar.tsx";
+import QuestAssigneePicker from "./QuestAssigneePicker.tsx";
 import { formatEstimate } from "./questEstimate.ts";
 import { formatQuestSize } from "./questSize.ts";
 import QuestViewDuplicateButton from "./QuestViewDuplicateButton.tsx";
@@ -77,14 +75,6 @@ const QuestViewRail = (props: QuestViewRailProps) => {
   const questEstimateEnabled = features?.questEstimate === true;
   const epicsEnabled = features?.epics === true;
   const milestonesEnabled = features?.milestones === true;
-
-  // Only fetched when there is a uuid to resolve — the majority of quests in
-  // a backlog are unassigned, and the rail must not cost a request each. The
-  // Discussion reads the same hook, and `HttpClient` dedupes the two calls.
-  const users = useProjectUsers(!!quest.acceptedBy);
-  const assignee = quest.acceptedBy
-    ? users.find((u) => u.id === quest.acceptedBy)
-    : undefined;
 
   // Same rule for the epic: `quests.epicId` is a global id and the row wants
   // the per-project number and title, which only the epic list carries.
@@ -145,17 +135,11 @@ const QuestViewRail = (props: QuestViewRailProps) => {
           {statusLabel}
         </QuestViewRailRow>
 
+        {/* The third editable row, after tags and the reminder. Handing
+            work over is what a board is for, so it does not go through the
+            edit drawer — see `QuestAssigneePicker`. */}
         <QuestViewRailRow icon={User} label={tr("board.table.assigned")}>
-          {quest.acceptedBy ? (
-            <span className="inline-flex items-center gap-1.5">
-              <UserAvatar
-                fileId={assignee?.picture}
-                className="size-4"
-                alt="user avatar"
-              />
-              {displayName(assignee, quest.acceptedBy)}
-            </span>
-          ) : undefined}
+          <QuestAssigneePicker quest={quest} onUpdate={props.onUpdate} />
         </QuestViewRailRow>
 
         <QuestViewRailRow icon={Flame} label={tr("board.table.priority")}>
