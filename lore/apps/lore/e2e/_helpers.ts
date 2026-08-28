@@ -13,9 +13,14 @@ export const emailDir = path.join(process.cwd(), "node_modules/.alepha/emails");
 export const findLatestEmail = async (
   email: string,
   maxWaitMs = 5_000,
+  since?: number,
 ): Promise<string | null> => {
   const start = Date.now();
   const sanitized = email.replace(/[^a-zA-Z0-9@.-]/g, "_");
+  // 1s of slack: file mtimes are coarser than `Date.now()` on some
+  // filesystems, so an email written moments after `since` can carry a
+  // timestamp a hair before it.
+  const floor = since === undefined ? 0 : since - 1_000;
   while (Date.now() - start < maxWaitMs) {
     if (fs.existsSync(emailDir)) {
       const files = fs
@@ -25,6 +30,7 @@ export const findLatestEmail = async (
           path: path.join(emailDir, f),
           mtime: fs.statSync(path.join(emailDir, f)).mtime.getTime(),
         }))
+        .filter((f) => f.mtime >= floor)
         .sort((a, b) => b.mtime - a.mtime);
       if (files.length > 0) return files[0].path;
     }
@@ -226,6 +232,14 @@ export const registerAndVerify = async (
   // disabled until Turnstile fires its callback.
   const submit = page.getByRole("button", { name: /create account/i });
   await expect(submit).toBeEnabled({ timeout: 30_000 });
+  // Stamped before the submit so the poll below cannot pick up an email that
+  // predates this registration. `emailDir` is a real directory that survives
+  // the run, and the same address can be registered more than once across
+  // runs - the fixed `ADMIN_EMAIL` always is. Without the floor, the poll
+  // returns the previous run's message instantly and the spec dies on
+  // "Email verification code has already been used", which reads like a
+  // server bug rather than a stale file.
+  const sentAfter = Date.now();
   await submit.click();
   await expect(
     page.getByRole("button", { name: /complete registration/i }),
@@ -236,7 +250,7 @@ export const registerAndVerify = async (
   // await — under CI contention the file can land several seconds after the
   // "complete registration" step renders. Poll generously so a slow-but-
   // arriving email doesn't read as a missing one.
-  const emailPath = await findLatestEmail(email, 20_000);
+  const emailPath = await findLatestEmail(email, 20_000, sentAfter);
   expect(emailPath).not.toBeNull();
   const code = extractCode(fs.readFileSync(emailPath!, "utf-8"));
   expect(code).not.toBeNull();
@@ -245,6 +259,92 @@ export const registerAndVerify = async (
   await page.locator("#emailCode").fill(code!);
   await page.getByRole("button", { name: /complete registration/i }).click();
   await page.waitForURL(/^http:\/\/[^/]+\/$/, { timeout: 15_000 });
+};
+
+/**
+ * Fill and submit the sign-in form. Resolves `true` when it lands on the
+ * home page, `false` when it does not - a wrong password, or an account that
+ * does not exist yet.
+ */
+export const signIn = async (
+  page: Page,
+  email: string,
+  password: string,
+  timeout = 15_000,
+): Promise<boolean> => {
+  await page.goto("/auth/login");
+  await page.waitForLoadState("domcontentloaded");
+
+  const identifier = page
+    .getByRole("textbox", { name: /identifier|email/i })
+    .first();
+  const secret = page.getByRole("textbox", { name: /password/i }).first();
+
+  // Re-filled under `toPass` for the same reason `registerAndVerify` does it:
+  // the page is server-rendered and React hydrates after first paint, so a
+  // value typed into the pre-hydration DOM is discarded when the form model
+  // takes over. The submit then fails with "'password' is required" - which,
+  // from a function that returns a boolean, is indistinguishable from a wrong
+  // password, and made this report "no such account" for an account that
+  // exists.
+  await expect(async () => {
+    await identifier.fill(email);
+    await secret.fill(password);
+    await expect(identifier).toHaveValue(email);
+    await expect(secret).toHaveValue(password);
+  }).toPass({ timeout: 15_000 });
+
+  // Scoped to the form: the header carries its own "Sign In" button, and an
+  // unscoped match is a strict-mode violation on any render showing both.
+  await page
+    .locator("form")
+    .getByRole("button", { name: /sign in/i })
+    .first()
+    .click();
+  try {
+    await page.waitForURL(/^http:\/\/[^/]+\/$/, { timeout });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * The realm admin, shared by every spec that needs one.
+ *
+ * It **cannot be made per-spec**: `playwright.config.ts` passes exactly one
+ * `ADMIN_EMAIL` to the server, and `AppSecurityProvider` turns that single
+ * address into `adminEmails`, so it is the only account the realm ever
+ * promotes. `playwright.config.ts` reads these same constants, so the address
+ * the server promotes and the address the specs sign in as cannot drift.
+ */
+export const ADMIN_EMAIL = "admin@example.com";
+export const ADMIN_PASSWORD = "GoodPassw0rd";
+
+/**
+ * Sign in as the realm admin.
+ *
+ * The account is registered once by `global-setup.ts`, before any spec runs,
+ * so this only ever signs in - and a failure here is a real failure rather
+ * than "some other spec had not created it yet".
+ *
+ * Registering it per-spec is what reddened CI the moment
+ * `admin-user-detail.spec.ts` was un-skipped and stopped being the only admin
+ * spec: it and `admin-analytics.spec.ts` both called `registerAndVerify` with
+ * the shared address against one server and one in-memory database, so
+ * whichever ran second died on "Email verification code has already been
+ * used" - in setup, on line 45, which reads like a broken fixture rather than
+ * a collision with a file it never mentions.
+ *
+ * Registering it lazily instead ("sign in, and register if that fails") was
+ * tried and rejected: it makes a slow or mis-hydrated login indistinguishable
+ * from a missing account, so a false negative silently becomes a duplicate
+ * registration and the same error comes back.
+ */
+export const signInAsAdmin = async (page: Page): Promise<void> => {
+  expect(await signIn(page, ADMIN_EMAIL, ADMIN_PASSWORD), "admin sign-in").toBe(
+    true,
+  );
 };
 
 /**
