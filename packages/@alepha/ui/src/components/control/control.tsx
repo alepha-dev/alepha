@@ -317,6 +317,7 @@ export const Control = (props: ControlProps) => {
         controlProps={merged.objectProps?.controlProps}
         variant={merged.objectProps?.variant}
         defaultExpanded={merged.objectProps?.defaultExpanded}
+        clearable={merged.clearable}
       />,
     );
   }

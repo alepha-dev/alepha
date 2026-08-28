@@ -63,7 +63,18 @@ export interface ControlObjectProps {
    */
   i18nPrefix?: string;
   /**
-   * Allow the user to clear the object (sets value to undefined).
+   * Take the clear button away from an optional object.
+   *
+   * The schema decides by default: an optional or nullable object that has
+   * been initialised offers the button, and `false` opts out - the same way
+   * round as a text field's `clearable`, and for the same reason. Pass
+   * `false` when clearing is not something the API can honour, so the button
+   * does not promise an edit that silently does nothing.
+   *
+   * This used to be opt-IN, which made the button unreachable: `Control` is
+   * the only thing that mounts this component and it never passed the prop,
+   * so an initialised optional object could not be cleared from the UI at
+   * all.
    */
   clearable?: boolean;
 }
@@ -89,6 +100,14 @@ export const ControlObject = (props: ControlObjectProps) => {
 
   // ── Init / clear ────────────────────────────────────────────────
   const isInitialized = value != null && typeof value === "object";
+
+  // `clearable !== false`, not `clearable === true`: the schema is the
+  // answer, and a caller opts out. A required object has nothing to clear to.
+  const showClear =
+    isInitialized &&
+    !meta.required &&
+    !props.disabled &&
+    props.clearable !== false;
 
   const fieldNames = Object.keys(z.schema.shape(schema));
   const nestedItems = (props.input as ObjectInputField<ZObject>).items as
@@ -142,7 +161,7 @@ export const ControlObject = (props: ControlObjectProps) => {
           >
             <Plus className="size-4" />
           </Button>
-        ) : props.clearable && !props.disabled ? (
+        ) : showClear ? (
           <Button
             type="button"
             variant="ghost"
