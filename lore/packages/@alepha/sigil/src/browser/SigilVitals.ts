@@ -1,4 +1,22 @@
 type Metric = "lcp" | "cls" | "inp" | "fcp" | "ttfb";
+
+/**
+ * The `layout-shift` entry, which TypeScript's `lib.dom` still does not
+ * declare. Kept local rather than declared globally: an ambient global in a
+ * published package leaks into every consumer that compiles this source, and
+ * the two fields below are all this file ever reads.
+ */
+interface LayoutShiftEntry extends PerformanceEntry {
+  value: number;
+  hadRecentInput: boolean;
+}
+
+/**
+ * `PerformanceObserverInit` plus `durationThreshold`, which the Event Timing
+ * API accepts and `lib.dom` has not caught up with. Same reasoning as
+ * {@link LayoutShiftEntry}: local, not global.
+ */
+type ObserverInit = PerformanceObserverInit & { durationThreshold?: number };
 type Sink = (m: { metric: Metric; value: number; path: string }) => void;
 
 /**
@@ -122,41 +140,42 @@ export class SigilVitals {
       return;
 
     // FCP: paint entry "first-contentful-paint"
-    this.safeObserve(["paint"], (entries) => {
+    this.safeObserve<PerformancePaintTiming>("paint", (entries) => {
       for (const e of entries) {
-        if ((e as any).name === "first-contentful-paint")
+        if (e.name === "first-contentful-paint")
           this.report("fcp", e.startTime);
       }
     });
 
     // LCP: last largest-contentful-paint entry wins; report on hidden.
-    this.safeObserve(["largest-contentful-paint"], (entries) => {
-      const last = entries[entries.length - 1];
-      if (last)
-        this.noteLcp(
-          (last as any).renderTime || (last as any).loadTime || last.startTime,
-        );
-    });
+    this.safeObserve<LargestContentfulPaint>(
+      "largest-contentful-paint",
+      (entries) => {
+        const last = entries[entries.length - 1];
+        if (last)
+          this.noteLcp(last.renderTime || last.loadTime || last.startTime);
+      },
+    );
 
     // CLS: sum of layout-shift values without recent input, per path. One
     // running total across a visit would attribute one page's jumpiness to
     // every other page the visitor went on to read.
     const cls = new Map<string, number>();
-    this.safeObserve(["layout-shift"], (entries) => {
+    this.safeObserve<LayoutShiftEntry>("layout-shift", (entries) => {
       for (const e of entries) {
-        if ((e as any).hadRecentInput) continue;
+        if (e.hadRecentInput) continue;
         const path = this.currentPath();
-        cls.set(path, (cls.get(path) ?? 0) + ((e as any).value || 0));
+        cls.set(path, (cls.get(path) ?? 0) + (e.value || 0));
       }
     });
 
     // INP: max event "interactionId" duration (approx - max event duration),
     // per path. An interaction belongs to the page it was made on.
     const inp = new Map<string, number>();
-    this.safeObserve(["event"], (entries) => {
+    this.safeObserve<PerformanceEventTiming>("event", (entries) => {
       for (const e of entries) {
-        const dur = (e as any).duration || 0;
-        if (!(e as any).interactionId) continue;
+        const dur = e.duration || 0;
+        if (!e.interactionId) continue;
         const path = this.currentPath();
         if (dur > (inp.get(path) ?? 0)) inp.set(path, dur);
       }
@@ -164,8 +183,8 @@ export class SigilVitals {
 
     // TTFB: navigation entry responseStart. Delivered twice — once from the
     // buffer, once on dispatch — so `report` deduplicates it.
-    this.safeObserve(["navigation"], (entries) => {
-      const nav = entries[0] as any;
+    this.safeObserve<PerformanceNavigationTiming>("navigation", (entries) => {
+      const nav = entries[0];
       if (nav?.responseStart) this.report("ttfb", nav.responseStart);
     });
 
@@ -186,9 +205,14 @@ export class SigilVitals {
     document.addEventListener("visibilitychange", finalize);
   }
 
-  protected safeObserve(types: string[], cb: (entries: any[]) => void) {
+  protected safeObserve<T extends PerformanceEntry>(
+    type: string,
+    cb: (entries: T[]) => void,
+  ) {
     try {
-      const po = new PerformanceObserver((list) => cb(list.getEntries()));
+      const po = new PerformanceObserver((list) =>
+        cb(list.getEntries() as T[]),
+      );
       // buffered:true catches entries dispatched before observe() ran.
       // The Event Timing API only delivers interactions slower than
       // `durationThreshold`, 104 ms by default: every fast interaction
@@ -196,10 +220,10 @@ export class SigilVitals {
       // and the p75 was taken over slow interactions only. 16 is the
       // minimum the API accepts.
       po.observe({
-        type: types[0],
+        type,
         buffered: true,
-        ...(types[0] === "event" ? { durationThreshold: 16 } : {}),
-      } as any);
+        ...(type === "event" ? { durationThreshold: 16 } : {}),
+      } satisfies ObserverInit);
     } catch {
       /* entry type unsupported in this browser — skip */
     }
