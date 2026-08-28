@@ -2,8 +2,13 @@ import { $atom, type Infer, z } from "alepha";
 
 export const checkoutConfig = $atom({
   name: "alepha.commerce.checkout",
-  description: "Cadences for the checkout module's background sweeps.",
+  description: "Checkout module configuration.",
   schema: z.object({
+    baseUrl: z
+      .text()
+      .describe(
+        "The storefront's public origin, e.g. `https://boutique.example`. Used to resolve the `returnUrl` a client sends at checkout: a path is resolved against it, and an absolute URL is accepted only when its origin matches. Left empty, the origin of the request itself is used - correct for a single-origin shop, but set this explicitly wherever the app is reached through a proxy that may not preserve Host.",
+      ),
     stockSweepCron: z
       .text()
       .describe(
@@ -11,6 +16,7 @@ export const checkoutConfig = $atom({
       ),
   }),
   default: {
+    baseUrl: "",
     stockSweepCron: "*/15 * * * *",
   },
   serverOnly: true,

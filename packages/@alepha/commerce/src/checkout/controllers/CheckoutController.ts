@@ -1,9 +1,11 @@
-import { $inject, z } from "alepha";
-import { $action } from "alepha/server";
+import { $inject, $store, z } from "alepha";
+import { $action, BadRequestError } from "alepha/server";
+import { safeRedirectPath } from "alepha/server/auth";
 
 import { CartController } from "../../cart/controllers/CartController.ts";
 import { orderItems } from "../../entities/orderItems.ts";
 import { orders } from "../../entities/orders.ts";
+import { checkoutConfig } from "../checkoutConfigAtom.ts";
 import { addressInputSchema } from "../entities/addresses.ts";
 import { CheckoutService } from "../services/CheckoutService.ts";
 
@@ -31,6 +33,7 @@ export class CheckoutController {
   protected readonly group = "commerce:checkout";
   protected readonly checkout = $inject(CheckoutService);
   protected readonly cartController = $inject(CartController);
+  protected readonly config = $store(checkoutConfig);
 
   public readonly commerceCheckoutCapabilities = $action({
     method: "GET",
@@ -178,11 +181,60 @@ export class CheckoutController {
         handoff: z.record(z.text(), z.any()),
       }),
     },
-    handler: async ({ params, body }) => {
+    // `url` renamed: the controller's own `this.url` is the route prefix, and
+    // two things called `url` in one scope is one too many.
+    handler: async ({ params, body, url: requestUrl }) => {
       const { session, handoff } = await this.checkout.pay(params.id, {
-        returnUrl: body.returnUrl,
+        returnUrl: this.resolveReturnUrl(body.returnUrl, requestUrl),
       });
       return { session, handoff } as any;
     },
   });
+
+  /**
+   * Turn the client's `returnUrl` into an absolute URL that can only point
+   * back at this shop.
+   *
+   * It used to be handed to the payment rail verbatim, so a crafted request
+   * could park any address on the customer's post-payment redirect - the
+   * classic open redirect, made worse by arriving at the moment the customer
+   * has just typed card details and is primed to trust what they see next.
+   *
+   * Two shapes are accepted:
+   *
+   * - **A path.** The form to prefer, and the only one a storefront needs.
+   *   Validated by `safeRedirectPath`, the same rule the auth module uses, so
+   *   `//evil.example` and backslash tricks are rejected rather than
+   *   normalised into another origin by the browser. Resolved against the
+   *   configured `baseUrl`.
+   * - **An absolute URL back to the same origin.** Kept because the rail
+   *   needs an absolute URL anyway and some storefronts build one themselves.
+   *
+   * Anything else is a 400, not a silent rewrite to the home page: a client
+   * sending a foreign origin has a bug or is an attack, and neither is served
+   * by pretending the request was fine.
+   */
+  protected resolveReturnUrl(returnUrl: string, requestUrl: URL): string {
+    // Configured origin wins. The request's own is a sane default for a
+    // single-origin shop, and is what the customer's browser is on.
+    const base = this.config.baseUrl || requestUrl.origin;
+
+    const path = safeRedirectPath(returnUrl, "");
+    if (path) {
+      return new URL(path, base).toString();
+    }
+
+    try {
+      const parsed = new URL(returnUrl);
+      if (parsed.origin === new URL(base).origin) {
+        return parsed.toString();
+      }
+    } catch {
+      // Not a URL at all — falls through to the rejection below.
+    }
+
+    throw new BadRequestError(
+      `returnUrl must be a path or an absolute URL on ${new URL(base).origin}.`,
+    );
+  }
 }
