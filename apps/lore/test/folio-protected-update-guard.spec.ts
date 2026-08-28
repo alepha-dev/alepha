@@ -322,4 +322,124 @@ describe("FolioController.update protected-content guard", () => {
       false,
     );
   });
+
+  it("rejects clear -> protected with no content, which would leave plaintext in a row claiming to be encrypted", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const project = await ctx.projectController.createProject.fetch(
+      { body: { title: "Secrets" } },
+      { user: owner },
+    );
+
+    const folio = await ctx.folioController.create.fetch(
+      {
+        body: {
+          projectId: project.data.id,
+          title: "Ops runbook",
+          content: "the root password is hunter2",
+        },
+      },
+      { user: owner },
+    );
+
+    try {
+      await ctx.folioController.update.fetch(
+        // `content` omitted: the flag flips, `content` falls back to the
+        // existing plaintext, and the row ends up claiming a protection it
+        // does not have. `searchText` is blanked and the outbound links are
+        // wiped, so everything around the row agrees it is encrypted.
+        { params: { id: folio.data.id }, body: { protected: true } },
+        { user: owner },
+      );
+      expect.unreachable("expected the guard to reject this request");
+    } catch (err) {
+      expect(err).toBeInstanceOf(HttpError);
+      expect((err as HttpError).status).toBe(400);
+      expect((err as HttpError).error).toBe("BadRequestError");
+    }
+
+    const reread = await ctx.folioController.get.fetch(
+      { params: { id: folio.data.id } },
+      { user: owner },
+    );
+    expect(reread.data.protected).toBe(false);
+    expect(reread.data.content).toBe("the root password is hunter2");
+  });
+
+  it("rejects protected -> clear with no content, which would publish the raw envelope", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const project = await ctx.projectController.createProject.fetch(
+      { body: { title: "Secrets" } },
+      { user: owner },
+    );
+
+    const folio = await ctx.folioController.create.fetch(
+      {
+        body: {
+          projectId: project.data.id,
+          title: "Ops runbook",
+          content: ENVELOPE,
+          protected: true,
+        },
+      },
+      { user: owner },
+    );
+
+    try {
+      await ctx.folioController.update.fetch(
+        { params: { id: folio.data.id }, body: { protected: false } },
+        { user: owner },
+      );
+      expect.unreachable("expected the guard to reject this request");
+    } catch (err) {
+      expect(err).toBeInstanceOf(HttpError);
+      expect((err as HttpError).status).toBe(400);
+      expect((err as HttpError).error).toBe("BadRequestError");
+    }
+
+    const reread = await ctx.folioController.get.fetch(
+      { params: { id: folio.data.id } },
+      { user: owner },
+    );
+    expect(reread.data.protected).toBe(true);
+    expect(reread.data.content).toBe(ENVELOPE);
+  });
+
+  it("allows a no-op assertion of the current protection state with no content", async ({
+    expect,
+  }) => {
+    // `protected: true` on an already-protected folio changes no domain, so
+    // a metadata-only edit (a rename, a move, a pin) may still state it.
+    const owner = await createTestUser(ctx);
+    const project = await ctx.projectController.createProject.fetch(
+      { body: { title: "Secrets" } },
+      { user: owner },
+    );
+
+    const folio = await ctx.folioController.create.fetch(
+      {
+        body: {
+          projectId: project.data.id,
+          title: "Ops runbook",
+          content: ENVELOPE,
+          protected: true,
+        },
+      },
+      { user: owner },
+    );
+
+    const updated = await ctx.folioController.update.fetch(
+      {
+        params: { id: folio.data.id },
+        body: { title: "Ops runbook v2", protected: true },
+      },
+      { user: owner },
+    );
+    expect(updated.data.title).toBe("Ops runbook v2");
+    expect(updated.data.protected).toBe(true);
+    expect(updated.data.content).toBe(ENVELOPE);
+  });
 });

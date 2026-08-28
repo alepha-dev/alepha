@@ -667,9 +667,13 @@ export class FolioController {
          */
         directoryId: z.uuid().nullable().optional(),
         /**
-         * Toggle protected state. Caller is responsible for sending the
-         * new `content` shape that matches (plaintext markdown when
-         * false, crypto envelope when true).
+         * Toggle protected state.
+         *
+         * A change of state must carry the `content` that matches it
+         * (plaintext markdown when false, crypto envelope when true); the
+         * handler refuses the flip otherwise, rather than leaving the folio
+         * holding a value from the domain it just left. Restating the current
+         * state is not a change and needs no content.
          */
         protected: z.boolean().optional(),
         /**
@@ -709,6 +713,31 @@ export class FolioController {
       ) {
         throw new BadRequestError(
           "This folio is protected. Updating its content requires explicitly asserting `protected` (true to re-encrypt, false to remove protection) — omitting it is refused to avoid silently overwriting the encrypted content with plaintext.",
+        );
+      }
+
+      // The mirror image: `protected` changes but no `content` comes with it,
+      // so `content` falls back to `existing.content` and the row keeps a
+      // value from the domain it just left.
+      //
+      // Turning protection ON that way is the serious half. The row ends up
+      // holding readable plaintext while claiming to be encrypted, and every
+      // signal around it agrees with the claim: `searchText` is blanked, the
+      // outbound links are wiped, `purgeRevisions` throws the history away,
+      // and the editor offers a passphrase prompt for a folio nothing ever
+      // encrypted. Deleting the history is what makes it unrecoverable rather
+      // than merely wrong. Turning it OFF is the cheaper direction, publishing
+      // the raw envelope as if it were markdown.
+      //
+      // Stating the state the folio is already in is not a transition and
+      // stays allowed, so a rename, a move or a pin can still assert it.
+      if (
+        body.protected !== undefined &&
+        body.protected !== existing.protected &&
+        body.content === undefined
+      ) {
+        throw new BadRequestError(
+          `Changing \`protected\` requires sending \`content\` in the matching form: the encrypted envelope when turning protection on, plaintext markdown when turning it off. Received \`protected: ${body.protected}\` with no content, which would leave the folio holding ${existing.protected ? "an unreadable envelope" : "readable plaintext"}.`,
         );
       }
 
