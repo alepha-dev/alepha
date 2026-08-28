@@ -157,6 +157,13 @@ import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
  * registers its own page named `files` (or any of the other twelve) either
  * shadows this one or is shadowed by it, silently, depending on mount order.
  * Treat these thirteen names as reserved when hanging pages off `layout`.
+ *
+ * ### It needs `<DialogProvider>` and `<Toaster />` above it
+ *
+ * Several admin pages call `useDialog()`, which throws without a provider,
+ * and raise toasts. `AppShell` mounts both; a standalone mount, or `AppShell`
+ * with `embedded`, has to supply them. `AccountRouter`'s JSDoc explains why
+ * the shells deliberately do not mount them themselves.
  */
 export class AdminRouter {
   protected readonly options = $store(adminRouterOptionsAtom);

@@ -37,6 +37,28 @@ import { accountRouterOptionsAtom } from "./account-router-options.tsx";
  * });
  * ```
  *
+ * ### It needs `<DialogProvider>` and `<Toaster />` above it
+ *
+ * `account-sessions` and `account-connections` call `useDialog()`, which
+ * throws `useDialog requires <DialogProvider>` on the first confirm, and both
+ * raise toasts. Neither this shell nor `AdminLayout` mounts either provider,
+ * on purpose: a second `<Toaster />` under an application that already has
+ * one shows every toast twice, and that is a worse failure than a clear
+ * throw because nothing points at the cause.
+ *
+ * `AppShell` already mounts both, so an application built on it has nothing
+ * to do. Mounting these pages **standalone**, or under `AppShell` with
+ * `embedded` (which skips both wrappers), means supplying them:
+ *
+ * ```tsx
+ * <DialogProvider>
+ *   <Toaster />
+ *   {children}
+ * </DialogProvider>
+ * ```
+ *
+ * The same applies to `AdminRouter`, for the same components.
+ *
  * ### Mount it standalone, or inside your own layout
  *
  * {@link AccountRouter.layout} is a root `$page`, so registering the service

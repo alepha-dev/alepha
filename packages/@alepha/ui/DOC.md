@@ -53,6 +53,12 @@ below.
 **Hooks** - `use-toast` and `use-dialog` (imperative toasts and modals) live
 under `components/`; `use-mobile` lives under `hooks/`.
 
+> `useDialog()` throws without a `<DialogProvider>` above it, and toasts need a
+> `<Toaster />`. `app-shell` mounts both. The `account` and `admin` routers do
+> **not** - a second `<Toaster />` under an app that already has one shows every
+> toast twice - so a standalone mount (or `app-shell` with `embedded`) has to
+> wrap them itself.
+
 **`lib/*`** - `utils` exports `cn()`, the `clsx` + `tailwind-merge` helper every
 component uses. Also `resize-image` and `i18n-fr`.
 
