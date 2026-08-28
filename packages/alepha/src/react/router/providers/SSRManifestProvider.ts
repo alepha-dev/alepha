@@ -1,4 +1,5 @@
 import { $inject, Alepha, type Infer } from "alepha";
+import type { HeadLinkCrossOrigin } from "alepha/react/head";
 
 import {
   type SsrManifestAtomSchema,
@@ -174,9 +175,12 @@ export class SSRManifestProvider {
   /**
    * Collect modulepreload links for a route and its parent chain.
    */
-  public collectPreloadLinks(
-    route: PageRoute,
-  ): Array<{ rel: string; href: string; as?: string; crossorigin?: string }> {
+  public collectPreloadLinks(route: PageRoute): Array<{
+    rel: string;
+    href: string;
+    as?: string;
+    crossorigin?: HeadLinkCrossOrigin;
+  }> {
     if (!this.isAvailable()) {
       return [];
     }
@@ -204,7 +208,7 @@ export class SSRManifestProvider {
     return chunks.map((href) => {
       if (href.endsWith(".css")) {
         // Must include crossorigin to match Vite's dynamic CSS loading which always uses crossorigin=""
-        return { rel: "preload", href, as: "style", crossorigin: "" };
+        return { rel: "preload", href, as: "style", crossorigin: true };
       }
       return { rel: "modulepreload", href };
     });

@@ -141,12 +141,26 @@ export interface SimpleHead {
   >;
 }
 
+/**
+ * `crossorigin` on a link.
+ *
+ * `true` renders the bare `crossorigin=""`, which HTML already reads as an
+ * anonymous request; the two named values render verbatim.
+ *
+ * It used to be typed `string` and rendered as `""` whatever it held, so
+ * `use-credentials` could be written but never took effect: a preload for a
+ * credentialed fetch silently became an anonymous one, and the browser then
+ * refused to reuse it for the real request - a double download, and no error
+ * anywhere to say why.
+ */
+export type HeadLinkCrossOrigin = true | "anonymous" | "use-credentials";
+
 export interface HeadLink {
   rel: string;
   href: string;
   type?: string;
   as?: string;
-  crossorigin?: string;
+  crossorigin?: HeadLinkCrossOrigin;
   /**
    * Media query — used for theme-aware icons and responsive stylesheets.
    * e.g. `(prefers-color-scheme: dark)` to ship a dark-mode favicon.

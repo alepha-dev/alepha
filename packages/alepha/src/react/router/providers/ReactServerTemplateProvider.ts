@@ -164,7 +164,10 @@ export class ReactServerTemplateProvider {
         content += `<link rel="${this.escapeHtml(link.rel)}" href="${this.escapeHtml(link.href)}"`;
         if (link.type) content += ` type="${this.escapeHtml(link.type)}"`;
         if (link.as) content += ` as="${this.escapeHtml(link.as)}"`;
-        if (link.crossorigin != null) content += ' crossorigin=""';
+        if (link.crossorigin != null)
+          content += ` crossorigin="${
+            link.crossorigin === true ? "" : this.escapeHtml(link.crossorigin)
+          }"`;
         if (link.media) content += ` media="${this.escapeHtml(link.media)}"`;
         if (link.sizes) content += ` sizes="${this.escapeHtml(link.sizes)}"`;
         if (link.hreflang)

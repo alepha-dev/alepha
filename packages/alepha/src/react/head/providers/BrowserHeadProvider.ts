@@ -151,7 +151,14 @@ export class BrowserHeadProvider {
 
     if (head.link) {
       for (const it of head.link) {
-        rendered?.add(this.renderLinkTag(document, it));
+        // Render FIRST, then record. `rendered?.add(this.renderLinkTag(…))`
+        // reads as equivalent and is not: optional chaining short-circuits
+        // the whole chain, arguments included, so outside reconcile mode -
+        // `useHead({ link })` and `refreshGlobalHead()`, i.e. every
+        // canonical, preload, hreflang and theme-aware favicon set from the
+        // client - the tag was never built at all.
+        const el = this.renderLinkTag(document, it);
+        rendered?.add(el);
       }
     }
 
@@ -205,7 +212,10 @@ export class BrowserHeadProvider {
       el.setAttribute("as", link.as);
     }
     if (link.crossorigin != null) {
-      el.setAttribute("crossorigin", "");
+      el.setAttribute(
+        "crossorigin",
+        link.crossorigin === true ? "" : link.crossorigin,
+      );
     }
     if (link.media) {
       el.setAttribute("media", link.media);

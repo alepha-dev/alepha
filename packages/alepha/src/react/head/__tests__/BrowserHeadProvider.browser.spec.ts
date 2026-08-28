@@ -118,6 +118,48 @@ describe("BrowserHeadProvider", () => {
       expect(document.documentElement.hasAttribute("lang")).toBe(false);
     });
 
+    it("renders links outside reconcile mode too", () => {
+      // `rendered?.add(this.renderLinkTag(…))` short-circuits the WHOLE
+      // chain when `rendered` is undefined, arguments included, so no tag
+      // was built at all — which is every link set through `useHead` or
+      // `refreshGlobalHead`, the two callers that do not reconcile.
+      provider.renderHead(document, {
+        link: [{ rel: "canonical", href: "/plain" }],
+      });
+
+      expect(
+        document.querySelector('link[rel="canonical"]')?.getAttribute("href"),
+      ).toBe("/plain");
+    });
+
+    it("renders crossorigin verbatim, and bare only for `true`", () => {
+      // `use-credentials` used to render as `crossorigin=""`, so a preload
+      // for a credentialed fetch silently became an anonymous one and the
+      // browser refused to reuse it.
+      provider.renderHead(document, {
+        link: [
+          {
+            rel: "preload",
+            href: "/f.woff2",
+            as: "font",
+            crossorigin: "use-credentials",
+          },
+          { rel: "preload", href: "/a.woff2", as: "font", crossorigin: true },
+        ],
+      });
+
+      expect(
+        document
+          .querySelector('link[href="/f.woff2"]')
+          ?.getAttribute("crossorigin"),
+      ).toBe("use-credentials");
+      expect(
+        document
+          .querySelector('link[href="/a.woff2"]')
+          ?.getAttribute("crossorigin"),
+      ).toBe("");
+    });
+
     it("should create new meta tags", () => {
       const head: Head = {
         meta: [

@@ -127,6 +127,55 @@ describe("ReactServerTemplateProvider", () => {
       await alepha.stop();
     });
 
+    it("renders a link's crossorigin verbatim, bare only for `true`", async ({
+      expect,
+    }) => {
+      class CrossOriginApp {
+        home = $page({
+          path: "/",
+          head: {
+            title: "Fonts",
+            link: [
+              {
+                rel: "preload",
+                href: "/f.woff2",
+                as: "font",
+                crossorigin: "use-credentials",
+              },
+              {
+                rel: "preload",
+                href: "/a.woff2",
+                as: "font",
+                crossorigin: true,
+              },
+            ],
+          },
+          component: () => "ok",
+        });
+      }
+
+      const alepha = Alepha.create({
+        env: { LOG_LEVEL: "error", SERVER_PORT: 0 },
+      }).with(CrossOriginApp);
+      await alepha.start();
+
+      const server = alepha.inject(ServerProvider);
+      const http = alepha.inject(HttpClient);
+      const response = await http.fetch(`${server.hostname}/`);
+
+      // `use-credentials` used to render as `crossorigin=""`, which is a
+      // DIFFERENT credential mode - the browser then refused to reuse the
+      // preload for the real request and fetched the font twice.
+      expect(response.data).toContain(
+        '<link rel="preload" href="/f.woff2" as="font" crossorigin="use-credentials">',
+      );
+      expect(response.data).toContain(
+        '<link rel="preload" href="/a.woff2" as="font" crossorigin="">',
+      );
+
+      await alepha.stop();
+    });
+
     it("should handle pages with loaders correctly", async ({ expect }) => {
       const alepha = Alepha.create({
         env: { LOG_LEVEL: "error", SERVER_PORT: 0 },
