@@ -1,4 +1,4 @@
-import { type ExecException, exec, execFile, spawn } from "node:child_process";
+import { type ChildProcess, exec, spawn } from "node:child_process";
 import { join } from "node:path";
 
 import { $inject, AlephaError } from "alepha";
@@ -184,6 +184,7 @@ export class NodeShellProvider implements ShellProvider {
       : spawn(executable, args, {
           stdio,
           cwd: options.cwd,
+          detached: this.needsProcessGroup(options),
           env: {
             ...process.env,
             PATH: this.localBinPath(options.cwd),
@@ -202,13 +203,13 @@ export class NodeShellProvider implements ShellProvider {
       const timer = options.timeout
         ? setTimeout(() => {
             timedOut = true;
-            proc.kill("SIGTERM");
+            this.killTree(proc);
           }, options.timeout)
         : undefined;
 
       const onAbort = () => {
         aborted = true;
-        proc.kill("SIGTERM");
+        this.killTree(proc);
       };
       if (options.signal?.aborted) {
         onAbort();
@@ -287,21 +288,21 @@ export class NodeShellProvider implements ShellProvider {
     args: string[],
     options: ShellRunOptions & { cwd: string },
   ): Promise<ShellCommandResult> {
-    return new Promise<ShellCommandResult>((resolve, reject) => {
-      exec(
-        this.buildShellCommand(executable, args),
-        {
+    const isWindows = process.platform === "win32";
+    const command = this.buildShellCommand(executable, args);
+    const proc = isWindows
+      ? spawn(command, [], {
           cwd: options.cwd,
-          maxBuffer: 50 * 1024 * 1024,
-          timeout: options.timeout,
-          signal: options.signal,
+          shell: true,
           env: this.captureEnv(options),
-        },
-        (err, stdout, stderr) => {
-          this.settleExecResult(err, stdout, stderr, options, resolve, reject);
-        },
-      );
-    });
+        })
+      : spawn("/bin/sh", ["-c", command], {
+          cwd: options.cwd,
+          detached: this.needsProcessGroup(options),
+          env: this.captureEnv(options),
+        });
+
+    return this.captureProcess(proc, options);
   }
 
   /**
@@ -312,25 +313,181 @@ export class NodeShellProvider implements ShellProvider {
     args: string[],
     options: ShellRunOptions & { cwd: string },
   ): Promise<ShellCommandResult> {
+    const proc = spawn(executable, args, {
+      cwd: options.cwd,
+      detached: this.needsProcessGroup(options),
+      env: this.captureEnv(options),
+    });
+
+    if (options.stdin !== undefined) {
+      this.writeStdin(proc, options.stdin);
+    }
+
+    return this.captureProcess(proc, options);
+  }
+
+  /**
+   * Whether this child should lead its own process group.
+   *
+   * Only when we might have to kill it. A detached child is in a different
+   * process group from the terminal, so anything that reads stdin — a
+   * `wrangler login`, a `gh auth login`, an npm prompt — would be stopped by
+   * SIGTTIN instead of reading. Those commands never carry a timeout or a
+   * signal, so gating on "can we be asked to kill this?" gives the group
+   * exactly where it is needed and nowhere else.
+   */
+  protected needsProcessGroup(options: ShellRunOptions): boolean {
+    if (process.platform === "win32") {
+      return false;
+    }
+    return options.timeout !== undefined || options.signal !== undefined;
+  }
+
+  /**
+   * Kill the whole process group, not just the pid we hold.
+   *
+   * A shell-form command spawns children of its own — a `vite`, a `tsc`, a
+   * `docker compose` — and signalling the shell alone leaves them running
+   * detached, still holding the port or the lock the caller timed out
+   * waiting for. Signalling the negative pid reaches the group the child
+   * leads; when it does not lead one (see `needsProcessGroup`) this falls
+   * back to the child itself, which is the old behaviour.
+   *
+   * Windows has no process groups, so the tree is walked by `taskkill /T`.
+   */
+  protected killTree(proc: ChildProcess, signal: NodeJS.Signals = "SIGTERM") {
+    const pid = proc.pid;
+    if (pid === undefined) {
+      return;
+    }
+
+    if (process.platform === "win32") {
+      spawn("taskkill", ["/pid", String(pid), "/T", "/F"], {
+        stdio: "ignore",
+      }).on("error", () => {});
+      return;
+    }
+
+    try {
+      process.kill(-pid, signal);
+    } catch {
+      try {
+        proc.kill(signal);
+      } catch {
+        // Already gone.
+      }
+    }
+  }
+
+  /**
+   * Buffer both streams of a spawned child and settle on the capture
+   * contract.
+   *
+   * This is `exec`/`execFile` reimplemented, for one reason: neither of them
+   * forwards `detached` to `spawn`, so a child could never lead a process
+   * group and a timeout could only ever reach the shell.
+   */
+  protected captureProcess(
+    proc: ChildProcess,
+    options: ShellRunOptions,
+  ): Promise<ShellCommandResult> {
     return new Promise<ShellCommandResult>((resolve, reject) => {
-      const proc = execFile(
-        executable,
-        args,
-        {
-          cwd: options.cwd,
-          maxBuffer: 50 * 1024 * 1024,
-          timeout: options.timeout,
-          signal: options.signal,
-          env: this.captureEnv(options),
-        },
-        (err, stdout, stderr) => {
-          this.settleExecResult(err, stdout, stderr, options, resolve, reject);
-        },
+      const maxBuffer = 50 * 1024 * 1024;
+      const chunks = { stdout: [] as Buffer[], stderr: [] as Buffer[] };
+      let size = 0;
+      let timedOut = false;
+      let aborted = false;
+      let overflowed = false;
+      let settled = false;
+
+      const collect = (stream: "stdout" | "stderr") => (chunk: Buffer) => {
+        if (overflowed) return;
+        size += chunk.length;
+        if (size > maxBuffer) {
+          overflowed = true;
+          this.killTree(proc, "SIGKILL");
+          return;
+        }
+        chunks[stream].push(chunk);
+      };
+
+      proc.stdout?.on("data", collect("stdout"));
+      proc.stderr?.on("data", collect("stderr"));
+
+      const timer = options.timeout
+        ? setTimeout(() => {
+            timedOut = true;
+            this.killTree(proc);
+          }, options.timeout)
+        : undefined;
+
+      const onAbort = () => {
+        aborted = true;
+        this.killTree(proc);
+      };
+      if (options.signal?.aborted) {
+        onAbort();
+      } else {
+        options.signal?.addEventListener("abort", onAbort, { once: true });
+      }
+
+      const cleanup = () => {
+        if (timer) clearTimeout(timer);
+        options.signal?.removeEventListener("abort", onAbort);
+      };
+
+      const settle = (fn: () => void) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        fn();
+      };
+
+      proc.on("error", (error) =>
+        settle(() => {
+          // Spawn-level failure (ENOENT, EACCES): attach both streams so
+          // callers (e.g. the CLI Runner) can surface the full output.
+          const wrapped = new AlephaError(`Command failed: ${error.message}`, {
+            cause: error,
+          });
+          (wrapped as any).stdout = Buffer.concat(chunks.stdout).toString(
+            "utf-8",
+          );
+          (wrapped as any).stderr = Buffer.concat(chunks.stderr).toString(
+            "utf-8",
+          );
+          reject(wrapped);
+        }),
       );
 
-      if (options.stdin !== undefined) {
-        this.writeStdin(proc, options.stdin);
-      }
+      proc.on("close", (code, signal) =>
+        settle(() => {
+          const stdout = Buffer.concat(chunks.stdout).toString("utf-8");
+          const stderr = Buffer.concat(chunks.stderr).toString("utf-8");
+
+          if (aborted) {
+            reject(new AlephaError("Command aborted"));
+            return;
+          }
+          if (timedOut) {
+            reject(
+              new AlephaError(`Command timed out after ${options.timeout}ms`),
+            );
+            return;
+          }
+          if (overflowed) {
+            reject(new AlephaError("Command output exceeded maxBuffer"));
+            return;
+          }
+          // An exit code — any exit code — RESOLVES; only "the command never
+          // ran to completion on its own terms" rejects.
+          if (code !== null) {
+            resolve({ stdout, stderr, exitCode: code });
+            return;
+          }
+          reject(new AlephaError(`Command killed by signal ${signal}`));
+        }),
+      );
     });
   }
 
@@ -349,55 +506,6 @@ export class NodeShellProvider implements ShellProvider {
       LOG_FORMAT: "pretty",
       ...options.env,
     };
-  }
-
-  /**
-   * Maps an exec/execFile callback outcome onto the capture contract:
-   * an exit code — any exit code — RESOLVES; only "the command never ran to
-   * completion on its own terms" (not found, timed out, aborted, signalled)
-   * rejects.
-   */
-  protected settleExecResult(
-    err: ExecException | null,
-    stdout: string,
-    stderr: string,
-    options: ShellRunOptions,
-    resolve: (result: ShellCommandResult) => void,
-    reject: (error: Error) => void,
-  ): void {
-    if (!err) {
-      resolve({ stdout, stderr, exitCode: 0 });
-      return;
-    }
-
-    if (options.signal?.aborted || err.name === "AbortError") {
-      reject(new AlephaError("Command aborted"));
-      return;
-    }
-
-    if (options.timeout && (err as { killed?: boolean }).killed) {
-      reject(new AlephaError(`Command timed out after ${options.timeout}ms`));
-      return;
-    }
-
-    if (typeof err.code === "number") {
-      resolve({ stdout, stderr, exitCode: err.code });
-      return;
-    }
-
-    if (err.signal) {
-      reject(new AlephaError(`Command killed by signal ${err.signal}`));
-      return;
-    }
-
-    // Spawn-level failure (ENOENT, EACCES, maxBuffer...): attach both streams
-    // so callers (e.g. the CLI Runner) can surface the full output.
-    const wrapped = new AlephaError(`Command failed: ${err.message}`, {
-      cause: err,
-    });
-    (wrapped as any).stdout = stdout;
-    (wrapped as any).stderr = stderr;
-    reject(wrapped);
   }
 
   /**

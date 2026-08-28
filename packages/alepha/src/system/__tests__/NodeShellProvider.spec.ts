@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { Alepha } from "alepha";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -130,6 +132,37 @@ describe("NodeShellProvider", () => {
         }),
       ).rejects.toThrow(/timed out after 300ms/);
     });
+
+    /**
+     * A shell-form command spawns children of its own. Killing the shell
+     * alone left them running detached, still holding whatever the caller
+     * timed out waiting for.
+     */
+    it.runIf(process.platform !== "win32")(
+      "kills the whole process group, not just the shell",
+      async () => {
+        // `; true` is load-bearing: with a single command `sh -c` EXECS it
+        // instead of forking, so the pid we hold would be the sleep itself
+        // and killing it would look like it worked. A second command forces
+        // a real child. The duration is the marker - nothing else on the
+        // machine sleeps for this long.
+        const seconds =
+          900000 + (Number.parseInt(randomUUID().slice(0, 4), 16) % 90000);
+
+        await expect(
+          shell.run(`sh -c 'sleep ${seconds}; true'`, {
+            capture: true,
+            timeout: 300,
+          }),
+        ).rejects.toThrow(/timed out after 300ms/);
+
+        // Give the group a moment to die before looking.
+        await new Promise((r) => setTimeout(r, 300));
+
+        const survivors = await shell.capture(["ps", "-Ao", "args"]);
+        expect(survivors.stdout).not.toContain(`sleep ${seconds}`);
+      },
+    );
 
     it("aborts a command through an AbortSignal", async () => {
       const controller = new AbortController();
