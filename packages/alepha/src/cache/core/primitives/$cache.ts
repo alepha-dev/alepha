@@ -389,7 +389,23 @@ export class CachePrimitive<
     return this.options.key ? this.options.key(...args) : JSON.stringify(args);
   }
 
-  public async incr(key: string, amount = 1): Promise<number> {
+  /**
+   * Atomically increment a counter.
+   *
+   * The counter is created with a lifetime, resolved the same way `set()`
+   * resolves one: the per-call `ttl`, else the cache's `ttl`, else the
+   * container-wide `defaultTtl`. Only the *creation* applies it — an
+   * existing counter keeps whatever expiry it was born with, so a window
+   * is fixed rather than sliding and a rate limiter cannot be held open by
+   * the very traffic it is meant to throttle.
+   *
+   * Pass `ttl: 0` for a counter that must never expire.
+   */
+  public async incr(
+    key: string,
+    amount = 1,
+    ttl?: DurationLike,
+  ): Promise<number> {
     // Same gate as read()/set(): a disabled cache must not mutate the store,
     // and on Cloudflare KV an early call throws before the binding exists.
     // Returning the amount keeps the "as if it were the first increment"
@@ -402,14 +418,16 @@ export class CachePrimitive<
       return amount;
     }
 
-    const ttl = this.options.ttl
-      ? this.dateTimeProvider.duration(this.options.ttl).as("milliseconds")
-      : undefined;
+    const ttlMs = this.dateTimeProvider
+      .duration(
+        ttl ?? this.options.ttl ?? [this.settings.defaultTtl, "seconds"],
+      )
+      .as("milliseconds");
     const result = await this.provider.incr(
       this.container,
       key,
       amount,
-      ttl && ttl > 0 ? ttl : undefined,
+      ttlMs > 0 ? ttlMs : undefined,
     );
     // L1 is no longer authoritative after atomic incr on remote.
     this.delL1(key);

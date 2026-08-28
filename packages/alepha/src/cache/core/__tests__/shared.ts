@@ -505,6 +505,39 @@ export const testCachePrimitiveIncr = async (
   expect(await test.counter.incr("views", -3)).toBe(4);
 };
 
+/**
+ * A `$cache` that declares no `ttl` of its own must still hand the container's
+ * `defaultTtl` down to `incr()`. It used to hand down nothing at all, so every
+ * counter written through the primitive - rate limits, failed-attempt
+ * counters - was permanent on Redis and KV, and the limiter it fed became a
+ * lock-out with no way out.
+ */
+export const testCachePrimitiveIncrDefaultTtl = async (
+  configure: (app: Alepha) => void = () => {},
+  cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
+): Promise<void> => {
+  class CounterApp {
+    counter = $cache<number>({ name: `default-ttl-${randomUUID()}` });
+  }
+
+  const app = Alepha.create().with({
+    provide: CacheProvider,
+    use: cacheProvider,
+  });
+  // 0.3s, the same window testCacheIncrTtl uses at the provider level.
+  app.store.mut(cacheOptions, (current) => ({ ...current, defaultTtl: 0.3 }));
+  configure(app);
+  const test = app.inject(CounterApp);
+  await app.start();
+
+  expect(await test.counter.incr("hits")).toBe(1);
+  expect(await test.counter.incr("hits")).toBe(2);
+
+  await new Promise((r) => setTimeout(r, 600));
+
+  expect(await test.counter.incr("hits")).toBe(1);
+};
+
 export const testCacheProviderClear = async (
   configure: (app: Alepha) => void = () => {},
   cacheProvider: Service<CacheProvider> = MemoryCacheProvider,

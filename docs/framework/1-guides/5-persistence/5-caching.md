@@ -158,6 +158,16 @@ Atomically increment a numeric value. If the key does not exist, it is set to 0 
 const newCount = await this.counter.incr("page-views", 1);
 ```
 
+A counter gets a lifetime the same way a cached value does: the per-call `ttl`, else the cache's `ttl`, else the container-wide `defaultTtl` (300 seconds). Only the _creation_ applies it, so the window is fixed rather than sliding and a counter cannot be held open by the very traffic it is meant to throttle.
+
+```typescript
+// Fixed 15-minute window, whatever the container default is.
+const attempts = await this.counter.incr("login:1.2.3.4", 1, [15, "minutes"]);
+
+// Never expires. Say so explicitly - the default is not "forever".
+const total = await this.counter.incr("lifetime-signups", 1, 0);
+```
+
 ### key
 
 Get the cache key that would be generated for the given arguments (useful for debugging).

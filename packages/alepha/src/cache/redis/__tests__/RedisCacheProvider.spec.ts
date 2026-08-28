@@ -19,6 +19,7 @@ import {
   testCacheKeys,
   testCacheMissingProvider,
   testCachePrimitiveIncr,
+  testCachePrimitiveIncrDefaultTtl,
   testCacheContainerIsolation,
   testCacheKeyContract,
   testCacheProviderClear,
@@ -113,6 +114,10 @@ describe("$cache - redis", () => {
 
   it("should increment via primitive", async () => {
     await testCachePrimitiveIncr(configure(), provider);
+  });
+
+  it("should expire primitive counters through defaultTtl", async () => {
+    await testCachePrimitiveIncrDefaultTtl(configure(), provider);
   });
 
   it("should compress cached values with gzip", async () => {
