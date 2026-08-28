@@ -249,6 +249,7 @@ export default {
   "project.menu.create-feedback": "New Feedback",
   "project.menu.create-more": "More create actions",
   "project.menu.quests": "Quests",
+  "project.menu.kanban": "Kanban",
   "project.menu.reports": "Reports",
   "project.menu.folios": "Folios",
   "project.menu.settings": "Settings",
@@ -276,6 +277,10 @@ export default {
   "quest.create.dependsOn.search": "Search quests…",
   "quest.create.dependsOn.empty": "No quests found",
   "quest.create.dependsOn.clear": "Clear dependency",
+  "quest.create.due": "Due date",
+  "quest.create.due.helper":
+    "When this quest is meant to be finished. Separate from any milestone deadline.",
+  "quest.create.due.clear": "Clear due date",
   "quest.create.estimate": "Estimate",
   "quest.create.estimate.helper":
     "Roughly how long this might take. Shown in the questlog so you can grab one that fits the time you have.",
@@ -327,6 +332,7 @@ export default {
   "quest.status.completed": "Completed",
   "quest.status.shelved": "Shelved",
   "quest.rail.estimate": "Estimate",
+  "quest.rail.assign.unassigned": "Unassigned",
   "quest.rail.size": "Size",
   "quest.rail.epic": "Epic",
   "quest.rail.commits": "Commits",
@@ -550,12 +556,27 @@ export default {
   "project.settings.feature.enable": "Enable",
   "project.settings.feature.kanban.description":
     "A drag & drop board to move quests between New, In Progress and Completed.",
+  "project.settings.kanban.tagColors.title": "Tag colours",
+  "project.settings.kanban.tagColors.description":
+    "Give each tag a colour so board cards can be read at a glance. Tags with no colour stay neutral.",
+  "project.settings.kanban.tagColors.empty":
+    "No tags yet. Add one to a quest and it will show up here.",
+  "project.settings.kanban.defaultSurface.title": "Open on the board",
+  "project.settings.kanban.defaultSurface.description":
+    "Members land on the Kanban board instead of the quest list when they open this project.",
   "project.settings.kanban.columns.title": "In-progress columns",
   "project.settings.kanban.columns.description":
     "Split the in-progress lane into named sub-columns (e.g. In review → In dev → In test). Up to 5. New and Completed stay fixed.",
   "project.settings.kanban.columns.add": "Add column",
   "project.settings.kanban.columns.placeholder": "Column name",
+  "project.settings.kanban.columns.status": "Maps to",
+  "project.settings.kanban.columns.status.new": "Not started",
+  "project.settings.kanban.columns.status.accepted": "In progress",
+  "project.settings.kanban.columns.status.completed": "Done",
+  "project.settings.kanban.columns.wip": "WIP limit",
+  "project.settings.kanban.columns.wip.none": "No limit",
   "project.settings.kanban.columns.delete": "Delete",
+  "project.settings.kanban.columns.reorder": "Reorder column",
   "project.settings.feature.folios.description":
     "Markdown notes attached to the project: searchable, taggable, AI-accessible.",
   "project.settings.folios.summary.label": "Show summary for agents",
@@ -669,10 +690,32 @@ export default {
 
   "kanban.column.new": "New",
   "kanban.column.completed": "Completed",
+  "kanban.column.collapse": "Collapse column",
   "kanban.empty": "No quests",
   "kanban.showMore": "Show more",
   "kanban.filter.allAreas": "All areas",
   "kanban.filter.allTags": "All tags",
+  "kanban.wip.exceeded":
+    "$1 is over its limit of $2. Nothing is blocked, but it is worth a look.",
+  "kanban.lanes.off": "No lanes",
+  "kanban.lanes.byArea": "By area",
+  "kanban.lanes.byEpic": "By epic",
+  "kanban.filter.search": "Search cards",
+  "kanban.filter.mine": "My cards",
+  "kanban.filter.overdue": "Overdue",
+  "kanban.filter.dueWeek": "Due this week",
+  "kanban.filter.reset": "Clear filters",
+  "kanban.composer.add": "Add a card",
+  "kanban.composer.placeholder": "Title, then Enter",
+  "kanban.composer.submit": "Add",
+  "kanban.composer.needsArea":
+    "Create an area first — a quest has to belong to one.",
+  "kanban.reopen.title": "Reopen this quest?",
+  "kanban.reopen.confirm":
+    "It goes back to In progress. Its completion summary is kept.",
+  "kanban.reopen.confirmWithDependents":
+    "It goes back to In progress, and $1 depended on it being done. Anything already started stays started. Its completion summary is kept.",
+  "kanban.reopen.confirmButton": "Reopen",
   "kanban.error.completedCannotMove": "Completed quests cannot be moved",
   "kanban.error.acceptFirst": "You must accept the quest before completing it",
   "kanban.error.actionFailed": "Action failed",
@@ -758,6 +801,7 @@ export default {
   "error.home": "Home",
 
   "common.cancel": "Cancel",
+  "common.none": "No colour",
   "common.download": "Download",
   "common.next": "Next",
   "common.previous": "Previous",

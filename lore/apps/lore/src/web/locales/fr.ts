@@ -227,6 +227,7 @@ export default {
   "project.menu.create-feedback": "Nouveau retour",
   "project.menu.create-more": "Autres actions de création",
   "project.menu.quests": "Quêtes",
+  "project.menu.kanban": "Kanban",
   "project.menu.reports": "Rapports",
   "project.menu.folios": "Folios",
   "project.menu.settings": "Paramètres",
@@ -284,6 +285,10 @@ export default {
   "quest.create.dependsOn.search": "Rechercher des quêtes…",
   "quest.create.dependsOn.empty": "Aucune quête trouvée",
   "quest.create.dependsOn.clear": "Retirer la dépendance",
+  "quest.create.due": "Échéance",
+  "quest.create.due.helper":
+    "La date à laquelle cette quête doit être terminée. Indépendante de l'échéance d'un jalon.",
+  "quest.create.due.clear": "Effacer l'échéance",
   "quest.create.estimate": "Estimation",
   "quest.create.estimate.helper":
     "Combien de temps cela pourrait prendre. Affiché dans le journal pour choisir une quête qui rentre dans le temps dont vous disposez.",
@@ -335,6 +340,7 @@ export default {
   "quest.status.completed": "Terminée",
   "quest.status.shelved": "Mise de côté",
   "quest.rail.estimate": "Estimation",
+  "quest.rail.assign.unassigned": "Non assignée",
   "quest.rail.size": "Taille",
   "quest.rail.epic": "Epic",
   "quest.rail.commits": "Commits",
@@ -562,12 +568,27 @@ export default {
   "project.settings.feature.enable": "Activer",
   "project.settings.feature.kanban.description":
     "Un tableau drag & drop pour déplacer les quêtes entre Nouvelle, En cours et Terminée.",
+  "project.settings.kanban.tagColors.title": "Couleurs des étiquettes",
+  "project.settings.kanban.tagColors.description":
+    "Donnez une couleur à chaque étiquette pour lire les cartes d'un coup d'œil. Les étiquettes sans couleur restent neutres.",
+  "project.settings.kanban.tagColors.empty":
+    "Aucune étiquette pour l'instant. Ajoutez-en une à une quête et elle apparaîtra ici.",
+  "project.settings.kanban.defaultSurface.title": "Ouvrir sur le tableau",
+  "project.settings.kanban.defaultSurface.description":
+    "Les membres arrivent sur le tableau Kanban plutôt que sur la liste des quêtes en ouvrant ce projet.",
   "project.settings.kanban.columns.title": "Colonnes « En cours »",
   "project.settings.kanban.columns.description":
     "Découpez la voie « En cours » en sous-colonnes nommées (ex. En relecture → En dev → En test). Jusqu'à 5. Nouvelle et Terminée restent fixes.",
   "project.settings.kanban.columns.add": "Ajouter une colonne",
   "project.settings.kanban.columns.placeholder": "Nom de la colonne",
+  "project.settings.kanban.columns.status": "Correspond à",
+  "project.settings.kanban.columns.status.new": "Pas commencé",
+  "project.settings.kanban.columns.status.accepted": "En cours",
+  "project.settings.kanban.columns.status.completed": "Terminé",
+  "project.settings.kanban.columns.wip": "Limite d'en-cours",
+  "project.settings.kanban.columns.wip.none": "Sans limite",
   "project.settings.kanban.columns.delete": "Supprimer",
+  "project.settings.kanban.columns.reorder": "Réordonner la colonne",
   "project.settings.feature.folios.description":
     "Notes markdown rattachées au projet : cherchables, taguables, accessibles à l’IA.",
   "project.settings.folios.summary.label": "Afficher le résumé pour les agents",
@@ -681,10 +702,32 @@ export default {
 
   "kanban.column.new": "Nouvelles",
   "kanban.column.completed": "Terminées",
+  "kanban.column.collapse": "Réduire la colonne",
   "kanban.empty": "Aucune quête",
   "kanban.showMore": "Afficher plus",
   "kanban.filter.allAreas": "Tous les domaines",
   "kanban.filter.allTags": "Tous les tags",
+  "kanban.wip.exceeded":
+    "$1 dépasse sa limite de $2. Rien n'est bloqué, mais cela mérite un coup d'œil.",
+  "kanban.lanes.off": "Sans couloirs",
+  "kanban.lanes.byArea": "Par domaine",
+  "kanban.lanes.byEpic": "Par épopée",
+  "kanban.filter.search": "Rechercher des cartes",
+  "kanban.filter.mine": "Mes cartes",
+  "kanban.filter.overdue": "En retard",
+  "kanban.filter.dueWeek": "Échéance cette semaine",
+  "kanban.filter.reset": "Effacer les filtres",
+  "kanban.composer.add": "Ajouter une carte",
+  "kanban.composer.placeholder": "Titre, puis Entrée",
+  "kanban.composer.submit": "Ajouter",
+  "kanban.composer.needsArea":
+    "Créez d'abord un domaine — une quête doit appartenir à l'un d'eux.",
+  "kanban.reopen.title": "Rouvrir cette quête ?",
+  "kanban.reopen.confirm":
+    "Elle repart en cours. Son résumé de complétion est conservé.",
+  "kanban.reopen.confirmWithDependents":
+    "Elle repart en cours, et $1 dépendai(en)t de son achèvement. Ce qui a déjà démarré reste démarré. Son résumé de complétion est conservé.",
+  "kanban.reopen.confirmButton": "Rouvrir",
   "kanban.error.completedCannotMove":
     "Les quêtes terminées ne peuvent pas être déplacées",
   "kanban.error.acceptFirst":
@@ -772,6 +815,7 @@ export default {
   "error.home": "Accueil",
 
   "common.cancel": "Annuler",
+  "common.none": "Aucune couleur",
   "common.download": "Télécharger",
   "common.next": "Suivant",
   "common.previous": "Précédent",
