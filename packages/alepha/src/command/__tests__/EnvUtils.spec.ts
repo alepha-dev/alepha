@@ -91,6 +91,60 @@ describe("EnvUtils", () => {
       expect(result.FOO).toBe("\"bar'");
     });
 
+    /**
+     * The cases below come from dotenv's own documented grammar. A `.env`
+     * that works with every other tool has to parse the same way here.
+     */
+    const parse = async (content: string) => {
+      const alepha = Alepha.create().with({
+        provide: FileSystemProvider,
+        use: MemoryFileSystemProvider,
+      });
+      const fs = alepha.inject(MemoryFileSystemProvider);
+      await fs.writeFile("/project/.env", content);
+      return alepha.inject(EnvUtils).parseEnv("/project");
+    };
+
+    it("strips an inline comment from an unquoted value", async () => {
+      const result = await parse("FOO=bar # not part of the value\n");
+      expect(result.FOO).toBe("bar");
+    });
+
+    it("keeps a # that is inside quotes", async () => {
+      const result = await parse('PASSWORD="p#ssw0rd" # the real comment\n');
+      expect(result.PASSWORD).toBe("p#ssw0rd");
+    });
+
+    it("accepts the `export KEY=value` form", async () => {
+      const result = await parse("export FOO=bar\n");
+      expect(result.FOO).toBe("bar");
+      expect(result["export FOO"]).toBeUndefined();
+    });
+
+    it("ignores a bare key with no value", async () => {
+      // "unset" and "set to the empty string" are different things to an
+      // $env schema, so a line with no `=` must not create the key.
+      const result = await parse("FOO\nBAR=ok\n");
+      expect("FOO" in result).toBe(false);
+      expect(result.BAR).toBe("ok");
+    });
+
+    it("reads a quoted value that spans several lines", async () => {
+      const result = await parse(
+        "PRIVATE_KEY='-----BEGIN-----\nline two\n-----END-----'\nAFTER=yes\n",
+      );
+      expect(result.PRIVATE_KEY).toBe(
+        "-----BEGIN-----\nline two\n-----END-----",
+      );
+      expect(result.AFTER).toBe("yes");
+    });
+
+    it("skips comment lines and blank lines", async () => {
+      const result = await parse("# a comment\n\nFOO=bar\n");
+      expect(result.FOO).toBe("bar");
+      expect("#" in result).toBe(false);
+    });
+
     it("should not strip quotes from single-character values", async () => {
       const alepha = Alepha.create().with({
         provide: FileSystemProvider,

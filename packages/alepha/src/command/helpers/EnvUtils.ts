@@ -48,41 +48,7 @@ export class EnvUtils {
         const envPath = this.fs.join(root, file);
         try {
           const buffer = await this.fs.readFile(envPath);
-          const envContent = buffer.toString("utf8");
-          for (const line of envContent.split("\n")) {
-            const [key, ...rest] = line.split("=");
-            if (key) {
-              const trimmedKey = key.trim();
-              if (trimmedKey && !trimmedKey.startsWith("#")) {
-                let value = rest.join("=").trim();
-                const last = value.length - 1;
-                if (
-                  value.length >= 2 &&
-                  value[0] === '"' &&
-                  value[last] === '"'
-                ) {
-                  // Double-quoted: JSON-decode so escapes round-trip with a
-                  // `JSON.stringify`-based writer (e.g. Rocket's
-                  // `.env.<env>.local` overrides, which write JSON values like
-                  // CLUB_CONFIG_JSON). Falls back to a naive strip when the
-                  // body isn't valid JSON (e.g. a Windows path with `\`), so
-                  // simple `KEY="value"` still behaves as before.
-                  try {
-                    value = JSON.parse(value);
-                  } catch {
-                    value = value.slice(1, -1);
-                  }
-                } else if (
-                  value.length >= 2 &&
-                  value[0] === "'" &&
-                  value[last] === "'"
-                ) {
-                  value = value.slice(1, -1);
-                }
-                result[trimmedKey] = value;
-              }
-            }
-          }
+          Object.assign(result, this.parseEnvContent(buffer.toString("utf8")));
           this.log.debug(`Parsed environment variables from ${envPath}`);
         } catch (error) {
           // Only "not there" is routine. Swallowing everything hid a real
@@ -99,5 +65,75 @@ export class EnvUtils {
     }
 
     return result;
+  }
+
+  /**
+   * Parse the body of a `.env` file.
+   *
+   * Follows dotenv's own grammar, because a `.env` that works with every
+   * other tool has to parse the same way here. Concretely, and each of these
+   * used to be wrong:
+   *
+   * - `export KEY=value` sets `KEY`, not a key literally named `export KEY`.
+   * - `KEY=value # note` sets `value`. An unquoted value ends at the first
+   *   `#`, so it can never contain one - that is dotenv's rule, not a
+   *   simplification.
+   * - A bare `KEY` line with no `=` is ignored rather than setting an empty
+   *   string, which is the difference between "unset" and "set to nothing"
+   *   and changes what `$env` schemas do with it.
+   * - A quoted value may span lines.
+   *
+   * **One deliberate divergence.** A double-quoted value is JSON-decoded
+   * first, so escapes round-trip with a `JSON.stringify`-based writer (the
+   * `.env.<env>.local` overrides do exactly that). When the body is not valid
+   * JSON the quotes are simply stripped, with no escape expansion - dotenv
+   * would turn the `\n` of a Windows path like `"C:\new\dir"` into a
+   * newline, and that path is a real thing people write.
+   */
+  public parseEnvContent(content: string): Record<string, string> {
+    // dotenv's own line grammar. Kept verbatim so the two cannot drift:
+    // optional `export`, key, `=` or `: `, then a quoted value (which may
+    // span lines) or an unquoted one that stops at the first `#`.
+    const line =
+      /(?:^|^)\s*(?:export\s+)?([\w.-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'])*'|\s*"(?:\\"|[^"])*"|\s*`(?:\\`|[^`])*`|[^#\r\n]+)?\s*(?:#.*)?(?:$|$)/gm;
+
+    const result: Record<string, string> = {};
+    const normalized = content.replace(/\r\n?/g, "\n");
+
+    let match: RegExpExecArray | null = line.exec(normalized);
+    while (match !== null) {
+      const value = (match[2] ?? "").trim();
+      result[match[1]] = this.unquoteEnvValue(value);
+      match = line.exec(normalized);
+    }
+
+    return result;
+  }
+
+  /**
+   * Strip the surrounding quotes of a `.env` value, if it has a matching
+   * pair. An unbalanced quote is part of the value - `FOO="` is the one
+   * character, not an unterminated string.
+   */
+  protected unquoteEnvValue(value: string): string {
+    const quote = value[0];
+    const last = value.length - 1;
+    if (value.length < 2 || value[last] !== quote) {
+      return value;
+    }
+
+    if (quote === '"') {
+      try {
+        return JSON.parse(value);
+      } catch {
+        return value.slice(1, -1);
+      }
+    }
+
+    if (quote === "'" || quote === "`") {
+      return value.slice(1, -1);
+    }
+
+    return value;
   }
 }
