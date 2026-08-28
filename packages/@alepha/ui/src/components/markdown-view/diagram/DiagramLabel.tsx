@@ -2,10 +2,18 @@ import * as React from "react";
 
 void React;
 
-import { round } from "./FlowchartDiagram.tsx";
 import { DIAGRAM_LINE_HEIGHT } from "./textMetrics.ts";
 
-export interface FlowchartDiagramLabelProps {
+/**
+ * Two decimals is plenty for a diagram and keeps the emitted attributes
+ * readable; a layout's raw coordinates carry a dozen.
+ *
+ * It lives here rather than in either emitter because both of them draw
+ * with it, the same way both measure with `textMetrics.ts`.
+ */
+export const round = (value: number): number => Math.round(value * 100) / 100;
+
+export interface DiagramLabelProps {
   /**
    * Already wrapped and capped by `measureLabel` - draw exactly these.
    */
@@ -17,7 +25,9 @@ export interface FlowchartDiagramLabelProps {
 }
 
 /**
- * A centred, multi-line label, one `tspan` per line.
+ * A centred, multi-line label, one `tspan` per line. Shared by both
+ * diagram pipelines: a flowchart node label and a sequence message label
+ * are the same drawing problem.
  *
  * The line box has to match `DIAGRAM_LINE_HEIGHT`, which is what
  * `measureLabel` sized the box with: text and box disagreeing is the
@@ -26,7 +36,7 @@ export interface FlowchartDiagramLabelProps {
  * `dominant-baseline` is not used: jsdom and older Safari disagree about it,
  * and shifting the first line by hand is arithmetic that works everywhere.
  */
-export const FlowchartDiagramLabel = (props: FlowchartDiagramLabelProps) => {
+export const DiagramLabel = (props: DiagramLabelProps) => {
   const lineBox = props.fontSize * DIAGRAM_LINE_HEIGHT;
   // The stack is centred on `centerY`, then each line sits on its own
   // baseline. `0.36em` is the optical centre of a lowercase run.

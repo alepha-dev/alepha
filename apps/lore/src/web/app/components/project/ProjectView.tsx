@@ -11,6 +11,7 @@ import {
   BookOpen,
   Bug,
   Cog,
+  Columns3,
   Flag,
   Grid3x2,
   Inbox,
@@ -40,13 +41,14 @@ import {
   projectNavAtom,
 } from "../../atoms/projectNavAtom.ts";
 import { questLogCollapsedAtom } from "../../atoms/questLogCollapsedAtom.ts";
-import { type QuestsView, questsViewAtom } from "../../atoms/questsViewAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import HeaderActions from "../shared/header/HeaderActions.tsx";
 import HeaderSearchButton from "../shared/header/HeaderSearchButton.tsx";
 import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
 import ProjectQuestLogRail from "./ProjectQuestLogRail.tsx";
-import ProjectQuestsViewSwitcher from "./ProjectQuestsViewSwitcher.tsx";
+import ProjectQuestsViewSwitcher, {
+  type QuestsView,
+} from "./ProjectQuestsViewSwitcher.tsx";
 import ProjectSwitcher from "./ProjectSwitcher.tsx";
 import QuestLog from "./QuestLog.tsx";
 
@@ -80,6 +82,7 @@ const ROUTES_APP = new Set([
 
 const ROUTES_FULL_WIDTH = new Set([
   "projectQuest",
+  "projectKanban",
   "projectEpics",
   "projectEpic",
   "projectMilestones",
@@ -123,6 +126,7 @@ const SECTION_HREF_ROUTES: Record<
 const SECTION_LABEL_KEYS: Record<string, string> = {
   projectQuests: "project.menu.quests",
   projectQuest: "project.menu.quests",
+  projectKanban: "project.menu.kanban",
   projectEpics: "project.menu.epics",
   projectEpic: "project.menu.epics",
   projectMilestones: "project.menu.milestones",
@@ -157,25 +161,22 @@ const ProjectView = () => {
   const router = useRouter<AppRouter>();
   const { tr } = useI18n<I18n, "en">();
   const name = routerState.name ?? "";
-  const [questsView, setQuestsView] = useStore(questsViewAtom);
   const [questLogCollapsed, setQuestLogCollapsed] = useStore(
     questLogCollapsedAtom,
   );
-  // Kanban is not its own route anymore (the great rename, Task 8) — the
-  // board needs the same full-width, no quest-log treatment its old
-  // dedicated route got, so branch on the stored view in addition to the
-  // route name. That view was a `?view=kanban` query param until #156;
-  // reading it from an atom is what lets this component see it at all
-  // without the page having to publish it into the URL first.
-  const kanbanView = name === "projectQuests" && questsView.view === "kanban";
-  const showQuestLog = ROUTES_WITH_QUEST_LOG.has(name) && !kanbanView;
-  const fullWidth = ROUTES_FULL_WIDTH.has(name) || kanbanView;
-  // Both routes, for the same reason the quest log gets both: dropping the
-  // bar on the detail route would shift the log up by the bar's height the
-  // moment a quest opened. What it does there is not switch the page - the
-  // detail route has no two views - but go back up to the one that does; see
-  // `selectView`.
-  const showViewBar = ROUTES_WITH_QUEST_LOG.has(name);
+  // Kanban is its own route again, so "are we on the board" is just the
+  // route name. It used to be `name === "projectQuests" && stored view is
+  // kanban`, a special case that existed only because the 2026-08 rename
+  // turned the board into a mode of the Quests page.
+  const kanbanView = name === "projectKanban";
+  const showQuestLog = ROUTES_WITH_QUEST_LOG.has(name);
+  const fullWidth = ROUTES_FULL_WIDTH.has(name);
+  // The list route, the detail route AND the board. The detail route gets it
+  // for the same reason the quest log does: dropping the bar there would
+  // shift the log up by the bar's height the moment a quest opened. What it
+  // does on detail is not switch the page — the detail route has no two
+  // views — but go back up to the one that does; see `selectView`.
+  const showViewBar = ROUTES_WITH_QUEST_LOG.has(name) || kanbanView;
 
   const [project] = useStore(currentProjectAtom);
   const [questCount] = useStore(currentQuestCountAtom);
@@ -207,11 +208,13 @@ const ProjectView = () => {
   // write alone left the pressed entry moving and the page not: a control
   // that answers a click by doing nothing visible. So going up to the page
   // the chosen view belongs to is the second half of picking one there.
+  // The bar navigates now rather than writing a preference. Both surfaces
+  // are routes, so picking one IS going there — which also makes the
+  // detail-route case fall out for free instead of needing its own branch.
   const selectView = (view: QuestsView) => {
-    setQuestsView({ view });
-    if (name === "projectQuest") {
-      void router.push("projectQuests", { params: { projectSlug } });
-    }
+    void router.push(view === "kanban" ? "projectKanban" : "projectQuests", {
+      params: { projectSlug },
+    });
   };
 
   // Four unlabelled groups (`NavGroup.label` omitted on purpose, see the great
@@ -253,6 +256,21 @@ const ProjectView = () => {
       badge: questCount?.count ? questCount.count : undefined,
     },
   ];
+  // The board is a destination, so it gets an entry of its own. It had one
+  // until the 2026-08 rename took it, which is the whole reason
+  // `ProjectQuestsViewSwitcher` had to be invented — the board was
+  // unreachable from the UI at all.
+  //
+  // Not folded into the Quests entry's `active` set: these are two surfaces
+  // now, and the sidebar should say which one you are on.
+  if (features.kanban) {
+    workItems.push({
+      label: tr("project.menu.kanban"),
+      icon: Columns3,
+      href: router.path("projectKanban", { params: { projectSlug } }),
+      active: name === "projectKanban",
+    });
+  }
   // A lens on quests, so it sits right after them: scope, then the items.
   if (features.epics) {
     workItems.push({
@@ -530,10 +548,16 @@ const ProjectView = () => {
       <div className="flex h-full flex-col">
         {showViewBar && (
           <ProjectQuestsViewSwitcher
-            // The stored preference, not `kanbanView` — on the quest DETAIL
-            // route the layout is never the board, but the bar still stands
-            // for which view the list will come back as.
-            view={questsView.view}
+            // The route, not a stored preference. On the quest DETAIL route
+            // neither entry is the current surface, so nothing is pressed
+            // and both are live links back up to a list.
+            view={
+              kanbanView
+                ? "kanban"
+                : name === "projectQuests"
+                  ? "list"
+                  : undefined
+            }
             kanbanEnabled={features.kanban === true}
             onSelect={selectView}
           />

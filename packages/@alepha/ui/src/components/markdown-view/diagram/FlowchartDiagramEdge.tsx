@@ -2,8 +2,7 @@ import * as React from "react";
 
 void React;
 
-import { round } from "./FlowchartDiagram.tsx";
-import { FlowchartDiagramLabel } from "./FlowchartDiagramLabel.tsx";
+import { DiagramLabel, round } from "./DiagramLabel.tsx";
 import type { PositionedEdge } from "./layoutFlowchart.ts";
 
 export interface FlowchartDiagramEdgeProps {
@@ -58,7 +57,7 @@ export const FlowchartDiagramEdge = (props: FlowchartDiagramEdgeProps) => {
             ry={4}
             fill="var(--background)"
           />
-          <FlowchartDiagramLabel
+          <DiagramLabel
             lines={edge.label.lines}
             centerX={edge.label.x + edge.label.width / 2}
             centerY={edge.label.y + edge.label.height / 2}

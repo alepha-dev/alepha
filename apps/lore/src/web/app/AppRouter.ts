@@ -318,6 +318,7 @@ export class AppRouter {
   project = $page({
     children: () => [
       this.projectQuests,
+      this.projectKanban,
       this.projectQuest,
       this.projectQuestGraph,
       this.projectEpics,
@@ -747,6 +748,101 @@ export class AppRouter {
       title: `${previous?.title ?? ""} › Quests`,
     }),
     lazy: () => import("./components/project/ProjectQuestsPage.tsx"),
+    loader: async () => {
+      // The index of a project. `defaultSurface` decides which surface it
+      // lands on, so a kanban-first team gets the board from every machine
+      // and an invited member inherits it — which a per-browser cookie
+      // (`questsViewAtom`, retired with this) could never do.
+      //
+      // ⚠️ This is NOT the shape that broke #156. That was a `useEffect`
+      // seeding `?view=` from `localStorage` during render, which also ran
+      // on the way OUT of the page, saw the next route's empty query and
+      // bounced the user back — every sidebar link was dead. A loader
+      // redirect runs once, on entry, resolves before anything paints, and
+      // has no outgoing render to misread. Nothing here writes the URL back.
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (project?.defaultSurface === "kanban" && project.features?.kanban) {
+        throw new Redirection(`/${project.slug}/kanban`);
+      }
+    },
+  });
+
+  /**
+   * The Kanban board as a destination rather than a mode.
+   *
+   * Sibling of `projectQuests` (which keeps `path: "/"`). Giving it a real
+   * route is what lets it have a sidebar entry, a linkable URL and — once
+   * the card route lands — addressable cards.
+   */
+  projectKanban = $page({
+    name: "projectKanban",
+    children: () => [this.projectKanbanCard],
+    path: "/kanban",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Kanban`,
+    }),
+    // No loader: `ProjectKanbanPage` fetches the board itself, because the
+    // board reloads in place when the header creates a quest and the loader
+    // machinery does not re-run for that.
+    lazy: () => import("./components/project/ProjectKanbanPage.tsx"),
+  });
+
+  /**
+   * One card, open over the board.
+   *
+   * A child route rather than local state: clicking a card used to be
+   * `setSelectedQuest(quest)`, which had no URL and — the part that
+   * actually bit — **no refetch**, so a long-lived board edited whatever
+   * `getBoard` returned however long ago. A loader gets fresh data on open
+   * for free, and the card becomes linkable.
+   *
+   * ⚠️ The param is `shortId`, the SAME name `projectQuest` uses at the
+   * same position. That is deliberate: the router keeps one param name per
+   * path position, so two routes naming it DIFFERENTLY are what silently
+   * lose the inner value (the trap `projectEpic`'s `epicNumber` documents).
+   * Sharing the name is the safe side of that rule, as `projectSlug` does
+   * across the whole tree.
+   */
+  projectKanbanCard = $page({
+    name: "projectKanbanCard",
+    path: "/:shortId",
+    schema: {
+      params: z.object({
+        shortId: z.integer(),
+      }),
+    },
+    head: (props, previous) => {
+      const questTitle = (props as { quest?: { title?: string } } | undefined)
+        ?.quest?.title;
+      return {
+        title: `${previous?.title ?? ""} › ${questTitle ?? "Quest"}`,
+      };
+    },
+    lazy: () => import("./components/project/ProjectKanbanCard.tsx"),
+    loader: async ({ params }) => {
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
+      }
+      const quest = await this.questApi.getQuestByShortId({
+        params: {
+          projectId: project.id,
+          shortId: params.shortId,
+        },
+      });
+      // The board watches this atom to patch its own row, which is how an
+      // edit in the sheet moves the card behind it without a refetch.
+      this.alepha.store.set(currentQuestAtom, quest);
+      return { quest };
+    },
+    onLeave: () => {
+      this.alepha.store.set(currentQuestAtom, undefined);
+    },
+    errorHandler: (error) => {
+      if (HttpError.is(error, 404)) {
+        return createElement(NotFound, { style: { height: "100%" } });
+      }
+    },
   });
 
   projectEpics = $page({
