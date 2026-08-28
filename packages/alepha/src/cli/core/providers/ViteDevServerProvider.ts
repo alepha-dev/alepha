@@ -116,16 +116,17 @@ export class ViteDevServerProvider {
 
   /**
    * Start the Alepha server and begin listening.
+   *
+   * The two halves fail differently, which is why they are no longer in one
+   * `try`. An app that throws on start is a code problem: the retry loop
+   * waits for the edit that fixes it, and that is the whole point of
+   * `alepha dev`. A socket that will not bind is not - the port stays taken
+   * however many files you save - and folding it into the same loop left the
+   * command sitting there looking alive while serving nothing at all.
    */
   public async start(): Promise<void> {
     try {
       await this.alepha?.start();
-      await this.listen();
-
-      const port = this.server.config.server.port ?? 5173;
-      const url = `http://localhost:${port}/`;
-      const log = this.alepha?.log ?? this.log;
-      log.info(`Listening on ${this.colors.set("CYAN", url)}`);
     } catch (err) {
       this.hasError = true;
       this.currentError = err instanceof Error ? err : new Error(String(err));
@@ -133,8 +134,14 @@ export class ViteDevServerProvider {
       this.alepha = null;
       this.alepha = await this.waitForSuccessfulLoad();
       await this.alepha.start();
-      await this.listen();
     }
+
+    await this.listen();
+
+    const port = this.server.config.server.port ?? 5173;
+    const url = `http://localhost:${port}/`;
+    const log = this.alepha?.log ?? this.log;
+    log.info(`Listening on ${this.colors.set("CYAN", url)}`);
   }
 
   /**
@@ -268,9 +275,26 @@ export class ViteDevServerProvider {
 
   /**
    * Start listening for connections.
+   *
+   * Anything thrown here reaches the dev command and ends it. `EADDRINUSE` is
+   * the one worth naming: it is nearly always a second `alepha dev`, or an
+   * `e2e` run that took the port, and the raw Node error says only "listen
+   * EADDRINUSE" with no hint of which app or which port.
    */
   protected async listen(): Promise<void> {
-    await this.server.listen();
+    try {
+      await this.server.listen();
+    } catch (err) {
+      const port = this.server.config?.server?.port ?? 5173;
+      if ((err as { code?: string })?.code === "EADDRINUSE") {
+        throw new AlephaError(
+          `Port ${port} is already in use, so the dev server cannot start. ` +
+            "Stop whatever holds it, or pass --port.",
+          { cause: err },
+        );
+      }
+      throw err;
+    }
   }
 
   /**
@@ -743,29 +767,51 @@ if (import.meta.hot) {
     this.waitingForRetry = true;
 
     return new Promise((resolve) => {
+      // Files saved since the retry in flight started. A watcher fires once
+      // per file, and a "save all" or a git checkout fires many within a few
+      // milliseconds — without this they each began their own `loadAlepha`,
+      // concurrently, on the same module graph.
+      const queued = new Set<string>();
+      let running = false;
+
       const onFileChange = async (file: string) => {
         if (/[/\\]\.idea[/\\]/.test(file)) return;
 
-        console.log();
-        console.log(this.colors.set("CYAN", "  ⟳ Retrying..."));
-
-        const filesToInvalidate = new Set([file]);
+        queued.add(file);
+        // Already retrying: this change joins the next round rather than
+        // starting one of its own. At most one follow-up runs, however many
+        // files arrive while the current attempt is busy.
+        if (running) return;
+        running = true;
 
         try {
-          const alepha = await this.loadAlepha(false, filesToInvalidate);
-          this.waitingForRetry = false;
-          this.currentError = null;
-          this.server.watcher.off("change", onFileChange);
-          this.server.watcher.off("add", onFileChange);
-          this.sendBrowserReload();
-          resolve(alepha);
-        } catch (err) {
-          this.hasError = true;
-          this.currentError =
-            err instanceof Error ? err : new Error(String(err));
-          this.logError("Startup failed", err);
-          this.alepha = null;
-          this.sendErrorOverlay(this.currentError);
+          while (queued.size > 0) {
+            const filesToInvalidate = new Set(queued);
+            queued.clear();
+
+            console.log();
+            console.log(this.colors.set("CYAN", "  ⟳ Retrying..."));
+
+            try {
+              const alepha = await this.loadAlepha(false, filesToInvalidate);
+              this.waitingForRetry = false;
+              this.currentError = null;
+              this.server.watcher.off("change", onFileChange);
+              this.server.watcher.off("add", onFileChange);
+              this.sendBrowserReload();
+              resolve(alepha);
+              return;
+            } catch (err) {
+              this.hasError = true;
+              this.currentError =
+                err instanceof Error ? err : new Error(String(err));
+              this.logError("Startup failed", err);
+              this.alepha = null;
+              this.sendErrorOverlay(this.currentError);
+            }
+          }
+        } finally {
+          running = false;
         }
       };
 
