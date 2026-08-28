@@ -3,7 +3,6 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
 import { feedback } from "../entities/feedback.ts";
-import { questComments } from "../entities/questComments.ts";
 import { quests } from "../entities/quests.ts";
 import { relations } from "../relations.ts";
 import type { ProjectActivityEvent } from "../schemas/projectActivitySchema.ts";
@@ -25,7 +24,7 @@ import type { ProjectActivityEvent } from "../schemas/projectActivitySchema.ts";
  */
 export class ProjectActivityService {
   protected readonly quests = $repository(quests);
-  protected readonly comments = $repository(questComments);
+  protected readonly comments = $repository(relations, "questComments");
   protected readonly feedback = $repository(feedback);
   protected readonly revisions = $repository(relations, "folioRevisions");
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -199,24 +198,23 @@ export class ProjectActivityService {
     projectId: number,
     since: string,
   ): Promise<ProjectActivityEvent[]> {
+    // The comments table carries no `projectId`, so the quest a comment
+    // hangs off is what scopes it - and that scoping is a join, not a filter
+    // applied afterwards. This used to read every comment in the instance
+    // since `since`, then look their quests up and drop the ones that
+    // belonged elsewhere: correct output, at a cost that grew with every
+    // other project on the deployment rather than with this one. Same shape
+    // as `folioRevisions` below, which has always joined.
     const rows = await this.comments.findMany({
-      where: { createdAt: { gt: since } },
-    });
-    if (rows.length === 0) return [];
-
-    // The comments table carries no `projectId`, so the quests they hang
-    // off are what scopes them. One lookup for the page, not one per row.
-    const questRows = await this.quests.findMany({
       where: {
-        id: { inArray: [...new Set(rows.map((row) => row.questId))] },
-        projectId: { eq: projectId },
+        createdAt: { gt: since },
+        quest: { projectId: { eq: projectId } },
       },
-      columns: ["id", "shortId", "title"],
+      include: { quest: { select: ["shortId", "title"] } },
     });
-    const byId = new Map(questRows.map((quest) => [quest.id, quest]));
 
     return rows.flatMap((row) => {
-      const quest = byId.get(row.questId);
+      const quest = row.quest;
       if (!quest) return [];
       return [
         {

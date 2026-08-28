@@ -12,6 +12,7 @@ import { folios } from "./entities/folios.ts";
 import { members } from "./entities/members.ts";
 import { milestones } from "./entities/milestones.ts";
 import { projects } from "./entities/projects.ts";
+import { questComments } from "./entities/questComments.ts";
 import { quests } from "./entities/quests.ts";
 import { sigils } from "./entities/sigils.ts";
 
@@ -37,6 +38,7 @@ export const schema = {
   milestones,
   epics,
   quests,
+  questComments,
   feedback,
   folios,
   folioLinks,
@@ -162,6 +164,20 @@ export const relations = $relations(schema, (r) => ({
      */
     blockedBy: r.one.quests({ from: r.quests.dependsOn, to: r.quests.id }),
     blocks: r.many.quests({ from: r.quests.id, to: r.quests.dependsOn }),
+    comments: r.many.questComments({
+      from: r.quests.id,
+      to: r.questComments.questId,
+    }),
+  },
+
+  /**
+   * A comment carries no `projectId` of its own: the quest it hangs off is
+   * what scopes it. Declared here so that scoping can be a join rather than
+   * a filter applied to every comment in the instance.
+   */
+  questComments: {
+    quest: r.one.quests({ from: r.questComments.questId, to: r.quests.id }),
+    author: r.one.users({ from: r.questComments.authorId, to: r.users.id }),
   },
 
   feedback: {
