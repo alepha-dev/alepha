@@ -1,18 +1,11 @@
 import { AdminNotificationsDetail } from "@alepha/ui/components/admin/admin-notifications-detail";
 import { AdminNotificationsStatusBadge } from "@alepha/ui/components/admin/admin-notifications-status-badge";
-import { AdminNotificationsSuppressions } from "@alepha/ui/components/admin/admin-notifications-suppressions";
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
 import { AdminUserCell } from "@alepha/ui/components/admin/admin-user-cell";
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@alepha/ui/components/ui/tabs";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { z } from "alepha";
 import type {
@@ -26,13 +19,11 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
   Braces,
-  CircleAlert,
   CircleDot,
   FileText,
   Radio,
   Search,
   Send,
-  Tag,
   Trash2,
   UserRound,
 } from "lucide-react";
@@ -155,12 +146,6 @@ export const AdminNotifications = () => {
           ...(f.status ? { status: f.status } : {}),
           ...(f.channel ? { channel: f.channel } : {}),
           ...(f.template ? { template: f.template } : {}),
-          ...(f.category ? { category: f.category } : {}),
-          // Both directions are real filters, and neither is the absence of
-          // one: "yes" is the failures, "no" is the healthy rows, and an
-          // unset control is everything.
-          ...(f.hasError === "yes" ? { hasError: true } : {}),
-          ...(f.hasError === "no" ? { hasError: false } : {}),
         } as any,
       });
       resolveUsers(page.content);
@@ -257,349 +242,248 @@ export const AdminNotifications = () => {
     [client, toast, tr],
   );
 
-  const categories = [
-    ...new Set(
-      (templates ?? [])
-        .map((template) => template.category)
-        .filter((category): category is string => Boolean(category)),
-    ),
-  ].sort();
-
   return (
     <AdminPage>
-      <Tabs defaultValue="messages" className="flex min-h-0 flex-1 flex-col">
-        <TabsList>
-          <TabsTrigger value="messages">
-            {tr("admin.notifications.tabMessages", { default: "Messages" })}
-          </TabsTrigger>
-          {client.listSuppressions.can() ? (
-            <TabsTrigger value="suppressions">
-              {tr("admin.notifications.tabSuppressions", {
-                default: "Suppressions",
-              })}
-            </TabsTrigger>
-          ) : null}
-        </TabsList>
-
-        <TabsContent value="messages" className="flex min-h-0 flex-1 flex-col">
-          <AlephaTable<NotificationResource>
-            className="min-h-0 flex-1"
-            persistenceKey="admin.notifications"
-            fetch={fetcher}
-            onRowClick={(n) => setSelected({ id: n.id, tab: "details" })}
-            filters={{
-              schema: z.object({
-                search: z.text().optional(),
-                status: z.enum(NOTIFICATION_STATUSES as [string]).optional(),
-                channel: z.enum(["email", "sms"]).optional(),
-                template: z.text().optional(),
-                category: z.text().optional(),
-                // A tri-state select, not a switch. A switch can only say
-                // "errors only" or "no filter", which leaves the backend's
-                // `hasError: false` (the healthy rows) unreachable, and it
-                // is the one control in the row that would be 56px tall
-                // against everything else's 32.
-                hasError: z.enum(["yes", "no"]).optional(),
+      <AlephaTable<NotificationResource>
+        className="min-h-0 flex-1"
+        persistenceKey="admin.notifications"
+        fetch={fetcher}
+        onRowClick={(n) => setSelected({ id: n.id, tab: "details" })}
+        filters={{
+          schema: z.object({
+            search: z.text().optional(),
+            status: z.enum(NOTIFICATION_STATUSES as [string]).optional(),
+            channel: z.enum(["email", "sms"]).optional(),
+            template: z.text().optional(),
+          }),
+          render: (form) => (
+            <>
+              <div className="w-52">
+                <Control
+                  input={form.input.search}
+                  label=""
+                  icon={Search}
+                  placeholder={tr("admin.notifications.filterSearch", {
+                    default: "Recipient",
+                  })}
+                  inputProps={{
+                    "aria-label": tr("admin.notifications.filterSearch", {
+                      default: "Recipient",
+                    }),
+                  }}
+                />
+              </div>
+              <div className="w-44">
+                <Control
+                  input={form.input.status}
+                  label=""
+                  clearable
+                  icon={CircleDot}
+                  clearLabel={tr("admin.notifications.allStatuses", {
+                    default: "All statuses",
+                  })}
+                  triggerClassName="w-full"
+                  items={NOTIFICATION_STATUSES.map((status) => ({
+                    label: statusLabels[status],
+                    value: status,
+                  }))}
+                  inputProps={{
+                    "aria-label": tr("admin.notifications.colStatus", {
+                      default: "Status",
+                    }),
+                  }}
+                />
+              </div>
+              <div className="w-40">
+                <Control
+                  input={form.input.channel}
+                  label=""
+                  clearable
+                  icon={Radio}
+                  clearLabel={tr("admin.notifications.allChannels", {
+                    default: "All channels",
+                  })}
+                  triggerClassName="w-full"
+                  items={[
+                    { label: "Email", value: "email" },
+                    { label: "SMS", value: "sms" },
+                  ]}
+                  inputProps={{
+                    "aria-label": tr("admin.notifications.colChannel", {
+                      default: "Channel",
+                    }),
+                  }}
+                />
+              </div>
+              {(templates ?? []).length > 0 && (
+                <div className="w-52">
+                  <Control
+                    input={form.input.template}
+                    label=""
+                    clearable
+                    icon={FileText}
+                    clearLabel={tr("admin.notifications.allTemplates", {
+                      default: "All templates",
+                    })}
+                    triggerClassName="w-full"
+                    items={(templates ?? []).map((template) => ({
+                      label: notificationTemplateLabel(template.name),
+                      value: template.name,
+                    }))}
+                    inputProps={{
+                      "aria-label": tr("admin.notifications.colTemplate", {
+                        default: "Template",
+                      }),
+                    }}
+                  />
+                </div>
+              )}
+            </>
+          ),
+        }}
+        rowActions={(row) => {
+          const user = row.contact ? usersByContact[row.contact] : undefined;
+          return [
+            ...(client.resendNotification.can()
+              ? [
+                  {
+                    label: tr("admin.notifications.resend", {
+                      default: "Resend",
+                    }),
+                    icon: Send,
+                    // The original payload lives in the outbox, which is
+                    // purged long before the receipt. Offering a resend
+                    // that can only 404 reads as a broken button.
+                    disabled: (item: NotificationResource) =>
+                      item.outboxAvailable === false,
+                    onClick: (
+                      item: NotificationResource,
+                      ctx: { refresh: () => void },
+                    ) => resend.run(item, ctx),
+                  },
+                ]
+              : []),
+            {
+              label: tr("admin.notifications.rawData", {
+                default: "Raw data",
               }),
-              render: (form) => (
-                <>
-                  <div className="w-52">
-                    <Control
-                      input={form.input.search}
-                      label=""
-                      icon={Search}
-                      placeholder={tr("admin.notifications.filterSearch", {
-                        default: "Recipient",
-                      })}
-                      inputProps={{
-                        "aria-label": tr("admin.notifications.filterSearch", {
-                          default: "Recipient",
-                        }),
-                      }}
-                    />
-                  </div>
-                  <div className="w-44">
-                    <Control
-                      input={form.input.status}
-                      label=""
-                      clearable
-                      icon={CircleDot}
-                      clearLabel={tr("admin.notifications.allStatuses", {
-                        default: "All statuses",
-                      })}
-                      triggerClassName="w-full"
-                      items={NOTIFICATION_STATUSES.map((status) => ({
-                        label: statusLabels[status],
-                        value: status,
-                      }))}
-                      inputProps={{
-                        "aria-label": tr("admin.notifications.colStatus", {
-                          default: "Status",
-                        }),
-                      }}
-                    />
-                  </div>
-                  <div className="w-40">
-                    <Control
-                      input={form.input.channel}
-                      label=""
-                      clearable
-                      icon={Radio}
-                      clearLabel={tr("admin.notifications.allChannels", {
-                        default: "All channels",
-                      })}
-                      triggerClassName="w-full"
-                      items={[
-                        { label: "Email", value: "email" },
-                        { label: "SMS", value: "sms" },
-                      ]}
-                      inputProps={{
-                        "aria-label": tr("admin.notifications.colChannel", {
-                          default: "Channel",
-                        }),
-                      }}
-                    />
-                  </div>
-                  {(templates ?? []).length > 0 && (
-                    <div className="w-52">
-                      <Control
-                        input={form.input.template}
-                        label=""
-                        clearable
-                        icon={FileText}
-                        clearLabel={tr("admin.notifications.allTemplates", {
-                          default: "All templates",
-                        })}
-                        triggerClassName="w-full"
-                        items={(templates ?? []).map((template) => ({
-                          label: notificationTemplateLabel(template.name),
-                          value: template.name,
-                        }))}
-                        inputProps={{
-                          "aria-label": tr("admin.notifications.colTemplate", {
-                            default: "Template",
-                          }),
-                        }}
-                      />
-                    </div>
-                  )}
-                  {categories.length > 0 && (
-                    <div className="w-44">
-                      <Control
-                        input={form.input.category}
-                        label=""
-                        clearable
-                        icon={Tag}
-                        clearLabel={tr("admin.notifications.allCategories", {
-                          default: "All",
-                        })}
-                        triggerClassName="w-full"
-                        items={categories.map((category) => ({
-                          label: category,
-                          value: category,
-                        }))}
-                        inputProps={{
-                          "aria-label": tr("admin.notifications.colCategory", {
-                            default: "Category",
-                          }),
-                        }}
-                      />
-                    </div>
-                  )}
-                  <div className="w-44">
-                    <Control
-                      input={form.input.hasError}
-                      label=""
-                      clearable
-                      icon={CircleAlert}
-                      clearLabel={tr("admin.notifications.allDeliveries", {
-                        default: "Delivered or not",
-                      })}
-                      triggerClassName="w-full"
-                      items={[
-                        {
-                          label: tr("admin.notifications.filterHasError", {
-                            default: "With an error",
-                          }),
-                          value: "yes",
-                        },
-                        {
-                          label: tr("admin.notifications.filterNoError", {
-                            default: "Without an error",
-                          }),
-                          value: "no",
-                        },
-                      ]}
-                      inputProps={{
-                        "aria-label": tr("admin.notifications.filterHasError", {
-                          default: "With an error",
-                        }),
-                      }}
-                    />
-                  </div>
-                </>
+              icon: Braces,
+              onClick: (item: NotificationResource) =>
+                setSelected({ id: item.id, tab: "raw" }),
+            },
+            ...(user
+              ? [
+                  {
+                    label: tr("admin.notifications.openUser", {
+                      default: "Open user",
+                    }),
+                    icon: UserRound,
+                    onClick: () => router.push(`/admin/users/${user.id}`),
+                  },
+                ]
+              : []),
+            ...(client.deleteNotification.can()
+              ? [
+                  {
+                    label: tr("admin.notifications.delete", {
+                      default: "Delete",
+                    }),
+                    icon: Trash2,
+                    destructive: true,
+                    onClick: (
+                      item: NotificationResource,
+                      ctx: { refresh: () => void },
+                    ) => remove.run(item, ctx),
+                  },
+                ]
+              : []),
+          ];
+        }}
+        bulkActions={[
+          {
+            label: tr("admin.notifications.bulkDelete", {
+              default: "Delete selected",
+            }),
+            icon: Trash2,
+            destructive: true,
+            onClick: (items, ctx) => bulkDelete.run(items, ctx),
+          },
+        ]}
+        columns={{
+          status: {
+            label: tr("admin.notifications.colStatus", {
+              default: "Status",
+            }),
+            // First, because it is the only column an operator scans
+            // before deciding whether the row is interesting at all.
+            className: "pl-4",
+            sortable: true,
+            cell: (n) => <AdminNotificationsStatusBadge status={n.status} />,
+          },
+          createdAt: {
+            label: tr("admin.notifications.colWhen", { default: "When" }),
+            sortable: true,
+            cell: (n) => (
+              <span className="text-muted-foreground text-xs">
+                {String(l(n.createdAt, { date: "fromNow" }))}
+              </span>
+            ),
+          },
+          contact: {
+            label: tr("admin.notifications.colRecipient", {
+              default: "Recipient",
+            }),
+            cell: (n) => {
+              const user = n.contact ? usersByContact[n.contact] : undefined;
+              // A contact that is not a user is normal, not a gap: a
+              // notification can go to an address nobody signed up with.
+              return user ? (
+                <AdminUserCell
+                  userId={user.id}
+                  user={user}
+                  fallbackLabel={n.contact}
+                />
+              ) : (
+                <span className="text-sm">{n.contact ?? "-"}</span>
+              );
+            },
+          },
+          template: {
+            label: tr("admin.notifications.colTemplate", {
+              default: "Template",
+            }),
+            sortable: true,
+            cell: (n) => (
+              // Humanized for reading, raw on hover: the raw name is the
+              // identifier an operator greps the codebase for.
+              <span className="text-sm" title={n.template}>
+                {n.template ? notificationTemplateLabel(n.template) : "-"}
+              </span>
+            ),
+          },
+          category: {
+            label: tr("admin.notifications.colCategory", {
+              default: "Category",
+            }),
+            cell: (n) =>
+              n.category ? (
+                <Badge variant="secondary">{n.category}</Badge>
+              ) : (
+                <span className="text-muted-foreground">-</span>
               ),
-            }}
-            rowActions={(row) => {
-              const user = row.contact
-                ? usersByContact[row.contact]
-                : undefined;
-              return [
-                ...(client.resendNotification.can()
-                  ? [
-                      {
-                        label: tr("admin.notifications.resend", {
-                          default: "Resend",
-                        }),
-                        icon: Send,
-                        // The original payload lives in the outbox, which is
-                        // purged long before the receipt. Offering a resend
-                        // that can only 404 reads as a broken button.
-                        disabled: (item: NotificationResource) =>
-                          item.outboxAvailable === false,
-                        onClick: (
-                          item: NotificationResource,
-                          ctx: { refresh: () => void },
-                        ) => resend.run(item, ctx),
-                      },
-                    ]
-                  : []),
-                {
-                  label: tr("admin.notifications.rawData", {
-                    default: "Raw data",
-                  }),
-                  icon: Braces,
-                  onClick: (item: NotificationResource) =>
-                    setSelected({ id: item.id, tab: "raw" }),
-                },
-                ...(user
-                  ? [
-                      {
-                        label: tr("admin.notifications.openUser", {
-                          default: "Open user",
-                        }),
-                        icon: UserRound,
-                        onClick: () => router.push(`/admin/users/${user.id}`),
-                      },
-                    ]
-                  : []),
-                ...(client.deleteNotification.can()
-                  ? [
-                      {
-                        label: tr("admin.notifications.delete", {
-                          default: "Delete",
-                        }),
-                        icon: Trash2,
-                        destructive: true,
-                        onClick: (
-                          item: NotificationResource,
-                          ctx: { refresh: () => void },
-                        ) => remove.run(item, ctx),
-                      },
-                    ]
-                  : []),
-              ];
-            }}
-            bulkActions={[
-              {
-                label: tr("admin.notifications.bulkDelete", {
-                  default: "Delete selected",
-                }),
-                icon: Trash2,
-                destructive: true,
-                onClick: (items, ctx) => bulkDelete.run(items, ctx),
-              },
-            ]}
-            columns={{
-              status: {
-                label: tr("admin.notifications.colStatus", {
-                  default: "Status",
-                }),
-                // First, because it is the only column an operator scans
-                // before deciding whether the row is interesting at all.
-                className: "pl-4",
-                sortable: true,
-                cell: (n) => (
-                  <AdminNotificationsStatusBadge status={n.status} />
-                ),
-              },
-              createdAt: {
-                label: tr("admin.notifications.colWhen", { default: "When" }),
-                sortable: true,
-                cell: (n) => (
-                  <span className="text-muted-foreground text-xs">
-                    {String(l(n.createdAt, { date: "fromNow" }))}
-                  </span>
-                ),
-              },
-              contact: {
-                label: tr("admin.notifications.colRecipient", {
-                  default: "Recipient",
-                }),
-                cell: (n) => {
-                  const user = n.contact
-                    ? usersByContact[n.contact]
-                    : undefined;
-                  // A contact that is not a user is normal, not a gap: a
-                  // notification can go to an address nobody signed up with.
-                  return user ? (
-                    <AdminUserCell
-                      userId={user.id}
-                      user={user}
-                      fallbackLabel={n.contact}
-                    />
-                  ) : (
-                    <span className="text-sm">{n.contact ?? "-"}</span>
-                  );
-                },
-              },
-              template: {
-                label: tr("admin.notifications.colTemplate", {
-                  default: "Template",
-                }),
-                sortable: true,
-                cell: (n) => (
-                  // Humanized for reading, raw on hover: the raw name is the
-                  // identifier an operator greps the codebase for.
-                  <span className="text-sm" title={n.template}>
-                    {n.template ? notificationTemplateLabel(n.template) : "-"}
-                  </span>
-                ),
-              },
-              category: {
-                label: tr("admin.notifications.colCategory", {
-                  default: "Category",
-                }),
-                cell: (n) =>
-                  n.category ? (
-                    <Badge variant="secondary">{n.category}</Badge>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  ),
-              },
-              type: {
-                // The column KEY stays `type`: AlephaTable persists column
-                // visibility under it, and renaming would silently drop every
-                // operator's stored preference. Only the label moves, to match
-                // what the detail sheet has always called it.
-                label: tr("admin.notifications.colChannel", {
-                  default: "Channel",
-                }),
-                cell: (n) => <Badge variant="secondary">{n.type ?? "-"}</Badge>,
-              },
-            }}
-          />
-        </TabsContent>
-
-        {client.listSuppressions.can() ? (
-          <TabsContent
-            value="suppressions"
-            className="flex min-h-0 flex-1 flex-col"
-          >
-            <AdminNotificationsSuppressions />
-          </TabsContent>
-        ) : null}
-      </Tabs>
+          },
+          type: {
+            // The column KEY stays `type`: AlephaTable persists column
+            // visibility under it, and renaming would silently drop every
+            // operator's stored preference. Only the label moves, to match
+            // what the detail sheet has always called it.
+            label: tr("admin.notifications.colChannel", {
+              default: "Channel",
+            }),
+            cell: (n) => <Badge variant="secondary">{n.type ?? "-"}</Badge>,
+          },
+        }}
+      />
 
       <AdminNotificationsDetail
         notificationId={selected?.id ?? null}
