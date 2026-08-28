@@ -237,6 +237,16 @@ fleet of replicas fires the handler once, not once per replica. This needs a
 real `LockProvider` - the default `MemoryLockProvider` is per-process. See
 [Bare metal deployment](/docs/guides-deployment-bare) for the setup.
 
+The unit that is claimed is the **schedule instant**, not the job. Every replica
+derives the same instant from the same cron expression, so the first one there
+claims it and the others stand down - including a replica whose clock lags by a
+few milliseconds and arrives after the handler has already finished. That claim
+is what makes "once per tick" hold for a job with `retry`, where the tick only
+writes an outbox row and is over in a millisecond.
+
+A manual `trigger()` is not a scheduled instant, so it is never suppressed by
+one; it still takes the per-job lock, and so cannot overlap a running tick.
+
 `lock` has no effect on queue-mode and direct-mode jobs. Those serialize through
 the outbox `claim()` UPDATE-guard instead, which is always on.
 

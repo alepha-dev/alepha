@@ -1,8 +1,10 @@
 import { Alepha, AlephaError, z } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { LockProvider, MemoryLockProvider } from "alepha/lock";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import { CronProvider } from "alepha/scheduler";
 import { describe, it } from "vitest";
 
 import {
@@ -729,6 +731,69 @@ describe("$job — cron lock (multi-instance)", () => {
     ]);
 
     expect(fired).toBe(2);
+  });
+
+  it("two replicas ticking the same instant enqueue one execution, even with retry", async ({
+    expect,
+  }) => {
+    for (const k of Object.keys(sharedLockStore)) delete sharedLockStore[k];
+
+    class CronLeaseApp {
+      executions = $repository(jobExecutionEntity);
+      // `retry` is the case the run lock never covered: the tick writes an
+      // outbox row and hands the lock straight back, so a replica arriving a
+      // millisecond later used to find it free and enqueue the tick again.
+      instantTick = $job({
+        cron: "0 0 * * *",
+        retry: { retries: 2 },
+        handler: async () => {
+          throw new Error("always fails");
+        },
+      });
+    }
+
+    const make = () =>
+      Alepha.create()
+        .with({ provide: LockProvider, use: SharedMemoryLockProvider })
+        .with(AlephaOrmPostgres)
+        .with(AlephaApiJobs);
+
+    const a = make();
+    const b = make();
+    a.inject(CronLeaseApp);
+    b.inject(CronLeaseApp);
+    await a.start();
+    await b.start();
+
+    // The scheduled instant both replicas derive for the same tick. Every
+    // replica parses the same cron expression, so this value is shared even
+    // though their wall clocks are not.
+    const instant = a.inject(DateTimeProvider).of("2026-01-01T00:00:00.000Z");
+    const tickOf = (container: Alepha) =>
+      container
+        .inject(CronProvider)
+        .getCronJobs()
+        .find((job) => job.name === "CronLeaseApp.instantTick")!;
+
+    // Sequential on purpose. Concurrent ticks were always serialised by the
+    // run lock; the hole is the replica that arrives a moment LATER, once the
+    // lock has been handed back, and finds it free.
+    await tickOf(a).handler({ now: instant });
+    await tickOf(b).handler({ now: instant });
+
+    // Each test container owns a private postgres schema, so count both and
+    // add them up: the claim is one execution across the cluster, not one
+    // per database.
+    const where = { jobName: { eq: "CronLeaseApp.instantTick" } };
+    const rowsA = await a.inject(CronLeaseApp).executions.findMany({ where });
+    const rowsB = await b.inject(CronLeaseApp).executions.findMany({ where });
+    expect(rowsA.length + rowsB.length).toBe(1);
+
+    // ...and the NEXT instant is not blocked by the lease left behind.
+    const next = a.inject(DateTimeProvider).of("2026-01-02T00:00:00.000Z");
+    await tickOf(a).handler({ now: next });
+    const after = await a.inject(CronLeaseApp).executions.findMany({ where });
+    expect(after.length).toBe(rowsA.length + 1);
   });
 });
 

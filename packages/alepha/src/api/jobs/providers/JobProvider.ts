@@ -129,8 +129,8 @@ export type JobEffectiveMode = "cron" | "queue" | "direct";
  *           → UPDATE error / scheduled (retry) on failure
  *
  * Cron flow:
- *   scheduler tick → acquire lock → executeInline (no retry)
- *                                 → enqueue + dispatch (retry declared)
+ *   scheduler tick → claim the instant → acquire lock → executeInline (no retry)
+ *                                                     → enqueue + dispatch (retry declared)
  *
  * Sweep responsibilities (every `sweepCron`):
  *   - re-enqueue pending rows older than `staleThreshold`
@@ -248,9 +248,12 @@ export class JobProvider {
     });
 
     if (options.cron) {
-      this.cronProvider.createCronJob(name, options.cron, async () => {
+      this.cronProvider.createCronJob(name, options.cron, async ({ now }) => {
         try {
-          await this.runCron(name);
+          // `now` is the SCHEDULED instant, not the wall clock: every replica
+          // derives the same value from the same expression, which is what
+          // lets them agree on a single lease per tick.
+          await this.runCron(name, now);
         } catch (error) {
           this.log.error(`Cron tick failed for job '${name}'`, error);
         }
@@ -275,15 +278,19 @@ export class JobProvider {
 
   // --- Cron execution (inline, no queue) --------------------------------------------------------------------------
 
-  protected async runCron(name: string): Promise<void> {
+  protected async runCron(name: string, instant?: DateTime): Promise<void> {
     const registration = this.getRegistration(name);
     if (registration.kind !== "cron") {
       throw new AlephaError(`Job '${name}' is not cron-mode`);
     }
-    await this.runCronLocked(registration, {
-      triggeredBy: "system",
-      triggeredByName: "system (cron)",
-    });
+    await this.runCronLocked(
+      registration,
+      {
+        triggeredBy: "system",
+        triggeredByName: "system (cron)",
+      },
+      instant,
+    );
   }
 
   /**
@@ -300,14 +307,33 @@ export class JobProvider {
    *   as a queue/direct push (claim, retry-on-fail, sweep recovery). Use
    *   this when a single failed tick must not block work for the whole
    *   `cron` interval (e.g. once-daily jobs).
+   *
+   * **Two locks, doing different jobs.** `instant` (present only on a
+   * scheduled tick) claims the schedule instant once for the whole cluster
+   * and is never released — see `claimCronInstant`. The per-job lock below
+   * is the older one and stays: it keeps a manual `trigger()` on one
+   * instance from overlapping a scheduled run on another, which a
+   * per-instant key cannot express because a trigger has no instant.
    */
   protected async runCronLocked(
     registration: JobRuntimeRegistration,
     ctx: { triggeredBy?: string; triggeredByName?: string },
+    instant?: DateTime,
   ): Promise<void> {
     if (this.stopping) return;
 
     const useLock = registration.options.lock !== false;
+
+    if (useLock && instant) {
+      const claimed = await this.claimCronInstant(registration, instant);
+      if (!claimed) {
+        this.log.debug(
+          `Cron '${registration.name}' skipped — instant ${instant.toISOString()} is already claimed`,
+        );
+        return;
+      }
+    }
+
     if (useLock) {
       const acquired = await this.acquireCronLock(registration);
       if (!acquired) {
@@ -386,9 +412,7 @@ export class JobProvider {
     registration: JobRuntimeRegistration,
   ): Promise<boolean> {
     const lockKey = this.cronLockKey(registration.name);
-    const ttlMs = registration.options.timeout
-      ? this.dt.duration(registration.options.timeout).as("milliseconds") * 2
-      : 5 * 60 * 1000;
+    const ttlMs = this.cronLockTtlMs(registration);
     const value = `${this.lockHolderId},${this.dt.nowISOString()}`;
     try {
       const stored = await this.lockProvider.set(lockKey, value, true, ttlMs);
@@ -439,6 +463,59 @@ export class JobProvider {
         e,
       );
     }
+  }
+
+  /**
+   * Claim one schedule instant for the whole cluster, exactly once.
+   *
+   * The run lock above is released the moment the tick is done with it, and
+   * in the `retry` path that is right after the outbox row is written - a few
+   * milliseconds. A second replica whose clock reaches the same instant just
+   * after that finds the lock free and enqueues the same tick again, so "one
+   * run per schedule" only ever held for the inline path.
+   *
+   * This lease is keyed by the instant itself and is deliberately **never
+   * released**: it expires on its own, and until it does, any later tick for
+   * the SAME instant stands down. The next instant has a different key, so
+   * nothing is blocked by leaving it behind.
+   *
+   * Unlike the run lock, a same-process double tick cannot slip through
+   * either: the stored value is unique per attempt, not per process, so only
+   * the caller that actually created the key sees its own token back.
+   */
+  protected async claimCronInstant(
+    registration: JobRuntimeRegistration,
+    instant: DateTime,
+  ): Promise<boolean> {
+    const key = `${this.cronLockKey(registration.name)}:${instant.toISOString()}`;
+    const token = `${this.lockHolderId},${this.crypto.randomUUID()}`;
+    try {
+      const stored = await this.lockProvider.set(
+        key,
+        token,
+        true,
+        this.cronLockTtlMs(registration),
+      );
+      return stored === token;
+    } catch (e) {
+      this.log.warn(
+        `Cron instant claim failed for '${registration.name}'`,
+        e as Error,
+      );
+      // Fail-open, like the run lock: a duplicate run beats a missed tick.
+      return true;
+    }
+  }
+
+  /**
+   * How long a cron lock or instant lease survives without being released.
+   * Twice the job's own timeout so a run cannot outlive its lock, or five
+   * minutes when the job declares none.
+   */
+  protected cronLockTtlMs(registration: JobRuntimeRegistration): number {
+    return registration.options.timeout
+      ? this.dt.duration(registration.options.timeout).as("milliseconds") * 2
+      : 5 * 60 * 1000;
   }
 
   protected cronLockKey(jobName: string): string {

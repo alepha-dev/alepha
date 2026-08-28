@@ -24,7 +24,7 @@ worker → claim → UPDATE running → handler → DELETE/UPDATE on success
 → UPDATE error / scheduled (retry) on failure
 
 Cron flow:
-scheduler tick → acquire lock → executeInline (no retry)
+scheduler tick → claim the instant → acquire lock → executeInline (no retry)
 → enqueue + dispatch (retry declared)
 
 Sweep responsibilities (every `sweepCron`):
