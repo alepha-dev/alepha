@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { registerAndVerify } from "./_helpers.ts";
+import { registerAndVerify, signInAsAdmin } from "./_helpers.ts";
 
 /**
  * Admin user-detail page (`/admin/users/:id`).
@@ -10,15 +10,12 @@ import { registerAndVerify } from "./_helpers.ts";
  * server-side guards (email-changed → emailVerified=false, unique
  * conflicts → friendly 409).
  *
- * The admin account is auto-promoted on first login because
- * `playwright.config.ts` sets `ADMIN_EMAIL=admin@example.com` for the
- * webServer — the realm `adminEmails` setting then matches the
- * registered user and grants the `admin` role.
+ * The admin account is registered once by `e2e/global-setup.ts` and
+ * auto-promoted on first login, because `playwright.config.ts` passes its
+ * address as `ADMIN_EMAIL` to the webServer — the realm `adminEmails`
+ * setting then matches it and grants the `admin` role.
  */
 test.describe("admin user detail", () => {
-  const adminEmail = "admin@example.com";
-  const adminPassword = "GoodPassw0rd";
-
   // Un-skipped 2026-08-27. It had been skipped since 2026-05-28 under two
   // successive wrong diagnoses; what it was catching all along is a real
   // `keepDirty` bug, now fixed in `FormModel.setInitialValues`.
@@ -41,15 +38,7 @@ test.describe("admin user detail", () => {
     const victimEmail = `victim-${stamp}@example.com`;
     const otherEmail = `other-${stamp}@example.com`;
 
-    // 1. Register the soon-to-be admin first (login bumps the admin role).
-    await registerAndVerify(page, adminEmail, adminPassword);
-    // Force a fresh sign-in so the role-promotion path fires (registration
-    // already logged them in once, but the slug-derived role refresh
-    // happens on every login, not on register).
-    await page.goto("/auth/logout");
-    await page.waitForLoadState("domcontentloaded");
-
-    // 2. Register two ordinary users — the victim we will edit, and a
+    // 1. Register two ordinary users — the victim we will edit, and a
     //    second account whose email/username we will collide with.
     await registerAndVerify(page, victimEmail, "GoodPassw0rd");
     await page.goto("/auth/logout");
@@ -59,20 +48,11 @@ test.describe("admin user detail", () => {
     await page.goto("/auth/logout");
     await page.waitForLoadState("domcontentloaded");
 
-    // 3. Sign in as admin via the login form so admin role is granted.
-    await page.goto("/auth/login");
-    await page
-      .getByRole("textbox", { name: /identifier|email/i })
-      .first()
-      .fill(adminEmail);
-    await page
-      .getByRole("textbox", { name: /password/i })
-      .first()
-      .fill(adminPassword);
-    await page.getByRole("button", { name: /sign in/i }).click();
-    await page.waitForURL(/^http:\/\/[^/]+\/$/, { timeout: 15_000 });
+    // 2. Sign in as admin. The account is created once by `global-setup.ts`;
+    //    signing in through the form is what grants the role.
+    await signInAsAdmin(page);
 
-    // 4. Resolve the victim's user id via the admin list endpoint.
+    // 3. Resolve the victim's user id via the admin list endpoint.
     const usersJson = await page.evaluate(async () => {
       const res = await fetch("/api/users?size=100");
       return res.json();
@@ -84,7 +64,7 @@ test.describe("admin user detail", () => {
     expect(victim, "victim should be findable").toBeTruthy();
     expect(other, "other user should be findable").toBeTruthy();
 
-    // 5. Open the detail page for the victim.
+    // 4. Open the detail page for the victim.
     await page.goto(`/admin/users/${victim!.id}`);
     await page.waitForLoadState("domcontentloaded");
     await expect(page.locator('input[name="username"]')).toHaveValue(
@@ -139,10 +119,11 @@ test.describe("admin user detail", () => {
     // -- toast error on duplicate email -------------------------------
     await page.locator('input[name="email"]').fill(otherEmail);
     await page.getByRole("button", { name: /save changes/i }).click();
-    // `.first()`: the page toasts the friendly message itself AND rethrows,
-    // which the framework's ActionErrorToaster turns into a second toast of
-    // the same text. One is enough to prove the refusal reached the user.
-    await expect(page.getByText(/email already exists/i).first()).toBeVisible({
+    // No `.first()`, on purpose: strict mode makes this fail if the refusal
+    // reaches the screen more than once. It used to - the page toasted the
+    // message itself and then rethrew, and `ActionErrorToaster` turned the
+    // rethrow into a second, identical toast. The handler now only throws.
+    await expect(page.getByText(/email already exists/i)).toBeVisible({
       timeout: 5_000,
     });
     await page.locator('input[name="email"]').fill(victim!.email);
@@ -150,9 +131,7 @@ test.describe("admin user detail", () => {
     // -- toast error on duplicate username ----------------------------
     await page.locator('input[name="username"]').fill(other!.username ?? "");
     await page.getByRole("button", { name: /save changes/i }).click();
-    await expect(
-      page.getByText(/username already exists/i).first(),
-    ).toBeVisible({
+    await expect(page.getByText(/username already exists/i)).toBeVisible({
       timeout: 5_000,
     });
     await page.locator('input[name="username"]').fill(victim!.username ?? "");
