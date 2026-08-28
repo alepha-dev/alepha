@@ -26,11 +26,19 @@ import { type Infer, z } from "alepha";
 export const feedbackSourceSchema = z.object({
   sigilId: z.string().max(100).optional(),
   /**
-   * Full `location.href` of the embedding page at click time.
+   * `location.href` of the embedding page at click time, without its query
+   * string or fragment.
+   *
+   * Scrubbed twice: by the sigil button before the popup opens, and again by
+   * `FeedbackController` on persist for anything arriving from an older
+   * bundle. Query strings carry reset tokens, invite codes and email
+   * addresses, fragments carry OAuth implicit-flow access tokens, and neither
+   * is needed to know which page the feedback came from.
    */
   hostUrl: z.string().max(2000),
   /**
-   * `location.pathname` (+ search) of the embedding page.
+   * `location.pathname` of the embedding page. Scrubbed like {@link hostUrl},
+   * which is why it no longer carries `location.search`.
    */
   hostPath: z.string().max(2000),
   /**
@@ -41,6 +49,15 @@ export const feedbackSourceSchema = z.object({
    * `document.referrer` — where the visitor arrived from.
    */
   referrer: z.string().max(2000).optional(),
+  /**
+   * The visitor's browser and OS, as `"Chrome 141 on macOS"`.
+   *
+   * Reduced by the sigil button (`sigilUserAgent`) rather than sent whole: a
+   * full user-agent string is one of the highest-entropy identifiers a browser
+   * hands out, and what a bug report is read for is which browser and which
+   * OS. The cap stays generous because an older bundle still sends the whole
+   * string.
+   */
   userAgent: z.string().max(1000),
   /**
    * `navigator.language` (e.g. "en-US").

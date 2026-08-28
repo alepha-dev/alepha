@@ -9,6 +9,8 @@ import {
   type SigilFeedbackPosition,
 } from "../../shared/sigilFeedbackPosition.ts";
 import { SIGIL_FEEDBACK_SUBMITTED_MESSAGE } from "../../shared/sigilMessages.ts";
+import { sigilScrubUrl } from "../../shared/sigilScrubUrl.ts";
+import { sigilUserAgent } from "../../shared/sigilUserAgent.ts";
 
 /**
  * Props for the SigilFeedbackButton component.
@@ -196,6 +198,21 @@ export const SigilFeedbackButton = (props: SigilFeedbackButtonProps) => {
  * so a hostile/huge value can't blow out the popup URL — the server schema
  * enforces the authoritative bounds on persist. Keys match
  * `SIGIL_FEEDBACK_CONTEXT_PARAMS`.
+ *
+ * Three of the values are reduced before they leave the page, and none of the
+ * three ever needed to be whole:
+ *
+ * - `url` goes through {@link sigilScrubUrl}, the same treatment an error's
+ *   `sourceUrl` gets. Query strings hold reset tokens, invite codes and email
+ *   addresses; fragments hold OAuth implicit-flow access tokens. Feedback sent
+ *   from `/reset?token=abc` used to ship the token to a third-party form that
+ *   persists it verbatim, where every member of the receiving project can read
+ *   it.
+ * - `path` is the pathname alone, for the same reason: it used to append
+ *   `location.search`, which is the very thing `url` is scrubbed of.
+ * - `ua` goes through {@link sigilUserAgent}. A full user-agent string is one
+ *   of the highest-entropy identifiers a browser hands out; the browser family,
+ *   its major version and the OS are what a bug report is read for.
  */
 const collectPageContext = (): string => {
   const params = new URLSearchParams();
@@ -206,11 +223,11 @@ const collectPageContext = (): string => {
     if (value) params.set(key, value.slice(0, SIGIL_FEEDBACK_CONTEXT_MAX_LEN));
   };
   try {
-    put("url", window.location.href);
-    put("path", window.location.pathname + window.location.search);
+    put("url", sigilScrubUrl(window.location.href));
+    put("path", window.location.pathname);
     put("title", document.title);
     put("ref", document.referrer);
-    put("ua", navigator.userAgent);
+    put("ua", sigilUserAgent(navigator.userAgent));
     put("lang", navigator.language);
     put("vp", `${window.innerWidth}x${window.innerHeight}`);
     put("scr", `${window.screen.width}x${window.screen.height}`);
