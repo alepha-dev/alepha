@@ -28,6 +28,9 @@ export const shippingRates = $entity({
      * Stable identifier written onto the order (`orders.shippingMethod`), which
      * is why it is a slug and not the uuid: an order must stay readable after
      * the rate row is deleted, and "colissimo" is readable.
+     *
+     * Unique per organisation - see the index below. That is what makes it
+     * safe to write onto the order in the first place.
      */
     code: z.text({ minLength: 1, maxLength: 64 }),
 
@@ -51,7 +54,19 @@ export const shippingRates = $entity({
 
     active: db.default(z.boolean(), true),
   }),
-  indexes: [{ columns: ["zoneId"] }, { columns: ["organizationId", "code"] }],
+  indexes: [
+    { columns: ["zoneId"] },
+    /**
+     * Unique, not merely indexed.
+     *
+     * `code` is what gets written onto the order, so two rates sharing one in
+     * an organisation makes the order ambiguous about what was actually
+     * bought - and the admin then edits whichever row the query happened to
+     * return first. `products.slug` and `invoices.number` are unique for the
+     * same reason.
+     */
+    { columns: ["organizationId", "code"], unique: true },
+  ],
 });
 
 export type ShippingRateEntity = Infer<typeof shippingRates.schema>;

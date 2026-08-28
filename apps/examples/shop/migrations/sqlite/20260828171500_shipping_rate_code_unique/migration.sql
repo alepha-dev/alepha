@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS `commerce_shipping_rates_organization_id_code_idx`;--> statement-breakpoint
+CREATE UNIQUE INDEX `commerce_shipping_rates_organization_id_code_idx` ON `commerce_shipping_rates` (`organization_id`,`code`);

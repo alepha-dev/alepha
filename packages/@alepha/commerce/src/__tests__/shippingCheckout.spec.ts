@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
 import { PaymentService } from "alepha/api/payments";
+import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
 
@@ -11,6 +12,7 @@ import { CheckoutService } from "../checkout/services/CheckoutService.ts";
 import { CatalogService } from "../services/CatalogService.ts";
 import { OrderService } from "../services/OrderService.ts";
 import { StockService } from "../services/StockService.ts";
+import { shippingRates } from "../shipping/entities/shippingRates.ts";
 import { AlephaCommerceShipping } from "../shipping/index.ts";
 import { ShippingService } from "../shipping/services/ShippingService.ts";
 
@@ -288,5 +290,66 @@ describe("shipping in the checkout", () => {
     expect(await checkout.shippingOptions(opened.id)).toEqual([]);
     expect(addressed.shippingTotal).toBe(0);
     expect(addressed.grandTotal).toBe(500);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+/**
+ * Inserts rates straight through the repository, which is the only way to set
+ * `organizationId` explicitly - `createRate` has no parameter for it, because
+ * in production it comes from the resolved tenant.
+ */
+class RateProbe {
+  public readonly rates = $repository(shippingRates);
+}
+
+describe("shipping rate codes", () => {
+  it("refuses a second rate with the same code in one organisation", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with(AlephaOrmPostgres)
+      .with(AlephaCommerceShipping);
+    const probe = alepha.inject(RateProbe);
+    const shipping = alepha.inject(ShippingService);
+    await alepha.start();
+
+    const zones = await seedZones(shipping);
+    const organizationId = randomUUID();
+
+    await probe.rates.create({
+      organizationId,
+      zoneId: zones.france.id,
+      code: "colissimo",
+      name: "Colissimo",
+      price: 690,
+    } as never);
+
+    // Same code, different ZONE, same organisation. `code` is what lands on
+    // the order, so two of them makes the order ambiguous about what was
+    // bought - and the admin edits whichever row the query returned first.
+    await expect(
+      probe.rates.create({
+        organizationId,
+        zoneId: zones.eu.id,
+        code: "colissimo",
+        name: "Colissimo (doublon)",
+        price: 990,
+      } as never),
+    ).rejects.toThrow();
+
+    // A different organisation may still use the code.
+    await expect(
+      probe.rates.create({
+        organizationId: randomUUID(),
+        zoneId: zones.eu.id,
+        code: "colissimo",
+        name: "Colissimo (autre boutique)",
+        price: 990,
+      } as never),
+    ).resolves.toBeDefined();
+
+    await alepha.stop();
   });
 });
