@@ -5,6 +5,11 @@ import { $logger } from "alepha/logger";
  *
  * Rooms are logical groupings of connections. A connection can be in multiple rooms,
  * and messages can be targeted to specific rooms.
+ *
+ * This is an injectable service on `alepha/websocket`, so its whole surface is
+ * public on purpose: the framework itself only calls `joinRooms`,
+ * `leaveAllRooms`, `getRoomConnections` and `getStats`, and the membership
+ * readers exist for applications that inject it directly.
  */
 export class RoomManager {
   protected readonly log = $logger();
@@ -86,14 +91,9 @@ export class RoomManager {
       return;
     }
 
-    for (const roomId of connRooms) {
-      const room = this.rooms.get(roomId);
-      if (room) {
-        room.delete(connectionId);
-        if (room.size === 0) {
-          this.rooms.delete(roomId);
-        }
-      }
+    // Snapshot: leaveRoom mutates `connRooms` as it goes.
+    for (const roomId of [...connRooms]) {
+      this.leaveRoom(connectionId, roomId);
     }
 
     this.connectionRooms.delete(connectionId);
@@ -122,20 +122,6 @@ export class RoomManager {
   public isInRoom(connectionId: string, roomId: string): boolean {
     const connRooms = this.connectionRooms.get(connectionId);
     return connRooms ? connRooms.has(roomId) : false;
-  }
-
-  /**
-   * Get all active rooms
-   */
-  public getAllRooms(): string[] {
-    return Array.from(this.rooms.keys());
-  }
-
-  /**
-   * Get total number of connections across all rooms
-   */
-  public getTotalConnections(): number {
-    return this.connectionRooms.size;
   }
 
   /**

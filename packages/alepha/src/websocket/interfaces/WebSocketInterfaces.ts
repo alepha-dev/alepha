@@ -37,11 +37,6 @@ export interface WebSocketConnection {
   close(code?: number, reason?: string): Promise<void>;
 
   /**
-   * Connection metadata (custom data)
-   */
-  metadata?: Record<string, any>;
-
-  /**
    * Connection state
    */
   readyState: WebSocketState;

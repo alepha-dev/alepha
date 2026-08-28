@@ -613,14 +613,6 @@ export class StateManager<State extends object = AlephaState> {
   }
 
   /**
-   * Clear all state
-   */
-  public clear(): this {
-    this.store = {};
-    return this;
-  }
-
-  /**
    * Get all keys that exist in the state
    */
   public keys(): (keyof State)[] {

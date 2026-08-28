@@ -72,18 +72,6 @@ describe("StateManager", () => {
       expect(typedManager.get("config")).toEqual({ theme: "dark" });
     });
 
-    it("should clear all state", () => {
-      const typedManager = Alepha.create().inject(StateManager<TestState>);
-
-      typedManager.set("name", "John");
-      typedManager.set("age", 30);
-
-      typedManager.clear();
-
-      expect(typedManager.has("name")).toBe(false);
-      expect(typedManager.has("age")).toBe(false);
-    });
-
     it("should return all keys", () => {
       const alepha = new Alepha();
       const typedManager = alepha.inject(StateManager<TestState>);
@@ -169,10 +157,10 @@ describe("StateManager", () => {
       const alepha = new Alepha();
       const typedManager = alepha.inject(StateManager<TestState>);
 
-      const result = typedManager.set("name", "John").set("age", 30).clear();
+      const result = typedManager.set("name", "John").set("age", 30).del("age");
 
       expect(result).toBe(typedManager);
-      expect(typedManager.has("name")).toBe(false);
+      expect(typedManager.has("age")).toBe(false);
     });
   });
 
@@ -315,24 +303,6 @@ describe("StateManager", () => {
       );
 
       expect(result).toBeUndefined();
-    });
-
-    it("should clear only local store, not ALS", async () => {
-      // Set value in local store
-      stateManager.set("age", 25);
-
-      // Clear local store
-      stateManager.clear();
-
-      // ALS value should still be accessible within ALS context
-      const store = { name: "ALS Value", context: "test-context" };
-      const result = alepha.context.run(() => {
-        return stateManager.get("name");
-      }, store);
-
-      expect(result).toBe("ALS Value");
-      // Local value should be gone
-      expect(stateManager.get("age")).toBeUndefined();
     });
   });
 

@@ -685,16 +685,6 @@ export class RelationalRepository<
 export type EntityOf<ZType extends EntitySchema, TKey extends keyof ZType> =
   ZType[TKey] extends EntityPrimitive<infer T extends ZObject> ? T : never;
 
-/**
- * Kept for callers that referenced the previous name.
- */
-export type RelationalQuery<
-  ZType extends EntitySchema,
-  TMap extends RelationMapFor<ZType>,
-  TKey extends keyof ZType & string,
-  TInclude,
-> = RelationalQueryArgs<ZType, TMap, TKey> & { include?: TInclude };
-
 export type { IncludeArg };
 
 /**

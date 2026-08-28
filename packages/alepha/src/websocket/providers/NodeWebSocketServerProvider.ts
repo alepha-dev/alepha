@@ -1077,7 +1077,6 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
 export class NodeWebSocketConnection implements WebSocketConnection {
   protected readonly log = $logger();
   protected readonly schemaValidator = $inject(SchemaValidator);
-  public metadata?: Record<string, any>;
 
   constructor(
     public readonly id: string,

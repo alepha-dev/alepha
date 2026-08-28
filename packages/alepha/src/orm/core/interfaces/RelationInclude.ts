@@ -172,16 +172,6 @@ export type Resolve<
 };
 
 /**
- * Kept as the previous name so existing call sites and docs still resolve.
- */
-export type WithIncludes<
-  ZType extends EntitySchema,
-  TMap extends RelationMapFor<ZType>,
-  K extends keyof ZType,
-  TInclude,
-> = Resolve<ZType, TMap, K, { include: TInclude }>;
-
-/**
  * A root query: the relation vocabulary plus paging.
  */
 export interface RelationalQueryArgs<
