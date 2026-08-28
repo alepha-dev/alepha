@@ -1,4 +1,4 @@
-import { AdminNotificationsStatusBadge } from "@alepha/ui/components/admin/admin-notifications-status-badge";
+import { AdminNotificationsDetailTabs } from "@alepha/ui/components/admin/admin-notifications-detail-tabs";
 import {
   Sheet,
   SheetContent,
@@ -10,8 +10,17 @@ import type { AdminNotificationController } from "alepha/api/notifications";
 import { useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
+// Relative: the package's `components/*` subpath export maps to `.tsx`, so a
+// plain `.ts` sibling only resolves this way.
+import { notificationTemplateLabel } from "./admin-notifications-template-label.ts";
+
 export interface AdminNotificationsDetailProps {
   notificationId: string | null;
+  /**
+   * Which tab to open on. The list's "Raw data" action opens straight onto
+   * `raw` rather than making the reader find it.
+   */
+  initialTab?: string;
   onClose: () => void;
 }
 
@@ -31,7 +40,7 @@ export const AdminNotificationsDetail = (
   props: AdminNotificationsDetailProps,
 ) => {
   const client = useClient<AdminNotificationController>();
-  const { l, tr } = useI18n();
+  const { tr } = useI18n();
 
   const { data: detail } = useQuery(
     {
@@ -54,122 +63,36 @@ export const AdminNotificationsDetail = (
         if (!open) props.onClose();
       }}
     >
-      <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
+      {/* Wider than the rest of the admin's sheets: this one has to fit a
+          rendered email, and an email is authored for a real column width. */}
+      <SheetContent className="flex w-full flex-col overflow-hidden sm:max-w-3xl">
         <SheetHeader>
-          <SheetTitle>
-            {detail?.template ??
-              tr("admin.notifications.detailTitle", {
-                default: "Notification",
-              })}
+          {/* Humanized through the same helper the list uses. Showing
+              `invitationInvite` here while the row that opened it says
+              "Invitation invite" makes one template look like two. The raw
+              name stays reachable in the Raw tab. */}
+          <SheetTitle title={detail?.template}>
+            {detail?.template
+              ? notificationTemplateLabel(detail.template)
+              : tr("admin.notifications.detailTitle", {
+                  default: "Notification",
+                })}
           </SheetTitle>
           <SheetDescription>{detail?.contact ?? ""}</SheetDescription>
         </SheetHeader>
 
-        {detail ? (
-          <div className="space-y-6 px-4 pb-6 text-sm">
-            <div className="flex flex-wrap items-center gap-2">
-              <AdminNotificationsStatusBadge status={detail.status} />
-              {detail.skipReason ? (
-                <span className="text-muted-foreground text-xs">
-                  {detail.skipReason}
-                </span>
-              ) : null}
-            </div>
-
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
-              <dt className="text-muted-foreground text-xs">
-                {tr("admin.notifications.detailSent", { default: "Sent" })}
-              </dt>
-              <dd>{String(l(detail.createdAt, { date: "lll" }))}</dd>
-
-              {detail.lastEventAt ? (
-                <>
-                  <dt className="text-muted-foreground text-xs">
-                    {tr("admin.notifications.detailLastEvent", {
-                      default: "Last event",
-                    })}
-                  </dt>
-                  <dd>{String(l(detail.lastEventAt, { date: "lll" }))}</dd>
-                </>
-              ) : null}
-
-              <dt className="text-muted-foreground text-xs">
-                {tr("admin.notifications.detailChannel", {
-                  default: "Channel",
-                })}
-              </dt>
-              <dd>{detail.type ?? "-"}</dd>
-
-              <dt className="text-muted-foreground text-xs">
-                {tr("admin.notifications.detailCategory", {
-                  default: "Category",
-                })}
-              </dt>
-              <dd>{detail.category ?? "-"}</dd>
-
-              <dt className="text-muted-foreground text-xs">
-                {tr("admin.notifications.detailProvider", {
-                  default: "Provider",
-                })}
-              </dt>
-              <dd>{detail.provider ?? "-"}</dd>
-
-              {detail.smtpStatusCode ? (
-                <>
-                  <dt className="text-muted-foreground text-xs">
-                    {tr("admin.notifications.detailSmtpCode", {
-                      default: "SMTP code",
-                    })}
-                  </dt>
-                  <dd>{detail.smtpStatusCode}</dd>
-                </>
-              ) : null}
-            </dl>
-
-            {detail.subject ? (
-              <div>
-                <div className="text-muted-foreground text-xs">
-                  {tr("admin.notifications.detailSubject", {
-                    default: "Subject",
-                  })}
-                </div>
-                <div>{detail.subject}</div>
-              </div>
-            ) : null}
-
-            {detail.error ? (
-              <div>
-                <div className="text-muted-foreground text-xs">
-                  {tr("admin.notifications.detailError", { default: "Error" })}
-                </div>
-                <pre className="bg-muted overflow-x-auto rounded p-2 text-xs">
-                  {detail.error}
-                </pre>
-              </div>
-            ) : null}
-
-            {detail.variables ? (
-              <div>
-                <div className="text-muted-foreground text-xs">
-                  {tr("admin.notifications.detailVariables", {
-                    default: "Variables",
-                  })}
-                </div>
-                <pre className="bg-muted overflow-x-auto rounded p-2 text-xs">
-                  {JSON.stringify(detail.variables, null, 2)}
-                </pre>
-              </div>
-            ) : null}
-
-            {detail.outboxAvailable === false ? (
-              <p className="text-muted-foreground text-xs">
-                {tr("admin.notifications.detailOutboxGone", {
-                  default:
-                    "The original job record has passed its retention window, so variables and logs are no longer available. The receipt is kept for longer.",
-                })}
-              </p>
-            ) : null}
-          </div>
+        {detail && props.notificationId ? (
+          // Keyed on the row AND the requested tab: the sheet stays mounted
+          // between rows, so without this a "Raw data" click on a second row
+          // would land on whatever tab the previous one was left on. A key is
+          // the remount, which is how the tab state re-initialises without an
+          // effect that sets state.
+          <AdminNotificationsDetailTabs
+            key={`${props.notificationId}:${props.initialTab ?? "details"}`}
+            notificationId={props.notificationId}
+            detail={detail}
+            initialTab={props.initialTab ?? "details"}
+          />
         ) : null}
       </SheetContent>
     </Sheet>

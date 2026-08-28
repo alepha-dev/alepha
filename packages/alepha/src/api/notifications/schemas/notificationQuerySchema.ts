@@ -27,6 +27,36 @@ export const notificationQuerySchema = pageQuerySchema.extend({
       "skipped",
     ])
     .optional(),
+
+  /**
+   * Free-text match on the contact, case-insensitive and wildcarded at both
+   * ends.
+   *
+   * The contact is the only "who" a receipt carries - an email address or a
+   * phone number, never a user id - so this is the whole of the recipient
+   * search.
+   */
+  search: z.text().optional(),
+
+  template: z.text().optional(),
+
+  channel: z.enum(["email", "sms"]).optional(),
+
+  category: z.text().optional(),
+
+  /**
+   * Split the rows carrying a transport error from the rest.
+   *
+   * ⚠️ `false` is a real filter, meaning "rows with no error", and NOT the
+   * absence of a filter. It has to be tested against `undefined` rather than
+   * for truthiness, or asking for the healthy rows silently returns
+   * everything.
+   */
+  hasError: z.boolean().optional(),
+
+  createdAfter: z.datetime().optional(),
+
+  createdBefore: z.datetime().optional(),
 });
 
 export type NotificationQuery = Infer<typeof notificationQuerySchema>;

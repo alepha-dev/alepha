@@ -1,6 +1,7 @@
 import { render } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { jobExecutionEntity } from "alepha/api/jobs";
+import { notificationQuerySchema } from "alepha/api/notifications";
 import {
   workflowExecutions,
   workflowStepExecutions,
@@ -14,6 +15,8 @@ import {
   JOB_EXECUTION_STATUSES,
   useJobStatusLabels,
 } from "../admin-jobs-status-labels.ts";
+import { useNotificationStatusLabels } from "../admin-notifications-status-labels.ts";
+import { NOTIFICATION_STATUSES } from "../admin-notifications-status-tones.ts";
 import {
   useWorkflowStatusLabels,
   WORKFLOW_EXECUTION_STATUSES,
@@ -75,6 +78,34 @@ describe("admin status labels", () => {
 
   it("offers every job status the entity can hold", () => {
     expect(JOB_EXECUTION_STATUSES).toEqual(statusesOf(jobExecutionEntity));
+  });
+
+  /**
+   * Compared against the query schema rather than the entity: the
+   * notifications module's browser entry exports its schemas only, so the
+   * entity is not reachable from here at all. `statusFilter.spec.ts` holds
+   * that query schema equal to the entity, which closes the chain.
+   */
+  const deliveryStatuses = (): string[] =>
+    (notificationQuerySchema.shape.status as any).unwrap().options;
+
+  it("offers every delivery status the receipt can hold", () => {
+    // Order differs on purpose - the filter lists the happy path first - so
+    // compare the sets, not the sequences.
+    expect([...NOTIFICATION_STATUSES].sort()).toEqual(
+      deliveryStatuses().sort(),
+    );
+  });
+
+  it("translates every delivery status into French", async () => {
+    const labels = await renderWith(useNotificationStatusLabels, "fr");
+
+    for (const status of deliveryStatuses()) {
+      const label = labels[status as keyof typeof labels];
+      expect(label).toBeTruthy();
+      expect(label).not.toBe(status);
+    }
+    expect(labels.skipped).toBe("Ignorée");
   });
 
   it("offers every workflow EXECUTION status, and no step-only one", () => {

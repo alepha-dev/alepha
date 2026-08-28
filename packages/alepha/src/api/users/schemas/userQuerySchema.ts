@@ -11,6 +11,14 @@ export const userQuerySchema = pageQuerySchema.extend({
    */
   search: z.string().optional(),
   email: z.string().optional(),
+  /**
+   * Exact match against a set of addresses, for a caller resolving a whole
+   * page of contacts at once (the notifications admin does this per page,
+   * rather than one request per row).
+   *
+   * Distinct from {@link email}, which is a single-value `LIKE`.
+   */
+  emails: z.array(z.string()).optional(),
   enabled: z.boolean().optional(),
   emailVerified: z.boolean().optional(),
   roles: z.array(z.string()).optional(),

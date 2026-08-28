@@ -254,6 +254,13 @@ export class UserService {
       where.email = { like: q.email };
     }
 
+    // Guarded on length, and not merely as an optimisation: `inArray` throws
+    // on an empty array, and a caller with nothing to resolve means "no
+    // filter", not "match nothing".
+    if (q.emails?.length) {
+      where.email = { inArray: q.emails };
+    }
+
     if (q.enabled !== undefined) {
       where.enabled = { eq: q.enabled };
     }

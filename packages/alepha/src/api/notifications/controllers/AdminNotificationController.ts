@@ -1,19 +1,27 @@
 import { $inject, Alepha, AlephaError, z } from "alepha";
 import { jobExecutionEntity } from "alepha/api/jobs";
+import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { $secure, currentTenantAtom, tenancyAtom } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
 
 import type { NotificationDeliveryEntity } from "../entities/notificationDeliveryEntity.ts";
 import { NotificationJobs } from "../jobs/NotificationJobs.ts";
+import { $notification } from "../primitives/$notification.ts";
 import { notificationDetailResourceSchema } from "../schemas/notificationDetailResourceSchema.ts";
+import {
+  type NotificationPreviewResource,
+  notificationPreviewResourceSchema,
+} from "../schemas/notificationPreviewResourceSchema.ts";
 import {
   type NotificationQuery,
   notificationQuerySchema,
 } from "../schemas/notificationQuerySchema.ts";
 import { notificationResourceSchema } from "../schemas/notificationResourceSchema.ts";
 import { notificationSuppressionResourceSchema } from "../schemas/notificationSuppressionResourceSchema.ts";
+import { notificationTemplateResourceSchema } from "../schemas/notificationTemplateResourceSchema.ts";
 import { NotificationDeliveryService } from "../services/NotificationDeliveryService.ts";
+import { NotificationSenderService } from "../services/NotificationSenderService.ts";
 import { NotificationSuppressionService } from "../services/NotificationSuppressionService.ts";
 
 export class AdminNotificationController {
@@ -24,6 +32,8 @@ export class AdminNotificationController {
   protected readonly executions = $repository(jobExecutionEntity);
   protected readonly suppressions = $inject(NotificationSuppressionService);
   protected readonly deliveries = $inject(NotificationDeliveryService);
+  protected readonly sender = $inject(NotificationSenderService);
+  protected readonly log = $logger();
 
   protected get jobName(): string {
     return this.notificationJobs.sendNotification.name;
@@ -105,10 +115,92 @@ export class AdminNotificationController {
     const page = await this.deliveries.paginate(query, {
       organizationId: this.requireTenantScope(),
     });
+    const alive = await this.liveExecutionIds(
+      page.content.map((receipt) => receipt.executionId),
+    );
     return {
       ...page,
-      content: page.content.map((receipt) => this.toResource(receipt)),
+      content: page.content.map((receipt) => ({
+        ...this.toResource(receipt),
+        outboxAvailable: alive.has(receipt.executionId),
+      })),
     };
+  }
+
+  /**
+   * Which of these execution ids still have a usable outbox row.
+   *
+   * ONE query for the whole page, never one per row. It also filters on
+   * `jobName`: the outbox is shared with every other job, and a receipt
+   * pointing at a foreign row carries no notification payload, so reporting
+   * it as available would offer a resend that cannot work.
+   *
+   * The empty guard is not an optimisation - `inArray` throws on an empty
+   * array, so without it an empty page is an error page.
+   */
+  protected async liveExecutionIds(ids: string[]): Promise<Set<string>> {
+    // `job_executions.id` is a uuid column while the receipt stores its
+    // `executionId` as text, so the receipt table can hold a value the
+    // outbox could never match. Handing one to `inArray` does not return
+    // nothing, it makes Postgres throw `invalid input syntax for type uuid`
+    // and takes the whole list down with it.
+    const candidates = ids.filter((id) => this.looksLikeExecutionId(id));
+    // Not an optimisation: `inArray` throws on an empty array, so without
+    // this an empty page is an error page.
+    if (candidates.length === 0) {
+      return new Set();
+    }
+    const rows = await this.executions.findMany({
+      where: { id: { inArray: candidates }, jobName: { eq: this.jobName } },
+      columns: ["id"] as any,
+    });
+    return new Set(rows.map((row) => String(row.id)));
+  }
+
+  protected looksLikeExecutionId(value: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      value,
+    );
+  }
+
+  /**
+   * The templates this app registers, for the list's filter dropdowns.
+   *
+   * ⚠️ Declared BEFORE {@link getNotification}, same reason as
+   * {@link listSuppressions}: `GET /notifications/:id` has the same shape,
+   * and the first route registered for a path wins.
+   */
+  public readonly listNotificationTemplates = $action({
+    path: `${this.url}/templates`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:notification:read"] })],
+    description: "List the notification templates this app registers",
+    schema: {
+      response: z.array(notificationTemplateResourceSchema),
+    },
+    handler: async () => this.templates() as any,
+  });
+
+  /**
+   * Read the catalogue off the container rather than off the data.
+   *
+   * An in-memory list, so this costs no query, and it is correct for a
+   * template nobody has sent yet. `SELECT DISTINCT template` over the
+   * receipts would need an unindexed scan across the full retention window
+   * and could still only offer what has already gone out.
+   */
+  protected templates() {
+    return this.alepha.primitives($notification).map((template) => ({
+      name: template.name,
+      category: template.options.category,
+      description: template.options.description,
+      channels: [
+        ...(template.options.email ? (["email"] as const) : []),
+        ...(template.options.sms ? (["sms"] as const) : []),
+      ],
+      critical: template.options.critical === true,
+      sensitive: template.options.sensitive === true,
+    }));
   }
 
   /**
@@ -182,12 +274,121 @@ export class AdminNotificationController {
       // The outbox row is fetched by executionId and is simply absent past
       // its own (shorter) retention window. The detail view has to render
       // either way.
-      const exec = await this.executions.findById(receipt.executionId);
-      const usable = exec && exec.jobName === this.jobName;
+      const exec = await this.findExecution(receipt.executionId);
 
-      return this.toDetailResource(receipt, usable ? exec : undefined) as any;
+      return this.toDetailResource(receipt, exec) as any;
     },
   });
+
+  /**
+   * The outbox row behind a receipt, or undefined.
+   *
+   * Undefined covers three different things, all of them normal: the row is
+   * past its retention window, it belongs to another job (the outbox is
+   * shared), or the receipt's `executionId` is not a uuid at all.
+   *
+   * That last case is not hypothetical. `job_executions.id` is a uuid column
+   * while the receipt stores its `executionId` as text, so handing one
+   * straight to `findById` makes Postgres throw `invalid input syntax for
+   * type uuid` rather than returning nothing.
+   */
+  protected async findExecution(executionId: string) {
+    if (!this.looksLikeExecutionId(executionId)) {
+      return undefined;
+    }
+    const exec = await this.executions.findById(executionId);
+    return exec && exec.jobName === this.jobName ? exec : undefined;
+  }
+
+  /**
+   * Re-render one notification from its template.
+   *
+   * ⚠️ Declared after {@link getNotification} on purpose: `/:id/preview` has
+   * a literal tail, so it cannot be shadowed by `/:id`.
+   */
+  public readonly previewNotification = $action({
+    path: `${this.url}/:id/preview`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:notification:read"] })],
+    description: "Re-render this notification from its template",
+    schema: {
+      params: z.object({ id: z.uuid() }),
+      response: notificationPreviewResourceSchema,
+    },
+    handler: async ({ params }) => this.preview(params.id) as any,
+  });
+
+  /**
+   * The rendered message, or the reason there is none.
+   *
+   * Never throws for an expected absence. The three `available: false` cases
+   * are states an operator hits routinely, and the UI has to draw each one
+   * differently, so they are data rather than HTTP errors.
+   */
+  protected async preview(id: string): Promise<NotificationPreviewResource> {
+    const receipt = await this.requireReceipt(id);
+    const unavailable = (
+      reason: NotificationPreviewResource["reason"],
+    ): NotificationPreviewResource => ({
+      available: false,
+      reason,
+      channel: receipt.channel,
+      attachments: [],
+      source: "live",
+    });
+
+    const exec = await this.findExecution(receipt.executionId);
+    if (!exec?.payload) {
+      return unavailable("outbox-purged");
+    }
+
+    const payload = exec.payload as Record<string, any>;
+    if (payload.sensitive === true) {
+      return unavailable("sensitive");
+    }
+
+    // Names, not bytes. `renderEmail` resolves attachments through storage
+    // and throws on a missing object, so previewing an old notification
+    // whose attachment was purged would be a 500 instead of a picture.
+    const attachments: string[] = (payload.attachments ?? []).map(
+      (attachment: { fileId: string }) => attachment.fileId,
+    );
+    const renderable = { ...payload, attachments: undefined };
+
+    try {
+      if (receipt.channel === "sms") {
+        const rendered = await this.sender.renderSms(renderable as any);
+        return {
+          available: true,
+          channel: "sms" as const,
+          message: rendered.message,
+          attachments,
+          source: "live" as const,
+        };
+      }
+
+      const rendered = await this.sender.renderEmail(renderable as any);
+      return {
+        available: true,
+        channel: "email" as const,
+        subject: rendered.subject,
+        html: rendered.body,
+        text: rendered.text,
+        attachments,
+        source: "live" as const,
+      };
+    } catch (error) {
+      // The template was renamed or removed from the code since the send.
+      // That is a real state an operator can reach and not a server fault,
+      // so it gets its own reason rather than a 500.
+      this.log.debug("Notification preview could not render", {
+        id,
+        template: receipt.template,
+        error,
+      });
+      return unavailable("template-missing");
+    }
+  }
 
   /**
    * Push the same notification again, back through the gate.
@@ -212,8 +413,8 @@ export class AdminNotificationController {
     },
     handler: async ({ params }) => {
       const receipt = await this.requireReceipt(params.id);
-      const exec = await this.executions.findById(receipt.executionId);
-      if (!exec || exec.jobName !== this.jobName || !exec.payload) {
+      const exec = await this.findExecution(receipt.executionId);
+      if (!exec?.payload) {
         throw new NotFoundError(
           `Cannot resend ${params.id}: the original payload is past the outbox retention window.`,
         );

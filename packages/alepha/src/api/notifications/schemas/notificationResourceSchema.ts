@@ -37,6 +37,15 @@ export const notificationResourceSchema = z.object({
    */
   lastEventAt: z.datetime().optional(),
   error: z.text().optional(),
+  /**
+   * Whether the outbox row this receipt points at is still there.
+   *
+   * False means the message is older than the outbox retention window (7
+   * days by default, against the receipt's 90), not that anything is wrong.
+   * It is what lets the list disable Resend instead of offering an action
+   * that can only fail.
+   */
+  outboxAvailable: z.boolean().optional(),
 });
 
 export type NotificationResource = Infer<typeof notificationResourceSchema>;

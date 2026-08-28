@@ -102,12 +102,26 @@ export class NotificationDeliveryService {
     return rows[0];
   }
 
+  /**
+   * Page the receipts, narrowed by whatever the operator asked for.
+   *
+   * Every filter is applied by ADDING a key, never by assigning `undefined`:
+   * a `where` carrying an undefined value throws, and used to be dropped
+   * silently, which produced a query with no `WHERE` at all.
+   */
   public async paginate(
     query: {
       sort?: string;
       page?: number;
       size?: number;
       status?: NotificationDeliveryRecord["status"];
+      search?: string;
+      template?: string;
+      channel?: NotificationDeliveryRecord["channel"];
+      category?: string;
+      hasError?: boolean;
+      createdAfter?: string;
+      createdBefore?: string;
     },
     options: { organizationId?: string } = {},
   ) {
@@ -118,6 +132,30 @@ export class NotificationDeliveryService {
     }
     if (query.status) {
       where.status = { eq: query.status };
+    }
+    if (query.search) {
+      where.contact = { ilike: `%${query.search}%` };
+    }
+    if (query.template) {
+      where.template = { eq: query.template };
+    }
+    if (query.channel) {
+      where.channel = { eq: query.channel };
+    }
+    if (query.category) {
+      where.category = { eq: query.category };
+    }
+    if (query.hasError !== undefined) {
+      where.error = query.hasError ? { isNotNull: true } : { isNull: true };
+    }
+    // One object carrying both bounds. Two separate assignments would have
+    // the second overwrite the first, turning a range into a half-open
+    // filter that still looks right in a test exercising one bound at a time.
+    if (query.createdAfter || query.createdBefore) {
+      where.createdAt = {
+        ...(query.createdAfter ? { gte: query.createdAfter } : {}),
+        ...(query.createdBefore ? { lte: query.createdBefore } : {}),
+      };
     }
     return await this.repo.paginate(query, { where }, { count: true });
   }

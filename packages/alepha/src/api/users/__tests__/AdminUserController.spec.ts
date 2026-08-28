@@ -438,6 +438,58 @@ describe("alepha/api/users - AdminUserController CRUD", () => {
     );
   });
 
+  /**
+   * The notifications admin resolves a whole page of contacts to users at
+   * once. One call per row would be a request storm on a 25-row page.
+   */
+  it("should resolve many emails in one call", async ({ expect }) => {
+    const { controller } = await setup();
+
+    await controller.createUser(
+      { body: { username: "batch1", email: "batch1@example.com" } },
+      asAdmin,
+    );
+    await controller.createUser(
+      { body: { username: "batch2", email: "batch2@example.com" } },
+      asAdmin,
+    );
+    await controller.createUser(
+      { body: { username: "batch3", email: "batch3@example.com" } },
+      asAdmin,
+    );
+
+    const result = await controller.findUsers(
+      { query: { emails: ["batch1@example.com", "batch3@example.com"] } },
+      asAdmin,
+    );
+
+    expect(result.content.map((u) => u.email ?? "").sort()).toEqual([
+      "batch1@example.com",
+      "batch3@example.com",
+    ]);
+  });
+
+  it("should ignore an empty email list rather than throwing", async ({
+    expect,
+  }) => {
+    // `inArray` throws on an empty array, and a page of SMS-only
+    // notifications produces exactly that. Nothing to resolve means "no
+    // filter", not "match nothing".
+    const { controller } = await setup();
+
+    await controller.createUser(
+      { body: { username: "nofilter", email: "nofilter@example.com" } },
+      asAdmin,
+    );
+
+    const result = await controller.findUsers(
+      { query: { emails: [] } },
+      asAdmin,
+    );
+
+    expect(result.content.length).toBeGreaterThanOrEqual(1);
+  });
+
   it("should filter users by enabled status", async ({ expect }) => {
     const { controller } = await setup();
 

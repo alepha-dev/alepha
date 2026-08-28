@@ -365,6 +365,33 @@ export const uiFr: Record<string, string> = {
   "admin.notifications.bulkDeleteTitle": "Supprimer des notifications",
   "admin.notifications.bulkDeleted": "$1 notification(s) supprimée(s)",
   "admin.notifications.allCategories": "Toutes",
+  "admin.notifications.allChannels": "Tous les canaux",
+  "admin.notifications.allStatuses": "Tous les statuts",
+  "admin.notifications.allTemplates": "Tous les modèles",
+  "admin.notifications.allDeliveries": "Livrées ou non",
+  "admin.notifications.filterHasError": "Avec une erreur",
+  "admin.notifications.filterNoError": "Sans erreur",
+  "admin.notifications.filterSearch": "Destinataire",
+  "admin.notifications.openUser": "Ouvrir l'utilisateur",
+  "admin.notifications.previewAttachments": "Pièces jointes",
+  "admin.notifications.previewLive":
+    "Rendu à nouveau à partir du modèle tel qu'il existe aujourd'hui. Si le modèle a changé depuis l'envoi, le résultat diffère de ce qui a été livré.",
+  "admin.notifications.previewPurged":
+    "L'enregistrement de tâche contenant les variables de ce message a dépassé sa durée de rétention : il ne peut plus être rendu. Le reçu est conservé plus longtemps.",
+  "admin.notifications.previewSensitive":
+    "Ce modèle est marqué comme sensible : son contenu rendu n'est jamais affiché dans l'administration.",
+  "admin.notifications.previewTemplateMissing":
+    "Le modèle qui a produit ce message n'est plus déclaré dans l'application : il n'y a plus rien pour le rendre.",
+  "admin.notifications.previewUnavailable":
+    "Ce message ne peut pas être prévisualisé.",
+  "admin.notifications.rawData": "Données brutes",
+  "admin.notifications.rawEmpty":
+    "Rien de plus n'a été enregistré pour cette notification. Un modèle marqué comme sensible ne transmet pas ses variables à l'administration.",
+  "admin.notifications.rawLogs": "Journaux",
+  "admin.notifications.rawRendered": "Rendu",
+  "admin.notifications.tabDetails": "Détails",
+  "admin.notifications.tabPreview": "Aperçu",
+  "admin.notifications.tabRaw": "Brut",
   "admin.notifications.colCategory": "Catégorie",
   "admin.notifications.colChannel": "Canal",
   "admin.notifications.colContact": "Contact",
@@ -374,8 +401,12 @@ export const uiFr: Record<string, string> = {
   "admin.notifications.colSource": "Source",
   "admin.notifications.colStatus": "Statut",
   "admin.notifications.colTemplate": "Modèle",
-  "admin.notifications.colType": "Type",
   "admin.notifications.colWhen": "Date",
+  "admin.notifications.delete": "Supprimer",
+  "admin.notifications.deleteConfirm":
+    "Supprimer cet enregistrement de notification ? Cette action est irréversible.",
+  "admin.notifications.deleteTitle": "Supprimer la notification",
+  "admin.notifications.deleted": "Notification supprimée",
   "admin.notifications.detailCategory": "Catégorie",
   "admin.notifications.detailChannel": "Canal",
   "admin.notifications.detailError": "Erreur",
@@ -398,6 +429,14 @@ export const uiFr: Record<string, string> = {
   "admin.notifications.resendTitle": "Renvoyer",
   "admin.notifications.resent":
     "Mise en file d'attente. Le filtre de blocage s'applique à nouveau.",
+  "admin.notifications.status.bounced": "Rejetée",
+  "admin.notifications.status.complained": "Signalée comme spam",
+  "admin.notifications.status.deferred": "Différée",
+  "admin.notifications.status.delivered": "Remise",
+  "admin.notifications.status.failed": "Échec",
+  "admin.notifications.status.rejected": "Refusée",
+  "admin.notifications.status.sent": "Envoyée",
+  "admin.notifications.status.skipped": "Ignorée",
   "admin.notifications.tabMessages": "Messages",
   "admin.notifications.tabSuppressions": "Blocages",
   "admin.parameters.activationDateHint":
