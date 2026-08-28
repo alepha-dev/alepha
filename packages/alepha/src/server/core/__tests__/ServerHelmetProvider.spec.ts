@@ -102,4 +102,40 @@ describe("ServerHelmetProvider", () => {
 
     await stop();
   });
+
+  // The built-in policy used to be unreachable: the branch selecting it tested
+  // `Object.keys(csp).length === 0` on the OPTION object, which always carries
+  // its `directives` key, so no configuration could ever produce it.
+  test("should send the built-in policy when directives are omitted", async () => {
+    const { hostname, stop } = await setupServer({
+      contentSecurityPolicy: {},
+    });
+
+    const response = await fetch(`${hostname}/api/ping`);
+
+    const cspHeader = response.headers.get("content-security-policy");
+    expect(cspHeader).toContain("default-src 'self'");
+    expect(cspHeader).toContain("object-src 'none'");
+    expect(cspHeader).toContain("upgrade-insecure-requests");
+
+    await stop();
+  });
+
+  // An empty map used to emit `content-security-policy:` with nothing after
+  // it. That is not a permissive policy - it is a policy with no directives,
+  // and the absent `default-src` is the strictest answer there is, so the
+  // "off" switch was the most restrictive setting available.
+  test("should send no CSP header at all for an empty directive map", async () => {
+    const { hostname, stop } = await setupServer({
+      contentSecurityPolicy: { directives: {} },
+    });
+
+    const response = await fetch(`${hostname}/api/ping`);
+
+    expect(response.headers.get("content-security-policy")).toBeNull();
+    // The rest of helmet is untouched: this disables CSP, not the headers.
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+
+    await stop();
+  });
 });

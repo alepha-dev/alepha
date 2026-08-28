@@ -651,3 +651,134 @@ export const testCacheCompressTypes = async (
   expect(await test.bool()).toBe(true);
   expect(await test.bool()).toBe(true);
 };
+
+/**
+ * Two containers whose names differ only by where the `:` falls must not share
+ * a slot.
+ *
+ * Redis and KV flatten `(name, key)` into one `:`-joined string, so container
+ * `svc` with key `list:1` and container `svc:list` with key `1` both landed on
+ * `cache:svc:list:1`: they read each other's entries, and clearing either one
+ * wiped the other. Memory and Database key by container natively and were
+ * never affected - they run this too, as the reference behaviour the flat
+ * backends have to match.
+ */
+export const testCacheContainerIsolation = async (
+  configure: (app: Alepha) => void = () => {},
+  cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
+): Promise<void> => {
+  const app = Alepha.create().with({
+    provide: CacheProvider,
+    use: cacheProvider,
+  });
+  configure(app);
+
+  const provider = app.inject(CacheProvider);
+  await app.start();
+
+  await assertCacheContainerIsolation(provider);
+};
+
+/**
+ * The assertions of {@link testCacheContainerIsolation}, against a provider
+ * that is already started. CloudflareKVProvider needs this form: it resolves
+ * its binding in a start hook that gives up unless a `$cache` primitive is
+ * using it, so its spec has to boot the container itself.
+ */
+export const assertCacheContainerIsolation = async (
+  provider: CacheProvider,
+): Promise<void> => {
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  const read = async (name: string, key: string) => {
+    const value = await provider.get(name, key);
+    return value ? decoder.decode(value) : undefined;
+  };
+
+  await provider.set("svc", "list:1", encoder.encode("outer"));
+  await provider.set("svc:list", "1", encoder.encode("inner"));
+
+  expect(await read("svc", "list:1")).toBe("outer");
+  expect(await read("svc:list", "1")).toBe("inner");
+  expect(await provider.has("svc", "list:1")).toBe(true);
+
+  // `keys` reports one container, not its sibling's entries as well.
+  expect(await provider.keys("svc")).toHaveLength(1);
+  expect(await provider.keys("svc:list")).toHaveLength(1);
+
+  // A wildcard still matches a key containing `:` - escaping is per-character,
+  // so an escaped filter prefixes an escaped key exactly when the raw one does.
+  await provider.set("svc", "list:2", encoder.encode("outer2"));
+  await provider.invalidateKeys("svc", ["list:*"]);
+  expect(await read("svc", "list:1")).toBeUndefined();
+  expect(await read("svc", "list:2")).toBeUndefined();
+  expect(await read("svc:list", "1")).toBe("inner");
+
+  // And clearing a whole container leaves the sibling alone.
+  await provider.set("svc", "list:3", encoder.encode("outer3"));
+  await provider.del("svc");
+  expect(await read("svc", "list:3")).toBeUndefined();
+  expect(await read("svc:list", "1")).toBe("inner");
+};
+
+/**
+ * `keys()` returns the keys the CALLER wrote, and `del()` takes them back.
+ *
+ * Memory and Database always did. Redis and KV returned their own storage
+ * keys - container prefix and all - so `del()` carried a heuristic guessing
+ * which of the two forms it had been handed, and a caller doing anything else
+ * with the result got a different answer per backend.
+ *
+ * Run by all four, so the contract cannot drift apart again.
+ */
+export const testCacheKeyContract = async (
+  configure: (app: Alepha) => void = () => {},
+  cacheProvider: Service<CacheProvider> = MemoryCacheProvider,
+): Promise<void> => {
+  const app = Alepha.create().with({
+    provide: CacheProvider,
+    use: cacheProvider,
+  });
+  configure(app);
+
+  const provider = app.inject(CacheProvider);
+  await app.start();
+
+  await assertCacheKeyContract(provider);
+};
+
+/**
+ * The assertions of {@link testCacheKeyContract}, against a provider that is
+ * already started - CloudflareKVProvider's spec boots its own container, for
+ * the reason given on {@link assertCacheContainerIsolation}.
+ */
+export const assertCacheKeyContract = async (
+  provider: CacheProvider,
+): Promise<void> => {
+  const encoder = new TextEncoder();
+  const container = "contract";
+
+  await provider.set(container, "plain", encoder.encode("1"));
+  await provider.set(container, "user:42", encoder.encode("2"));
+  await provider.set(container, "100%:sure", encoder.encode("3"));
+
+  // Exactly what was written, in any order, with nothing prefixed or escaped.
+  expect((await provider.keys(container)).sort()).toEqual([
+    "100%:sure",
+    "plain",
+    "user:42",
+  ]);
+
+  // A filter matches on the caller's key, not on any storage form of it.
+  expect(await provider.keys(container, "user:")).toEqual(["user:42"]);
+
+  // And what came out of `keys()` goes straight back into `del()`.
+  const [first] = await provider.keys(container, "user:");
+  await provider.del(container, first);
+  expect(await provider.has(container, "user:42")).toBe(false);
+  expect(await provider.has(container, "plain")).toBe(true);
+
+  // The same round trip through the wildcard path.
+  await provider.invalidateKeys(container, ["100%:*"]);
+  expect((await provider.keys(container)).sort()).toEqual(["plain"]);
+};

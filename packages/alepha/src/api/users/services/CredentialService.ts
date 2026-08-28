@@ -196,7 +196,12 @@ export class CredentialService {
       if (!captchaToken) {
         throw new BadRequestError("Captcha verification is required");
       }
-      const valid = await this.captchaProvider.verify(captchaToken);
+      // The client address goes with it: Turnstile binds a token to the
+      // address that solved it, and cannot check that unless it is told.
+      const valid = await this.captchaProvider.verify(
+        captchaToken,
+        request?.ip,
+      );
       if (!valid) {
         throw new BadRequestError("Captcha verification failed");
       }

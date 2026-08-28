@@ -9,6 +9,58 @@ export class ServerLoggerProvider {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly alepha = $inject(Alepha);
 
+  /**
+   * Query parameters whose VALUE never reaches a log line.
+   *
+   * The request path is logged at info level, so an OAuth callback wrote its
+   * `code` and `state` straight into production logs - a live authorization
+   * code, sitting in whatever the log ships to. The key is kept, because
+   * knowing which parameters a request carried is most of what the line is
+   * for; only the value goes.
+   */
+  protected readonly redactedQueryKeys = new Set([
+    "code",
+    "state",
+    "token",
+    "access_token",
+    "refresh_token",
+    "key",
+  ]);
+
+  /**
+   * The request path as it should appear in a log line: unchanged when it
+   * carries nothing sensitive, and with the values of {@link
+   * redactedQueryKeys} replaced otherwise.
+   */
+  protected loggedPath(url: URL): string {
+    const { pathname, search, searchParams } = url;
+    if (!search) {
+      return pathname;
+    }
+    // The common case rebuilds nothing, so a request with an ordinary query
+    // is logged byte for byte as it arrived.
+    let sensitive = false;
+    for (const key of searchParams.keys()) {
+      if (this.redactedQueryKeys.has(key.toLowerCase())) {
+        sensitive = true;
+        break;
+      }
+    }
+    if (!sensitive) {
+      return `${pathname}${search}`;
+    }
+
+    const parts: string[] = [];
+    for (const [key, value] of searchParams) {
+      parts.push(
+        this.redactedQueryKeys.has(key.toLowerCase())
+          ? `${encodeURIComponent(key)}=[redacted]`
+          : `${encodeURIComponent(key)}=${encodeURIComponent(value)}`,
+      );
+    }
+    return `${pathname}?${parts.join("&")}`;
+  }
+
   public readonly onRequest = $hook({
     on: "server:onRequest",
     priority: "first",
@@ -19,12 +71,9 @@ export class ServerLoggerProvider {
 
       request.metadata.now = this.dateTime.nowMillis();
 
-      const search = request.url.search;
       const data: Record<string, string> = {
         method: request.method,
-        path: search
-          ? `${request.url.pathname}${search}`
-          : request.url.pathname,
+        path: this.loggedPath(request.url),
       };
 
       if (this.alepha.isProduction()) {
@@ -72,12 +121,9 @@ export class ServerLoggerProvider {
       }
 
       const ms = this.dateTime.nowMillis() - request.metadata.now;
-      const search = request.url.search;
       this.log.info("Request completed", {
         method: request.method,
-        path: search
-          ? `${request.url.pathname}${search}`
-          : request.url.pathname,
+        path: this.loggedPath(request.url),
         status: response.status,
         duration: ms,
       });

@@ -603,9 +603,15 @@ export class McpServerProvider {
 
       // Spec 2025-06-18: when the tool declares an outputSchema, the server
       // MUST populate `structuredContent` with the validated result. The
-      // text-stringified `content` block remains as a back-compat fallback.
-      if (tool.hasOutputSchema() && result !== undefined) {
-        callResult.structuredContent = result;
+      // text-stringified `content` block remains as a back-compat fallback,
+      // and carries the bare value whether or not the envelope wraps it.
+      //
+      // The tool builds the envelope, because it is the same tool that
+      // decides whether the advertised schema wraps: `structuredContent` has
+      // to be an object, so a non-object result travels as `{ result }`.
+      const structured = tool.toStructuredContent(result);
+      if (structured !== undefined) {
+        callResult.structuredContent = structured;
       }
 
       return callResult;

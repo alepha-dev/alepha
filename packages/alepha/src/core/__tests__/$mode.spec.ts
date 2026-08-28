@@ -170,8 +170,9 @@ describe("$mode", () => {
     const alepha = Alepha.create({ env: { MIGRATE: "true" } });
     alepha.with(Target);
 
-    // The error is wrapped by the event system
-    await expect(alepha.start()).rejects.toThrow(/ready/);
+    // The callback's own error: the event system used to wrap a failing hook
+    // on the logging path, and no longer does on any.
+    await expect(alepha.start()).rejects.toThrow("boom");
     expect(alepha.isStarted()).toBe(false);
   });
 

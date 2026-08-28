@@ -24,6 +24,19 @@ export class FormModel<T extends ZObject> {
   protected readonly alepha = $inject(Alepha);
   protected readonly values: Record<string, any> = {};
   protected readonly initialValues: Record<string, any> = {};
+  /**
+   * Keys a caller has written since the current baseline was installed.
+   *
+   * `keepDirty` used to derive this by comparing each value against the
+   * baseline it was about to replace, which cannot see an edit that RESTORES
+   * that baseline: type "Smith", save, clear the field again while the save
+   * is in flight, and the clear looks exactly like an untouched field, so the
+   * response puts "Smith" back and the user's deletion is undone.
+   *
+   * Recording the write instead is the only way to tell those apart. Cleared
+   * by every re-seed and reset, which is what installs a new baseline.
+   */
+  protected readonly touched = new Set<string>();
   protected submitInProgress = false;
 
   public input: SchemaToInput<T>;
@@ -248,8 +261,8 @@ export class FormModel<T extends ZObject> {
 
     const dirty: Record<string, any> = {};
     if (options.keepDirty) {
-      for (const key of oldKeys) {
-        if (!this.sameValue(this.values[key], this.initialValues[key])) {
+      for (const key of this.touched) {
+        if (oldKeys.has(key)) {
           dirty[key] = this.values[key];
         }
       }
@@ -265,12 +278,37 @@ export class FormModel<T extends ZObject> {
     }
     Object.assign(this.values, { ...this.initialValues, ...dirty });
 
+    // This call IS the new baseline, so nothing is outstanding any more -
+    // except a kept value that the server did not echo back, which is still
+    // waiting to be sent and stays touched.
+    this.touched.clear();
+    for (const key of Object.keys(dirty)) {
+      if (!this.sameValue(this.values[key], this.initialValues[key])) {
+        this.touched.add(key);
+      }
+    }
+
+    // Clean keys first, then the ones still differing from the new baseline.
+    // `form:change`'s `initial` flag is what tells a subscriber whether to
+    // mark the form dirty, and that subscriber holds ONE boolean for the
+    // whole form: emitting in this order means the last word belongs to a
+    // dirty field whenever there is one. Without it, a kept edit could keep
+    // its value on screen while the form called itself pristine - and a Save
+    // button gated on `dirty` would never enable to send it.
     const keys = new Set<string>([...oldKeys, ...Object.keys(this.values)]);
-    for (const key of keys) {
+    const ordered = [...keys].sort(
+      (a, b) => Number(this.touched.has(a)) - Number(this.touched.has(b)),
+    );
+    for (const key of ordered) {
       const path = `/${key.replaceAll(".", "/")}`;
       void this.alepha.events.emit(
         "form:change",
-        { id: this.id, path, value: this.values[key], initial: true },
+        {
+          id: this.id,
+          path,
+          value: this.values[key],
+          initial: !this.touched.has(key),
+        },
         { catch: true },
       );
     }
@@ -307,6 +345,8 @@ export class FormModel<T extends ZObject> {
       delete this.values[key];
     }
     Object.assign(this.values, { ...this.initialValues });
+    // Back to the baseline, so nothing is outstanding.
+    this.touched.clear();
     for (const key of keys) {
       const path = `/${key.replaceAll(".", "/")}`;
       void this.alepha.events.emit(
@@ -551,6 +591,7 @@ export class FormModel<T extends ZObject> {
     const set = (value: any) => {
       const typedValue = this.getValueFromInput(value, field);
       context.store[key] = typedValue;
+      this.touched.add(key);
       const objectField = z.schema.unwrap(field);
       if (typedValue === undefined && z.schema.isObject(objectField)) {
         // Clearing an object clears its flattened children too, or

@@ -34,7 +34,7 @@ export class GenEnvCommand {
           if (value.description) {
             dotEnvFile += `# ${value.description.split("\n").join("\n# ")}\n`;
           }
-          if (value.required && !value.default) {
+          if (value.required) {
             dotEnvFile += `# (required)\n`;
           }
           if (value.enum) {

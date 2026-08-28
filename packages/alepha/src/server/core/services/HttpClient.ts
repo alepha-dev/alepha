@@ -89,7 +89,7 @@ export class HttpClient {
       url,
       method: request.method,
       body: request.body,
-      headers: request.headers,
+      headers: this.redactHeaders(request.headers),
       options,
     });
 
@@ -198,6 +198,39 @@ export class HttpClient {
     }
 
     return promise;
+  }
+
+  /**
+   * Headers whose value never reaches the trace line.
+   *
+   * The trace printed every header verbatim, so a request carrying a session
+   * cookie or a bearer token wrote the credential itself into the log. Both
+   * of those are enough to act as the user, so neither can be there whatever
+   * the level is set to.
+   */
+  protected readonly redactedHeaders = new Set([
+    "authorization",
+    "cookie",
+    "set-cookie",
+    "proxy-authorization",
+  ]);
+
+  /**
+   * A copy of the headers with credentials replaced, for logging only.
+   *
+   * Goes through `Headers` so every accepted `HeadersInit` shape (a plain
+   * object, an entry array, a `Headers`) is handled the same way and the
+   * names arrive lowercased.
+   */
+  protected redactHeaders(headers: HeadersInit | undefined): unknown {
+    if (!headers) {
+      return headers;
+    }
+    const out: Record<string, string> = {};
+    new Headers(headers).forEach((value, key) => {
+      out[key] = this.redactedHeaders.has(key) ? "[redacted]" : value;
+    });
+    return out;
   }
 
   /**

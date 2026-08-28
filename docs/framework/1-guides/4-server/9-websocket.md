@@ -140,6 +140,8 @@ class ChatChannels {
 
 Schemas use the `z` builder - the same one used by `$action`.
 
+`schema.roomId` is enforced at the handshake on both engines: a join naming a room the schema rejects is closed with code `1008` and the reason `Invalid room id`, and every id of a multi-room join is checked, not just the first. A client that names no room at all joins `default`, which is never validated - it is the framework's fallback, not a choice, so declaring `z.uuid()` does not refuse connections that simply omit the parameter.
+
 ## Server Handler
 
 `$websocket` turns a channel into a live server endpoint: it accepts connections, validates inbound messages against `schema.out`, and calls your handler.
@@ -283,6 +285,8 @@ Identity is resolved from the WebSocket handshake through `alepha/security`'s us
 - Any other credential (e.g. a bearer token) must travel as a query parameter - `?token=` or `?api_key=` - since it can't go in an `Authorization` header.
 
 An unauthenticated connection to a `secure: true` endpoint is rejected before the upgrade completes. This works identically on both the Node and Cloudflare providers.
+
+**What `maxConnectionsPerUser` counts differs by engine.** On Node the server holds every connection, so the cap is per endpoint: three connections total, whichever rooms they joined. On Cloudflare a Durable Object IS one room and only knows its own sockets, so the cap is per room: the same user may hold three in each room they join. Counting across rooms would put a second coordinator object on the path of every upgrade, which is a real cost for a limit that exists to stop one user opening tabs without end. Both engines refuse the same way, closing the socket with code `1008` and the reason `Max connections per user exceeded`, so a client cannot tell them apart. An unauthenticated connection is never capped on either, since there is no identity to count against.
 
 ## Node / VPS
 

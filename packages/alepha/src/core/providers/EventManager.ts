@@ -393,10 +393,22 @@ export class EventManager {
           this.reportListenerError(String(event), name, error);
           continue;
         }
-        throw new AlephaError(
+        // Rethrown as it was thrown. This used to wrap, so a hook failing
+        // during `start()` (which logs) surfaced an `AlephaError` while the
+        // SAME hook failing on any other emit surfaced its own error: an
+        // `instanceof` check on a hook failure answered differently depending
+        // on a logging option, and an application's `ConflictError` lost both
+        // its status and its message on the way out.
+        //
+        // The context the wrapper carried is not lost - it is logged, right
+        // here, which is where a human looks for it. It is deliberately not
+        // stamped onto the error as a property: nothing reads such a
+        // property, and an error's shape is the caller's contract.
+        this.log?.error(
           `Failed during '${String(event)}()' hook for service: ${name}`,
-          { cause: error },
+          error,
         );
+        throw error;
       }
 
       this.log?.debug(

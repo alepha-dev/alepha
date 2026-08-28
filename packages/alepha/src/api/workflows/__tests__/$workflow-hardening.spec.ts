@@ -607,6 +607,165 @@ describe("$workflow — timeout sweep", () => {
     expect(steps[0].status).toBe("failed");
     expect(steps[0].error).toBe("Workflow timed out");
   });
+
+  /**
+   * `retry()` used to leave `deadlineAt` where the timeout put it: in the
+   * past. The retried run went back to `running` under an expired deadline,
+   * so the next sweep killed it again before its step could do anything, and
+   * retrying a timed-out workflow was a no-op that read as a second failure.
+   */
+  it("gives a retried timeout a fresh deadline and survives the next sweep", async ({
+    expect,
+  }) => {
+    let release: (() => void) | undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    class App {
+      repo = $repository(workflowExecutions);
+      stepRepo = $repository(workflowStepExecutions);
+      slow = $workflow({
+        schema: z.object({ id: z.text() }),
+        onError: "fail",
+        timeout: [10, "minutes"],
+        steps: [
+          {
+            name: "only",
+            handler: async () => {
+              await gate;
+              return { ok: true };
+            },
+          },
+        ],
+      });
+    }
+
+    const alepha = makeApp().with(App);
+    await alepha.start();
+    const app = alepha.inject(App);
+    const dt = alepha.inject(DateTimeProvider);
+    const provider = alepha.inject(WorkflowProvider);
+
+    const exec = await app.repo.create({
+      workflowName: "App.slow",
+      status: "running",
+      priority: 2,
+      payload: { id: "retry-deadline" },
+      startedAt: dt.nowISOString(),
+      scheduledAt: dt.nowISOString(),
+      deadlineAt: dt.now().subtract(1, "minute").toISOString(),
+    });
+    await app.stepRepo.create({
+      workflowExecutionId: exec.id,
+      stepName: "only",
+      stepIndex: 0,
+      status: "running",
+      attempt: 1,
+      maxAttempts: 1,
+      startedAt: dt.nowISOString(),
+    });
+
+    await provider.timeoutSweep();
+    expect((await app.repo.findById(exec.id))?.status).toBe("timed_out");
+
+    // Not awaited: the handler parks on the gate, so `retry()` only settles
+    // once the step is released - which is the whole point, the execution has
+    // to still be `running` when the next sweep goes by.
+    const retrying = provider.retry(exec.id);
+
+    const retried = await waitFor(
+      () => app.repo.findById(exec.id),
+      (e) => e?.status === "running",
+      { label: "retried workflow running" },
+    );
+    expect(new Date(retried!.deadlineAt!).getTime()).toBeGreaterThan(
+      dt.nowMillis(),
+    );
+
+    // The half that actually bit: under the old code this sweep found a
+    // `running` execution with an expired deadline and killed it again.
+    await provider.timeoutSweep();
+    expect((await app.repo.findById(exec.id))?.status).toBe("running");
+
+    release?.();
+    await retrying;
+
+    const done = await waitFor(
+      () => app.repo.findById(exec.id),
+      (e) => e?.status === "completed",
+      { label: "retried workflow completed" },
+    );
+    expect(done?.status).toBe("completed");
+  });
+});
+
+// -----------------------------------------------------------------------------------------------------------------
+
+describe("$workflow - restart", () => {
+  /**
+   * A restart is usually clicked by an admin, and it used to call `start()`
+   * bare: the new execution captured THEIR ambient atoms and dropped the
+   * original's key, tags, priority and triggeredBy on the floor.
+   */
+  it("takes its metadata and context from the stored row, not from the caller", async ({
+    expect,
+  }) => {
+    class App {
+      alepha = $inject(Alepha);
+      repo = $repository(workflowExecutions);
+      doomed = $workflow({
+        schema: z.object({ id: z.text() }),
+        context: [specTenantAtom],
+        onError: "fail",
+        priority: "low",
+        tags: ["billing"],
+        steps: [
+          {
+            name: "only",
+            handler: async () => {
+              throw new Error("boom");
+            },
+          },
+        ],
+      });
+    }
+
+    const alepha = makeApp().with(App);
+    await alepha.start();
+    const app = alepha.inject(App);
+
+    alepha.store.set(specTenantAtom, { id: "org-1" });
+    const executionId = await app.doomed.start(
+      { id: "x" },
+      { key: "invoice-42", triggeredBy: "user-1", triggeredByName: "Ada" },
+    );
+
+    const original = await waitFor(
+      () => app.repo.findById(executionId),
+      (e) => e?.status === "failed",
+      { label: "workflow failed" },
+    );
+    // "low", so a restart that recomputed the priority would land on the
+    // default 2 and the assertion below would not be about anything.
+    expect(original?.priority).toBe(3);
+
+    // The admin who clicks restart carries their own tenant.
+    alepha.store.set(specTenantAtom, { id: "org-admin" });
+    const newId = await app.doomed.restart(executionId);
+    expect(newId).not.toBe(executionId);
+
+    const restarted = await app.repo.findById(newId);
+    expect(restarted?.key).toBe("invoice-42");
+    expect(restarted?.tags).toEqual(["billing"]);
+    expect(restarted?.priority).toBe(3);
+    expect(restarted?.triggeredBy).toBe("user-1");
+    expect(restarted?.triggeredByName).toBe("Ada");
+    expect(restarted?.context).toEqual({
+      "alepha.test.workflowTenant": { id: "org-1" },
+    });
+    expect(restarted?.restartedFrom).toBe(executionId);
+  });
 });
 
 // -----------------------------------------------------------------------------------------------------------------
