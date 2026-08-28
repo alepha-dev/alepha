@@ -181,7 +181,10 @@ describe("LinkProvider", () => {
       await alepha.start();
       expect.unreachable("should have thrown");
     } catch (error: any) {
-      expect(error.cause?.message).toMatch(/Duplicate action name "ping"/);
+      // The provider's own error, not a wrapper around it: a failing hook
+      // used to be wrapped on `start()`'s logging path and no longer is,
+      // so the message is on the error rather than on its cause.
+      expect(error.message).toMatch(/Duplicate action name "ping"/);
     }
   });
 });

@@ -1,7 +1,14 @@
 import { randomUUID } from "node:crypto";
 import type { IncomingMessage } from "node:http";
 
-import { $hook, $inject, $store, AlephaError, SchemaValidator } from "alepha";
+import {
+  $hook,
+  $inject,
+  $store,
+  AlephaError,
+  SchemaValidator,
+  type ZodString,
+} from "alepha";
 import { $logger } from "alepha/logger";
 import { WebSocket, WebSocketServer, type RawData } from "ws";
 
@@ -350,6 +357,40 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
 
   // -------------------------------------------------------------------------------------------------------------------
 
+  /**
+   * Hold every room id the client named to the channel's `schema.roomId`,
+   * closing the socket with 1008 on the first one that fails.
+   *
+   * `safeParse` rather than the codec: a `ZodString` is all this option can
+   * be, and there is no decoded value to keep - only a yes or a no.
+   *
+   * The literal `default` is skipped: `extractRoomIds` substitutes it for a
+   * client that named no room, so it is the framework's own fallback rather
+   * than something a client chose, and a channel declaring `z.uuid()` would
+   * otherwise refuse every connection that simply omitted the parameter.
+   * The Cloudflare room applies the same rule.
+   */
+  protected roomIdsAccepted(
+    endpoint: {
+      channel: { options: { schema: { roomId?: ZodString } } };
+    },
+    roomIds: string[],
+    ws: WebSocket,
+  ): boolean {
+    const schema = endpoint.channel.options.schema.roomId;
+    if (!schema) return true;
+
+    for (const roomId of roomIds) {
+      if (roomId === "default") continue;
+      if (!schema.safeParse(roomId).success) {
+        this.log.warn(`Rejected room id '${roomId}'`);
+        ws.close(1008, "Invalid room id");
+        return false;
+      }
+    }
+    return true;
+  }
+
   protected async handleUpgrade(
     request: IncomingMessage,
     socket: any,
@@ -408,7 +449,12 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     const path = endpoint.channel.options.path;
     const connectionId = this.createConnectionId();
     const url = new URL(request.url || "/", "http://localhost");
-    const roomId = this.extractRoomIds(url)[0] ?? "default";
+    const roomIds = this.extractRoomIds(url);
+    const roomId = roomIds[0] ?? "default";
+
+    if (!this.roomIdsAccepted(endpoint, roomIds, ws)) {
+      return;
+    }
 
     if (userId && endpoint.maxConnectionsPerUser) {
       const existing = this.userConnections.get(userId);
@@ -592,6 +638,10 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     const url = new URL(request.url || "/", "http://localhost");
     const roomIds = this.extractRoomIds(url);
     this.warnMultiRoom(roomIds);
+
+    if (!this.roomIdsAccepted(endpoint, roomIds, ws)) {
+      return;
+    }
 
     // Check max connections per user before registering
     if (userId && endpoint.maxConnectionsPerUser) {
@@ -934,7 +984,10 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
       });
 
       this.log.info("WebSocket server OK", {
-        basePath: this.wsOptions.path,
+        // The paths actually served, which is what an operator wanting to
+        // know where the sockets are needs. This used to print a base path
+        // nothing routed on.
+        channels: [...this.endpoints.keys(), ...this.roomEndpoints.keys()],
       });
     },
   });

@@ -16,6 +16,7 @@ import { useDetailTab } from "@alepha/ui/components/detail/use-detail-tab";
 import { Button } from "@alepha/ui/components/ui/button";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { AlephaError } from "alepha";
 import type { AdminAuditController } from "alepha/api/audits";
 import type {
   AdminIdentityController,
@@ -246,14 +247,29 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
         );
         await userQuery.refetch();
       } catch (err) {
-        const message =
-          err instanceof HttpError
-            ? err.message
-            : tr("admin.userDetail.saveError", {
+        // Throw, never toast. `ActionErrorToaster`, which `AppShell` mounts,
+        // already turns an unhandled action error into exactly one toast, and
+        // it reads `error.message` - the very string this used to pass to
+        // `toast.error` for an `HttpError`. So a refused duplicate email
+        // arrived twice, as two identical stacked toasts.
+        //
+        // What is left here is the other half of the job: making sure the
+        // error carries a sentence worth showing. An `HttpError` already does
+        // (it is the server's own wording, and "Email already exists" is
+        // exactly what the operator needs to read), so it travels as-is.
+        // Anything else is transport or a bug, whose message - "Failed to
+        // fetch" - says nothing about this form, so it gets replaced.
+        //
+        // Same division of labour as the auth forms in this package: the
+        // handler throws, the toaster shows.
+        throw err instanceof HttpError
+          ? err
+          : new AlephaError(
+              tr("admin.userDetail.saveError", {
                 default: "Failed to save profile",
-              });
-        toast.error(message);
-        throw err;
+              }),
+              { cause: err },
+            );
       }
     },
   });

@@ -2,8 +2,7 @@ import * as React from "react";
 
 void React;
 
-import { round } from "./FlowchartDiagram.tsx";
-import { FlowchartDiagramLabel } from "./FlowchartDiagramLabel.tsx";
+import { DiagramLabel, round } from "./DiagramLabel.tsx";
 import type { PositionedNode } from "./layoutFlowchart.ts";
 
 export interface FlowchartDiagramNodeProps {
@@ -66,7 +65,7 @@ export const FlowchartDiagramNode = (props: FlowchartDiagramNodeProps) => {
           strokeWidth={1.25}
         />
       )}
-      <FlowchartDiagramLabel
+      <DiagramLabel
         lines={node.lines}
         centerX={x + width / 2}
         centerY={y + height / 2}

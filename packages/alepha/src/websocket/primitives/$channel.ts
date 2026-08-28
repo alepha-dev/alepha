@@ -31,9 +31,17 @@ export interface ChannelPrimitiveOptions<
    */
   schema: {
     /**
-     * Optional room ID schema validation
-     * Default: z.text() (any string)
-     * Can be enforced at application level: z.uuid(), z.text({ pattern: /^[a-f0-9\-]{36}$/ })
+     * Shape a client-named room id must have, e.g. `z.uuid()` or
+     * `z.text({ pattern: /^[a-f0-9-]{36}$/ })`. Any string when unset.
+     *
+     * Checked at the handshake on both engines: a join naming a room this
+     * rejects is closed with code 1008 and the reason "Invalid room id", and
+     * every id of a multi-room join is checked, not just the first.
+     *
+     * The implicit `default` room is never validated. It is what a client
+     * that named no room gets, so it is the framework's fallback rather than
+     * a choice, and validating it would refuse every connection that simply
+     * omitted the parameter.
      */
     roomId?: ZodString;
 

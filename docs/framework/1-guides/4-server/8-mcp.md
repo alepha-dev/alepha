@@ -127,6 +127,8 @@ class TaskTools {
 
 Parameters and results are validated automatically. If validation fails, the client receives a JSON-RPC error.
 
+**Non-object results travel under `result`.** MCP requires the `structuredContent` of a response to be an object, so a tool declaring a scalar or a union - `result: z.number()`, as in the quick start above - advertises `{ result: <schema> }` and answers `structuredContent: { result: 42 }`. Declare `schema.result` as an object when you want the fields at the top level. Either way the text content block carries the value as it always did, so a client reading `content[0].text` sees no difference.
+
 **Returning images or binary content:** when a tool needs to hand the client a screenshot, a chart, or any non-JSON payload, omit `schema.result` and return raw MCP content blocks instead - `{ content: [...] }`, where each block is `{ type: "text", text }`, `{ type: "image", data, mimeType }` (base64), `{ type: "audio", data, mimeType }`, or a resource link. The blocks are passed through to the client verbatim, so an image block renders inline in clients that support it.
 
 ```typescript

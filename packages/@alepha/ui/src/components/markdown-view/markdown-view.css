@@ -112,3 +112,44 @@
   --hljs-deletion: #67060c;
   --hljs-addition: #033a16;
 }
+
+/**
+ * The scroll frame around a sequence diagram.
+ *
+ * A flowchart is roughly as tall as it is wide and scales into the prose
+ * column. A sequence diagram's width comes from its participant count with
+ * nothing to wrap, so scaling eight lifelines into a phone column puts the
+ * labels at around 5px with no way for the reader to recover. It scrolls
+ * instead, at its natural size.
+ *
+ * `overscroll-behavior-x: contain` is not a nicety: without it, swiping a
+ * wide diagram on touch swallows the page's own back-swipe.
+ *
+ * The fades are the classic four-layer scroll-shadow: two `local` covers
+ * painted in the page background scroll WITH the content and so sit over
+ * the shadows while the diagram is at that edge, and two `scroll` shadows
+ * stay pinned to the frame. The result is a fade on the overflowing side
+ * only, in pure CSS - without it a clipped diagram just looks truncated and
+ * nobody discovers it scrolls.
+ */
+.alepha-diagram-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  background:
+    linear-gradient(to right, var(--background) 60%, transparent) left center /
+      28px 100% no-repeat local,
+    linear-gradient(to left, var(--background) 60%, transparent) right center /
+      28px 100% no-repeat local,
+    linear-gradient(
+        to right,
+        color-mix(in oklab, var(--foreground) 26%, transparent),
+        transparent
+      )
+      left center / 18px 100% no-repeat scroll,
+    linear-gradient(
+        to left,
+        color-mix(in oklab, var(--foreground) 26%, transparent),
+        transparent
+      )
+      right center / 18px 100% no-repeat scroll;
+}

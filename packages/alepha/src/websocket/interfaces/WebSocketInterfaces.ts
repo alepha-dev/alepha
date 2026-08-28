@@ -122,6 +122,11 @@ export interface WebSocketPrimitiveOptions<
 
   /**
    * Limit number of connections per user (if authenticated)
+   *
+   * What it counts differs by engine: per endpoint on Node, which holds
+   * every connection, and per ROOM on Cloudflare, where a Durable Object is
+   * one room and knows only its own sockets. Both refuse the same way,
+   * closing with code 1008 and "Max connections per user exceeded".
    */
   maxConnectionsPerUser?: number;
 }

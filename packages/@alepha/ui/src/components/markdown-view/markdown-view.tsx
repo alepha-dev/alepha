@@ -11,19 +11,25 @@ import remarkGfm from "remark-gfm";
 import { DiagramErrorBoundary } from "./diagram/DiagramErrorBoundary.tsx";
 
 /**
- * Parser + `graphre` + emitter, pulled in ONLY when a document actually
- * contains a mermaid fence.
+ * Both parsers, both layouts (`graphre` for the flowchart, arithmetic for
+ * the sequence diagram) and both emitters, pulled in ONLY when a document
+ * actually contains a mermaid fence.
  *
  * This is the constraint the whole diagram layer exists under: a document
- * with no diagram must pay nothing at all. One with a diagram pays roughly
- * 20-25 kB gzip once, then it is cached.
+ * with no diagram must pay nothing at all. One with a diagram pays one
+ * chunk once, then it is cached. Measured on 2026-08-28 with both diagram
+ * types in it: 64.5 kB raw, **22.2 kB gzip**, 19.4 kB brotli - against
+ * 17.95 kB gzip when it drew flowcharts only. If it ever passes ~26 kB,
+ * split the two pipelines into two chunks so a flowchart-only document
+ * stops paying for the sequence one.
  *
  * ⚠️ A lazy import a bundler decides to inline fails silently: the feature
  * still works and the cost moves into the entry chunk. After changing this,
- * build and confirm `graphre` is in a chunk of its own:
+ * build and confirm the diagram code is in a chunk of its own and the entry
+ * has none of it:
  *
  *     yarn w lore build
- *     grep -rl addBorderSegments apps/lore/dist/
+ *     grep -rl 'addBorderSegments\|sequenceDiagram' apps/lore/dist/public/
  */
 const MermaidFence = lazy(() => import("./diagram/MermaidFence.tsx"));
 
@@ -44,23 +50,30 @@ export interface MarkdownViewProps {
  *
  * ## Diagrams
  *
- * A ` ```mermaid ` fence containing a **`flowchart`** is drawn as an SVG
- * diagram instead of a code block, themed from the app's own CSS variables
- * so dark mode needs no second palette. The renderer is in-house: only
- * layout is imported (`graphre`, dagre in TypeScript, ~15.5 kB gzip), and
- * the whole thing is one lazy chunk pulled in only when a document actually
- * contains a fence, so a document with no diagram pays nothing.
+ * A ` ```mermaid ` fence containing a **`flowchart`** or a
+ * **`sequenceDiagram`** is drawn as an SVG diagram instead of a code block,
+ * themed from the app's own CSS variables so dark mode needs no second
+ * palette. The renderer is in-house: only flowchart layout is imported
+ * (`graphre`, dagre in TypeScript, ~15.5 kB gzip), and the whole thing is
+ * one lazy chunk pulled in only when a document actually contains a fence,
+ * so a document with no diagram pays nothing.
  *
- * The drawn subset is `flowchart TD|TB|LR|RL|BT`; the four node shapes
+ * The flowchart subset is `flowchart TD|TB|LR|RL|BT`; the four node shapes
  * `[rect]` `(rounded)` `{diamond}` `((circle))`, with every other mermaid
  * bracket pair consumed and mapped onto them; edges `-->` `---` `-.->`
  * `==>` `<-->` with labels in both the `-->|text|` and `-- text -->` forms;
  * chains, `&` fans, `<br/>` line breaks and nested `subgraph`.
  *
+ * The sequence subset is participants and actors, the eight arrow forms,
+ * notes, `autonumber`, self-messages and the `alt` / `else` / `opt` /
+ * `loop` fragment boxes. Activation bars are ignored. A wide sequence
+ * diagram keeps its natural size in a scroll frame rather than shrinking
+ * into the prose column.
+ *
  * **Everything else degrades to the code block, silently.**
- * `sequenceDiagram`, `classDiagram`, `gantt` and mindmaps are not drawn,
- * `style` / `classDef` are ignored, and a parse failure or a graph past the
- * node cap renders the plain fence rather than an error. Agents write
+ * `classDiagram`, `gantt` and mindmaps are not drawn, `style` / `classDef`
+ * are ignored, and a parse failure, a refused construct or a diagram past
+ * its cap renders the plain fence rather than an error. Agents write
  * invalid mermaid, and a red box in the middle of a document is worse than
  * a grey fence. See `packages/@alepha/ui/DOC.md` for the full table.
  *

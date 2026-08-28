@@ -9,6 +9,7 @@ import {
   testDeleteFile,
   testDeleteNonExistentFile,
   testDownloadAndMetadata,
+  testUploadedNameAndTypeSurvive,
   testEmptyFiles,
   testFileExistence,
   testFileStream,
@@ -177,6 +178,10 @@ describe("R2FileStorageProvider", () => {
 
     test("downloads with metadata intact", async () => {
       await testDownloadAndMetadata(provider);
+    });
+
+    test("should keep the uploaded name and type", async () => {
+      await testUploadedNameAndTypeSurvive(provider);
     });
 
     test("reports existence correctly", async () => {

@@ -97,6 +97,39 @@ export const testDownloadAndMetadata = async (
   return fileId;
 };
 
+/**
+ * The name and MIME type a file was uploaded under survive the round trip.
+ *
+ * `testDownloadAndMetadata` uploads `index.html`, so a provider that sniffs
+ * the type from the storage key still answered `text/html` and passed. This
+ * one keeps the extension out of the key and asks for the name back too,
+ * which is what separated the local disk provider from S3, R2 and memory: it
+ * derived both from the id, so a dev setup and production disagreed about
+ * what a download was called.
+ */
+export const testUploadedNameAndTypeSurvive = async (
+  provider: FileStorageProvider,
+) => {
+  const file = getFileSystem().createFile({
+    text: "%PDF-1.4",
+    name: "report.pdf",
+    type: "application/pdf",
+  });
+
+  // An id with no extension to sniff, and not the file's own name.
+  const fileId = await provider.upload(BUCKET_NAME, file, "quarterly-report");
+
+  const downloaded = await provider.download(BUCKET_NAME, fileId);
+  expect(downloaded.name).toBe("report.pdf");
+  expect(downloaded.type).toBe("application/pdf");
+
+  // Whatever the provider keeps that metadata in, `list` reports blobs.
+  expect(await provider.list(BUCKET_NAME)).toContain(fileId);
+
+  await provider.delete(BUCKET_NAME, fileId);
+  expect(await provider.list(BUCKET_NAME)).not.toContain(fileId);
+};
+
 export const testFileExistence = async (
   provider: FileStorageProvider,
 ): Promise<string> => {

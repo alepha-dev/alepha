@@ -4,6 +4,14 @@ import { describe, expect, it, vi } from "vitest";
 import type { LoggerInterface } from "../interfaces/LoggerInterface.ts";
 import { EventManager } from "../providers/EventManager.ts";
 
+/**
+ * A distinct class, so "the handler's own error reached the caller" can be
+ * asserted by identity rather than by message.
+ */
+class TestError extends Error {
+  override name = "TestError";
+}
+
 describe("EventManager", () => {
   describe("initialization", () => {
     it("should create EventManager instance", () => {
@@ -351,7 +359,7 @@ describe("EventManager", () => {
       expect(order).toEqual([1, 2, 3, 4]);
     });
 
-    it("should provide better error message with log option", async () => {
+    it("reports which hook failed without changing what is thrown", async () => {
       const mockLogger: LoggerInterface = {
         trace: vi.fn(),
         debug: vi.fn(),
@@ -367,14 +375,47 @@ describe("EventManager", () => {
 
       eventManager.on("echo", {
         callback: async () => {
-          throw new Error("Test error");
+          throw new TestError("Test error");
         },
         caller: TestService,
       });
 
-      await expect(
-        eventManager.emit("echo", {}, { log: true }),
-      ).rejects.toThrow("Failed during 'echo()' hook for service: TestService");
+      // The handler's OWN error, not a wrapper. It used to be wrapped on this
+      // path only, so an `instanceof` check on a hook failure answered
+      // differently depending on whether logging was on.
+      const error = await eventManager
+        .emit("echo", {}, { log: true })
+        .catch((e) => e);
+      expect(error).toBeInstanceOf(TestError);
+      expect(error.message).toBe("Test error");
+
+      // The context the wrapper carried is still reported, as a log line.
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        "Failed during 'echo()' hook for service: TestService",
+        error,
+      );
+    });
+
+    it("throws the same error whether or not the emit logs", async () => {
+      const eventManager = new EventManager();
+
+      class TestService {}
+
+      eventManager.on("echo", {
+        callback: async () => {
+          throw new TestError("Test error");
+        },
+        caller: TestService,
+      });
+
+      const logged = await eventManager
+        .emit("echo", {}, { log: true })
+        .catch((e) => e);
+      const quiet = await eventManager.emit("echo", {}).catch((e) => e);
+
+      expect(logged).toBeInstanceOf(TestError);
+      expect(quiet).toBeInstanceOf(TestError);
+      expect(logged.message).toBe(quiet.message);
     });
 
     it("should log errors when catch and log options are both true", async () => {

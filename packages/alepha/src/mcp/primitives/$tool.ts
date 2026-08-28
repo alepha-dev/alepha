@@ -184,6 +184,8 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
     return !!this.options.schema?.result;
   }
 
+  protected outputSchemaCache?: { schema: McpJsonSchema; wrapped: boolean };
+
   protected onInit(): void {
     this.mcpServer.registerTool(this);
   }
@@ -267,18 +269,67 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
 
     // Output schema is emitted when the tool declares `schema.result`,
     // unlocking structured content on tools/call responses.
-    if (this.options.schema?.result) {
-      const out = this.propertyToJsonSchema(this.options.schema.result);
-      // The result schema may be a primitive — wrap so the descriptor
-      // value is always a JSON Schema object with `type`.
-      descriptor.outputSchema = (
-        typeof out === "object" && out !== null && "type" in out
-          ? out
-          : { type: "object", properties: {}, required: [] }
-      ) as McpJsonSchema;
+    const output = this.outputSchema();
+    if (output) {
+      descriptor.outputSchema = output.schema;
     }
 
     return descriptor;
+  }
+
+  /**
+   * What this tool puts in `structuredContent`, or `undefined` when it
+   * declares no result schema and there is nothing to put there.
+   *
+   * MCP requires `structuredContent` to be an object. A tool whose result is
+   * a number, a string or a union - the quick start in the MCP guide returns
+   * `z.number()` - has to travel under a key, and the advertised schema has
+   * to say so, or a client validates the envelope against the bare value and
+   * rejects it.
+   */
+  public toStructuredContent(
+    result: unknown,
+  ): Record<string, unknown> | undefined {
+    const output = this.outputSchema();
+    if (!output || result === undefined) {
+      return undefined;
+    }
+    return output.wrapped ? { result } : (result as Record<string, unknown>);
+  }
+
+  /**
+   * The advertised output schema, and whether the declared result had to be
+   * wrapped to get there.
+   *
+   * Memoized: `toDescriptor` and every `tools/call` ask for it, and
+   * `z.toJSONSchema` walks the whole schema.
+   *
+   * The test is the JSON Schema's own `type`, not the zod node: a union of
+   * objects carries no `type` at its root, so it is wrapped even though its
+   * values happen to be objects. Predictable beats clever - what matters is
+   * that the descriptor and the payload agree, which is what was broken.
+   */
+  protected outputSchema():
+    | { schema: McpJsonSchema; wrapped: boolean }
+    | undefined {
+    if (!this.options.schema?.result) {
+      return undefined;
+    }
+    if (!this.outputSchemaCache) {
+      const out = this.propertyToJsonSchema(this.options.schema.result);
+      this.outputSchemaCache =
+        out.type === "object"
+          ? { schema: out as unknown as McpJsonSchema, wrapped: false }
+          : {
+              schema: {
+                type: "object",
+                properties: { result: out },
+                required: ["result"],
+              },
+              wrapped: true,
+            };
+    }
+    return this.outputSchemaCache;
   }
 
   /**

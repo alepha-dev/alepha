@@ -6,6 +6,7 @@ import {
   testDeleteFile,
   testDeleteNonExistentFile,
   testDownloadAndMetadata,
+  testUploadedNameAndTypeSurvive,
   testEmptyFiles,
   testFileExistence,
   testFileStream,
@@ -42,6 +43,10 @@ describe("MemoryFileStorageProvider", () => {
 
   test("should download a file and restore its metadata", async () => {
     await testDownloadAndMetadata(provider);
+  });
+
+  test("should keep the uploaded name and type", async () => {
+    await testUploadedNameAndTypeSurvive(provider);
   });
 
   test("exists() should return false for a non-existent file", async () => {

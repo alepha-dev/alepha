@@ -4,6 +4,7 @@ void React;
 
 import { useId } from "react";
 
+import { round } from "./DiagramLabel.tsx";
 import { FlowchartDiagramCluster } from "./FlowchartDiagramCluster.tsx";
 import { FlowchartDiagramEdge } from "./FlowchartDiagramEdge.tsx";
 import { FlowchartDiagramNode } from "./FlowchartDiagramNode.tsx";
@@ -128,9 +129,3 @@ export const FlowchartDiagram = (props: FlowchartDiagramProps) => {
     </svg>
   );
 };
-
-/**
- * Two decimals is plenty for a diagram and keeps the emitted attributes
- * readable; graphre's raw coordinates carry a dozen.
- */
-export const round = (value: number): number => Math.round(value * 100) / 100;

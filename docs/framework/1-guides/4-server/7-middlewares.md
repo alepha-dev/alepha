@@ -57,6 +57,8 @@ alepha.store.mut(helmetOptions, (old) => ({
 | `referrerPolicy`          | `"strict-origin-when-cross-origin"`             | Referrer-Policy header            |
 | `contentSecurityPolicy`   | -                                               | CSP directives                    |
 
+`contentSecurityPolicy` has three states. Omit it and no CSP header is sent. Pass `{}` (no `directives`) to send the built-in policy: `'self'` for scripts, forms, frames and images, `'none'` for objects, plus `upgrade-insecure-requests`. Pass `{ directives: {} }` to send no CSP header while leaving every other security header in place - an empty directive map is not a permissive policy, so it is dropped rather than sent empty.
+
 ### Multipart
 
 Multipart form-data parsing for file uploads. Runs for any route with a `body` schema when the request's content type is `multipart/form-data`, and handles `z.file()` and `z.stream()` parts.

@@ -64,7 +64,8 @@ export const KV_MIN_EXPIRATION_TTL = 60;
  * Cloudflare KV cache provider.
  *
  * Uses a KV namespace binding for all cache operations.
- * Keys are stored as: `cache:{name}:{key}`
+ * Keys are stored as: `cache:{name}:{key}`, with `{key}` escaped so a `:` in
+ * it cannot be read as part of the name.
  *
  * **Required Cloudflare binding:**
  * - `KV_CACHE` - A KV namespace binding in wrangler configuration
@@ -133,7 +134,7 @@ export class CloudflareKVProvider extends CacheProvider {
       return;
     }
 
-    const kvKey = this.prefix(name, key);
+    const kvKey = this.prefix(name, this.escapeKey(key));
     const buffer = await this.getKV().get(kvKey, "arrayBuffer");
     if (!buffer) {
       return;
@@ -158,7 +159,7 @@ export class CloudflareKVProvider extends CacheProvider {
       return new Uint8Array(value);
     }
 
-    const kvKey = this.prefix(name, key);
+    const kvKey = this.prefix(name, this.escapeKey(key));
     const options: KVPutOptions = {};
 
     if (ttl) {
@@ -181,33 +182,31 @@ export class CloudflareKVProvider extends CacheProvider {
 
     if (keys.length === 0) {
       // Delete all keys under this cache name
-      const prefix = this.prefix(name);
-      const allKeys = await this.listAllKeys(`${prefix}:`);
+      const prefix = `${this.prefix(name)}:`;
+      const allKeys = this.ownKeys(prefix, await this.listAllKeys(prefix));
       for (const k of allKeys) {
         await kv.delete(k);
       }
       return;
     }
 
-    const nameKey = this.prefix(name);
+    // Caller-side keys, always - see the same change in RedisCacheProvider.
     for (const key of keys) {
-      const fullKey = key.startsWith(nameKey) ? key : this.prefix(name, key);
-      await kv.delete(fullKey);
+      await kv.delete(this.prefix(name, this.escapeKey(key)));
     }
   }
 
   public async has(name: string, key: string): Promise<boolean> {
-    const kvKey = this.prefix(name, key);
+    const kvKey = this.prefix(name, this.escapeKey(key));
     const value = await this.getKV().get(kvKey, "text");
     return value !== null;
   }
 
   public async keys(name: string, filter?: string): Promise<string[]> {
-    const prefix = filter
-      ? `${this.prefix(name)}:${filter}`
-      : `${this.prefix(name)}:`;
+    const container = `${this.prefix(name)}:`;
+    const prefix = filter ? `${container}${this.escapeKey(filter)}` : container;
 
-    return this.listAllKeys(prefix);
+    return this.callerKeys(container, await this.listAllKeys(prefix));
   }
 
   public async clear(): Promise<void> {
@@ -234,7 +233,7 @@ export class CloudflareKVProvider extends CacheProvider {
     amount: number,
     ttl?: number,
   ): Promise<number> {
-    const kvKey = this.prefix(name, key);
+    const kvKey = this.prefix(name, this.escapeKey(key));
     const kv = this.getKV();
 
     const existing = await kv.get(kvKey, "text");
@@ -285,7 +284,8 @@ export class CloudflareKVProvider extends CacheProvider {
   }
 
   /**
-   * Build the full KV key: `cache:{name}:{key}`
+   * Build the full KV key: `cache:{name}:{key}`. Callers pass the key through
+   * {@link CacheProvider.escapeKey} first - this only joins.
    */
   protected prefix(...path: string[]): string {
     return ["cache", ...path].join(":");

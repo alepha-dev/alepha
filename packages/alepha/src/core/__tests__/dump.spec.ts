@@ -85,6 +85,33 @@ describe("Alepha.dump", () => {
     expect(dump.env.META_PUBLIC.secret).toBe(false);
   });
 
+  // `alepha gen env` annotates "(required)" straight off this flag. It used to
+  // have to compensate by hand (`required && !default`) because every defaulted
+  // variable was reported required - and a falsy default like `0` or `""` slipped
+  // through the compensation anyway.
+  it("reports a defaulted env variable as not required", () => {
+    class Ports {
+      env = $env(
+        z.object({
+          MUST_BE_SET: z.text(),
+          HAS_A_DEFAULT: z.integer().default(3000),
+          FALSY_DEFAULT: z.integer().default(0),
+          OPTIONAL: z.text().optional(),
+        }),
+      );
+    }
+
+    const Mod = $module({ name: "ports", services: [Ports] });
+    const dump = Alepha.create({ env: { MUST_BE_SET: "v" } })
+      .with(Mod)
+      .dump();
+
+    expect(dump.env.MUST_BE_SET.required).toBe(true);
+    expect(dump.env.HAS_A_DEFAULT.required).toBeUndefined();
+    expect(dump.env.FALSY_DEFAULT.required).toBeUndefined();
+    expect(dump.env.OPTIONAL.required).toBeUndefined();
+  });
+
   it("captures env from multiple independent services in one pass", () => {
     class A {
       env = $env(z.object({ A_KEY: z.text().optional() }));
