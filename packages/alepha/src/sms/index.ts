@@ -1,7 +1,10 @@
-import { $module } from "alepha";
+import { $module, z } from "alepha";
 
 import { $sms } from "./primitives/$sms.ts";
-import { LocalSmsProvider } from "./providers/LocalSmsProvider.ts";
+import {
+  LocalSmsProvider,
+  localSmsOptions,
+} from "./providers/LocalSmsProvider.ts";
 import { MemorySmsProvider } from "./providers/MemorySmsProvider.ts";
 import { SmsProvider } from "./providers/SmsProvider.ts";
 
@@ -67,6 +70,27 @@ export const AlephaSms = $module({
         provide: SmsProvider,
         use: LocalSmsProvider,
       });
+      // Relocate scratch data out of the bundle when the host asks for it.
+      // `DATA_DIR` has always said it covered "emails, sms"; only email
+      // honoured it, because the SMS directory was a constant inside the
+      // provider.
+      const env = alepha.parseEnv(dataDirEnvSchema);
+      if (env.DATA_DIR) {
+        alepha.store.set(localSmsOptions.key, {
+          directory: `${env.DATA_DIR}/sms`,
+        });
+      }
     }
   },
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+const dataDirEnvSchema = z.object({
+  DATA_DIR: z.text({
+    default: "",
+    secret: false,
+    description:
+      "Root directory for local scratch data (emails, sms). Defaults to node_modules/.alepha, which sits inside the deployed bundle — set this to a writable path outside it on any host that unpacks releases read-only.",
+  }),
 });

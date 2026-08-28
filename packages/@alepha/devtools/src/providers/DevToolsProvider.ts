@@ -5,6 +5,7 @@ import { $logger } from "alepha/logger";
 import { RepositoryProvider } from "alepha/orm";
 import { $route, ServerProvider } from "alepha/server";
 import { $serve } from "alepha/server/static";
+import { localSmsOptions } from "alepha/sms";
 import { FileSystemProvider } from "alepha/system";
 
 import { devtoolsAssets } from "../assets.ts";
@@ -21,6 +22,7 @@ export class DevToolsProvider {
   protected readonly logStore = $inject(DevLogStoreProvider);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly emailOptions = $store(localEmailOptions);
+  protected readonly smsOptions = $store(localSmsOptions);
   protected readonly atomLog = $inject(DevAtomLogProvider);
 
   protected readonly onStart = $hook({
@@ -334,13 +336,20 @@ export class DevToolsProvider {
             sentAt: z.text(),
           }),
         ),
+        /**
+         * Where these were read from. The view used to print the default path
+         * as a literal, which is wrong the moment `DATA_DIR` moves it - and
+         * that path is the whole point of the footer: it is what you need when
+         * you go looking outside devtools.
+         */
+        directory: z.text(),
       }),
     },
     handler: async () => {
+      const dir = this.emailOptions.directory;
       try {
-        const dir = this.emailOptions.directory;
         const exists = await this.fs.exists(dir);
-        if (!exists) return { emails: [] };
+        if (!exists) return { emails: [], directory: dir };
 
         const files = await this.fs.ls(dir);
         const emailFiles = files.filter((f) => f.endsWith(".eml.json"));
@@ -367,9 +376,9 @@ export class DevToolsProvider {
         }
 
         emails.sort((a, b) => b.sentAt.localeCompare(a.sentAt));
-        return { emails };
+        return { emails, directory: dir };
       } catch {
-        return { emails: [] };
+        return { emails: [], directory: dir };
       }
     },
   });
@@ -391,13 +400,19 @@ export class DevToolsProvider {
             sentAt: z.text(),
           }),
         ),
+        /**
+         * Where these were read from - `localSmsOptions`, not the default
+         * spelled out a second time. An app that moved its outbox used to see
+         * an empty screen here with no hint as to why.
+         */
+        directory: z.text(),
       }),
     },
     handler: async () => {
+      const dir = this.smsOptions.directory;
       try {
-        const dir = "node_modules/.alepha/sms";
         const exists = await this.fs.exists(dir);
-        if (!exists) return { messages: [] };
+        if (!exists) return { messages: [], directory: dir };
 
         const files = await this.fs.ls(dir);
         const smsFiles = files.filter((f) => f.endsWith(".sms.json"));
@@ -419,9 +434,9 @@ export class DevToolsProvider {
         }
 
         messages.sort((a, b) => b.sentAt.localeCompare(a.sentAt));
-        return { messages };
+        return { messages, directory: dir };
       } catch {
-        return { messages: [] };
+        return { messages: [], directory: dir };
       }
     },
   });

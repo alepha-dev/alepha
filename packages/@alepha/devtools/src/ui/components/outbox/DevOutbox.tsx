@@ -48,29 +48,36 @@ export const DevOutbox = () => {
     format: "querystring",
   });
   const [messages, setMessages] = useState<OutboxMessage[]>([]);
+  const [directories, setDirectories] = useState<string[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   const fetchAll = useCallback(async () => {
     if (document.visibilityState !== "visible") return;
     const out: OutboxMessage[] = [];
+    const dirs: string[] = [];
     try {
       const res = await http.fetch("/__devtools/api/emails");
-      for (const e of (res.data as any)?.emails ?? []) {
+      const data = res.data as any;
+      for (const e of data?.emails ?? []) {
         out.push({ kind: "email", ...e });
       }
+      if (data?.directory) dirs.push(data.directory);
     } catch {
       // A missing transport is normal — an app need not send email.
     }
     try {
       const res = await http.fetch("/__devtools/api/sms");
-      for (const s of (res.data as any)?.messages ?? []) {
+      const data = res.data as any;
+      for (const s of data?.messages ?? []) {
         out.push({ kind: "sms", to: s.to, body: s.message, sentAt: s.sentAt });
       }
+      if (data?.directory) dirs.push(data.directory);
     } catch {
       // Same: SMS is optional.
     }
     out.sort((a, b) => b.sentAt.localeCompare(a.sentAt));
     setMessages(out);
+    setDirectories(dirs);
     setLoaded(true);
   }, [http]);
 
@@ -217,9 +224,9 @@ export const DevOutbox = () => {
             color: "var(--dt-fg-faint)",
           }}
         >
-          node_modules/.alepha/emails
-          <br />
-          node_modules/.alepha/sms
+          {directories.map((dir) => (
+            <div key={dir}>{dir}</div>
+          ))}
         </div>
       </div>
 

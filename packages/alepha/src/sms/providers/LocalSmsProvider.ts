@@ -1,25 +1,52 @@
-import { $inject } from "alepha";
+import { $atom, $inject, $store, type Infer, z } from "alepha";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
 import { SmsError } from "../errors/SmsError.ts";
 import type { SmsProvider, SmsSendOptions } from "./SmsProvider.ts";
 
-export interface LocalSmsProviderOptions {
-  /**
-   * Directory to save SMS files.
-   * @default "node_modules/.alepha/sms" (relative to project root)
-   */
-  directory?: string;
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Local SMS provider configuration atom.
+ *
+ * An atom rather than a constructor argument, which is what it used to be:
+ * nothing constructs this provider by hand (the module registers it as the
+ * default `SmsProvider`), so the argument was unreachable and the directory
+ * was in practice a constant. Anything wanting to read it - `DATA_DIR` below,
+ * and the devtools outbox - had no way to, and hardcoded the same string a
+ * second time.
+ */
+export const localSmsOptions = $atom({
+  name: "alepha.sms.local.options",
+  schema: z.object({
+    directory: z
+      .string()
+      .describe("Directory path where SMS files will be stored"),
+  }),
+  default: {
+    directory: "node_modules/.alepha/sms",
+  },
+  serverOnly: true,
+});
+
+export type LocalSmsProviderOptions = Infer<typeof localSmsOptions.schema>;
+
+declare module "alepha" {
+  interface State {
+    [localSmsOptions.key]: LocalSmsProviderOptions;
+  }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 export class LocalSmsProvider implements SmsProvider {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
-  protected readonly directory: string;
+  protected readonly options = $store(localSmsOptions);
 
-  constructor(options: LocalSmsProviderOptions = {}) {
-    this.directory = options.directory ?? "node_modules/.alepha/sms";
+  protected get directory(): string {
+    return this.options.directory;
   }
 
   public async send(options: SmsSendOptions): Promise<void> {

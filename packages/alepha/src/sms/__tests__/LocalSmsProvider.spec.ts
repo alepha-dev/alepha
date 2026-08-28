@@ -3,7 +3,10 @@ import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SmsError } from "../errors/SmsError.ts";
-import { LocalSmsProvider } from "../providers/LocalSmsProvider.ts";
+import {
+  LocalSmsProvider,
+  localSmsOptions,
+} from "../providers/LocalSmsProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -213,13 +216,13 @@ describe("LocalSmsProvider", () => {
         use: MemoryFileSystemProvider,
       });
 
-      class CustomLocalSmsProvider extends LocalSmsProvider {
-        constructor() {
-          super({ directory: "custom-sms-dir" });
-        }
-      }
+      // Through the atom, which is how an app configures it. It used to be a
+      // constructor argument, reachable only by subclassing the provider -
+      // which is exactly why nothing else in the process could read the
+      // directory back.
+      alepha.store.set(localSmsOptions.key, { directory: "custom-sms-dir" });
 
-      const provider = alepha.inject(CustomLocalSmsProvider);
+      const provider = alepha.inject(LocalSmsProvider);
       const memoryFs = alepha.inject(MemoryFileSystemProvider);
       await alepha.start();
 
