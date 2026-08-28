@@ -37,6 +37,10 @@ export interface UseFormQuerySyncOptions<TKey extends string> {
  * @example
  * const form = useForm({ schema: z.object({ status: z.string(), q: z.string() }) });
  * useFormQuerySync(form, { keys: ["status", "q"] });
+ *
+ * @public No caller in this repository, and that is fine: it is a hook for
+ * applications, exported from `alepha/react/form` and covered by its own
+ * spec. Do not delete it for being unreferenced.
  */
 export const useFormQuerySync = <T extends ZObject, TKey extends string>(
   form: FormModel<T>,

@@ -257,6 +257,24 @@ export class ReactBrowserProvider {
     this.scrollPositions.set(this.historyKey, this.getScroll());
   }
 
+  /**
+   * Re-render the committed route, re-running its loaders.
+   *
+   * Without `props`, nothing is carried over: every layer re-runs.
+   *
+   * With `props`, the stack is walked until the first layer that already
+   * declares that key. That layer is kept with the new value patched in, and
+   * every layer BELOW it is dropped from `previous` - which is what makes
+   * them re-run. Layers above keep their data untouched.
+   *
+   * ⚠️ Only the first key of `props` is read. That is not an oversight to fix
+   * blindly: the cut point is defined by the layer owning the key, so two keys
+   * owned by different layers have no single answer. If several are ever
+   * needed, the shape has to change, not the loop.
+   *
+   * @public Reached through `ReactRouter.invalidate`, which is what
+   * applications call. No caller in this repository.
+   */
   public async invalidate(props?: Record<string, any>) {
     const previous: PreviousLayerData[] = [];
 

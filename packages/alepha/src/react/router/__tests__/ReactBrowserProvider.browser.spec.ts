@@ -8,6 +8,20 @@ import {
   reactBrowserOptions,
 } from "../providers/ReactBrowserProvider.ts";
 
+/**
+ * Records what `invalidate` asks `render` to carry over, without rendering.
+ */
+class InvalidateReactBrowserProvider extends ReactBrowserProvider {
+  public readonly renderCalls: Array<Record<string, any>> = [];
+  public testInvalidate = this.invalidate.bind(this);
+
+  protected override async render(
+    options: Record<string, any> = {},
+  ): Promise<void> {
+    this.renderCalls.push(options);
+  }
+}
+
 class TestReactBrowserProvider extends ReactBrowserProvider {
   public testGetHydrationState = this.getHydrationState.bind(this);
   public testAttachAnchorInterceptor = this.attachAnchorInterceptor.bind(this);
@@ -222,6 +236,51 @@ describe("ReactBrowserProvider", () => {
       await alepha.events.emit("start", alepha);
 
       expect(seenByStartHook).toEqual(["en"]);
+    });
+  });
+
+  /**
+   * `invalidate` has no caller in this repository - it is application
+   * surface, reached through `useRouter().invalidate()`. These pin what it
+   * carries over, which is the part a caller has to be able to predict.
+   */
+  describe("invalidate", () => {
+    const stateKey = "alepha.react.router.state" as keyof State;
+
+    const withLayers = () => {
+      const alepha = Alepha.create();
+      const provider = alepha.inject(InvalidateReactBrowserProvider);
+      alepha.store.set(stateKey, {
+        layers: [
+          { name: "root", props: { locale: "en" } },
+          { name: "folio", props: { id: "1" } },
+          { name: "tab", props: { tab: "history" } },
+        ],
+        url: new URL("http://localhost/folio/1"),
+      } as any);
+      return provider;
+    };
+
+    it("carries nothing over without props, so every layer re-runs", async () => {
+      const provider = withLayers();
+
+      await provider.testInvalidate();
+
+      expect(provider.renderCalls).toHaveLength(1);
+      expect(provider.renderCalls[0].previous).toEqual([]);
+    });
+
+    it("patches the layer that owns the key and drops everything below it", async () => {
+      const provider = withLayers();
+
+      await provider.testInvalidate({ id: "2" });
+
+      // `root` is untouched, `folio` keeps its data with the new id, and
+      // `tab` is gone from `previous` — which is what makes it re-run.
+      expect(provider.renderCalls[0].previous).toEqual([
+        { name: "root", props: { locale: "en" } },
+        { name: "folio", props: { id: "2" } },
+      ]);
     });
   });
 

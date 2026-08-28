@@ -145,6 +145,11 @@ export const renderWithAlepha = async (
  * @param element - The React element to render
  * @param options - Render options (autoStart defaults to false)
  * @returns The render result with the Alepha instance
+ *
+ * @public For applications' own tests, and listed as such in the testing
+ * guide (`1-guides/7-testing/2-react-tests.md`). No caller here by design -
+ * this module IS the caller-facing surface. Do not delete it for being
+ * unreferenced.
  */
 export const renderWithAlephaSync = (
   element: ReactElement,

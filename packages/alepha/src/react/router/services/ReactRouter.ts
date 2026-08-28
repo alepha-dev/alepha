@@ -158,6 +158,23 @@ export class ReactRouter<T extends object> {
     this.browser?.history.forward();
   }
 
+  /**
+   * Re-run the current route's loaders without navigating.
+   *
+   * The router-level counterpart to `useQueryClient().invalidate()`: that one
+   * refetches a query, this one refetches the page itself. Reach for it after
+   * a mutation whose result the loaders compute, where a `push` to the same
+   * URL would be a no-op.
+   *
+   * `props` seeds ONE value into the layer that already declares that key,
+   * and everything below that layer is re-run from scratch - see
+   * `ReactBrowserProvider.invalidate`, which spells out why only the first
+   * key is read.
+   *
+   * @public No caller in this repository. It is application surface, exported
+   * on the router returned by `useRouter()`; do not delete it for being
+   * unreferenced.
+   */
   public async invalidate(props?: Record<string, any>) {
     await this.browser?.invalidate(props);
   }

@@ -30,6 +30,9 @@ Replaces ad-hoc `localStorage` filter persistence: the URL becomes
 the canonical store, so the view is shareable via copy-paste and
 navigable via back/forward.
 
+applications, exported from `alepha/react/form` and covered by its own
+spec. Do not delete it for being unreferenced.
+
 ## Examples
 
 const form = useForm({ schema: z.object({ status: z.string(), q: z.string() }) });
