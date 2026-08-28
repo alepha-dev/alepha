@@ -1,29 +1,22 @@
 import { Alepha, AlephaError } from "alepha";
 import { describe, expect, it } from "vitest";
 
-import {
-  NamingService,
-  resolveTenant,
-  tenantDomain,
-} from "../services/NamingService.ts";
+import { NamingService } from "../services/NamingService.ts";
 
 describe("NamingService", () => {
-  const createNaming = (project: string, env: string, tenant?: string) => {
+  const createService = () => {
     const alepha = Alepha.create();
-    const naming = alepha.inject(NamingService);
-    return naming.forContext(project, env, tenant);
+    return alepha.inject(NamingService);
   };
+
+  const createNaming = (project: string, env: string, tenant?: string) =>
+    createService().forContext(project, env, tenant);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // slugify
   // ─────────────────────────────────────────────────────────────────────────────
 
   describe("slugify", () => {
-    const createService = () => {
-      const alepha = Alepha.create();
-      return alepha.inject(NamingService);
-    };
-
     it("should lowercase the input", () => {
       const naming = createService();
 
@@ -170,25 +163,39 @@ describe("NamingService", () => {
 
   describe("resolveTenant", () => {
     it("none (default): no tenant is fine, a tenant errors", () => {
-      expect(resolveTenant(undefined, undefined)).toBeUndefined();
-      expect(resolveTenant("none", undefined)).toBeUndefined();
-      expect(() => resolveTenant("none", "b14")).toThrow(AlephaError);
+      expect(
+        createService().resolveTenant(undefined, undefined),
+      ).toBeUndefined();
+      expect(createService().resolveTenant("none", undefined)).toBeUndefined();
+      expect(() => createService().resolveTenant("none", "b14")).toThrow(
+        AlephaError,
+      );
     });
 
     it("required: tenant mandatory", () => {
-      expect(resolveTenant("required", "b14")).toBe("b14");
-      expect(() => resolveTenant("required", undefined)).toThrow(AlephaError);
+      expect(createService().resolveTenant("required", "b14")).toBe("b14");
+      expect(() =>
+        createService().resolveTenant("required", undefined),
+      ).toThrow(AlephaError);
     });
 
     it("optional: both base and tenant instances allowed", () => {
-      expect(resolveTenant("optional", undefined)).toBeUndefined();
-      expect(resolveTenant("optional", "b14")).toBe("b14");
+      expect(
+        createService().resolveTenant("optional", undefined),
+      ).toBeUndefined();
+      expect(createService().resolveTenant("optional", "b14")).toBe("b14");
     });
 
     it("rejects a non-slug tenant value", () => {
-      expect(() => resolveTenant("required", "B14")).toThrow(AlephaError);
-      expect(() => resolveTenant("required", "b14.club")).toThrow(AlephaError);
-      expect(() => resolveTenant("required", "-b14")).toThrow(AlephaError);
+      expect(() => createService().resolveTenant("required", "B14")).toThrow(
+        AlephaError,
+      );
+      expect(() =>
+        createService().resolveTenant("required", "b14.club"),
+      ).toThrow(AlephaError);
+      expect(() => createService().resolveTenant("required", "-b14")).toThrow(
+        AlephaError,
+      );
     });
   });
 
@@ -198,24 +205,32 @@ describe("NamingService", () => {
 
   describe("tenantDomain", () => {
     it("prepends the tenant as the leftmost DNS label", () => {
-      expect(tenantDomain("alepha.club", "b14")).toBe("b14.alepha.club");
-      expect(tenantDomain("club.alepha.dev", "sandbox")).toBe(
+      expect(createService().tenantDomain("alepha.club", "b14")).toBe(
+        "b14.alepha.club",
+      );
+      expect(createService().tenantDomain("club.alepha.dev", "sandbox")).toBe(
         "sandbox.club.alepha.dev",
       );
     });
 
     it("returns the base domain unchanged with no tenant", () => {
-      expect(tenantDomain("alepha.club", undefined)).toBe("alepha.club");
+      expect(createService().tenantDomain("alepha.club", undefined)).toBe(
+        "alepha.club",
+      );
     });
 
     it("an override wins outright (V2 custom domain seam)", () => {
       expect(
-        tenantDomain("alepha.club", "b14", "reservation.club-b14.fr"),
+        createService().tenantDomain(
+          "alepha.club",
+          "b14",
+          "reservation.club-b14.fr",
+        ),
       ).toBe("reservation.club-b14.fr");
     });
 
     it("passes through an undefined base", () => {
-      expect(tenantDomain(undefined, "b14")).toBeUndefined();
+      expect(createService().tenantDomain(undefined, "b14")).toBeUndefined();
     });
   });
 });

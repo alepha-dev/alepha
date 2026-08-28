@@ -44,17 +44,17 @@ interface RegistrationIntent {
   expiresAt: string;
 }
 
-const INTENT_TTL_MINUTES = 10;
-
-/**
- * The single rejection used for every taken identifier — username, email or
- * phone. One message for all three so the response cannot be read as an
- * answer to "does this person have an account here?".
- */
-const REGISTRATION_CONFLICT_MESSAGE =
-  "These registration details are not available";
-
 export class RegistrationService {
+  protected readonly intentTtlMinutes = 10;
+
+  /**
+   * The single rejection used for every taken identifier — username, email or
+   * phone. One message for all three so the response cannot be read as an
+   * answer to "does this person have an account here?".
+   */
+  protected readonly registrationConflictMessage =
+    "These registration details are not available";
+
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly dateTimeProvider = $inject(DateTimeProvider);
@@ -75,7 +75,7 @@ export class RegistrationService {
     //   K/V outside the user's own DB unless they explicitly opt in.
     provider: DatabaseCacheProvider,
     name: "api:users:registrations",
-    ttl: [INTENT_TTL_MINUTES, "minutes"],
+    ttl: [this.intentTtlMinutes, "minutes"],
   });
 
   protected readonly rateLimitCache = $cache<number>({
@@ -267,7 +267,7 @@ export class RegistrationService {
       realmSettings?.verifyEmailRequired === true && !!body.email;
     const decoy = conflict === "email" && emailVerificationRequired;
     if (conflict && !decoy) {
-      throw new ConflictError(REGISTRATION_CONFLICT_MESSAGE);
+      throw new ConflictError(this.registrationConflictMessage);
     }
 
     // Validate password against realm policy
@@ -310,7 +310,7 @@ export class RegistrationService {
     const intentId = this.cryptoProvider.randomUUID();
     const expiresAt = this.dateTimeProvider
       .now()
-      .add(INTENT_TTL_MINUTES, "minutes")
+      .add(this.intentTtlMinutes, "minutes")
       .toISOString();
 
     // Store intent in cache
@@ -545,7 +545,7 @@ export class RegistrationService {
   ): Promise<void> {
     const conflict = await this.findAvailabilityConflict(body, userRealmName);
     if (conflict) {
-      throw new ConflictError(REGISTRATION_CONFLICT_MESSAGE);
+      throw new ConflictError(this.registrationConflictMessage);
     }
   }
 

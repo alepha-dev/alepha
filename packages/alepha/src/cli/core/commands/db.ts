@@ -15,16 +15,16 @@ import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
 import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 import { ViteUtils } from "../services/ViteUtils.ts";
 
-const drizzleCommandFlags = z.object({
-  provider: z
-    .text({
-      description:
-        "Database provider name to target (e.g., 'postgres', 'sqlite')",
-    })
-    .optional(),
-});
-
 export class DbCommand {
+  protected readonly drizzleCommandFlags = z.object({
+    provider: z
+      .text({
+        description:
+          "Database provider name to target (e.g., 'postgres', 'sqlite')",
+      })
+      .optional(),
+  });
+
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly utils = $inject(AlephaCliUtils);
@@ -38,7 +38,7 @@ export class DbCommand {
     name: "check",
     mode: true,
     description: "Check if migration files are up to date",
-    flags: drizzleCommandFlags,
+    flags: this.drizzleCommandFlags,
     handler: async ({ flags, root }) => {
       const rootDir = root;
       this.log.debug(`Using project root: ${rootDir}`);
@@ -154,7 +154,7 @@ export class DbCommand {
     name: "create",
     mode: true,
     description: "Generate migration files from current schema",
-    flags: drizzleCommandFlags.extend({
+    flags: this.drizzleCommandFlags.extend({
       custom: z
         .boolean()
         .describe(
@@ -208,7 +208,7 @@ export class DbCommand {
     mode: true,
     description:
       "Archive existing migrations and generate a single baseline migration from the current schema",
-    flags: drizzleCommandFlags,
+    flags: this.drizzleCommandFlags,
     handler: async ({ flags, root }) => {
       const entry = await this.entryProvider.getAppEntry(root);
       const alepha = await this.utils.loadAlephaFromServerEntryFile({
@@ -250,7 +250,7 @@ export class DbCommand {
     mode: true,
     description:
       "Record the baseline migration as already applied, without executing it",
-    flags: drizzleCommandFlags,
+    flags: this.drizzleCommandFlags,
     handler: async ({ flags, root }) => {
       const entry = await this.entryProvider.getAppEntry(root);
       const alepha = await this.utils.loadAlephaFromServerEntryFile({
@@ -304,7 +304,7 @@ export class DbCommand {
     name: "push",
     mode: true,
     description: "Push database schema changes directly to the database",
-    flags: drizzleCommandFlags.extend({
+    flags: this.drizzleCommandFlags.extend({
       dryRun: z
         .boolean()
         .describe("Preview SQL statements without executing them")
@@ -386,7 +386,7 @@ export class DbCommand {
     name: "apply",
     mode: true,
     description: "Apply pending migrations to the database",
-    flags: drizzleCommandFlags,
+    flags: this.drizzleCommandFlags,
     handler: async ({ root, run }) => {
       const entry = await this.entryProvider.getAppEntry(root);
 
@@ -415,7 +415,7 @@ export class DbCommand {
     name: "studio",
     mode: true,
     description: "Launch Drizzle Studio database browser",
-    flags: drizzleCommandFlags,
+    flags: this.drizzleCommandFlags,
     handler: async ({ root, flags }) => {
       await this.runDrizzleKitCommand({
         root,

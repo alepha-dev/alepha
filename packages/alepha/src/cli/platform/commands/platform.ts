@@ -10,7 +10,6 @@ import {
   type PlatformPlanOutput,
   type PlatformStatusOutput,
   type ResolvedPlatformConfig,
-  resolveTenant,
   WranglerApi,
 } from "alepha/cli/platform-lib";
 import { $command, EnvUtils, type RunnerMethod } from "alepha/command";
@@ -72,7 +71,7 @@ export class PlatformCommand {
         config,
         this.isServerless(adapterName),
       );
-      const tenant = resolveTenant(config.tenancy, flags.tenant);
+      const tenant = this.naming.resolveTenant(config.tenancy, flags.tenant);
       const namingCtx = this.naming.forContext(config.project, env, tenant);
 
       // --- Data collection ---
@@ -611,7 +610,7 @@ export class PlatformCommand {
         config,
         this.isServerless(envConfig.adapter),
       );
-      const tenant = resolveTenant(config.tenancy, flags.tenant);
+      const tenant = this.naming.resolveTenant(config.tenancy, flags.tenant);
       const namingCtx = this.naming.forContext(config.project, env, tenant);
 
       const ctx = {
@@ -644,7 +643,7 @@ export class PlatformCommand {
         config,
         this.isServerless(envConfig.adapter),
       );
-      const tenant = resolveTenant(config.tenancy, flags.tenant);
+      const tenant = this.naming.resolveTenant(config.tenancy, flags.tenant);
       const namingCtx = this.naming.forContext(config.project, env, tenant);
 
       const ctx = {
@@ -678,7 +677,7 @@ export class PlatformCommand {
         config,
         this.isServerless(envConfig.adapter),
       );
-      const tenant = resolveTenant(config.tenancy, flags.tenant);
+      const tenant = this.naming.resolveTenant(config.tenancy, flags.tenant);
       const namingCtx = this.naming.forContext(config.project, env, tenant);
 
       const ctx = {
@@ -741,7 +740,7 @@ export class PlatformCommand {
         config,
         this.isServerless(envConfig.adapter),
       );
-      const tenant = resolveTenant(config.tenancy, flags.tenant);
+      const tenant = this.naming.resolveTenant(config.tenancy, flags.tenant);
       const namingCtx = this.naming.forContext(config.project, env, tenant);
 
       const ctx = {
@@ -818,7 +817,7 @@ export class PlatformCommand {
       }
 
       const adapter = this.orchestrator.resolveAdapter(envConfig.adapter);
-      const tenant = resolveTenant(config.tenancy, flags.tenant);
+      const tenant = this.naming.resolveTenant(config.tenancy, flags.tenant);
       const namingCtx = this.naming.forContext(config.project, env, tenant);
       const dbName = namingCtx.d1();
 

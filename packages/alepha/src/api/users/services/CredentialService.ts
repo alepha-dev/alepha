@@ -27,22 +27,22 @@ interface PasswordResetIntent {
   expiresAt: string;
 }
 
-/**
- * Password-reset requests allowed per IP per 15-minute window.
- */
-const RESET_IP_MAX_ATTEMPTS = 20;
-
-const INTENT_TTL_MINUTES = 10;
-
-/**
- * Verification purpose bucket for password-reset codes. Keeping this distinct
- * from the default bucket means a reset request is not rate-limited by an
- * unrelated email-verification code on the same address (e.g. a user who just
- * registered and immediately asks to reset their password).
- */
-const PASSWORD_RESET_PURPOSE = "password-reset";
-
 export class CredentialService {
+  /**
+   * Password-reset requests allowed per IP per 15-minute window.
+   */
+  protected readonly resetIpMaxAttempts = 20;
+
+  protected readonly intentTtlMinutes = 10;
+
+  /**
+   * Verification purpose bucket for password-reset codes. Keeping this distinct
+   * from the default bucket means a reset request is not rate-limited by an
+   * unrelated email-verification code on the same address (e.g. a user who just
+   * registered and immediately asks to reset their password).
+   */
+  protected readonly passwordResetPurpose = "password-reset";
+
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly cryptoProvider = $inject(CryptoProvider);
@@ -81,7 +81,7 @@ export class CredentialService {
     // KV resource just to support password reset.
     provider: DatabaseCacheProvider,
     name: "api:users:password-reset-intents",
-    ttl: [INTENT_TTL_MINUTES, "minutes"],
+    ttl: [this.intentTtlMinutes, "minutes"],
   });
 
   /**
@@ -167,7 +167,7 @@ export class CredentialService {
     const intentId = this.cryptoProvider.randomUUID();
     const expiresAt = this.dateTimeProvider
       .now()
-      .add(INTENT_TTL_MINUTES, "minutes")
+      .add(this.intentTtlMinutes, "minutes")
       .toISOString();
 
     // Per-IP cap, before any work. See `resetIpCache` for why the per-target
@@ -175,7 +175,7 @@ export class CredentialService {
     const request = this.alepha.store.get("alepha.http.request");
     if (request?.ip) {
       const attempts = await this.resetIpCache.incr(`reset:ip:${request.ip}`);
-      if (attempts > RESET_IP_MAX_ATTEMPTS) {
+      if (attempts > this.resetIpMaxAttempts) {
         this.log.warn("Password reset rate limit exceeded", { ip: request.ip });
         // Same shape as the success path: never reveal whether the address
         // exists, and do not tell a prober they hit a limit either.
@@ -251,7 +251,7 @@ export class CredentialService {
       const verification = await this.verificationService.createVerification({
         type: "code",
         target: email,
-        purpose: PASSWORD_RESET_PURPOSE,
+        purpose: this.passwordResetPurpose,
       });
 
       // Send password reset notification with the code
@@ -324,7 +324,7 @@ export class CredentialService {
         {
           type: "code",
           target: intent.email,
-          purpose: PASSWORD_RESET_PURPOSE,
+          purpose: this.passwordResetPurpose,
         },
         body.code,
       )

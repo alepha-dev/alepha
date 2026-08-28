@@ -1,69 +1,6 @@
 import { $inject } from "alepha";
 import { FileSystemProvider } from "alepha/system";
 
-/**
- * File extensions considered when scanning for dictionaries / usage.
- */
-const SCAN_EXTS = [".ts", ".tsx", ".mts", ".cts"];
-
-/**
- * Built-in path substrings that are always excluded from scanning.
- */
-const DEFAULT_EXCLUDES = [
-  "/node_modules/",
-  "/dist/",
-  "/__tests__/",
-  "/.alepha/",
-  ".spec.ts",
-  ".spec.tsx",
-  ".test.ts",
-  ".test.tsx",
-];
-
-/**
- * Matches a quoted dotted property key on the left-hand side of a
- * dictionary entry: `"some.dotted.key":`. The "at least one dot"
- * requirement rules out unrelated quoted strings (e.g. JSON literals
- * inside helper text).
- */
-const KEY_DECLARATION_RE = /"([\w-]+(?:\.[\w-]+)+)"\s*:/g;
-
-/**
- * Heuristic for spotting files that declare a dictionary. Conservative
- * by design — we'd rather scan a few unrelated files than miss a
- * dictionary tucked away in an unusual location.
- */
-const DICTIONARY_MARKER = "$dictionary";
-
-/**
- * Captures the module specifier of a lazily-imported dictionary, i.e. the
- * `"./fr.ts"` in `$dictionary({ lazy: () => import("./fr.ts") })`. Apps
- * commonly split each language into its own file so a session only ships the
- * active locale — those key files carry no `$dictionary` marker, so without
- * this the keys would be invisible to the check.
- *
- * `[^{}]*?` keeps the match inside the `$dictionary` call's own object literal
- * (it stops at the first brace), so unrelated lazy imports in the same file —
- * e.g. a sibling `$page({ lazy: () => import("./Page.tsx") })` or a
- * `$dictionary` whose `lazy` returns an inline `({ default: {…} })` object —
- * are never mistaken for dictionary key files.
- */
-const DICTIONARY_LAZY_IMPORT_RE =
-  /\$dictionary\s*\(\s*\{[^{}]*?import\s*\(\s*["']([^"']+)["']/g;
-
-/**
- * Matches an ICU/`String.format`-style placeholder — `{0}`, `{1}`, … — inside a
- * dictionary file.
- *
- * Alepha interpolates `$1`, `$2`, … (see `I18nProvider.render`). `{0}` is not a
- * syntax it knows, so it survives verbatim into the rendered string and the user
- * reads a literal `{0}` where a number or a name belonged. The failure is
- * entirely silent — no throw, no missing-key fallback — which is why it is worth
- * a check rather than a code review. The two syntaxes are unambiguous, so a
- * match is always a mistake and never a deliberate choice.
- */
-const BAD_PLACEHOLDER_RE = /\{\d+\}/g;
-
 export interface I18nCheckOptions {
   root: string;
   scan: string[];
@@ -140,6 +77,69 @@ export class I18nCheckService {
   protected readonly fs = $inject(FileSystemProvider);
 
   /**
+   * File extensions considered when scanning for dictionaries / usage.
+   */
+  protected readonly scanExts = [".ts", ".tsx", ".mts", ".cts"];
+
+  /**
+   * Built-in path substrings that are always excluded from scanning.
+   */
+  protected readonly defaultExcludes = [
+    "/node_modules/",
+    "/dist/",
+    "/__tests__/",
+    "/.alepha/",
+    ".spec.ts",
+    ".spec.tsx",
+    ".test.ts",
+    ".test.tsx",
+  ];
+
+  /**
+   * Matches a quoted dotted property key on the left-hand side of a
+   * dictionary entry: `"some.dotted.key":`. The "at least one dot"
+   * requirement rules out unrelated quoted strings (e.g. JSON literals
+   * inside helper text).
+   */
+  protected readonly keyDeclarationRe = /"([\w-]+(?:\.[\w-]+)+)"\s*:/g;
+
+  /**
+   * Heuristic for spotting files that declare a dictionary. Conservative
+   * by design — we'd rather scan a few unrelated files than miss a
+   * dictionary tucked away in an unusual location.
+   */
+  protected readonly dictionaryMarker = "$dictionary";
+
+  /**
+   * Captures the module specifier of a lazily-imported dictionary, i.e. the
+   * `"./fr.ts"` in `$dictionary({ lazy: () => import("./fr.ts") })`. Apps
+   * commonly split each language into its own file so a session only ships the
+   * active locale — those key files carry no `$dictionary` marker, so without
+   * this the keys would be invisible to the check.
+   *
+   * `[^{}]*?` keeps the match inside the `$dictionary` call's own object literal
+   * (it stops at the first brace), so unrelated lazy imports in the same file —
+   * e.g. a sibling `$page({ lazy: () => import("./Page.tsx") })` or a
+   * `$dictionary` whose `lazy` returns an inline `({ default: {…} })` object —
+   * are never mistaken for dictionary key files.
+   */
+  protected readonly dictionaryLazyImportRe =
+    /\$dictionary\s*\(\s*\{[^{}]*?import\s*\(\s*["']([^"']+)["']/g;
+
+  /**
+   * Matches an ICU/`String.format`-style placeholder — `{0}`, `{1}`, … — inside a
+   * dictionary file.
+   *
+   * Alepha interpolates `$1`, `$2`, … (see `I18nProvider.render`). `{0}` is not a
+   * syntax it knows, so it survives verbatim into the rendered string and the user
+   * reads a literal `{0}` where a number or a name belonged. The failure is
+   * entirely silent — no throw, no missing-key fallback — which is why it is worth
+   * a check rather than a code review. The two syntaxes are unambiguous, so a
+   * match is always a mistake and never a deliberate choice.
+   */
+  protected readonly badPlaceholderRe = /\{\d+\}/g;
+
+  /**
    * Find unused translation keys.
    *
    * Discovery is fully static: we walk `scan` dirs, identify files
@@ -151,7 +151,7 @@ export class I18nCheckService {
    */
   async check(options: I18nCheckOptions): Promise<I18nCheckResult> {
     const { root, scan, dynamicPrefixes, exclude } = options;
-    const excludes = [...DEFAULT_EXCLUDES, ...exclude];
+    const excludes = [...this.defaultExcludes, ...exclude];
 
     const allFiles: string[] = [];
     for (const dir of scan) {
@@ -166,7 +166,7 @@ export class I18nCheckService {
       }
       for (const rel of entries) {
         const abs = this.fs.join(absDir, rel);
-        if (!SCAN_EXTS.some((ext) => abs.endsWith(ext))) continue;
+        if (!this.scanExts.some((ext) => abs.endsWith(ext))) continue;
         if (excludes.some((sub) => abs.includes(sub))) continue;
         allFiles.push(abs);
       }
@@ -184,9 +184,9 @@ export class I18nCheckService {
     // the usage corpus (their `"key": "value"` lines aren't references).
     const dictionarySet = new Set<string>();
     for (const [file, text] of fileContents) {
-      if (!text.includes(DICTIONARY_MARKER)) continue;
+      if (!text.includes(this.dictionaryMarker)) continue;
       dictionarySet.add(file);
-      for (const m of text.matchAll(DICTIONARY_LAZY_IMPORT_RE)) {
+      for (const m of text.matchAll(this.dictionaryLazyImportRe)) {
         const target = this.resolveImport(file, m[1], fileContents);
         if (target) dictionarySet.add(target);
       }
@@ -209,7 +209,7 @@ export class I18nCheckService {
       const text = this.blankComments(raw);
       const before = allKeys.size;
       const declarations: Array<{ key: string; index: number }> = [];
-      for (const m of text.matchAll(KEY_DECLARATION_RE)) {
+      for (const m of text.matchAll(this.keyDeclarationRe)) {
         allKeys.add(m[1]);
         declarations.push({ key: m[1], index: m.index ?? 0 });
       }
@@ -279,7 +279,7 @@ export class I18nCheckService {
     declarations: Array<{ key: string; index: number }>,
   ): I18nBadPlaceholder[] {
     const found: I18nBadPlaceholder[] = [];
-    for (const m of text.matchAll(BAD_PLACEHOLDER_RE)) {
+    for (const m of text.matchAll(this.badPlaceholderRe)) {
       const at = m.index ?? 0;
       let key: string | undefined;
       for (const d of declarations) {
@@ -528,7 +528,7 @@ export class I18nCheckService {
     // specifier — i.e. resolves against `fromFile`'s directory.
     const base = this.fs.join(fromFile, "..", spec);
     if (files.has(base)) return base;
-    for (const ext of SCAN_EXTS) {
+    for (const ext of this.scanExts) {
       if (files.has(base + ext)) return base + ext;
     }
     return undefined;

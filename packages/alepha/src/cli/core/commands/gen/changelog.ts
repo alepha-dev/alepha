@@ -19,8 +19,6 @@ export {
 } from "../../atoms/changelogOptions.ts";
 export { GitMessageParser } from "../../services/GitMessageParser.ts";
 
-const execFileAsync = promisify(execFile);
-
 // =============================================================================
 // GIT PROVIDER
 // =============================================================================
@@ -33,8 +31,10 @@ const execFileAsync = promisify(execFile);
  * interpreted by a shell.
  */
 export class GitProvider {
+  protected readonly execFileAsync = promisify(execFile);
+
   async exec(args: string[], cwd: string): Promise<string> {
-    const { stdout } = await execFileAsync("git", args, { cwd });
+    const { stdout } = await this.execFileAsync("git", args, { cwd });
     return stdout;
   }
 }
@@ -57,20 +57,6 @@ interface ChangelogSection {
   commits: Commit[];
 }
 
-/**
- * Heading for a commit type. A type with no entry here is titled from its own
- * name, so configuring one that nobody anticipated still produces a section
- * rather than an empty string.
- */
-const SECTION_TITLES: Record<string, string> = {
-  feat: "Features",
-  fix: "Bug Fixes",
-  perf: "Performance",
-  refactor: "Refactors",
-  docs: "Documentation",
-  revert: "Reverts",
-};
-
 // =============================================================================
 // CHANGELOG COMMAND
 // =============================================================================
@@ -85,6 +71,20 @@ const SECTION_TITLES: Record<string, string> = {
  * - `alepha gen changelog | tee -a CHANGELOG.md` - Append to file
  */
 export class ChangelogCommand {
+  /**
+   * Heading for a commit type. A type with no entry here is titled from its own
+   * name, so configuring one that nobody anticipated still produces a section
+   * rather than an empty string.
+   */
+  protected readonly sectionTitles: Record<string, string> = {
+    feat: "Features",
+    fix: "Bug Fixes",
+    perf: "Performance",
+    refactor: "Refactors",
+    docs: "Documentation",
+    revert: "Reverts",
+  };
+
   protected readonly log = $logger();
   protected readonly git = $inject(GitProvider);
   protected readonly parser = $inject(GitMessageParser);
@@ -138,7 +138,7 @@ export class ChangelogCommand {
     const types = this.config.types ?? DEFAULT_TYPES;
     const sections: ChangelogSection[] = types.map((type) => ({
       type,
-      title: SECTION_TITLES[type] ?? type[0].toUpperCase() + type.slice(1),
+      title: this.sectionTitles[type] ?? type[0].toUpperCase() + type.slice(1),
       commits: [],
     }));
 

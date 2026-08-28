@@ -4,13 +4,6 @@ import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 
 /**
- * Parent directory of vendored packages on the remote. Hardcoded because the
- * Alepha monorepo lays its packages out under `packages/` and the vendor
- * tool only targets that layout.
- */
-const REMOTE_DIR = "packages";
-
-/**
  * Options for syncing vendored packages from a remote repository.
  */
 export interface VendorSyncOptions {
@@ -98,6 +91,13 @@ export interface VendorLock {
  * Handles syncing and diffing vendored packages from a remote git repository.
  */
 export class VendorService {
+  /**
+   * Parent directory of vendored packages on the remote. Hardcoded because the
+   * Alepha monorepo lays its packages out under `packages/` and the vendor
+   * tool only targets that layout.
+   */
+  protected readonly remoteDir = "packages";
+
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly log = $logger();
   protected readonly shell = $inject(ShellProvider);
@@ -147,7 +147,7 @@ export class VendorService {
       tmpDir = await this.cloneRemote(options.remote, options.branch);
 
       for (const pkg of options.packages) {
-        const remotePkgDir = this.fs.join(tmpDir, REMOTE_DIR, pkg);
+        const remotePkgDir = this.fs.join(tmpDir, this.remoteDir, pkg);
         const localPkgDir = this.fs.join(options.root, options.dir, pkg);
 
         const remoteExists = await this.fs.exists(remotePkgDir);
@@ -221,7 +221,7 @@ export class VendorService {
     let totalChanges = 0;
 
     for (const pkg of packages) {
-      const remotePkgDir = this.fs.join(tmpDir, REMOTE_DIR, pkg);
+      const remotePkgDir = this.fs.join(tmpDir, this.remoteDir, pkg);
       const localPkgDir = this.fs.join(root, dir, pkg);
 
       const remoteExists = await this.fs.exists(remotePkgDir);

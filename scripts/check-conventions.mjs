@@ -259,4 +259,117 @@ if (subpathViolations.length > 0) {
   process.exit(1);
 }
 
+/**
+ * Never write code outside classes.
+ *
+ * A helper or a constant sitting next to a service class is not
+ * substitutable: a test cannot replace it through the container, and a
+ * subclass cannot override it. Everything a service uses belongs on the
+ * service, which is the whole reason the container exists.
+ *
+ * ⚠️ SCOPE. This reads only the trees that have actually been cleaned:
+ * `cli/`, `api/users/` and `system/`. It is not repo-wide because it cannot
+ * yet be - `server/`, `react/` and `core/` still carry about a hundred
+ * module-level declarations between them, and an allowlist that large is
+ * the "list of things nobody dares touch" this file warns about above. Add
+ * a tree here once it is clean, never an exemption inside one.
+ *
+ * Only service-shaped directories count. A `schemas/`, `entities/` or
+ * `atoms/` file is module-level constants by definition - that IS the file.
+ */
+const NO_MODULE_CODE_TREES = ["cli", "api/users", "system"];
+const SERVICE_DIRS = ["services", "providers", "commands", "tasks"];
+
+/**
+ * Blank out comments and string bodies, keeping every newline, so a line
+ * scan sees only real code.
+ *
+ * Load-bearing, not defensive: `BuildCloudflareTask` and `db.ts` both emit
+ * *generated code* as template literals, and that generated code declares
+ * module-level functions at column 0 on purpose. A raw grep reads them as
+ * violations of a rule they are not even subject to.
+ */
+const stripLiterals = (src) => {
+  let out = "";
+  let i = 0;
+  const keep = (ch) => (ch === "\n" ? "\n" : " ");
+
+  while (i < src.length) {
+    const ch = src[i];
+    const next = src[i + 1];
+
+    if (ch === "/" && next === "/") {
+      while (i < src.length && src[i] !== "\n") out += keep(src[i++]);
+      continue;
+    }
+    if (ch === "/" && next === "*") {
+      const end = src.indexOf("*/", i + 2);
+      const stop = end === -1 ? src.length : end + 2;
+      while (i < stop) out += keep(src[i++]);
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === "`") {
+      const quote = ch;
+      out += ch;
+      i++;
+      while (i < src.length) {
+        if (src[i] === "\\") {
+          out += "  ".slice(0, 2 - (src[i + 1] === "\n" ? 1 : 0));
+          if (src[i + 1] === "\n") out += "\n";
+          i += 2;
+          continue;
+        }
+        if (src[i] === quote) break;
+        out += keep(src[i++]);
+      }
+      out += src[i] ?? "";
+      i++;
+      continue;
+    }
+    out += ch;
+    i++;
+  }
+  return out;
+};
+
+const serviceFiles = execFileSync(
+  "find",
+  [
+    ...NO_MODULE_CODE_TREES.map((tree) => `${SRC}/${tree}`),
+    "-type",
+    "f",
+    "-name",
+    "*.ts",
+  ],
+  { encoding: "utf8" },
+)
+  .split("\n")
+  .filter(Boolean)
+  .filter((file) => SERVICE_DIRS.some((dir) => file.includes(`/${dir}/`)))
+  .filter((file) => !/__tests__|\.spec\.|fixtures/.test(file));
+
+const moduleCodeViolations = [];
+
+for (const file of serviceFiles) {
+  const lines = stripLiterals(readFileSync(file, "utf8")).split("\n");
+  lines.forEach((line, index) => {
+    if (/^(export )?(const|let|var|function|async function) /.test(line)) {
+      moduleCodeViolations.push(
+        `  ${file}:${index + 1}\n    → ${line.trim().slice(0, 72)}\n` +
+          "      move it onto the class (protected member) or into its own service",
+      );
+    }
+  });
+}
+
+if (moduleCodeViolations.length > 0) {
+  console.error(
+    `\n${moduleCodeViolations.length} module-level code violation(s):\n\n` +
+      `${moduleCodeViolations.join("\n")}\n\n` +
+      "Service files hold classes only - a helper outside one cannot be\n" +
+      "substituted through the container, which is what makes it untestable.\n",
+  );
+  process.exit(1);
+}
+
 console.log("conventions OK");

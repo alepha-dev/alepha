@@ -15,20 +15,20 @@ import type { SessionQuery } from "../schemas/sessionQuerySchema.ts";
  */
 export type SessionView = Omit<SessionEntity, "refreshToken">;
 
-/**
- * Relation map embedding a slim user summary on every session row, so the
- * admin UI can render `user.email`/`user.username` instead of a bare UUID.
- * Left-join (default) so sessions whose owner was deleted still come back
- * with `user: undefined`.
- */
-const withUser = {
-  user: {
-    join: users,
-    on: ["userId", users.cols.id] as ["userId", { name: string }],
-  },
-};
-
 export class SessionCrudService {
+  /**
+   * Relation map embedding a slim user summary on every session row, so the
+   * admin UI can render `user.email`/`user.username` instead of a bare UUID.
+   * Left-join (default) so sessions whose owner was deleted still come back
+   * with `user: undefined`.
+   */
+  protected readonly withUser = {
+    user: {
+      join: users,
+      on: ["userId", users.cols.id] as ["userId", { name: string }],
+    },
+  };
+
   protected readonly log = $logger();
   protected readonly realmProvider = $inject(RealmProvider);
 
@@ -54,7 +54,7 @@ export class SessionCrudService {
 
     const result = await this.sessions(userRealmName).paginate(
       q,
-      { where, with: withUser },
+      { where, with: this.withUser },
       { count: true },
     );
 
@@ -89,7 +89,7 @@ export class SessionCrudService {
     this.log.trace("Getting session by ID", { id, userRealmName });
     const session = await this.sessions(userRealmName).getOne({
       where: { id: { eq: id } },
-      with: withUser,
+      with: this.withUser,
     });
     // Sessions carry no realm column; the owner's realm decides. A session
     // of another realm's user is not this admin's to read or revoke.

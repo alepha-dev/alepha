@@ -22,23 +22,6 @@ import { TotpService } from "./TotpService.ts";
 export type SecondFactorMethod = "totp" | "emailCode";
 
 /**
- * Identity provider name used for the TOTP enrollment row. TOTP is not a way
- * to log in, so it is stored as an identity row rather than registered as an
- * `$auth` provider: `authenticationProviderSchema.type` only admits
- * `OAUTH2 | OIDC | CREDENTIALS`, and a login page would otherwise render a
- * nonsensical "Continue with totp" button.
- */
-export const TOTP_PROVIDER = "totp";
-
-/**
- * Verification bucket for second-factor email codes.
- *
- * A purpose of its own so the cooldown and daily-limit windows do not
- * collide with email verification or password reset on the same address.
- */
-export const MFA_PURPOSE = "mfa";
-
-/**
  * What is kept in `identities.providerData` for a TOTP enrollment.
  *
  * Everything lives in the existing JSON column so that adding a second factor
@@ -83,6 +66,23 @@ export interface TotpIdentityData {
  * dependency on `alepha/api/users`.
  */
 export class MfaService {
+  /**
+   * Identity provider name used for the TOTP enrollment row. TOTP is not a way
+   * to log in, so it is stored as an identity row rather than registered as an
+   * `$auth` provider: `authenticationProviderSchema.type` only admits
+   * `OAUTH2 | OIDC | CREDENTIALS`, and a login page would otherwise render a
+   * nonsensical "Continue with totp" button.
+   */
+  public readonly totpProvider = "totp" as const;
+
+  /**
+   * Verification bucket for second-factor email codes.
+   *
+   * A purpose of its own so the cooldown and daily-limit windows do not
+   * collide with email verification or password reset on the same address.
+   */
+  public readonly mfaPurpose = "mfa" as const;
+
   protected readonly log = $logger();
   protected readonly realmProvider = $inject(RealmProvider);
   protected readonly crypto = $inject(CryptoProvider);
@@ -163,7 +163,7 @@ export class MfaService {
     if (settings.mfa.totp !== "disabled") {
       const identity = await this.findTotpIdentity(userId, realm);
       if (identity && this.dataOf(identity).status === "active") {
-        methods.push(TOTP_PROVIDER);
+        methods.push(this.totpProvider);
       }
     }
 
@@ -264,7 +264,7 @@ export class MfaService {
     } else {
       await this.identities(realm).create({
         userId,
-        provider: TOTP_PROVIDER,
+        provider: this.totpProvider,
         providerData: data as never,
       });
     }
@@ -380,7 +380,7 @@ export class MfaService {
     method: SecondFactorMethod,
     realm?: string,
   ): Promise<{ sentTo?: string }> {
-    if (method === TOTP_PROVIDER) {
+    if (method === this.totpProvider) {
       return {};
     }
 
@@ -395,7 +395,7 @@ export class MfaService {
       const verification = await this.verificationService.createVerification({
         type: "code",
         target: user.email,
-        purpose: MFA_PURPOSE,
+        purpose: this.mfaPurpose,
       });
 
       await this.userNotifications(realm)?.mfaCode.push({
@@ -455,7 +455,7 @@ export class MfaService {
     }
 
     const passed =
-      method === TOTP_PROVIDER
+      method === this.totpProvider
         ? await this.verifyTotp(userId, code, realm)
         : await this.verifyEmailCode(userId, code, realm);
 
@@ -524,7 +524,7 @@ export class MfaService {
 
     try {
       const result = await this.verificationService.verifyCode(
-        { type: "code", target: user.email, purpose: MFA_PURPOSE },
+        { type: "code", target: user.email, purpose: this.mfaPurpose },
         code,
       );
       return result.ok === true && result.alreadyVerified !== true;
@@ -611,7 +611,7 @@ export class MfaService {
 
   protected async findTotpIdentity(userId: string, realm?: string) {
     return this.identities(realm).findOne({
-      where: { userId: { eq: userId }, provider: { eq: TOTP_PROVIDER } },
+      where: { userId: { eq: userId }, provider: { eq: this.totpProvider } },
     });
   }
 

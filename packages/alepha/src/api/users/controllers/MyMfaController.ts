@@ -3,7 +3,7 @@ import { $secure } from "alepha/security";
 import { $action, BadRequestError } from "alepha/server";
 
 import { myMfaStatusSchema } from "../schemas/myMfaStatusSchema.ts";
-import { MfaService, TOTP_PROVIDER } from "../services/MfaService.ts";
+import { MfaService } from "../services/MfaService.ts";
 
 /**
  * Self-service two-factor authentication: enroll an authenticator app, prove
@@ -123,7 +123,7 @@ export class MyMfaController {
   ): Promise<void> {
     const passed = await this.mfaService.verify(
       userId,
-      TOTP_PROVIDER,
+      this.mfaService.totpProvider,
       code,
       realm,
     );

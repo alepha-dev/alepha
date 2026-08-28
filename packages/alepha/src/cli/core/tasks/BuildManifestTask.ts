@@ -7,13 +7,6 @@ import { FileSystemProvider } from "alepha/system";
 import type { BuildManifest } from "../schemas/buildManifest.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
-// Looked up by class name string (not by class identity) because build tasks
-// run in the CLI's Alepha context while ctx.alepha is the workspace's separate
-// context. Two module graphs = two distinct `CloudflareEmailProvider` class
-// objects, so an imported reference here wouldn't match the one the workspace
-// registered.
-const CLOUDFLARE_EMAIL_PROVIDER_NAME = "CloudflareEmailProvider";
-
 /**
  * Write `dist/manifest.json` — a build-time snapshot of everything downstream
  * tooling needs to know about the app without re-booting it.
@@ -32,6 +25,13 @@ const CLOUDFLARE_EMAIL_PROVIDER_NAME = "CloudflareEmailProvider";
  * one exists to make impossible.
  */
 export class BuildManifestTask extends BuildTask {
+  // Looked up by class name string (not by class identity) because build tasks
+  // run in the CLI's Alepha context while ctx.alepha is the workspace's separate
+  // context. Two module graphs = two distinct `CloudflareEmailProvider` class
+  // objects, so an imported reference here wouldn't match the one the workspace
+  // registered.
+  protected readonly cloudflareEmailProviderName = "CloudflareEmailProvider";
+
   protected readonly fs = $inject(FileSystemProvider);
 
   async run(ctx: BuildTaskContext): Promise<void> {
@@ -276,7 +276,7 @@ export class BuildManifestTask extends BuildTask {
     // re-emit `send_email` — `enhanceEmail` can't introspect there.
     let email: BuildManifest["email"];
     try {
-      ctx.alepha.inject(CLOUDFLARE_EMAIL_PROVIDER_NAME);
+      ctx.alepha.inject(this.cloudflareEmailProviderName);
       email = { binding: SEND_EMAIL_DEFAULT_BINDING };
     } catch {}
 

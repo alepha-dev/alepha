@@ -3,7 +3,6 @@ import { AlephaError } from "alepha";
 /**
  * Largest value a ZIP header field can hold without ZIP64.
  */
-const ZIP64_LIMIT = 0xffffffff;
 
 /**
  * How an entry's bytes are stored in the archive.
@@ -111,6 +110,8 @@ interface ZipDirectoryRecord {
  * entries are rejected rather than silently written as a corrupt archive.
  */
 export class ZipArchive {
+  protected readonly zip64Limit = 0xffffffff;
+
   /**
    * Lazily-built CRC-32 lookup table (polynomial 0xedb88320).
    *
@@ -256,7 +257,7 @@ export class ZipArchive {
           size += chunk.length;
           // Checked here rather than only at the end so an oversized source
           // fails at the boundary instead of after being read in full.
-          if (size > ZIP64_LIMIT) {
+          if (size > this.zip64Limit) {
             throw new AlephaError(
               "ZipArchive: entry exceeds the 4 GB ZIP64 boundary (no ZIP64 support)",
             );
@@ -314,12 +315,15 @@ export class ZipArchive {
    * an archive that looks fine and does not open.
    */
   protected assertWritable(record: ZipDirectoryRecord, offset: number): void {
-    if (record.size > ZIP64_LIMIT || record.compressedSize > ZIP64_LIMIT) {
+    if (
+      record.size > this.zip64Limit ||
+      record.compressedSize > this.zip64Limit
+    ) {
       throw new AlephaError(
         "ZipArchive: entry exceeds the 4 GB ZIP64 boundary (no ZIP64 support)",
       );
     }
-    if (offset > ZIP64_LIMIT) {
+    if (offset > this.zip64Limit) {
       throw new AlephaError(
         "ZipArchive: archive exceeds the 4 GB ZIP64 boundary (no ZIP64 support)",
       );

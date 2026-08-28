@@ -9,30 +9,6 @@ import { FileSystemProvider } from "alepha/system";
 
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
-// Looked up by class name string (not by class identity) because
-// BuildCloudflareTask runs in the CLI's Alepha context while ctx.alepha
-// is the workspace's separate context. Two module graphs = two distinct
-// `CloudflareEmailProvider` class objects, so the imported reference
-// here wouldn't match the one the workspace registered.
-const CLOUDFLARE_EMAIL_PROVIDER_NAME = "CloudflareEmailProvider";
-
-// Must match WEBSOCKET_DEFAULT_BINDING in alepha/websocket (kept as a literal
-// here because the CF provider isn't on the node barrel).
-const WEBSOCKET_DO_BINDING = "ALEPHA_WEBSOCKET";
-// Must match the AlephaWebSocketDurableObject class name in alepha/websocket
-// (kept as a literal here because the CF provider isn't on the node barrel).
-const WEBSOCKET_DO_CLASS = "AlephaWebSocketDurableObject";
-
-/**
- * Best-effort Cloudflare zone (registrable domain) for a wildcard Worker route:
- * strip the leading `*.` and any subdomain labels, keep the last two — e.g.
- * `*.club.alepha.dev` → `alepha.dev`, `*.alepha.club` → `alepha.club`. Correct
- * for single-label TLDs (the common case); a multi-label public suffix
- * (`.co.uk`) or a CF subdomain zone needs an explicit `CLOUDFLARE_ZONE`.
- */
-const deriveZone = (domain: string): string =>
-  domain.replace(/^\*\./, "").split(".").slice(-2).join(".");
-
 interface WranglerConfig {
   [key: string]: any;
 }
@@ -45,6 +21,31 @@ interface WranglerConfig {
  * - main.cloudflare.js entry point for Cloudflare Workers
  */
 export class BuildCloudflareTask extends BuildTask {
+  // Looked up by class name string (not by class identity) because
+  // BuildCloudflareTask runs in the CLI's Alepha context while ctx.alepha
+  // is the workspace's separate context. Two module graphs = two distinct
+  // `CloudflareEmailProvider` class objects, so the imported reference
+  // here wouldn't match the one the workspace registered.
+  protected readonly cloudflareEmailProviderName = "CloudflareEmailProvider";
+
+  // Must match WEBSOCKET_DEFAULT_BINDING in alepha/websocket (kept as a literal
+  // here because the CF provider isn't on the node barrel).
+  protected readonly websocketDoBinding = "ALEPHA_WEBSOCKET";
+  // Must match the AlephaWebSocketDurableObject class name in alepha/websocket
+  // (kept as a literal here because the CF provider isn't on the node barrel).
+  protected readonly websocketDoClass = "AlephaWebSocketDurableObject";
+
+  /**
+   * Best-effort Cloudflare zone (registrable domain) for a wildcard Worker route:
+   * strip the leading `*.` and any subdomain labels, keep the last two — e.g.
+   * `*.club.alepha.dev` → `alepha.dev`, `*.alepha.club` → `alepha.club`. Correct
+   * for single-label TLDs (the common case); a multi-label public suffix
+   * (`.co.uk`) or a CF subdomain zone needs an explicit `CLOUDFLARE_ZONE`.
+   */
+  protected deriveZone(domain: string): string {
+    return domain.replace(/^\*\./, "").split(".").slice(-2).join(".");
+  }
+
   protected readonly fs = $inject(FileSystemProvider);
 
   protected readonly warningComment =
@@ -250,7 +251,7 @@ export class BuildCloudflareTask extends BuildTask {
       // `*.alepha.club` → `alepha.club`). Set CLOUDFLARE_ZONE explicitly only to
       // override (a subdomain zone, or a multi-label public suffix like `.co.uk`
       // where "last two labels" is wrong).
-      const zone = process.env.CLOUDFLARE_ZONE || deriveZone(domain);
+      const zone = process.env.CLOUDFLARE_ZONE || this.deriveZone(domain);
       wrangler.routes = [
         {
           pattern: domain.endsWith("/*") ? domain : `${domain}/*`,
@@ -538,17 +539,17 @@ export class BuildCloudflareTask extends BuildTask {
       name?: string;
       class_name?: string;
     }>;
-    if (!bindings.some((b) => b.class_name === WEBSOCKET_DO_CLASS)) {
+    if (!bindings.some((b) => b.class_name === this.websocketDoClass)) {
       bindings.push({
-        name: WEBSOCKET_DO_BINDING,
-        class_name: WEBSOCKET_DO_CLASS,
+        name: this.websocketDoBinding,
+        class_name: this.websocketDoClass,
       });
     }
 
     wrangler.migrations = wrangler.migrations || [];
     const migrations = wrangler.migrations as Array<Record<string, unknown>>;
     const declaresClass = (value: unknown): boolean =>
-      Array.isArray(value) && value.includes(WEBSOCKET_DO_CLASS);
+      Array.isArray(value) && value.includes(this.websocketDoClass);
     if (
       migrations.some(
         (m) =>
@@ -565,7 +566,7 @@ export class BuildCloudflareTask extends BuildTask {
     }
     migrations.push({
       tag: `v${n}`,
-      new_sqlite_classes: [WEBSOCKET_DO_CLASS],
+      new_sqlite_classes: [this.websocketDoClass],
     });
   }
 
@@ -585,7 +586,7 @@ export class BuildCloudflareTask extends BuildTask {
       binding = ctx.manifest.email?.binding;
     } else if (ctx.alepha) {
       try {
-        ctx.alepha.inject(CLOUDFLARE_EMAIL_PROVIDER_NAME);
+        ctx.alepha.inject(this.cloudflareEmailProviderName);
         binding = SEND_EMAIL_DEFAULT_BINDING;
       } catch {
         // app doesn't use CloudflareEmailProvider — nothing to emit

@@ -11,12 +11,7 @@ import type {
   PlatformContext,
   PlatformState,
 } from "../adapters/PlatformAdapter.ts";
-import {
-  type NamingContext,
-  NamingService,
-  resolveTenant,
-  tenantDomain,
-} from "./NamingService.ts";
+import { type NamingContext, NamingService } from "./NamingService.ts";
 import {
   PlatformInspector,
   type ResolvedPlatformConfig,
@@ -124,7 +119,7 @@ export class PlatformOrchestrator {
     const envConfig = await this.inspector.resolveEnvironment(root, env);
     const config = await this.inspector.resolveConfig(root);
     const adapter = this.resolveAdapter(envConfig.adapter);
-    const tenant = resolveTenant(config.tenancy, options.tenant);
+    const tenant = this.naming.resolveTenant(config.tenancy, options.tenant);
     const namingCtx = this.naming.forContext(config.project, env, tenant);
 
     const ctx: PlatformContext = {
@@ -170,7 +165,7 @@ export class PlatformOrchestrator {
       // config echoed back as the deploy's address — see
       // `PlatformAdapter.controlsDomain`.
       domain: adapter.controlsDomain
-        ? tenantDomain(envConfig.domain, tenant)
+        ? this.naming.tenantDomain(envConfig.domain, tenant)
         : undefined,
     };
   }
@@ -218,7 +213,7 @@ export class PlatformOrchestrator {
     const envConfig = await this.inspector.resolveEnvironment(root, env);
     const config = await this.inspector.resolveConfig(root);
     const adapter = this.resolveAdapter(envConfig.adapter);
-    const tenant = resolveTenant(config.tenancy, options.tenant);
+    const tenant = this.naming.resolveTenant(config.tenancy, options.tenant);
     const namingCtx = this.naming.forContext(config.project, env, tenant);
 
     const ctx: PlatformContext = {
@@ -271,7 +266,7 @@ export class PlatformOrchestrator {
   }> {
     const { root, env, resources } = options;
     const config = await this.inspector.resolveConfig(root);
-    const tenant = resolveTenant(config.tenancy, options.tenant);
+    const tenant = this.naming.resolveTenant(config.tenancy, options.tenant);
     const namingCtx = this.naming.forContext(config.project, env, tenant);
     return { config, naming: namingCtx, resources };
   }
@@ -295,7 +290,7 @@ export class PlatformOrchestrator {
     const envConfig = await this.inspector.resolveEnvironment(root, env);
     const config = await this.inspector.resolveConfig(root);
     const adapter = this.resolveAdapter(envConfig.adapter);
-    const tenant = resolveTenant(config.tenancy, options.tenant);
+    const tenant = this.naming.resolveTenant(config.tenancy, options.tenant);
     const namingCtx = this.naming.forContext(config.project, env, tenant);
 
     const ctx: PlatformContext = {

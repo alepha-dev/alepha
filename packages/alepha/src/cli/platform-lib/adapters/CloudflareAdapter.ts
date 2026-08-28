@@ -28,7 +28,7 @@ import {
   selectSecrets,
 } from "../secretKeys.ts";
 import { CloudflareApi } from "../services/CloudflareApi.ts";
-import { tenantDomain } from "../services/NamingService.ts";
+import { NamingService } from "../services/NamingService.ts";
 import { StoragePlaceholderService } from "../services/StoragePlaceholderService.ts";
 import { WranglerApi } from "../services/WranglerApi.ts";
 import {
@@ -47,6 +47,7 @@ import {
  */
 export class CloudflareAdapter extends PlatformAdapter {
   protected readonly log = $logger();
+  protected readonly naming = $inject(NamingService);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly shell = $inject(ShellProvider);
   protected readonly cache = $inject(PlatformCacheProvider);
@@ -313,7 +314,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     // For a tenanted deploy the host is `<tenant>.<domain>`; otherwise the
     // configured domain is used as-is. (V2 custom-domain override plugs in
     // via tenantDomain's third arg.)
-    const host = tenantDomain(ctx.envConfig.domain, ctx.tenant);
+    const host = this.naming.tenantDomain(ctx.envConfig.domain, ctx.tenant);
     if (host) {
       // A wildcard host needs a CF zone for its Worker route, but `zone` is
       // optional: when omitted the build derives it from the domain's last two
@@ -703,7 +704,7 @@ export class CloudflareAdapter extends PlatformAdapter {
    * the host is a wildcard — there's no single resolvable origin to point at.
    */
   protected publicUrl(ctx: PlatformContext): string | undefined {
-    const host = tenantDomain(ctx.envConfig.domain, ctx.tenant);
+    const host = this.naming.tenantDomain(ctx.envConfig.domain, ctx.tenant);
     if (!host || host.includes("*")) {
       return undefined;
     }
