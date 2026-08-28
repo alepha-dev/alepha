@@ -54,16 +54,79 @@ describe("MarkdownView - mermaid fences", () => {
     expect(container.querySelector("svg")).toBeNull();
   });
 
+  it("renders a sequenceDiagram fence as an svg", async () => {
+    const { container } = render(
+      <MarkdownView
+        content={fence("mermaid", "sequenceDiagram\n  A ->> B: hello")}
+      />,
+    );
+
+    await waitFor(() => expect(container.querySelector("svg")).not.toBeNull());
+    expect(container.textContent).toContain("hello");
+  });
+
+  it("dispatches on the header, not on what happens to parse", async () => {
+    const { container } = render(
+      <MarkdownView
+        content={[
+          fence("mermaid", "flowchart LR\n  A[Node] --> B"),
+          fence("mermaid", "sequenceDiagram\n  A ->> B: msg"),
+        ].join("\n\n")}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(container.querySelectorAll("svg")).toHaveLength(2),
+    );
+    // The flowchart scales into the column and has no scroll frame; the
+    // sequence diagram takes its natural width inside one.
+    expect(container.querySelectorAll('[role="region"]')).toHaveLength(1);
+    expect(container.textContent).toContain("Node");
+    expect(container.textContent).toContain("msg");
+  });
+
   it("falls back to the code block for a diagram type outside the subset", async () => {
+    const { container } = render(
+      <MarkdownView
+        content={fence("mermaid", "classDiagram\n  Animal <|-- Duck")}
+      />,
+    );
+
+    await waitFor(() => expect(container.querySelector("pre")).not.toBeNull());
+    expect(container.querySelector("svg")).toBeNull();
+    expect(container.textContent).toContain("classDiagram");
+  });
+
+  it("falls back to the code block for a refused sequence construct", async () => {
+    const { container } = render(
+      <MarkdownView
+        content={fence(
+          "mermaid",
+          "sequenceDiagram\n  par both at once\n    A ->> B: one\n  end",
+        )}
+      />,
+    );
+
+    // `par` refuses rather than drawing its branches one under the other,
+    // which would assert an ordering that is false.
+    await waitFor(() => expect(container.querySelector("pre")).not.toBeNull());
+    expect(container.querySelector("svg")).toBeNull();
+  });
+
+  it("frames a sequence diagram so a wide one can be scrolled", async () => {
     const { container } = render(
       <MarkdownView
         content={fence("mermaid", "sequenceDiagram\n  A ->> B: hi")}
       />,
     );
 
-    await waitFor(() => expect(container.querySelector("pre")).not.toBeNull());
-    expect(container.querySelector("svg")).toBeNull();
-    expect(container.textContent).toContain("sequenceDiagram");
+    await waitFor(() => expect(container.querySelector("svg")).not.toBeNull());
+    const frame = container.querySelector('[role="region"]');
+    // A scrollable region that cannot take focus cannot be scrolled from a
+    // keyboard, so whatever is past the fold is simply unreachable.
+    expect(frame?.getAttribute("tabindex")).toBe("0");
+    expect(frame?.getAttribute("aria-label")).toBeTruthy();
+    expect(frame?.className).toContain("alepha-diagram-scroll");
   });
 
   it("keeps the diagram source readable in the fallback", async () => {
