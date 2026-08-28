@@ -239,7 +239,7 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
           </div>
         )}
         {props.empty ? (
-          <div className="bg-card min-w-0 flex-1">
+          <div className="bg-background min-w-0 flex-1">
             {/* The menubar is portalled up to the chrome slot from inside
                 the document on every other state — so skipping the content
                 pane used to skip the whole chrome row, and the workspace

@@ -169,6 +169,21 @@ const stripMarkdown = (raw: string): string =>
     .replace(/[#>*_~]/g, "")
     .trim();
 
+/**
+ * How long the pointer must rest on a wiki link before its preview opens.
+ *
+ * The card used to appear on the first `mouseover`, so reading a paragraph
+ * with three links in it flashed three previews over the prose being read.
+ * It also fetched each one - the inner component loads on mount, cached per
+ * target - so an accidental sweep cost real requests.
+ *
+ * 400ms: past the ~200ms a pointer spends crossing a word in passing, and
+ * short enough that a deliberate hover still feels answered. Deliberately
+ * shorter than the 600ms house tooltip delay, because this card is asked
+ * for by pointing at a specific link rather than offered on any control.
+ */
+const HOVER_OPEN_DELAY_MS = 400;
+
 const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
   const { projectId, projectSlug, blobs } = props;
   const folioApi = useClient<FolioController>();
@@ -180,6 +195,16 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
     new Map<string, FolioPreview | QuestPreview | EpicPreview | BlobPreview>(),
   );
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * The anchor an open is currently WAITING on, or null.
+   *
+   * Needed because a pending open has no `hover` state yet, so
+   * `handleLeave` has nothing to test the departure against - and the
+   * pointer leaving during the delay has to cancel the card, or it appears
+   * over prose the pointer has already left.
+   */
+  const pendingAnchor = useRef<HTMLElement | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
   // `handleLeave` must read the CURRENT anchor, not the one captured when the
   // callback was created: moving straight from one wiki-link to another swaps
@@ -200,6 +225,26 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
       closeTimer.current = null;
     }
   }, []);
+
+  const cancelOpen = useCallback(() => {
+    if (openTimer.current) {
+      clearTimeout(openTimer.current);
+      openTimer.current = null;
+    }
+    pendingAnchor.current = null;
+  }, []);
+
+  /**
+   * Both timers, on unmount. Neither was cleared before: navigating away
+   * mid-hover left a `setHover` scheduled against an unmounted tree.
+   */
+  useEffect(
+    () => () => {
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+      if (openTimer.current) clearTimeout(openTimer.current);
+    },
+    [],
+  );
 
   const scheduleClose = useCallback(() => {
     cancelClose();
@@ -224,13 +269,36 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
       const t = parseHref(href, projectSlug);
       if (!t) return;
       cancelClose();
-      setHover((prev) =>
-        prev && prev.anchorEl === anchor
-          ? prev
-          : { target: t, anchorEl: anchor },
-      );
+
+      // A card is already showing: move to this one immediately. Re-waiting
+      // between adjacent links would read as the preview flickering off and
+      // on while the pointer travels along a sentence, and the delay has
+      // already done its job - the user has demonstrably stopped scanning.
+      if (hoverRef.current) {
+        cancelOpen();
+        setHover((prev) =>
+          prev && prev.anchorEl === anchor
+            ? prev
+            : { target: t, anchorEl: anchor },
+        );
+        return;
+      }
+
+      // `mouseover` bubbles from every child of the anchor, so this fires
+      // repeatedly while the pointer moves inside one link. Without this
+      // guard each of those restarts the timer and the card never opens at
+      // all as long as the pointer keeps moving.
+      if (pendingAnchor.current === anchor) return;
+
+      cancelOpen();
+      pendingAnchor.current = anchor;
+      openTimer.current = setTimeout(() => {
+        openTimer.current = null;
+        pendingAnchor.current = null;
+        setHover({ target: t, anchorEl: anchor });
+      }, HOVER_OPEN_DELAY_MS);
     },
-    [projectId, cancelClose],
+    [projectId, cancelClose, cancelOpen],
   );
 
   /**
@@ -248,6 +316,15 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
    */
   const handleLeave = useCallback(
     (related: Node | null) => {
+      // Before the `current` check, not after: while an open is still
+      // pending there IS no current hover, so an early return here would
+      // leave the timer armed and the card would appear on a link the
+      // pointer had already left.
+      const pending = pendingAnchor.current;
+      if (pending && !(related && pending.contains(related))) {
+        cancelOpen();
+      }
+
       const current = hoverRef.current;
       if (!current) return;
       if (related) {
@@ -256,7 +333,7 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
       }
       scheduleClose();
     },
-    [scheduleClose],
+    [scheduleClose, cancelOpen],
   );
 
   const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {

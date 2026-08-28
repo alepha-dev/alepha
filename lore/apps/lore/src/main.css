@@ -670,3 +670,243 @@ body::before {
     transparent 1px
   );
 }
+
+/*
+ * EXPLORATION (2026-08-28): edit mode is set in the READING face.
+ *
+ * This deliberately reverses the note above `.lore-md-view`, which argued
+ * that raw markdown wants a monospace face so the markup stays scannable.
+ * That holds for a source view; it is the wrong trade for a surface meant
+ * to feel like a page. The numbers are the same three `.lore-md-view`
+ * uses, so View and Edit finally agree on measure and rhythm and the
+ * toggle stops moving the text.
+ *
+ * Scoped to the folio document: quest and epic description fields keep the
+ * monospace face they were designed against.
+ *
+ * ⚠️ Code fences inherit the serif here, which is wrong and stays wrong
+ * until the live-preview decorations give fence contents a mono face of
+ * their own.
+ */
+[data-slot="folio-document"] .cm-content {
+  font-family: var(--font-folio-serif);
+}
+
+/*
+ * EXPLORATION (2026-08-28): the reading measure.
+ *
+ * Applied to BOTH faces, which is the point - View and Edit have to agree
+ * on measure and rhythm or the toggle visibly reflows the text.
+ *
+ * `ch` rather than a pixel width: the comfortable range for continuous
+ * prose is 60-75 characters per line and `ch` is the only unit that says
+ * that directly. At the previous 16.5px across the 748px column a line ran
+ * to roughly 90 characters, which is past the point where the eye starts
+ * losing its place on the return sweep.
+ *
+ * This is what actually makes the surface read as a page. A bordered card
+ * with a shadow was tried on 2026-08-28 and removed the same day: it drew
+ * a box around the text without changing how the text itself reads, and
+ * the chrome fought the content. The measure does the work.
+ *
+ * 18px because Literata's x-height is modest; it sets smaller than a
+ * geometric sans at the same nominal size.
+ */
+[data-slot="folio-document"] .lore-md-view,
+[data-slot="folio-document"] .cm-content {
+  max-width: 68ch;
+  margin-inline: auto;
+  font-size: 18px;
+  line-height: 1.75;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * EXPLORATION (2026-08-28): Preview reads at the same size as Edit.
+ *
+ * The rule above sets the reading size on `.lore-md-view`, which is the
+ * WRAPPER. `MarkdownView` then renders its own root inside it carrying
+ * `text-sm leading-relaxed`, and a font-size set on an element beats one
+ * inherited from its parent - so Preview stayed at 14px/1.625 while Edit
+ * moved to 18px/1.75.
+ *
+ * The measure was the worse half. `68ch` resolves against the wrapper's
+ * 18px, giving a column around 670px; filled with 14px text that is closer
+ * to 90 characters a line against Edit's 68. So ⌘E did not merely change
+ * the type size, it re-broke every line, which is the one thing a preview
+ * toggle must not do - you lose your place in the text.
+ *
+ * `inherit` rather than repeating `18px`: the wrapper is what `ch` is
+ * measured against, so inheriting from it is what makes the measure and
+ * the text agree by construction instead of by two numbers being kept in
+ * step by hand.
+ *
+ * Scoped to the folio document. `text-sm` is right for this component's
+ * other callers - the quest graph tooltip, the attachment lightbox - which
+ * are compact surfaces, not pages.
+ */
+[data-slot="folio-document"] [data-slot="markdown-view"] {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/*
+ * EXPLORATION (2026-08-28): fenced code blocks in EDIT mode.
+ *
+ * Painted from `fenceDecorations.ts`, which puts these classes on whole
+ * lines rather than on the tokens the grammar produced - leading
+ * indentation and blank lines inside a fence carry no tokens, so a
+ * token-scoped rule would leave the block ragged and half of it in the
+ * prose face.
+ *
+ * The mono face here is not a preference, it is a repair: the folio
+ * document now sets `.cm-content` in Literata, and code in a serif with
+ * proportional digits does not line up.
+ */
+.lore-cm-code-line {
+  font-family: var(--font-folio-mono);
+  font-size: 0.82em;
+  line-height: 1.55;
+  background-color: var(--color-muted);
+}
+
+.dark .lore-cm-code-line {
+  background-color: color-mix(in oklch, var(--color-muted) 55%, black);
+}
+
+.lore-cm-code-first {
+  border-top-left-radius: var(--radius-md);
+  border-top-right-radius: var(--radius-md);
+  padding-top: 0.35rem;
+}
+
+.lore-cm-code-last {
+  border-bottom-left-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+  padding-bottom: 0.35rem;
+}
+
+/*
+ * EXPLORATION (2026-08-28): the selection toolbar's hover lift.
+ *
+ * A class rather than Tailwind utilities because the two halves want
+ * different curves, and `duration-*` / `ease-*` apply to every property in
+ * the transition at once.
+ *
+ * The transform gets an overshooting curve - it passes the target and
+ * settles back - which is what reads as "springy" rather than as "slid".
+ * The colours deliberately do NOT: overshooting a colour means going
+ * briefly past the destination to a lighter value and back, which on a
+ * hover fill shows up as a flash. They get a plain ease-out, and a shorter
+ * one, so the fill has arrived by the time the lift finishes.
+ *
+ * 2px, not 1px. With a settling curve a single pixel is below the
+ * threshold where the eye reads motion at all, so the smoothing was doing
+ * nothing visible.
+ */
+.lore-md-toolbar-button {
+  transition:
+    transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    background-color 140ms ease-out,
+    color 140ms ease-out;
+}
+
+.lore-md-toolbar-button:hover {
+  transform: translateY(-2px);
+}
+
+/*
+ * Motion is the decoration here; the hover fill is the part that carries
+ * the meaning, so it survives and only the travel is dropped.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .lore-md-toolbar-button {
+    transition:
+      background-color 140ms ease-out,
+      color 140ms ease-out;
+  }
+
+  .lore-md-toolbar-button:hover {
+    transform: none;
+  }
+}
+
+/*
+ * EXPLORATION (2026-08-28): Preview's code blocks match Edit's.
+ *
+ * Syntax highlighting was never the problem - `rehype-highlight` emits
+ * `hljs-keyword` / `hljs-string` / `hljs-comment` spans and the `--hljs-*`
+ * GitHub palette in `markdown-view.css` colours them. What differed was
+ * the BLOCK around them.
+ *
+ * `MarkdownView` draws a fence as `bg-transparent` inside a border, at a
+ * hardcoded `text-xs`. That is a sensible default for the component's
+ * compact callers, and its stylesheet says as much - the highlight
+ * backgrounds are transparent on purpose so a block inherits whatever
+ * surface it sits on. On a page it reads as an unstyled quotation, and it
+ * disagreed with Edit twice over: no fill against a filled block, and 12px
+ * against Edit's 0.82em of an 18px body, which is 14.8px.
+ *
+ * Every value below is copied from `.lore-cm-code-line` deliberately.
+ * These two rules are one decision about how folio code looks, and if they
+ * drift the ⌘E toggle starts resizing code again.
+ *
+ * Scoped to the folio document, so the quest-graph tooltip and the
+ * attachment lightbox keep the compact default they were designed for.
+ */
+[data-slot="folio-document"] [data-slot="markdown-view"] pre {
+  border: 0;
+  border-radius: var(--radius-md);
+  background-color: var(--color-muted);
+  padding: 0.7rem 0.85rem;
+  font-family: var(--font-folio-mono);
+  font-size: 0.82em;
+  line-height: 1.55;
+}
+
+.dark [data-slot="folio-document"] [data-slot="markdown-view"] pre {
+  background-color: color-mix(in oklch, var(--color-muted) 55%, black);
+}
+
+/*
+ * The `<code>` inside carries its own `text-xs`, which is absolute and so
+ * beats the `em` set on its parent. Without this the block resizes and the
+ * two faces disagree again.
+ */
+[data-slot="folio-document"] [data-slot="markdown-view"] pre code {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/*
+ * EXPLORATION (2026-08-28): internal links get a dotted underline.
+ *
+ * A `[[wiki link]]` is rewritten to a plain markdown link before it ever
+ * reaches the renderer, so there is no marker on the anchor to hook - the
+ * `data-wiki-href` attribute the Lexical editor used to emit is long gone,
+ * and the hover card finds these anchors by parsing the href itself. The
+ * href shape is therefore the only thing to select on, and it happens to
+ * separate the three kinds cleanly:
+ *
+ *   /slug/folios/12   internal navigation   → dotted
+ *   /api/files/<id>   an attachment         → left solid, it downloads
+ *   https://…         somewhere else        → left solid
+ *   #lore-broken:…    unresolved            → starts with `#`, unaffected
+ *
+ * Dotted for "this stays inside Lore, and there is a preview if you hover"
+ * — the same convention a footnote or a glossary term uses, rather than
+ * the solid rule that means "you are leaving".
+ *
+ * Nothing here touches `text-decoration-line` or the colour, so the
+ * `underline decoration-primary/50 hover:decoration-primary` the component
+ * sets still does its work; only the STYLE of the line changes.
+ */
+[data-slot="folio-document"]
+  [data-slot="markdown-view"]
+  a[href^="/"]:not([href^="/api/"]) {
+  text-decoration-style: dotted;
+  text-decoration-thickness: from-font;
+  text-underline-offset: 3px;
+}
