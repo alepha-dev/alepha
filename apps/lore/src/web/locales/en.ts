@@ -88,8 +88,6 @@ export default {
   "folios.history.unpin": "Unpin this revision",
   "folios.history.actions": "Revision actions",
   "folios.history.pinned-badge": "Pinned",
-  "folios.history.diff-before": "Before",
-  "folios.history.diff-after": "After",
   "folios.history.action.create": "Created",
   "folios.history.action.edit": "Edited",
   "folios.history.action.rename": "Renamed",
@@ -599,9 +597,6 @@ export default {
 
   "project.menu.milestones": "Milestones",
 
-  "markdown.mode.bold": "Bold",
-  "markdown.mode.italic": "Italic",
-  "markdown.mode.code": "Inline code",
   "markdown.mode.edit": "Edit",
   "markdown.mode.preview": "Preview",
   "milestone.start": "Start Milestone",

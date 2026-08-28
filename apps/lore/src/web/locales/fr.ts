@@ -88,8 +88,6 @@ export default {
   "folios.history.unpin": "Désépingler cette révision",
   "folios.history.actions": "Actions de la révision",
   "folios.history.pinned-badge": "Épinglée",
-  "folios.history.diff-before": "Avant",
-  "folios.history.diff-after": "Après",
   "folios.history.action.create": "Créé",
   "folios.history.action.edit": "Édité",
   "folios.history.action.rename": "Renommé",
@@ -611,9 +609,6 @@ export default {
 
   "project.menu.milestones": "Jalons",
 
-  "markdown.mode.bold": "Gras",
-  "markdown.mode.italic": "Italique",
-  "markdown.mode.code": "Code en ligne",
   "markdown.mode.edit": "Modifier",
   "markdown.mode.preview": "Aperçu",
   "milestone.start": "Ouvrir un jalon",

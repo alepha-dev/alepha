@@ -11,7 +11,6 @@ import {
 
 import { folioBlobs } from "../entities/folioBlobs.ts";
 import { folioDirectories } from "../entities/folioDirectories.ts";
-import { folioRevisions } from "../entities/folioRevisions.ts";
 import { buildFolioSearchText, folios } from "../entities/folios.ts";
 import { projects } from "../entities/projects.ts";
 import { relations } from "../relations.ts";
@@ -28,6 +27,7 @@ import {
 } from "../services/FolioHistoryService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
 import { FolioNameService } from "../services/FolioNameService.ts";
+import { FolioRevisionStatsService } from "../services/FolioRevisionStatsService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 const idParamsSchema = z.object({ id: z.uuid() });
@@ -79,6 +79,7 @@ export class FolioController {
   protected readonly historyService = $inject(FolioHistoryService);
   protected readonly nameService = $inject(FolioNameService);
   protected readonly security = $inject(ProjectSecurityService);
+  protected readonly revisionStats = $inject(FolioRevisionStatsService);
 
   /**
    * Per-project sequence for `folios.shortId`. Powers the human-friendly
@@ -1026,7 +1027,57 @@ export class FolioController {
     description: "List the revision history of a folio (newest first).",
     schema: {
       params: idParamsSchema,
-      response: z.array(folioRevisions.schema),
+      /*
+       * `folioRevisions.schema` plus the author and the per-revision
+       * numbers the History tab renders.
+       *
+       * The author is the point: the entity carries only `byUserId`, so
+       * the tab had a uuid and nothing to show. `listProjectActivity`
+       * above already resolves the same join, and this mirrors it.
+       *
+       * ⚠️ The snapshots STAY, though the web UI no longer draws them.
+       * `folio_history` (MCP) hands `contentSnapshot` to agents, which is
+       * how an agent recovers a folio it damaged - the one job the
+       * revision log exists for. Slimming this response would have meant
+       * pointing that tool at `FolioHistoryService` directly, and the
+       * service has no permission check: `assertMember` lives in this
+       * handler. Saving bytes is not worth moving an authorisation
+       * boundary.
+       */
+      response: z.array(
+        z.object({
+          id: z.uuid(),
+          at: z.string(),
+          action: z
+            .enum(["create", "edit", "rename", "tag-change", "revert"])
+            .meta({ mode: "text" }),
+          pinned: z.boolean(),
+          titleSnapshot: z.string(),
+          summarySnapshot: z.string(),
+          contentSnapshot: z.string(),
+          createdAt: z.string(),
+          folioId: z.uuid(),
+          tagsSnapshot: z.array(z.string()),
+          byUserId: z.uuid().optional(),
+          byUsername: z.string().optional(),
+          byAvatarUrl: z.string().optional(),
+          /**
+           * Against the next-OLDER revision, so a row reads as "what this
+           * edit did". The oldest row has nothing to compare against and
+           * reports its whole body as added, which is what creating a
+           * folio in fact did.
+           */
+          linesAdded: z.integer(),
+          linesRemoved: z.integer(),
+          words: z.integer(),
+          wordsBefore: z.integer(),
+          /**
+           * Set only when this revision changed the title, so the client
+           * can render the rename without diffing anything itself.
+           */
+          previousTitle: z.string().optional(),
+        }),
+      ),
     },
     handler: async ({ params, user }) => {
       const folio = await this.folios.findOne({
@@ -1034,7 +1085,50 @@ export class FolioController {
       });
       if (!folio) throw new NotFoundError("Folio not found");
       await this.security.assertMember(folio.projectId, user);
-      return this.historyService.listRevisions(folio.id);
+
+      const revisions = await this.revisionsWith.findMany({
+        where: { folioId: { eq: params.id } },
+        orderBy: [{ column: "at", direction: "desc" }],
+        include: {
+          author: { select: ["id", "username", "email", "picture"] },
+        },
+      });
+
+      return revisions.map((revision, index) => {
+        // Newest first, so the next entry is the older one - the state
+        // this revision replaced.
+        const previous = revisions[index + 1];
+        const before = previous?.contentSnapshot ?? "";
+        const after = revision.contentSnapshot;
+        const { added, removed } = this.revisionStats.lineDiff(before, after);
+        const author = revision.author;
+
+        return {
+          id: revision.id,
+          at: revision.at,
+          action: revision.action,
+          pinned: revision.pinned,
+          titleSnapshot: revision.titleSnapshot,
+          summarySnapshot: revision.summarySnapshot,
+          contentSnapshot: after,
+          createdAt: revision.createdAt,
+          folioId: revision.folioId,
+          tagsSnapshot: revision.tagsSnapshot,
+          byUserId: revision.byUserId,
+          byUsername: author?.username ?? author?.email,
+          byAvatarUrl: author?.picture
+            ? `/api/files/${author.picture}`
+            : undefined,
+          linesAdded: added,
+          linesRemoved: removed,
+          words: this.revisionStats.wordCount(after),
+          wordsBefore: this.revisionStats.wordCount(before),
+          previousTitle:
+            previous && previous.titleSnapshot !== revision.titleSnapshot
+              ? previous.titleSnapshot
+              : undefined,
+        };
+      });
     },
   });
 
