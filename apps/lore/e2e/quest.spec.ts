@@ -4,6 +4,7 @@ import {
   apiPost,
   createProjectViaWizard,
   registerAndVerify,
+  setProjectDefaultSurface,
   setProjectFeature,
 } from "./_helpers.ts";
 
@@ -780,11 +781,19 @@ test.describe("Quest", () => {
   });
 
   /**
-   * Kanban is a view of the Quests page, not its own route
-   * (the great rename, Task 8). `/:projectSlug/kanban` used to render the board;
-   * now it must not.
+   * Kanban is its own route again (epic #2, quest #1211).
+   *
+   * This test used to assert the opposite — the 2026-08 rename had turned the
+   * board into a view of the Quests page and `/:projectSlug/kanban` rendered
+   * nothing. It inverts rather than breaks: the final assertion, that the
+   * path renders no board, becomes the positive case.
+   *
+   * The bar still switches the two, but by navigating rather than by writing
+   * a preference, so the URL is what changes.
    */
-  test("kanban is a view of the quests page, not a route", async ({ page }) => {
+  test("kanban is a route, and the view bar navigates to it", async ({
+    page,
+  }) => {
     test.setTimeout(60_000);
 
     const t = Date.now();
@@ -803,16 +812,21 @@ test.describe("Quest", () => {
     await expect(page.getByTestId("kanban-board")).toBeVisible({
       timeout: 10_000,
     });
+    // The switch is a navigation now, so it is addressable.
+    await expect(page).toHaveURL(new RegExp(`/${projectSlug}/kanban$`));
 
     await page.getByTestId("quests-view-list").click();
     await expect(page.getByTestId("quests-table")).toBeVisible({
       timeout: 10_000,
     });
     await expect(page.getByTestId("kanban-board")).toHaveCount(0);
+    await expect(page).toHaveURL(new RegExp(`/${projectSlug}/?$`));
 
-    // The old route is gone.
+    // Typing the URL reaches the board — the point of the whole change.
     await page.goto(`/${projectSlug}/kanban`);
-    await expect(page.getByTestId("kanban-board")).toHaveCount(0);
+    await expect(page.getByTestId("kanban-board")).toBeVisible({
+      timeout: 10_000,
+    });
   });
 
   /**
@@ -1069,7 +1083,7 @@ test.describe("Quest", () => {
   // is an entry in the Discussion feed on either mount, so there is no
   // folded section left to reveal.
 
-  test("view switcher reaches the kanban board and remembers the choice", async ({
+  test("view switcher reaches the kanban board, and defaultSurface decides the landing", async ({
     page,
   }) => {
     test.setTimeout(90_000);
@@ -1095,9 +1109,10 @@ test.describe("Quest", () => {
       await expect(page.getByTestId("kanban-board")).toBeVisible({
         timeout: 10_000,
       });
-      // The view is state, not a destination. It lived in `?view=kanban`
-      // until #156, where the seeding effect that kept the URL in sync
-      // bounced every sidebar navigation back to the board.
+      // The board is a destination, so the switch is a navigation. Still
+      // never a QUERY param: `?view=kanban` is what #156 was about, and the
+      // seeding effect that kept it in sync bounced every sidebar link.
+      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/kanban$`));
       expect(new URL(page.url()).search).toBe("");
 
       await page.getByTestId("quests-view-list").click();
@@ -1106,16 +1121,23 @@ test.describe("Quest", () => {
       });
     });
 
-    await test.step("a bare URL reopens the last view used", async () => {
-      await page.getByTestId("quests-view-kanban").click();
-      await expect(page.getByTestId("kanban-board")).toBeVisible({
+    await test.step("a bare URL lands on the list until defaultSurface says otherwise", async () => {
+      // The choice is a project setting now, not a per-browser cookie, so a
+      // fresh project lands on the list no matter what this browser last
+      // clicked.
+      await page.goto(`/${projectSlug}/`);
+      await expect(page.getByTestId("quests-table")).toBeVisible({
         timeout: 10_000,
       });
 
+      await setProjectDefaultSurface(page, projectId, "kanban");
       await page.goto(`/${projectSlug}/`);
       await expect(page.getByTestId("kanban-board")).toBeVisible({
         timeout: 10_000,
       });
+      // A redirect, not a second rendering mode: the URL moves to the board's
+      // own address, so what the user sees is addressable.
+      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/kanban$`));
     });
 
     // #156. The board used to trap the project on itself: the seeding
@@ -1126,6 +1148,12 @@ test.describe("Quest", () => {
     // was the stored view. Arriving proves nothing here: the bounce was a
     // second navigation landing after the first succeeded, so the URL has
     // to still be there once the outgoing page has finished unmounting.
+    //
+    // This is the step that earns its keep after `defaultSurface`: the
+    // preference redirects again, from the index route's loader. A loader
+    // runs once on entry and has no outgoing render to misread, but that is
+    // an argument, and this is the evidence. `defaultSurface` is still
+    // "kanban" from the step above, which is the trapping condition.
     await test.step("leaving the board actually leaves it", async () => {
       await expect(page.getByTestId("kanban-board")).toBeVisible({
         timeout: 10_000,
@@ -1149,7 +1177,10 @@ test.describe("Quest", () => {
     });
 
     await test.step("back on the board for the layout checks", async () => {
-      await page.goto(`/${projectSlug}/`);
+      // Clear the preference first: the layout checks below start from the
+      // list, and a bare URL would otherwise redirect past it.
+      await setProjectDefaultSurface(page, projectId, "list");
+      await page.goto(`/${projectSlug}/kanban`);
       await expect(page.getByTestId("kanban-board")).toBeVisible({
         timeout: 10_000,
       });
@@ -1224,9 +1255,10 @@ test.describe("Quest", () => {
     await test.step("picking a view from a quest detail lands on that view", async () => {
       // The bar renders on the detail route to keep the log from jumping,
       // but the detail route has no list and no board of its own. It used
-      // to answer a click by writing `questsViewAtom` and staying put - the
-      // pressed entry moved and nothing else did. Picking a view there now
-      // means going up to the page that has one.
+      // to answer a click by writing a cookie and staying put - the pressed
+      // entry moved and nothing else did. Picking a view there means going
+      // up to the page that has one, and since epic #2 both pages are real
+      // routes, so each lands on its own URL.
       const { shortId } = await apiPost<{ shortId: number }>(
         page,
         "createQuest",
@@ -1246,7 +1278,7 @@ test.describe("Quest", () => {
         timeout: 10_000,
       });
       await page.getByTestId("quests-view-kanban").click();
-      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/?$`), {
+      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/kanban$`), {
         timeout: 10_000,
       });
       await expect(page.getByTestId("kanban-board")).toBeVisible({
