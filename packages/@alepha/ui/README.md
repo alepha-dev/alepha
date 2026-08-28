@@ -149,21 +149,29 @@ to text, never promoted to markup: it renders content authored by one user to
 another, so a live raw tag would be an injection point on every surface built on
 this package.
 
-A ` ```mermaid ` fence containing a **`flowchart`** is drawn as an SVG diagram
-instead of a code block. The renderer is in-house rather than mermaid itself:
-mermaid is roughly 500-900 kB gzip in a browser and cannot run without a DOM,
-because it measures text in a hidden element. Here the only imported piece is
-`graphre` (dagre in TypeScript, ~15.5 kB gzip) for layout; parsing, text
-measurement and drawing are ours. The whole thing is one lazy chunk of about
-18 kB gzip, imported only when a document actually contains a fence, so a
-document with no diagram pays nothing.
+A ` ```mermaid ` fence containing a **`flowchart`** or a **`sequenceDiagram`**
+is drawn as an SVG diagram instead of a code block. The renderer is in-house
+rather than mermaid itself: mermaid is roughly 500-900 kB gzip in a browser and
+cannot run without a DOM, because it measures text in a hidden element. Here the
+only imported piece is `graphre` (dagre in TypeScript, ~15.5 kB gzip), and only
+the flowchart uses it; parsing, text measurement and drawing are ours. The whole
+thing is one lazy chunk of about 22 kB gzip, imported only when a document
+actually contains a fence, so a document with no diagram pays nothing.
+
+The two are separate pipelines that share only the text metrics and the theming.
+A flowchart has to be ranked, which is what `graphre` does; a sequence diagram
+has both axes decided by the source - participants left to right in declaration
+order, rows top to bottom in statement order - so its layout is arithmetic with
+no library at all.
 
 Drawing it ourselves is what makes the diagram look like the app: the SVG uses
 `--card`, `--border`, `--muted-foreground` and `--muted`, so dark mode works
 with no second palette and no theme prop.
 
 The syntax is mermaid's so a document stays portable to GitHub, Obsidian and
-anywhere else, but only a subset is drawn:
+anywhere else, but only a subset is drawn.
+
+### Flowcharts
 
 |             |                                                                                                                                                                             |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -174,12 +182,6 @@ anywhere else, but only a subset is drawn:
 | Structure   | chains `A --> B --> C`, fans `A & B --> C`, nested `subgraph`                                                                                                               |
 | Text        | `<br/>` becomes a line break; quoted and backtick-quoted labels                                                                                                             |
 
-Everything else degrades to the code block it renders as today, silently:
-`sequenceDiagram`, `classDiagram`, `gantt` and mindmaps are not drawn, `style`
-and `classDef` are ignored (the theme picks the colours), and a malformed
-diagram, a parse failure or a graph past the 200-node / 400-edge cap all render
-the plain fence rather than an error.
-
 ⚠️ **A node label must not contain a link operator.** The statement is scanned
 for links before anything knows where the labels are, so a `--`, `==` or `-.`
 sequence inside `[...]` is read as an edge and the label is cut. `A[--o]` yields
@@ -188,6 +190,39 @@ Quoting does NOT protect it - `A["-->"]` is damaged identically, because
 `splitOnLinks` runs with no quote awareness. A single hyphen (`A[well-known]`)
 is safe. There is no escape that works today, and the failure is silent: the
 graph still draws, with the wrong text.
+
+### Sequence diagrams
+
+|              |                                                                                                                                                       |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Participants | `participant A`, `participant A as Alice`, `actor U` (an actor draws a stick figure); declared implicitly by first use, in order of appearance        |
+| Arrows       | `->` `-->` `->>` `-->>` `-x` `--x` `-)` `--)`; the double hyphen dashes the line, and the four heads (none, filled, cross, open) are drawn distinctly |
+| Activation   | `->>+` / `-->>-` and `activate` / `deactivate` parse and are DISCARDED - activation bars are not drawn                                                |
+| Notes        | `Note left of A:`, `Note right of A:`, `Note over A:`, `Note over A,B:`                                                                               |
+| Fragments    | `alt` / `else` / `opt` / `loop`, nested, each closed by `end`                                                                                         |
+| Other        | `autonumber` (including `autonumber 10 10`), self-messages, `<br/>` line breaks                                                                       |
+
+A sequence diagram keeps its natural width in a horizontal scroll frame rather
+than scaling into the prose column. A flowchart is roughly as tall as it is wide
+and shrinks gracefully; a sequence diagram's width comes from its participant
+count with nothing to wrap, so scaling eight lifelines into a phone column puts
+the labels at around 5px with no way for the reader to recover. The frame is
+focusable and carries an accessible name, because a scroll container that cannot
+take focus cannot be scrolled from a keyboard.
+
+Two constructs are refused rather than approximated. `par`, `critical`, `break`,
+`create` and `destroy` send the WHOLE diagram back to the code block: drawing
+`par` branches one under the other would assert an ordering that is false, and
+silently wrong output about a protocol is worse than no output. `rect`, `box`,
+`links`, `link`, `menu` and `style` are skipped in silence, being decorative.
+
+### Everything else
+
+Degrades to the code block it renders as today, silently: `classDiagram`,
+`gantt` and mindmaps are not drawn, `style` and `classDef` are ignored (the
+theme picks the colours), and a malformed diagram, a parse failure, a graph past
+the 200-node / 400-edge cap or a sequence diagram past the 30-participant /
+300-row cap all render the plain fence rather than an error.
 
 The font is pinned rather than inherited. Layout needs node sizes before it can
 place anything, and node width comes from a generated per-character width table
