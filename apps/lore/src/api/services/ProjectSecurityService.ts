@@ -112,6 +112,37 @@ export class ProjectSecurityService {
   }
 
   /**
+   * Membership by raw user id, for questions about **somebody else**.
+   *
+   * {@link isMember} answers "does the caller belong here" and takes a
+   * token; this answers "does that person belong here", which is what
+   * handing a quest over needs — the caller is authorized, the assignee is
+   * the one being checked. Same literal rule: creator, or a membership row.
+   *
+   * Deliberately not folded into `isMember` with a union parameter: the two
+   * are asked in different situations and conflating them is how a check
+   * ends up validating the wrong subject.
+   */
+  async isMemberById(projectId: number, userId: string): Promise<boolean> {
+    const project = await this.projects.findOne({
+      where: { id: { eq: projectId } },
+    });
+    if (!project) {
+      return false;
+    }
+    if (project.createdBy === userId) {
+      return true;
+    }
+    const member = await this.members.findOne({
+      where: {
+        projectId: { eq: projectId },
+        userId: { eq: userId },
+      },
+    });
+    return !!member;
+  }
+
+  /**
    * Owner-only gate. Requires the caller to be the project creator (or a
    * privileged identity with `user.ownership === false`). Use for
    * destructive or project-configuration endpoints: delete project,
