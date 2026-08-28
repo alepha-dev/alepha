@@ -120,7 +120,7 @@ export const AuthRegister = (props: AuthRegisterProps) => {
     // Optionality is decided as each field is built, because that is the only
     // thing the form reads: `FormModel` derives both the required marker and
     // the pre-submit check from `z.schema.requiredKeys(schema)`, which asks
-    // whether the field is a `ZodOptional`.
+    // whether the field is optional or defaulted.
     //
     // This used to declare every field optional and then push the configured
     // names onto the array returned by `z.schema.requiredKeys(s)` — a TypeBox

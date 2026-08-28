@@ -25,7 +25,7 @@ export const helmetOptions = $atom({
     xXssProtection: z.boolean().optional(),
     contentSecurityPolicy: z
       .object({
-        directives: z.record(z.string(), z.any()),
+        directives: z.record(z.string(), z.any()).optional(),
       })
       .optional(),
     referrerPolicy: z
@@ -83,7 +83,13 @@ export interface CspDirectives {
 }
 
 export interface CspOptions {
-  directives: CspDirectives;
+  /**
+   * The policy to send. Omit it to get {@link
+   * ServerHelmetProvider.defaultCspDirectives}; pass an EMPTY object to send
+   * no `Content-Security-Policy` at all, which is how CSP is turned off
+   * without turning off the rest of helmet.
+   */
+  directives?: CspDirectives;
 }
 
 export interface HstsOptions {
@@ -167,11 +173,11 @@ export class ServerHelmetProvider {
 
     // Content-Security-Policy
     if (csp) {
-      const directives =
-        Object.keys(csp).length === 0
-          ? this.defaultCspDirectives()
-          : csp.directives;
-      headers["content-security-policy"] = Object.entries(directives)
+      // `csp.directives`, not `Object.keys(csp)`: the option object always
+      // carries that one key, so the old test was never true and the default
+      // policy could not be reached by any configuration at all.
+      const directives = csp.directives ?? this.defaultCspDirectives();
+      const value = Object.entries(directives)
         .map(([key, value]) => {
           const kebabKey = key.replace(
             /[A-Z]/g,
@@ -186,6 +192,14 @@ export class ServerHelmetProvider {
           return `${kebabKey} ${value}`;
         })
         .join("; ");
+      // An empty map means no header. Sending `content-security-policy:` with
+      // nothing after it is not a permissive policy - it is a policy with no
+      // directives, and browsers read the absent `default-src` as the
+      // strictest possible answer, so an empty value could break a page
+      // rather than leave it alone.
+      if (value) {
+        headers["content-security-policy"] = value;
+      }
     }
 
     return headers;

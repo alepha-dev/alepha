@@ -27,6 +27,33 @@ import type { FileQuery } from "../schemas/fileQuerySchema.ts";
 import type { FileResource } from "../schemas/fileResourceSchema.ts";
 import type { StorageStats } from "../schemas/storageStatsSchema.ts";
 
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Narrows an operation to the files it is allowed to touch.
+ *
+ * A `$storage` handle passes `{ bucket: its own name }` on every read and
+ * delete, which is what makes the handle a capability rather than a
+ * differently-spelled global accessor: an id belonging to another storage
+ * answers `NotFoundError`, not that other storage's file.
+ *
+ * `creator` is the seam for the app-level half. Ownership is the app's own
+ * notion, so the framework does not decide it - but every app that has one
+ * was writing the same read-then-compare, and a filter the query carries
+ * cannot be forgotten between the read and the check.
+ */
+export interface FileScope {
+  /**
+   * Only files stored in this bucket (a `$storage` name).
+   */
+  bucket?: string;
+
+  /**
+   * Only files whose `creator` is this user id.
+   */
+  creator?: string;
+}
+
 /**
  * Default storage name used when a caller does not name one (e.g. the HTTP
  * upload endpoint's optional `bucket` field).
@@ -564,8 +591,11 @@ export class FileService {
    * @throws {NotFoundError} If the file doesn't exist in the database
    * @throws {FileNotFoundError} If the file exists in database but not in storage
    */
-  public async streamFile(id: string | FileEntity): Promise<FileLike> {
-    const entity = await this.getFileById(id);
+  public async streamFile(
+    id: string | FileEntity,
+    scope?: FileScope,
+  ): Promise<FileLike> {
+    const entity = await this.getFileById(id, scope);
     const storage = this.storage(entity.bucket);
 
     return await storage.provider.download(storage.name, entity.blobId);
@@ -621,8 +651,8 @@ export class FileService {
    * @returns Success response with the deleted file ID
    * @throws {NotFoundError} If the file doesn't exist in the database
    */
-  public async deleteFile(id: string): Promise<Ok> {
-    const file = await this.getFileById(id);
+  public async deleteFile(id: string, scope?: FileScope): Promise<Ok> {
+    const file = await this.getFileById(id, scope);
     const storage = this.storage(file.bucket);
 
     // Always delete the database record
@@ -653,11 +683,26 @@ export class FileService {
    * removed in a single `deleteMany`, and each affected bucket gets a single
    * `bucket.deleteMany` call (R2/S3 batch where supported).
    */
-  public async deleteFiles(ids: string[]): Promise<string[]> {
+  public async deleteFiles(
+    ids: string[],
+    scope?: FileScope,
+  ): Promise<string[]> {
     if (ids.length === 0) return [];
 
+    const where = this.fileRepository.createQueryWhere();
+    where.id = { inArray: ids };
+    if (scope?.bucket) {
+      where.bucket = { eq: scope.bucket };
+    }
+    if (scope?.creator) {
+      where.creator = { eq: scope.creator };
+    }
+
+    // Ids outside the scope simply do not come back, so they are neither
+    // deleted nor reported: a batch delete is filtered, never refused, or one
+    // foreign id in a list of a thousand would fail the whole call.
     const files = await this.fileRepository.findMany({
-      where: { id: { inArray: ids } },
+      where,
       columns: ["id", "bucket", "blobId"],
     });
     if (files.length === 0) return [];
@@ -698,12 +743,50 @@ export class FileService {
    * @returns The file entity
    * @throws {NotFoundError} If the file doesn't exist in the database
    */
-  public async getFileById(id: string | FileEntity): Promise<FileEntity> {
+  public async getFileById(
+    id: string | FileEntity,
+    scope?: FileScope,
+  ): Promise<FileEntity> {
     if (typeof id === "object") {
+      // An already-loaded row is still held to the scope. Without this, a
+      // handle handed a foreign entity walks straight past the boundary the
+      // string branch enforces.
+      this.assertInScope(id, scope);
       return id;
     }
 
-    return await this.fileRepository.getById(id);
+    if (!scope?.bucket && !scope?.creator) {
+      return await this.fileRepository.getById(id);
+    }
+
+    const where = this.fileRepository.createQueryWhere();
+    where.id = { eq: id };
+    if (scope.bucket) {
+      where.bucket = { eq: scope.bucket };
+    }
+    if (scope.creator) {
+      where.creator = { eq: scope.creator };
+    }
+    const rows = await this.fileRepository.findMany({ where, limit: 1 });
+    if (rows.length === 0) {
+      // Deliberately the same answer as a file that does not exist: telling
+      // a caller that an id is real but belongs to someone else is the leak.
+      throw new NotFoundError(`File not found: ${id}`);
+    }
+    return rows[0];
+  }
+
+  /**
+   * Refuses a row that falls outside `scope`, with the same error a missing
+   * row gets.
+   */
+  protected assertInScope(file: FileEntity, scope?: FileScope): void {
+    if (
+      (scope?.bucket && file.bucket !== scope.bucket) ||
+      (scope?.creator && file.creator !== scope.creator)
+    ) {
+      throw new NotFoundError(`File not found: ${file.id}`);
+    }
   }
 
   /**

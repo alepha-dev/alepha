@@ -535,9 +535,8 @@ describe("$command", () => {
    *
    * `tsc`, `vitest` and `oxlint` all print their own diagnostics before the
    * `CommandError` is raised. Letting it out of the `ready` hook wrapped it in
-   * "Alepha failed to start / Failed during 'ready()' hook for service:
-   * CliProvider" and roughly thirty stack frames, none of them in the user's
-   * code — a crash report for a type error.
+   * "Alepha failed to start" and roughly thirty stack frames, none of them
+   * in the user's code, a crash report for a type error.
    */
   describe("Task Failure", () => {
     const failingCommand = (cause?: Error) =>

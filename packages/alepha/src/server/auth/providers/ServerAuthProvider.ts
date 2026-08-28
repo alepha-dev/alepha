@@ -141,7 +141,15 @@ export class ServerAuthProvider {
       const cookies = request.cookies;
 
       // [feature] forward cookies to request headers
-      if (cookies) {
+      //
+      // Only when the request carries no `Authorization` of its own. The
+      // cookie used to overwrite it, so a client deliberately acting as
+      // another principal - an API key, a service account, a test - was
+      // silently demoted to whatever browser session was in the cookie jar,
+      // with nothing anywhere saying so. The provider fallback below has
+      // always had this rule; the cookie is the same kind of default and
+      // now follows it.
+      if (cookies && !request.headers.authorization) {
         const tokens = await this.cookiesToTokens(cookies);
         if (tokens) {
           request.headers.authorization = `Bearer ${this.extractAccessToken(tokens)}`;

@@ -14,10 +14,12 @@ import { $atom, type Infer, z } from "alepha";
 export const websocketOptions = $atom({
   name: "alepha.websocket.options",
   schema: z.object({
-    path: z.text({
-      default: "/ws",
-      description: "Base path for WebSocket endpoints.",
-    }),
+    // There is no `path` here any more. It described a "base path for
+    // WebSocket endpoints", was read by exactly one log line, and could
+    // never have been anything else: routing keys off `$channel({ path })`,
+    // which is the whole path, so a base would either be ignored or would
+    // start refusing channels declared outside it. An option that cannot
+    // work is worse than no option, since it reads as a knob.
     maxPayload: z
       .integer()
       .meta({ min: 1 })
@@ -31,13 +33,12 @@ export const websocketOptions = $atom({
           "connection with code 1009 automatically (`ws`'s own behaviour). An application with " +
           "a narrower per-message cap should still enforce it itself for the correct close " +
           "semantics; this atom only bounds the outer ceiling. Override via app state " +
-          "(`Alepha.create({ [websocketOptions.key]: { path, maxPayload } })`) — e.g. from an " +
-          "app-level `WEBSOCKET_MAX_PAYLOAD` environment variable — to raise or lower it.",
+          "(`Alepha.create({ [websocketOptions.key]: { maxPayload } })`), e.g. from an " +
+          "app-level `WEBSOCKET_MAX_PAYLOAD` environment variable, to raise or lower it.",
       )
       .default(1_048_576),
   }),
   default: {
-    path: "/ws",
     maxPayload: 1_048_576,
   },
   serverOnly: true,

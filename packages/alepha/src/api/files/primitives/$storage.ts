@@ -13,7 +13,7 @@ import type { UserAccountToken } from "alepha/security";
 
 import type { FileEntity } from "../entities/files.ts";
 import type { FileQuery } from "../schemas/fileQuerySchema.ts";
-import { FileService } from "../services/FileService.ts";
+import { type FileScope, FileService } from "../services/FileService.ts";
 
 /**
  * Declares a named, constrained place to keep files.
@@ -159,6 +159,21 @@ export interface StorageUploadOptions {
   expirationDate?: string | DateTime;
 }
 
+/**
+ * The app-level half of a read or delete on a storage handle.
+ *
+ * The bucket boundary is not in here: the handle applies its own, always.
+ */
+export interface StorageAccessOptions {
+  /**
+   * Only act on a file this user uploaded, answering `NotFoundError`
+   * otherwise. Ownership is the app's notion, so the app supplies the id -
+   * but expressing it here keeps it in the query, where it cannot be
+   * forgotten between reading the row and checking it.
+   */
+  creator?: string;
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 export class StoragePrimitive extends Primitive<StoragePrimitiveOptions> {
@@ -208,31 +223,62 @@ export class StoragePrimitive extends Primitive<StoragePrimitiveOptions> {
 
   /**
    * Reads a file back by its row id.
+   *
+   * Scoped to this storage: an id belonging to another one is a
+   * `NotFoundError`, not that storage's file.
    */
-  public download(id: string | FileEntity): Promise<FileLike> {
-    return this.fileService.streamFile(id);
+  public download(
+    id: string | FileEntity,
+    options: StorageAccessOptions = {},
+  ): Promise<FileLike> {
+    return this.fileService.streamFile(id, this.scope(options));
   }
 
   /**
    * Fetches the metadata row without touching the blob.
+   *
+   * Scoped to this storage, like {@link download}.
    */
-  public get(id: string): Promise<FileEntity> {
-    return this.fileService.getFileById(id);
+  public get(
+    id: string,
+    options: StorageAccessOptions = {},
+  ): Promise<FileEntity> {
+    return this.fileService.getFileById(id, this.scope(options));
   }
 
   /**
    * Removes both the row and the blob.
+   *
+   * Scoped to this storage, like {@link download}.
    */
-  public async delete(id: string): Promise<void> {
-    await this.fileService.deleteFile(id);
+  public async delete(
+    id: string,
+    options: StorageAccessOptions = {},
+  ): Promise<void> {
+    await this.fileService.deleteFile(id, this.scope(options));
   }
 
   /**
    * Removes many files, batching the backend calls where the provider
    * supports it (R2/S3, up to 1000 keys per request).
+   *
+   * Ids outside this storage are ignored rather than refused, and do not
+   * appear in the returned list.
    */
-  public async deleteMany(ids: string[]): Promise<string[]> {
-    return this.fileService.deleteFiles(ids);
+  public async deleteMany(
+    ids: string[],
+    options: StorageAccessOptions = {},
+  ): Promise<string[]> {
+    return this.fileService.deleteFiles(ids, this.scope(options));
+  }
+
+  /**
+   * This handle's boundary, plus whatever ownership the caller added.
+   */
+  protected scope(options: StorageAccessOptions): FileScope {
+    return options.creator
+      ? { bucket: this.name, creator: options.creator }
+      : { bucket: this.name };
   }
 
   /**

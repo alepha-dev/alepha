@@ -18,7 +18,12 @@ export const buildAuthorizationServerMetadata = (baseUrl: string) => ({
     "urn:ietf:params:oauth:grant-type:device_code",
   ],
   code_challenge_methods_supported: ["S256"],
-  token_endpoint_auth_methods_supported: ["none"],
+  // Both, because the token endpoint accepts both: a confidential client
+  // sends `client_secret` in the form body, and a public one sends none.
+  // Advertising only `none` told a conforming client that its secret would be
+  // refused, which is the opposite of true, and contradicted this server's
+  // own OpenID configuration document, which has always listed both.
+  token_endpoint_auth_methods_supported: ["none", "client_secret_post"],
   scopes_supported: ["mcp"],
 });
 

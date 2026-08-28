@@ -303,6 +303,76 @@ describe("ServerAuthProvider", () => {
     });
   });
 
+  /**
+   * The session cookie used to overwrite `Authorization` outright, so a client
+   * deliberately acting as another principal - an API key, a service account,
+   * a test - was silently demoted to whatever browser session happened to be
+   * in the cookie jar.
+   *
+   * `cookiesToTokens` is substituted rather than a real encrypted cookie
+   * forged: what is under test is which of the two wins, not the decryption
+   * path, which the login flow covers.
+   */
+  describe("cookie vs Authorization header", () => {
+    class CookieTokenProvider extends ServerAuthProvider {
+      protected async cookiesToTokens(): Promise<any> {
+        return { provider: "test-realm", access_token: "cookie-token" };
+      }
+    }
+
+    const createApp = () => {
+      class App {
+        // Registered so `extractAccessToken` can resolve the provider the
+        // substituted cookie names.
+        auth = $auth({
+          name: "test-realm",
+          issuer: mockIssuer,
+          credentials: { account: async () => undefined },
+        });
+
+        echo = $route({
+          path: "/echo-auth",
+          handler: ({ headers }) => headers.authorization ?? "",
+        });
+      }
+
+      return Alepha.create()
+        .with(App)
+        .with({ provide: ServerAuthProvider, use: CookieTokenProvider });
+    };
+
+    it("should keep an explicit Authorization header", async () => {
+      const alepha = createApp();
+      await alepha.start();
+
+      const hostname = alepha.inject(ServerProvider).hostname;
+      const body = await (
+        await fetch(`${hostname}/echo-auth`, {
+          headers: {
+            authorization: "Bearer service-account-token",
+            cookie: "tokens=whatever",
+          },
+        })
+      ).text();
+
+      expect(body).toBe("Bearer service-account-token");
+    });
+
+    it("should fall back to the cookie when no header is sent", async () => {
+      const alepha = createApp();
+      await alepha.start();
+
+      const hostname = alepha.inject(ServerProvider).hostname;
+      const body = await (
+        await fetch(`${hostname}/echo-auth`, {
+          headers: { cookie: "tokens=whatever" },
+        })
+      ).text();
+
+      expect(body).toBe("Bearer cookie-token");
+    });
+  });
+
   describe("token cookie ttl", () => {
     it("should use the reported refresh token expiry", () => {
       const { auth } = createApp();

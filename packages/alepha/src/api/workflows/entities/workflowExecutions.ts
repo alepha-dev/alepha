@@ -70,6 +70,16 @@ export const workflowExecutions = $entity({
 
     key: z.text().nullable().optional(),
 
+    /**
+     * The execution this one replaces, set by `restart()`.
+     *
+     * Deliberately NOT a foreign key: `purge()` deletes terminal rows past
+     * the retention window, and the original is terminal by definition. A
+     * reference would either block that purge or, with a cascade, delete the
+     * restarted run along with the row it was started from.
+     */
+    restartedFrom: z.uuid().optional(),
+
     priority: db.default(z.integer().min(0).max(3), 2),
   }),
   indexes: [
