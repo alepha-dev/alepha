@@ -16,6 +16,18 @@ import { devStorageMetadataSchema } from "./DevStorageMetadata.ts";
 import { devTopicMetadataSchema } from "./DevTopicMetadata.ts";
 
 export const devSystemSchema = z.object({
+  /**
+   * The application's own version, from its `package.json`.
+   *
+   * This used to be called `alephaVersion`, which is what it never was: the
+   * value has always come from the app's `npm_package_version`. No view read
+   * it, so nothing displayed the wrong number - it was just wrong in the
+   * payload.
+   */
+  appVersion: z.text(),
+  /**
+   * The framework's version, read from the `alepha` package itself.
+   */
   alephaVersion: z.text(),
   nodeVersion: z.text(),
   runtime: z.enum(["node", "bun"]),

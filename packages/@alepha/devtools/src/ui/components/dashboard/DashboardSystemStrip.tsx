@@ -5,7 +5,7 @@ export interface DashboardSystemStripProps {
 }
 
 /**
- * The six facts about the running process, as one strip.
+ * The facts about the running process, as one strip.
  *
  * Deliberately a single bordered row divided by hairlines rather than six
  * cards: these are readings off one instrument, not six independent things,
@@ -19,7 +19,9 @@ export const DashboardSystemStrip = (props: DashboardSystemStripProps) => {
       label: "Runtime",
       value: system ? (system.runtime === "bun" ? "Bun" : "Node.js") : "…",
     },
-    { label: "Version", value: system?.nodeVersion ?? "…" },
+    { label: "Node", value: system?.nodeVersion ?? "…" },
+    { label: "Alepha", value: system?.alephaVersion ?? "…" },
+    { label: "App", value: system?.appVersion ?? "…" },
     {
       label: "Mode",
       value: system ? shorten(system.mode) : "…",
