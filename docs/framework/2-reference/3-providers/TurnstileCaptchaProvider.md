@@ -68,3 +68,18 @@ alepha.with({ provide: CaptchaProvider, use: TurnstileCaptchaProvider });
 
 - `TURNSTILE_SECRET_KEY`: The secret key from the Cloudflare Turnstile dashboard (required).
 - `TURNSTILE_SITE_KEY`: The public site key, exposed to the client via `getSiteKey()` (required).
+- `TURNSTILE_EXPECTED_HOSTNAME`: Refuse a token solved on any other host (optional).
+- `TURNSTILE_EXPECTED_ACTION`: Refuse a token solved for any other widget action (optional).
+
+## Pinning the hostname and the action
+
+A token is bound to the site it was solved on and the `action` its widget
+declared, and siteverify reports both back. Nothing checks them unless you
+say what to expect, so by default a token farmed from one of your pages is
+accepted on any other - the login widget's token works against the
+registration endpoint, and a token solved on a site sharing your secret
+works anywhere.
+
+Both are opt-in because both are easy to get wrong: an app served from an
+apex and a `www` host, or from preview deployments, has more than one valid
+hostname, and a single mismatch refuses every registration.
