@@ -68,6 +68,29 @@ export const quests = $entity({
      */
     dueAt: z.datetime().optional(),
     /**
+     * Manual position within a kanban column, as a lexicographic fractional
+     * index (see `BoardRank`). Absent means "never ranked": the board falls
+     * back to `priority desc, updatedAt desc`, which is exactly what it
+     * sorted by before this column existed.
+     *
+     * A string, not a float. Dropping a card between the same two
+     * neighbours repeatedly halves a float's gap and silently reorders the
+     * column once the mantissa runs out; a string can always take one more
+     * character.
+     *
+     * Ranks are assigned per column, lazily, the first time somebody
+     * reorders it — so no backfill was needed and an untouched board looks
+     * exactly as it did. Within a column, cards are therefore either all
+     * ranked or all unranked, never mixed.
+     *
+     * NB: `z.optional` with NO `db.default(...)`. `quests` is the CASCADE
+     * parent of `quest_comments` and of its own `dependsOn` self-reference,
+     * so a table rebuild on D1 would erase every discussion and every
+     * questline link. The migration is a single nullable `ADD COLUMN`,
+     * copying `20260820173939_fuzzy_pandemic` (`dueAt`).
+     */
+    boardRank: z.string().min(1).max(64).optional(),
+    /**
      * Set when the quest is shelved — deliberately set aside as out of
      * scope for now, without deleting it. Only quests still in `new`
      * status can be shelved, so this is never set alongside `acceptedAt`
@@ -170,6 +193,8 @@ export const quests = $entity({
             "reminder_sent",
             "shelved",
             "unshelved",
+            "reopened",
+            "moved",
           ]),
           /**
            * For `objective_completed` entries — the id of the toggled
@@ -179,6 +204,33 @@ export const quests = $entity({
            * unchecked" event (see quest #23 — "History Spam").
            */
           objectiveId: z.integer().min(0).optional(),
+          /**
+           * For `assigned` entries where somebody handed the quest to
+           * somebody else — the user who received it. Absent when the
+           * actor took it themselves (`acceptQuest`), which is every
+           * `assigned` row written before quest #1213, so reading this as
+           * "self-assigned when missing" is correct for history too.
+           *
+           * ⚠️ Optional, and it has to stay that way. `history` is a JSON
+           * column validated on read: making a key required here would
+           * fail every existing row to decode, which is exactly how the
+           * 2026-08-05 rename took production down (see CLAUDE.md,
+           * "Renaming a REQUIRED key inside a JSON column").
+           */
+          targetUserId: z.uuid().optional(),
+          /**
+           * For `moved` entries — the kanban sub-column the quest entered.
+           *
+           * This is what card aging measures from. `updatedAt` cannot do
+           * the job: any edit resets it, so a card being actively discussed
+           * looks freshly moved while a genuinely stalled one that got a
+           * typo fix looks tended. The entry's `at` is the only honest
+           * "when did this card arrive where it is" there is.
+           *
+           * Optional, like `targetUserId` and for the same reason: rows
+           * written before this existed must still decode.
+           */
+          column: z.string().optional(),
         }),
       )
       .default([]),
