@@ -88,15 +88,33 @@ describe("GitHubSecretStore", () => {
       expect(result).toEqual([]);
     });
 
-    test("returns empty array on error", async ({ expect }) => {
+    test("a 404 reads as an empty store - that environment has none yet", async ({
+      expect,
+    }) => {
       const { shell, store } = createTestEnv();
       shell.errors.set(
         "gh secret list --env bad-env --json name,updatedAt",
-        "Environment not found",
+        "HTTP 404: Not Found (https://api.github.com/repos/o/r/environments/bad-env/secrets)",
       );
 
       const result = await store.list("bad-env");
       expect(result).toEqual([]);
+    });
+
+    test("any other failure is raised, never flattened into an empty list", async ({
+      expect,
+    }) => {
+      const { shell, store } = createTestEnv();
+      // An empty list is not "unknown": the caller reads it as "no secret is
+      // set" and reports a clean state or pushes a duplicate.
+      shell.errors.set(
+        "gh secret list --env app-production --json name,updatedAt",
+        "HTTP 401: Bad credentials",
+      );
+
+      await expect(store.list("app-production")).rejects.toThrow(
+        "HTTP 401: Bad credentials",
+      );
     });
   });
 

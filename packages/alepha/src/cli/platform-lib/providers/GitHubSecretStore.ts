@@ -86,9 +86,45 @@ export class GitHubSecretStore implements SecretStoreProvider {
         updatedAt: s.updatedAt,
       }));
     } catch (error) {
-      this.log.debug("Failed to list secrets", { environment, error });
-      return [];
+      if (this.isMissingStore(error)) {
+        this.log.debug("No secret store for this environment yet", {
+          environment,
+        });
+        return [];
+      }
+      throw new AlephaError(
+        `Could not list GitHub secrets for environment "${environment}": ${this.ghMessage(error)}`,
+        { cause: error },
+      );
     }
+  }
+
+  /**
+   * Whether a failed `gh secret list` means "there is no store here" rather
+   * than "we could not ask".
+   *
+   * Only a 404 qualifies. Everything else - an expired token, a rate limit, a
+   * DNS failure - used to be swallowed into an empty list, and an empty list
+   * is not "unknown": `alepha platform` reads it as "no secret is set" and
+   * goes on to report a clean state or push a duplicate.
+   *
+   * ⚠️ GitHub answers 404 for a private repository the token cannot see, so a
+   * scoping mistake still reads as an empty store. `ensureAvailable()` is what
+   * catches that, by checking `gh auth status` before any of this runs.
+   */
+  protected isMissingStore(error: unknown): boolean {
+    return /HTTP 404|\bnot found\b/i.test(this.ghMessage(error));
+  }
+
+  /**
+   * What `gh` actually said. `ShellProvider.run` puts stderr in the message
+   * and also hangs it off the error, and the memory provider used by tests
+   * only has the message - so read both.
+   */
+  protected ghMessage(error: unknown): string {
+    const stderr = (error as { stderr?: string } | undefined)?.stderr;
+    if (stderr?.trim()) return stderr.trim();
+    return error instanceof Error ? error.message : String(error);
   }
 
   /**
