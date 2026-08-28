@@ -1,4 +1,4 @@
-import { constants, createReadStream } from "node:fs";
+import { constants, createReadStream, statSync } from "node:fs";
 import {
   access,
   copyFile,
@@ -553,12 +553,33 @@ export class NodeFileSystemProvider implements FileSystemProvider {
       name,
       type: options.type ?? this.detector.getContentType(name),
       size: 0, // Unknown size until loaded
-      lastModified: this.dateTime.nowMillis(),
+      lastModified: this.mtimeOf(filepath),
       stream: () => createReadStream(filepath),
       arrayBuffer: async () => this.bufferToArrayBuffer(await load()),
       text: async () => (await load()).toString("utf-8"),
       filepath,
     };
+  }
+
+  /**
+   * The file's modification time, or 0 when it cannot be read.
+   *
+   * `lastModified` used to be stamped with the current time, which made
+   * every read of the same file look like a fresh one - and `lastModified`
+   * is exactly what caching, `If-Modified-Since` and upload metadata key
+   * off. 0 is the honest answer for a path that cannot be stat'ed (deleted
+   * under us, or never there), the same "unknown" `size` already uses;
+   * inventing `now` is what caused this. The read itself is still where a
+   * missing file is reported, so this stays as lazy as it was.
+   *
+   * @protected
+   */
+  protected mtimeOf(filepath: string): number {
+    try {
+      return statSync(filepath).mtimeMs;
+    } catch {
+      return 0;
+    }
   }
 
   /**

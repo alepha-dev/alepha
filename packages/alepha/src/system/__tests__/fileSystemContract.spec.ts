@@ -336,6 +336,24 @@ for (const impl of implementations) {
         expect(await streamToString(file.stream())).toBe("# hello");
       });
 
+      it("reports the file's own mtime, not the time of the call", async () => {
+        const { fs, base } = await setup();
+        const path = join(base, "cached.txt");
+        await fs.writeFile(path, "body");
+
+        const stat = await fs.stat(path);
+
+        // Wait past the clock's resolution so "now" and the mtime cannot
+        // coincide by accident, then read the file again.
+        await new Promise((r) => setTimeout(r, 20));
+        const file = fs.createFile({ path });
+
+        // lastModified is what caching, If-Modified-Since and upload
+        // metadata key off. Stamping it with the current time made every
+        // read of an unchanged file look like a fresh one.
+        expect(file.lastModified).toBe(stat.mtimeMs);
+      });
+
       it("serves stream() repeatedly from buffer and text sources", async () => {
         const { fs } = await setup();
         const file = fs.createFile({ buffer: Buffer.from("again"), name: "a" });

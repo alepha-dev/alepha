@@ -271,6 +271,10 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
       return this.fileLikeFromBuffer(buffer, {
         name: options.name ?? this.posixBasename(filePath),
         type: options.type,
+        // The stored mtime, not the clock: a substitute that reports every
+        // file as freshly modified cannot stand in for the real one in a
+        // test about caching or `If-Modified-Since`.
+        lastModified: this.mtimes.get(filePath) ?? 0,
       });
     }
 
@@ -805,7 +809,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
    */
   protected fileLikeFromBuffer(
     buffer: Buffer,
-    options: { name: string; type?: string },
+    options: { name: string; type?: string; lastModified?: number },
   ): FileLike {
     const bytes = new Uint8Array(
       buffer.buffer.slice(
@@ -817,7 +821,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
       name: options.name,
       type: options.type ?? this.detector.getContentType(options.name),
       size: buffer.byteLength,
-      lastModified: this.dateTime.nowMillis(),
+      lastModified: options.lastModified ?? this.dateTime.nowMillis(),
       stream: () => this.bufferToStream(buffer),
       arrayBuffer: async (): Promise<ArrayBuffer> =>
         bytes.buffer as ArrayBuffer,
