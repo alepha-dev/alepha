@@ -1,7 +1,7 @@
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { z } from "alepha";
 import { useInject } from "alepha/react";
-import { useQueryParams, useRouter, useRouterState } from "alepha/react/router";
+import { useQueryParams, useRouter } from "alepha/react/router";
 import { HttpClient } from "alepha/server";
 import {
   ChevronLeft,
@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import type { AppRouter } from "../../AppRouter.tsx";
 import { useMetadata } from "../../hooks/useMetadata.ts";
 import { DevEmpty } from "../shared/DevEmpty.tsx";
 import { DevError } from "../shared/DevError.tsx";
@@ -28,27 +29,23 @@ const querySchema = z.object({
   q: z.text().optional(),
 });
 
-const parsePath = (pathname: string) => {
-  const prefix = "/rows/";
-  if (!pathname.startsWith(prefix)) return { table: "", recordId: "" };
-  const rest = pathname.slice(prefix.length);
-  const slash = rest.indexOf("/");
-  if (slash === -1) return { table: decodeURIComponent(rest), recordId: "" };
-  return {
-    table: decodeURIComponent(rest.slice(0, slash)),
-    recordId: decodeURIComponent(rest.slice(slash + 1)),
-  };
-};
-
 export interface DatabaseEditorProps {
   entities: any[];
+  /**
+   * Which table is open, `""` on `/rows` itself.
+   */
+  table: string;
+  /**
+   * Which record is open: a primary key, `"new"` for the create form, or `""`
+   * when only the table is open.
+   */
+  recordId: string;
 }
 
 export const DatabaseEditor = (props: DatabaseEditorProps) => {
   const entities = props.entities;
   const http = useInject(HttpClient);
-  const router = useRouter();
-  const state = useRouterState();
+  const router = useRouter<AppRouter>();
   const dialog = useDialog();
   const meta = useMetadata();
 
@@ -63,7 +60,7 @@ export const DatabaseEditor = (props: DatabaseEditorProps) => {
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [counts, setCounts] = useState<Record<string, number>>({});
 
-  const { table, recordId } = parsePath(state.url.pathname);
+  const { table, recordId } = props;
   const isNew = recordId === "new";
   const entity = entities.find((e) => e.name === table);
   const columns: any[] = entity?.columns ?? [];
@@ -165,7 +162,7 @@ export const DatabaseEditor = (props: DatabaseEditorProps) => {
         body: JSON.stringify(values),
       });
       if (method === "POST") {
-        await router.push(`/rows/${encodeURIComponent(table)}`);
+        await router.push("rowsTable", { params: { table } });
       }
       await load();
       return null;
@@ -192,7 +189,7 @@ export const DatabaseEditor = (props: DatabaseEditorProps) => {
           { method: "DELETE" },
         );
       }
-      await router.push(`/rows/${encodeURIComponent(table)}`);
+      await router.push("rowsTable", { params: { table } });
       await load();
     } catch (e: any) {
       setError(e?.message ?? "Delete failed");
@@ -258,7 +255,9 @@ export const DatabaseEditor = (props: DatabaseEditorProps) => {
               data-active={e.name === table || undefined}
               onClick={() => {
                 setParams({});
-                void router.push(`/rows/${encodeURIComponent(e.name)}`);
+                void router.push("rowsTable", {
+                  params: { table: e.name },
+                });
               }}
             >
               <Table2 size={11} style={{ color: "var(--dt-get)" }} />
@@ -345,7 +344,9 @@ export const DatabaseEditor = (props: DatabaseEditorProps) => {
                 className="dt-btn"
                 data-variant="primary"
                 onClick={() =>
-                  router.push(`/rows/${encodeURIComponent(table)}/new`)
+                  router.push("rowsRecord", {
+                    params: { table, id: "new" },
+                  })
                 }
               >
                 <Plus size={11} /> New
@@ -404,7 +405,9 @@ export const DatabaseEditor = (props: DatabaseEditorProps) => {
                   action={{
                     label: "Create the first row",
                     onClick: () =>
-                      router.push(`/rows/${encodeURIComponent(table)}/new`),
+                      router.push("rowsRecord", {
+                        params: { table, id: "new" },
+                      }),
                   }}
                 />
               ) : (
@@ -451,9 +454,9 @@ export const DatabaseEditor = (props: DatabaseEditorProps) => {
                           className="dt-row-click"
                           data-active={id === recordId || undefined}
                           onClick={() =>
-                            router.push(
-                              `/rows/${encodeURIComponent(table)}/${encodeURIComponent(id)}`,
-                            )
+                            router.push("rowsRecord", {
+                              params: { table, id },
+                            })
                           }
                         >
                           <td onClick={(e) => e.stopPropagation()}>
@@ -475,9 +478,9 @@ export const DatabaseEditor = (props: DatabaseEditorProps) => {
                                 value={record[c.name]}
                                 column={c}
                                 onFollow={(ent, fid) =>
-                                  router.push(
-                                    `/rows/${encodeURIComponent(ent)}/${encodeURIComponent(fid)}`,
-                                  )
+                                  router.push("rowsRecord", {
+                                    params: { table: ent, id: fid },
+                                  })
                                 }
                               />
                             </td>
@@ -571,7 +574,7 @@ export const DatabaseEditor = (props: DatabaseEditorProps) => {
           onDelete={() =>
             selectedRecord && removeIds([String(selectedRecord[pk])])
           }
-          onClose={() => router.push(`/rows/${encodeURIComponent(table)}`)}
+          onClose={() => router.push("rowsTable", { params: { table } })}
         />
       )}
     </div>

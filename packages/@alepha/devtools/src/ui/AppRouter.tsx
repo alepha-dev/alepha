@@ -1,3 +1,4 @@
+import { z } from "alepha";
 import { $page } from "alepha/react/router";
 
 export class AppRouter {
@@ -85,22 +86,32 @@ export class AppRouter {
     lazy: () => import("./components/database/DatabaseErd.page.tsx"),
   });
 
+  // One component behind three routes, each declaring the params it actually
+  // has and handing the editor the same prop shape. The editor used to read
+  // `state.url.pathname` and split it itself, which made `table` and `id`
+  // untyped, left them undecoded until it remembered to decode them, and meant
+  // the three routes could not be named in a `router.push`.
   rows = $page({
     path: "/rows",
     label: "Rows",
     parent: this.layout,
+    loader: () => ({ table: "", recordId: "" }),
     lazy: () => import("./components/database/DatabaseEditor.page.tsx"),
   });
 
   rowsTable = $page({
     path: "/rows/:table",
     parent: this.layout,
+    schema: { params: z.object({ table: z.text() }) },
+    loader: ({ params }) => ({ table: params.table, recordId: "" }),
     lazy: () => import("./components/database/DatabaseEditor.page.tsx"),
   });
 
   rowsRecord = $page({
     path: "/rows/:table/:id",
     parent: this.layout,
+    schema: { params: z.object({ table: z.text(), id: z.text() }) },
+    loader: ({ params }) => ({ table: params.table, recordId: params.id }),
     lazy: () => import("./components/database/DatabaseEditor.page.tsx"),
   });
 
