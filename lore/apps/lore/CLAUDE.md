@@ -347,6 +347,13 @@ This is a **confidentiality requirement**, not a tidiness one. Before it existed
 
 `pinned` revisions are exempt from the retention sweep but **not** from this purge. Regression guard: `test/folio-protected-history.spec.ts`.
 
+**`FolioController.update` refuses both ways of crossing the boundary without saying what is crossing it.** The server cannot re-encode `content` itself, so the caller has to be the one that keeps the flag and the bytes in the same domain, and there are two ways to fail at it:
+
+- **`content` without `protected`, on a protected row.** A stale tab writing its plaintext buffer. Refused since the workspace's Save action landed.
+- **`protected` without `content`.** Refused since 2026-08-28. `content` falls back to `existing.content`, so the row keeps a value from the domain it just left. Turning protection ON this way is the serious direction: the folio holds readable plaintext while every signal around it agrees it is encrypted (`searchText` blanked, outbound links wiped, the editor offering a passphrase prompt), and `purgeRevisions` has just deleted the history, so there is nothing to recover from. Turning it OFF is the cheap direction, publishing the raw envelope as markdown.
+
+Restating the state a folio is already in is not a crossing and stays allowed, so a rename, a move or a pin may still assert it. The web client always sends both fields together, so this only ever closed the API path. Regression guard: `test/folio-protected-update-guard.spec.ts`.
+
 ## Sigils, Blights, Beacon, Vitals
 
 A **sigil** is one **app** that reports into a project: a free-form `name`, unique on `(projectId, name)`, and nothing else. It authenticates with a `sg_`-prefixed bearer token, stored hashed and shown once at creation; `tokenPrefix` exists so the UI can name a credential it cannot reconstruct.
