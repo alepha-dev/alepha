@@ -1,25 +1,20 @@
-type View = {
-  path: string;
-  ts: number;
-  referrer?: string;
-  entry?: boolean;
-  campaign?: string;
-};
-type Engagement = { path: string; ts: number };
-type ErrEvt = {
-  name: string;
-  message: string;
-  stack: string;
-  sourceUrl: string;
-  origin?: "client";
-};
-type Vital = { path: string; metric: string; value: number; ts: number };
-type Envelope = {
-  views?: View[];
-  errors?: ErrEvt[];
-  vitals?: Vital[];
-  engagements?: Engagement[];
-};
+import type { SigilEnvelope } from "../shared/schemas/sigilEnvelope.ts";
+
+/**
+ * The wire shape, taken from the schema the sink validates against rather than
+ * restated here.
+ *
+ * These used to be hand-copies, and they had already drifted: the local
+ * `errors` member knew nothing of `count`, and `origin` was narrowed to
+ * `"client"` when the schema also accepts `"server"`. A queue whose idea of an
+ * envelope disagrees with the endpoint's is a compile that passes and a 400
+ * that does not.
+ */
+type Envelope = SigilEnvelope;
+type View = NonNullable<Envelope["views"]>[number];
+type Engagement = NonNullable<Envelope["engagements"]>[number];
+type ErrEvt = NonNullable<Envelope["errors"]>[number];
+type Vital = NonNullable<Envelope["vitals"]>[number];
 
 /**
  * How large one envelope may get, in bytes.
@@ -248,31 +243,52 @@ export class SigilQueue {
    */
   protected pack(batch: Required<Envelope>): Envelope[] {
     const envelopes: Envelope[] = [];
-    let current: Envelope = {};
+    let current = this.emptyBatch();
     let size = 0;
 
-    const add = <K extends keyof Envelope>(
-      key: K,
-      item: Required<Envelope>[K][number],
-    ) => {
+    // The bucket is named by a picker rather than by a key so that it is read
+    // AFTER the overflow check below may have replaced `current` — and so that
+    // the item's type is tied to the array it lands in, which indexing a
+    // generic key into a union of array types cannot express without a cast.
+    const add = <T>(pick: (batch: Required<Envelope>) => T[], item: T) => {
       const cost = sizeOf(item);
       if (size > 0 && size + cost > ENVELOPE_BUDGET) {
-        envelopes.push(current);
-        current = {};
+        envelopes.push(this.compact(current));
+        current = this.emptyBatch();
         size = 0;
       }
-      const bucket = (current[key] ??= [] as any) as any[];
-      bucket.push(item);
+      pick(current).push(item);
       size += cost;
     };
 
-    for (const view of batch.views) add("views", view);
-    for (const engagement of batch.engagements) add("engagements", engagement);
-    for (const error of batch.errors) add("errors", error);
-    for (const vital of batch.vitals) add("vitals", vital);
+    for (const view of batch.views) add((b) => b.views, view);
+    for (const engagement of batch.engagements)
+      add((b) => b.engagements, engagement);
+    for (const error of batch.errors) add((b) => b.errors, error);
+    for (const vital of batch.vitals) add((b) => b.vitals, vital);
 
-    envelopes.push(current);
+    envelopes.push(this.compact(current));
     return envelopes;
+  }
+
+  /**
+   * An envelope under construction: every array present, so `pack` never has
+   * to create one lazily.
+   */
+  protected emptyBatch(): Required<Envelope> {
+    return { views: [], engagements: [], errors: [], vitals: [] };
+  }
+
+  /**
+   * Drops the arrays nothing landed in, so the JSON body carries no dead keys.
+   */
+  protected compact(batch: Required<Envelope>): Envelope {
+    const env: Envelope = {};
+    if (batch.views.length) env.views = batch.views;
+    if (batch.engagements.length) env.engagements = batch.engagements;
+    if (batch.errors.length) env.errors = batch.errors;
+    if (batch.vitals.length) env.vitals = batch.vitals;
+    return env;
   }
 
   /**

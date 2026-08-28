@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 
-import { SIGIL_FEEDBACK_CONTEXT_MAX_LEN } from "../../shared/sigilFeedbackContext.ts";
+import {
+  SIGIL_FEEDBACK_CONTEXT_MAX_LEN,
+  type SigilFeedbackContextParam,
+} from "../../shared/sigilFeedbackContext.ts";
 import {
   SIGIL_FEEDBACK_POSITION_DEFAULT,
   type SigilFeedbackPosition,
@@ -196,7 +199,10 @@ export const SigilFeedbackButton = (props: SigilFeedbackButtonProps) => {
  */
 const collectPageContext = (): string => {
   const params = new URLSearchParams();
-  const put = (key: string, value: string | undefined | null) => {
+  const put = (
+    key: SigilFeedbackContextParam,
+    value: string | undefined | null,
+  ) => {
     if (value) params.set(key, value.slice(0, SIGIL_FEEDBACK_CONTEXT_MAX_LEN));
   };
   try {

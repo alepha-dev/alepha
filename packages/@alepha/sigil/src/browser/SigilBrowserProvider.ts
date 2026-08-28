@@ -1,6 +1,15 @@
 import { $hook, $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+/*
+ * The `react:*` entries of the container's event map are declared by these two
+ * modules, and the listeners below name three of them. Type-only and therefore
+ * erased, so this is not a runtime dependency on React - it just stops this
+ * file's event names from being spelled against a map it never asked for.
+ */
+import type {} from "alepha/react";
+import type {} from "alepha/react/router";
 
+import type { SigilEnvelope } from "../shared/schemas/sigilEnvelope.ts";
 import { sigilCampaign } from "../shared/sigilCampaign.ts";
 import {
   SIGIL_FIRST_INGEST_MAX_MS,
@@ -129,7 +138,7 @@ export class SigilBrowserProvider {
       // which reads it from env on each request — is what keeps a long-lived
       // page current. No second endpoint, and no call that exists only to ask.
       const send = async (
-        env: object,
+        env: SigilEnvelope,
         options: { keepalive: boolean } = { keepalive: false },
       ): Promise<void> => {
         try {
@@ -151,7 +160,7 @@ export class SigilBrowserProvider {
              */
             keepalive: options.keepalive,
             credentials: "same-origin",
-          } as any);
+          });
           const body = await res.json();
           if (body?.config) {
             this.alepha.store.set(sigilClientAtom, body.config);
@@ -166,14 +175,14 @@ export class SigilBrowserProvider {
         }
       };
 
-      this.queue = new SigilQueue(send as any);
+      this.queue = new SigilQueue(send);
 
-      (this.alepha.events as any).on("react:transition:end", (ev: any) => {
+      this.alepha.events.on("react:transition:end", (ev) => {
         // The first one is the hydration render, and `react:browser:render`
         // below already counts that. See {@link initialRenderCounted}.
         if (!this.initialRenderCounted) return;
         if (!this.wants("views")) return;
-        const path = ev.state?.url?.pathname ?? (location as any).pathname;
+        const path = ev.state?.url?.pathname ?? location.pathname;
         this.currentPath = path;
         // A new path is a new thing to have engaged with, so the flag resets
         // and the dwell timer restarts. Without the reset, a visitor who
@@ -183,21 +192,19 @@ export class SigilBrowserProvider {
         this.queue!.addView(path, this.dateTime.nowMillis());
       });
 
-      (this.alepha.events as any).on("react:action:error", (ev: any) => {
+      this.alepha.events.on("react:action:error", (ev) => {
         if (!this.wants("errors")) return;
-        this.queue!.addError(this.toError(ev.error, (location as any).href));
+        this.queue!.addError(this.toError(ev.error, location.href));
       });
 
-      (window as any).addEventListener("error", (e: any) => {
+      window.addEventListener("error", (e) => {
         if (!this.wants("errors")) return;
-        this.queue!.addError(
-          this.toError(e.error ?? e, (location as any).href),
-        );
+        this.queue!.addError(this.toError(e.error ?? e, location.href));
       });
 
-      (window as any).addEventListener("unhandledrejection", (e: any) => {
+      window.addEventListener("unhandledrejection", (e) => {
         if (!this.wants("errors")) return;
-        this.queue!.addError(this.toError(e.reason, (location as any).href));
+        this.queue!.addError(this.toError(e.reason, location.href));
       });
 
       const vitals = new SigilVitals(
@@ -214,19 +221,19 @@ export class SigilBrowserProvider {
           });
         },
         () => this.onLcpArrived(),
-        () => this.currentPath ?? (location as any).pathname,
+        () => this.currentPath ?? location.pathname,
       );
       vitals.observe();
 
       this.observeEngagement();
 
       // The two ways out, and the only two flushes that may outlive the page.
-      (window as any).addEventListener("pagehide", () => {
+      window.addEventListener("pagehide", () => {
         void this.queue!.flush({ keepalive: true });
       });
 
-      (document as any).addEventListener("visibilitychange", () => {
-        if ((document as any).visibilityState === "hidden") {
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") {
           void this.queue!.flush({ keepalive: true });
         }
       });
@@ -234,7 +241,7 @@ export class SigilBrowserProvider {
       // The initial pageview is deferred to `react:browser:render` (fires once,
       // after atom hydration) so it respects the hydrated feature flags instead
       // of the pre-hydration default.
-      (this.alepha.events as any).on("react:browser:render", () => {
+      this.alepha.events.on("react:browser:render", () => {
         this.initialRenderCounted = true;
 
         // Nothing leaves until this load's envelope is complete - see
@@ -247,25 +254,18 @@ export class SigilBrowserProvider {
         // spent, and the page would then report nothing until `pagehide`.
         if (!this.firstIngestArmed) this.queue!.hold();
 
-        this.currentPath = (location as any).pathname;
-        this.resetEngagement((location as any).pathname);
+        this.currentPath = location.pathname;
+        this.resetEngagement(location.pathname);
         if (this.wants("views")) {
           // The referrer rides on this view and no other. `document.referrer`
           // describes how the *document* was loaded, so it keeps its value
           // across every client-side navigation that follows — attaching it to
           // the `transition:end` views above would report one arrival from
           // Hacker News as however many pages that visitor went on to read.
-          this.queue!.addView(
-            (location as any).pathname,
-            this.dateTime.nowMillis(),
-            {
-              referrer: sigilReferrerHost(
-                (document as any).referrer,
-                (location as any).origin,
-              ),
-              campaign: sigilCampaign((location as any).search ?? ""),
-            },
-          );
+          this.queue!.addView(location.pathname, this.dateTime.nowMillis(), {
+            referrer: sigilReferrerHost(document.referrer, location.origin),
+            campaign: sigilCampaign(location.search ?? ""),
+          });
         }
 
         this.armFirstIngest(
@@ -379,9 +379,9 @@ export class SigilBrowserProvider {
    */
   protected observeEngagement() {
     const mark = () => this.markEngaged();
-    (window as any).addEventListener("scroll", mark, { passive: true });
-    (window as any).addEventListener("click", mark, { passive: true });
-    (window as any).addEventListener("keydown", mark, { passive: true });
+    window.addEventListener("scroll", mark, { passive: true });
+    window.addEventListener("click", mark, { passive: true });
+    window.addEventListener("keydown", mark, { passive: true });
   }
 
   /**
@@ -491,12 +491,36 @@ export class SigilBrowserProvider {
    * was carrying. Callers pass `location.href`; what goes in the envelope is
    * the origin and path.
    */
-  protected toError(err: any, sourceUrl: string) {
+  protected toError(err: unknown, sourceUrl: string) {
+    // A thrown value is whatever the thrower felt like: `Partial<Error>` says
+    // "read these three if they are there" without claiming they are.
+    const shape = err as Partial<Error> | undefined;
     return {
-      name: err?.name ?? "Error",
-      message: String(err?.message ?? err ?? "").slice(0, 2000),
-      stack: String(err?.stack ?? "").slice(0, 4096),
+      name: shape?.name ?? "Error",
+      message: this.text(shape?.message ?? err).slice(0, 2000),
+      stack: this.text(shape?.stack).slice(0, 4096),
       sourceUrl: sigilScrubUrl(sourceUrl),
     };
+  }
+
+  /**
+   * A thrown value as a string.
+   *
+   * `String()` on an object yields `[object Object]`, which is what this has
+   * always reported and what it keeps reporting: something thrown in place of
+   * an `Error` has no message to name, and serialising it whole would put
+   * whatever fields it happens to carry into an error report.
+   */
+  protected text(value: unknown): string {
+    switch (typeof value) {
+      case "string":
+        return value;
+      case "number":
+      case "boolean":
+      case "bigint":
+        return `${value}`;
+      default:
+        return value == null ? "" : "[object Object]";
+    }
   }
 }
