@@ -1152,6 +1152,149 @@ export class QuestController {
     },
   });
 
+  /**
+   * Undo a completion.
+   *
+   * A completed quest used to be terminal — no endpoint could reverse it,
+   * and the board refused to drag its card out of Done. Correct for a log,
+   * wrong for a board, where pulling something back out of Done is routine.
+   *
+   * `completionMessage` is deliberately KEPT. It is project memory, it has
+   * a visible home in the Discussion feed as the completion-summary entry,
+   * and deleting it would destroy the account of work that really did
+   * happen. Completing again overwrites it.
+   *
+   * The card returns to the FIRST sub-column rather than to whichever one
+   * it was completed from: the old column is not stored (`completeQuest`
+   * does not preserve it), and inventing one would put a reopened card in a
+   * lane nobody moved it to. First column is where a freshly accepted quest
+   * lands, which is what a reopened one is.
+   */
+  reopenQuest = $action({
+    use: [$secure({ permissions: ["quest:update"] }), $transactional()],
+    schema: {
+      params: z.object({
+        id: z.integer(),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ params, user }) => {
+      const { quest, project } = await this.getQuestForTransition(
+        params.id,
+        user,
+        "reopen",
+        ["completed"],
+      );
+
+      quest.completedAt = undefined;
+      quest.completedBy = undefined;
+      // Back to whoever held it. `completeQuest` leaves `acceptedBy` set, so
+      // a reopened quest returns to its assignee rather than to nobody.
+      if (project.features?.kanban) {
+        quest.kanbanColumn = project.kanbanColumns?.[0];
+      }
+      quest.history.push({
+        at: this.dt.nowISOString(),
+        by: user.id,
+        action: "reopened",
+      });
+
+      await this.quests.save(quest);
+      return this.mapQuestToResource(quest);
+    },
+  });
+
+  /**
+   * Hand a quest to another member.
+   *
+   * `acceptQuest` is self-assignment and always will be — it is the "I am
+   * picking this up" gesture. This is the other half a board needs: work
+   * moving between people. Membership-gated on BOTH sides, the caller
+   * through `getQuestForTransition` and the target through
+   * `isMemberById`, so a quest cannot be parked on somebody who cannot
+   * see the project.
+   *
+   * Accepted from `new`, `shelved` and `accepted`: assigning is how a
+   * shelved idea comes back with an owner, and reassigning an already
+   * accepted quest is the whole point.
+   */
+  assignQuest = $action({
+    use: [$secure({ permissions: ["quest:update"] }), $transactional()],
+    schema: {
+      params: z.object({
+        id: z.integer(),
+      }),
+      body: z.object({
+        userId: z.uuid(),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      const { quest, project } = await this.getQuestForTransition(
+        params.id,
+        user,
+        "assign",
+        ["new", "shelved", "accepted"],
+      );
+
+      if (!(await this.security.isMemberById(quest.projectId, body.userId))) {
+        throw new BadRequestError(
+          "Cannot assign quest: that user is not a member of this project.",
+        );
+      }
+
+      const previous = quest.acceptedBy;
+      if (previous === body.userId) {
+        // Already theirs. Returning the quest unchanged rather than
+        // writing a second `assigned` row keeps the history readable.
+        return this.mapQuestToResource(quest);
+      }
+
+      // A running timer belongs to whoever was working, and a session
+      // carries no user of its own — leaving it open would bill the new
+      // assignee for the old one's time, in one unsplittable span.
+      const running = quest.timerSessions?.[quest.timerSessions.length - 1];
+      if (running && !running.stoppedAt) {
+        running.stoppedAt = this.dt.nowISOString();
+      }
+
+      // Reminders are a per-user nudge (`setQuestReminder` is gated on
+      // `acceptedBy === user.id`), so they do not travel with the quest.
+      // Same reasoning `abandonQuest` already applies: the alternative is
+      // emailing somebody about work that is no longer theirs.
+      quest.reminderInterval = undefined;
+      quest.reminderNextAt = undefined;
+
+      quest.acceptedBy = body.userId;
+      quest.acceptedAt = quest.acceptedAt ?? this.dt.nowISOString();
+      // Coming off the shelf, for the same reason accepting does it.
+      if (quest.shelvedAt) {
+        quest.shelvedAt = undefined;
+        quest.shelvedBy = undefined;
+        quest.history.push({
+          at: this.dt.nowISOString(),
+          by: user.id,
+          action: "unshelved",
+        });
+      }
+      if (project.features?.kanban && !quest.kanbanColumn) {
+        quest.kanbanColumn = project.kanbanColumns?.[0];
+      }
+
+      quest.history.push({
+        at: this.dt.nowISOString(),
+        by: user.id,
+        action: "assigned",
+        // Names the recipient, so the feed reads "X assigned this to Y"
+        // rather than the "X took this" that a self-accept writes.
+        targetUserId: body.userId,
+      });
+
+      await this.quests.save(quest);
+      return this.mapQuestToResource(quest);
+    },
+  });
+
   setQuestKanbanColumn = $action({
     use: [$secure({ permissions: ["quest:update"] })],
     schema: {
@@ -1174,7 +1317,19 @@ export class QuestController {
       if (!columns.includes(body.kanbanColumn)) {
         throw new BadRequestError("Unknown kanban column for this project.");
       }
+      const moved = quest.kanbanColumn !== body.kanbanColumn;
       quest.kanbanColumn = body.kanbanColumn;
+      if (moved) {
+        // Stamped so card aging has an honest clock. `updatedAt` is not one:
+        // it moves on every edit, so a card being discussed would look
+        // freshly moved and a stalled one with a typo fix would look tended.
+        quest.history.push({
+          at: this.dt.nowISOString(),
+          by: user.id,
+          action: "moved",
+          column: body.kanbanColumn,
+        });
+      }
       await this.quests.save(quest);
       return this.mapQuestToResource(quest);
     },
