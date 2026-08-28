@@ -55,7 +55,7 @@ describe("RoomManager", () => {
       rm.joinRoom("conn-1", "room-a");
       rm.leaveRoom("conn-1", "room-a");
 
-      expect(rm.getAllRooms()).toEqual([]);
+      expect([...rm.getStats().roomSizes.keys()]).toEqual([]);
     });
 
     it("should not affect other connections in the same room", () => {
@@ -71,7 +71,7 @@ describe("RoomManager", () => {
       const rm = createRoomManager();
       rm.leaveRoom("conn-1", "room-a");
 
-      expect(rm.getAllRooms()).toEqual([]);
+      expect([...rm.getStats().roomSizes.keys()]).toEqual([]);
     });
   });
 
@@ -82,7 +82,7 @@ describe("RoomManager", () => {
       rm.leaveAllRooms("conn-1");
 
       expect(rm.getConnectionRooms("conn-1")).toEqual([]);
-      expect(rm.getAllRooms()).toEqual([]);
+      expect([...rm.getStats().roomSizes.keys()]).toEqual([]);
     });
 
     it("should not affect other connections", () => {
@@ -99,7 +99,7 @@ describe("RoomManager", () => {
     it("should be a no-op for unknown connection", () => {
       const rm = createRoomManager();
       rm.leaveAllRooms("unknown");
-      expect(rm.getTotalConnections()).toBe(0);
+      expect(rm.getStats().totalConnections).toBe(0);
     });
   });
 

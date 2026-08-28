@@ -91,8 +91,10 @@ export class RoomManager {
       return;
     }
 
-    // Snapshot: leaveRoom mutates `connRooms` as it goes.
-    for (const roomId of [...connRooms]) {
+    // `leaveRoom` deletes from `connRooms` as we go. Safe to iterate live:
+    // it only ever removes the entry currently being visited, which a Set
+    // iterator tolerates — it never touches one we have not reached yet.
+    for (const roomId of connRooms) {
       this.leaveRoom(connectionId, roomId);
     }
 
