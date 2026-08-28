@@ -160,6 +160,97 @@ export const insertBlock = (
 };
 
 /**
+ * Wrap the selected lines in a fenced code block, or unwrap them if they
+ * already are one.
+ *
+ * Replaces `insertBlock(state, "```\n\n```")` for the Code block action.
+ * That call ignored the selection completely: it anchored at the end of the
+ * line the selection STARTED on and pasted an empty fence after it, so
+ * selecting ten lines and asking for a code block left all ten untouched
+ * and dropped an empty fence next to them.
+ *
+ * Whole lines, always. A fence marker is only a fence at the start of a
+ * line, so a selection that begins mid-word has to be widened or the
+ * backticks land inside the text and render as literal characters.
+ *
+ * Unwrapping accepts either shape, matching `toggleInlineMarker`: the
+ * fence with its markers selected, or just the code inside it. Selecting
+ * the content without its markers is the commonest way to ask, because
+ * that is what a drag through the visible code produces.
+ */
+export const toggleFencedCode = (state: EditorState): TransactionSpec => {
+  const range = state.selection.main;
+  const doc = state.doc;
+
+  // Empty selection keeps the old behaviour: an empty fence with the caret
+  // parked between the markers, ready to type into.
+  if (range.empty) {
+    const line = doc.lineAt(range.from);
+    const at = line.text.trim() ? line.to : line.from;
+    const lead = at > 0 ? "\n\n" : "";
+    const insert = `${lead}\`\`\`\n\n\`\`\``;
+    return {
+      changes: { from: at, to: at, insert },
+      // Past the leading blanks and the opening "```\n".
+      selection: { anchor: at + lead.length + 4 },
+    };
+  }
+
+  const firstLine = doc.lineAt(range.from);
+  const lastLine = doc.lineAt(range.to);
+  const from = firstLine.from;
+  const to = lastLine.to;
+
+  const lines: string[] = [];
+  for (let n = firstLine.number; n <= lastLine.number; n++) {
+    lines.push(doc.line(n).text);
+  }
+
+  // Already a fence with its markers inside the selection. The opening
+  // marker may carry an info string (```tsx), which is dropped along with
+  // it - unwrapping returns the code, and the language was a property of
+  // the fence rather than of the code.
+  if (
+    lines.length >= 2 &&
+    /^\s*```/.test(lines[0]) &&
+    /^\s*```\s*$/.test(lines[lines.length - 1])
+  ) {
+    const inner = lines.slice(1, -1).join("\n");
+    return {
+      changes: { from, to, insert: inner },
+      selection: { anchor: from, head: from + inner.length },
+    };
+  }
+
+  // Already a fence with the markers just OUTSIDE the selection: the user
+  // selected the code, not its backticks. Widen to swallow them.
+  const above = firstLine.number > 1 ? doc.line(firstLine.number - 1) : null;
+  const below =
+    lastLine.number < doc.lines ? doc.line(lastLine.number + 1) : null;
+  if (
+    above &&
+    below &&
+    /^\s*```/.test(above.text) &&
+    /^\s*```\s*$/.test(below.text)
+  ) {
+    const inner = lines.join("\n");
+    return {
+      changes: { from: above.from, to: below.to, insert: inner },
+      selection: { anchor: above.from, head: above.from + inner.length },
+    };
+  }
+
+  // Not fenced - fence it, and leave the CODE selected rather than the
+  // whole block, so a follow-up command acts on what the user chose.
+  const body = lines.join("\n");
+  const insert = `\`\`\`\n${body}\n\`\`\``;
+  return {
+    changes: { from, to, insert },
+    selection: { anchor: from + 4, head: from + 4 + body.length },
+  };
+};
+
+/**
  * A GitHub-flavoured table skeleton — the shape `remark-gfm` renders and the
  * one the reader already styles.
  */

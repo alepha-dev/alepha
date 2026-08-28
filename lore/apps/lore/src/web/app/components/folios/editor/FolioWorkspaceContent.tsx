@@ -230,7 +230,7 @@ const FolioWorkspaceContent = (
   });
 
   return (
-    <div className="bg-card flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+    <div className="bg-background flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       {/* `relative` is the containing block for the inspector's drawer
           form below — without it the drawer would position itself against
           the viewport instead of the pane row. */}
@@ -279,15 +279,22 @@ const FolioWorkspaceContent = (
               the inspector's `z-20` drawer, which is meant to cover the
               document at narrow widths.
 
-              `bg-card` + a border because it hovers over prose — the ghost
-              variant's transparent background would let the text it covers
-              read straight through it. */}
+              Minimal, like the header's own icon buttons: no border, no
+              filled surface, no shadow. It used to carry all three on the
+              argument that a control hovering over prose needs to cover the
+              text behind it — but the document is centred to a 68ch measure
+              and this sits in the pane's right margin, so there is no prose
+              under it to read through. The chrome was solving a problem
+              that the reading measure had already removed, and a bordered
+              chip in the corner reads as a floating widget rather than as
+              part of the frame. The ghost variant's hover fill is enough to
+              show it is hittable. */}
           <MarkdownModeToggle
             mode={mode}
             onChange={() => actions.handlers["view.mode"]()}
             disabled={actions.locked}
             iconOnly
-            className="border-border bg-card text-muted-foreground hover:text-foreground absolute top-3 right-3 z-10 size-9 rounded-lg border shadow-sm"
+            className="text-muted-foreground hover:text-foreground absolute top-3 right-3 z-10 size-9"
             iconClassName="size-4.5"
           />
 
@@ -299,12 +306,12 @@ const FolioWorkspaceContent = (
         {props.inspectorOpen && (
           // Below 1280px the inspector floats over the document instead of
           // taking a third column — at that width three columns leave the
-          // text ~460px, too narrow to write in. `bg-card` matches the
+          // text ~460px, too narrow to write in. `bg-background` matches the
           // document pane it covers; without it the drawer is transparent.
           <div
             className={
               props.inspectorDrawer
-                ? "bg-card absolute top-0 right-0 bottom-0 z-20 flex shadow-lg"
+                ? "bg-background absolute top-0 right-0 bottom-0 z-20 flex shadow-lg"
                 : "contents"
             }
           >

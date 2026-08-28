@@ -204,7 +204,7 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
           wrapper used to live in `FolioWorkspaceContent` and enclose the
           header and the rule as well, which is what kept all three the same
           width. */}
-      <div className="mx-auto w-full max-w-[812px] px-8 py-8">
+      <div className="mx-auto w-full max-w-[812px] px-8 py-10">
         {props.actions.locked ? (
           <FolioLockedPanel
             onUnlock={props.actions.unlock}

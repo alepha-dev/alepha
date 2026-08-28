@@ -8,6 +8,7 @@ import {
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { languages } from "@codemirror/language-data";
 import { search, searchKeymap } from "@codemirror/search";
 // `EditorState` is imported as a VALUE, not a type — `EditorState.readOnly`
 // is a facet read at runtime at the bottom of this file.
@@ -19,6 +20,8 @@ import {
   placeholder as placeholderExtension,
 } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
+
+import { fenceBlockHighlight } from "./fenceDecorations.ts";
 
 export interface MarkdownExtensionOptions {
   placeholder?: string;
@@ -83,6 +86,52 @@ const loreHighlightStyle = HighlightStyle.define([
     color: "var(--color-muted-foreground)",
     opacity: "0.6",
   },
+  // Tokens INSIDE a fenced code block. Nothing above matches them: the tags
+  // over this line are markdown's own, and a fence's contents are produced
+  // by whichever nested grammar `codeLanguages` resolved. Without these the
+  // fence parses correctly and still renders in the plain foreground, which
+  // is exactly how it looked before `codeLanguages` was mounted.
+  //
+  // ⚠️ These are the `--hljs-*` tokens from `markdown-view.css`, NOT the
+  // shadcn theme tokens, and that is the whole point: View mode paints
+  // fences with highlight.js against that exact palette, so anything else
+  // here would mean ⌘E recolours the same code. They are defined on `:root`
+  // and `.dark` in that stylesheet, so both modes resolve on their own.
+  //
+  // The first attempt used `--color-chart-*`. Those are tuned for
+  // categorical separation in a chart, not for reading dense text on a page:
+  // in dark mode they came out garish, and they disagreed with the rendered
+  // view besides.
+  { tag: [tags.keyword, tags.moduleKeyword], color: "var(--hljs-keyword)" },
+  {
+    tag: [tags.string, tags.special(tags.string), tags.regexp],
+    color: "var(--hljs-string)",
+  },
+  {
+    tag: [tags.number, tags.bool, tags.null, tags.literal],
+    color: "var(--hljs-number)",
+  },
+  {
+    tag: [tags.comment, tags.lineComment, tags.blockComment],
+    color: "var(--hljs-comment)",
+    fontStyle: "italic",
+  },
+  {
+    tag: [tags.function(tags.variableName), tags.labelName],
+    color: "var(--hljs-title)",
+  },
+  { tag: [tags.className, tags.namespace], color: "var(--hljs-title)" },
+  // Split from `className` above, against the rendered side's behaviour:
+  // highlight.js calls `Foo` in `class Foo` a `title class_` (purple) but
+  // `number` / `string` in a type annotation a `built_in` (blue). Lezer
+  // separates the same two as `className` and `typeName`, so the mapping
+  // can follow - and did not, which left every type annotation purple in
+  // Edit and blue in Preview.
+  { tag: tags.typeName, color: "var(--hljs-builtin)" },
+  { tag: [tags.tagName, tags.attributeName], color: "var(--hljs-tag)" },
+  { tag: tags.propertyName, color: "var(--hljs-builtin)" },
+  { tag: [tags.operator, tags.punctuation], color: "var(--hljs-fg)" },
+  { tag: tags.meta, color: "var(--hljs-meta)" },
 ]);
 
 const loreTheme = EditorView.theme({
@@ -188,8 +237,19 @@ export const createMarkdownExtensions = (
     // load-bearing line here for a document editor — without it a folio
     // paragraph becomes one endless horizontal line.
     EditorView.lineWrapping,
-    markdown({ base: markdownLanguage }),
+    // `codeLanguages` is the ONLY thing that hands a fence's contents to a
+    // nested grammar. Without it the whole block is one opaque text token,
+    // so it parses fine and renders in the plain foreground - which is why
+    // ```tsx was never coloured.
+    //
+    // `languages` is a registry of DESCRIPTORS, not grammars: each one
+    // dynamic-imports its parser the first time a fence of that language is
+    // seen, so the static cost is the descriptor list and a document with no
+    // fence loads nothing. Same lazy-chunk discipline the diagram layer is
+    // built on.
+    markdown({ base: markdownLanguage, codeLanguages: languages }),
     syntaxHighlighting(loreHighlightStyle),
+    fenceBlockHighlight,
     closeBrackets(),
     loreTheme,
     keymap.of([

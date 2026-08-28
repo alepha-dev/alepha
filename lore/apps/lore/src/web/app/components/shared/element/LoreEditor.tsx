@@ -111,7 +111,15 @@ const LoreEditor = (props: LoreEditorProps) => {
         viewContent={rendered}
         wikiLinkSuggestions={suggestions}
         imageUploadHandler={imageUploadHandler}
-        lineNumbers={variant === "document"}
+        // EXPLORATION (2026-08-28): off everywhere.
+        //
+        // `variant === "document"` used to turn the gutter on for folio
+        // bodies, on the argument that "the table around line 40" is a
+        // usable coordinate in a long document. That argument is real but it
+        // is an IDE affordance, and a numbered column down the left is the
+        // single strongest cue that you are looking at source rather than at
+        // a page. Nothing in the product references a folio line number.
+        lineNumbers={false}
         minHeight={props.minHeight ?? (variant === "document" ? 420 : 220)}
         variant={props.bare ? "bare" : undefined}
         onViewReady={props.onViewReady}
