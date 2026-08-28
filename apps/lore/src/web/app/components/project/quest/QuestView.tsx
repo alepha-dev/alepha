@@ -32,6 +32,7 @@ import { QUEST_STATUS_TONE } from "./questChips.ts";
 import QuestCompletionDialog from "./QuestCompletionDialog.tsx";
 import QuestDescription from "./QuestDescription.tsx";
 import QuestDiscussion from "./QuestDiscussion.tsx";
+import { QuestDueDate } from "./questDueDate.ts";
 import QuestViewCollapsibleBlock from "./QuestViewCollapsibleBlock.tsx";
 import QuestViewEditButton from "./QuestViewEditButton.tsx";
 import QuestViewObjectives from "./QuestViewObjectives.tsx";
@@ -65,6 +66,11 @@ export interface QuestViewProps {
   onClose?: () => void;
   onQuestChange?: (quest: QuestResource) => void;
 }
+
+/**
+ * Stateless, so one instance serves every mount.
+ */
+const dueDate = new QuestDueDate();
 
 const QuestView = (props: QuestViewProps) => {
   const alepha = useAlepha();
@@ -138,23 +144,20 @@ const QuestView = (props: QuestViewProps) => {
   // The due chip. Weekday only while the date is close enough for a weekday
   // to be unambiguous; past a week "Friday" could be any of several, so it
   // becomes a real date. Amber until it is overdue, then destructive.
+  //
+  // The rule itself lives in `QuestDueDate` because the board card renders
+  // the same thing: two surfaces disagreeing about whether one quest is
+  // overdue is the failure that extraction prevents.
   const dueChip = quest.dueAt
     ? (() => {
-        const due = dt.of(quest.dueAt);
-        // Both directions: a negative diff (overdue) is "within a week" only
-        // when it is less than a week ago, or a three-month-old deadline
-        // reads as "Due Monday".
-        const withinAWeek = Math.abs(due.diff(dt.now(), "day")) < 7;
-        const overdue = due.isBefore(dt.now());
+        const due = dueDate.describe(quest.dueAt, dt);
         return (
-          <Badge variant="tint" tone={overdue ? "danger" : "warning"}>
+          <Badge variant="tint" tone={due.overdue ? "danger" : "warning"}>
             <CalendarClock className="size-3" />
             {tr("quest.view.due", {
               args: [
-                String(
-                  l(quest.dueAt, { date: withinAWeek ? "dddd" : "ll" }) ?? "",
-                ),
-                String(due.fromNow()),
+                String(l(quest.dueAt, { date: due.dateFormat }) ?? ""),
+                String(dt.of(quest.dueAt).fromNow()),
               ],
             })}
           </Badge>
@@ -170,12 +173,15 @@ const QuestView = (props: QuestViewProps) => {
   /**
    * The header arrow. The breadcrumb walks *up*; this walks *back*.
    *
-   * On the card mount closing the sheet is the back: the board is still
-   * behind it, and pushing a route would navigate the page out from under
-   * the board. On the page mount `canGoBack` is read here rather than during
-   * render — this component renders on the server too, where there is no
-   * history — and falls back to the quest list for a deep link, a refresh,
-   * or an arrival from outside.
+   * `props.onClose` first, which is how each mount names its own way out:
+   * the card supplies a push to `projectKanban` (safe, and not a navigation
+   * out from under the board, because the board is that route's LAYOUT and
+   * stays mounted), and the questline dialog supplies its own dismiss.
+   *
+   * On the page mount there is no `onClose`, so `canGoBack` decides — read
+   * here rather than during render, since this component renders on the
+   * server too, where there is no history — and the quest list is the
+   * fallback for a deep link, a refresh, or an arrival from outside.
    */
   const handleBack = () => {
     if (props.onClose) {
@@ -255,6 +261,13 @@ const QuestView = (props: QuestViewProps) => {
       const updatedQuest = await questMutations.shelve(quest.id);
       updateQuest(updatedQuest);
       alepha.store.set(currentQuestAtom, updatedQuest);
+
+      // The board drops a shelved card from every column, so leaving the
+      // drawer open would strand it over a card that is no longer there.
+      // Only the `card` mount: the `dialog` mount previews a quest over an
+      // epic page that deliberately lists shelved quests, and `Questline`
+      // re-resolves the open node every render, so it simply restyles.
+      if (context === "card") props.onClose?.();
     },
   };
 
