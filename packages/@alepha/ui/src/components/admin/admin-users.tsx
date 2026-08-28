@@ -445,7 +445,7 @@ export const AdminUsers = (props: AdminUsersProps) => {
             // Defaulting joined-date hidden keeps the table compact on
             // first view; opt back in via the column picker. The
             // sortable header still works once enabled.
-            defaultHidden: false,
+            defaultHidden: true,
             cell: (u) => (
               <span className="text-muted-foreground text-xs">
                 {String(l(u.createdAt, { date: "fromNow" }))}
