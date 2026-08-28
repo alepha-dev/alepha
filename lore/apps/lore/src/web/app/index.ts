@@ -16,10 +16,10 @@ import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { currentProjectMemberAtom } from "./atoms/currentProjectMemberAtom.ts";
 import { currentQuestAtom } from "./atoms/currentQuestAtom.ts";
 import { dashboardAtom } from "./atoms/dashboardAtom.ts";
+import { kanbanFiltersAtom } from "./atoms/kanbanFiltersAtom.ts";
 import { kanbanReloadAtom } from "./atoms/kanbanReloadAtom.ts";
 import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
 import { questLogCollapsedAtom } from "./atoms/questLogCollapsedAtom.ts";
-import { questsViewAtom } from "./atoms/questsViewAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import AccountDeleteWarning from "./components/account/AccountDeleteWarning.tsx";
 import { LoreAccountRouter } from "./components/account/LoreAccountRouter.ts";
@@ -44,12 +44,12 @@ export const LoreWebApp = $module({
     currentProjectAtom,
     currentProjectMemberAtom,
     currentQuestAtom,
+    kanbanFiltersAtom,
     kanbanReloadAtom,
     // Registered here, unlike most of the `current*` atoms, so the cookie
     // value is hydrated before the first render that reads it. An
     // unregistered `persist: "cookie"` atom still persists, lazily, on its
     // first read.
-    questsViewAtom,
     questLogCollapsedAtom,
     userProjectsAtom,
     dashboardAtom,
