@@ -2,7 +2,7 @@ import * as React from "react";
 
 void React;
 
-import { round } from "./FlowchartDiagram.tsx";
+import { round } from "./DiagramLabel.tsx";
 import type { PositionedCluster } from "./layoutFlowchart.ts";
 import { DIAGRAM_FONT_SIZE } from "./textMetrics.ts";
 
