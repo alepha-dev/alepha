@@ -6,7 +6,7 @@ import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { currentAreasAtom } from "@/web/app/atoms/currentAreasAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import { QuestlineAreaColor } from "./questlineAreaColor.ts";
+import { AreaDotColor } from "../../../shared/areaColor.ts";
 import QuestlineDialog from "./QuestlineDialog.tsx";
 import { QuestlineLayout, type QuestlineNode } from "./questlineLayout.ts";
 import QuestlineStatBar from "./QuestlineStatBar.tsx";
@@ -39,7 +39,7 @@ const Questline = (props: QuestlineProps) => {
     () => new QuestlineLayout().build(props.quests),
     [props.quests],
   );
-  const areaColor = useMemo(() => new QuestlineAreaColor(areas), [areas]);
+  const areaColor = useMemo(() => new AreaDotColor(areas), [areas]);
   const nodesById = useMemo(
     () =>
       new Map(

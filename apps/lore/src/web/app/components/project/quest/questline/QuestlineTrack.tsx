@@ -1,4 +1,4 @@
-import type { QuestlineAreaColor } from "./questlineAreaColor.ts";
+import type { AreaDotColor } from "../../../shared/areaColor.ts";
 import QuestlineCard from "./QuestlineCard.tsx";
 import type {
   QuestlineNode,
@@ -7,7 +7,7 @@ import type {
 
 export interface QuestlineTrackProps {
   track: Track;
-  areaColor: QuestlineAreaColor;
+  areaColor: AreaDotColor;
   onOpen: (node: QuestlineNode) => void;
 }
 

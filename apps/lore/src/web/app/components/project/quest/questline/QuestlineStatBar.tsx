@@ -3,12 +3,12 @@ import { useMemo } from "react";
 
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import type { QuestlineAreaColor } from "./questlineAreaColor.ts";
+import type { AreaDotColor } from "../../../shared/areaColor.ts";
 import type { QuestlineState, QuestlineTrack } from "./questlineLayout.ts";
 
 export interface QuestlineStatBarProps {
   tracks: QuestlineTrack[];
-  areaColor: QuestlineAreaColor;
+  areaColor: AreaDotColor;
 }
 
 /**
