@@ -372,4 +372,74 @@ if (moduleCodeViolations.length > 0) {
   process.exit(1);
 }
 
+/**
+ * Every dev port sits in the 33xx band, and the port table knows about it.
+ *
+ * The bands are disjoint on purpose: e2e lives in 4300-4999 so a `yarn dev`
+ * left running in another terminal cannot be adopted by Playwright, and
+ * `apps/benchmark` owns 3001-3006 so a benchmark run and a dev server are not
+ * the same socket. `@alepha/devtools` sat on 3001 for exactly that collision.
+ *
+ * The table in the root CLAUDE.md is the human-readable half, and it had
+ * already drifted: `examples/totp` took 3307 and the table never heard about
+ * it. A table nobody checks documents the ports that happened to be assigned
+ * when someone last read it, which is worse than none - it is the thing a
+ * person consults before picking a "free" number.
+ */
+const PORT_TABLE_ROW = /^\|\s*`3300-3399`\s*\|(.*)\|\s*$/m;
+
+const declaredPorts = execFileSync(
+  "git",
+  ["ls-files", "apps/**/alepha.config.ts", "packages/**/vite.config.ts"],
+  { encoding: "utf8" },
+)
+  .trim()
+  .split("\n")
+  .filter(Boolean)
+  .flatMap((file) => {
+    const src = readFileSync(file, "utf8");
+    const dev = /\bdev:\s*\{[^}]*\bport:\s*(\d+)/.exec(src);
+    const server = /\bserver:\s*\{[\s\S]*?\bport:\s*(\d+)/.exec(src);
+    const port = dev?.[1] ?? server?.[1];
+    return port ? [{ file, port: Number(port) }] : [];
+  });
+
+const tableRow = PORT_TABLE_ROW.exec(readFileSync("CLAUDE.md", "utf8"))?.[1];
+const portViolations = [];
+
+if (!tableRow) {
+  portViolations.push(
+    "  CLAUDE.md\n    → the `3300-3399` row of the port table is missing",
+  );
+}
+
+for (const { file, port } of declaredPorts) {
+  if (port < 3300 || port > 3399) {
+    portViolations.push(
+      `  ${file}\n    → dev port ${port} is outside the 3300-3399 band` +
+        (port >= 3001 && port <= 3006
+          ? " (3001-3006 belongs to apps/benchmark)"
+          : ""),
+    );
+    continue;
+  }
+  if (tableRow && !tableRow.includes(String(port))) {
+    portViolations.push(
+      `  ${file}\n    → dev port ${port} is not in CLAUDE.md's port table`,
+    );
+  }
+}
+
+if (portViolations.length > 0) {
+  console.error(
+    `\n${portViolations.length} dev port violation(s):\n\n` +
+      `${portViolations.join("\n")}\n\n` +
+      "Dev servers live in 3300-3399, and the port table in the root\n" +
+      "CLAUDE.md lists every one of them. Both halves matter: the band keeps\n" +
+      "e2e and the benchmark out, and the table is what a person reads before\n" +
+      "picking the next number.\n",
+  );
+  process.exit(1);
+}
+
 console.log("conventions OK");
