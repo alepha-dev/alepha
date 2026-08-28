@@ -137,6 +137,21 @@ export const DevLogs = () => {
           )}
 
           <span style={{ marginLeft: "auto" }} />
+          {tail.dropped > 0 && (
+            /**
+             * Only when the buffer itself overflowed. The tail drains a burst
+             * across as many requests as it takes, so falling behind is not
+             * loss - this is, and it is the one case the reader cannot fix by
+             * scrolling.
+             */
+            <span
+              className="dt-mono"
+              style={{ fontSize: 10, color: "var(--dt-warn, #d08770)" }}
+              title="The log buffer is full and evicted its oldest entries. Raise MemoryDestinationProvider.options.maxEntries to keep more."
+            >
+              {tail.dropped} dropped
+            </span>
+          )}
           <span
             className="dt-mono"
             style={{ fontSize: 10, color: "var(--dt-fg-faint)" }}

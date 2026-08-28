@@ -50,8 +50,13 @@ export class DevLogStoreProvider {
 
   /**
    * Entries restored from the previous run, ending with the restart marker.
+   *
+   * Carries negative sequence numbers, so the previous run always sorts below
+   * this run's very first line however many entries either of them holds. They
+   * have none of their own: they were written by a process that is gone, and
+   * its counter went with it.
    */
-  protected history: LogEntry[] = [];
+  protected history: Array<LogEntry & { seq: number }> = [];
 
   /**
    * Lines written but not yet flushed. Appends are coalesced because a dev boot
@@ -134,8 +139,17 @@ export class DevLogStoreProvider {
   /**
    * The previous run's entries, the restart marker, then this run's.
    */
-  public entries(): Array<LogEntry & { formatted?: string }> {
+  public entries(): Array<LogEntry & { formatted?: string; seq: number }> {
     return [...this.history, ...this.memory.logs];
+  }
+
+  /**
+   * Entries the live ring has evicted, which is the only kind of loss worth
+   * telling a reader about: history is bounded on purpose, and clearing is
+   * something they did themselves.
+   */
+  public dropped(): number {
+    return this.memory.dropped;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -167,12 +181,19 @@ export class DevLogStoreProvider {
       return;
     }
 
-    this.history = kept;
     // Only once there is a previous run to separate. On a first boot the
     // divider would sit at the top of an empty page and separate nothing.
-    this.history.push(this.marker());
+    kept.push(this.marker());
 
-    await this.rewrite(this.history);
+    await this.rewrite(kept);
+
+    // Numbered after the rewrite, so the sequence never reaches the file: it
+    // describes this process's view of the buffer, and the next boot assigns
+    // its own.
+    this.history = kept.map((entry, index) => ({
+      ...entry,
+      seq: index - kept.length,
+    }));
   }
 
   /**

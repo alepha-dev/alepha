@@ -11,6 +11,11 @@ export interface LogEntry {
   data?: any;
   timestamp: number;
   stack?: string;
+  /**
+   * Position in the collector's buffer. Monotonic, never reused, and the only
+   * thing the tail cursors on - see `MemoryDestinationProvider`.
+   */
+  seq: number;
 }
 
 export interface LogFilters {
@@ -35,6 +40,11 @@ export interface UseLogTailResult {
    */
   pending: number;
   ratePerSecond: number;
+  /**
+   * Entries the server-side buffer evicted. Surfaced as a marker, because it
+   * is the one kind of loss the tail cannot make up for by polling harder.
+   */
+  dropped: number;
   error?: string;
   flush: () => void;
   clear: () => void;
@@ -43,6 +53,15 @@ export interface UseLogTailResult {
 
 const MAX_BUFFER = 2000;
 const POLL_MS = 1000;
+/**
+ * How many catch-up requests a single tick may make.
+ *
+ * Bounds one tick at `8 * limit` entries, so a firehose cannot keep the loop
+ * running past the next tick, while still draining an ordinary burst well
+ * inside a second. Stopping early costs nothing: the cursor is a sequence
+ * number, so the following tick resumes exactly where this one stopped.
+ */
+const MAX_CATCHUP_ROUNDS = 8;
 
 /**
  * A live tail over the devtools log buffer.
@@ -50,8 +69,17 @@ const POLL_MS = 1000;
  * This is cursor-based incremental fetch rather than a real event stream:
  * `$sse` is fixed to POST under the `/api` prefix, which would both squat the
  * inspected application's own API namespace and rule out `EventSource`. Polling
- * `?since=<cursor>` costs one small request per second and gives the same
+ * `?after=<cursor>` costs one small request per second and gives the same
  * behaviour — follow/pause, arrival rate, a pending count while paused.
+ *
+ * The cursor is a sequence number, not a timestamp. It used to be the newest
+ * timestamp seen, sent back as `since = t + 1` so the server's `>=` would not
+ * re-deliver it — which meant every entry sharing that millisecond was skipped
+ * for good, and a dev boot logs dozens per millisecond. A page was capped at
+ * 200 newest-first on top of that, so the rest of a burst fell behind a cursor
+ * that had already moved past it. Both are closed: the server hands back the
+ * oldest unseen page and says whether more are waiting, and this hook keeps
+ * asking until they are not.
  */
 export const useLogTail = (filters: LogFilters): UseLogTailResult => {
   const http = useInject(HttpClient);
@@ -60,43 +88,81 @@ export const useLogTail = (filters: LogFilters): UseLogTailResult => {
   const [following, setFollowing] = useState(true);
   const [pending, setPending] = useState(0);
   const [ratePerSecond, setRate] = useState(0);
+  const [dropped, setDropped] = useState(0);
   const [error, setError] = useState<string | undefined>();
 
-  const cursor = useRef(0);
+  // `undefined` rather than 0, because 0 is a real sequence number: the very
+  // first line this process logged.
+  const cursor = useRef<number | undefined>(undefined);
   const held = useRef<LogEntry[]>([]);
   const recent = useRef<number[]>([]);
   const followingRef = useRef(following);
   followingRef.current = following;
 
   const buildQuery = useCallback(
-    (since?: number) => {
+    (after?: number) => {
       const q = new URLSearchParams();
       if (filters.level) q.set("level", filters.level);
       if (filters.type) q.set("type", filters.type);
       if (filters.module) q.set("module", filters.module);
       if (filters.search) q.set("search", filters.search);
       if (filters.slowerThan) q.set("slowerThan", filters.slowerThan);
-      if (since) q.set("since", String(since + 1));
-      q.set("limit", since ? "200" : "300");
+      if (after !== undefined) q.set("after", String(after));
+      q.set("limit", after !== undefined ? "200" : "300");
       return q.toString();
     },
     [filters],
   );
 
+  /**
+   * Move the cursor past everything in a page. Highest sequence wins, so it
+   * never goes backwards however the page happened to be ordered.
+   */
+  const advance = useCallback((page: LogEntry[]) => {
+    for (const entry of page) {
+      if (typeof entry.seq !== "number") continue;
+      if (cursor.current === undefined || entry.seq > cursor.current) {
+        cursor.current = entry.seq;
+      }
+    }
+  }, []);
+
   const poll = useCallback(
     async (reset: boolean) => {
       if (document.visibilityState !== "visible" && !reset) return;
       try {
-        const res = await http.fetch(
-          `/__devtools/api/logs?${buildQuery(reset ? undefined : cursor.current)}`,
-        );
-        const data = res.data as any;
-        const incoming: LogEntry[] = data?.logs ?? [];
-        setTotal(data?.total ?? 0);
+        // Dropping the cursor is all a reset is: with none, the route hands
+        // back the newest window and says there is nothing more, so the loop
+        // below runs exactly once.
+        if (reset) cursor.current = undefined;
+
+        // Otherwise keep asking while the route says there is more, rather
+        // than waiting for the next tick. One request per tick is what
+        // truncated bursts: a page is capped, so everything past the cap
+        // needed another request now, not a second later behind a cursor that
+        // had already moved past it.
+        const incoming: LogEntry[] = [];
+        let total = 0;
+        let evicted = 0;
+        for (let round = 0; round < MAX_CATCHUP_ROUNDS; round++) {
+          const res = await http.fetch(
+            `/__devtools/api/logs?${buildQuery(cursor.current)}`,
+          );
+          const data = res.data as any;
+          const page: LogEntry[] = data?.logs ?? [];
+          total = data?.total ?? 0;
+          evicted = data?.dropped ?? 0;
+          // Pages arrive oldest first and are newest-first within themselves,
+          // so each one goes in front of what is already collected.
+          incoming.unshift(...page);
+          advance(page);
+          if (!data?.hasMore || page.length === 0) break;
+        }
+        setTotal(total);
+        setDropped(evicted);
         setError(undefined);
 
         if (reset) {
-          cursor.current = incoming[0]?.timestamp ?? 0;
           held.current = [];
           setPending(0);
           setEntries(incoming);
@@ -109,11 +175,6 @@ export const useLogTail = (filters: LogFilters): UseLogTailResult => {
           setRate(0);
           return;
         }
-
-        cursor.current = Math.max(
-          cursor.current,
-          ...incoming.map((e) => e.timestamp),
-        );
 
         recent.current.push(incoming.length);
         if (recent.current.length > 5) recent.current.shift();
@@ -133,7 +194,7 @@ export const useLogTail = (filters: LogFilters): UseLogTailResult => {
         setError(e?.message ?? "Failed to load logs");
       }
     },
-    [http, buildQuery],
+    [http, buildQuery, advance],
   );
 
   // Filters changing invalidates the cursor: a widened filter exposes older
@@ -167,6 +228,7 @@ export const useLogTail = (filters: LogFilters): UseLogTailResult => {
     setFollowing,
     pending,
     ratePerSecond,
+    dropped,
     error,
     flush,
     clear,

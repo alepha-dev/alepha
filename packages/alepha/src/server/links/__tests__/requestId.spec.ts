@@ -1,8 +1,8 @@
 import { Alepha } from "alepha";
 import {
   LogDestinationProvider,
-  type LogEntry,
   MemoryDestinationProvider,
+  type MemoryLogEntry,
 } from "alepha/logger";
 import { $action, ServerLoggerProvider, ServerProvider } from "alepha/server";
 import { describe, expect, it } from "vitest";
@@ -19,7 +19,7 @@ describe("requestId", () => {
       });
     }
 
-    const entries = [] as Array<LogEntry & { formatted: string }>;
+    const entries = [] as MemoryLogEntry[];
 
     class SharedMemoryDestinationProvider extends MemoryDestinationProvider {
       entries = entries;

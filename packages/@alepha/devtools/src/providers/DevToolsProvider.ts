@@ -179,7 +179,15 @@ export class DevToolsProvider {
         type: z.text().optional(),
         module: z.text().optional(),
         search: z.text().optional(),
-        since: z.text().optional(),
+        /**
+         * Sequence cursor: return only entries numbered strictly above this.
+         *
+         * A sequence rather than a timestamp because a millisecond holds many
+         * entries, and this used to be `since=<ms>` compared with `>=`, which
+         * the client had to send as `lastSeen + 1` to avoid re-delivering what
+         * it already had - dropping every entry that shared that millisecond.
+         */
+        after: z.text().optional(),
         limit: z.text().optional(),
         offset: z.text().optional(),
         /**
@@ -193,6 +201,19 @@ export class DevToolsProvider {
       response: z.object({
         logs: z.array(z.any()),
         total: z.integer(),
+        /**
+         * More entries match the cursor than fit in this page. The tail polls
+         * again straight away rather than waiting for its next tick, which is
+         * what keeps a burst from being truncated to the newest `limit`.
+         */
+        hasMore: z.boolean(),
+        /**
+         * Entries the buffer itself evicted. Not "entries you missed": a
+         * caught-up reader that never falls behind still sees this climb on a
+         * busy day, and the view says so rather than implying a gap in what it
+         * is showing.
+         */
+        dropped: z.integer(),
       }),
     },
     handler: ({ query }) => {
@@ -259,23 +280,39 @@ export class DevToolsProvider {
         });
       }
 
-      if (query.since) {
-        const since = Number(query.since);
-        if (!Number.isNaN(since)) {
-          entries = entries.filter((e) => e.timestamp >= since);
-        }
+      const after = query.after === undefined ? undefined : Number(query.after);
+      const tailing = after !== undefined && !Number.isNaN(after);
+      if (tailing) {
+        entries = entries.filter((e) => e.seq > after);
       }
 
       const total = entries.length;
 
-      // Reverse so newest first
-      entries = entries.toReversed();
-
       const offset = query.offset ? Number(query.offset) : 0;
       const limit = query.limit ? Number(query.limit) : 100;
-      entries = entries.slice(offset, offset + limit);
 
-      return { logs: entries.map((e) => this.stripAnsiEntry(e)), total };
+      let hasMore = false;
+      if (tailing) {
+        // Catch-up: the OLDEST unseen page, not the newest.
+        //
+        // Reversing first and slicing after is what silently skipped bursts. A
+        // thousand entries with `limit=200` shipped the newest 200 and left the
+        // client's cursor past the other 800, which no later poll could ask
+        // for: the cursor only moves forward. Handing back the oldest page and
+        // saying `hasMore` lets the tail walk the whole burst in order.
+        hasMore = entries.length > limit;
+        entries = entries.slice(0, limit).toReversed();
+      } else {
+        // First load: the newest window, which is what a tail opens on.
+        entries = entries.toReversed().slice(offset, offset + limit);
+      }
+
+      return {
+        logs: entries.map((e) => this.stripAnsiEntry(e)),
+        total,
+        hasMore,
+        dropped: this.logStore.dropped(),
+      };
     },
   });
 
