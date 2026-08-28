@@ -363,6 +363,11 @@ export class OrderService {
    * Mark items prepared. Optional step — a shop that packs and posts in one go
    * can move straight from `paid` to `shipped`.
    */
+  /**
+   * @public No caller in this package, and there should not be one: when an
+   * order is fulfilled is a question only the application can answer. Covered
+   * by `orderLifecycle.spec.ts` and `partialRefund.spec.ts`.
+   */
   public async markFulfilled(id: string): Promise<OrderEntity> {
     // `partially_refunded` too: a goodwill refund is a price adjustment, and
     // the parcel it applies to still has to be packed.

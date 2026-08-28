@@ -223,6 +223,11 @@ export class StockService {
     }
   }
 
+  /**
+   * @public A read for applications and for tests - nothing in this package
+   * needs it, because the services that create holds already hold the rows.
+   * Covered by `stockReservation.spec.ts`.
+   */
   public async reservationsOf(
     orderId: string,
   ): Promise<StockReservationEntity[]> {

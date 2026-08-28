@@ -84,6 +84,12 @@ export class VatCalculator {
   /**
    * The rate carrying the largest amount — what a one-line summary shows.
    */
+  /**
+   * @public Called by applications, not from this package. `club` alone uses
+   * it in four services to stamp an invoice line's headline rate. It was
+   * reported as unused by the 2026-08-23 audit, which read this repository
+   * only - deleting it would have broken a downstream app.
+   */
   public dominantRateBps(buckets: VatBucket[]): number | undefined {
     let best: VatBucket | undefined;
     for (const bucket of buckets) {
@@ -125,6 +131,10 @@ export class VatCalculator {
    *
    * Ported from Club's caisse together with the rest of this class.
    */
+  /**
+   * @public Application surface, like {@link dominantRateBps}: `club`'s
+   * SaleService splits VAT across payment legs with it in three places.
+   */
   public apportion(buckets: VatBucket[], amounts: number[]): VatBucket[][] {
     const total = amounts.reduce((sum, amount) => sum + amount, 0);
     if (total <= 0 || amounts.length === 0) {
@@ -155,6 +165,10 @@ export class VatCalculator {
 
   /**
    * Merge several ventilations into one. Used to aggregate a period.
+   */
+  /**
+   * @public Application surface, like {@link dominantRateBps}: `club`'s
+   * FiscalClosureService folds a day's VAT groups back together with it.
    */
   public merge(groups: VatBucket[][]): VatBucket[] {
     const byRate = new Map<number, VatBucket>();

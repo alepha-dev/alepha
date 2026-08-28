@@ -35,6 +35,15 @@ export interface CatalogQuery {
   page?: number;
   sort?: string;
   kind?: string;
+  /**
+   * Narrow to one category.
+   *
+   * `products.categoryId` was writable through {@link CreateProduct} and read
+   * by nothing, so a shop could file its catalogue and then not browse it.
+   * Categories are a plain id here on purpose - there is no category entity,
+   * and the application owns whatever it points at.
+   */
+  categoryId?: string;
 }
 
 /**
@@ -94,6 +103,9 @@ export class CatalogService {
     if (query.kind) {
       where.kind = { eq: query.kind };
     }
+    if (query.categoryId) {
+      where.categoryId = { eq: query.categoryId };
+    }
     return this.repo.paginate({ sort: "name", ...query }, { where });
   }
 
@@ -107,6 +119,9 @@ export class CatalogService {
     const where = this.repo.createQueryWhere();
     if (query.kind) {
       where.kind = { eq: query.kind };
+    }
+    if (query.categoryId) {
+      where.categoryId = { eq: query.categoryId };
     }
     // `count: true` so a back office shows "6 of 6" rather than "6 of ?". The
     // public listing skips it deliberately: a storefront never renders a total,

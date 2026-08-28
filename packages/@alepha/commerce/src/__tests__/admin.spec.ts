@@ -359,3 +359,56 @@ describe("admin orders", () => {
     expect(items[0]!.name).toBe("Bague Aurore");
   });
 });
+
+// ---------------------------------------------------------------------------
+
+/**
+ * `products.categoryId` was writable and read by nothing: a shop could file
+ * its catalogue and then not browse it. Both listings filter on it now.
+ */
+describe("catalog category filter", () => {
+  it("narrows the public and back-office listings to one category", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const rings = randomUUID();
+    const necklaces = randomUUID();
+
+    const ring = await ctx.catalog.create({
+      slug: `ring-${randomUUID()}`,
+      name: "Bague Aurore",
+      price: 8900,
+      published: true,
+      categoryId: rings,
+    });
+    await ctx.catalog.create({
+      slug: `necklace-${randomUUID()}`,
+      name: "Collier Iris",
+      price: 12900,
+      published: true,
+      categoryId: necklaces,
+    });
+    // Unpublished, so only the back-office listing can see it at all.
+    const draft = await ctx.catalog.create({
+      slug: `ring-draft-${randomUUID()}`,
+      name: "Bague brouillon",
+      price: 9900,
+      published: false,
+      categoryId: rings,
+    });
+
+    const published = await ctx.catalog.list({ categoryId: rings });
+    expect(published.content.map((p) => p.id)).toEqual([ring.id]);
+
+    const all = await ctx.catalog.listAll({ categoryId: rings });
+    expect(all.content.map((p) => p.id).sort()).toEqual(
+      [ring.id, draft.id].sort(),
+    );
+
+    // And an unfiltered listing still sees both categories.
+    const everything = await ctx.catalog.list();
+    expect(everything.content.length).toBeGreaterThanOrEqual(2);
+
+    await ctx.alepha.stop();
+  });
+});

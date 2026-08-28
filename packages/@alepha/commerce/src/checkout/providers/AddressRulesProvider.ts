@@ -117,10 +117,6 @@ export class AddressRulesProvider {
     return value.trim().toUpperCase().replace(/\s+/g, " ");
   }
 
-  public isSupported(country: string): boolean {
-    return country.toUpperCase() in this.rules();
-  }
-
   public countries(): string[] {
     return Object.keys(this.rules()).sort();
   }

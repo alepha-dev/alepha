@@ -139,6 +139,11 @@ export class ShippingService {
     return this.zoneRepo.findMany({ orderBy: "priority" });
   }
 
+  /**
+   * @public A back-office read: which rates a zone offers. Nothing in this
+   * package calls it - checkout goes through {@link quoteFor}, which picks
+   * one rate rather than listing them.
+   */
   public async listRates(zoneId: string): Promise<ShippingRateEntity[]> {
     return this.rateRepo.findMany({ where: { zoneId: { eq: zoneId } } });
   }
