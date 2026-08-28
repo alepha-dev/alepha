@@ -127,6 +127,13 @@ expect(fs.wasWrittenMatching("/path/report.txt", /summary/)).toBe(true);
 expect(fs.wasDeleted("/path/temp.txt")).toBe(true);
 ```
 
+A call is recorded only once it succeeded, so a write that threw is not
+reported as written. `wasWrittenMatching` reads the file's **final**
+content: a path written twice matches on the second write, which is what
+you want when a generator emits a placeholder before the real thing. Use
+`wasEverWrittenMatching` for the rarer case where an intermediate write is
+the subject.
+
 ### Example: Shell Commands
 
 ```typescript

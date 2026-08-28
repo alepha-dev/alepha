@@ -327,10 +327,20 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
 
   /**
    * Remove a file or directory from memory.
+   *
+   * The call is recorded only once the removal has actually happened. A call
+   * that threw is not something the code under test *did*, and `wasDeleted()`
+   * reporting it as done sent tests green on a deletion that never occurred.
    */
   public async rm(path: string, options?: RmOptions): Promise<void> {
+    await this.removeEntry(path, options);
     this.rmCalls.push({ path, options });
+  }
 
+  protected async removeEntry(
+    path: string,
+    options?: RmOptions,
+  ): Promise<void> {
     const normalized = this.normalizePath(path);
     const isFile = this.files.has(normalized);
     const isDirectory = !isFile && this.isExistingDirectory(normalized);
@@ -430,8 +440,15 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
    * unless the caller explicitly opts into strictness.
    */
   public async mkdir(path: string, options?: MkdirOptions): Promise<void> {
+    await this.makeDirectory(path, options);
+    // Recorded on success only — see `rm`.
     this.mkdirCalls.push({ path, options });
+  }
 
+  protected async makeDirectory(
+    path: string,
+    options?: MkdirOptions,
+  ): Promise<void> {
     if (this.mkdirError) {
       throw this.mkdirError;
     }
@@ -631,8 +648,12 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
             ? Buffer.from(data)
             : Buffer.from(await data.arrayBuffer());
 
+    await this.storeFile(path, buffer);
+    // Recorded on success only — see `rm`.
     this.writeFileCalls.push({ path, data: buffer.toString("utf-8") });
+  }
 
+  protected async storeFile(path: string, buffer: Buffer): Promise<void> {
     if (this.writeFileError) {
       throw this.writeFileError;
     }
@@ -653,8 +674,12 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
           ? data
           : Buffer.from(data);
 
+    await this.appendToFile(path, buffer);
+    // Recorded on success only — see `rm`.
     this.appendFileCalls.push({ path, data: buffer.toString("utf-8") });
+  }
 
+  protected async appendToFile(path: string, buffer: Buffer): Promise<void> {
     if (this.writeFileError) {
       throw this.writeFileError;
     }
@@ -714,7 +739,13 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   }
 
   /**
-   * Check if a file was written with content matching a pattern.
+   * Check that the file's FINAL content matches a pattern.
+   *
+   * The last write is the one that counts: a scaffolder that writes a
+   * placeholder and then rewrites the real thing left this asserting on the
+   * placeholder, so a test could pass on content the run had already thrown
+   * away — or fail on content it had just fixed. Use
+   * {@link wasEverWrittenMatching} when the intermediate writes are the point.
    *
    * @example
    * ```typescript
@@ -722,8 +753,26 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
    * ```
    */
   public wasWrittenMatching(path: string, pattern: RegExp): boolean {
-    const call = this.writeFileCalls.find((c) => c.path === path);
+    const call = this.writeFileCalls.findLast((c) => c.path === path);
     return call ? pattern.test(call.data) : false;
+  }
+
+  /**
+   * Check that ANY write to the file matched a pattern, final or not.
+   *
+   * For the rarer assertion where the history is the subject: that a
+   * migration wrote the intermediate form at all, that a placeholder was
+   * emitted before the real content replaced it.
+   *
+   * @example
+   * ```typescript
+   * expect(fs.wasEverWrittenMatching("/project/app.ts", /TODO/)).toBe(true);
+   * ```
+   */
+  public wasEverWrittenMatching(path: string, pattern: RegExp): boolean {
+    return this.writeFileCalls.some(
+      (c) => c.path === path && pattern.test(c.data),
+    );
   }
 
   /**

@@ -349,6 +349,39 @@ describe("MemoryFileSystemProvider", () => {
       expect(fs.wasDeleted("/other.txt")).toBe(false);
     });
 
+    it("wasWrittenMatching reads the LAST write, not the first", async () => {
+      // A scaffolder that writes a placeholder and then rewrites the real
+      // thing left this asserting on the placeholder: green on content the
+      // run had already thrown away, red on content it had just fixed.
+      await fs.writeFile("/app.ts", "// TODO: generated");
+      await fs.writeFile("/app.ts", "export const app = 1;");
+
+      expect(fs.wasWrittenMatching("/app.ts", /export const app/)).toBe(true);
+      expect(fs.wasWrittenMatching("/app.ts", /TODO/)).toBe(false);
+
+      // ...and the history is still reachable when it is the subject.
+      expect(fs.wasEverWrittenMatching("/app.ts", /TODO/)).toBe(true);
+    });
+
+    it("a write that threw is not reported as written", async () => {
+      fs.writeFileError = new Error("disk full");
+      await expect(fs.writeFile("/never.txt", "data")).rejects.toThrow(
+        "disk full",
+      );
+
+      expect(fs.wasWritten("/never.txt")).toBe(false);
+    });
+
+    it("a mkdir that threw is not reported, and neither is a failed rm", async () => {
+      fs.mkdirError = new Error("mkdir failed");
+      await expect(fs.mkdir("/dir")).rejects.toThrow("mkdir failed");
+      expect(fs.mkdirCalls).toHaveLength(0);
+
+      fs.mkdirError = null;
+      await expect(fs.rm("/missing.txt")).rejects.toThrow("ENOENT");
+      expect(fs.wasDeleted("/missing.txt")).toBe(false);
+    });
+
     it("getFileContent should return string content", async () => {
       await fs.writeFile("/test.txt", "hello");
       expect(fs.getFileContent("/test.txt")).toBe("hello");
