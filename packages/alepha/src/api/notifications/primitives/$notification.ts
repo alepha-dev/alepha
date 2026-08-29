@@ -171,6 +171,7 @@ export class NotificationPrimitive<T extends ZObject> extends Primitive<
           scheduledAt: options.scheduledAt,
           delay: options.delay,
           key: this.channelKey(options.key, type),
+          inline: options.inline,
         },
       );
     }
@@ -270,6 +271,22 @@ export interface NotificationPushOptions<T extends ZObject> {
    * an sms does not dedupe one against the other.
    */
   key?: string;
+  /**
+   * Send inline and wait for it: the promise resolves once the provider has
+   * accepted the message, and rejects if it refused. Nothing retries a send
+   * that failed this way.
+   *
+   * For a time-limited payload this is the difference between the user
+   * learning immediately and the user learning nothing. `codeExpiration`
+   * defaults to 300 s while the job sweep runs every 900 s, so a retried
+   * verification code is guaranteed to arrive after it expired.
+   *
+   * ⚠️ **A template with both channels blocks on both, in sequence.** And a
+   * send addressed to somebody other than the caller must not use this: the
+   * response time then tells an unauthenticated visitor whether the account
+   * existed. See {@link JobPrimitiveOptions.inline}.
+   */
+  inline?: boolean;
   /**
    * Files to attach, as `{ storage, fileId }` references into a `$storage`.
    * They are read at send time, never carried in the queued payload.

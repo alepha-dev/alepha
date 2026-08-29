@@ -483,7 +483,14 @@ export class SessionService {
             },
           );
 
-          // Notify user about account lockout
+          // Notify user about account lockout.
+          //
+          // Deliberately NOT `inline`, and it is not an oversight. This mail
+          // goes to the account owner, who at this point is very likely not
+          // the person driving the request: the whole reason we are here is
+          // repeated failed passwords. Blocking the login response on it
+          // turns response time into an account-enumeration oracle for the
+          // attacker, and hands them a way to slow the endpoint down.
           if (user.email) {
             const lockoutMinutes = Math.round(loginRateLimit.windowMs / 60_000);
             await this.userNotifications(userRealmName)?.accountLockout.push({

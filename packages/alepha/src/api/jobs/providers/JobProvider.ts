@@ -59,6 +59,23 @@ export interface PushOptions {
   triggeredBy?: string;
   triggeredByName?: string;
   /**
+   * Run this execution inline and wait for it, overriding the job's own
+   * `inline` default. See {@link JobPrimitiveOptions.inline} for the contract.
+   *
+   * **Per-push is the form that matters**, not the job-level default. One
+   * shared job usually sits behind many call sites - `sendNotification` is
+   * the single job behind every notification - so a job-only flag would make
+   * all of them block. Whether you can afford to wait is a property of the
+   * call site, not of the job or of the template.
+   *
+   * On a job that declares `retry`, passing this means **this execution does
+   * not retry**: it runs once, goes terminal on failure, and throws. That is
+   * what lets `sendNotification` keep `retry: 3` for the asynchronous
+   * majority while an auth call site opts one send out of the retry
+   * machinery.
+   */
+  inline?: boolean;
+  /**
    * Owning tenant for this execution. Persisted on the row so tenant-facing
    * views (e.g. the notification admin list) can org-scope it. Plumbed through
    * verbatim — callers in a tenant context pass it explicitly (the resolved
@@ -260,6 +277,16 @@ export class JobProvider {
     if (!options.cron && !options.schema) {
       throw new AlephaError(
         `Job '${name}' must declare either 'cron' (for recurring tasks) or 'schema' (for queue-mode tasks).`,
+      );
+    }
+    if (options.inline && options.cron) {
+      throw new AlephaError(
+        `Job '${name}' declares both 'inline' and 'cron'. A cron tick has no caller to block, so there is nobody for 'inline' to hand the failure to. Drop 'inline'.`,
+      );
+    }
+    if (options.inline && options.retry) {
+      throw new AlephaError(
+        `Job '${name}' declares both 'inline' and 'retry'. "Retry ${options.retry.retries} time(s)" and "tell the caller now" cannot both be the default. Keep 'retry' on the job and pass 'inline' per push at the call sites that cannot wait.`,
       );
     }
 
@@ -719,11 +746,23 @@ export class JobProvider {
     const opts = registration.options;
     const validated = this.alepha.codec.validate(opts.schema!, payload);
 
+    // Same precedence as `priority`: the call site wins, the job's own
+    // declaration is the default. See `PushOptions.inline` for why per-push
+    // is the form that carries the weight.
+    const inline = options?.inline ?? opts.inline ?? false;
+
     const priority =
       PRIORITY_MAP[options?.priority ?? opts.priority ?? "normal"];
-    const maxAttempts = (opts.retry?.retries ?? 0) + 1;
+    // A per-push `inline` on a job that declares `retry` means "not this
+    // execution": one attempt, terminal on failure, and the caller is told.
+    const maxAttempts = inline ? 1 : (opts.retry?.retries ?? 0) + 1;
 
     const isDelayed = options?.delay || options?.scheduledAt;
+    if (inline && isDelayed) {
+      throw new AlephaError(
+        `Job '${name}' was pushed with both 'inline' and a delay. 'inline' means run now and hand the caller the outcome; a delayed row has no caller left to hand it to. Pick one.`,
+      );
+    }
     const status: JobStatus = isDelayed ? "scheduled" : "pending";
 
     let scheduledAt: string | undefined;
@@ -762,7 +801,9 @@ export class JobProvider {
         // Lost the race to a concurrent same-key push — the winner dispatches.
         return executionId;
       }
-      if (status === "pending") {
+      if (inline) {
+        await this.runInline(registration, executionId);
+      } else if (status === "pending") {
         await this.dispatch(name, executionId);
       } else if (status === "scheduled" && scheduledAt) {
         this.scheduleOptimisticDispatch(name, executionId, scheduledAt);
@@ -782,12 +823,43 @@ export class JobProvider {
       organizationId: options?.organizationId,
     });
 
-    if (status === "pending") {
+    if (inline) {
+      // Deliberately NOT through `JobDispatcher`: the whole point is that
+      // behaviour is identical with and without `AlephaApiJobsQueue`, and a
+      // queue send is exactly the hand-off `inline` exists to skip.
+      await this.runInline(registration, execution.id);
+    } else if (status === "pending") {
       await this.dispatch(name, execution.id);
     } else if (status === "scheduled" && scheduledAt) {
       this.scheduleOptimisticDispatch(name, execution.id, scheduledAt);
     }
     return execution.id;
+  }
+
+  /**
+   * Run one execution here and now, and let its failure reach the caller.
+   *
+   * `processExecution` cannot be used for this: `processQueueExecution`
+   * catches the handler error, routes it to `handleFailure` and returns
+   * normally, so `await processExecution(...)` resolves happily on a failed
+   * send. The `inline` flag threaded through it swaps that for a terminal
+   * write plus a rethrow.
+   *
+   * Still tracked in `inFlight`, so shutdown drains it like any other run.
+   */
+  protected async runInline(
+    registration: JobRuntimeRegistration,
+    executionId: string,
+  ): Promise<void> {
+    const promise = this.processQueueExecution(registration, executionId, {
+      inline: true,
+    });
+    this.inFlight.add(promise);
+    try {
+      await promise;
+    } finally {
+      this.inFlight.delete(promise);
+    }
   }
 
   /**
@@ -929,6 +1001,11 @@ export class JobProvider {
       );
     }
     const opts = registration.options;
+    if (opts.inline) {
+      throw new AlephaError(
+        `Job '${name}' declares 'inline', which pushMany cannot honour: a fan-out over a roster would block the caller on every send, one after another. Push the items individually if each really has to be waited on.`,
+      );
+    }
     const maxAttempts = (opts.retry?.retries ?? 0) + 1;
 
     const keyed: PushManyItem[] = [];
@@ -1162,10 +1239,16 @@ export class JobProvider {
   protected async processQueueExecution(
     registration: JobRuntimeRegistration,
     executionId: string,
+    /**
+     * `inline: true` changes exactly two things about a run, and both are
+     * about who learns that it failed. See {@link runInline}.
+     */
+    mode?: { inline?: boolean },
   ): Promise<void> {
     const jobName = registration.name;
     const opts = registration.options;
     const record = opts.record ?? "error";
+    const inline = mode?.inline === true;
 
     const execution = await this.claim(executionId);
     if (!execution) {
@@ -1259,8 +1342,43 @@ export class JobProvider {
                   { name: jobName, executionId },
                   { catch: true },
                 );
+                // A resolved `push({ inline: true })` claims the handler ran
+                // to completion. A cancelled run did not, so the caller has
+                // to hear about it rather than read success into silence.
+                if (inline) throw err;
                 return;
               }
+            }
+
+            if (inline) {
+              // **The rule that decides whether this flag achieves
+              // anything**: an inline failure writes a TERMINAL row, never
+              // `scheduled`. Left scheduled, the sweep would deliver the
+              // expired payload a quarter of an hour later and `inline`
+              // would have bought nothing but a synchronous error stapled
+              // onto the identical broken behaviour.
+              //
+              // Written here rather than through `handleFailure`, which
+              // derives its budget from `registration.options.retry` and so
+              // cannot see that THIS execution opted out of retrying.
+              await this.guardedUpdate(
+                executionId,
+                ["running"],
+                {
+                  status: "error",
+                  error: err.message,
+                  completedAt: this.dt.nowISOString(),
+                  key: null,
+                  logs: this.logBuffer.snapshot(),
+                },
+                "inline-failure",
+              );
+              await this.alepha.events.emit(
+                "job:error",
+                { name: jobName, error: err, executionId },
+                { catch: true },
+              );
+              throw err;
             }
 
             await this.handleFailure(

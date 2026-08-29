@@ -676,3 +676,218 @@ describe("$job — the sweep is bounded", () => {
     expect((await app.executions.findById(id))?.status).toBe("error");
   });
 });
+
+// -----------------------------------------------------------------------------------------------------------------
+
+describe("$job — inline", () => {
+  for (const queued of [false, true]) {
+    const label = queued ? "with AlephaApiJobsQueue" : "in direct mode";
+
+    it(`resolves only once the handler has finished, ${label}`, async ({
+      expect,
+    }) => {
+      let ran = false;
+      let finished = false;
+      const alepha = Alepha.create()
+        .with(AlephaOrmPostgres)
+        .with(AlephaApiJobs);
+      if (queued) alepha.with(AlephaApiJobsQueue);
+
+      class App {
+        executions = $repository(jobExecutionEntity);
+        work = $job({
+          schema: z.object({ v: z.integer() }),
+          record: "all",
+          keep: { ok: 0 },
+          handler: async () => {
+            ran = true;
+            await sleep(30);
+            finished = true;
+          },
+        });
+      }
+
+      const app = alepha.with(App).inject(App);
+      await alepha.start();
+
+      const id = await app.work.push({ v: 1 }, { inline: true });
+
+      // Not "started". Finished.
+      expect(ran).toBe(true);
+      expect(finished).toBe(true);
+
+      const row = await app.executions.findById(id);
+      expect(row?.status).toBe("ok");
+    });
+
+    it(`rejects when the handler fails, and leaves a terminal row, ${label}`, async ({
+      expect,
+    }) => {
+      const alepha = Alepha.create()
+        .with({ provide: JobProvider, use: TestJobProvider })
+        .with(AlephaOrmPostgres)
+        .with(AlephaApiJobs);
+      if (queued) alepha.with(AlephaApiJobsQueue);
+
+      let calls = 0;
+      class App {
+        executions = $repository(jobExecutionEntity);
+        work = $job({
+          schema: z.object({ v: z.integer() }),
+          handler: async () => {
+            calls++;
+            throw new Error("provider refused");
+          },
+        });
+      }
+
+      const app = alepha.with(App).inject(App);
+      const jobs = alepha.inject(JobProvider) as TestJobProvider;
+      await alepha.start();
+
+      await expect(
+        app.work.push({ v: 1 }, { inline: true }),
+      ).rejects.toThrowError("provider refused");
+
+      const rows = await app.executions.findMany({
+        where: { jobName: { eq: "App.work" } },
+      });
+      expect(rows).toHaveLength(1);
+      // `error`, never `scheduled`. This is the whole quest: a `scheduled`
+      // row would have the sweep deliver the expired payload later anyway.
+      expect(rows[0].status).toBe("error");
+
+      // And the sweep really does leave it alone.
+      await jobs.testSweep();
+      await sleep(50);
+      expect(calls).toBe(1);
+      expect((await app.executions.findById(rows[0].id))?.status).toBe("error");
+    });
+  }
+
+  it("a per-push inline overrides a declared retry: one attempt, then terminal", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with({ provide: JobProvider, use: TestJobProvider })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs);
+
+    let calls = 0;
+    class RetryingApp {
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        schema: z.object({ v: z.integer() }),
+        // Kept for the asynchronous majority of this job's callers.
+        retry: { retries: 3 },
+        handler: async () => {
+          calls++;
+          throw new Error("nope");
+        },
+      });
+    }
+
+    const app = alepha.with(RetryingApp).inject(RetryingApp);
+    const jobs = alepha.inject(JobProvider) as TestJobProvider;
+    await alepha.start();
+
+    await expect(
+      app.work.push({ v: 1 }, { inline: true }),
+    ).rejects.toThrowError("nope");
+
+    const rows = await app.executions.findMany({
+      where: { jobName: { eq: "RetryingApp.work" } },
+    });
+    expect(rows[0].status).toBe("error");
+    expect(rows[0].maxAttempts).toBe(1);
+
+    await jobs.testSweep();
+    await sleep(50);
+    expect(calls).toBe(1);
+  });
+
+  it("a normal push on the same job still retries", async ({ expect }) => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaApiJobs);
+
+    class RetryingApp {
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        schema: z.object({ v: z.integer() }),
+        retry: { retries: 3 },
+        handler: async () => {
+          throw new Error("nope");
+        },
+      });
+    }
+
+    const app = alepha.with(RetryingApp).inject(RetryingApp);
+    await alepha.start();
+
+    const id = await app.work.push({ v: 1 });
+    const row = await waitFor(
+      () => app.executions.findById(id),
+      (r) => r?.status === "scheduled",
+      { label: "retry scheduled" },
+    );
+    expect(row?.status).toBe("scheduled");
+    expect(row?.maxAttempts).toBe(4);
+  });
+
+  it("refuses inline together with cron, or with retry, at registration", async ({
+    expect,
+  }) => {
+    const withCron = Alepha.create()
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs);
+    class CronApp {
+      work = $job({
+        cron: "0 * * * *",
+        inline: true,
+        handler: async () => {},
+      });
+    }
+    expect(() => withCron.with(CronApp).inject(CronApp)).toThrowError(
+      /no caller to block/,
+    );
+
+    const withRetry = Alepha.create()
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs);
+    class RetryApp {
+      work = $job({
+        schema: z.object({ v: z.integer() }),
+        inline: true,
+        retry: { retries: 2 },
+        handler: async () => {},
+      });
+    }
+    expect(() => withRetry.with(RetryApp).inject(RetryApp)).toThrowError(
+      /cannot both be the default/,
+    );
+  });
+
+  it("refuses inline on pushMany, and inline with a delay", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres).with(AlephaApiJobs);
+
+    class FanOutApp {
+      work = $job({
+        schema: z.object({ v: z.integer() }),
+        inline: true,
+        handler: async () => {},
+      });
+    }
+
+    const app = alepha.with(FanOutApp).inject(FanOutApp);
+    await alepha.start();
+
+    await expect(
+      app.work.pushMany([{ payload: { v: 1 } }, { payload: { v: 2 } }]),
+    ).rejects.toThrowError(/pushMany cannot honour/);
+
+    await expect(
+      app.work.push({ v: 1 }, { delay: [1, "hour"] }),
+    ).rejects.toThrowError(/Pick one/);
+  });
+});

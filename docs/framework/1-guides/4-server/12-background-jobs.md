@@ -116,6 +116,66 @@ Cron-mode jobs without `retry` do not retry - the next tick is the retry. Cron
 jobs that _declare_ `retry` go through the same sweep path, which is useful for
 once-daily jobs where waiting a full day is not acceptable.
 
+## `inline`: when a retry is worse than a failure
+
+Some payloads expire. A verification code lives 300 seconds by default while
+the sweep runs every 900, so a retried code is **guaranteed** to arrive after
+it expired: all three attempts produce garbage and the user meanwhile sees
+nothing at all.
+
+`inline` says: run the handler here, make me wait, and if it fails tell me.
+
+```typescript
+await myJob.push(payload, { inline: true });
+// resolves -> the handler ran to completion, outbox row terminal
+// rejects  -> the handler failed, row terminal `error`, nothing retries it
+```
+
+No dispatcher, no queue, no `waitUntil`. Behaviour is identical with and
+without `AlephaApiJobsQueue`, because the flag bypasses `JobDispatcher`
+entirely.
+
+Two things it does, and it is worth separating them:
+
+1. **The caller learns.** A password reset fails in front of the user, who can
+   simply ask for another one, instead of quietly succeeding on attempt two
+   with a code that no longer works.
+2. **A failure is terminal, never `scheduled`.** This half holds even where the
+   caller swallows the rejection, and it is the one that closes the expired-code
+   problem: nothing will deliver that payload later.
+
+**Per push, not per job.** Declare it on the job as a default if you like, but
+the useful form is the call-site override, because one job usually sits behind
+many callers - `sendNotification` is the single job behind every notification.
+Whether you can afford to wait is a property of the call site.
+
+```typescript
+await myJob.push(payload); //                 async, retries per the policy
+await myJob.push(payload, { inline: true }); // this one waits, and does not retry
+```
+
+On a job that declares `retry`, a per-push `inline` means _this execution does
+not retry_: one attempt, terminal on failure, thrown to you. Declaring `inline`
+and `retry` together **on the job** is rejected at registration, as is `inline`
+with `cron` (a tick has no caller to block) and `inline` on `pushMany`.
+
+Read the contract precisely:
+
+- **"Ran to completion" means the handler resolved.** For an email that is the
+  provider accepting the message, not delivery to an inbox.
+- **Call it after the commit, not inside a transaction.** An email cannot be
+  rolled back, so sending inside a transaction that later fails means mailing a
+  code for a row that no longer exists. `inline` buys ordering, not
+  transactionality.
+- **Never on a message addressed to somebody other than the caller.** Blocking
+  a login or registration response on a mail to the account _owner_ turns
+  response time into an account-enumeration oracle: a slow answer means the
+  account existed. Alepha's own `registrationAttempt` and `accountLockout`
+  notifications are excluded for exactly this reason.
+
+Not to be confused with `$notification`'s `critical`, which is a different
+property one layer up: that one means the recipient cannot opt out.
+
 ## Timeouts and cancellation
 
 `timeout` caps a single attempt. The handler receives an `AbortSignal` - pass it
