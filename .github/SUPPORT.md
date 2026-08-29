@@ -21,7 +21,7 @@ For questions like:
 - "What's the best way to structure Y?"
 - "Is there a built-in way to handle Z?"
 
-Open a [GitHub Discussion](https://github.com/feunard/alepha/discussions).
+Open a [GitHub Discussion](https://github.com/alepha-dev/alepha/discussions).
 
 ### GitHub Issues
 
@@ -30,7 +30,7 @@ For:
 - Bug reports (something is broken)
 - Feature requests (something is missing)
 
-Open a [GitHub Issue](https://github.com/feunard/alepha/issues).
+Open a [GitHub Issue](https://github.com/alepha-dev/alepha/issues).
 
 **Before opening an issue:**
 

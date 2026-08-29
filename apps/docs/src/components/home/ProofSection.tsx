@@ -19,7 +19,7 @@ const ProofSection = () => {
 
         <div className="proof-links flex gap-6">
           <a
-            href="https://github.com/feunard/alepha"
+            href="https://github.com/alepha-dev/alepha"
             target="_blank"
             rel="noopener noreferrer"
             className="footer-link flex items-center gap-2"

@@ -13,7 +13,7 @@
   "author": "Nicolas Foures",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/feunard/alepha.git"
+    "url": "git+https://github.com/alepha-dev/alepha.git"
   },
   "files": [
     "dist",

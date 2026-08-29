@@ -167,7 +167,7 @@ const Header = (props: HeaderProps) => {
         <HeaderButton
           icon={<IconBrandGithub size={16} />}
           title="View on GitHub"
-          href="https://github.com/feunard/alepha"
+          href="https://github.com/alepha-dev/alepha"
           target="_blank"
         />
 

@@ -65,7 +65,7 @@ const ChangelogChangeItem = (props: ChangelogChangeItemProps) => {
       )}
       {props.change.commit && (
         <a
-          href={`https://github.com/feunard/alepha/commit/${props.change.commit}`}
+          href={`https://github.com/alepha-dev/alepha/commit/${props.change.commit}`}
           target="_blank"
           rel="noopener noreferrer"
           className={styles.commit}

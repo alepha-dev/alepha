@@ -1,7 +1,7 @@
 <div align="center">
 <h1>
 <img
-  src="https://raw.githubusercontent.com/feunard/alepha/main/packages/alepha/assets/logo.svg"
+  src="https://raw.githubusercontent.com/alepha-dev/alepha/main/packages/alepha/assets/logo.svg"
   width="128"
   height="128"
   alt="Alepha logo"
@@ -12,7 +12,7 @@ Alepha
 <p>A full-stack TypeScript framework. One schema, everywhere.</p>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/v/alepha.svg" alt="npm version"/></a>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/l/alepha.svg" alt="license"/></a>
-<a href="https://codecov.io/gh/feunard/alepha"><img src="https://codecov.io/gh/feunard/alepha/graph/badge.svg?token=ZDLWI514CP" alt="coverage"/></a>
+<a href="https://codecov.io/gh/alepha-dev/alepha"><img src="https://codecov.io/gh/alepha-dev/alepha/graph/badge.svg?token=ZDLWI514CP" alt="coverage"/></a>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/dt/alepha.svg" alt="downloads"/></a>
 </div>
 
@@ -185,5 +185,5 @@ never where anything lives.
 
 - [Documentation](https://alepha.dev)
 - [llms.txt](https://alepha.dev/llms.txt) for AI assistants
-- [Contributing](https://github.com/feunard/alepha/blob/main/.github/CONTRIBUTING.md)
-- [GitHub](https://github.com/feunard/alepha)
+- [Contributing](https://github.com/alepha-dev/alepha/blob/main/.github/CONTRIBUTING.md)
+- [GitHub](https://github.com/alepha-dev/alepha)

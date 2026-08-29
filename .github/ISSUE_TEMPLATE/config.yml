@@ -1,7 +1,7 @@
 blank_issues_enabled: false
 contact_links:
   - name: Question or Discussion
-    url: https://github.com/feunard/alepha/discussions
+    url: https://github.com/alepha-dev/alepha/discussions
     about: Ask questions and discuss ideas here instead of opening an issue
   - name: Documentation
     url: https://alepha.dev

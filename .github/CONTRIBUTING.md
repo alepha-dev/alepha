@@ -12,7 +12,7 @@ Thanks for wanting to contribute. Here's how to do it without wasting your time 
 
 ```bash
 # clone the repo
-git clone https://github.com/feunard/alepha.git
+git clone https://github.com/alepha-dev/alepha.git
 cd alepha
 
 # install dependencies

@@ -17,7 +17,7 @@ export class VendorCommand {
    * (CI runners, AI agents, contributors without SSH keys) can clone without
    * extra setup.
    */
-  protected readonly defaultRemote = "https://github.com/feunard/alepha";
+  protected readonly defaultRemote = "https://github.com/alepha-dev/alepha";
 
   protected readonly options = $store(vendorOptions);
   protected readonly vendorService = $inject(VendorService);

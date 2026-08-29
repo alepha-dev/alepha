@@ -229,7 +229,7 @@ export const questCommitInputSchema = z.object({
     .string()
     .max(200)
     .describe(
-      "Which repository, e.g. `feunard/alepha`. Free text: Lore does not know a project's repository and never resolves this into a link.",
+      "Which repository, e.g. `alepha-dev/alepha`. Free text: Lore does not know a project's repository and never resolves this into a link.",
     )
     .optional(),
 });

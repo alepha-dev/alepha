@@ -7,7 +7,7 @@ import { $route } from "alepha/server";
  * `$route` (not `$action`) so the endpoint lives at `/version` directly,
  * not under the `/api` prefix `$action` would impose.
  *
- * Public on purpose: the repo is open-source on github.com/feunard/lore,
+ * Public on purpose: the repo is open-source on github.com/alepha-dev/alepha,
  * so commit SHA / version / build date leak nothing that isn't already
  * scrapable from GitHub. Saves a round-trip to the deploy logs when
  * confirming whether a fix has landed in production.

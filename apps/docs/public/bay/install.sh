@@ -20,7 +20,7 @@
 #
 set -eu
 
-REPO="feunard/alepha"
+REPO="alepha-dev/alepha"
 BAY_VERSION="${BAY_VERSION:-latest}"
 BAY_PREFIX="${BAY_PREFIX:-/opt/bay}"
 BAY_BIN_LINK="${BAY_BIN_LINK:-/usr/local/bin/bay}"

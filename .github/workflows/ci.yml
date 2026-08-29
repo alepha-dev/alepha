@@ -75,15 +75,21 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   test:
     runs-on: ubuntu-latest
-    # 12, not 8. The suite itself runs in ~4m30s, but `Setup` is 36s on a cache
-    # hit and 2m20s on a miss — and every dependency bump is a miss, because the
-    # lockfile is the cache key. At 8 the job had no room for that: the first
-    # `chore(deps)` after this budget was set got cancelled mid-suite, which
-    # reports as a cancelled run with no conclusion rather than as a failure.
+    # 20, not 12. This is a hang detector, not a budget: public-repo minutes are
+    # free and the GitHub cap is 6 hours, so a generous number costs nothing.
+    # A tight one costs a blocked `deploy-lore-production`, because a job killed
+    # on the timeout reports as a failure the deploy gates on.
     #
-    # The number to watch is `Test Project`. If that alone approaches 8 minutes,
-    # the suite has genuinely regressed and raising this again is the wrong move.
-    timeout-minutes: 12
+    # 12 was set against a ~4m30s suite plus a `Setup` step that is 36s on a
+    # cache hit and 2m20s on a miss (every dependency bump is a miss, since the
+    # lockfile is the cache key). The suite has grown into it: a run at 11m53s
+    # left 7 seconds of headroom, and a slow runner would have taken the deploy
+    # down with it.
+    #
+    # The number to watch is `Test Project`, not this one. If that alone
+    # approaches 8 minutes, the suite has genuinely regressed and raising this
+    # again is the wrong move.
+    timeout-minutes: 20
     services:
       redis:
         image: redis
@@ -188,7 +194,9 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Same reasoning as `test` above: a hang detector, not a budget. Observed
+    # around 11m20s, and this job also gates `deploy-lore-production`.
+    timeout-minutes: 20
     services:
       redis:
         image: redis

@@ -41,12 +41,12 @@ Use cases:
 
 `vendor()` accepts the following options:
 
-| Option     | Type       | Default                               | Description                                                                                             |
-| ---------- | ---------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `packages` | `string[]` | -                                     | Package directory names to vendor (required)                                                            |
-| `remote`   | `string`   | `"https://github.com/feunard/alepha"` | Git remote URL to clone from                                                                            |
-| `branch`   | `string`   | `"main"`                              | Branch to sync from                                                                                     |
-| `dir`      | `string`   | `".vendor"`                           | Directory holding the vendored packages (relative to project root); also where `vendor.json` is written |
+| Option     | Type       | Default                                  | Description                                                                                             |
+| ---------- | ---------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `packages` | `string[]` | -                                        | Package directory names to vendor (required)                                                            |
+| `remote`   | `string`   | `"https://github.com/alepha-dev/alepha"` | Git remote URL to clone from                                                                            |
+| `branch`   | `string`   | `"main"`                                 | Branch to sync from                                                                                     |
+| `dir`      | `string`   | `".vendor"`                              | Directory holding the vendored packages (relative to project root); also where `vendor.json` is written |
 
 ```typescript check filename=alepha.config.ts
 import { defineConfig } from "alepha/cli/config";
@@ -110,7 +110,7 @@ Each sync writes `<dir>/vendor.json`:
 
 ```json
 {
-  "remote": "https://github.com/feunard/alepha",
+  "remote": "https://github.com/alepha-dev/alepha",
   "commit": "e55f17563..."
 }
 ```

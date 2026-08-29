@@ -311,4 +311,4 @@ React hooks:
 ## Docs
 
 - [Full Docs](https://alepha.dev/llms-full.txt): Complete documentation of Alepha with all details.
-- [Examples](https://github.com/feunard/alepha/tree/main/apps): Example applications
+- [Examples](https://github.com/alepha-dev/alepha/tree/main/apps): Example applications

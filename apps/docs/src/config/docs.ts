@@ -32,7 +32,7 @@ const llmFolder: DocNode = {
 export const tree: DocNode[] = [...generated.tree, llmFolder];
 export const snippets = generated.snippets;
 export const repository = {
-  name: "feunard/alepha",
+  name: "alepha-dev/alepha",
 };
 
 export type { ChangelogEntry, DocNode };
