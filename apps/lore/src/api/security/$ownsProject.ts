@@ -1,6 +1,6 @@
 import { $context, type Middleware } from "alepha";
 import type { Repository } from "alepha/orm";
-import { $owns, type OwnsOptions } from "alepha/security";
+import { $owns, type OwnsHop, type OwnsOptions } from "alepha/security";
 
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
@@ -85,10 +85,15 @@ export const $ownsProject = (options: OwnsProjectOptions): Middleware => {
 
     ...(options.repository
       ? {
-          through: {
-            column: options.column ?? "projectId",
-            repository: () => security.projects,
-          },
+          through: [
+            // Whatever the caller has to walk through first, then the last
+            // link onto `projects` — which is the one constant here.
+            ...(options.hops ?? []),
+            {
+              column: options.column ?? "projectId",
+              repository: () => security.projects,
+            },
+          ],
         }
       : {
           // Only on the direct branch. Here the id is always a project's, and
@@ -137,8 +142,30 @@ export interface OwnsProjectOptions extends Pick<
   repository?: () => Repository<any>;
 
   /**
-   * Column on that row holding the project id. Defaults to `projectId`,
-   * which is what every Lore entity calls it.
+   * Rows to walk through before reaching one that carries the project id.
+   *
+   * Almost never needed: a Lore entity carries `projectId` itself. Quest
+   * comments are the exception - a comment references a quest, and only the
+   * quest references the project, so gating one by its own id takes two hops:
+   *
+   * ```typescript
+   * $ownsProject({
+   *   repository: () => this.comments,
+   *   param: "id",
+   *   hops: [{ column: "questId", repository: () => this.quests }],
+   * })
+   * ```
+   *
+   * The final link onto `projects` is appended for you, so this lists only
+   * what comes before it.
+   *
+   * Ignored without {@link OwnsProjectOptions.repository}.
+   */
+  hops?: OwnsHop[];
+
+  /**
+   * Column holding the project id, on the last row the walk reaches.
+   * Defaults to `projectId`, which is what every Lore entity calls it.
    *
    * Ignored without {@link OwnsProjectOptions.repository}.
    */

@@ -146,36 +146,52 @@ export function $owns(options: OwnsOptions): Middleware {
       let authorityId = id;
 
       if (options.through) {
-        // A foreign key is a scalar by definition; the cast states that
-        // rather than letting `unknown` leak into the query and the message.
-        const foreignKey = authority[options.through.column] as
-          | string
-          | number
-          | null
-          | undefined;
+        const hops = Array.isArray(options.through)
+          ? options.through
+          : [options.through];
 
-        // A null FK DENIES. Falling through to the checks below would compare
-        // `undefined` against the caller's id and then query the join entity
-        // for `projectId = null`, so an orphan row would be refused only by
-        // accident — and a `via`-less gate whose `owner` column is also empty
-        // would allow. An orphan must never become world-readable.
-        if (foreignKey === undefined || foreignKey === null) {
-          throw new ForbiddenError(
-            options.message ?? "Not a member of this resource",
-          );
+        for (const [index, hop] of hops.entries()) {
+          // A foreign key is a scalar by definition; the cast states that
+          // rather than letting `unknown` leak into the query and the message.
+          const foreignKey = authority[hop.column] as
+            | string
+            | number
+            | null
+            | undefined;
+
+          // A null FK DENIES. Falling through to the checks below would
+          // compare `undefined` against the caller's id and then query the
+          // join entity for `projectId = null`, so an orphan row would be
+          // refused only by accident — and a `via`-less gate whose `owner`
+          // column is also empty would allow. An orphan must never become
+          // world-readable.
+          if (foreignKey === undefined || foreignKey === null) {
+            throw new ForbiddenError(
+              options.message ?? "Not a member of this resource",
+            );
+          }
+
+          const hopRepository = hop.repository();
+
+          // Only the LAST hop lands on the row the decision is made against,
+          // so only that read is memoized and cached. An intermediate row is
+          // a stepping stone: it varies per request entry, so a memo buys
+          // little, and a `cache` window meant for a configuration row has no
+          // business being applied to whatever sits in between.
+          const isAuthority = index === hops.length - 1;
+          const found = isAuthority
+            ? await readAuthority(hopRepository, foreignKey)
+            : await hopRepository.findById(foreignKey);
+
+          if (!found) {
+            throw new NotFoundError(
+              `${hopRepository.tableName} '${foreignKey}' not found`,
+            );
+          }
+
+          authority = found as Record<string, unknown>;
+          authorityId = foreignKey;
         }
-
-        const authorityRepository = options.through.repository();
-        const found = await readAuthority(authorityRepository, foreignKey);
-
-        if (!found) {
-          throw new NotFoundError(
-            `${authorityRepository.tableName} '${foreignKey}' not found`,
-          );
-        }
-
-        authority = found as Record<string, unknown>;
-        authorityId = foreignKey;
       }
 
       alepha.store.set(currentAuthorityAtom, authority);
@@ -291,24 +307,26 @@ export interface OwnsOptions {
    * lands on. `via.resource` is matched against the foreign key's value, not
    * against the param.
    *
-   * A null or absent foreign key **denies**: an orphan row must not become
-   * world-readable. A missing authority row is a `NotFoundError`, like a
-   * missing resource.
+   * A null or absent foreign key **denies** at every hop: an orphan row must
+   * not become world-readable. A missing row along the way is a
+   * `NotFoundError`, like a missing resource.
    *
-   * One hop only. Chains can be added when something needs one.
+   * Pass an array to chain, when the resource does not carry the foreign key
+   * itself. Lore's quest comments are the case that made this necessary: a
+   * comment references a quest, and only the quest references the project.
+   *
+   * ```ts
+   * through: [
+   *   { column: "questId", repository: () => this.quests },
+   *   { column: "projectId", repository: () => this.projects },
+   * ]
+   * ```
+   *
+   * Keep chains short and obvious. Each link is a query, and a rule that
+   * needs four of them is usually a missing column rather than a missing
+   * feature.
    */
-  through?: {
-    /**
-     * Column on the resource holding the authority row's id.
-     */
-    column: string;
-
-    /**
-     * Repository the authority row is loaded from, as a thunk — same
-     * reasoning as {@link OwnsOptions.repository}.
-     */
-    repository: () => Repository<any>;
-  };
+  through?: OwnsHop | OwnsHop[];
 
   /**
    * Column holding the owner's user id, on the row the decision is made
@@ -386,4 +404,23 @@ export interface OwnsOptions {
    * Additional `$secure` checks layered on top - roles, permissions, issuers.
    */
   secure?: Omit<SecureOptions, "guard">;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * One link in a {@link OwnsOptions.through} chain: which column on the row in
+ * hand holds the next row's id, and where to load it from.
+ */
+export interface OwnsHop {
+  /**
+   * Column on the current row holding the next row's id.
+   */
+  column: string;
+
+  /**
+   * Repository the next row is loaded from, as a thunk — same reasoning as
+   * {@link OwnsOptions.repository}.
+   */
+  repository: () => Repository<any>;
 }

@@ -27,6 +27,17 @@ const quests = $entity({
   }),
 });
 
+const comments = $entity({
+  name: "through_comments",
+  schema: z.object({
+    id: db.primaryKey(z.text()),
+    // No projectId: this is the shape that forces a chain — a comment knows
+    // its quest, and only the quest knows the project.
+    questId: z.text().optional(),
+    body: z.text(),
+  }),
+});
+
 const members = $entity({
   name: "through_members",
   schema: z.object({
@@ -48,6 +59,7 @@ const createApp = () => {
   class QuestService {
     projects = $repository(projects);
     quests = $repository(quests);
+    comments = $repository(comments);
     members = $repository(members);
     owned = $inject(OwnedResourceProvider);
 
@@ -86,6 +98,32 @@ const createApp = () => {
       ],
       handler: async () => this.owned.authority<{ title: string }>().title,
     });
+
+    /**
+     * Two hops: comment to quest to project.
+     */
+    readComment = $pipeline({
+      use: [
+        $owns({
+          repository: () => this.comments,
+          param: "id",
+          through: [
+            { column: "questId", repository: () => this.quests },
+            { column: "projectId", repository: () => this.projects },
+          ],
+          owner: "createdBy",
+          via: {
+            repository: () => this.members,
+            resource: "projectId",
+            user: "userId",
+          },
+        }),
+      ],
+      handler: async () => ({
+        resource: this.owned.get<{ body: string }>().body,
+        authority: this.owned.authority<{ title: string }>().title,
+      }),
+    });
   }
 
   return { alepha, service: alepha.inject(QuestService) };
@@ -95,6 +133,7 @@ const seed = async (service: ReturnType<typeof createApp>["service"]) => {
   await service.projects.create({ id: "p1", createdBy: "u1", title: "Alpha" });
   await service.quests.create({ id: "q1", projectId: "p1", title: "Ship it" });
   await service.members.create({ id: "m1", projectId: "p1", userId: "u2" });
+  await service.comments.create({ id: "c1", questId: "q1", body: "Nice" });
 };
 
 const as = (
@@ -258,6 +297,64 @@ describe("$owns through", () => {
       const { resource, authority } = await service.read();
       expect(authority).toEqual(resource);
       expect(authority).toMatchObject({ id: "p1", title: "A" });
+    });
+  });
+
+  describe("chained hops", () => {
+    it("walks comment to quest to project", async ({ expect }) => {
+      const { alepha, service } = createApp();
+      await alepha.start();
+      await seed(service);
+
+      await alepha.context.run(async () => {
+        as(alepha, member, { id: "c1" });
+        expect(await service.readComment()).toEqual({
+          resource: "Nice",
+          // The LAST hop is the authority, not the first one: a chain that
+          // stopped at the quest would gate on `quests.createdBy` and match
+          // membership rows against a quest id.
+          authority: "Alpha",
+        });
+      });
+    });
+
+    it("refuses a stranger across the chain", async ({ expect }) => {
+      const { alepha, service } = createApp();
+      await alepha.start();
+      await seed(service);
+
+      await alepha.context.run(async () => {
+        as(alepha, stranger, { id: "c1" });
+        await expect(service.readComment()).rejects.toThrow(ForbiddenError);
+      });
+    });
+
+    it("denies a null FK on the FIRST hop, not just the last", async ({
+      expect,
+    }) => {
+      const { alepha, service } = createApp();
+      await alepha.start();
+      await seed(service);
+      await service.comments.create({ id: "orphan", body: "Nobody's" });
+
+      await alepha.context.run(async () => {
+        as(alepha, owner, { id: "orphan" });
+        await expect(service.readComment()).rejects.toThrow(ForbiddenError);
+      });
+    });
+
+    it("404s when a row midway through the chain is gone", async ({
+      expect,
+    }) => {
+      const { alepha, service } = createApp();
+      await alepha.start();
+      await seed(service);
+      await service.quests.deleteById("q1");
+
+      await alepha.context.run(async () => {
+        as(alepha, owner, { id: "c1" });
+        await expect(service.readComment()).rejects.toThrow(NotFoundError);
+      });
     });
   });
 });
