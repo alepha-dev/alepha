@@ -20,6 +20,7 @@ import {
   folioLinksSchema,
   folioResourceSchema,
 } from "../schemas/folioResourceSchema.ts";
+import { folioSavedSchema } from "../schemas/folioSavedSchema.ts";
 import type { LinkSourceKind } from "../schemas/linkSourceKindSchema.ts";
 import type { LinkTargetKind } from "../schemas/linkTargetKindSchema.ts";
 import { FolioBlobService } from "../services/FolioBlobService.ts";
@@ -576,7 +577,7 @@ export class FolioController {
          */
         pinned: z.boolean().optional(),
       }),
-      response: folios.schema,
+      response: folioSavedSchema,
     },
     handler: async ({ body, user }) => {
       await this.security.assertMember(body.projectId, user);
@@ -631,7 +632,10 @@ export class FolioController {
       // baseline to diff later edits against.
       await this.historyService.appendRevision(folio, user.id, "create");
 
-      return folio;
+      // Always true here: a brand-new folio has nothing to fold into. Sent
+      // anyway so the two save paths answer the same shape and the client
+      // never has to ask which one it called.
+      return { ...folio, revisionsChanged: true };
     },
   });
 
@@ -664,7 +668,7 @@ export class FolioController {
          */
         pinned: z.boolean().optional(),
       }),
-      response: folios.schema,
+      response: folioSavedSchema,
     },
     handler: async ({ params, body, user }) => {
       const existing = await this.folios.findOne({
@@ -810,7 +814,8 @@ export class FolioController {
       // confidentiality fix — without it, encrypting a folio left every
       // pre-encryption plaintext snapshot readable by any project member
       // through `listHistory`.
-      if (isProtected !== existing.protected) {
+      const purged = isProtected !== existing.protected;
+      if (purged) {
         await this.historyService.purgeRevisions(params.id);
       }
 
@@ -825,10 +830,17 @@ export class FolioController {
         },
         { title, content, summary },
       );
-      if (action) {
-        await this.historyService.appendRevision(updated, user.id, action);
-      }
-      return updated;
+      const appended = action
+        ? await this.historyService.appendRevision(updated, user.id, action)
+        : undefined;
+      // See `folioSavedSchema` for why the purge is an equal partner here
+      // and why this is not named `revisionCreated`. A purge with no insert
+      // is rare but real: it empties the list, and a client told only about
+      // insertions would keep rendering revisions the server has deleted.
+      return {
+        ...updated,
+        revisionsChanged: purged || appended?.created === true,
+      };
     },
   });
 
