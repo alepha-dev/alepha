@@ -9,9 +9,9 @@ import { hydratedBlobSchema } from "@/api/schemas/hydratedBlobSchema.ts";
  * Folio-scoped rather than project-scoped since attachments stopped being
  * rows in the folio tree: an attachment belongs to exactly one folio, so
  * "every blob in the project" is no longer a set anything renders. Filled
- * by the `projectFoliosFolio` route loader alongside `currentFolioAtom`
- * — from the folio's own `metadata.blobs` rather than a `listBlobs` call
- * of its own, see that loader — and cleared with it. `FolioAttachmentsTab`
+ * by the `projectFoliosFolio` route loader — from the folio's own
+ * `metadata.blobs` rather than a `listBlobs` call of its own, see that
+ * loader — and cleared by the `projectFolios` loader. `FolioAttachmentsTab`
  * refreshes it through `listBlobs` after an upload or a delete, which is
  * why it carries the endpoint's full shape rather than the subset the
  * tree used to render.

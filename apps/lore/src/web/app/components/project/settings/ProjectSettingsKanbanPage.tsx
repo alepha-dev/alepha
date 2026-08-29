@@ -46,6 +46,10 @@ const ProjectSettingsKanbanPage = () => {
   const [project] = useStore(currentProjectAtom);
 
   const persisted = project?.kanbanColumns ?? ["In Progress"];
+  // Seeded once, on mount. There is deliberately no "the project changed
+  // underneath us" reset: every project switch goes through
+  // `router.path("project", …)` — the project root — so this page unmounts
+  // and remounts rather than being handed another project's columns.
   const [columns, setColumns] = useState<string[]>(persisted);
   const [pending, setPending] = useState<string | null>(null);
   const [surfacePending, setSurfacePending] = useState(false);
@@ -55,16 +59,6 @@ const ProjectSettingsKanbanPage = () => {
     // click that grazes it starts a drag instead of focusing the field.
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
-
-  // Reset local state when the project changes underneath (switching pages /
-  // navigating to a different project).
-  if (project && columns !== persisted && pending === null) {
-    // Only reset if the stored value diverged from local AND we don't have a
-    // pending request — avoids fighting the user mid-edit.
-    if (JSON.stringify(persisted) !== JSON.stringify(columns)) {
-      // no-op; user is editing
-    }
-  }
 
   if (!project) return null;
 

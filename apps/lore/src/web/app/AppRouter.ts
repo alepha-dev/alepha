@@ -31,7 +31,6 @@ import { currentBlightCountAtom } from "./atoms/currentBlightCountAtom.ts";
 import { currentEpicAtom } from "./atoms/currentEpicAtom.ts";
 import { currentEpicCountAtom } from "./atoms/currentEpicCountAtom.ts";
 import { currentFeedbackCountAtom } from "./atoms/currentFeedbackCountAtom.ts";
-import { currentFolioAtom } from "./atoms/currentFolioAtom.ts";
 import { currentFolioBlobsAtom } from "./atoms/currentFolioBlobsAtom.ts";
 import { currentFolioPathAtom } from "./atoms/currentFolioPathAtom.ts";
 import { currentMilestonesAtom } from "./atoms/currentMilestonesAtom.ts";
@@ -1314,7 +1313,6 @@ export class AppRouter {
       this.alepha.store.set(currentFolioPathAtom, []);
     },
     onLeave: () => {
-      this.alepha.store.set(currentFolioAtom, undefined);
       this.alepha.store.set(currentFolioPathAtom, []);
       this.alepha.store.set(currentFolioBlobsAtom, []);
     },
@@ -1328,7 +1326,6 @@ export class AppRouter {
     }),
     lazy: () => import("./components/folios/FolioCreatePage.tsx"),
     loader: async ({ url }) => {
-      this.alepha.store.set(currentFolioAtom, undefined);
       // A draft has no attachments of its own: without this the last opened
       // folio's blobs were offered in the new folio's link picker.
       this.alepha.store.set(currentFolioBlobsAtom, []);
@@ -1426,7 +1423,6 @@ export class AppRouter {
         }),
         this.seedFolioTree(project.id),
       ]);
-      this.alepha.store.set(currentFolioAtom, folio);
       this.alepha.store.set(currentFolioBlobsAtom, folio.metadata?.blobs ?? []);
       // Populate the folio breadcrumb so the AppShell header reads
       // "Lore › Folios › <dirs…> › <folio title>". Cleared on leave

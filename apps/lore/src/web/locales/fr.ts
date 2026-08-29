@@ -843,11 +843,6 @@ export default {
   "app.settings.url.detected":
     "Utilise $1, l'adresse depuis laquelle cette application a remonté ses dernières données. Saisissez une URL pour en afficher une autre, ou videz le champ pour revenir à l'adresse détectée.",
   "app.settings.url.save": "Enregistrer",
-  "app.settings.feedbackPosition.title": "Position du bouton de retour",
-  "app.settings.feedbackPosition.description":
-    "Le coin dans lequel se place le bouton flottant de cette application. Déplacez-le s'il recouvre un élément ; la pagination occupe souvent le coin inférieur droit.",
-  "app.settings.feedbackPosition.bottomLeft": "En bas à gauche",
-  "app.settings.feedbackPosition.bottomRight": "En bas à droite",
   "app.settings.rotate.title": "Renouveler le jeton",
   "app.settings.rotate.description":
     "Génère un nouveau jeton et invalide l'actuel immédiatement. Tout ce que cette application a remonté est conservé : c'est ainsi qu'on révoque un jeton fuité sans perdre son historique.",
