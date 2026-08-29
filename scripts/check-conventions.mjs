@@ -580,4 +580,51 @@ if (setupViolations.length > 0) {
   process.exit(1);
 }
 
+/*
+ * Every directory under `docs/` is published by the docs site.
+ *
+ * `gen-tree` walked one hardcoded root, `docs/framework`. `docs/bay` and
+ * `docs/lore` were written, maintained and validated - `check-docs` scans all
+ * of `docs/`, so they were never unchecked - and then published nowhere. Two
+ * introduction pages nobody could read, with nothing anywhere to say they were
+ * missing. That is the failure this guards: a doc tree can only ever be
+ * SILENTLY unpublished, never loudly.
+ *
+ * `superpowers` is excluded for the same reason `check-docs` excludes it: an
+ * archive of past plans, true when written and not a claim about today.
+ */
+const DOCS_EXCLUDED = new Set(["superpowers"]);
+const GEN_TREE = "apps/docs/scripts/gen-tree.ts";
+const genTreeSource = readFileSync(GEN_TREE, "utf8");
+const docRootViolations = [];
+
+const docDirs = execFileSync("git", ["ls-files", "docs/"], { encoding: "utf8" })
+  .trim()
+  .split("\n")
+  .filter(Boolean)
+  .map((file) => file.split("/")[1])
+  .filter((dir, i, all) => dir && all.indexOf(dir) === i)
+  .filter((dir) => !DOCS_EXCLUDED.has(dir));
+
+for (const dir of docDirs) {
+  // Matched against the `dir:` field of a DOC_ROOTS entry, so a directory
+  // merely NAMED in a comment does not count as published.
+  if (!genTreeSource.includes(`dir: "docs/${dir}"`)) {
+    docRootViolations.push(
+      `  docs/${dir}\n    → not in ${GEN_TREE}'s DOC_ROOTS, so nothing publishes it`,
+    );
+  }
+}
+
+if (docRootViolations.length > 0) {
+  console.error(
+    `\n${docRootViolations.length} unpublished doc tree(s):\n\n` +
+      `${docRootViolations.join("\n")}\n\n` +
+      "`check-docs` validates everything under `docs/`, so an orphaned tree is\n" +
+      "checked and correct and simply never rendered. Add it to DOC_ROOTS with\n" +
+      "an order-prefixed category, or delete the directory.\n",
+  );
+  process.exit(1);
+}
+
 console.log("conventions OK");
