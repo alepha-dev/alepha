@@ -452,4 +452,65 @@ if (portViolations.length > 0) {
   process.exit(1);
 }
 
+/*
+ * The CI workflow's `workflow_run` runs must not share a concurrency group
+ * with a push to main.
+ *
+ * `github.ref` for a `workflow_run` event is the default branch, so the naive
+ * `group: ci-${{ github.ref }}` put a Release follow-up in the same group as a
+ * push to main. With `cancel-in-progress`, the follow-up cancelled the push run
+ * mid-test - and that push run is the only one carrying
+ * `deploy-lore-production`. The symptom is a run marked `cancelled`,
+ * indistinguishable from the ordinary "a newer push superseded this one", and a
+ * deploy that simply never happened.
+ *
+ * Checked here because the alternative is not checkable: proving it needs a
+ * Release to complete while a main push is mid-flight, on the real repository.
+ * A rule that can only be verified in production is a rule that gets reverted
+ * by the next person who finds the expression ugly.
+ *
+ * The assertion is deliberately about the SHAPE, not the exact string: the
+ * group must branch on `github.event_name`, so any expression that keeps the
+ * two events apart passes and the one that does not, fails.
+ */
+const CI_WORKFLOW = ".github/workflows/ci.yml";
+const ciSource = readFileSync(CI_WORKFLOW, "utf8");
+const concurrencyViolations = [];
+
+const groupLine = /^concurrency:\n(?:\s*#.*\n)*\s*group:\s*(.+)$/m.exec(
+  ciSource,
+);
+
+if (!groupLine) {
+  concurrencyViolations.push(
+    `  ${CI_WORKFLOW}\n    → no top-level \`concurrency.group\` found`,
+  );
+} else {
+  const group = groupLine[1];
+  const cancels = /^\s*cancel-in-progress:\s*true\s*$/m.test(ciSource);
+  const triggersOnWorkflowRun = /^\s{2}workflow_run:\s*$/m.test(ciSource);
+  if (
+    cancels &&
+    triggersOnWorkflowRun &&
+    !group.includes("github.event_name")
+  ) {
+    concurrencyViolations.push(
+      `  ${CI_WORKFLOW}\n    → group ${group.trim()}\n` +
+        "      does not distinguish `workflow_run` from a push to main",
+    );
+  }
+}
+
+if (concurrencyViolations.length > 0) {
+  console.error(
+    `\n${concurrencyViolations.length} CI concurrency violation(s):\n\n` +
+      `${concurrencyViolations.join("\n")}\n\n` +
+      "A `workflow_run` run resolves `github.ref` to the default branch, so a\n" +
+      "group keyed on `github.ref` alone puts it in the same group as a push to\n" +
+      "main. With `cancel-in-progress`, the Release follow-up then cancels the\n" +
+      "push run that carries the Lore deploy, and nothing goes red.\n",
+  );
+  process.exit(1);
+}
+
 console.log("conventions OK");
