@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 import type { TestProjectInlineConfiguration } from "vitest/config";
 
 /**
@@ -30,6 +32,12 @@ export const jsdomProject = (
     // built-in off in the test workers lets jsdom install its own
     // spec-compliant implementation.
     execArgv: ["--no-experimental-webstorage"],
+    // Polyfills for what jsdom simply does not implement. Resolved from this
+    // file rather than named relatively, because the two configs that call
+    // `jsdomProject` sit at different depths.
+    setupFiles: [
+      fileURLToPath(new URL("vitest.jsdom.setup.ts", import.meta.url)),
+    ],
   },
   resolve: {
     conditions: ["browser", "module", "import", "default"],
