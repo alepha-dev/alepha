@@ -19,6 +19,7 @@ import {
 import { useI18n } from "alepha/react/i18n";
 import {
   BarChart3,
+  Bug,
   DoorOpen,
   Eye,
   Info,
@@ -107,7 +108,7 @@ const AppAnalytics = () => {
       )}
 
       {/* Headline metrics */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {/* Unique visitors — the trustworthy headline. */}
         <Card data-testid="insights-unique-visitors">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -196,6 +197,31 @@ const AppAnalytics = () => {
             </div>
             <p className="text-muted-foreground mt-1 text-xs">
               {tr("insights.engagement.note")}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/*
+          Moved here off the app Dashboard, which had no range control to
+          explain it and paid for a whole insights payload to draw it. Per-app
+          on purpose: the Blights inbox keys on `(project, fingerprint)` so a
+          triage decision does not fork, which necessarily merges every enrolled
+          app into one row and makes "is this still happening over there"
+          unanswerable there.
+        */}
+        <Card data-testid="insights-errors">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
+              <Bug className="size-4" />
+              {tr("app.dashboard.errors")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold tabular-nums">
+              {data.errorGroups.length.toLocaleString()}
+            </div>
+            <p className="text-muted-foreground mt-1 text-xs">
+              {tr("insights.errors.note")}
             </p>
           </CardContent>
         </Card>

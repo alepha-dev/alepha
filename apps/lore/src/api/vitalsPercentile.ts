@@ -8,7 +8,7 @@ import type { VitalsMetricResource } from "./schemas/vitalsMetricSchema.ts";
  * Used to live on the now-deleted `AnalyticsStore` interface, which every
  * storage backend implemented `vitalHistograms()` against. Storage moved to
  * `alepha/api/analytics`'s `$analytics()` datasets, but the shape a histogram
- * walk consumes did not change, so it is declared here instead — the one
+ * walk consumes did not change, so it is declared here instead: the one
  * place both {@link vitalsP75Bucket} and its callers need it.
  */
 export type AnalyticsVitalHistograms = Partial<
@@ -136,7 +136,7 @@ export interface VitalsSummary {
    */
   lcp: VitalsMetricResource;
   /**
-   * Cumulative Layout Shift, unitless — already un-scaled.
+   * Cumulative Layout Shift, unitless. Already un-scaled.
    */
   cls: VitalsMetricResource;
   /**
