@@ -11,7 +11,7 @@ const taskEntity = $entity({
   schema: z.object({
     id: db.primaryKey(),
     title: z.text(),
-    done: z.boolean({ default: false }),
+    done: db.default(z.boolean(), false),
   }),
 });
 
@@ -26,6 +26,8 @@ export class Api {
 `,
   },
   web: {
+    uncheckable:
+      "an excerpt: it imports `./Api.ts`, the file the `api` snippet beside it defines, which exists only in the reader's project",
     filename: "src/AppRouter.tsx",
     content: `
 import { $page } from "alepha/react/router";
@@ -51,37 +53,9 @@ export class AppRouter {
 }
 `,
   },
-  infra: {
-    filename: "src/Jobs.ts",
-    content: `
-import { z } from "alepha";
-import { $job } from "alepha/api/jobs";
-import { $cache } from "alepha/cache";
-import { $storage } from "alepha/orm";
-
-export class Jobs {
-  avatars = $storage({ name: "avatars" });
-
-  stats = $cache({
-    ttl: "5m",
-    handler: async () => this.expensiveQuery(),
-  });
-
-  // queue-mode: await this.sendEmail.push({ to, body })
-  sendEmail = $job({
-    schema: z.object({ to: z.email(), body: z.text() }),
-    handler: async ({ payload }) => this.mailer.send(payload),
-  });
-
-  // cron-mode: same primitive, "cron" replaces "schema"
-  digest = $job({
-    cron: "0 8 * * *",
-    handler: async () => this.buildDigest(),
-  });
-}
-`,
-  },
   platform: {
+    uncheckable:
+      "an excerpt of `alepha.config.ts`, shown without its `defineConfig` / `platform` imports so the shape is what the reader sees",
     filename: "alepha.config.ts",
     content: `
 export default defineConfig({
@@ -103,6 +77,8 @@ export default defineConfig({
 `,
   },
   test: {
+    uncheckable:
+      "an excerpt: `Alepha` and `EmailProvider` are shown unimported so the four lines that matter are the four lines on screen",
     filename: "tasks.spec.ts",
     content: `
 const alepha = Alepha.create()

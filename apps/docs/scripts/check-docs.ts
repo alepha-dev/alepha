@@ -6,6 +6,7 @@ import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 
 import { DocsChecker, type DocUnit } from "./DocsChecker.ts";
+import { snippets } from "./snippets.ts";
 
 /**
  * Verifies the documentation against the framework it documents.
@@ -126,8 +127,13 @@ export class CheckDocsCommand {
       });
 
       await run("compile marked examples", async () => {
-        const units = await this.checker.collectCheckedFences(files);
-        this.log.info(`${units.length} fences opted in with \`check\``);
+        const units = [
+          ...(await this.checker.collectCheckedFences(files)),
+          ...this.snippetUnits(),
+        ];
+        this.log.info(
+          `${units.length} units to compile (fences opted in with \`check\`, plus the snippets not marked uncheckable)`,
+        );
         if (units.length === 0) {
           return;
         }
@@ -266,6 +272,34 @@ export class CheckDocsCommand {
    * directory listing; a link into `guides-` or `packages-` is left alone
    * rather than guessed at.
    */
+  /**
+   * The home page's snippets, as compile units.
+   *
+   * Opt-OUT, unlike the markdown fences, which compile only where a `check`
+   * marker asks them to. The default is inverted here because the failure was
+   * silence: an `infra` snippet sat in this registry importing a `$storage`
+   * that exists nowhere in the framework and passing `ttl: "5m"` where a
+   * `DurationLike` tuple is required - three type errors in twenty lines,
+   * unrendered and unnoticed, because being unused and being broken look
+   * identical from outside. A new snippet is therefore compiled unless
+   * somebody writes down why it cannot be.
+   *
+   * `uncheckable` is that reason, and it is a sentence rather than a boolean
+   * so the exemption has to argue for itself. The three that carry one are
+   * excerpts: they omit imports on purpose, so that what the visitor reads is
+   * the shape rather than the ceremony.
+   */
+  protected snippetUnits(): DocUnit[] {
+    return Object.entries(snippets)
+      .filter(([, snippet]) => !("uncheckable" in snippet))
+      .map(([name, snippet]) => ({
+        file: `apps/docs/scripts/snippets.ts#${name}`,
+        line: 1,
+        code: snippet.content,
+        lang: "tsx",
+      }));
+  }
+
   protected async danglingLinks(
     files: string[],
     root: string,
