@@ -1,5 +1,7 @@
 import { VITALS_BUCKETS, type VitalMetric } from "@alepha/sigil";
 
+import type { VitalsMetricResource } from "./schemas/vitalsMetricSchema.ts";
+
 /**
  * Bucket index → how many samples, per metric. Absent metrics saw none.
  *
@@ -7,28 +9,42 @@ import { VITALS_BUCKETS, type VitalMetric } from "@alepha/sigil";
  * storage backend implemented `vitalHistograms()` against. Storage moved to
  * `alepha/api/analytics`'s `$analytics()` datasets, but the shape a histogram
  * walk consumes did not change, so it is declared here instead — the one
- * place both {@link vitalsP75} and its callers need it.
+ * place both {@link vitalsP75Bucket} and its callers need it.
  */
 export type AnalyticsVitalHistograms = Partial<
   Record<VitalMetric, Map<number, number>>
 >;
 
 /**
- * Walk a bucket histogram to the 75th percentile.
+ * How much CLS is scaled by on the way in.
  *
- * Returns the **upper boundary** of the bucket the percentile falls in. A
- * sample that overflowed every boundary has no upper bound to report, so the
- * last boundary is returned as a conservative floor: the honest reading is
- * "at least this bad", never "exactly this".
- *
- * Lives in the package rather than in whichever app happens to render the
- * chart, because every backend that produces an {@link AnalyticsVitalHistograms}
- * shares the same walk and none of them should be re-deriving it. Merging has
- * to happen at the bucket level anyway — the p75 of two distributions is not
- * the mean of their p75s — so a backend that returned per-app percentiles
- * could not be merged at all.
+ * The browser collector multiplies it to an integer before bucketing so the
+ * boundaries stay free of float drift, and undoing that is the kind of detail
+ * every consumer would otherwise have to remember - one of them eventually
+ * would not. Undone once, here.
  */
-export const vitalsP75 = (
+const CLS_SCALE = 1000;
+
+/**
+ * Walk a bucket histogram to the bucket the 75th percentile falls in.
+ *
+ * Returns an INDEX, not a value. It used to return the bucket's upper
+ * boundary, which is where the tab's invented precision came from: every LCP
+ * on the site was one of six round numbers, and the number shown was the
+ * ceiling, so a genuinely fast app read as merely acceptable. An index is what
+ * the data actually supports, and both the range and the rating are derived
+ * from it. See {@link vitalsMetricSchema}.
+ *
+ * `null` when the window holds no sample. The overflow index
+ * (`boundaries.length`) is a real answer, meaning "worse than every boundary",
+ * and is deliberately NOT clamped down onto the last bucket the way the old
+ * walk clamped its return value.
+ *
+ * Merging has to happen at the bucket level - the p75 of two distributions is
+ * not the mean of their p75s - which is why a backend that returned per-app
+ * percentiles could not be merged at all, and why this takes counts.
+ */
+export const vitalsP75Bucket = (
   histogram: Map<number, number> | undefined,
   metric: VitalMetric,
 ): number | null => {
@@ -50,56 +66,89 @@ export const vitalsP75 = (
   for (let index = 0; index <= boundaries.length; index++) {
     cumulative += histogram.get(index) ?? 0;
     if (cumulative >= target) {
-      return boundaries[Math.min(index, boundaries.length - 1)];
+      return index;
     }
   }
-  return boundaries[boundaries.length - 1];
+  return boundaries.length;
 };
 
 /**
- * p75 for all five metrics, `null` where the window saw no sample.
- */
-export interface VitalsP75Summary {
-  /**
-   * Largest Contentful Paint, ms.
-   */
-  lcp: number | null;
-  /**
-   * Cumulative Layout Shift, unitless — already un-scaled.
-   */
-  cls: number | null;
-  /**
-   * Interaction to Next Paint, ms.
-   */
-  inp: number | null;
-  /**
-   * First Contentful Paint, ms.
-   */
-  fcp: number | null;
-  /**
-   * Time to First Byte, ms.
-   */
-  ttfb: number | null;
-}
-
-/**
- * Every metric's p75, from the histograms a store returned.
+ * Every metric's distribution and p75 bucket, from the histograms a store
+ * returned.
  *
- * CLS is divided back down by 1000 here. The browser collector scales it to an
- * integer before bucketing so the boundaries stay free of float drift, and
- * undoing that is the kind of detail every consumer would otherwise have to
- * remember — one of them eventually would not.
+ * A metric the window saw nothing for still gets a full entry - zero samples,
+ * zero counts, its real boundaries, a null bucket. Absent and empty are
+ * different claims, and only the second one lets a UI say "no interaction
+ * samples yet" for INP rather than rendering a blank card. INP is empty for
+ * four of seven production apps, which is expected rather than broken: it
+ * needs a real interaction to exist at all.
  */
 export const summariseVitals = (
   histograms: AnalyticsVitalHistograms,
-): VitalsP75Summary => {
-  const p75 = (metric: VitalMetric) => vitalsP75(histograms[metric], metric);
-  const cls = p75("cls");
+): VitalsSummary => {
+  const summary = {} as VitalsSummary;
+  for (const metric of Object.keys(VITALS_BUCKETS) as VitalMetric[]) {
+    summary[metric] = summariseVitalMetric(histograms[metric], metric);
+  }
+  return summary;
+};
+
+/**
+ * One metric's histogram, turned into what the payload carries.
+ */
+export const summariseVitalMetric = (
+  histogram: Map<number, number> | undefined,
+  metric: VitalMetric,
+): VitalsMetricResource => {
+  const scale = metric === "cls" ? CLS_SCALE : 1;
+  const boundaries = VITALS_BUCKETS[metric].map((value) => value / scale);
+  // One slot per boundary plus the overflow bucket, so a chart can be drawn
+  // straight off the array without the caller knowing which end is which.
+  const buckets = Array.from(
+    { length: boundaries.length + 1 },
+    (_, index) => histogram?.get(index) ?? 0,
+  );
+  const samples = buckets.reduce((total, count) => total + count, 0);
+  const p75Bucket = vitalsP75Bucket(histogram, metric);
+
   return {
-    lcp: p75("lcp"),
-    cls: cls === null ? null : cls / 1000,
-    inp: p75("inp"),
-    fcp: p75("fcp"),
-    ttfb: p75("ttfb"),
+    samples,
+    buckets,
+    boundaries,
+    p75Bucket,
+    // The previous boundary, or zero for the first bucket: a value in bucket 0
+    // is somewhere between nothing and the first boundary, and saying "0 to
+    // 1000 ms" is the honest width of that.
+    p75Lower: p75Bucket === null ? null : (boundaries[p75Bucket - 1] ?? 0),
+    // Absent for the overflow bucket, which has no ceiling to name. "Worse
+    // than the last boundary" is the whole answer there, and inventing one
+    // would be the same lie in a new place.
+    p75Upper: p75Bucket === null ? null : (boundaries[p75Bucket] ?? null),
   };
 };
+
+/**
+ * Every metric's distribution, `samples: 0` where the window saw nothing.
+ */
+export interface VitalsSummary {
+  /**
+   * Largest Contentful Paint, ms.
+   */
+  lcp: VitalsMetricResource;
+  /**
+   * Cumulative Layout Shift, unitless — already un-scaled.
+   */
+  cls: VitalsMetricResource;
+  /**
+   * Interaction to Next Paint, ms.
+   */
+  inp: VitalsMetricResource;
+  /**
+   * First Contentful Paint, ms.
+   */
+  fcp: VitalsMetricResource;
+  /**
+   * Time to First Byte, ms.
+   */
+  ttfb: VitalsMetricResource;
+}

@@ -869,7 +869,13 @@ describe("InsightsController", () => {
     expect(res.data.topCampaigns).toEqual([]);
     expect(res.data.topDevices).toEqual([]);
     expect(res.data.timeline).toHaveLength(7);
-    expect(res.data.vitals.lcp).toBeNull();
+    // Present with zero samples rather than absent: "no apps" and "no samples
+    // yet" render the same, so the tab does not branch on which nothing it got.
+    expect(res.data.vitals.lcp.samples).toBe(0);
+    expect(res.data.vitals.lcp.p75Bucket).toBeNull();
+    expect(res.data.vitals.lcp.buckets).toHaveLength(
+      VITALS_BUCKETS.lcp.length + 1,
+    );
     expect(res.data.errorGroups).toEqual([]);
   });
 
@@ -1119,8 +1125,9 @@ describe("InsightsController", () => {
       );
 
       // Only the fast app's histogram — the slow one's overflow samples would
-      // drag the merged p75 to the last boundary.
-      expect(res.data.vitals.lcp).toBe(VITALS_BUCKETS.lcp[0]);
+      // drag the merged p75 into the overflow bucket.
+      expect(res.data.vitals.lcp.p75Bucket).toBe(0);
+      expect(res.data.vitals.lcp.p75Upper).toBe(VITALS_BUCKETS.lcp[0]);
     });
 
     it("refuses a sigil id from another project", async ({ expect }) => {
@@ -1198,7 +1205,14 @@ describe("InsightsController", () => {
       );
 
       expect(VITALS_BUCKETS.lcp[2]).toBe(2500);
-      expect(res.data.vitals.lcp).toBe(2500);
+      // The RANGE the p75 falls in, not its ceiling wearing a millisecond
+      // suffix: 1800 to 2500, which is the width the four samples support.
+      expect(res.data.vitals.lcp.p75Bucket).toBe(2);
+      expect(res.data.vitals.lcp.p75Lower).toBe(1800);
+      expect(res.data.vitals.lcp.p75Upper).toBe(2500);
+      expect(res.data.vitals.lcp.samples).toBe(4);
+      // The shape, including the overflow tail a single number hid entirely.
+      expect(res.data.vitals.lcp.buckets).toEqual([1, 0, 2, 0, 0, 0, 1]);
     });
 
     it("merges histograms across sigils rather than averaging percentiles", async ({
@@ -1233,10 +1247,14 @@ describe("InsightsController", () => {
       );
 
       expect(VITALS_BUCKETS.lcp[0]).toBe(1000);
-      expect(res.data.vitals.lcp).toBe(1000);
+      expect(res.data.vitals.lcp.p75Bucket).toBe(0);
+      // The first bucket runs from zero: "0 to 1000 ms" is its honest width,
+      // and the old point estimate reported the pessimistic end of it.
+      expect(res.data.vitals.lcp.p75Lower).toBe(0);
+      expect(res.data.vitals.lcp.p75Upper).toBe(1000);
     });
 
-    it("returns null for a metric with no sample in the window", async ({
+    it("returns an empty distribution for a metric with no sample in the window", async ({
       expect,
     }) => {
       const owner = await createTestUser(ctx);
@@ -1256,11 +1274,70 @@ describe("InsightsController", () => {
         { user: owner },
       );
 
-      expect(res.data.vitals.lcp).toBeNull();
-      expect(res.data.vitals.cls).toBeNull();
-      expect(res.data.vitals.inp).toBeNull();
-      expect(res.data.vitals.fcp).toBeNull();
-      expect(res.data.vitals.ttfb).toBeNull();
+      for (const metric of ["lcp", "cls", "inp", "fcp", "ttfb"] as const) {
+        expect(res.data.vitals[metric].samples).toBe(0);
+        expect(res.data.vitals[metric].p75Bucket).toBeNull();
+        expect(res.data.vitals[metric].p75Lower).toBeNull();
+        expect(res.data.vitals[metric].p75Upper).toBeNull();
+      }
+    });
+
+    /**
+     * The overflow bucket is a real answer, not a clamp. The old walk returned
+     * the last boundary for it, which read as "exactly 6000 ms" and hid the
+     * fact that every sample was worse than that.
+     */
+    it("names no ceiling for a p75 in the overflow bucket", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
+
+      await ctx.probe.vitals.create({
+        sigilId,
+        hour: hourUtc(ctx, 0, 10),
+        metric: "lcp",
+        path: "/",
+        b6: 4,
+      });
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { projectId }, query: { range: "7d" } },
+        { user: owner },
+      );
+
+      expect(res.data.vitals.lcp.p75Bucket).toBe(VITALS_BUCKETS.lcp.length);
+      expect(res.data.vitals.lcp.p75Lower).toBe(6000);
+      expect(res.data.vitals.lcp.p75Upper).toBeNull();
+    });
+
+    /**
+     * The number that decides whether any of the rest is worth reading. Two
+     * production apps rated an LCP off 7 samples and off 1, and their cards
+     * looked exactly like the one built on 346.
+     */
+    it("reports the sample count behind every metric", async ({ expect }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
+
+      await ctx.probe.vitals.create({
+        sigilId,
+        hour: hourUtc(ctx, 0, 10),
+        metric: "lcp",
+        path: "/",
+        b0: 5,
+        b3: 2,
+      });
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { projectId }, query: { range: "7d" } },
+        { user: owner },
+      );
+
+      expect(res.data.vitals.lcp.samples).toBe(7);
+      expect(res.data.vitals.inp.samples).toBe(0);
     });
 
     it("reports CLS as the real score, not the ×1000 integer", async ({
@@ -1286,7 +1363,15 @@ describe("InsightsController", () => {
         { user: owner },
       );
 
-      expect(res.data.vitals.cls).toBeCloseTo(VITALS_BUCKETS.cls[0] / 1000, 10);
+      expect(res.data.vitals.cls.p75Upper).toBeCloseTo(
+        VITALS_BUCKETS.cls[0] / 1000,
+        10,
+      );
+      // The boundaries travel with the counts, un-scaled, so a chart labels
+      // itself from the same values the counts were bucketed with.
+      expect(res.data.vitals.cls.boundaries).toEqual([
+        0.05, 0.1, 0.15, 0.25, 0.4, 0.6,
+      ]);
     });
   });
 
@@ -1716,7 +1801,7 @@ describe("InsightsController", () => {
 
       // Answered rather than 500, and the one filter vitals DOES declare was
       // applied: the sample sits on /pricing.
-      expect(res.data.vitals.lcp).toBe(2500);
+      expect(res.data.vitals.lcp.p75Upper).toBe(2500);
       expect(res.data.totalViews).toBe(3);
     });
 

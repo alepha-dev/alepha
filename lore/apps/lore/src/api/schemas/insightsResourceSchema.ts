@@ -1,6 +1,7 @@
 import { type Infer, z } from "alepha";
 
 import { trafficFilterSchema } from "./trafficFilterSchema.ts";
+import { vitalsMetricSchema } from "./vitalsMetricSchema.ts";
 
 /**
  * One app's (or one project's) analytics over a 1d / 7d / 30d window.
@@ -198,34 +199,38 @@ export const insightsResourceSchema = z.object({
     }),
   ),
   /**
-   * Web-vitals p75 approximations across every sigil in scope.
+   * Web-vitals distributions across every sigil in scope.
    *
-   * Derived from the stored histograms, so the cost does not grow with traffic.
-   * `null` means no sample landed in the window. CLS is reported as the real
-   * score — the collector scales it ×1000 before bucketing, and that scaling is
-   * undone in the controller rather than left for the UI to remember.
+   * Derived from the stored histograms, so the cost does not grow with traffic,
+   * which is also why each metric is a distribution and a p75 BUCKET rather
+   * than a p75 value. See {@link vitalsMetricSchema} for what printing the
+   * bucket's ceiling as a millisecond figure did to this page.
+   *
+   * Every metric is always present, with `samples: 0` where the window saw
+   * nothing. Absent and empty are different claims, and only the second lets a
+   * UI say "no interaction samples yet" for INP instead of rendering a blank.
    */
   vitals: z.object({
     /**
-     * Largest Contentful Paint p75, ms.
+     * Largest Contentful Paint, ms.
      */
-    lcp: z.number().nullable(),
+    lcp: vitalsMetricSchema,
     /**
-     * Cumulative Layout Shift p75, unitless.
+     * Cumulative Layout Shift, unitless.
      */
-    cls: z.number().nullable(),
+    cls: vitalsMetricSchema,
     /**
-     * Interaction to Next Paint p75, ms.
+     * Interaction to Next Paint, ms.
      */
-    inp: z.number().nullable(),
+    inp: vitalsMetricSchema,
     /**
-     * First Contentful Paint p75, ms.
+     * First Contentful Paint, ms.
      */
-    fcp: z.number().nullable(),
+    fcp: vitalsMetricSchema,
     /**
-     * Time to First Byte p75, ms.
+     * Time to First Byte, ms.
      */
-    ttfb: z.number().nullable(),
+    ttfb: vitalsMetricSchema,
   }),
   timeline: z.array(
     z.object({

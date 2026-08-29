@@ -54,6 +54,15 @@ export const insightsReadParamsSchema = projectParamsSchema.extend({
     .optional(),
 });
 
+/**
+ * One metric, compacted for an agent: the range and the confidence, no chart.
+ */
+const mcpVitalSchema = z.object({
+  samples: z.integer(),
+  p75Lower: z.number().nullable(),
+  p75Upper: z.number().nullable(),
+});
+
 export const insightsReadResultSchema = z.object({
   range: z.string(),
   /**
@@ -74,13 +83,28 @@ export const insightsReadResultSchema = z.object({
    * p75 per metric over the window, merged across every app at the
    * histogram level. `null` where nothing was reported.
    */
+  /**
+   * Web vitals as a RANGE per metric, with the sample count behind it.
+   *
+   * Deliberately not a number. The store holds bucket counts, so a p75 can only
+   * name the bucket it landed in; printing that bucket's ceiling as a
+   * millisecond figure made every app on this instance report one of six round
+   * values, always the pessimistic end. `p75Lower`/`p75Upper` is the width the
+   * data actually supports, `p75Upper` is absent for the overflow bucket
+   * ("worse than the last boundary", with no ceiling to name), and `samples` is
+   * what says whether any of it is worth quoting - a reading on 7 samples and
+   * one on 346 are not the same claim.
+   *
+   * The full per-bucket distribution is on the HTTP payload and deliberately
+   * not here: seven counts per metric is a chart, not an answer.
+   */
   vitals: z
     .object({
-      lcp: z.number().nullable(),
-      cls: z.number().nullable(),
-      inp: z.number().nullable(),
-      fcp: z.number().nullable(),
-      ttfb: z.number().nullable(),
+      lcp: mcpVitalSchema,
+      cls: mcpVitalSchema,
+      inp: mcpVitalSchema,
+      fcp: mcpVitalSchema,
+      ttfb: mcpVitalSchema,
     })
     .optional(),
   analytics: z

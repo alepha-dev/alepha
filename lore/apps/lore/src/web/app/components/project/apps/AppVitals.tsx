@@ -1,70 +1,40 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@alepha/ui/components/ui/card";
 import { useI18n } from "alepha/react/i18n";
 import { Gauge } from "lucide-react";
 
 import type { I18n } from "../../../services/I18n.ts";
 import AppAnalyticsEstimatedBadge from "./AppAnalyticsEstimatedBadge.tsx";
 import AppInsightsControls from "./AppInsightsControls.tsx";
+import AppVitalsCard, { type AppVitalsCardProps } from "./AppVitalsCard.tsx";
 import { useAppInsights } from "./useAppInsights.ts";
-
-type Rating = "good" | "needsImprovement" | "poor";
-type VitalKey = "lcp" | "inp" | "cls" | "fcp" | "ttfb";
 
 /**
  * Web-Vitals metrics with their standard "good" / "poor" p75 thresholds.
  * Anything at or below `good` is good, at or below `poor` needs work, above is
  * poor. `cls` is unitless; the others are milliseconds.
  */
-const METRICS: {
-  key: VitalKey;
-  unit: "ms" | null;
-  good: number;
-  poor: number;
-}[] = [
-  { key: "lcp", unit: "ms", good: 2500, poor: 4000 },
-  { key: "inp", unit: "ms", good: 200, poor: 500 },
-  { key: "cls", unit: null, good: 0.1, poor: 0.25 },
-  { key: "fcp", unit: "ms", good: 1800, poor: 3000 },
-  { key: "ttfb", unit: "ms", good: 800, poor: 1800 },
+const METRICS: Array<Omit<AppVitalsCardProps, "data">> = [
+  { metricKey: "lcp", unit: "ms", good: 2500, poor: 4000 },
+  { metricKey: "inp", unit: "ms", good: 200, poor: 500 },
+  { metricKey: "cls", unit: null, good: 0.1, poor: 0.25 },
+  { metricKey: "fcp", unit: "ms", good: 1800, poor: 3000 },
+  { metricKey: "ttfb", unit: "ms", good: 800, poor: 1800 },
 ];
 
-// Literal key strings (not template-interpolated) so the i18n audit sees them.
-const RATING_LABEL: Record<
-  Rating,
-  | "insights.vitals.good"
-  | "insights.vitals.needsImprovement"
-  | "insights.vitals.poor"
-> = {
-  good: "insights.vitals.good",
-  needsImprovement: "insights.vitals.needsImprovement",
-  poor: "insights.vitals.poor",
-};
-
-const RATING_DOT: Record<Rating, string> = {
-  good: "bg-emerald-500",
-  needsImprovement: "bg-amber-500",
-  poor: "bg-red-500",
-};
-
-const RATING_TEXT: Record<Rating, string> = {
-  good: "text-emerald-600 dark:text-emerald-400",
-  needsImprovement: "text-amber-600 dark:text-amber-400",
-  poor: "text-red-600 dark:text-red-400",
-};
-
 /**
- * Web-Vitals for one app (p75): one card per metric with its value and a
- * good / needs-work / poor rating. The "Vitals" tab of the app page.
+ * Web-Vitals for one app: per metric, the range its p75 falls in, the number of
+ * samples behind it, and the distribution both come from.
+ *
+ * It used to print a single figure per metric, and the figure was the upper
+ * boundary of the bucket the percentile landed in. Across seven production apps
+ * that made five of them report an LCP of exactly 1800 ms and a CLS of exactly
+ * 0.05 - the algorithm showing through, not a fact about those apps. See
+ * `vitalsMetricSchema` for the rest of the case; the summary is that bucket
+ * counts cannot yield a point estimate, so this stops printing one.
  *
  * Fetches for itself. The window used to arrive pre-fetched from the
  * `projectApp` loader, which meant every other tab paid for it too; the range
- * control it belongs to now sits on this tab, sharing `?range=` with
- * Analytics so crossing between the two keeps one selection.
+ * control it belongs to now sits on this tab, sharing `?range=` with Analytics
+ * so crossing between the two keeps one selection.
  *
  * No population toggle: `sigil_vitals` declares no `traffic` dimension, so the
  * control would be present and inert here.
@@ -103,62 +73,18 @@ const AppVitals = () => {
           />
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {METRICS.map((metric) => {
-              const raw = data.vitals[metric.key];
-              const rating = rate(metric, raw);
-              const display =
-                raw === null
-                  ? tr("insights.vitals.empty")
-                  : metric.unit === "ms"
-                    ? `${raw.toLocaleString()} ms`
-                    : raw.toFixed(2);
-
-              return (
-                <Card key={metric.key}>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-muted-foreground flex items-center justify-between text-sm font-medium">
-                      <span className="tracking-wide uppercase">
-                        {tr(`insights.vitals.${metric.key}`)}
-                      </span>
-                      {rating && (
-                        <span
-                          className={`flex items-center gap-1.5 text-xs font-medium ${RATING_TEXT[rating]}`}
-                        >
-                          <span
-                            className={`size-2 rounded-full ${RATING_DOT[rating]}`}
-                          />
-                          {tr(RATING_LABEL[rating])}
-                        </span>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold tabular-nums">
-                      {display}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+            {METRICS.map((metric) => (
+              <AppVitalsCard
+                key={metric.metricKey}
+                {...metric}
+                data={data.vitals[metric.metricKey]}
+              />
+            ))}
           </div>
         </>
       )}
     </div>
   );
-};
-
-/**
- * Rate a metric value against its thresholds. Returns `null` when there is no
- * sample yet (so the card shows the empty placeholder without a rating).
- */
-const rate = (
-  metric: { good: number; poor: number },
-  value: number | null,
-): Rating | null => {
-  if (value === null) return null;
-  if (value <= metric.good) return "good";
-  if (value <= metric.poor) return "needsImprovement";
-  return "poor";
 };
 
 export default AppVitals;
