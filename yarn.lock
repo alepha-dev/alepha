@@ -9396,6 +9396,7 @@ __metadata:
     react-is: "npm:^19.2.8"
     recharts: "npm:^3.10.1"
     tailwindcss: "npm:^4.3.3"
+    tsx: "npm:^4.23.12"
     vite: "npm:^8.2.1"
     vitest: "npm:^4.1.10"
     wrangler: "npm:^4.123.0"
