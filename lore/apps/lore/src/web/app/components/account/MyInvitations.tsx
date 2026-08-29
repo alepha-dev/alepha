@@ -3,6 +3,7 @@ import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useAlepha, useClient } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Check, Mail, X } from "lucide-react";
 import { useState } from "react";
@@ -12,6 +13,7 @@ import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
+import type { I18n } from "../../services/I18n.ts";
 
 type Inbox = Awaited<ReturnType<InvitationController["listMyInvitations"]>>;
 
@@ -25,6 +27,7 @@ const MyInvitations = (props: MyInvitationsProps) => {
   const router = useRouter<AppRouter>();
   const alepha = useAlepha();
   const toaster = useToast();
+  const { tr } = useI18n<I18n, "en">();
 
   const [items, setItems] = useState<Inbox>(props.invitations);
   const [busyId, setBusyId] = useState<string | undefined>(undefined);
@@ -36,7 +39,7 @@ const MyInvitations = (props: MyInvitationsProps) => {
       const overview = await projectApi.getHomeOverview();
       alepha.store.set(userProjectsAtom, overview);
       setItems((prev) => prev.filter((it) => it.id !== id));
-      toaster.success("You have joined the project!");
+      toaster.success(tr("invitations.accepted"));
       // The invitation carries the project's id, but the URL takes its slug.
       // The overview was just refreshed and now includes the project we joined,
       // so read it from there rather than adding a lookup endpoint.
@@ -47,7 +50,7 @@ const MyInvitations = (props: MyInvitationsProps) => {
         await router.push("project", { params: { projectSlug: joined.slug } });
       }
     } catch (error: any) {
-      toaster.error(error?.message ?? "Failed to accept invitation");
+      toaster.error(error?.message ?? String(tr("invitations.accept.error")));
     } finally {
       setBusyId(undefined);
     }
@@ -58,9 +61,9 @@ const MyInvitations = (props: MyInvitationsProps) => {
     try {
       await invitationApi.declineInvitation({ params: { id } });
       setItems((prev) => prev.filter((it) => it.id !== id));
-      toaster.show("Invitation declined.", "warning");
+      toaster.show(String(tr("invitations.declined")), "warning");
     } catch (error: any) {
-      toaster.error(error?.message ?? "Failed to decline invitation");
+      toaster.error(error?.message ?? String(tr("invitations.decline.error")));
     } finally {
       setBusyId(undefined);
     }
@@ -78,14 +81,14 @@ const MyInvitations = (props: MyInvitationsProps) => {
         became `members` and identity moved to the account.
       */}
       <SettingsHeading
-        title="Pending invitations"
-        description="Project invitations addressed to your email. Accepting adds you to the project as a member."
+        title={String(tr("invitations.title"))}
+        description={String(tr("invitations.description"))}
       />
 
       {items.length === 0 ? (
         <div className="border-border bg-card flex flex-col items-center gap-2 rounded-md border p-6 text-center">
           <Mail className="text-muted-foreground size-5" />
-          <span className="text-sm">No pending invitations.</span>
+          <span className="text-sm">{tr("invitations.empty")}</span>
         </div>
       ) : (
         <div className="border-border bg-card flex flex-col gap-2 rounded-md border p-2">
@@ -102,12 +105,16 @@ const MyInvitations = (props: MyInvitationsProps) => {
                   <span className="text-sm font-medium">
                     {invitation.projectTitle}
                   </span>
-                  <Badge variant="secondary">Pending</Badge>
+                  <Badge variant="secondary">
+                    {tr("invitations.badge.pending")}
+                  </Badge>
                 </div>
                 <span className="text-muted-foreground text-xs">
                   {invitation.inviterName
-                    ? `Invited by ${invitation.inviterName}`
-                    : "Invited"}
+                    ? tr("invitations.invitedBy", {
+                        args: [invitation.inviterName],
+                      })
+                    : tr("invitations.invited")}
                 </span>
               </div>
               <div className="flex gap-2">
@@ -117,14 +124,14 @@ const MyInvitations = (props: MyInvitationsProps) => {
                   onClick={() => decline(invitation.id)}
                   disabled={busyId === invitation.id}
                 >
-                  <X className="size-3.5" /> Decline
+                  <X className="size-3.5" /> {tr("invitations.decline")}
                 </Button>
                 <Button
                   size="sm"
                   onClick={() => accept(invitation.id, invitation.resourceId)}
                   disabled={busyId === invitation.id}
                 >
-                  <Check className="size-3.5" /> Accept
+                  <Check className="size-3.5" /> {tr("invitations.accept")}
                 </Button>
               </div>
             </div>

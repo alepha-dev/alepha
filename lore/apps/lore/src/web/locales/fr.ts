@@ -1306,4 +1306,71 @@ export default {
   "dashboard.footer.visitors.flat": "identique a la veille",
   "dashboard.footer.visitors.noCompare": "pas encore de comparaison",
   "dashboard.footer.noBeacon": "aucune app ici ne remonte de pages vues",
+
+  // --- /account/invitations -------------------------------------------------
+  "invitations.title": "Invitations en attente",
+  "invitations.description":
+    "Invitations à des projets adressées à votre e-mail. En acceptant, vous rejoignez le projet en tant que membre.",
+  "invitations.empty": "Aucune invitation en attente.",
+  "invitations.badge.pending": "En attente",
+  "invitations.invitedBy": "Invité par $1",
+  "invitations.invited": "Invité",
+  "invitations.accept": "Accepter",
+  "invitations.decline": "Refuser",
+  "invitations.accepted": "Vous avez rejoint le projet !",
+  "invitations.declined": "Invitation refusée.",
+  "invitations.accept.error": "Impossible d'accepter l'invitation",
+  "invitations.decline.error": "Impossible de refuser l'invitation",
+
+  // --- /account/feedback ----------------------------------------------------
+  "myFeedback.title": "Retours envoyés",
+  "myFeedback.description":
+    "Les bogues et demandes que vous avez signalés, tous projets confondus. Ceux en attente peuvent encore être modifiés ou retirés.",
+  "myFeedback.empty": "Vous n'avez encore envoyé aucun retour.",
+  "myFeedback.filter.search": "Rechercher",
+  "myFeedback.filter.search.aria": "Rechercher un retour",
+  "myFeedback.filter.allStatuses": "Tous les statuts",
+  "myFeedback.filter.allProjects": "Tous les projets",
+  "myFeedback.column.project": "Projet",
+  "myFeedback.column.title": "Titre",
+  "myFeedback.column.status": "Statut",
+  "myFeedback.column.tags": "Étiquettes",
+  "myFeedback.column.created": "Créé",
+  "myFeedback.action.delete": "Supprimer",
+  "myFeedback.delete.title": "Supprimer ce retour ?",
+  "myFeedback.delete.description":
+    "Votre retour sera définitivement retiré. Cette action est irréversible.",
+  "myFeedback.edit.title": "Modifier le retour",
+  "myFeedback.edit.title.readOnly": "Retour",
+  "myFeedback.edit.hint":
+    "Un retour n'est modifiable que tant qu'il est en attente.",
+  "myFeedback.edit.hint.readOnly":
+    "Ce retour a déjà été traité et n'est plus modifiable.",
+  "myFeedback.edit.title.placeholder": "Résumé court",
+  "myFeedback.edit.description": "Description",
+  "myFeedback.edit.description.placeholder": "Décrivez votre demande",
+  "myFeedback.edit.required": "Le titre et la description sont obligatoires.",
+  "myFeedback.edit.saved": "Retour mis à jour.",
+  "myFeedback.edit.error": "Impossible de mettre à jour le retour.",
+  "feedback.status.pending": "En attente",
+  "feedback.status.accepted": "Accepté",
+  "feedback.status.rejected": "Refusé",
+
+  // --- account deletion -----------------------------------------------------
+  "account.delete.quests.one":
+    "1 quête dont vous êtes l'auteur sera également supprimée, y compris si elle se trouve dans le projet de quelqu'un d'autre.",
+  "account.delete.quests.many":
+    "$1 quêtes dont vous êtes l'auteur seront également supprimées, y compris celles se trouvant dans les projets d'autres personnes.",
+
+  // --- folios ---------------------------------------------------------------
+  "folio.tree.resize": "Redimensionner l'arborescence",
+  "folios.wikilink.loading": "Chargement…",
+  "folios.wikilink.unavailable": "Aperçu indisponible",
+
+  // --- shared ---------------------------------------------------------------
+  "members.owner": "Propriétaire",
+  "members.unknown": "Inconnu",
+  "nav.home": "Accueil",
+  "common.close": "Fermer",
+  "common.save": "Enregistrer",
 };
