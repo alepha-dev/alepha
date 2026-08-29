@@ -1,4 +1,7 @@
+import { useI18n } from "alepha/react/i18n";
 import { type PointerEvent, type ReactElement, useRef } from "react";
+
+import type { I18n } from "@/web/app/services/I18n.ts";
 
 import {
   TREE_DEFAULT_WIDTH,
@@ -25,6 +28,7 @@ export interface FolioTreeResizerProps {
  * than a control.
  */
 const FolioTreeResizer = (props: FolioTreeResizerProps): ReactElement => {
+  const { tr } = useI18n<I18n, "en">();
   const start = useRef<{ x: number; width: number } | null>(null);
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>): void => {
@@ -49,7 +53,7 @@ const FolioTreeResizer = (props: FolioTreeResizerProps): ReactElement => {
       tabIndex={0}
       role="separator"
       aria-orientation="vertical"
-      aria-label="Resize folio tree"
+      aria-label={String(tr("folio.tree.resize"))}
       aria-valuenow={props.width}
       aria-valuemin={TREE_MIN_WIDTH}
       aria-valuemax={TREE_MAX_WIDTH}

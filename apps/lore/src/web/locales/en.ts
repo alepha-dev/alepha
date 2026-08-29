@@ -1281,4 +1281,71 @@ export default {
   "dashboard.footer.visitors.flat": "same as the day before",
   "dashboard.footer.visitors.noCompare": "no comparison yet",
   "dashboard.footer.noBeacon": "no app here reports page views",
+
+  // --- /account/invitations -------------------------------------------------
+  "invitations.title": "Pending invitations",
+  "invitations.description":
+    "Project invitations addressed to your email. Accepting adds you to the project as a member.",
+  "invitations.empty": "No pending invitations.",
+  "invitations.badge.pending": "Pending",
+  "invitations.invitedBy": "Invited by $1",
+  "invitations.invited": "Invited",
+  "invitations.accept": "Accept",
+  "invitations.decline": "Decline",
+  "invitations.accepted": "You have joined the project!",
+  "invitations.declined": "Invitation declined.",
+  "invitations.accept.error": "Failed to accept invitation",
+  "invitations.decline.error": "Failed to decline invitation",
+
+  // --- /account/feedback ----------------------------------------------------
+  "myFeedback.title": "Submitted feedback",
+  "myFeedback.description":
+    "Bug reports and requests you submitted across projects. Pending ones can still be edited or withdrawn.",
+  "myFeedback.empty": "You haven't submitted any feedback yet.",
+  "myFeedback.filter.search": "Search",
+  "myFeedback.filter.search.aria": "Search feedback",
+  "myFeedback.filter.allStatuses": "All statuses",
+  "myFeedback.filter.allProjects": "All projects",
+  "myFeedback.column.project": "Project",
+  "myFeedback.column.title": "Title",
+  "myFeedback.column.status": "Status",
+  "myFeedback.column.tags": "Tags",
+  "myFeedback.column.created": "Created",
+  "myFeedback.action.delete": "Delete",
+  "myFeedback.delete.title": "Delete feedback?",
+  "myFeedback.delete.description":
+    "This permanently withdraws your feedback. This cannot be undone.",
+  "myFeedback.edit.title": "Edit feedback",
+  "myFeedback.edit.title.readOnly": "Feedback",
+  "myFeedback.edit.hint":
+    "You can edit feedback only while it is still pending.",
+  "myFeedback.edit.hint.readOnly":
+    "This feedback has already been triaged and can no longer be edited.",
+  "myFeedback.edit.title.placeholder": "Short summary",
+  "myFeedback.edit.description": "Description",
+  "myFeedback.edit.description.placeholder": "Describe your request",
+  "myFeedback.edit.required": "Title and description are required.",
+  "myFeedback.edit.saved": "Feedback updated.",
+  "myFeedback.edit.error": "Failed to update feedback.",
+  "feedback.status.pending": "Pending",
+  "feedback.status.accepted": "Accepted",
+  "feedback.status.rejected": "Rejected",
+
+  // --- account deletion -----------------------------------------------------
+  "account.delete.quests.one":
+    "1 quest you authored will also be deleted, including if it lives in someone else's project.",
+  "account.delete.quests.many":
+    "$1 quests you authored will also be deleted, including any in other people's projects.",
+
+  // --- folios ---------------------------------------------------------------
+  "folio.tree.resize": "Resize folio tree",
+  "folios.wikilink.loading": "Loading…",
+  "folios.wikilink.unavailable": "Preview unavailable",
+
+  // --- shared ---------------------------------------------------------------
+  "members.owner": "Owner",
+  "members.unknown": "Unknown",
+  "nav.home": "Home",
+  "common.close": "Close",
+  "common.save": "Save",
 };

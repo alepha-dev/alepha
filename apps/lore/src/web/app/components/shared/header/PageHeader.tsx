@@ -29,7 +29,7 @@ const PageHeader = (props: PageHeaderProps) => {
             role="link"
             variant="ghost"
             size="icon"
-            aria-label="Home"
+            aria-label={String(tr("nav.home"))}
           >
             <HomeIcon className="size-4" />
             <span className="sr-only">{tr("home.title")}</span>
