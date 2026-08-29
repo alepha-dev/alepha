@@ -974,6 +974,137 @@ describe("sigil ingest", () => {
     expect(after?.lastSeenAt).toBeTruthy();
   });
 
+  describe("reported config", () => {
+    const reported = {
+      trackers: { views: true, errors: true, vitals: false },
+      feedback: true,
+      feedbackButton: "hidden",
+      feedbackButtonExcludedPaths: ["/request"],
+      reportOutsideProduction: false,
+    };
+
+    it("stores what the app said it is running, with its own timestamp", async () => {
+      const { probe, sigil, post } = await setup();
+
+      const res = await post({ views: [{ path: "/home" }], config: reported });
+      expect(res.status).toBe(204);
+
+      const after = await probe.sigils.findOne({
+        where: { id: { eq: sigil.id } },
+      });
+      expect(after?.reportedConfig).toEqual(reported);
+      expect(after?.reportedConfigAt).toBeTruthy();
+    });
+
+    /**
+     * An older client sends nothing on every batch. Letting that erase what a
+     * newer deploy reported would make the field flicker between known and
+     * unknown depending on which process flushed last.
+     */
+    it("leaves a stored config alone when a batch carries none", async () => {
+      const { probe, sigil, post } = await setup();
+
+      await post({ views: [{ path: "/a" }], config: reported });
+      await post({ views: [{ path: "/b" }] });
+
+      const after = await probe.sigils.findOne({
+        where: { id: { eq: sigil.id } },
+      });
+      expect(after?.reportedConfig).toEqual(reported);
+    });
+
+    it("reads as unknown for an app that has never reported one", async () => {
+      const { probe, sigil, post } = await setup();
+
+      await post({ views: [{ path: "/home" }] });
+
+      const after = await probe.sigils.findOne({
+        where: { id: { eq: sigil.id } },
+      });
+      // Absent, not an all-false object: "has not told us" and "off" are
+      // different answers and the UI renders them differently.
+      expect(after?.reportedConfig).toBeUndefined();
+      expect(after?.reportedConfigAt).toBeUndefined();
+    });
+
+    /**
+     * The whole point of storing it: what the app claims and what this sink
+     * accepts, side by side, so a disagreement is visible. It must never
+     * become an input to either.
+     */
+    it("never feeds the gates and never overwrites kinds", async () => {
+      const { probe, service, sigil, post } = await setup({
+        kinds: ["beacon"],
+      });
+
+      // The app claims every tracker is on. The sigil carries `beacon` alone.
+      await post({
+        vitals: [{ path: "/", metric: "lcp", value: 1200 }],
+        errors: [anError()],
+        config: {
+          ...reported,
+          trackers: { views: true, errors: true, vitals: true },
+        },
+      });
+
+      const after = await probe.sigils.findOne({
+        where: { id: { eq: sigil.id } },
+      });
+      expect(after?.kinds).toEqual(["beacon"]);
+
+      const gates = await service.gatesFor(after ?? sigil);
+      expect(gates.vitals).toBe(false);
+      expect(gates.errors).toBe(false);
+      // And the claim was stored anyway, which is what makes the disagreement
+      // renderable rather than merely refused.
+      expect(after?.reportedConfig?.trackers).toEqual({
+        views: true,
+        errors: true,
+        vitals: true,
+      });
+    });
+
+    it("refuses an unshaped config at the door, like every other field", async () => {
+      const { probe, sigil, post } = await setup();
+
+      const res = await post({
+        views: [{ path: "/home" }],
+        config: { trackers: { views: "yes" } },
+      });
+      // The ingest body is validated as a whole, and this field is no
+      // exception: `errors[].origin` refuses an unknown value the same way.
+      expect(res.status).toBe(400);
+
+      const after = await probe.sigils.findOne({
+        where: { id: { eq: sigil.id } },
+      });
+      expect(after?.reportedConfig).toBeUndefined();
+      expect(after?.lastSeenAt).toBeUndefined();
+    });
+
+    /**
+     * The forward-compatibility half of the rule above, and the reason a
+     * strict schema here is not a trap: a newer client that adds a field does
+     * not lose its telemetry to an older sink, because zod strips what it does
+     * not know rather than refusing it. Only a CHANGED type would break, which
+     * is a breaking change to the wire either way.
+     */
+    it("strips a field a newer client added rather than refusing the batch", async () => {
+      const { probe, sigil, post } = await setup();
+
+      const res = await post({
+        views: [{ path: "/home" }],
+        config: { ...reported, sampling: 0.25 },
+      });
+      expect(res.status).toBe(204);
+
+      const after = await probe.sigils.findOne({
+        where: { id: { eq: sigil.id } },
+      });
+      expect(after?.reportedConfig).toEqual(reported);
+    });
+  });
+
   it("gates blights, beacon and vitals on the sigil's kinds alone", async () => {
     // The project carries none of the retired flags — under the old rule that
     // meant every capability was off regardless of what the sigil carried.

@@ -1,5 +1,7 @@
 import { type Infer, z } from "alepha";
 
+import { sigilReportedConfig } from "./sigilReportedConfig.ts";
+
 /**
  * When the event happened, epoch milliseconds, as claimed by the client.
  *
@@ -197,6 +199,30 @@ export const sigilForwarded = sigilEnvelope.extend({
    * again on arrival rather than trust what arrives.
    */
   host: z.string().max(253).optional(),
+  /**
+   * What this app is configured to collect, resolved.
+   *
+   * The one field on this envelope that describes the app's DECISIONS rather
+   * than an event or the visitor who caused it. A sink knows what it receives
+   * and nothing about what the app chose, so an app quietly sending nothing
+   * and a sink quietly refusing it look identical from the sink's side; this
+   * is the app supplying the missing half, on the channel that already exists.
+   *
+   * Attached by {@link SigilSinkProvider} at delivery rather than stamped per
+   * request like `country` and `device`, and deliberately NOT part of the
+   * batch key: those fields separate visitors and addresses, which is what a
+   * key is for, while a config blob never varies within one deploy. Keying on
+   * it would fragment every batch for nothing.
+   *
+   * Optional, and it stays optional: an older client sends nothing and must
+   * keep working, exactly as an older token does. Absent means "this app has
+   * not told us", which a UI must render as unknown rather than as off.
+   *
+   * See {@link sigilNormalizeReportedConfig} - the sender bounds it and the
+   * sink bounds it again, because a sender holding a token can put anything on
+   * the wire and the value ends up in a rendered page.
+   */
+  config: sigilReportedConfig.optional(),
 });
 
 export type SigilForwarded = Infer<typeof sigilForwarded>;

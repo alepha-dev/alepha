@@ -101,6 +101,49 @@ export const sigils = $entity({
      * Nullable for the same table-rebuild reason as {@link url}.
      */
     lastSeenHost: z.string().max(253).optional(),
+    /**
+     * What the app last SAID it is configured to collect, resolved.
+     *
+     * A claim, never a fact and never an input. `kinds` above is what this
+     * sink accepts and is the only thing `SigilIngestService.gatesFor` reads;
+     * this is what the app says it sends. They are stored side by side
+     * precisely so a disagreement - the app sending vitals while the sink
+     * refuses them - becomes visible, which is currently invisible in both
+     * directions and the failure mode that wastes the most time.
+     *
+     * Bounded by `sigilNormalizeReportedConfig` on arrival, because the sender
+     * is whoever holds this token and the value is rendered on a page.
+     *
+     * ⚠️ Every field of the stored shape is optional, deliberately. This is a
+     * JSON column, and a REQUIRED key renamed inside one takes production down
+     * on every read of the table - `projects.features` did exactly that on
+     * 2026-08-05, because a missing required key fails the whole row rather
+     * than reading as undefined. Nothing here may become required.
+     *
+     * Optional, and without a `db.default`, for the same table-rebuild reason
+     * as {@link url} and {@link lastSeenHost}: `sigils` is the CASCADE parent
+     * of the four analytics tables, and a nullable `ADD COLUMN` is the one
+     * shape that does not make drizzle rebuild it.
+     */
+    reportedConfig: z
+      .object({
+        trackers: z.record(z.string(), z.boolean()).optional(),
+        feedback: z.boolean().optional(),
+        feedbackButton: z.string().optional(),
+        feedbackButtonExcludedPaths: z.array(z.string()).optional(),
+        reportOutsideProduction: z.boolean().optional(),
+      })
+      .optional(),
+    /**
+     * When {@link reportedConfig} was last reported.
+     *
+     * Separate from `lastSeenAt` because they answer different questions: an
+     * app reports constantly and changes its config rarely, so a config
+     * reported three weeks ago by an app redeployed since is stale while the
+     * app is perfectly alive. A page that showed the config under the liveness
+     * timestamp would be claiming the wrong freshness.
+     */
+    reportedConfigAt: z.string().optional(),
   }),
   indexes: [
     { columns: ["projectId"] },
