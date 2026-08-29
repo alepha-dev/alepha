@@ -1,127 +1,39 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@alepha/ui/components/ui/card";
 import { useStore } from "alepha/react";
-import { useI18n } from "alepha/react/i18n";
-import { Bug, Eye, Users } from "lucide-react";
 
 import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
-import type { I18n } from "../../../services/I18n.ts";
-import { useAppInsights } from "./useAppInsights.ts";
+import AppDashboardCapabilities from "./AppDashboardCapabilities.tsx";
+import AppDashboardIdentity from "./AppDashboardIdentity.tsx";
 
 /**
- * The app's front page: what it is, and — when Beacon is on — the three numbers
- * that say whether it is healthy, each of which has a tab behind it.
+ * The app's front page: what this thing is, and what it is doing.
  *
- * With Beacon off there is nothing to count, so the page is the credential card
- * alone plus a line saying where the switch is. An app you enrolled is still an
- * app; refusing to render it because analytics are off would make the whole
- * section vanish for anyone who only wanted crash reports.
+ * **It opens instantly, and that is a property rather than a happy accident.**
+ * It used to render unique visitors, total views and an error-group count from
+ * an insights payload, which meant the front page of an app cost ten aggregate
+ * queries against Analytics Engine to show three counters. Those tiles live on
+ * Analytics now, where a range control exists to explain them; nothing here
+ * issues an analytics query at all, and everything it renders came with the
+ * route's own sigil lookup.
+ *
+ * Two blocks. Identity answers "what is this and is it alive". Capabilities
+ * puts what the app SAYS it sends beside what this sink ACCEPTS, which is the
+ * comparison neither page could make before: a disagreement was invisible in
+ * both directions, and it is the failure mode that wastes the most time.
+ *
+ * Deliberately roomy. Artifacts, the current deployment and a run log all want
+ * this page once the deploy chain lands.
  */
 const AppDashboard = () => {
-  const { tr, l } = useI18n<I18n, "en">();
   const [sigil] = useStore(currentSigilAtom);
-  // Still a query, and still the wrong place for one: the three tiles below
-  // belong on Analytics, where a range control exists to explain them. Moving
-  // them is quest #1293's job; asking for them here rather than from the
-  // layout's loader is this one's, and it is what stops Settings paying too.
-  const { data: insights } = useAppInsights();
 
   if (!sigil) {
     return null;
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {insights ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-                <Users className="size-4" />
-                {tr("insights.uniqueVisitors")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold tabular-nums">
-                {insights.uniqueVisitors.toLocaleString()}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-                <Eye className="size-4" />
-                {tr("insights.totalViews")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold tabular-nums">
-                {insights.totalViews.toLocaleString()}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-                <Bug className="size-4" />
-                {tr("app.dashboard.errors")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold tabular-nums">
-                {insights.errorGroups.length.toLocaleString()}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      ) : (
-        <p className="text-muted-foreground text-sm">
-          {tr("app.dashboard.beaconOff")}
-        </p>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            {tr("app.dashboard.credential")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3 text-sm">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-muted-foreground">
-              {tr("app.dashboard.token")}
-            </span>
-            <code className="font-mono text-xs">{sigil.tokenPrefix}…</code>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-muted-foreground">
-              {tr("app.dashboard.reports")}
-            </span>
-            {sigil.kinds.length === 0 ? (
-              <span className="text-muted-foreground text-xs">—</span>
-            ) : (
-              sigil.kinds.map((kind) => (
-                <Badge key={kind} variant="outline">
-                  {kind}
-                </Badge>
-              ))
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-muted-foreground">
-              {tr("app.dashboard.enrolled")}
-            </span>
-            <span>{String(l(sigil.createdAt, { date: "lll" }))}</span>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <AppDashboardIdentity sigil={sigil} />
+      <AppDashboardCapabilities sigil={sigil} />
     </div>
   );
 };
