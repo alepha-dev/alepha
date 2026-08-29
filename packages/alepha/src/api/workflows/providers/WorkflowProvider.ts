@@ -331,6 +331,12 @@ export class WorkflowProvider {
   ): Promise<void> {
     // Per-workflow lock: two dispatches for the same execution must not
     // interleave (a retry timer racing a sweep, or two queue deliveries).
+    //
+    // This is an OPTIMISATION, not the guarantee. `LockProvider` resolves to
+    // the per-isolate `MemoryLockProvider` on Cloudflare Workers, and on Node
+    // unless `alepha/lock/redis` is registered, so it excludes nothing across
+    // processes. What actually serialises a step is the compare-and-set claim
+    // in `executeHandlerStep`; the lock only spares the loser the read work.
     const lockKey = `workflow:${workflowId}`;
     const lockValue = `${this.crypto.randomUUID()},${this.dt.nowISOString()}`;
     const lockResult = await this.lockProvider.set(
@@ -436,8 +442,12 @@ export class WorkflowProvider {
     // a controller cancel() can miss. The handler then runs on a signal
     // nobody will ever abort, and a handler that only ends on abort never
     // ends at all - it holds `inFlight` and stalls shutdown's drain.
-    const abortController = new AbortController();
+    //
+    // That ordering is why the claim below can be lost with a controller
+    // already published: `previousController` is what the loser puts back.
     const abortKey = `${workflowId}:${stepName}`;
+    const previousController = this.abortControllers.get(abortKey);
+    const abortController = new AbortController();
     this.abortControllers.set(abortKey, abortController);
 
     // Remembered so the catch path can tell this timer's abort from an
@@ -446,11 +456,33 @@ export class WorkflowProvider {
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
     try {
-      await this.stepExecutions.updateById(stepExec.id, {
-        status: "running",
-        attempt: stepExec.attempt + 1,
-        startedAt: this.dt.nowISOString(),
-      });
+      // Compare-and-set, not a plain write: this is the step's claim, and it
+      // is the ONLY thing that makes two dispatches for one step mutually
+      // exclusive on every runtime. The per-workflow `LockProvider` lock in
+      // processStepInner does not do it — on Cloudflare Workers, and on Node
+      // without `alepha/lock/redis`, it resolves to `MemoryLockProvider`,
+      // which is per-isolate. Two isolates therefore both read `pending`,
+      // both pass their own local lock, and without this guard both run the
+      // handler concurrently — a stronger requirement than the "idempotent
+      // under replay" handlers are documented to satisfy.
+      //
+      // With it, the lock is demoted to what it should be: a latency
+      // optimisation that avoids doing the read work twice.
+      const claimed = await this.stepExecutions.updateMany(
+        { id: { eq: stepExec.id }, status: { eq: "pending" } },
+        {
+          status: "running",
+          attempt: stepExec.attempt + 1,
+          startedAt: this.dt.nowISOString(),
+        },
+      );
+      if (claimed.length === 0) {
+        this.log.debug(
+          `Workflow step '${stepName}' claimed by another dispatch, skipping`,
+          { workflowId },
+        );
+        return;
+      }
 
       await this.executions.updateById(workflowId, {
         currentStep: stepName,
@@ -578,7 +610,17 @@ export class WorkflowProvider {
       );
     } finally {
       clearTimeout(timeoutId);
-      this.abortControllers.delete(abortKey);
+      // Retract only our own controller. A dispatch that lost the claim
+      // published one before it could find out (see the #1111 ordering
+      // above), so it has to put back whatever it displaced rather than
+      // leave `cancel()` with nothing to abort for the run that won.
+      if (this.abortControllers.get(abortKey) === abortController) {
+        if (previousController) {
+          this.abortControllers.set(abortKey, previousController);
+        } else {
+          this.abortControllers.delete(abortKey);
+        }
+      }
     }
   }
 
@@ -591,6 +633,12 @@ export class WorkflowProvider {
    * sweep re-derives the wake-up from the row alone — a crash between the
    * verdict and this write replays the same iteration, which is why
    * iteration handlers must be idempotent.
+   *
+   * The re-park is guarded on `running` for the same reason the claim is a
+   * compare-and-set: this runs after the handler resolved, and a `cancel()`
+   * that landed in that window has already written `cancelled`. An unguarded
+   * write would park the row back to `pending` and the next dispatch would
+   * resurrect a step the caller cancelled.
    */
   protected async repeatStep(
     workflow: WorkflowExecutionEntity,
@@ -605,13 +653,24 @@ export class WorkflowProvider {
     const delayMs = this.dt.duration(repeat.delay).as("milliseconds");
     const scheduledAt = this.dt.now().add(delayMs, "millisecond").toISOString();
 
-    await this.stepExecutions.updateById(stepExec.id, {
-      status: "pending",
-      iteration,
-      attempt: 0,
-      result: result != null ? (result as Record<string, unknown>) : undefined,
-      scheduledAt,
-    });
+    const reparked = await this.stepExecutions.updateMany(
+      { id: { eq: stepExec.id }, status: { eq: "running" } },
+      {
+        status: "pending",
+        iteration,
+        attempt: 0,
+        result:
+          result != null ? (result as Record<string, unknown>) : undefined,
+        scheduledAt,
+      },
+    );
+    if (reparked.length === 0) {
+      this.log.debug(
+        `Workflow step '${stepExec.stepName}' left 'running' before its repeat, not re-parking`,
+        { workflowId: workflow.id, iteration },
+      );
+      return;
+    }
 
     await this.writeStepLogs(stepExec.id);
 
@@ -866,9 +925,23 @@ export class WorkflowProvider {
       );
       if (!stepDef?.compensate) continue;
 
-      await this.stepExecutions.updateById(stepExec.id, {
-        status: "compensating",
-      });
+      // Compare-and-set, for the reason the step claim is one. `compensate()`
+      // takes NO lock at all — it is reachable from handleStepFailure, from
+      // cancel({ compensate }), from the recovery sweep and from the admin
+      // endpoint — so two callers can read the same `completed` steps and run
+      // the same compensation handler twice, concurrently, on every runtime.
+      // Undoing work twice is not what "idempotent under replay" covers.
+      const claimed = await this.stepExecutions.updateMany(
+        { id: { eq: stepExec.id }, status: { eq: "completed" } },
+        { status: "compensating" },
+      );
+      if (claimed.length === 0) {
+        this.log.debug(
+          `Step '${stepExec.stepName}' is already being compensated elsewhere, skipping`,
+          { workflowId },
+        );
+        continue;
+      }
 
       try {
         // Fresh scope per compensation: cancel({compensate}) runs in the
