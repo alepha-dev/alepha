@@ -48,6 +48,21 @@ export const jobExecutionEntity = $entity({
     attempt: db.default(z.integer(), 0),
     maxAttempts: db.default(z.integer(), 1),
 
+    /**
+     * How many times the sweep has re-dispatched this row while it was still
+     * `pending`, i.e. how many deliveries were lost between dispatch and
+     * `claim()`.
+     *
+     * Separate from `attempt`, which only moves inside `claim()` and counts
+     * attempts that actually *ran*. They cannot share a column: a queue that
+     * is merely slower than `staleThreshold` produces re-dispatches without
+     * producing failures, and spending the retry budget on those would kill
+     * jobs that were going to succeed.
+     *
+     * Bounded by `jobConfig.maxRedispatch`; past it the row goes terminal.
+     */
+    redispatchCount: db.default(z.integer(), 0),
+
     payload: z.record(z.text(), z.any()).optional(),
 
     scheduledAt: z.datetime().optional(),

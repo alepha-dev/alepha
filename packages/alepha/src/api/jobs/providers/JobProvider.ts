@@ -1465,7 +1465,7 @@ export class JobProvider {
           where.createdAt = { lte: staleIso };
           where.updatedAt = { lte: staleIso };
         },
-        act: (exec) => this.dispatchSafe(exec.jobName, exec.id),
+        act: (exec) => this.redispatchStale(exec),
       },
       {
         label: "recover-crashed",
@@ -1473,6 +1473,17 @@ export class JobProvider {
         // No SQL bound: the lease length is per job, so the threshold cannot
         // be expressed as one comparison across the whole result set.
         where: () => {},
+        // It needs the batch bound like the other two - it reads every
+        // `running` row otherwise - but a bounded batch here is filtered
+        // again in JS by `claims`, so an arbitrary slice could be all
+        // live rows and leave the crashed ones unreached forever.
+        //
+        // Ordering by `updatedAt` ascending is what makes the bound safe:
+        // `updatedAt` is the value the lease heartbeat renews, so the oldest
+        // lease sorts first and a bounded batch is exactly the rows most
+        // likely to be crashed. A live job renews and sorts itself to the
+        // back.
+        orderBy: { column: "updatedAt", direction: "asc" },
         claims: (exec, registration, now) => {
           if (this.abortControllers.has(exec.id)) return false; // alive here
           // The lease is whichever is fresher: the claim (startedAt) or the
@@ -1496,6 +1507,27 @@ export class JobProvider {
    * Run one entry of the sweep table: read the rows it owns, drop the ones
    * its own predicate rejects, and act on the rest. Per-row containment lives
    * in the actions, so one unrecoverable row cannot strand the others.
+   *
+   * The read is bounded by `sweepBatchSize`. It used to have no `limit` at
+   * all, and `Repository.findMany` emits no LIMIT clause when none is given,
+   * so every phase materialised every matching row. The failure mode was
+   * self-reinforcing rather than merely wasteful: a downstream outage turns
+   * the whole retrying population into rows `promote-due` matches on the very
+   * next tick, so the tick that has the most to do is the one that runs out
+   * of budget, and the next tick starts from the top of the same ordered set
+   * and redoes the same prefix. The sweep was least able to make progress
+   * exactly when it was most needed.
+   *
+   * Every phase's action moves the row out of the status the phase owns
+   * (`promote-due` promotes, `recover-crashed` fails, `redispatch-stale`
+   * stamps `updatedAt` past the stale window), so a bounded batch always
+   * makes progress: next tick reads the next rows, not the same ones.
+   *
+   * What DOES repeat is the priority ordering: while a backlog persists,
+   * `promote-due` and `redispatch-stale` keep serving the highest-priority
+   * rows first, so newly arriving `critical` work overtakes `low` work that
+   * has been waiting. That is priority doing its job, not starvation, and it
+   * is the one thing `$job` priority is defined to mean. Do not "fix" it.
    */
   protected async runSweepEntry(
     entry: SweepEntry,
@@ -1505,10 +1537,21 @@ export class JobProvider {
     where.status = { eq: entry.status };
     entry.where(where, now);
 
+    const limit = Math.max(1, this.config.sweepBatchSize);
     const rows = await this.executions.findMany({
       where,
+      limit,
       ...(entry.orderBy ? { orderBy: entry.orderBy } : {}),
     });
+
+    if (rows.length >= limit) {
+      // A full batch means a backlog. Say so rather than leaving it to be
+      // inferred from a graph: from the outside a bounded sweep that is
+      // behind looks exactly like one that is up to date.
+      this.log.info(
+        `Sweep phase '${entry.label}' filled its batch (${rows.length}/${limit}); the remainder waits for the next tick`,
+      );
+    }
 
     for (const exec of rows) {
       const registration = this.jobs.get(exec.jobName);
@@ -1516,6 +1559,68 @@ export class JobProvider {
       if (entry.claims && !entry.claims(exec, registration, now)) continue;
       await entry.act(exec, registration);
     }
+  }
+
+  /**
+   * Sweep action for `redispatch-stale`: a `pending` row nobody claimed, so
+   * the dispatch was lost. Re-dispatch it, but count the attempts.
+   *
+   * `attempt` only moves inside `claim()`, so a payload that reliably kills
+   * the isolate between dispatch and claim never increments it and the
+   * post-claim `maxAttempts` bound never binds. This was the one path in the
+   * state machine with no terminal state: it looped once per sweep, forever.
+   *
+   * The counter write is guarded on `pending` and is what stamps `updatedAt`,
+   * which is also the phase's staleness clock — so a row re-dispatched here
+   * drops out of the phase's window for another `staleThreshold` instead of
+   * being picked again on every tick.
+   */
+  protected async redispatchStale(exec: JobExecutionEntity): Promise<void> {
+    const count = exec.redispatchCount ?? 0;
+    if (count >= this.config.maxRedispatch) {
+      this.log.warn(
+        `Job '${exec.jobName}' (${exec.id}) was never claimed after ${count} re-dispatch(es), marking it errored`,
+      );
+      await this.guardedUpdate(
+        exec.id,
+        ["pending"],
+        {
+          status: "error",
+          error: `Never claimed after ${count} sweep re-dispatch(es) (jobConfig.maxRedispatch)`,
+          completedAt: this.dt.nowISOString(),
+          key: null,
+        },
+        "redispatch-exhausted",
+      );
+      await this.alepha.events.emit(
+        "job:error",
+        {
+          name: exec.jobName,
+          error: new Error(
+            `Never claimed after ${count} sweep re-dispatch(es)`,
+          ),
+          executionId: exec.id,
+        },
+        { catch: true },
+      );
+      return;
+    }
+
+    // Count first: a re-dispatch we cannot record is one we must not make,
+    // or the cap above is unreachable. A row that left `pending` in the
+    // meantime was claimed by someone, and needs no help from us.
+    const bumped = await this.executions.updateMany(
+      { id: { eq: exec.id }, status: { eq: "pending" } },
+      { redispatchCount: count + 1 },
+    );
+    if (bumped.length === 0) {
+      this.log.trace(
+        `Sweep: skipping ${exec.jobName} (${exec.id}), no longer pending`,
+      );
+      return;
+    }
+
+    await this.dispatchSafe(exec.jobName, exec.id);
   }
 
   /**

@@ -202,6 +202,8 @@ Inside a `$module`, the `register()` hook runs before `imports[]` and
 | ---------------------- | -------------- | ----------------------------------------------------------------------------------------------------- |
 | `sweepCron`            | `*/15 * * * *` | Reconciliation sweep - bounds retry latency                                                           |
 | `trimCron`             | `0 * * * *`    | Ring-buffer trim tick                                                                                 |
+| `sweepBatchSize`       | `200`          | Rows one sweep phase reads per tick - see below                                                       |
+| `maxRedispatch`        | `3`            | Lost deliveries tolerated before a `pending` row is failed                                            |
 | `staleThreshold`       | `300000`       | Pending age (ms) before the sweep re-dispatches                                                       |
 | `runTimeout`           | `1800000`      | Running age (ms) before a crash is assumed                                                            |
 | `keepLastSuccess`      | `10`           | Successful rows kept per job                                                                          |
@@ -209,6 +211,28 @@ Inside a `$module`, the `register()` hook runs before `imports[]` and
 | `drainTimeout`         | `30000`        | Time (ms) to wait for in-flight jobs on shutdown                                                      |
 | `logMaxEntries`        | `100`          | Log lines captured per run                                                                            |
 | `directMaxConcurrency` | `10`           | Concurrent handlers in direct mode - what keeps a `pushMany` of thousands from exhausting the DB pool |
+
+### The sweep is bounded
+
+Each sweep phase reads at most `sweepBatchSize` rows per tick and leaves the
+rest for the next one. This matters under exactly the conditions where the
+sweep is load-bearing: a downstream outage turns the entire retrying
+population into rows the sweep matches at once, and every row carries its
+payload and any captured logs. A phase that fills its batch logs that it did,
+so a backlog is visible in the logs rather than something you infer from a
+graph.
+
+Every phase's action moves the row out of the status that phase owns, so
+progress across ticks is guaranteed. What repeats is the **priority**
+ordering: while a backlog persists, newly arriving `critical` work is served
+before `low` work that has been waiting. That is what `$job` priority means,
+and it is the only thing it means.
+
+A `pending` row whose delivery is lost is re-dispatched at most
+`maxRedispatch` times before it is failed. This is counted separately from
+`attempt`, which only moves when a worker actually claims the row: a payload
+that kills the process between dispatch and claim never increments `attempt`,
+so the retry policy would never end it.
 
 ### Sweeps owned by other modules
 

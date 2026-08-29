@@ -512,3 +512,167 @@ describe("$job — the sweep table", () => {
     expect(claimsFor(rows.cancelled)).toEqual([]);
   });
 });
+
+// -----------------------------------------------------------------------------------------------------------------
+
+/**
+ * Accepts every dispatch and delivers none of it.
+ *
+ * Models the one path that had no terminal state: a payload that kills the
+ * isolate between the dispatch and `claim()`. `attempt` only moves inside
+ * `claim()`, so nothing about the retry policy ever notices.
+ */
+class BlackHoleJobDispatcher extends DirectJobDispatcher {
+  public dispatches = 0;
+
+  public override async dispatch(): Promise<void> {
+    this.dispatches++;
+  }
+}
+
+describe("$job — the sweep is bounded", () => {
+  it("drains a backlog larger than one batch across ticks, running each row once", async ({
+    expect,
+  }) => {
+    const handled: number[] = [];
+
+    const alepha = Alepha.create()
+      .with({ provide: JobProvider, use: TestJobProvider })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs);
+    alepha.store.mut(jobConfig, (c) => ({ ...c, sweepBatchSize: 3 }));
+
+    class BacklogApp {
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        schema: z.object({ v: z.integer() }),
+        handler: async ({ payload }) => {
+          handled.push(payload.v);
+        },
+      });
+    }
+
+    const app = alepha.inject(BacklogApp);
+    const jobs = alepha.inject(JobProvider) as TestJobProvider;
+    await alepha.start();
+
+    // Seven rows already due, written straight to the outbox: this is the
+    // shape a crash or an outage leaves behind, and it bypasses the
+    // optimistic timer so the sweep really is the only thing that can move
+    // them.
+    const past = new Date(Date.now() - 60_000).toISOString();
+    for (let v = 0; v < 7; v++) {
+      await app.executions.create({
+        jobName: "BacklogApp.work",
+        payload: { v },
+        status: "scheduled",
+        maxAttempts: 1,
+        scheduledAt: past,
+      });
+    }
+
+    const stillScheduled = async () =>
+      (
+        await app.executions.findMany({
+          where: {
+            jobName: { eq: "BacklogApp.work" },
+            status: { eq: "scheduled" },
+          },
+        })
+      ).length;
+
+    // Each tick promotes exactly one batch. Asserted on the rows rather than
+    // on the handler count, because the handlers run asynchronously and an
+    // unbounded sweep would race past three before a poll could see it.
+    await jobs.testSweep();
+    expect(await stillScheduled()).toBe(4);
+    await waitFor(
+      () => handled.length,
+      (n) => n === 3,
+      { label: "first batch handled" },
+    );
+
+    await jobs.testSweep();
+    expect(await stillScheduled()).toBe(1);
+    await waitFor(
+      () => handled.length,
+      (n) => n === 6,
+      { label: "second batch handled" },
+    );
+
+    await jobs.testSweep();
+    expect(await stillScheduled()).toBe(0);
+    await waitFor(
+      () => handled.length,
+      (n) => n === 7,
+      { label: "third batch handled" },
+    );
+
+    // A fourth tick has nothing left, and above all must not re-run anything.
+    await jobs.testSweep();
+    await sleep(100);
+
+    expect(handled.length).toBe(7);
+    expect([...handled].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  it("gives up on a pending row nobody ever claims, instead of re-dispatching it forever", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with({ provide: JobProvider, use: TestJobProvider })
+      .with({ provide: DirectJobDispatcher, use: BlackHoleJobDispatcher })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs);
+    alepha.store.mut(jobConfig, (c) => ({
+      ...c,
+      maxRedispatch: 2,
+      // Every pending row is stale the moment it exists, so one sweep call
+      // is one re-dispatch and the loop is countable.
+      staleThreshold: 0,
+    }));
+
+    class LostApp {
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        schema: z.object({ v: z.integer() }),
+        // Never consulted: the row dies before `claim()`, so `attempt` stays
+        // 0 and `maxAttempts` never binds. That is exactly why the
+        // re-dispatch cap has to exist separately.
+        retry: { retries: 5 },
+        handler: async () => {},
+      });
+    }
+
+    const app = alepha.inject(LostApp);
+    const jobs = alepha.inject(JobProvider) as TestJobProvider;
+    const dispatcher = alepha.inject(
+      DirectJobDispatcher,
+    ) as BlackHoleJobDispatcher;
+    await alepha.start();
+
+    const id = await app.work.push({ v: 1 });
+    expect(dispatcher.dispatches).toBe(1);
+
+    await jobs.testSweep();
+    expect((await app.executions.findById(id))?.redispatchCount).toBe(1);
+    expect(dispatcher.dispatches).toBe(2);
+
+    await jobs.testSweep();
+    expect((await app.executions.findById(id))?.redispatchCount).toBe(2);
+    expect(dispatcher.dispatches).toBe(3);
+
+    // Budget spent: the next tick ends the row instead of dispatching again.
+    await jobs.testSweep();
+    const dead = await app.executions.findById(id);
+    expect(dead?.status).toBe("error");
+    expect(dead?.error).toContain("Never claimed");
+    expect(dead?.attempt).toBe(0);
+    expect(dispatcher.dispatches).toBe(3);
+
+    // And it stays ended: a terminal row is not the sweep's business.
+    await jobs.testSweep();
+    expect(dispatcher.dispatches).toBe(3);
+    expect((await app.executions.findById(id))?.status).toBe("error");
+  });
+});
