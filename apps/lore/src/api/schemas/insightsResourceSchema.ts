@@ -84,6 +84,31 @@ export const insightsResourceSchema = z.object({
    * Abuse-resistant headline: distinct cookieless daily visitor hashes.
    */
   uniqueVisitors: z.integer(),
+  /**
+   * Filters this request carried that `uniqueVisitors` could NOT honour.
+   *
+   * Empty on almost every request, and then the count describes exactly the
+   * same slice as every other number here. Non-empty means the count is
+   * WIDER than the rest of the payload, and names by how much.
+   *
+   * It exists because the two numbers come from different stores.
+   * `totalViews` and the leaderboards are read from the `sigil_views`
+   * dataset, which carries every dimension; `uniqueVisitors` is read from
+   * `sigil_uniques_daily`, which is keyed `(sigilId, day, visitorHash)` and
+   * carries `traffic` and nothing else. Narrowing it by a further dimension
+   * is possible - `traffic` was added to that exact table in 2026-08, joined
+   * its unique index, and `SigilJobs.collapseUniques` folds per
+   * `(sigilId, traffic)` - but it is paid for in rows and sentinel rows per
+   * distinct value, which is a very different bill for `country` (~200
+   * values) or `path` (unbounded) than it was for `traffic` (two).
+   *
+   * So the cost is not paid, and the honesty is put here instead: a reader
+   * that ignores this field would show a project-wide visitor count beside
+   * filtered views with nothing on screen saying so. A UI should label the
+   * tile or hide it. This list is derived from what the uniques table can
+   * narrow by, so a dimension added there later drops out of it on its own.
+   */
+  uniqueVisitorsIgnores: z.array(z.string()),
   topCountries: z.array(
     z.object({
       /**

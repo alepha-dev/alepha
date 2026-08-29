@@ -124,6 +124,24 @@ export class LoreAnalyticsStore {
    * of a project's apps on one day is one visitor and only this store can
    * know that — the caller cannot sum per-app counts and get it right.
    */
+  /**
+   * The filter keys {@link uniqueVisitors} can actually narrow by.
+   *
+   * The uniques table is keyed `(sigilId, day, visitorHash)` and carries
+   * `traffic`; every other dimension a view can be filtered by lives on the
+   * `sigil_views` dataset and not here. `InsightsController` subtracts a
+   * request's filters from this list and puts the remainder on the response as
+   * `uniqueVisitorsIgnores`, so a count that is wider than the numbers beside
+   * it says so rather than looking like one of them.
+   *
+   * Declared here, next to the table, because this is where the answer changes:
+   * adding a dimension to `sigil_uniques_daily` (the way `traffic` was added in
+   * 2026-08, with its own unique-index column and its own fold in
+   * `SigilJobs.collapseUniques`) means adding it here and to `trafficClause`'s
+   * neighbours, and the controller then narrows by it with no edit of its own.
+   */
+  public static readonly FILTERS = ["sigilId", "traffic"];
+
   async uniqueVisitors(window: LoreAnalyticsWindow): Promise<number> {
     if (window.sigilIds.length === 0) return 0;
     // Two row shapes, two halves of one number. Hash rows are counted as
