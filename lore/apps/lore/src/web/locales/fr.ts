@@ -864,6 +864,14 @@ export default {
     "Ce que cette application peut remonter. Désactiver une capacité empêche le point d'ingestion de l'accepter, pour cette application seulement, pas pour les autres.",
   "app.settings.capabilities.feedbackModuleOff":
     "Le module Retours du projet est désactivé : le lien de cette application reste masqué quoi qu'indique cet interrupteur. Activez le module dans Paramètres ▸ Retours.",
+  "app.settings.name.title": "Nom",
+  "app.settings.name.description":
+    "Le nom de l'app est aussi son segment d'URL ici. Lettres minuscules, chiffres et tirets ; il est nettoyé et mis en minuscules pour vous.",
+  "app.settings.name.save": "Renommer",
+  "app.settings.name.confirmTitle": "Renommer $1 ?",
+  "app.settings.name.confirmDescription":
+    "La page de l'app change d'adresse et tout lien vers l'ancienne cesse de fonctionner. Les remontées ne sont pas affectées : la clé porte le projet, pas le nom de l'app, donc il n'y a rien à redéployer ni à faire tourner.",
+  "app.settings.name.renamed": "Renommée en $1",
   "app.settings.url.title": "URL de l'application",
   "app.settings.url.description":
     "L'adresse de cette application. Laissé vide, Lore utilise celle depuis laquelle l'application remonte ses données : il n'y a donc en général rien à saisir ici.",

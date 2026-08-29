@@ -77,28 +77,7 @@ export class SigilController {
     handler: async ({ params, body, user }) => {
       await this.security.assertOwner(params.projectId, user);
 
-      // Normalised before anything reads it, then checked. `min(1)` accepts
-      // `"   "`, which would otherwise reach the insert as an empty name and
-      // fail the entity's own validation as a 500 instead of the 400 it is.
-      // Lowercasing rather than refusing is deliberate: `Lore-Staging` and
-      // `lore-staging` are not a distinction an operator means to draw, and the
-      // name is a URL segment.
-      const name = body.name.trim().toLowerCase();
-      if (!APP_NAME_PATTERN.test(name)) {
-        throw new BadRequestError(
-          "An app name may only contain lowercase letters, digits and hyphens, and must start and end with a letter or digit",
-        );
-      }
-
-      const existing = await this.sigils.findOne({
-        where: {
-          projectId: { eq: params.projectId },
-          name: { eq: name },
-        },
-      });
-      if (existing) {
-        throw new ConflictError(`A sigil already exists named "${name}"`);
-      }
+      const name = await this.claimName(params.projectId, body.name);
 
       const minted = await this.tokens.mint(params.projectId);
       try {
@@ -221,6 +200,15 @@ export class SigilController {
          * detected one.
          */
         url: z.string().max(2048).optional(),
+        /**
+         * Rename the app.
+         *
+         * Required-if-present, and deliberately NOT following `url`'s
+         * empty-string-clears convention: an app without a name has no URL
+         * segment, so there is nothing an empty name could mean. Omitting the
+         * key is the way to leave it alone, like every field here.
+         */
+        name: appNameSchema.optional(),
       }),
       response: sigilResourceSchema,
     },
@@ -232,11 +220,20 @@ export class SigilController {
       // so an omitted key means "leave it alone" rather than "clear it" — the
       // capabilities card and the URL field are separate surfaces and each
       // PATCHes only what it owns.
+      // Validated and checked for a collision BEFORE the write, so a
+      // duplicate comes back as a stated 409 rather than as the unique index
+      // on `(projectId, name)` surfacing as a 500 from the driver.
+      const name =
+        body.name === undefined
+          ? undefined
+          : await this.claimName(params.projectId, body.name, sigil.id);
+
       await this.sigils.updateById(sigil.id, {
         // De-duplicated so a caller that sends `["beacon", "beacon"]` cannot
         // make the stored set disagree with the one it asked for.
         ...(body.kinds ? { kinds: [...new Set(body.kinds)] } : {}),
         ...(body.url === undefined ? {} : { url: this.readUrl(body.url) }),
+        ...(name === undefined ? {} : { name }),
       });
 
       return this.toResource(
@@ -361,6 +358,45 @@ export class SigilController {
   /**
    * Project a row into the owner-facing resource — `tokenHash` never crosses.
    */
+  /**
+   * Normalises an app name, checks it, and proves it is free.
+   *
+   * Shared by enrolment and rename because the two must agree: a name that
+   * could not be created must not be reachable by renaming into it, and the
+   * normalisation has to be identical or `Lore-Staging` would enrol as
+   * `lore-staging` and rename to something else.
+   *
+   * Normalised BEFORE it is validated. `appNameSchema` is `min(1).max(64)` and
+   * carries no pattern on purpose, so `"   "` passes the schema; without the
+   * trim it would reach the write as an empty name and fail the entity's own
+   * validation as a 500 rather than the 400 it is. Lowercasing rather than
+   * refusing is deliberate too: the name is a URL segment, and the case is not
+   * a distinction an operator means to draw.
+   *
+   * `exclude` is the sigil being renamed, so renaming an app to the name it
+   * already has is a no-op rather than a collision with itself.
+   */
+  protected async claimName(
+    projectId: number,
+    raw: string,
+    exclude?: string,
+  ): Promise<string> {
+    const name = raw.trim().toLowerCase();
+    if (!APP_NAME_PATTERN.test(name)) {
+      throw new BadRequestError(
+        "An app name may only contain lowercase letters, digits and hyphens, and must start and end with a letter or digit",
+      );
+    }
+
+    const existing = await this.sigils.findOne({
+      where: { projectId: { eq: projectId }, name: { eq: name } },
+    });
+    if (existing && existing.id !== exclude) {
+      throw new ConflictError(`A sigil already exists named "${name}"`);
+    }
+    return name;
+  }
+
   protected toResource(sigil: Sigil): SigilResource {
     return {
       id: sigil.id,

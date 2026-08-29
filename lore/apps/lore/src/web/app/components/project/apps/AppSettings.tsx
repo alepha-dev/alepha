@@ -28,6 +28,7 @@ import { currentSigilsAtom } from "../../../atoms/currentSigilsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import TokenReveal from "../../shared/TokenReveal.tsx";
 import AppSettingsCapabilities from "./AppSettingsCapabilities.tsx";
+import AppSettingsName from "./AppSettingsName.tsx";
 import AppSettingsUrl from "./AppSettingsUrl.tsx";
 
 /**
@@ -160,6 +161,8 @@ const AppSettings = () => {
         left. The other cards read the atom directly and have nothing to stale.
       */}
       <AppSettingsUrl key={sigil.id} />
+
+      <AppSettingsName />
 
       <AppSettingsCapabilities />
 
