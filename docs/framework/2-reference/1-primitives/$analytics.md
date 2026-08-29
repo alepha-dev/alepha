@@ -28,6 +28,8 @@ class PageViews {
     index: "app",
     dimensions: z.object({ app: z.text(), path: z.text(), country: z.text() }),
     measures: z.object({ count: z.integer() }),
+    // The wire format, append only: a new name goes on the END.
+    slots: { dimensions: ["app", "path", "country"], measures: ["count"] },
     retention: { hot: "60d", rollup: "day", cold: "400d" },
   });
 

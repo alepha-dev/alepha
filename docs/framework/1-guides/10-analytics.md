@@ -18,7 +18,8 @@ import { $analytics } from "alepha/api/analytics";
 ## Declaring a dataset
 
 A dataset is `index` (which dimension Analytics Engine samples on), `dimensions` and `measures`
-(each a `z.object(...)`, exactly like an `$entity` schema), and an optional `retention`:
+(each a `z.object(...)`, exactly like an `$entity` schema), `slots` (the wire format - see
+[below](#the-analytics-engine-slot-map-is-a-wire-format)), and an optional `retention`:
 
 ```typescript check
 import { $analytics } from "alepha/api/analytics";
@@ -29,6 +30,8 @@ class PageViews {
     index: "app",
     dimensions: z.object({ app: z.text(), path: z.text(), country: z.text() }),
     measures: z.object({ count: z.integer() }),
+    // Append only. A new dimension goes on the END of this list.
+    slots: { dimensions: ["app", "path", "country"], measures: ["count"] },
     retention: { hot: "60d", rollup: "day", cold: "400d" },
   });
 
@@ -70,6 +73,7 @@ pageViews = $analytics({
   index: "app",
   dimensions: z.object({ app: z.text() }),
   measures: z.object({ count: z.integer() }),
+  slots: { dimensions: ["app"], measures: ["count"] },
 });
 ```
 
@@ -208,6 +212,10 @@ class WebVitals {
       bucket: z.number(),
     }),
     measures: z.object({ samples: z.number() }),
+    slots: {
+      dimensions: ["sigilId", "metric", "path", "bucket"],
+      measures: ["samples"],
+    },
     retention: { hot: "30d", rollup: "day", cold: "400d" },
   });
 }
@@ -325,15 +333,43 @@ shape.
 
 Analytics Engine has no columns, only 20 positional `blob` slots and 20 positional `double`
 slots per data point - and two blob slots are reserved, so a dataset can declare at most
-18 dimensions and 20 measures before `AnalyticsSlotMap` throws at boot. It assigns each
-declared dimension a `blob` slot and each
-measure a `double` slot, derived from the dimension/measure names **sorted alphabetically** -
-never from declaration order. That has one direct consequence worth internalizing before a
-dataset ships to production: **reordering the fields in your `dimensions`/`measures` object
-literal is a safe no-op, but renaming a dimension is a breaking change to already-stored data.**
-Once rows exist under the old slot assignment, changing which name maps to which slot does not
-fail - it silently misreads history, because Analytics Engine has no way to know the shape
-changed.
+18 dimensions and 20 measures before `AnalyticsSlotMap` throws at boot.
+
+Which name occupies which position is **declared, not derived**. `slots` is a pair of ordered
+name lists - the first dimension is `blob3`, the first measure is `double1` - and it is
+required on every dataset, on every backend, from the first line it is written on:
+
+```typescript
+slots: {
+  dimensions: ["app", "path", "country"],
+  measures: ["count"],
+},
+```
+
+Three rules follow, and they are the whole of it:
+
+- **Reordering the `dimensions` / `measures` object literal is a safe no-op.** Nothing reads its
+  key order.
+- **Adding is append-only.** A new name goes on the END of its list and takes the next free
+  slot. Inserting or reordering shifts every later name by a position, and since Analytics
+  Engine addresses fields positionally and has no update or delete API, every row already
+  written is then read under the wrong field, permanently.
+- **Renaming is breaking, and fails loudly.** The new name is in `dimensions` and not in
+  `slots`, so the dataset refuses to boot with a message naming both ways out - rather than
+  reading history under a meaning it never had.
+
+To retire a name, delete it from `dimensions` / `measures` and **leave it in the list**. Its
+slot stays reserved and nothing after it moves.
+
+Slots are meaningless on the relational and in-memory backends, which address columns by name.
+They are still required there, because a check that only runs on the runtime that deploys is a
+check that never runs in CI.
+
+> This replaced a derivation from alphabetically sorted names, which had the first and third
+> properties and not the second: a new dimension landed wherever it sorted and pushed every
+> later one along. Adding a `referrer` dimension to a live dataset in 2026-08 moved its index
+> dimension by three slots and made eight days of stored rows match no filter at all. They are
+> still there, unreadable, and there is no API to repair them with.
 
 ## Registering the module
 
@@ -378,6 +414,10 @@ export class LoreAnalytics {
       country: z.string(),
     }),
     measures: z.object({ count: z.number() }),
+    slots: {
+      dimensions: ["sigilId", "path", "country"],
+      measures: ["count"],
+    },
     retention: { hot: "30d", rollup: "day", cold: "400d" },
   });
 }
@@ -397,6 +437,7 @@ class Stats {
     index: "app",
     dimensions: z.object({ app: z.text() }),
     measures: z.object({ count: z.integer() }),
+    slots: { dimensions: ["app"], measures: ["count"] },
   });
 }
 

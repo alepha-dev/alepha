@@ -18,6 +18,7 @@ const dataset = {
   index: "appId",
   dimensions: z.object({ appId: z.string(), path: z.string() }),
   measures: z.object({ count: z.number() }),
+  slots: { dimensions: ["appId", "path"], measures: ["count"] },
 };
 
 const BINDING_NAME = "ANALYTICS";
@@ -796,6 +797,7 @@ describe("WaeAnalyticsProvider — numeric dimensions", () => {
     index: "appId",
     dimensions: z.object({ appId: z.string(), bucket: z.number() }),
     measures: z.object({ samples: z.number() }),
+    slots: { dimensions: ["appId", "bucket"], measures: ["samples"] },
   };
 
   it("forwards a numeric dimension into cold without throwing during rollup", async () => {
@@ -1016,6 +1018,10 @@ analyticsConformance("wae", async () => {
       bucket: z.number(),
     }),
     measures: z.object({ samples: z.number() }),
+    slots: {
+      dimensions: ["appId", "path", "bucket"],
+      measures: ["samples"],
+    },
   });
   await alepha.start();
   return provider;

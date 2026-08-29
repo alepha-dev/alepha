@@ -15,6 +15,7 @@ class TestDatasets {
     index: "app",
     dimensions: z.object({ app: z.text(), path: z.text() }),
     measures: z.object({ count: z.number() }),
+    slots: { dimensions: ["app", "path"], measures: ["count"] },
   });
 }
 

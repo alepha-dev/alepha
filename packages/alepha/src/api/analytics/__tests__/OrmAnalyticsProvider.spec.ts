@@ -10,6 +10,7 @@ const dataset = {
   index: "app",
   dimensions: z.object({ app: z.string(), path: z.string() }),
   measures: z.object({ count: z.number() }),
+  slots: { dimensions: ["app", "path"], measures: ["count"] },
 };
 
 describe("OrmAnalyticsProvider", () => {
@@ -144,6 +145,7 @@ describe("OrmAnalyticsProvider", () => {
       index: "appId",
       dimensions: z.object({ appId: z.string(), path: z.string() }),
       measures: z.object({ count: z.number() }),
+      slots: { dimensions: ["appId", "path"], measures: ["count"] },
     };
 
     const alepha = Alepha.create().with(AlephaOrmPostgres);
@@ -281,6 +283,7 @@ describe("OrmAnalyticsProvider", () => {
       index: "app",
       dimensions: z.object({ app: z.string() }),
       measures: z.object({ count: z.number() }),
+      slots: { dimensions: ["app"], measures: ["count"] },
     };
 
     const alepha = Alepha.create().with(AlephaOrmPostgres);
@@ -335,6 +338,10 @@ analyticsConformance("orm", async () => {
       bucket: z.number(),
     }),
     measures: z.object({ samples: z.number() }),
+    slots: {
+      dimensions: ["appId", "path", "bucket"],
+      measures: ["samples"],
+    },
   });
   await alepha.start();
   return provider;

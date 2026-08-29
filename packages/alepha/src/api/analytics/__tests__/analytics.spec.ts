@@ -20,6 +20,7 @@ class PageViews {
     index: "app",
     dimensions: z.object({ app: z.string(), path: z.string() }),
     measures: z.object({ count: z.number() }),
+    slots: { dimensions: ["app", "path"], measures: ["count"] },
     retention: { hot: "60d", rollup: "day", cold: "400d" },
   });
 }
@@ -79,6 +80,7 @@ describe("$analytics", () => {
         index: "app",
         dimensions: z.object({ app: z.string() }),
         measures: z.object({ count: z.number() }),
+        slots: { dimensions: ["app"], measures: ["count"] },
         retention: { hot: "120d" },
       });
     }
@@ -102,6 +104,7 @@ describe("$analytics", () => {
         index: "app",
         dimensions: z.object({ app: z.string() }),
         measures: z.object({ count: z.number() }),
+        slots: { dimensions: ["app"], measures: ["count"] },
         retention: { hot: "60d", cold: "5d" },
       });
     }
@@ -127,6 +130,7 @@ describe("$analytics", () => {
         index: "app",
         dimensions: z.object({ app: z.string() }),
         measures: z.object({ count: z.number() }),
+        slots: { dimensions: ["app"], measures: ["count"] },
         retention: { hot: "60d", cold: "60d" },
       });
     }
@@ -149,6 +153,7 @@ describe("$analytics", () => {
         index: "app",
         dimensions: z.object({ app: z.string() }),
         measures: z.object({ count: z.number() }),
+        slots: { dimensions: ["app"], measures: ["count"] },
       });
     }
 
@@ -182,6 +187,7 @@ describe("$analytics", () => {
         index: "app",
         dimensions: z.object({ app: z.string(), day: z.string() }),
         measures: z.object({ count: z.number() }),
+        slots: { dimensions: ["app", "day"], measures: ["count"] },
       });
     }
 
@@ -203,6 +209,7 @@ describe("$analytics", () => {
         index: "app",
         dimensions: z.object({ app: z.string() }),
         measures: z.object({ count: z.number() }),
+        slots: { dimensions: ["app"], measures: ["count"] },
       });
     }
 

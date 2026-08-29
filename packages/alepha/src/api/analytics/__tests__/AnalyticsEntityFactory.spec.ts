@@ -10,6 +10,7 @@ const dataset = {
   index: "app",
   dimensions: z.object({ app: z.string(), path: z.string() }),
   measures: z.object({ count: z.number() }),
+  slots: { dimensions: ["app", "path"], measures: ["count"] },
 };
 
 describe("AnalyticsEntityFactory", () => {
@@ -85,6 +86,10 @@ describe("AnalyticsEntityFactory", () => {
         bucket: z.number(),
       }),
       measures: z.object({ samples: z.number() }),
+      slots: {
+        dimensions: ["app", "path", "bucket"],
+        measures: ["samples"],
+      },
     };
 
     const { raw, rolled } = AnalyticsEntityFactory.build(conformanceDataset);

@@ -33,7 +33,50 @@ export interface AnalyticsDataset {
   dimensions: ZObject;
   measures: ZObject;
 
+  /**
+   * The wire format: which position each name occupies on Analytics Engine.
+   *
+   * Required, and required from the first line a dataset is written on. A
+   * position cannot be inferred from the declaration: alphabetical order
+   * moves when a name is added, declaration order moves when the literal is
+   * reordered. It is stated instead. See {@link AnalyticsSlotMap} for what
+   * happened the one time it was inferred.
+   *
+   * **Append only.** A new dimension or measure goes on the END of its list
+   * and takes the next free slot. Inserting or reordering shifts every later
+   * name by a position, and since Analytics Engine addresses fields
+   * positionally and offers no update or delete API, every row already
+   * written is then read under the wrong field, permanently.
+   *
+   * To retire a name, delete it from `dimensions` / `measures` and **leave it
+   * in the list**. The slot stays reserved and nothing moves.
+   *
+   * Meaningless on the relational and in-memory backends, which address
+   * columns by name, but declared for all three, because a check that only
+   * runs on the runtime that deploys is a check that never runs in CI.
+   */
+  slots: AnalyticsSlotPins;
+
   retention?: AnalyticsRetention;
+}
+
+/**
+ * The pinned order of a dataset's names, one list per slot space.
+ *
+ * Lists rather than a `{ name: slot }` map on purpose: a list cannot express
+ * a duplicate position or a gap you have to count to, and appending to one is
+ * visibly the only safe edit.
+ */
+export interface AnalyticsSlotPins {
+  /**
+   * Blob order. The first entry is `blob3`; `blob1` and `blob2` are reserved
+   * for the dataset discriminator and the hour bucket.
+   */
+  dimensions: string[];
+  /**
+   * Double order. The first entry is `double1`; nothing is reserved here.
+   */
+  measures: string[];
 }
 
 export interface AnalyticsRetention {

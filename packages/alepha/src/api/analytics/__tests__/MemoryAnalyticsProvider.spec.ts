@@ -13,6 +13,10 @@ const dataset = {
     country: z.string(),
   }),
   measures: z.object({ count: z.number() }),
+  slots: {
+    dimensions: ["app", "path", "country"],
+    measures: ["count"],
+  },
 };
 
 describe("MemoryAnalyticsProvider", () => {

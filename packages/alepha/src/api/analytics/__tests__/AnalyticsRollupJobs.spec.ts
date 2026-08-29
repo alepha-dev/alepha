@@ -49,6 +49,7 @@ class Views {
     index: "app",
     dimensions: z.object({ app: z.string() }),
     measures: z.object({ count: z.number() }),
+    slots: { dimensions: ["app"], measures: ["count"] },
     retention: { hot: "2d", rollup: "day", cold: "5d" },
   });
 }
@@ -58,6 +59,7 @@ class Untouched {
     index: "app",
     dimensions: z.object({ app: z.string() }),
     measures: z.object({ count: z.number() }),
+    slots: { dimensions: ["app"], measures: ["count"] },
   });
 }
 
@@ -66,6 +68,7 @@ class Warm {
     index: "app",
     dimensions: z.object({ app: z.string() }),
     measures: z.object({ count: z.number() }),
+    slots: { dimensions: ["app"], measures: ["count"] },
     retention: { hot: "1d" },
   });
 }
@@ -75,6 +78,7 @@ class Backlog {
     index: "app",
     dimensions: z.object({ app: z.string() }),
     measures: z.object({ count: z.number() }),
+    slots: { dimensions: ["app"], measures: ["count"] },
     retention: { hot: "1d" },
   });
 }
@@ -89,6 +93,7 @@ class TwoDatasets {
     index: "app",
     dimensions: z.object({ app: z.string() }),
     measures: z.object({ count: z.number() }),
+    slots: { dimensions: ["app"], measures: ["count"] },
     retention: { hot: "1d" },
   });
 
@@ -96,6 +101,7 @@ class TwoDatasets {
     index: "app",
     dimensions: z.object({ app: z.string() }),
     measures: z.object({ count: z.number() }),
+    slots: { dimensions: ["app"], measures: ["count"] },
     retention: { hot: "1d" },
   });
 }

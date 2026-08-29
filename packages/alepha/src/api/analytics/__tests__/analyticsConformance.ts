@@ -33,6 +33,10 @@ export const analyticsConformance = (
       bucket: z.number(),
     }),
     measures: z.object({ samples: z.number() }),
+    slots: {
+      dimensions: ["appId", "path", "country", "bucket"],
+      measures: ["samples"],
+    },
   };
 
   describe(`AnalyticsProvider conformance: ${name}`, () => {

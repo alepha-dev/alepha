@@ -13,7 +13,7 @@ import { LoreAnalytics } from "../src/api/entities/loreAnalytics.ts";
 describe("Lore admin analytics surface", () => {
   it("lists both sigil datasets with their declared dimensions", async () => {
     const alepha = Alepha.create();
-    alepha.inject(LoreAnalytics);
+    const analytics = alepha.inject(LoreAnalytics);
     const service = alepha.inject(AdminAnalyticsService);
     await alepha.start();
 
@@ -40,13 +40,37 @@ describe("Lore admin analytics surface", () => {
       ["count", "engaged", "entries"].sort(),
     );
 
-    // `traffic` sorts LAST, and that is load-bearing rather than incidental.
-    // `AnalyticsSlotMap` derives Analytics Engine slots from this sorted list,
-    // so a dimension added anywhere but the end shifts every slot after it and
-    // silently misreads every row already stored. Adding `referrer` did
-    // exactly that once. A rename that moves this name earlier in the sort is
-    // the same mistake wearing different clothes, so it fails here first.
-    expect(dimensions.at(-1)).toBe("traffic");
+    // The wire format, pinned. This used to assert `dimensions.at(-1) ===
+    // "traffic"`, because slots derived from the sorted list and a dimension
+    // added anywhere but the end shifted every slot after it, so the name
+    // had to be chosen for where it sorted. `slots` replaced that constraint
+    // with a declaration, and this assertion moved with it.
+    //
+    // The list is the positions production has already written. It is a
+    // PREFIX check on purpose: appending a new dimension must not fail this
+    // test (that is the whole point of append-only), while inserting,
+    // reordering or dropping one must.
+    const pinned = analytics.views.dataset.slots.dimensions;
+    expect(pinned.slice(0, 7)).toEqual([
+      "campaign",
+      "country",
+      "device",
+      "path",
+      "referrer",
+      "sigilId",
+      "traffic",
+    ]);
+    expect(analytics.views.dataset.slots.measures.slice(0, 3)).toEqual([
+      "count",
+      "engaged",
+      "entries",
+    ]);
+    expect(analytics.vitals.dataset.slots.dimensions.slice(0, 4)).toEqual([
+      "bucket",
+      "metric",
+      "path",
+      "sigilId",
+    ]);
   });
 
   it("answers a recorded view through the admin query path", async () => {

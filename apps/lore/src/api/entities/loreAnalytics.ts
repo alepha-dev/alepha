@@ -53,17 +53,15 @@ export class LoreAnalytics {
        * because none of those can be told apart from the sink and pretending
        * otherwise would invent precision.
        *
-       * **Adding this dimension re-slotted the Analytics Engine wire format.**
-       * Slots derive from alphabetically sorted dimension names, so
-       * `referrer` landed between `path` and `sigilId` and pushed `sigilId`
-       * from `blob5` to `blob6` — see `AnalyticsSlotMap`'s class doc, which
-       * says outright that changing the derivation misreads history rather
-       * than failing. Rows written before this change carry a sigil id in the
-       * slot now read as a referrer, so they no longer match any
-       * `WHERE sigilId IN (…)` and drop out of every Insights read. That was
-       * accepted deliberately: the alternative was naming the dimension for
-       * where it sorts rather than for what it holds, which buys eight days of
-       * bot traffic at the price of a name nobody could later explain.
+       * **Adding this dimension re-slotted the Analytics Engine wire format,
+       * once, and it cost eight days of history.** Slots used to derive from
+       * alphabetically sorted dimension names, so `referrer` landed between
+       * `path` and `sigilId` and pushed `sigilId` along. Rows written before
+       * that change carry a sigil id in a slot now read as a referrer, so they
+       * match no `WHERE sigilId IN (…)` and are absent from every Insights
+       * read, permanently, since Analytics Engine has no update or delete
+       * API. Slots are pinned below now and this cannot recur; the pin is
+       * what made the name a free choice again.
        *
        * The default is not decoration. On the relational backend this is
        * `ALTER TABLE … ADD referrer text NOT NULL`, and SQLite refuses that
@@ -98,16 +96,15 @@ export class LoreAnalytics {
        * nothing at all. `human` therefore means "did not declare itself a
        * bot", and `engaged` remains the honest discriminator for the rest.
        *
-       * **The name is doing load-bearing work, and it is not decoration.**
-       * Slots derive from alphabetically sorted dimension names, so a new
-       * dimension only avoids re-slotting the wire format if it sorts LAST.
-       * `traffic` sorts after `sigilId`, takes `blob9`, and leaves `blob3`
-       * through `blob8` exactly where every stored row already put them.
-       * Almost any other name for this - `bot`, `kind`, `agent`, `class` -
-       * sorts before `sigilId` and would silently misread every view ever
-       * recorded, which is not a hypothetical: adding `referrer` did exactly
-       * that, and those rows are still in the dataset, unreadable, carrying a
-       * sigil id in the slot now read as a referrer. See `AnalyticsSlotMap`.
+       * **The name used to be load-bearing, and is not any more.** While
+       * slots derived from alphabetically sorted names, a new dimension only
+       * avoided re-slotting the wire format if it sorted LAST: `traffic`
+       * sorts after `sigilId`, so it took the free slot and left every stored
+       * row where it was, while `bot`, `kind`, `agent` or `class` would each
+       * have misread every view ever recorded. Slots are pinned below now, so
+       * the next dimension can be called whatever it should be called. The
+       * name stays because it is the right one, not because of where it
+       * sorts.
        *
        * Rows written before this dimension existed hold `""` here rather than
        * the default - a default applies when a row is written, not when an old
@@ -125,11 +122,11 @@ export class LoreAnalytics {
     /**
      * Three measures, and the two new ones cost nothing on the wire.
      *
-     * Measure slots derive from alphabetically sorted names the same way
-     * dimension slots do, but `count` sorts before both `engaged` and
-     * `entries` — so it keeps `double1` and no stored row is misread. That
-     * asymmetry is worth knowing: a fact expressible as a measure is nearly
-     * free to add later, while a dimension almost never is.
+     * Measure slots were derived alphabetically the same way dimension slots
+     * were, but `count` sorts before both `engaged` and `entries`, so it kept
+     * `double1` and no stored row was misread. That was luck, not a property
+     * of measures; both spaces are pinned below now, and both are append-only
+     * for the same reason.
      *
      * `engaged` arrives on its own row with `count: 0`, because Analytics
      * Engine is append-only and engagement is not knowable when the view is
@@ -148,6 +145,39 @@ export class LoreAnalytics {
       engaged: z.number().default(0),
       entries: z.number().default(0),
     }),
+    /**
+     * The wire format, and the reason the two comments above talk about
+     * `blob8` and about `traffic` having to sort last.
+     *
+     * These positions are exactly the ones alphabetical derivation produced
+     * on 2026-08-26, so pinning them moves nothing: every row Analytics
+     * Engine already holds under the current layout stays readable. What
+     * changes is the future - the next dimension goes on the END of this
+     * list and pushes nothing, whatever it is called.
+     *
+     * ⚠️ Rows written between 2026-08-10 and 2026-08-18 carry the
+     * pre-`referrer` layout (`sigilId` in `blob5`, then `blob7`) and are
+     * **knowingly unreadable**. They match no `WHERE sigilId IN (…)` and so
+     * count as absent. Analytics Engine has no update or delete API, so
+     * there is nothing to repair them with; they leave the widest window
+     * this dataset offers (30d) on 2026-09-17 and the gap closes itself. Do
+     * not add a second read path for them: the values are recoverable only
+     * by guessing which generation a row belongs to from which trailing
+     * blobs are empty, and a leaderboard filled from the wrong dimension is
+     * worse than a gap.
+     */
+    slots: {
+      dimensions: [
+        "campaign",
+        "country",
+        "device",
+        "path",
+        "referrer",
+        "sigilId",
+        "traffic",
+      ],
+      measures: ["count", "engaged", "entries"],
+    },
     retention: { hot: "30d", rollup: "day", cold: "400d" },
   });
 
@@ -170,6 +200,15 @@ export class LoreAnalytics {
       bucket: z.number(),
     }),
     measures: z.object({ samples: z.number() }),
+    /**
+     * Pinned at the positions alphabetical derivation already gave them, so
+     * every stored row stays readable. Append only - see `views` above and
+     * `AnalyticsSlotMap`.
+     */
+    slots: {
+      dimensions: ["bucket", "metric", "path", "sigilId"],
+      measures: ["samples"],
+    },
     retention: { hot: "30d", rollup: "day", cold: "400d" },
   });
 }
