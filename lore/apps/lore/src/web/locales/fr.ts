@@ -333,6 +333,7 @@ export default {
   "quest.event.shelved": "a mis la quête de côté",
   "quest.event.unshelved": "a remis la quête en jeu",
   "quest.event.updated": "a mis à jour la quête",
+  "quest.objective.error": "Impossible de mettre à jour l'objectif.",
   "quest.status.new": "Nouvelle",
   "quest.status.accepted": "En cours",
   "quest.status.completed": "Terminée",
@@ -623,6 +624,9 @@ export default {
   "milestone.delete": "Supprimer",
   "milestone.delete.error":
     "Impossible de supprimer un jalon contenant des quêtes.",
+  "milestone.start.error": "Impossible de démarrer le jalon.",
+  "milestone.close.error": "Impossible de clore le jalon.",
+  "milestone.detail.error": "Impossible d'enregistrer le jalon.",
   "milestone.changelog": "Changelog",
   "milestone.changelog.copy": "Copier",
   "milestone.changelog.download": "Télécharger",

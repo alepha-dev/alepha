@@ -325,6 +325,7 @@ export default {
   "quest.event.shelved": "shelved the quest",
   "quest.event.unshelved": "put the quest back in play",
   "quest.event.updated": "updated the quest",
+  "quest.objective.error": "Could not update the objective.",
   "quest.status.new": "New",
   "quest.status.accepted": "In progress",
   "quest.status.completed": "Completed",
@@ -611,6 +612,9 @@ export default {
   "milestone.delete": "Delete",
   "milestone.delete.error":
     "Cannot delete a milestone that has quests attached.",
+  "milestone.start.error": "Could not start the milestone.",
+  "milestone.close.error": "Could not close the milestone.",
+  "milestone.detail.error": "Could not save the milestone.",
   "milestone.changelog": "Changelog",
   "milestone.changelog.copy": "Copy",
   "milestone.changelog.download": "Download",
