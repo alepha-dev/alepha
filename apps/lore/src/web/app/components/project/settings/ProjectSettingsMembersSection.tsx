@@ -15,7 +15,7 @@ import { cn } from "@alepha/ui/lib/utils";
 import { useAuth } from "alepha/react/auth";
 import { Localize, useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Mail, Plus, Users } from "lucide-react";
+import { Mail, Plus, Users, X } from "lucide-react";
 import { useState } from "react";
 
 import type { InvitationEntity } from "@/api/entities/invitations.ts";
@@ -25,6 +25,7 @@ import type { User } from "@/api/entities/users.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { MemberIdentity } from "@/web/app/components/shared/MemberIdentity.tsx";
 import { useInviteMember } from "@/web/app/components/shared/useInviteMember.ts";
+import { useRevokeInvitation } from "@/web/app/components/shared/useRevokeInvitation.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface ProjectSettingsMembersSectionProps {
@@ -38,6 +39,7 @@ const ProjectSettingsMembersSection = (
 ) => {
   const router = useRouter<AppRouter>();
   const inviteMember = useInviteMember();
+  const revokeInvitation = useRevokeInvitation();
   const auth = useAuth();
   const { tr } = useI18n<I18n, "en">();
 
@@ -53,6 +55,17 @@ const ProjectSettingsMembersSection = (
     setOpen(false);
     // Re-run the loader for the new pending row; a hard reload threw the
     // whole app state away for one list.
+    await router.push(router.pathname, { force: true });
+  };
+
+  const handleRevoke = async (invitationId: string, email: string) => {
+    if (
+      !(await revokeInvitation.revoke(props.project.id, invitationId, email))
+    ) {
+      return;
+    }
+    // Same reason as `handleInvite`: the pending list comes from the route
+    // loader, so re-running it is what removes the row.
     await router.push(router.pathname, { force: true });
   };
 
@@ -156,6 +169,27 @@ const ProjectSettingsMembersSection = (
                     <Localize value={invitation.createdAt} date="fromNow" />
                   </span>
                 </div>
+                {/* Owner-only, on the same condition as Invite above — the
+                    endpoint refuses anyone else anyway, so showing it to a
+                    member would only promise a 403. */}
+                {props.project.createdBy === auth.user?.id && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    data-testid="revoke-invitation"
+                    disabled={revokeInvitation.loading}
+                    aria-label={String(
+                      tr("project.settings.members.revoke.action", {
+                        args: [invitation.email],
+                      }),
+                    )}
+                    onClick={() =>
+                      handleRevoke(invitation.id, invitation.email)
+                    }
+                  >
+                    <X className="size-4" />
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ))}
