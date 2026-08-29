@@ -2,7 +2,7 @@ import { $inject, z } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, $sequence, $transactional } from "alepha/orm";
-import { $secure } from "alepha/security";
+import { OwnedResourceProvider, $secure } from "alepha/security";
 import {
   $action,
   BadRequestError,
@@ -12,23 +12,50 @@ import {
 import { $etag } from "alepha/server/etag";
 
 import { type Milestone, milestones } from "../entities/milestones.ts";
-import { projects } from "../entities/projects.ts";
+import type { Project } from "../entities/projects.ts";
 import { type Quest, quests } from "../entities/quests.ts";
 import {
   type MilestoneChangelogArea,
   milestoneChangelogAreaSchema,
 } from "../schemas/milestoneChangelogAreaSchema.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export class MilestoneController {
   milestones = $repository(milestones);
   quests = $repository(quests);
-  projects = $repository(projects);
   dt = $inject(DateTimeProvider);
-  security = $inject(ProjectSecurityService);
   limits = $inject(ProjectLimits);
   crypto = $inject(CryptoProvider);
+  owned = $inject(OwnedResourceProvider);
+
+  /**
+   * The four gates this controller needs, and the first place in the app
+   * where both variants sit on one class.
+   *
+   * Member for reading a milestone or the backlog; owner for starting,
+   * closing, editing and deleting one — a milestone is part of a project's
+   * configuration, not of the work. `owner: true` drops the `via` join
+   * rather than adding a second check, which is how `$owns` has always
+   * expressed owner-only.
+   *
+   * Declared above the actions: `use: [this.ownsMilestone()]` is a field
+   * initializer reading another field.
+   */
+  protected ownsProject = () => $ownsProject({ param: "projectId" });
+
+  protected ownsProjectAsOwner = () =>
+    $ownsProject({ param: "projectId", owner: true });
+
+  protected ownsMilestone = () =>
+    $ownsProject({ repository: () => this.milestones, param: "id" });
+
+  protected ownsMilestoneAsOwner = () =>
+    $ownsProject({
+      repository: () => this.milestones,
+      param: "id",
+      owner: true,
+    });
 
   /**
    * Name parts for the milestone-name generator. Two lists rather than one
@@ -141,6 +168,7 @@ export class MilestoneController {
   getMilestones = $action({
     use: [
       $secure({ permissions: ["quest:read"] }),
+      this.ownsProject(),
       // `noCache` rather than a `maxAge` window: this list changes the
       // instant someone starts, closes or deletes a milestone, and a
       // freshness window made those mutations invisible to the browser for
@@ -160,9 +188,7 @@ export class MilestoneController {
         }),
       ),
     },
-    handler: async ({ params, user }) => {
-      await this.security.assertMember(params.projectId, user);
-
+    handler: async ({ params }) => {
       const allMilestones = await this.milestones.findMany({
         where: {
           projectId: { eq: params.projectId },
@@ -182,7 +208,12 @@ export class MilestoneController {
   });
 
   startMilestone = $action({
-    use: [$secure({ permissions: ["quest:create"] }), $transactional()],
+    // Gate ahead of `$transactional()`: a refused caller never opens one.
+    use: [
+      $secure({ permissions: ["quest:create"] }),
+      this.ownsProjectAsOwner(),
+      $transactional(),
+    ],
     schema: {
       params: z.object({
         projectId: z.integer(),
@@ -194,9 +225,7 @@ export class MilestoneController {
       }),
       response: milestones.schema,
     },
-    handler: async ({ params, body, user }) => {
-      await this.security.assertOwner(params.projectId, user);
-
+    handler: async ({ params, body }) => {
       const active = await this.milestones.findMany({
         where: {
           projectId: { eq: params.projectId },
@@ -226,7 +255,9 @@ export class MilestoneController {
       // After the caps, so a refused start does not burn a number.
       const number = await this.milestoneNumber.next(String(params.projectId));
 
-      const project = await this.projects.getById(params.projectId);
+      // The gate already read this row; `authority()` hands it back rather
+      // than issuing the same query a second time.
+      const project = this.owned.authority<Project>();
       const closesAt = this.computeClosesAt(project.milestoneDuration);
 
       return await this.milestones.create({
@@ -241,7 +272,10 @@ export class MilestoneController {
   });
 
   closeMilestone = $action({
-    use: [$secure({ permissions: ["quest:create"] })],
+    use: [
+      $secure({ permissions: ["quest:create"] }),
+      this.ownsMilestoneAsOwner(),
+    ],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -252,9 +286,8 @@ export class MilestoneController {
       }),
       response: milestones.schema,
     },
-    handler: async ({ params, body, user }) => {
-      const milestone = await this.milestones.getById(params.id);
-      await this.security.assertOwner(milestone.projectId, user);
+    handler: async ({ body }) => {
+      const milestone = this.owned.get<Milestone>();
 
       if (milestone.closedAt) {
         throw new BadRequestError("Milestone is already closed.");
@@ -268,7 +301,10 @@ export class MilestoneController {
   });
 
   updateMilestone = $action({
-    use: [$secure({ permissions: ["quest:create"] })],
+    use: [
+      $secure({ permissions: ["quest:create"] }),
+      this.ownsMilestoneAsOwner(),
+    ],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -280,10 +316,7 @@ export class MilestoneController {
       }),
       response: milestones.schema,
     },
-    handler: async ({ params, body, user }) => {
-      const milestone = await this.milestones.getById(params.id);
-      await this.security.assertOwner(milestone.projectId, user);
-
+    handler: async ({ params, body }) => {
       return await this.milestones.updateById(params.id, {
         ...(body.title !== undefined ? { title: body.title } : {}),
         ...(body.description !== undefined
@@ -295,16 +328,18 @@ export class MilestoneController {
   });
 
   deleteMilestone = $action({
-    use: [$secure({ permissions: ["quest:delete"] })],
+    use: [
+      $secure({ permissions: ["quest:delete"] }),
+      this.ownsMilestoneAsOwner(),
+    ],
     schema: {
       params: z.object({
         id: z.integer(),
       }),
       response: okSchema,
     },
-    handler: async ({ params, user }) => {
-      const milestone = await this.milestones.getById(params.id);
-      await this.security.assertOwner(milestone.projectId, user);
+    handler: async ({ params }) => {
+      const milestone = this.owned.get<Milestone>();
 
       const count = await this.countCompletedInWindow(milestone);
       if (count > 0) {
@@ -321,6 +356,7 @@ export class MilestoneController {
   getMilestoneChangelog = $action({
     use: [
       $secure({ permissions: ["quest:read"] }),
+      this.ownsMilestone(),
       // Same reasoning as `getMilestones`: an open milestone's changelog is
       // recomputed from completed quests, so a freshness window hides work
       // that just landed. ETag-only revalidation keeps it cheap.
@@ -346,9 +382,8 @@ export class MilestoneController {
         }),
       }),
     },
-    handler: async ({ params, user }) => {
-      const milestone = await this.milestones.getById(params.id);
-      await this.security.assertMember(milestone.projectId, user);
+    handler: async () => {
+      const milestone = this.owned.get<Milestone>();
 
       const completed = await this.queryCompletedInWindow(milestone);
       const { areas, stats } = this.summarize(completed);
@@ -375,7 +410,7 @@ export class MilestoneController {
    * returns 0 while a milestone is open (that work is being recorded).
    */
   getMilestoneBacklog = $action({
-    use: [$secure({ permissions: ["quest:read"] })],
+    use: [$secure({ permissions: ["quest:read"] }), this.ownsProject()],
     schema: {
       params: z.object({
         projectId: z.integer(),
@@ -390,9 +425,7 @@ export class MilestoneController {
         lastTitle: z.string().optional(),
       }),
     },
-    handler: async ({ params, user }) => {
-      await this.security.assertMember(params.projectId, user);
-
+    handler: async ({ params }) => {
       const open = await this.milestones.findMany({
         where: {
           projectId: { eq: params.projectId },
@@ -434,6 +467,10 @@ export class MilestoneController {
     },
   });
 
+  /**
+   * Deliberately ungated beyond the permission: it reads no project data and
+   * touches no row, so there is no resource for `$ownsProject` to name.
+   */
   getRandomMilestoneName = $action({
     use: [$secure({ permissions: ["quest:create"] })],
     schema: {
