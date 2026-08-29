@@ -37,6 +37,26 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
  * field-ordering trap `$owns`'s repository thunk exists to avoid. A
  * module-level const carries no ordering constraint.
  *
+ * ## ⚠️ On a `$transactional()` action, the gate goes AFTER it
+ *
+ * ```typescript
+ * use: [$secure({ permissions: ["quest:update"] }), $transactional(), this.ownsQuest()]
+ * ```
+ *
+ * The gate is an access check, but on a hop it is also the READ HALF of the
+ * handler's check-then-write: the row it loads is the row the handler then
+ * inspects and updates. Those reads used to be the first statements of the
+ * handler, inside the transaction. `QuestController.completeQuest` is
+ * transactional "so two concurrent completions cannot both pass the
+ * `completedAt IS NULL` read", and `updateQuestById` for the same reason on
+ * `expectedUpdatedAt`.
+ *
+ * Putting the gate ahead of `$transactional()` lifts those reads out of the
+ * transaction and reinstates both races — with every test still green,
+ * because a race is not what a test suite is looking at. The cost of the
+ * correct order is that a refused caller opens a transaction and rolls it
+ * back, which is nothing next to what the other order gives up.
+ *
  * ## Framework, or here
  *
  * The hop, the source selector and the request memo are generic and live in
