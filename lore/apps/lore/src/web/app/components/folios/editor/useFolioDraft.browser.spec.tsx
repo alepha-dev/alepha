@@ -239,3 +239,88 @@ describe("useFolioDraft — getLiveValues reads through a closure-frozen `draft`
     );
   });
 });
+
+/**
+ * `revisionsAt` — the History tab's refetch key, split off from `savedAt`
+ * so a writing session stops refetching a revision list that has not
+ * changed. The server folds saves inside an hour into one revision and
+ * reports which is which; this hook is where that answer is honoured.
+ */
+describe("useFolioDraft — revisionsAt tracks the revision list, not the save", () => {
+  const mount = (alepha: Alepha, ui: React.ReactNode) =>
+    render(
+      <AlephaContext.Provider value={alepha}>{ui}</AlephaContext.Provider>,
+    );
+
+  const renderDraft = (): { read: () => FolioDraft | undefined } => {
+    const alepha = Alepha.create().with(AlephaLogger);
+    let draft: FolioDraft | undefined;
+    const Widget = () => {
+      draft = useFolioDraft(baseFolio());
+      return null;
+    };
+    mount(alepha, <Widget />);
+    return { read: () => draft };
+  };
+
+  const saved = (title: string): FolioDraftValues => ({
+    title,
+    summary: "",
+    content: "original content",
+  });
+
+  it("holds still through ten folded autosaves", async ({ expect }) => {
+    const { read } = renderDraft();
+    // `baseFolio().updatedAt`, and the value both stamps start at. Every
+    // `at` below is deliberately distinct from it AND from every other —
+    // an earlier draft of this test cycled minutes with `i % 10`, so the
+    // tenth save landed back on the initial value and the assertion held
+    // whatever the hook did.
+    const before = "2026-01-01T00:00:00.000Z";
+    expect(read()?.revisionsAt).toBe(before);
+
+    let last = "";
+    for (let i = 1; i <= 10; i++) {
+      last = `2026-01-01T${String(i).padStart(2, "0")}:30:00.000Z`;
+      act(() => read()?.markSaved(last, saved(`v${i}`), false));
+    }
+
+    // The whole point: ten saves, and the key `FolioHistoryTab` refetches
+    // on never moved, so it issues no request for any of them.
+    expect(read()?.revisionsAt).toBe(before);
+    // `savedAt` did move, to the most recent one — the status line still
+    // reads "Saved just now", which is the job the two used to share and
+    // now do not.
+    expect(read()?.savedAt).toBe(last);
+    expect(last).not.toBe(before);
+  });
+
+  it("moves when the save opened a revision", async ({ expect }) => {
+    const { read } = renderDraft();
+
+    act(() => read()?.markSaved("2026-01-01T01:00:00.000Z", saved("v2"), true));
+
+    expect(read()?.revisionsAt).toBe("2026-01-01T01:00:00.000Z");
+  });
+
+  it("moves when the caller has no answer to give", async ({ expect }) => {
+    // The default. Every `markSaved` call site except the autosave path is
+    // reporting a one-off user action (unlock, encrypt, remove protection)
+    // with no `revisionsChanged` to consult, and must keep refetching.
+    const { read } = renderDraft();
+
+    act(() => read()?.markSaved("2026-01-01T02:00:00.000Z", saved("v3")));
+
+    expect(read()?.revisionsAt).toBe("2026-01-01T02:00:00.000Z");
+  });
+
+  it("moves on touchSavedAt, which only reverts use", async ({ expect }) => {
+    // A revert always opens its own revision — `appendRevision` refuses to
+    // fold one — so this is unconditional on purpose.
+    const { read } = renderDraft();
+
+    act(() => read()?.touchSavedAt("2026-01-01T03:00:00.000Z"));
+
+    expect(read()?.revisionsAt).toBe("2026-01-01T03:00:00.000Z");
+  });
+});

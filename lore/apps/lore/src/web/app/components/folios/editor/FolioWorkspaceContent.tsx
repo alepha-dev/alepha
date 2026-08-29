@@ -324,7 +324,7 @@ const FolioWorkspaceContent = (
               onReverted={actions.applyReverted}
               contentElement={contentElement}
               protectedFolio={actions.actionState.isProtected}
-              savedAt={draft.savedAt}
+              revisionsAt={draft.revisionsAt}
             />
           </div>
         )}

@@ -610,7 +610,14 @@ export const useFolioActions = (
     // Baseline on the live values, not on what was sent: the title is
     // trimmed on the way out, and a baseline carrying the trimmed form kept
     // `dirty` true for an untrimmed stored title, so autosave looped.
-    input.draft.markSaved(saved.updatedAt, values);
+    //
+    // The third argument is what keeps the inspector's History tab quiet
+    // through a writing session: the server folds saves inside an hour into
+    // one revision, and says so, so only the save that actually opened a
+    // revision moves `draft.revisionsAt`. This is the ONLY call site with
+    // that answer — every other `markSaved` below reports a one-off user
+    // action (unlock, encrypt, remove protection) and takes the default.
+    input.draft.markSaved(saved.updatedAt, values, saved.revisionsChanged);
 
     if (!folio) {
       // Create mode: `router.push` below changes `FolioWorkspace`'s `key`

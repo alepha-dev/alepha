@@ -34,13 +34,18 @@ export interface FolioInspectorProps {
    */
   onCollapse: () => void;
   /**
-   * `useFolioDraft`'s `savedAt` — threaded through to `FolioHistoryTab`
-   * so it re-fetches after a save that happened while History wasn't the
-   * active tab (see that component's own doc). Not in the brief's
-   * original interface; added after finding live that the revision list
-   * otherwise went stale the moment the user saved from Outline or Links.
+   * `useFolioDraft`'s `revisionsAt` — threaded through to
+   * `FolioHistoryTab` so it re-fetches after a save that happened while
+   * History wasn't the active tab (see that component's own doc). Not in
+   * the brief's original interface; added after finding live that the
+   * revision list otherwise went stale the moment the user saved from
+   * Outline or Links.
+   *
+   * It was `savedAt` until it turned out to move on every autosave: the
+   * server folds a writing session into one revision, so the list this
+   * refetched was almost always the list already on screen.
    */
-  savedAt?: string;
+  revisionsAt?: string;
   /**
    * Bubbled up from the History tab after a successful revert — see
    * `useFolioActions.applyReverted`'s doc for why the sync has to happen
@@ -155,7 +160,7 @@ const FolioInspector = (props: FolioInspectorProps): ReactElement => {
             <FolioHistoryTab
               folio={props.folio}
               active={props.tab === "history"}
-              refreshedAt={props.savedAt}
+              refreshedAt={props.revisionsAt}
               onReverted={props.onReverted}
             />
           ) : (

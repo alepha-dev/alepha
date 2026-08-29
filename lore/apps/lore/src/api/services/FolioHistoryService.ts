@@ -25,6 +25,22 @@ import type { Folio } from "../entities/folios.ts";
  */
 export type RevisionAction = FolioRevision["action"];
 
+/**
+ * What `appendRevision` writes, and whether it was a NEW row.
+ *
+ * `created` is the coalesce window seen from the outside: a burst of
+ * autosaves inside `COALESCE_WINDOW_MS` folds into one revision, so only
+ * the first of them reports `true`. It exists because a caller cannot
+ * infer it from the returned row - a folded row and a fresh one are the
+ * same shape - and because `FolioController.update` passes it to the
+ * client, whose History tab otherwise refetched the whole revision list
+ * (up to ten FULL content snapshots) every 1.5 seconds of typing.
+ */
+export interface AppendedRevision {
+  revision: FolioRevision;
+  created: boolean;
+}
+
 interface RevisionInput {
   /**
    * New title after the change.
@@ -138,7 +154,7 @@ export class FolioHistoryService {
     folio: Folio,
     byUserId: string,
     action: RevisionAction,
-  ): Promise<FolioRevision> {
+  ): Promise<AppendedRevision> {
     // A revert always gets its own row, in BOTH directions. Blocking only
     // the "fold into a revert" side was a bug: the revert's own write would
     // fold into the edit revision that preceded it, overwriting the very
@@ -149,12 +165,15 @@ export class FolioHistoryService {
         ? undefined
         : await this.findOpenRevision(folio.id, byUserId);
     if (open) {
-      return await this.revisions.updateById(open.id, {
-        at: this.dateTime.now().toISOString(),
-        contentSnapshot: folio.content,
-        titleSnapshot: folio.title,
-        summarySnapshot: folio.summary,
-      });
+      return {
+        created: false,
+        revision: await this.revisions.updateById(open.id, {
+          at: this.dateTime.now().toISOString(),
+          contentSnapshot: folio.content,
+          titleSnapshot: folio.title,
+          summarySnapshot: folio.summary,
+        }),
+      };
     }
 
     const inserted = await this.revisions.create({
@@ -185,7 +204,7 @@ export class FolioHistoryService {
       }
     }
 
-    return inserted;
+    return { created: true, revision: inserted };
   }
 
   /**
