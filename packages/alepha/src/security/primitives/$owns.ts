@@ -6,6 +6,7 @@ import { $context, AlephaError, type Middleware } from "alepha";
 import type { Repository } from "alepha/orm";
 import { ForbiddenError, NotFoundError } from "alepha/server";
 
+import { currentAuthorityAtom } from "../atoms/currentAuthorityAtom.ts";
 import { currentResourceAtom } from "../atoms/currentResourceAtom.ts";
 import { $secure, type SecureOptions } from "./$secure.ts";
 
@@ -26,6 +27,11 @@ import { $secure, type SecureOptions } from "./$secure.ts";
  * 1. **Owner**: `row[owner] === user.id`.
  * 2. **Membership**: when `via` is set, a row in the join entity links the
  *    caller to this resource.
+ *
+ * Both are read off the row the param names, unless `through` says ownership
+ * lives one hop away — on the project a quest belongs to, say. The resource
+ * is still published to `OwnedResourceProvider.get()`; the row the decision
+ * was actually made against is published to `authority()`.
  *
  * A privileged identity (`user.ownership === false`) bypasses both, matching
  * the `ownership` semantics `$secure` already applies: an admin whose grant is
@@ -87,11 +93,51 @@ export function $owns(options: OwnsOptions): Middleware {
       // on the owner, member, and privileged paths.
       alepha.store.set(currentResourceAtom, row as Record<string, unknown>);
 
+      // The row the decision is made against. Without `through` it is the row
+      // the param names; with it, the row that row belongs to.
+      let authority = row as Record<string, unknown>;
+      let authorityId = id;
+
+      if (options.through) {
+        // A foreign key is a scalar by definition; the cast states that
+        // rather than letting `unknown` leak into the query and the message.
+        const foreignKey = authority[options.through.column] as
+          | string
+          | number
+          | null
+          | undefined;
+
+        // A null FK DENIES. Falling through to the checks below would compare
+        // `undefined` against the caller's id and then query the join entity
+        // for `projectId = null`, so an orphan row would be refused only by
+        // accident — and a `via`-less gate whose `owner` column is also empty
+        // would allow. An orphan must never become world-readable.
+        if (foreignKey === undefined || foreignKey === null) {
+          throw new ForbiddenError(
+            options.message ?? "Not a member of this resource",
+          );
+        }
+
+        const authorityRepository = options.through.repository();
+        const found = await authorityRepository.findById(foreignKey);
+
+        if (!found) {
+          throw new NotFoundError(
+            `${authorityRepository.tableName} '${foreignKey}' not found`,
+          );
+        }
+
+        authority = found as Record<string, unknown>;
+        authorityId = foreignKey;
+      }
+
+      alepha.store.set(currentAuthorityAtom, authority);
+
       if (ctx.user.ownership === false) {
         return true;
       }
 
-      if ((row as Record<string, unknown>)[options.owner] === ctx.user.id) {
+      if (authority[options.owner] === ctx.user.id) {
         return true;
       }
 
@@ -104,7 +150,9 @@ export function $owns(options: OwnsOptions): Middleware {
       const link = options.via.repository();
       const membership = await link.findOne({
         where: {
-          [options.via.resource]: { eq: id },
+          // `authorityId`, not `id`: with `through` the membership rows point
+          // at the authority (the project), never at the row the param names.
+          [options.via.resource]: { eq: authorityId },
           [options.via.user]: { eq: ctx.user.id },
         },
       } as any);
@@ -143,13 +191,56 @@ export interface OwnsOptions {
   param: string;
 
   /**
-   * Column on the resource holding the owner's user id.
+   * The second hop: say that ownership is not held by the row the param
+   * names, but by a row it belongs to.
+   *
+   * Without it, `owner` and `via` are read off the row `repository` loaded —
+   * which only works when the param names the thing being shared. When the
+   * param names a quest and membership lives on its project, there is no join
+   * to make and the rule cannot be expressed at all.
+   *
+   * ```ts
+   * $owns({
+   *   repository: () => this.quests,   // the row the param names
+   *   param: "id",
+   *   through: { column: "projectId", repository: () => this.projects },
+   *   owner: "createdBy",              // read off the PROJECT
+   *   via: { repository: () => this.members, resource: "projectId", user: "userId" },
+   * })
+   * ```
+   *
+   * `owner` and `via` keep their meaning; they simply apply to the row this
+   * lands on. `via.resource` is matched against the foreign key's value, not
+   * against the param.
+   *
+   * A null or absent foreign key **denies**: an orphan row must not become
+   * world-readable. A missing authority row is a `NotFoundError`, like a
+   * missing resource.
+   *
+   * One hop only. Chains can be added when something needs one.
+   */
+  through?: {
+    /**
+     * Column on the resource holding the authority row's id.
+     */
+    column: string;
+
+    /**
+     * Repository the authority row is loaded from, as a thunk — same
+     * reasoning as {@link OwnsOptions.repository}.
+     */
+    repository: () => Repository<any>;
+  };
+
+  /**
+   * Column holding the owner's user id, on the row the decision is made
+   * against — the resource itself, or the row `through` lands on.
    */
   owner: string;
 
   /**
-   * Membership fallback: a join entity linking users to resources. Omit for
-   * owner-only resources.
+   * Membership fallback: a join entity linking users to the row the decision
+   * is made against. Omit for owner-only resources.
    */
   via?: {
     /**

@@ -1,5 +1,6 @@
 import { $inject, Alepha, AlephaError } from "alepha";
 
+import { currentAuthorityAtom } from "../atoms/currentAuthorityAtom.ts";
 import { currentResourceAtom } from "../atoms/currentResourceAtom.ts";
 
 /**
@@ -48,5 +49,38 @@ export class OwnedResourceProvider {
    */
   public find<T>(): T | undefined {
     return this.alepha.store.get(currentResourceAtom) as T | undefined;
+  }
+
+  /**
+   * The row the access decision was made against.
+   *
+   * Identical to {@link get} unless the gate declared `through`, in which case
+   * this is the row one hop away — the project a quest belongs to, say, which
+   * is where `owner` and `via` were read. A handler that needs it (an
+   * owner-only branch inside a member-gated endpoint, a feature toggle) reads
+   * it here instead of issuing a second query for a row the gate already
+   * loaded.
+   *
+   * Throws for the same reason {@link get} does: no `$owns` in the `use`
+   * array is a wiring mistake, not a runtime condition.
+   */
+  public authority<T>(): T {
+    const row = this.findAuthority<T>();
+
+    if (row === undefined) {
+      throw new AlephaError(
+        "OwnedResourceProvider.authority() called without $owns() in the handler's `use` array.",
+      );
+    }
+
+    return row;
+  }
+
+  /**
+   * The authority row, or `undefined` when no `$owns` ran. The counterpart of
+   * {@link find}, for handlers reachable both with and without the gate.
+   */
+  public findAuthority<T>(): T | undefined {
+    return this.alepha.store.get(currentAuthorityAtom) as T | undefined;
   }
 }

@@ -1,6 +1,7 @@
 import { $module } from "alepha";
 import type { FetchOptions } from "alepha/server";
 
+import { currentAuthorityAtom } from "./atoms/currentAuthorityAtom.ts";
 import { currentResourceAtom } from "./atoms/currentResourceAtom.ts";
 import { currentTenantAtom } from "./atoms/currentTenantAtom.ts";
 import { currentUserAtom } from "./atoms/currentUserAtom.ts";
@@ -18,6 +19,7 @@ import type { UserAccount } from "./schemas/userAccountInfoSchema.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "alepha/crypto";
+export * from "./atoms/currentAuthorityAtom.ts";
 export * from "./atoms/currentResourceAtom.ts";
 export * from "./atoms/currentTenantAtom.ts";
 export * from "./atoms/currentUserAtom.ts";
@@ -120,7 +122,13 @@ declare module "alepha/server" {
 export const AlephaSecurity = $module({
   name: "alepha.security",
   primitives: [$issuer, $role, $permission],
-  atoms: [currentUserAtom, currentTenantAtom, currentResourceAtom, tenancyAtom],
+  atoms: [
+    currentUserAtom,
+    currentTenantAtom,
+    currentResourceAtom,
+    currentAuthorityAtom,
+    tenancyAtom,
+  ],
   services: [
     SecurityProvider,
     JwtProvider,
