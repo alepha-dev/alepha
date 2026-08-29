@@ -31,6 +31,8 @@ export const APP_INSIGHTS_FILTER_KEYS = [
   "referrer",
   "campaign",
   "device",
+  "browser",
+  "os",
 ] as const;
 
 export type AppInsightsFilterKey = (typeof APP_INSIGHTS_FILTER_KEYS)[number];

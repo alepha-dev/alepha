@@ -63,6 +63,8 @@ class Probe {
       referrer?: string;
       campaign?: string;
       device?: string;
+      browser?: string;
+      os?: string;
       /**
        * `human` | `bot`, or `""` to stand in for a row written before the
        * dimension existed. Optional and defaulted on the dataset, like
@@ -1939,6 +1941,124 @@ describe("InsightsController", () => {
         "country",
         "device",
       ]);
+    });
+  });
+
+  describe("browser and system leaderboards", () => {
+    it("ranks browsers and systems by views", async ({ expect }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
+
+      await ctx.probe.views.create({
+        sigilId,
+        hour: hourUtc(ctx, 0, 8),
+        path: "/",
+        country: "FR",
+        browser: "chrome",
+        os: "windows",
+        count: 7,
+      });
+      await ctx.probe.views.create({
+        sigilId,
+        hour: hourUtc(ctx, 0, 9),
+        path: "/",
+        country: "FR",
+        browser: "safari",
+        os: "macos",
+        count: 3,
+      });
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { projectId }, query: { range: "30d" } },
+        { user: owner },
+      );
+
+      expect(res.data.topBrowsers).toEqual([
+        { browser: "chrome", count: 7 },
+        { browser: "safari", count: 3 },
+      ]);
+      expect(res.data.topSystems).toEqual([
+        { os: "windows", count: 7 },
+        { os: "macos", count: 3 },
+      ]);
+    });
+
+    /**
+     * A row written before either dimension existed carries `""` - a default
+     * fills a column on write, it does not rewrite stored rows. Left alone
+     * that is a nameless bucket in a leaderboard; excluded, the shares would
+     * describe less traffic than the page around them claims. Both readings
+     * are "we cannot name it", so they merge.
+     */
+    it("folds a legacy empty bucket into other rather than showing it", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
+
+      await ctx.probe.views.create({
+        sigilId,
+        hour: hourUtc(ctx, 0, 8),
+        path: "/",
+        country: "FR",
+        browser: "",
+        os: "",
+        count: 4,
+      });
+      await ctx.probe.views.create({
+        sigilId,
+        hour: hourUtc(ctx, 0, 9),
+        path: "/",
+        country: "FR",
+        browser: "other",
+        os: "other",
+        count: 2,
+      });
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { projectId }, query: { range: "30d" } },
+        { user: owner },
+      );
+
+      // One row, not two, and the whole six views: the totals stay describing
+      // the traffic the rest of the page describes.
+      expect(res.data.topBrowsers).toEqual([{ browser: "other", count: 6 }]);
+      expect(res.data.topSystems).toEqual([{ os: "other", count: 6 }]);
+    });
+
+    it("narrows the page by browser like any other dimension", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
+
+      await ctx.probe.views.create({
+        sigilId,
+        hour: hourUtc(ctx, 0, 8),
+        path: "/chrome-only",
+        country: "FR",
+        browser: "chrome",
+        count: 5,
+      });
+      await ctx.probe.views.create({
+        sigilId,
+        hour: hourUtc(ctx, 0, 9),
+        path: "/safari-only",
+        country: "FR",
+        browser: "safari",
+        count: 9,
+      });
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { projectId }, query: { range: "30d", browser: "chrome" } },
+        { user: owner },
+      );
+
+      expect(res.data.totalViews).toBe(5);
+      expect(res.data.topPaths.map((p) => p.path)).toEqual(["/chrome-only"]);
     });
   });
 

@@ -64,6 +64,8 @@ export const ANALYTICS_DIMENSIONS = new Set([
   "campaign",
   "device",
   "referrer",
+  "browser",
+  "os",
 ]);
 
 export class AppRouter {

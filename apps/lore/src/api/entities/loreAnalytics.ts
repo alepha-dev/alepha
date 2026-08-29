@@ -118,6 +118,37 @@ export class LoreAnalytics {
        * a non-null default.
        */
       traffic: z.string().default("human"),
+      /**
+       * `chrome` | `safari` | `firefox` | `edge` | `other`, classified by the
+       * app's own proxy from the user-agent it already holds. Five coarse
+       * buckets on purpose - see `sigilBrowserName`.
+       *
+       * **This is the dimension that proves the slot map is fixed.** It sorts
+       * before `campaign`, so under the old alphabetical derivation it would
+       * have taken `blob3` and pushed EVERY dimension on this dataset along by
+       * one, hiding another month of production data the way `referrer` hid
+       * eight days. `traffic` escaped that by being named for where it sorted;
+       * this one has no such escape, which is exactly why it was blocked on
+       * the pin. It is appended to `slots.dimensions` below and takes the next
+       * free blob.
+       *
+       * The default is not decoration, and it is the same trap `referrer`,
+       * `traffic` and `engaged` all hit: on the relational backend this is
+       * `ALTER TABLE ... ADD browser text NOT NULL`, which SQLite refuses
+       * outright on a table that already holds rows unless the column carries
+       * a non-null default.
+       */
+      browser: z.string().default("other"),
+      /**
+       * `windows` | `macos` | `ios` | `android` | `linux` | `other`, from the
+       * same header and the same proxy. See `sigilOsName`, including why it
+       * disagrees with `device` about an iPad.
+       *
+       * Sorts between `device` and `path`, so it too would have re-slotted
+       * this dataset under the old derivation. Appended, like `browser`, and
+       * defaulted for the same SQLite reason.
+       */
+      os: z.string().default("other"),
     }),
     /**
      * Three measures, and the two new ones cost nothing on the wire.
@@ -175,6 +206,13 @@ export class LoreAnalytics {
         "referrer",
         "sigilId",
         "traffic",
+        // Appended, and the first two names to arrive here since the list
+        // became the wire format. Both sort EARLY - `browser` before
+        // `campaign`, `os` between `device` and `path` - so under the old
+        // alphabetical derivation adding them would have moved every slot on
+        // this dataset. Appended, they move nothing.
+        "browser",
+        "os",
       ],
       measures: ["count", "engaged", "entries"],
     },

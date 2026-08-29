@@ -906,6 +906,10 @@ export default {
   "insights.topCampaigns.note":
     "From utm_campaign or utm_source on the arrival URL.",
   "insights.topCampaigns.untagged": "Untagged",
+  "insights.topBrowsers": "Browsers",
+  "insights.topSystems": "Systems",
+  "insights.filter.browser": "Browser",
+  "insights.filter.os": "System",
   "insights.topDevices": "Devices",
   "insights.device.mobile": "Mobile",
   "insights.device.tablet": "Tablet",

@@ -68,6 +68,8 @@ const ROW_FILTER: Record<
   campaign: "campaign",
   device: "device",
   referrer: "referrer",
+  browser: "browser",
+  os: "os",
 };
 
 /**
@@ -139,6 +141,16 @@ const AppAnalytics = () => {
     value: string,
   ) =>
     setFilters({ ...filters, range, traffic, [ROW_FILTER[dimension]]: value });
+
+  /**
+   * A row's share of the window's views, whole percent.
+   *
+   * Out of `totalViews` rather than out of the leaderboard, which is the only
+   * denominator that makes two cards comparable: a bar whose 100% meant "the
+   * top of this list" would read as dominance on a board with one row.
+   */
+  const share = (count: number) =>
+    data.totalViews > 0 ? Math.round((count / data.totalViews) * 100) : 0;
 
   const timelineData = data.timeline.map((p) => ({
     date: p.date.slice(5),
@@ -467,22 +479,47 @@ const AppAnalytics = () => {
           )}
         />
 
+        {/*
+          Three tabs rather than three cards: device, browser and OS are the
+          same question asked three ways — what the visitor is reading on — and
+          separating them would spend three cards on one row of the reader's
+          attention.
+        */}
         <AppAnalyticsLeaderboard
           testId="insights-devices"
           onPick={pick}
-          segments={segments({
-            dimension: "device",
-            title: String(tr("insights.topDevices")),
-            rows: data.topDevices.map((row) => ({
-              value: row.device,
-              label: deviceLabel(tr, row.device),
-              count: row.count,
-              percentage:
-                data.totalViews > 0
-                  ? Math.round((row.count / data.totalViews) * 100)
-                  : 0,
-            })),
-          })}
+          segments={segments(
+            {
+              dimension: "device",
+              title: String(tr("insights.topDevices")),
+              rows: data.topDevices.map((row) => ({
+                value: row.device,
+                label: deviceLabel(tr, row.device),
+                count: row.count,
+                percentage: share(row.count),
+              })),
+            },
+            {
+              dimension: "browser",
+              title: String(tr("insights.topBrowsers")),
+              rows: data.topBrowsers.map((row) => ({
+                value: row.browser,
+                label: row.browser,
+                count: row.count,
+                percentage: share(row.count),
+              })),
+            },
+            {
+              dimension: "os",
+              title: String(tr("insights.topSystems")),
+              rows: data.topSystems.map((row) => ({
+                value: row.os,
+                label: row.os,
+                count: row.count,
+                percentage: share(row.count),
+              })),
+            },
+          )}
         />
 
         <AppAnalyticsLeaderboard
@@ -495,10 +532,7 @@ const AppAnalytics = () => {
               value: row.country,
               label: `${flagEmoji(row.country)} ${row.country}`,
               count: row.count,
-              percentage:
-                data.totalViews > 0
-                  ? Math.round((row.count / data.totalViews) * 100)
-                  : 0,
+              percentage: share(row.count),
             })),
           })}
         />

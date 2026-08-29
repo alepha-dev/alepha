@@ -4,9 +4,11 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $action } from "alepha/server";
 
 import { sigilEnvelope } from "../shared/schemas/sigilEnvelope.ts";
+import { sigilBrowserName } from "../shared/sigilBrowserName.ts";
 import { sigilClientAtom } from "../shared/sigilClientAtom.ts";
 import { sigilDeviceClass } from "../shared/sigilDeviceClass.ts";
 import { sigilHost } from "../shared/sigilHost.ts";
+import { sigilOsName } from "../shared/sigilOsName.ts";
 import { sigilTrafficKind } from "../shared/sigilTrafficKind.ts";
 import { sigilEnv } from "../sigilEnv.ts";
 import { SigilSinkProvider } from "./SigilSinkProvider.ts";
@@ -127,6 +129,12 @@ export class SigilProxyController {
       // fetches, which never arrives.
       const traffic = sigilTrafficKind(ua);
 
+      // Third and fourth questions of the same header, in the same place, at
+      // the same cost. This seam has taken four fields now, which is what it
+      // is for: things only the app's own server knows.
+      const browser = sigilBrowserName(ua);
+      const os = sigilOsName(ua);
+
       // The kill-switches are applied by the sink provider. Filtering here too
       // would be a second place to keep in sync with the fetched config.
       //
@@ -141,6 +149,8 @@ export class SigilProxyController {
         visitor,
         device,
         traffic,
+        browser,
+        os,
         host: sigilHost(host),
       });
 

@@ -185,6 +185,32 @@ export const insightsResourceSchema = z.object({
       count: z.integer(),
     }),
   ),
+  /**
+   * `chrome` / `safari` / `firefox` / `edge` / `other`, by total views.
+   *
+   * ⚠️ Rows written before the dimension existed carry `""` on Analytics
+   * Engine - a default fills a column on write, it does not rewrite stored
+   * rows - and they are folded into `other` rather than dropped or left as an
+   * empty bucket. Both readings are "we cannot name the browser", so the
+   * merge loses nothing; excluding them instead would silently make the
+   * leaderboard's shares sum to less than the traffic it claims to describe.
+   */
+  topBrowsers: z.array(
+    z.object({
+      browser: z.string(),
+      count: z.integer(),
+    }),
+  ),
+  /**
+   * `windows` / `macos` / `ios` / `android` / `linux` / `other`, by total
+   * views. Legacy `""` folded into `other`, exactly as for browsers.
+   */
+  topSystems: z.array(
+    z.object({
+      os: z.string(),
+      count: z.integer(),
+    }),
+  ),
   topReferrers: z.array(
     z.object({
       /**

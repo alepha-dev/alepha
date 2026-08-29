@@ -30,4 +30,6 @@ export const appInsightsFiltersSchema = z.object({
   referrer: z.string().optional(),
   campaign: z.string().optional(),
   device: z.string().optional(),
+  browser: z.string().optional(),
+  os: z.string().optional(),
 });

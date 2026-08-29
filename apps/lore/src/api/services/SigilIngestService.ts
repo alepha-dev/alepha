@@ -133,6 +133,8 @@ export class SigilIngestService {
         envelope.country,
         envelope.device,
         envelope.traffic,
+        envelope.browser,
+        envelope.os,
         envelope.visitor,
         now,
       );
@@ -381,6 +383,8 @@ export class SigilIngestService {
     country: string | undefined,
     device: string | undefined,
     traffic: string | undefined,
+    browser: string | undefined,
+    os: string | undefined,
     visitor: string | undefined,
     now: string,
   ): Promise<void> {
@@ -399,6 +403,8 @@ export class SigilIngestService {
       campaign: string;
       device: string;
       traffic: string;
+      browser: string;
+      os: string;
       count: number;
       engaged: number;
       entries: number;
@@ -415,6 +421,13 @@ export class SigilIngestService {
     // every such app's readers as crawlers would be the one direction this
     // classification is not allowed to be wrong in. Unknown is a person.
     const kind = traffic || "human";
+    // `other` for both, and for the same reason `desktop` is the device
+    // fallback: an app whose proxy predates these stamps sends nothing, and
+    // `other` is the bucket that already means "we cannot name it". Naming one
+    // wrongly is the direction these classifiers are not allowed to be wrong
+    // in - see `sigilBrowserName`.
+    const ua = browser || "other";
+    const system = os || "other";
 
     const bucketFor = (
       hour: string,
@@ -422,7 +435,7 @@ export class SigilIngestService {
       referrer: string,
       campaign: string,
     ): Bucket => {
-      const key = `${hour}|${path}|${iso}|${referrer}|${campaign}|${dev}|${kind}`;
+      const key = `${hour}|${path}|${iso}|${referrer}|${campaign}|${dev}|${kind}|${ua}|${system}`;
       let bucket = buckets.get(key);
       if (!bucket) {
         bucket = {
@@ -433,6 +446,8 @@ export class SigilIngestService {
           campaign,
           device: dev,
           traffic: kind,
+          browser: ua,
+          os: system,
           count: 0,
           engaged: 0,
           entries: 0,
@@ -490,6 +505,8 @@ export class SigilIngestService {
         campaign: bucket.campaign,
         device: bucket.device,
         traffic: bucket.traffic,
+        browser: bucket.browser,
+        os: bucket.os,
         count: bucket.count,
         engaged: bucket.engaged,
         entries: bucket.entries,

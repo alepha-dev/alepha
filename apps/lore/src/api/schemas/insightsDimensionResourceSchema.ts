@@ -23,6 +23,8 @@ export const insightsDimensionResourceSchema = z.object({
     "campaign",
     "device",
     "referrer",
+    "browser",
+    "os",
   ]),
   /**
    * Which measure the rows are counted and ranked by, echoed back so a caller
