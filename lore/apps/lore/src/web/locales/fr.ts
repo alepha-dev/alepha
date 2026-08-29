@@ -859,11 +859,9 @@ export default {
   "app.dashboard.acceptsNothing": "Lore n'accepte rien de cette app",
   "insights.errors.note":
     "Défaillances distinctes encore actives dans cette app",
-  "app.settings.capabilities.title": "Capacités",
-  "app.settings.capabilities.description":
-    "Ce que cette application peut remonter. Désactiver une capacité empêche le point d'ingestion de l'accepter, pour cette application seulement, pas pour les autres.",
-  "app.settings.capabilities.feedbackModuleOff":
-    "Le module Retours du projet est désactivé : le lien de cette application reste masqué quoi qu'indique cet interrupteur. Activez le module dans Paramètres ▸ Retours.",
+  "app.settings.general": "Général",
+  "app.settings.credential": "Accès",
+  "app.settings.danger": "Zone dangereuse",
   "app.settings.name.title": "Nom",
   "app.settings.name.description":
     "Le nom de l'app est aussi son segment d'URL ici. Lettres minuscules, chiffres et tirets ; il est nettoyé et mis en minuscules pour vous.",
@@ -1014,21 +1012,6 @@ export default {
   "blights.rules.toast.removed": "Règle d'exclusion supprimée",
   "blights.status.resolved": "Résolu",
   "blights.status.quest": "Quête #$1",
-  "blights.feature.title": "Fléaux",
-  "blights.feature.description":
-    "Collecte et trie les exceptions non interceptées remontées par cette application.",
-
-  "feedback.feature.title": "Retours",
-  "feedback.feature.description":
-    "Donne à cette application un lien vers le formulaire de retour du projet.",
-
-  "beacon.feature.title": "Balise",
-  "beacon.feature.description":
-    "Collecte les pages vues et les visiteurs uniques, sans cookie, depuis cette application.",
-
-  "vitals.feature.title": "Vitals",
-  "vitals.feature.description":
-    "Collecte les Core Web Vitals (LCP, CLS, INP, FCP, TTFB) depuis cette application.",
 
   "sigils.title": "Applications",
   "sigils.empty":

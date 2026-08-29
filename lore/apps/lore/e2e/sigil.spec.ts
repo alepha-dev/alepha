@@ -148,6 +148,49 @@ const waitForProjectFeature = async (
  * switch on `AppSettings.tsx`'s Capabilities card, which renders from
  * `currentSigilAtom` — the SPA's belief, not a read of the server's row.
  */
+/**
+ * Sets an app's `kinds` through the API.
+ *
+ * There is no control for this on the page any more. The four switches were
+ * deleted with the Settings rebuild because they read as the app's
+ * configuration and are not: `SIGIL_CONFIG` in the app's own deploy decides
+ * what is SENT, and `kinds` decides only what this sink ACCEPTS. The gate
+ * itself did not move — `SigilIngestService.gatesFor` still enforces it — so
+ * the behaviour below is still worth guarding, and this is how it is reached.
+ *
+ * Through `page.evaluate` rather than the `request` fixture, so the browser's
+ * own session cookie authenticates it, the way `waitForSigilKind` reads.
+ */
+const setSigilKinds = async (
+  page: Page,
+  projectId: number,
+  name: string,
+  kinds: string[],
+): Promise<void> => {
+  const ok = await page.evaluate(
+    async ({ projectId, name, kinds }) => {
+      const list = await fetch(`/api/projects/${projectId}/sigils`, {
+        credentials: "include",
+      });
+      if (!list.ok) return false;
+      const body = (await list.json()) as {
+        items: { id: string; name: string }[];
+      };
+      const sigil = body.items.find((it) => it.name === name);
+      if (!sigil) return false;
+      const res = await fetch(`/api/projects/${projectId}/sigils/${sigil.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ kinds }),
+      });
+      return res.ok;
+    },
+    { projectId, name, kinds },
+  );
+  expect(ok).toBe(true);
+};
+
 const waitForSigilKind = async (
   page: Page,
   projectId: number,
@@ -752,31 +795,17 @@ test.describe("Sigils", () => {
       await expect(page.getByText(/crawlers included/i)).toBeVisible();
     });
 
-    await test.step("turning Beacon off hides the analytics tabs, back on restores them", async () => {
-      // Capabilities live on the app's own Settings tab now, not a
-      // project-wide card — the switch here governs this app alone.
-      await page
-        .getByTestId("app-tabs")
-        .getByRole("link", { name: "Settings", exact: true })
-        .click();
-
-      const beacon = page.getByRole("switch", { name: "Beacon", exact: true });
-      await expect(beacon).toBeVisible({ timeout: 15_000 });
-      // A freshly enrolled sigil carries all four kinds by default — this
-      // read reflects the page's loader, not a click, so there's no write to
-      // race here.
-      await expect(beacon).toBeChecked();
-
-      await beacon.click();
-      // Not `not.toBeChecked()` — poll the sigil's own `kinds` on the server
-      // instead of the switch, which renders from `currentSigilAtom` (the
-      // SPA's copy). Same optimistic-switch shape as
-      // `waitForProjectFeature`, one level down.
+    await test.step("an app without Beacon has no analytics tabs, and gets them back", async () => {
+      // Flipped through the API: the four capability switches left the
+      // Settings page with the rebuild (they were a second, unaware copy of a
+      // decision `SIGIL_CONFIG` already makes). The GATE did not move, so what
+      // it does to the page is still worth guarding.
+      await setSigilKinds(page, projectId, appName, ["feedback"]);
       await waitForSigilKind(page, projectId, appName, "beacon", false);
 
-      // The toggle writes `currentSigilAtom` itself (see
-      // AppSettingsCapabilities.tsx), and the tab bar renders from that atom,
-      // so it reflects the app's own kinds without a page reload.
+      await page.goto(`/${projectSlug}/apps/${appName}`);
+      await page.waitForLoadState("networkidle");
+
       const tabs = page.getByTestId("app-tabs");
       for (const label of ["Analytics", "Vitals"]) {
         await expect(
@@ -784,9 +813,16 @@ test.describe("Sigils", () => {
         ).toHaveCount(0, { timeout: 15_000 });
       }
 
-      await beacon.click();
+      await setSigilKinds(page, projectId, appName, [
+        "feedback",
+        "blights",
+        "beacon",
+        "vitals",
+      ]);
       await waitForSigilKind(page, projectId, appName, "beacon", true);
 
+      await page.goto(`/${projectSlug}/apps/${appName}`);
+      await page.waitForLoadState("networkidle");
       for (const label of ["Analytics", "Vitals"]) {
         await expect(
           tabs.getByRole("link", { name: label, exact: true }),
@@ -795,11 +831,10 @@ test.describe("Sigils", () => {
 
       // Regression guard for a real bug (Task 6): the insights payload used to
       // be filled by the `projectApp` loader alone, and a sibling-tab
-      // navigation (Settings → Analytics) reuses that loader's layer instead
-      // of re-running it, so the data stayed stale after Beacon flipped back
-      // on and Analytics rendered blank. Analytics fetching on its own mount
-      // is what removed the whole class — assert the tab renders content, not
-      // just that the link exists.
+      // navigation reused that loader's layer instead of re-running it, so the
+      // data stayed stale after Beacon flipped back on and Analytics rendered
+      // blank. Analytics fetching on its own mount is what removed the whole
+      // class — assert the tab renders content, not just that the link exists.
       await tabs.getByRole("link", { name: "Analytics", exact: true }).click();
       await expect(page.getByText("Top pages")).toBeVisible({
         timeout: 15_000,

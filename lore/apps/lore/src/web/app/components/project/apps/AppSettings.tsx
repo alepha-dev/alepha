@@ -1,10 +1,7 @@
+import { SettingsDangerSection } from "@alepha/ui/components/settings/settings-danger-section";
+import { SettingsRow } from "@alepha/ui/components/settings/settings-row";
+import { SettingsSection } from "@alepha/ui/components/settings/settings-section";
 import { Button } from "@alepha/ui/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@alepha/ui/components/ui/card";
 import {
   Tooltip,
   TooltipContent,
@@ -27,22 +24,37 @@ import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
 import { currentSigilsAtom } from "../../../atoms/currentSigilsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import TokenReveal from "../../shared/TokenReveal.tsx";
-import AppSettingsCapabilities from "./AppSettingsCapabilities.tsx";
 import AppSettingsName from "./AppSettingsName.tsx";
 import AppSettingsUrl from "./AppSettingsUrl.tsx";
 
 /**
- * What can be done to one app: rotate its token, or delete it.
+ * Everything an operator decides about one app.
  *
- * The two actions live here rather than on the project's settings page because
- * they are about this app and nothing else — that page enrols apps and lists
- * them, and duplicating per-app buttons there would give the same irreversible
- * delete two front doors.
+ * Built on the shared settings blocks rather than a column of bespoke cards,
+ * which is what puts it in the same rhythm as every other settings page in the
+ * app. `SettingsSection` is `py-0` and every `SettingsRow` brings its own
+ * `py-3`; leaving both on stacks into a thick blank band, so do not "fix" that
+ * to a numeric padding.
  *
- * They are deliberately not symmetric. Rotating replaces the credential and
- * keeps everything the app has reported; deleting takes the history with it,
- * because the four aggregate tables cascade on `sigilId`. The confirmation each
- * opens is where that difference is spelled out.
+ * **Two controls left the page rather than being ported.** The four `kinds`
+ * switches and the feedback-button position read as the app's configuration
+ * and are not: `SIGIL_CONFIG` in the app's own deploy decides what gets SENT,
+ * and `kinds` decides only what this sink ACCEPTS. Two switches for one
+ * behaviour, neither aware of the other. `kinds` stays enforced in
+ * `SigilIngestService.gatesFor` and is simply no longer presented here; both
+ * sides of it are now read-only state on the Dashboard, side by side, which is
+ * where a disagreement between them becomes visible.
+ *
+ * What remains is what an operator genuinely sets: the app's name, its URL,
+ * its credential, and its removal.
+ *
+ * Rotate and delete live here rather than on the project's settings page
+ * because they are about this app and nothing else — that page enrols apps and
+ * lists them, and duplicating an irreversible delete would give it two front
+ * doors. They are deliberately not symmetric: rotating replaces the credential
+ * and keeps everything the app has reported, deleting takes the history with
+ * it, because the four aggregate tables cascade on `sigilId`. The confirmation
+ * each opens is where that difference is spelled out.
  *
  * Both are owner-only server-side (`$secure` + `assertOwner`) — that is the
  * real gate, and it does not move. The buttons are disabled here for a
@@ -153,29 +165,32 @@ const AppSettings = () => {
         />
       )}
 
-      {/*
-        Keyed by the app, because this is the one card here that holds a draft
-        of its own. Moving between two apps' Settings tabs swaps
-        `currentSigilAtom` without unmounting anything, so an unkeyed field
-        would keep showing — and on Save, write — the URL of the app you just
-        left. The other cards read the atom directly and have nothing to stale.
-      */}
-      <AppSettingsUrl key={sigil.id} />
+      <SettingsSection title={tr("app.settings.general")}>
+        {/*
+          The two draft-holding rows. `AppSettingsName` is unkeyed because its
+          draft is the app's own name, which the atom swap replaces anyway; the
+          URL row is keyed, and must be.
+        */}
+        <AppSettingsName />
 
-      <AppSettingsName />
+        {/*
+          Keyed by the app, because this is the one row here that holds a draft
+          of something the atom swap does NOT replace. Moving between two apps'
+          Settings tabs swaps `currentSigilAtom` without unmounting anything,
+          so an unkeyed field would keep showing — and on Save, write — the URL
+          of the app you just left. `SettingsRow` does not unmount it for you.
+        */}
+        <AppSettingsUrl key={sigil.id} />
+      </SettingsSection>
 
-      <AppSettingsCapabilities />
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            {tr("app.settings.rotate.title")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col items-start gap-3">
-          <p className="text-muted-foreground text-sm">
-            {tr("app.settings.rotate.description")}
-          </p>
+      <SettingsSection
+        title={tr("app.settings.credential")}
+        description={tr("app.settings.rotate.description")}
+      >
+        <SettingsRow
+          label={tr("app.settings.rotate.title")}
+          description={`${sigil.tokenPrefix}…`}
+        >
           {isOwner ? (
             <Button
               variant="outline"
@@ -188,34 +203,27 @@ const AppSettings = () => {
             </Button>
           ) : (
             <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    variant="outline"
-                    disabled
-                    aria-label={tr("sigils.action.rotate")}
-                  />
-                }
-              >
-                <RefreshCw />
-                {tr("sigils.action.rotate")}
+              <TooltipTrigger render={<span className="inline-flex" />}>
+                <Button
+                  variant="outline"
+                  disabled
+                  aria-label={tr("sigils.action.rotate")}
+                >
+                  <RefreshCw />
+                  {tr("sigils.action.rotate")}
+                </Button>
               </TooltipTrigger>
               <TooltipContent>{tr("app.settings.ownerOnly")}</TooltipContent>
             </Tooltip>
           )}
-        </CardContent>
-      </Card>
+        </SettingsRow>
+      </SettingsSection>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            {tr("app.settings.delete.title")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col items-start gap-3">
-          <p className="text-muted-foreground text-sm">
-            {tr("app.settings.delete.description")}
-          </p>
+      <SettingsDangerSection title={tr("app.settings.danger")}>
+        <SettingsRow
+          label={tr("app.settings.delete.title")}
+          description={tr("app.settings.delete.description")}
+        >
           {isOwner ? (
             <Button
               variant="destructive"
@@ -228,23 +236,21 @@ const AppSettings = () => {
             </Button>
           ) : (
             <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    variant="destructive"
-                    disabled
-                    aria-label={tr("sigils.action.delete")}
-                  />
-                }
-              >
-                <Trash2 />
-                {tr("sigils.action.delete")}
+              <TooltipTrigger render={<span className="inline-flex" />}>
+                <Button
+                  variant="destructive"
+                  disabled
+                  aria-label={tr("sigils.action.delete")}
+                >
+                  <Trash2 />
+                  {tr("sigils.action.delete")}
+                </Button>
               </TooltipTrigger>
               <TooltipContent>{tr("app.settings.ownerOnly")}</TooltipContent>
             </Tooltip>
           )}
-        </CardContent>
-      </Card>
+        </SettingsRow>
+      </SettingsDangerSection>
     </div>
   );
 };
