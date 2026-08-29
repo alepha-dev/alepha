@@ -260,7 +260,13 @@ export const FOLIO_MENUS: FolioMenu[] = [
         shortcut: "⇧⌘\\",
         binding: "mod+shift+\\",
         availableWhenLocked: true,
-        availableWithoutFolio: true,
+        // Deliberately NOT `availableWithoutFolio`, unlike its two
+        // neighbours. The tree and focus mode both change what the empty
+        // `/folios` looks like; the inspector does not exist there at all -
+        // it mounts inside `FolioWorkspaceContent`, which the empty state
+        // skips entirely. Enabled, this toggle flipped a persisted
+        // preference with no visible effect, and the user only discovered
+        // what they had done on opening the next folio.
       },
       sep,
       {

@@ -73,18 +73,29 @@ const editorOwnsBinding = (
  * locked) is skipped entirely: no `preventDefault()`, no handler call, so
  * the browser's own behavior for that key combination still applies.
  *
- * Called once, from `FolioDocument` — a component that stays mounted for
- * the folio's whole session regardless of lock state, unlike `FolioMenubar`,
+ * Called from `FolioDocument` — a component that stays mounted for the
+ * folio's whole session regardless of lock state, unlike `FolioMenubar`,
  * which only exists while unlocked. Binding here rather than inside the
  * menubar is what keeps the pane toggles (⌘\\, ⌘.) working on a locked
  * folio, where the menubar is not mounted at all.
+ *
+ * And from `FolioWorkspace`, for the empty `/folios` — where there is no
+ * document, so no `FolioDocument` to bind them. That state still renders a
+ * full `FolioMenubar` advertising ⌘\\ and ⌘. as enabled, and without this
+ * second call the glyphs were a promise nothing kept. The two call sites
+ * are mutually exclusive by construction (the workspace passes
+ * `enabled: props.empty === true`, and the document only exists when
+ * `empty` is false), so exactly one listener is bound at a time — two
+ * would both `preventDefault()` and dispatch the same action twice.
  */
 export const useFolioShortcuts = (
   handlers: FolioActionHandlers,
   state: FolioActionState,
   mode: MarkdownEditorMode,
+  enabled = true,
 ): void => {
   useEffect(() => {
+    if (!enabled) return;
     const bindings = folioShortcutBindings();
 
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -100,5 +111,5 @@ export const useFolioShortcuts = (
     return () => {
       window.removeEventListener("keydown", onKeyDown, { capture: true });
     };
-  }, [handlers, state, mode]);
+  }, [handlers, state, mode, enabled]);
 };
