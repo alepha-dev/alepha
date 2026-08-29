@@ -1,10 +1,5 @@
+import { SettingsRow } from "@alepha/ui/components/settings/settings-row";
 import { Button } from "@alepha/ui/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@alepha/ui/components/ui/card";
 import { Input } from "@alepha/ui/components/ui/input";
 import {
   Tooltip,
@@ -97,64 +92,58 @@ const AppSettingsUrl = () => {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">
-          {tr("app.settings.url.title")}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col items-start gap-3">
-        <p className="text-muted-foreground text-sm">
-          {sigil.lastSeenHost
-            ? tr("app.settings.url.detected", {
-                args: [sigil.lastSeenHost],
-              })
-            : tr("app.settings.url.description")}
-        </p>
-        <div className="flex w-full flex-wrap items-center gap-2">
-          <Input
-            type="url"
-            className="min-w-0 flex-1"
-            aria-label={tr("app.settings.url.title")}
-            // The detected host, so an empty field reads as "using this one"
-            // rather than as a blank nobody filled in.
-            placeholder={
-              sigil.lastSeenHost
-                ? `https://${sigil.lastSeenHost}`
-                : "https://example.com"
+    <SettingsRow
+      htmlFor="app-settings-url"
+      label={tr("app.settings.url.title")}
+      description={
+        sigil.lastSeenHost
+          ? tr("app.settings.url.detected", { args: [sigil.lastSeenHost] })
+          : tr("app.settings.url.description")
+      }
+    >
+      <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+        <Input
+          id="app-settings-url"
+          type="url"
+          className="min-w-0 flex-1 sm:w-72"
+          // The detected host, so an empty field reads as "using this one"
+          // rather than as a blank nobody filled in.
+          placeholder={
+            sigil.lastSeenHost
+              ? `https://${sigil.lastSeenHost}`
+              : "https://example.com"
+          }
+          value={draft}
+          disabled={!isOwner || busy}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              void save();
             }
-            value={draft}
-            disabled={!isOwner || busy}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                void save();
-              }
-            }}
-          />
-          {isOwner ? (
-            <Button
-              variant="outline"
-              disabled={busy || draft.trim() === (sigil.url ?? "")}
-              onClick={() => void save()}
-            >
-              {tr("app.settings.url.save")}
-            </Button>
-          ) : (
-            // Wrapped in a span rather than handed to `render`: a disabled
-            // control swallows the pointer events the tooltip listens for.
-            <Tooltip>
-              <TooltipTrigger render={<span className="inline-flex" />}>
-                <Button variant="outline" disabled>
-                  {tr("app.settings.url.save")}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{tr("app.settings.ownerOnly")}</TooltipContent>
-            </Tooltip>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+          }}
+        />
+        {isOwner ? (
+          <Button
+            variant="outline"
+            disabled={busy || draft.trim() === (sigil.url ?? "")}
+            onClick={() => void save()}
+          >
+            {tr("app.settings.url.save")}
+          </Button>
+        ) : (
+          // Wrapped in a span rather than handed to `render`: a disabled
+          // control swallows the pointer events the tooltip listens for.
+          <Tooltip>
+            <TooltipTrigger render={<span className="inline-flex" />}>
+              <Button variant="outline" disabled>
+                {tr("app.settings.url.save")}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{tr("app.settings.ownerOnly")}</TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+    </SettingsRow>
   );
 };
 

@@ -1,10 +1,5 @@
+import { SettingsRow } from "@alepha/ui/components/settings/settings-row";
 import { Button } from "@alepha/ui/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@alepha/ui/components/ui/card";
 import { Input } from "@alepha/ui/components/ui/input";
 import {
   Tooltip,
@@ -126,52 +121,46 @@ const AppSettingsName = () => {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">
-          {tr("app.settings.name.title")}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col items-start gap-3">
-        <p className="text-muted-foreground text-sm">
-          {tr("app.settings.name.description")}
-        </p>
-        <div className="flex w-full flex-wrap items-center gap-2">
-          <Input
-            className="min-w-0 flex-1"
-            aria-label={tr("app.settings.name.title")}
-            value={draft}
-            disabled={!isOwner || busy}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                void save();
-              }
-            }}
-          />
-          {isOwner ? (
-            <Button
-              variant="outline"
-              disabled={busy || !changed}
-              onClick={() => void save()}
-            >
-              {tr("app.settings.name.save")}
-            </Button>
-          ) : (
-            // Wrapped in a span rather than handed to `render`: a disabled
-            // control swallows the pointer events the tooltip listens for.
-            <Tooltip>
-              <TooltipTrigger render={<span className="inline-flex" />}>
-                <Button variant="outline" disabled>
-                  {tr("app.settings.name.save")}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{tr("app.settings.ownerOnly")}</TooltipContent>
-            </Tooltip>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+    <SettingsRow
+      htmlFor="app-settings-name"
+      label={tr("app.settings.name.title")}
+      description={tr("app.settings.name.description")}
+    >
+      <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+        <Input
+          id="app-settings-name"
+          className="min-w-0 flex-1 sm:w-72"
+          value={draft}
+          disabled={!isOwner || busy}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              void save();
+            }
+          }}
+        />
+        {isOwner ? (
+          <Button
+            variant="outline"
+            disabled={busy || !changed}
+            onClick={() => void save()}
+          >
+            {tr("app.settings.name.save")}
+          </Button>
+        ) : (
+          // Wrapped in a span rather than handed to `render`: a disabled
+          // control swallows the pointer events the tooltip listens for.
+          <Tooltip>
+            <TooltipTrigger render={<span className="inline-flex" />}>
+              <Button variant="outline" disabled>
+                {tr("app.settings.name.save")}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{tr("app.settings.ownerOnly")}</TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+    </SettingsRow>
   );
 };
 

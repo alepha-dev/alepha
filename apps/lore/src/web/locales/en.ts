@@ -843,11 +843,9 @@ export default {
     "What the app sends is decided by SIGIL_CONFIG in its own deploy, not here. What Lore accepts is on the Settings tab.",
   "app.dashboard.acceptsNothing": "Lore accepts nothing from this app",
   "insights.errors.note": "Distinct failures still happening in this app",
-  "app.settings.capabilities.title": "Capabilities",
-  "app.settings.capabilities.description":
-    "What this app may report. Turning one off stops the ingest endpoint accepting it, for this app only, not for the others.",
-  "app.settings.capabilities.feedbackModuleOff":
-    "The project's Feedback module is off, so this app's link stays hidden whatever this switch says. Turn the module on under Settings ▸ Feedback.",
+  "app.settings.general": "General",
+  "app.settings.credential": "Credential",
+  "app.settings.danger": "Danger zone",
   "app.settings.name.title": "Name",
   "app.settings.name.description":
     "The app's name is also its URL segment here. Lowercase letters, digits and hyphens; it is trimmed and lowercased for you.",
@@ -993,21 +991,6 @@ export default {
   "blights.rules.toast.removed": "Ignore rule removed",
   "blights.status.resolved": "Resolved",
   "blights.status.quest": "Quest #$1",
-  "blights.feature.title": "Blights",
-  "blights.feature.description":
-    "Collect and triage uncaught exceptions this app reports.",
-
-  "feedback.feature.title": "Feedback",
-  "feedback.feature.description":
-    "Let this app link back to the project's feedback form.",
-
-  "beacon.feature.title": "Beacon",
-  "beacon.feature.description":
-    "Collect cookieless page views and unique visitors from this app.",
-
-  "vitals.feature.title": "Vitals",
-  "vitals.feature.description":
-    "Collect Core Web Vitals (LCP, CLS, INP, FCP, TTFB) from this app.",
 
   "sigils.title": "Apps",
   "sigils.empty": "No app enrolled yet. Until one is, nothing can report here.",
