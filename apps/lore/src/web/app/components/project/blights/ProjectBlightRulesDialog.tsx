@@ -13,10 +13,8 @@ import { useI18n } from "alepha/react/i18n";
 import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import type {
-  BlightController,
-  BlightRuleResource,
-} from "@/api/controllers/BlightController.ts";
+import type { BlightController } from "@/api/controllers/BlightController.ts";
+import type { BlightRuleResource } from "@/api/schemas/blightRuleResourceSchema.ts";
 
 import type { I18n } from "../../../services/I18n.ts";
 

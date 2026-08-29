@@ -8,7 +8,7 @@ import type { BlobController } from "@/api/controllers/BlobController.ts";
 import { folioAssetPath } from "../../folios/folioAssetReference.ts";
 import { FOLIO_IMAGE_MAX_WIDTH } from "../../folios/folioImageBounds.ts";
 
-// Mirrors `FOLIO_BLOB_BUCKET_NAME` (FolioBlobService) — not imported
+// Mirrors `FolioBlobService.BUCKET` — not imported
 // so the browser bundle doesn't pull the server-side service module.
 // Bucket value stays "archive-blobs" — see the note on
 // `FOLIO_BLOB_BUCKET` in `FolioBlobService.ts`.

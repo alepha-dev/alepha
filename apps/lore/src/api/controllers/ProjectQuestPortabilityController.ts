@@ -17,9 +17,9 @@ import { QuestCsvParser } from "../services/QuestCsvParser.ts";
 import { QuestImportFormatProvider } from "../services/QuestImportFormatProvider.ts";
 import { QuestController } from "./QuestController.ts";
 
-const EXPORT_LIMIT = 1000;
-
 export class ProjectQuestPortabilityController {
+  protected readonly EXPORT_LIMIT = 1000;
+
   protected readonly quests = $repository(quests);
   /**
    * ...with milestone and the three users a quest names, for the CSV export.
@@ -63,7 +63,7 @@ export class ProjectQuestPortabilityController {
       const projectQuests = await this.questsWith.findMany({
         where: { projectId: { eq: params.id } },
         orderBy: "shortId",
-        limit: EXPORT_LIMIT,
+        limit: this.EXPORT_LIMIT,
         include: {
           milestone: { select: ["id", "title"] },
           author: true,

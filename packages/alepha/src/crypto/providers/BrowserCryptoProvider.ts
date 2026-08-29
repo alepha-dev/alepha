@@ -197,6 +197,31 @@ export class BrowserCryptoProvider {
     return digits.join("");
   }
 
+  /**
+   * A uniformly-distributed integer in `[0, maxExclusive)`.
+   *
+   * Mirrors `CryptoProvider.randomInt`. Drawn by rejection sampling over a
+   * whole `Uint32`: taking `value % maxExclusive` directly would bias the
+   * low end whenever the bound does not divide 2^32.
+   */
+  public randomInt(maxExclusive: number): number {
+    if (!Number.isInteger(maxExclusive) || maxExclusive < 1) {
+      throw new AlephaError(
+        `randomInt needs a positive integer bound, got ${maxExclusive}`,
+      );
+    }
+    if (maxExclusive === 1) return 0;
+    const range = 2 ** 32;
+    const limit = range - (range % maxExclusive);
+    const buffer = new Uint32Array(1);
+    let draw: number;
+    do {
+      crypto.getRandomValues(buffer);
+      draw = buffer[0]!;
+    } while (draw >= limit);
+    return draw % maxExclusive;
+  }
+
   protected toHex(buffer: ArrayBuffer | Uint8Array): string {
     const bytes =
       buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);

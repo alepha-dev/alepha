@@ -12,10 +12,7 @@ import { folioHistoryAtom } from "../src/api/atoms/folioHistoryAtom.ts";
 import { FolioController } from "../src/api/controllers/FolioController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
-import {
-  decideRevisionAction,
-  FolioHistoryService,
-} from "../src/api/services/FolioHistoryService.ts";
+import { FolioHistoryService } from "../src/api/services/FolioHistoryService.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
@@ -73,30 +70,41 @@ const createTestUser = async (
   return { id: response.data.id, roles: response.data.roles };
 };
 
-describe("decideRevisionAction", () => {
+describe("FolioHistoryService.decideRevisionAction", () => {
   const base = { title: "T", content: "C", summary: "S" };
+  let ctx: TestContext;
+  let decide: FolioHistoryService["decideRevisionAction"];
+
+  beforeEach(async () => {
+    ctx = await setup();
+    decide = ctx.historyService.decideRevisionAction.bind(ctx.historyService);
+  });
+
+  afterEach(async () => {
+    await ctx.alepha.stop();
+  });
 
   it("returns 'edit' when content changes", ({ expect }) => {
-    expect(decideRevisionAction(base, { ...base, content: "D" })).toBe("edit");
+    expect(decide(base, { ...base, content: "D" })).toBe("edit");
   });
 
   it("returns 'edit' when summary changes (folded under edit)", ({
     expect,
   }) => {
-    expect(decideRevisionAction(base, { ...base, summary: "T" })).toBe("edit");
+    expect(decide(base, { ...base, summary: "T" })).toBe("edit");
   });
 
   it("returns 'rename' when only the title changes", ({ expect }) => {
-    expect(decideRevisionAction(base, { ...base, title: "U" })).toBe("rename");
+    expect(decide(base, { ...base, title: "U" })).toBe("rename");
   });
 
   it("returns undefined when nothing relevant changed", ({ expect }) => {
-    expect(decideRevisionAction(base, base)).toBeUndefined();
+    expect(decide(base, base)).toBeUndefined();
   });
 
   it("content beats rename when both changed at once", ({ expect }) => {
     expect(
-      decideRevisionAction(base, {
+      decide(base, {
         title: "U",
         content: "D",
         summary: "Z",

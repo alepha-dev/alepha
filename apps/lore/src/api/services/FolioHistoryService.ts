@@ -37,29 +37,6 @@ interface RevisionInput {
   summary: string;
 }
 
-export const decideRevisionAction = (
-  prev: RevisionInput,
-  next: RevisionInput,
-): RevisionAction | undefined => {
-  const contentChanged =
-    prev.content !== next.content || prev.summary !== next.summary;
-  const titleChanged = prev.title !== next.title;
-  if (contentChanged) return "edit";
-  if (titleChanged) return "rename";
-  return undefined;
-};
-
-/**
- * How long a revision stays open to further edits by the same author.
- *
- * An hour is long enough that one writing session is one entry, and short
- * enough that coming back after lunch starts a new one. It exists because
- * the editor auto-saves: without coalescing, every pause in typing would
- * mint a revision and the retention cap would evict the whole session's
- * history within minutes.
- */
-const COALESCE_WINDOW_MS = 60 * 60 * 1000;
-
 /**
  * Writer + retention sweeper for `folio_revisions`. Used by
  * `FolioController.update` on every edit; called explicitly by the `revert`
@@ -73,6 +50,35 @@ export class FolioHistoryService {
   protected readonly revisions = $repository(folioRevisions);
   protected readonly alepha = $inject(Alepha);
   protected readonly dateTime = $inject(DateTimeProvider);
+
+  /**
+   * How long a revision stays open to further edits by the same author.
+   *
+   * An hour is long enough that one writing session is one entry, and short
+   * enough that coming back after lunch starts a new one. It exists because
+   * the editor auto-saves: without coalescing, every pause in typing would
+   * mint a revision and the retention cap would evict the whole session's
+   * history within minutes.
+   */
+  protected readonly COALESCE_WINDOW_MS = 60 * 60 * 1000;
+
+  /**
+   * Which revision a change earns, or `undefined` when it earns none.
+   *
+   * A summary edit folds under `edit`: it is body text, and splitting it out
+   * would put two entries in the timeline for one save.
+   */
+  public decideRevisionAction(
+    prev: RevisionInput,
+    next: RevisionInput,
+  ): RevisionAction | undefined {
+    const contentChanged =
+      prev.content !== next.content || prev.summary !== next.summary;
+    const titleChanged = prev.title !== next.title;
+    if (contentChanged) return "edit";
+    if (titleChanged) return "rename";
+    return undefined;
+  }
 
   /**
    * The newest revision, if it is still open to being folded into.
@@ -95,12 +101,12 @@ export class FolioHistoryService {
     if (head.pinned) return undefined;
     if (head.action === "revert") return undefined;
     const age = this.dateTime.nowMillis() - Date.parse(head.at);
-    return age < COALESCE_WINDOW_MS ? head : undefined;
+    return age < this.COALESCE_WINDOW_MS ? head : undefined;
   }
 
   /**
    * Record a revision and enforce the retention cap. Caller picks the
-   * `action` (or computes it via {@link decideRevisionAction}).
+   * `action` (or computes it via {@link FolioHistoryService.decideRevisionAction}).
    *
    * ## Append, or fold into the one already open
    *

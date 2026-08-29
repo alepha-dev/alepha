@@ -268,17 +268,33 @@ if (subpathViolations.length > 0) {
  * service, which is the whole reason the container exists.
  *
  * ⚠️ SCOPE. This reads only the trees that have actually been cleaned:
- * `cli/`, `api/users/` and `system/`. It is not repo-wide because it cannot
- * yet be - `server/`, `react/` and `core/` still carry about a hundred
- * module-level declarations between them, and an allowlist that large is
- * the "list of things nobody dares touch" this file warns about above. Add
- * a tree here once it is clean, never an exemption inside one.
+ * `cli/`, `api/users/` and `system/` in the framework, plus the whole Lore
+ * API. It is not repo-wide because it cannot yet be - `server/`, `react/`
+ * and `core/` still carry about a hundred module-level declarations between
+ * them, and an allowlist that large is the "list of things nobody dares
+ * touch" this file warns about above. Add a tree here once it is clean,
+ * never an exemption inside one.
  *
  * Only service-shaped directories count. A `schemas/`, `entities/` or
  * `atoms/` file is module-level constants by definition - that IS the file.
+ * `controllers/` and `jobs/` ARE service-shaped: both hold DI classes whose
+ * members a test substitutes, so a helper beside one is as unreachable as a
+ * helper beside a provider.
  */
-const NO_MODULE_CODE_TREES = ["cli", "api/users", "system"];
-const SERVICE_DIRS = ["services", "providers", "commands", "tasks"];
+const NO_MODULE_CODE_TREES = [
+  `${SRC}/cli`,
+  `${SRC}/api/users`,
+  `${SRC}/system`,
+  "apps/lore/src/api",
+];
+const SERVICE_DIRS = [
+  "services",
+  "providers",
+  "commands",
+  "tasks",
+  "controllers",
+  "jobs",
+];
 
 /**
  * Blank out comments and string bodies, keeping every newline, so a line
@@ -334,13 +350,7 @@ const stripLiterals = (src) => {
 
 const serviceFiles = execFileSync(
   "find",
-  [
-    ...NO_MODULE_CODE_TREES.map((tree) => `${SRC}/${tree}`),
-    "-type",
-    "f",
-    "-name",
-    "*.ts",
-  ],
+  [...NO_MODULE_CODE_TREES, "-type", "f", "-name", "*.ts"],
   { encoding: "utf8" },
 )
   .split("\n")

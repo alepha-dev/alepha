@@ -25,9 +25,14 @@ import type { HydratedBlob } from "../schemas/hydratedBlobSchema.ts";
  * `FeedbackRateLimiter.ATTACHMENT_BUCKET` at `"petition-attachments"`
  * after the Petitions → Feedback rename.
  */
-const FOLIO_BLOB_BUCKET = "archive-blobs";
-
 export class FolioBlobService {
+  /**
+   * Static so `BlobController.folioBucket` can name it from a field
+   * initializer, the same way `FeedbackRateLimiter.ATTACHMENT_BUCKET` is
+   * read by `FeedbackController`.
+   */
+  static readonly BUCKET = "archive-blobs";
+
   protected readonly blobs = $repository(folioBlobs);
   protected readonly folioRows = $repository(folios);
   protected readonly frameworkFiles = $repository(files);
@@ -129,9 +134,9 @@ export class FolioBlobService {
     if (!frameworkFile) {
       throw new BadRequestError("Framework file row not found — upload first");
     }
-    if (frameworkFile.bucket !== FOLIO_BLOB_BUCKET) {
+    if (frameworkFile.bucket !== FolioBlobService.BUCKET) {
       throw new BadRequestError(
-        `Framework file is in bucket '${frameworkFile.bucket}', expected '${FOLIO_BLOB_BUCKET}'`,
+        `Framework file is in bucket '${frameworkFile.bucket}', expected '${FolioBlobService.BUCKET}'`,
       );
     }
 
@@ -324,5 +329,3 @@ export class FolioBlobService {
     return ids.length;
   }
 }
-
-export const FOLIO_BLOB_BUCKET_NAME = FOLIO_BLOB_BUCKET;

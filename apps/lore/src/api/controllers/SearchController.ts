@@ -6,52 +6,6 @@ import { $action } from "alepha/server";
 import { folioDirectories } from "../entities/folioDirectories.ts";
 import { folios } from "../entities/folios.ts";
 import { quests } from "../entities/quests.ts";
-import { orderSearchHits } from "../searchRanking.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
-
-/**
- * One row of a search result, whatever it turned out to be.
- *
- * The whole point of this controller is that callers get ONE shape. The
- * underlying tables disagree about almost everything — a quest's label is
- * `title`, a directory's is `name`; a folio carries `protected` as a flag
- * while `kind` says "folio" — and normalising that in each caller is how
- * the palette's first version ended up mis-mapping three fields.
- */
-/**
- * Characters of body context a palette row shows. Enough for a sentence,
- * short enough that twelve of them do not outweigh the titles.
- */
-const MAX_PREVIEW = 140;
-
-const searchHitSchema = z.object({
-  kind: z.enum(["quest", "folio", "directory"]),
-  id: z.string(),
-  shortId: z.integer(),
-  title: z.string(),
-  /**
-   * One line of context under the title in the palette — a quest's
-   * description, a folio's summary. Absent for a directory, which has no
-   * body, and for anything whose source field is empty.
-   *
-   * Truncated HERE rather than in the browser: a folio summary or quest
-   * description can run to paragraphs, and a twelve-row palette has no use
-   * for the rest of it. Sending it whole would put kilobytes on the wire per
-   * keystroke to render ~140 characters.
-   *
-   * ⚠️ A protected folio's body never reaches this field — `summary` is the
-   * only source used, and it is deliberately the one part of a protected
-   * folio that stays plaintext (its `searchText` is blank by design). Do not
-   * "improve" this by falling back to `content` for folios with no summary.
-   */
-  description: z.string().optional(),
-  /**
-   * Set only for a protected folio, so a caller can mark it without
-   * having to know that "protected" is a flag rather than a kind.
-   */
-  protected: z.boolean().optional(),
-});
-
 /**
  * Project-wide search across every surface at once — what the ⌘K palette
  * runs, and the answer to "find anything called X".
@@ -73,7 +27,26 @@ const searchHitSchema = z.object({
  * Round trips were NOT a reason: `BatchCollector` already coalesces
  * concurrent client calls into one `POST /api/_batch`.
  */
+import { searchHitSchema } from "../schemas/searchHitSchema.ts";
+import { orderSearchHits } from "../searchRanking.ts";
+/**
+ * One row of a search result, whatever it turned out to be.
+ *
+ * The whole point of this controller is that callers get ONE shape. The
+ * underlying tables disagree about almost everything — a quest's label is
+ * `title`, a directory's is `name`; a folio carries `protected` as a flag
+ * while `kind` says "folio" — and normalising that in each caller is how
+ * the palette's first version ended up mis-mapping three fields.
+ */
+import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
+
 export class SearchController {
+  /**
+   * Characters of body context a palette row shows. Enough for a sentence,
+   * short enough that twelve of them do not outweigh the titles.
+   */
+  protected readonly MAX_PREVIEW = 140;
+
   protected readonly quests = $repository(quests);
   protected readonly folios = $repository(folios);
   protected readonly directories = $repository(folioDirectories);
@@ -178,6 +151,8 @@ export class SearchController {
       .replace(/\s+/g, " ")
       .trim();
     if (!flat) return undefined;
-    return flat.length > MAX_PREVIEW ? `${flat.slice(0, MAX_PREVIEW)}…` : flat;
+    return flat.length > this.MAX_PREVIEW
+      ? `${flat.slice(0, this.MAX_PREVIEW)}…`
+      : flat;
   }
 }

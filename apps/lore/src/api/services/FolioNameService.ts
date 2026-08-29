@@ -40,11 +40,31 @@ export interface ScopeKey {
   rootScope?: string;
 }
 
-const normalize = (name: string) => name.trim().toLowerCase();
-
 export class FolioNameService {
   protected readonly names = $repository(folioNames);
   protected readonly dateTime = $inject(DateTimeProvider);
+
+  /**
+   * The form a name is compared and stored in: trimmed and lowercased, so
+   * `Runbook ` and `runbook` are the same sibling.
+   */
+  protected normalize(name: string): string {
+    return name.trim().toLowerCase();
+  }
+
+  /**
+   * Drive-style split: returns `stem` (without the trailing extension)
+   * and `ext` (with the leading dot, or "" when none). A hidden file
+   * like `.gitignore` is treated as "all stem, no extension" — matching
+   * gdrive's behavior.
+   */
+  protected splitExt(name: string): { stem: string; ext: string } {
+    const trimmed = name.trim();
+    if (trimmed.startsWith(".")) return { stem: trimmed, ext: "" };
+    const idx = trimmed.lastIndexOf(".");
+    if (idx <= 0) return { stem: trimmed, ext: "" };
+    return { stem: trimmed.slice(0, idx), ext: trimmed.slice(idx) };
+  }
 
   /**
    * Build the `ScopeKey` for a node sitting under `parentDirectoryId`, or
@@ -87,7 +107,7 @@ export class FolioNameService {
     await this.names.create({
       parentDirectoryId: this.dbParentId(scope),
       rootScope: scope.rootScope ?? "",
-      lowerName: normalize(name),
+      lowerName: this.normalize(name),
       kind,
       entityId,
     });
@@ -123,12 +143,12 @@ export class FolioNameService {
   public async autoSuffix(desired: string, scope: ScopeKey): Promise<string> {
     const siblings = await this.namesAt(scope);
     const taken = new Set(siblings.map((r) => r.lowerName));
-    if (!taken.has(normalize(desired))) return desired;
+    if (!taken.has(this.normalize(desired))) return desired;
 
-    const { stem, ext } = splitExt(desired);
+    const { stem, ext } = this.splitExt(desired);
     for (let n = 1; n < 10_000; n++) {
       const candidate = ext ? `${stem} (${n})${ext}` : `${stem} (${n})`;
-      if (!taken.has(normalize(candidate))) return candidate;
+      if (!taken.has(this.normalize(candidate))) return candidate;
     }
     // Pathological: 10k collisions in one directory. Fall back to a
     // timestamp suffix so we always return something usable.
@@ -142,7 +162,7 @@ export class FolioNameService {
    */
   public async isFree(name: string, scope: ScopeKey): Promise<boolean> {
     const siblings = await this.namesAt(scope);
-    return !siblings.some((r) => r.lowerName === normalize(name));
+    return !siblings.some((r) => r.lowerName === this.normalize(name));
   }
 
   protected async namesAt(scope: ScopeKey) {
@@ -152,17 +172,3 @@ export class FolioNameService {
     });
   }
 }
-
-/**
- * Drive-style split: returns `stem` (without the trailing extension)
- * and `ext` (with the leading dot, or "" when none). A hidden file
- * like `.gitignore` is treated as "all stem, no extension" — matching
- * gdrive's behavior.
- */
-const splitExt = (name: string): { stem: string; ext: string } => {
-  const trimmed = name.trim();
-  if (trimmed.startsWith(".")) return { stem: trimmed, ext: "" };
-  const idx = trimmed.lastIndexOf(".");
-  if (idx <= 0) return { stem: trimmed, ext: "" };
-  return { stem: trimmed.slice(0, idx), ext: trimmed.slice(idx) };
-};
