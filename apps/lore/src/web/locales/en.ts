@@ -809,7 +809,7 @@ export default {
 
   "app.tab.dashboard": "Dashboard",
   "app.tab.analytics": "Analytics",
-  "app.tab.performance": "Performance",
+  "app.tab.vitals": "Vitals",
   "app.tab.settings": "Settings",
   "app.dashboard.errors": "Errors still happening",
   "app.dashboard.beaconOff":

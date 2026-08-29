@@ -823,7 +823,7 @@ export default {
 
   "app.tab.dashboard": "Vue d'ensemble",
   "app.tab.analytics": "Audience",
-  "app.tab.performance": "Performance",
+  "app.tab.vitals": "Vitals",
   "app.tab.settings": "Paramètres",
   "app.dashboard.errors": "Erreurs toujours d'actualité",
   "app.dashboard.beaconOff":

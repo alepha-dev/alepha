@@ -443,12 +443,7 @@ test.describe("Sigils", () => {
       // Every tab exists. Scoped to the tab bar: "Settings" is also a
       // project-level sidebar entry, so a page-wide match proves nothing.
       const tabs = page.getByTestId("app-tabs");
-      for (const label of [
-        "Dashboard",
-        "Analytics",
-        "Performance",
-        "Settings",
-      ]) {
+      for (const label of ["Dashboard", "Analytics", "Vitals", "Settings"]) {
         await expect(
           tabs.getByRole("link", { name: label, exact: true }),
         ).toBeVisible();
@@ -577,8 +572,9 @@ test.describe("Sigils", () => {
       });
       expect(crawl.status()).toBe(204);
 
-      // The route loader is what fills the insights atom, so the new row only
-      // exists on screen after a reload.
+      // Each tab fetches its own window on mount, so the new row only exists
+      // on screen after the tab asks again — a reload is the cheapest way to
+      // make it ask.
       await page.reload();
       await page.waitForLoadState("networkidle");
 
@@ -611,13 +607,13 @@ test.describe("Sigils", () => {
       await expect(topPaths.getByText("/crawled")).toBeVisible();
     });
 
-    await test.step("the Performance tab reports the vitals p75", async () => {
+    await test.step("the Vitals tab reports the vitals p75", async () => {
       // The 2100 ms LCP sample lands in the ≤2500 bucket, and p75 reports that
       // bucket's upper boundary. The thousands separator is whatever the
       // browser's locale uses.
       await page
         .getByTestId("app-tabs")
-        .getByRole("link", { name: "Performance", exact: true })
+        .getByRole("link", { name: "Vitals", exact: true })
         .click();
 
       await expect(page.getByText("Web Vitals")).toBeVisible({
@@ -648,11 +644,11 @@ test.describe("Sigils", () => {
       // `waitForProjectFeature`, one level down.
       await waitForSigilKind(page, projectId, appName, "beacon", false);
 
-      // The toggle drives a `router.reload()` itself (see
-      // AppSettingsCapabilities.tsx), so the tab bar reflects the app's own
-      // kinds without a manual page reload.
+      // The toggle writes `currentSigilAtom` itself (see
+      // AppSettingsCapabilities.tsx), and the tab bar renders from that atom,
+      // so it reflects the app's own kinds without a page reload.
       const tabs = page.getByTestId("app-tabs");
-      for (const label of ["Analytics", "Performance"]) {
+      for (const label of ["Analytics", "Vitals"]) {
         await expect(
           tabs.getByRole("link", { name: label, exact: true }),
         ).toHaveCount(0, { timeout: 15_000 });
@@ -661,19 +657,19 @@ test.describe("Sigils", () => {
       await beacon.click();
       await waitForSigilKind(page, projectId, appName, "beacon", true);
 
-      for (const label of ["Analytics", "Performance"]) {
+      for (const label of ["Analytics", "Vitals"]) {
         await expect(
           tabs.getByRole("link", { name: label, exact: true }),
         ).toBeVisible({ timeout: 15_000 });
       }
 
-      // Regression guard for a real bug (Task 6): `currentSigilInsightsAtom`
-      // is filled by the `projectApp` loader alone, and a sibling-tab
+      // Regression guard for a real bug (Task 6): the insights payload used to
+      // be filled by the `projectApp` loader alone, and a sibling-tab
       // navigation (Settings → Analytics) reuses that loader's layer instead
-      // of re-running it, so the atom stayed stale after Beacon flipped back
-      // on and Analytics rendered blank. `router.reload()` on the toggle is
-      // the fix — assert the tab renders content, not just that the link
-      // exists.
+      // of re-running it, so the data stayed stale after Beacon flipped back
+      // on and Analytics rendered blank. Analytics fetching on its own mount
+      // is what removed the whole class — assert the tab renders content, not
+      // just that the link exists.
       await tabs.getByRole("link", { name: "Analytics", exact: true }).click();
       await expect(page.getByText("Top pages")).toBeVisible({
         timeout: 15_000,

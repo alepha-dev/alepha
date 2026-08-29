@@ -137,8 +137,10 @@ const AppSettings = () => {
   };
 
   return (
-    // `max-w-3xl` kept as an inner measure — settings cards read badly at full
-    // width — but the centring lives on `AppLayout` so every tab shares it.
+    // Settings declares its own measure. `AppLayout` used to cap every tab at
+    // `max-w-6xl` so this one would not read badly at full width, which also
+    // denied the width to Analytics and Vitals, which want it. Each tab
+    // answers for itself now: this one at `max-w-3xl`, the rest full width.
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
       {freshToken && (
         <TokenReveal

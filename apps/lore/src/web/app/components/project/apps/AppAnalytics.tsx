@@ -16,7 +16,6 @@ import {
   TooltipTrigger,
   Tooltip as UiTooltip,
 } from "@alepha/ui/components/ui/tooltip";
-import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
   BarChart3,
@@ -28,9 +27,10 @@ import {
 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
-import { currentSigilInsightsAtom } from "../../../atoms/currentSigilInsightsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import AppAnalyticsEstimatedBadge from "./AppAnalyticsEstimatedBadge.tsx";
+import AppInsightsControls from "./AppInsightsControls.tsx";
+import { useAppInsights } from "./useAppInsights.ts";
 
 // Chart palette — `ChartContainer` exposes each key as a `--color-<key>`
 // CSS variable so the bars track the theme + dark mode.
@@ -47,17 +47,36 @@ const countryChartConfig = {
  * the views timeline, top countries and top pages. The "Analytics" tab of the
  * app page.
  *
- * Reads `currentSigilInsightsAtom` rather than taking the data as a prop: the
- * range toggle lives on the layout above, and a `NestedView` child is handed an
- * element it cannot receive fresh props through. The atom is written by the
- * `projectApp` loader before this ever renders, and rewritten by the toggle.
+ * Fetches for itself, and owns the two controls that decide what it is looking
+ * at. Both used to live on `AppLayout` — the window and the population as
+ * component state, the payload as something the `projectApp` loader had
+ * already awaited — which put a control on Settings that changed nothing and
+ * charged every tab for ten aggregate queries. They are `?range=` / `?traffic=`
+ * now, so a reload keeps them and a link carries them.
  */
 const AppAnalytics = () => {
   const { tr } = useI18n<I18n, "en">();
-  const [data] = useStore(currentSigilInsightsAtom);
+  const { data, loading, error, range, traffic, setFilters } = useAppInsights();
 
   if (!data) {
-    return null;
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex justify-end">
+          <AppInsightsControls
+            range={range}
+            traffic={traffic}
+            loading={loading}
+            showTraffic
+            onChange={setFilters}
+          />
+        </div>
+        {error && (
+          <p className="text-sm text-red-600 dark:text-red-400">
+            {tr("insights.error")}
+          </p>
+        )}
+      </div>
+    );
   }
 
   const countryData = data.topCountries.map((c) => ({
@@ -71,6 +90,22 @@ const AppAnalytics = () => {
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <AppInsightsControls
+          range={range}
+          traffic={traffic}
+          loading={loading}
+          showTraffic
+          onChange={setFilters}
+        />
+      </div>
+
+      {error && (
+        <p className="text-sm text-red-600 dark:text-red-400">
+          {tr("insights.error")}
+        </p>
+      )}
+
       {/* Headline metrics */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {/* Unique visitors — the trustworthy headline. */}

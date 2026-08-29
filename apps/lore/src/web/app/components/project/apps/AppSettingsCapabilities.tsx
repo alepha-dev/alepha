@@ -13,12 +13,10 @@ import {
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useRouter } from "alepha/react/router";
 import { useState } from "react";
 
 import type { SigilController } from "@/api/controllers/SigilController.ts";
 
-import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { currentProjectMemberAtom } from "../../../atoms/currentProjectMemberAtom.ts";
 import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
@@ -94,7 +92,6 @@ const ROWS: CapabilityRow[] = [
 const AppSettingsCapabilities = () => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
-  const router = useRouter<AppRouter>();
   const sigilApi = useClient<SigilController>();
 
   const [project] = useStore(currentProjectAtom);
@@ -130,17 +127,13 @@ const AppSettingsCapabilities = () => {
         (sigils ?? []).map((it) => (it.id === updated.id ? updated : it)),
       );
 
-      // currentSigilInsightsAtom is populated by the projectApp loader alone,
-      // and a sibling-tab navigation (Settings → Analytics) reuses that
-      // loader's layer instead of re-running it — so a flipped Beacon bit
-      // leaves the atom (and whichever of Dashboard/Analytics/Performance
-      // is rendered next) stale until something forces a reload.
-      // Only Beacon needs this: Feedback, Blights and Vitals don't feed this
-      // atom, and reloading on every toggle would throw away the range the
-      // user picked for nothing.
-      if (key === "beacon") {
-        await router.reload();
-      }
+      // No `router.reload()` here any more. It existed because the
+      // `projectApp` loader was the only writer of the insights atom, so a
+      // flipped Beacon bit left whichever tab rendered next reading a payload
+      // fetched under the old capability. The tabs fetch for themselves now
+      // (`useAppInsights`), keyed on the sigil this write just replaced, so
+      // crossing to Analytics asks again on arrival. Reloading the whole route
+      // to refresh one boolean was always the expensive way to do it.
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));
     } finally {
