@@ -47,6 +47,26 @@ import { userFoliosAtom } from "./atoms/userFoliosAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
 
+/**
+ * The leaderboards that have a detail page, which is exactly the set
+ * `InsightsController.getInsightsDimension` accepts.
+ *
+ * Duplicated deliberately rather than imported from the controller: this file
+ * ships to the browser, and importing a controller module would pull the
+ * repositories and the database provider into the client bundle. `entryPath`
+ * is in the list and is not a dataset dimension - it groups by `path` and
+ * differs only in the measure, which is the distinction that makes a landing
+ * page report possible at all.
+ */
+export const ANALYTICS_DIMENSIONS = new Set([
+  "country",
+  "path",
+  "entryPath",
+  "campaign",
+  "device",
+  "referrer",
+]);
+
 export class AppRouter {
   alepha = $inject(Alepha);
   questApi = $client<QuestController>();
@@ -592,6 +612,7 @@ export class AppRouter {
     children: () => [
       this.app,
       this.appAnalytics,
+      this.appAnalyticsDimension,
       this.appVitals,
       this.appSettings,
     ],
@@ -663,6 +684,53 @@ export class AppRouter {
     lazy: () => import("./components/project/apps/AppAnalytics.tsx"),
     loader: async () => {
       this.assertBeacon();
+    },
+  });
+
+  /**
+   * One leaderboard in full: where a card's "More" link goes.
+   *
+   * A SIBLING of `appAnalytics` rather than a child of it. A child would mean
+   * `AppAnalytics` rendering a `NestedView`, which would draw the whole
+   * overview above the detail; the detail replaces the overview, and the tab
+   * bar above both comes from `projectApp` either way.
+   *
+   * ⚠️ The segment is `:analyticsDimension`, not `:dimension` or `:name`, and
+   * that is load-bearing for the same reason `:appName` is. The router keeps
+   * one key per position, so two routes naming different segments the same
+   * thing collapse onto one and the inner param arrives missing. A name nobody
+   * else will reach for is the whole protection.
+   *
+   * The segment is user input on its way to a query, so it is checked here
+   * against the set of leaderboards that exist and 404s otherwise. Letting the
+   * endpoint's own enum reject it would work too, and would answer 400 from a
+   * fetch instead of rendering the app's own not-found page.
+   */
+  appAnalyticsDimension = $page({
+    name: "appAnalyticsDimension",
+    path: "/analytics/:analyticsDimension",
+    schema: {
+      params: z.object({
+        analyticsDimension: z.string(),
+      }),
+    },
+    head: (props, previous) => {
+      const dimension = (props as { dimension?: string } | undefined)
+        ?.dimension;
+      return { title: `${previous?.title ?? ""} › ${dimension ?? "Detail"}` };
+    },
+    lazy: () => import("./components/project/apps/AppAnalyticsDimension.tsx"),
+    loader: async ({ params }) => {
+      this.assertBeacon();
+      if (!ANALYTICS_DIMENSIONS.has(params.analyticsDimension)) {
+        throw new NotFoundError("No such leaderboard");
+      }
+      return { dimension: params.analyticsDimension };
+    },
+    errorHandler: (error) => {
+      if (HttpError.is(error, 404)) {
+        return createElement(NotFound, { style: { height: "100%" } });
+      }
     },
   });
 

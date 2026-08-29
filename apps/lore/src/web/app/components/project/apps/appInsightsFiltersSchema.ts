@@ -17,4 +17,17 @@ import { z } from "alepha";
 export const appInsightsFiltersSchema = z.object({
   range: z.enum(["1d", "7d", "30d"]).optional(),
   traffic: z.enum(["all", "humans", "bots"]).optional(),
+  /**
+   * The five view dimensions a leaderboard row can narrow the page to.
+   *
+   * In the URL for the same three reasons the window is: a filtered view
+   * survives a reload, travels in a link, and is reachable from the dimension
+   * detail page, which navigates BACK to the overview carrying one. Free text
+   * rather than an enum by nature - these are values, not modes.
+   */
+  path: z.string().optional(),
+  country: z.string().optional(),
+  referrer: z.string().optional(),
+  campaign: z.string().optional(),
+  device: z.string().optional(),
 });

@@ -6,8 +6,9 @@ import {
 } from "alepha/react/router";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
+import { insightsDimensionResourceSchema } from "../src/api/schemas/insightsDimensionResourceSchema.ts";
 import { ProjectSlugService } from "../src/api/services/ProjectSlugService.ts";
-import { AppRouter } from "../src/web/app/AppRouter.ts";
+import { ANALYTICS_DIMENSIONS, AppRouter } from "../src/web/app/AppRouter.ts";
 import { LoreAccountRouter } from "../src/web/app/components/account/LoreAccountRouter.ts";
 
 /**
@@ -53,6 +54,7 @@ const NAV_ROUTE_NAMES = [
   // ProjectSettingsSigilRow.tsx, AppSettings.tsx
   "app",
   "appAnalytics",
+  "appAnalyticsDimension",
   "appVitals",
   "appSettings",
   // Settings nav array — ProjectSettings.tsx. This is the array that broke.
@@ -127,6 +129,15 @@ describe("AppRouter route table", () => {
     expect(router.path("appVitals", { params })).toBe(
       `/sds/apps/${appName}/vitals`,
     );
+    // ⚠️ `:analyticsDimension`, not `:dimension`: the router keeps one key per
+    // path position, so two routes naming the same position differently
+    // collapse onto one and the inner value arrives missing. This resolving to
+    // a full path with nothing unsubstituted is what proves it did not.
+    expect(
+      router.path("appAnalyticsDimension", {
+        params: { ...params, analyticsDimension: "path" },
+      }),
+    ).toBe(`/sds/apps/${appName}/analytics/path`);
     expect(router.path("appSettings", { params })).toBe(
       `/sds/apps/${appName}/settings`,
     );
@@ -145,6 +156,21 @@ describe("AppRouter route table", () => {
     );
   });
 
+  /**
+   * The dimension segment is user input on its way to a query, so the route
+   * validates it before anything else sees it. That check is a list, and a
+   * list beside an enum is a list that drifts: a seventh leaderboard added to
+   * the endpoint and not here would 404 for no visible reason, and one removed
+   * from the endpoint and not here would reach it and 400.
+   */
+  it("validates the dimension segment against exactly what the endpoint takes", ({
+    expect,
+  }) => {
+    expect([...ANALYTICS_DIMENSIONS].sort()).toEqual(
+      [...insightsDimensionResourceSchema.shape.dimension.options].sort(),
+    );
+  });
+
   it("resolves every name the navs pass as a plain string", ({ expect }) => {
     // A superset of the params any of these routes declares, so a surviving
     // `:segment` in the result means the route's shape changed — not that this
@@ -155,6 +181,7 @@ describe("AppRouter route table", () => {
       shortId: "3",
       epicNumber: "7",
       areaId: 1,
+      analyticsDimension: "path",
     };
 
     for (const name of NAV_ROUTE_NAMES) {
