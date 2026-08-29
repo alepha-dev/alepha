@@ -1,7 +1,7 @@
 import { $inject, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, $sequence, $transactional } from "alepha/orm";
-import { $secure } from "alepha/security";
+import { OwnedResourceProvider, $secure } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
 import { type Epic, epics } from "../entities/epics.ts";
@@ -11,8 +11,8 @@ import {
   type EpicResource,
   epicResourceSchema,
 } from "../schemas/epicResourceSchema.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
  * CRUD, the status lifecycle, and attach/detach for quests and folios.
@@ -23,8 +23,8 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
  * `QuestController.deleteQuest`, both of which gate delete on its own
  * permission rather than `quest:create`), and `$transactional()` on create.
  *
- * **Every endpoint here is `security.assertMember`, read and write alike** —
- * the `QuestController` / `FolioController` rule, not the
+ * **Every endpoint here is member-gated, read and write alike** — the
+ * `QuestController` / `FolioController` rule, not the
  * `MilestoneController` one it was originally modelled on. An epic groups
  * quests and folios, both of which any member may already create, rename
  * and delete; gating the grouping on ownership meant the header's "Create
@@ -51,8 +51,27 @@ export class EpicController {
   quests = $repository(quests);
   folios = $repository(folios);
   dt = $inject(DateTimeProvider);
-  security = $inject(ProjectSecurityService);
   linkService = $inject(FolioLinkService);
+  owned = $inject(OwnedResourceProvider);
+
+  /**
+   * Member gate on the project the route names directly.
+   *
+   * Declared above the actions on purpose: `use: [this.ownsProject()]` is a
+   * field initializer reading another field, so a gate declared below the
+   * first action that uses it is `undefined` at construction time.
+   */
+  protected ownsProject = () => $ownsProject({ param: "projectId" });
+
+  /**
+   * Member gate on the project the epic named by `params.id` belongs to.
+   *
+   * The epic itself lands on `this.owned.get<Epic>()`, so a handler that
+   * needs the row reads it back rather than issuing the same `getById` the
+   * gate just did.
+   */
+  protected ownsEpic = () =>
+    $ownsProject({ repository: () => this.epics, param: "id" });
 
   /**
    * Per-project sequence for `epics.number`. `$sequence` keys its counter
@@ -64,16 +83,14 @@ export class EpicController {
   protected epicNumber = $sequence();
 
   getEpics = $action({
-    use: [$secure({ permissions: ["quest:read"] })],
+    use: [$secure({ permissions: ["quest:read"] }), this.ownsProject()],
     schema: {
       params: z.object({
         projectId: z.integer(),
       }),
       response: z.array(epicResourceSchema),
     },
-    handler: async ({ params, user }) => {
-      await this.security.assertMember(params.projectId, user);
-
+    handler: async ({ params }) => {
       const allEpics = await this.epics.findMany({
         where: {
           projectId: { eq: params.projectId },
@@ -102,16 +119,14 @@ export class EpicController {
    * Covered by `epics_project_id_status_idx` on `(project_id, status)`.
    */
   countPlannedEpics = $action({
-    use: [$secure({ permissions: ["quest:read"] })],
+    use: [$secure({ permissions: ["quest:read"] }), this.ownsProject()],
     schema: {
       params: z.object({
         projectId: z.integer(),
       }),
       response: z.object({ count: z.integer() }),
     },
-    handler: async ({ params, user }) => {
-      await this.security.assertMember(params.projectId, user);
-
+    handler: async ({ params }) => {
       const count = await this.epics.count({
         projectId: { eq: params.projectId },
         status: { eq: "planned" },
@@ -122,7 +137,10 @@ export class EpicController {
   });
 
   getEpicByNumber = $action({
-    use: [$secure({ permissions: ["quest:read"] })],
+    // Gated on the PARAM, not on the epic it finds: a foreign project is
+    // refused before the epics table is touched, and there is nothing to hop
+    // from anyway since the lookup is by (project, number) rather than by id.
+    use: [$secure({ permissions: ["quest:read"] }), this.ownsProject()],
     path: "/projects/:projectId/epics/:number",
     schema: {
       params: z.object({
@@ -131,7 +149,7 @@ export class EpicController {
       }),
       response: epicResourceSchema,
     },
-    handler: async ({ params, user }) => {
+    handler: async ({ params }) => {
       const epic = await this.epics.getOne({
         where: {
           projectId: { eq: params.projectId },
@@ -139,14 +157,17 @@ export class EpicController {
         },
       });
 
-      await this.security.assertMember(epic.projectId, user);
-
       return await this.buildEpicResource(epic);
     },
   });
 
   createEpic = $action({
-    use: [$secure({ permissions: ["quest:create"] }), $transactional()],
+    // Gate ahead of `$transactional()`: a refused caller never opens one.
+    use: [
+      $secure({ permissions: ["quest:create"] }),
+      this.ownsProject(),
+      $transactional(),
+    ],
     schema: {
       params: z.object({ projectId: z.integer() }),
       body: z.object({
@@ -155,8 +176,7 @@ export class EpicController {
       }),
       response: epicResourceSchema,
     },
-    handler: async ({ params, body, user }) => {
-      await this.security.assertMember(params.projectId, user);
+    handler: async ({ params, body }) => {
       const number = await this.epicNumber.next(String(params.projectId));
       const epic = await this.epics.create({
         projectId: params.projectId,
@@ -172,7 +192,7 @@ export class EpicController {
   });
 
   updateEpic = $action({
-    use: [$secure({ permissions: ["quest:create"] })],
+    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpic()],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({
@@ -181,10 +201,7 @@ export class EpicController {
       }),
       response: epicResourceSchema,
     },
-    handler: async ({ params, body, user }) => {
-      const epic = await this.epics.getById(params.id);
-      await this.security.assertMember(epic.projectId, user);
-
+    handler: async ({ params, body }) => {
       const updated = await this.epics.updateById(params.id, {
         ...(body.title !== undefined ? { title: body.title } : {}),
         ...(body.description !== undefined
@@ -211,7 +228,7 @@ export class EpicController {
    * `EpicController.spec.ts`'s `updatedAt`-is-unchanged assertion.
    */
   setEpicStatus = $action({
-    use: [$secure({ permissions: ["quest:create"] })],
+    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpic()],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({
@@ -219,9 +236,8 @@ export class EpicController {
       }),
       response: epicResourceSchema,
     },
-    handler: async ({ params, body, user }) => {
-      const epic = await this.epics.getById(params.id);
-      await this.security.assertMember(epic.projectId, user);
+    handler: async ({ params, body }) => {
+      const epic = this.owned.get<Epic>();
 
       const updated = await this.epics.updateById(params.id, {
         status: body.status,
@@ -249,15 +265,12 @@ export class EpicController {
    * them by hand.
    */
   deleteEpic = $action({
-    use: [$secure({ permissions: ["quest:delete"] })],
+    use: [$secure({ permissions: ["quest:delete"] }), this.ownsEpic()],
     schema: {
       params: z.object({ id: z.integer() }),
       response: okSchema,
     },
-    handler: async ({ params, user }) => {
-      const epic = await this.epics.getById(params.id);
-      await this.security.assertMember(epic.projectId, user);
-
+    handler: async ({ params }) => {
       // `folio_links.from_id` is not a foreign key, so the FK cascade this
       // delete relies on for quests and folios does not reach the link
       // graph — see `FolioLinkService.deleteLinksFrom`.
@@ -269,16 +282,17 @@ export class EpicController {
   });
 
   attachQuest = $action({
-    use: [$secure({ permissions: ["quest:create"] })],
+    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpic()],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({ questId: z.integer() }),
       response: epicResourceSchema,
     },
-    handler: async ({ params, body, user }) => {
-      const epic = await this.epics.getById(params.id);
-      await this.security.assertMember(epic.projectId, user);
+    handler: async ({ body }) => {
+      const epic = this.owned.get<Epic>();
 
+      // Coherence, not access: `$ownsProject` gated the EPIC, and says
+      // nothing about the quest being attached to it.
       const quest = await this.quests.getById(body.questId);
       if (quest.projectId !== epic.projectId) {
         throw new BadRequestError(
@@ -295,14 +309,13 @@ export class EpicController {
   });
 
   detachQuest = $action({
-    use: [$secure({ permissions: ["quest:create"] })],
+    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpic()],
     schema: {
       params: z.object({ id: z.integer(), questId: z.integer() }),
       response: epicResourceSchema,
     },
-    handler: async ({ params, user }) => {
-      const epic = await this.epics.getById(params.id);
-      await this.security.assertMember(epic.projectId, user);
+    handler: async ({ params }) => {
+      const epic = this.owned.get<Epic>();
 
       const quest = await this.quests.getById(params.questId);
       if (quest.epicId === epic.id) {
@@ -314,16 +327,16 @@ export class EpicController {
   });
 
   attachFolio = $action({
-    use: [$secure({ permissions: ["quest:create"] })],
+    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpic()],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({ folioId: z.uuid() }),
       response: epicResourceSchema,
     },
-    handler: async ({ params, body, user }) => {
-      const epic = await this.epics.getById(params.id);
-      await this.security.assertMember(epic.projectId, user);
+    handler: async ({ body }) => {
+      const epic = this.owned.get<Epic>();
 
+      // Coherence, not access — see `attachQuest`.
       const folio = await this.folios.getById(body.folioId);
       if (folio.projectId !== epic.projectId) {
         throw new BadRequestError(
@@ -340,14 +353,13 @@ export class EpicController {
   });
 
   detachFolio = $action({
-    use: [$secure({ permissions: ["quest:create"] })],
+    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpic()],
     schema: {
       params: z.object({ id: z.integer(), folioId: z.uuid() }),
       response: epicResourceSchema,
     },
-    handler: async ({ params, user }) => {
-      const epic = await this.epics.getById(params.id);
-      await this.security.assertMember(epic.projectId, user);
+    handler: async ({ params }) => {
+      const epic = this.owned.get<Epic>();
 
       const folio = await this.folios.getById(params.folioId);
       if (folio.epicId === epic.id) {
