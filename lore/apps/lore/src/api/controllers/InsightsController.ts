@@ -1,6 +1,6 @@
 import type { VitalMetric } from "@alepha/sigil";
 import { $inject, z } from "alepha";
-import type { AnalyticsFilter } from "alepha/api/analytics";
+import type { AnalyticsDataset, AnalyticsFilter } from "alepha/api/analytics";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
@@ -9,6 +9,10 @@ import { $action, NotFoundError } from "alepha/server";
 import { LoreAnalytics } from "../entities/loreAnalytics.ts";
 import { sigilErrorGroups } from "../entities/sigilErrorGroups.ts";
 import { sigils } from "../entities/sigils.ts";
+import {
+  type InsightsDimensionResource,
+  insightsDimensionResourceSchema,
+} from "../schemas/insightsDimensionResourceSchema.ts";
 import {
   type InsightsResource,
   insightsResourceSchema,
@@ -47,6 +51,64 @@ const TOP_N = 10;
  * shows up before it is anyone's top ten.
  */
 const TOP_ERROR_GROUPS = 20;
+
+/**
+ * The `sigil_views` dimensions a request may narrow by.
+ *
+ * `sigilId` is not one of them: it is proved against the project's own set
+ * before it filters anything, which is a membership check rather than a
+ * dimension filter, and it must not be reachable through the same loop.
+ */
+const VIEW_FILTER_KEYS = [
+  "path",
+  "country",
+  "referrer",
+  "campaign",
+  "device",
+] as const;
+
+/**
+ * How each expandable leaderboard is asked for: which dimension it groups by,
+ * and which measure it is ranked and shared out by.
+ *
+ * `entryPath` is not a dimension - it groups by `path` like `path` does, and
+ * differs only in the measure. That distinction is the whole reason it exists:
+ * `count` sums every view of a path, so `/` conflates arriving at the site
+ * with clicking Home, while `entries` is only ever incremented by a page load.
+ * `campaign` is summed on `entries` for the neighbouring reason - a campaign
+ * describes how a visit began, so counting the visitor's later navigations
+ * against it would reward tagged links for how much the visitor happened to
+ * read.
+ */
+const DIMENSION_PLAN: Record<
+  InsightsDimensionResource["dimension"],
+  { groupBy: string; measure: InsightsDimensionResource["measure"] }
+> = {
+  country: { groupBy: "country", measure: "count" },
+  path: { groupBy: "path", measure: "count" },
+  entryPath: { groupBy: "path", measure: "entries" },
+  campaign: { groupBy: "campaign", measure: "entries" },
+  device: { groupBy: "device", measure: "count" },
+  referrer: { groupBy: "referrer", measure: "count" },
+};
+
+/**
+ * How deep a single-dimension listing may be paged.
+ *
+ * The analytics seam has no `offset`, so a page is served by asking for
+ * `offset + limit + 1` rows and dropping the head - which means the depth is
+ * the query's real cost, not the page size. A cap keeps a hand-written
+ * `?offset=100000` from turning a leaderboard into a scan of the window.
+ *
+ * Deliberately generous against real data: the widest leaderboard here is
+ * countries, at roughly 200 distinct values.
+ */
+const MAX_DIMENSION_DEPTH = 500;
+
+/**
+ * Rows per page of a single-dimension listing, when the caller does not say.
+ */
+const DIMENSION_PAGE = 50;
 
 /**
  * Every `traffic` value that counts as a person.
@@ -159,6 +221,24 @@ export class InsightsController {
          * how a documentation site convinces itself it has an audience.
          */
         traffic: trafficFilterSchema.optional(),
+        /**
+         * Narrow every view-derived number to one value of one dimension.
+         *
+         * The five of them are the `sigil_views` dimensions a leaderboard row
+         * names, and they exist so that clicking such a row can filter the
+         * whole page rather than open a second one. They compose: `country=FR`
+         * with `device=mobile` is one `WHERE`, not two requests.
+         *
+         * ⚠️ They do NOT narrow `uniqueVisitors`, which is read from another
+         * table entirely. That is stated on the response as
+         * `uniqueVisitorsIgnores` rather than left for a reader to discover -
+         * see the field's own doc for the cost reasoning.
+         */
+        path: z.string().optional(),
+        country: z.string().optional(),
+        referrer: z.string().optional(),
+        campaign: z.string().optional(),
+        device: z.string().optional(),
       }),
       response: insightsResourceSchema,
     },
@@ -169,31 +249,10 @@ export class InsightsController {
       // Resolved once, then echoed back on the payload: the page renders the
       // filter from what it received, not from what it asked for.
       const traffic = query.traffic ?? "all";
-      const days = RANGE_DAYS[range] ?? 7;
-
-      // The window ends today unless the caller asked for whole days only.
-      // `anchor` is the last day IN the window; everything below counts back
-      // from it, so the two modes differ in exactly one place.
-      const today = new Date(this.dateTime.nowMillis());
-      const anchor = new Date(today);
-      if (query.until === "lastCompleteDay") {
-        anchor.setUTCDate(anchor.getUTCDate() - 1);
-      }
-      const until = anchor.toISOString().slice(0, 10);
-      const sinceDate = new Date(anchor);
-      sinceDate.setUTCDate(sinceDate.getUTCDate() - (days - 1));
-      const since = sinceDate.toISOString().slice(0, 10);
-
-      // The preceding window of the same width, `[previousSince ..
-      // previousUntil]`, touching this one without overlapping it.
-      const previousUntilDate = new Date(sinceDate);
-      previousUntilDate.setUTCDate(previousUntilDate.getUTCDate() - 1);
-      const previousSinceDate = new Date(previousUntilDate);
-      previousSinceDate.setUTCDate(previousSinceDate.getUTCDate() - (days - 1));
-      const previousWindow = {
-        since: previousSinceDate.toISOString().slice(0, 10),
-        until: previousUntilDate.toISOString().slice(0, 10),
-      };
+      const { days, anchor, since, until, previousWindow } = this.resolveWindow(
+        range,
+        query.until,
+      );
 
       const labels = await this.projectSigilLabels(params.projectId);
       // The membership check above is on the *project*, so a sigil id from the
@@ -226,6 +285,10 @@ export class InsightsController {
             : undefined,
           totalViews: 0,
           uniqueVisitors: 0,
+          // Nothing was narrowed because nothing was counted. A list of
+          // ignored filters here would describe a discrepancy between two
+          // zeros.
+          uniqueVisitorsIgnores: [],
           entries: 0,
           engagedViews: 0,
           engagementRate: 0,
@@ -252,23 +315,34 @@ export class InsightsController {
       // and the error budget stay on `LoreAnalyticsStore` / `sigilErrorGroups`
       // — see the class doc for why those two could not move.
       const window = { sigilIds, since, until, traffic };
-      const analyticsWhere = { sigilId: { inArray: sigilIds } };
-      // Two `where`s, because `traffic` is a dimension of exactly one dataset.
-      // Every view query takes `viewsWhere` and inherits the filter without
-      // having to remember to; the vitals query keeps the plain one, and must
-      // - `sigil_vitals` does not declare `traffic`, and the query planner
-      // rejects a filter naming a dimension a dataset does not have, so
-      // sharing one object here is a 500 on the Vitals tab rather than a
-      // silently wider answer.
+      // ONE filter object, narrowed per dataset by what that dataset declares.
       //
-      // `uniqueVisitors` IS filtered, through `window` rather than through
-      // either of these: it is read from `sigil_uniques_daily`, which carries
-      // its own `traffic` column. The error budget is not, because an error is
-      // not a view and a crawler's crash is still this app's crash.
-      const viewsWhere = {
-        ...analyticsWhere,
+      // It used to be a hand-maintained pair - a plain `sigilId` where for
+      // vitals and a `traffic`-carrying one for views - because `traffic` is a
+      // dimension of exactly one of the two, and the query planner rejects a
+      // filter naming a dimension a dataset does not have. Sharing one object
+      // was a 500 on the Vitals tab, and a test caught it. A pair survives
+      // exactly one dimension of divergence, and there are five more now:
+      // `path` is legal against vitals, `country` / `referrer` / `campaign` /
+      // `device` are not. `whereFor` derives each dataset's slice from the
+      // dataset itself, so the next dimension needs no edit here and cannot
+      // reintroduce that 500.
+      //
+      // `uniqueVisitors` is narrowed through `window`, not through either of
+      // these: it reads `sigil_uniques_daily`, which carries `traffic` and no
+      // other dimension - hence `uniqueVisitorsIgnores` on the response. The
+      // error budget is narrowed by neither, because an error is not a view
+      // and a crawler's crash is still this app's crash.
+      const filters = {
+        sigilId: { inArray: sigilIds },
         ...this.trafficFilter(traffic),
+        ...this.viewFilters(query),
       };
+      const viewsWhere = this.whereFor(this.datasets.views.dataset, filters);
+      const analyticsWhere = this.whereFor(
+        this.datasets.vitals.dataset,
+        filters,
+      );
       const [
         uniqueVisitors,
         viewsTotal,
@@ -448,7 +522,12 @@ export class InsightsController {
       );
 
       const previous = query.compare
-        ? await this.readPreviousWindow(sigilIds, previousWindow, traffic)
+        ? await this.readPreviousWindow(
+            sigilIds,
+            previousWindow,
+            traffic,
+            viewsWhere,
+          )
         : undefined;
 
       return {
@@ -463,6 +542,7 @@ export class InsightsController {
         ),
         totalViews,
         uniqueVisitors,
+        uniqueVisitorsIgnores: this.uniqueVisitorsIgnores(filters),
         entries,
         engagedViews,
         engagementRate,
@@ -477,6 +557,140 @@ export class InsightsController {
         errorGroups,
         estimated: viewsTotal.estimated,
         sampleInterval: viewsTotal.sampleInterval,
+      };
+    },
+  });
+
+  getInsightsDimension = $action({
+    use: [$secure({ permissions: ["project:read"] })],
+    method: "GET",
+    path: "/projects/:projectId/insights/dimensions/:dimension",
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+        dimension: insightsDimensionResourceSchema.shape.dimension,
+      }),
+      query: z.object({
+        range: z.enum(["1d", "7d", "30d"]).optional(),
+        sigilId: z.uuid().optional(),
+        until: z.enum(["today", "lastCompleteDay"]).optional(),
+        traffic: trafficFilterSchema.optional(),
+        path: z.string().optional(),
+        country: z.string().optional(),
+        referrer: z.string().optional(),
+        campaign: z.string().optional(),
+        device: z.string().optional(),
+        /**
+         * Rows to return. The overview draws ten; this exists for the view
+         * that draws the rest.
+         */
+        limit: z.integer().min(1).max(200).optional(),
+        offset: z.integer().min(0).optional(),
+        /**
+         * Ascending shows the tail - the pages nobody reads, the countries
+         * with one visit - which is a real question and the reason this is
+         * not hard-coded to `desc`.
+         */
+        direction: z.enum(["asc", "desc"]).optional(),
+      }),
+      response: insightsDimensionResourceSchema,
+    },
+    handler: async ({
+      params,
+      query,
+      user,
+    }): Promise<InsightsDimensionResource> => {
+      await this.security.assertMember(params.projectId, user);
+
+      const plan = DIMENSION_PLAN[params.dimension];
+      const range = query.range ?? "7d";
+      const traffic = query.traffic ?? "all";
+      const limit = query.limit ?? DIMENSION_PAGE;
+      const offset = query.offset ?? 0;
+      const direction = query.direction ?? "desc";
+      const { since, until } = this.resolveWindow(range, query.until);
+
+      const labels = await this.projectSigilLabels(params.projectId);
+      let sigilIds = [...labels.keys()];
+      if (query.sigilId) {
+        if (!labels.has(query.sigilId)) {
+          throw new NotFoundError("Sigil not found");
+        }
+        sigilIds = [query.sigilId];
+      }
+
+      const empty = {
+        dimension: params.dimension,
+        measure: plan.measure,
+        range,
+        traffic,
+        since,
+        until,
+        total: 0,
+        rows: [],
+        offset,
+        limit,
+        hasMore: false,
+        estimated: false,
+      };
+      if (sigilIds.length === 0) {
+        return empty;
+      }
+
+      // One row past the page, so `hasMore` costs a row instead of a second
+      // pass. Refused rather than clamped past the cap: a caller that asked
+      // for page 200 of a 200-value leaderboard has a bug, and answering it
+      // with page 10 would hide the bug behind plausible data.
+      const depth = offset + limit + 1;
+      if (depth > MAX_DIMENSION_DEPTH) {
+        throw new NotFoundError("Page is past the end of this leaderboard");
+      }
+
+      const filters = {
+        sigilId: { inArray: sigilIds },
+        ...this.trafficFilter(traffic),
+        ...this.viewFilters(query),
+      };
+      const where = this.whereFor(this.datasets.views.dataset, filters);
+
+      const [totals, page] = await Promise.all([
+        // The denominator, under the same filter. It has to be a separate
+        // question: the page sums to a share of the page, and dividing by
+        // that would report every row as a large fraction of nothing.
+        this.datasets.views.query({
+          since,
+          until,
+          where,
+          select: { [plan.measure]: "sum" },
+        }),
+        this.datasets.views.query({
+          since,
+          until,
+          where,
+          groupBy: [plan.groupBy],
+          select: { [plan.measure]: "sum" },
+          orderBy: { key: plan.measure, direction },
+          limit: depth,
+        }),
+      ]);
+
+      const total = Number(totals.rows[0]?.[plan.measure] ?? 0);
+      const window = page.rows.slice(offset, offset + limit);
+
+      return {
+        ...empty,
+        total,
+        rows: window.map((row) => ({
+          value: String(row[plan.groupBy]),
+          count: Number(row[plan.measure]),
+          percentage:
+            total > 0
+              ? Math.round((Number(row[plan.measure]) / total) * 100)
+              : 0,
+        })),
+        hasMore: page.rows.length > offset + limit,
+        estimated: page.estimated,
+        sampleInterval: page.sampleInterval,
       };
     },
   });
@@ -555,6 +769,144 @@ export class InsightsController {
    * filter that one of them cannot honour would be worse than not offering
    * it.
    */
+  /**
+   * The value a dimension carries when the app said nothing.
+   *
+   * Load-bearing for one reason: a row written BEFORE a dimension existed
+   * carries `""`, not the default. A default fills a column on write, it does
+   * not rewrite rows already stored. So filtering `device=desktop` on the
+   * plain equality would drop every view recorded before `device` was added -
+   * which, on a 30-day window that straddles the deploy, looks exactly like
+   * traffic collapsing on that date.
+   *
+   * Filtering on the default therefore matches the empty string too. Only on
+   * the default: `device=mobile` must not sweep up unclassified rows, because
+   * nothing ever said they were mobile. Same reasoning as
+   * {@link HUMAN_TRAFFIC}, and the same shape - `AnalyticsFilter` offers
+   * equality and set membership and no negation, on both backends, so the
+   * positive side has to be enumerated.
+   *
+   * `path` and `country` are absent on purpose: neither has a default, so
+   * neither has legacy rows to rescue.
+   */
+  protected static readonly VIEW_FILTER_DEFAULTS: Record<string, string> = {
+    referrer: "direct",
+    campaign: "none",
+    device: "desktop",
+  };
+
+  /**
+   * The day bounds a request is answered over.
+   *
+   * Shared by both actions, because a "More" listing that resolved its window
+   * a second time would be one edit away from disagreeing with the overview it
+   * expands.
+   *
+   * `anchor` is the last day IN the window; everything counts back from it, so
+   * `today` and `lastCompleteDay` differ in exactly one place. `previousWindow`
+   * is the preceding window of the same width, touching this one without
+   * overlapping it.
+   */
+  protected resolveWindow(
+    range: string,
+    until: "today" | "lastCompleteDay" | undefined,
+  ): {
+    days: number;
+    anchor: Date;
+    since: string;
+    until: string;
+    previousWindow: { since: string; until: string };
+  } {
+    const days = RANGE_DAYS[range] ?? 7;
+    const anchor = new Date(this.dateTime.nowMillis());
+    if (until === "lastCompleteDay") {
+      anchor.setUTCDate(anchor.getUTCDate() - 1);
+    }
+    const sinceDate = new Date(anchor);
+    sinceDate.setUTCDate(sinceDate.getUTCDate() - (days - 1));
+
+    const previousUntilDate = new Date(sinceDate);
+    previousUntilDate.setUTCDate(previousUntilDate.getUTCDate() - 1);
+    const previousSinceDate = new Date(previousUntilDate);
+    previousSinceDate.setUTCDate(previousSinceDate.getUTCDate() - (days - 1));
+
+    return {
+      days,
+      anchor,
+      since: sinceDate.toISOString().slice(0, 10),
+      until: anchor.toISOString().slice(0, 10),
+      previousWindow: {
+        since: previousSinceDate.toISOString().slice(0, 10),
+        until: previousUntilDate.toISOString().slice(0, 10),
+      },
+    };
+  }
+
+  /**
+   * The view dimensions a request narrowed by, as an `AnalyticsFilter`.
+   *
+   * Only keys the caller actually sent: an absent filter must be an absent
+   * clause, never `undefined` spliced into a `where`.
+   */
+  protected viewFilters(query: {
+    path?: string;
+    country?: string;
+    referrer?: string;
+    campaign?: string;
+    device?: string;
+  }): AnalyticsFilter {
+    const out: AnalyticsFilter = {};
+    for (const name of VIEW_FILTER_KEYS) {
+      const value = query[name];
+      if (value === undefined || value === "") {
+        continue;
+      }
+      const fallback = InsightsController.VIEW_FILTER_DEFAULTS[name];
+      out[name] =
+        fallback !== undefined && value === fallback
+          ? { inArray: [value, ""] }
+          : value;
+    }
+    return out;
+  }
+
+  /**
+   * The slice of a filter set one dataset can actually answer.
+   *
+   * Derived from the dataset's own declared dimensions rather than from a
+   * list kept beside it, because the list is what goes stale. A filter naming
+   * a dimension a dataset does not declare is not a wider answer, it is a
+   * rejected query - which is how the Vitals tab 500'd once already, when
+   * `traffic` was added to views only and one `where` was shared by both.
+   */
+  protected whereFor(
+    dataset: AnalyticsDataset,
+    filters: AnalyticsFilter,
+  ): AnalyticsFilter {
+    const declared = Object.keys(dataset.dimensions.shape);
+    const out: AnalyticsFilter = {};
+    for (const [name, value] of Object.entries(filters)) {
+      if (declared.includes(name)) {
+        out[name] = value;
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Which of a request's filters the visitor count could not honour.
+   *
+   * Subtraction rather than a hard-coded list, against what
+   * `LoreAnalyticsStore` says its table can narrow by - so the day a
+   * dimension is added there, this shortens on its own instead of lying by
+   * one entry.
+   */
+  protected uniqueVisitorsIgnores(filters: AnalyticsFilter): string[] {
+    return Object.keys(filters).filter(
+      (name) => !LoreAnalyticsStore.FILTERS.includes(name),
+    );
+  }
+
   protected trafficFilter(traffic: TrafficFilter | undefined): AnalyticsFilter {
     if (traffic === "bots") {
       return { traffic: "bot" };
@@ -582,18 +934,19 @@ export class InsightsController {
     sigilIds: string[],
     window: { since: string; until: string },
     traffic: TrafficFilter | undefined,
+    viewsWhere: AnalyticsFilter,
   ): Promise<NonNullable<InsightsResource["previous"]>> {
     const [uniqueVisitors, views] = await Promise.all([
       this.analytics.uniqueVisitors({ sigilIds, traffic, ...window }),
       this.datasets.views.query({
         since: window.since,
         until: window.until,
-        // The same filter the current window carries. A delta between two
-        // windows measured on different populations is not a delta.
-        where: {
-          sigilId: { inArray: sigilIds },
-          ...this.trafficFilter(traffic),
-        },
+        // Literally the object the current window is measured with, passed in
+        // rather than rebuilt. A delta between two windows measured on
+        // different populations is not a delta, and rebuilding it here is how
+        // the two drift: the dimension filters were added in one place and
+        // this one kept answering about everybody.
+        where: viewsWhere,
         select: { count: "sum" },
       }),
     ]);
