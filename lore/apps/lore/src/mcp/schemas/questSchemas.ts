@@ -1,16 +1,14 @@
 import { z } from "alepha";
 
-import {
-  entityRefSchema,
-  epicStatusSchema,
-  objectiveInputSchema,
-  objectiveSchema,
-  prioritySchema,
-  projectParamsSchema,
-  questSizeSchema,
-  questStatusSchema,
-} from "./commonSchemas.ts";
+import { questStatusSchema } from "../../api/schemas/questResourceSchema.ts";
 import { DIAGRAM_CAPABILITY } from "./diagramCapability.ts";
+import { entityRefSchema } from "./entityRefSchema.ts";
+import { epicStatusSchema } from "./epicStatusSchema.ts";
+import { objectiveInputSchema } from "./objectiveInputSchema.ts";
+import { objectiveSchema } from "./objectiveSchema.ts";
+import { prioritySchema } from "./prioritySchema.ts";
+import { projectParamsSchema } from "./projectParamsSchema.ts";
+import { questSizeSchema } from "./questSizeSchema.ts";
 
 // -----------------------------------------------------------------------------
 // Shared field descriptions

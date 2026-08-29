@@ -1,7 +1,8 @@
 import { z } from "alepha";
 
-import { epicStatusSchema, projectParamsSchema } from "./commonSchemas.ts";
 import { DIAGRAM_CAPABILITY } from "./diagramCapability.ts";
+import { epicStatusSchema } from "./epicStatusSchema.ts";
+import { projectParamsSchema } from "./projectParamsSchema.ts";
 
 /**
  * Epic reference for MCP tools. Unlike quests (`id` / `shortId`) and

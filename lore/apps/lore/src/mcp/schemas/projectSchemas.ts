@@ -1,11 +1,9 @@
 import { z } from "alepha";
 
 import { projectActivityResultSchema as apiProjectActivityResultSchema } from "../../api/schemas/projectActivitySchema.ts";
-import {
-  epicStatusSchema,
-  prioritySchema,
-  projectParamsSchema,
-} from "./commonSchemas.ts";
+import { epicStatusSchema } from "./epicStatusSchema.ts";
+import { prioritySchema } from "./prioritySchema.ts";
+import { projectParamsSchema } from "./projectParamsSchema.ts";
 
 // -----------------------------------------------------------------------------
 // Shared sub-schemas

@@ -278,6 +278,34 @@ whichever neighbouring controller was read first.
 
 Uses `@dnd-kit/core`. Cards are `useDraggable`, columns are `useDroppable`. Status transitions: `new → accepted → completed`. Completed quests cannot be moved back. New quests must be accepted before completing.
 
+### Schemas: derive from the entity, never restate a field
+
+**A field is declared once, on the entity, and every other schema reaches it with `pick` / `omit` / `extend`.** Alepha shares a schema across the entity, the controller and MCP; the only reason to write `z.enum([...])` a second time is that nobody noticed the first one.
+
+This is not hypothetical tidiness. Every duplicate found in the 2026-08 pass had already drifted: `sigils.feedbackPosition` was an enum on the column and a bare `z.string()` on the resource; a blight's `sigilId` was `z.uuid()` on the API and `z.string()` over MCP; a quest's status enum existed in four places, one of which listed three values and another four.
+
+```ts
+// The whole entity minus what the caller may not read.
+export const sigilResourceSchema = sigils.schema.omit({
+  tokenHash: true,
+  createdBy: true,
+});
+
+// A narrower view of that, for one surface.
+const sigilSchema = sigilResourceSchema.pick({
+  id: true,
+  name: true,
+  kinds: true,
+});
+
+// One field, where a tool needs just the field.
+export const prioritySchema = quests.schema.shape.priority;
+```
+
+`db.default(...)` and `db.ref(...)` return the schema itself, so `entity.schema.shape.x` is the plain zod type and `.extend({ x: ... })` re-describes a field without redeclaring its type. A departure from the column is fine when it is one — say so in a comment, the way `objectiveSchema` says why `id` is required on the way out and optional on the way in.
+
+**File layout under `src/mcp/schemas/`.** A schema shared across tools gets its own file, named after it (`prioritySchema.ts`, `entityRefSchema.ts`). A single tool's `xxxParamsSchema` + `xxxResultSchema` pair stays in its family file (`questSchemas.ts`, `feedbackSchemas.ts`, …): the pair IS one contract, and the tool's field descriptions — which are its documentation, read by every agent on connect — belong beside it. `index.ts` re-exports everything, so no call site cares.
+
 ## Feedback
 
 User-submitted bug reports / feature requests that the project owner triages. (Renamed from **Petitions** in the 2026-08 great rename — same entity, same lifecycle, new name throughout code, DB, HTTP and MCP.)

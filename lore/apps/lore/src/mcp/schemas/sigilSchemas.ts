@@ -1,7 +1,8 @@
 import { z } from "alepha";
 
 import { APP_NAME_MAX_LENGTH } from "../../api/schemas/appNameSchema.ts";
-import { projectParamsSchema } from "./commonSchemas.ts";
+import { sigilResourceSchema } from "../../api/schemas/sigilResourceSchema.ts";
+import { projectParamsSchema } from "./projectParamsSchema.ts";
 
 /**
  * One enrolled app.
@@ -9,26 +10,14 @@ import { projectParamsSchema } from "./commonSchemas.ts";
  * `tokenPrefix` is the only part of the credential that survives creation, and
  * it exists so a sigil can be named in conversation without being usable.
  */
-const sigilSchema = z.object({
-  id: z.string(),
-  projectId: z.integer(),
-  /**
-   * Display name of the app, e.g. `lore`. Unique within the project.
-   */
-  name: z.string(),
-  /**
-   * First characters of the token — enough to name it, not to use it.
-   */
-  tokenPrefix: z.string(),
-  /**
-   * Capability buckets this sigil's ingest endpoint accepts.
-   */
-  kinds: z.array(z.string()),
-  createdAt: z.string(),
-  /**
-   * Last time this app reported anything. Absent means never.
-   */
-  lastSeenAt: z.string().optional(),
+const sigilSchema = sigilResourceSchema.pick({
+  id: true,
+  projectId: true,
+  name: true,
+  tokenPrefix: true,
+  kinds: true,
+  createdAt: true,
+  lastSeenAt: true,
 });
 
 /**
