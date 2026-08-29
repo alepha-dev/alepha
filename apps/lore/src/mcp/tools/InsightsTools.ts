@@ -62,7 +62,21 @@ export class InsightsTools {
         traffic: res.traffic,
         since: res.since,
         ...(wanted.has("errors") ? { errorGroups: res.errorGroups } : {}),
-        ...(wanted.has("vitals") ? { vitals: res.vitals } : {}),
+        ...(wanted.has("vitals")
+          ? {
+              // Narrowed to the range and the confidence. The per-bucket
+              // distribution stays on the HTTP payload: it is a chart, and an
+              // agent quoting a number wants to know how wide it is and how
+              // many samples it rests on, not seven counts per metric.
+              vitals: {
+                lcp: this.vitalRange(res.vitals.lcp),
+                cls: this.vitalRange(res.vitals.cls),
+                inp: this.vitalRange(res.vitals.inp),
+                fcp: this.vitalRange(res.vitals.fcp),
+                ttfb: this.vitalRange(res.vitals.ttfb),
+              },
+            }
+          : {}),
         ...(wanted.has("analytics")
           ? {
               analytics: {
@@ -84,4 +98,19 @@ export class InsightsTools {
       };
     },
   });
+
+  /**
+   * One metric's payload entry, minus the chart.
+   */
+  protected vitalRange(metric: {
+    samples: number;
+    p75Lower: number | null;
+    p75Upper: number | null;
+  }) {
+    return {
+      samples: metric.samples,
+      p75Lower: metric.p75Lower,
+      p75Upper: metric.p75Upper,
+    };
+  }
 }

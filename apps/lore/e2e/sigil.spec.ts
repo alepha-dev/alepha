@@ -607,10 +607,7 @@ test.describe("Sigils", () => {
       await expect(topPaths.getByText("/crawled")).toBeVisible();
     });
 
-    await test.step("the Vitals tab reports the vitals p75", async () => {
-      // The 2100 ms LCP sample lands in the ≤2500 bucket, and p75 reports that
-      // bucket's upper boundary. The thousands separator is whatever the
-      // browser's locale uses.
+    await test.step("the Vitals tab reports a range, a sample count and no rating", async () => {
       await page
         .getByTestId("app-tabs")
         .getByRole("link", { name: "Vitals", exact: true })
@@ -619,7 +616,27 @@ test.describe("Sigils", () => {
       await expect(page.getByText("Web Vitals")).toBeVisible({
         timeout: 15_000,
       });
-      await expect(page.getByText(/2[,.\s]?500\s*ms/)).toBeVisible();
+
+      const lcp = page.getByTestId("vitals-lcp");
+      // The 2100 ms sample lands in the ≤2500 bucket, so the honest answer is
+      // the width of that bucket rather than its ceiling. The old page printed
+      // "2,500 ms" flat, which is what made five unrelated production apps all
+      // report the same figure. The thousands separator is the browser's.
+      await expect(
+        lcp.getByText(/1[,.\s]?800\s+to\s+2[,.\s]?500\s*ms/),
+      ).toBeVisible();
+      await expect(lcp.getByText("1 samples")).toBeVisible();
+      // One sample is not a measurement, and the card must not dress it as one.
+      await expect(lcp.getByText("Low confidence")).toBeVisible();
+      for (const rating of ["Good", "Needs work", "Poor"]) {
+        await expect(lcp.getByText(rating, { exact: true })).toHaveCount(0);
+      }
+
+      // INP needs a real interaction, which this flow never performs. Saying so
+      // is a state; an empty card reads as a broken one.
+      await expect(
+        page.getByTestId("vitals-inp").getByText("No interaction samples yet"),
+      ).toBeVisible();
     });
 
     await test.step("turning Beacon off hides the analytics tabs, back on restores them", async () => {

@@ -298,7 +298,11 @@ export class InsightsController {
           topCampaigns: [],
           topDevices: [],
           topReferrers: [],
-          vitals: { lcp: null, cls: null, inp: null, fcp: null, ttfb: null },
+          // Every metric present with zero samples rather than nulls: a page
+          // with no apps and a page whose apps have sent no vitals are the
+          // same shape, so the tab renders "no samples yet" in both instead
+          // of branching on which kind of nothing it got.
+          vitals: summariseVitals({}),
           timeline: this.zeroTimeline(anchor, days),
           errorGroups: [],
           // Nothing was asked of a dataset, so there is nothing to have
