@@ -44,7 +44,7 @@ export const sessionResourceSchema = z.object({
     .object({
       os: z.string(),
       browser: z.string(),
-      device: z.enum(["MOBILE", "DESKTOP", "TABLET"]),
+      device: z.enum(["MOBILE", "DESKTOP", "TABLET", "UNKNOWN"]),
     })
     .optional(),
   user: sessionUserSummarySchema.optional(),

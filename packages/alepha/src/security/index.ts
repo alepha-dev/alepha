@@ -1,6 +1,7 @@
 import { $module } from "alepha";
 import type { FetchOptions } from "alepha/server";
 
+import { currentAuthorityAtom } from "./atoms/currentAuthorityAtom.ts";
 import { currentResourceAtom } from "./atoms/currentResourceAtom.ts";
 import { currentTenantAtom } from "./atoms/currentTenantAtom.ts";
 import { currentUserAtom } from "./atoms/currentUserAtom.ts";
@@ -11,6 +12,7 @@ import { $permission } from "./primitives/$permission.ts";
 import { $role } from "./primitives/$role.ts";
 import { JwtProvider } from "./providers/JwtProvider.ts";
 import { OwnedResourceProvider } from "./providers/OwnedResourceProvider.ts";
+import { ResourceGateMemoProvider } from "./providers/ResourceGateMemoProvider.ts";
 import { SecurityProvider } from "./providers/SecurityProvider.ts";
 import { ServerSecurityProvider } from "./providers/ServerSecurityProvider.ts";
 import type { UserAccount } from "./schemas/userAccountInfoSchema.ts";
@@ -18,6 +20,7 @@ import type { UserAccount } from "./schemas/userAccountInfoSchema.ts";
 // ---------------------------------------------------------------------------------------------------------------------
 
 export * from "alepha/crypto";
+export * from "./atoms/currentAuthorityAtom.ts";
 export * from "./atoms/currentResourceAtom.ts";
 export * from "./atoms/currentTenantAtom.ts";
 export * from "./atoms/currentUserAtom.ts";
@@ -37,6 +40,7 @@ export * from "./primitives/$serviceAccount.ts";
 export * from "./providers/JwtProvider.ts";
 export * from "./providers/OwnedResourceProvider.ts";
 export * from "./providers/PermissionRegistryProvider.ts";
+export * from "./providers/ResourceGateMemoProvider.ts";
 export * from "./providers/SecurityProvider.ts";
 export * from "./providers/ServerSecurityProvider.ts";
 export * from "./schemas/permissionSchema.ts";
@@ -120,11 +124,18 @@ declare module "alepha/server" {
 export const AlephaSecurity = $module({
   name: "alepha.security",
   primitives: [$issuer, $role, $permission],
-  atoms: [currentUserAtom, currentTenantAtom, currentResourceAtom, tenancyAtom],
+  atoms: [
+    currentUserAtom,
+    currentTenantAtom,
+    currentResourceAtom,
+    currentAuthorityAtom,
+    tenancyAtom,
+  ],
   services: [
     SecurityProvider,
     JwtProvider,
     ServerSecurityProvider,
     OwnedResourceProvider,
+    ResourceGateMemoProvider,
   ],
 });

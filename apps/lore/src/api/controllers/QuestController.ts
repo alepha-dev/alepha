@@ -3,7 +3,11 @@ import { $storage, FileService } from "alepha/api/files";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, $transactional, db, pageQuerySchema } from "alepha/orm";
-import { $secure, type UserAccountToken } from "alepha/security";
+import {
+  OwnedResourceProvider,
+  $secure,
+  type UserAccountToken,
+} from "alepha/security";
 import {
   $action,
   BadRequestError,
@@ -15,7 +19,7 @@ import {
 
 import { blights, QUEST_STATUS_PREFIX } from "../entities/blights.ts";
 import { feedback } from "../entities/feedback.ts";
-import { type Project, projects } from "../entities/projects.ts";
+import type { Project } from "../entities/projects.ts";
 import {
   normalizeQuestTags,
   type Quest,
@@ -31,6 +35,7 @@ import {
   questResourceSchema,
   questStatusSchema,
 } from "../schemas/questResourceSchema.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
 import { AreaService } from "../services/AreaService.ts";
 import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
@@ -42,10 +47,15 @@ import { QuestService } from "../services/QuestService.ts";
 export class QuestController {
   log = $logger();
   quests = $repository(quests);
-  projects = $repository(projects);
   feedback = $repository(feedback);
   blights = $repository(blights);
   dt = $inject(DateTimeProvider);
+  owned = $inject(OwnedResourceProvider);
+  /**
+   * Kept for {@link isMemberById} alone - the assignee check in
+   * `assignQuest`, which asks about somebody other than the caller and so is
+   * not a gate. Every gate on this class is `$ownsProject`.
+   */
   security = $inject(ProjectSecurityService);
   epicVisibility = $inject(EpicVisibilityService);
   openQuests = $inject(OpenQuestScope);
@@ -124,6 +134,39 @@ export class QuestController {
   });
 
   /**
+   * The four gates this controller needs.
+   *
+   * Declared above the actions on purpose: `use: [this.ownsQuest()]` is a
+   * field initializer reading another field, so a gate declared below its
+   * first use is `undefined` at construction time.
+   *
+   * ## ⚠️ On a `$transactional()` action the gate goes AFTER it
+   *
+   * The gate is not only an access check here - it is the READ HALF of every
+   * check-then-write on this class. `completeQuest` is transactional "so two
+   * concurrent completions cannot both pass the `completedAt IS NULL` read",
+   * and `updateQuestById` for the same reason on `expectedUpdatedAt`. The
+   * full reasoning is on `$ownsProject`; this is the file it was found in.
+   */
+  protected ownsProject = () => $ownsProject({ param: "projectId" });
+
+  protected ownsProjectFromBody = () =>
+    $ownsProject({ param: "projectId", from: "body" });
+
+  protected ownsProjectFromQuery = () =>
+    $ownsProject({ param: "projectId", from: "query" });
+
+  /**
+   * Member gate on the project the quest named by `params.id` belongs to.
+   *
+   * The quest lands on `this.owned.get<Quest>()` and its project on
+   * `this.owned.authority<Project>()`, which is what lets
+   * {@link getQuestForTransition} keep only the status check.
+   */
+  protected ownsQuest = () =>
+    $ownsProject({ repository: () => this.quests, param: "id" });
+
+  /**
    * Enrich a quest entity with computed metadata.
    */
   mapQuestToResource(quest: Quest): QuestResource {
@@ -131,9 +174,8 @@ export class QuestController {
   }
 
   /**
-   * Load a quest for a state-changing endpoint, asserting membership and
-   * the lifecycle precondition separately so each failure gets its own
-   * answer.
+   * The lifecycle precondition for a state-changing endpoint, and nothing
+   * else.
    *
    * These handlers used to fold the precondition into the `getOne`
    * where-clause (`acceptedAt: { isNotNull: true }`, …). A quest in the
@@ -141,21 +183,22 @@ export class QuestController {
    * `DbEntityNotFoundError` — "Entity from 'quests' was not found" — which
    * says nothing about what to do next. MCP agents hit this constantly:
    * `quest_complete` on a quest still in "new" reported the quest as
-   * missing when the real answer was "accept it first".
+   * missing when the real answer was "accept it first". Reading the row and
+   * checking the status separately keeps 404 honest and turns a precondition
+   * failure into a 400 naming both the current status and the required one.
    *
-   * Fetching by id keeps 404 honest and turns a precondition failure into
-   * a 400 naming both the current status and the required one. Membership
-   * is asserted before the status is revealed, so a non-member still
-   * learns nothing about the quest beyond its existence — same as before.
+   * It used to load the quest and assert membership too, in that order, so
+   * that a non-member learned nothing about the quest beyond its existence.
+   * **That ordering is now structural**: `this.ownsQuest()` is middleware, so
+   * it runs to completion before any handler that reaches this. It also
+   * leaves the rows behind, which is why nothing is queried here.
    */
-  protected async getQuestForTransition(
-    id: number,
-    user: UserAccountToken,
+  protected getQuestForTransition(
     action: string,
     allowed: QuestStatus[],
-  ): Promise<{ quest: Quest; project: Project }> {
-    const quest = await this.quests.getOne({ where: { id: { eq: id } } });
-    const { project } = await this.security.assertMember(quest.projectId, user);
+  ): { quest: Quest; project: Project } {
+    const quest = this.owned.get<Quest>();
+    const project = this.owned.authority<Project>();
 
     const status = this.questMapper.questStatus(quest);
     if (!allowed.includes(status)) {
@@ -240,7 +283,7 @@ export class QuestController {
    * project memory, and the sha is usually known only after the merge.
    */
   addQuestCommit = $action({
-    use: [$secure({ permissions: ["quest:update"] })],
+    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuest()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -249,10 +292,7 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const quest = await this.quests.getOne({
-        where: { id: { eq: params.id } },
-      });
-      await this.security.assertMember(quest.projectId, user);
+      const quest = this.owned.get<Quest>();
 
       const updated = await this.quests.updateById(params.id, {
         commits: this.appendCommits(
@@ -268,16 +308,19 @@ export class QuestController {
   });
 
   createQuest = $action({
-    use: [$secure({ permissions: ["quest:create"] }), $transactional()],
+    use: [
+      $secure({ permissions: ["quest:create"] }),
+      $transactional(),
+      this.ownsProjectFromBody(),
+    ],
     schema: {
       body: questCreateSchema,
       response: questResourceSchema,
     },
     handler: async ({ body, user }) => {
-      const { project } = await this.security.assertMember(
-        body.projectId,
-        user,
-      );
+      // The gate loaded this row to decide on it; the owner-only rule below
+      // reads it back rather than querying the project again.
+      const project = this.owned.authority<Project>();
 
       // Validate feedback link: must exist in this project, must be accepted.
       // Anyone with quest:create can pass any id otherwise, so we check here
@@ -417,7 +460,7 @@ export class QuestController {
   });
 
   addAttachment = $action({
-    use: [$secure({ permissions: ["quest:update"] })],
+    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuest()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -428,9 +471,7 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const { quest } = await this.getQuestForTransition(
-        params.id,
-        user,
+      const { quest } = this.getQuestForTransition(
         "attach a file to",
         // Completed included, unlike every other write on a quest: evidence
         // arrives at the END. A screenshot or a probe log proving the work
@@ -473,7 +514,7 @@ export class QuestController {
    * arbitrary files by id.
    */
   listQuestAttachments = $action({
-    use: [$secure({ permissions: ["quest:read"] })],
+    use: [$secure({ permissions: ["quest:read"] }), this.ownsQuest()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -487,11 +528,8 @@ export class QuestController {
         }),
       ),
     },
-    handler: async ({ params, user }) => {
-      const quest = await this.quests.getOne({
-        where: { id: { eq: params.id } },
-      });
-      await this.security.assertMember(quest.projectId, user);
+    handler: async () => {
+      const quest = this.owned.get<Quest>();
 
       const files = await Promise.all(
         (quest.attachments ?? []).map(async (fileId) => {
@@ -530,7 +568,7 @@ export class QuestController {
    * can see. The 10 MB storage cap bounds the base64 payload (~13.4 MB).
    */
   getQuestAttachment = $action({
-    use: [$secure({ permissions: ["quest:read"] })],
+    use: [$secure({ permissions: ["quest:read"] }), this.ownsQuest()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -544,11 +582,8 @@ export class QuestController {
         data: z.string().describe("Base64-encoded file bytes."),
       }),
     },
-    handler: async ({ params, user }) => {
-      const quest = await this.quests.getOne({
-        where: { id: { eq: params.id } },
-      });
-      await this.security.assertMember(quest.projectId, user);
+    handler: async ({ params }) => {
+      const quest = this.owned.get<Quest>();
 
       // IDOR guard: only files hanging off THIS quest are readable.
       if (!(quest.attachments ?? []).includes(params.fileId)) {
@@ -621,7 +656,7 @@ export class QuestController {
   }
 
   removeAttachment = $action({
-    use: [$secure({ permissions: ["quest:update"] })],
+    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuest()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -630,9 +665,7 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, user }) => {
-      const { quest } = await this.getQuestForTransition(
-        params.id,
-        user,
+      const { quest } = this.getQuestForTransition(
         "remove an attachment from",
         ["new", "accepted", "shelved"],
       );
@@ -673,7 +706,7 @@ export class QuestController {
   });
 
   getQuests = $action({
-    use: [$secure({ permissions: ["quest:read"] })],
+    use: [$secure({ permissions: ["quest:read"] }), this.ownsProject()],
     schema: {
       params: z.object({
         projectId: z.integer(),
@@ -703,8 +736,6 @@ export class QuestController {
       response: db.page(questResourceSchema),
     },
     handler: async ({ params, query, user }) => {
-      await this.security.assertMember(params.projectId, user);
-
       const where = this.quests.createQueryWhere();
       where.projectId = { eq: params.projectId };
 
@@ -770,8 +801,8 @@ export class QuestController {
       // its listing surfaces stay gated.
       //
       // `includePlanned` is client-settable and that is fine — every caller
-      // has already passed `security.assertMember`, so it exposes nothing
-      // the caller could not already read. This is a backlog-organisation
+      // has already passed the membership gate, so it exposes nothing the
+      // caller could not already read. This is a backlog-organisation
       // affordance, NOT an authorization control. Do not "harden" it into one.
       if (!query.includePlanned && !query.epic) {
         await this.epicVisibility.applyBacklogGate(where, params.projectId);
@@ -809,15 +840,13 @@ export class QuestController {
    * Readable by any project member.
    */
   countOpenQuests = $action({
-    use: [$secure({ permissions: ["quest:read"] })],
+    use: [$secure({ permissions: ["quest:read"] }), this.ownsProject()],
     path: "/projects/:projectId/quests/count",
     schema: {
       params: z.object({ projectId: z.integer() }),
       response: z.object({ count: z.integer() }),
     },
-    handler: async ({ params, user }) => {
-      await this.security.assertMember(params.projectId, user);
-
+    handler: async ({ params }) => {
       // `OpenQuestScope` owns what "open" means. This badge links to the
       // quest list, and the dashboard counts the same thing on the same
       // screen — an ungated or differently-gated count here reproduces
@@ -846,7 +875,7 @@ export class QuestController {
    * the full QuestResource pagination.
    */
   getDependencyGraph = $action({
-    use: [$secure({ permissions: ["quest:read"] })],
+    use: [$secure({ permissions: ["quest:read"] }), this.ownsProject()],
     path: "/projects/:projectId/quests/graph",
     schema: {
       params: z.object({ projectId: z.integer() }),
@@ -860,8 +889,7 @@ export class QuestController {
         }),
       ),
     },
-    handler: async ({ params, user }) => {
-      await this.security.assertMember(params.projectId, user);
+    handler: async ({ params }) => {
       const rows = await this.quests.findMany({
         where: { projectId: { eq: params.projectId } },
         columns: [
@@ -891,7 +919,7 @@ export class QuestController {
   });
 
   getQuestLine = $action({
-    use: [$secure({ permissions: ["quest:read"] })],
+    use: [$secure({ permissions: ["quest:read"] }), this.ownsQuest()],
     schema: {
       params: z.object({ id: z.integer() }),
       response: z.object({
@@ -915,11 +943,8 @@ export class QuestController {
         ),
       }),
     },
-    handler: async ({ params, user }) => {
-      const quest = await this.quests.getOne({
-        where: { id: { eq: params.id } },
-      });
-      await this.security.assertMember(quest.projectId, user);
+    handler: async ({ params }) => {
+      const quest = this.owned.get<Quest>();
 
       const [predecessor, dependents] = await Promise.all([
         quest.dependsOn != null
@@ -960,14 +985,16 @@ export class QuestController {
    * are a property of the project's quest taxonomy, not the user's).
    */
   listQuestTags = $action({
-    use: [$secure({ permissions: ["quest:read"] })],
+    use: [
+      $secure({ permissions: ["quest:read"] }),
+      this.ownsProjectFromQuery(),
+    ],
     description: "Return the distinct set of tags used in a project.",
     schema: {
       query: z.object({ projectId: z.integer() }),
       response: z.array(z.string()),
     },
-    handler: async ({ query, user }) => {
-      await this.security.assertMember(query.projectId, user);
+    handler: async ({ query }) => {
       const rows = await this.quests.findMany({
         where: { projectId: { eq: query.projectId } },
         columns: ["tags"],
@@ -981,7 +1008,11 @@ export class QuestController {
   });
 
   abandonQuest = $action({
-    use: [$secure({ permissions: ["quest:update"] }), $transactional()],
+    use: [
+      $secure({ permissions: ["quest:update"] }),
+      $transactional(),
+      this.ownsQuest(),
+    ],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -989,12 +1020,7 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, user }) => {
-      const { quest } = await this.getQuestForTransition(
-        params.id,
-        user,
-        "abandon",
-        ["accepted"],
-      );
+      const { quest } = this.getQuestForTransition("abandon", ["accepted"]);
 
       quest.acceptedAt = undefined;
       quest.acceptedBy = undefined;
@@ -1025,7 +1051,11 @@ export class QuestController {
    * reminders stays an explicit act rather than a side-effect of shelving.
    */
   shelveQuest = $action({
-    use: [$secure({ permissions: ["quest:update"] }), $transactional()],
+    use: [
+      $secure({ permissions: ["quest:update"] }),
+      $transactional(),
+      this.ownsQuest(),
+    ],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1034,12 +1064,10 @@ export class QuestController {
     },
     handler: async ({ params, user }) => {
       // "shelved" is allowed so re-shelving stays idempotent below.
-      const { quest } = await this.getQuestForTransition(
-        params.id,
-        user,
-        "shelve",
-        ["new", "shelved"],
-      );
+      const { quest } = this.getQuestForTransition("shelve", [
+        "new",
+        "shelved",
+      ]);
 
       if (quest.shelvedAt) {
         return this.mapQuestToResource(quest);
@@ -1062,7 +1090,11 @@ export class QuestController {
    * Bring a shelved quest back into the backlog as "new".
    */
   unshelveQuest = $action({
-    use: [$secure({ permissions: ["quest:update"] }), $transactional()],
+    use: [
+      $secure({ permissions: ["quest:update"] }),
+      $transactional(),
+      this.ownsQuest(),
+    ],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1070,12 +1102,7 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, user }) => {
-      const { quest } = await this.getQuestForTransition(
-        params.id,
-        user,
-        "unshelve",
-        ["shelved"],
-      );
+      const { quest } = this.getQuestForTransition("unshelve", ["shelved"]);
 
       quest.shelvedAt = undefined;
       quest.shelvedBy = undefined;
@@ -1091,7 +1118,11 @@ export class QuestController {
   });
 
   acceptQuest = $action({
-    use: [$secure({ permissions: ["quest:update"] }), $transactional()],
+    use: [
+      $secure({ permissions: ["quest:update"] }),
+      $transactional(),
+      this.ownsQuest(),
+    ],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1100,12 +1131,10 @@ export class QuestController {
     },
     handler: async ({ params, user }) => {
       // "shelved" is allowed on purpose — see the un-shelving branch below.
-      const { quest, project } = await this.getQuestForTransition(
-        params.id,
-        user,
-        "accept",
-        ["new", "shelved"],
-      );
+      const { quest, project } = this.getQuestForTransition("accept", [
+        "new",
+        "shelved",
+      ]);
 
       // Questline gate (Lore #32): refuse to accept while a non-null
       // predecessor is still in flight. The dependent quest stays
@@ -1171,7 +1200,11 @@ export class QuestController {
    * lands, which is what a reopened one is.
    */
   reopenQuest = $action({
-    use: [$secure({ permissions: ["quest:update"] }), $transactional()],
+    use: [
+      $secure({ permissions: ["quest:update"] }),
+      $transactional(),
+      this.ownsQuest(),
+    ],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1179,12 +1212,9 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, user }) => {
-      const { quest, project } = await this.getQuestForTransition(
-        params.id,
-        user,
-        "reopen",
-        ["completed"],
-      );
+      const { quest, project } = this.getQuestForTransition("reopen", [
+        "completed",
+      ]);
 
       quest.completedAt = undefined;
       quest.completedBy = undefined;
@@ -1219,7 +1249,11 @@ export class QuestController {
    * accepted quest is the whole point.
    */
   assignQuest = $action({
-    use: [$secure({ permissions: ["quest:update"] }), $transactional()],
+    use: [
+      $secure({ permissions: ["quest:update"] }),
+      $transactional(),
+      this.ownsQuest(),
+    ],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1230,12 +1264,11 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const { quest, project } = await this.getQuestForTransition(
-        params.id,
-        user,
-        "assign",
-        ["new", "shelved", "accepted"],
-      );
+      const { quest, project } = this.getQuestForTransition("assign", [
+        "new",
+        "shelved",
+        "accepted",
+      ]);
 
       if (!(await this.security.isMemberById(quest.projectId, body.userId))) {
         throw new BadRequestError(
@@ -1296,7 +1329,7 @@ export class QuestController {
   });
 
   setQuestKanbanColumn = $action({
-    use: [$secure({ permissions: ["quest:update"] })],
+    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuest()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1307,12 +1340,9 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const { quest, project } = await this.getQuestForTransition(
-        params.id,
-        user,
-        "move",
-        ["accepted"],
-      );
+      const { quest, project } = this.getQuestForTransition("move", [
+        "accepted",
+      ]);
       const columns = project.kanbanColumns ?? [];
       if (!columns.includes(body.kanbanColumn)) {
         throw new BadRequestError("Unknown kanban column for this project.");
@@ -1344,7 +1374,7 @@ export class QuestController {
    * nightly sweep advances from there.
    */
   setQuestReminder = $action({
-    use: [$secure({ permissions: ["quest:update"] })],
+    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuest()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1358,9 +1388,7 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const { quest, project } = await this.getQuestForTransition(
-        params.id,
-        user,
+      const { quest, project } = this.getQuestForTransition(
         "set a reminder on",
         ["accepted"],
       );
@@ -1397,7 +1425,11 @@ export class QuestController {
   completeQuest = $action({
     // Transactional so two concurrent completions cannot both pass the
     // `completedAt IS NULL` read.
-    use: [$secure({ permissions: ["quest:update"] }), $transactional()],
+    use: [
+      $secure({ permissions: ["quest:update"] }),
+      $transactional(),
+      this.ownsQuest(),
+    ],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1443,12 +1475,7 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const { quest } = await this.getQuestForTransition(
-        params.id,
-        user,
-        "complete",
-        ["accepted"],
-      );
+      const { quest } = this.getQuestForTransition("complete", ["accepted"]);
 
       const now = this.dt.nowISOString();
 
@@ -1544,28 +1571,18 @@ export class QuestController {
   });
 
   getQuestById = $action({
-    use: [$secure({ permissions: ["quest:read"] })],
+    use: [$secure({ permissions: ["quest:read"] }), this.ownsQuest()],
     schema: {
       params: z.object({
         id: z.integer(),
       }),
       response: questResourceSchema,
     },
-    handler: async ({ params, user }) => {
-      const quest = await this.quests.getOne({
-        where: {
-          id: { eq: params.id },
-        },
-      });
-
-      await this.security.assertMember(quest.projectId, user);
-
-      return this.mapQuestToResource(quest);
-    },
+    handler: async () => this.mapQuestToResource(this.owned.get<Quest>()),
   });
 
   getQuestByShortId = $action({
-    use: [$secure({ permissions: ["quest:read"] })],
+    use: [$secure({ permissions: ["quest:read"] }), this.ownsProject()],
     path: "/projects/:projectId/quests/:shortId",
     schema: {
       params: z.object({
@@ -1574,15 +1591,13 @@ export class QuestController {
       }),
       response: questResourceSchema,
     },
-    handler: async ({ params, user }) => {
+    handler: async ({ params }) => {
       const quest = await this.quests.getOne({
         where: {
           projectId: { eq: params.projectId },
           shortId: { eq: params.shortId },
         },
       });
-
-      await this.security.assertMember(quest.projectId, user);
 
       return this.mapQuestToResource(quest);
     },
@@ -1595,7 +1610,11 @@ export class QuestController {
     // pass, and the later one silently wins anyway, which is the exact
     // failure the parameter exists to prevent. Same reasoning as
     // `completeQuest`'s.
-    use: [$secure({ permissions: ["quest:update"] }), $transactional()],
+    use: [
+      $secure({ permissions: ["quest:update"] }),
+      $transactional(),
+      this.ownsQuest(),
+    ],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1651,15 +1670,12 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const quest = await this.quests.getOne({
-        where: { id: { eq: params.id } },
-      });
+      const quest = this.owned.get<Quest>();
+      const project = this.owned.authority<Project>();
 
-      const { project } = await this.security.assertMember(
-        quest.projectId,
-        user,
-      );
-
+      // Narrower than the gate above, and about the QUEST rather than the
+      // project: membership lets you read it, authorship or project
+      // ownership lets you rewrite it.
       if (quest.createdBy !== user.id && project.createdBy !== user.id) {
         throw new ForbiddenError(
           "Only the quest creator or project owner can edit this quest",
@@ -1839,7 +1855,7 @@ export class QuestController {
   });
 
   completeObjective = $action({
-    use: [$secure({ permissions: ["quest:update"] })],
+    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuest()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1855,12 +1871,9 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, user, body }) => {
-      const { quest } = await this.getQuestForTransition(
-        params.id,
-        user,
-        "tick an objective on",
-        ["accepted"],
-      );
+      const { quest } = this.getQuestForTransition("tick an objective on", [
+        "accepted",
+      ]);
 
       // Backfill ids for legacy rows before the lookup — preserves the
       // controller's invariant that anything we read out of `objectives`
@@ -1904,7 +1917,7 @@ export class QuestController {
   });
 
   updateQuestObjectives = $action({
-    use: [$secure({ permissions: ["quest:update"] })],
+    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuest()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1929,9 +1942,7 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const { quest, project } = await this.getQuestForTransition(
-        params.id,
-        user,
+      const { quest, project } = this.getQuestForTransition(
         "edit the objectives of",
         ["new", "accepted", "shelved"],
       );
@@ -1965,7 +1976,11 @@ export class QuestController {
     // through used to leave those first two committed against a quest that
     // still exists — dependencies silently severed, a blight reopened next to
     // the quest still tracking it.
-    use: [$secure({ permissions: ["quest:delete"] }), $transactional()],
+    use: [
+      $secure({ permissions: ["quest:delete"] }),
+      $transactional(),
+      this.ownsQuest(),
+    ],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1973,17 +1988,11 @@ export class QuestController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      const quest = await this.quests.getOne({
-        where: {
-          id: { eq: params.id },
-        },
-      });
+      const quest = this.owned.get<Quest>();
+      const project = this.owned.authority<Project>();
 
-      const { project } = await this.security.assertMember(
-        quest.projectId,
-        user,
-      );
-
+      // Same narrowing as `updateQuestById`: membership is the gate,
+      // authorship or project ownership is what allows the delete.
       if (quest.createdBy !== user.id && project.createdBy !== user.id) {
         throw new ForbiddenError(
           "Only the quest creator or project owner can delete this quest",
@@ -2035,7 +2044,7 @@ export class QuestController {
   });
 
   startTimer = $action({
-    use: [$secure({ permissions: ["quest:update"] })],
+    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuest()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -2043,12 +2052,9 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, user }) => {
-      const { quest } = await this.getQuestForTransition(
-        params.id,
-        user,
-        "start a timer on",
-        ["accepted"],
-      );
+      const { quest } = this.getQuestForTransition("start a timer on", [
+        "accepted",
+      ]);
 
       // Check if timer is already running (last session has no stoppedAt)
       const sessions = quest.timerSessions || [];
@@ -2071,7 +2077,7 @@ export class QuestController {
   });
 
   stopTimer = $action({
-    use: [$secure({ permissions: ["quest:update"] })],
+    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuest()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -2079,12 +2085,9 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, user }) => {
-      const { quest } = await this.getQuestForTransition(
-        params.id,
-        user,
-        "stop a timer on",
-        ["accepted"],
-      );
+      const { quest } = this.getQuestForTransition("stop a timer on", [
+        "accepted",
+      ]);
 
       // Find the running timer session
       const sessions = quest.timerSessions || [];
