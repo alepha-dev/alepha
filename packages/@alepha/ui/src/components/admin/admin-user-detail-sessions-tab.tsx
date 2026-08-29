@@ -60,9 +60,16 @@ export const AdminUserDetailSessionsTab = (
             }),
             cell: (s) => {
               const ua = s.userAgent;
-              const text = ua
-                ? [ua.browser, ua.os].filter(Boolean).join(" • ") || "—"
-                : "—";
+              // "Unknown" is what the parser reports for a client it could
+              // not place (an API caller, an OAuth or MCP agent). Printing it
+              // twice tells an admin less than the placeholder this column
+              // already uses for a session carrying no agent at all.
+              const text =
+                (ua
+                  ? [ua.browser, ua.os]
+                      .filter((part) => part && part !== "Unknown")
+                      .join(" • ")
+                  : "") || "—";
               return (
                 <span className="text-muted-foreground line-clamp-1 text-xs">
                   {text}
