@@ -153,6 +153,19 @@ jobs:
           # Straight to a file, so backticks survive the shell.
           yarn alepha gen changelog > /tmp/release_notes.txt
 
+      # Prepend-only, and that is load-bearing rather than incidental: the new
+      # section goes on top and `cat CHANGELOG.md >>` carries every existing one
+      # through byte-for-byte. Nothing here ever regenerates an old section, and
+      # nothing should - the 0.25.0 entries were written from French commit
+      # subjects and translated by hand, and those subjects are in git history
+      # forever. `alepha gen changelog --from=0.24.0 --to=0.25.0` still emits
+      # the French today.
+      #
+      # The direction this cannot protect is the one above it: a French commit
+      # subject written now flows straight into the next section, because that
+      # is exactly what this step is for. `yarn check:conventions` reads
+      # CHANGELOG.md for French and fails the build, so it surfaces in `yarn v`
+      # rather than in the release notes.
       - name: Update CHANGELOG.md
         env:
           VERSION: ${{ steps.version.outputs.version }}

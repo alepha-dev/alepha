@@ -627,4 +627,78 @@ if (docRootViolations.length > 0) {
   process.exit(1);
 }
 
+/*
+ * CHANGELOG.md is English, and stays English.
+ *
+ * The 0.25.0 section was written from French commit subjects and translated by
+ * hand afterwards. Those subjects are in git history forever, so any
+ * regeneration of that range brings them back - verified, not assumed:
+ * `alepha gen changelog --from=0.24.0 --to=0.25.0` still emits
+ * "AuthRouter — les quatre écrans d'auth" today.
+ *
+ * The release workflow itself cannot cause that. It prepends the new section
+ * and `cat CHANGELOG.md >>` the rest, so old sections are preserved
+ * byte-for-byte, and the generator writes `latestTag..HEAD` to stdout. What is
+ * unguarded is the OTHER direction, which the finding did not mention: a French
+ * commit subject written today flows into the next release's section
+ * automatically, with nobody reading it in between. This catches both.
+ *
+ * The word list is deliberately narrow. `le`, `la`, `des`, `est`, `que`, `sur`,
+ * `plus`, `tout`, `pour` and `dont` are all left out because each has an
+ * English reading that could plausibly appear in a changelog, and a guard with
+ * a false positive is a guard someone deletes. Calibrated against the real
+ * file: zero hits across its 1788 lines.
+ */
+const FRENCH_WORDS = [
+  "les",
+  "une",
+  "dans",
+  "avec",
+  "sont",
+  "qui",
+  "sans",
+  "vers",
+  "lors",
+  "afin",
+  "leur",
+  "leurs",
+  "cette",
+  "ainsi",
+  "mais",
+  "puis",
+  "nous",
+  "vous",
+  "elle",
+  "elles",
+  "peut",
+  "doit",
+  "faire",
+  "fait",
+];
+
+const changelogViolations = [];
+const changelogLines = readFileSync("CHANGELOG.md", "utf8").split("\n");
+
+for (const [index, line] of changelogLines.entries()) {
+  const found = FRENCH_WORDS.find((word) =>
+    new RegExp(`\\b${word}\\b`, "i").test(line),
+  );
+  if (found) {
+    changelogViolations.push(
+      `  CHANGELOG.md:${index + 1}\n    → French ("${found}"): ${line.trim().slice(0, 100)}`,
+    );
+  }
+}
+
+if (changelogViolations.length > 0) {
+  console.error(
+    `\n${changelogViolations.length} French changelog line(s):\n\n` +
+      `${changelogViolations.slice(0, 20).join("\n")}\n\n` +
+      "The changelog is the release notes, so it is the one document written\n" +
+      "from commit subjects without anyone reading it in between. Rewrite the\n" +
+      "entry in English - and the commit subject too, if it has not shipped.\n",
+  );
+  process.exit(1);
+}
+
 console.log("conventions OK");
