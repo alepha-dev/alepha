@@ -40,6 +40,6 @@ without it, every command the adapter sends fails to find the server.
 
 Bay is written in Go and ships as a static Linux binary on every release, for
 `amd64` and `arm64`, alongside a `SHA256SUMS` file. Download the binary for your
-architecture from the [GitHub releases](https://github.com/feunard/alepha/releases),
+architecture from the [GitHub releases](https://github.com/alepha-dev/alepha/releases),
 verify the checksum, and run it. The releases also expose stable
 `releases/latest/download/bay-linux-<arch>` URLs for scripted installs.
