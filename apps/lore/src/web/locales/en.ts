@@ -936,6 +936,14 @@ export default {
   "insights.vitals.lowConfidence": "Low confidence",
   "insights.vitals.range": "$1 to $2",
   "insights.vitals.over": "over $1",
+  "insights.vitals.byPath": "By page",
+  "insights.vitals.path": "Page",
+  "insights.vitals.tail": "Poor share",
+  "insights.vitals.samplesColumn": "Samples",
+  "insights.vitals.morePaths":
+    "Only the busiest pages are listed. A page with little traffic can be worse than anything here.",
+  "insights.vitals.trafficNote":
+    "These numbers count every client that runs JavaScript, crawlers included. Analytics can exclude them; this tab cannot, because vitals are not recorded with a traffic kind. A crawler's measurement is a real fetch, but it is not a reader's experience.",
   "insights.vitals.good": "Good",
   "insights.vitals.needsImprovement": "Needs work",
   "insights.vitals.poor": "Poor",

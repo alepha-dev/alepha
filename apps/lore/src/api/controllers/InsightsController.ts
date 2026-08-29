@@ -1,4 +1,8 @@
-import type { VitalMetric } from "@alepha/sigil";
+import {
+  VITALS_BUCKETS,
+  VITALS_THRESHOLDS,
+  type VitalMetric,
+} from "@alepha/sigil";
 import { $inject, z } from "alepha";
 import type { AnalyticsDataset, AnalyticsFilter } from "alepha/api/analytics";
 import { DateTimeProvider } from "alepha/datetime";
@@ -21,6 +25,10 @@ import {
   type TrafficFilter,
   trafficFilterSchema,
 } from "../schemas/trafficFilterSchema.ts";
+import {
+  type VitalsPathsResource,
+  vitalsPathsResourceSchema,
+} from "../schemas/vitalsPathsResourceSchema.ts";
 import { DailyVisitorsService } from "../services/DailyVisitorsService.ts";
 import { LoreAnalyticsStore } from "../services/LoreAnalyticsStore.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
@@ -109,6 +117,34 @@ const MAX_DIMENSION_DEPTH = 500;
  * Rows per page of a single-dimension listing, when the caller does not say.
  */
 const DIMENSION_PAGE = 50;
+
+/**
+ * How many paths the per-path vitals table ranks, and how many it returns.
+ *
+ * Two numbers because the ranking key is not the query's ordering key. The
+ * dataset can order by sample count; it cannot order by "share of samples in a
+ * poor bucket", which has to be computed from the histograms. So the widest
+ * `CANDIDATES` paths by volume are pulled, ranked here, and the worst
+ * `VITALS_PATH_ROWS` returned.
+ *
+ * ⚠️ The consequence is real and worth stating: a low-volume path with a
+ * terrible tail is invisible if it falls outside the busiest 50. That is the
+ * same direction as the sample floor - a route nobody visits is not the
+ * problem page - but it is a limit, not a property.
+ */
+const VITALS_PATH_CANDIDATES = 50;
+const VITALS_PATH_ROWS = 20;
+
+/**
+ * Below this many samples a path's reading is a hint, not a measurement.
+ *
+ * The same floor `AppVitalsCard` applies to a metric, for the same reason: a
+ * path with three samples will happily claim to be the worst on the site.
+ * Applied to the ranking rather than to the list, so such a row is ranked last
+ * and marked rather than hidden - "not enough data about this page" is a real
+ * answer.
+ */
+const VITALS_PATH_MIN_SAMPLES = 30;
 
 /**
  * Every `traffic` value that counts as a person.
@@ -698,6 +734,171 @@ export class InsightsController {
       };
     },
   });
+
+  getVitalsPaths = $action({
+    use: [$secure({ permissions: ["project:read"] })],
+    method: "GET",
+    path: "/projects/:projectId/insights/vitals-paths",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      query: z.object({
+        range: z.enum(["1d", "7d", "30d"]).optional(),
+        sigilId: z.uuid().optional(),
+        until: z.enum(["today", "lastCompleteDay"]).optional(),
+        /**
+         * Narrow to one page, the only one of the five view filters
+         * `sigil_vitals` declares. The other four are not legal against this
+         * dataset, which is why `whereFor` derives each dataset's slice rather
+         * than sharing one object.
+         */
+        path: z.string().optional(),
+      }),
+      response: vitalsPathsResourceSchema,
+    },
+    handler: async ({ params, query, user }): Promise<VitalsPathsResource> => {
+      await this.security.assertMember(params.projectId, user);
+
+      const range = query.range ?? "7d";
+      const { since, until } = this.resolveWindow(range, query.until);
+      const boundaries = Object.fromEntries(
+        Object.entries(VITALS_BUCKETS).map(([metric, bounds]) => [
+          metric,
+          bounds.map((value) => value / (metric === "cls" ? 1000 : 1)),
+        ]),
+      );
+
+      const labels = await this.projectSigilLabels(params.projectId);
+      let sigilIds = [...labels.keys()];
+      if (query.sigilId) {
+        if (!labels.has(query.sigilId)) {
+          throw new NotFoundError("Sigil not found");
+        }
+        sigilIds = [query.sigilId];
+      }
+
+      const empty = {
+        range,
+        since,
+        until,
+        boundaries,
+        minSamples: VITALS_PATH_MIN_SAMPLES,
+        rows: [],
+        hasMore: false,
+        estimated: false,
+      };
+      if (sigilIds.length === 0) {
+        return empty;
+      }
+
+      const where = this.whereFor(this.datasets.vitals.dataset, {
+        sigilId: { inArray: sigilIds },
+        ...this.viewFilters(query),
+      });
+
+      // Two queries, because the ranking key is not an ordering the dataset
+      // can produce. The first names the busiest paths; the second reads only
+      // those paths' histograms, which is what keeps a `path`-grouped read
+      // bounded on the highest-cardinality dimension the dataset has.
+      const busiest = await this.datasets.vitals.query({
+        since,
+        until,
+        where,
+        groupBy: ["path"],
+        select: { samples: "sum" },
+        orderBy: { key: "samples", direction: "desc" },
+        limit: VITALS_PATH_CANDIDATES + 1,
+      });
+      const paths = busiest.rows
+        .slice(0, VITALS_PATH_CANDIDATES)
+        .map((row) => String(row.path));
+      if (paths.length === 0) {
+        return empty;
+      }
+
+      const histograms = await this.datasets.vitals.query({
+        since,
+        until,
+        where: { ...where, path: { inArray: paths } },
+        groupBy: ["path", "metric", "bucket"],
+        select: { samples: "sum" },
+      });
+
+      // path -> metric -> bucket -> samples, which is the shape the summariser
+      // already consumes, one level deeper.
+      const byPath = new Map<string, AnalyticsVitalHistograms>();
+      for (const row of histograms.rows) {
+        const path = String(row.path);
+        const metric = row.metric as VitalMetric;
+        const perPath = byPath.get(path) ?? {};
+        const bucket = perPath[metric] ?? new Map<number, number>();
+        bucket.set(Number(row.bucket), Number(row.samples));
+        perPath[metric] = bucket;
+        byPath.set(path, perPath);
+      }
+
+      const rows = [...byPath.entries()].map(([path, perPath]) => {
+        const summary = summariseVitals(perPath);
+        let samples = 0;
+        let poor = 0;
+        const metrics: VitalsPathsResource["rows"][number]["metrics"] = {};
+        for (const [metric, entry] of Object.entries(summary)) {
+          samples += entry.samples;
+          poor += this.poorSamples(metric as VitalMetric, entry.buckets);
+          metrics[metric] = {
+            samples: entry.samples,
+            p75Lower: entry.p75Lower,
+            p75Upper: entry.p75Upper,
+          };
+        }
+        return {
+          path,
+          samples,
+          tailShare: samples > 0 ? Math.round((poor / samples) * 100) : 0,
+          confident: samples >= VITALS_PATH_MIN_SAMPLES,
+          metrics,
+        };
+      });
+
+      // Confident rows first, then worst tail first. A three-sample path
+      // cannot top the list, and is still on it.
+      rows.sort((a, b) => {
+        if (a.confident !== b.confident) return a.confident ? -1 : 1;
+        if (b.tailShare !== a.tailShare) return b.tailShare - a.tailShare;
+        return b.samples - a.samples;
+      });
+
+      return {
+        ...empty,
+        rows: rows.slice(0, VITALS_PATH_ROWS),
+        hasMore:
+          rows.length > VITALS_PATH_ROWS ||
+          busiest.rows.length > VITALS_PATH_CANDIDATES,
+        estimated: histograms.estimated,
+        sampleInterval: histograms.sampleInterval,
+      };
+    },
+  });
+
+  /**
+   * How many of a metric's samples landed in a bucket rated poor.
+   *
+   * From the metric's own thresholds rather than a hard-coded index, so the
+   * ranking here and the colour on the card cannot disagree: both ask whether
+   * the bucket's ceiling is past `poor`. The overflow bucket has no ceiling and
+   * is poor by construction.
+   */
+  protected poorSamples(metric: VitalMetric, buckets: number[]): number {
+    const bounds = VITALS_BUCKETS[metric];
+    const threshold = VITALS_THRESHOLDS[metric].poor;
+    let total = 0;
+    buckets.forEach((count, index) => {
+      const ceiling = bounds[index];
+      if (ceiling === undefined || ceiling > threshold) {
+        total += count;
+      }
+    });
+    return total;
+  }
 
   /**
    * Every sigil on the project, id → name.

@@ -4,21 +4,10 @@ import { Gauge } from "lucide-react";
 import type { I18n } from "../../../services/I18n.ts";
 import AppAnalyticsEstimatedBadge from "./AppAnalyticsEstimatedBadge.tsx";
 import AppInsightsControls from "./AppInsightsControls.tsx";
-import AppVitalsCard, { type AppVitalsCardProps } from "./AppVitalsCard.tsx";
+import { VITAL_METRICS, vitalThresholds } from "./appVitalMetrics.ts";
+import AppVitalsCard from "./AppVitalsCard.tsx";
+import AppVitalsPaths from "./AppVitalsPaths.tsx";
 import { useAppInsights } from "./useAppInsights.ts";
-
-/**
- * Web-Vitals metrics with their standard "good" / "poor" p75 thresholds.
- * Anything at or below `good` is good, at or below `poor` needs work, above is
- * poor. `cls` is unitless; the others are milliseconds.
- */
-const METRICS: Array<Omit<AppVitalsCardProps, "data">> = [
-  { metricKey: "lcp", unit: "ms", good: 2500, poor: 4000 },
-  { metricKey: "inp", unit: "ms", good: 200, poor: 500 },
-  { metricKey: "cls", unit: null, good: 0.1, poor: 0.25 },
-  { metricKey: "fcp", unit: "ms", good: 1800, poor: 3000 },
-  { metricKey: "ttfb", unit: "ms", good: 800, poor: 1800 },
-];
 
 /**
  * Web-Vitals for one app: per metric, the range its p75 falls in, the number of
@@ -59,6 +48,23 @@ const AppVitals = () => {
         />
       </div>
 
+      {/*
+        The asymmetry between this tab and Analytics, said out loud rather than
+        left to be discovered. Analytics gained an all / humans / bots toggle on
+        2026-08-26; this tab cannot have one, because `sigil_vitals` declares
+        `sigilId`, `metric`, `path` and `bucket` and nothing else. So the same
+        app reads differently on the two tabs, and on one of this project's own
+        apps roughly 85% of what Analytics reports as readership is automated.
+        A crawler's LCP is a real fetch and not a reader's experience.
+
+        Stating it is the v0 answer. The alternative is adding `traffic` to this
+        dataset, which re-slots it by its own ordering and so belongs behind the
+        pinned slot map rather than in front of it.
+      */}
+      <p className="text-muted-foreground text-xs">
+        {tr("insights.vitals.trafficNote")}
+      </p>
+
       {error && (
         <p className="text-sm text-red-600 dark:text-red-400">
           {tr("insights.error")}
@@ -73,14 +79,19 @@ const AppVitals = () => {
           />
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {METRICS.map((metric) => (
+            {VITAL_METRICS.map((metric) => (
               <AppVitalsCard
                 key={metric.metricKey}
-                {...metric}
+                metricKey={metric.metricKey}
+                unit={metric.unit}
+                {...vitalThresholds(metric.metricKey)}
                 data={data.vitals[metric.metricKey]}
               />
             ))}
           </div>
+
+          {/* The half that says WHERE. */}
+          <AppVitalsPaths />
         </>
       )}
     </div>
