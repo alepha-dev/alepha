@@ -68,14 +68,48 @@ export function $owns(options: OwnsOptions): Middleware {
   return $secure({
     ...options.secure,
     guard: async (ctx) => {
-      const raw = ctx.params[options.param];
+      const from = options.from ?? "params";
 
-      if (raw === undefined) {
+      // `Record<string, unknown>`, not the declared `Record<string, string>`:
+      // the guard runs after `validateRequest`, so a `z.integer()` param has
+      // already been decoded to a number. Reading it as a string here was
+      // only ever true of undeclared params.
+      const source: Record<string, unknown> | undefined =
+        from === "params"
+          ? ctx.params
+          : from === "query"
+            ? ctx.query
+            : (ctx.body as Record<string, unknown> | undefined);
+
+      const value = source?.[options.param];
+
+      // `null` counts as absent: it names no row, so gating on it would query
+      // for `id = null` and then 404 with a message about a missing row
+      // rather than a missing declaration.
+      if (value === undefined || value === null) {
         throw new AlephaError(
-          `$owns: route param '${options.param}' is not present on this handler. ` +
-            `Declare it in the path (e.g. "/things/:${options.param}").`,
+          // Naming the source it actually searched, so a `from: "body"` typo
+          // does not report a path problem the reader then goes looking for.
+          `$owns: '${options.param}' is not present in the ${from} of this handler. ` +
+            (from === "params"
+              ? `Declare it in the path (e.g. "/things/:${options.param}").`
+              : `Declare it in the ${from} schema, or correct \`from\`.`),
         );
       }
+
+      // An id is a scalar. Request validation has already run by the time a
+      // guard does, so a declared field cannot be anything else — but an
+      // UNDECLARED one is whatever the caller sent, and `from: "body"` is the
+      // source where that matters. Refusing here keeps an object out of the
+      // query builder rather than finding out what it does with one.
+      if (typeof value !== "string" && typeof value !== "number") {
+        throw new AlephaError(
+          `$owns: '${options.param}' in the ${from} of this handler is a ${typeof value}, not an id. ` +
+            "Declare it in the schema so it is validated before the gate runs.",
+        );
+      }
+
+      const raw = value;
 
       const repository = options.repository();
       const id = options.cast ? options.cast(raw) : raw;
@@ -186,9 +220,28 @@ export interface OwnsOptions {
   repository: () => Repository<any>;
 
   /**
-   * Route param holding the resource id.
+   * Key holding the resource id, in whichever source {@link OwnsOptions.from}
+   * names. A route param by default.
    */
   param: string;
+
+  /**
+   * Where to read {@link OwnsOptions.param} from.
+   *
+   * Defaults to `"params"`. An endpoint that takes its project id in the
+   * query string or the request body could not be gated declaratively at all
+   * before this existed, because the guard read `ctx.params` and nothing else.
+   *
+   * ```ts
+   * $owns({ repository: () => this.projects, param: "projectId", from: "query", owner: "createdBy" })
+   * ```
+   *
+   * A body value is caller-controlled in a way a path segment is not. That
+   * widens nothing: it is still just an id handed to `findById`, and the gate
+   * below is what decides access — a caller naming somebody else's project
+   * gets a 403 for it.
+   */
+  from?: "params" | "query" | "body";
 
   /**
    * The second hop: say that ownership is not held by the row the param
@@ -260,16 +313,18 @@ export interface OwnsOptions {
   };
 
   /**
-   * Coerce the raw string route param before querying.
+   * Coerce the raw value before querying.
    *
-   * Rarely needed: the resource lookup goes through `findById`, which already
-   * coerces the value to the primary key's declared type, so an integer key
-   * works without a `cast: Number`. Reach for it when the param needs a
-   * transformation the schema cannot express (decoding a slug, say).
+   * Rarely needed, and less so than the `string` in its old signature
+   * suggested: the guard runs after request validation, so a declared
+   * `z.integer()` param arrives already decoded to a number, and `findById`
+   * coerces whatever is left to the primary key's declared type. Reach for it
+   * when the value needs a transformation the schema cannot express (decoding
+   * a slug, say).
    *
    * The `via` membership lookup receives the same coerced value.
    */
-  cast?: (raw: string) => unknown;
+  cast?: (raw: unknown) => unknown;
 
   /**
    * Message used for both the owner and the membership denial. Keep it
