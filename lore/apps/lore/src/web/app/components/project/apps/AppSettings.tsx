@@ -28,7 +28,6 @@ import { currentSigilsAtom } from "../../../atoms/currentSigilsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import TokenReveal from "../../shared/TokenReveal.tsx";
 import AppSettingsCapabilities from "./AppSettingsCapabilities.tsx";
-import AppSettingsFeedbackPosition from "./AppSettingsFeedbackPosition.tsx";
 import AppSettingsUrl from "./AppSettingsUrl.tsx";
 
 /**
@@ -161,8 +160,6 @@ const AppSettings = () => {
       <AppSettingsUrl key={sigil.id} />
 
       <AppSettingsCapabilities />
-
-      <AppSettingsFeedbackPosition />
 
       <Card>
         <CardHeader>

@@ -829,11 +829,6 @@ export default {
   "app.settings.url.detected":
     "Using $1, the address this app last reported from. Set a URL here to show a different one, or clear the field to go back to the detected address.",
   "app.settings.url.save": "Save",
-  "app.settings.feedbackPosition.title": "Feedback button position",
-  "app.settings.feedbackPosition.description":
-    "Which corner this app's floating feedback button sits in. Move it if it covers something; pagination usually lives bottom-right.",
-  "app.settings.feedbackPosition.bottomLeft": "Bottom left",
-  "app.settings.feedbackPosition.bottomRight": "Bottom right",
   "app.settings.rotate.title": "Rotate the token",
   "app.settings.rotate.description":
     "Mints a new token and stops the current one immediately. Everything this app has reported is kept: this is how a leaked token is revoked without losing its history.",

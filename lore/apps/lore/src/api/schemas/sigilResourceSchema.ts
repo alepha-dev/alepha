@@ -7,8 +7,8 @@ import { sigils } from "../entities/sigils.ts";
  *
  * The entity minus the two fields nothing outside the server may read:
  * `tokenHash` (the credential) and `createdBy` (a raw uuid). Derived rather
- * than restated, because the copy had already drifted - `feedbackPosition` is
- * an enum on the column and was a bare `z.string()` here.
+ * than restated, because the copy had already drifted - `lastSeenHost` is
+ * capped at 253 chars on the column and was an unbounded `z.string()` here.
  *
  * Lives here rather than beside the controller because the browser reads it
  * too: `currentSigilsAtom` / `currentSigilAtom` validate against this schema on
@@ -21,6 +21,12 @@ export const sigilResourceSchema = sigils.schema.omit({
   tokenHash: true,
   // A raw uuid nothing on this surface resolves to a person.
   createdBy: true,
+  // A frozen dead column. The corner the feedback button sits in is decided
+  // by the reporting app's own `SIGIL_CONFIG.feedbackButton`, because the
+  // `/sigils/config` round trip this used to ship through was removed: a
+  // fetched config survives neither a serverless isolate nor a prerender.
+  // Nothing reads the column, so nothing should carry it.
+  feedbackPosition: true,
 });
 
 export type SigilResource = Infer<typeof sigilResourceSchema>;
