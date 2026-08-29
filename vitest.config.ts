@@ -39,7 +39,7 @@ export default defineConfig({
       }
     },
     coverage: {
-      reporter: ["cobertura", "html"],
+      reporter: ["html"],
       include: ["packages/**/src/**/*.ts", "packages/**/src/**/*.tsx"],
       exclude: [
         "apps/**",

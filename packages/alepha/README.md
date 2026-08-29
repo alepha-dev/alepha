@@ -12,7 +12,6 @@ Alepha
 <p>A full-stack TypeScript framework. One schema, everywhere.</p>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/v/alepha.svg" alt="npm version"/></a>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/l/alepha.svg" alt="license"/></a>
-<a href="https://codecov.io/gh/alepha-dev/alepha"><img src="https://codecov.io/gh/alepha-dev/alepha/graph/badge.svg?token=ZDLWI514CP" alt="coverage"/></a>
 <a href="https://www.npmjs.com/package/alepha"><img src="https://img.shields.io/npm/dt/alepha.svg" alt="downloads"/></a>
 </div>
 
