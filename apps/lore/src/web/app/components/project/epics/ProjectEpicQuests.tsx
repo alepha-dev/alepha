@@ -14,6 +14,7 @@ import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { QUEST_STATUS_TONE } from "../quest/questChips.ts";
 import EpicQuestPicker from "./EpicQuestPicker.tsx";
 
 export interface ProjectEpicQuestsProps {
@@ -120,13 +121,17 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
                   // The status is derived, not a column of the row, so the
                   // sort needs telling what to compare.
                   sortValue: (quest) => quest.metadata.status,
+                  // The same chip the quest view shows, from the same tone
+                  // table and the same catalog keys. This page used to carry
+                  // its own copy of both, which is how the epic page came to
+                  // say "Accepted" where every other surface says "In
+                  // progress".
                   cell: (quest) => (
                     <Badge
-                      variant={
-                        QUEST_STATUS_BADGE_VARIANT[quest.metadata.status]
-                      }
+                      variant="tint"
+                      tone={QUEST_STATUS_TONE[quest.metadata.status]}
                     >
-                      {tr(QUEST_STATUS_LABEL_KEYS[quest.metadata.status])}
+                      {tr(`quest.status.${quest.metadata.status}`)}
                     </Badge>
                   ),
                 },
@@ -151,28 +156,3 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
 };
 
 export default ProjectEpicQuests;
-
-type QuestStatus = QuestResource["metadata"]["status"];
-
-type QuestStatusLabelKey =
-  | "epic.quests.status.new"
-  | "epic.quests.status.accepted"
-  | "epic.quests.status.completed"
-  | "epic.quests.status.shelved";
-
-const QUEST_STATUS_LABEL_KEYS: Record<QuestStatus, QuestStatusLabelKey> = {
-  new: "epic.quests.status.new",
-  accepted: "epic.quests.status.accepted",
-  completed: "epic.quests.status.completed",
-  shelved: "epic.quests.status.shelved",
-};
-
-const QUEST_STATUS_BADGE_VARIANT: Record<
-  QuestStatus,
-  "outline" | "default" | "secondary"
-> = {
-  new: "outline",
-  accepted: "default",
-  completed: "secondary",
-  shelved: "outline",
-};
