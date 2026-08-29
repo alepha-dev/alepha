@@ -1,4 +1,4 @@
-import { $inject, z } from "alepha";
+import { $inject } from "alepha";
 import { FileAccessProvider, type FileEntity } from "alepha/api/files";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
@@ -8,13 +8,9 @@ import { feedback } from "../entities/feedback.ts";
 import { folioBlobs } from "../entities/folioBlobs.ts";
 import { projects } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
+import { attachmentLookupSchema } from "../schemas/attachmentLookupSchema.ts";
 import { FeedbackRateLimiter } from "../services/FeedbackRateLimiter.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
-
-const attachmentLookupSchema = z.object({
-  id: z.integer(),
-  projectId: z.integer(),
-});
 
 /**
  * Per-bucket file access policy for Lore.

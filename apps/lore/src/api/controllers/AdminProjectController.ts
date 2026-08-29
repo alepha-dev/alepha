@@ -11,15 +11,6 @@ import { adminProjectResourceSchema } from "../schemas/adminProjectResourceSchem
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
 
 /**
- * How long a project may go untouched before the list calls it dormant.
- *
- * Thirty days matches the retention window blights already use, so the two
- * "is this still alive" judgements in the app agree rather than each picking
- * their own number.
- */
-const ACTIVITY_WINDOW_DAYS = 30;
-
-/**
  * Instance-wide view of every project, for the admin shell.
  *
  * Lore's project endpoints are all member-scoped — `assertMember` or
@@ -35,6 +26,15 @@ const ACTIVITY_WINDOW_DAYS = 30;
  * `AdminInvitationController` and the framework's own admin controllers use.
  */
 export class AdminProjectController {
+  /**
+   * How long a project may go untouched before the list calls it dormant.
+   *
+   * Thirty days matches the retention window blights already use, so the two
+   * "is this still alive" judgements in the app agree rather than each picking
+   * their own number.
+   */
+  protected readonly ACTIVITY_WINDOW_DAYS = 30;
+
   protected readonly url = "/admin/projects";
   protected readonly group = "admin:projects";
   protected readonly projects = $repository(projects);
@@ -55,7 +55,7 @@ export class AdminProjectController {
       query: pageQuerySchema.extend({
         search: z.string().optional(),
         /**
-         * `"active"` = touched within {@link ACTIVITY_WINDOW_DAYS}; `"dormant"`
+         * `"active"` = touched within {@link AdminProjectController.ACTIVITY_WINDOW_DAYS}; `"dormant"`
          * = not touched since. Anything else, including absent, means no
          * filter — a free-form string rather than an enum so a stale value
          * from a persisted filter bar falls back to "all" instead of throwing.
@@ -81,7 +81,7 @@ export class AdminProjectController {
       if (query.activity === "active" || query.activity === "dormant") {
         const cutoff = this.dateTime
           .now()
-          .subtract(ACTIVITY_WINDOW_DAYS, "days")
+          .subtract(this.ACTIVITY_WINDOW_DAYS, "days")
           .toISOString();
         where.updatedAt =
           query.activity === "active" ? { gte: cutoff } : { lt: cutoff };

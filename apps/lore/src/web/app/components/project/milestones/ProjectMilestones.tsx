@@ -186,6 +186,8 @@ const ProjectMilestones = () => {
       .then((page) => {
         if (!cancelled) setOpenQuests(page.content);
       })
+      // A rail beside the milestone list, like the backlog sentence above:
+      // a failed fetch hides it rather than breaking the page around it.
       .catch(() => {});
     return () => {
       cancelled = true;
@@ -212,22 +214,34 @@ const ProjectMilestones = () => {
 
   const handleStart = async () => {
     if (!project) return;
-    await milestoneApi.startMilestone({
-      params: { projectId: project.id },
-      body: {
-        title: startTitle.trim() || undefined,
-        description: startDescription.trim() || undefined,
-        tags: startTags,
-      },
-    });
-    setStartOpen(false);
-    await reload();
+    try {
+      await milestoneApi.startMilestone({
+        params: { projectId: project.id },
+        body: {
+          title: startTitle.trim() || undefined,
+          description: startDescription.trim() || undefined,
+          tags: startTags,
+        },
+      });
+      setStartOpen(false);
+      await reload();
+    } catch {
+      // Dialog stays open so the typed title and notes are not lost — same
+      // reasoning as `handleSaveToFolio` below.
+      toaster.error(tr("milestone.start.error"));
+    }
   };
 
   const handleClose = async (id: number, title: string) => {
-    await milestoneApi.closeMilestone({ params: { id }, body: { title } });
-    setCloseModal(null);
-    await reload();
+    try {
+      await milestoneApi.closeMilestone({ params: { id }, body: { title } });
+      setCloseModal(null);
+      await reload();
+    } catch {
+      // Modal stays open: closing a milestone is not undoable, so a failure
+      // has to read as "it did not happen" rather than as a dismissal.
+      toaster.error(tr("milestone.close.error"));
+    }
   };
 
   const handleDelete = async (id: number) => {

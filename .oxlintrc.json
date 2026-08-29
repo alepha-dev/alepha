@@ -31,6 +31,7 @@
     "unicorn",
     "oxc",
     "react",
+    "react-hooks",
     "import",
     "promise",
     "vitest",
@@ -82,6 +83,21 @@
     // `reverse()` mutates in place; `toReversed()` is what almost every call
     // site meant.
     "unicorn/no-array-reverse": "error",
+    // A hook below a conditional `return` is legal on every render where the
+    // condition holds, and the "rendered fewer hooks than expected" crash on
+    // the first render where it does not. `ProjectView` shipped that shape:
+    // two hooks under `if (!project) return null`, which only ever ran once
+    // the project atom was filled.
+    //
+    // Named explicitly because listing `react-hooks` in `plugins` is not
+    // enough — the rule is not in any category this config turns on, so the
+    // plugin loaded and reported nothing. Verified both ways against a probe
+    // file before and after.
+    //
+    // It costs one naming rule elsewhere: a plain function called `useX` reads
+    // as a hook to this rule and to every human, so parser helpers get real
+    // verbs (`ensureParticipant`, not `useParticipant`).
+    "react-hooks/rules-of-hooks": "error",
 
     // ---------------------------------------------------------------------
     // Off, each because its premise does not hold in an Alepha app.

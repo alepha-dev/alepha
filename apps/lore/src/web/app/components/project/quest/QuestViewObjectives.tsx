@@ -1,4 +1,5 @@
 import { Checkbox } from "@alepha/ui/components/ui/checkbox";
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { SquareSlash } from "lucide-react";
@@ -17,6 +18,7 @@ const QuestViewObjectives = (props: QuestViewObjectivesProps) => {
   const { quest, onQuestUpdate } = props;
   const questApi = useClient<QuestController>();
   const { tr } = useI18n<I18n, "en">();
+  const toaster = useToast();
   const [assignedQuests, setCurrentAssignedQuests] = useStore(
     currentAssignedQuestsAtom,
   );
@@ -33,8 +35,11 @@ const QuestViewObjectives = (props: QuestViewObjectivesProps) => {
           t.id === updatedQuest.id ? updatedQuest : t,
         ),
       );
-    } catch (error) {
-      console.error("Failed to update objective:", error);
+    } catch {
+      // The checkbox is driven by `quest.objectives`, which this never got to
+      // replace, so the box is already back where it was. What was missing is
+      // any sign that it moved back on purpose.
+      toaster.error(tr("quest.objective.error"));
     }
   };
 

@@ -18,12 +18,15 @@ import { FolioNameService } from "./FolioNameService.ts";
  * Cycle handling: a directory's parent chain can't loop. We walk up
  * from the proposed parent and refuse if we ever land back on the
  * directory being moved. The chain bounds itself at the recorded
- * depth (`MAX_DEPTH`) — beyond that, the move is also refused so the
+ * depth (`this.MAX_DEPTH`) — beyond that, the move is also refused so the
  * tree stays browseable.
  */
-const MAX_DEPTH = 8;
-
 export class FolioDirectoryService {
+  /**
+   * Deepest directory nesting the tree accepts, which is also what bounds
+   * the parent-chain walk that detects cycles.
+   */
+  protected readonly MAX_DEPTH = 8;
   protected readonly directories = $repository(folioDirectories);
   protected readonly folios = $repository(folios);
   protected readonly names = $inject(FolioNameService);
@@ -72,9 +75,9 @@ export class FolioDirectoryService {
         throw new BadRequestError("Parent directory not found in this project");
       }
       const depth = await this.depthOf(parent.id);
-      if (depth + 1 >= MAX_DEPTH) {
+      if (depth + 1 >= this.MAX_DEPTH) {
         throw new BadRequestError(
-          `Directory nesting exceeds the limit (${MAX_DEPTH} levels)`,
+          `Directory nesting exceeds the limit (${this.MAX_DEPTH} levels)`,
         );
       }
     }
@@ -140,9 +143,9 @@ export class FolioDirectoryService {
         if (!node?.parentId) break;
         cursor = node.parentId;
       }
-      if (depth >= MAX_DEPTH) {
+      if (depth >= this.MAX_DEPTH) {
         throw new BadRequestError(
-          `Directory nesting exceeds the limit (${MAX_DEPTH} levels)`,
+          `Directory nesting exceeds the limit (${this.MAX_DEPTH} levels)`,
         );
       }
     }

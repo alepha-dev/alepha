@@ -34,10 +34,17 @@ const ProjectMilestonesDetail = (props: ProjectMilestonesDetailProps) => {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const result = await api.getMilestoneChangelog({
-        params: { id: props.milestone.id },
-      });
-      if (!cancelled) setMarkdown(result.markdown);
+      try {
+        const result = await api.getMilestoneChangelog({
+          params: { id: props.milestone.id },
+        });
+        if (!cancelled) setMarkdown(result.markdown);
+      } catch {
+        // `markdown` stays empty, which is what the Copy and Download
+        // controls key off — without this the rejection was unhandled and
+        // both stayed live over nothing.
+        if (!cancelled) toaster.error(tr("milestone.changelog.error"));
+      }
     })();
     return () => {
       cancelled = true;
@@ -58,14 +65,24 @@ const ProjectMilestonesDetail = (props: ProjectMilestonesDetailProps) => {
       });
       props.onUpdated(updated);
       toaster.success(tr("milestone.detail.saved"));
+    } catch {
+      // The fields keep what was typed: the save failed, so the form is
+      // still the unsaved truth and `dirty` must stay true.
+      toaster.error(tr("milestone.detail.error"));
     } finally {
       setSaving(false);
     }
   };
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(markdown);
-    toaster.success(tr("milestone.changelog.copied"));
+    try {
+      await navigator.clipboard.writeText(markdown);
+      toaster.success(tr("milestone.changelog.copied"));
+    } catch {
+      // The clipboard rejects on a page without focus or permission, and the
+      // "copied" toast was firing regardless.
+      toaster.error(tr("milestone.changelog.copyError"));
+    }
   };
 
   const handleDownload = () => {

@@ -11,12 +11,14 @@ import {
 import { Textarea } from "@alepha/ui/components/ui/textarea";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useStore } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { currentUserAtom } from "alepha/security";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { MyFeedbackResource } from "@/api/schemas/myFeedbackResourceSchema.ts";
+import type { I18n } from "@/web/app/services/I18n.ts";
 
 import FeedbackThread from "../../project/feedback/FeedbackThread.tsx";
 import QuestTagInput from "../../project/quest/QuestTagInput.tsx";
@@ -39,6 +41,7 @@ export interface MyFeedbackEditSheetProps {
 const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
   const feedbackApi = useClient<FeedbackController>();
   const toaster = useToast();
+  const { tr } = useI18n<I18n, "en">();
   const [currentUser] = useStore(currentUserAtom);
 
   const [title, setTitle] = useState("");
@@ -67,7 +70,7 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
     const trimmedTitle = title.trim();
     const trimmedDescription = description.trim();
     if (!trimmedTitle || !trimmedDescription) {
-      toaster.error("Title and description are required.");
+      toaster.error(String(tr("myFeedback.edit.required")));
       return;
     }
     setSaving(true);
@@ -76,10 +79,10 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
         params: { feedbackId: props.feedback.id },
         body: { title: trimmedTitle, description: trimmedDescription, tags },
       });
-      toaster.success("Feedback updated.");
+      toaster.success(String(tr("myFeedback.edit.saved")));
       props.onSaved();
     } catch (error: any) {
-      toaster.error(error?.message ?? "Failed to update feedback.");
+      toaster.error(error?.message ?? String(tr("myFeedback.edit.error")));
     } finally {
       setSaving(false);
     }
@@ -95,25 +98,29 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
         className="flex w-full flex-col gap-4 data-[side=right]:sm:max-w-2xl"
       >
         <SheetHeader>
-          <SheetTitle>{readOnly ? "Feedback" : "Edit feedback"}</SheetTitle>
+          <SheetTitle>
+            {readOnly
+              ? tr("myFeedback.edit.title.readOnly")
+              : tr("myFeedback.edit.title")}
+          </SheetTitle>
           <SheetDescription>
             {readOnly
-              ? "This feedback has already been triaged and can no longer be edited."
-              : "You can edit feedback only while it is still pending."}
+              ? tr("myFeedback.edit.hint.readOnly")
+              : tr("myFeedback.edit.hint")}
           </SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4">
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium" htmlFor="feedback-title">
-              Title
+              {tr("myFeedback.column.title")}
             </label>
             <Input
               id="feedback-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={200}
-              placeholder="Short summary"
+              placeholder={String(tr("myFeedback.edit.title.placeholder"))}
               disabled={disabled}
             />
           </div>
@@ -123,7 +130,7 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
               className="text-sm font-medium"
               htmlFor="feedback-description"
             >
-              Description
+              {tr("myFeedback.edit.description")}
             </label>
             <Textarea
               id="feedback-description"
@@ -131,13 +138,17 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
               onChange={(e) => setDescription(e.target.value)}
               rows={8}
               maxLength={10000}
-              placeholder="Describe your request"
+              placeholder={String(
+                tr("myFeedback.edit.description.placeholder"),
+              )}
               disabled={disabled}
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Tags</span>
+            <span className="text-sm font-medium">
+              {tr("myFeedback.column.tags")}
+            </span>
             <QuestTagInput
               value={tags}
               onChange={setTags}
@@ -162,12 +173,12 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
 
         <SheetFooter>
           <Button variant="outline" onClick={props.onClose} disabled={saving}>
-            {readOnly ? "Close" : "Cancel"}
+            {readOnly ? tr("common.close") : tr("common.cancel")}
           </Button>
           {!readOnly && (
             <Button onClick={save} disabled={saving}>
               {saving && <Loader2 className="size-4 animate-spin" />}
-              Save
+              {tr("common.save")}
             </Button>
           )}
         </SheetFooter>

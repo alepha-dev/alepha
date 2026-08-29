@@ -14,6 +14,8 @@ import { folioDirectories } from "../entities/folioDirectories.ts";
 import { buildFolioSearchText, folios } from "../entities/folios.ts";
 import { projects } from "../entities/projects.ts";
 import { relations } from "../relations.ts";
+import { folioIdParamsSchema } from "../schemas/folioIdParamsSchema.ts";
+import { folioListQuerySchema } from "../schemas/folioListQuerySchema.ts";
 import {
   folioLinksSchema,
   folioResourceSchema,
@@ -21,16 +23,11 @@ import {
 import type { LinkSourceKind } from "../schemas/linkSourceKindSchema.ts";
 import type { LinkTargetKind } from "../schemas/linkTargetKindSchema.ts";
 import { FolioBlobService } from "../services/FolioBlobService.ts";
-import {
-  decideRevisionAction,
-  FolioHistoryService,
-} from "../services/FolioHistoryService.ts";
+import { FolioHistoryService } from "../services/FolioHistoryService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
 import { FolioNameService } from "../services/FolioNameService.ts";
 import { FolioRevisionStatsService } from "../services/FolioRevisionStatsService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
-
-const idParamsSchema = z.object({ id: z.uuid() });
 
 /**
  * The columns of `folio_directories` any ancestor walk needs — the tree
@@ -48,21 +45,6 @@ type DirectoryRow = {
  * `FolioController.directoryMapLoader`.
  */
 type DirectoryMapLoader = () => Promise<Map<string, DirectoryRow>>;
-
-const folioListQuerySchema = z.object({
-  limit: z.integer().min(1).max(100).default(50).optional(),
-  offset: z.integer().min(0).default(0).optional(),
-  q: z.string().optional(),
-  projectId: z.integer(),
-  /**
-   * Narrow to the folios attached to one epic. Added for the Epic detail
-   * page (`ProjectEpicFolios.tsx`) — filtering server-side means an epic
-   * with an attached folio outside the page's own `limit` window never
-   * silently drops it, the way a client-side filter over a capped,
-   * unrelated-order page would.
-   */
-  epicId: z.integer().optional(),
-});
 
 export class FolioController {
   folios = $repository(folios);
@@ -253,7 +235,7 @@ export class FolioController {
     use: [$secure({ permissions: ["folio:read"] })],
     description: "Get a single folio by id.",
     schema: {
-      params: idParamsSchema,
+      params: folioIdParamsSchema,
       response: folios.schema,
     },
     handler: async ({ params, user }) => {
@@ -276,7 +258,7 @@ export class FolioController {
     use: [$secure({ permissions: ["folio:read"] })],
     description: "Get wiki-link outbound + inbound refs for a folio.",
     schema: {
-      params: idParamsSchema,
+      params: folioIdParamsSchema,
       response: folioLinksSchema,
     },
     handler: async ({ params, user }) => {
@@ -657,7 +639,7 @@ export class FolioController {
     use: [$secure({ permissions: ["folio:write"] }), $transactional()],
     description: "Update a folio.",
     schema: {
-      params: idParamsSchema,
+      params: folioIdParamsSchema,
       body: z.object({
         title: z.string().min(1).max(200).optional(),
         content: z.string().optional(),
@@ -835,7 +817,7 @@ export class FolioController {
       // Write a revision row when the change touched anything we record
       // (content / title / summary). Pin-only or parent-reparent-only
       // updates skip the revision — they're not edits in the spec's sense.
-      const action = decideRevisionAction(
+      const action = this.historyService.decideRevisionAction(
         {
           title: existing.title,
           content: existing.content,
@@ -854,7 +836,7 @@ export class FolioController {
     use: [$secure({ permissions: ["folio:write"] })],
     description: "Delete a folio.",
     schema: {
-      params: idParamsSchema,
+      params: folioIdParamsSchema,
       response: okSchema,
     },
     handler: async ({ params, user }) => {
@@ -1026,7 +1008,7 @@ export class FolioController {
     path: "/folios/:id/history",
     description: "List the revision history of a folio (newest first).",
     schema: {
-      params: idParamsSchema,
+      params: folioIdParamsSchema,
       /*
        * `folioRevisions.schema` plus the author and the per-revision
        * numbers the History tab renders.

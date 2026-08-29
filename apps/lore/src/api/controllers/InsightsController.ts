@@ -38,134 +38,6 @@ import { summariseVitals } from "../vitalsPercentile.ts";
 export type { InsightsResource };
 
 /**
- * Lookback windows the Insights page offers, in whole UTC days.
- */
-const RANGE_DAYS: Record<string, number> = {
-  "1d": 1,
-  "7d": 7,
-  "30d": 30,
-};
-
-/**
- * How many rows the top-countries / top-paths leaderboards return.
- */
-const TOP_N = 10;
-
-/**
- * How many error groups the budget section returns.
- *
- * Wider than the leaderboards on purpose: an error budget you have to paginate
- * is one nobody reads to the bottom, and the tail is where a new regression
- * shows up before it is anyone's top ten.
- */
-const TOP_ERROR_GROUPS = 20;
-
-/**
- * The `sigil_views` dimensions a request may narrow by.
- *
- * `sigilId` is not one of them: it is proved against the project's own set
- * before it filters anything, which is a membership check rather than a
- * dimension filter, and it must not be reachable through the same loop.
- */
-const VIEW_FILTER_KEYS = [
-  "path",
-  "country",
-  "referrer",
-  "campaign",
-  "device",
-] as const;
-
-/**
- * How each expandable leaderboard is asked for: which dimension it groups by,
- * and which measure it is ranked and shared out by.
- *
- * `entryPath` is not a dimension - it groups by `path` like `path` does, and
- * differs only in the measure. That distinction is the whole reason it exists:
- * `count` sums every view of a path, so `/` conflates arriving at the site
- * with clicking Home, while `entries` is only ever incremented by a page load.
- * `campaign` is summed on `entries` for the neighbouring reason - a campaign
- * describes how a visit began, so counting the visitor's later navigations
- * against it would reward tagged links for how much the visitor happened to
- * read.
- */
-const DIMENSION_PLAN: Record<
-  InsightsDimensionResource["dimension"],
-  { groupBy: string; measure: InsightsDimensionResource["measure"] }
-> = {
-  country: { groupBy: "country", measure: "count" },
-  path: { groupBy: "path", measure: "count" },
-  entryPath: { groupBy: "path", measure: "entries" },
-  campaign: { groupBy: "campaign", measure: "entries" },
-  device: { groupBy: "device", measure: "count" },
-  referrer: { groupBy: "referrer", measure: "count" },
-};
-
-/**
- * How deep a single-dimension listing may be paged.
- *
- * The analytics seam has no `offset`, so a page is served by asking for
- * `offset + limit + 1` rows and dropping the head - which means the depth is
- * the query's real cost, not the page size. A cap keeps a hand-written
- * `?offset=100000` from turning a leaderboard into a scan of the window.
- *
- * Deliberately generous against real data: the widest leaderboard here is
- * countries, at roughly 200 distinct values.
- */
-const MAX_DIMENSION_DEPTH = 500;
-
-/**
- * Rows per page of a single-dimension listing, when the caller does not say.
- */
-const DIMENSION_PAGE = 50;
-
-/**
- * How many paths the per-path vitals table ranks, and how many it returns.
- *
- * Two numbers because the ranking key is not the query's ordering key. The
- * dataset can order by sample count; it cannot order by "share of samples in a
- * poor bucket", which has to be computed from the histograms. So the widest
- * `CANDIDATES` paths by volume are pulled, ranked here, and the worst
- * `VITALS_PATH_ROWS` returned.
- *
- * ⚠️ The consequence is real and worth stating: a low-volume path with a
- * terrible tail is invisible if it falls outside the busiest 50. That is the
- * same direction as the sample floor - a route nobody visits is not the
- * problem page - but it is a limit, not a property.
- */
-const VITALS_PATH_CANDIDATES = 50;
-const VITALS_PATH_ROWS = 20;
-
-/**
- * Below this many samples a path's reading is a hint, not a measurement.
- *
- * The same floor `AppVitalsCard` applies to a metric, for the same reason: a
- * path with three samples will happily claim to be the worst on the site.
- * Applied to the ranking rather than to the list, so such a row is ranked last
- * and marked rather than hidden - "not enough data about this page" is a real
- * answer.
- */
-const VITALS_PATH_MIN_SAMPLES = 30;
-
-/**
- * Every `traffic` value that counts as a person.
- *
- * Two of them, and the second one is the whole reason this is a set. A row
- * written before the `traffic` dimension existed carries `""` - a default fills
- * a column on write, it does not rewrite rows already stored - and the filter
- * has to decide what those legacy rows are. They are people: the dimension is
- * an addition to what is recorded, not a reclassification of what was, and
- * dropping every view older than the deploy out of the humans view would look
- * exactly like the traffic collapsing on that date.
- *
- * A `notInArray` on `bot` would say the same thing in one term, and
- * `AnalyticsFilter` deliberately has no negation: equality and set membership
- * only, on both backends. Enumerating the positive side is the shape that seam
- * accepts, and it fails loudly if a third value is ever introduced without
- * being classified here - which is the better failure.
- */
-const HUMAN_TRAFFIC = ["human", ""];
-
-/**
  * The reading surface for what `SigilIngestService` writes.
  *
  * Every row is scoped to a sigil, and every sigil to a project, so each query
@@ -195,6 +67,134 @@ const HUMAN_TRAFFIC = ["human", ""];
  * linked from the project nav every member sees.
  */
 export class InsightsController {
+  /**
+   * Lookback windows the Insights page offers, in whole UTC days.
+   */
+  protected readonly RANGE_DAYS: Record<string, number> = {
+    "1d": 1,
+    "7d": 7,
+    "30d": 30,
+  };
+
+  /**
+   * How many rows the top-countries / top-paths leaderboards return.
+   */
+  protected readonly TOP_N = 10;
+
+  /**
+   * How many error groups the budget section returns.
+   *
+   * Wider than the leaderboards on purpose: an error budget you have to paginate
+   * is one nobody reads to the bottom, and the tail is where a new regression
+   * shows up before it is anyone's top ten.
+   */
+  protected readonly TOP_ERROR_GROUPS = 20;
+
+  /**
+   * Every `traffic` value that counts as a person.
+   *
+   * Two of them, and the second one is the whole reason this is a set. A row
+   * written before the `traffic` dimension existed carries `""` - a default fills
+   * a column on write, it does not rewrite rows already stored - and the filter
+   * has to decide what those legacy rows are. They are people: the dimension is
+   * an addition to what is recorded, not a reclassification of what was, and
+   * dropping every view older than the deploy out of the humans view would look
+   * exactly like the traffic collapsing on that date.
+   *
+   * A `notInArray` on `bot` would say the same thing in one term, and
+   * `AnalyticsFilter` deliberately has no negation: equality and set membership
+   * only, on both backends. Enumerating the positive side is the shape that seam
+   * accepts, and it fails loudly if a third value is ever introduced without
+   * being classified here - which is the better failure.
+   */
+  protected readonly HUMAN_TRAFFIC = ["human", ""];
+
+  /**
+   * The `sigil_views` dimensions a request may narrow by.
+   *
+   * `sigilId` is not one of them: it is proved against the project's own set
+   * before it filters anything, which is a membership check rather than a
+   * dimension filter, and it must not be reachable through the same loop.
+   */
+  protected readonly VIEW_FILTER_KEYS = [
+    "path",
+    "country",
+    "referrer",
+    "campaign",
+    "device",
+  ] as const;
+
+  /**
+   * How each expandable leaderboard is asked for: which dimension it groups by,
+   * and which measure it is ranked and shared out by.
+   *
+   * `entryPath` is not a dimension - it groups by `path` like `path` does, and
+   * differs only in the measure. That distinction is the whole reason it
+   * exists: `count` sums every view of a path, so `/` conflates arriving at the
+   * site with clicking Home, while `entries` is only ever incremented by a page
+   * load. `campaign` is summed on `entries` for the neighbouring reason - a
+   * campaign describes how a visit began, so counting the visitor's later
+   * navigations against it would reward tagged links for how much the visitor
+   * happened to read.
+   */
+  protected readonly DIMENSION_PLAN: Record<
+    InsightsDimensionResource["dimension"],
+    { groupBy: string; measure: InsightsDimensionResource["measure"] }
+  > = {
+    country: { groupBy: "country", measure: "count" },
+    path: { groupBy: "path", measure: "count" },
+    entryPath: { groupBy: "path", measure: "entries" },
+    campaign: { groupBy: "campaign", measure: "entries" },
+    device: { groupBy: "device", measure: "count" },
+    referrer: { groupBy: "referrer", measure: "count" },
+  };
+
+  /**
+   * How deep a single-dimension listing may be paged.
+   *
+   * The analytics seam has no `offset`, so a page is served by asking for
+   * `offset + limit + 1` rows and dropping the head - which means the depth is
+   * the query's real cost, not the page size. A cap keeps a hand-written
+   * `?offset=100000` from turning a leaderboard into a scan of the window.
+   *
+   * Deliberately generous against real data: the widest leaderboard here is
+   * countries, at roughly 200 distinct values.
+   */
+  protected readonly MAX_DIMENSION_DEPTH = 500;
+
+  /**
+   * Rows per page of a single-dimension listing, when the caller does not say.
+   */
+  protected readonly DIMENSION_PAGE = 50;
+
+  /**
+   * How many paths the per-path vitals table ranks, and how many it returns.
+   *
+   * Two numbers because the ranking key is not the query's ordering key. The
+   * dataset can order by sample count; it cannot order by "share of samples in
+   * a poor bucket", which has to be computed from the histograms. So the widest
+   * `CANDIDATES` paths by volume are pulled, ranked here, and the worst
+   * `ROWS` returned.
+   *
+   * ⚠️ The consequence is real and worth stating: a low-volume path with a
+   * terrible tail is invisible if it falls outside the busiest 50. That is the
+   * same direction as the sample floor - a route nobody visits is not the
+   * problem page - but it is a limit, not a property.
+   */
+  protected readonly VITALS_PATH_CANDIDATES = 50;
+  protected readonly VITALS_PATH_ROWS = 20;
+
+  /**
+   * Below this many samples a path's reading is a hint, not a measurement.
+   *
+   * The same floor `AppVitalsCard` applies to a metric, for the same reason: a
+   * path with three samples will happily claim to be the worst on the site.
+   * Applied to the ranking rather than to the list, so such a row is ranked
+   * last and marked rather than hidden - "not enough data about this page" is a
+   * real answer.
+   */
+  protected readonly VITALS_PATH_MIN_SAMPLES = 30;
+
   protected analytics = $inject(LoreAnalyticsStore);
   protected datasets = $inject(LoreAnalytics);
   protected security = $inject(ProjectSecurityService);
@@ -409,7 +409,7 @@ export class InsightsController {
           groupBy: ["country"],
           select: { count: "sum" },
           orderBy: { key: "count", direction: "desc" },
-          limit: TOP_N,
+          limit: this.TOP_N,
         }),
         this.datasets.views.query({
           since,
@@ -418,7 +418,7 @@ export class InsightsController {
           groupBy: ["path"],
           select: { count: "sum" },
           orderBy: { key: "count", direction: "desc" },
-          limit: TOP_N,
+          limit: this.TOP_N,
         }),
         // Landing pages, which `topPaths` cannot answer: that one sums every
         // view of a path, so `/` conflates arriving at the site with clicking
@@ -430,7 +430,7 @@ export class InsightsController {
           groupBy: ["path"],
           select: { entries: "sum" },
           orderBy: { key: "entries", direction: "desc" },
-          limit: TOP_N,
+          limit: this.TOP_N,
         }),
         // Summed on `entries`, not `count`: a campaign describes how a visit
         // began, so counting the visitor's later navigations against it would
@@ -442,7 +442,7 @@ export class InsightsController {
           groupBy: ["campaign"],
           select: { entries: "sum" },
           orderBy: { key: "entries", direction: "desc" },
-          limit: TOP_N,
+          limit: this.TOP_N,
         }),
         this.datasets.views.query({
           since,
@@ -451,7 +451,7 @@ export class InsightsController {
           groupBy: ["device"],
           select: { count: "sum" },
           orderBy: { key: "count", direction: "desc" },
-          limit: TOP_N,
+          limit: this.TOP_N,
         }),
         // `direct` is not excluded here even though it is never the answer
         // anyone is looking for. It is the denominator: without it on the
@@ -466,7 +466,7 @@ export class InsightsController {
           groupBy: ["referrer"],
           select: { count: "sum" },
           orderBy: { key: "count", direction: "desc" },
-          limit: TOP_N,
+          limit: this.TOP_N,
         }),
         this.datasets.views.query({
           since,
@@ -642,10 +642,10 @@ export class InsightsController {
     }): Promise<InsightsDimensionResource> => {
       await this.security.assertMember(params.projectId, user);
 
-      const plan = DIMENSION_PLAN[params.dimension];
+      const plan = this.DIMENSION_PLAN[params.dimension];
       const range = query.range ?? "7d";
       const traffic = query.traffic ?? "all";
-      const limit = query.limit ?? DIMENSION_PAGE;
+      const limit = query.limit ?? this.DIMENSION_PAGE;
       const offset = query.offset ?? 0;
       const direction = query.direction ?? "desc";
       const { since, until } = this.resolveWindow(range, query.until);
@@ -682,7 +682,7 @@ export class InsightsController {
       // for page 200 of a 200-value leaderboard has a bug, and answering it
       // with page 10 would hide the bug behind plausible data.
       const depth = offset + limit + 1;
-      if (depth > MAX_DIMENSION_DEPTH) {
+      if (depth > this.MAX_DIMENSION_DEPTH) {
         throw new NotFoundError("Page is past the end of this leaderboard");
       }
 
@@ -781,7 +781,7 @@ export class InsightsController {
         since,
         until,
         boundaries,
-        minSamples: VITALS_PATH_MIN_SAMPLES,
+        minSamples: this.VITALS_PATH_MIN_SAMPLES,
         rows: [],
         hasMore: false,
         estimated: false,
@@ -806,10 +806,10 @@ export class InsightsController {
         groupBy: ["path"],
         select: { samples: "sum" },
         orderBy: { key: "samples", direction: "desc" },
-        limit: VITALS_PATH_CANDIDATES + 1,
+        limit: this.VITALS_PATH_CANDIDATES + 1,
       });
       const paths = busiest.rows
-        .slice(0, VITALS_PATH_CANDIDATES)
+        .slice(0, this.VITALS_PATH_CANDIDATES)
         .map((row) => String(row.path));
       if (paths.length === 0) {
         return empty;
@@ -854,7 +854,7 @@ export class InsightsController {
           path,
           samples,
           tailShare: samples > 0 ? Math.round((poor / samples) * 100) : 0,
-          confident: samples >= VITALS_PATH_MIN_SAMPLES,
+          confident: samples >= this.VITALS_PATH_MIN_SAMPLES,
           metrics,
         };
       });
@@ -869,10 +869,10 @@ export class InsightsController {
 
       return {
         ...empty,
-        rows: rows.slice(0, VITALS_PATH_ROWS),
+        rows: rows.slice(0, this.VITALS_PATH_ROWS),
         hasMore:
-          rows.length > VITALS_PATH_ROWS ||
-          busiest.rows.length > VITALS_PATH_CANDIDATES,
+          rows.length > this.VITALS_PATH_ROWS ||
+          busiest.rows.length > this.VITALS_PATH_CANDIDATES,
         estimated: histograms.estimated,
         sampleInterval: histograms.sampleInterval,
       };
@@ -945,7 +945,7 @@ export class InsightsController {
         lastSeenAt: { gte: since, lte: `${until}~` },
       },
       orderBy: [{ column: "count", direction: "desc" }],
-      limit: TOP_ERROR_GROUPS,
+      limit: this.TOP_ERROR_GROUPS,
     });
 
     return rows.map((row) => ({
@@ -994,7 +994,7 @@ export class InsightsController {
    * `path` and `country` are absent on purpose: neither has a default, so
    * neither has legacy rows to rescue.
    */
-  protected static readonly VIEW_FILTER_DEFAULTS: Record<string, string> = {
+  protected readonly VIEW_FILTER_DEFAULTS: Record<string, string> = {
     referrer: "direct",
     campaign: "none",
     device: "desktop",
@@ -1022,7 +1022,7 @@ export class InsightsController {
     until: string;
     previousWindow: { since: string; until: string };
   } {
-    const days = RANGE_DAYS[range] ?? 7;
+    const days = this.RANGE_DAYS[range] ?? 7;
     const anchor = new Date(this.dateTime.nowMillis());
     if (until === "lastCompleteDay") {
       anchor.setUTCDate(anchor.getUTCDate() - 1);
@@ -1061,12 +1061,12 @@ export class InsightsController {
     device?: string;
   }): AnalyticsFilter {
     const out: AnalyticsFilter = {};
-    for (const name of VIEW_FILTER_KEYS) {
+    for (const name of this.VIEW_FILTER_KEYS) {
       const value = query[name];
       if (value === undefined || value === "") {
         continue;
       }
-      const fallback = InsightsController.VIEW_FILTER_DEFAULTS[name];
+      const fallback = this.VIEW_FILTER_DEFAULTS[name];
       out[name] =
         fallback !== undefined && value === fallback
           ? { inArray: [value, ""] }
@@ -1117,7 +1117,7 @@ export class InsightsController {
       return { traffic: "bot" };
     }
     if (traffic === "humans") {
-      return { traffic: { inArray: HUMAN_TRAFFIC } };
+      return { traffic: { inArray: this.HUMAN_TRAFFIC } };
     }
     return {};
   }

@@ -18,7 +18,6 @@ import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
 
 import type { AppRouter } from "../../../AppRouter.ts";
-import { currentFolioAtom } from "../../../atoms/currentFolioAtom.ts";
 import { currentFolioBlobsAtom } from "../../../atoms/currentFolioBlobsAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { userFoliosAtom } from "../../../atoms/userFoliosAtom.ts";
@@ -181,8 +180,7 @@ export interface UseFolioActionsResult {
  * id) on every folio-to-folio navigation — but NOT on an in-place mutation
  * of the SAME folio, like this hook's own `folio.encrypt` or `folio.pin`
  * actions. `props.folio` is a route-loader prop, fixed for the life of this
- * mount; it does not refresh just because `alepha.store.set(currentFolioAtom,
- * ...)` ran. If `isProtected` were computed as `!!props.folio?.protected`
+ * mount; nothing this hook writes refreshes it. If `isProtected` were computed as `!!props.folio?.protected`
  * on every render (as the brief's own `save()` snippet does), then the
  * FIRST save issued right after an in-session Encrypt would read the STALE
  * `false` and send `protected: false` with the live plaintext draft — which
@@ -407,7 +405,6 @@ export const useFolioActions = (
    */
   const applyReverted = async (reverted: Folio): Promise<void> => {
     const syncAtoms = (): void => {
-      alepha.store.set(currentFolioAtom, reverted);
       setFolios(folios.map((f) => (f.id === reverted.id ? reverted : f)));
       // In BOTH branches, including the locked one that cannot decrypt: a
       // later `unlock()` must decrypt what the server now holds. Without
@@ -603,8 +600,6 @@ export const useFolioActions = (
             directoryId: input.directoryId,
           },
         });
-
-    alepha.store.set(currentFolioAtom, saved as Folio);
     // What the server now holds, so a later unlock decrypts THIS envelope
     // rather than the route-loader snapshot.
     currentContent.current = contentToSend;
@@ -640,7 +635,6 @@ export const useFolioActions = (
             content: latest.content,
           },
         });
-        alepha.store.set(currentFolioAtom, caughtUp as Folio);
         nextFolios = nextFolios.map((f) =>
           f.id === caughtUp.id ? (caughtUp as Folio) : f,
         );
@@ -732,7 +726,6 @@ export const useFolioActions = (
           rememberProtectedKey(created.id, keyForDuplicate);
           ensureProtectedKeysAutoLock();
         }
-        alepha.store.set(currentFolioAtom, created as Folio);
         setFolios([created as Folio, ...folios]);
         await router.push(
           router.path("projectFoliosFolio", {
@@ -773,7 +766,6 @@ export const useFolioActions = (
           body: { pinned: next },
         });
         setIsPinned(next);
-        alepha.store.set(currentFolioAtom, updated as Folio);
         setFolios(
           folios.map((f) => (f.id === updated.id ? { ...f, ...updated } : f)),
         );
@@ -794,7 +786,6 @@ export const useFolioActions = (
         // id: a 404 toast after a successful delete.
         input.draft.markSaved(folio.updatedAt, input.draft.getLiveValues());
         setFolios(folios.filter((f) => f.id !== folio.id));
-        alepha.store.set(currentFolioAtom, undefined);
         await router.push(
           router.path("projectFolios", { params: { projectSlug } }),
         );
@@ -839,7 +830,6 @@ export const useFolioActions = (
         setUnlocked(true);
         currentContent.current = values.content;
         setProtectedSalt(undefined);
-        alepha.store.set(currentFolioAtom, updated as Folio);
         setFolios(
           folios.map((f) => (f.id === updated.id ? (updated as Folio) : f)),
         );
@@ -903,7 +893,6 @@ export const useFolioActions = (
           setUnlocked(true);
           setProtectedSalt(saltHex);
           currentContent.current = envelope;
-          alepha.store.set(currentFolioAtom, updated as Folio);
           setFolios(
             folios.map((f) => (f.id === updated.id ? (updated as Folio) : f)),
           );
@@ -949,7 +938,6 @@ export const useFolioActions = (
           params: { id: folio.id },
           body: { directoryId },
         });
-        alepha.store.set(currentFolioAtom, updated as Folio);
         setFolios(
           folios.map((f) => (f.id === updated.id ? (updated as Folio) : f)),
         );

@@ -4,12 +4,14 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@alepha/ui/components/ui/hover-card";
+import { useI18n } from "alepha/react/i18n";
 import { Crown, User as UserIcon } from "lucide-react";
 
 import type { Member } from "@/api/entities/members.ts";
 import type { User } from "@/api/entities/users.ts";
 import { displayName } from "@/web/app/services/displayName.ts";
 import { publicFileUrl } from "@/web/app/services/fileUrl.ts";
+import type { I18n } from "@/web/app/services/I18n.ts";
 
 export type MemberWithUser = Member & { user: User };
 
@@ -42,8 +44,10 @@ export interface MemberIdentityProps {
 export const MemberIdentity = (props: MemberIdentityProps) => {
   const { member, variant = "compact" } = props;
 
+  const { tr } = useI18n<I18n, "en">();
+
   const src = memberPictureSrc(member);
-  const name = displayName(member.user, "") || "Unknown";
+  const name = displayName(member.user, "") || String(tr("members.unknown"));
 
   return (
     <HoverCard>
@@ -69,7 +73,7 @@ export const MemberIdentity = (props: MemberIdentityProps) => {
               {member.owner && (
                 <Badge variant="secondary" className="gap-1 py-0">
                   <Crown className="size-3" />
-                  Owner
+                  {tr("members.owner")}
                 </Badge>
               )}
             </div>

@@ -62,6 +62,7 @@ export * from "./schemas/deleteMyAccountBodySchema.ts";
 export * from "./schemas/identityQuerySchema.ts";
 export * from "./schemas/identityResourceSchema.ts";
 export * from "./schemas/myConnectionSchema.ts";
+export * from "./schemas/mySessionSchema.ts";
 export * from "./schemas/myIdentitySchema.ts";
 export * from "./schemas/myMfaStatusSchema.ts";
 export * from "./schemas/myProfileSchema.ts";

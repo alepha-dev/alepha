@@ -227,6 +227,22 @@ export class CryptoProvider {
     return String(code).padStart(length, "0");
   }
 
+  /**
+   * A uniformly-distributed integer in `[0, maxExclusive)`.
+   *
+   * The substitutable stand-in for `Math.random()`: an application picking
+   * from a list injects this provider and a test substitutes it, which a
+   * bare `Math.random()` call can never allow.
+   */
+  public randomInt(maxExclusive: number): number {
+    if (!Number.isInteger(maxExclusive) || maxExclusive < 1) {
+      throw new AlephaError(
+        `randomInt needs a positive integer bound, got ${maxExclusive}`,
+      );
+    }
+    return randomInt(maxExclusive);
+  }
+
   protected scryptAsync(
     password: string,
     salt: string,

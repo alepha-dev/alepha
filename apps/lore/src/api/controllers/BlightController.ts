@@ -1,4 +1,4 @@
-import { $inject, type Infer, z } from "alepha";
+import { $inject, z } from "alepha";
 import { $repository, $transactional } from "alepha/orm";
 import { $secure } from "alepha/security";
 import {
@@ -15,70 +15,18 @@ import {
   QUEST_STATUS_PREFIX,
 } from "../entities/blights.ts";
 import { sigils } from "../entities/sigils.ts";
+import {
+  type BlightResource,
+  blightResourceSchema,
+} from "../schemas/blightResourceSchema.ts";
+import {
+  type BlightRuleResource,
+  blightRuleResourceSchema,
+} from "../schemas/blightRuleResourceSchema.ts";
+import { blightSigilSchema } from "../schemas/blightSigilSchema.ts";
 import { BlightRuleService } from "../services/BlightRuleService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { QuestService } from "../services/QuestService.ts";
-
-/**
- * Area every blight-forwarded quest is filed under — predictable triage.
- */
-const BLIGHT_AREA = "Blights";
-
-/**
- * A blight row as exposed to the project owner's Blights inbox. Mirrors
- * the entity 1:1 — every field is included, but the UI must render
- * `name`, `message`, `stack` and `sourceUrl` as escaped plain text only
- * (attacker-controlled — see folio #12 + the entity-level note).
- */
-const blightResourceSchema = z.object({
-  id: z.integer(),
-  /**
-   * Which app reported it last.
-   *
-   * A blight is one row per project and per fingerprint, so a bug present in
-   * two enrolled apps is one triage decision; this names the sigil
-   * that most recently saw it, which is what the inbox's filter means. The
-   * per-app breakdown lives in `sigil_error_groups`.
-   */
-  sigilId: z.uuid().optional(),
-  fingerprint: z.string(),
-  name: z.string(),
-  message: z.string(),
-  stack: z.string(),
-  sourceUrl: z.string(),
-  firstSeenAt: z.string(),
-  lastSeenAt: z.string(),
-  count: z.integer(),
-  status: z.string(),
-  origin: z.enum(["client", "server"]),
-});
-
-export type BlightResource = Infer<typeof blightResourceSchema>;
-
-/**
- * A sigil reduced to what the inbox's "filter by sigil" dropdown needs —
- * id + label.
- *
- * Returned alongside the blight list rather than fetched from
- * `SigilController.listSigils`, which is member-readable but answers with the
- * whole credential row: token prefix, kinds, creator, last-seen. A dropdown
- * needs two fields, and one request beats two.
- */
-const blightSigilSchema = z.object({
-  id: z.uuid(),
-  label: z.string(),
-});
-
-/**
- * A project-wide blight ignore rule as exposed to the owner.
- */
-const blightRuleResourceSchema = z.object({
-  id: z.integer(),
-  pattern: z.string(),
-  createdAt: z.string(),
-});
-
-export type BlightRuleResource = Infer<typeof blightRuleResourceSchema>;
 
 /**
  * Owner-facing triage surface for blights — the deduplicated uncaught
@@ -100,6 +48,11 @@ export type BlightRuleResource = Infer<typeof blightRuleResourceSchema>;
  * See folio #12.
  */
 export class BlightController {
+  /**
+   * Area every blight-forwarded quest is filed under — predictable triage.
+   */
+  protected readonly BLIGHT_AREA = "Blights";
+
   protected currentBlights = $repository(blights);
   protected sigils = $repository(sigils);
   protected security = $inject(ProjectSecurityService);
@@ -281,7 +234,7 @@ export class BlightController {
         projectId: params.projectId,
         title,
         description,
-        area: BLIGHT_AREA,
+        area: this.BLIGHT_AREA,
         priority: "medium",
         tags: ["bug", "blight"],
         createdBy: user.id,

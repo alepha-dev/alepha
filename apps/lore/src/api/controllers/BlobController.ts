@@ -7,10 +7,7 @@ import { $action, NotFoundError, okSchema } from "alepha/server";
 import { folioBlobs } from "../entities/folioBlobs.ts";
 import { folios } from "../entities/folios.ts";
 import { hydratedBlobSchema } from "../schemas/hydratedBlobSchema.ts";
-import {
-  FOLIO_BLOB_BUCKET_NAME,
-  FolioBlobService,
-} from "../services/FolioBlobService.ts";
+import { FolioBlobService } from "../services/FolioBlobService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
@@ -38,13 +35,13 @@ export class BlobController {
    * Storage for Folio blobs. Declared here so `?bucket=archive-blobs`
    * resolves — without it every Folio upload 404s with
    * "Storage 'archive-blobs' not found." (Bucket value kept as
-   * `archive-blobs`, not renamed — see the note on `FOLIO_BLOB_BUCKET`
-   * in `FolioBlobService.ts`.) Any logged-in user with `file:create`
+   * `archive-blobs`, not renamed — see the note on
+   * `FolioBlobService.BUCKET`.) Any logged-in user with `file:create`
    * can upload; per-project membership is enforced downstream by the
    * `registerBlob` action below.
    */
   folioBucket = $storage({
-    name: FOLIO_BLOB_BUCKET_NAME,
+    name: FolioBlobService.BUCKET,
     description: "Folio blobs",
   });
 

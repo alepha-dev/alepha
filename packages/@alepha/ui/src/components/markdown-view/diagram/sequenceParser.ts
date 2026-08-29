@@ -280,8 +280,12 @@ const declareParticipant = (
 /**
  * A participant named by a message exists from that moment on, in the
  * column position of its first appearance.
+ *
+ * Find-or-create, not a React hook: the `use` prefix it used to carry is
+ * reserved in a repo this full of React, and `react-hooks/rules-of-hooks`
+ * read it as one being called from a plain function.
  */
-const useParticipant = (id: string, state: ParseState): string => {
+const ensureParticipant = (id: string, state: ParseState): string => {
   if (!state.participants.has(id))
     state.participants.set(id, { id, lines: splitLabel(id), actor: false });
   return id;
@@ -378,8 +382,8 @@ const readMessage = (statement: string, state: ParseState): void => {
     const to = head.slice(match.index + match[0].length).trim();
     if (!isName(from) || !isName(to)) continue;
 
-    const sender = useParticipant(unquote(from), state);
-    const receiver = useParticipant(unquote(to), state);
+    const sender = ensureParticipant(unquote(from), state);
+    const receiver = ensureParticipant(unquote(to), state);
     state.steps.push({
       kind: "message",
       from: sender,

@@ -1,13 +1,6 @@
 import { AlephaError } from "alepha";
 
 /**
- * The rank alphabet: 26 lowercase letters, so a rank sorts identically in
- * JavaScript, in SQLite's default `BINARY` collation and in a URL.
- */
-const DIGITS = "abcdefghijklmnopqrstuvwxyz";
-const BASE = DIGITS.length;
-
-/**
  * Fractional indexing for `quests.boardRank`.
  *
  * A card's position is a STRING compared lexicographically, not a number.
@@ -27,6 +20,13 @@ const BASE = DIGITS.length;
  * very top" always answerable.
  */
 export class BoardRank {
+  /**
+   * The rank alphabet: 26 lowercase letters, so a rank sorts identically in
+   * JavaScript, in SQLite's default `BINARY` collation and in a URL.
+   */
+  protected readonly DIGITS = "abcdefghijklmnopqrstuvwxyz";
+  protected readonly BASE = this.DIGITS.length;
+
   /**
    * A rank strictly between `before` and `after`.
    *
@@ -77,7 +77,7 @@ export class BoardRank {
     // to the bound it was supposed to beat.
     if (b !== undefined) {
       let shared = 0;
-      while (shared < b.length && (a[shared] ?? DIGITS[0]) === b[shared]) {
+      while (shared < b.length && (a[shared] ?? this.DIGITS[0]) === b[shared]) {
         shared++;
       }
       if (shared > 0) {
@@ -88,13 +88,13 @@ export class BoardRank {
     }
 
     const digitA = a === "" ? 0 : this.valueOf(a[0]);
-    const digitB = b === undefined || b === "" ? BASE : this.valueOf(b[0]);
+    const digitB = b === undefined || b === "" ? this.BASE : this.valueOf(b[0]);
 
     if (digitB - digitA > 1) {
       // Room for a digit between them, so one character is enough. Rounded
       // rather than floored so the result is never `digitA` itself, which
       // is what would let a rank end in the reserved zero.
-      return DIGITS[Math.round((digitA + digitB) / 2)];
+      return this.DIGITS[Math.round((digitA + digitB) / 2)];
     }
 
     // The digits are consecutive, so nothing fits at this position.
@@ -107,11 +107,11 @@ export class BoardRank {
     // `b` is unbounded or a single digit, so keep `a`'s digit and go one
     // character deeper, where `a`'s remainder is the new lower bound and
     // there is no upper bound at all.
-    return DIGITS[digitA] + this.midpoint(a.slice(1), undefined);
+    return this.DIGITS[digitA] + this.midpoint(a.slice(1), undefined);
   }
 
   protected valueOf(digit: string): number {
-    const index = DIGITS.indexOf(digit);
+    const index = this.DIGITS.indexOf(digit);
     if (index === -1) {
       throw new AlephaError(`Invalid rank digit: "${digit}".`);
     }

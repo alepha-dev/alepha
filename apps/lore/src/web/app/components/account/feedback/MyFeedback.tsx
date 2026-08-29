@@ -6,11 +6,13 @@ import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { CircleDot, FolderKanban, Search, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { MyFeedbackResource } from "@/api/schemas/myFeedbackResourceSchema.ts";
+import type { I18n } from "@/web/app/services/I18n.ts";
 
 import MyFeedbackEditSheet from "./MyFeedbackEditSheet.tsx";
 
@@ -41,6 +43,7 @@ const MyFeedback = () => {
   const feedbackApi = useClient<FeedbackController>();
   const dateFormatter = useInject(DateTimeProvider);
   const dialog = useDialog();
+  const { tr } = useI18n<I18n, "en">();
 
   const [projectOptions, setProjectOptions] = useState<
     { label: string; value: string }[]
@@ -72,8 +75,8 @@ const MyFeedback = () => {
         `text-base font-semibold` heading that made it the odd one out.
       */}
       <SettingsHeading
-        title="Submitted feedback"
-        description="Bug reports and requests you submitted across projects. Pending ones can still be edited or withdrawn."
+        title={String(tr("myFeedback.title"))}
+        description={String(tr("myFeedback.description"))}
       />
 
       <AlephaTable<MyFeedbackResource>
@@ -81,7 +84,7 @@ const MyFeedback = () => {
         className="min-h-0 flex-1"
         defaultSize={20}
         persistenceKey="lor.me.feedback"
-        emptyMessage="You haven't submitted any feedback yet."
+        emptyMessage={String(tr("myFeedback.empty"))}
         filters={{
           schema: myFeedbackFiltersSchema,
           render: (form) => (
@@ -91,8 +94,10 @@ const MyFeedback = () => {
                   input={form.input.search}
                   label=""
                   icon={Search}
-                  placeholder="Search"
-                  inputProps={{ "aria-label": "Search feedback" }}
+                  placeholder={String(tr("myFeedback.filter.search"))}
+                  inputProps={{
+                    "aria-label": String(tr("myFeedback.filter.search.aria")),
+                  }}
                 />
               </div>
               <div className="w-40">
@@ -101,14 +106,25 @@ const MyFeedback = () => {
                   label=""
                   clearable
                   icon={CircleDot}
-                  clearLabel="All statuses"
+                  clearLabel={String(tr("myFeedback.filter.allStatuses"))}
                   triggerClassName="w-full"
                   items={[
-                    { label: "Pending", value: "pending" },
-                    { label: "Accepted", value: "accepted" },
-                    { label: "Rejected", value: "rejected" },
+                    {
+                      label: String(tr("feedback.status.pending")),
+                      value: "pending",
+                    },
+                    {
+                      label: String(tr("feedback.status.accepted")),
+                      value: "accepted",
+                    },
+                    {
+                      label: String(tr("feedback.status.rejected")),
+                      value: "rejected",
+                    },
                   ]}
-                  inputProps={{ "aria-label": "Status" }}
+                  inputProps={{
+                    "aria-label": String(tr("myFeedback.column.status")),
+                  }}
                 />
               </div>
               {projectOptions.length > 0 && (
@@ -118,10 +134,12 @@ const MyFeedback = () => {
                     label=""
                     clearable
                     icon={FolderKanban}
-                    clearLabel="All projects"
+                    clearLabel={String(tr("myFeedback.filter.allProjects"))}
                     triggerClassName="w-full"
                     items={projectOptions}
-                    inputProps={{ "aria-label": "Project" }}
+                    inputProps={{
+                      "aria-label": String(tr("myFeedback.column.project")),
+                    }}
                   />
                 </div>
               )}
@@ -152,13 +170,13 @@ const MyFeedback = () => {
             ),
           },
           project: {
-            label: "Project",
+            label: tr("myFeedback.column.project"),
             cell: (p: MyFeedbackResource) => (
               <span className="text-sm">{p.project.title}</span>
             ),
           },
           title: {
-            label: "Title",
+            label: tr("myFeedback.column.title"),
             sortable: true,
             // See ProjectQuestsTable: `w-full max-w-0` lets the column take
             // the space the others leave, so the ellipsis appears only when
@@ -175,15 +193,15 @@ const MyFeedback = () => {
             ),
           },
           status: {
-            label: "Status",
+            label: tr("myFeedback.column.status"),
             cell: (p: MyFeedbackResource) => (
               <Badge variant={STATUS_VARIANT[p.status] ?? "secondary"}>
-                {p.status}
+                {tr(`feedback.status.${p.status}`)}
               </Badge>
             ),
           },
           tags: {
-            label: "Tags",
+            label: tr("myFeedback.column.tags"),
             cell: (p: MyFeedbackResource) =>
               p.tags && p.tags.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
@@ -198,7 +216,7 @@ const MyFeedback = () => {
               ),
           },
           createdAt: {
-            label: "Created",
+            label: tr("myFeedback.column.created"),
             sortable: true,
             cell: (p: MyFeedbackResource) => (
               <span className="text-muted-foreground text-xs">
@@ -212,16 +230,15 @@ const MyFeedback = () => {
             ? [
                 {
                   icon: Trash,
-                  label: "Delete",
+                  label: String(tr("myFeedback.action.delete")),
                   destructive: true,
                   onClick: async (
                     _p: MyFeedbackResource,
                     { refresh }: { refresh: () => void },
                   ) => {
                     const confirmed = await dialog.confirm({
-                      title: "Delete feedback?",
-                      description:
-                        "This permanently withdraws your feedback. This cannot be undone.",
+                      title: String(tr("myFeedback.delete.title")),
+                      description: String(tr("myFeedback.delete.description")),
                       destructive: true,
                     });
                     if (!confirmed) return;

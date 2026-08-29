@@ -1,4 +1,3 @@
-import { SIGIL_FEEDBACK_POSITIONS } from "@alepha/sigil";
 import { $inject, z } from "alepha";
 import { $repository, DbConflictError } from "alepha/orm";
 import { $secure } from "alepha/security";
@@ -212,10 +211,6 @@ export class SigilController {
           .array(z.enum([...SIGIL_KINDS]).meta({ mode: "text" }))
           .max(SIGIL_KINDS.length)
           .optional(),
-        feedbackPosition: z
-          .enum([...SIGIL_FEEDBACK_POSITIONS])
-          .meta({ mode: "text" })
-          .optional(),
         /**
          * Where this app lives, overriding the host it reports from.
          *
@@ -235,15 +230,12 @@ export class SigilController {
 
       // Every field optional now that this endpoint carries more than `kinds`,
       // so an omitted key means "leave it alone" rather than "clear it" — the
-      // capabilities card, the position control and the URL field are separate
-      // surfaces and each PATCHes only what it owns.
+      // capabilities card and the URL field are separate surfaces and each
+      // PATCHes only what it owns.
       await this.sigils.updateById(sigil.id, {
         // De-duplicated so a caller that sends `["beacon", "beacon"]` cannot
         // make the stored set disagree with the one it asked for.
         ...(body.kinds ? { kinds: [...new Set(body.kinds)] } : {}),
-        ...(body.feedbackPosition
-          ? { feedbackPosition: body.feedbackPosition }
-          : {}),
         ...(body.url === undefined ? {} : { url: this.readUrl(body.url) }),
       });
 
@@ -376,7 +368,6 @@ export class SigilController {
       name: sigil.name,
       tokenPrefix: sigil.tokenPrefix,
       kinds: sigil.kinds ?? [],
-      feedbackPosition: sigil.feedbackPosition,
       url: sigil.url,
       createdAt: sigil.createdAt,
       lastSeenAt: sigil.lastSeenAt,
