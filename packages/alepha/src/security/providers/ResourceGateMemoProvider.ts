@@ -12,7 +12,7 @@ import { $hook, $inject, Alepha } from "alepha";
  *
  * The gate's own reads: the **authority row** it decides against, and the
  * **membership row** that decides it. Not the resource row a `through` gate
- * loads on the way — that is the row the handler is about to work on, and a
+ * loads on the way - that is the row the handler is about to work on, and a
  * handler must always see what its own gate just read rather than a copy a
  * sibling action took before writing to it.
  *
@@ -24,7 +24,7 @@ import { $hook, $inject, Alepha } from "alepha";
  *
  * ## Why it is seeded from a hook and never lazily
  *
- * `AlsProvider.set` writes into `als.getStore()` — the **innermost** layer —
+ * `AlsProvider.set` writes into `als.getStore()` - the **innermost** layer -
  * and `$action.run()` forks a fresh layer per action. A memo created on demand
  * inside the guard therefore lands in that one action's fork and is invisible
  * to its six siblings.
@@ -39,7 +39,7 @@ import { $hook, $inject, Alepha } from "alepha";
  *
  * The memo never outlives one request, and a request is already the atomic
  * unit of authorization: nothing re-checks membership mid-request expecting a
- * different answer. So this preserves revocation semantics exactly — unlike a
+ * different answer. So this preserves revocation semantics exactly - unlike a
  * cross-request TTL, which would trade them for a window.
  *
  * With no seeded memo (a job, a CLI command, a direct `run()` in a test) every

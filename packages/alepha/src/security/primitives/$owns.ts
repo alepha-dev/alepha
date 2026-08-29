@@ -30,7 +30,7 @@ import { $secure, type SecureOptions } from "./$secure.ts";
  *    caller to this resource.
  *
  * Both are read off the row the param names, unless `through` says ownership
- * lives one hop away — on the project a quest belongs to, say. The resource
+ * lives one hop away - on the project a quest belongs to, say. The resource
  * is still published to `OwnedResourceProvider.get()`; the row the decision
  * was actually made against is published to `authority()`.
  *
@@ -100,7 +100,7 @@ export function $owns(options: OwnsOptions): Middleware {
       }
 
       // An id is a scalar. Request validation has already run by the time a
-      // guard does, so a declared field cannot be anything else — but an
+      // guard does, so a declared field cannot be anything else - but an
       // UNDECLARED one is whatever the caller sent, and `from: "body"` is the
       // source where that matters. Refusing here keeps an object out of the
       // query builder rather than finding out what it does with one.
@@ -162,7 +162,7 @@ export function $owns(options: OwnsOptions): Middleware {
           // A null FK DENIES. Falling through to the checks below would
           // compare `undefined` against the caller's id and then query the
           // join entity for `projectId = null`, so an orphan row would be
-          // refused only by accident — and a `via`-less gate whose `owner`
+          // refused only by accident - and a `via`-less gate whose `owner`
           // column is also empty would allow. An orphan must never become
           // world-readable.
           if (foreignKey === undefined || foreignKey === null) {
@@ -215,7 +215,7 @@ export function $owns(options: OwnsOptions): Middleware {
 
       // Keyed on the columns as well as the values: two gates may join the
       // same table on different pairs, and the caller's id belongs in the key
-      // even though a request has one — an impersonating or service-account
+      // even though a request has one - an impersonating or service-account
       // path that ever ran two identities in one request would otherwise
       // answer the second with the first one's grant.
       const membership = await memo.resolve(
@@ -279,7 +279,7 @@ export interface OwnsOptions {
    *
    * A body value is caller-controlled in a way a path segment is not. That
    * widens nothing: it is still just an id handed to `findById`, and the gate
-   * below is what decides access — a caller naming somebody else's project
+   * below is what decides access - a caller naming somebody else's project
    * gets a 403 for it.
    */
   from?: "params" | "query" | "body";
@@ -288,7 +288,7 @@ export interface OwnsOptions {
    * The second hop: say that ownership is not held by the row the param
    * names, but by a row it belongs to.
    *
-   * Without it, `owner` and `via` are read off the row `repository` loaded —
+   * Without it, `owner` and `via` are read off the row `repository` loaded -
    * which only works when the param names the thing being shared. When the
    * param names a quest and membership lives on its project, there is no join
    * to make and the rule cannot be expressed at all.
@@ -330,7 +330,7 @@ export interface OwnsOptions {
 
   /**
    * Column holding the owner's user id, on the row the decision is made
-   * against — the resource itself, or the row `through` lands on.
+   * against - the resource itself, or the row `through` lands on.
    */
   owner: string;
 
@@ -374,7 +374,7 @@ export interface OwnsOptions {
   cast?: (raw: unknown) => string | number;
 
   /**
-   * Cache window for the **authority read** — the row the gate decides
+   * Cache window for the **authority read** - the row the gate decides
    * against, which is the resource itself when there is no `through`.
    *
    * Passed straight to `Repository.findById`, so a write through that
@@ -419,7 +419,7 @@ export interface OwnsHop {
   column: string;
 
   /**
-   * Repository the next row is loaded from, as a thunk — same reasoning as
+   * Repository the next row is loaded from, as a thunk - same reasoning as
    * {@link OwnsOptions.repository}.
    */
   repository: () => Repository<any>;

@@ -23,7 +23,7 @@ import { FolioLinkService } from "../services/FolioLinkService.ts";
  * `QuestController.deleteQuest`, both of which gate delete on its own
  * permission rather than `quest:create`), and `$transactional()` on create.
  *
- * **Every endpoint here is member-gated, read and write alike** — the
+ * **Every endpoint here is member-gated, read and write alike** - the
  * `QuestController` / `FolioController` rule, not the
  * `MilestoneController` one it was originally modelled on. An epic groups
  * quests and folios, both of which any member may already create, rename
@@ -162,7 +162,7 @@ export class EpicController {
   });
 
   createEpic = $action({
-    // Gate INSIDE the transaction, not ahead of it — see `$ownsProject`.
+    // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`.
     use: [
       $secure({ permissions: ["quest:create"] }),
       $transactional(),
@@ -336,7 +336,7 @@ export class EpicController {
     handler: async ({ body }) => {
       const epic = this.owned.get<Epic>();
 
-      // Coherence, not access — see `attachQuest`.
+      // Coherence, not access - see `attachQuest`.
       const folio = await this.folios.getById(body.folioId);
       if (folio.projectId !== epic.projectId) {
         throw new BadRequestError(

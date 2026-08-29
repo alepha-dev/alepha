@@ -34,7 +34,7 @@ export class MilestoneController {
    * where both variants sit on one class.
    *
    * Member for reading a milestone or the backlog; owner for starting,
-   * closing, editing and deleting one — a milestone is part of a project's
+   * closing, editing and deleting one - a milestone is part of a project's
    * configuration, not of the work. `owner: true` drops the `via` join
    * rather than adding a second check, which is how `$owns` has always
    * expressed owner-only.
@@ -208,7 +208,7 @@ export class MilestoneController {
   });
 
   startMilestone = $action({
-    // Gate INSIDE the transaction, not ahead of it — see `$ownsProject`.
+    // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`.
     use: [
       $secure({ permissions: ["quest:create"] }),
       $transactional(),

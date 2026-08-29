@@ -66,7 +66,7 @@ export class FolioController {
   protected readonly owned = $inject(OwnedResourceProvider);
 
   /**
-   * The four gates this controller needs — the only place in the app where
+   * The four gates this controller needs - the only place in the app where
    * all three id sources appear on one class.
    *
    * Declared above the actions on purpose: `use: [this.ownsFolio()]` is a
@@ -571,7 +571,7 @@ export class FolioController {
   }
 
   create = $action({
-    // Gate INSIDE the transaction, not ahead of it — see `$ownsProject`.
+    // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`.
     use: [
       $secure({ permissions: ["folio:write"] }),
       $transactional(),
@@ -661,7 +661,7 @@ export class FolioController {
   });
 
   update = $action({
-    // Gate INSIDE the transaction — it is the read half of the
+    // Gate INSIDE the transaction - it is the read half of the
     // protection-domain check below. See `$ownsProject`.
     use: [
       $secure({ permissions: ["folio:write"] }),
@@ -1141,7 +1141,7 @@ export class FolioController {
    * can undo the revert if they did it in error.
    */
   revertHistory = $action({
-    // Gate INSIDE the transaction — see `$ownsProject`.
+    // Gate INSIDE the transaction - see `$ownsProject`.
     use: [
       $secure({ permissions: ["folio:write"] }),
       $transactional(),

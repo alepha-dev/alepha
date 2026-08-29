@@ -29,7 +29,7 @@ import { type Project, projects } from "../entities/projects.ts";
  * the handler instead of making it query them again.
  *
  * The assert methods remain for the controllers not yet ported, and
- * {@link isMember} / {@link isMemberById} are not going anywhere at all —
+ * {@link isMember} / {@link isMemberById} are not going anywhere at all -
  * they answer questions that are not gates.
  */
 export class ProjectSecurityService {

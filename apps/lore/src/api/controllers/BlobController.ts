@@ -46,7 +46,7 @@ export class BlobController {
    * Member gate on the project the blob named by `params.id` belongs to.
    *
    * `folio_blobs` is keyed on `fileId`, not `id`, which the gate resolves on
-   * its own — `findById` reads the entity's declared primary key rather than
+   * its own - `findById` reads the entity's declared primary key rather than
    * assuming a column name.
    */
   protected ownsBlob = () =>
@@ -160,7 +160,7 @@ export class BlobController {
   });
 
   registerBlob = $action({
-    // Gate INSIDE the transaction, not ahead of it — see `$ownsProject`.
+    // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`.
     use: [
       $secure({ permissions: ["folio:write"] }),
       $transactional(),
@@ -189,7 +189,7 @@ export class BlobController {
   });
 
   renameBlob = $action({
-    // Gate INSIDE the transaction — see `$ownsProject`.
+    // Gate INSIDE the transaction - see `$ownsProject`.
     use: [
       $secure({ permissions: ["folio:write"] }),
       $transactional(),
@@ -208,7 +208,7 @@ export class BlobController {
   });
 
   deleteBlob = $action({
-    // Gate INSIDE the transaction — see `$ownsProject`.
+    // Gate INSIDE the transaction - see `$ownsProject`.
     use: [
       $secure({ permissions: ["folio:write"] }),
       $transactional(),

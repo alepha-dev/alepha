@@ -20,6 +20,16 @@ import { currentResourceAtom } from "../atoms/currentResourceAtom.ts";
  *   });
  * }
  * ```
+ *
+ * Two rows, not one, once a gate declares `through`:
+ *
+ * - `get()` is the row the route param named (a quest).
+ * - `authority()` is the row the decision was made against (its project) -
+ *   the same row as `get()` when there is no hop, so a handler reads it the
+ *   same way whether its endpoint hops or not.
+ *
+ * `find()` / `findAuthority()` are the non-throwing forms, for a handler
+ * legitimately reachable both with and without the gate.
  */
 export class OwnedResourceProvider {
   protected readonly alepha = $inject(Alepha);
@@ -55,7 +65,7 @@ export class OwnedResourceProvider {
    * The row the access decision was made against.
    *
    * Identical to {@link get} unless the gate declared `through`, in which case
-   * this is the row one hop away — the project a quest belongs to, say, which
+   * this is the row one hop away - the project a quest belongs to, say, which
    * is where `owner` and `via` were read. A handler that needs it (an
    * owner-only branch inside a member-gated endpoint, a feature toggle) reads
    * it here instead of issuing a second query for a row the gate already

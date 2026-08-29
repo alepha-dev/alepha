@@ -8,8 +8,8 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
  * Lore's project gate: the one authorization rule this application has,
  * stated once.
  *
- * Every project-scoped endpoint asks the same question — is the caller the
- * project's creator, or a member of it — and answers it in one of two shapes:
+ * Every project-scoped endpoint asks the same question - is the caller the
+ * project's creator, or a member of it - and answers it in one of two shapes:
  * the route names the project, or the route names a row that belongs to one.
  * `$owns` can express both, but only by repeating a six-line options object
  * at each of the sixty-odd call sites, which is how the rule itself would
@@ -52,7 +52,7 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
  * `expectedUpdatedAt`.
  *
  * Putting the gate ahead of `$transactional()` lifts those reads out of the
- * transaction and reinstates both races — with every test still green,
+ * transaction and reinstates both races - with every test still green,
  * because a race is not what a test suite is looking at. The cost of the
  * correct order is that a refused caller opens a transaction and rolls it
  * back, which is nothing next to what the other order gives up.
@@ -87,7 +87,7 @@ export const $ownsProject = (options: OwnsProjectOptions): Middleware => {
       ? {
           through: [
             // Whatever the caller has to walk through first, then the last
-            // link onto `projects` — which is the one constant here.
+            // link onto `projects` - which is the one constant here.
             ...(options.hops ?? []),
             {
               column: options.column ?? "projectId",
@@ -132,7 +132,7 @@ export interface OwnsProjectOptions extends Pick<
 > {
   /**
    * Repository the route param's row is loaded from, when the param names
-   * something other than the project itself — a quest, a folio, an epic.
+   * something other than the project itself - a quest, a folio, an epic.
    *
    * Omit it when the param names the project. A thunk for the same reason
    * `$owns` takes one: this is evaluated during class-field initialization,
@@ -174,7 +174,7 @@ export interface OwnsProjectOptions extends Pick<
   /**
    * Restrict to the project's creator rather than any member.
    *
-   * For project *configuration* — milestones, areas, sigils, invitations,
+   * For project *configuration* - milestones, areas, sigils, invitations,
    * settings. The work itself (quests, folios, epics and their satellites) is
    * member-gated. Which side an endpoint belongs on is the rule written up in
    * `apps/lore/CLAUDE.md`, not a matter of copying whichever neighbouring

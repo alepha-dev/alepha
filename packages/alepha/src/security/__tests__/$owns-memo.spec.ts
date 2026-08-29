@@ -114,7 +114,7 @@ const createApp = (cache?: { ttl: number }) => {
     }
 
     // Seven separate actions, so the batch runs seven separate `$action.run()`
-    // forks — the arrangement that made a lazily-created memo invisible.
+    // forks - the arrangement that made a lazily-created memo invisible.
     readQ1 = this.read();
     readQ2 = this.read();
     readQ3 = this.read();
@@ -193,7 +193,7 @@ describe("$owns request memo", () => {
     // happily when a later change removes the gate altogether, which is the
     // one failure this must never cause.
     expect(app.counts()).toEqual({
-      // The resource read is deliberately NOT memoized — seven different
+      // The resource read is deliberately NOT memoized - seven different
       // quests, and the row a handler is about to work on must be the row its
       // own gate read.
       quests: 7,
@@ -265,12 +265,12 @@ describe("$owns request memo", () => {
 
     // The project row carries configuration and may be served stale for a
     // window. The quest is the row the handler works on, and the membership
-    // row IS the grant — neither may be.
+    // row IS the grant - neither may be.
     expect(app.countedProjects.lastOptions).toEqual({
       cache: { ttl: 30_000 },
     });
     // Not `{}`: the resource read on a hop takes the plain `findById(id)`
-    // path, so it is not merely uncached — it is never handed options at all.
+    // path, so it is not merely uncached - it is never handed options at all.
     expect(app.countedQuests.lastOptions).toBeUndefined();
   });
 });

@@ -31,7 +31,7 @@ const comments = $entity({
   name: "through_comments",
   schema: z.object({
     id: db.primaryKey(z.text()),
-    // No projectId: this is the shape that forces a chain — a comment knows
+    // No projectId: this is the shape that forces a chain - a comment knows
     // its quest, and only the quest knows the project.
     questId: z.text().optional(),
     body: z.text(),
