@@ -1,5 +1,6 @@
 import { $atom, $inject, Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
+import { LockProvider } from "alepha/lock";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { describe, it } from "vitest";
@@ -7,7 +8,10 @@ import { describe, it } from "vitest";
 import {
   $workflow,
   AlephaApiWorkflows,
+  type WorkflowExecutionEntity,
   WorkflowProvider,
+  type WorkflowStep,
+  type WorkflowStepExecutionEntity,
   WorkflowTestKit,
   workflowExecutions,
   workflowStepExecutions,
@@ -1398,5 +1402,186 @@ describe("$workflow — startEach fan-out and WorkflowTestKit", () => {
 
     const done = await kit.findByPayload("App.perItem", { shareId: "s2" });
     expect(done?.status).toBe("completed");
+  });
+});
+
+// -----------------------------------------------------------------------------------------------------------------
+
+/**
+ * Grants every lock, always.
+ *
+ * Models the runtime the step claim actually has to survive: on Cloudflare
+ * Workers, and on Node without `alepha/lock/redis`, `LockProvider` is the
+ * per-isolate `MemoryLockProvider`, so two isolates each hold their own and
+ * neither excludes the other. In one process that is indistinguishable from
+ * a lock that never refuses.
+ */
+class UncontendedLockProvider extends LockProvider {
+  protected readonly store: Record<string, string> = {};
+
+  public async set(key: string, value: string): Promise<string> {
+    this.store[key] = value;
+    return value;
+  }
+
+  public async get(key: string): Promise<string | undefined> {
+    return this.store[key];
+  }
+
+  public async del(...keys: string[]): Promise<void> {
+    for (const key of keys) delete this.store[key];
+  }
+}
+
+/**
+ * Holds every dispatch at the seam between "I read the step and it said
+ * pending" and "I claim it", then releases them together.
+ *
+ * The window is otherwise invisible from one process: two `processStep`
+ * calls awaiting the same database do not naturally interleave across it,
+ * so a test that just fires two of them passes against the unguarded
+ * `updateById` and proves nothing. Two isolates DO sit in that window
+ * simultaneously — each has read `pending`, neither has written — and
+ * this gate is the only way to put a single-process test there.
+ */
+class GatedWorkflowProvider extends WorkflowProvider {
+  public gate?: Promise<void>;
+  public arrivals = 0;
+
+  protected override async executeHandlerStep(
+    workflow: WorkflowExecutionEntity,
+    stepExec: WorkflowStepExecutionEntity,
+    stepDef: WorkflowStep,
+  ): Promise<void> {
+    this.arrivals++;
+    if (this.gate) await this.gate;
+    return super.executeHandlerStep(workflow, stepExec, stepDef);
+  }
+}
+
+describe("$workflow — the step claim is atomic", () => {
+  it("runs the handler exactly once when two dispatches race one pending step", async ({
+    expect,
+  }) => {
+    let calls = 0;
+
+    class App {
+      stepRepo = $repository(workflowStepExecutions);
+      raced = $workflow({
+        schema: z.object({ id: z.text() }),
+        steps: [
+          {
+            name: "only",
+            handler: async () => {
+              calls++;
+              await new Promise((r) => setTimeout(r, 20));
+              return { ok: true };
+            },
+          },
+        ],
+      });
+    }
+
+    const alepha = Alepha.create()
+      .with({ provide: LockProvider, use: UncontendedLockProvider })
+      .with({ provide: WorkflowProvider, use: GatedWorkflowProvider })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiWorkflows)
+      .with(App);
+    await alepha.start();
+
+    const app = alepha.inject(App);
+    const provider = alepha.inject(GatedWorkflowProvider);
+
+    // Swallow the automatic first dispatch so the step is left `pending`
+    // and we own both of the dispatches that race for it.
+    provider.stepDispatch = async () => {};
+
+    const workflowId = await app.raced.start({ id: "a" });
+
+    let release!: () => void;
+    provider.gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    const both = Promise.all([
+      provider.processStep(workflowId, "only"),
+      provider.processStep(workflowId, "only"),
+    ]);
+
+    // Both have read the step and seen `pending`; neither has written.
+    await waitFor(
+      () => provider.arrivals,
+      (n) => n === 2,
+      { label: "both dispatches parked before the claim" },
+    );
+    release();
+    await both;
+
+    expect(calls).toBe(1);
+
+    const steps = await app.stepRepo.findMany({
+      where: { workflowExecutionId: { eq: workflowId } },
+    });
+    expect(steps).toHaveLength(1);
+    expect(steps[0].status).toBe("completed");
+    // The loser must not have spent an attempt either.
+    expect(steps[0].attempt).toBe(1);
+  });
+
+  it("compensates each step exactly once when two compensations race", async ({
+    expect,
+  }) => {
+    let compensations = 0;
+
+    class App {
+      repo = $repository(workflowExecutions);
+      stepRepo = $repository(workflowStepExecutions);
+      undoable = $workflow({
+        schema: z.object({ id: z.text() }),
+        steps: [
+          {
+            name: "charge",
+            handler: async () => ({ ok: true }),
+            compensate: async () => {
+              compensations++;
+              await new Promise((r) => setTimeout(r, 20));
+            },
+          },
+        ],
+      });
+    }
+
+    const alepha = Alepha.create()
+      .with({ provide: LockProvider, use: UncontendedLockProvider })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiWorkflows)
+      .with(App);
+    await alepha.start();
+
+    const app = alepha.inject(App);
+    const provider = alepha.inject(WorkflowProvider);
+
+    const workflowId = await app.undoable.start({ id: "a" });
+    await waitFor(
+      () => app.repo.findById(workflowId),
+      (row) => row?.status === "completed",
+      { label: "workflow completed" },
+    );
+
+    // `compensate()` takes no lock of its own, and is reachable from four
+    // places at once (failure, cancel, sweep, admin). Only the per-step
+    // compare-and-set stops the handler running twice.
+    await app.repo.updateById(workflowId, { status: "failed" });
+    await Promise.all([
+      provider.compensate(workflowId),
+      provider.compensate(workflowId),
+    ]);
+
+    expect(compensations).toBe(1);
+    const steps = await app.stepRepo.findMany({
+      where: { workflowExecutionId: { eq: workflowId } },
+    });
+    expect(steps[0].status).toBe("compensated");
   });
 });

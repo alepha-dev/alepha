@@ -108,6 +108,10 @@ export class UserService {
           ? `${baseUrl}${url.search}`
           : url.pathname + url.search;
 
+        // `inline` so a failed send is terminal rather than re-sent, past
+        // its own expiry, on a later sweep tick. The caller-facing half of
+        // the flag is absorbed by the catch below, on purpose: this path is
+        // reachable for an address the caller may not own.
         await this.userNotifications(userRealmName)?.emailVerificationLink.push(
           {
             contact: email,
@@ -116,6 +120,7 @@ export class UserService {
               verifyUrl: fullVerifyUrl,
               expiresInMinutes: Math.floor(verification.codeExpiration / 60),
             },
+            inline: true,
           },
         );
 
@@ -124,6 +129,7 @@ export class UserService {
           userId: user.id,
         });
       } else {
+        // Same reasoning as the link path above.
         await this.userNotifications(userRealmName)?.emailVerification.push({
           contact: email,
           variables: {
@@ -131,6 +137,7 @@ export class UserService {
             code: verification.token,
             expiresInMinutes: Math.floor(verification.codeExpiration / 60),
           },
+          inline: true,
         });
 
         this.log.debug("Email verification code sent", {

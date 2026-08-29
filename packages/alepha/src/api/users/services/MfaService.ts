@@ -391,20 +391,14 @@ export class MfaService {
       throw new BadRequestError("This account has no email address");
     }
 
+    let verification: Awaited<
+      ReturnType<VerificationService["createVerification"]>
+    > | null = null;
     try {
-      const verification = await this.verificationService.createVerification({
+      verification = await this.verificationService.createVerification({
         type: "code",
         target: user.email,
         purpose: this.mfaPurpose,
-      });
-
-      await this.userNotifications(realm)?.mfaCode.push({
-        contact: user.email,
-        variables: {
-          email: user.email,
-          code: verification.token,
-          expiresInMinutes: Math.floor(verification.codeExpiration / 60),
-        },
       });
     } catch (error) {
       // `createVerification` refuses while a fresh code is still on cooldown.
@@ -412,6 +406,29 @@ export class MfaService {
       // still valid, and turning the cooldown into an error would let anyone
       // holding a password lock the account out of its own second factor.
       this.log.debug("Reusing the second-factor code already sent", { error });
+    }
+
+    if (verification) {
+      // Deliberately OUTSIDE the cooldown catch, and deliberately inline.
+      //
+      // The catch above absorbs one specific, expected condition. A send
+      // that actually failed is not that condition, and `{ sentTo }` would
+      // be a lie: the code has a 300-second life and the sweep runs every
+      // 900, so a retried second-factor mail is guaranteed to arrive after
+      // the code it carries expired. The user is mid-login and waiting, so
+      // tell them now and let them ask for another one.
+      //
+      // Not an enumeration risk: reaching here required a correct password
+      // for this account, so the caller already knows it exists.
+      await this.userNotifications(realm)?.mfaCode.push({
+        contact: user.email,
+        variables: {
+          email: user.email,
+          code: verification.token,
+          expiresInMinutes: Math.floor(verification.codeExpiration / 60),
+        },
+        inline: true,
+      });
     }
 
     return { sentTo: this.maskEmail(user.email) };

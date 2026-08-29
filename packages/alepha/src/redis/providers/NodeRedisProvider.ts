@@ -267,6 +267,34 @@ export class NodeRedisProvider extends RedisProvider {
   }
 
   // ---------------------------------------------------------
+  // Sorted set operations
+  // ---------------------------------------------------------
+
+  public override async zadd(
+    key: string,
+    score: number,
+    member: string,
+  ): Promise<void> {
+    await this.publisher.ZADD(key, { score, value: member });
+  }
+
+  public override async zrangebyscore(
+    key: string,
+    min: number,
+    max: number,
+    limit: number,
+  ): Promise<string[]> {
+    const values = await this.publisher.ZRANGEBYSCORE(key, min, max, {
+      LIMIT: { offset: 0, count: limit },
+    });
+    return (values ?? []).map((value: unknown) => String(value));
+  }
+
+  public override async zrem(key: string, member: string): Promise<number> {
+    return Number(await this.publisher.ZREM(key, member));
+  }
+
+  // ---------------------------------------------------------
   // Pub/Sub operations
   // ---------------------------------------------------------
 

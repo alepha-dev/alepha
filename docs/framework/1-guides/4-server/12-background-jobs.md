@@ -104,17 +104,132 @@ guarantee, enforce it in the handler against your own data.
 ## Retries
 
 Set `retry: { retries: n }`, optionally with `when: (error) => boolean` to retry
-only certain failures. Retries are **sweep-driven and have no exponential
-backoff**: a failed attempt is rescheduled with `scheduledAt = now`, and the
-next sweep tick picks it up.
+only certain failures.
 
-That means retry latency is bounded by `sweepCron` (default `*/15 * * * *`). The
-first retry lands anywhere from a few seconds to ~15 minutes later, depending on
-where the tick falls. Lower `sweepCron` if you need tighter latency.
+A failed attempt is rescheduled with **exponential backoff and full jitter**:
+attempt _n_ waits a uniformly random time in
+`[0, min(retryBackoffMax, retryBackoffBase * 2^(n-1))]`, defaults 5 s and
+30 min. The jitter matters at least as much as the curve - without it every
+retrying row in the system shares one `scheduledAt` and they all hit a
+struggling downstream together.
+
+The row's `scheduledAt` is the truth and the sweep is the backstop, so nothing
+can lose a retry. What varies by runtime is only **how soon** something looks
+at it:
+
+| Runtime                                   | Dispatch        | Retry lands                       |
+| ----------------------------------------- | --------------- | --------------------------------- |
+| Node, any dispatcher                      | direct or queue | at the backoff, on a local timer  |
+| Cloudflare Workers + `AlephaApiJobsQueue` | queue           | at the backoff, held by the queue |
+| Cloudflare Workers, no queue              | direct          | **next sweep tick** (see below)   |
+
+The last row is a real limit, not an oversight. A timer armed after the
+response never fires on Workers - the isolate freezes once `waitUntil`
+settles - so direct mode there cannot arrange a wake-up at all and retries
+keep `sweepCron` granularity. Add `AlephaApiJobsQueue` if that matters, or use
+[`inline`](#inline-when-a-retry-is-worse-than-a-failure) for a payload that
+expires before the next tick.
 
 Cron-mode jobs without `retry` do not retry - the next tick is the retry. Cron
-jobs that _declare_ `retry` go through the same sweep path, which is useful for
+jobs that _declare_ `retry` go through the outbox instead, which is useful for
 once-daily jobs where waiting a full day is not acceptable.
+
+### What a transport does with a delay
+
+`$job` asks exactly one thing of a transport: **do not deliver before time T.**
+Durability, retry policy, attempt counting, dead-lettering and crash recovery
+are all already owned by the outbox, which is why the interface carries one
+optional argument rather than a broker abstraction.
+
+The rule every backend follows:
+
+> `delaySeconds` is an optimisation. The outbox row's `scheduledAt` is the
+> truth, and the sweep is the backstop. A backend that cannot honour a delay
+> must **decline to enqueue** rather than enqueue immediately.
+
+Declining is not the same as ignoring. For a push transport, ignoring a delay
+means _delivering now_, and for a retry that is worse than doing nothing at
+all: no backoff whatsoever against a downstream that has just failed.
+
+| Backend           | Delay                                                                  |
+| ----------------- | ---------------------------------------------------------------------- |
+| Cloudflare Queues | native, clamped at its 12-hour ceiling                                 |
+| Redis             | a sorted set scored by due-time, promoted into the list when it is due |
+| in-memory         | a due timestamp, filtered on pop                                       |
+
+Every backend that ships with Alepha honours a delay, so nothing declines in
+practice today. The rule still matters: it is what a custom `QueueProvider` is
+held to, and "ignore it and deliver now" has to stay unavailable as an option.
+
+The Redis tier buys two things a local timer cannot. A delayed message is
+**server-side state**, so it survives the process that pushed it - a deploy
+inside the delay window used to drop every armed timer it was holding. And one
+sorted-set entry costs nothing per message, where one live `setTimeout` per
+delayed job is real heap on a large backlog.
+
+Its scan only runs when the list is empty, so a busy queue pays no extra round
+trip for the tier at all. `ZREM` is the claim, so two pollers racing the same
+due message agree on an owner instead of delivering it twice.
+
+## `inline`: when a retry is worse than a failure
+
+Some payloads expire. A verification code lives 300 seconds by default while
+the sweep runs every 900, so a retried code is **guaranteed** to arrive after
+it expired: all three attempts produce garbage and the user meanwhile sees
+nothing at all.
+
+`inline` says: run the handler here, make me wait, and if it fails tell me.
+
+```typescript
+await myJob.push(payload, { inline: true });
+// resolves -> the handler ran to completion, outbox row terminal
+// rejects  -> the handler failed, row terminal `error`, nothing retries it
+```
+
+No dispatcher, no queue, no `waitUntil`. Behaviour is identical with and
+without `AlephaApiJobsQueue`, because the flag bypasses `JobDispatcher`
+entirely.
+
+Two things it does, and it is worth separating them:
+
+1. **The caller learns.** A password reset fails in front of the user, who can
+   simply ask for another one, instead of quietly succeeding on attempt two
+   with a code that no longer works.
+2. **A failure is terminal, never `scheduled`.** This half holds even where the
+   caller swallows the rejection, and it is the one that closes the expired-code
+   problem: nothing will deliver that payload later.
+
+**Per push, not per job.** Declare it on the job as a default if you like, but
+the useful form is the call-site override, because one job usually sits behind
+many callers - `sendNotification` is the single job behind every notification.
+Whether you can afford to wait is a property of the call site.
+
+```typescript
+await myJob.push(payload); //                 async, retries per the policy
+await myJob.push(payload, { inline: true }); // this one waits, and does not retry
+```
+
+On a job that declares `retry`, a per-push `inline` means _this execution does
+not retry_: one attempt, terminal on failure, thrown to you. Declaring `inline`
+and `retry` together **on the job** is rejected at registration, as is `inline`
+with `cron` (a tick has no caller to block) and `inline` on `pushMany`.
+
+Read the contract precisely:
+
+- **"Ran to completion" means the handler resolved.** For an email that is the
+  provider accepting the message, not delivery to an inbox.
+- **Call it after the commit, not inside a transaction.** An email cannot be
+  rolled back, so sending inside a transaction that later fails means mailing a
+  code for a row that no longer exists. `inline` buys ordering, not
+  transactionality.
+- **Never on a message addressed to somebody other than the caller.** Blocking
+  a login or registration response on a mail to the account _owner_ turns
+  response time into an account-enumeration oracle: a slow answer means the
+  account existed. Alepha's own `registrationAttempt` and `accountLockout`
+  notifications are excluded for exactly this reason.
+
+Not to be confused with `$notification`'s `critical`, which is a different
+property one layer up: that one means the recipient cannot opt out.
 
 ## Timeouts and cancellation
 
@@ -169,6 +284,18 @@ Cron jobs default to `record: "all"` with one retained success so the admin
 Note the deliberate asymmetry: per-job `keep.ok: 0` means _never trim_, while
 the global `keepLastSuccess: 0` means _delete on success_.
 
+Trim runs on its own cron (`trimCron`, hourly by default) and costs one
+grouped count for the whole tick, so a job whose buffer is already at its
+limit is never queried individually. A buffer that is over its limit is
+emptied back down in chunks, however far over it is; if one tick cannot
+finish the job it logs what is left and the next tick continues.
+
+A cron whose buffer is exactly one row (the default) **updates** that row
+rather than inserting a new one for the trim to delete later. A `*/15` cron
+used to write 96 rows a day so that trim could remove 95 of them, purely to
+keep one timestamp current. Jobs keeping more than one row still insert, since
+there the rows are the history.
+
 ## Configuration
 
 Tune the `jobConfig` atom:
@@ -202,6 +329,10 @@ Inside a `$module`, the `register()` hook runs before `imports[]` and
 | ---------------------- | -------------- | ----------------------------------------------------------------------------------------------------- |
 | `sweepCron`            | `*/15 * * * *` | Reconciliation sweep - bounds retry latency                                                           |
 | `trimCron`             | `0 * * * *`    | Ring-buffer trim tick                                                                                 |
+| `sweepBatchSize`       | `200`          | Rows one sweep phase reads per tick - see below                                                       |
+| `maxRedispatch`        | `3`            | Lost deliveries tolerated before a `pending` row is failed                                            |
+| `retryBackoffBase`     | `5000`         | First retry's backoff ceiling (ms); doubles per attempt, full jitter                                  |
+| `retryBackoffMax`      | `1800000`      | Ceiling for that curve (ms)                                                                           |
 | `staleThreshold`       | `300000`       | Pending age (ms) before the sweep re-dispatches                                                       |
 | `runTimeout`           | `1800000`      | Running age (ms) before a crash is assumed                                                            |
 | `keepLastSuccess`      | `10`           | Successful rows kept per job                                                                          |
@@ -209,6 +340,28 @@ Inside a `$module`, the `register()` hook runs before `imports[]` and
 | `drainTimeout`         | `30000`        | Time (ms) to wait for in-flight jobs on shutdown                                                      |
 | `logMaxEntries`        | `100`          | Log lines captured per run                                                                            |
 | `directMaxConcurrency` | `10`           | Concurrent handlers in direct mode - what keeps a `pushMany` of thousands from exhausting the DB pool |
+
+### The sweep is bounded
+
+Each sweep phase reads at most `sweepBatchSize` rows per tick and leaves the
+rest for the next one. This matters under exactly the conditions where the
+sweep is load-bearing: a downstream outage turns the entire retrying
+population into rows the sweep matches at once, and every row carries its
+payload and any captured logs. A phase that fills its batch logs that it did,
+so a backlog is visible in the logs rather than something you infer from a
+graph.
+
+Every phase's action moves the row out of the status that phase owns, so
+progress across ticks is guaranteed. What repeats is the **priority**
+ordering: while a backlog persists, newly arriving `critical` work is served
+before `low` work that has been waiting. That is what `$job` priority means,
+and it is the only thing it means.
+
+A `pending` row whose delivery is lost is re-dispatched at most
+`maxRedispatch` times before it is failed. This is counted separately from
+`attempt`, which only moves when a worker actually claims the row: a payload
+that kills the process between dispatch and claim never increments `attempt`,
+so the retry policy would never end it.
 
 ### Sweeps owned by other modules
 

@@ -369,6 +369,44 @@ export class BunRedisProvider extends RedisProvider {
   }
 
   // ---------------------------------------------------------
+  // Sorted set operations
+  // ---------------------------------------------------------
+
+  public override async zadd(
+    key: string,
+    score: number,
+    member: string,
+  ): Promise<void> {
+    await this.publisher.send("ZADD", [key, String(score), member]);
+  }
+
+  public override async zrangebyscore(
+    key: string,
+    min: number,
+    max: number,
+    limit: number,
+  ): Promise<string[]> {
+    const values = await this.publisher.send("ZRANGEBYSCORE", [
+      key,
+      String(min),
+      String(max),
+      "LIMIT",
+      "0",
+      String(limit),
+    ]);
+    if (!Array.isArray(values)) return [];
+    return values.map((value: unknown) =>
+      value instanceof Uint8Array
+        ? Buffer.from(value).toString()
+        : String(value),
+    );
+  }
+
+  public override async zrem(key: string, member: string): Promise<number> {
+    return Number(await this.publisher.send("ZREM", [key, member]));
+  }
+
+  // ---------------------------------------------------------
   // Pub/Sub operations
   // ---------------------------------------------------------
 

@@ -59,16 +59,52 @@ declare module "alepha" {
  * - **direct**: push-driven, processed in-process right after the caller
  *   awaits the push. The DB outbox row is the durability guarantee - if
  *   the process dies, the reconciliation sweep re-dispatches. Default
- *   when `AlephaApiJobsQueue` is *not* loaded. Best for cheap deployments
- *   (Cloudflare Workers, single-instance Node) where standing up a queue
- *   is overkill.
+ *   when `AlephaApiJobsQueue` is *not* loaded.
  *
- * **Retries** are sweep-driven across all modes (no exponential backoff).
- * Granularity is bounded by `sweepCron` (default 15 min). The first retry
- * may land anywhere from a few seconds to ~15 min later depending on when
- * the next sweep tick fires. Cron jobs that declare `retry` go through
- * the same sweep path - a transient failure no longer means waiting for
- * the next cron tick (useful for once-daily jobs).
+ * **Direct mode is a different reliability contract on Cloudflare, not
+ * just the cheaper option.** On long-running Node it is genuinely equivalent
+ * to queue mode minus the broker. On Workers it is not: `DirectJobDispatcher`
+ * keeps the isolate alive through `executionCtx.waitUntil`, which Cloudflare
+ * caps at about **30 seconds after the response**. That is the whole budget a
+ * job pushed from a request gets, a declared `timeout` longer than it is
+ * unreachable, and because crash recovery is derived as twice the declared
+ * timeout, a job killed at the budget sits `running` for twice its timeout
+ * before the sweep will consider it crashed. A local timer armed after the
+ * response never fires there either, so delayed work and retry backoff both
+ * fall back to sweep granularity. The build warns about the timeouts it can
+ * see; the rest is inherent.
+ *
+ * **{@link AlephaApiJobsQueue} is the answer to all of that**, and the
+ * recommended path for anything long-running or high-volume on Cloudflare: a
+ * queue consumer gets 15 minutes of wall clock AND 15 minutes of CPU, the
+ * most generous surface Cloudflare offers, and the transport can hold a
+ * delayed message so retries land on their backoff rather than on the sweep.
+ *
+ * **Retries** use exponential backoff with full jitter (`retryBackoffBase`,
+ * `retryBackoffMax`). The outbox row's `scheduledAt` is the truth and the
+ * sweep is the backstop, so what varies by runtime is only how soon anything
+ * looks at it: exactly, on Node in either dispatch mode and on Workers behind
+ * a queue; at the next `sweepCron` tick in direct mode on Workers. Cron jobs
+ * that declare `retry` go through the same outbox path - a transient failure
+ * no longer means waiting for the next cron tick (useful for once-daily
+ * jobs). For a payload that expires before any of that, `push(payload,
+ * { inline: true })` runs the handler in front of the caller and fails
+ * terminally instead of retrying.
+ *
+ * **Cloudflare budgets, in one place:**
+ *
+ * | | |
+ * |---|---|
+ * | `waitUntil` after a response (direct mode) | ~30 s |
+ * | Cron Trigger wall clock | 15 min |
+ * | Cron Trigger CPU | 30 s under an hourly interval, 15 min at or above |
+ * | Queue consumer | 15 min wall AND 15 min CPU |
+ * | Cron Triggers per **account** | 5 free, 250 paid |
+ *
+ * The last one is per account rather than per Worker, so two Alepha apps can
+ * exceed it between them. The build warns past five and names the
+ * expressions; the fix is to give jobs that do not need their own cadence a
+ * shared one.
  *
  * **Runtime support for cron triggers**
  *
@@ -100,6 +136,21 @@ export const AlephaApiJobs = $module({
  *
  * Adds `JobQueueProvider` to the container. `JobProvider` detects its
  * presence at start-up and routes dispatches through it.
+ *
+ * **On Cloudflare this is the recommended path for anything long-running or
+ * high-volume**, not an optimisation. See {@link AlephaApiJobs} for the
+ * budgets direct mode is held to there; a queue consumer gets 15 minutes of
+ * wall clock AND 15 minutes of CPU instead of ~30 seconds of `waitUntil`,
+ * and the transport can hold a delayed message so retries land on their
+ * backoff. Set `CLOUDFLARE_QUEUE_NAME` and the build emits the producer
+ * binding, the consumer, and its dead-letter queue.
+ *
+ * ⚠️ **Nothing consumes that dead-letter queue, and it catches less than it
+ * looks.** `WorkerdWorkerProvider` deliberately lets `JobProvider` absorb
+ * handler errors, so `msg.retry()` only fires on infrastructure failures:
+ * the DLQ collects undecodable envelopes and broker failures, never a failed
+ * job. Failed jobs are recorded on the outbox row and shown in the admin UI,
+ * which is where to look. Nothing surfaces the DLQ's depth.
  *
  * @module alepha.api.jobs.queue
  */
