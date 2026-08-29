@@ -9,8 +9,27 @@ import {
 } from "../index.ts";
 
 describe("DEBUG environment variable", () => {
-  const formatterFor = async (env: Record<string, string>) => {
-    const alepha = Alepha.create({ env }).with(AlephaLogger);
+  /**
+   * `LOG_FORMAT` and `LOG_LEVEL` are pinned, not just left unset.
+   *
+   * `Alepha.create()` merges `process.env` UNDERNEATH the env it is handed,
+   * so every logger variable this helper does not name is inherited from
+   * whoever ran the suite. CLAUDE.md tells contributors to run commands with
+   * `LOG_FORMAT=pretty LOG_LEVEL=trace`, and anyone who exports that pair
+   * rather than prefixing a single command turns the assertions below into a
+   * reading of their shell: `LOG_FORMAT` decides the formatter outright, so
+   * "keeps the production JSON format" failed with a `PrettyFormatterProvider`
+   * while the DEBUG handling it covers was working perfectly.
+   *
+   * `LOG_LEVEL` does not change the formatter, but it does decide the
+   * destination: the register block sends test-mode logs to
+   * `MemoryDestinationProvider` only while no level is set, so an exported one
+   * makes this file print to the console for no reason.
+   */
+  const formatterFor = async (env: Record<string, string | undefined>) => {
+    const alepha = Alepha.create({
+      env: { LOG_FORMAT: undefined, LOG_LEVEL: undefined, ...env },
+    }).with(AlephaLogger);
     await alepha.start();
     const formatter = alepha.inject(LogFormatterProvider);
     await alepha.stop();
@@ -35,5 +54,18 @@ describe("DEBUG environment variable", () => {
     expect(
       await formatterFor({ NODE_ENV: "production", DEBUG: "alepha:*" }),
     ).toBeInstanceOf(PrettyFormatterProvider);
+  });
+
+  it("lets an explicit LOG_FORMAT win over DEBUG", async () => {
+    // The register block assigns the DEBUG shorthand with `??=`, so a declared
+    // format is never overwritten. Without this, the pinning above could be
+    // deleted and only the ambient-env failure would notice.
+    expect(
+      await formatterFor({
+        NODE_ENV: "production",
+        DEBUG: "1",
+        LOG_FORMAT: "json",
+      }),
+    ).toBeInstanceOf(JsonFormatterProvider);
   });
 });
