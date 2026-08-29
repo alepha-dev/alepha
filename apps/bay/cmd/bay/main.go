@@ -1430,6 +1430,15 @@ func (s *server) handleRemove(w http.ResponseWriter, r *http.Request) {
 		}
 		purged = true
 	}
+	// After the data, so the unix user is never deleted while files it owns
+	// are still on disk — the window deleteUser exists to avoid. Logged rather
+	// than returned: the app is already out of the registry and no longer
+	// served, so failing the request here would report a removal that did
+	// happen as one that did not, and the operator would retry against an app
+	// that is already gone.
+	if err := s.runner.Remove(key, purged); err != nil {
+		s.log.Error("uninstall failed while removing", "app", key, "err", err)
+	}
 	s.log.Info("removed app", "app", key, "domain", app.Domain(), "purged", purged)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"removed": key,
