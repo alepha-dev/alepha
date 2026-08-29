@@ -76,6 +76,35 @@ return 0
     await alepha.stop();
   });
 
+  it("should support sorted-set operations (zadd/zrangebyscore/zrem)", async ({
+    expect,
+  }) => {
+    const key = `test:zset:${randomUUID()}`;
+
+    await redis.zadd(key, 100, "later");
+    await redis.zadd(key, 10, "sooner");
+    await redis.zadd(key, 50, "middle");
+
+    // Lowest score first, and the range is inclusive at both ends.
+    expect(await redis.zrangebyscore(key, 0, 50, 10)).toEqual([
+      "sooner",
+      "middle",
+    ]);
+    // The limit bounds the read.
+    expect(await redis.zrangebyscore(key, 0, 1000, 1)).toEqual(["sooner"]);
+    // An empty range is empty, not an error.
+    expect(await redis.zrangebyscore(key, 0, 1, 10)).toEqual([]);
+
+    // ZREM reports whether THIS call removed it, which is what makes it
+    // usable as a claim between two racing pollers.
+    expect(await redis.zrem(key, "sooner")).toBe(1);
+    expect(await redis.zrem(key, "sooner")).toBe(0);
+    expect(await redis.zrangebyscore(key, 0, 1000, 10)).toEqual([
+      "middle",
+      "later",
+    ]);
+  });
+
   it("should increment values atomically", async ({ expect }) => {
     const key = `test:incr:${randomUUID()}`;
 

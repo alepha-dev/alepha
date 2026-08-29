@@ -151,17 +151,25 @@ Declining is not the same as ignoring. For a push transport, ignoring a delay
 means _delivering now_, and for a retry that is worse than doing nothing at
 all: no backoff whatsoever against a downstream that has just failed.
 
-| Backend           | Delay                                                          |
-| ----------------- | -------------------------------------------------------------- |
-| Cloudflare Queues | native, clamped at its 12-hour ceiling                         |
-| in-memory         | a due timestamp, filtered on pop                               |
-| Redis             | **declines**; the caller falls back to a local promoting timer |
+| Backend           | Delay                                                                  |
+| ----------------- | ---------------------------------------------------------------------- |
+| Cloudflare Queues | native, clamped at its 12-hour ceiling                                 |
+| Redis             | a sorted set scored by due-time, promoted into the list when it is due |
+| in-memory         | a due timestamp, filtered on pop                                       |
 
-The Redis decline costs nothing on Node, because the fallback timer _promotes_
-the row rather than delivering it - a guarded `scheduled -> pending` update, so
-exactly one replica wins, and a replica that dies leaves the row for the sweep.
-Which is why there is no Redis delay tier: it would be a scale optimisation,
-not a correctness fix.
+Every backend that ships with Alepha honours a delay, so nothing declines in
+practice today. The rule still matters: it is what a custom `QueueProvider` is
+held to, and "ignore it and deliver now" has to stay unavailable as an option.
+
+The Redis tier buys two things a local timer cannot. A delayed message is
+**server-side state**, so it survives the process that pushed it - a deploy
+inside the delay window used to drop every armed timer it was holding. And one
+sorted-set entry costs nothing per message, where one live `setTimeout` per
+delayed job is real heap on a large backlog.
+
+Its scan only runs when the list is empty, so a busy queue pays no extra round
+trip for the tier at all. `ZREM` is the claim, so two pollers racing the same
+due message agree on an owner instead of delivering it twice.
 
 ## `inline`: when a retry is worse than a failure
 

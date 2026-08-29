@@ -84,7 +84,10 @@ export interface JobDispatchOptions {
    *   honour a delay at all and the retry keeps sweep granularity. Load
    *   `AlephaApiJobsQueue` if that matters.
    * - `JobQueueProvider` passes it to the backend, and falls back to the
-   *   same local timer when the backend declines.
+   *   same local timer when the backend declines. Every backend that ships
+   *   with Alepha honours a delay - Cloudflare Queues natively, Redis on a
+   *   due-time sorted set, memory on a due timestamp - so that fallback is
+   *   there for a custom one.
    *
    * Whatever happens, the row is `scheduled` with its own `scheduledAt`, so
    * nothing here can lose an execution: the worst case is that it waits for
