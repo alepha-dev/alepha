@@ -1,6 +1,6 @@
 # Alepha Lore
 
-Project management app built with [Alepha](https://github.com/feunard/alepha). Users create **projects**, forge **quests** with objectives, invite **members**, and progress together across **areas**. The RPG vocabulary describes the work, never the person — there is no XP, gold, level or achievement system (see "De-gamification" below).
+Project management app built with [Alepha](https://github.com/alepha-dev/alepha). Users create **projects**, forge **quests** with objectives, invite **members**, and progress together across **areas**. The RPG vocabulary describes the work, never the person — there is no XP, gold, level or achievement system (see "De-gamification" below).
 
 It has since grown well past a quest tracker. The load-bearing surfaces today are **quests** (roadmap + in-flight work), **folios** (project memory, wiki-linked, optionally end-to-end encrypted, and — since the 2026-08 rename — including the directory tree + binary blobs that used to be a separate "Archive" module), **feedback** (inbound bug/feature triage), and **blights** (deduplicated crash telemetry from partner sites via **sigils**). All four are exposed over **MCP**, which is the primary consumer.
 
@@ -518,7 +518,7 @@ curl -s https://lore.alepha.dev/version
 
 Use it to confirm a deploy actually went live (vs. a stale Cloudflare cache) and to map a reported bug to the exact tip it runs against. The three values come from `alepha.config.ts`'s `env: { VITE_VERSION, VITE_GIT_COMMIT, VITE_BUILD_DATE }` block — Alepha pipes those into `process.env` at config load, and the server reads them in `VersionController`. The `VITE_` prefix also auto-exposes them to the browser bundle via Vite (`import.meta.env.VITE_VERSION` etc.) if frontend ever needs them.
 
-The endpoint is public on purpose: Lore lives in the open-source `github.com/feunard/alepha` monorepo under `apps/lore`, so the commit SHA leaks nothing. `$route` (not `$action`) so it lives at the root path, not under `/api`.
+The endpoint is public on purpose: Lore lives in the open-source `github.com/alepha-dev/alepha` monorepo under `apps/lore`, so the commit SHA leaks nothing. `$route` (not `$action`) so it lives at the root path, not under `/api`.
 
 ## ⚠️ Migration safety on D1 (production-data bomb, real incident)
 

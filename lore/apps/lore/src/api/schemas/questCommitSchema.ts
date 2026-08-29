@@ -23,7 +23,7 @@ export const questCommitSchema = z.object({
    */
   message: z.string().max(500).optional(),
   /**
-   * e.g. `feunard/alepha`. Free text; Lore never resolves it.
+   * e.g. `alepha-dev/alepha`. Free text; Lore never resolves it.
    */
   repo: z.string().max(200).optional(),
   at: z.datetime(),

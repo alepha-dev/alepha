@@ -77,7 +77,7 @@ describe("Lore MCP: quest commit trail", () => {
       id: quest.id,
       sha: "448808EB4",
       message: "feat(lore): wire the pipeline",
-      repo: "feunard/alepha",
+      repo: "alepha-dev/alepha",
     });
 
     // Normalized to lowercase: git prints shas that way, and a trail
@@ -85,7 +85,7 @@ describe("Lore MCP: quest commit trail", () => {
     expect(result.commits).toHaveLength(1);
     expect(result.commits[0].sha).toBe("448808eb4");
     expect(result.commits[0].message).toBe("feat(lore): wire the pipeline");
-    expect(result.commits[0].repo).toBe("feunard/alepha");
+    expect(result.commits[0].repo).toBe("alepha-dev/alepha");
     expect(result.commits[0].at).toBeTruthy();
 
     const read = await call(questTools.quest_get, { id: quest.id });
