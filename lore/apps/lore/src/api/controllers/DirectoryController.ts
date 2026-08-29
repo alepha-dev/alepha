@@ -26,7 +26,7 @@ export class DirectoryController {
    * gate declared below its first use is `undefined` at construction time.
    *
    * Five of the eight sites are the direct one and could have been `$owns`
-   * since July — nothing about them needed the hop.
+   * since July - nothing about them needed the hop.
    */
   protected ownsProject = () => $ownsProject({ param: "projectId" });
 
@@ -308,7 +308,7 @@ export class DirectoryController {
   });
 
   createDirectory = $action({
-    // Gate INSIDE the transaction, not ahead of it — see `$ownsProject`.
+    // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`.
     use: [
       $secure({ permissions: ["folio:write"] }),
       $transactional(),
@@ -334,7 +334,7 @@ export class DirectoryController {
   });
 
   renameDirectory = $action({
-    // Gate INSIDE the transaction — see `$ownsProject`.
+    // Gate INSIDE the transaction - see `$ownsProject`.
     use: [
       $secure({ permissions: ["folio:write"] }),
       $transactional(),
@@ -353,7 +353,7 @@ export class DirectoryController {
   });
 
   moveDirectory = $action({
-    // Gate INSIDE the transaction — see `$ownsProject`.
+    // Gate INSIDE the transaction - see `$ownsProject`.
     use: [
       $secure({ permissions: ["folio:write"] }),
       $transactional(),
@@ -372,7 +372,7 @@ export class DirectoryController {
     handler: async ({ params, body }) => {
       // The gate covers the directory being MOVED. What keeps the move
       // inside its own project is `FolioDirectoryService.move`, which
-      // refuses a destination whose `projectId` differs — verified, not
+      // refuses a destination whose `projectId` differs - verified, not
       // assumed, while porting this. Do not drop it: without it a member
       // could reparent their folder into someone else's tree.
       return this.directoryService.move(params.id, body.parentId);
@@ -380,7 +380,7 @@ export class DirectoryController {
   });
 
   deleteDirectory = $action({
-    // Gate INSIDE the transaction — see `$ownsProject`.
+    // Gate INSIDE the transaction - see `$ownsProject`.
     use: [
       $secure({ permissions: ["folio:write"] }),
       $transactional(),

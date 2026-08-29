@@ -29,7 +29,7 @@ import {
  *
  * Both batches below run against the SAME app, in the same request shape.
  * One is made of ported endpoints, the other of endpoints that still call
- * `ProjectSecurityService.assertMember` in their handler — so the comparison
+ * `ProjectSecurityService.assertMember` in their handler - so the comparison
  * is measured here rather than quoted from a design note.
  */
 
@@ -37,7 +37,7 @@ import {
  * Counts reads that actually reach the database.
  *
  * `repository:read:before` fires **after** the ORM's cache check, so a read
- * served from the 30s project cache is not counted — which is what makes
+ * served from the 30s project cache is not counted - which is what makes
  * this a query counter and not a call counter. It also fires per repository
  * read rather than per guard, and that distinction is the whole point: seven
  * guards each finding a memoized promise is the PASS condition, so a counter
@@ -95,7 +95,7 @@ const setup = async (): Promise<TestContext> => {
 
 /**
  * A real bearer token for a real user, minted the same way `$action.fetch()`
- * mints one in tests — the batch endpoint takes one HTTP request for seven
+ * mints one in tests - the batch endpoint takes one HTTP request for seven
  * actions, so `.fetch()` per action would defeat the purpose.
  */
 const bearer = async (
@@ -241,7 +241,7 @@ describe("$ownsProject, measured", () => {
     // guess is otherwise: `assertMember` reads that row through the ORM's
     // 30s cache, so it looks as though six of the seven should hit it. They
     // do not. A batch runs its entries CONCURRENTLY, and the cache is
-    // populated when a read resolves — so all seven miss before any of them
+    // populated when a read resolves - so all seven miss before any of them
     // fills it. Inside one batch the TTL saves nothing at all.
     //
     // That is the difference the epic named between the two mechanisms, and
@@ -272,7 +272,7 @@ describe("$ownsProject, measured", () => {
     await batch(ctx, token, entries);
 
     // Two requests, two membership reads. A memo that outlived its request
-    // would read once and keep answering — including for a membership
+    // would read once and keep answering - including for a membership
     // revoked in between, which is exactly the property the 30s project
     // cache is allowed to lose and this one is not.
     expect(ctx.counter.of("members")).toBe(2);

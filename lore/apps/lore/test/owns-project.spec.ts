@@ -267,7 +267,7 @@ describe("$ownsProject", () => {
       const project = await createTestProject(ctx.alepha);
       const user = await memberToken(ctx, project);
 
-      // The same caller, the same project, both variants — this is the pair
+      // The same caller, the same project, both variants - this is the pair
       // that proves `owner: true` drops `via` rather than adding a check that
       // happens to pass for the creator.
       expect(

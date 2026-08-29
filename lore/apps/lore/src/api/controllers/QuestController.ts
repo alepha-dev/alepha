@@ -52,7 +52,7 @@ export class QuestController {
   dt = $inject(DateTimeProvider);
   owned = $inject(OwnedResourceProvider);
   /**
-   * Kept for {@link isMemberById} alone — the assignee check in
+   * Kept for {@link isMemberById} alone - the assignee check in
    * `assignQuest`, which asks about somebody other than the caller and so is
    * not a gate. Every gate on this class is `$ownsProject`.
    */
@@ -142,7 +142,7 @@ export class QuestController {
    *
    * ## ⚠️ On a `$transactional()` action the gate goes AFTER it
    *
-   * The gate is not only an access check here — it is the READ HALF of every
+   * The gate is not only an access check here - it is the READ HALF of every
    * check-then-write on this class. `completeQuest` is transactional "so two
    * concurrent completions cannot both pass the `completedAt IS NULL` read",
    * and `updateQuestById` for the same reason on `expectedUpdatedAt`. The

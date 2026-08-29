@@ -251,11 +251,25 @@ When `onClose` is provided, it's used instead of router navigation. When `onQues
 
 ### Project access model
 
-Lore projects are private. Every project-scoped endpoint goes through
-`AppSecurityProvider.assertMember` (member-or-owner) or `assertOwner`
-(creator-only). There is no anonymous or "any-logged-in-user can browse"
-path — the old `project.public` flag was removed (the column is kept in
-the schema only because dropping it on D1 triggers a cascade-wipe).
+Lore projects are private. Every project-scoped endpoint is gated
+member-or-owner, or creator-only. There is no anonymous or
+"any-logged-in-user can browse" path - the old `project.public` flag was
+removed (the column is kept in the schema only because dropping it on D1
+triggers a cascade-wipe).
+
+**Two mechanisms, and the declarative one is the default for anything new.**
+`$ownsProject` (below) is middleware in a `use:` array; it cannot be
+forgotten the way a missing line in a handler can, it runs before the
+handler on every transport including MCP, and it hands the rows it read to
+the handler. `ProjectSecurityService.assertMember` / `assertOwner` are the
+older in-handler form, still used by the controllers not yet ported -
+Area, Kanban, Reports, Feedback, Blight, Insights, Search, Sigil, Quest
+portability. Ported as of 2026-08-29: Quest, QuestComment, Epic, Milestone,
+Folio, Directory, Blob.
+
+`isMember` / `isMemberById` are not going anywhere: they answer questions
+that are not gates (branching on membership, or asking about somebody other
+than the caller - `assignQuest` checks the assignee).
 
 The single exception is the feedback module: `submitFeedback` and
 `uploadFeedbackAttachment` are gated on `project.features.feedback`
@@ -275,7 +289,7 @@ project settings and portability, plus the triage decisions on feedback
 and blights. Adding an endpoint means placing it on that line, not copying
 whichever neighbouring controller was read first.
 
-#### `$ownsProject` — the gate, and why it lives outside a class
+#### `$ownsProject` - the gate, and why it lives outside a class
 
 `src/api/security/$ownsProject.ts` composes `$owns` into Lore's one
 authorization rule, so a call site states only what varies:
@@ -289,9 +303,35 @@ $ownsProject({ param: "projectId", from: "query" });
 
 `owner: "createdBy"`, the `via` join onto `members`, both denial messages and
 the 30s cache window are constants of this application, not of these
-endpoints. `ProjectSecurityService` supplies the repositories and keeps
-`isMember` / `isMemberById` for the questions that are **not** gates — the
-assignee check in `assignQuest` asks about somebody else, not the caller.
+endpoints. `ProjectSecurityService` supplies the repositories.
+
+**On a `$transactional()` action the gate goes AFTER it**, not before:
+
+```typescript
+use: [
+  $secure({ permissions: ["quest:update"] }),
+  $transactional(),
+  this.ownsQuest(),
+];
+```
+
+On a hop the gate is also the READ HALF of the handler's check-then-write -
+`completeQuest` is transactional so two concurrent completions cannot both
+pass the `completedAt IS NULL` read, `updateQuestById` likewise for
+`expectedUpdatedAt`. Gating ahead of the transaction lifts those reads out of
+it and reinstates both races, **with the whole suite still green**, because a
+race is not what a test suite looks at.
+
+`hops` covers the one two-hop case in the app: a quest comment references a
+quest, and only the quest references the project.
+
+```typescript
+$ownsProject({
+  repository: () => this.comments,
+  param: "id",
+  hops: [{ column: "questId", repository: () => this.quests }],
+});
+```
 
 It is a module-level `const`, which the repo-root convention "never write
 code outside classes" otherwise forbids. **This is the documented exception**,
