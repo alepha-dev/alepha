@@ -848,6 +848,14 @@ export default {
     "What this app may report. Turning one off stops the ingest endpoint accepting it, for this app only, not for the others.",
   "app.settings.capabilities.feedbackModuleOff":
     "The project's Feedback module is off, so this app's link stays hidden whatever this switch says. Turn the module on under Settings ▸ Feedback.",
+  "app.settings.name.title": "Name",
+  "app.settings.name.description":
+    "The app's name is also its URL segment here. Lowercase letters, digits and hyphens; it is trimmed and lowercased for you.",
+  "app.settings.name.save": "Rename",
+  "app.settings.name.confirmTitle": "Rename $1?",
+  "app.settings.name.confirmDescription":
+    "The app's page moves to the new address, and any link to the old one stops resolving. Reporting is unaffected: the key carries the project, not the app name, so nothing has to be redeployed or rotated.",
+  "app.settings.name.renamed": "Renamed to $1",
   "app.settings.url.title": "App URL",
   "app.settings.url.description":
     "Where this app lives. Left empty, Lore uses the address the app itself reports from, so there is usually nothing to fill in here.",

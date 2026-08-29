@@ -808,6 +808,43 @@ test.describe("Sigils", () => {
     });
 
     let rotated = "";
+    await test.step("renaming the app moves its page and its sidebar entry", async () => {
+      await page.goto(`/${projectSlug}/apps/${appName}/settings`);
+      await page.waitForLoadState("networkidle");
+
+      const field = page.getByRole("textbox", { name: "Name", exact: true });
+      await expect(field).toBeVisible({ timeout: 15_000 });
+      await field.fill(`${appName}-renamed`);
+      await page.getByRole("button", { name: "Rename", exact: true }).click();
+      await confirmDialog(page, "Rename");
+
+      // The name is the URL segment, so a rename moves the page. Leaving the
+      // old address in the bar would leave a 404 behind.
+      await expect(page).toHaveURL(
+        new RegExp(`/${projectSlug}/apps/${appName}-renamed/settings`),
+        { timeout: 15_000 },
+      );
+      // Both atoms, not just the page's: the sidebar renders from the other
+      // one and the two must not disagree. Scoped to the sidebar entry itself,
+      // because the breadcrumb carries the same NAME and the Dashboard tab
+      // carries the same HREF - either alone is a strict-mode violation the
+      // moment the rename lands everywhere it should.
+      await expect(
+        page.locator(
+          `[data-sidebar="menu-sub-button"][href="/${projectSlug}/apps/${appName}-renamed/"]`,
+        ),
+      ).toBeVisible({ timeout: 15_000 });
+
+      // Back, so the rest of this flow keeps addressing the app by `appName`.
+      await field.fill(appName);
+      await page.getByRole("button", { name: "Rename", exact: true }).click();
+      await confirmDialog(page, "Rename");
+      await expect(page).toHaveURL(
+        new RegExp(`/${projectSlug}/apps/${appName}/settings`),
+        { timeout: 15_000 },
+      );
+    });
+
     await test.step("rotating revokes the old token and keeps the history", async () => {
       // Rotate and delete live on the app's own Settings tab — they are per-app
       // actions, and the project settings page enrols rather than administers.
