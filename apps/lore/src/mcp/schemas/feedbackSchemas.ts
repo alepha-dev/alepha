@@ -1,17 +1,15 @@
 import { z } from "alepha";
 
-import { projectParamsSchema } from "./commonSchemas.ts";
-
-const feedbackStatusSchema = z
-  .enum(["pending", "accepted", "rejected"])
-  .meta({ mode: "text" });
+import { feedback } from "../../api/entities/feedback.ts";
+import { feedbackLinkedQuestSchema } from "../../api/schemas/feedbackResourceSchema.ts";
+import { projectParamsSchema } from "./projectParamsSchema.ts";
 
 const feedbackRefSchema = z.object({
   id: z.integer(),
   shortId: z.integer(),
   title: z.string(),
   tags: z.array(z.string()),
-  status: feedbackStatusSchema,
+  status: feedback.schema.shape.status,
   reporterName: z.string().optional(),
   linkedQuestCount: z.integer(),
   attachmentCount: z
@@ -22,11 +20,16 @@ const feedbackRefSchema = z.object({
   createdAt: z.datetime(),
 });
 
-const feedbackLinkedQuestRefSchema = z.object({
-  id: z.integer(),
-  shortId: z.integer(),
-  title: z.string(),
-  status: z.enum(["new", "accepted", "completed"]).meta({ mode: "text" }),
+/**
+ * A linked quest, narrowed to what a feedback thread shows: identity, title,
+ * progression. Priority, area and the two timestamps the API resource carries
+ * are answered by `quest_get`.
+ */
+const feedbackLinkedQuestRefSchema = feedbackLinkedQuestSchema.pick({
+  id: true,
+  shortId: true,
+  title: true,
+  status: true,
 });
 
 const feedbackAttachmentRefSchema = z.object({
@@ -60,7 +63,7 @@ const feedbackFullSchema = z.object({
   title: z.string(),
   description: z.string(),
   tags: z.array(z.string()),
-  status: feedbackStatusSchema,
+  status: feedback.schema.shape.status,
   reporterName: z.string().optional(),
   attachments: z.array(feedbackAttachmentRefSchema),
   linkedQuests: z.array(feedbackLinkedQuestRefSchema),
