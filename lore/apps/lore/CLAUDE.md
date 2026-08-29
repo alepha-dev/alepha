@@ -275,6 +275,33 @@ project settings and portability, plus the triage decisions on feedback
 and blights. Adding an endpoint means placing it on that line, not copying
 whichever neighbouring controller was read first.
 
+#### `$ownsProject` — the gate, and why it lives outside a class
+
+`src/api/security/$ownsProject.ts` composes `$owns` into Lore's one
+authorization rule, so a call site states only what varies:
+
+```typescript
+$ownsProject({ param: "projectId" }); // the param names the project
+$ownsProject({ repository: () => this.epics, param: "id" }); // the param names a row that has one
+$ownsProject({ repository: () => this.milestones, param: "id", owner: true });
+$ownsProject({ param: "projectId", from: "query" });
+```
+
+`owner: "createdBy"`, the `via` join onto `members`, both denial messages and
+the 30s cache window are constants of this application, not of these
+endpoints. `ProjectSecurityService` supplies the repositories and keeps
+`isMember` / `isMemberById` for the questions that are **not** gates — the
+assignee check in `assignQuest` asks about somebody else, not the caller.
+
+It is a module-level `const`, which the repo-root convention "never write
+code outside classes" otherwise forbids. **This is the documented exception**,
+and the reason is mechanical rather than stylistic: an in-class
+`this.gates.member(...)` would force `gates = $inject(...)` to be declared
+above every action in the file, which is exactly the field-ordering trap
+`$owns`'s repository thunk was invented to avoid. A module-level const has no
+ordering constraint. Every framework primitive is shaped this way for the
+same reason.
+
 ### Drag & Drop
 
 Uses `@dnd-kit/core`. Cards are `useDraggable`, columns are `useDroppable`. Status transitions: `new → accepted → completed`. Completed quests cannot be moved back. New quests must be accepted before completing.
