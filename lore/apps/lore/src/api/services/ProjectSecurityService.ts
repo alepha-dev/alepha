@@ -17,6 +17,20 @@ import { type Project, projects } from "../entities/projects.ts";
  *
  * Authorization is domain logic; realm configuration is infrastructure. They
  * do not belong in one class.
+ *
+ * ## Two roles, and the newer one is the default
+ *
+ * This class both PERFORMS the check ({@link assertMember} /
+ * {@link assertOwner}, called from a handler body) and SUPPLIES it
+ * (`projects` and `members`, which `$ownsProject` joins declaratively in a
+ * `use:` array). A new endpoint takes the second: a gate in `use:` cannot be
+ * forgotten the way a missing line in a handler can, it runs before the
+ * handler on every transport including MCP, and it hands the rows it read to
+ * the handler instead of making it query them again.
+ *
+ * The assert methods remain for the controllers not yet ported, and
+ * {@link isMember} / {@link isMemberById} are not going anywhere at all -
+ * they answer questions that are not gates.
  */
 export class ProjectSecurityService {
   projects = $repository(projects);

@@ -1,7 +1,7 @@
 import { $inject, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $repository, $sequence, $transactional } from "alepha/orm";
-import { $secure } from "alepha/security";
+import { OwnedResourceProvider, $secure } from "alepha/security";
 import {
   $action,
   BadRequestError,
@@ -11,8 +11,11 @@ import {
 
 import { folioBlobs } from "../entities/folioBlobs.ts";
 import { folioDirectories } from "../entities/folioDirectories.ts";
-import { buildFolioSearchText, folios } from "../entities/folios.ts";
-import { projects } from "../entities/projects.ts";
+import {
+  type Folio,
+  buildFolioSearchText,
+  folios,
+} from "../entities/folios.ts";
 import { relations } from "../relations.ts";
 import { folioIdParamsSchema } from "../schemas/folioIdParamsSchema.ts";
 import { folioListQuerySchema } from "../schemas/folioListQuerySchema.ts";
@@ -23,12 +26,12 @@ import {
 import { folioSavedSchema } from "../schemas/folioSavedSchema.ts";
 import type { LinkSourceKind } from "../schemas/linkSourceKindSchema.ts";
 import type { LinkTargetKind } from "../schemas/linkTargetKindSchema.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
 import { FolioBlobService } from "../services/FolioBlobService.ts";
 import { FolioHistoryService } from "../services/FolioHistoryService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
 import { FolioNameService } from "../services/FolioNameService.ts";
 import { FolioRevisionStatsService } from "../services/FolioRevisionStatsService.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
  * The columns of `folio_directories` any ancestor walk needs — the tree
@@ -49,7 +52,6 @@ type DirectoryMapLoader = () => Promise<Map<string, DirectoryRow>>;
 
 export class FolioController {
   folios = $repository(folios);
-  protected readonly projects = $repository(projects);
   protected readonly directories = $repository(folioDirectories);
   protected readonly blobs = $repository(folioBlobs);
   /**
@@ -61,8 +63,34 @@ export class FolioController {
   protected readonly blobService = $inject(FolioBlobService);
   protected readonly historyService = $inject(FolioHistoryService);
   protected readonly nameService = $inject(FolioNameService);
-  protected readonly security = $inject(ProjectSecurityService);
   protected readonly revisionStats = $inject(FolioRevisionStatsService);
+  protected readonly owned = $inject(OwnedResourceProvider);
+
+  /**
+   * The four gates this controller needs - the only place in the app where
+   * all three id sources appear on one class.
+   *
+   * Declared above the actions on purpose: `use: [this.ownsFolio()]` is a
+   * field initializer reading another field, so a gate declared below its
+   * first use is `undefined` at construction time.
+   */
+  protected ownsProject = () => $ownsProject({ param: "projectId" });
+
+  protected ownsProjectFromQuery = () =>
+    $ownsProject({ param: "projectId", from: "query" });
+
+  protected ownsProjectFromBody = () =>
+    $ownsProject({ param: "projectId", from: "body" });
+
+  /**
+   * Member gate on the project the folio named by `params.id` belongs to.
+   *
+   * The folio itself lands on `this.owned.get<Folio>()`, which matters most
+   * to `update`: the protection-domain invariant is decided against the
+   * EXISTING row, and that row is now read once, by the gate.
+   */
+  protected ownsFolio = () =>
+    $ownsProject({ repository: () => this.folios, param: "id" });
 
   /**
    * Per-project sequence for `folios.shortId`. Powers the human-friendly
@@ -75,14 +103,16 @@ export class FolioController {
    * folio). Optional `q` runs `LIKE %q%` over `searchText`.
    */
   list = $action({
-    use: [$secure({ permissions: ["folio:read"] })],
+    use: [
+      $secure({ permissions: ["folio:read"] }),
+      this.ownsProjectFromQuery(),
+    ],
     description: "List the project's folios (newest first).",
     schema: {
       query: folioListQuerySchema,
       response: z.array(folios.schema),
     },
-    handler: async ({ query, user }) => {
-      await this.security.assertMember(query.projectId, user);
+    handler: async ({ query }) => {
       const where: Record<string, unknown> = {
         projectId: { eq: query.projectId },
       };
@@ -105,7 +135,10 @@ export class FolioController {
   });
 
   getByShortId = $action({
-    use: [$secure({ permissions: ["folio:read"] })],
+    // Gated on the PARAM, not on the folio it finds: the lookup is by
+    // (project, shortId), so there is nothing to hop from, and a foreign
+    // project is refused before the folios table is touched.
+    use: [$secure({ permissions: ["folio:read"] }), this.ownsProject()],
     description: "Get a single folio by its per-project shortId.",
     path: "/projects/:projectId/folios/:shortId",
     schema: {
@@ -135,8 +168,7 @@ export class FolioController {
       }),
       response: folioResourceSchema,
     },
-    handler: async ({ params, query, user }) => {
-      await this.security.assertMember(params.projectId, user);
+    handler: async ({ params, query }) => {
       const folio = await this.folios.findOne({
         where: {
           projectId: { eq: params.projectId },
@@ -233,20 +265,13 @@ export class FolioController {
   }
 
   get = $action({
-    use: [$secure({ permissions: ["folio:read"] })],
+    use: [$secure({ permissions: ["folio:read"] }), this.ownsFolio()],
     description: "Get a single folio by id.",
     schema: {
       params: folioIdParamsSchema,
       response: folios.schema,
     },
-    handler: async ({ params, user }) => {
-      const folio = await this.folios.findOne({
-        where: { id: { eq: params.id } },
-      });
-      if (!folio) throw new NotFoundError("Folio not found");
-      await this.security.assertMember(folio.projectId, user);
-      return folio;
-    },
+    handler: async () => this.owned.get<Folio>(),
   });
 
   /**
@@ -256,18 +281,14 @@ export class FolioController {
    * MCP `folio_get` calls both and merges.
    */
   getLinks = $action({
-    use: [$secure({ permissions: ["folio:read"] })],
+    use: [$secure({ permissions: ["folio:read"] }), this.ownsFolio()],
     description: "Get wiki-link outbound + inbound refs for a folio.",
     schema: {
       params: folioIdParamsSchema,
       response: folioLinksSchema,
     },
-    handler: async ({ params, user }) => {
-      const folio = await this.folios.findOne({
-        where: { id: { eq: params.id } },
-      });
-      if (!folio) throw new NotFoundError("Folio not found");
-      await this.security.assertMember(folio.projectId, user);
+    handler: async () => {
+      const folio = this.owned.get<Folio>();
       return this.resolveLinks(
         folio.id,
         folio.projectId,
@@ -551,7 +572,12 @@ export class FolioController {
   }
 
   create = $action({
-    use: [$secure({ permissions: ["folio:write"] }), $transactional()],
+    // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`.
+    use: [
+      $secure({ permissions: ["folio:write"] }),
+      $transactional(),
+      this.ownsProjectFromBody(),
+    ],
     description: "Create a new folio.",
     schema: {
       body: z.object({
@@ -580,7 +606,6 @@ export class FolioController {
       response: folioSavedSchema,
     },
     handler: async ({ body, user }) => {
-      await this.security.assertMember(body.projectId, user);
       const summary = (body.summary ?? "").trim();
       const content = body.content ?? "";
       const isProtected = body.protected === true;
@@ -640,7 +665,13 @@ export class FolioController {
   });
 
   update = $action({
-    use: [$secure({ permissions: ["folio:write"] }), $transactional()],
+    // Gate INSIDE the transaction - it is the read half of the
+    // protection-domain check below. See `$ownsProject`.
+    use: [
+      $secure({ permissions: ["folio:write"] }),
+      $transactional(),
+      this.ownsFolio(),
+    ],
     description: "Update a folio.",
     schema: {
       params: folioIdParamsSchema,
@@ -671,11 +702,9 @@ export class FolioController {
       response: folioSavedSchema,
     },
     handler: async ({ params, body, user }) => {
-      const existing = await this.folios.findOne({
-        where: { id: { eq: params.id } },
-      });
-      if (!existing) throw new NotFoundError("Folio not found");
-      await this.security.assertMember(existing.projectId, user);
+      // The row the protection-domain invariant is decided against, read by
+      // the gate rather than a second time here.
+      const existing = this.owned.get<Folio>();
 
       // A protected row's `content` is a passphrase-encrypted envelope the
       // server cannot interpret. A caller that writes new `content` against
@@ -845,18 +874,13 @@ export class FolioController {
   });
 
   delete = $action({
-    use: [$secure({ permissions: ["folio:write"] })],
+    use: [$secure({ permissions: ["folio:write"] }), this.ownsFolio()],
     description: "Delete a folio.",
     schema: {
       params: folioIdParamsSchema,
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      const existing = await this.folios.findOne({
-        where: { id: { eq: params.id } },
-      });
-      if (!existing) throw new NotFoundError("Folio not found");
-      await this.security.assertMember(existing.projectId, user);
       // Folios no longer have folio children since quest #66 — they're
       // leaves under folio directories. `folio_revisions` still cascades
       // via its FK.
@@ -947,7 +971,10 @@ export class FolioController {
    * "who changed what, when" question can be answered across folios.
    */
   listProjectActivity = $action({
-    use: [$secure({ permissions: ["folio:read"] })],
+    use: [
+      $secure({ permissions: ["folio:read"] }),
+      this.ownsProjectFromQuery(),
+    ],
     path: "/folios/activity",
     description:
       "Recent folio activity in a project (revisions across all folios, newest first).",
@@ -974,8 +1001,7 @@ export class FolioController {
         ),
       }),
     },
-    handler: async ({ query, user }) => {
-      await this.security.assertMember(query.projectId, user);
+    handler: async ({ query }) => {
       const limit = query.limit ?? 50;
 
       // One statement: the project is reached by filtering on the revision's
@@ -1016,7 +1042,7 @@ export class FolioController {
    * pagination here.
    */
   listHistory = $action({
-    use: [$secure({ permissions: ["folio:read"] })],
+    use: [$secure({ permissions: ["folio:read"] }), this.ownsFolio()],
     path: "/folios/:id/history",
     description: "List the revision history of a folio (newest first).",
     schema: {
@@ -1073,13 +1099,7 @@ export class FolioController {
         }),
       ),
     },
-    handler: async ({ params, user }) => {
-      const folio = await this.folios.findOne({
-        where: { id: { eq: params.id } },
-      });
-      if (!folio) throw new NotFoundError("Folio not found");
-      await this.security.assertMember(folio.projectId, user);
-
+    handler: async ({ params }) => {
       const revisions = await this.revisionsWith.findMany({
         where: { folioId: { eq: params.id } },
         orderBy: [{ column: "at", direction: "desc" }],
@@ -1133,7 +1153,12 @@ export class FolioController {
    * can undo the revert if they did it in error.
    */
   revertHistory = $action({
-    use: [$secure({ permissions: ["folio:write"] }), $transactional()],
+    // Gate INSIDE the transaction - see `$ownsProject`.
+    use: [
+      $secure({ permissions: ["folio:write"] }),
+      $transactional(),
+      this.ownsFolio(),
+    ],
     path: "/folios/:id/history/:revisionId/revert",
     description: "Revert a folio to a prior revision (creates a new revision).",
     schema: {
@@ -1144,11 +1169,7 @@ export class FolioController {
       response: folios.schema,
     },
     handler: async ({ params, user }) => {
-      const folio = await this.folios.findOne({
-        where: { id: { eq: params.id } },
-      });
-      if (!folio) throw new NotFoundError("Folio not found");
-      await this.security.assertMember(folio.projectId, user);
+      const folio = this.owned.get<Folio>();
 
       const revision = await this.historyService.findRevision(
         params.revisionId,
@@ -1198,7 +1219,7 @@ export class FolioController {
    * older non-pinned revisions get dropped.
    */
   pinHistory = $action({
-    use: [$secure({ permissions: ["folio:write"] })],
+    use: [$secure({ permissions: ["folio:write"] }), this.ownsFolio()],
     path: "/folios/:id/history/:revisionId/pin",
     description: "Toggle pin on a folio revision.",
     schema: {
@@ -1209,12 +1230,8 @@ export class FolioController {
       body: z.object({ pinned: z.boolean() }),
       response: okSchema,
     },
-    handler: async ({ params, body, user }) => {
-      const folio = await this.folios.findOne({
-        where: { id: { eq: params.id } },
-      });
-      if (!folio) throw new NotFoundError("Folio not found");
-      await this.security.assertMember(folio.projectId, user);
+    handler: async ({ params, body }) => {
+      const folio = this.owned.get<Folio>();
       const revision = await this.historyService.findRevision(
         params.revisionId,
       );
