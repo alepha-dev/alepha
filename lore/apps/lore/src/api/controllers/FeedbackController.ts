@@ -24,34 +24,18 @@ import { type Project, projects } from "../entities/projects.ts";
 import type { Quest } from "../entities/quests.ts";
 import type { User } from "../entities/users.ts";
 import { relations } from "../relations.ts";
+import { feedbackBodySchema } from "../schemas/feedbackBodySchema.ts";
 import {
   type FeedbackResource,
   feedbackResourceSchema,
 } from "../schemas/feedbackResourceSchema.ts";
-import {
-  type FeedbackSource,
-  feedbackSourceSchema,
-} from "../schemas/feedbackSourceSchema.ts";
+import type { FeedbackSource } from "../schemas/feedbackSourceSchema.ts";
 import {
   type MyFeedbackResource,
   myFeedbackResourceSchema,
 } from "../schemas/myFeedbackResourceSchema.ts";
 import { FeedbackRateLimiter } from "../services/FeedbackRateLimiter.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
-
-const feedbackBodySchema = z.object({
-  title: z.string().min(1).max(200),
-  description: z.string().min(1).max(10_000),
-  attachments: z.array(z.uuid()).optional(),
-  tags: z.array(z.string().max(100)).max(20).optional(),
-  /**
-   * Provenance of an embedded submission. Absent for first-party feedback.
-   * The fields are attacker-controlled (set by the embedding page) — they
-   * are persisted verbatim and must only ever be rendered as escaped plain
-   * text. See `feedback.source` + folio #12.
-   */
-  source: feedbackSourceSchema.optional(),
-});
 
 /**
  * A feedback row carrying the relations a resource needs, as `include`

@@ -8,22 +8,6 @@ import { blights } from "../entities/blights.ts";
 import { projects } from "../entities/projects.ts";
 
 /**
- * Fallback Blights retention window when a project sets no `retentionDays`.
- */
-export const DEFAULT_RETENTION_DAYS = 30;
-
-/**
- * Milliseconds in a day — for the retention-cutoff arithmetic.
- */
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-/**
- * How many project ids one purge statement may carry as bound parameters.
- * See {@link BlightJobs.chunked} for why there is a bound at all.
- */
-const PURGE_BATCH_SIZE = 90;
-
-/**
  * Keeps the blights inbox from growing without bound.
  *
  * One table now. The legacy `sigil_blights` this also used to sweep no longer
@@ -31,6 +15,22 @@ const PURGE_BATCH_SIZE = 90;
  * the sigil lookup that resolved its rows, went with it.
  */
 export class BlightJobs {
+  /**
+   * Milliseconds in a day — for the retention-cutoff arithmetic.
+   */
+  protected readonly DAY_MS = 24 * 60 * 60 * 1000;
+
+  /**
+   * How many project ids one purge statement may carry as bound parameters.
+   * See {@link BlightJobs.chunked} for why there is a bound at all.
+   */
+  protected readonly PURGE_BATCH_SIZE = 90;
+
+  /**
+   * Fallback Blights retention window when a project sets no `retentionDays`.
+   */
+  protected readonly DEFAULT_RETENTION_DAYS = 30;
+
   protected readonly log = $logger();
   protected readonly projects = $repository(projects);
   protected readonly blights = $repository(blights);
@@ -63,7 +63,9 @@ export class BlightJobs {
       let totalDeleted = 0;
 
       for (const [retentionDays, projectIds] of this.byRetention(allProjects)) {
-        const cutoff = new Date(nowMs - retentionDays * DAY_MS).toISOString();
+        const cutoff = new Date(
+          nowMs - retentionDays * this.DAY_MS,
+        ).toISOString();
 
         for (const chunk of this.chunked(projectIds)) {
           try {
@@ -110,7 +112,7 @@ export class BlightJobs {
   ): Map<number, number[]> {
     const groups = new Map<number, number[]>();
     for (const project of projects) {
-      const days = project.retentionDays ?? DEFAULT_RETENTION_DAYS;
+      const days = project.retentionDays ?? this.DEFAULT_RETENTION_DAYS;
       const ids = groups.get(days);
       if (ids) {
         ids.push(project.id);
@@ -133,8 +135,8 @@ export class BlightJobs {
    */
   protected chunked(ids: number[]): number[][] {
     const batches: number[][] = [];
-    for (let i = 0; i < ids.length; i += PURGE_BATCH_SIZE) {
-      batches.push(ids.slice(i, i + PURGE_BATCH_SIZE));
+    for (let i = 0; i < ids.length; i += this.PURGE_BATCH_SIZE) {
+      batches.push(ids.slice(i, i + this.PURGE_BATCH_SIZE));
     }
     return batches;
   }

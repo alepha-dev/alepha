@@ -2,7 +2,7 @@ import { z } from "alepha";
 
 import { linkSourceKindSchema } from "../../api/schemas/linkSourceKindSchema.ts";
 import { linkTargetKindSchema } from "../../api/schemas/linkTargetKindSchema.ts";
-import { epicStatusSchema } from "./commonSchemas.ts";
+import { epicStatusSchema } from "./epicStatusSchema.ts";
 
 /**
  * The epic a folio is filed under. Same shape as the `epic` on quest rows

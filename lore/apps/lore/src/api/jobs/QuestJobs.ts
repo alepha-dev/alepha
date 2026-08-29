@@ -10,9 +10,9 @@ import { quests, REMINDER_INTERVAL_MS } from "../entities/quests.ts";
 import { QuestNotifications } from "../notifications/QuestNotifications.ts";
 import { relations } from "../relations.ts";
 
-const REMINDER_BATCH = 50;
-
 export class QuestJobs {
+  protected readonly REMINDER_BATCH = 50;
+
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly quests = $repository(quests);
@@ -63,7 +63,7 @@ export class QuestJobs {
           completedAt: { isNull: true },
         },
         orderBy: [{ column: "reminderNextAt", direction: "asc" }],
-        limit: REMINDER_BATCH,
+        limit: this.REMINDER_BATCH,
         include: { acceptedByUser: true, project: true },
       });
       if (due.length === 0) return;

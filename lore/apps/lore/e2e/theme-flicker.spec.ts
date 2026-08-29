@@ -78,9 +78,16 @@ test.describe("theme no-flash", () => {
       if (isMismatch(err.message)) mismatches.push(err.message);
     });
 
-    await page.goto("/", { waitUntil: "networkidle" });
-    // Let hydration run to completion before asserting.
-    await page.waitForTimeout(500);
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+
+    // The assertion is a NEGATIVE — "no mismatch was logged" — so there is
+    // nothing for Playwright's auto-retry to converge on: the check has to run
+    // AFTER hydration or it passes for the wrong reason. This used to be a
+    // fixed 500 ms sleep, which is slow when hydration is fast and a false
+    // green when CI is loaded. `data-alepha-hydrated` is set by
+    // `ReactBrowserRendererProvider` the moment React takes over the server
+    // HTML, which is the condition the sleep was approximating.
+    await page.waitForSelector("html[data-alepha-hydrated='true']");
 
     expect(mismatches).toEqual([]);
   });

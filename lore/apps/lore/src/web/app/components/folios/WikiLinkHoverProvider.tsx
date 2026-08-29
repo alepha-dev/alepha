@@ -583,11 +583,13 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
           </span>
         </div>
       ) : loading ? (
-        <p className="text-muted-foreground text-xs">Loading…</p>
+        <p className="text-muted-foreground text-xs">
+          {tr("folios.wikilink.loading")}
+        </p>
       ) : null}
       {state.target.kind !== "broken" && !loading && !data && (
         <p className="text-muted-foreground text-xs italic">
-          Preview unavailable
+          {tr("folios.wikilink.unavailable")}
         </p>
       )}
       {data?.kind === "folio" && (

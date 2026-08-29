@@ -5,11 +5,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@alepha/ui/components/ui/sheet";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@alepha/ui/components/ui/tooltip";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Copy } from "lucide-react";
@@ -24,13 +19,6 @@ import QuestCreate from "./QuestCreate.tsx";
 
 export interface QuestViewDuplicateButtonProps {
   quest: QuestResource;
-  /**
-   * `icon` is the bare square button the quest header used to carry.
-   * `row` is the labelled, left-aligned shape the metadata rail's action
-   * list wants. The dialog is the same either way, which is why this is a
-   * variant rather than a second component wrapping this one.
-   */
-  variant?: "icon" | "row";
 }
 
 const QuestViewDuplicateButton = (props: QuestViewDuplicateButtonProps) => {
@@ -55,34 +43,19 @@ const QuestViewDuplicateButton = (props: QuestViewDuplicateButtonProps) => {
 
   return (
     <>
-      {props.variant === "row" ? (
-        <Button
-          type="button"
-          variant="ghost"
-          className="[&_svg]:text-muted-foreground justify-start gap-3"
-          onClick={() => setShowDialog(true)}
-        >
-          <Copy className="size-4" />
-          {tr("quest.view.duplicate")}
-        </Button>
-      ) : (
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0"
-                onClick={() => setShowDialog(true)}
-              />
-            }
-          >
-            <Copy className="size-4" />
-          </TooltipTrigger>
-          <TooltipContent>{tr("quest.view.duplicate")}</TooltipContent>
-        </Tooltip>
-      )}
+      {/* The labelled, left-aligned shape the metadata rail's action list
+          wants. There used to be a bare-square `icon` variant here too, for a
+          quest header that no longer carries one; nothing had passed it in a
+          long time. */}
+      <Button
+        type="button"
+        variant="ghost"
+        className="[&_svg]:text-muted-foreground justify-start gap-3"
+        onClick={() => setShowDialog(true)}
+      >
+        <Copy className="size-4" />
+        {tr("quest.view.duplicate")}
+      </Button>
 
       <Sheet open={showDialog} onOpenChange={setShowDialog}>
         <SheetContent

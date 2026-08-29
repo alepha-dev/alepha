@@ -148,7 +148,9 @@ const ProjectSettingsMembersSection = (
                     <span className="text-sm font-medium">
                       {invitation.email}
                     </span>
-                    <Badge variant="secondary">Pending</Badge>
+                    <Badge variant="secondary">
+                      {tr("invitations.badge.pending")}
+                    </Badge>
                   </div>
                   <span className="text-muted-foreground text-xs">
                     <Localize value={invitation.createdAt} date="fromNow" />

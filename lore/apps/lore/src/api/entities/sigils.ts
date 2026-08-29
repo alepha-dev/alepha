@@ -46,14 +46,22 @@ export const sigils = $entity({
      */
     kinds: db.default(z.array(z.string().max(50)).max(10), []),
     /**
-     * Which corner this app's feedback button sits in.
+     * @deprecated Frozen dead column — nothing reads or writes it.
      *
-     * Optional, and deliberately without a `db.default`: `undefined` means
-     * bottom-right, so every sigil predating the column keeps the original
-     * placement with no backfill — and a nullable `ADD COLUMN` is the one shape
-     * that does not make drizzle rebuild the table. `sigils` is the CASCADE
-     * parent of the four analytics tables, so a rebuild here is the wipe bomb
-     * documented in CLAUDE.md.
+     * It held the corner this app's feedback button sits in, and shipped to
+     * third-party pages through `/sigils/config`, which the reporting client
+     * polled. That round trip was removed: a fetched config survives neither a
+     * serverless isolate nor a prerender, so an app now declares the placement
+     * in its own `SIGIL_CONFIG.feedbackButton`. The Lore-side setting outlived
+     * the mechanism that delivered it and could not take effect at all.
+     *
+     * The column stays rather than being dropped, for the same reason
+     * `projects.unlockedFeatures` and `quests.note` stay: `sigils` is the
+     * CASCADE parent of the four analytics tables, and a `DROP COLUMN` that
+     * drizzle turns into a table rebuild is the wipe bomb documented in
+     * CLAUDE.md. It is also why the column is nullable with no `db.default` —
+     * a nullable `ADD COLUMN` was the one shape that avoided a rebuild going
+     * in, and staying put is the one shape that avoids one coming out.
      */
     feedbackPosition: z.enum(SIGIL_FEEDBACK_POSITIONS).optional(),
     /**

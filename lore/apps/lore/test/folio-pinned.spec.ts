@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import { FolioController } from "../src/api/controllers/FolioController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { foldPinnedFolios } from "../src/api/services/PinnedFolioFolder.ts";
+import { PinnedFolioFolder } from "../src/api/services/PinnedFolioFolder.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
@@ -151,7 +151,12 @@ describe("FolioController pinned sort + roundtrip (#59)", () => {
   });
 });
 
-describe("foldPinnedFolios cap behaviour (#59)", () => {
+describe("PinnedFolioFolder.fold cap behaviour (#59)", () => {
+  const foldPinnedFolios = (
+    source: Parameters<PinnedFolioFolder["fold"]>[0],
+    cap: number,
+  ) => new PinnedFolioFolder().fold(source, cap);
+
   const makeFolio = (id: string, content: string) => ({
     id,
     shortId: Number.parseInt(id, 10) || 0,

@@ -3,14 +3,10 @@ import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 
 import { createInvitationSchema } from "../schemas/createInvitationSchema.ts";
+import { invitationInboxItemSchema } from "../schemas/invitationInboxItemSchema.ts";
 import { invitationResourceSchema } from "../schemas/invitationResourceSchema.ts";
 import { InvitationService } from "../services/InvitationService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
-
-const inboxItemSchema = invitationResourceSchema.extend({
-  projectTitle: z.string(),
-  inviterName: z.string().optional(),
-});
 
 export class InvitationController {
   protected readonly url = "/invitations";
@@ -67,7 +63,7 @@ export class InvitationController {
     use: [$secure()],
     description: "List pending invitations addressed to the current user",
     schema: {
-      response: z.array(inboxItemSchema),
+      response: z.array(invitationInboxItemSchema),
     },
     handler: ({ user }) => this.invitationService.listForUser(user),
   });

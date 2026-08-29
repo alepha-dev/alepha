@@ -246,7 +246,7 @@ const QuestViewRail = (props: QuestViewRailProps) => {
           is what makes it the only one that stands out. */}
       {!quest.completedAt && (
         <div className="flex flex-col gap-1.5 border-t pt-4">
-          <QuestViewDuplicateButton quest={quest} variant="row" />
+          <QuestViewDuplicateButton quest={quest} />
 
           {quest.shelvedAt ? (
             <Button

@@ -1,9 +1,8 @@
-import { $inject, AlephaError, z } from "alepha";
-import { RealmProvider } from "alepha/api/users";
+import { $inject, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
-import { $action } from "alepha/server";
+import { $action, BadRequestError } from "alepha/server";
 import { FileSystemProvider } from "alepha/system";
 
 import { milestones } from "../entities/milestones.ts";
@@ -18,15 +17,20 @@ import { QuestCsvParser } from "../services/QuestCsvParser.ts";
 import { QuestImportFormatProvider } from "../services/QuestImportFormatProvider.ts";
 import { QuestController } from "./QuestController.ts";
 
-const EXPORT_LIMIT = 1000;
-
 export class ProjectQuestPortabilityController {
+  protected readonly EXPORT_LIMIT = 1000;
+
   protected readonly quests = $repository(quests);
   /**
    * ...with milestone and the three users a quest names, for the CSV export.
    */
   protected readonly questsWith = $repository(relations, "quests");
   protected readonly projects = $repository(projects);
+  /**
+   * ...with the account behind each membership row, so an import can
+   * resolve an assignee email without reading the realm.
+   */
+  protected readonly membersWith = $repository(relations, "members");
   protected readonly milestones = $repository(milestones);
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly fs = $inject(FileSystemProvider);
@@ -34,7 +38,6 @@ export class ProjectQuestPortabilityController {
   protected readonly formatter = $inject(QuestCsvFormatter);
   protected readonly parser = $inject(QuestCsvParser);
   protected readonly formats = $inject(QuestImportFormatProvider);
-  protected readonly realm = $inject(RealmProvider);
   protected readonly quest = $inject(QuestController);
   protected readonly areaService = $inject(AreaService);
 
@@ -60,7 +63,7 @@ export class ProjectQuestPortabilityController {
       const projectQuests = await this.questsWith.findMany({
         where: { projectId: { eq: params.id } },
         orderBy: "shortId",
-        limit: EXPORT_LIMIT,
+        limit: this.EXPORT_LIMIT,
         include: {
           milestone: { select: ["id", "title"] },
           author: true,
@@ -125,12 +128,12 @@ export class ProjectQuestPortabilityController {
       const text = await body.file.text();
       const rows = this.parser.parse(text);
       if (rows.length === 0) {
-        throw new AlephaError("Empty CSV");
+        throw new BadRequestError("Empty CSV");
       }
       const header = rows[0];
       const format = this.formats.detect(header);
       if (!format) {
-        throw new AlephaError(
+        throw new BadRequestError(
           "Unrecognized CSV format (expected Alepha Lore or Trello header).",
         );
       }
@@ -152,7 +155,28 @@ export class ProjectQuestPortabilityController {
       for (const c of milestonesInProject)
         milestoneIdByTitle.set(c.title, c.id);
 
-      const usersRepo = this.realm.userRepository();
+      // The people this import may attribute a quest to: the project's own
+      // members, and nobody else. Resolving against the whole realm made a
+      // CSV upload an account-enumeration oracle (a row either warned or did
+      // not, which answers "does this address have an account here"), and it
+      // could assign a quest to a stranger who is not in the project and
+      // cannot see it. One query for the whole file rather than one per
+      // cell, which the realm-wide version needed.
+      const projectMembers = await this.membersWith.findMany({
+        where: { projectId: { eq: params.id } },
+        include: { user: true },
+      });
+      const memberIdByLogin = new Map<string, string>();
+      for (const member of projectMembers) {
+        // A membership whose account is gone: the row outlives the user by
+        // design, and there is nothing to attribute to.
+        if (!member.user) continue;
+        // Both, because the export writes `email ?? username`, so a member
+        // with no address round-trips through the username column.
+        for (const login of [member.user.email, member.user.username]) {
+          if (login) memberIdByLogin.set(login.toLowerCase(), member.user.id);
+        }
+      }
 
       let created = 0;
       let updated = 0;
@@ -160,23 +184,24 @@ export class ProjectQuestPortabilityController {
       const errors: { row: number; message: string }[] = [];
       const warnings: { row: number; message: string }[] = [];
 
-      const resolveUser = async (
+      const resolveUser = (
         email: string,
         rowIndex: number,
         field: string,
-      ): Promise<string | undefined> => {
+      ): string | undefined => {
         if (!email) return undefined;
-        const found = await usersRepo.findOne({
-          where: { email: { eq: email } },
-        });
+        const found = memberIdByLogin.get(email.trim().toLowerCase());
         if (!found) {
+          // Deliberately says "not a member of this project" rather than
+          // "not found": the warning is only ever read by someone who is
+          // already a member, and it must not double as a directory lookup.
           warnings.push({
             row: rowIndex,
-            message: `User '${email}' not found for ${field}; left empty`,
+            message: `'${email}' is not a member of this project; ${field} left empty`,
           });
           return undefined;
         }
-        return found.id;
+        return found;
       };
 
       const parseDate = (s: string): string | undefined =>
@@ -214,12 +239,12 @@ export class ProjectQuestPortabilityController {
             }
           }
 
-          const acceptedBy = await resolveUser(
+          const acceptedBy = resolveUser(
             row.acceptedBy,
             row.rowIndex,
             "acceptedBy",
           );
-          const completedBy = await resolveUser(
+          const completedBy = resolveUser(
             row.completedBy,
             row.rowIndex,
             "completedBy",

@@ -1,6 +1,8 @@
 import { type Infer, z } from "alepha";
 
 import { feedback } from "../entities/feedback.ts";
+import { quests } from "../entities/quests.ts";
+import { questStatusSchema } from "./questResourceSchema.ts";
 
 /**
  * Quest stub linked from a feedback item. Mirrors the subset of `quests` fields the
@@ -8,16 +10,18 @@ import { feedback } from "../entities/feedback.ts";
  * to render quest progression — full quest details live behind their own
  * endpoint.
  */
-export const feedbackLinkedQuestSchema = z.object({
-  id: z.integer(),
-  shortId: z.integer(),
-  title: z.string(),
-  status: z.enum(["new", "accepted", "completed"]).meta({ mode: "text" }),
-  priority: z.string(),
-  area: z.string(),
-  acceptedAt: z.datetime().optional(),
-  completedAt: z.datetime().optional(),
-});
+export const feedbackLinkedQuestSchema = quests.schema
+  .pick({ id: true, shortId: true, title: true, priority: true, area: true })
+  .extend({
+    /**
+     * Three values, not four: the mapper derives this from `acceptedAt` /
+     * `completedAt` and never reads `shelvedAt`, so a shelved linked quest
+     * reads as whichever of the three it last was.
+     */
+    status: questStatusSchema.exclude(["shelved"]).meta({ mode: "text" }),
+    acceptedAt: z.datetime().optional(),
+    completedAt: z.datetime().optional(),
+  });
 
 export type FeedbackLinkedQuest = Infer<typeof feedbackLinkedQuestSchema>;
 

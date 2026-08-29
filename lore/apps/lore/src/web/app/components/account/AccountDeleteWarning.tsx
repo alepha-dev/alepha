@@ -1,8 +1,10 @@
 import { useClient } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import type { UserDeletionHook } from "@/api/hooks/UserDeletionHook.ts";
+import type { I18n } from "@/web/app/services/I18n.ts";
 
 /**
  * What deleting a Lore account costs beyond the account itself.
@@ -24,6 +26,7 @@ import type { UserDeletionHook } from "@/api/hooks/UserDeletionHook.ts";
  */
 const AccountDeleteWarning = () => {
   const api = useClient<UserDeletionHook>();
+  const { tr } = useI18n<I18n, "en">();
   const [count, setCount] = useState<number | undefined>();
 
   useEffect(() => {
@@ -52,8 +55,8 @@ const AccountDeleteWarning = () => {
       <TriangleAlert className="text-destructive mt-0.5 size-4 shrink-0" />
       <span className="text-sm">
         {count === 1
-          ? "1 quest you authored will also be deleted, including if it lives in someone else's project."
-          : `${count} quests you authored will also be deleted, including any in other people's projects.`}
+          ? tr("account.delete.quests.one")
+          : tr("account.delete.quests.many", { args: [String(count)] })}
       </span>
     </div>
   );

@@ -325,6 +325,7 @@ export default {
   "quest.event.shelved": "shelved the quest",
   "quest.event.unshelved": "put the quest back in play",
   "quest.event.updated": "updated the quest",
+  "quest.objective.error": "Could not update the objective.",
   "quest.status.new": "New",
   "quest.status.accepted": "In progress",
   "quest.status.completed": "Completed",
@@ -611,6 +612,9 @@ export default {
   "milestone.delete": "Delete",
   "milestone.delete.error":
     "Cannot delete a milestone that has quests attached.",
+  "milestone.start.error": "Could not start the milestone.",
+  "milestone.close.error": "Could not close the milestone.",
+  "milestone.detail.error": "Could not save the milestone.",
   "milestone.changelog": "Changelog",
   "milestone.changelog.copy": "Copy",
   "milestone.changelog.download": "Download",
@@ -850,11 +854,6 @@ export default {
   "app.settings.url.detected":
     "Using $1, the address this app last reported from. Set a URL here to show a different one, or clear the field to go back to the detected address.",
   "app.settings.url.save": "Save",
-  "app.settings.feedbackPosition.title": "Feedback button position",
-  "app.settings.feedbackPosition.description":
-    "Which corner this app's floating feedback button sits in. Move it if it covers something; pagination usually lives bottom-right.",
-  "app.settings.feedbackPosition.bottomLeft": "Bottom left",
-  "app.settings.feedbackPosition.bottomRight": "Bottom right",
   "app.settings.rotate.title": "Rotate the token",
   "app.settings.rotate.description":
     "Mints a new token and stops the current one immediately. Everything this app has reported is kept: this is how a leaked token is revoked without losing its history.",
@@ -1237,10 +1236,6 @@ export default {
   "epic.quests.detach": "Detach",
   "epic.quests.detach.title": "Detach this quest?",
   "epic.quests.detach.confirm": '"$1" will no longer be linked to this epic.',
-  "epic.quests.status.new": "New",
-  "epic.quests.status.accepted": "Accepted",
-  "epic.quests.status.completed": "Completed",
-  "epic.quests.status.shelved": "Shelved",
   "epic.quests.column.number": "#",
   "epic.quests.column.title": "Title",
   "epic.quests.column.status": "Status",
@@ -1337,4 +1332,71 @@ export default {
   "dashboard.footer.visitors.flat": "same as the day before",
   "dashboard.footer.visitors.noCompare": "no comparison yet",
   "dashboard.footer.noBeacon": "no app here reports page views",
+
+  // --- /account/invitations -------------------------------------------------
+  "invitations.title": "Pending invitations",
+  "invitations.description":
+    "Project invitations addressed to your email. Accepting adds you to the project as a member.",
+  "invitations.empty": "No pending invitations.",
+  "invitations.badge.pending": "Pending",
+  "invitations.invitedBy": "Invited by $1",
+  "invitations.invited": "Invited",
+  "invitations.accept": "Accept",
+  "invitations.decline": "Decline",
+  "invitations.accepted": "You have joined the project!",
+  "invitations.declined": "Invitation declined.",
+  "invitations.accept.error": "Failed to accept invitation",
+  "invitations.decline.error": "Failed to decline invitation",
+
+  // --- /account/feedback ----------------------------------------------------
+  "myFeedback.title": "Submitted feedback",
+  "myFeedback.description":
+    "Bug reports and requests you submitted across projects. Pending ones can still be edited or withdrawn.",
+  "myFeedback.empty": "You haven't submitted any feedback yet.",
+  "myFeedback.filter.search": "Search",
+  "myFeedback.filter.search.aria": "Search feedback",
+  "myFeedback.filter.allStatuses": "All statuses",
+  "myFeedback.filter.allProjects": "All projects",
+  "myFeedback.column.project": "Project",
+  "myFeedback.column.title": "Title",
+  "myFeedback.column.status": "Status",
+  "myFeedback.column.tags": "Tags",
+  "myFeedback.column.created": "Created",
+  "myFeedback.action.delete": "Delete",
+  "myFeedback.delete.title": "Delete feedback?",
+  "myFeedback.delete.description":
+    "This permanently withdraws your feedback. This cannot be undone.",
+  "myFeedback.edit.title": "Edit feedback",
+  "myFeedback.edit.title.readOnly": "Feedback",
+  "myFeedback.edit.hint":
+    "You can edit feedback only while it is still pending.",
+  "myFeedback.edit.hint.readOnly":
+    "This feedback has already been triaged and can no longer be edited.",
+  "myFeedback.edit.title.placeholder": "Short summary",
+  "myFeedback.edit.description": "Description",
+  "myFeedback.edit.description.placeholder": "Describe your request",
+  "myFeedback.edit.required": "Title and description are required.",
+  "myFeedback.edit.saved": "Feedback updated.",
+  "myFeedback.edit.error": "Failed to update feedback.",
+  "feedback.status.pending": "Pending",
+  "feedback.status.accepted": "Accepted",
+  "feedback.status.rejected": "Rejected",
+
+  // --- account deletion -----------------------------------------------------
+  "account.delete.quests.one":
+    "1 quest you authored will also be deleted, including if it lives in someone else's project.",
+  "account.delete.quests.many":
+    "$1 quests you authored will also be deleted, including any in other people's projects.",
+
+  // --- folios ---------------------------------------------------------------
+  "folio.tree.resize": "Resize folio tree",
+  "folios.wikilink.loading": "Loading…",
+  "folios.wikilink.unavailable": "Preview unavailable",
+
+  // --- shared ---------------------------------------------------------------
+  "members.owner": "Owner",
+  "members.unknown": "Unknown",
+  "nav.home": "Home",
+  "common.close": "Close",
+  "common.save": "Save",
 };

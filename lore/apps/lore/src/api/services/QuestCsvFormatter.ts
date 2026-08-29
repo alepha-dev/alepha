@@ -22,25 +22,6 @@ export interface ExportRow {
   description: string;
 }
 
-export const QUEST_CSV_HEADER: ReadonlyArray<keyof ExportRow> = [
-  "shortId",
-  "title",
-  "status",
-  "priority",
-  "size",
-  "area",
-  "kanbanColumn",
-  "milestone",
-  "createdBy",
-  "acceptedBy",
-  "completedBy",
-  "createdAt",
-  "acceptedAt",
-  "completedAt",
-  "objectives",
-  "description",
-];
-
 /**
  * Encode quest rows into Alepha Lore CSV.
  *
@@ -54,6 +35,25 @@ export const QUEST_CSV_HEADER: ReadonlyArray<keyof ExportRow> = [
  * leading apostrophe back off every cell, so the round trip is lossless.
  */
 export class QuestCsvFormatter {
+  readonly QUEST_CSV_HEADER: ReadonlyArray<keyof ExportRow> = [
+    "shortId",
+    "title",
+    "status",
+    "priority",
+    "size",
+    "area",
+    "kanbanColumn",
+    "milestone",
+    "createdBy",
+    "acceptedBy",
+    "completedBy",
+    "createdAt",
+    "acceptedAt",
+    "completedAt",
+    "objectives",
+    "description",
+  ];
+
   /**
    * Cell openings a spreadsheet reads as the start of a formula, plus the
    * apostrophe itself so that a value which already opens on one survives the
@@ -65,11 +65,11 @@ export class QuestCsvFormatter {
     const lines: string[] = [
       // The header is written verbatim: the names are fixed identifiers, none
       // of them can open a formula, and `canParse` matches on them exactly.
-      QUEST_CSV_HEADER.map((c) => this.escape(c)).join(","),
+      this.QUEST_CSV_HEADER.map((c) => this.escape(c)).join(","),
     ];
     for (const row of rows) {
       lines.push(
-        QUEST_CSV_HEADER.map((col) => {
+        this.QUEST_CSV_HEADER.map((col) => {
           const v = row[col];
           if (col === "objectives")
             return this.escape(this.neutralize(JSON.stringify(v)));
