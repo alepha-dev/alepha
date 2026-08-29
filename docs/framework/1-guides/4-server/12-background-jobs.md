@@ -276,6 +276,18 @@ Cron jobs default to `record: "all"` with one retained success so the admin
 Note the deliberate asymmetry: per-job `keep.ok: 0` means _never trim_, while
 the global `keepLastSuccess: 0` means _delete on success_.
 
+Trim runs on its own cron (`trimCron`, hourly by default) and costs one
+grouped count for the whole tick, so a job whose buffer is already at its
+limit is never queried individually. A buffer that is over its limit is
+emptied back down in chunks, however far over it is; if one tick cannot
+finish the job it logs what is left and the next tick continues.
+
+A cron whose buffer is exactly one row (the default) **updates** that row
+rather than inserting a new one for the trim to delete later. A `*/15` cron
+used to write 96 rows a day so that trim could remove 95 of them, purely to
+keep one timestamp current. Jobs keeping more than one row still insert, since
+there the rows are the history.
+
 ## Configuration
 
 Tune the `jobConfig` atom:

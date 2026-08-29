@@ -711,8 +711,7 @@ export class JobProvider {
       // Called from inside the execution's context, so the buffer of the run
       // that just finished is the ambient one.
       const logs = status === "error" ? this.logBuffer.snapshot() : undefined;
-      await this.executions.create({
-        id: executionId,
+      const row = {
         jobName,
         status,
         payload: fields.payload as Record<string, unknown> | undefined,
@@ -724,10 +723,55 @@ export class JobProvider {
         logs,
         triggeredBy: fields.triggeredBy,
         triggeredByName: fields.triggeredByName,
-      });
+      };
+
+      // A cron whose buffer is exactly one row updates that row instead of
+      // inserting a new one for the trim to delete an hour later.
+      //
+      // Cron jobs default to `record: "all"` with `keep.ok = 1` so the admin
+      // "Last run" is accurate, and every success went through a fresh
+      // INSERT. A `*/15` cron therefore wrote 96 rows a day so that trim
+      // could delete 95 of them, purely to keep one timestamp current.
+      //
+      // Only for `keep === 1`: at any higher value the rows ARE the history
+      // and each one has to exist. The admin list is unaffected either way,
+      // because it orders by `startedAt`, which this refreshes — ordering by
+      // `createdAt` would have sunk a healthy cron to the bottom.
+      const existing = await this.singleRetainedRow(jobName, status);
+      if (existing) {
+        await this.executions.updateById(existing, row);
+        return;
+      }
+
+      await this.executions.create({ id: executionId, ...row });
     } catch (e) {
       this.log.warn(`Failed to write terminal row for ${executionId}`, e);
     }
+  }
+
+  /**
+   * The id of the one row a `keep: 1` buffer is allowed to hold, if it
+   * already exists. `undefined` for every other configuration, which is what
+   * keeps this from touching history it is not allowed to rewrite.
+   */
+  protected async singleRetainedRow(
+    jobName: string,
+    status: "ok" | "error",
+  ): Promise<string | undefined> {
+    const registration = this.jobs.get(jobName);
+    if (!registration) return undefined;
+    const keep =
+      status === "ok"
+        ? (registration.options.keep?.ok ?? this.config.keepLastSuccess)
+        : (registration.options.keep?.error ?? this.config.keepLastError);
+    if (keep !== 1) return undefined;
+    const rows = await this.executions.findMany({
+      where: { jobName: { eq: jobName }, status: { eq: status } },
+      orderBy: { column: "startedAt", direction: "desc" },
+      columns: ["id"],
+      limit: 1,
+    });
+    return rows[0]?.id;
   }
 
   // --- Queue push -------------------------------------------------------------------------------------------------
@@ -1960,36 +2004,120 @@ export class JobProvider {
     }
   }
 
+  /**
+   * How many ids go into one `DELETE ... WHERE id IN (...)`.
+   *
+   * Comfortably under SQLite's 999-parameter ceiling, which is the binding
+   * constraint on D1. It is why the catch-up below is a loop rather than one
+   * statement sized from the count.
+   */
+  protected readonly trimChunkSize = 500;
+
+  /**
+   * Ceiling on how much one trim tick will delete per (job, status).
+   *
+   * Bounds a single tick without being the silent cap this replaces: when it
+   * binds it is logged, and the next tick resumes, so the table still
+   * converges instead of growing forever.
+   */
+  protected readonly trimMaxPerTick = 5_000;
+
+  /**
+   * Trim every ring buffer that is actually over its limit.
+   *
+   * **One grouped query for the whole tick**, not two per registered job.
+   * The old shape issued a `findMany` per job per status regardless of
+   * activity: about sixteen jobs in Lore meant up to 32 queries an hour,
+   * roughly 770 a day, almost all of them returning nothing. Most of the
+   * hourly cron trigger's 172 ms of CPU was this.
+   *
+   * A count also tells us how far over the limit each buffer is, which is
+   * what lets the trim below stop guessing.
+   */
   protected async trimRingBuffers(): Promise<void> {
-    for (const [jobName, reg] of this.jobs) {
-      const okLimit = reg.options.keep?.ok ?? this.config.keepLastSuccess;
-      const errLimit = reg.options.keep?.error ?? this.config.keepLastError;
-      if (okLimit > 0) {
-        await this.trimByStatus(jobName, "ok", okLimit);
-      }
-      if (errLimit > 0) {
-        await this.trimByStatus(jobName, "error", errLimit);
-      }
+    let counts: Array<{
+      jobName: string;
+      status: string;
+      id: { count: number };
+    }>;
+    try {
+      counts = (await this.executions.aggregate({
+        select: { jobName: true, status: true, id: { count: true } },
+        where: { status: { inArray: ["ok", "error"] } },
+        groupBy: ["jobName", "status"],
+      })) as typeof counts;
+    } catch (e) {
+      this.log.warn("Failed to read execution counts for trim", e);
+      return;
+    }
+
+    for (const row of counts) {
+      const reg = this.jobs.get(row.jobName);
+      if (!reg) continue;
+      const status = row.status === "ok" ? "ok" : "error";
+      const keep =
+        status === "ok"
+          ? (reg.options.keep?.ok ?? this.config.keepLastSuccess)
+          : (reg.options.keep?.error ?? this.config.keepLastError);
+      // 0 means KEEP FOREVER here, and the two zeros in this module mean
+      // opposite things by documented design: a per-job `keep.ok: 0` retains
+      // the row forever, while the global `keepLastSuccess: 0` means delete
+      // on success — which is enforced at completion, not here. Do not
+      // collapse them.
+      if (keep <= 0) continue;
+      const total = Number(row.id.count ?? 0);
+      if (total <= keep) continue;
+      await this.trimByStatus(reg.name, status, keep, total);
     }
   }
 
+  /**
+   * Delete everything past the newest `keep` rows, in chunks.
+   *
+   * It used to read `limit: keep + 50` and delete whatever was beyond
+   * `keep`, which meant a job producing more than 50 rows of a status per
+   * trim tick could **never** be trimmed back: the table grew without bound
+   * and nothing anywhere said so. Silently giving up was the one option to
+   * rule out.
+   */
   protected async trimByStatus(
     jobName: string,
     status: "ok" | "error",
     keep: number,
+    total: number,
   ): Promise<void> {
+    const over = total - keep;
+    let deleted = 0;
     try {
-      const rows = await this.executions.findMany({
-        where: { jobName: { eq: jobName }, status: { eq: status } },
-        orderBy: { column: "createdAt", direction: "desc" },
-        limit: keep + 50,
-      });
-      if (rows.length <= keep) return;
-      const toDelete = rows.slice(keep).map((r) => r.id);
-      if (toDelete.length > 0) {
-        await this.executions.deleteMany({ id: { inArray: toDelete } });
-        this.log.debug(
-          `Trimmed ${toDelete.length} ${status} rows for '${jobName}'`,
+      while (deleted < over && deleted < this.trimMaxPerTick) {
+        const chunk = Math.min(
+          this.trimChunkSize,
+          over - deleted,
+          this.trimMaxPerTick - deleted,
+        );
+        // `offset: keep` past a newest-first ordering is the ring buffer's
+        // tail. Re-read each round rather than paging: the previous chunk is
+        // gone, so the same offset lands on the next-oldest rows.
+        const rows = await this.executions.findMany({
+          where: { jobName: { eq: jobName }, status: { eq: status } },
+          orderBy: { column: "createdAt", direction: "desc" },
+          columns: ["id"],
+          offset: keep,
+          limit: chunk,
+        });
+        if (rows.length === 0) break;
+        await this.executions.deleteMany({
+          id: { inArray: rows.map((r) => r.id) },
+        });
+        deleted += rows.length;
+      }
+      if (deleted > 0) {
+        this.log.debug(`Trimmed ${deleted} ${status} rows for '${jobName}'`);
+      }
+      if (deleted < over) {
+        // Visible, unlike the cap this replaces. The next tick continues.
+        this.log.info(
+          `Trim of '${jobName}' ${status} rows hit its per-tick ceiling: ${deleted}/${over} removed, the rest waits for the next tick`,
         );
       }
     } catch (e) {

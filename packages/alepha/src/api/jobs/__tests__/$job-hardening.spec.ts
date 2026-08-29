@@ -30,6 +30,7 @@ class TestJobProvider extends JobProvider {
   public testRetryBackoffMs = (attempt: number) => this.retryBackoffMs(attempt);
   public testProcessExecution = (jobName: string, executionId: string) =>
     this.processExecution(jobName, executionId);
+  public testTrimRingBuffers = this.trimRingBuffers.bind(this);
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -1247,5 +1248,211 @@ describe("$job — delaySeconds on the dispatch interface", () => {
     // that gets past it. Both belts matter: a duplicate delivery is a normal
     // event for any at-least-once transport.
     expect(calls).toBe(1);
+  });
+});
+
+// -----------------------------------------------------------------------------------------------------------------
+
+describe("$job — trim is proportional to the work done", () => {
+  it("trims a job back even when it produced far more rows than the old cap", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with({ provide: JobProvider, use: TestJobProvider })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs);
+
+    class NoisyApp {
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        schema: z.object({ v: z.integer() }),
+        keep: { error: 3 },
+        handler: async () => {},
+      });
+    }
+
+    const app = alepha.with(NoisyApp).inject(NoisyApp);
+    const jobs = alepha.inject(JobProvider) as TestJobProvider;
+    await alepha.start();
+
+    // 120 error rows against a buffer of 3. The old trim read `keep + 50`
+    // and deleted whatever was past `keep`, so it could never remove more
+    // than 50 in a tick and a job at this rate grew without bound forever.
+    for (let v = 0; v < 120; v++) {
+      await app.executions.create({
+        jobName: "NoisyApp.work",
+        status: "error",
+        error: `boom ${v}`,
+        maxAttempts: 1,
+      });
+    }
+
+    await jobs.testTrimRingBuffers();
+
+    const left = await app.executions.findMany({
+      where: { jobName: { eq: "NoisyApp.work" }, status: { eq: "error" } },
+    });
+    expect(left).toHaveLength(3);
+  });
+
+  it("leaves a buffer that is exactly at its limit alone", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with({ provide: JobProvider, use: TestJobProvider })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs);
+
+    class QuietApp {
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        schema: z.object({ v: z.integer() }),
+        keep: { error: 3 },
+        handler: async () => {},
+      });
+    }
+
+    const app = alepha.with(QuietApp).inject(QuietApp);
+    const jobs = alepha.inject(JobProvider) as TestJobProvider;
+    await alepha.start();
+
+    const ids: string[] = [];
+    for (let v = 0; v < 3; v++) {
+      const row = await app.executions.create({
+        jobName: "QuietApp.work",
+        status: "error",
+        error: `boom ${v}`,
+        maxAttempts: 1,
+      });
+      ids.push(row.id);
+    }
+
+    await jobs.testTrimRingBuffers();
+
+    const left = await app.executions.findMany({
+      where: { jobName: { eq: "QuietApp.work" }, status: { eq: "error" } },
+    });
+    expect(left.map((r) => r.id).sort()).toEqual([...ids].sort());
+  });
+
+  it("keeps a per-job keep of 0 forever, which is the opposite of the global 0", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with({ provide: JobProvider, use: TestJobProvider })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs);
+    // The global says "delete on success". The per-job 0 says "keep
+    // forever". They are documented opposites and conflating them once
+    // destroyed the audit trail of every job declaring `keep: { ok: 0 }`.
+    alepha.store.mut(jobConfig, (c) => ({ ...c, keepLastSuccess: 0 }));
+
+    class AuditApp {
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        schema: z.object({ v: z.integer() }),
+        record: "all",
+        keep: { ok: 0, error: 0 },
+        handler: async () => {},
+      });
+    }
+
+    const app = alepha.with(AuditApp).inject(AuditApp);
+    const jobs = alepha.inject(JobProvider) as TestJobProvider;
+    await alepha.start();
+
+    for (let v = 0; v < 5; v++) {
+      await app.executions.create({
+        jobName: "AuditApp.work",
+        status: "ok",
+        maxAttempts: 1,
+      });
+    }
+
+    await jobs.testTrimRingBuffers();
+
+    const left = await app.executions.findMany({
+      where: { jobName: { eq: "AuditApp.work" }, status: { eq: "ok" } },
+    });
+    expect(left).toHaveLength(5);
+  });
+
+  it("a cron whose buffer is one row updates it instead of insert-then-delete", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with({ provide: JobProvider, use: TestJobProvider })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs);
+
+    let ticks = 0;
+    class TickApp {
+      executions = $repository(jobExecutionEntity);
+      // No explicit `record`: registration gives a cron `record: "all"` with
+      // `keep.ok = 1`, which is the configuration that used to INSERT a row
+      // per tick so trim could delete it again.
+      beat = $job({
+        cron: "0 * * * *",
+        handler: async () => {
+          ticks++;
+        },
+      });
+    }
+
+    const app = alepha.with(TickApp).inject(TickApp);
+    await alepha.start();
+
+    await app.beat.trigger();
+    const first = await app.executions.findMany({
+      where: { jobName: { eq: "TickApp.beat" }, status: { eq: "ok" } },
+    });
+    expect(first).toHaveLength(1);
+
+    await app.beat.trigger();
+    await app.beat.trigger();
+    expect(ticks).toBe(3);
+
+    const after = await app.executions.findMany({
+      where: { jobName: { eq: "TickApp.beat" }, status: { eq: "ok" } },
+    });
+    // One row throughout, and it is the SAME row: three ticks used to mean
+    // three inserts and two deletes for one timestamp.
+    expect(after).toHaveLength(1);
+    expect(after[0].id).toBe(first[0].id);
+    // And it is current, which is the only thing the admin "Last run" reads.
+    expect(new Date(after[0].startedAt!).getTime()).toBeGreaterThanOrEqual(
+      new Date(first[0].startedAt!).getTime(),
+    );
+  });
+
+  it("a cron keeping more than one row still inserts, so its history survives", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with({ provide: JobProvider, use: TestJobProvider })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs);
+
+    class HistoryApp {
+      executions = $repository(jobExecutionEntity);
+      beat = $job({
+        cron: "0 * * * *",
+        record: "all",
+        keep: { ok: 5 },
+        handler: async () => {},
+      });
+    }
+
+    const app = alepha.with(HistoryApp).inject(HistoryApp);
+    await alepha.start();
+
+    await app.beat.trigger();
+    await app.beat.trigger();
+    await app.beat.trigger();
+
+    const rows = await app.executions.findMany({
+      where: { jobName: { eq: "HistoryApp.beat" }, status: { eq: "ok" } },
+    });
+    expect(rows).toHaveLength(3);
   });
 });
