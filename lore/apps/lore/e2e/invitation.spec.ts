@@ -230,4 +230,73 @@ test.describe("Invitation flow (in-app inbox)", () => {
     expect(result.ok()).toBe(false);
     expect(result.status()).toBeGreaterThanOrEqual(400);
   });
+
+  test("owner revokes a pending invitation and the invitee's inbox empties", async ({
+    page,
+    browser,
+    baseURL,
+  }) => {
+    test.setTimeout(120_000);
+
+    const aEmail = `revoker-${Date.now()}@example.com`;
+    await registerAndVerify(page, aEmail, "GoodPassw0rd");
+    const projectTitle = `Rev${Date.now()}`.slice(0, 20);
+    const { slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
+
+    const b = await newUserContext(browser, baseURL!, "revokee");
+    try {
+      await page.goto(`/${projectSlug}/settings/members`);
+      await page.waitForLoadState("domcontentloaded");
+      await page.getByRole("button", { name: /^invite$/i }).click();
+      await page.getByPlaceholder("user@example.com").fill(b.email);
+      const createResp = page.waitForResponse(
+        (r) =>
+          r.request().method() === "POST" &&
+          r.url().endsWith("/api/invitations"),
+        { timeout: 15_000 },
+      );
+      await page.getByRole("button", { name: /send invitation/i }).click();
+      expect((await createResp).ok()).toBe(true);
+      await expect(page.getByText(b.email).first()).toBeVisible({
+        timeout: 10_000,
+      });
+
+      // The invitee can see it before the owner takes it back — otherwise
+      // the assertion after the revoke would pass on an invitation that
+      // never arrived.
+      await b.page.goto("/account/invitations");
+      await b.page.waitForLoadState("domcontentloaded");
+      await expect(b.page.getByText(projectTitle).first()).toBeVisible({
+        timeout: 10_000,
+      });
+
+      const revokeResp = page.waitForResponse(
+        (r) =>
+          r.request().method() === "POST" &&
+          /\/api\/invitations\/project\/\d+\/[^/]+\/revoke$/.test(r.url()),
+        { timeout: 15_000 },
+      );
+      await page.getByTestId("revoke-invitation").click();
+      await page.getByRole("button", { name: /^revoke$/i }).click();
+      expect((await revokeResp).ok()).toBe(true);
+
+      // The row is gone from the settings page, which re-runs its loader.
+      await expect(page.getByText(b.email)).toHaveCount(0, {
+        timeout: 10_000,
+      });
+
+      // And the token is dead, not merely hidden from the owner: the
+      // invitee's inbox no longer offers it.
+      await b.page.goto("/account/invitations");
+      await b.page.waitForLoadState("domcontentloaded");
+      await expect(b.page.getByText(projectTitle)).toHaveCount(0, {
+        timeout: 10_000,
+      });
+    } finally {
+      await b.ctx.close();
+    }
+  });
 });

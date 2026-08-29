@@ -1111,13 +1111,26 @@ export class AppRouter {
       if (!project) {
         throw new NotFoundError("Project not found");
       }
+      // Neither read is caught. The invitations one used to be
+      // `.catch(() => [])`, which is indistinguishable from "this project
+      // has no pending invitations" — so an owner whose invitations failed
+      // to load saw a members list that quietly claimed nobody had been
+      // invited, and could re-send an invitation the server would then
+      // refuse as a duplicate. A failed read is a broken page, and the
+      // route's error state is what says so.
+      //
+      // Not the same call as `currentSigilsAtom`'s deliberate
+      // `.catch(() => undefined)` in the project loader: that one costs a
+      // sidebar SECTION on a page about something else, and it
+      // distinguishes "empty" from "unreadable". Here the invitations ARE
+      // the page.
       const [members, pendingInvitations] = await Promise.all([
         this.projectApi.getProjectMembers({
           params: { id: project.id },
         }),
-        this.invitationApi
-          .listProjectInvitations({ params: { projectId: project.id } })
-          .catch(() => []),
+        this.invitationApi.listProjectInvitations({
+          params: { projectId: project.id },
+        }),
       ]);
       return { members, pendingInvitations };
     },
