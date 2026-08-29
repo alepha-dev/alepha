@@ -10,8 +10,8 @@ import { useI18n } from "alepha/react/i18n";
 import { Bug, Eye, Users } from "lucide-react";
 
 import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
-import { currentSigilInsightsAtom } from "../../../atoms/currentSigilInsightsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { useAppInsights } from "./useAppInsights.ts";
 
 /**
  * The app's front page: what it is, and — when Beacon is on — the three numbers
@@ -25,7 +25,11 @@ import type { I18n } from "../../../services/I18n.ts";
 const AppDashboard = () => {
   const { tr, l } = useI18n<I18n, "en">();
   const [sigil] = useStore(currentSigilAtom);
-  const [insights] = useStore(currentSigilInsightsAtom);
+  // Still a query, and still the wrong place for one: the three tiles below
+  // belong on Analytics, where a range control exists to explain them. Moving
+  // them is quest #1293's job; asking for them here rather than from the
+  // layout's loader is this one's, and it is what stops Settings paying too.
+  const { data: insights } = useAppInsights();
 
   if (!sigil) {
     return null;

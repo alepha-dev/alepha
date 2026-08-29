@@ -11,8 +11,8 @@ import { trafficFilterSchema } from "./trafficFilterSchema.ts";
  * two accordingly.
  *
  * Lives here rather than beside the controller because the browser reads it
- * too: `currentSigilInsightsAtom` validates against this schema on every write,
- * and importing it from `InsightsController.ts` would pull the repositories and
+ * too: `useAppInsights` types the analytics tabs against this schema, and
+ * importing it from `InsightsController.ts` would pull the repositories and
  * the database provider into the client bundle.
  */
 export const insightsResourceSchema = z.object({

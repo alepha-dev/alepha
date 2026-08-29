@@ -18,7 +18,6 @@ import type { DirectoryController } from "../../api/controllers/DirectoryControl
 import type { EpicController } from "../../api/controllers/EpicController.ts";
 import type { FeedbackController } from "../../api/controllers/FeedbackController.ts";
 import type { FolioController } from "../../api/controllers/FolioController.ts";
-import type { InsightsController } from "../../api/controllers/InsightsController.ts";
 import type { InvitationController } from "../../api/controllers/InvitationController.ts";
 import type { MilestoneController } from "../../api/controllers/MilestoneController.ts";
 import type { ProjectController } from "../../api/controllers/ProjectController.ts";
@@ -40,7 +39,6 @@ import { currentProjectMemberAtom } from "./atoms/currentProjectMemberAtom.ts";
 import { currentQuestAtom } from "./atoms/currentQuestAtom.ts";
 import { currentQuestCountAtom } from "./atoms/currentQuestCountAtom.ts";
 import { currentSigilAtom } from "./atoms/currentSigilAtom.ts";
-import { currentSigilInsightsAtom } from "./atoms/currentSigilInsightsAtom.ts";
 import { currentSigilsAtom } from "./atoms/currentSigilsAtom.ts";
 import { dashboardAtom } from "./atoms/dashboardAtom.ts";
 import { folioTreeSeedAtom } from "./atoms/folioTreeSeedAtom.ts";
@@ -60,7 +58,6 @@ export class AppRouter {
   epicApi = $client<EpicController>();
   areaApi = $client<AreaController>();
   blightApi = $client<BlightController>();
-  insightsApi = $client<InsightsController>();
   milestoneApi = $client<MilestoneController>();
   sigilApi = $client<SigilController>();
   folioApi = $client<FolioController>();
@@ -595,7 +592,7 @@ export class AppRouter {
     children: () => [
       this.app,
       this.appAnalytics,
-      this.appPerformance,
+      this.appVitals,
       this.appSettings,
     ],
     schema: {
@@ -634,26 +631,15 @@ export class AppRouter {
       this.alepha.store.set(currentSigilsAtom, items);
       this.alepha.store.set(currentSigilAtom, sigil);
 
-      // The app's own Beacon capability, not the project's. Off means there is
-      // nothing collected to read, and the two tabs that would show it are
-      // not rendered. The app still has a page.
-      if (sigil.kinds.includes("beacon")) {
-        this.alepha.store.set(
-          currentSigilInsightsAtom,
-          await this.insightsApi.getInsights({
-            params: { projectId: project.id },
-            query: { range: "7d", sigilId: sigil.id },
-          }),
-        );
-      } else {
-        this.alepha.store.set(currentSigilInsightsAtom, undefined);
-      }
-
+      // Nothing analytics-shaped is fetched here. This loader runs for every
+      // tab, Settings included, and it used to await a full `getInsights` —
+      // ten aggregate queries against Analytics Engine — before any of them
+      // rendered. The two tabs that show insights ask for them themselves
+      // (`useAppInsights`), which is what makes the others free to open.
       return { sigil };
     },
     onLeave: () => {
       this.alepha.store.set(currentSigilAtom, undefined);
-      this.alepha.store.set(currentSigilInsightsAtom, undefined);
     },
     errorHandler: (error) => {
       if (HttpError.is(error, 404)) {
@@ -680,13 +666,13 @@ export class AppRouter {
     },
   });
 
-  appPerformance = $page({
-    name: "appPerformance",
-    path: "/performance",
+  appVitals = $page({
+    name: "appVitals",
+    path: "/vitals",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Performance`,
+      title: `${previous?.title ?? ""} › Vitals`,
     }),
-    lazy: () => import("./components/project/apps/AppPerformance.tsx"),
+    lazy: () => import("./components/project/apps/AppVitals.tsx"),
     loader: async () => {
       this.assertBeacon();
     },

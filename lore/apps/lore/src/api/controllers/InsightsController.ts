@@ -258,7 +258,7 @@ export class InsightsController {
       // having to remember to; the vitals query keeps the plain one, and must
       // - `sigil_vitals` does not declare `traffic`, and the query planner
       // rejects a filter naming a dimension a dataset does not have, so
-      // sharing one object here is a 500 on the Performance tab rather than a
+      // sharing one object here is a 500 on the Vitals tab rather than a
       // silently wider answer.
       //
       // `uniqueVisitors` IS filtered, through `window` rather than through
