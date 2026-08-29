@@ -493,6 +493,33 @@ test.describe("Sigils", () => {
       }
     });
 
+    await test.step("the Apps crumb opens the inventory, which the sidebar does not", async () => {
+      // The crumb used to render as dead text because there was no list route
+      // at all. It is the ONLY door: a sidebar entry beside the disclosure
+      // group would be a second one to the same information.
+      await page
+        .getByLabel("breadcrumb")
+        .getByRole("link", { name: "Apps", exact: true })
+        .click();
+
+      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/apps$`), {
+        timeout: 15_000,
+      });
+      const table = page.getByTestId("apps-table");
+      await expect(table.getByRole("link", { name: appName })).toBeVisible({
+        timeout: 15_000,
+      });
+      // The address it reported, resolved the same way the app header does.
+      await expect(table.getByText("docs.alepha.dev")).toBeVisible();
+
+      // Back to the app, which the rest of this flow addresses directly.
+      await table.getByRole("link", { name: appName }).click();
+      await expect(page).toHaveURL(
+        new RegExp(`/${projectSlug}/apps/${appName}`),
+        { timeout: 15_000 },
+      );
+    });
+
     await test.step("the header names where the app answers, from what it reported", async () => {
       // Nobody typed this. It is the `host` of the batch three steps up,
       // stamped onto the sigil beside `lastSeenAt` — which is the whole point

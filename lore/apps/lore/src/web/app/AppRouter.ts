@@ -345,6 +345,7 @@ export class AppRouter {
       this.projectFolios,
       this.projectFeedback,
       this.projectBlights,
+      this.projectApps,
       this.projectApp,
     ],
     /**
@@ -605,6 +606,38 @@ export class AppRouter {
    * segments the same thing collapse onto one, the outer one wins, and the
    * inner param arrives missing.
    */
+  /**
+   * Every enrolled app, in one table.
+   *
+   * Reachable only from the breadcrumb: the sidebar already carries an Apps
+   * disclosure group with one child per app, so a list entry beside it would
+   * be a second door to the same information. `SECTION_HREF_ROUTES` in
+   * `ProjectView` is what turns the "Apps" crumb from dead text into a link.
+   *
+   * Gated on `features.sigils` the same way `projectApp` is, and for the same
+   * reason: the module toggle is the whole gate, so reaching this by URL with
+   * it off is a 404 rather than a 403.
+   */
+  projectApps = $page({
+    name: "projectApps",
+    path: "/apps",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Apps`,
+    }),
+    lazy: () => import("./components/project/apps/ProjectApps.tsx"),
+    loader: async () => {
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project?.features?.sigils) {
+        throw new NotFoundError("Sigils not enabled for this project");
+      }
+    },
+    errorHandler: (error) => {
+      if (HttpError.is(error, 404)) {
+        return createElement(NotFound, { style: { height: "100%" } });
+      }
+    },
+  });
+
   projectApp = $page({
     name: "projectApp",
     path: "/apps/:appName",

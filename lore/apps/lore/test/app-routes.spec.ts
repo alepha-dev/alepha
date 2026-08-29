@@ -52,6 +52,7 @@ const NAV_ROUTE_NAMES = [
   "projectSettingsSigils",
   // Apps section + the per-app tab bar — ProjectView.tsx, AppLayout.tsx,
   // ProjectSettingsSigilRow.tsx, AppSettings.tsx
+  "projectApps",
   "app",
   "appAnalytics",
   "appAnalyticsDimension",
@@ -122,6 +123,7 @@ describe("AppRouter route table", () => {
   it("resolves the per-app page and each of its tabs", ({ expect }) => {
     const params = { projectSlug: "sds", appName };
 
+    expect(router.path("projectApps", { params })).toBe("/sds/apps");
     expect(router.path("app", { params })).toBe(`/sds/apps/${appName}/`);
     expect(router.path("appAnalytics", { params })).toBe(
       `/sds/apps/${appName}/analytics`,
