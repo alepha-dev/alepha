@@ -168,18 +168,17 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   const dndId = useId();
 
   useEffect(() => {
-    if (!project?.id) return;
     questApi
       .listQuestTags({ query: { projectId: project.id } })
       .then(setKnownTags)
       .catch(() => null);
-  }, [project?.id]);
+  }, [project.id]);
 
   // Only when the grouping actually needs them: the board payload carries
   // `epicId` but no title, and a board nobody is grouping by epic must not
   // pay for the lookup.
   useEffect(() => {
-    if (laneMode !== "epic" || !project?.id) return;
+    if (laneMode !== "epic") return;
     let alive = true;
     epicApi
       .getEpics({ params: { projectId: project.id } })
@@ -192,7 +191,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     return () => {
       alive = false;
     };
-  }, [laneMode, project?.id]);
+  }, [laneMode, project.id]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
