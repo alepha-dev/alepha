@@ -737,6 +737,13 @@ export class JobProvider {
       // and each one has to exist. The admin list is unaffected either way,
       // because it orders by `startedAt`, which this refreshes — ordering by
       // `createdAt` would have sunk a healthy cron to the bottom.
+      //
+      // ⚠️ The row keeps the id of the run that created it, so for a
+      // `keep: 1` buffer it is a LAST-RUN record rather than a record of one
+      // execution, and its id stops matching the `executionId` this run's
+      // `job:*` events carry. Nothing in the tree looks a row up that way,
+      // and the admin UI navigates by the row's own id, but a listener that
+      // wanted to would have to key on `name` instead.
       const existing = await this.singleRetainedRow(jobName, status);
       if (existing) {
         await this.executions.updateById(existing, row);
