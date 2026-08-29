@@ -1,4 +1,3 @@
-import { AlephaError } from "alepha";
 import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 
@@ -215,7 +214,7 @@ export class AreaService {
       where: { id: { inArray: sourceIds } },
     });
     if (sources.length !== sourceIds.length) {
-      throw new AlephaError("One or more source areas do not exist");
+      throw new BadRequestError("One or more source areas do not exist");
     }
     for (const source of sources) {
       if (source.projectId !== projectId) {
