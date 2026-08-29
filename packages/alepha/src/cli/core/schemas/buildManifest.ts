@@ -118,6 +118,15 @@ export interface BuildManifest {
    */
   crons: string[];
   /**
+   * Every registered `$job` and its declared `timeout`, in milliseconds.
+   *
+   * Read by `BuildCloudflareTask` to warn about timeouts direct mode cannot
+   * honour on Workers. Optional because a manifest written before this field
+   * existed is still a valid manifest: absent means "nothing to check", not
+   * "no jobs".
+   */
+  jobs?: Array<{ name: string; timeoutMs?: number }>;
+  /**
    * Registered `$websocket` channel paths (e.g. `/ws/chat`), captured the
    * same way `writeWorkerEntryPoint`'s live-probe path resolves
    * `websocketPaths` (`ctx.alepha.primitives("$websocket")` mapped to

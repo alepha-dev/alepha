@@ -16,6 +16,17 @@ class TestBuildCloudflareTask extends BuildCloudflareTask {
   public testEnhanceDurableObjects = this.enhanceDurableObjects.bind(this);
   public testWriteWorkerEntryPoint = this.writeWorkerEntryPoint.bind(this);
   public testGenerateCloudflare = this.generateCloudflare.bind(this);
+  public testEnhanceCron = this.enhanceCron.bind(this);
+  public testWarnUnreachableTimeouts = this.warnUnreachableTimeouts.bind(this);
+
+  /**
+   * Collected instead of logged, so a warning can be asserted on rather
+   * than read by a human who happens to be watching the build.
+   */
+  public warnings: string[] = [];
+  protected override warn(message: string): void {
+    this.warnings.push(message);
+  }
 
   public setHasWebSocket(value: boolean): void {
     this.hasWebSocket = value;
@@ -783,6 +794,124 @@ describe("BuildCloudflareTask", () => {
       expect(
         fs.wasWrittenMatching(ENTRY, /\["\/ws\/chat","\/ws\/chat"\]/),
       ).toBe(false);
+    });
+  });
+
+  /**
+   * Three Cloudflare limits shape what `$job` can promise, and none of them
+   * is visible from the API or the config. These two are the ones a build
+   * can see coming.
+   */
+  describe("Cloudflare job budgets", () => {
+    const manifest = (over: Partial<Record<string, unknown>> = {}) =>
+      ({
+        version: 1,
+        project: "my-app",
+        defaultEnv: "production",
+        environments: {},
+        resources: {
+          hasDatabase: false,
+          hasBucket: false,
+          hasAnalytics: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: true,
+          hasWebSocket: false,
+        },
+        crons: [],
+        websocketPaths: [],
+        env: [],
+        ...over,
+      }) as any;
+
+    it("warns when the emitted cron trigger count exceeds the free-plan cap", () => {
+      const task = createTask();
+      const wrangler: any = {};
+
+      task.testEnhanceCron(
+        {
+          manifest: manifest({
+            crons: [
+              "*/15 * * * *",
+              "0 * * * *",
+              "0 0 * * *",
+              "0 3 * * *",
+              "0 4 * * *",
+              "0 5 * * *",
+            ],
+          }),
+        } as any,
+        wrangler,
+      );
+
+      expect(task.warnings).toHaveLength(1);
+      // The cap is per ACCOUNT, which is the part that surprises people: two
+      // Alepha apps can exceed it between them.
+      expect(task.warnings[0]).toMatch(/ACCOUNT/);
+      expect(task.warnings[0]).toMatch(/6 Cron Triggers/);
+      // Warned, not refused: the triggers are still emitted.
+      expect(wrangler.triggers.crons).toHaveLength(6);
+    });
+
+    it("stays quiet at the cap", () => {
+      const task = createTask();
+      task.testEnhanceCron(
+        {
+          manifest: manifest({
+            crons: [
+              "*/15 * * * *",
+              "0 * * * *",
+              "0 0 * * *",
+              "0 3 * * *",
+              "0 4 * * *",
+            ],
+          }),
+        } as any,
+        {} as any,
+      );
+      expect(task.warnings).toHaveLength(0);
+    });
+
+    it("warns about a timeout direct mode on Workers cannot honour", () => {
+      const task = createTask();
+      task.testWarnUnreachableTimeouts({
+        manifest: manifest({
+          jobs: [
+            { name: "api:workflows:dispatchStep", timeoutMs: 600_000 },
+            { name: "quick", timeoutMs: 5_000 },
+            { name: "untimed" },
+          ],
+        }),
+      } as any);
+
+      expect(task.warnings).toHaveLength(1);
+      expect(task.warnings[0]).toMatch(/api:workflows:dispatchStep \(600s\)/);
+      // The other two are reachable and must not be named.
+      expect(task.warnings[0]).not.toMatch(/quick/);
+      expect(task.warnings[0]).not.toMatch(/untimed/);
+      // And it points at the fix rather than at lowering the timeout.
+      expect(task.warnings[0]).toMatch(/AlephaApiJobsQueue/);
+    });
+
+    it("says nothing about timeouts once a queue is bound", () => {
+      const task = createTask();
+      // Restored by the suite's own afterEach, alongside every other env var
+      // these enhancers read.
+      process.env.CLOUDFLARE_QUEUE_NAME = "my-app-jobs";
+      task.testWarnUnreachableTimeouts({
+        manifest: manifest({
+          jobs: [{ name: "slow", timeoutMs: 600_000 }],
+        }),
+      } as any);
+      // A queue consumer gets 15 minutes of wall clock AND of CPU, so the
+      // declared timeout is reachable and there is nothing to say.
+      expect(task.warnings).toHaveLength(0);
+    });
+
+    it("says nothing when a manifest predates the jobs field", () => {
+      const task = createTask();
+      task.testWarnUnreachableTimeouts({ manifest: manifest() } as any);
+      expect(task.warnings).toHaveLength(0);
     });
   });
 });
