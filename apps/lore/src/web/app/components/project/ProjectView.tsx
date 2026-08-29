@@ -18,7 +18,6 @@ import {
   Layers,
   TriangleAlert,
 } from "lucide-react";
-import { useEffect } from "react";
 
 import {
   defaultProjectFeatures,
@@ -36,10 +35,6 @@ import { currentQuestAtom } from "../../atoms/currentQuestAtom.ts";
 import { currentQuestCountAtom } from "../../atoms/currentQuestCountAtom.ts";
 import { currentSigilAtom } from "../../atoms/currentSigilAtom.ts";
 import { currentSigilsAtom } from "../../atoms/currentSigilsAtom.ts";
-import {
-  type ProjectNavEntry,
-  projectNavAtom,
-} from "../../atoms/projectNavAtom.ts";
 import { questLogCollapsedAtom } from "../../atoms/questLogCollapsedAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import HeaderActions from "../shared/header/HeaderActions.tsx";
@@ -50,6 +45,7 @@ import ProjectQuestsViewSwitcher, {
   type QuestsView,
 } from "./ProjectQuestsViewSwitcher.tsx";
 import ProjectSwitcher from "./ProjectSwitcher.tsx";
+import ProjectViewNavPublisher from "./ProjectViewNavPublisher.tsx";
 import QuestLog from "./QuestLog.tsx";
 
 /**
@@ -412,48 +408,6 @@ const ProjectView = () => {
     },
   ].filter((group) => group.items.length > 0);
 
-  // Publish what the sidebar offers so the ⌘K palette can list pages and apps
-  // beside its content hits — see `projectNavAtom` for why it is derived from
-  // the built `nav` rather than assembled a second time.
-  //
-  // Flattened here rather than in the palette so the palette never has to know
-  // the sidebar's shape: `children` is what makes an entry a group (today only
-  // Apps), and a group's own row is a disclosure with no destination of its
-  // own, so it contributes its children and not itself.
-  const navPages: ProjectNavEntry[] = nav.flatMap((group) =>
-    group.items.flatMap((item): ProjectNavEntry[] => {
-      if (item.children?.length) {
-        return item.children
-          .filter((child) => !!child.href)
-          .map((child) => ({
-            // Coercion at a boundary: the value is a form/route/chart primitive whose
-            // declared type is wider than what can reach here.
-            // oxlint-disable-next-line typescript/no-base-to-string
-            label: String(child.label),
-            href: String(child.href),
-            kind: "app",
-          }));
-      }
-      if (!item.href) return [];
-      return [
-        // Coercion at a boundary: the value is a form/route/chart primitive whose
-        // declared type is wider than what can reach here.
-        // oxlint-disable-next-line typescript/no-base-to-string
-        { label: String(item.label), href: String(item.href), kind: "page" },
-      ];
-    }),
-  );
-  const [, setProjectNav] = useStore(projectNavAtom);
-  // Keyed on the CONTENT, not the array: `navPages` is rebuilt on every render,
-  // so an effect depending on its identity would set the atom, re-render, and
-  // loop. Cleared on leave like the other `current*` atoms — a stale page list
-  // would otherwise offer another project's apps.
-  const navSignature = JSON.stringify(navPages);
-  useEffect(() => {
-    setProjectNav(navPages);
-    return () => setProjectNav(undefined);
-  }, [navSignature, setProjectNav]);
-
   const breadcrumbs: { label: string; href?: string }[] = [
     {
       label: project.title,
@@ -517,85 +471,90 @@ const ProjectView = () => {
   }
 
   return (
-    <AppShell
-      embedded
-      fill
-      variant="inset"
-      // The page surface. Defined in `main.css` rather than inline because
-      // it needs a `.dark` variant: the mockup's dot is near-white, which is
-      // invisible over a light page.
-      mainClassName="lore-page-dots"
-      brand={<ProjectSwitcher />}
-      nav={nav}
-      breadcrumbs={breadcrumbs}
-      topbarActions={
-        <>
-          <ProjectActionsCreateButton />
-          {/* Through `before`, not as a sibling: that puts the magnifier in
+    <>
+      {/* Renders nothing; publishes `nav` for the ⌘K palette. Its own
+          component because this view returns early above and hooks may not
+          sit below a return. */}
+      <ProjectViewNavPublisher nav={nav} />
+      <AppShell
+        embedded
+        fill
+        variant="inset"
+        // The page surface. Defined in `main.css` rather than inline because
+        // it needs a `.dark` variant: the mockup's dot is near-white, which is
+        // invisible over a light page.
+        mainClassName="lore-page-dots"
+        brand={<ProjectSwitcher />}
+        nav={nav}
+        breadcrumbs={breadcrumbs}
+        topbarActions={
+          <>
+            <ProjectActionsCreateButton />
+            {/* Through `before`, not as a sibling: that puts the magnifier in
               the cluster's own flex row, so it takes the same gap as the four
               icons it now sits with rather than the topbar's spacing. */}
-          <HeaderActions before={<HeaderSearchButton />} />
-        </>
-      }
-    >
-      {/* The view bar is the FIRST child of the content area — outside the
+            <HeaderActions before={<HeaderSearchButton />} />
+          </>
+        }
+      >
+        {/* The view bar is the FIRST child of the content area — outside the
           three-way branch below, so it holds the same position whether the
           branch renders the quest log, the full-width board, or the centered
           column. Anything rendered from inside a branch necessarily sits to
           the right of the quest log, which is what this replaces. It was a
           vertical rail down the left edge until #163; as a top bar the same
           invariant holds on the y-axis instead. */}
-      <div className="flex h-full flex-col">
-        {showViewBar && (
-          <ProjectQuestsViewSwitcher
-            // The route, not a stored preference. On the quest DETAIL route
-            // neither entry is the current surface, so nothing is pressed
-            // and both are live links back up to a list.
-            view={
-              kanbanView
-                ? "kanban"
-                : name === "projectQuests"
-                  ? "list"
-                  : undefined
-            }
-            kanbanEnabled={features.kanban === true}
-            onSelect={selectView}
-          />
-        )}
-        <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col">
-          <div
-            className={`flex min-h-0 flex-1 flex-col ${showQuestLog || fullWidth ? "overflow-hidden" : "overflow-auto"}`}
-          >
-            {showQuestLog ? (
-              <div className="flex min-h-0 flex-1">
-                {/* Collapsed, the pane becomes a rail — but BOTH carry the same
+        <div className="flex h-full flex-col">
+          {showViewBar && (
+            <ProjectQuestsViewSwitcher
+              // The route, not a stored preference. On the quest DETAIL route
+              // neither entry is the current surface, so nothing is pressed
+              // and both are live links back up to a list.
+              view={
+                kanbanView
+                  ? "kanban"
+                  : name === "projectQuests"
+                    ? "list"
+                    : undefined
+              }
+              kanbanEnabled={features.kanban === true}
+              onSelect={selectView}
+            />
+          )}
+          <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col">
+            <div
+              className={`flex min-h-0 flex-1 flex-col ${showQuestLog || fullWidth ? "overflow-hidden" : "overflow-auto"}`}
+            >
+              {showQuestLog ? (
+                <div className="flex min-h-0 flex-1">
+                  {/* Collapsed, the pane becomes a rail — but BOTH carry the same
                     `hidden lg:flex` gate. Below `lg` the quest log does not
                     render at all today, so a rail without that gate would
                     introduce 32px of chrome on mobile where there is currently
                     nothing, and a control that expands a pane the viewport
                     then refuses to show. */}
-                {questLogCollapsed.collapsed ? (
-                  <div className="hidden min-h-0 lg:flex">
-                    <ProjectQuestLogRail
-                      onExpand={() =>
-                        setQuestLogCollapsed({ collapsed: false })
-                      }
-                    />
-                  </div>
-                ) : (
-                  <div
-                    data-testid="quest-log"
-                    className="border-border hidden min-h-0 shrink-0 border-r lg:flex"
-                    style={{ width: "25%", minWidth: 240, maxWidth: 420 }}
-                  >
-                    <QuestLog
-                      onCollapse={() =>
-                        setQuestLogCollapsed({ collapsed: true })
-                      }
-                    />
-                  </div>
-                )}
-                {/* The list owns its own scroll, so this wrapper must NOT
+                  {questLogCollapsed.collapsed ? (
+                    <div className="hidden min-h-0 lg:flex">
+                      <ProjectQuestLogRail
+                        onExpand={() =>
+                          setQuestLogCollapsed({ collapsed: false })
+                        }
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      data-testid="quest-log"
+                      className="border-border hidden min-h-0 shrink-0 border-r lg:flex"
+                      style={{ width: "25%", minWidth: 240, maxWidth: 420 }}
+                    >
+                      <QuestLog
+                        onCollapse={() =>
+                          setQuestLogCollapsed({ collapsed: true })
+                        }
+                      />
+                    </div>
+                  )}
+                  {/* The list owns its own scroll, so this wrapper must NOT
                   also scroll — a nested `overflow-auto` here showed a spurious
                   scrollbar.
 
@@ -605,27 +564,28 @@ const ProjectView = () => {
                   cancelling it with a negative margin. Padding here would
                   inset that header and leave a gutter down both sides of a
                   page designed to be flush. */}
-                <div
-                  className={`flex min-h-0 flex-1 flex-col overflow-hidden ${
-                    fullWidth ? "" : "p-2"
-                  }`}
-                >
+                  <div
+                    className={`flex min-h-0 flex-1 flex-col overflow-hidden ${
+                      fullWidth ? "" : "p-2"
+                    }`}
+                  >
+                    <NestedView />
+                  </div>
+                </div>
+              ) : fullWidth ? (
+                <div className="flex min-h-0 w-full flex-1 flex-col">
                   <NestedView />
                 </div>
-              </div>
-            ) : fullWidth ? (
-              <div className="flex min-h-0 w-full flex-1 flex-col">
-                <NestedView />
-              </div>
-            ) : (
-              <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col p-2">
-                <NestedView />
-              </div>
-            )}
+              ) : (
+                <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col p-2">
+                  <NestedView />
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    </AppShell>
+      </AppShell>
+    </>
   );
 };
 
