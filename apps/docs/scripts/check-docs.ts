@@ -308,58 +308,28 @@ export class CheckDocsCommand {
    * Primitives that have a generated reference page and appear in no guide.
    *
    * A reference page states a signature; a guide is where a reader meets the
-   * thing and sees why they would reach for it. 30 primitives currently have
-   * the first and not the second, which is a documentation project rather than
-   * a defect, so this is a RATCHET and not a gate: the listed names are
-   * tolerated, and anything not listed fails.
+   * thing and sees why they would reach for it. This list is empty, and every
+   * entry it used to hold was removed by writing the guide rather than by
+   * deleting the line.
    *
-   * That is the shape that makes the number go down. A plain warning about 30
-   * items is read once and never again - the same silence that let an unused,
-   * broken snippet and an unpublished doc tree sit here - while a hard failure
-   * on all 30 would just be deleted. This way a NEW primitive cannot ship
-   * undocumented, and every guide written is one line removed from the list.
+   * It stays as a list because the mechanism is the point. Empty, it is a
+   * gate: a new primitive that ships with a reference page and no guide fails
+   * the build. Adding a name re-opens the ratchet for that one primitive,
+   * which is the right move when a guide is genuinely a separate piece of
+   * work, and the wrong move as a way past a failing check.
    *
-   * ⚠️ Remove a name once its guide exists. A stale entry silently re-permits
-   * the gap if the guide is ever deleted, so `healed` below fails on exactly
-   * that.
+   * ⚠️ Whatever you add here, remove it once its guide exists. A stale entry
+   * silently re-permits the gap if the guide is ever deleted, so `healed`
+   * below fails on exactly that.
    *
-   * The `$auth*` family is eight of these and wants one guide section, not
-   * eight. The resilience decorators (`$retry`, `$throttle`, `$debounce`,
-   * `$timeout`, `$circuit`, `$memoize`, `$batch`, `$pipeline`) are another
-   * eight with the same story.
+   * Guides cover families rather than primitives, which is why 30 names came
+   * off this list as five new pages plus a handful of sections folded into
+   * guides that already existed: the eight `$auth*` shorthands are one table
+   * in the authentication guide, and the resilience decorators
+   * (`$retry`, `$throttle`, `$debounce`, `$timeout`, `$circuit`, `$memoize`,
+   * `$batch`) are one page with `$pipeline`, the thing that hosts them.
    */
-  protected readonly primitivesWithoutGuide = [
-    "$auth",
-    "$authApple",
-    "$authCredentials",
-    "$authFacebook",
-    "$authFranceConnect",
-    "$authGithub",
-    "$authGoogle",
-    "$authMicrosoft",
-    "$batch",
-    "$circuit",
-    "$command",
-    "$debounce",
-    "$etag",
-    "$interval",
-    "$memoize",
-    "$middleware",
-    "$mode",
-    "$parameter",
-    "$permission",
-    "$pipeline",
-    "$proxy",
-    "$retry",
-    "$role",
-    "$scope",
-    "$seed",
-    "$serve",
-    "$sms",
-    "$throttle",
-    "$timeout",
-    "$workflow",
-  ];
+  protected readonly primitivesWithoutGuide: string[] = [];
 
   /**
    * Compares the primitives with no guide mention against the baseline above.

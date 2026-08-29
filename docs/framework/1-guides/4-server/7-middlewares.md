@@ -205,6 +205,96 @@ Opt-in, unlike `/health`: it pulls in `prom-client`, and an app that nothing scr
 
 Set `METRICS_TOKEN` if the app itself is reachable from the network. Alepha warns at startup when it is - production, no token, and `SERVER_HOST` bound to something other than loopback. An app on loopback behind a proxy gets no warning: the proxy decides what the internet sees.
 
+### ETag and Conditional Responses
+
+`AlephaServerEtag` adds the `$etag` middleware, which hashes a response, sends
+it as an `ETag`, and answers `304 Not Modified` when the client sends the same
+value back in `If-None-Match`.
+
+```typescript check
+import { $action } from "alepha/server";
+import { $etag } from "alepha/server/etag";
+
+class Articles {
+  get = $action({
+    path: "/articles/:id",
+    use: [$etag()],
+    handler: async () => "an article",
+  });
+}
+```
+
+Bare `$etag()` only validates: the handler still runs on every request, and the
+saving is bandwidth, not work. Pass `true` to also **store** the response, which
+short-circuits the handler on a hit:
+
+| Written as                         | Handler runs on a hit | Response body sent |
+| ---------------------------------- | --------------------- | ------------------ |
+| `$etag()`                          | yes                   | no (304)           |
+| `$etag(true)`                      | no                    | no (304)           |
+| `$etag({ store: [5, "minutes"] })` | no                    | no (304)           |
+
+`control` sets `Cache-Control` on top of that, either as a literal string or as
+directives:
+
+```typescript check
+import { $action } from "alepha/server";
+import { $etag } from "alepha/server/etag";
+
+class Stats {
+  get = $action({
+    path: "/stats",
+    use: [
+      $etag({
+        store: { ttl: [5, "minutes"] },
+        control: { public: true, maxAge: 300 },
+      }),
+    ],
+    handler: async () => "stats",
+  });
+}
+```
+
+Stored responses are namespaced by caller identity, taken from the
+`authorization` and `cookie` headers, so an authenticated route cannot serve one
+user's body to another. Anonymous callers share a single entry. That is the
+right default and it is also worth knowing before you put `store` on a route
+whose response varies by something _other_ than those two headers, such as an
+`Accept-Language` or a tenant header: those responses would share an entry.
+
+### Path-Scoped Middleware
+
+Everything above is either global (a module) or per-action (`use: [...]`).
+`$middleware` is the level in between: middleware applied to every route under a
+path prefix.
+
+```typescript check
+import { $middleware } from "alepha/server";
+import { $throttle } from "alepha/datetime";
+
+class Gateway {
+  api = $middleware({
+    path: "/api",
+    use: [$throttle({ rate: 200, per: [1, "second"] })],
+  });
+}
+```
+
+| Option    | Effect                                                     |
+| --------- | ---------------------------------------------------------- |
+| `path`    | Prefix to match. `/api` covers `/api/users`, `/api/orders` |
+| `use`     | The middleware to apply                                    |
+| `method`  | Restrict to one HTTP method, or a list                     |
+| `exclude` | Route paths to leave alone                                 |
+
+Use it for a cross-cutting concern that belongs to a whole path family, and keep
+per-action `use` for behaviour that belongs to one action. The test is whether
+you would have to remember to add it: a header every `/api` route must carry is a
+`$middleware`, while a retry policy that suits one flaky upstream call is not.
+
+`exclude` exists for the route inside the family that must not have it, such as a
+health probe under a prefix that otherwise requires a token.
+
 ## Combining Middlewares
 
 Register multiple modules together:

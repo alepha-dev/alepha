@@ -442,5 +442,33 @@ the outbox `claim()` UPDATE-guard instead, which is always on.
   nothing in the admin UI. Reach for it only when a database is genuinely
   unavailable.
 
+- **A fixed interval rather than a schedule.** `$interval` from
+  `alepha/datetime` runs a function every N units of time, starting when the
+  container starts and stopping when it stops:
+
+  ```typescript check
+  import { $interval } from "alepha/datetime";
+
+  class Poller {
+    poll = $interval({
+      duration: [30, "seconds"],
+      handler: async () => {
+        // ...
+      },
+    });
+  }
+  ```
+
+  It is `setInterval` with the container's lifecycle and the testable clock
+  attached, so `travel()` advances it. A throwing tick is logged and the next
+  tick still runs, which is the one thing raw `setInterval` gets dangerously
+  wrong: an unhandled rejection there takes the process down.
+
+  Same caveats as the cron engine above, plus one more. "Every 30 seconds"
+  means every 30 seconds _of this process's uptime_, so a restart resets the
+  phase and two replicas drift apart. Use it for things where that does not
+  matter - refreshing an in-memory cache, emitting a gauge - and use `$job`
+  for anything where a missed or doubled run is a business problem.
+
 - **Fan-out to many subscribers.** Use `$topic` / `$subscriber`, which is
   publish/subscribe rather than work distribution.
