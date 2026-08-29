@@ -825,7 +825,6 @@ export default {
   "app.tab.analytics": "Audience",
   "app.tab.vitals": "Vitals",
   "app.tab.settings": "Paramètres",
-  "app.dashboard.errors": "Erreurs toujours d'actualité",
   "app.dashboard.token": "Jeton",
   "app.dashboard.enrolled": "Enrôlée le",
   "app.dashboard.address": "Adresse",
@@ -905,10 +904,6 @@ export default {
   "insights.entries": "Chargements de page",
   "insights.entries.note":
     "Les arrivées, hors navigation à l'intérieur de l'application.",
-  "insights.engagement": "Engagement",
-  "insights.engagement.tooltip":
-    "Part des vues où le visiteur a fait défiler, cliqué, tapé au clavier ou est resté dix secondes. Le trafic automatisé déclare la vue puis ne fait rien de tout cela, donc un taux faible sur beaucoup de vues signale généralement des robots.",
-  "insights.engagement.note": "Vues portant un vrai signe de lecture.",
   "insights.topEntryPaths": "Pages d'entrée",
   "insights.topEntryPaths.note":
     "La page sur laquelle chaque visite a commencé.",
@@ -929,6 +924,23 @@ export default {
   "insights.dimension.value": "Valeur",
   "insights.dimension.count": "Nombre",
   "insights.dimension.share": "Part",
+  "insights.more": "Voir tout",
+  "insights.bounce": "Sans engagement",
+  "insights.bounce.note": "Vues sans signe de lecture.",
+  "insights.bounce.tooltip":
+    "Ce n'est pas un taux de rebond par session : rien ici ne conserve de sessions. C'est la part des vues que personne n'a fait défiler, cliquées ou gardées ouvertes, ce que les données permettent de dire de plus proche et le seul signal que l'automatisation ne gonfle pas par accident.",
+  "insights.delta.tooltip":
+    "Par rapport à la fenêtre de même largeur qui précède immédiatement, mesurée de la même façon. La fenêtre courante se termine aujourd'hui, donc son dernier jour se remplit encore.",
+  "insights.uniqueVisitors.unfiltered":
+    "Non filtré par $1 : les visiteurs sont comptés par app et par jour, sans ces dimensions.",
+  "insights.errors.inbox": "Ouvrir la boîte Fléaux",
+  "insights.filter.path": "Page",
+  "insights.filter.country": "Pays",
+  "insights.filter.referrer": "Référent",
+  "insights.filter.campaign": "Campagne",
+  "insights.filter.device": "Appareil",
+  "insights.filter.clear": "Retirer le filtre $1",
+  "insights.filter.clearAll": "Tout retirer",
   "insights.error": "Échec du chargement des statistiques. Réessayez.",
   "insights.vitals.title": "Web Vitals",
   "insights.vitals.subtitle":
