@@ -737,6 +737,19 @@ test.describe("Sigils", () => {
       await expect(
         page.getByTestId("vitals-inp").getByText("No interaction samples yet"),
       ).toBeVisible();
+
+      // The half that says WHERE. `path` has been on every vitals sample since
+      // the dataset existed and no query ever grouped by it.
+      const paths = page.getByTestId("vitals-paths");
+      await expect(paths.getByText("/checkout")).toBeVisible({
+        timeout: 15_000,
+      });
+      // One sample, so the row is marked rather than presented as a finding.
+      await expect(paths.getByText("Low confidence")).toBeVisible();
+
+      // The asymmetry with Analytics, said on the tab rather than left to be
+      // discovered: that tab can exclude crawlers and this one cannot.
+      await expect(page.getByText(/crawlers included/i)).toBeVisible();
     });
 
     await test.step("turning Beacon off hides the analytics tabs, back on restores them", async () => {

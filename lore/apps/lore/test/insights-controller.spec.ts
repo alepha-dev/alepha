@@ -1942,6 +1942,169 @@ describe("InsightsController", () => {
     });
   });
 
+  describe("vitals by path", () => {
+    it("groups the vitals dataset by path, which nothing else does", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
+
+      // Two pages. `/slow` is entirely in the overflow bucket, `/fast` in the
+      // first one, and both clear the sample floor.
+      await ctx.probe.vitals.create({
+        sigilId,
+        hour: hourUtc(ctx, 0, 10),
+        metric: "lcp",
+        path: "/slow",
+        b6: 40,
+      });
+      await ctx.probe.vitals.create({
+        sigilId,
+        hour: hourUtc(ctx, 0, 10),
+        metric: "lcp",
+        path: "/fast",
+        b0: 60,
+      });
+
+      const res = await ctx.insightsController.getVitalsPaths.fetch(
+        { params: { projectId }, query: { range: "7d" } },
+        { user: owner },
+      );
+
+      expect(res.data.rows.map((row) => row.path)).toEqual(["/slow", "/fast"]);
+      expect(res.data.rows[0]?.samples).toBe(40);
+      expect(res.data.rows[0]?.metrics.lcp?.p75Upper).toBeNull();
+      expect(res.data.rows[1]?.metrics.lcp?.p75Upper).toBe(1000);
+    });
+
+    /**
+     * The ranking key is the tail share and not the p75, and this is the case
+     * that separates them: both paths land in the same bucket, so their p75s
+     * are identical and any p75-based order between them is arbitrary. The one
+     * with more of its traffic in a poor bucket is the problem page.
+     */
+    it("ranks by the share of samples in poor buckets, not by the p75", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
+
+      // Both p75s land in bucket 0 (75% of samples are there), so the two
+      // pages are indistinguishable by p75. `/tail` has a quarter of its
+      // traffic in the overflow bucket; `/clean` has a tenth.
+      await ctx.probe.vitals.create({
+        sigilId,
+        hour: hourUtc(ctx, 0, 10),
+        metric: "lcp",
+        path: "/tail",
+        b0: 75,
+        b6: 25,
+      });
+      await ctx.probe.vitals.create({
+        sigilId,
+        hour: hourUtc(ctx, 0, 10),
+        metric: "lcp",
+        path: "/clean",
+        b0: 90,
+        b6: 10,
+      });
+
+      const res = await ctx.insightsController.getVitalsPaths.fetch(
+        { params: { projectId }, query: { range: "7d" } },
+        { user: owner },
+      );
+
+      expect(res.data.rows[0]?.metrics.lcp?.p75Upper).toBe(
+        res.data.rows[1]?.metrics.lcp?.p75Upper,
+      );
+      expect(res.data.rows.map((row) => row.path)).toEqual(["/tail", "/clean"]);
+      expect(res.data.rows[0]?.tailShare).toBe(25);
+      expect(res.data.rows[1]?.tailShare).toBe(10);
+    });
+
+    it("never lets a path under the sample floor top the list", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
+
+      // Three samples, all terrible. Without a floor this would be the worst
+      // page on the site on the strength of three measurements.
+      await ctx.probe.vitals.create({
+        sigilId,
+        hour: hourUtc(ctx, 0, 10),
+        metric: "lcp",
+        path: "/rare",
+        b6: 3,
+      });
+      await ctx.probe.vitals.create({
+        sigilId,
+        hour: hourUtc(ctx, 0, 10),
+        metric: "lcp",
+        path: "/busy",
+        b0: 90,
+        b6: 10,
+      });
+
+      const res = await ctx.insightsController.getVitalsPaths.fetch(
+        { params: { projectId }, query: { range: "7d" } },
+        { user: owner },
+      );
+
+      // Ranked below, and still on the list: "not enough data about this page"
+      // is an answer, and dropping it silently is not.
+      expect(res.data.rows.map((row) => row.path)).toEqual(["/busy", "/rare"]);
+      expect(res.data.rows[1]?.confident).toBe(false);
+      expect(res.data.rows[0]?.confident).toBe(true);
+      expect(res.data.minSamples).toBe(30);
+    });
+
+    it("narrows to one page, the only view filter vitals declares", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
+
+      for (const path of ["/a", "/b"]) {
+        await ctx.probe.vitals.create({
+          sigilId,
+          hour: hourUtc(ctx, 0, 10),
+          metric: "lcp",
+          path,
+          b0: 40,
+        });
+      }
+
+      const res = await ctx.insightsController.getVitalsPaths.fetch(
+        { params: { projectId }, query: { range: "7d", path: "/a" } },
+        { user: owner },
+      );
+
+      expect(res.data.rows.map((row) => row.path)).toEqual(["/a"]);
+    });
+
+    it("returns an empty answer for a project with no apps", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+
+      const res = await ctx.insightsController.getVitalsPaths.fetch(
+        { params: { projectId }, query: { range: "7d" } },
+        { user: owner },
+      );
+
+      expect(res.data.rows).toEqual([]);
+      // The boundaries travel even when nothing does, so a table can label its
+      // columns before it has a row to put in them.
+      expect(res.data.boundaries.lcp).toEqual(VITALS_BUCKETS.lcp);
+    });
+  });
+
   describe("single-dimension listing", () => {
     const seedPaths = async (sigilId: string, count: number) => {
       for (let i = 0; i < count; i++) {

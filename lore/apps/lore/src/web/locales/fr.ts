@@ -956,6 +956,14 @@ export default {
   "insights.vitals.lowConfidence": "Peu fiable",
   "insights.vitals.range": "$1 à $2",
   "insights.vitals.over": "plus de $1",
+  "insights.vitals.byPath": "Par page",
+  "insights.vitals.path": "Page",
+  "insights.vitals.tail": "Part médiocre",
+  "insights.vitals.samplesColumn": "Échantillons",
+  "insights.vitals.morePaths":
+    "Seules les pages les plus visitées sont listées. Une page peu visitée peut être pire que tout ce qui figure ici.",
+  "insights.vitals.trafficNote":
+    "Ces chiffres comptent tout client qui exécute du JavaScript, robots compris. Audience peut les exclure ; cet onglet ne le peut pas, les vitals n'étant pas enregistrées avec un type de trafic. La mesure d'un robot est une vraie requête, mais ce n'est pas l'expérience d'un lecteur.",
   "insights.vitals.good": "Bon",
   "insights.vitals.needsImprovement": "À améliorer",
   "insights.vitals.poor": "Médiocre",

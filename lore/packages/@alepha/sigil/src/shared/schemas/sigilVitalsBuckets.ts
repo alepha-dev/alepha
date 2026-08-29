@@ -18,6 +18,31 @@ export const VITALS_BUCKETS: Record<VitalMetric, number[]> = {
   cls: [50, 100, 150, 250, 400, 600],
 };
 
+/**
+ * The standard Web Vitals good / poor p75 thresholds, in the SAME scale as
+ * {@link VITALS_BUCKETS}.
+ *
+ * At or below `good` is good, at or below `poor` needs work, above is poor.
+ * CLS is therefore ×1000 here exactly as its buckets are, so the two are
+ * comparable without either side remembering to scale: a consumer that
+ * un-scales the boundaries un-scales these with them.
+ *
+ * Here rather than in whichever UI happens to draw a rating, because a sink
+ * ranking paths by how much of their traffic lands in a poor bucket has to
+ * agree with the card that colours the metric. Two copies of these numbers is
+ * two answers to "is this good".
+ */
+export const VITALS_THRESHOLDS: Record<
+  VitalMetric,
+  { good: number; poor: number }
+> = {
+  lcp: { good: 2500, poor: 4000 },
+  inp: { good: 200, poor: 500 },
+  fcp: { good: 1800, poor: 3000 },
+  ttfb: { good: 800, poor: 1800 },
+  cls: { good: 100, poor: 250 },
+};
+
 export const bucketIndex = (metric: VitalMetric, value: number): number => {
   const bounds = VITALS_BUCKETS[metric];
   for (let i = 0; i < bounds.length; i++) {
