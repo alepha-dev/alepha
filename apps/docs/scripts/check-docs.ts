@@ -116,6 +116,15 @@ export class CheckDocsCommand {
         this.log.info(`${violations.length} banned-symbol violations`);
       });
 
+      await run("internal links", async () => {
+        const dangling = await this.danglingLinks(files, root);
+        for (const it of dangling) {
+          this.log.error(it);
+        }
+        failures += dangling.length;
+        this.log.info(`${dangling.length} dangling internal link(s)`);
+      });
+
       await run("compile marked examples", async () => {
         const units = await this.checker.collectCheckedFences(files);
         this.log.info(`${units.length} fences opted in with \`check\``);
@@ -232,6 +241,69 @@ export class CheckDocsCommand {
     }
 
     return errors;
+  }
+
+  /**
+   * Every `/docs/reference-*` link in our own markdown resolves to a page the
+   * site actually generates.
+   *
+   * The generated `@alepha/ui` README advertised
+   * `/docs/reference-react-hooks-useismobile` while nothing produced that
+   * page, so the one link a reader would follow to learn about the hook 404'd.
+   * It is the failure a docs pipeline is worst at noticing: the README is
+   * GENERATED, so it looked correct and internally consistent, and only
+   * someone clicking the link would ever find out.
+   *
+   * Resolved against the file names `gen-docs` writes under
+   * `docs/framework/2-reference`, not against the site's routing table -
+   * `gen-tree` turns exactly those names into slugs, so this is one
+   * indirection closer to the thing being asserted and it works without
+   * building the site.
+   *
+   * Both spellings are matched: the site-relative `/docs/…` of the module
+   * pages and the absolute `https://alepha.dev/docs/…` of the package READMEs.
+   * Scoped to `reference-` slugs, which are the ones derivable from a
+   * directory listing; a link into `guides-` or `packages-` is left alone
+   * rather than guessed at.
+   */
+  protected async danglingLinks(
+    files: string[],
+    root: string,
+  ): Promise<string[]> {
+    const slugs = new Set<string>();
+    const sources: Array<[string, string]> = [
+      ["1-primitives", "reference-primitives-"],
+      ["2-react-hooks", "reference-react-hooks-"],
+      ["3-providers", "reference-providers-"],
+    ];
+
+    for (const [dir, prefix] of sources) {
+      const from = join(root, "docs/framework/2-reference", dir);
+      if (!(await this.fs.exists(from))) continue;
+      for (const name of await this.fs.ls(from)) {
+        if (name.endsWith(".md")) {
+          slugs.add(`${prefix}${name.replace(/\.md$/, "")}`.toLowerCase());
+        }
+      }
+    }
+
+    const problems: string[] = [];
+    const link =
+      /\]\((?:https:\/\/alepha\.dev)?\/docs\/(reference-[a-z0-9$@.-]+)\)/gi;
+
+    for (const file of files) {
+      const content = String(await this.fs.readFile(file));
+      for (const [index, line] of content.split("\n").entries()) {
+        for (const match of line.matchAll(link)) {
+          if (!slugs.has(match[1].toLowerCase())) {
+            problems.push(
+              `${file.replace(`${root}/`, "")}:${index + 1} - /docs/${match[1]} is linked but no reference page generates it`,
+            );
+          }
+        }
+      }
+    }
+    return problems;
   }
 
   protected async listMarkdown(dir: string): Promise<string[]> {

@@ -833,9 +833,9 @@ export class DocsCommand {
       );
 
       // Second pass: collect data and generate
-      const allPrimitiveDocs: PrimitiveDoc[] = [];
-      const allHookDocs: PrimitiveDoc[] = [];
-      const allProviderDocs: ProviderDoc[] = [];
+      let allPrimitiveDocs: PrimitiveDoc[] = [];
+      let allHookDocs: PrimitiveDoc[] = [];
+      let allProviderDocs: ProviderDoc[] = [];
       const stats = {
         primitives: 0,
         hooks: 0,
@@ -981,6 +981,22 @@ export class DocsCommand {
               srcDir,
               importMap,
             );
+            // The README's API Reference links every symbol it lists to
+            // `/docs/reference-*-<name>`, so the same data has to reach the
+            // reference pass or the README advertises a page nobody generates.
+            //
+            // It reads a DIFFERENT directory from the docs-page pass above:
+            // `readmeModuleDir` follows the package's `.` export, while that
+            // one walks the module dirs. For `@alepha/ui` only this one finds
+            // `src/hooks`, which is how `useIsMobile` came to be listed in the
+            // README and 404 on the site. Pushing here closes that by
+            // construction rather than by keeping the two dirs in step.
+            //
+            // Duplicates are expected whenever the two agree, and are dropped
+            // by name before the pages are written.
+            allPrimitiveDocs.push(...data.primitives);
+            allHookDocs.push(...data.hooks);
+            allProviderDocs.push(...data.providers);
             await fs.writeFile(
               join(packagePath, "README.md"),
               this.generatePackageReadme(pkgJson, realPkgName, data, doc),
@@ -992,6 +1008,18 @@ export class DocsCommand {
       }
 
       await run("generate reference", async () => {
+        // Both passes above collect symbols, and they overlap wherever a
+        // package's `.` export points at a module dir the other already
+        // walked. Deduping on the name here rather than guarding each push
+        // keeps that overlap harmless and the counts honest - two entries for
+        // one hook wrote the same file twice and reported it as two.
+        const byName = <T extends { name: string }>(docs: T[]): T[] => [
+          ...new Map(docs.map((doc) => [doc.name, doc])).values(),
+        ];
+        allPrimitiveDocs = byName(allPrimitiveDocs);
+        allHookDocs = byName(allHookDocs);
+        allProviderDocs = byName(allProviderDocs);
+
         allPrimitiveDocs.sort((a, b) => a.name.localeCompare(b.name));
         for (const doc of allPrimitiveDocs) {
           await fs.writeFile(
