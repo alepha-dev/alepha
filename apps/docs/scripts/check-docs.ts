@@ -126,6 +126,21 @@ export class CheckDocsCommand {
         this.log.info(`${dangling.length} dangling internal link(s)`);
       });
 
+      await run("primitive guide coverage", async () => {
+        const { regressions, healed, uncovered } =
+          await this.primitiveCoverage(root);
+        for (const it of regressions) {
+          this.log.error(it);
+        }
+        for (const it of healed) {
+          this.log.error(it);
+        }
+        failures += regressions.length + healed.length;
+        this.log.warn(
+          `${uncovered.length} primitive(s) still have a reference page and no guide`,
+        );
+      });
+
       await run("compile marked examples", async () => {
         const units = [
           ...(await this.checker.collectCheckedFences(files)),
@@ -289,6 +304,119 @@ export class CheckDocsCommand {
    * excerpts: they omit imports on purpose, so that what the visitor reads is
    * the shape rather than the ceremony.
    */
+  /**
+   * Primitives that have a generated reference page and appear in no guide.
+   *
+   * A reference page states a signature; a guide is where a reader meets the
+   * thing and sees why they would reach for it. 30 primitives currently have
+   * the first and not the second, which is a documentation project rather than
+   * a defect, so this is a RATCHET and not a gate: the listed names are
+   * tolerated, and anything not listed fails.
+   *
+   * That is the shape that makes the number go down. A plain warning about 30
+   * items is read once and never again - the same silence that let an unused,
+   * broken snippet and an unpublished doc tree sit here - while a hard failure
+   * on all 30 would just be deleted. This way a NEW primitive cannot ship
+   * undocumented, and every guide written is one line removed from the list.
+   *
+   * ⚠️ Remove a name once its guide exists. A stale entry silently re-permits
+   * the gap if the guide is ever deleted, so `healed` below fails on exactly
+   * that.
+   *
+   * The `$auth*` family is eight of these and wants one guide section, not
+   * eight. The resilience decorators (`$retry`, `$throttle`, `$debounce`,
+   * `$timeout`, `$circuit`, `$memoize`, `$batch`, `$pipeline`) are another
+   * eight with the same story.
+   */
+  protected readonly primitivesWithoutGuide = [
+    "$auth",
+    "$authApple",
+    "$authCredentials",
+    "$authFacebook",
+    "$authFranceConnect",
+    "$authGithub",
+    "$authGoogle",
+    "$authMicrosoft",
+    "$batch",
+    "$circuit",
+    "$command",
+    "$debounce",
+    "$etag",
+    "$interval",
+    "$memoize",
+    "$middleware",
+    "$mode",
+    "$parameter",
+    "$permission",
+    "$pipeline",
+    "$proxy",
+    "$retry",
+    "$role",
+    "$scope",
+    "$seed",
+    "$serve",
+    "$sms",
+    "$throttle",
+    "$timeout",
+    "$workflow",
+  ];
+
+  /**
+   * Compares the primitives with no guide mention against the baseline above.
+   *
+   * Mentioned, not documented: a name appearing anywhere in `1-guides` counts.
+   * The check is deliberately weak because the strong version cannot be
+   * automated - "is this explained well" is not a grep - and a weak check that
+   * runs beats a strong one that does not exist.
+   */
+  protected async primitiveCoverage(root: string): Promise<{
+    regressions: string[];
+    healed: string[];
+    uncovered: string[];
+  }> {
+    const dir = join(root, "docs/framework/2-reference/1-primitives");
+    if (!(await this.fs.exists(dir))) {
+      return { regressions: [], healed: [], uncovered: [] };
+    }
+
+    const primitives = (await this.fs.ls(dir))
+      .filter((name) => name.endsWith(".md"))
+      .map((name) => name.replace(/\.md$/, ""));
+
+    const guides = await this.listMarkdown(
+      join(root, "docs/framework/1-guides"),
+    );
+    const corpus = (
+      await Promise.all(guides.map((file) => this.fs.readFile(file)))
+    )
+      .map(String)
+      .join("\n");
+
+    const uncovered = primitives.filter(
+      // `\b` after the name, so `$auth` is not considered covered by a guide
+      // that only ever mentions `$authGoogle`.
+      (name) => !new RegExp(`\\${name}\\b`).test(corpus),
+    );
+
+    const allowed = new Set(this.primitivesWithoutGuide);
+    const regressions = uncovered
+      .filter((name) => !allowed.has(name))
+      .map(
+        (name) =>
+          `${name} has a reference page and is named in no guide - write one, or add it to primitivesWithoutGuide in apps/docs/scripts/check-docs.ts`,
+      );
+
+    const stillUncovered = new Set(uncovered);
+    const healed = this.primitivesWithoutGuide
+      .filter((name) => !stillUncovered.has(name))
+      .map(
+        (name) =>
+          `${name} is documented now - remove it from primitivesWithoutGuide in apps/docs/scripts/check-docs.ts`,
+      );
+
+    return { regressions, healed, uncovered };
+  }
+
   protected snippetUnits(): DocUnit[] {
     return Object.entries(snippets)
       .filter(([, snippet]) => !("uncheckable" in snippet))
