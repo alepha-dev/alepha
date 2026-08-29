@@ -787,7 +787,7 @@ Both are the same shape as the `ADD COLUMN … NOT NULL` trap below — a check 
 
 The `@/` alias is still duplicated in both configs, and the root copy is load-bearing: `apps/examples/playground` and `apps/examples/shop` declare the same `@/* → ./src/*` tsconfig mapping without writing a single `@/` import today, so the first one added in either app resolves into `apps/lore/src` under a root run — typecheck green, wrong file imported. At that point the repo-wide alias has to become per-project, which is why it is not shared the way the jsdom project is.
 
-108 unit / integration specs in `test/` (Vitest, in-memory SQLite). Notable ones:
+117 unit / integration specs in `test/` (Vitest, in-memory SQLite). Notable ones:
 
 - `mcp-security.spec.ts` — MCP auth, API keys, user isolation
 - `project-reports.spec.ts` — reports aggregation
@@ -812,7 +812,6 @@ The `@/` alias is still duplicated in both configs, and the root copy is load-be
 - `user-deletion-hook.spec.ts` — **regression guard**: `UserDeletionHook` refuses `deleteMyAccount` while the account still owns projects, and the account survives the refusal. Load-bearing because `projects.createdBy` is a bare `z.uuid()` with **no foreign key** — deleting an owner cascades nothing and warns about nothing, leaving a project pointing at a row that no longer exists and failing `assertOwner` for everybody. Nothing in the schema, the types or the migration snapshot can catch that. Also pins that the hook's message reaches the client as a 409 with its text intact (`MyAccountController` emits without `{ log: true }` precisely so it does)
 - `blight-tools.spec.ts` — the MCP triage surface
 - `migration-safety.spec.ts` — asserts the great-rename migration (and the sigil-family rebuild before it) never drops a table the `projects` cascade reaches, and that a fresh D1-shaped database boots with all migrations applied
-- `petition-reporter-migration.spec.ts` / `petition-reporter-restore-migration.spec.ts` — deliberately still "petition"-named: they pin the behavior of two specific _historical_ migrations (`reporterUserId`/`reporterEmail` column churn) that predate the 2026-08 rename, not the current Feedback module
 - Shared fixtures live in `test/fixtures/`
 
 ### ⚠️ Running e2e while another agent is running it
