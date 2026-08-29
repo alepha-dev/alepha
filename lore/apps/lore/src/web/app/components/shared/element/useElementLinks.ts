@@ -97,9 +97,9 @@ export const useElementLinks = (
       enabled: !inFolioWorkspace && projectId > 0,
       staleTime: [5, "minutes"],
       handler: async () =>
-        (await folioApi.list({
-          query: { projectId, limit: 100 } as never,
-        })) as Folio[],
+        await folioApi.list({
+          query: { projectId, limit: 100 },
+        }),
       onError: () => {},
     },
     [folioApi, projectId, inFolioWorkspace],
@@ -123,11 +123,12 @@ export const useElementLinks = (
             size: 100,
             sort: "-updatedAt",
             includePlanned: true,
-          } as never,
+          },
         });
-        return (page.content as Array<{ shortId: number; title: string }>).map(
-          (q) => ({ shortId: q.shortId, title: q.title }),
-        );
+        return page.content.map((q) => ({
+          shortId: q.shortId,
+          title: q.title,
+        }));
       },
       onError: () => {},
     },
@@ -155,9 +156,9 @@ export const useElementLinks = (
       enabled: !inFolioWorkspace && hasPathLinks && projectId > 0,
       staleTime: [5, "minutes"],
       handler: async () =>
-        (await directoryApi.listAllDirectories({
+        await directoryApi.listAllDirectories({
           params: { projectId },
-        })) as DirectoryRef[],
+        }),
       onError: () => {},
     },
     [directoryApi, projectId, inFolioWorkspace, hasPathLinks],
@@ -173,15 +174,9 @@ export const useElementLinks = (
       enabled: !inFolioWorkspace && hasBlobRefs && element.id !== undefined,
       staleTime: [1, "minutes"],
       handler: async () => {
-        const rows = (await blobApi.listBlobs({
+        const rows = await blobApi.listBlobs({
           params: { folioId: String(element.id) },
-        })) as Array<{
-          id: string;
-          shortId: number;
-          name: string;
-          size: number;
-          mimeType: string;
-        }>;
+        });
         return rows.map((b) => ({
           fileId: b.id,
           shortId: b.shortId,
@@ -222,7 +217,7 @@ export const useElementLinks = (
    */
   const suggestions = useMemo<WikiLinkSuggestion[]>(
     () => [
-      ...(folios as Folio[]).map((f) => ({
+      ...folios.map((f) => ({
         key: `folio:${f.id}`,
         kind: "folio" as const,
         token: f.title,
@@ -259,7 +254,7 @@ export const useElementLinks = (
         ? rewriteFolioWikiLinks(
             content,
             projectSlug,
-            folios as Folio[],
+            folios,
             quests ?? [],
             directories,
             blobs,
