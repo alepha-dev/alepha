@@ -208,11 +208,11 @@ export class MilestoneController {
   });
 
   startMilestone = $action({
-    // Gate ahead of `$transactional()`: a refused caller never opens one.
+    // Gate INSIDE the transaction, not ahead of it — see `$ownsProject`.
     use: [
       $secure({ permissions: ["quest:create"] }),
-      this.ownsProjectAsOwner(),
       $transactional(),
+      this.ownsProjectAsOwner(),
     ],
     schema: {
       params: z.object({

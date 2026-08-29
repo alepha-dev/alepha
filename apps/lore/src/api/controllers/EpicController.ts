@@ -162,11 +162,11 @@ export class EpicController {
   });
 
   createEpic = $action({
-    // Gate ahead of `$transactional()`: a refused caller never opens one.
+    // Gate INSIDE the transaction, not ahead of it — see `$ownsProject`.
     use: [
       $secure({ permissions: ["quest:create"] }),
-      this.ownsProject(),
       $transactional(),
+      this.ownsProject(),
     ],
     schema: {
       params: z.object({ projectId: z.integer() }),
