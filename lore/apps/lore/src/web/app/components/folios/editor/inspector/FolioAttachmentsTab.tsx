@@ -15,7 +15,7 @@ import { folioAssetEmbed } from "../../folioAssetReference.ts";
 import { FOLIO_IMAGE_MAX_WIDTH } from "../../folioImageBounds.ts";
 import { formatBlobBytes } from "../../folioWikiLinkResolver.ts";
 
-// Mirrors `FOLIO_BLOB_BUCKET_NAME` (FolioBlobService) — not imported so the
+// Mirrors `FolioBlobService.BUCKET` — not imported so the
 // browser bundle does not pull a server-side module. Value stays
 // "archive-blobs": it is persisted on every existing `files` row.
 const FOLIO_BLOB_BUCKET = "archive-blobs";

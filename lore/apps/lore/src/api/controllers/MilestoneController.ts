@@ -1,4 +1,5 @@
 import { $inject, z } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, $sequence, $transactional } from "alepha/orm";
 import { $secure } from "alepha/security";
@@ -27,6 +28,102 @@ export class MilestoneController {
   dt = $inject(DateTimeProvider);
   security = $inject(ProjectSecurityService);
   limits = $inject(ProjectLimits);
+  crypto = $inject(CryptoProvider);
+
+  /**
+   * Name parts for the milestone-name generator. Two lists rather than one
+   * table of finished names: 20 x 20 gives 400 combinations from 40 lines.
+   */
+  protected readonly NAME_PREFIXES = [
+    "The Fall of",
+    "Rise of the",
+    "Whispers of",
+    "The Siege of",
+    "Beyond the",
+    "Echoes of",
+    "The Last",
+    "Dawn of",
+    "Shadows over",
+    "The Trials of",
+    "Wrath of the",
+    "Ashes of",
+    "The Sundering of",
+    "Secrets of the",
+    "Into the",
+    "The Awakening of",
+    "Curse of the",
+    "March on",
+    "Beneath the",
+    "Legacy of the",
+  ];
+
+  protected readonly NAME_SUBJECTS = [
+    "Stormhold",
+    "Iron Citadel",
+    "Forgotten Realm",
+    "Ancient Grove",
+    "Crimson Keep",
+    "Shattered Throne",
+    "Obsidian Spire",
+    "Hollow Mountain",
+    "Ember Wastes",
+    "Frozen Reach",
+    "Twilight Depths",
+    "Verdant Wilds",
+    "Sunken Temple",
+    "Ashen Lands",
+    "Crystal Sanctum",
+    "Dragonspine",
+    "Thornwall",
+    "Moonlit Ruins",
+    "Gilded Tomb",
+    "Wraithwood",
+  ];
+
+  /**
+   * Parse a minimal subset of ISO 8601 duration strings (PnY, PnM, PnW, PnD,
+   * PT...) into milliseconds. Returns `null` for unparseable input. Months and
+   * years use approximate calendar lengths (30/365 days) - milestones don't
+   * need calendar accuracy, only "roughly a month".
+   */
+  protected parseIsoDurationMs(iso: string): number | null {
+    const match = iso.match(
+      /^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/,
+    );
+    if (!match) return null;
+    const [, y, mo, w, d, h, mi, s] = match;
+    const Y = 365 * 24 * 60 * 60 * 1000;
+    const MO = 30 * 24 * 60 * 60 * 1000;
+    const W = 7 * 24 * 60 * 60 * 1000;
+    const D = 24 * 60 * 60 * 1000;
+    const H = 60 * 60 * 1000;
+    const MI = 60 * 1000;
+    const S = 1000;
+    let total = 0;
+    if (y) total += Number(y) * Y;
+    if (mo) total += Number(mo) * MO;
+    if (w) total += Number(w) * W;
+    if (d) total += Number(d) * D;
+    if (h) total += Number(h) * H;
+    if (mi) total += Number(mi) * MI;
+    if (s) total += Number(s) * S;
+    return total > 0 ? total : null;
+  }
+
+  /**
+   * A random flavour name for a milestone the author did not name.
+   *
+   * Drawn through `CryptoProvider.randomInt` rather than `Math.random()`, so
+   * a test can substitute the provider and pin the name instead of asserting
+   * "it looks like two words".
+   */
+  protected randomMilestoneName(): string {
+    const prefix =
+      this.NAME_PREFIXES[this.crypto.randomInt(this.NAME_PREFIXES.length)];
+    const subject =
+      this.NAME_SUBJECTS[this.crypto.randomInt(this.NAME_SUBJECTS.length)];
+    return `${prefix} ${subject}`;
+  }
 
   /**
    * Per-project sequence for `milestones.number`. Replaces the old MAX+1
@@ -135,7 +232,7 @@ export class MilestoneController {
       return await this.milestones.create({
         projectId: params.projectId,
         number,
-        title: body.title || randomMilestoneName(),
+        title: body.title || this.randomMilestoneName(),
         description: body.description ?? "",
         tags: body.tags ?? [],
         closesAt,
@@ -342,7 +439,7 @@ export class MilestoneController {
     schema: {
       response: z.object({ title: z.string() }),
     },
-    handler: async () => ({ title: randomMilestoneName() }),
+    handler: async () => ({ title: this.randomMilestoneName() }),
   });
 
   /**
@@ -390,7 +487,7 @@ export class MilestoneController {
 
   protected computeClosesAt(duration?: string): string | undefined {
     if (!duration) return undefined;
-    const ms = parseIsoDurationMs(duration);
+    const ms = this.parseIsoDurationMs(duration);
     if (ms == null || ms <= 0) return undefined;
     return new Date(this.dt.nowMillis() + ms).toISOString();
   }
@@ -523,86 +620,4 @@ export class MilestoneController {
       },
     };
   }
-}
-
-/**
- * Parse a minimal subset of ISO 8601 duration strings (PnY, PnM, PnW, PnD,
- * PT…) into milliseconds. Returns `null` for unparseable input. Months and
- * years use approximate calendar lengths (30/365 days) — milestones don't
- * need calendar accuracy, only "roughly a month".
- */
-function parseIsoDurationMs(iso: string): number | null {
-  const match = iso.match(
-    /^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/,
-  );
-  if (!match) return null;
-  const [, y, mo, w, d, h, mi, s] = match;
-  const Y = 365 * 24 * 60 * 60 * 1000;
-  const MO = 30 * 24 * 60 * 60 * 1000;
-  const W = 7 * 24 * 60 * 60 * 1000;
-  const D = 24 * 60 * 60 * 1000;
-  const H = 60 * 60 * 1000;
-  const MI = 60 * 1000;
-  const S = 1000;
-  let total = 0;
-  if (y) total += Number(y) * Y;
-  if (mo) total += Number(mo) * MO;
-  if (w) total += Number(w) * W;
-  if (d) total += Number(d) * D;
-  if (h) total += Number(h) * H;
-  if (mi) total += Number(mi) * MI;
-  if (s) total += Number(s) * S;
-  return total > 0 ? total : null;
-}
-
-const PREFIXES = [
-  "The Fall of",
-  "Rise of the",
-  "Whispers of",
-  "The Siege of",
-  "Beyond the",
-  "Echoes of",
-  "The Last",
-  "Dawn of",
-  "Shadows over",
-  "The Trials of",
-  "Wrath of the",
-  "Ashes of",
-  "The Sundering of",
-  "Secrets of the",
-  "Into the",
-  "The Awakening of",
-  "Curse of the",
-  "March on",
-  "Beneath the",
-  "Legacy of the",
-];
-
-const SUBJECTS = [
-  "Stormhold",
-  "Iron Citadel",
-  "Forgotten Realm",
-  "Ancient Grove",
-  "Crimson Keep",
-  "Shattered Throne",
-  "Obsidian Spire",
-  "Hollow Mountain",
-  "Ember Wastes",
-  "Frozen Reach",
-  "Twilight Depths",
-  "Verdant Wilds",
-  "Sunken Temple",
-  "Ashen Lands",
-  "Crystal Sanctum",
-  "Dragonspine",
-  "Thornwall",
-  "Moonlit Ruins",
-  "Gilded Tomb",
-  "Wraithwood",
-];
-
-function randomMilestoneName(): string {
-  const prefix = PREFIXES[Math.floor(Math.random() * PREFIXES.length)];
-  const subject = SUBJECTS[Math.floor(Math.random() * SUBJECTS.length)];
-  return `${prefix} ${subject}`;
 }

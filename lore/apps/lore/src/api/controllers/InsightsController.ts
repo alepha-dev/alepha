@@ -26,48 +26,6 @@ import { summariseVitals } from "../vitalsPercentile.ts";
 export type { InsightsResource };
 
 /**
- * Lookback windows the Insights page offers, in whole UTC days.
- */
-const RANGE_DAYS: Record<string, number> = {
-  "1d": 1,
-  "7d": 7,
-  "30d": 30,
-};
-
-/**
- * How many rows the top-countries / top-paths leaderboards return.
- */
-const TOP_N = 10;
-
-/**
- * How many error groups the budget section returns.
- *
- * Wider than the leaderboards on purpose: an error budget you have to paginate
- * is one nobody reads to the bottom, and the tail is where a new regression
- * shows up before it is anyone's top ten.
- */
-const TOP_ERROR_GROUPS = 20;
-
-/**
- * Every `traffic` value that counts as a person.
- *
- * Two of them, and the second one is the whole reason this is a set. A row
- * written before the `traffic` dimension existed carries `""` - a default fills
- * a column on write, it does not rewrite rows already stored - and the filter
- * has to decide what those legacy rows are. They are people: the dimension is
- * an addition to what is recorded, not a reclassification of what was, and
- * dropping every view older than the deploy out of the humans view would look
- * exactly like the traffic collapsing on that date.
- *
- * A `notInArray` on `bot` would say the same thing in one term, and
- * `AnalyticsFilter` deliberately has no negation: equality and set membership
- * only, on both backends. Enumerating the positive side is the shape that seam
- * accepts, and it fails loudly if a third value is ever introduced without
- * being classified here - which is the better failure.
- */
-const HUMAN_TRAFFIC = ["human", ""];
-
-/**
  * The reading surface for what `SigilIngestService` writes.
  *
  * Every row is scoped to a sigil, and every sigil to a project, so each query
@@ -97,6 +55,48 @@ const HUMAN_TRAFFIC = ["human", ""];
  * linked from the project nav every member sees.
  */
 export class InsightsController {
+  /**
+   * Lookback windows the Insights page offers, in whole UTC days.
+   */
+  protected readonly RANGE_DAYS: Record<string, number> = {
+    "1d": 1,
+    "7d": 7,
+    "30d": 30,
+  };
+
+  /**
+   * How many rows the top-countries / top-paths leaderboards return.
+   */
+  protected readonly TOP_N = 10;
+
+  /**
+   * How many error groups the budget section returns.
+   *
+   * Wider than the leaderboards on purpose: an error budget you have to paginate
+   * is one nobody reads to the bottom, and the tail is where a new regression
+   * shows up before it is anyone's top ten.
+   */
+  protected readonly TOP_ERROR_GROUPS = 20;
+
+  /**
+   * Every `traffic` value that counts as a person.
+   *
+   * Two of them, and the second one is the whole reason this is a set. A row
+   * written before the `traffic` dimension existed carries `""` - a default fills
+   * a column on write, it does not rewrite rows already stored - and the filter
+   * has to decide what those legacy rows are. They are people: the dimension is
+   * an addition to what is recorded, not a reclassification of what was, and
+   * dropping every view older than the deploy out of the humans view would look
+   * exactly like the traffic collapsing on that date.
+   *
+   * A `notInArray` on `bot` would say the same thing in one term, and
+   * `AnalyticsFilter` deliberately has no negation: equality and set membership
+   * only, on both backends. Enumerating the positive side is the shape that seam
+   * accepts, and it fails loudly if a third value is ever introduced without
+   * being classified here - which is the better failure.
+   */
+  protected readonly HUMAN_TRAFFIC = ["human", ""];
+
   protected analytics = $inject(LoreAnalyticsStore);
   protected datasets = $inject(LoreAnalytics);
   protected security = $inject(ProjectSecurityService);
@@ -169,7 +169,7 @@ export class InsightsController {
       // Resolved once, then echoed back on the payload: the page renders the
       // filter from what it received, not from what it asked for.
       const traffic = query.traffic ?? "all";
-      const days = RANGE_DAYS[range] ?? 7;
+      const days = this.RANGE_DAYS[range] ?? 7;
 
       // The window ends today unless the caller asked for whole days only.
       // `anchor` is the last day IN the window; everything below counts back
@@ -295,7 +295,7 @@ export class InsightsController {
           groupBy: ["country"],
           select: { count: "sum" },
           orderBy: { key: "count", direction: "desc" },
-          limit: TOP_N,
+          limit: this.TOP_N,
         }),
         this.datasets.views.query({
           since,
@@ -304,7 +304,7 @@ export class InsightsController {
           groupBy: ["path"],
           select: { count: "sum" },
           orderBy: { key: "count", direction: "desc" },
-          limit: TOP_N,
+          limit: this.TOP_N,
         }),
         // Landing pages, which `topPaths` cannot answer: that one sums every
         // view of a path, so `/` conflates arriving at the site with clicking
@@ -316,7 +316,7 @@ export class InsightsController {
           groupBy: ["path"],
           select: { entries: "sum" },
           orderBy: { key: "entries", direction: "desc" },
-          limit: TOP_N,
+          limit: this.TOP_N,
         }),
         // Summed on `entries`, not `count`: a campaign describes how a visit
         // began, so counting the visitor's later navigations against it would
@@ -328,7 +328,7 @@ export class InsightsController {
           groupBy: ["campaign"],
           select: { entries: "sum" },
           orderBy: { key: "entries", direction: "desc" },
-          limit: TOP_N,
+          limit: this.TOP_N,
         }),
         this.datasets.views.query({
           since,
@@ -337,7 +337,7 @@ export class InsightsController {
           groupBy: ["device"],
           select: { count: "sum" },
           orderBy: { key: "count", direction: "desc" },
-          limit: TOP_N,
+          limit: this.TOP_N,
         }),
         // `direct` is not excluded here even though it is never the answer
         // anyone is looking for. It is the denominator: without it on the
@@ -352,7 +352,7 @@ export class InsightsController {
           groupBy: ["referrer"],
           select: { count: "sum" },
           orderBy: { key: "count", direction: "desc" },
-          limit: TOP_N,
+          limit: this.TOP_N,
         }),
         this.datasets.views.query({
           since,
@@ -526,7 +526,7 @@ export class InsightsController {
         lastSeenAt: { gte: since, lte: `${until}~` },
       },
       orderBy: [{ column: "count", direction: "desc" }],
-      limit: TOP_ERROR_GROUPS,
+      limit: this.TOP_ERROR_GROUPS,
     });
 
     return rows.map((row) => ({
@@ -560,7 +560,7 @@ export class InsightsController {
       return { traffic: "bot" };
     }
     if (traffic === "humans") {
-      return { traffic: { inArray: HUMAN_TRAFFIC } };
+      return { traffic: { inArray: this.HUMAN_TRAFFIC } };
     }
     return {};
   }

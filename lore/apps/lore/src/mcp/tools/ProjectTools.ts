@@ -8,7 +8,7 @@ import { EpicController } from "../../api/controllers/EpicController.ts";
 import { FolioController } from "../../api/controllers/FolioController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import { AreaService } from "../../api/services/AreaService.ts";
-import { foldPinnedFolios } from "../../api/services/PinnedFolioFolder.ts";
+import { PinnedFolioFolder } from "../../api/services/PinnedFolioFolder.ts";
 import {
   projectActivityParamsSchema,
   projectActivityResultSchema,
@@ -52,6 +52,7 @@ export class ProjectTools {
   protected readonly folioController = $inject(FolioController);
   protected readonly epicController = $inject(EpicController);
   protected readonly areaService = $inject(AreaService);
+  protected readonly pinnedFolder = $inject(PinnedFolioFolder);
   protected readonly alepha = $inject(Alepha);
 
   /**
@@ -270,7 +271,7 @@ export class ProjectTools {
       // the agent. Cap logic lives in `foldPinnedFolios` so it can be
       // unit-tested without spinning the MCP transport.
       const cap = this.alepha.store.get(pinnedContentAtom).maxChars;
-      const { pinnedFolios, pinnedFoliosTruncated } = foldPinnedFolios(
+      const { pinnedFolios, pinnedFoliosTruncated } = this.pinnedFolder.fold(
         folios
           .filter((f) => f.pinned && !f.protected)
           // controller already sorts (pinned DESC, updatedAt DESC) so

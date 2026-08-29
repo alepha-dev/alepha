@@ -69,31 +69,16 @@ interface TokenLookupMaps {
 }
 
 /**
- * Maximum number of outbound `[[...]]` references parsed from a single
- * folio's content. Hard ceiling so a pathological note can't blow up the
- * link table or the resolution query budget.
- */
-const MAX_LINKS_PER_FOLIO = 200;
-
-/**
- * Sentinel for "project root" in the path-resolution maps. Directories
- * with `parentId === null` (or undefined) bucket under this key; folios
- * with no `directoryId` likewise. Using a non-UUID string keeps the
- * sentinel from ever colliding with a real directory id.
- */
-const ROOT_DIR = "root";
-
-/**
  * Precomputed lookup structures for path-style link resolution. Built
  * once per `resolveTokenIds` call when at least one token contains a `/`,
  * otherwise skipped to keep the title-only happy path cheap.
  *
- * - `childrenByParent`: parent dir id (or {@link ROOT_DIR}) → map of
+ * - `childrenByParent`: parent dir id (or {@link FolioLinkService.ROOT_DIR}) → map of
  *   lowercased directory name → `{ id, count }`. `count > 1` means two
  *   siblings collide on case-insensitive name (shouldn't happen given
  *   the `folio_names` UNIQUE INDEX, but we defensively drop such
  *   matches).
- * - `foliosByDir`: dir id (or {@link ROOT_DIR}) → map of lowercased title
+ * - `foliosByDir`: dir id (or {@link FolioLinkService.ROOT_DIR}) → map of lowercased title
  *   → `{ id, count }`. Same collision rule.
  * - `dirNameById` / `dirParentById`: per-directory metadata, used by the
  *   suffix-match pass to walk parent chains.
@@ -126,6 +111,20 @@ interface PathContext {
  *   as plain italic to flag the dangling reference to the author.
  */
 export class FolioLinkService {
+  /**
+   * Maximum number of outbound `[[...]]` references parsed from a single
+   * folio's content. Hard ceiling so a pathological note can't blow up the
+   * link table or the resolution query budget.
+   */
+  protected readonly MAX_LINKS_PER_FOLIO = 200;
+
+  /**
+   * Sentinel for "project root" in the path-resolution maps. Directories
+   * with `parentId === null` (or undefined) bucket under this key; folios
+   * with no `directoryId` likewise. Using a non-UUID string keeps the
+   * sentinel from ever colliding with a real directory id.
+   */
+  protected readonly ROOT_DIR = "root";
   protected readonly folios = $repository(folios);
   protected readonly links = $repository(folioLinks);
   protected readonly quests = $repository(quests);
@@ -135,7 +134,7 @@ export class FolioLinkService {
 
   /**
    * Extract `[[...]]` tokens from markdown content into structured
-   * {@link ParsedToken}s. Stops at `MAX_LINKS_PER_FOLIO` matches so a
+   * {@link ParsedToken}s. Stops at `this.MAX_LINKS_PER_FOLIO` matches so a
    * runaway note can't cost unbounded resolution work. Dedupes by
    * normalized (type, ref, anchor) so the same token written twice
    * produces one link.
@@ -153,7 +152,7 @@ export class FolioLinkService {
         if (!seen.has(dedupKey)) {
           seen.add(dedupKey);
           out.push(parsed);
-          if (out.length >= MAX_LINKS_PER_FOLIO) break;
+          if (out.length >= this.MAX_LINKS_PER_FOLIO) break;
         }
       }
       match = re.exec(content);
@@ -267,7 +266,7 @@ export class FolioLinkService {
         if (existing) existing.count++;
         else folioByTitle.set(key, { id: c.id, count: 1 });
         if (needsPaths) {
-          const dirKey = c.directoryId ?? ROOT_DIR;
+          const dirKey = c.directoryId ?? this.ROOT_DIR;
           let inDir = pathContext.foliosByDir.get(dirKey);
           if (!inDir) {
             inDir = new Map();
@@ -287,7 +286,7 @@ export class FolioLinkService {
         for (const d of dirs) {
           pathContext.dirNameById.set(d.id, d.name);
           pathContext.dirParentById.set(d.id, d.parentId ?? null);
-          const parentKey = d.parentId ?? ROOT_DIR;
+          const parentKey = d.parentId ?? this.ROOT_DIR;
           let bucket = pathContext.childrenByParent.get(parentKey);
           if (!bucket) {
             bucket = new Map();
@@ -483,7 +482,7 @@ export class FolioLinkService {
     const dirSegments = segments.slice(0, -1).map((s) => s.toLowerCase());
 
     // Pass 1 — anchored at root.
-    const anchored = this.walkPath(dirSegments, ROOT_DIR, ctx);
+    const anchored = this.walkPath(dirSegments, this.ROOT_DIR, ctx);
     if (anchored) {
       const folioHit = ctx.foliosByDir.get(anchored)?.get(nameKey);
       if (folioHit && folioHit.count === 1) return folioHit.id;
@@ -944,7 +943,7 @@ export class FolioLinkService {
       const existing = folioByTitle.get(key);
       if (existing) existing.count++;
       else folioByTitle.set(key, { id: f.id, count: 1 });
-      const dirKey = f.directoryId ?? ROOT_DIR;
+      const dirKey = f.directoryId ?? this.ROOT_DIR;
       let inDir = pathContext.foliosByDir.get(dirKey);
       if (!inDir) {
         inDir = new Map();
@@ -956,7 +955,7 @@ export class FolioLinkService {
       else inDir.set(titleKey, { id: f.id, count: 1 });
     }
     for (const d of dirs) {
-      const parentKey = d.parentId ?? ROOT_DIR;
+      const parentKey = d.parentId ?? this.ROOT_DIR;
       let bucket = pathContext.childrenByParent.get(parentKey);
       if (!bucket) {
         bucket = new Map();
