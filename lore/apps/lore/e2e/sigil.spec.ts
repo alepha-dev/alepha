@@ -607,7 +607,47 @@ test.describe("Sigils", () => {
       await expect(topPaths.getByText("/crawled")).toBeVisible();
     });
 
+    await test.step("a leaderboard's detail page filters the overview and returns", async () => {
+      // Reached by URL rather than by a More link, which the overview does not
+      // grow until the Umami-shaped rebuild. The loop this asserts is the one
+      // the page exists for: leaderboard row -> filter -> overview.
+      await page.goto(`/${projectSlug}/apps/${appName}/analytics/path`);
+      await page.waitForLoadState("networkidle");
+
+      const table = page.getByTestId("insights-dimension-table");
+      await expect(table.getByText("/checkout")).toBeVisible({
+        timeout: 15_000,
+      });
+
+      await table.getByText("/checkout").click();
+
+      // Back on the overview, narrowed, with the filter in the URL so it
+      // survives a reload and travels in a link.
+      await expect(page).toHaveURL(/\/analytics\?.*path=%2Fcheckout/, {
+        timeout: 15_000,
+      });
+      const topPaths = page.getByTestId("insights-top-paths");
+      await expect(topPaths.getByText("/checkout")).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(topPaths.getByText("/crawled")).toHaveCount(0);
+    });
+
+    await test.step("an unknown leaderboard is a 404, not a failed request", async () => {
+      // The segment is user input on its way to a query. It is refused by the
+      // route before anything sees it, so this renders the app's own not-found
+      // page rather than a 400 surfacing out of a fetch.
+      await page.goto(`/${projectSlug}/apps/${appName}/analytics/nonsense`);
+      await page.waitForLoadState("networkidle");
+      await expect(page.getByTestId("insights-dimension-table")).toHaveCount(0);
+    });
+
     await test.step("the Vitals tab reports a range, a sample count and no rating", async () => {
+      // Back to the app page: the two steps above left the browser on a
+      // detail URL, and the tab bar is what the rest of this flow drives.
+      await page.goto(`/${projectSlug}/apps/${appName}`);
+      await page.waitForLoadState("networkidle");
+
       await page
         .getByTestId("app-tabs")
         .getByRole("link", { name: "Vitals", exact: true })

@@ -14,6 +14,7 @@ import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { appUrl, appUrlLabel } from "./appUrl.ts";
+import { APP_INSIGHTS_FILTER_KEYS } from "./useAppInsights.ts";
 
 type RouteName = "app" | "appAnalytics" | "appVitals" | "appSettings";
 
@@ -80,13 +81,18 @@ const AppLayout = () => {
   // behind either tab.
   const collectsBeacon = sigil.kinds.includes("beacon");
   const tabs = TABS.filter((tab) => !tab.needsBeacon || collectsBeacon);
-  // The filters now live in the URL, so crossing between Analytics and Vitals
-  // has to carry them across or the link itself resets what it used to
-  // preserve. Only for the two tabs that read them: a `?range=` trailing onto
-  // Settings would be the control-that-changes-nothing all over again, in the
-  // address bar.
+  // The whole analytics question lives in the URL, so crossing between
+  // Analytics and Vitals has to carry it across or the link itself resets what
+  // it used to preserve. Only for the two tabs that read it: a `?range=`
+  // trailing onto Settings would be the control-that-changes-nothing all over
+  // again, in the address bar.
+  //
+  // Vitals honours only `path` of the five dimension filters, and carrying the
+  // other four is deliberate rather than sloppy: they are inert there and
+  // still there when you cross back, which is what makes the tab bar a
+  // navigation rather than a reset.
   const filters: Record<string, string> = {};
-  for (const key of ["range", "traffic"]) {
+  for (const key of ["range", "traffic", ...APP_INSIGHTS_FILTER_KEYS]) {
     const value = router.query[key];
     if (value) {
       filters[key] = value;

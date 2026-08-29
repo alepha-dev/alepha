@@ -19,6 +19,63 @@ export const APP_INSIGHTS_TRAFFICS: AppInsightsTraffic[] = [
 ];
 
 /**
+ * The view dimensions the page can be narrowed by, in the order their chips
+ * are drawn.
+ *
+ * One list, so a sixth dimension is added here and appears as a chip, a query
+ * parameter and a leaderboard target without three separate edits.
+ */
+export const APP_INSIGHTS_FILTER_KEYS = [
+  "path",
+  "country",
+  "referrer",
+  "campaign",
+  "device",
+] as const;
+
+export type AppInsightsFilterKey = (typeof APP_INSIGHTS_FILTER_KEYS)[number];
+
+/**
+ * The whole page state, read from and written to the URL.
+ *
+ * Split out of {@link useAppInsights} because two callers need the state
+ * without the payload: `AppLayout` carries it across the tab bar, and the
+ * dimension detail page carries it into its own query and back out again on a
+ * row click. Neither wants a second copy of the insights request.
+ */
+export const useAppInsightsFilters = () => {
+  const [params, setParams] = useQueryParams(appInsightsFiltersSchema, {
+    format: "querystring",
+  });
+
+  const range: AppInsightsRange = params.range ?? "7d";
+  const traffic: AppInsightsTraffic = params.traffic ?? "all";
+
+  // Only the keys actually set, so an absent filter is an absent query
+  // parameter rather than `undefined` spliced into a URL or a request.
+  const filters: Partial<Record<AppInsightsFilterKey, string>> = {};
+  for (const key of APP_INSIGHTS_FILTER_KEYS) {
+    const value = params[key];
+    if (value) {
+      filters[key] = value;
+    }
+  }
+
+  return {
+    range,
+    traffic,
+    filters,
+    /**
+     * Rewrite the whole state. Passing the full object is deliberate: a merge
+     * helper would make "clear this one filter" ambiguous between an absent
+     * key and an undefined value.
+     */
+    setFilters: (next: Infer<typeof appInsightsFiltersSchema>) =>
+      setParams(next),
+  };
+};
+
+/**
  * The analytics a tab renders, for the app the page is about.
  *
  * Each tab calls this for itself. The `projectApp` loader used to fetch the
@@ -41,20 +98,22 @@ export const useAppInsights = () => {
   const insightsApi = useClient<InsightsController>();
   const [project] = useStore(currentProjectAtom);
   const [sigil] = useStore(currentSigilAtom);
-  const [filters, setFilters] = useQueryParams(appInsightsFiltersSchema, {
-    format: "querystring",
-  });
+  const { range, traffic, filters, setFilters } = useAppInsightsFilters();
 
-  const range: AppInsightsRange = filters.range ?? "7d";
-  const traffic: AppInsightsTraffic = filters.traffic ?? "all";
   // The app's own capability, not the project's: Beacon off means there is
   // nothing collected to ask for, and the request would only 404.
   const enabled = Boolean(project && sigil && sigil.kinds.includes("beacon"));
+  // The dimension filters are part of the question, so they are part of the
+  // cache key. Serialized rather than spread so the key is one stable string
+  // whatever order the URL happened to carry them in.
+  const filterKey = APP_INSIGHTS_FILTER_KEYS.map(
+    (key) => `${key}=${filters[key] ?? ""}`,
+  ).join("&");
 
   const { data, loading, error } = useQuery(
     {
       enabled,
-      key: ["app-insights", sigil?.id, range, traffic],
+      key: ["app-insights", sigil?.id, range, traffic, filterKey],
       keepPreviousData: true,
       handler: async () => {
         if (!project || !sigil) {
@@ -62,20 +121,12 @@ export const useAppInsights = () => {
         }
         return await insightsApi.getInsights({
           params: { projectId: project.id },
-          query: { range, sigilId: sigil.id, traffic },
+          query: { ...filters, range, sigilId: sigil.id, traffic },
         });
       },
     },
-    [project?.id, sigil?.id, range, traffic, enabled],
+    [project?.id, sigil?.id, range, traffic, filterKey, enabled],
   );
 
-  return {
-    data,
-    loading,
-    error,
-    range,
-    traffic,
-    setFilters: (next: Infer<typeof appInsightsFiltersSchema>) =>
-      setFilters(next),
-  };
+  return { data, loading, error, range, traffic, filters, setFilters };
 };
