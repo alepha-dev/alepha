@@ -258,7 +258,14 @@ const LayoutContent = () => {
       }
 
       const container = contentRef.current;
-      const now = Date.now();
+      // The event's own clock, not `Date.now()`. This measures the gap between
+      // two keystrokes for the `gg` chord, and `timeStamp` is the reading that
+      // actually belongs to the input: it is monotonic from the page's time
+      // origin, so a system clock adjustment between the two `g`s cannot widen
+      // or collapse the window. It also keeps the handler off the wall clock,
+      // which the repository reserves for `DateTimeProvider` - and there is
+      // nothing here for `travel()` to mean.
+      const now = e.timeStamp;
 
       // Handle key sequences (like gg)
       if (

@@ -20,7 +20,25 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
+/**
+ * The trees rules 1 and 2 read.
+ *
+ * `packages/alepha/src` was the whole list, which left every app free to do
+ * what the framework forbids - and `apps/docs` had picked up a `Date.now()`
+ * and a bare `throw new Error`. The docs app is the one nobody thinks of as
+ * code: it renders the very guides that state these rules.
+ *
+ * Its `scripts/` is in scope too. `gen-docs`, `gen-tree`, `gen-llms` and
+ * `check-docs` are `$command`s in the container like any other, so `AlephaError`
+ * is in scope there and the exemption a build script might claim does not
+ * apply.
+ *
+ * Deliberately not every app: `apps/lore` and the examples are a much larger
+ * sweep and their own decision, not a side effect of this one.
+ */
 const SRC = "packages/alepha/src";
+
+const SRC_ROOTS = ["packages/alepha/src", "apps/docs/src", "apps/docs/scripts"];
 
 /**
  * A file is exempt from the `Date.now()` rule when the timestamp it produces is
@@ -29,15 +47,15 @@ const SRC = "packages/alepha/src";
  * code that has no container.
  */
 const DATE_NOW_EXEMPT = [
-  "server/core/services/HttpClient.ts",
+  "packages/alepha/src/server/core/services/HttpClient.ts",
   // The provider itself has to read the wall clock somewhere.
-  "datetime/providers/DateTimeProvider.ts",
+  "packages/alepha/src/datetime/providers/DateTimeProvider.ts",
   // `now: () => Date.now()` is already an injectable seam: the default is
   // overridden wherever the clock needs to be controlled.
-  "websocket/providers/WebSocketRoom.ts",
-  "websocket/providers/NodeWebSocketServerProvider.ts",
+  "packages/alepha/src/websocket/providers/WebSocketRoom.ts",
+  "packages/alepha/src/websocket/providers/NodeWebSocketServerProvider.ts",
   // Unique temp-directory suffix, never compared or asserted on.
-  "bucket/providers/LocalFileStorageProvider.ts",
+  "packages/alepha/src/bucket/providers/LocalFileStorageProvider.ts",
 ];
 
 /**
@@ -45,13 +63,13 @@ const DATE_NOW_EXEMPT = [
  * bundle** as a string. That code runs in the built app, where `AlephaError`
  * is not in scope — it is not this codebase throwing.
  */
-const THROW_EXEMPT = ["cli/core/tasks/BuildServerTask.ts"];
+const THROW_EXEMPT = ["packages/alepha/src/cli/core/tasks/BuildServerTask.ts"];
 
 const search = (pattern) => {
   try {
     return execFileSync(
       "grep",
-      ["-rn", "--include=*.ts", "--include=*.tsx", pattern, SRC],
+      ["-rn", "--include=*.ts", "--include=*.tsx", pattern, ...SRC_ROOTS],
       { encoding: "utf8" },
     )
       .split("\n")
@@ -62,24 +80,31 @@ const search = (pattern) => {
   }
 };
 
-/** Drop tests, and JSDoc lines — an example is documentation, not logic. */
+/**
+ * Drop tests, and comment lines — an example is documentation, not logic.
+ *
+ * Both comment styles, and the `//` half is not cosmetic: the honest way to
+ * write one of these fixes is to say in a comment which construct was avoided
+ * and why, and that sentence necessarily contains the banned string. Without
+ * this, explaining the rule trips the rule.
+ */
 const isRelevant = (line) => {
   const [file] = line.split(":");
   if (/__tests__|\.spec\.|fixtures/.test(file)) return false;
   const body = line.slice(line.indexOf(":", line.indexOf(":") + 1) + 1);
-  return !/^\s*\*/.test(body);
+  return !/^\s*(\*|\/\/)/.test(body);
 };
 
 const violations = [];
 
 for (const line of search("throw new Error(").filter(isRelevant)) {
-  const file = line.split(":")[0].slice(SRC.length + 1);
+  const file = line.split(":")[0];
   if (THROW_EXEMPT.some((e) => file.endsWith(e))) continue;
   violations.push(`  ${line.trim()}\n    → use AlephaError`);
 }
 
 for (const line of search("Date.now()").filter(isRelevant)) {
-  const file = line.split(":")[0].slice(SRC.length + 1);
+  const file = line.split(":")[0];
   if (DATE_NOW_EXEMPT.some((e) => file.endsWith(e))) continue;
   violations.push(
     `  ${line.trim()}\n    → inject DateTimeProvider, use nowMillis()`,
@@ -99,7 +124,7 @@ if (violations.length > 0) {
 // it will silently cover a future violation in the same file.
 const stale = [...DATE_NOW_EXEMPT, ...THROW_EXEMPT].filter((f) => {
   try {
-    const src = readFileSync(`${SRC}/${f}`, "utf8");
+    const src = readFileSync(f, "utf8");
     return !src.includes("Date.now()") && !src.includes("throw new Error(");
   } catch {
     return true; // file gone
