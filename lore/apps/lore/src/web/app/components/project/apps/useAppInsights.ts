@@ -121,7 +121,18 @@ export const useAppInsights = () => {
         }
         return await insightsApi.getInsights({
           params: { projectId: project.id },
-          query: { ...filters, range, sigilId: sigil.id, traffic },
+          // `compare` costs a second pass over the same window, and the
+          // endpoint has answered it since 2026-08-21 with nothing reading it.
+          // It is asked for here rather than per tab because both tabs render
+          // from one cache entry; Vitals ignores `previous` and pays a query
+          // it would otherwise share with Analytics anyway.
+          query: {
+            ...filters,
+            range,
+            sigilId: sigil.id,
+            traffic,
+            compare: true,
+          },
         });
       },
     },

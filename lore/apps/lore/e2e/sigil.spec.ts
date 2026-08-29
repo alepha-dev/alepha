@@ -526,26 +526,43 @@ test.describe("Sigils", () => {
       await expect(
         page.getByTestId("insights-entries").getByText("1", { exact: true }),
       ).toBeVisible();
-      const entryPaths = page.getByTestId("insights-entry-paths");
-      await expect(entryPaths.getByText(/1\s*·\s*100%/)).toBeVisible();
 
-      // One engagement against two views.
+      // Entry pages share a card with pages now: six leaderboards in four
+      // cards is what buys the overview its density.
+      await topPaths
+        .getByRole("tab", { name: "Landing pages", exact: true })
+        .click();
+      await expect(topPaths.getByText(/1\s*·\s*100%/)).toBeVisible();
+      await topPaths
+        .getByRole("tab", { name: "Top pages", exact: true })
+        .click();
+
+      // One engagement against two views, so half of them showed no reader.
       await expect(
-        page.getByTestId("insights-engagement").getByText("50%"),
+        page.getByTestId("insights-bounce").getByText("50%"),
       ).toBeVisible();
 
       // The arrival's referrer, and the second view which had none.
       const referrers = page.getByTestId("insights-referrers");
       await expect(referrers.getByText("news.ycombinator.com")).toBeVisible();
-      // `exact`, because the card's own description text also says "Direct".
+      // `exact`, because the card's own note also says "Direct".
       await expect(
         referrers.getByText("Direct", { exact: true }),
       ).toBeVisible();
 
-      // The campaign tag and the device the proxy stamped.
-      const campaigns = page.getByTestId("insights-campaigns");
-      await expect(campaigns.getByText("hn", { exact: true })).toBeVisible();
-      await expect(campaigns.getByText("Mobile")).toBeVisible();
+      // Campaigns share the referrers card, for the same reason entry pages
+      // share the pages one: they answer the neighbouring question.
+      await referrers
+        .getByRole("tab", { name: "Campaigns", exact: true })
+        .click();
+      await expect(referrers.getByText("hn", { exact: true })).toBeVisible();
+      await referrers
+        .getByRole("tab", { name: "Top referrers", exact: true })
+        .click();
+
+      await expect(
+        page.getByTestId("insights-devices").getByText("Mobile"),
+      ).toBeVisible();
 
       // This deployment runs the relational backend, where `estimated` is
       // always false — the qualifier must not appear. Pins "no false
@@ -605,6 +622,49 @@ test.describe("Sigils", () => {
       // Back to `all`, so the steps after this one see the page they expect.
       await traffic.getByRole("button", { name: "All", exact: true }).click();
       await expect(topPaths.getByText("/crawled")).toBeVisible();
+    });
+
+    await test.step("clicking a leaderboard row narrows the whole page", async () => {
+      // The interaction the section exists for: the leaderboards are how a
+      // filter is reached, and everything re-queries under it together.
+      const topPaths = page.getByTestId("insights-top-paths");
+      await topPaths.getByText("/crawled").click();
+
+      const chips = page.getByTestId("insights-filters");
+      await expect(chips.getByText("/crawled")).toBeVisible({
+        timeout: 15_000,
+      });
+      // In the URL, so the narrowed view survives a reload and travels in a
+      // link.
+      await expect(page).toHaveURL(/path=%2Fcrawled/);
+      // Narrowed together, not just the chip: the page a filter does not reach
+      // would be worse than no filter.
+      await expect(topPaths.getByText("/checkout")).toHaveCount(0);
+
+      await chips
+        .getByRole("button", { name: /Clear the Page filter/ })
+        .click();
+      await expect(topPaths.getByText("/checkout")).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(page.getByTestId("insights-filters")).toHaveCount(0);
+    });
+
+    await test.step("a card's More link opens that leaderboard in full", async () => {
+      await page
+        .getByTestId("insights-countries")
+        .getByRole("link", { name: "More", exact: true })
+        .click();
+
+      await expect(page).toHaveURL(/\/analytics\/country/, {
+        timeout: 15_000,
+      });
+      await expect(page.getByTestId("insights-dimension-table")).toBeVisible({
+        timeout: 15_000,
+      });
+
+      await page.goBack();
+      await page.waitForLoadState("networkidle");
     });
 
     await test.step("a leaderboard's detail page filters the overview and returns", async () => {
