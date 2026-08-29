@@ -195,15 +195,35 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprint(os.Stderr, `bay — Alepha application server
+	fmt.Fprint(os.Stderr, usageText())
+}
 
-  bay serve   [--root DIR] [--runtimes DIR] [--addr :8080]
+/*
+usageText is what `bay` prints when it does not recognise a command.
+
+Separate from usage() for two reasons. It is testable - os.Stderr is not - and
+every default in it is INTERPOLATED from the constant that actually governs the
+flag, rather than typed out beside it. The four numbers here had all drifted
+from the code at least once, which is the failure mode a help text is uniquely
+bad at surfacing: nothing reads it, so nothing notices, and the operator who
+does read it is the one person who cannot check.
+
+The durations render the way Go prints a time.Duration, so --backup-interval
+reads "24h0m0s" rather than "24h". Uglier, and deliberate: time.ParseDuration
+accepts it, so it is a value the operator can copy, and it cannot disagree with
+defaultBackupInterval the way a hand-written "24h" did.
+*/
+func usageText() string {
+	return fmt.Sprintf(`bay — Alepha application server
+
+  bay serve   [--root %s] [--runtimes DIR] [--addr %s]
               [--base-domain bay.example.com]
-              [--tls] [--tls-addr :8443] [--acme-ca URL] [--acme-email MAIL]
+              [--tls] [--tls-addr %s] [--acme-ca URL] [--acme-email MAIL]
               [--acme-ca-root FILE.pem]   # trust a private CA (Pebble, step-ca)
               [--acme-http-port N] [--acme-tls-port N]   # challenge ports, default 80/443
-              [--backup-interval 24h]   # 0 disables; needs "bay config s3"
-              [--keep-releases 2]   # per app; min 2, the serving one is always kept
+              [--control-socket PATH] [--control-group %s]
+              [--backup-interval %s]   # 0 disables; needs "bay config s3"
+              [--keep-releases %d]   # per app; min 2, the serving one is always kept
   bay deploy  (<app.tar.gz>|-) [--name NAME] [--env ENV] [--domain HOST]...
               [--secrets-file PATH]
               # --secrets-file names a 0600 file of KEY=VALUE lines holding the
@@ -266,7 +286,14 @@ Remote access is SSH, and nothing else: reach the host that way and run bay
 commands there directly, e.g. "ssh host ./bay deploy app.tar.gz --name app".
 Client commands accept --control-socket PATH (or $BAY_SOCKET) and must run on
 the Bay host.
-`)
+`,
+		defaultRoot,
+		defaultProxyAddr,
+		defaultTLSAddr,
+		defaultControlGroup,
+		defaultBackupInterval,
+		defaultKeepReleases,
+	)
 }
 
 // checkFlags refuses any `--flag` a command does not know.
