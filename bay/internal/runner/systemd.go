@@ -27,6 +27,10 @@ type Systemd struct {
 	// UnitDir is where generated units are written, normally
 	// /etc/systemd/system.
 	UnitDir string
+	// run executes an external command. nil means the real one; the
+	// lifecycle helpers in systemdcmd.go take it as a parameter so their
+	// argv can be asserted on a host with no systemd. See that file.
+	run commandRunner
 }
 
 func NewSystemd(unitDir string) *Systemd {
@@ -34,6 +38,14 @@ func NewSystemd(unitDir string) *Systemd {
 		unitDir = "/etc/systemd/system"
 	}
 	return &Systemd{UnitDir: unitDir}
+}
+
+// exec is the real command runner, and what `run` falls back to.
+func (s *Systemd) exec(name string, args ...string) ([]byte, error) {
+	if s.run != nil {
+		return s.run(name, args...)
+	}
+	return exec.Command(name, args...).CombinedOutput()
 }
 
 // Sandbox describes what an app is allowed to write, derived from its manifest.
@@ -164,8 +176,18 @@ func (s *Systemd) Start(spec Spec) error {
 	if err := writeFileAtomic(path, unit, 0o644); err != nil {
 		return err
 	}
-	if out, err := exec.Command("systemctl", "daemon-reload").CombinedOutput(); err != nil {
+	if out, err := s.exec("systemctl", "daemon-reload"); err != nil {
 		return fmt.Errorf("daemon-reload: %w: %s", err, out)
+	}
+	// Without this the app does not come back after a reboot. The unit has
+	// rendered a correct `[Install] WantedBy=multi-user.target` all along —
+	// nothing ever acted on it, so systemd had a unit it knew how to enable
+	// and was never asked to. `restart` below starts it for the current boot
+	// and says nothing about the next one.
+	//
+	// Before `reset-failed`/`restart`, and NOT `enable --now`: see enableUnit.
+	if err := enableUnit(s.exec, unitName(spec.Key)); err != nil {
+		return err
 	}
 	// Clear a previous start-limit hit. An app that crash-looped — a bad release,
 	// a missing directory — trips systemd's rate limiter, and the unit then stays
@@ -173,8 +195,8 @@ func (s *Systemd) Start(spec Spec) error {
 	// deploy cannot repair a crash loop, and the operator has to SSH in to run
 	// `reset-failed` by hand, which is exactly the intervention Bay exists to
 	// remove. Errors ignored: nothing to reset is the normal case.
-	_ = exec.Command("systemctl", "reset-failed", unitName(spec.Key)).Run()
-	if out, err := exec.Command("systemctl", "restart", unitName(spec.Key)).CombinedOutput(); err != nil {
+	_, _ = s.exec("systemctl", "reset-failed", unitName(spec.Key))
+	if out, err := s.exec("systemctl", "restart", unitName(spec.Key)); err != nil {
 		return fmt.Errorf("start %s: %w: %s", unitName(spec.Key), err, out)
 	}
 	return nil
@@ -307,6 +329,29 @@ const defaultStopGrace = 30 * time.Second
 // `systemctl stop` to return. Enough for systemd to send SIGKILL and reap;
 // short enough that a broken systemd does not wedge a deploy.
 const stopCallMargin = 10 * time.Second
+
+/*
+Remove uninstalls the app: the unit is disabled, its file deleted, and systemd
+told to forget both.
+
+Called when an app is unregistered, after Stop. Leaving the unit behind is not
+cosmetic — an enabled unit whose app Bay no longer knows about starts again at
+the next reboot, and there is nothing left in the registry to explain why a
+domain is being served.
+
+`purge` mirrors the API flag and gates ONLY the unix user, which is deleted with
+the data or not at all. See deleteUser for why keeping a user is the safer half
+of that trade.
+*/
+func (s *Systemd) Remove(key string, purge bool) error {
+	if err := removeUnit(s.exec, s.UnitDir, unitName(key)); err != nil {
+		return err
+	}
+	if !purge {
+		return nil
+	}
+	return deleteUser(s.exec, UserName(key))
+}
 
 // Running reports whether systemd considers the unit active.
 func (s *Systemd) Running(key string) bool {

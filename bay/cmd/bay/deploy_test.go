@@ -39,6 +39,15 @@ type fakeRunner struct {
 	// decided here and nowhere else, so this is the only place a test can see
 	// which paths an app was actually granted.
 	lastSpec runner.Spec
+	// removes records every Remove call, so a test can assert that removing an
+	// app uninstalls it and whether the purge flag was carried through.
+	removes []removeCall
+}
+
+// removeCall is one `Remove(key, purge)` the server made.
+type removeCall struct {
+	key   string
+	purge bool
 }
 
 func newFakeRunner() *fakeRunner { return &fakeRunner{running: map[string]bool{}} }
@@ -61,6 +70,14 @@ func (f *fakeRunner) Stop(key string, _ time.Duration) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.running[key] = false
+	return nil
+}
+
+func (f *fakeRunner) Remove(key string, purge bool) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.removes = append(f.removes, removeCall{key: key, purge: purge})
+	delete(f.running, key)
 	return nil
 }
 
