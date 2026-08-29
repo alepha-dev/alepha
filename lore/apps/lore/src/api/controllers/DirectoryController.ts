@@ -6,20 +6,32 @@ import { $action, NotFoundError, okSchema } from "alepha/server";
 import { folioBlobs } from "../entities/folioBlobs.ts";
 import { folioDirectories } from "../entities/folioDirectories.ts";
 import { folios } from "../entities/folios.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
 import { FolioDirectoryService } from "../services/FolioDirectoryService.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
- * REST surface for the Folio directory tree. Reads scoped via
- * `assertMember`; mutations also `assertMember` (project-shared, per
- * folio #4 Q2). Cycle / depth / uniqueness rules live in the service.
+ * REST surface for the Folio directory tree. Every endpoint is member-gated,
+ * reads and mutations alike (project-shared, per folio #4 Q2). Cycle / depth
+ * / uniqueness rules live in the service.
  */
 export class DirectoryController {
   protected readonly directories = $repository(folioDirectories);
   protected readonly folios = $repository(folios);
   protected readonly blobs = $repository(folioBlobs);
   protected readonly directoryService = $inject(FolioDirectoryService);
-  protected readonly security = $inject(ProjectSecurityService);
+
+  /**
+   * The two gates this controller needs, declared above the actions: a
+   * `use: [...]` entry reading another field is a field initializer, so a
+   * gate declared below its first use is `undefined` at construction time.
+   *
+   * Five of the eight sites are the direct one and could have been `$owns`
+   * since July - nothing about them needed the hop.
+   */
+  protected ownsProject = () => $ownsProject({ param: "projectId" });
+
+  protected ownsDirectory = () =>
+    $ownsProject({ repository: () => this.directories, param: "id" });
 
   /**
    * List the immediate children of `parentDirectoryId` (or the
@@ -35,7 +47,7 @@ export class DirectoryController {
    * list a folio's attachments, ask `BlobController`.
    */
   listContents = $action({
-    use: [$secure({ permissions: ["folio:read"] })],
+    use: [$secure({ permissions: ["folio:read"] }), this.ownsProject()],
     path: "/projects/:projectId/folio/contents",
     description: "List directories + folios in a directory (or root).",
     schema: {
@@ -68,8 +80,7 @@ export class DirectoryController {
         ),
       }),
     },
-    handler: async ({ params, query, user }) => {
-      await this.security.assertMember(params.projectId, user);
+    handler: async ({ params, query }) => {
       const directory = query.parentId
         ? await this.directoryService.findById(query.parentId)
         : undefined;
@@ -147,7 +158,7 @@ export class DirectoryController {
    * what a search is for.
    */
   searchFolio = $action({
-    use: [$secure({ permissions: ["folio:read"] })],
+    use: [$secure({ permissions: ["folio:read"] }), this.ownsProject()],
     path: "/projects/:projectId/folio/search",
     description:
       "Search folios + blobs + directories by name (and folio body).",
@@ -171,8 +182,7 @@ export class DirectoryController {
         ),
       }),
     },
-    handler: async ({ params, query, user }) => {
-      await this.security.assertMember(params.projectId, user);
+    handler: async ({ params, query }) => {
       const needle = `%${query.q.toLowerCase()}%`;
       const [dirs, folioRows, blobRows] = await Promise.all([
         this.directories.findMany({
@@ -241,7 +251,7 @@ export class DirectoryController {
    * project (no UI scrolls a flat list past that).
    */
   listAllDirectories = $action({
-    use: [$secure({ permissions: ["folio:read"] })],
+    use: [$secure({ permissions: ["folio:read"] }), this.ownsProject()],
     path: "/projects/:projectId/folio/directories",
     description: "Flat list of every folio directory in the project.",
     schema: {
@@ -255,8 +265,7 @@ export class DirectoryController {
         }),
       ),
     },
-    handler: async ({ params, user }) => {
-      await this.security.assertMember(params.projectId, user);
+    handler: async ({ params }) => {
       const rows = await this.directories.findMany({
         where: { projectId: { eq: params.projectId } },
         orderBy: [{ column: "name", direction: "asc" }],
@@ -278,7 +287,7 @@ export class DirectoryController {
    * UUID.
    */
   getDirectoryByShortId = $action({
-    use: [$secure({ permissions: ["folio:read"] })],
+    use: [$secure({ permissions: ["folio:read"] }), this.ownsProject()],
     path: "/projects/:projectId/folio/directories/:shortId",
     description: "Look up a folio directory by per-project shortId.",
     schema: {
@@ -288,8 +297,7 @@ export class DirectoryController {
       }),
       response: folioDirectories.schema,
     },
-    handler: async ({ params, user }) => {
-      await this.security.assertMember(params.projectId, user);
+    handler: async ({ params }) => {
       const directory = await this.directoryService.findByShortId(
         params.projectId,
         params.shortId,
@@ -300,7 +308,12 @@ export class DirectoryController {
   });
 
   createDirectory = $action({
-    use: [$secure({ permissions: ["folio:write"] }), $transactional()],
+    // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`.
+    use: [
+      $secure({ permissions: ["folio:write"] }),
+      $transactional(),
+      this.ownsProject(),
+    ],
     path: "/projects/:projectId/folio/directories",
     description: "Create a new folio directory.",
     schema: {
@@ -311,8 +324,7 @@ export class DirectoryController {
       }),
       response: folioDirectories.schema,
     },
-    handler: async ({ params, body, user }) => {
-      await this.security.assertMember(params.projectId, user);
+    handler: async ({ params, body }) => {
       return this.directoryService.create({
         projectId: params.projectId,
         name: body.name,
@@ -322,7 +334,12 @@ export class DirectoryController {
   });
 
   renameDirectory = $action({
-    use: [$secure({ permissions: ["folio:write"] }), $transactional()],
+    // Gate INSIDE the transaction - see `$ownsProject`.
+    use: [
+      $secure({ permissions: ["folio:write"] }),
+      $transactional(),
+      this.ownsDirectory(),
+    ],
     path: "/folio/directories/:id/rename",
     description: "Rename a folio directory.",
     schema: {
@@ -330,16 +347,18 @@ export class DirectoryController {
       body: z.object({ name: z.string().min(1).max(200) }),
       response: folioDirectories.schema,
     },
-    handler: async ({ params, body, user }) => {
-      const directory = await this.directoryService.findById(params.id);
-      if (!directory) throw new NotFoundError("Directory not found");
-      await this.security.assertMember(directory.projectId, user);
+    handler: async ({ params, body }) => {
       return this.directoryService.rename(params.id, body.name);
     },
   });
 
   moveDirectory = $action({
-    use: [$secure({ permissions: ["folio:write"] }), $transactional()],
+    // Gate INSIDE the transaction - see `$ownsProject`.
+    use: [
+      $secure({ permissions: ["folio:write"] }),
+      $transactional(),
+      this.ownsDirectory(),
+    ],
     path: "/folio/directories/:id/move",
     description: "Move a folio directory under a new parent (or to root).",
     schema: {
@@ -350,16 +369,23 @@ export class DirectoryController {
       }),
       response: folioDirectories.schema,
     },
-    handler: async ({ params, body, user }) => {
-      const directory = await this.directoryService.findById(params.id);
-      if (!directory) throw new NotFoundError("Directory not found");
-      await this.security.assertMember(directory.projectId, user);
+    handler: async ({ params, body }) => {
+      // The gate covers the directory being MOVED. What keeps the move
+      // inside its own project is `FolioDirectoryService.move`, which
+      // refuses a destination whose `projectId` differs - verified, not
+      // assumed, while porting this. Do not drop it: without it a member
+      // could reparent their folder into someone else's tree.
       return this.directoryService.move(params.id, body.parentId);
     },
   });
 
   deleteDirectory = $action({
-    use: [$secure({ permissions: ["folio:write"] }), $transactional()],
+    // Gate INSIDE the transaction - see `$ownsProject`.
+    use: [
+      $secure({ permissions: ["folio:write"] }),
+      $transactional(),
+      this.ownsDirectory(),
+    ],
     path: "/folio/directories/:id",
     description: "Delete a folio directory. Pass cascade=true for non-empty.",
     schema: {
@@ -367,10 +393,7 @@ export class DirectoryController {
       query: z.object({ cascade: z.boolean().optional() }),
       response: okSchema,
     },
-    handler: async ({ params, query, user }) => {
-      const directory = await this.directoryService.findById(params.id);
-      if (!directory) throw new NotFoundError("Directory not found");
-      await this.security.assertMember(directory.projectId, user);
+    handler: async ({ params, query }) => {
       await this.directoryService.delete(params.id, {
         cascade: query.cascade === true,
       });

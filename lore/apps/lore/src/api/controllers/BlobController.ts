@@ -7,8 +7,8 @@ import { $action, NotFoundError, okSchema } from "alepha/server";
 import { folioBlobs } from "../entities/folioBlobs.ts";
 import { folios } from "../entities/folios.ts";
 import { hydratedBlobSchema } from "../schemas/hydratedBlobSchema.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
 import { FolioBlobService } from "../services/FolioBlobService.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
  * REST surface for Folio blobs. The framework `FileController`
@@ -29,7 +29,37 @@ export class BlobController {
   protected readonly frameworkFiles = $repository(files);
   protected readonly blobService = $inject(FolioBlobService);
   protected readonly fileController = $inject(FileController);
-  protected readonly security = $inject(ProjectSecurityService);
+
+  /**
+   * The three gates this controller needs, declared above the actions: a
+   * `use: [...]` entry reading another field is a field initializer, so a
+   * gate declared below its first use is `undefined` at construction time.
+   *
+   * ⚠️ There is a SECOND door to the same bytes. `LoreFileAccessProvider`
+   * guards `/api/files/:id` against IDOR and has its own regression e2e
+   * (`security-file-access.spec.ts`). It is out of scope here, and gating
+   * this controller does not cover it.
+   */
+  protected ownsProject = () => $ownsProject({ param: "projectId" });
+
+  /**
+   * Member gate on the project the blob named by `params.id` belongs to.
+   *
+   * `folio_blobs` is keyed on `fileId`, not `id`, which the gate resolves on
+   * its own - `findById` reads the entity's declared primary key rather than
+   * assuming a column name.
+   */
+  protected ownsBlob = () =>
+    $ownsProject({ repository: () => this.blobs, param: "id" });
+
+  /**
+   * Member gate reached from the FOLIO the attachments hang off, which is
+   * what `listBlobs` addresses. A different table from the other five, and
+   * the site that proves the hop is not hardcoded to "the row this
+   * controller is named after".
+   */
+  protected ownsFolio = () =>
+    $ownsProject({ repository: () => this.folioRows, param: "folioId" });
 
   /**
    * Storage for Folio blobs. Declared here so `?bucket=archive-blobs`
@@ -78,7 +108,7 @@ export class BlobController {
    * `getBlob` call.
    */
   getBlobByShortId = $action({
-    use: [$secure({ permissions: ["folio:read"] })],
+    use: [$secure({ permissions: ["folio:read"] }), this.ownsProject()],
     path: "/projects/:projectId/folio/blobs/by-short-id/:shortId",
     description: "Look up a folio blob by per-project shortId.",
     schema: {
@@ -88,8 +118,7 @@ export class BlobController {
       }),
       response: hydratedBlobSchema,
     },
-    handler: async ({ params, user }) => {
-      await this.security.assertMember(params.projectId, user);
+    handler: async ({ params }) => {
       const blob = await this.blobService.findByShortId(
         params.projectId,
         params.shortId,
@@ -102,25 +131,20 @@ export class BlobController {
   });
 
   listBlobs = $action({
-    use: [$secure({ permissions: ["folio:read"] })],
+    use: [$secure({ permissions: ["folio:read"] }), this.ownsFolio()],
     path: "/folios/:folioId/blobs",
     description: "List the attachments of one folio.",
     schema: {
       params: z.object({ folioId: z.uuid() }),
       response: z.array(hydratedBlobSchema),
     },
-    handler: async ({ params, user }) => {
-      const folio = await this.folioRows.findOne({
-        where: { id: { eq: params.folioId } },
-      });
-      if (!folio) throw new NotFoundError("Folio not found");
-      await this.security.assertMember(folio.projectId, user);
+    handler: async ({ params }) => {
       return this.blobService.listHydratedByFolio(params.folioId);
     },
   });
 
   getBlob = $action({
-    use: [$secure({ permissions: ["folio:read"] })],
+    use: [$secure({ permissions: ["folio:read"] }), this.ownsBlob()],
     path: "/folio/blobs/:id",
     description:
       "Get a single folio blob (metadata only — use framework download for bytes).",
@@ -128,10 +152,7 @@ export class BlobController {
       params: z.object({ id: z.uuid() }),
       response: hydratedBlobSchema,
     },
-    handler: async ({ params, user }) => {
-      const blob = await this.blobService.findById(params.id);
-      if (!blob) throw new NotFoundError("Blob not found");
-      await this.security.assertMember(blob.projectId, user);
+    handler: async ({ params }) => {
       const hydrated = await this.hydrate(params.id);
       if (!hydrated) throw new NotFoundError("Blob not found");
       return hydrated;
@@ -139,7 +160,12 @@ export class BlobController {
   });
 
   registerBlob = $action({
-    use: [$secure({ permissions: ["folio:write"] }), $transactional()],
+    // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`.
+    use: [
+      $secure({ permissions: ["folio:write"] }),
+      $transactional(),
+      this.ownsProject(),
+    ],
     path: "/projects/:projectId/folio/blobs",
     description:
       "Register a folio blob on top of an already-uploaded framework file.",
@@ -152,8 +178,7 @@ export class BlobController {
       }),
       response: folioBlobs.schema,
     },
-    handler: async ({ params, body, user }) => {
-      await this.security.assertMember(params.projectId, user);
+    handler: async ({ params, body }) => {
       return this.blobService.register({
         projectId: params.projectId,
         folioId: body.folioId,
@@ -164,7 +189,12 @@ export class BlobController {
   });
 
   renameBlob = $action({
-    use: [$secure({ permissions: ["folio:write"] }), $transactional()],
+    // Gate INSIDE the transaction - see `$ownsProject`.
+    use: [
+      $secure({ permissions: ["folio:write"] }),
+      $transactional(),
+      this.ownsBlob(),
+    ],
     path: "/folio/blobs/:id/rename",
     description: "Rename a folio blob.",
     schema: {
@@ -172,26 +202,25 @@ export class BlobController {
       body: z.object({ name: z.string().min(1).max(200) }),
       response: folioBlobs.schema,
     },
-    handler: async ({ params, body, user }) => {
-      const blob = await this.blobService.findById(params.id);
-      if (!blob) throw new NotFoundError("Blob not found");
-      await this.security.assertMember(blob.projectId, user);
+    handler: async ({ params, body }) => {
       return this.blobService.rename(params.id, body.name);
     },
   });
 
   deleteBlob = $action({
-    use: [$secure({ permissions: ["folio:write"] }), $transactional()],
+    // Gate INSIDE the transaction - see `$ownsProject`.
+    use: [
+      $secure({ permissions: ["folio:write"] }),
+      $transactional(),
+      this.ownsBlob(),
+    ],
     path: "/folio/blobs/:id",
     description: "Delete a folio blob (and reclaim framework storage).",
     schema: {
       params: z.object({ id: z.uuid() }),
       response: okSchema,
     },
-    handler: async ({ params, user }) => {
-      const blob = await this.blobService.findById(params.id);
-      if (!blob) throw new NotFoundError("Blob not found");
-      await this.security.assertMember(blob.projectId, user);
+    handler: async ({ params }) => {
       await this.blobService.delete(params.id);
       return { ok: true };
     },
