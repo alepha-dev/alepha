@@ -3,10 +3,12 @@ import { $context, AlephaError, type Middleware } from "alepha";
 // tenant/user atoms, so a value import here would close a runtime cycle and
 // leave one module's exports undefined depending on which is evaluated first.
 // Erased at compile time, this edge does not exist at runtime.
-import type { Repository } from "alepha/orm";
+import type { Repository, StatementOptions } from "alepha/orm";
 import { ForbiddenError, NotFoundError } from "alepha/server";
 
+import { currentAuthorityAtom } from "../atoms/currentAuthorityAtom.ts";
 import { currentResourceAtom } from "../atoms/currentResourceAtom.ts";
+import { ResourceGateMemoProvider } from "../providers/ResourceGateMemoProvider.ts";
 import { $secure, type SecureOptions } from "./$secure.ts";
 
 /**
@@ -26,6 +28,11 @@ import { $secure, type SecureOptions } from "./$secure.ts";
  * 1. **Owner**: `row[owner] === user.id`.
  * 2. **Membership**: when `via` is set, a row in the join entity links the
  *    caller to this resource.
+ *
+ * Both are read off the row the param names, unless `through` says ownership
+ * lives one hop away - on the project a quest belongs to, say. The resource
+ * is still published to `OwnedResourceProvider.get()`; the row the decision
+ * was actually made against is published to `authority()`.
  *
  * A privileged identity (`user.ownership === false`) bypasses both, matching
  * the `ownership` semantics `$secure` already applies: an admin whose grant is
@@ -58,26 +65,72 @@ import { $secure, type SecureOptions } from "./$secure.ts";
  */
 export function $owns(options: OwnsOptions): Middleware {
   const { alepha } = $context();
+  const memo = alepha.inject(ResourceGateMemoProvider);
 
   return $secure({
     ...options.secure,
     guard: async (ctx) => {
-      const raw = ctx.params[options.param];
+      const from = options.from ?? "params";
 
-      if (raw === undefined) {
+      // `Record<string, unknown>`, not the declared `Record<string, string>`:
+      // the guard runs after `validateRequest`, so a `z.integer()` param has
+      // already been decoded to a number. Reading it as a string here was
+      // only ever true of undeclared params.
+      const source: Record<string, unknown> | undefined =
+        from === "params"
+          ? ctx.params
+          : from === "query"
+            ? ctx.query
+            : (ctx.body as Record<string, unknown> | undefined);
+
+      const value = source?.[options.param];
+
+      // `null` counts as absent: it names no row, so gating on it would query
+      // for `id = null` and then 404 with a message about a missing row
+      // rather than a missing declaration.
+      if (value === undefined || value === null) {
         throw new AlephaError(
-          `$owns: route param '${options.param}' is not present on this handler. ` +
-            `Declare it in the path (e.g. "/things/:${options.param}").`,
+          // Naming the source it actually searched, so a `from: "body"` typo
+          // does not report a path problem the reader then goes looking for.
+          `$owns: '${options.param}' is not present in the ${from} of this handler. ` +
+            (from === "params"
+              ? `Declare it in the path (e.g. "/things/:${options.param}").`
+              : `Declare it in the ${from} schema, or correct \`from\`.`),
         );
       }
 
+      // An id is a scalar. Request validation has already run by the time a
+      // guard does, so a declared field cannot be anything else - but an
+      // UNDECLARED one is whatever the caller sent, and `from: "body"` is the
+      // source where that matters. Refusing here keeps an object out of the
+      // query builder rather than finding out what it does with one.
+      if (typeof value !== "string" && typeof value !== "number") {
+        throw new AlephaError(
+          `$owns: '${options.param}' in the ${from} of this handler is a ${typeof value}, not an id. ` +
+            "Declare it in the schema so it is validated before the gate runs.",
+        );
+      }
+
+      const raw = value;
+
       const repository = options.repository();
       const id = options.cast ? options.cast(raw) : raw;
+
       // `findById` resolves the entity's OWN primary-key column (and coerces
       // the raw param to its declared type). Hardcoding `{ id: { eq } }` here
       // crashed with "Column 'id' not found" on every entity whose key is
       // named anything else — at runtime only, since the where was cast away.
-      const row = await repository.findById(id as string | number);
+      const readAuthority = (repo: Repository<any>, key: string | number) =>
+        memo.resolve(`row:${repo.tableName}:${key}`, () =>
+          repo.findById(key, options.cache ? { cache: options.cache } : {}),
+        );
+
+      // Memoized only when this read IS the authority read. With a hop it is
+      // the row the handler is about to work on, and a handler must see what
+      // its own gate read rather than a copy a sibling action took first.
+      const row = options.through
+        ? await repository.findById(id)
+        : await readAuthority(repository, id);
 
       if (!row) {
         throw new NotFoundError(`${repository.tableName} '${raw}' not found`);
@@ -87,11 +140,67 @@ export function $owns(options: OwnsOptions): Middleware {
       // on the owner, member, and privileged paths.
       alepha.store.set(currentResourceAtom, row as Record<string, unknown>);
 
+      // The row the decision is made against. Without `through` it is the row
+      // the param names; with it, the row that row belongs to.
+      let authority = row as Record<string, unknown>;
+      let authorityId = id;
+
+      if (options.through) {
+        const hops = Array.isArray(options.through)
+          ? options.through
+          : [options.through];
+
+        for (const [index, hop] of hops.entries()) {
+          // A foreign key is a scalar by definition; the cast states that
+          // rather than letting `unknown` leak into the query and the message.
+          const foreignKey = authority[hop.column] as
+            | string
+            | number
+            | null
+            | undefined;
+
+          // A null FK DENIES. Falling through to the checks below would
+          // compare `undefined` against the caller's id and then query the
+          // join entity for `projectId = null`, so an orphan row would be
+          // refused only by accident - and a `via`-less gate whose `owner`
+          // column is also empty would allow. An orphan must never become
+          // world-readable.
+          if (foreignKey === undefined || foreignKey === null) {
+            throw new ForbiddenError(
+              options.message ?? "Not a member of this resource",
+            );
+          }
+
+          const hopRepository = hop.repository();
+
+          // Only the LAST hop lands on the row the decision is made against,
+          // so only that read is memoized and cached. An intermediate row is
+          // a stepping stone: it varies per request entry, so a memo buys
+          // little, and a `cache` window meant for a configuration row has no
+          // business being applied to whatever sits in between.
+          const isAuthority = index === hops.length - 1;
+          const found = isAuthority
+            ? await readAuthority(hopRepository, foreignKey)
+            : await hopRepository.findById(foreignKey);
+
+          if (!found) {
+            throw new NotFoundError(
+              `${hopRepository.tableName} '${foreignKey}' not found`,
+            );
+          }
+
+          authority = found as Record<string, unknown>;
+          authorityId = foreignKey;
+        }
+      }
+
+      alepha.store.set(currentAuthorityAtom, authority);
+
       if (ctx.user.ownership === false) {
         return true;
       }
 
-      if ((row as Record<string, unknown>)[options.owner] === ctx.user.id) {
+      if (authority[options.owner] === ctx.user.id) {
         return true;
       }
 
@@ -102,12 +211,26 @@ export function $owns(options: OwnsOptions): Middleware {
       }
 
       const link = options.via.repository();
-      const membership = await link.findOne({
-        where: {
-          [options.via.resource]: { eq: id },
-          [options.via.user]: { eq: ctx.user.id },
-        },
-      } as any);
+      const via = options.via;
+
+      // Keyed on the columns as well as the values: two gates may join the
+      // same table on different pairs, and the caller's id belongs in the key
+      // even though a request has one - an impersonating or service-account
+      // path that ever ran two identities in one request would otherwise
+      // answer the second with the first one's grant.
+      const membership = await memo.resolve(
+        `via:${link.tableName}:${via.resource}=${authorityId}:${via.user}=${ctx.user.id}`,
+        () =>
+          link.findOne({
+            where: {
+              // `authorityId`, not `id`: with `through` the membership rows
+              // point at the authority (the project), never at the row the
+              // param names.
+              [via.resource]: { eq: authorityId },
+              [via.user]: { eq: ctx.user.id },
+            },
+          } as any),
+      );
 
       if (!membership) {
         throw new ForbiddenError(
@@ -138,18 +261,82 @@ export interface OwnsOptions {
   repository: () => Repository<any>;
 
   /**
-   * Route param holding the resource id.
+   * Key holding the resource id, in whichever source {@link OwnsOptions.from}
+   * names. A route param by default.
    */
   param: string;
 
   /**
-   * Column on the resource holding the owner's user id.
+   * Where to read {@link OwnsOptions.param} from.
+   *
+   * Defaults to `"params"`. An endpoint that takes its project id in the
+   * query string or the request body could not be gated declaratively at all
+   * before this existed, because the guard read `ctx.params` and nothing else.
+   *
+   * ```ts
+   * $owns({ repository: () => this.projects, param: "projectId", from: "query", owner: "createdBy" })
+   * ```
+   *
+   * A body value is caller-controlled in a way a path segment is not. That
+   * widens nothing: it is still just an id handed to `findById`, and the gate
+   * below is what decides access - a caller naming somebody else's project
+   * gets a 403 for it.
+   */
+  from?: "params" | "query" | "body";
+
+  /**
+   * The second hop: say that ownership is not held by the row the param
+   * names, but by a row it belongs to.
+   *
+   * Without it, `owner` and `via` are read off the row `repository` loaded -
+   * which only works when the param names the thing being shared. When the
+   * param names a quest and membership lives on its project, there is no join
+   * to make and the rule cannot be expressed at all.
+   *
+   * ```ts
+   * $owns({
+   *   repository: () => this.quests,   // the row the param names
+   *   param: "id",
+   *   through: { column: "projectId", repository: () => this.projects },
+   *   owner: "createdBy",              // read off the PROJECT
+   *   via: { repository: () => this.members, resource: "projectId", user: "userId" },
+   * })
+   * ```
+   *
+   * `owner` and `via` keep their meaning; they simply apply to the row this
+   * lands on. `via.resource` is matched against the foreign key's value, not
+   * against the param.
+   *
+   * A null or absent foreign key **denies** at every hop: an orphan row must
+   * not become world-readable. A missing row along the way is a
+   * `NotFoundError`, like a missing resource.
+   *
+   * Pass an array to chain, when the resource does not carry the foreign key
+   * itself. Lore's quest comments are the case that made this necessary: a
+   * comment references a quest, and only the quest references the project.
+   *
+   * ```ts
+   * through: [
+   *   { column: "questId", repository: () => this.quests },
+   *   { column: "projectId", repository: () => this.projects },
+   * ]
+   * ```
+   *
+   * Keep chains short and obvious. Each link is a query, and a rule that
+   * needs four of them is usually a missing column rather than a missing
+   * feature.
+   */
+  through?: OwnsHop | OwnsHop[];
+
+  /**
+   * Column holding the owner's user id, on the row the decision is made
+   * against - the resource itself, or the row `through` lands on.
    */
   owner: string;
 
   /**
-   * Membership fallback: a join entity linking users to resources. Omit for
-   * owner-only resources.
+   * Membership fallback: a join entity linking users to the row the decision
+   * is made against. Omit for owner-only resources.
    */
   via?: {
     /**
@@ -169,16 +356,42 @@ export interface OwnsOptions {
   };
 
   /**
-   * Coerce the raw string route param before querying.
+   * Coerce the raw value before querying.
    *
-   * Rarely needed: the resource lookup goes through `findById`, which already
-   * coerces the value to the primary key's declared type, so an integer key
-   * works without a `cast: Number`. Reach for it when the param needs a
-   * transformation the schema cannot express (decoding a slug, say).
+   * Rarely needed, and less so than the `string` in its old signature
+   * suggested: the guard runs after request validation, so a declared
+   * `z.integer()` param arrives already decoded to a number, and `findById`
+   * coerces whatever is left to the primary key's declared type. Reach for it
+   * when the value needs a transformation the schema cannot express (decoding
+   * a slug, say).
    *
    * The `via` membership lookup receives the same coerced value.
+   *
+   * Returns an id, so `string | number` and not `unknown`: `findById` takes
+   * one, and the old signature only got away with `unknown` by casting it
+   * back at the call site.
    */
-  cast?: (raw: string) => unknown;
+  cast?: (raw: unknown) => string | number;
+
+  /**
+   * Cache window for the **authority read** - the row the gate decides
+   * against, which is the resource itself when there is no `through`.
+   *
+   * Passed straight to `Repository.findById`, so a write through that
+   * repository invalidates it. Distinct from, and layered under, the
+   * request-scoped memo: the memo is deterministic (every gate in one request
+   * shares one query, warm isolate or cold), this is opportunistic across
+   * requests.
+   *
+   * Deliberately absent from the membership read, which stays uncached: a
+   * membership row IS the grant, so caching it caches an authorization
+   * decision and revocation stops taking effect on the next request.
+   *
+   * ```ts
+   * cache: { ttl: 30_000 }
+   * ```
+   */
+  cache?: StatementOptions["cache"];
 
   /**
    * Message used for both the owner and the membership denial. Keep it
@@ -191,4 +404,23 @@ export interface OwnsOptions {
    * Additional `$secure` checks layered on top - roles, permissions, issuers.
    */
   secure?: Omit<SecureOptions, "guard">;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * One link in a {@link OwnsOptions.through} chain: which column on the row in
+ * hand holds the next row's id, and where to load it from.
+ */
+export interface OwnsHop {
+  /**
+   * Column on the current row holding the next row's id.
+   */
+  column: string;
+
+  /**
+   * Repository the next row is loaded from, as a thunk - same reasoning as
+   * {@link OwnsOptions.repository}.
+   */
+  repository: () => Repository<any>;
 }

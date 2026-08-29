@@ -31,3 +31,13 @@ class CampaignController {
   });
 }
 ```
+
+Two rows, not one, once a gate declares `through`:
+
+- `get()` is the row the route param named (a quest).
+- `authority()` is the row the decision was made against (its project) -
+  the same row as `get()` when there is no hop, so a handler reads it the
+  same way whether its endpoint hops or not.
+
+`find()` / `findAuthority()` are the non-throwing forms, for a handler
+legitimately reachable both with and without the gate.

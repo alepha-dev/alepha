@@ -11,7 +11,8 @@ export interface UserAgentInfo {
     | "ChromeOS"
     | "BlackBerry"
     | "Symbian"
-    | "Windows Phone";
+    | "Windows Phone"
+    | "Unknown";
   browser:
     | "Chrome"
     | "Firefox"
@@ -23,8 +24,9 @@ export interface UserAgentInfo {
     | "Vivaldi"
     | "Samsung Browser"
     | "UC Browser"
-    | "Yandex";
-  device: "MOBILE" | "DESKTOP" | "TABLET";
+    | "Yandex"
+    | "Unknown";
+  device: "MOBILE" | "DESKTOP" | "TABLET" | "UNKNOWN";
 }
 
 /**
@@ -37,10 +39,15 @@ export class UserAgentParser {
   public parse(userAgent: string = ""): UserAgentInfo {
     const ua = userAgent.toLowerCase();
 
-    // Default values
-    let os: UserAgentInfo["os"] = "Windows";
-    let browser: UserAgentInfo["browser"] = "Chrome";
-    let device: UserAgentInfo["device"] = "DESKTOP";
+    // Nothing is assumed. A request carrying no `user-agent` at all, or one
+    // that no branch below recognises (an API client, an MCP agent, curl),
+    // is reported as unknown rather than attributed to the commonest
+    // browser. These defaults used to be "Windows" and "Chrome", so every
+    // header-less client was stored as a Windows desktop running Chrome and
+    // listed as such on the account sessions page: a claim the request never
+    // made, and one a user cannot tell apart from a real sign-in.
+    let os: UserAgentInfo["os"] = "Unknown";
+    let browser: UserAgentInfo["browser"] = "Unknown";
 
     // Detect OS - Order matters for specificity
     if (ua.includes("windows phone")) {
@@ -85,7 +92,10 @@ export class UserAgentParser {
       browser = "Brave";
     } else if (ua.includes("vivaldi")) {
       browser = "Vivaldi";
-    } else if (ua.includes("samsungbrowser") || ua.includes("samsung")) {
+    } else if (ua.includes("samsungbrowser")) {
+      // NOT a bare "samsung" match: Samsung puts the model in the UA of
+      // every browser on the device, so "SAMSUNG SM-S918B" running ordinary
+      // Chrome used to be filed as Samsung Internet.
       browser = "Samsung Browser";
     } else if (ua.includes("ucbrowser") || ua.includes("uc browser")) {
       browser = "UC Browser";
@@ -97,26 +107,35 @@ export class UserAgentParser {
       browser = "Opera";
     } else if (
       ua.includes("edg/") ||
-      ua.includes("edge") ||
-      ua.includes("edgios")
+      // Edge names itself per platform: `Edg/` on desktop, `EdgA/` on
+      // Android, `EdgiOS/` on iOS. Only the desktop and legacy spellings
+      // were matched, so Edge on Android was reported as Chrome.
+      ua.includes("edga/") ||
+      ua.includes("edgios") ||
+      ua.includes("edge")
     ) {
       browser = "Edge";
-    } else if (ua.includes("firefox") && !ua.includes("seamonkey")) {
+    } else if (
+      (ua.includes("firefox") || ua.includes("fxios")) &&
+      !ua.includes("seamonkey")
+    ) {
       browser = "Firefox";
     } else if (ua.includes("trident") || ua.includes("msie")) {
       browser = "Internet Explorer";
-    } else if (
-      ua.includes("safari") &&
-      !ua.includes("chrome") &&
-      !ua.includes("chromium")
-    ) {
-      browser = "Safari";
     } else if (
       ua.includes("chrome") ||
       ua.includes("chromium") ||
       ua.includes("crios")
     ) {
       browser = "Chrome";
+    } else if (ua.includes("safari")) {
+      // Safari is the LAST branch, and deliberately unguarded. Every engine
+      // on iOS is WebKit and each one appends "Safari/60x" to its UA, so a
+      // test for "safari and not chrome" matched Chrome for iOS (`CriOS`)
+      // and Firefox for iOS (`FxiOS`) and reported both as Safari. Reaching
+      // this branch now means no other engine claimed the string, which is
+      // the only thing "Safari" can honestly mean here.
+      browser = "Safari";
     }
 
     // Detect Device Type
@@ -148,12 +167,26 @@ export class UserAgentParser {
     const isTablet = tabletKeywords.some((keyword) => ua.includes(keyword));
     const isMobile = mobileKeywords.some((keyword) => ua.includes(keyword));
 
-    if (isTablet) {
+    // Android's own convention, and the only reliable phone/tablet signal it
+    // gives: a phone build carries the "Mobile" token and a tablet build
+    // omits it. Without this rule every Android tablet matched the "android"
+    // mobile keyword and was filed as a phone, and no keyword list fixes
+    // that by enumerating tablet model numbers.
+    const isAndroidTablet = ua.includes("android") && !ua.includes("mobile");
+
+    // DESKTOP stays an inference, not a fallback: it is what a recognised
+    // user agent naming neither a phone nor a tablet must be. When nothing
+    // at all was recognised there is no desktop to infer, only an unknown
+    // client, so the absence is reported instead of guessed.
+    let device: UserAgentInfo["device"];
+    if (isTablet || isAndroidTablet) {
       device = "TABLET";
     } else if (isMobile) {
       device = "MOBILE";
-    } else {
+    } else if (os !== "Unknown" || browser !== "Unknown") {
       device = "DESKTOP";
+    } else {
+      device = "UNKNOWN";
     }
 
     return { os, browser, device };

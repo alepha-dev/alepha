@@ -7,7 +7,7 @@ import type { MySession, MySessionController } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Circle, Monitor, Smartphone, Tablet } from "lucide-react";
+import { Circle, CircleHelp, Monitor, Smartphone, Tablet } from "lucide-react";
 import { useState } from "react";
 
 export interface AccountSessionsProps {
@@ -39,12 +39,26 @@ const AccountSessions = (props: AccountSessionsProps) => {
     if (session.userAgent?.device === "TABLET") {
       return <Tablet className="size-4" />;
     }
+    // A monitor is a claim, not a neutral glyph: it says "this was a computer
+    // with a screen". A client the parser could not place is drawn as such.
+    if (!session.userAgent || session.userAgent.device === "UNKNOWN") {
+      return <CircleHelp className="size-4" />;
+    }
     return <Monitor className="size-4" />;
   };
 
+  /**
+   * The row's title, and the reason it is allowed to say nothing.
+   *
+   * A session minted for an API client or an OAuth/MCP agent carries a
+   * user-agent the parser cannot place, and naming it after whichever
+   * browser happens to be commonest would be inventing evidence about where
+   * an account is signed in. Both halves unknown reads as one honest
+   * "Unknown device" rather than "Unknown on Unknown".
+   */
   const label = (session: MySession) => {
     const agent = session.userAgent;
-    if (!agent) {
+    if (!agent || (agent.browser === "Unknown" && agent.os === "Unknown")) {
       return tr("account.sessions.unknownDevice", {
         default: "Unknown device",
       });

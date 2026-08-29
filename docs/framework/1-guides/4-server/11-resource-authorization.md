@@ -56,7 +56,7 @@ class CampaignController {
 }
 ```
 
-`cast` coerces the route param before querying - route params are always strings, so integer primary keys need `Number`.
+`cast` coerces the value before querying. It is rarer than it looks: the guard runs after request validation, so a param declared `z.integer()` arrives already decoded to a number, and `findById` coerces whatever is left to the primary key's declared type. Reach for it when the value needs a transformation the schema cannot express - an undeclared param, or a slug to decode.
 
 `repository` is a thunk rather than the repository itself. `$owns()` runs during class-field initialization, so a `$repository()` field declared _after_ it would not exist yet; deferring the lookup to request time makes field order irrelevant.
 
@@ -73,7 +73,7 @@ handler: async () => {
 
 `get()` throws if no `$owns` ran, because that is a wiring mistake rather than a runtime condition. Use `find()` when a handler is legitimately reachable both with and without the gate.
 
-## Membership
+## Membership: `via`
 
 Shared resources are rarely owner-only. Point `via` at the join entity:
 
@@ -92,6 +92,94 @@ $owns({
 ```
 
 Checks run in order: owner first, then membership. When you supply the `message` option, it's used for **both** denials on purpose - a different message per branch tells an attacker whether the resource exists and who owns it. (Without a custom `message`, the defaults differ; set one for endpoints where that distinction matters.)
+
+## The second hop: `through`
+
+`via` only works when the route param names **the thing being shared**. It usually doesn't. Membership lives on a campaign; the route names a quest that belongs to one. There is no join to make, and `via` cannot express the rule at all.
+
+`through` says the authority row is one hop away:
+
+```typescript
+$owns({
+  repository: () => this.quests, // the row the param names
+  param: "id",
+  through: { column: "campaignId", repository: () => this.campaigns },
+  owner: "createdBy", // read off the CAMPAIGN
+  via: {
+    repository: () => this.characters,
+    resource: "campaignId",
+    user: "userId",
+  },
+});
+```
+
+**Picking the wrong one of the two is silent**, so it is worth stating the distinction plainly:
+
+| The route param names…              | Use                   |
+| ----------------------------------- | --------------------- |
+| the row that carries the membership | `via` alone           |
+| a row that _belongs_ to that row    | `via` **+ `through`** |
+
+`owner` and `via` keep their meaning; `through` only says which row they apply to. `via.resource` is matched against the resolved foreign key, so a membership in a _different_ campaign does not accidentally match.
+
+A **null or absent foreign key denies**. An orphan row must not become world-readable, and falling through would refuse it only by accident.
+
+Pass an array to chain, when the resource does not carry the foreign key itself and neither does the next row:
+
+```typescript
+through: [
+  { column: "questId", repository: () => this.quests },
+  { column: "campaignId", repository: () => this.campaigns },
+];
+```
+
+Only the last link is the authority. Keep chains short: each link is a query, and a rule that needs four of them is usually a missing column rather than a missing feature.
+
+### Reading the authority row back
+
+`OwnedResourceProvider.get()` always returns the row the param named. `authority()` returns the row the decision was made against - the same row without `through`, the hopped-to row with it:
+
+```typescript
+handler: async () => {
+  const quest = this.owned.get<Quest>();
+  const campaign = this.owned.authority<Campaign>();
+  return { quest, ownerId: campaign.createdBy };
+};
+```
+
+Both are published **before** the access decision, so a handler reads them identically on the owner, member and privileged paths.
+
+## Where the id comes from: `from`
+
+By default the id is a route param. An endpoint that takes it in the query string or the request body sets `from`:
+
+```typescript
+$owns({
+  repository: () => this.campaigns,
+  param: "campaignId",
+  from: "query", // "params" (default) | "query" | "body"
+  owner: "createdBy",
+});
+```
+
+A body value is caller-controlled in a way a path segment is not. That widens nothing: it is still just an id handed to `findById`, and the gate is what decides access - a caller naming somebody else's row gets a 403 for it.
+
+## Caching the authority read
+
+`cache` is passed straight through to the authority read - the row the gate decides against, which is the resource itself when there is no `through`:
+
+```typescript
+$owns({
+  repository: () => this.campaigns,
+  param: "id",
+  owner: "createdBy",
+  cache: { ttl: 30_000 },
+});
+```
+
+Deliberately **not** applied to the membership read. A membership row _is_ the grant, so caching it caches an authorization decision and revocation stops taking effect on the next request.
+
+Independently of `cache`, `$owns` memoizes its reads **for the lifetime of one request**. A page that loads seven things at once sends one batched request, and every entry gates independently; without the memo the same `(user, resource)` pair is resolved seven times over. The two are not the same mechanism: the memo is deterministic (every gate in one request shares one query, warm process or cold) and never outlives the request, so it preserves revocation semantics exactly; `cache` is opportunistic across requests and trades a staleness window for the saving.
 
 ## Privileged identities
 

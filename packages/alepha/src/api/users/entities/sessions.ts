@@ -38,7 +38,7 @@ export const sessions = $entity({
       .object({
         os: z.text(),
         browser: z.text(),
-        device: z.enum(["MOBILE", "DESKTOP", "TABLET"]),
+        device: z.enum(["MOBILE", "DESKTOP", "TABLET", "UNKNOWN"]),
       })
       .optional(),
   }),
