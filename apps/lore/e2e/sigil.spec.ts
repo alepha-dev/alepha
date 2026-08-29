@@ -1,5 +1,5 @@
 import { sigilKeyPrefix, sigilKeyProject } from "@alepha/sigil";
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page, type Request, test } from "@playwright/test";
 
 import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
 
@@ -148,6 +148,41 @@ const waitForProjectFeature = async (
  * switch on `AppSettings.tsx`'s Capabilities card, which renders from
  * `currentSigilAtom` — the SPA's belief, not a read of the server's row.
  */
+/**
+ * Every insights request the page makes while `run` is in flight.
+ *
+ * ⚠️ Watching the URL alone is not enough: the React client batches actions
+ * through `POST /api/_batch`, so an insights read reaches the wire as one line
+ * inside somebody else's request body. Both shapes are checked.
+ */
+const insightsCalls = async (
+  page: Page,
+  run: () => Promise<void>,
+): Promise<string[]> => {
+  const calls: string[] = [];
+  const listen = (request: Request) => {
+    const url = request.url();
+    if (url.includes("/insights")) {
+      calls.push(url);
+      return;
+    }
+    if (url.includes("/api/_batch")) {
+      const body = request.postData() ?? "";
+      if (body.includes("insights") || body.includes("Insights")) {
+        calls.push(body.slice(0, 200));
+      }
+    }
+  };
+
+  page.on("request", listen);
+  try {
+    await run();
+  } finally {
+    page.off("request", listen);
+  }
+  return calls;
+};
+
 /**
  * Sets an app's `kinds` through the API.
  *
@@ -525,6 +560,39 @@ test.describe("Sigils", () => {
       );
     });
 
+    await test.step("the Dashboard shows state, and asks the server for no analytics", async () => {
+      // The property the page was rebuilt for. It used to render three
+      // counters out of an insights payload, so opening the front page of an
+      // app cost ten aggregate queries against Analytics Engine.
+      const calls = await insightsCalls(page, async () => {
+        await page.goto(`/${projectSlug}/apps/${appName}`);
+        await page.waitForLoadState("networkidle");
+        await expect(page.getByTestId("app-identity")).toBeVisible({
+          timeout: 15_000,
+        });
+      });
+      expect(calls).toEqual([]);
+
+      // What the app SAYS it sends, beside what Lore ACCEPTS. This batch was
+      // posted without a `config`, so the app has told us nothing and the page
+      // has to say so rather than render it as off.
+      const capabilities = page.getByTestId("app-capabilities");
+      await expect(capabilities.getByText("Page views")).toBeVisible();
+      // `exact`, because the copy below the table names the same thing in a
+      // sentence — which is the copy the last assertion in this step is about.
+      await expect(
+        capabilities.getByText("Lore accepts", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        capabilities.getByText(/has not reported its configuration/),
+      ).toBeVisible();
+
+      // Read-only, and the copy points at the two places each column is
+      // actually changed.
+      await expect(capabilities.getByRole("switch")).toHaveCount(0);
+      await expect(capabilities.getByText(/SIGIL_CONFIG/)).toBeVisible();
+    });
+
     await test.step("the header names where the app answers, from what it reported", async () => {
       // Nobody typed this. It is the `host` of the batch three steps up,
       // stamped onto the sigil beside `lastSeenAt` — which is the whole point
@@ -573,6 +641,24 @@ test.describe("Sigils", () => {
       await expect(
         page.getByRole("link", { name: "docs.alepha.dev", exact: true }),
       ).toBeVisible({ timeout: 15_000 });
+
+      // ⚠️ The render above does NOT prove this. `appUrl` falls back on any
+      // falsy `url`, so a stored `""` and a stored null look identical on
+      // screen — which is why folio #1121 records this as verified by hand
+      // once and never pinned. Asked of the server instead.
+      const stored = await page.evaluate(
+        async ({ projectId, name }) => {
+          const r = await fetch(`/api/projects/${projectId}/sigils`, {
+            credentials: "include",
+          });
+          const body = (await r.json()) as {
+            items: { name: string; url?: string | null }[];
+          };
+          return body.items.find((it) => it.name === name)?.url ?? null;
+        },
+        { projectId, name: appName },
+      );
+      expect(stored).toBeNull();
     });
 
     await test.step("the Analytics tab renders what was just reported", async () => {
@@ -707,6 +793,50 @@ test.describe("Sigils", () => {
       await expect(topPaths.getByText("/crawled")).toBeVisible();
     });
 
+    await test.step("the window and the population survive a reload, and stay off Settings", async () => {
+      await page
+        .getByTestId("app-range")
+        .getByRole("button", { name: "30 days", exact: true })
+        .click();
+      await page
+        .getByTestId("app-traffic")
+        .getByRole("button", { name: "Humans", exact: true })
+        .click();
+
+      // In the URL, which is the whole reason they left the shell: a reload
+      // keeps them, and a link carries them.
+      await expect(page).toHaveURL(/range=30d/);
+      await expect(page).toHaveURL(/traffic=humans/);
+
+      await page.reload();
+      await page.waitForLoadState("networkidle");
+      await expect(
+        page.getByTestId("app-range").getByRole("button", { name: "30 days" }),
+      ).toBeVisible({ timeout: 15_000 });
+      await expect(page).toHaveURL(/range=30d/);
+
+      // They cross to Vitals, which reads the same window...
+      await page
+        .getByTestId("app-tabs")
+        .getByRole("link", { name: "Vitals", exact: true })
+        .click();
+      await expect(page).toHaveURL(/range=30d/, { timeout: 15_000 });
+
+      // ...and do NOT follow to Settings, which has no use for either. A
+      // `?range=` trailing onto that page would be the control-that-changes-
+      // nothing all over again, in the address bar.
+      await page
+        .getByTestId("app-tabs")
+        .getByRole("link", { name: "Settings", exact: true })
+        .click();
+      await expect(page).toHaveURL(/\/settings$/, { timeout: 15_000 });
+
+      // Back to Analytics on the default window, so the steps below see the
+      // numbers they pin.
+      await page.goto(`/${projectSlug}/apps/${appName}/analytics`);
+      await page.waitForLoadState("networkidle");
+    });
+
     await test.step("clicking a leaderboard row narrows the whole page", async () => {
       // The interaction the section exists for: the leaderboards are how a
       // filter is reached, and everything re-queries under it together.
@@ -796,6 +926,15 @@ test.describe("Sigils", () => {
         .getByRole("link", { name: "Vitals", exact: true })
         .click();
 
+      // ⚠️ The route, not just the tab. `$page` renames are not
+      // typecheck-protected: `router.path` widens to the plain `string`
+      // overload the moment a name stops existing, so nothing but an assertion
+      // like this one would notice `/vitals` regressing. The suite never
+      // referenced the old `/performance` either, which is why this had to be
+      // written rather than edited.
+      await expect(page).toHaveURL(/\/apps\/[^/]+\/vitals/, {
+        timeout: 15_000,
+      });
       await expect(page.getByText("Web Vitals")).toBeVisible({
         timeout: 15_000,
       });
@@ -918,6 +1057,67 @@ test.describe("Sigils", () => {
         new RegExp(`/${projectSlug}/apps/${appName}/settings`),
         { timeout: 15_000 },
       );
+    });
+
+    await test.step("renaming onto a taken name is refused, and says so", async () => {
+      // A second app to collide with. `(projectId, name)` is a unique index,
+      // so without a check before the write this would surface as a driver
+      // constraint violation — a 500 for what is the operator's typo.
+      // Enrolled through the API rather than the dialog: the dialog has its own
+      // step several hundred lines up, and re-driving it here would test the
+      // enrolment form a second time instead of the collision.
+      const taken = `${appName}-two`;
+      const enrolled = await page.evaluate(
+        async ({ projectId, name }) => {
+          const r = await fetch(`/api/projects/${projectId}/sigils`, {
+            method: "POST",
+            credentials: "include",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ name }),
+          });
+          return r.ok;
+        },
+        { projectId, name: taken },
+      );
+      expect(enrolled).toBe(true);
+
+      await page.goto(`/${projectSlug}/apps/${appName}/settings`);
+      await page.waitForLoadState("networkidle");
+      const field = page.getByRole("textbox", { name: "Name", exact: true });
+      await field.fill(taken);
+      await page.getByRole("button", { name: "Rename", exact: true }).click();
+      await confirmDialog(page, "Rename");
+
+      await expect(page.getByText(/already exists named/)).toBeVisible({
+        timeout: 15_000,
+      });
+      // Refused, not half-applied: the page is still the app it was.
+      await expect(page).toHaveURL(
+        new RegExp(`/${projectSlug}/apps/${appName}/settings`),
+      );
+
+      // Retired again, so the delete step at the end of this flow still lands
+      // on a project with nothing enrolled — which is the state its own
+      // assertions are about.
+      const removed = await page.evaluate(
+        async ({ projectId, name }) => {
+          const list = await fetch(`/api/projects/${projectId}/sigils`, {
+            credentials: "include",
+          });
+          const body = (await list.json()) as {
+            items: { id: string; name: string }[];
+          };
+          const sigil = body.items.find((it) => it.name === name);
+          if (!sigil) return false;
+          const r = await fetch(
+            `/api/projects/${projectId}/sigils/${sigil.id}`,
+            { method: "DELETE", credentials: "include" },
+          );
+          return r.ok;
+        },
+        { projectId, name: taken },
+      );
+      expect(removed).toBe(true);
     });
 
     await test.step("rotating revokes the old token and keeps the history", async () => {
