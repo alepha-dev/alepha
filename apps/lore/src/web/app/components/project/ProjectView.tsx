@@ -71,6 +71,7 @@ const ROUTES_WITH_QUEST_LOG = new Set(["projectQuests", "projectQuest"]);
 const ROUTES_APP = new Set([
   "projectApp",
   "app",
+  "projectApps",
   "appAnalytics",
   "appAnalyticsDimension",
   "appVitals",
@@ -106,18 +107,26 @@ const ROUTES_FULL_WIDTH = new Set([
  * list has no such nested state, so on the list itself the crumb is the open
  * page and should stay inert.
  *
- * Apps have no entry because they have no list route at all: `/apps/:appName`
- * is the only way to address one, and the inventory lives under Settings.
+ * Apps now have one, `projectApps`, which is why the "Apps" crumb on an app
+ * page is a link rather than the dead text it used to render as. The list has
+ * no sidebar entry on purpose - the sidebar already carries a disclosure group
+ * with one child per app - so this crumb is its only door.
  */
 const SECTION_HREF_ROUTES: Record<
   string,
-  "projectFolios" | "projectEpics" | "projectQuests"
+  "projectFolios" | "projectEpics" | "projectQuests" | "projectApps"
 > = {
   projectFolios: "projectFolios",
   projectFoliosNew: "projectFolios",
   projectFoliosFolio: "projectFolios",
   projectEpic: "projectEpics",
   projectQuest: "projectQuests",
+  projectApp: "projectApps",
+  app: "projectApps",
+  appAnalytics: "projectApps",
+  appAnalyticsDimension: "projectApps",
+  appVitals: "projectApps",
+  appSettings: "projectApps",
 };
 
 const SECTION_LABEL_KEYS: Record<string, string> = {
@@ -136,6 +145,7 @@ const SECTION_LABEL_KEYS: Record<string, string> = {
   projectFoliosFolio: "project.menu.folios",
   projectFeedback: "project.menu.feedback",
   projectBlights: "project.menu.blights",
+  projectApps: "project.menu.apps",
   projectApp: "project.menu.apps",
   app: "project.menu.apps",
   appAnalytics: "project.menu.apps",
