@@ -381,6 +381,8 @@ export class SigilController {
       createdAt: sigil.createdAt,
       lastSeenAt: sigil.lastSeenAt,
       lastSeenHost: sigil.lastSeenHost,
+      reportedConfig: sigil.reportedConfig,
+      reportedConfigAt: sigil.reportedConfigAt,
     };
   }
 }

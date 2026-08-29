@@ -61,6 +61,22 @@ first byte of every cold page, and it cannot survive a prerender, which bakes
 the answer into HTML at build time and leaves you with a kill-switch that needs
 a redeploy.
 
+### The app tells the sink what it resolved
+
+The flip side of not fetching: the sink knows what it RECEIVES and nothing about
+what the app DECIDED, so an app quietly sending nothing and a sink quietly
+refusing it look identical from the sink's side. Every delivered batch therefore
+carries a `config` field holding the **resolved** configuration - after defaults,
+so an app that sets nothing still reports a full answer.
+
+It is a claim, not a fact. Anyone holding a sigil token can put anything there,
+so a sink must treat it as something to display beside its own record of what it
+accepts, never as an input to a gate. Shown side by side, "this app is sending
+vitals and the sink is refusing them" becomes visible instead of silent.
+
+Optional in both directions: an older client sends nothing, and that reads as
+"has not told us" rather than as off.
+
 ## The key names the project
 
 A token is shaped `sg_<project>_<secret>`. The slug is not a second credential

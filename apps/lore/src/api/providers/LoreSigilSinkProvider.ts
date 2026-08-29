@@ -1,4 +1,4 @@
-import type { SigilEnvelope, SigilStamp } from "@alepha/sigil";
+import type { SigilForwarded, SigilStamp } from "@alepha/sigil";
 import { SigilSinkProvider } from "@alepha/sigil";
 import { $inject, AlephaError } from "alepha";
 
@@ -44,9 +44,16 @@ export class LoreSigilSinkProvider extends SigilSinkProvider {
    * upstream — `device`, then `host` — arrived at `absorb` untyped and
    * unnoticed. Naming the type is what keeps the in-process path from drifting
    * away from the networked one it exists to imitate.
+   *
+   * `SigilForwarded` rather than `SigilEnvelope` for the same reason, one
+   * level up: the envelope grew fields the app's own server fills in, and
+   * `config` is one of them. It also matters that this path skips the ingest
+   * endpoint's body validation entirely - nothing between here and `absorb`
+   * checks a shape - which is what makes the second normalization inside
+   * `absorb` load-bearing rather than defence in depth.
    */
   protected override async deliver(
-    payload: SigilEnvelope & SigilStamp,
+    payload: SigilForwarded & SigilStamp,
   ): Promise<void> {
     await this.ingestService.absorb(await this.ownSigil(), payload);
   }

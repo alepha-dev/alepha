@@ -5,7 +5,14 @@ import { $logger } from "alepha/logger";
 import { HttpClient } from "alepha/server";
 
 import type { SigilConfig } from "../shared/schemas/sigilConfig.ts";
-import type { SigilEnvelope } from "../shared/schemas/sigilEnvelope.ts";
+import type {
+  SigilEnvelope,
+  SigilForwarded,
+} from "../shared/schemas/sigilEnvelope.ts";
+import {
+  type SigilReportedConfig,
+  sigilNormalizeReportedConfig,
+} from "../shared/schemas/sigilReportedConfig.ts";
 import {
   type SigilClientConfig,
   sigilClientAtom,
@@ -315,6 +322,35 @@ export class SigilSinkProvider {
   }
 
   /**
+   * What this app is configured to do, resolved, for the sink to display.
+   *
+   * Resolved rather than raw on purpose: an app that sets nothing at all
+   * reports a full answer, because "unset" and "everything on" are the same
+   * running state and a page that showed them differently would be describing
+   * the operator's typing rather than the app.
+   *
+   * Built from {@link enabledTrackers} rather than from the config's own field
+   * names, so the tracker list has exactly one definition (`SIGIL_TRACKERS`)
+   * and a fourth tracker needs no edit here. `feedbackButton` falls back to the
+   * same default the schema applies, spelled once in {@link sigilConfig}.
+   *
+   * Normalized before it goes on the wire, and normalized again by the sink.
+   * Not defensive theatre: this provider is substitutable (Lore replaces it to
+   * report to itself in-process), so what reaches `deliver` is not guaranteed
+   * to have come from here at all.
+   */
+  public reportedConfig(): SigilReportedConfig | undefined {
+    const config = this.config;
+    return sigilNormalizeReportedConfig({
+      trackers: this.enabledTrackers(),
+      feedback: config?.feedback ?? true,
+      feedbackButton: config?.feedbackButton ?? "bottom-right",
+      feedbackButtonExcludedPaths: config?.feedbackButtonExcludedPaths ?? [],
+      reportOutsideProduction: config?.reportOutsideProduction ?? false,
+    });
+  }
+
+  /**
    * Where a reader goes to file feedback, derived rather than fetched.
    *
    * The sink used to hand this back, because the slug lived only there. That
@@ -585,9 +621,18 @@ export class SigilSinkProvider {
       return;
     }
 
+    // Resolved once per flush, not per batch: it is one answer for the whole
+    // process, and the reason it is NOT in the batch key (see `batchFor`) -
+    // every stamp in this flush carries the same copy.
+    const config = this.reportedConfig();
+
     for (const { stamp, envelope } of outgoing) {
       try {
-        await this.deliver({ ...envelope, ...stamp });
+        await this.deliver({
+          ...envelope,
+          ...stamp,
+          ...(config ? { config } : {}),
+        });
       } catch (error) {
         // A sink that refuses or is unreachable must never surface as an app
         // error: the app is working, its observer is not. Per envelope, so one
@@ -612,7 +657,7 @@ export class SigilSinkProvider {
    * It used to have a sibling, `fetchConfig`, for the GET that asked the sink
    * what to collect. There is no such GET any more.
    */
-  protected async deliver(payload: SigilEnvelope & SigilStamp): Promise<void> {
+  protected async deliver(payload: SigilForwarded & SigilStamp): Promise<void> {
     await this.http.fetch(`${this.sinkOrigin()}${SIGIL_INGEST_PATH}`, {
       method: "POST",
       headers: {

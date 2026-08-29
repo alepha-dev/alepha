@@ -1,6 +1,6 @@
 import type { SigilForwarded } from "@alepha/sigil";
 import { sigilFingerprintSource } from "@alepha/sigil";
-import { sigilHost } from "@alepha/sigil";
+import { sigilHost, sigilNormalizeReportedConfig } from "@alepha/sigil";
 import { sigilScrubUrl } from "@alepha/sigil";
 import { bucketIndex, type VitalMetric } from "@alepha/sigil";
 import { $inject } from "alepha";
@@ -157,9 +157,20 @@ export class SigilIngestService {
     // UI blinked empty every time an app reported from somewhere other than a
     // page view.
     const host = sigilHost(envelope.host);
+    // Same treatment, same reasoning: normalized again rather than trusted,
+    // and an envelope that carries none leaves the stored copy alone. An older
+    // client sends nothing on every batch, and letting that erase what a newer
+    // deploy reported would make the field flicker between "known" and
+    // "unknown" depending on which process flushed last.
+    //
+    // It never touches `kinds`, and `gatesFor` never reads it. This is the
+    // app's claim about itself, stored beside what the sink actually accepts so
+    // the two can be shown disagreeing.
+    const reportedConfig = sigilNormalizeReportedConfig(envelope.config);
     await this.sigils.updateById(sigil.id, {
       lastSeenAt: now,
       ...(host ? { lastSeenHost: host } : {}),
+      ...(reportedConfig ? { reportedConfig, reportedConfigAt: now } : {}),
     });
   }
 

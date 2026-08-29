@@ -45,6 +45,30 @@ export const sigilResourceSchema = z.object({
    * the one the app reports" instead of as "unset".
    */
   lastSeenHost: z.string().optional(),
+  /**
+   * What the app last said it is configured to collect, resolved.
+   *
+   * Rendered read-only, beside `kinds`, which is what this sink accepts. The
+   * point of the pair is that a disagreement is visible: an app sending vitals
+   * the sink refuses is currently invisible in both directions.
+   *
+   * Absent means "this app has not told us" - an older client, or one that has
+   * never reported - and must render as unknown, never as off.
+   */
+  reportedConfig: z
+    .object({
+      trackers: z.record(z.string(), z.boolean()).optional(),
+      feedback: z.boolean().optional(),
+      feedbackButton: z.string().optional(),
+      feedbackButtonExcludedPaths: z.array(z.string()).optional(),
+      reportOutsideProduction: z.boolean().optional(),
+    })
+    .optional(),
+  /**
+   * When that config was reported. Its own timestamp rather than `lastSeenAt`,
+   * because an app reports constantly and changes its config rarely.
+   */
+  reportedConfigAt: z.string().optional(),
 });
 
 export type SigilResource = Infer<typeof sigilResourceSchema>;

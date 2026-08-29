@@ -637,4 +637,70 @@ describe("SigilSinkProvider outside production", () => {
 
     expect(sink.feedbackUrl()).toBe("https://sigil.example.com/demo/request");
   });
+
+  describe("reported config", () => {
+    it("rides on every delivered envelope, resolved", async () => {
+      const alepha = withSink({ vitals: false, feedbackButton: "hidden" });
+      const sink = alepha.inject(SigilSinkProvider);
+      const http = alepha.inject(HttpClient) as RecordingHttpClient;
+      await alepha.start();
+
+      await sink.ingest({ errors: [anError("boom")] });
+      await sink.flush();
+
+      const body = JSON.parse(ingests(http)[0]?.body);
+      // Resolved, not raw: the app set two switches and the sink is told all
+      // of them, because "unset" and "on" are the same running state.
+      expect(body.config).toEqual({
+        trackers: { views: true, errors: true, vitals: false },
+        feedback: true,
+        feedbackButton: "hidden",
+        feedbackButtonExcludedPaths: [],
+        reportOutsideProduction: false,
+      });
+    });
+
+    it("reports a full answer from an app that configured nothing", async () => {
+      const alepha = make({
+        SIGIL_SINK: "https://sigil.example.com/",
+        SIGIL_KEY: "sg_demo_secret",
+      });
+      const sink = alepha.inject(SigilSinkProvider);
+      const http = alepha.inject(HttpClient) as RecordingHttpClient;
+      await alepha.start();
+
+      await sink.ingest({ errors: [anError("boom")] });
+      await sink.flush();
+
+      const body = JSON.parse(ingests(http)[0]?.body);
+      expect(body.config.trackers).toEqual({
+        views: true,
+        errors: true,
+        vitals: true,
+      });
+      expect(body.config.feedbackButton).toBe("bottom-right");
+    });
+
+    /**
+     * The batch key separates visitors and addresses. A config blob separates
+     * nothing - it is one answer for the whole process - so keying on it would
+     * fragment every batch for no gain. Two visitors, one envelope each, and
+     * the SAME config on both is the observable form of that.
+     */
+    it("does not fragment batches: it is not part of the batch key", async () => {
+      const alepha = withSink();
+      const sink = alepha.inject(SigilSinkProvider);
+      const http = alepha.inject(HttpClient) as RecordingHttpClient;
+      await alepha.start();
+
+      await sink.ingest({ views: [{ path: "/a" }] }, { visitor: "v1" });
+      await sink.ingest({ views: [{ path: "/b" }] }, { visitor: "v1" });
+      await sink.flush();
+
+      const calls = ingests(http);
+      // One visitor, one envelope: the config did not split it.
+      expect(calls).toHaveLength(1);
+      expect(JSON.parse(calls[0]?.body).views).toHaveLength(2);
+    });
+  });
 });
