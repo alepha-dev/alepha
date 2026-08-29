@@ -1,6 +1,7 @@
 import { $hook, $inject, Alepha, type Service, z } from "alepha";
 import {
   MemoryQueueProvider,
+  type MemoryQueueEntry,
   QueueCodec,
   QueueProvider,
   queueWorkerOptions,
@@ -13,7 +14,7 @@ export const payloadSchema = z.object({
   count: z.integer(),
 });
 
-export const queueList: Record<string, string[]> = {};
+export const queueList: Record<string, MemoryQueueEntry[]> = {};
 export class SharedQueueProvider extends MemoryQueueProvider {
   queueList = queueList;
 }

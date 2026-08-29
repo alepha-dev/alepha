@@ -1,5 +1,9 @@
 import { $atom, $inject, $store, type Infer, z } from "alepha";
-import { QueueProvider } from "alepha/queue";
+import {
+  QueueDelayNotSupportedError,
+  QueueProvider,
+  type QueuePushOptions,
+} from "alepha/queue";
 import { RedisProvider } from "alepha/redis";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -39,7 +43,26 @@ export class RedisQueueProvider extends QueueProvider {
     return `${this.options.prefix}:${queue}`;
   }
 
-  public async push(queue: string, message: string): Promise<void> {
+  public async push(
+    queue: string,
+    message: string,
+    options?: QueuePushOptions,
+  ): Promise<void> {
+    if (options?.delaySeconds && options.delaySeconds > 0) {
+      // Declined, never enqueued immediately. A plain LIST has no notion of
+      // a due time, and `LPUSH`ing anyway would deliver NOW - which for a
+      // retry is worse than not delivering at all, since the caller falls
+      // back to a local timer and, behind that, the outbox sweep.
+      //
+      // The ZSET delay tier that would let this be honoured is deliberately
+      // deferred; it is a scale optimisation, not a correctness gap, because
+      // on Node the caller's promoting timer already gives exact backoff in
+      // both dispatch modes with zero Redis work. It has two written-down
+      // triggers, on quest #1569.
+      throw new QueueDelayNotSupportedError(
+        "RedisQueueProvider cannot delay delivery (no ZSET tier); declining rather than enqueueing immediately.",
+      );
+    }
     await this.redisProvider.lpush(this.prefix(queue), message);
   }
 

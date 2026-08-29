@@ -2,6 +2,12 @@ import { Alepha, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DbEntityNotFoundError, DbError } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
+import {
+  MemoryQueueProvider,
+  QueueDelayNotSupportedError,
+  QueueProvider,
+  type QueuePushOptions,
+} from "alepha/queue";
 import { describe, it } from "vitest";
 
 import {
@@ -21,6 +27,9 @@ class TestJobProvider extends JobProvider {
   public testSweep = this.sweep.bind(this);
   public testPromoteDue = this.promoteDue.bind(this);
   public testShouldStopHeartbeat = this.shouldStopHeartbeat.bind(this);
+  public testRetryBackoffMs = (attempt: number) => this.retryBackoffMs(attempt);
+  public testProcessExecution = (jobName: string, executionId: string) =>
+    this.processExecution(jobName, executionId);
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -889,5 +898,354 @@ describe("$job — inline", () => {
     await expect(
       app.work.push({ v: 1 }, { delay: [1, "hour"] }),
     ).rejects.toThrowError(/Pick one/);
+  });
+});
+
+// -----------------------------------------------------------------------------------------------------------------
+
+/**
+ * Pins the jitter so a backoff assertion is about the curve, not the dice.
+ */
+class FixedJitterJobProvider extends TestJobProvider {
+  protected override randomFraction(): number {
+    return 1;
+  }
+}
+
+/**
+ * A backend at the bottom of the capability ladder: it can carry a message,
+ * it cannot hold one. Stands in for `RedisQueueProvider`.
+ */
+class NoDelayQueueProvider extends MemoryQueueProvider {
+  public declined = 0;
+
+  public override async push(
+    queue: string,
+    message: string,
+    options?: QueuePushOptions,
+  ): Promise<void> {
+    if (options?.delaySeconds && options.delaySeconds > 0) {
+      this.declined++;
+      throw new QueueDelayNotSupportedError("no delay tier here");
+    }
+    return super.push(queue, message, options);
+  }
+}
+
+describe("$job — retries have real backoff", () => {
+  for (const queued of [false, true]) {
+    const label = queued ? "in queue mode" : "in direct mode";
+
+    it(`retries at the backoff rather than on the sweep grid, ${label}`, async ({
+      expect,
+    }) => {
+      const alepha = Alepha.create()
+        .with({ provide: JobProvider, use: FixedJitterJobProvider })
+        .with(AlephaOrmPostgres)
+        .with(AlephaApiJobs);
+      if (queued) alepha.with(AlephaApiJobsQueue);
+      // 120 ms ceiling instead of 5 s, so the test does not have to wait out
+      // a production curve to observe the shape of it.
+      alepha.store.mut(jobConfig, (c) => ({
+        ...c,
+        retryBackoffBase: 120,
+        retryBackoffMax: 120,
+        // Long enough that nothing here can be attributed to the sweep.
+        sweepCron: "0 0 1 1 *",
+      }));
+
+      let attempts = 0;
+      class App {
+        executions = $repository(jobExecutionEntity);
+        work = $job({
+          schema: z.object({ v: z.integer() }),
+          retry: { retries: 1 },
+          handler: async () => {
+            attempts++;
+            throw new Error("downstream is unhappy");
+          },
+        });
+      }
+
+      const app = alepha.with(App).inject(App);
+      await alepha.start();
+
+      const started = Date.now();
+      await app.work.push({ v: 1 });
+
+      // The second attempt arrives on its own, without any sweep at all.
+      await waitFor(
+        () => attempts,
+        (n) => n === 2,
+        { label: "second attempt runs off the backoff", timeout: 5_000 },
+      );
+      // And it waited: the old behaviour dispatched a retry immediately or
+      // not at all.
+      expect(Date.now() - started).toBeGreaterThanOrEqual(100);
+
+      const rows = await waitFor(
+        () =>
+          app.executions.findMany({ where: { jobName: { eq: "App.work" } } }),
+        (r) => r[0]?.status === "error",
+        { label: "terminal after the last attempt" },
+      );
+      expect(rows[0].attempt).toBe(2);
+    });
+  }
+
+  it("grows the ceiling exponentially and caps it", async ({ expect }) => {
+    const alepha = Alepha.create()
+      .with({ provide: JobProvider, use: FixedJitterJobProvider })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs);
+    alepha.store.mut(jobConfig, (c) => ({
+      ...c,
+      retryBackoffBase: 1_000,
+      retryBackoffMax: 5_000,
+    }));
+    class App {
+      work = $job({
+        schema: z.object({ v: z.integer() }),
+        handler: async () => {},
+      });
+    }
+    alepha.with(App).inject(App);
+    await alepha.start();
+
+    // randomFraction is pinned to 1, so this reads the ceiling itself.
+    const jobs = alepha.inject(JobProvider) as FixedJitterJobProvider;
+    expect(jobs.testRetryBackoffMs(1)).toBe(1_000);
+    expect(jobs.testRetryBackoffMs(2)).toBe(2_000);
+    expect(jobs.testRetryBackoffMs(3)).toBe(4_000);
+    expect(jobs.testRetryBackoffMs(4)).toBe(5_000);
+    // Capped, not overflowed: 2 ** 99 would be Infinity.
+    expect(jobs.testRetryBackoffMs(100)).toBe(5_000);
+  });
+
+  it("jitters, so a whole failing population does not retry in lockstep", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with({ provide: JobProvider, use: TestJobProvider })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs);
+    alepha.store.mut(jobConfig, (c) => ({ ...c, retryBackoffBase: 100_000 }));
+    class App {
+      work = $job({
+        schema: z.object({ v: z.integer() }),
+        handler: async () => {},
+      });
+    }
+    alepha.with(App).inject(App);
+    await alepha.start();
+
+    const jobs = alepha.inject(JobProvider) as TestJobProvider;
+    const draws = new Set(
+      Array.from({ length: 50 }, () => jobs.testRetryBackoffMs(1)),
+    );
+    // Before this quest every retrying row in the system shared one
+    // `scheduledAt` and the sweep promoted them as a single herd.
+    expect(draws.size).toBeGreaterThan(40);
+  });
+});
+
+describe("$job — delaySeconds on the dispatch interface", () => {
+  it("a backend that declines a delay never enqueues immediately", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with({ provide: JobProvider, use: TestJobProvider })
+      .with({ provide: QueueProvider, use: NoDelayQueueProvider })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs)
+      .with(AlephaApiJobsQueue);
+
+    let calls = 0;
+    class App {
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        schema: z.object({ v: z.integer() }),
+        handler: async () => {
+          calls++;
+        },
+      });
+    }
+
+    const app = alepha.with(App).inject(App);
+    const jobs = alepha.inject(JobProvider) as TestJobProvider;
+    const queue = alepha.inject(QueueProvider) as NoDelayQueueProvider;
+    await alepha.start();
+
+    const id = await app.work.push({ v: 1 }, { delay: [1, "hour"] });
+
+    expect(queue.declined).toBe(1);
+    // Declined, so nothing was delivered. The row is still waiting for its
+    // own time, which is the point: ignoring the delay would have run the
+    // job an hour early.
+    await sleep(80);
+    expect(calls).toBe(0);
+    expect((await app.executions.findById(id))?.status).toBe("scheduled");
+
+    // ...and the sweep is still the backstop. Age the row and tick.
+    const past = new Date(Date.now() - 60_000).toISOString();
+    await app.executions.updateMany(
+      { id: { eq: id } },
+      { scheduledAt: past },
+      { now: past },
+    );
+    await jobs.testSweep();
+    await waitFor(
+      () => calls,
+      (n) => n === 1,
+      { label: "sweep delivered the declined dispatch" },
+    );
+  });
+
+  it("falls back to the local promoting timer when the backend declines", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with({ provide: JobProvider, use: TestJobProvider })
+      .with({ provide: QueueProvider, use: NoDelayQueueProvider })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs)
+      .with(AlephaApiJobsQueue);
+    // No sweep at all, so nothing but the timer can deliver this.
+    alepha.store.mut(jobConfig, (c) => ({ ...c, sweepCron: "0 0 1 1 *" }));
+
+    let calls = 0;
+    class App {
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        schema: z.object({ v: z.integer() }),
+        handler: async () => {
+          calls++;
+        },
+      });
+    }
+
+    const app = alepha.with(App).inject(App);
+    const queue = alepha.inject(QueueProvider) as NoDelayQueueProvider;
+    await alepha.start();
+
+    const started = Date.now();
+    const id = await app.work.push({ v: 1 }, { delay: [150, "millisecond"] });
+    expect(queue.declined).toBe(1);
+    expect(calls).toBe(0);
+
+    // This is the claim the epic rests on for Node: a broker with no delay
+    // tier still gets exact timing, because the local timer PROMOTES rather
+    // than delivers and so is dispatcher-agnostic. Zero work on the broker.
+    await waitFor(
+      () => calls,
+      (n) => n === 1,
+      { label: "local timer delivered the declined delay" },
+    );
+    expect(Date.now() - started).toBeGreaterThanOrEqual(140);
+    expect((await app.executions.findById(id))?.status).toBeUndefined();
+  });
+
+  it("a transport that holds the message delivers it, and the claim refuses it early", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with({ provide: JobProvider, use: TestJobProvider })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs)
+      .with(AlephaApiJobsQueue);
+    // No sweep, so only the transport's own delay can move this row.
+    alepha.store.mut(jobConfig, (c) => ({ ...c, sweepCron: "0 0 1 1 *" }));
+
+    let calls = 0;
+    class App {
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        schema: z.object({ v: z.integer() }),
+        handler: async () => {
+          calls++;
+        },
+      });
+    }
+
+    const app = alepha.with(App).inject(App);
+    const jobs = alepha.inject(JobProvider) as TestJobProvider;
+    await alepha.start();
+
+    const id = await app.work.push({ v: 1 }, { delay: [10, "minute"] });
+    await sleep(80);
+    expect(calls).toBe(0);
+
+    // An EARLY delivery (a clamped Cloudflare delay, clock skew) must not
+    // run the job: the claim's own `scheduledAt <= now` guard refuses it and
+    // the row is left exactly as it was.
+    await jobs.testProcessExecution("App.work", id);
+    expect(calls).toBe(0);
+    const row = await app.executions.findById(id);
+    expect(row?.status).toBe("scheduled");
+    expect(row?.attempt).toBe(0);
+
+    // Due now: the same delivery claims straight out of `scheduled`, which
+    // is what lets a transport hold the message without anything having to
+    // promote the row first.
+    const past = new Date(Date.now() - 1_000).toISOString();
+    await app.executions.updateMany(
+      { id: { eq: id } },
+      { scheduledAt: past },
+      { now: past },
+    );
+    await jobs.testProcessExecution("App.work", id);
+    expect(calls).toBe(1);
+  });
+
+  it("two replicas racing one promotion produce exactly one dispatch", async ({
+    expect,
+  }) => {
+    const alepha = Alepha.create()
+      .with({ provide: JobProvider, use: TestJobProvider })
+      .with(AlephaOrmPostgres)
+      .with(AlephaApiJobs);
+    alepha.store.mut(jobConfig, (c) => ({ ...c, sweepCron: "0 0 1 1 *" }));
+
+    let calls = 0;
+    class App {
+      executions = $repository(jobExecutionEntity);
+      work = $job({
+        schema: z.object({ v: z.integer() }),
+        handler: async () => {
+          calls++;
+          await sleep(20);
+        },
+      });
+    }
+
+    const app = alepha.with(App).inject(App);
+    const jobs = alepha.inject(JobProvider) as TestJobProvider;
+    await alepha.start();
+
+    // A row already due, so both promotions are live at once — the shape two
+    // replicas holding the same timer produce.
+    const id = await app.work.push({ v: 1 }, { delay: [10, "minute"] });
+    const past = new Date(Date.now() - 1_000).toISOString();
+    await app.executions.updateMany(
+      { id: { eq: id } },
+      { scheduledAt: past },
+      { now: past },
+    );
+
+    await Promise.all([
+      jobs.testDispatchScheduled("App.work", id),
+      jobs.testDispatchScheduled("App.work", id),
+    ]);
+    await waitFor(
+      () => calls,
+      (n) => n >= 1,
+      { label: "the winner ran" },
+    );
+    await sleep(120);
+
+    // The guarded promotion picks one winner, and the claim absorbs anything
+    // that gets past it. Both belts matter: a duplicate delivery is a normal
+    // event for any at-least-once transport.
+    expect(calls).toBe(1);
   });
 });

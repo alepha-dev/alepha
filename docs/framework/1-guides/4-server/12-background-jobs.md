@@ -104,17 +104,64 @@ guarantee, enforce it in the handler against your own data.
 ## Retries
 
 Set `retry: { retries: n }`, optionally with `when: (error) => boolean` to retry
-only certain failures. Retries are **sweep-driven and have no exponential
-backoff**: a failed attempt is rescheduled with `scheduledAt = now`, and the
-next sweep tick picks it up.
+only certain failures.
 
-That means retry latency is bounded by `sweepCron` (default `*/15 * * * *`). The
-first retry lands anywhere from a few seconds to ~15 minutes later, depending on
-where the tick falls. Lower `sweepCron` if you need tighter latency.
+A failed attempt is rescheduled with **exponential backoff and full jitter**:
+attempt _n_ waits a uniformly random time in
+`[0, min(retryBackoffMax, retryBackoffBase * 2^(n-1))]`, defaults 5 s and
+30 min. The jitter matters at least as much as the curve - without it every
+retrying row in the system shares one `scheduledAt` and they all hit a
+struggling downstream together.
+
+The row's `scheduledAt` is the truth and the sweep is the backstop, so nothing
+can lose a retry. What varies by runtime is only **how soon** something looks
+at it:
+
+| Runtime                                   | Dispatch        | Retry lands                       |
+| ----------------------------------------- | --------------- | --------------------------------- |
+| Node, any dispatcher                      | direct or queue | at the backoff, on a local timer  |
+| Cloudflare Workers + `AlephaApiJobsQueue` | queue           | at the backoff, held by the queue |
+| Cloudflare Workers, no queue              | direct          | **next sweep tick** (see below)   |
+
+The last row is a real limit, not an oversight. A timer armed after the
+response never fires on Workers - the isolate freezes once `waitUntil`
+settles - so direct mode there cannot arrange a wake-up at all and retries
+keep `sweepCron` granularity. Add `AlephaApiJobsQueue` if that matters, or use
+[`inline`](#inline-when-a-retry-is-worse-than-a-failure) for a payload that
+expires before the next tick.
 
 Cron-mode jobs without `retry` do not retry - the next tick is the retry. Cron
-jobs that _declare_ `retry` go through the same sweep path, which is useful for
+jobs that _declare_ `retry` go through the outbox instead, which is useful for
 once-daily jobs where waiting a full day is not acceptable.
+
+### What a transport does with a delay
+
+`$job` asks exactly one thing of a transport: **do not deliver before time T.**
+Durability, retry policy, attempt counting, dead-lettering and crash recovery
+are all already owned by the outbox, which is why the interface carries one
+optional argument rather than a broker abstraction.
+
+The rule every backend follows:
+
+> `delaySeconds` is an optimisation. The outbox row's `scheduledAt` is the
+> truth, and the sweep is the backstop. A backend that cannot honour a delay
+> must **decline to enqueue** rather than enqueue immediately.
+
+Declining is not the same as ignoring. For a push transport, ignoring a delay
+means _delivering now_, and for a retry that is worse than doing nothing at
+all: no backoff whatsoever against a downstream that has just failed.
+
+| Backend           | Delay                                                          |
+| ----------------- | -------------------------------------------------------------- |
+| Cloudflare Queues | native, clamped at its 12-hour ceiling                         |
+| in-memory         | a due timestamp, filtered on pop                               |
+| Redis             | **declines**; the caller falls back to a local promoting timer |
+
+The Redis decline costs nothing on Node, because the fallback timer _promotes_
+the row rather than delivering it - a guarded `scheduled -> pending` update, so
+exactly one replica wins, and a replica that dies leaves the row for the sweep.
+Which is why there is no Redis delay tier: it would be a scale optimisation,
+not a correctness fix.
 
 ## `inline`: when a retry is worse than a failure
 
@@ -264,6 +311,8 @@ Inside a `$module`, the `register()` hook runs before `imports[]` and
 | `trimCron`             | `0 * * * *`    | Ring-buffer trim tick                                                                                 |
 | `sweepBatchSize`       | `200`          | Rows one sweep phase reads per tick - see below                                                       |
 | `maxRedispatch`        | `3`            | Lost deliveries tolerated before a `pending` row is failed                                            |
+| `retryBackoffBase`     | `5000`         | First retry's backoff ceiling (ms); doubles per attempt, full jitter                                  |
+| `retryBackoffMax`      | `1800000`      | Ceiling for that curve (ms)                                                                           |
 | `staleThreshold`       | `300000`       | Pending age (ms) before the sweep re-dispatches                                                       |
 | `runTimeout`           | `1800000`      | Running age (ms) before a crash is assumed                                                            |
 | `keepLastSuccess`      | `10`           | Successful rows kept per job                                                                          |

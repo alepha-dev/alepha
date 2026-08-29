@@ -30,7 +30,7 @@ import {
 import type { JobPrimitiveOptions, JobPriority } from "../primitives/$job.ts";
 import { jobConfig } from "../schemas/jobConfigAtom.ts";
 import { DirectJobDispatcher } from "./DirectJobDispatcher.ts";
-import type { JobDispatcher } from "./JobDispatcher.ts";
+import type { JobDispatcher, JobDispatchOptions } from "./JobDispatcher.ts";
 import { JobQueueProvider } from "./JobQueueProvider.ts";
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -806,7 +806,7 @@ export class JobProvider {
       } else if (status === "pending") {
         await this.dispatch(name, executionId);
       } else if (status === "scheduled" && scheduledAt) {
-        this.scheduleOptimisticDispatch(name, executionId, scheduledAt);
+        await this.dispatchDelayed(name, executionId, scheduledAt);
       }
       return executionId;
     }
@@ -831,7 +831,7 @@ export class JobProvider {
     } else if (status === "pending") {
       await this.dispatch(name, execution.id);
     } else if (status === "scheduled" && scheduledAt) {
-      this.scheduleOptimisticDispatch(name, execution.id, scheduledAt);
+      await this.dispatchDelayed(name, execution.id, scheduledAt);
     }
     return execution.id;
   }
@@ -958,7 +958,7 @@ export class JobProvider {
   }
 
   /**
-   * Ceiling for the optimistic local timer. Past one day the sweep is the
+   * Ceiling for the local promoting timer. Past one day the sweep is the
    * delivery mechanism anyway, and a 32-bit `setTimeout` overflows at
    * ~24.85 days — an unclamped timer would fire immediately and run the
    * job weeks early.
@@ -966,26 +966,42 @@ export class JobProvider {
   protected readonly maxOptimisticDelayMs = 24 * 60 * 60 * 1000;
 
   /**
-   * Fire a local setTimeout so delayed/retrying rows dispatch as close to
-   * `scheduledAt` as possible, rather than waiting for the next sweep tick.
-   * No-op on stateless runtimes where timers won't survive, and for delays
-   * beyond `maxOptimisticDelayMs` (the sweep handles both).
+   * Arrange for a `scheduled` row to be promoted and dispatched locally in
+   * `delayMs`, instead of waiting for the next sweep tick.
+   *
+   * **It promotes, it does not deliver**, and that distinction is what makes
+   * it safe on more than one replica: the timer fires, `dispatchScheduled`
+   * runs a guarded `status = scheduled AND scheduledAt <= now -> pending`
+   * update, and only then calls the dispatcher. Exactly one replica wins the
+   * update, and a replica that dies holding a timer leaves the row untouched
+   * for the sweep — degrading to sweep granularity rather than losing an
+   * execution.
+   *
+   * Being dispatcher-agnostic is why it is the fallback for a queue backend
+   * that declines a delay as well as the implementation of `delaySeconds` in
+   * direct mode. It is public for exactly that: the dispatchers call it.
+   *
+   * ⚠️ **On Cloudflare Workers this does nothing useful.** The isolate
+   * freezes once `waitUntil` settles, so a timer armed after the response
+   * never fires for any delay worth having. Delayed work there needs a
+   * transport that can hold the message (`AlephaApiJobsQueue`), and without
+   * one it keeps sweep granularity. Nothing is lost either way.
+   *
+   * Skipped beyond {@link maxOptimisticDelayMs}, where the sweep is the
+   * delivery mechanism regardless.
    */
-  protected scheduleOptimisticDispatch(
+  public scheduleLocalPromotion(
     jobName: string,
     executionId: string,
-    scheduledAt: string,
+    delayMs: number,
   ): void {
-    const delayMs = Math.max(
-      0,
-      new Date(scheduledAt).getTime() - this.dt.nowMillis(),
-    );
-    if (delayMs > this.maxOptimisticDelayMs) {
+    const wait = Math.max(0, delayMs);
+    if (wait > this.maxOptimisticDelayMs) {
       return;
     }
     this.dt.createTimeout(() => {
       void this.dispatchScheduled(jobName, executionId);
-    }, delayMs);
+    }, wait);
   }
 
   public async pushMany(
@@ -1078,7 +1094,7 @@ export class JobProvider {
           exec.scheduledAt &&
           !this.stopping
         ) {
-          this.scheduleOptimisticDispatch(name, exec.id, exec.scheduledAt);
+          await this.dispatchDelayed(name, exec.id, exec.scheduledAt);
         }
       }
       if (toDispatch.length > 0) {
@@ -1102,9 +1118,33 @@ export class JobProvider {
   protected async dispatch(
     jobName: string,
     executionId: string,
+    options?: JobDispatchOptions,
   ): Promise<void> {
     if (this.stopping) return;
-    await this.dispatcher.dispatch(jobName, executionId);
+    await this.dispatcher.dispatch(jobName, executionId, options);
+  }
+
+  /**
+   * Hand a `scheduled` row to the dispatcher with the delay it still has to
+   * wait, so a transport that can hold the message does, and a transport
+   * that cannot falls back to the local promoting timer.
+   *
+   * The row's own `scheduledAt` remains the truth throughout: this only
+   * decides how soon anyone looks at it, and the sweep looks at it either
+   * way. See {@link JobDispatchOptions.delaySeconds}.
+   */
+  protected async dispatchDelayed(
+    jobName: string,
+    executionId: string,
+    scheduledAt: string,
+  ): Promise<void> {
+    const delayMs = Math.max(
+      0,
+      new Date(scheduledAt).getTime() - this.dt.nowMillis(),
+    );
+    await this.dispatchSafe(jobName, executionId, {
+      delaySeconds: delayMs / 1000,
+    });
   }
 
   /**
@@ -1414,23 +1454,66 @@ export class JobProvider {
    * Returns null when the row is gone or already claimed by another worker.
    * The returned row replaces a separate post-claim findById, so the dispatch
    * path is 2 queries instead of 3.
+   *
+   * A **due `scheduled`** row is claimed too, in the same guarded update.
+   * That is not a loosening: it is the only way a transport-held delay can
+   * work at all. When the dispatcher honours `delaySeconds` itself, the
+   * delivery necessarily arrives while the row still says `scheduled` —
+   * the delay was requested at the moment the row was written, and nothing
+   * promotes it in between. The `scheduledAt <= now` condition is what keeps
+   * an early delivery (a clamped Cloudflare delay, clock skew) from running
+   * the job ahead of its time: it simply fails to claim, and the sweep
+   * delivers it when it is genuinely due.
    */
   protected async claim(executionId: string) {
     const current = await this.executions.findById(executionId);
     if (!current) return null;
+    const where =
+      current.status === "scheduled"
+        ? {
+            id: { eq: executionId },
+            status: { eq: "scheduled" as const },
+            scheduledAt: { lte: this.dt.nowISOString() },
+          }
+        : { id: { eq: executionId }, status: { eq: "pending" as const } };
     try {
-      return await this.executions.updateOne(
-        { id: { eq: executionId }, status: { eq: "pending" } },
-        {
-          status: "running",
-          attempt: current.attempt + 1,
-          startedAt: this.dt.nowISOString(),
-        },
-      );
+      return await this.executions.updateOne(where, {
+        status: "running",
+        attempt: current.attempt + 1,
+        startedAt: this.dt.nowISOString(),
+      });
     } catch (e) {
       if (e instanceof DbEntityNotFoundError) return null;
       throw e;
     }
+  }
+
+  /**
+   * How long to wait before attempt `currentAttempt + 1`.
+   *
+   * Exponential (`base * 2^(n-1)`), capped, then **full jitter**: uniform in
+   * `[0, computed]`. The jitter matters more than the curve. Before this,
+   * every retrying row in the system shared one `scheduledAt` and the sweep
+   * promoted them as a single herd against a downstream that had just told
+   * them all it was struggling; spreading them is most of the value.
+   */
+  protected retryBackoffMs(currentAttempt: number): number {
+    const base = Math.max(0, this.config.retryBackoffBase);
+    const cap = Math.max(base, this.config.retryBackoffMax);
+    const exponent = Math.max(0, currentAttempt - 1);
+    // 2^30 ms is already ~12 days, so clamp the exponent before it can
+    // overflow into Infinity on a job with an absurd retry count.
+    const ceiling = Math.min(cap, base * 2 ** Math.min(exponent, 30));
+    return Math.round(this.randomFraction() * ceiling);
+  }
+
+  /**
+   * A uniform value in `[0, 1)`. Its own method so a test can make the
+   * jitter deterministic by subclassing, the way everything else here stays
+   * substitutable.
+   */
+  protected randomFraction(): number {
+    return Math.random();
   }
 
   protected async handleFailure(
@@ -1463,23 +1546,27 @@ export class JobProvider {
       (retry.when ? retry.when(error) : true);
 
     if (canRetry) {
-      // Retries are sweep-driven: write the row as `scheduled` with
-      // `scheduledAt = now`. The next sweep tick (every `sweepCron`,
-      // default 15 minutes) re-dispatches it. This means the first retry
-      // can land anywhere from a few seconds to ~15 minutes later — the
-      // exact moment depends on when the next sweep tick fires.
+      // Exponential backoff with full jitter, written onto the row and then
+      // handed to the dispatcher as a delay.
       //
-      // We deliberately do NOT use exponential backoff or a local timer.
-      // - Exponential backoff was platform-dependent (precise on Node
-      //   via setTimeout, but degraded to "next sweep" on Cloudflare
-      //   Workers where timers don't survive invocations). The behavior
-      //   is now identical everywhere.
-      // - Sweep-only retry keeps the retry path observable from a single
-      //   place (the DB) and removes a class of races between the timer
-      //   and the sweep.
-      const nextScheduledAt = this.dt.nowISOString();
+      // It used to be `scheduledAt = now`, on the reasoning that backoff was
+      // platform-dependent: precise on Node via setTimeout, degraded to
+      // "next sweep" on Cloudflare, so it was dropped everywhere for
+      // consistency. The price of that consistency was a 15-minute retry
+      // grid, which is what makes a retried verification email land after
+      // its 300-second code has expired.
+      //
+      // The delay is an optimisation; `scheduledAt` is the truth and the
+      // sweep is the backstop, so a runtime that cannot arrange a wake-up
+      // still retries, just no sooner than the next tick. That is the
+      // property the old comment wanted, and it did not need a flat grid.
+      const delayMs = this.retryBackoffMs(currentAttempt);
+      const nextScheduledAt = this.dt
+        .now()
+        .add(delayMs, "millisecond")
+        .toISOString();
       this.log.info(
-        `Job '${jobName}' failed, scheduling retry ${currentAttempt + 1}/${maxAttempts} (sweep will pick up)`,
+        `Job '${jobName}' failed, retry ${currentAttempt + 1}/${maxAttempts} in ~${Math.round(delayMs / 1000)}s`,
         { executionId, error: error.message },
       );
       // Guard with `status: running` so a concurrent cancel that has already
@@ -1495,6 +1582,7 @@ export class JobProvider {
         },
         "retry-after-failure",
       );
+      await this.dispatchDelayed(jobName, executionId, nextScheduledAt);
     } else {
       this.log.info(
         `Job '${jobName}' dead after ${currentAttempt} attempt(s)`,
@@ -1808,11 +1896,15 @@ export class JobProvider {
   protected async dispatchSafe(
     jobName: string,
     executionId: string,
+    options?: JobDispatchOptions,
   ): Promise<void> {
     try {
-      await this.dispatch(jobName, executionId);
+      await this.dispatch(jobName, executionId, options);
     } catch (e) {
-      this.log.warn(`Sweep failed to dispatch ${jobName} (${executionId})`, e);
+      // Containment, not silence: the row keeps its own `scheduledAt` and
+      // the sweep is still the backstop, so a dispatch that could not be
+      // arranged costs latency, never an execution.
+      this.log.warn(`Failed to dispatch ${jobName} (${executionId})`, e);
     }
   }
 

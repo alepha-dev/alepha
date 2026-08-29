@@ -1,7 +1,13 @@
 import { $hook, $inject, Alepha, type Infer, z } from "alepha";
-import { QueueCodec, QueueProvider, WorkerProvider } from "alepha/queue";
+import { $logger } from "alepha/logger";
+import {
+  QueueCodec,
+  QueueDelayNotSupportedError,
+  QueueProvider,
+  WorkerProvider,
+} from "alepha/queue";
 
-import { JobDispatcher } from "./JobDispatcher.ts";
+import { JobDispatcher, type JobDispatchOptions } from "./JobDispatcher.ts";
 import { JobProvider } from "./JobProvider.ts";
 
 /**
@@ -36,6 +42,7 @@ export type JobDispatchMessage = Infer<typeof jobDispatchSchema>;
 export class JobQueueProvider extends JobDispatcher {
   public readonly kind = "queue" as const;
   protected readonly alepha = $inject(Alepha);
+  protected readonly log = $logger();
   protected readonly queueProvider = $inject(QueueProvider);
   protected readonly workerProvider = $inject(WorkerProvider);
   protected readonly codec = $inject(QueueCodec);
@@ -72,11 +79,21 @@ export class JobQueueProvider extends JobDispatcher {
     },
   });
 
-  public async dispatch(jobName: string, executionId: string): Promise<void> {
-    await this.queueProvider.push(
-      JOB_DISPATCH_QUEUE,
-      this.encode({ jobName, executionId }),
-    );
+  public async dispatch(
+    jobName: string,
+    executionId: string,
+    options?: JobDispatchOptions,
+  ): Promise<void> {
+    try {
+      await this.queueProvider.push(
+        JOB_DISPATCH_QUEUE,
+        this.encode({ jobName, executionId }),
+        options,
+      );
+    } catch (e) {
+      if (this.fellBackToTimer(e, options, [{ jobName, executionId }])) return;
+      throw e;
+    }
     this.workerProvider.wakeUp();
   }
 
@@ -87,13 +104,53 @@ export class JobQueueProvider extends JobDispatcher {
    */
   public override async dispatchMany(
     items: Array<JobDispatchMessage>,
+    options?: JobDispatchOptions,
   ): Promise<void> {
     if (items.length === 0) return;
-    await this.queueProvider.pushMany(
-      JOB_DISPATCH_QUEUE,
-      items.map((item) => this.encode(item)),
-    );
+    try {
+      await this.queueProvider.pushMany(
+        JOB_DISPATCH_QUEUE,
+        items.map((item) => this.encode(item)),
+        options,
+      );
+    } catch (e) {
+      if (this.fellBackToTimer(e, options, items)) return;
+      throw e;
+    }
     this.workerProvider.wakeUp();
+  }
+
+  /**
+   * A backend that declines a delay is not a failure, it is the contract:
+   * declining is what it must do instead of delivering now.
+   *
+   * So catch that one error and arrange the delay the way a broker-less
+   * deployment already would, with the local promoting timer. On Node that
+   * gives exact backoff in queue mode with **zero** work on the broker's
+   * side, which is why the Redis ZSET tier is a scale optimisation rather
+   * than a correctness gap. Where even the timer cannot run, the row is
+   * still `scheduled` and the sweep is still the backstop.
+   *
+   * @returns true when the error was a decline and has been handled.
+   */
+  protected fellBackToTimer(
+    error: unknown,
+    options: JobDispatchOptions | undefined,
+    items: Array<JobDispatchMessage>,
+  ): boolean {
+    if (!(error instanceof QueueDelayNotSupportedError)) return false;
+    const delayMs = Math.max(0, (options?.delaySeconds ?? 0) * 1000);
+    this.log.debug(
+      `Queue backend declined a ${options?.delaySeconds}s delay for ${items.length} dispatch(es); falling back to the local promoting timer`,
+    );
+    for (const item of items) {
+      this.getJobProvider().scheduleLocalPromotion(
+        item.jobName,
+        item.executionId,
+        delayMs,
+      );
+    }
+    return true;
   }
 
   /**

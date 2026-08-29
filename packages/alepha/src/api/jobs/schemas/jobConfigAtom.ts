@@ -24,6 +24,18 @@ export const jobConfig = $atom({
       .describe(
         "How many times the sweep re-dispatches a `pending` row whose delivery was lost before giving up and marking it errored. Counted separately from `attempt`, which only moves once a worker actually claims the row: a payload that kills the isolate between dispatch and claim never increments `attempt`, so without this it would loop forever with no terminal state. Set 0 to never re-dispatch.",
       ),
+    retryBackoffBase: z
+      .integer()
+      .min(0)
+      .describe(
+        "First retry's backoff ceiling (ms). Attempt n waits a uniformly random time in [0, min(retryBackoffMax, base * 2^(n-1))] - full jitter, so a whole population of retrying jobs spreads out instead of hitting a struggling downstream together.",
+      ),
+    retryBackoffMax: z
+      .integer()
+      .min(0)
+      .describe(
+        "Ceiling for the exponential retry backoff (ms). Past this the curve flattens; the outbox row's scheduledAt stays the truth and the sweep remains the backstop either way.",
+      ),
     staleThreshold: z
       .integer()
       .describe("Pending age (ms) before the sweep re-dispatches it."),
@@ -56,6 +68,8 @@ export const jobConfig = $atom({
     trimCron: "0 * * * *",
     sweepBatchSize: 200,
     maxRedispatch: 3,
+    retryBackoffBase: 5_000,
+    retryBackoffMax: 1_800_000,
     staleThreshold: 300_000,
     runTimeout: 1_800_000,
     keepLastSuccess: 10,
