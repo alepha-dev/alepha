@@ -1,7 +1,6 @@
 import { $hook, Alepha, z } from "alepha";
 import { $entity, $repository, db, type Repository } from "alepha/orm";
 import { $action, ServerProvider } from "alepha/server";
-import { ServerLinksProvider } from "alepha/server/links";
 import { describe, it } from "vitest";
 
 import { $owns } from "../primitives/$owns.ts";
@@ -71,7 +70,7 @@ const QUEST_IDS = ["q1", "q2", "q3", "q4", "q5", "q6", "q7"];
 const createApp = (cache?: { ttl: number }) => {
   const alepha = Alepha.create({
     env: { DATABASE_URL: "sqlite://:memory:" },
-  }).with(ServerLinksProvider);
+  });
 
   class App {
     projects = $repository(projects);
@@ -113,8 +112,9 @@ const createApp = (cache?: { ttl: number }) => {
       });
     }
 
-    // Seven separate actions, so the batch runs seven separate `$action.run()`
-    // forks - the arrangement that made a lazily-created memo invisible.
+    // Seven separate actions, so the fan-out below runs seven separate
+    // `$action.run()` forks - the arrangement that made a lazily-created memo
+    // invisible to all but one of them.
     readQ1 = this.read();
     readQ2 = this.read();
     readQ3 = this.read();
@@ -133,6 +133,40 @@ const createApp = (cache?: { ttl: number }) => {
         handler: ({ params }) => params.id,
       });
     }
+
+    /**
+     * One HTTP request that fans out into seven concurrent actions.
+     *
+     * This is `/api/_batch`'s shape reproduced locally rather than the
+     * endpoint itself: importing `alepha/server/links` from a spec under
+     * `src/security` would add a `security -> server/links` edge to the
+     * module graph and the build's cycle check refuses it (the real endpoint
+     * is covered at the app level, in `apps/lore`). What the memo actually
+     * depends on is here either way - one request layer, seven action forks,
+     * started together.
+     */
+    fanOut = $action({
+      method: "POST",
+      path: "/fan-out",
+      schema: {
+        body: z.object({ ids: z.array(z.text()) }),
+        response: z.array(z.text()),
+      },
+      handler: async ({ body }) => {
+        const actions = [
+          this.readQ1,
+          this.readQ2,
+          this.readQ3,
+          this.readQ4,
+          this.readQ5,
+          this.readQ6,
+          this.readQ7,
+        ];
+        return await Promise.all(
+          body.ids.map((id, i) => actions[i].run({ params: { id } })),
+        );
+      },
+    });
 
     public counts() {
       return {
@@ -162,20 +196,18 @@ const seed = async (app: { projects: any; quests: any; members: any }) => {
 
 const batch = async (alepha: Alepha, ids: string[]) => {
   const res = await fetch(
-    `${alepha.inject(ServerProvider).hostname}/api/_batch`,
+    `${alepha.inject(ServerProvider).hostname}/api/fan-out`,
     {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(
-        ids.map((id, i) => ({ action: `readQ${i + 1}`, params: { id } })),
-      ),
+      body: JSON.stringify({ ids }),
     },
   );
-  return (await res.json()) as Array<{ status: number; data?: string }>;
+  return { status: res.status, body: await res.json() };
 };
 
 describe("$owns request memo", () => {
-  it("resolves one (user, project) pair ONCE across a seven-action batch", async ({
+  it("resolves one (user, project) pair ONCE across a seven-action request", async ({
     expect,
   }) => {
     const { alepha, app } = createApp();
@@ -183,11 +215,12 @@ describe("$owns request memo", () => {
     await seed(app);
     app.reset();
 
-    const results = await batch(alepha, QUEST_IDS);
+    const { status, body } = await batch(alepha, QUEST_IDS);
 
-    expect(results.map((r) => r.status)).toEqual([
-      200, 200, 200, 200, 200, 200, 200,
-    ]);
+    // Every entry has to have SUCCEEDED. Seven refusals would also resolve
+    // the pair once, which is the reading of this number nobody wants.
+    expect(status).toBe(200);
+    expect(body).toEqual(QUEST_IDS);
 
     // Exact counts, never `toBeLessThan`: an upper bound passes just as
     // happily when a later change removes the gate altogether, which is the
@@ -226,11 +259,11 @@ describe("$owns request memo", () => {
     await alepha.start();
     await seed(app);
 
-    expect((await batch(alepha, ["q1"]))[0].status).toBe(200);
+    expect((await batch(alepha, ["q1"])).status).toBe(200);
 
     await app.members.deleteById("m1");
 
-    expect((await batch(alepha, ["q1"]))[0].status).toBe(403);
+    expect((await batch(alepha, ["q1"])).status).toBe(403);
   });
 
   it("works with no request layer at all", async ({ expect }) => {
