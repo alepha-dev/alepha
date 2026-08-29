@@ -513,4 +513,71 @@ if (concurrencyViolations.length > 0) {
   process.exit(1);
 }
 
+/*
+ * Corepack is installed AFTER the Node the jobs actually run on.
+ *
+ * `corepack enable` used to be the setup action's first step, executed against
+ * whatever Node the runner image booted with. The repository pins Node 26,
+ * which ships no corepack at all, so `yarn` only resolved afterwards because
+ * the image's older Node had left a shim on PATH - an accident of PATH order
+ * that nothing declared and nothing tested. The day the image drops its
+ * bundled corepack, every job fails at `yarn` with no clue why.
+ *
+ * The same reasoning bans `cache: "yarn"` on `setup-node`: its caching runs the
+ * package manager to locate the cache directory, which puts a `yarn` call back
+ * in front of the corepack install and quietly restores the dependency. The
+ * cache is done with `actions/cache` afterwards instead.
+ *
+ * Checked here because it cannot be checked anywhere else: the failure needs a
+ * runner image that has moved on, and by then it is every job at once.
+ */
+const SETUP_ACTION = ".github/actions/setup/action.yml";
+// Comment lines dropped first. The file explains this very rule in prose, so a
+// search over the raw text matches the explanation and reports the thing it is
+// describing as present - which is exactly what the first version of this
+// check did.
+const setupSource = readFileSync(SETUP_ACTION, "utf8")
+  .split("\n")
+  .filter((line) => !/^\s*#/.test(line))
+  .join("\n");
+const setupViolations = [];
+
+const nodeAt = setupSource.indexOf("actions/setup-node@");
+const corepackAt = setupSource.search(/corepack\s+enable/);
+
+if (nodeAt === -1) {
+  setupViolations.push(
+    `  ${SETUP_ACTION}\n    → no \`actions/setup-node\` step`,
+  );
+} else if (corepackAt !== -1 && corepackAt < nodeAt) {
+  setupViolations.push(
+    `  ${SETUP_ACTION}\n    → \`corepack enable\` runs before \`actions/setup-node\`,` +
+      "\n      so it enables the runner image's corepack, not the pinned Node's",
+  );
+}
+
+if (/^\s*cache:\s*["']?yarn["']?\s*$/m.test(setupSource)) {
+  setupViolations.push(
+    `  ${SETUP_ACTION}\n    → \`cache: yarn\` on setup-node runs yarn before corepack is installed`,
+  );
+}
+
+if (corepackAt !== -1 && !/corepack@\d+\.\d+\.\d+/.test(setupSource)) {
+  setupViolations.push(
+    `  ${SETUP_ACTION}\n    → corepack is not pinned to an exact version`,
+  );
+}
+
+if (setupViolations.length > 0) {
+  console.error(
+    `\n${setupViolations.length} CI setup violation(s):\n\n` +
+      `${setupViolations.join("\n")}\n\n` +
+      "Node 26 bundles no corepack. It has to be installed explicitly, pinned,\n" +
+      "and AFTER `setup-node` — otherwise `yarn` resolves through a shim the\n" +
+      "runner image happened to leave on PATH, and the day that stops being\n" +
+      "true every job fails at once.\n",
+  );
+  process.exit(1);
+}
+
 console.log("conventions OK");
