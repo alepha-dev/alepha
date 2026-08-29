@@ -35,6 +35,8 @@ const ROW_FILTER: Record<Dimension, (typeof APP_INSIGHTS_FILTER_KEYS)[number]> =
     campaign: "campaign",
     device: "device",
     referrer: "referrer",
+    browser: "browser",
+    os: "os",
   };
 
 // Literal key strings (not template-interpolated) so the i18n audit sees them.
@@ -46,6 +48,8 @@ const TITLE: Record<
   | "insights.topCampaigns"
   | "insights.topDevices"
   | "insights.topReferrers"
+  | "insights.topBrowsers"
+  | "insights.topSystems"
 > = {
   country: "insights.topCountries",
   path: "insights.topPaths",
@@ -53,6 +57,8 @@ const TITLE: Record<
   campaign: "insights.topCampaigns",
   device: "insights.topDevices",
   referrer: "insights.topReferrers",
+  browser: "insights.topBrowsers",
+  os: "insights.topSystems",
 };
 
 /**

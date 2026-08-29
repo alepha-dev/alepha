@@ -16,12 +16,16 @@ const LABEL: Record<
   | "insights.filter.referrer"
   | "insights.filter.campaign"
   | "insights.filter.device"
+  | "insights.filter.browser"
+  | "insights.filter.os"
 > = {
   path: "insights.filter.path",
   country: "insights.filter.country",
   referrer: "insights.filter.referrer",
   campaign: "insights.filter.campaign",
   device: "insights.filter.device",
+  browser: "insights.filter.browser",
+  os: "insights.filter.os",
 };
 
 export interface AppAnalyticsFilterChipsProps {

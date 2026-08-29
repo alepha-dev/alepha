@@ -122,6 +122,8 @@ export class InsightsController {
     "referrer",
     "campaign",
     "device",
+    "browser",
+    "os",
   ] as const;
 
   /**
@@ -147,6 +149,8 @@ export class InsightsController {
     campaign: { groupBy: "campaign", measure: "entries" },
     device: { groupBy: "device", measure: "count" },
     referrer: { groupBy: "referrer", measure: "count" },
+    browser: { groupBy: "browser", measure: "count" },
+    os: { groupBy: "os", measure: "count" },
   };
 
   /**
@@ -275,6 +279,8 @@ export class InsightsController {
         referrer: z.string().optional(),
         campaign: z.string().optional(),
         device: z.string().optional(),
+        browser: z.string().optional(),
+        os: z.string().optional(),
       }),
       response: insightsResourceSchema,
     },
@@ -334,6 +340,8 @@ export class InsightsController {
           topCampaigns: [],
           topDevices: [],
           topReferrers: [],
+          topBrowsers: [],
+          topSystems: [],
           // Every metric present with zero samples rather than nulls: a page
           // with no apps and a page whose apps have sent no vitals are the
           // same shape, so the tab renders "no samples yet" in both instead
@@ -392,6 +400,8 @@ export class InsightsController {
         topCampaignResult,
         topDeviceResult,
         topReferrerResult,
+        topBrowserResult,
+        topSystemResult,
         timelineResult,
         vitalsResult,
       ] = await Promise.all([
@@ -472,6 +482,24 @@ export class InsightsController {
           since,
           until,
           where: viewsWhere,
+          groupBy: ["browser"],
+          select: { count: "sum" },
+          orderBy: { key: "count", direction: "desc" },
+          limit: this.TOP_N,
+        }),
+        this.datasets.views.query({
+          since,
+          until,
+          where: viewsWhere,
+          groupBy: ["os"],
+          select: { count: "sum" },
+          orderBy: { key: "count", direction: "desc" },
+          limit: this.TOP_N,
+        }),
+        this.datasets.views.query({
+          since,
+          until,
+          where: viewsWhere,
           groupBy: ["day"],
           select: { count: "sum" },
           orderBy: { key: "day", direction: "asc" },
@@ -521,6 +549,13 @@ export class InsightsController {
         device: String(row.device),
         count: Number(row.count),
       }));
+
+      // `""` folded into `other` rather than dropped: both readings are "we
+      // cannot name it", and excluding the legacy rows would silently make
+      // these shares describe less traffic than the page claims. Summed after
+      // the fold, so the two buckets become one row rather than two.
+      const topBrowsers = this.foldUnknown(topBrowserResult.rows, "browser");
+      const topSystems = this.foldUnknown(topSystemResult.rows, "os");
 
       const topReferrers = topReferrerResult.rows.map((row) => ({
         referrer: String(row.referrer),
@@ -592,6 +627,8 @@ export class InsightsController {
         topCampaigns,
         topDevices,
         topReferrers,
+        topBrowsers,
+        topSystems,
         vitals,
         timeline,
         errorGroups,
@@ -620,6 +657,8 @@ export class InsightsController {
         referrer: z.string().optional(),
         campaign: z.string().optional(),
         device: z.string().optional(),
+        browser: z.string().optional(),
+        os: z.string().optional(),
         /**
          * Rows to return. The overview draws ten; this exists for the view
          * that draws the rest.
@@ -880,6 +919,41 @@ export class InsightsController {
   });
 
   /**
+   * Folds the legacy empty bucket into `other`, and re-sums.
+   *
+   * A row written before a dimension existed carries `""` on Analytics Engine:
+   * a default fills a column on write, it does not rewrite rows already
+   * stored. Left alone, a leaderboard over such a dimension carries a nameless
+   * bucket; excluded, its shares describe less traffic than the page around it
+   * claims. Both `""` and `other` mean "we cannot name this", so merging them
+   * loses nothing and keeps the totals whole.
+   *
+   * Re-sorted after the merge, because the fold can move `other` up past a row
+   * the dataset had ordered above it.
+   */
+  protected foldUnknown<K extends string>(
+    // The dataset's own row type: every dimension comes back as a string and
+    // every measure as a number, so the cast the loop would otherwise need is
+    // stated once, here.
+    rows: Array<Record<string, string | number>>,
+    key: K,
+  ): Array<Record<K, string> & { count: number }> {
+    const totals = new Map<string, number>();
+    for (const row of rows) {
+      const value = String(row[key] ?? "") || "other";
+      totals.set(value, (totals.get(value) ?? 0) + Number(row.count));
+    }
+    return [...totals.entries()]
+      .map(
+        ([value, count]) =>
+          ({ [key]: value, count }) as Record<K, string> & {
+            count: number;
+          },
+      )
+      .sort((a, b) => b.count - a.count);
+  }
+
+  /**
    * How many of a metric's samples landed in a bucket rated poor.
    *
    * From the metric's own thresholds rather than a hard-coded index, so the
@@ -998,6 +1072,12 @@ export class InsightsController {
     referrer: "direct",
     campaign: "none",
     device: "desktop",
+    // Both classifiers resolve ambiguity to `other`, and a row written before
+    // either dimension existed carries `""`. Filtering on `other` therefore
+    // has to match both, or a 30-day window straddling the deploy reads as
+    // the bucket collapsing on that date.
+    browser: "other",
+    os: "other",
   };
 
   /**
@@ -1053,13 +1133,9 @@ export class InsightsController {
    * Only keys the caller actually sent: an absent filter must be an absent
    * clause, never `undefined` spliced into a `where`.
    */
-  protected viewFilters(query: {
-    path?: string;
-    country?: string;
-    referrer?: string;
-    campaign?: string;
-    device?: string;
-  }): AnalyticsFilter {
+  protected viewFilters(
+    query: Partial<Record<(typeof this.VIEW_FILTER_KEYS)[number], string>>,
+  ): AnalyticsFilter {
     const out: AnalyticsFilter = {};
     for (const name of this.VIEW_FILTER_KEYS) {
       const value = query[name];

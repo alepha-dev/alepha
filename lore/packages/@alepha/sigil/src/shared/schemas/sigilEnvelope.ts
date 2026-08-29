@@ -200,6 +200,29 @@ export const sigilForwarded = sigilEnvelope.extend({
    */
   host: z.string().max(253).optional(),
   /**
+   * `chrome` | `safari` | `firefox` | `edge` | `other`, from the user-agent.
+   *
+   * Stamped beside `device` and `traffic`, off the same header, at the same
+   * cost: the app's own server already holds it, so there is no call to spend
+   * envelope bytes on something it reads for free. It stamps the whole batch
+   * for the same reason too - a visitor does not change browser between two
+   * views of one session.
+   *
+   * See {@link sigilBrowserName} for why it is five coarse buckets rather than
+   * a version string.
+   */
+  browser: z.string().max(16).optional(),
+  /**
+   * `windows` | `macos` | `ios` | `android` | `linux` | `other`, from the same
+   * header and stamped in the same place.
+   *
+   * ⚠️ It disagrees with `device` about one real device: iPadOS 13+ reports
+   * itself as a Mac, so an iPad lands in `macos` here while `device` files it
+   * as a tablet on other evidence. Both are as honest as their inputs allow.
+   * See {@link sigilOsName}.
+   */
+  os: z.string().max(16).optional(),
+  /**
    * What this app is configured to collect, resolved.
    *
    * The one field on this envelope that describes the app's DECISIONS rather

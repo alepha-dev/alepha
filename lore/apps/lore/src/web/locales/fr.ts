@@ -925,6 +925,10 @@ export default {
   "insights.topCampaigns.note":
     "D'après utm_campaign ou utm_source dans l'URL d'arrivée.",
   "insights.topCampaigns.untagged": "Sans étiquette",
+  "insights.topBrowsers": "Navigateurs",
+  "insights.topSystems": "Systèmes",
+  "insights.filter.browser": "Navigateur",
+  "insights.filter.os": "Système",
   "insights.topDevices": "Appareils",
   "insights.device.mobile": "Mobile",
   "insights.device.tablet": "Tablette",

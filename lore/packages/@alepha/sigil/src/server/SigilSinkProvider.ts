@@ -492,6 +492,12 @@ export class SigilSinkProvider {
    * visitor. Leaving it out would make that redundancy load-bearing, and it
    * holds only for as long as the hash keeps its current inputs.
    *
+   * `browser` and `os` are in the key on the same footing as `device`: they
+   * separate visitors, they are derived from the user-agent the visitor hash
+   * already closes over, and they cannot differ within one visitor. Leaving
+   * either out would make that redundancy load-bearing, and it holds only for
+   * as long as the hash keeps its current inputs.
+   *
    * `host` is in the key for a different reason than any of the others. They
    * separate visitors; it separates addresses. An app answering on both an
    * apex and a `www` is one app with two front doors, and merging their events
@@ -499,7 +505,7 @@ export class SigilSinkProvider {
    * wrong one.
    */
   protected batchFor(stamp: SigilStamp): PendingBatch {
-    const key = `${stamp.visitor ?? ""}\u0000${stamp.country ?? ""}\u0000${stamp.device ?? ""}\u0000${stamp.traffic ?? ""}\u0000${stamp.host ?? ""}`;
+    const key = `${stamp.visitor ?? ""}\u0000${stamp.country ?? ""}\u0000${stamp.device ?? ""}\u0000${stamp.traffic ?? ""}\u0000${stamp.host ?? ""}\u0000${stamp.browser ?? ""}\u0000${stamp.os ?? ""}`;
     let batch = this.pending.get(key);
     if (!batch) {
       batch = {
@@ -704,6 +710,15 @@ export interface SigilStamp {
    * that claim is and is not worth.
    */
   traffic?: string;
+  /**
+   * `chrome` | `safari` | `firefox` | `edge` | `other`, from the user-agent.
+   */
+  browser?: string;
+  /**
+   * `windows` | `macos` | `ios` | `android` | `linux` | `other`, from the same
+   * header.
+   */
+  os?: string;
   /**
    * Where this app answers, from its own inbound `Host` header.
    *

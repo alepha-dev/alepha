@@ -371,6 +371,11 @@ test.describe("Sigils", () => {
           vitals: [{ path: "/checkout", metric: "lcp", value: 2100 }],
           country: "FR",
           device: "mobile",
+          // The two the proxy classifies off the same header `device` comes
+          // from. Sent by hand here for the same reason `device` is: this
+          // batch bypasses the proxy.
+          browser: "safari",
+          os: "ios",
           visitor: `v-${t}`,
           // Where the app answers, which its own server is the only party that
           // knows. Stamped by `SigilProxyController` in a real app; sent by
@@ -630,9 +635,17 @@ test.describe("Sigils", () => {
         .getByRole("tab", { name: "Top referrers", exact: true })
         .click();
 
-      await expect(
-        page.getByTestId("insights-devices").getByText("Mobile"),
-      ).toBeVisible();
+      const devices = page.getByTestId("insights-devices");
+      await expect(devices.getByText("Mobile")).toBeVisible();
+
+      // Device, browser and system share one card: the same question asked
+      // three ways. Both new dimensions sort EARLY, so they only exist at all
+      // because the slot map is append-only now.
+      await devices.getByRole("tab", { name: "Browsers", exact: true }).click();
+      await expect(devices.getByText("safari")).toBeVisible();
+      await devices.getByRole("tab", { name: "Systems", exact: true }).click();
+      await expect(devices.getByText("ios")).toBeVisible();
+      await devices.getByRole("tab", { name: "Devices", exact: true }).click();
 
       // This deployment runs the relational backend, where `estimated` is
       // always false — the qualifier must not appear. Pins "no false
