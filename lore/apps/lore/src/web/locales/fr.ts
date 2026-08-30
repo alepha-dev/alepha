@@ -347,7 +347,6 @@ export default {
   "quest.rail.commits": "Commits",
   "quest.rail.due": "Échéance",
   "quest.rail.milestone": "Jalon",
-  "quest.rail.questline": "Chaîne de quêtes",
 
   "project.create.name": "Nom",
   "project.create.name.helper": "Un nom marquant pour votre épopée.",

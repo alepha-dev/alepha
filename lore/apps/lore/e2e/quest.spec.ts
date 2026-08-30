@@ -405,6 +405,27 @@ test.describe("Quest", () => {
         page.getByText(new RegExp(`unblocked.*#${predecessor.shortId}`, "i")),
       ).toBeVisible({ timeout: 10_000 });
     });
+
+    await test.step("predecessor view names what it unlocks", async () => {
+      // The other direction, and the one that had no coverage. The rail
+      // carried a second Questline row that printed a bare "Unlocks" per
+      // dependent — no number, no title, nothing to click — because it
+      // passed the shortId as an i18n argument to a catalogue entry with no
+      // `$1` in it. That row is deleted; this asserts the banner it
+      // duplicated says all three things the row could not.
+      await page.goto(`/${projectSlug}/quests/${predecessor.shortId}`);
+      await page.waitForLoadState("networkidle");
+
+      const banner = page
+        .getByText(/unlocks/i)
+        .locator("xpath=..")
+        .first();
+      await expect(banner).toBeVisible({ timeout: 10_000 });
+      await expect(
+        banner.getByRole("link", { name: `#${follower.shortId}` }),
+      ).toBeVisible();
+      await expect(banner).toContainText(`Follower${t}`);
+    });
   });
 
   /**

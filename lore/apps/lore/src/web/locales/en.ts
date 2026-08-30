@@ -339,7 +339,6 @@ export default {
   "quest.rail.commits": "Commits",
   "quest.rail.due": "Due",
   "quest.rail.milestone": "Milestone",
-  "quest.rail.questline": "Questline",
 
   "project.create.name": "Name",
   "project.create.name.helper":
