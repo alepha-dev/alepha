@@ -45,8 +45,15 @@ DROP INDEX IF EXISTS `outpost_events_outpost_id_app_environment_kind_occurred_at
 DROP INDEX IF EXISTS `outposts_project_id_idx`;--> statement-breakpoint
 DROP INDEX IF EXISTS `outposts_token_hash_idx`;--> statement-breakpoint
 DROP INDEX IF EXISTS `outposts_created_by_idx`;--> statement-breakpoint
+-- alepha-allow-drop-table: abandoned control plane, child of `outposts` (see header)
 DROP TABLE `outpost_events`;--> statement-breakpoint
+-- alepha-allow-drop-table: abandoned control plane, child of `outposts` (see header)
 DROP TABLE `outpost_apps`;--> statement-breakpoint
+-- alepha-allow-drop-table: abandoned control plane, parent of nothing (see header)
 DROP TABLE `deployments`;--> statement-breakpoint
+-- alepha-allow-drop-table: abandoned control plane, its only child is
+-- `deployments`, dropped above, and that FK was SET NULL (see header)
 DROP TABLE `artifacts`;--> statement-breakpoint
+-- alepha-allow-drop-table: abandoned control plane, all four inbound FKs are
+-- from the tables dropped above (see header)
 DROP TABLE `outposts`;

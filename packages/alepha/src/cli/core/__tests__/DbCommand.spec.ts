@@ -20,6 +20,8 @@ import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 class TestDbCommand extends DbCommand {
   public testAssertNoDestructiveMigrations =
     this.assertNoDestructiveMigrations.bind(this);
+  public testFindDestructiveMigrations =
+    this.findDestructiveMigrations.bind(this);
   public testArchiveMigrations = this.archiveMigrations.bind(this);
   public testResolveLastSnapshot = this.resolveLastSnapshot.bind(this);
   public testMigrationsLayout = this.migrationsLayout.bind(this);
@@ -233,6 +235,187 @@ describe("DbCommand", () => {
           "20260729140502_add_col",
         ]),
       ).resolves.toBeUndefined();
+    });
+  });
+
+  /**
+   * The scan `migrations check` runs, over every migration already on disk.
+   *
+   * `assertNoDestructiveMigrations` above fires once, at generate time, over
+   * files new since that run, on one developer's laptop. After that nothing
+   * looked at the file again: accepting a drop by keeping the file silenced
+   * the guard forever, since a re-run finds no schema diff to regenerate,
+   * and there was no record of the decision anywhere.
+   *
+   * It also matters that this one runs on every `yarn v` and in CI. The
+   * guard has already been silently inert once, when `generate` moved to
+   * drizzle-kit v1's folder layout and the entry filter stopped matching
+   * anything (see `resolveMigrationSqlPath`). A check that only ever runs at
+   * one moment on one machine has no second chance to notice that.
+   */
+  describe("findDestructiveMigrations", () => {
+    it("flags a pre-existing migration, not just a freshly generated one", async () => {
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/0001_old.sql",
+        'DROP TABLE "legacy";',
+      );
+
+      expect(
+        await db.testFindDestructiveMigrations("/app/migrations/sqlite", [
+          "0001_old.sql",
+        ]),
+      ).toEqual(['  0001_old.sql: DROP TABLE "legacy";']);
+    });
+
+    it("accepts a drop excused by a marker on the line above", async () => {
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/0001_old.sql",
+        '-- alepha-allow-drop-table: a leaf table nothing references\nDROP TABLE "legacy";',
+      );
+
+      expect(
+        await db.testFindDestructiveMigrations("/app/migrations/sqlite", [
+          "0001_old.sql",
+        ]),
+      ).toEqual([]);
+    });
+
+    it("excuses only the statement directly under the marker", async () => {
+      // A marker that has drifted away from its statement is not a marker:
+      // it would go on excusing whatever ended up underneath it.
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/0001_old.sql",
+        [
+          "-- alepha-allow-drop-table: only covers the next line",
+          'DROP TABLE "excused";',
+          'DROP TABLE "not_excused";',
+        ].join("\n"),
+      );
+
+      expect(
+        await db.testFindDestructiveMigrations("/app/migrations/sqlite", [
+          "0001_old.sql",
+        ]),
+      ).toEqual(['  0001_old.sql: DROP TABLE "not_excused";']);
+    });
+
+    it("accepts a marker whose reason wraps onto further comment lines", async () => {
+      // The first three files this rule was applied to all needed a reason
+      // longer than one line, and a look-back of exactly one line silently
+      // disarmed every one of them. A wrapped reason must not be a disarmed
+      // marker.
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/0001_old.sql",
+        [
+          "-- alepha-allow-drop-table: a leaf table, nothing in the schema",
+          "-- references it, so the D1 cascade has nothing to fire on",
+          'DROP TABLE "legacy";',
+        ].join("\n"),
+      );
+
+      expect(
+        await db.testFindDestructiveMigrations("/app/migrations/sqlite", [
+          "0001_old.sql",
+        ]),
+      ).toEqual([]);
+    });
+
+    it("does not count a marker separated by a blank line", async () => {
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/0001_old.sql",
+        '-- alepha-allow-drop-table: reason\n\nDROP TABLE "legacy";',
+      );
+
+      expect(
+        await db.testFindDestructiveMigrations("/app/migrations/sqlite", [
+          "0001_old.sql",
+        ]),
+      ).toHaveLength(1);
+    });
+
+    it("does not count a marker placed after the statement", async () => {
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/0001_old.sql",
+        'DROP TABLE "legacy";\n-- alepha-allow-drop-table: too late',
+      );
+
+      expect(
+        await db.testFindDestructiveMigrations("/app/migrations/sqlite", [
+          "0001_old.sql",
+        ]),
+      ).toHaveLength(1);
+    });
+
+    it("requires the marker to carry a reason", async () => {
+      // An empty marker is a way to silence the guard without saying
+      // anything, which is the state this whole quest exists to end.
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/0001_old.sql",
+        '-- alepha-allow-drop-table:\nDROP TABLE "legacy";',
+      );
+
+      expect(
+        await db.testFindDestructiveMigrations("/app/migrations/sqlite", [
+          "0001_old.sql",
+        ]),
+      ).toHaveLength(1);
+    });
+
+    it("still skips .archive/, which is history rather than a migration", async () => {
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/.archive/0001_baselined.sql",
+        'DROP TABLE "legacy";',
+      );
+
+      expect(
+        await db.testFindDestructiveMigrations("/app/migrations/sqlite", [
+          ".archive",
+        ]),
+      ).toEqual([]);
+    });
+
+    it("reads a v1 folder layout as well as a flat file", async () => {
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/20260729140502_drop_it/migration.sql",
+        'DROP TABLE "campaigns";',
+      );
+
+      expect(
+        await db.testFindDestructiveMigrations("/app/migrations/sqlite", [
+          "20260729140502_drop_it",
+        ]),
+      ).toEqual(['  20260729140502_drop_it: DROP TABLE "campaigns";']);
+    });
+
+    it("excuses a drop that carries a trailing statement-breakpoint", async () => {
+      // The real shape in this repo: drizzle appends its breakpoint to the
+      // statement line, so the marker's preceding line is the one before the
+      // whole `DROP ...;--> statement-breakpoint` run.
+      const { db, fs } = create();
+      await fs.writeFile(
+        "/app/migrations/sqlite/0001_old.sql",
+        [
+          "-- alepha-allow-drop-table: child, parent of nothing",
+          "DROP TABLE `sigil_views`;--> statement-breakpoint",
+          "-- alepha-allow-drop-table: children all dropped above",
+          "DROP TABLE `sigils`;--> statement-breakpoint",
+        ].join("\n"),
+      );
+
+      expect(
+        await db.testFindDestructiveMigrations("/app/migrations/sqlite", [
+          "0001_old.sql",
+        ]),
+      ).toEqual([]);
     });
   });
 

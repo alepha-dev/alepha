@@ -68,6 +68,10 @@ export class DbCommand {
         statements: string[];
         layout: "v1" | "legacy" | "none";
       }> = [];
+      // Unexcused DROP TABLEs, across every migration already on disk. This
+      // is a question about file CONTENT, not about drift, so it is asked
+      // for every provider whether or not its schema has moved.
+      const destructive: Array<{ provider: string; offenders: string[] }> = [];
 
       for (const primitive of repositoryProvider.getRepositories()) {
         const provider = primitive.provider;
@@ -84,6 +88,18 @@ export class DbCommand {
         }
 
         const migrationDir = this.fs.join(rootDir, "migrations", providerName);
+
+        // Before anything about drift. `generate` only ever scanned the
+        // files it had just created, so a committed migration was read once
+        // on one laptop and never again.
+        const offenders = await this.findDestructiveMigrations(
+          migrationDir,
+          await this.fs.ls(migrationDir).catch(() => []),
+        );
+        if (offenders.length > 0) {
+          destructive.push({ provider: providerName, offenders });
+        }
+
         const lastSnapshot = await this.resolveLastSnapshot(migrationDir);
 
         // No snapshot is not "nothing to compare" — it is a comparison
@@ -117,6 +133,33 @@ export class DbCommand {
         });
       }
 
+      // Report every destructive statement across ALL providers, then drift,
+      // then fail once for whichever applies. Same reasoning as the drift
+      // block below: a run that stops at the first provider makes the second
+      // one's problem look like it appeared later.
+      if (destructive.length > 0) {
+        for (const { provider: providerName, offenders } of destructive) {
+          this.log.info("");
+          this.log.info(
+            `DROP TABLE found in the migrations of '${providerName}':`,
+          );
+          this.log.info("");
+          for (const offender of offenders) {
+            this.log.info(offender);
+          }
+        }
+        this.log.info("");
+        this.log.info(
+          "On Cloudflare D1, dropping a table that CASCADE children reference wipes those child rows silently.",
+        );
+        this.log.info(
+          "If a drop is intentional, record why on the line above it:",
+        );
+        this.log.info("");
+        this.log.info("  -- alepha-allow-drop-table: <why this drop is safe>");
+        this.log.info("");
+      }
+
       // Report drift across ALL providers before failing.
       if (drifted.length > 0) {
         for (const { provider: providerName, statements, layout } of drifted) {
@@ -137,12 +180,28 @@ export class DbCommand {
           "Please, run 'alepha db migrations create' to update the migration files.",
         );
         this.log.info("");
+      }
 
-        throw new CommandError(
-          `Database migrations are not up to date (${drifted
+      // One throw, after both reports, so a run that has drifted AND holds a
+      // destructive statement says both rather than hiding the second behind
+      // whichever was checked first.
+      const reasons: string[] = [];
+      if (destructive.length > 0) {
+        reasons.push(
+          `DROP TABLE without an 'alepha-allow-drop-table' marker (${destructive
             .map((d) => d.provider)
-            .join(", ")}).`,
+            .join(", ")})`,
         );
+      }
+      if (drifted.length > 0) {
+        reasons.push(
+          `migrations are not up to date (${drifted
+            .map((d) => d.provider)
+            .join(", ")})`,
+        );
+      }
+      if (reasons.length > 0) {
+        throw new CommandError(`Database check failed: ${reasons.join("; ")}.`);
       }
     },
   });
@@ -845,27 +904,25 @@ if (typeof registerHooks === "function") {
    * deploy, in production.
    *
    * The generated file is left on disk on purpose: the point is to force a
-   * human to read it. If the drop really is intended, keep the file and move
-   * on (a re-run detects no schema diff, so nothing is regenerated and this
-   * guard stays quiet).
+   * human to read it.
+   *
+   * ⚠️ This is the generate-time half only, and it is not sufficient on its
+   * own. It fires once, over files new since this run, on one developer's
+   * laptop; `migrations check` runs the same scan over every file on every
+   * `yarn v` and in CI. That matters twice over. Accepting a drop by keeping
+   * the file used to silence the guard forever, with no record of the
+   * decision anywhere, and a guard that only runs at one moment on one
+   * machine has no second chance to notice it has stopped working, which
+   * this one already did once (see `resolveMigrationSqlPath`).
    */
   protected async assertNoDestructiveMigrations(
     migrationsDir: string,
     files: string[],
   ): Promise<void> {
-    const offenders: string[] = [];
-
-    for (const file of files) {
-      const sqlPath = await this.resolveMigrationSqlPath(migrationsDir, file);
-      if (!sqlPath) continue;
-
-      const content = await this.fs.readFile(sqlPath);
-      const drops = this.findDropTableStatements(content.toString("utf-8"));
-
-      for (const drop of drops) {
-        offenders.push(`  ${file}: ${drop}`);
-      }
-    }
+    const offenders = await this.findDestructiveMigrations(
+      migrationsDir,
+      files,
+    );
 
     if (offenders.length === 0) {
       return;
@@ -878,33 +935,116 @@ if (typeof registerHooks === "function") {
         ...offenders,
         "",
         "On Cloudflare D1, dropping a table that CASCADE children reference wipes those child rows silently.",
-        "Review the generated file above. If the drop is intentional, keep it and re-run — nothing will be regenerated.",
-        "If it is not, delete the file and adjust your schema (e.g. keep the column, or drop it in a hand-written migration).",
+        "Review the generated file above. If the drop is NOT intentional, delete the file and adjust your schema",
+        "(e.g. keep the column, or drop it in a hand-written migration).",
+        "",
+        "If it IS intentional, say so in the file, on the line above the statement:",
+        "",
+        "  -- alepha-allow-drop-table: <why this drop is safe here>",
+        "",
+        "Keeping the file without a marker no longer works: `alepha db migrations check` re-reads every",
+        "migration on every run, so the reason has to be written down where the next reader finds it.",
       ].join("\n"),
     );
   }
 
   /**
-   * Extract `DROP TABLE` statements from a SQL migration, skipping any that sit
-   * inside a `--` line comment.
+   * The opt-out marker that lets a deliberate drop through.
+   *
+   * It has to carry a reason, and it has to sit in the comment block
+   * directly above the statement it excuses:
+   *
+   * ```sql
+   * -- alepha-allow-drop-table: rebuild of a table nothing references
+   * DROP TABLE `sigil_blight_rate`;
+   * ```
+   *
+   * Silence used to be how a drop was accepted: fail once at generate time,
+   * keep the file, and the guard never spoke again because a re-run finds no
+   * schema diff to regenerate. That left no record of the decision anywhere.
+   * A marker moves the acceptance into the file, next to the statement,
+   * where the next reader finds it.
+   */
+  protected readonly allowDropTableMarker =
+    /^--\s*alepha-allow-drop-table\s*:\s*\S/i;
+
+  /**
+   * Extract the `DROP TABLE` statements a migration is NOT allowed to make:
+   * skipping any that sit inside a `--` line comment, and any excused by an
+   * {@link allowDropTableMarker} in the comment block directly above.
+   *
+   * "Directly above" means the unbroken run of `--` lines immediately
+   * preceding the statement. A blank line or another statement ends that
+   * run, so a marker that has drifted away from its statement stops
+   * counting: it would otherwise go on excusing whatever ended up
+   * underneath it, which is the failure mode this guard exists to prevent.
+   *
+   * The whole block is searched rather than only its last line, because a
+   * marker plus a real reason does not fit on one line and wrapping it must
+   * not silently disarm it. That is not hypothetical: it happened on the
+   * first three files this rule was applied to.
    */
   protected findDropTableStatements(sql: string): string[] {
     const statements: string[] = [];
+    let comments: string[] = [];
 
     for (const rawLine of sql.split(/\r?\n/)) {
       const line = rawLine.trim();
-      if (line.startsWith("--")) continue;
+
+      if (line.startsWith("--")) {
+        comments.push(line);
+        continue;
+      }
+      if (line === "") {
+        comments = [];
+        continue;
+      }
 
       // Drop the trailing comment so `DROP TABLE x; -- ...` still matches on
       // the statement itself and a commented-out tail can't add a false hit.
       const code = line.split("--")[0];
 
-      if (/\bDROP\s+TABLE\b/i.test(code)) {
+      if (
+        /\bDROP\s+TABLE\b/i.test(code) &&
+        !comments.some((comment) => this.allowDropTableMarker.test(comment))
+      ) {
         statements.push(code.trim());
       }
+
+      // A statement ends the block, so one marker excuses one statement.
+      comments = [];
     }
 
     return statements;
+  }
+
+  /**
+   * Every unexcused `DROP TABLE` across the given migration entries, as
+   * ready-to-print `<entry>: <statement>` lines.
+   *
+   * Entries are top-level names from an `ls`, so both layouts work:
+   * `resolveMigrationSqlPath` resolves a flat `.sql` file and a v1 folder
+   * alike, and returns null for `meta/` and `.archive/`.
+   */
+  protected async findDestructiveMigrations(
+    migrationsDir: string,
+    entries: string[],
+  ): Promise<string[]> {
+    const offenders: string[] = [];
+
+    for (const entry of entries) {
+      const sqlPath = await this.resolveMigrationSqlPath(migrationsDir, entry);
+      if (!sqlPath) continue;
+
+      const content = await this.fs.readFile(sqlPath);
+      const drops = this.findDropTableStatements(content.toString("utf-8"));
+
+      for (const drop of drops) {
+        offenders.push(`  ${entry}: ${drop}`);
+      }
+    }
+
+    return offenders;
   }
 
   /**
