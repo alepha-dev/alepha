@@ -1,5 +1,7 @@
 import { z } from "alepha";
 
+import { MAX_QUEST_OBJECTIVES } from "@/api/schemas/questObjectivesLimit.ts";
+
 import { questStatusSchema } from "../../api/schemas/questResourceSchema.ts";
 import { DIAGRAM_CAPABILITY } from "./diagramCapability.ts";
 import { entityRefSchema } from "./entityRefSchema.ts";
@@ -388,7 +390,10 @@ export const questCreateParamsSchema = projectParamsSchema.extend({
   dueAt: z.datetime().describe(DUE_DESCRIPTION).optional(),
   objectives: z
     .array(objectiveInputSchema)
-    .describe("List of objectives/subquests")
+    .max(MAX_QUEST_OBJECTIVES)
+    .describe(
+      `List of objectives/subquests. At most ${MAX_QUEST_OBJECTIVES}: past that the work is not one quest, so split it rather than lengthening the list. Stated here so you read it before the call fails.`,
+    )
     .optional(),
   tags: z
     .array(z.string())
@@ -555,7 +560,7 @@ export const questUpdateParamsSchema = entityRefSchema.extend({
   objectives: z
     .array(objectiveInputSchema)
     .describe(
-      "Updated list of objectives, for REWORDING or REORDERING them. Pass the full new array: it REPLACES the existing one, so an omitted objective is deleted. Carry each surviving objective's `id` from `quest_get`: an item that arrives without one is treated as brand new, which renames it as far as the quest's history is concerned. Omit this field entirely to leave objectives unchanged. To merely tick or untick one, use `quest_objective_set` instead.",
+      `Updated list of objectives, for REWORDING or REORDERING them. Pass the full new array: it REPLACES the existing one, so an omitted objective is deleted. Carry each surviving objective's \`id\` from \`quest_get\`: an item that arrives without one is treated as brand new, which renames it as far as the quest's history is concerned. Omit this field entirely to leave objectives unchanged. To merely tick or untick one, use \`quest_objective_set\` instead. At most ${MAX_QUEST_OBJECTIVES}: past that the work is not one quest, so split it rather than lengthening the list. A quest that is ALREADY longer than that predates the cap and may be passed back unchanged or shortened, just not grown.`,
     )
     .optional(),
   completionMessage: z

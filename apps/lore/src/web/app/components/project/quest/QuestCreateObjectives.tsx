@@ -3,6 +3,8 @@ import { Input } from "@alepha/ui/components/ui/input";
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
+import { MAX_QUEST_OBJECTIVES } from "@/api/schemas/questObjectivesLimit.ts";
+
 export interface Objective {
   title: string;
   completed: boolean;
@@ -17,8 +19,13 @@ const QuestCreateObjectives = (props: QuestCreateObjectivesProps) => {
   const [objectives, setObjectives] = useState<Objective[]>(props.value ?? []);
   const [newObjective, setNewObjective] = useState<string>("");
 
+  // Reached the cap the server enforces. The row goes away rather than
+  // greying out: an input you cannot submit invites typing into it, and the
+  // answer here is not "try again" but "this is a different quest".
+  const full = objectives.length >= MAX_QUEST_OBJECTIVES;
+
   const addObjective = () => {
-    if (!newObjective.trim()) return;
+    if (!newObjective.trim() || full) return;
     const list = [
       ...objectives,
       { title: newObjective.trim(), completed: false },
@@ -63,29 +70,35 @@ const QuestCreateObjectives = (props: QuestCreateObjectivesProps) => {
         </div>
       ))}
 
-      <div className="flex items-center gap-2">
-        <Input
-          value={newObjective}
-          onChange={(e) => setNewObjective(e.target.value)}
-          placeholder="Add new objective..."
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              addObjective();
-            }
-          }}
-          className="flex-1"
-        />
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={addObjective}
-          disabled={!newObjective.trim()}
-        >
-          <Plus className="size-4" />
-        </Button>
-      </div>
+      {full ? (
+        <p className="text-muted-foreground text-xs">
+          {`A quest carries at most ${MAX_QUEST_OBJECTIVES} objectives. Past that the work is not one quest.`}
+        </p>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Input
+            value={newObjective}
+            onChange={(e) => setNewObjective(e.target.value)}
+            placeholder="Add new objective..."
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addObjective();
+              }
+            }}
+            className="flex-1"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={addObjective}
+            disabled={!newObjective.trim()}
+          >
+            <Plus className="size-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
