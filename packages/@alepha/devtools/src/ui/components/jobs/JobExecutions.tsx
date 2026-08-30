@@ -4,6 +4,7 @@ import { RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import type { JobExecution } from "../../hooks/useJobs.ts";
+import { useRelativeTime } from "../../hooks/useRelativeTime.ts";
 
 const STATUS_COLOR: Record<string, string> = {
   ok: "var(--dt-get)",
@@ -20,17 +21,6 @@ const LEVEL_COLOR: Record<string, string> = {
   DEBUG: "var(--dt-debug)",
   WARN: "var(--dt-warn)",
   ERROR: "var(--dt-error)",
-};
-
-const relative = (value?: string | number): string => {
-  if (!value) return "—";
-  const ts = typeof value === "number" ? value : Date.parse(String(value));
-  if (Number.isNaN(ts)) return "—";
-  const diff = Date.now() - ts;
-  if (diff < 60_000) return "just now";
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
-  return `${Math.floor(diff / 86_400_000)}d ago`;
 };
 
 const clock = (value?: string | number): string => {
@@ -66,6 +56,7 @@ export interface JobExecutionsProps {
 
 export const JobExecutions = (props: JobExecutionsProps) => {
   const http = useInject(HttpClient);
+  const relative = useRelativeTime();
   const [rows, setRows] = useState<JobExecution[]>([]);
   const [selected, setSelected] = useState<JobExecution | null>(null);
   const [error, setError] = useState<string | null>(null);
