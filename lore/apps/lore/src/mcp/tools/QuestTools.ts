@@ -7,6 +7,7 @@ import { FeedbackController } from "../../api/controllers/FeedbackController.ts"
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import { QuestCommentController } from "../../api/controllers/QuestCommentController.ts";
 import { QuestController } from "../../api/controllers/QuestController.ts";
+import { ReleaseController } from "../../api/controllers/ReleaseController.ts";
 import type { QuestStatus } from "../../api/schemas/questResourceSchema.ts";
 import { QuestResourceMapper } from "../../api/services/QuestResourceMapper.ts";
 // Same helper the UI labels a user with, so a name reads identically over
@@ -58,6 +59,7 @@ export class QuestTools {
   protected readonly projectController = $inject(ProjectController);
   protected readonly feedbackController = $inject(FeedbackController);
   protected readonly epicController = $inject(EpicController);
+  protected readonly releaseController = $inject(ReleaseController);
   protected readonly epicRefs = $inject(EpicRefService);
   protected readonly commentController = $inject(QuestCommentController);
   protected readonly questMapper = $inject(QuestResourceMapper);
@@ -201,6 +203,26 @@ export class QuestTools {
       throw new NotFoundError(
         `Feedback with shortId ${shortId} not found in this project`,
       );
+    }
+    return found.id;
+  }
+
+  /**
+   * Resolve a release tag to its global id, within one project.
+   *
+   * By tag rather than by number, everywhere in this surface: an agent writes
+   * `0.28.0`, not `3`. Case-sensitive, because a tag's case is preserved so
+   * it can match `artifacts.tag` byte for byte - see `releaseTagSchema`.
+   */
+  protected async resolveReleaseId(
+    projectId: number,
+    tag: string,
+  ): Promise<number> {
+    const found = (
+      await this.releaseController.getReleases({ params: { projectId } })
+    ).find((release) => release.tag === tag);
+    if (!found) {
+      throw new NotFoundError(`Release '${tag}' not found in this project`);
     }
     return found.id;
   }
@@ -457,9 +479,17 @@ export class QuestTools {
         });
         epicId = epic.id;
       }
+      // Resolve `release_tag` → global release id (same project). The
+      // released-release refusal lives in `ReleaseAttachmentService`, which
+      // `createQuest` calls: this only turns a name into an id.
+      let releaseId: number | undefined;
+      if (params.release_tag) {
+        releaseId = await this.resolveReleaseId(projectId, params.release_tag);
+      }
       const quest = await this.questController.createQuest({
         body: {
           projectId,
+          releaseId,
           title: params.title,
           description: params.description,
           area: params.area,
@@ -997,7 +1027,10 @@ export class QuestTools {
       const needsProject =
         (params.dependsOn_shortId != null && params.dependsOn_shortId !== 0) ||
         (params.feedback_shortId != null && params.feedback_shortId !== 0) ||
-        params.epic_number != null;
+        params.epic_number != null ||
+        // A non-empty tag needs the project to resolve against. An empty one
+        // clears, which `updateQuestById` does from `null` alone.
+        !!params.release_tag;
       // An epic move is a write of its own (`attachQuest` sets `epicId`,
       // which stamps `updatedAt`), and it happens BEFORE the field update
       // below. So when both are requested the controller's own check would
@@ -1066,6 +1099,21 @@ export class QuestTools {
         epicAttachId = epic.id;
       }
 
+      // Translate `release_tag`: "" = detach, a tag = resolve to a global
+      // release id in the quest's project. Unlike the epic move above this
+      // is a plain field on `updateQuestById`, so it needs no second call
+      // and no compensation - and the refusal on a published release (in
+      // either direction) is applied there, by the shared service.
+      let releaseId: number | null | undefined;
+      if (params.release_tag === "") {
+        releaseId = null;
+      } else if (params.release_tag != null && current) {
+        releaseId = await this.resolveReleaseId(
+          current.projectId,
+          params.release_tag,
+        );
+      }
+
       // Apply the epic mutation BEFORE the general field update, not after.
       // It is a separate call to a separate controller and can fail on its
       // own; doing it first means such a failure throws before any other
@@ -1099,6 +1147,7 @@ export class QuestTools {
           tags: params.tags,
           dependsOn,
           feedbackId,
+          releaseId,
           // Already checked above when an epic move preceded this write;
           // forwarding it there would compare against our own change.
           expectedUpdatedAt: epicMove ? undefined : params.expectedUpdatedAt,

@@ -68,6 +68,12 @@ export interface CreateQuestInput {
   dependsOn?: number | null;
   feedbackId?: number;
   /**
+   * The release this quest ships in. Callers are expected to have run it
+   * through `ReleaseAttachmentService` first: this service never validates
+   * it, the same way it takes `attachments` as given.
+   */
+  releaseId?: number;
+  /**
    * Provenance marker, e.g. `{ sigilBlightId }` for blight-forwarded quests.
    */
   source?: Quest["source"];
@@ -223,6 +229,7 @@ export class QuestService {
       tags: normalizeQuestTags(input.tags ?? []),
       dependsOn: input.dependsOn ?? undefined,
       feedbackId: input.feedbackId,
+      releaseId: input.releaseId,
       source: input.source,
       createdBy: input.createdBy,
       history: [],

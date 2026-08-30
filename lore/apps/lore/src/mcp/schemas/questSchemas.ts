@@ -414,6 +414,12 @@ export const questCreateParamsSchema = projectParamsSchema.extend({
       "Per-project number of an epic to file this quest under (see epic_list / epic_create). Filing into a `planned` epic keeps the quest out of the human-facing backlog/kanban/reports until the epic is activated; quest_list still returns it, since MCP is deliberately not gated. Owner-only (same gate as every other epic mutation).",
     )
     .optional(),
+  release_tag: z
+    .string()
+    .describe(
+      "Tag of the release this quest ships in, e.g. `0.28.0` (see release_list). A release HOLDS the quests assigned to it, so this is what puts the quest in one - nothing is attached by completing it while a release is open. Refused if that release has already been published.",
+    )
+    .optional(),
   accept: z
     .boolean()
     .describe(
@@ -580,6 +586,12 @@ export const questUpdateParamsSchema = entityRefSchema.extend({
     .integer()
     .describe(
       "Reparent the quest to the epic with this per-project number (see epic_list). Pass 0 to remove it from its current epic. Owner-only (same gate as every other epic mutation).",
+    )
+    .optional(),
+  release_tag: z
+    .string()
+    .describe(
+      "Move the quest into the release with this tag, e.g. `0.28.0` (see release_list). Pass an empty string to take it out of its current release. Refused when either the release it is leaving or the one it is joining has already been published - a published release's contents are its record.",
     )
     .optional(),
   expectedUpdatedAt: z

@@ -25,11 +25,11 @@ import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import QuestAssigneePicker from "./QuestAssigneePicker.tsx";
 import { formatEstimate } from "./questEstimate.ts";
+import QuestReleaseControl from "./QuestReleaseControl.tsx";
 import { formatQuestSize } from "./questSize.ts";
 import QuestViewDuplicateButton from "./QuestViewDuplicateButton.tsx";
 import QuestViewRailRow from "./QuestViewRailRow.tsx";
@@ -52,9 +52,12 @@ export interface QuestViewRailProps {
 /**
  * The quest page's metadata rail: what the quest *is*, next to what it says.
  *
- * Every row is read-only except the tags and the reminder — editing goes
- * through the edit drawer, which is one write path with one set of failure
- * states instead of nine inline editors. Rows respect the module gates their
+ * Every row is read-only except the tags, the reminder and the release —
+ * editing goes through the edit drawer, which is one write path with one set
+ * of failure states instead of nine inline editors. The release is an
+ * exception on purpose: it is a scheduling decision made while reading the
+ * quest, not while rewriting it, and the drawer is the wrong place for a
+ * question you answer about six quests in a row. Rows respect the module gates their
  * value belongs to, because a rail row for a module the project switched off
  * is that module leaking back in. And a row whose data does not exist renders
  * nothing rather than a placeholder waiting for it.
@@ -66,7 +69,6 @@ const QuestViewRail = (props: QuestViewRailProps) => {
   const router = useRouter<AppRouter>();
   const epicApi = useClient<EpicController>();
   const [project] = useStore(currentProjectAtom);
-  const [releases] = useStore(currentReleasesAtom);
   const [epic, setEpic] = useState<EpicSummary | undefined>(undefined);
 
   const features = project?.features;
@@ -96,10 +98,6 @@ const QuestViewRail = (props: QuestViewRailProps) => {
       alive = false;
     };
   }, [project?.id, quest.epicId, epicsEnabled]);
-
-  const release = quest.releaseId
-    ? releases?.find((m) => m.id === quest.releaseId)
-    : undefined;
 
   const statusLabel = {
     new: tr("quest.status.new"),
@@ -196,7 +194,7 @@ const QuestViewRail = (props: QuestViewRailProps) => {
 
         {releasesEnabled && (
           <QuestViewRailRow icon={Flag} label={tr("quest.rail.release")}>
-            {release?.title}
+            <QuestReleaseControl quest={quest} onUpdate={props.onUpdate} />
           </QuestViewRailRow>
         )}
 

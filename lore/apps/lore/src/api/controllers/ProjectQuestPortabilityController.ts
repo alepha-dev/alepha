@@ -65,7 +65,7 @@ export class ProjectQuestPortabilityController {
         orderBy: "shortId",
         limit: this.EXPORT_LIMIT,
         include: {
-          release: { select: ["id", "title"] },
+          release: { select: ["id", "tag"] },
           author: true,
           acceptedByUser: true,
           completedByUser: true,
@@ -89,7 +89,10 @@ export class ProjectQuestPortabilityController {
           size: q.size,
           area: q.area ?? "",
           kanbanColumn: q.kanbanColumn ?? "",
-          release: q.releaseId != null ? (q.release?.title ?? "") : "",
+          // The TAG, not the title: the tag is unique per project and is
+          // what the import below matches on, so a round-trip through this
+          // column has to carry the identity rather than a display name.
+          release: q.releaseId != null ? (q.release?.tag ?? "") : "",
           createdBy: emailOf(q.author),
           acceptedBy: emailOf(q.acceptedByUser),
           completedBy: emailOf(q.completedByUser),
@@ -147,12 +150,24 @@ export class ProjectQuestPortabilityController {
       const existingByShortId = new Map<number, (typeof existing)[number]>();
       for (const q of existing) existingByShortId.set(q.shortId, q);
 
-      // Releases in this project, indexed by title.
+      // Releases in this project, indexed by TAG. It used to be by title,
+      // which is a display name two releases may share; the tag is unique
+      // per project and is what the export writes.
+      //
+      // Published releases are indexed too, so the lookup can tell "no such
+      // release" from "that release has shipped" and warn accordingly - a
+      // silently-dropped attachment is the failure mode this whole import
+      // path is careful about everywhere else.
       const releasesInProject = await this.releases.findMany({
         where: { projectId: { eq: params.id } },
       });
-      const releaseIdByTitle = new Map<string, number>();
-      for (const c of releasesInProject) releaseIdByTitle.set(c.title, c.id);
+      const releaseByTag = new Map<
+        string,
+        (typeof releasesInProject)[number]
+      >();
+      for (const c of releasesInProject) {
+        if (c.tag) releaseByTag.set(c.tag, c);
+      }
 
       // The people this import may attribute a quest to: the project's own
       // members, and nobody else. Resolving against the whole realm made a
@@ -226,15 +241,24 @@ export class ProjectQuestPortabilityController {
         // request and discarding the created/updated counts (and the
         // already-committed writes) for every row processed so far.
         try {
-          // Resolve release title → id within this project.
+          // Resolve release tag → id within this project.
           let releaseId: number | undefined;
           if (row.release) {
-            releaseId = releaseIdByTitle.get(row.release);
-            if (releaseId === undefined) {
+            const release = releaseByTag.get(row.release);
+            if (!release) {
               warnings.push({
                 row: row.rowIndex,
                 message: `Release '${row.release}' not found in project; left empty`,
               });
+            } else if (release.releasedAt) {
+              // Not an error for the whole file: the row is imported, it
+              // simply does not join a record that has already shipped.
+              warnings.push({
+                row: row.rowIndex,
+                message: `Release '${row.release}' has been published and cannot take new quests; left empty`,
+              });
+            } else {
+              releaseId = release.id;
             }
           }
 

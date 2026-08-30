@@ -37,6 +37,7 @@ import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentAreasAtom } from "@/web/app/atoms/currentAreasAtom.ts";
 import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuestsAtom.ts";
+import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { useLoreEditorControl } from "../../shared/element/useLoreEditorControl.ts";
@@ -62,6 +63,7 @@ const QuestCreate = (props: QuestCreateProps) => {
   const router = useRouter<AppRouter>();
   const { tr } = useI18n<I18n, "en">();
   const [currentAreas] = useStore(currentAreasAtom);
+  const [releases] = useStore(currentReleasesAtom);
 
   const questEstimateEnabled = props.project.features?.questEstimate === true;
 
@@ -191,6 +193,11 @@ const QuestCreate = (props: QuestCreateProps) => {
 
   const areas = (currentAreas ?? []).map((a) => a.name);
 
+  const releasesEnabled = props.project.features?.milestones === true;
+  const releaseOptions = (releases ?? [])
+    .filter((r) => !r.releasedAt || r.id === props.quest?.releaseId)
+    .map((r) => ({ value: String(r.id), label: r.tag ?? r.title }));
+
   return (
     <form {...form.props} className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
@@ -257,6 +264,21 @@ const QuestCreate = (props: QuestCreateProps) => {
             items={QUEST_SIZE_OPTIONS}
           />
         </div>
+
+        {/* Which release this ships in. Optional, and offered only when the
+            module is on. Only OPEN releases are listed, plus the quest's own
+            current one so editing a quest that already shipped does not read
+            as though its release were lost. `clearable` is what puts the
+            quest back outside every release. */}
+        {releasesEnabled && releaseOptions.length > 0 && (
+          <Control
+            input={form.input.releaseId}
+            label={tr("quest.create.release")}
+            description={tr("quest.create.release.helper")}
+            clearable
+            items={releaseOptions}
+          />
+        )}
 
         <Separator />
 

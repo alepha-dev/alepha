@@ -258,6 +258,9 @@ export default {
   "board.table.assigned": "Assigné à",
   "board.table.title": "Quête",
   "board.table.tags": "Étiquettes",
+  "board.table.release": "Version",
+  "board.filter.release": "Version",
+  "board.filter.allReleases": "Toutes les versions",
   "board.table.linked": "Liée",
   "board.table.linked.tooltip": "Bloquée par la quête #$1",
   "board.table.priority": "Priorité",
@@ -299,6 +302,9 @@ export default {
   "quest.create.estimate.unit.days": "jours",
   "quest.create.estimate.unit.days.one": "jour",
   "quest.create.estimate.clear": "Effacer l'estimation",
+  "quest.create.release": "Version",
+  "quest.create.release.helper":
+    "La version dans laquelle cette quête est livrée. Optionnel.",
   "quest.create.tags": "Étiquettes",
   "quest.create.tags.helper":
     "Étiquettes décrivant la nature de la quête (bug, feat, chore…). Le domaine dit où, l'étiquette dit quoi.",
@@ -345,6 +351,7 @@ export default {
   "quest.rail.commits": "Commits",
   "quest.rail.due": "Échéance",
   "quest.rail.release": "Version",
+  "quest.rail.release.none": "Aucune",
   "quest.rail.questline": "Chaîne de quêtes",
 
   "project.create.name": "Nom",

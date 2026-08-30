@@ -5,7 +5,7 @@ import { type Infer, z } from "alepha";
  * shape regardless of which format the CSV came from (Alepha Lore / Trello).
  *
  * Fields are pre-resolved string values; reference resolution (user email →
- * userId, release title → releaseId) happens in the controller using
+ * userId, release tag → releaseId) happens in the controller using
  * per-project lookups.
  */
 export const importRowSchema = z.object({
@@ -38,7 +38,8 @@ export const importRowSchema = z.object({
    */
   kanbanColumn: z.string(),
   /**
-   * Release title (exact match). Empty when null/unset.
+   * Release TAG (exact match, case-sensitive - see `releaseTagSchema` for why
+   * a tag's case is preserved). Empty when null/unset.
    */
   release: z.string(),
   /**

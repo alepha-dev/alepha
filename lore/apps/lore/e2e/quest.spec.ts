@@ -1033,11 +1033,16 @@ test.describe("Quest", () => {
       await expect(rail.getByText("New")).toBeVisible({ timeout: 10_000 });
       await expect(rail.getByText("high")).toBeVisible();
       await expect(rail.getByText("lore/quests")).toBeVisible();
-      // No release, no epic module, no estimate module, no questline: the
-      // rail shows no label waiting for data that is not coming.
-      await expect(rail.getByText(/^release$/i)).toHaveCount(0);
+      // No epic module, no estimate module, no questline: the rail shows no
+      // label waiting for data that is not coming.
       await expect(rail.getByText(/^epic$/i)).toHaveCount(0);
       await expect(rail.getByText(/^questline$/i)).toHaveCount(0);
+      // Release is the exception, and deliberately so: since #1553 that row
+      // is a CONTROL rather than a label, so it is always offered and reads
+      // "None" until the quest is put in a release. A control that only
+      // appeared once the value existed could never set it.
+      await expect(rail.getByText(/^release$/i)).toHaveCount(1);
+      await expect(rail.getByText(/^none$/i)).toBeVisible();
     });
 
     await test.step("Unassign, not Abandon, and it only appears once assigned", async () => {

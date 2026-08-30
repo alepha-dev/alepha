@@ -2,7 +2,7 @@ import { Badge } from "@alepha/ui/components/ui/badge";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { DateTimeProvider } from "alepha/datetime";
-import { useInject } from "alepha/react";
+import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
   AlertTriangle,
@@ -16,6 +16,7 @@ import {
 import type { PaletteColor } from "@/api/schemas/paletteColorSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
+import { currentReleasesAtom } from "../../atoms/currentReleasesAtom.ts";
 import { displayName } from "../../services/displayName.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { QuestDueDate } from "../project/quest/questDueDate.ts";
@@ -117,6 +118,10 @@ const KanbanCard = (props: KanbanCardProps) => {
 
   const cursorClass = isDragging ? "cursor-grabbing" : "cursor-grab";
 
+  const [releases] = useStore(currentReleasesAtom);
+  const releaseTag = quest.releaseId
+    ? (releases?.find((r) => r.id === quest.releaseId)?.tag ?? undefined)
+    : undefined;
   const tags = quest.tags ?? [];
   const shownTags = tags.slice(0, MAX_TAGS);
   const hiddenTagCount = tags.length - shownTags.length;
@@ -205,6 +210,18 @@ const KanbanCard = (props: KanbanCardProps) => {
             <span className="text-muted-foreground truncate text-xs">
               {quest.area}
             </span>
+            {/* Where it ships, beside where it lives. Read from the project's
+                own release list rather than carried on the quest: the board
+                already holds every release, and a per-card lookup of a name
+                the row does not have would be a request per card. */}
+            {releaseTag && (
+              <span
+                data-testid="kanban-card-release"
+                className="text-muted-foreground/80 shrink-0 font-mono text-[10px]"
+              >
+                {releaseTag}
+              </span>
+            )}
           </div>
           {hasBadges && (
             <div
