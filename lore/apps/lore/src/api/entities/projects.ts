@@ -170,12 +170,15 @@ export const projects = $entity({
     areas: db.default(z.array(z.string()), []),
     features: db.default(projectFeaturesSchema, defaultProjectFeatures),
     /**
-     * ISO 8601 duration (e.g. "P14D", "P1M") for auto-closing releases.
-     * `null`/absent means releases close manually only.
+     * @deprecated Dead since the release recorder was deleted (2026-08-30).
+     * It held an ISO 8601 duration (`"P14D"`, `"P1M"`) that computed a
+     * milestone's auto-close deadline; nothing closes on a timer any more, so
+     * nothing reads or writes it. The settings control that set it is gone.
      *
-     * ⚠️ Keeps its pre-rename name. `projects` is the CASCADE parent that
-     * wiped production on 2026-05-13, so this column is never renamed and
-     * never dropped: a rename drizzle turns into a rebuild is the wipe bomb.
+     * ⚠️ Kept, and keeping its pre-rename name, for the same reason as
+     * `public` / `unlockedFeatures` / `unlockHistory`: `projects` is the
+     * CASCADE parent that wiped production on 2026-05-13, and a rename or a
+     * drop that drizzle turns into a table rebuild is that wipe bomb.
      */
     milestoneDuration: z.string().optional(),
     /**

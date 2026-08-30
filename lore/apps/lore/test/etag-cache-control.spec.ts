@@ -163,8 +163,8 @@ describe("$etag cache-control on viewer-mutable lists", () => {
   }) => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user);
-    const started = await ctx.releaseController.startRelease.fetch(
-      { params: { projectId: project.id }, body: {} },
+    const started = await ctx.releaseController.createRelease.fetch(
+      { params: { projectId: project.id }, body: { title: "0.1.0" } },
       { user },
     );
 

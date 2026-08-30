@@ -3,7 +3,7 @@ import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake, FakeProvider } from "alepha/fake";
-import { AlephaOrm } from "alepha/orm";
+import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
@@ -11,7 +11,17 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
+import { quests } from "../src/api/entities/quests.ts";
 import { LoreApi } from "../src/api/index.ts";
+
+/**
+ * Direct row access, so a quest can be attached to a release before the
+ * attach endpoint exists (#1553). `quests.releaseId` is the membership the
+ * changelog reads; nothing user-facing writes it yet.
+ */
+class Probe {
+  quests = $repository(quests);
+}
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
@@ -28,6 +38,7 @@ interface TestContext {
   questController: QuestController;
   dt: DateTimeProvider;
   fakeProvider: FakeProvider;
+  probe: Probe;
 }
 
 const setup = async (): Promise<TestContext> => {
@@ -47,6 +58,10 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(AlephaFake);
   alepha.with(LoreApi);
 
+  // Injected BEFORE start: the container locks once started, so a service
+  // first asked for afterwards cannot be registered.
+  const probe = alepha.inject(Probe);
+
   await alepha.start();
 
   return {
@@ -57,6 +72,7 @@ const setup = async (): Promise<TestContext> => {
     questController: alepha.inject(QuestController),
     dt: alepha.inject(DateTimeProvider),
     fakeProvider: alepha.inject(FakeProvider),
+    probe,
   };
 };
 
@@ -83,8 +99,8 @@ const createTestProject = async (
 };
 
 /**
- * Create a quest, accept it and complete it — the only way a quest lands in
- * a release's window.
+ * Create a quest, accept it and complete it. Completing no longer puts a
+ * quest anywhere: `attach` below is what makes it part of a release.
  */
 const completeQuest = async (
   ctx: TestContext,
@@ -118,6 +134,19 @@ const completeQuest = async (
   return { id: created.data.id, shortId: created.data.shortId };
 };
 
+/**
+ * Put a quest in a release. This is the whole change of model: it used to be
+ * "was it completed between the release opening and closing", and it is now
+ * "was it assigned".
+ */
+const attach = async (
+  ctx: TestContext,
+  questId: number,
+  releaseId: number,
+): Promise<void> => {
+  await ctx.probe.quests.updateById(questId, { releaseId });
+};
+
 describe("ReleaseController.getReleaseChangelog", () => {
   let ctx: TestContext;
 
@@ -134,12 +163,11 @@ describe("ReleaseController.getReleaseChangelog", () => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user);
 
-    const started = await ctx.releaseController.startRelease.fetch(
-      { params: { projectId: project.id }, body: {} },
+    const release = await ctx.releaseController.createRelease.fetch(
+      { params: { projectId: project.id }, body: { title: "0.1.0" } },
       { user },
     );
 
-    await ctx.dt.travel([1, "minute"]);
     const a = await completeQuest(ctx, user, project.id, {
       title: "Lateral joins on Postgres",
       area: "orm",
@@ -155,9 +183,12 @@ describe("ReleaseController.getReleaseChangelog", () => {
       area: "server",
       priority: "low",
     });
+    for (const quest of [a, b, c]) {
+      await attach(ctx, quest.id, release.data.id);
+    }
 
     const result = await ctx.releaseController.getReleaseChangelog.fetch(
-      { params: { id: started.data.id } },
+      { params: { id: release.data.id } },
       { user },
     );
 
@@ -192,25 +223,26 @@ describe("ReleaseController.getReleaseChangelog", () => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user);
 
-    const started = await ctx.releaseController.startRelease.fetch(
-      { params: { projectId: project.id }, body: {} },
+    const release = await ctx.releaseController.createRelease.fetch(
+      { params: { projectId: project.id }, body: { title: "0.1.0" } },
       { user },
     );
 
-    await ctx.dt.travel([1, "minute"]);
-    await completeQuest(ctx, user, project.id, {
+    const a = await completeQuest(ctx, user, project.id, {
       title: "Streaming multipart uploads",
       area: "server",
       priority: "high",
     });
-    await completeQuest(ctx, user, project.id, {
+    const b = await completeQuest(ctx, user, project.id, {
       title: "Router transition progress bar",
       area: "react",
       priority: "low",
     });
+    await attach(ctx, a.id, release.data.id);
+    await attach(ctx, b.id, release.data.id);
 
     const result = await ctx.releaseController.getReleaseChangelog.fetch(
-      { params: { id: started.data.id } },
+      { params: { id: release.data.id } },
       { user },
     );
 
@@ -237,51 +269,49 @@ describe("ReleaseController.getReleaseChangelog", () => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user);
 
-    const started = await ctx.releaseController.startRelease.fetch(
-      { params: { projectId: project.id }, body: {} },
+    const release = await ctx.releaseController.createRelease.fetch(
+      { params: { projectId: project.id }, body: { title: "0.1.0" } },
       { user },
     );
 
-    await ctx.dt.travel([1, "minute"]);
-    await completeQuest(ctx, user, project.id, {
+    const a = await completeQuest(ctx, user, project.id, {
       title: "Sequence counter per project",
       area: "orm",
       priority: "high",
     });
+    await attach(ctx, a.id, release.data.id);
 
     const closed = await ctx.releaseController.closeRelease.fetch(
-      { params: { id: started.data.id }, body: {} },
+      { params: { id: release.data.id }, body: {} },
       { user },
     );
     expect(closed.data.changelog).toBeDefined();
 
     const result = await ctx.releaseController.getReleaseChangelog.fetch(
-      { params: { id: started.data.id } },
+      { params: { id: release.data.id } },
       { user },
     );
 
     expect(result.data.markdown).toBe(closed.data.changelog);
-    // Areas are recomputed rather than frozen — they still describe the
-    // same window, so the closed release is not returned bare.
+    // Areas are recomputed rather than frozen — they still describe the same
+    // attachments, so the closed release is not returned bare.
     expect(result.data.areas).toHaveLength(1);
     expect(result.data.areas[0].quests[0].title).toBe(
       "Sequence counter per project",
     );
   });
 
-  it("returns no areas when nothing was completed in the window", async ({
-    expect,
-  }) => {
+  it("returns no areas when nothing is attached", async ({ expect }) => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user);
 
-    const started = await ctx.releaseController.startRelease.fetch(
-      { params: { projectId: project.id }, body: {} },
+    const release = await ctx.releaseController.createRelease.fetch(
+      { params: { projectId: project.id }, body: { title: "0.1.0" } },
       { user },
     );
 
     const result = await ctx.releaseController.getReleaseChangelog.fetch(
-      { params: { id: started.data.id } },
+      { params: { id: release.data.id } },
       { user },
     );
 
@@ -290,39 +320,76 @@ describe("ReleaseController.getReleaseChangelog", () => {
     expect(result.data.stats.areaCount).toBe(0);
   });
 
-  it("excludes quests completed before the release opened", async ({
+  it("ignores a completed quest that was never attached", async ({
     expect,
   }) => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user);
 
-    await completeQuest(ctx, user, project.id, {
-      title: "Landed before the window",
-      area: "orm",
-      priority: "high",
-    });
-
-    await ctx.dt.travel([1, "hour"]);
-    const started = await ctx.releaseController.startRelease.fetch(
-      { params: { projectId: project.id }, body: {} },
+    const release = await ctx.releaseController.createRelease.fetch(
+      { params: { projectId: project.id }, body: { title: "0.1.0" } },
       { user },
     );
 
-    await ctx.dt.travel([1, "minute"]);
+    const attached = await completeQuest(ctx, user, project.id, {
+      title: "Put in the release",
+      area: "orm",
+      priority: "high",
+    });
+    await attach(ctx, attached.id, release.data.id);
+
+    // Same project, completed at the same moment, attached to nothing. The
+    // old window would have swept this in; membership is an assignment now.
     await completeQuest(ctx, user, project.id, {
-      title: "Landed inside the window",
+      title: "Left out of the release",
       area: "orm",
       priority: "high",
     });
 
     const result = await ctx.releaseController.getReleaseChangelog.fetch(
-      { params: { id: started.data.id } },
+      { params: { id: release.data.id } },
       { user },
     );
 
     const titles = result.data.areas.flatMap((area) =>
       area.quests.map((quest) => quest.title),
     );
-    expect(titles).toEqual(["Landed inside the window"]);
+    expect(titles).toEqual(["Put in the release"]);
+  });
+
+  it("ignores an attached quest that is not completed yet", async ({
+    expect,
+  }) => {
+    const user = await createTestUser(ctx);
+    const project = await createTestProject(ctx, user);
+
+    const release = await ctx.releaseController.createRelease.fetch(
+      { params: { projectId: project.id }, body: { title: "0.1.0" } },
+      { user },
+    );
+
+    const open = await ctx.questController.createQuest.fetch(
+      {
+        body: {
+          projectId: project.id,
+          title: "Still in flight",
+          area: "orm",
+          priority: "high",
+        },
+      },
+      { user },
+    );
+    await attach(ctx, open.data.id, release.data.id);
+
+    const result = await ctx.releaseController.getReleaseChangelog.fetch(
+      { params: { id: release.data.id } },
+      { user },
+    );
+
+    // A changelog reports what shipped, so planned work is in the release
+    // without being in its changelog. The progress rollup (#1555) is what
+    // counts both sides.
+    expect(result.data.areas).toEqual([]);
+    expect(result.data.stats.questCount).toBe(0);
   });
 });

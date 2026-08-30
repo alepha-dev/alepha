@@ -37,7 +37,7 @@ apps/lore/                # This app
 │   │   ├── controllers/  # 20 controllers — see list below
 │   │   ├── entities/     # 23 entities — see list below
 │   │   ├── providers/    # AppSecurityProvider (the `$realm`; the membership/owner gates are `services/ProjectSecurityService`), LoreFileAccessProvider (per-file IDOR gate), LoreSigilSinkProvider (in-process self-report — a Worker can't fetch its own hostname)
-│   │   ├── jobs/         # BlightJobs (retention purge), SigilJobs (analytics collapse), InvitationJobs, ReleaseJobs, QuestJobs (reminder sweep)
+│   │   ├── jobs/         # BlightJobs (retention purge), SigilJobs (analytics collapse), InvitationJobs, QuestJobs (reminder sweep)
 │   │   ├── schemas/      # Request/response schemas
 │   │   └── services/     # 18 services — see list below
 │   ├── mcp/              # MCP protocol integration (tools, resources)
@@ -900,7 +900,7 @@ The `@/` alias is still duplicated in both configs, and the root copy is load-be
 - `project-leave.spec.ts` — `leaveProject` (owner-forbidden, no-op, member removal)
 - `project-features.spec.ts` — `project.features` toggle behavior + defaults
 - `project-owns-guard.spec.ts` / `project-relations.spec.ts` — `$owns` gating and relational reads
-- `release-jobs.spec.ts` — release background work (open/close, scheduling)
+- `release-changelog.spec.ts` — the changelog reads what is ATTACHED to a release (`quests.releaseId`), not what completed inside a time window. Its `Probe` writes the FK directly because no user-facing surface sets it yet
 - `quest-csv-*.spec.ts` — generic + format-specific CSV import/export, plus the Trello round-trip
 - `quest-objective-history.spec.ts` — objective state history tracking
 - `quest-reminder.spec.ts` — quest reminder/notification logic
@@ -953,7 +953,7 @@ Before killing anything on a busy port, check whose it is — `lsof -a -p <pid> 
 - `project-wizard.spec.ts` — 3-step create wizard (renamed from `campaign-wizard.spec.ts`)
 - `members.spec.ts` — settings members list, identity hover-card, dead `/character` + `/roster` URLs 404
 - `account.spec.ts` — the `/account` area (Lore's consumer of `@alepha/ui`'s `AccountRouter`): lands on the profile, the rail lists the five built-in pages **and** Lore's three `$pageAccount` ones, rename round-trip, password change, sessions, API-key create/reveal-once/revoke, and delete-account refused while a project is owned. ⚠️ The rename test waits for the success toast **before** reloading — without it the reload races the save and the assertion fails for the wrong reason
-- `home.spec.ts`, `admin-user-detail.spec.ts` (its only test has been `test.skip` since 2026-05-28), `areas.spec.ts`, `dashboard.spec.ts`, `epics.spec.ts`, `releases.spec.ts`, `quests-status-seed.spec.ts`, `admin-analytics.spec.ts`
+- `home.spec.ts`, `admin-user-detail.spec.ts` (its only test has been `test.skip` since 2026-05-28), `areas.spec.ts`, `dashboard.spec.ts`, `epics.spec.ts`, `quests-status-seed.spec.ts`, `admin-analytics.spec.ts`
 - `security-public-project.spec.ts` — regression guard: non-member account hits 403 on every project endpoint after the public-project purge (renamed from `security-public-campaign.spec.ts`)
 - `security-file-access.spec.ts` — regression guard: `/api/files/:id` IDOR fix via `LoreFileAccessProvider` (only owners/members can download an attachment)
 - `project-slug.spec.ts` — the URL identity: the wizard lands on a slug derived from the title, renaming shows the confirmation and moves the URL (cancel reverts the field), the old slug 404s, `/p/:id` 404s, and a taken name is refused with a visible message. ⚠️ The Name field does **not** auto-commit — the form has a real Save button in the settings card's last row, disabled until something is dirty. A spec that only types saves nothing

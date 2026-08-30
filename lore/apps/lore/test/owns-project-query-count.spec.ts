@@ -150,7 +150,10 @@ const PORTED = [
   "getEpics",
   "countPlannedEpics",
   "getReleases",
-  "getReleaseBacklog",
+  // Replaced `getReleaseBacklog`, deleted with the release recorder. Any
+  // ported `params.projectId` action reachable with nothing seeded does the
+  // job; what is measured is the gate, not this endpoint.
+  "listContents",
   "listAllDirectories",
 ];
 

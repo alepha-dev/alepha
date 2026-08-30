@@ -181,20 +181,17 @@ describe("ProjectLimits enforcement", () => {
     const p = await project(owner);
     await tighten({ maxReleasesPerProject: 1 });
 
-    const first = await ctx.releaseController.startRelease.fetch(
-      { params: { projectId: p.id }, body: { title: "M1" } },
-      { user: owner },
-    );
-    // Closed, so the "one active at a time" rule is not what refuses the
-    // second one - the cap is.
-    await ctx.releaseController.closeRelease.fetch(
-      { params: { id: first.data.id }, body: {} },
+    // Left OPEN on purpose. There is no "one at a time" rule any more, so
+    // the cap is the only thing that can refuse the second one - which is
+    // exactly what makes it worth a test.
+    await ctx.releaseController.createRelease.fetch(
+      { params: { projectId: p.id }, body: { title: "0.1.0" } },
       { user: owner },
     );
 
     await expect(
-      ctx.releaseController.startRelease.fetch(
-        { params: { projectId: p.id }, body: { title: "M2" } },
+      ctx.releaseController.createRelease.fetch(
+        { params: { projectId: p.id }, body: { title: "0.2.0" } },
         { user: owner },
       ),
     ).rejects.toThrowError(/maximum number of releases allowed \(1\)/);
