@@ -156,7 +156,19 @@ export const DetailLayout = (props: DetailLayoutProps) => {
         {props.aside}
       </aside>
 
-      <div className="flex min-h-0 flex-1 flex-col">
+      {/* `min-w-0` is not decoration, and it is the horizontal twin of the
+          `min-h-0` beside it. This column is a flex item on the row's
+          horizontal main axis, so `min-width: auto` resolves to its content's
+          min-content width and it refuses to shrink below it. A tab body
+          wider than the viewport (the Questline board is `w-max`) then
+          stretches this column past the viewport instead of overflowing
+          inside it: the body's own `overflow-auto` sees a box as wide as its
+          content and never scrolls, and the row's `overflow-hidden` simply
+          clips whatever is past the edge, with no scrollbar to reach it.
+          Measured on a 1276px viewport with a 16-card questline: without it
+          the column is 3160px and `scrollWidth === clientWidth`; with it the
+          column is 988px and the body scrolls 2172px. */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="bg-background flex h-14 shrink-0 items-center gap-2 border-b px-4">
           {/* `lg` (h-9), not the `sm` (h-7) this started on. The toolbar is
               `h-14`, so at 28px the control filled exactly half of it and

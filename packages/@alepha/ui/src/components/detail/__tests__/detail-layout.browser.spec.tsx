@@ -126,6 +126,42 @@ describe("DetailLayout", () => {
   });
 
   /**
+   * The content column carries BOTH axis escapes.
+   *
+   * It is a flex item on the shell row's horizontal main axis, so without
+   * `min-w-0` its `min-width: auto` resolves to its content's min-content
+   * width and it refuses to shrink. A tab body wider than the viewport (the
+   * epic Flow tab's questline board is `w-max`) then stretches the column
+   * past the viewport rather than overflowing inside it: the body's own
+   * `overflow-auto` never sees an overflow, so no scrollbar appears, and the
+   * row's `overflow-hidden` clips the remainder out of reach.
+   *
+   * ⚠️ jsdom does no layout, so this can only pin the class. The measurement
+   * that proves the behaviour was taken in a real browser: on a 1276px
+   * viewport with a 16-card questline the column is 3160px wide and
+   * `scrollWidth === clientWidth` without `min-w-0`, and 988px wide with
+   * 2172px of horizontal scroll with it.
+   */
+  it("lets the content column shrink on both axes", async () => {
+    const { container } = await mount(
+      <DetailLayout
+        aside={<p>identity panel</p>}
+        tabs={tabs}
+        tab="overview"
+        onTabChange={() => {}}
+      >
+        <p>overview body</p>
+      </DetailLayout>,
+    );
+
+    const column = container.querySelector("aside")?.nextElementSibling;
+
+    expect(column).toBeTruthy();
+    expect(column?.className).toContain("min-w-0");
+    expect(column?.className).toContain("min-h-0");
+  });
+
+  /**
    * `loading` wins over `notFound`. A page computes "not found" as "no record",
    * which is also true on the very first render — ordering it the other way
    * flashes "not found" before every successful load.
