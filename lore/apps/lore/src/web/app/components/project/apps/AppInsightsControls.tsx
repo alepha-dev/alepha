@@ -4,9 +4,9 @@ import {
   Tooltip as UiTooltip,
 } from "@alepha/ui/components/ui/tooltip";
 import { useI18n } from "alepha/react/i18n";
-import { Loader2 } from "lucide-react";
 
 import type { I18n } from "../../../services/I18n.ts";
+import ToolbarSpinner from "../../shared/ToolbarSpinner.tsx";
 import {
   APP_INSIGHTS_RANGES,
   APP_INSIGHTS_TRAFFICS,
@@ -47,10 +47,6 @@ const AppInsightsControls = (props: AppInsightsControlsProps) => {
 
   return (
     <div className="flex items-center gap-2">
-      {loading && (
-        <Loader2 className="text-muted-foreground size-4 animate-spin" />
-      )}
-
       {showTraffic && (
         <UiTooltip>
           {/*
@@ -107,6 +103,8 @@ const AppInsightsControls = (props: AppInsightsControlsProps) => {
           </button>
         ))}
       </div>
+
+      <ToolbarSpinner loading={loading} />
     </div>
   );
 };
