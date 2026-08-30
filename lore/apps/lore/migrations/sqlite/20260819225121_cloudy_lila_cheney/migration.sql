@@ -35,6 +35,8 @@ CREATE TABLE `__new_folio_links` (
 );
 --> statement-breakpoint
 INSERT INTO `__new_folio_links`(`id`, `created_at`, `from_id`, `to_id`, `target_type`) SELECT `id`, `created_at`, `from_id`, `to_id`, `target_type` FROM `folio_links`;--> statement-breakpoint
+-- alepha-allow-drop-table: `folio_links` is a LEAF, nothing in the schema
+-- references it, so the D1 cascade has nothing to fire on (see header)
 DROP TABLE `folio_links`;--> statement-breakpoint
 ALTER TABLE `__new_folio_links` RENAME TO `folio_links`;--> statement-breakpoint
 PRAGMA foreign_keys=ON;--> statement-breakpoint

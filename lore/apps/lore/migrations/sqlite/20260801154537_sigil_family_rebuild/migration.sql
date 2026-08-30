@@ -41,13 +41,22 @@
 --   anyway. `snapshot.json` beside this file is the generator's output,
 --   byte-for-byte — only the SQL is hand-ordered.
 
+-- alepha-allow-drop-table: child of `sigils`, parent of nothing (see header)
 DROP TABLE IF EXISTS `sigil_blight_rate`;--> statement-breakpoint
+-- alepha-allow-drop-table: child of `sigils`, parent of nothing (see header)
 DROP TABLE IF EXISTS `sigil_blights`;--> statement-breakpoint
+-- alepha-allow-drop-table: child of `sigils`, parent of nothing (see header)
 DROP TABLE IF EXISTS `sigil_unique_visitors`;--> statement-breakpoint
+-- alepha-allow-drop-table: child of `sigils`, parent of nothing (see header)
 DROP TABLE IF EXISTS `sigil_views`;--> statement-breakpoint
+-- alepha-allow-drop-table: child of `sigils`, parent of nothing (see header)
 DROP TABLE IF EXISTS `sigil_vitals`;--> statement-breakpoint
+-- alepha-allow-drop-table: parent of nothing (see header)
 DROP TABLE IF EXISTS `blights`;--> statement-breakpoint
+-- alepha-allow-drop-table: parent of nothing (see header)
 DROP TABLE IF EXISTS `campaign_sources`;--> statement-breakpoint
+-- alepha-allow-drop-table: its only children are the five sigil_* tables
+-- dropped above, so no cascade edge leaves this family (see header)
 DROP TABLE IF EXISTS `sigils`;--> statement-breakpoint
 CREATE TABLE `sigils` (
 	`id` text PRIMARY KEY,
