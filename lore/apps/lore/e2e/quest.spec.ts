@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import {
+  apiPath,
   apiPost,
   createProjectViaWizard,
   registerAndVerify,
@@ -114,6 +115,115 @@ test.describe("Quest", () => {
    * 5-minute cron — that's covered by unit tests in `quest-reminder.spec.ts`;
    * this test focuses on the UI contract.
    */
+  /**
+   * A long commit message stays inside its rail cell.
+   *
+   * Layout, so only a real browser can answer it: jsdom computes no widths,
+   * and the failure is not a wrong class but a right one with nothing to
+   * act on. `truncate` sets `white-space: nowrap`, which makes the leaf's
+   * min-content equal its max-content, so the column sized itself to the
+   * whole line and — being right-aligned — spilled LEFT, painting over the
+   * "Commits" label.
+   *
+   * Asserted as a box comparison rather than by reading classes: the point
+   * is that the text is inside the rail, and a class list cannot say that.
+   */
+  test("a long commit message stays inside the rail", async ({ page }) => {
+    test.setTimeout(60_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `commit${t}@example.com`, "QuestTest123!");
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      `CM${t}`.slice(0, 20),
+    );
+
+    const { id: questId, shortId } = await apiPost<{
+      id: number;
+      shortId: number;
+    }>(page, "createQuest", {
+      projectId,
+      title: `Commit${t}`,
+      description: "Seeded quest for the commits rail row",
+      // One unbreakable token, for the shared cell's own guard: Epic,
+      // Milestone, Assignee and Area all render plain text into it, where a
+      // value with no space in it renders at max-content and — the cell
+      // being right-aligned — spills left over its label, exactly as the
+      // commits column did for a different reason.
+      area: "Averylongsingletokenareanamewithnospaces",
+      priority: "medium",
+      objectives: [],
+      attachments: [],
+    });
+
+    // `addQuestCommit` takes its id in the PATH, and `apiPost` posts the
+    // body verbatim against the raw template — so the `:id` has to be
+    // substituted here rather than passed as a field.
+    const commitUrl = (await apiPath(page, "addQuestCommit")).replace(
+      ":id",
+      String(questId),
+    );
+    await page.evaluate(async (url) => {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          sha: "ded61fa9c4e1b7d3f8a2c5e6b0d9f1a3c7e5b2da",
+          message:
+            "feat(lore): an app can be renamed, and the rename does not " +
+            "touch reporting because SIGIL_KEY carries the project slug " +
+            "and not the app name",
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`${response.status} ${await response.text()}`);
+      }
+    }, commitUrl);
+
+    await page.goto(`/${projectSlug}/quests/${shortId}`);
+
+    const label = page.getByText("Commits", { exact: true });
+    await expect(label).toBeVisible({ timeout: 15_000 });
+
+    const row = label.locator("xpath=ancestor::div[1]/..");
+    const value = row.locator("code").locator("xpath=..");
+
+    const [rowBox, valueBox, labelBox] = await Promise.all([
+      row.boundingBox(),
+      value.boundingBox(),
+      label.boundingBox(),
+    ]);
+
+    if (!rowBox || !valueBox || !labelBox) {
+      throw new Error("commits row did not lay out");
+    }
+
+    // The two claims the bug broke, in the order it broke them: the value
+    // does not start left of the label's right edge (it stopped painting
+    // over it), and it does not run past the row it lives in.
+    expect(valueBox.x).toBeGreaterThanOrEqual(labelBox.x + labelBox.width - 1);
+    expect(valueBox.x + valueBox.width).toBeLessThanOrEqual(
+      rowBox.x + rowBox.width + 1,
+    );
+
+    // Truncated, not wrapped: the sha has to survive, since it is the half
+    // that identifies the commit.
+    await expect(page.getByText("ded61fa")).toBeVisible();
+
+    // And the shared cell's guard, on a row that wraps rather than truncates.
+    const areaValue = page.getByText(
+      "Averylongsingletokenareanamewithnospaces",
+    );
+    await expect(areaValue).toBeVisible();
+    const areaBox = await areaValue.boundingBox();
+    if (!areaBox) throw new Error("area row did not lay out");
+    expect(areaBox.x).toBeGreaterThanOrEqual(rowBox.x - 1);
+    expect(areaBox.x + areaBox.width).toBeLessThanOrEqual(
+      rowBox.x + rowBox.width + 1,
+    );
+  });
+
   test("configure + disable a reminder from Quest Settings", async ({
     page,
   }) => {
