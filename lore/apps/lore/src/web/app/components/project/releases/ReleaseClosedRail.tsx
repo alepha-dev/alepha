@@ -2,12 +2,12 @@ import { Button } from "@alepha/ui/components/ui/button";
 import { useI18n } from "alepha/react/i18n";
 import { ChevronRight, History, Trash } from "lucide-react";
 
-import type { Release } from "@/api/entities/releases.ts";
+import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface ReleaseClosedRailProps {
-  releases: Release[];
-  onOpenDetail: (release: Release) => void;
+  releases: ReleaseResource[];
+  onOpenDetail: (release: ReleaseResource) => void;
   onDelete: (id: number) => void;
 }
 
@@ -59,6 +59,28 @@ const ReleaseClosedRail = (props: ReleaseClosedRailProps) => {
                 <div className="truncate text-[13px] font-medium">
                   {release.title}
                 </div>
+                {/* The FROZEN counts, read straight off the row. A published
+                    release is never recounted, so this is what it shipped
+                    rather than what its quests say today. */}
+                {release.progress.total > 0 && (
+                  <div className="text-muted-foreground mt-1 flex items-center gap-1.5 text-[11px]">
+                    <span className="bg-muted h-1 w-10 overflow-hidden rounded-full">
+                      <span
+                        className="block h-full rounded-full bg-green-600"
+                        style={{
+                          width: `${Math.round(
+                            (release.progress.completed /
+                              release.progress.total) *
+                              100,
+                          )}%`,
+                        }}
+                      />
+                    </span>
+                    <span className="font-mono">
+                      {release.progress.completed}/{release.progress.total}
+                    </span>
+                  </div>
+                )}
                 <div className="text-muted-foreground mt-0.5 text-[11.5px]">
                   {tr("release.ledger.closed.meta", {
                     args: [

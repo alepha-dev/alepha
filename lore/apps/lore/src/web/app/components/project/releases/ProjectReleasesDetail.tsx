@@ -12,10 +12,13 @@ import { useEffect, useState } from "react";
 
 import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
 import type { Release } from "@/api/entities/releases.ts";
+import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import ReleaseEpicProgressList from "./ReleaseEpicProgressList.tsx";
+
 export interface ProjectReleasesDetailProps {
-  release: Release;
+  release: ReleaseResource;
   onUpdated: (release: Release) => void;
 }
 
@@ -167,6 +170,8 @@ const ProjectReleasesDetail = (props: ProjectReleasesDetailProps) => {
         <Save className="size-4" />
         {tr("release.detail.save")}
       </Button>
+
+      <ReleaseEpicProgressList releaseId={props.release.id} />
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">

@@ -4,11 +4,11 @@ import { Label } from "@alepha/ui/components/ui/label";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
 
-import type { Release } from "@/api/entities/releases.ts";
+import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface ProjectReleasesCloseModalProps {
-  release: Release;
+  release: ReleaseResource;
   onConfirm: (title: string) => void;
   onCancel: () => void;
 }
