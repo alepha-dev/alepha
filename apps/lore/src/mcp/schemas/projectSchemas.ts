@@ -128,6 +128,24 @@ export const projectContextResultSchema = z.object({
     }),
   ),
   /**
+   * The releases still OPEN in this project, by number ascending.
+   *
+   * Published ones are omitted: this index exists so an agent opens a session
+   * already knowing what `0.28.0` is meant to contain, and a shipped release
+   * is not something to plan into. `release_list` returns all of them.
+   *
+   * Several open at once is the normal state, not a warning sign.
+   */
+  openReleases: z.array(
+    z.object({
+      tag: z.string().optional(),
+      title: z.string(),
+      targetDate: z.datetime().optional(),
+      completed: z.integer(),
+      total: z.integer(),
+    }),
+  ),
+  /**
    * The calling user's folios in this project, newest-updated first. Bodies
    * are intentionally omitted — call `folio_get` only after deciding what's
    * relevant from this index.

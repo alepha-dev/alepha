@@ -7,6 +7,7 @@ import { pinnedContentAtom } from "../../api/atoms/pinnedContentAtom.ts";
 import { EpicController } from "../../api/controllers/EpicController.ts";
 import { FolioController } from "../../api/controllers/FolioController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
+import { ReleaseController } from "../../api/controllers/ReleaseController.ts";
 import { AreaService } from "../../api/services/AreaService.ts";
 import { PinnedFolioFolder } from "../../api/services/PinnedFolioFolder.ts";
 import {
@@ -51,6 +52,7 @@ export class ProjectTools {
   protected readonly projectController = $inject(ProjectController);
   protected readonly folioController = $inject(FolioController);
   protected readonly epicController = $inject(EpicController);
+  protected readonly releaseController = $inject(ReleaseController);
   protected readonly areaService = $inject(AreaService);
   protected readonly pinnedFolder = $inject(PinnedFolioFolder);
   protected readonly alepha = $inject(Alepha);
@@ -239,6 +241,15 @@ export class ProjectTools {
         params: { projectId },
       });
 
+      // The open releases, so an agent opens a session already knowing what
+      // `0.28.0` is meant to contain. Published ones are dropped: this index
+      // is for planning into, and a shipped release is not.
+      const openReleases = (
+        await this.releaseController.getReleases({ params: { projectId } })
+      )
+        .filter((release) => !release.releasedAt)
+        .sort((a, b) => a.number - b.number);
+
       // Fetch one over the cap to detect truncation without a separate count
       // query — cheap on D1 (single LIKE-free indexed range scan).
       const folios = await this.folioController.list({
@@ -303,6 +314,13 @@ export class ProjectTools {
           title: epic.title,
           status: epic.status,
           questCount: epic.questCount,
+        })),
+        openReleases: openReleases.map((release) => ({
+          tag: release.tag,
+          title: release.title,
+          targetDate: release.targetDate,
+          completed: release.progress.completed,
+          total: release.progress.total,
         })),
         folios: {
           shown: items.length,
