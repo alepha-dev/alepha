@@ -381,7 +381,7 @@ export default {
     "Colonnes drag-and-drop pour suivre l'avancement, à côté de la vue tableau.",
   "project.create.module.releases": "Versions : Livraisons",
   "project.create.module.releases.helper":
-    "Des objectifs nommés (0.28.0, demo-1) qui portent les épopées et les quêtes à livrer.",
+    "Des objectifs nommés (0.1.0, demo-1) qui portent les épopées et les quêtes à livrer.",
   "project.create.next": "Suivant",
   "project.create.back": "Retour",
   "project.create.building": "Forge en cours…",
@@ -633,7 +633,7 @@ export default {
   "release.create.confirm": "Créer",
   "release.create.tag": "Version",
   "release.create.tag.help":
-    "L'adresse et le nom de la version. Elle devient l'URL, donc restez court : 0.28.0, demo-1.",
+    "Son nom et son URL, donc restez court : 0.1.0, demo-1.",
   "release.group.open": "Ouvertes",
   "release.group.released": "Publiées",
   "release.list.column.state": "État",
@@ -663,7 +663,7 @@ export default {
   "release.reopen.description":
     "Pour une version publiée par erreur. La rouvrir efface le journal et les compteurs figés, et la version redevient calculée à partir de ce qu'elle contient.",
   "release.reopen.confirm": "Rouvrir",
-  "release.start.tag.placeholder": "0.28.0",
+  "release.start.tag.placeholder": "0.1.0",
   "release.start.cancel": "Annuler",
   "release.detail.error": "Impossible d'enregistrer la version.",
   "release.changelog": "Changelog",
@@ -688,7 +688,7 @@ export default {
   "release.hero.shelved": "$1 écartée(s)",
   "release.empty.title": "Aucune version ouverte",
   "release.empty.body":
-    "Une version est un objectif nommé - 0.28.0, demo-1 - qui porte les quêtes à livrer. Ouvrez-en une pour commencer à la remplir.",
+    "Une version est un objectif nommé - 0.1.0, demo-1 - qui porte les quêtes à livrer. Ouvrez-en une pour commencer à la remplir.",
   "release.status.active": "Ouverte",
   "release.status.closed": "Close",
 

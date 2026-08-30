@@ -373,7 +373,7 @@ export default {
     "Drag-and-drop columns for tracking work in progress alongside the table view.",
   "project.create.module.releases": "Releases: Shipping",
   "project.create.module.releases.helper":
-    "Named goals (0.28.0, demo-1) holding the epics and quests due to ship in them.",
+    "Named goals (0.1.0, demo-1) holding the epics and quests due to ship in them.",
   "project.create.next": "Next",
   "project.create.back": "Back",
   "project.create.building": "Forging your project…",
@@ -619,7 +619,7 @@ export default {
   "release.create.confirm": "Create",
   "release.create.tag": "Tag",
   "release.create.tag.help":
-    "The release's address and its name. It becomes the URL, so keep it short: 0.28.0, demo-1.",
+    "Its name and its URL, so keep it short: 0.1.0, demo-1.",
   "release.group.open": "Open",
   "release.group.released": "Released",
   "release.list.column.state": "State",
@@ -649,7 +649,7 @@ export default {
   "release.reopen.description":
     "For a release published by mistake. Reopening clears the frozen changelog and the frozen progress counts, and the release goes back to being computed from what it contains.",
   "release.reopen.confirm": "Reopen",
-  "release.start.tag.placeholder": "0.28.0",
+  "release.start.tag.placeholder": "0.1.0",
   "release.start.cancel": "Cancel",
   "release.detail.error": "Could not save the release.",
   "release.changelog": "Changelog",
@@ -674,7 +674,7 @@ export default {
   "release.hero.shelved": "$1 shelved",
   "release.empty.title": "No release is open",
   "release.empty.body":
-    "A release is a named goal - 0.28.0, demo-1 - holding the quests due to ship in it. Open one to start filling it.",
+    "A release is a named goal - 0.1.0, demo-1 - holding the quests due to ship in it. Open one to start filling it.",
   "release.status.active": "Open",
   "release.status.closed": "Closed",
 
