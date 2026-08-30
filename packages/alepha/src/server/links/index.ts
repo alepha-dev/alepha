@@ -1,5 +1,5 @@
 import { $module } from "alepha";
-import { AlephaServer } from "alepha/server";
+import { AlephaHttpClient, AlephaServer } from "alepha/server";
 
 import { apiLinksAtom } from "./atoms/apiLinksAtom.ts";
 import { linkOptionsAtom } from "./atoms/linkOptionsAtom.ts";
@@ -47,6 +47,25 @@ declare module "alepha" {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
+ * The half that CALLS an Alepha API, and never serves one.
+ *
+ * Register this rather than {@link AlephaServerLinks} from a process that is
+ * not a server - a CLI, a script, a worker - so nothing declares a route or
+ * binds a port. `$client()` is the whole surface.
+ *
+ * Deliberately untagged: `gen-docs` takes the first JSDoc block in the file
+ * carrying a module tag as the package page's Overview, and that page is about
+ * `alepha/server/links` as a whole rather than about its consumer half.
+ */
+export const AlephaServerLinksClient = $module({
+  name: "alepha.server.links.client",
+  atoms: [apiLinksAtom, linkOptionsAtom],
+  primitives: [$client],
+  imports: [AlephaHttpClient],
+  services: [LinkProvider, BatchCollector],
+});
+
+/**
  * Type-safe API client with request deduplication.
  *
  * **Features:**
@@ -56,17 +75,22 @@ declare module "alepha" {
  * - Request deduplication
  * - Automatic error handling
  *
+ * Serving and calling, composed: the consumer half is
+ * {@link AlephaServerLinksClient}, and what this adds on top is the part that
+ * needs an HTTP server - the `/api/_links`, `/api/_links/schemas` and
+ * `/api/_batch` routes, plus `$remote`'s service-to-service wiring.
+ *
+ * The split is stated here rather than detected at runtime. `register()` can
+ * only see what was registered before it, so an `alepha.has(AlephaServer)`
+ * test would silently drop the routes for any app that registers this module
+ * first - and for a client-rendered app, `/api/_batch` missing is the whole
+ * API surface missing.
+ *
  * @module alepha.server.links
  */
 export const AlephaServerLinks = $module({
   name: "alepha.server.links",
-  atoms: [apiLinksAtom, linkOptionsAtom],
-  primitives: [$remote, $client],
-  services: [
-    AlephaServer,
-    ServerLinksProvider,
-    RemotePrimitiveProvider,
-    LinkProvider,
-    BatchCollector,
-  ],
+  imports: [AlephaServerLinksClient],
+  primitives: [$remote],
+  services: [AlephaServer, ServerLinksProvider, RemotePrimitiveProvider],
 });

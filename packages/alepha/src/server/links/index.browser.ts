@@ -19,9 +19,21 @@ export * from "./services/BatchCollector.ts";
 
 // ---------------------------------------------------------------- -----------------------------------------------------
 
+export const AlephaServerLinksClient = $module({
+  name: "alepha.server.links.client",
+  atoms: [apiLinksAtom, linkOptionsAtom],
+  primitives: [$client],
+  services: [LinkProvider, BatchCollector],
+});
+
+/**
+ * In the browser there is nothing to serve, so the canonical name resolves to
+ * the consumer half. Kept as its own module rather than an alias so the name
+ * in logs stays `alepha.server.links`, as it has always been, and so both
+ * export names exist in both barrels.
+ */
 export const AlephaServerLinks = $module({
   name: "alepha.server.links",
-  atoms: [apiLinksAtom, linkOptionsAtom],
-  primitives: [$remote, $client],
-  services: [LinkProvider, BatchCollector],
+  imports: [AlephaServerLinksClient],
+  primitives: [$remote],
 });

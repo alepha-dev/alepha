@@ -20,6 +20,17 @@ Type-safe API client with request deduplication.
 - Request deduplication
 - Automatic error handling
 
+Serving and calling, composed: the consumer half is
+`AlephaServerLinksClient`, and what this adds on top is the part that
+needs an HTTP server - the `/api/_links`, `/api/_links/schemas` and
+`/api/_batch` routes, plus `$remote`'s service-to-service wiring.
+
+The split is stated here rather than detected at runtime. `register()` can
+only see what was registered before it, so an `alepha.has(AlephaServer)`
+test would silently drop the routes for any app that registers this module
+first - and for a client-rendered app, `/api/_batch` missing is the whole
+API surface missing.
+
 ## API Reference
 
 ### Primitives
