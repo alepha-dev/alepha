@@ -797,6 +797,77 @@ test.describe("Folio workspace", () => {
     });
   });
 
+  /**
+   * A rename in the tree survives the editor's next save.
+   *
+   * The draft is seeded once, at mount, from the route loader's snapshot,
+   * and the tree's rename writes only `userFoliosAtom` — so every save path
+   * kept sending the title the editor was opened with, and the rename was
+   * silently reverted. Data loss, and invisible until a reload: the
+   * workspace has no title FIELD at all, so nothing on screen contradicted
+   * the tree's label.
+   *
+   * That is also why this can only be an e2e. `useFolioDraft.browser.spec`
+   * covers `adoptTitle` itself; the sequence that breaks runs across two
+   * panes, an atom and two `PATCH`es, and the evidence is what the server
+   * holds afterwards.
+   */
+  test("09e — a tree rename survives the editor's next save", async () => {
+    const original = `Seed-${stamp}`.slice(0, 24);
+    const renamed = `Renamed-${stamp}`.slice(0, 24);
+    const seedUrl = await createFolio(original, "seed");
+    await page.goto(seedUrl);
+
+    const tree = page.locator('[data-slot="folio-tree"]');
+    await expect(tree).toBeVisible({ timeout: 15_000 });
+
+    // Rename the OPEN folio from the tree, the way the report does: its row
+    // is the one the workspace is already showing. Right-click, then
+    // Rename — there is no double-click shortcut.
+    const row = tree.getByText(original, { exact: true });
+    await expect(row).toBeVisible({ timeout: 15_000 });
+    await row.click({ button: "right" });
+    await page.getByRole("menuitem", { name: /rename|renommer/i }).click();
+
+    const renameBox = tree.getByRole("textbox");
+    await expect(renameBox).toBeVisible({ timeout: 10_000 });
+    await renameBox.fill(renamed);
+
+    const renameSaved = page.waitForResponse(
+      (r) => /\/api\/update\//.test(r.url()) && r.status() === 200,
+    );
+    await renameBox.press("Enter");
+    await renameSaved;
+    await expect(tree.getByText(renamed, { exact: true })).toBeVisible();
+
+    // Now make the editor save. Before the fix this write carried the title
+    // the draft was seeded with and undid the rename. A folio with content
+    // opens in View, so the body has to be reachable first.
+    const toggle = page.getByTestId("markdown-mode-toggle");
+    await expect(toggle).toBeVisible({ timeout: 15_000 });
+    if ((await toggle.getAttribute("data-mode")) !== "edit") {
+      await toggle.click();
+    }
+    await expect(toggle).toHaveAttribute("data-mode", "edit");
+    await expect(page.locator(".cm-content")).toBeVisible({ timeout: 15_000 });
+
+    const editorSaved = page.waitForResponse(
+      (r) => /\/api\/update\//.test(r.url()) && r.status() === 200,
+      { timeout: 30_000 },
+    );
+    await page.locator(".cm-content").click();
+    await page.keyboard.type(" and a body edit");
+    await editorSaved;
+
+    // From the server, not from a tree label that might simply still be
+    // showing what it last rendered.
+    await page.reload();
+    await expect(tree.getByText(renamed, { exact: true })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(tree.getByText(original, { exact: true })).toHaveCount(0);
+  });
+
   test("09c — New directory works from the empty-state menubar", async () => {
     await page.goto(`/${projectSlug}/folios`);
     await expect(page.locator('[data-slot="folio-tree"]')).toBeVisible({
