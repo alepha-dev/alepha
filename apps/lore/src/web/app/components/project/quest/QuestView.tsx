@@ -286,7 +286,6 @@ const QuestView = (props: QuestViewProps) => {
   const railNode = (
     <QuestViewRail
       quest={quest}
-      questline={questline}
       onUpdate={(it) => {
         updateQuest(it);
         alepha.store.set(currentQuestAtom, it);
