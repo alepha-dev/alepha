@@ -355,6 +355,66 @@ test.describe("Releases", () => {
     await expect(page).toHaveURL(/\/releases\/2\.0\.0$/, { timeout: 15_000 });
   });
 
+  /**
+   * Where Releases sits in the sidebar.
+   *
+   * ⚠️ This entry has moved twice, so it is worth a test rather than a third
+   * round trip: Record originally, Work after epic #14, Record again at the
+   * owner's request. `ProjectView.tsx` carries both trips and the reason.
+   *
+   * Asserted as ORDER among the project's own nav links rather than by
+   * group, because the groups are unlabelled by design and so have nothing
+   * in the DOM to name them.
+   */
+  test("Releases sits between Folios and Reports in the sidebar", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `relnav${t}@example.com`, "RelTest123!");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `RV${t}`.slice(0, 20),
+    );
+    await setProjectFeature(page, projectId, "milestones", true);
+    await setProjectFeature(page, projectId, "folios", true);
+
+    await page.goto(`/${slug}/`);
+
+    const navOrder = async () =>
+      await page
+        .locator(`a[href^="/${slug}/"]`)
+        .evaluateAll(
+          (links, slug) =>
+            links
+              .map((a) => a.getAttribute("href") ?? "")
+              .filter((href) =>
+                [
+                  `/${slug}/folios`,
+                  `/${slug}/releases`,
+                  `/${slug}/reports`,
+                ].includes(href),
+              ),
+          slug,
+        );
+
+    await expect
+      .poll(navOrder, { timeout: 15_000 })
+      .toEqual([`/${slug}/folios`, `/${slug}/releases`, `/${slug}/reports`]);
+
+    await test.step("and still reads sensibly with folios off", async () => {
+      // The quest worried this could leave Record holding one item. It
+      // cannot: Reports has no feature gate at all, so Record always carries
+      // at least it, and the empty-group `.filter` never fires here.
+      await setProjectFeature(page, projectId, "folios", false);
+      await page.goto(`/${slug}/`);
+      await expect
+        .poll(navOrder, { timeout: 15_000 })
+        .toEqual([`/${slug}/releases`, `/${slug}/reports`]);
+    });
+  });
+
   test("the table filters by state and sorts tags by number", async ({
     page,
   }) => {
