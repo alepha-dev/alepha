@@ -19,7 +19,6 @@ import { useRouter } from "alepha/react/router";
 import {
   CalendarClock,
   ChevronDown,
-  Loader2,
   MapPin,
   Rows3,
   Search,
@@ -43,6 +42,7 @@ import { kanbanFiltersAtom } from "../../atoms/kanbanFiltersAtom.ts";
 import { kanbanReloadAtom } from "../../atoms/kanbanReloadAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { AreaDotColor } from "../shared/areaColor.ts";
+import ToolbarSpinner from "../shared/ToolbarSpinner.tsx";
 import { useProjectUsers } from "../shared/useProjectUsers.ts";
 import { useQuestMutations } from "../shared/useQuestMutations.ts";
 import { KanbanAging } from "./kanbanAging.ts";
@@ -691,9 +691,6 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     >
       {/* Filter nav */}
       <div className="border-border bg-card flex items-center gap-2 border-b px-3 py-1.5">
-        {loading && (
-          <Loader2 className="text-muted-foreground size-3.5 animate-spin" />
-        )}
         <form {...filterForm.props} className="flex flex-1 items-center gap-2">
           {areaOptions.length > 0 && (
             <div className="w-64 max-w-full">
@@ -827,6 +824,8 @@ const KanbanBoard = (props: KanbanBoardProps) => {
               {tr("kanban.filter.reset")}
             </Button>
           )}
+
+          <ToolbarSpinner loading={loading} className="size-3.5" />
         </div>
       </div>
 
