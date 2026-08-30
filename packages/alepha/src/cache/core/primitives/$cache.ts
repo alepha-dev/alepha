@@ -401,20 +401,37 @@ export class CachePrimitive<
    *
    * Pass `ttl: 0` for a counter that must never expire.
    */
+  /**
+   * Whether this cache will actually reach its store.
+   *
+   * Three ways it will not: the container has not started (on Cloudflare KV
+   * an early call throws before the binding exists), this cache was declared
+   * `disabled`, or the operator turned caching off container-wide through
+   * `alepha.cache.options`.
+   *
+   * Exposed because the degraded behaviour is deliberately invisible from
+   * the outside: `read()` answers a miss and `incr()` answers `amount`, both
+   * indistinguishable from a cold first call, which is exactly what a caching
+   * caller wants and exactly what a caller using the cache as INFRASTRUCTURE
+   * cannot work with. A rate limiter whose whole job is to count cannot tell
+   * "first request" from "no limiter at all" through the return value, so it
+   * has to be able to ask.
+   */
+  public get enabled(): boolean {
+    return (
+      this.alepha.isStarted() && !this.options.disabled && this.settings.enabled
+    );
+  }
+
   public async incr(
     key: string,
     amount = 1,
     ttl?: DurationLike,
   ): Promise<number> {
-    // Same gate as read()/set(): a disabled cache must not mutate the store,
-    // and on Cloudflare KV an early call throws before the binding exists.
+    // Same gate as read()/set(): a disabled cache must not mutate the store.
     // Returning the amount keeps the "as if it were the first increment"
     // shape callers already handle from a cold cache.
-    if (
-      !this.alepha.isStarted() ||
-      this.options.disabled ||
-      !this.settings.enabled
-    ) {
+    if (!this.enabled) {
       return amount;
     }
 
@@ -460,9 +477,7 @@ export class CachePrimitive<
     ttl?: DurationLike,
   ): Promise<void> {
     if (
-      !this.alepha.isStarted() ||
-      this.options.disabled ||
-      !this.settings.enabled ||
+      !this.enabled ||
       // `undefined` is the miss sentinel: storing it would serialize to an
       // empty payload that throws on every subsequent read of the key.
       value === undefined
@@ -532,11 +547,7 @@ export class CachePrimitive<
    * schedule a background refresh.
    */
   public async read(key: string): Promise<ReadResult<TReturn>> {
-    if (
-      !this.alepha.isStarted() ||
-      this.options.disabled ||
-      !this.settings.enabled
-    ) {
+    if (!this.enabled) {
       return { value: undefined, stale: false };
     }
 
