@@ -8,6 +8,7 @@ import {
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { useRouterState } from "alepha/react/router";
 import { useCallback, useEffect, useState } from "react";
 
 import type { FolioController } from "@/api/controllers/FolioController.ts";
@@ -24,14 +25,6 @@ import ReleaseDetailHero from "./ReleaseDetailHero.tsx";
 import ReleaseEditForm from "./ReleaseEditForm.tsx";
 import ReleaseSaveToFolioDialog from "./ReleaseSaveToFolioDialog.tsx";
 
-export interface ProjectReleaseProps {
-  /**
-   * The tag from the URL. The route param is `releaseTag`, never `tag` and
-   * never `number` — one param name per tree position, see `AppRouter`.
-   */
-  releaseTag: string;
-}
-
 interface ChangelogState {
   markdown: string;
   groups: ReleaseChangelogGroup[];
@@ -46,9 +39,18 @@ interface ChangelogState {
  * without a round-trip and the list it was clicked from cannot disagree with
  * it.
  */
-const ProjectRelease = (props: ProjectReleaseProps) => {
+const ProjectRelease = () => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
+  // ⚠️ Read from the router state, NOT from props. A `$page` hands its
+  // component whatever its LOADER returned, and this route deliberately has
+  // none — the project route already holds every release in the store. A
+  // props-declared `releaseTag` is silently `undefined` here.
+  //
+  // The param is `releaseTag`, never `tag` and never `number`: one param name
+  // per tree position, the trap `:epicNumber` documents in `AppRouter`.
+  const routerState = useRouterState();
+  const releaseTag = String(routerState.params.releaseTag ?? "");
   const [project] = useStore(currentProjectAtom);
   const [releases, setReleases] = useStore(currentReleasesAtom);
   const releaseApi = useClient<ReleaseController>();
@@ -61,7 +63,7 @@ const ProjectRelease = (props: ProjectReleaseProps) => {
   const [folioSaving, setFolioSaving] = useState(false);
 
   const release: ReleaseResource | undefined = releases?.find(
-    (r) => r.tag === props.releaseTag,
+    (r) => r.tag === releaseTag,
   );
 
   const reload = useCallback(async () => {
@@ -159,7 +161,7 @@ const ProjectRelease = (props: ProjectReleaseProps) => {
     return (
       <div className="mx-auto w-full max-w-4xl px-5 py-12 text-center lg:px-7">
         <p className="text-muted-foreground text-sm">
-          {tr("release.detail.notFound", { args: [props.releaseTag] })}
+          {tr("release.detail.notFound", { args: [releaseTag] })}
         </p>
       </div>
     );
