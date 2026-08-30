@@ -121,6 +121,12 @@ export class LinkProvider {
         method: action.method,
         contentType: action.contentType,
         service: action.service,
+        // The registry states the prefix its paths are relative to, and
+        // `followRemote` falls back to "/api" without it — so dropping it here
+        // silently addressed every registry-derived link as if the server ran
+        // on the default. Left undefined when the registry omits it, which is
+        // the same fallback as before.
+        prefix: registry.prefix,
       });
     }
 
@@ -330,7 +336,10 @@ export class LinkProvider {
 
     $.fetch = async (config: any = {}, options: ClientRequestOptions = {}) => {
       const link = await this.getLinkByName(name, scope);
-      return this.followRemote(link, config, options);
+      // Merged the way `$` and `$.run` merge it. This used the scope to
+      // resolve the link and then dropped it for the request itself, so the
+      // hostname survived (it is baked into the link) and nothing else did.
+      return this.followRemote(link, config, { ...scope, ...options });
     };
 
     $.can = () => {
