@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import {
+  apiPath,
   apiPost,
   createProjectViaWizard,
   registerAndVerify,
@@ -114,6 +115,226 @@ test.describe("Quest", () => {
    * 5-minute cron — that's covered by unit tests in `quest-reminder.spec.ts`;
    * this test focuses on the UI contract.
    */
+  /**
+   * A long commit message stays inside its rail cell.
+   *
+   * Layout, so only a real browser can answer it: jsdom computes no widths,
+   * and the failure is not a wrong class but a right one with nothing to
+   * act on. `truncate` sets `white-space: nowrap`, which makes the leaf's
+   * min-content equal its max-content, so the column sized itself to the
+   * whole line and — being right-aligned — spilled LEFT, painting over the
+   * "Commits" label.
+   *
+   * Asserted as a box comparison rather than by reading classes: the point
+   * is that the text is inside the rail, and a class list cannot say that.
+   */
+  test("a long commit message stays inside the rail", async ({ page }) => {
+    test.setTimeout(60_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `commit${t}@example.com`, "QuestTest123!");
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      `CM${t}`.slice(0, 20),
+    );
+
+    const { id: questId, shortId } = await apiPost<{
+      id: number;
+      shortId: number;
+    }>(page, "createQuest", {
+      projectId,
+      title: `Commit${t}`,
+      description: "Seeded quest for the commits rail row",
+      // One unbreakable token, for the shared cell's own guard: Epic,
+      // Milestone, Assignee and Area all render plain text into it, where a
+      // value with no space in it renders at max-content and — the cell
+      // being right-aligned — spills left over its label, exactly as the
+      // commits column did for a different reason.
+      area: "Averylongsingletokenareanamewithnospaces",
+      priority: "medium",
+      objectives: [],
+      attachments: [],
+    });
+
+    // `addQuestCommit` takes its id in the PATH, and `apiPost` posts the
+    // body verbatim against the raw template — so the `:id` has to be
+    // substituted here rather than passed as a field.
+    const commitUrl = (await apiPath(page, "addQuestCommit")).replace(
+      ":id",
+      String(questId),
+    );
+    await page.evaluate(async (url) => {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          sha: "ded61fa9c4e1b7d3f8a2c5e6b0d9f1a3c7e5b2da",
+          message:
+            "feat(lore): an app can be renamed, and the rename does not " +
+            "touch reporting because SIGIL_KEY carries the project slug " +
+            "and not the app name",
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`${response.status} ${await response.text()}`);
+      }
+    }, commitUrl);
+
+    await page.goto(`/${projectSlug}/quests/${shortId}`);
+
+    const label = page.getByText("Commits", { exact: true });
+    await expect(label).toBeVisible({ timeout: 15_000 });
+
+    const row = label.locator("xpath=ancestor::div[1]/..");
+    const value = row.locator("code").locator("xpath=..");
+
+    const [rowBox, valueBox, labelBox] = await Promise.all([
+      row.boundingBox(),
+      value.boundingBox(),
+      label.boundingBox(),
+    ]);
+
+    if (!rowBox || !valueBox || !labelBox) {
+      throw new Error("commits row did not lay out");
+    }
+
+    // The two claims the bug broke, in the order it broke them: the value
+    // does not start left of the label's right edge (it stopped painting
+    // over it), and it does not run past the row it lives in.
+    expect(valueBox.x).toBeGreaterThanOrEqual(labelBox.x + labelBox.width - 1);
+    expect(valueBox.x + valueBox.width).toBeLessThanOrEqual(
+      rowBox.x + rowBox.width + 1,
+    );
+
+    // Truncated, not wrapped: the sha has to survive, since it is the half
+    // that identifies the commit.
+    await expect(page.getByText("ded61fa")).toBeVisible();
+
+    // And the shared cell's guard, on a row that wraps rather than truncates.
+    const areaValue = page.getByText(
+      "Averylongsingletokenareanamewithnospaces",
+    );
+    await expect(areaValue).toBeVisible();
+    const areaBox = await areaValue.boundingBox();
+    if (!areaBox) throw new Error("area row did not lay out");
+    expect(areaBox.x).toBeGreaterThanOrEqual(rowBox.x - 1);
+    expect(areaBox.x + areaBox.width).toBeLessThanOrEqual(
+      rowBox.x + rowBox.width + 1,
+    );
+  });
+
+  /**
+   * Completing a quest with many unticked objectives.
+   *
+   * The dialog had no height cap and no scroll container, and it is
+   * `fixed top-1/2 -translate-y-1/2` — so a long waiver list grew past the
+   * viewport in both directions and took the summary editor and the confirm
+   * button with it. The quest could not be closed at all.
+   *
+   * Run at two viewport heights because the failure is a function of the
+   * viewport, not of the DOM: at 900px twenty objectives already overflow,
+   * and at 600px there is barely room for the editor, which is where a cap
+   * that merely moves the problem shows up.
+   */
+  for (const height of [900, 600]) {
+    test(`a quest with 20 unticked objectives can be completed at ${height}px`, async ({
+      page,
+    }) => {
+      test.setTimeout(90_000);
+
+      const t = Date.now();
+      await registerAndVerify(
+        page,
+        `waive${height}${t}@example.com`,
+        "Waive123!",
+      );
+      const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+        page,
+        `WV${height}${t}`.slice(0, 20),
+      );
+
+      const { id: questId, shortId } = await apiPost<{
+        id: number;
+        shortId: number;
+      }>(page, "createQuest", {
+        projectId,
+        title: `Waive${t}`,
+        description: "Twenty objectives, none of them done",
+        area: "Main",
+        priority: "medium",
+        objectives: Array.from({ length: 20 }, (_, n) => ({
+          title: `Objective number ${n + 1}`,
+          completed: false,
+        })),
+        attachments: [],
+      });
+
+      await page.evaluate(async (id) => {
+        const r = await fetch(`/api/acceptQuest/${id}`, {
+          method: "GET",
+          credentials: "include",
+        });
+        if (!r.ok) throw new Error(`accept: ${r.status} ${await r.text()}`);
+      }, questId);
+
+      await page.setViewportSize({ width: 1280, height });
+      await page.goto(`/${projectSlug}/quests/${shortId}`);
+
+      await page.getByRole("button", { name: /complete.*quest/i }).click();
+
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toBeVisible({ timeout: 15_000 });
+
+      // The dialog fits. Both edges, because it is centred: an uncapped one
+      // overflows above and below at the same time, so checking only the
+      // bottom would pass on a dialog whose header had left the screen.
+      const box = await dialog.boundingBox();
+      if (!box) throw new Error("dialog did not lay out");
+      expect(box.y).toBeGreaterThanOrEqual(-1);
+      expect(box.y + box.height).toBeLessThanOrEqual(height + 1);
+
+      // The three parts that must survive whatever the objective count.
+      await expect(
+        dialog.getByText(/objective number 1$/i).first(),
+      ).toBeVisible();
+      // "Complete with summary", not "Complete without summary" — the two
+      // differ only by that suffix, so an unanchored match hits both.
+      const submit = dialog.getByRole("button", {
+        name: /complete with summary/i,
+      });
+      await expect(submit).toBeInViewport();
+
+      // And the list is what scrolls, rather than the page.
+      const scrolled = await dialog
+        .locator("div.overflow-y-auto")
+        .first()
+        .evaluate((el) => el.scrollHeight > el.clientHeight);
+      expect(scrolled).toBe(true);
+
+      // End to end: twenty reasons, then close the quest for real. The
+      // twentieth field is only reachable by scrolling the region above.
+      for (let n = 0; n < 20; n++) {
+        await dialog
+          .getByPlaceholder(/why|pourquoi/i)
+          .nth(n)
+          .fill(`Reason ${n + 1}`);
+      }
+      // The summary the button is named after. Reaching it at all is half
+      // the point: before the cap it was below the fold with the button.
+      await dialog.locator(".cm-content").click();
+      await page.keyboard.type("Closed with twenty waivers.");
+
+      await expect(submit).toBeEnabled({ timeout: 10_000 });
+      await submit.click();
+
+      await expect(page.getByText(/completed|terminé/i).first()).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(dialog).toBeHidden();
+    });
+  }
+
   test("configure + disable a reminder from Quest Settings", async ({
     page,
   }) => {
@@ -294,6 +515,27 @@ test.describe("Quest", () => {
       await expect(
         page.getByText(new RegExp(`unblocked.*#${predecessor.shortId}`, "i")),
       ).toBeVisible({ timeout: 10_000 });
+    });
+
+    await test.step("predecessor view names what it unlocks", async () => {
+      // The other direction, and the one that had no coverage. The rail
+      // carried a second Questline row that printed a bare "Unlocks" per
+      // dependent — no number, no title, nothing to click — because it
+      // passed the shortId as an i18n argument to a catalogue entry with no
+      // `$1` in it. That row is deleted; this asserts the banner it
+      // duplicated says all three things the row could not.
+      await page.goto(`/${projectSlug}/quests/${predecessor.shortId}`);
+      await page.waitForLoadState("networkidle");
+
+      const banner = page
+        .getByText(/unlocks/i)
+        .locator("xpath=..")
+        .first();
+      await expect(banner).toBeVisible({ timeout: 10_000 });
+      await expect(
+        banner.getByRole("link", { name: `#${follower.shortId}` }),
+      ).toBeVisible();
+      await expect(banner).toContainText(`Follower${t}`);
     });
   });
 

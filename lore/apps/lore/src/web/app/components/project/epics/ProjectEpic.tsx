@@ -9,7 +9,7 @@ import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { BookOpen, FileText, Pencil, Swords, Workflow } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
@@ -227,16 +227,6 @@ const ProjectEpic = (props: ProjectEpicProps) => {
 
   // A count is shown only once its collection has actually resolved —
   // `null` renders the bare label rather than a confident "0".
-  const withCount = (label: ReactNode, count: number | undefined): ReactNode =>
-    count === undefined ? (
-      label
-    ) : (
-      <>
-        {label}
-        <span className="text-muted-foreground ml-1 tabular-nums">{count}</span>
-      </>
-    );
-
   const tabs: DetailTab[] = [
     {
       value: "overview",
@@ -246,7 +236,11 @@ const ProjectEpic = (props: ProjectEpicProps) => {
     {
       value: "quests",
       icon: Swords,
-      label: withCount(tr("epic.tab.quests"), quests?.length),
+      label: tr("epic.tab.quests"),
+      // `count`, not folded into the label: the segmented control colours it
+      // from the segment's own state, and a `text-muted-foreground` written
+      // here was unreadable on the active tab against the thumb.
+      count: quests?.length,
     },
     {
       value: "flow",
@@ -256,7 +250,8 @@ const ProjectEpic = (props: ProjectEpicProps) => {
     {
       value: "folios",
       icon: BookOpen,
-      label: withCount(tr("epic.tab.folios"), folios?.length),
+      label: tr("epic.tab.folios"),
+      count: folios?.length,
     },
   ];
 

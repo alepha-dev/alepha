@@ -13,7 +13,7 @@ import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { currentUserAtom } from "alepha/security";
-import { Loader2 } from "lucide-react";
+import { Loader2, Paperclip } from "lucide-react";
 import { useState } from "react";
 
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
@@ -34,9 +34,20 @@ export interface MyFeedbackEditSheetProps {
 
 /**
  * Inline drawer opened by clicking a row in {@link MyFeedback}. A pending
- * feedback is editable — title, description and tags via `updateMyFeedback`
- * (attachments are left as-is); a triaged (accepted/rejected) feedback renders
- * read-only.
+ * feedback is editable — title, description and tags via `updateMyFeedback`;
+ * a triaged (accepted/rejected) feedback renders read-only.
+ *
+ * **Attachments are shown, never edited**, and that is a decision rather than
+ * an omission. `updateMyFeedback` accepts title, description and tags only,
+ * so add and remove would need a new endpoint; removing one is destructive
+ * and irreversible, and the report this closes (feedback #2013) asks only to
+ * SEE the file. Adding a delete control alongside a text edit, in a drawer
+ * that saves on a button, is not a change to smuggle in.
+ *
+ * They were absent entirely until then, which mattered most here: feedback is
+ * editable only while pending, the same window in which a reporter would
+ * notice a wrong or missing screenshot, and this was the one place they could
+ * not look.
  */
 const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
   const feedbackApi = useClient<FeedbackController>();
@@ -155,6 +166,56 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
               disabled={disabled}
             />
           </div>
+
+          {/* Read-only, and hidden when there is nothing to show — an empty
+              "Attachments" heading is a question the reader then has to
+              answer by remembering what they uploaded. */}
+          {props.feedback?.attachmentUrls &&
+            props.feedback.attachmentUrls.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium">
+                  {tr("feedback.attachments")}
+                </span>
+                <ul className="flex flex-wrap gap-2">
+                  {props.feedback.attachmentUrls.map((file) => (
+                    <li key={file.id}>
+                      {/* `target="_blank"` on both shapes: the drawer holds
+                          unsaved edits, so opening the file in place would
+                          discard them. */}
+                      <a
+                        href={file.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        title={`${file.name} (${Math.round(file.size / 1024)} KB)`}
+                        className="border-border hover:bg-accent flex items-center gap-2 rounded-md border p-1.5 text-sm"
+                      >
+                        {file.mimeType?.startsWith("image/") ? (
+                          // The thumbnail IS the identifying detail for a
+                          // screenshot: a reporter checking they attached the
+                          // right one cannot tell from `Screenshot 5.png`.
+                          <img
+                            src={file.url}
+                            alt={file.name}
+                            className="size-16 rounded object-cover"
+                          />
+                        ) : (
+                          <>
+                            <Paperclip className="size-3.5 shrink-0" />
+                            <span className="max-w-40 truncate">
+                              {file.name}
+                            </span>
+                            <span className="text-muted-foreground text-xs whitespace-nowrap">
+                              {file.mimeType ?? ""}{" "}
+                              {Math.round(file.size / 1024)} KB
+                            </span>
+                          </>
+                        )}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
           {/* The same thread the project owner sees. The reporter is
               usually not a member of the project, which is exactly why the
