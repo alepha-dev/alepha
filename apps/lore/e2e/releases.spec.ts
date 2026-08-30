@@ -231,4 +231,77 @@ test.describe("Releases", () => {
     const byNumber = [...releases].sort((a, b) => a.number - b.number);
     expect(byNumber.map((r) => r.tag)).toEqual(["0.9.0", "0.10.0"]);
   });
+
+  /**
+   * The page is an `AlephaTable` now, shaped like Epics. These are the two
+   * affordances the rebuild added, and the ones a card list could not have.
+   *
+   * ⚠️ The sort assertion is the same trap as the data-level test above, one
+   * layer up: the header says "Release" and shows tags, and it must still
+   * order by `number`. As text `0.28.0` sorts before `0.9.0`, so a string
+   * comparator fails this rather than passing by luck.
+   */
+  test("the table filters by state and sorts tags by number", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `reltab${t}@example.com`, "RelTest123!");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `RT${t}`.slice(0, 20),
+    );
+
+    // Created in version order, which is `number` order and NOT text order.
+    await post(page, `/api/createRelease/${projectId}`, { tag: "0.9.0" });
+    const mid = await post<Release>(page, `/api/createRelease/${projectId}`, {
+      tag: "0.28.0",
+    });
+    await post(page, `/api/createRelease/${projectId}`, { tag: "1.0.0" });
+    await post(page, `/api/publishRelease/${mid.id}`, {});
+
+    await page.goto(`/${slug}/releases`);
+
+    const tagColumn = async () =>
+      await page
+        .locator("tbody tr")
+        .evaluateAll((rows) =>
+          rows.map(
+            (row) => row.querySelectorAll("td")[1]?.textContent?.trim() ?? "",
+          ),
+        );
+
+    await test.step("the tag column orders by number, not as text", async () => {
+      // Scoped to `thead`: the toolbar's "New Release" action is on this page
+      // too, and an unscoped name match finds both.
+      const header = page.locator("thead").getByRole("button", {
+        name: "Release",
+      });
+      await expect(header).toBeVisible({ timeout: 15_000 });
+      await header.click();
+      await expect
+        .poll(tagColumn, { timeout: 15_000 })
+        .toEqual(["0.9.0", "0.28.0", "1.0.0"]);
+    });
+
+    await test.step("the state filter replaces the two headings", async () => {
+      // Open and released used to be two sections. A table is one flat list,
+      // so the split became a derived two-value filter — and two is the
+      // whole vocabulary, because nothing pauses.
+      // The only combobox on the page: the toolbar's other filter is a text
+      // input, and the table's page-size picker only appears once there is
+      // more than one page.
+      const stateFilter = page.getByRole("combobox").first();
+      await stateFilter.click();
+      await page.getByRole("option", { name: "Released" }).click();
+      await expect.poll(tagColumn, { timeout: 15_000 }).toEqual(["0.28.0"]);
+
+      await stateFilter.click();
+      await page.getByRole("option", { name: "Open" }).click();
+      await expect
+        .poll(tagColumn, { timeout: 15_000 })
+        .toEqual(["0.9.0", "1.0.0"]);
+    });
+  });
 });
