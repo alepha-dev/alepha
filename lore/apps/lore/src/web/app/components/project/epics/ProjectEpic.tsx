@@ -262,7 +262,9 @@ const ProjectEpic = (props: ProjectEpicProps) => {
 
   return (
     <DetailLayout
-      aside={<ProjectEpicAside epic={epic} quests={quests} />}
+      aside={
+        <ProjectEpicAside epic={epic} quests={quests} onChange={setEpic} />
+      }
       tabs={tabs}
       tab={tab}
       onTabChange={(v) => setTab(v as TabKey)}

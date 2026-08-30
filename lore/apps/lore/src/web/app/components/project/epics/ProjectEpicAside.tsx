@@ -12,10 +12,16 @@ import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import EpicReleaseControl from "./EpicReleaseControl.tsx";
 import { STATUS_ICONS, STATUS_LABEL_KEYS, STATUS_TONE } from "./epicStatus.ts";
 
 export interface ProjectEpicAsideProps {
   epic: EpicResource;
+  /**
+   * Applied when the release control writes, so the aside and whatever else
+   * holds this epic stay one row.
+   */
+  onChange: (epic: EpicResource) => void;
   /**
    * The epic's own quests, or `null` while they are still loading. Two rows
    * are derived from them rather than from the epic, so both are omitted on
@@ -59,6 +65,13 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
           {tr(STATUS_LABEL_KEYS[props.epic.status])}
         </Badge>
       ),
+    },
+    {
+      label: String(tr("epic.aside.release")),
+      // A control, not a label. Attaching from the release side is #1559; the
+      // epic's own page is where this attachment is actually made, and a row
+      // that only reports it would leave the FK writable by nothing but MCP.
+      value: <EpicReleaseControl epic={props.epic} onChange={props.onChange} />,
     },
     {
       label: String(tr("epic.aside.progress")),

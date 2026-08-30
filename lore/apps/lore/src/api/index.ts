@@ -65,6 +65,7 @@ import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
 import { QuestCsvParser } from "./services/QuestCsvParser.ts";
 import { QuestImportFormatProvider } from "./services/QuestImportFormatProvider.ts";
 import { QuestService } from "./services/QuestService.ts";
+import { ReleaseAttachmentService } from "./services/ReleaseAttachmentService.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
 import { UniqueVisitorsMetric } from "./services/UniqueVisitorsMetric.ts";
@@ -93,6 +94,7 @@ export const LoreApi = $module({
     // explicitly or the realm (and every permission) is never registered.
     AppSecurityProvider,
     ProjectSecurityService,
+    ReleaseAttachmentService,
     // Substituted for the framework's `FileAccessProvider` in
     // `main.server.ts`. Listed here only so DI scanning sees the class.
     LoreFileAccessProvider,
