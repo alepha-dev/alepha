@@ -641,8 +641,11 @@ export default {
   "release.detail.editTitle": "Title",
   "release.detail.editTargetDate": "Target date",
   "release.detail.editDescription": "Notes",
+  "release.detail.epics": "Epics",
   "release.detail.save": "Save",
   "release.detail.saved": "Release updated",
+  "release.hero.progress": "Progress",
+  "release.hero.shelved": "$1 shelved",
   "release.history.empty":
     "No closed releases yet. Once you seal a release, it will appear here as a permanent record.",
   "release.empty.title": "No release is open",

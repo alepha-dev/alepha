@@ -16,13 +16,17 @@ import {
   type ReleaseChangelogArea,
   releaseChangelogAreaSchema,
 } from "../schemas/releaseChangelogAreaSchema.ts";
+import { releaseResourceSchema } from "../schemas/releaseResourceSchema.ts";
 import {
   RELEASE_TAG_PATTERN,
   releaseTagSchema,
 } from "../schemas/releaseTagSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
-import { ReleaseContentService } from "../services/ReleaseContentService.ts";
+import {
+  type ReleaseContents,
+  ReleaseContentService,
+} from "../services/ReleaseContentService.ts";
 
 export class ReleaseController {
   releases = $repository(releases);
@@ -92,15 +96,29 @@ export class ReleaseController {
       params: z.object({
         projectId: z.integer(),
       }),
-      response: z.array(releases.schema),
+      response: z.array(releaseResourceSchema),
     },
     handler: async ({ params }) => {
-      return await this.releases.findMany({
+      const rows = await this.releases.findMany({
         where: {
           projectId: { eq: params.projectId },
         },
         orderBy: [{ column: "number", direction: "desc" }],
       });
+
+      // Batched: two queries for the whole page rather than two per row.
+      // Only OPEN releases are looked up at all - a released one renders
+      // entirely from its own frozen columns.
+      const open = rows.filter((release) => !release.releasedAt);
+      const contents = await this.contents.contentsOfMany(
+        params.projectId,
+        open,
+      );
+
+      return rows.map((release) => ({
+        ...release,
+        progress: this.progressOf(release, contents.get(release.id)),
+      }));
     },
   });
 
@@ -304,6 +322,74 @@ export class ReleaseController {
     },
   });
 
+  /**
+   * What is in this release, broken down: the attached epics each with their
+   * OWN progress inside this release, and the loose quests beside them.
+   *
+   * ⚠️ Per-epic progress counts only the epic's quests **that are in this
+   * release**, not the epic's whole quest set. An epic can carry a quest that
+   * names a different release (`ReleaseContentService` lets an explicit
+   * attachment override its epic's), and counting that quest here would make
+   * the epic bars add up to more than the release bar above them.
+   */
+  getReleaseContents = $action({
+    use: [$secure({ permissions: ["quest:read"] }), this.ownsRelease()],
+    schema: {
+      params: z.object({
+        id: z.integer(),
+      }),
+      response: z.object({
+        epics: z.array(
+          z.object({
+            id: z.integer(),
+            number: z.integer(),
+            title: z.string(),
+            status: z.string(),
+            completed: z.integer(),
+            total: z.integer(),
+          }),
+        ),
+        looseQuests: z.array(
+          z.object({
+            id: z.integer(),
+            shortId: z.integer(),
+            title: z.string(),
+            area: z.string().optional(),
+            priority: z.string(),
+            completedAt: z.datetime().optional(),
+          }),
+        ),
+      }),
+    },
+    handler: async () => {
+      const release = this.owned.get<Release>();
+      const { epics, quests, looseQuests } =
+        await this.contents.contentsOf(release);
+
+      return {
+        epics: epics.map((epic) => {
+          const own = quests.filter((quest) => quest.epicId === epic.id);
+          return {
+            id: epic.id,
+            number: epic.number,
+            title: epic.title,
+            status: epic.status,
+            completed: own.filter((quest) => quest.completedAt != null).length,
+            total: own.length,
+          };
+        }),
+        looseQuests: looseQuests.map((quest) => ({
+          id: quest.id,
+          shortId: quest.shortId,
+          title: quest.title,
+          area: quest.area,
+          priority: quest.priority,
+          completedAt: quest.completedAt,
+        })),
+      };
+    },
+  });
+
   getReleaseChangelog = $action({
     use: [
       $secure({ permissions: ["quest:read"] }),
@@ -393,27 +479,62 @@ export class ReleaseController {
    * Called at publish and stamped onto the row. #1555 is what serves it live
    * for an open release.
    */
-  protected async computeProgress(release: Release): Promise<{
-    completed: number;
-    inProgress: number;
-    shelved: number;
-    total: number;
-  }> {
-    // Counted over `ReleaseContentService`, never with a `releaseId` count of
-    // its own. A release is mostly a set of EPICS, so a direct-attachment
-    // count would report 0/0 for the normal case and disagree with the
-    // changelog beside it - which is the exact failure the service exists to
-    // make impossible.
-    const { quests, shelvedQuests } = await this.contents.contentsOf(release);
+  /**
+   * The four progress buckets, from the ONE source that is correct for this
+   * release's state.
+   *
+   * A released release reads its four FROZEN columns and is never recomputed;
+   * an open one is counted live from its contents. One method branching on
+   * `releasedAt`, so no caller can accidentally recompute a released one.
+   *
+   * That is not an optimisation. Completing a quest a month after `0.28.0`
+   * shipped must not silently rewrite what `0.28.0` shipped: a released
+   * release renders entirely from its own row, frozen changelog and frozen
+   * counts, with no live query at all.
+   */
+  progressOf(
+    release: Release,
+    contents?: ReleaseContents,
+  ): { completed: number; inProgress: number; shelved: number; total: number } {
+    if (release.releasedAt) {
+      return {
+        completed: release.completed ?? 0,
+        inProgress: release.inProgress ?? 0,
+        shelved: release.shelved ?? 0,
+        total: release.total ?? 0,
+      };
+    }
+
+    // An open release with no contents supplied reads as empty rather than
+    // throwing: the batched caller only looks up the open ones, so a missing
+    // entry means "nothing in it", not "not fetched".
+    const quests = contents?.quests ?? [];
 
     return {
       completed: quests.filter((quest) => quest.completedAt != null).length,
       inProgress: quests.filter(
         (quest) => quest.acceptedAt != null && quest.completedAt == null,
       ).length,
-      shelved: shelvedQuests.length,
+      shelved: contents?.shelvedQuests.length ?? 0,
       total: quests.length,
     };
+  }
+
+  /**
+   * Counted over `ReleaseContentService`, never with a `releaseId` count of
+   * its own. A release is mostly a set of EPICS, so a direct-attachment count
+   * would report 0/0 for the normal case and disagree with the changelog
+   * beside it - which is the exact failure the service exists to prevent.
+   *
+   * Only ever called at publish time, to stamp the frozen columns.
+   */
+  protected async computeProgress(release: Release): Promise<{
+    completed: number;
+    inProgress: number;
+    shelved: number;
+    total: number;
+  }> {
+    return this.progressOf(release, await this.contents.contentsOf(release));
   }
 
   /**

@@ -10,11 +10,11 @@ import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Pencil, Square } from "lucide-react";
 
-import type { Release } from "@/api/entities/releases.ts";
+import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface ReleaseLedgerHeroProps {
-  release: Release;
+  release: ReleaseResource;
   questCount: number;
   areaCount: number;
   contributorCount: number;
@@ -33,16 +33,20 @@ export interface ReleaseLedgerHeroProps {
  * The band that sits above the changelog for an open release: number
  * medallion, what it is, and the three counters the changelog rolls up to.
  *
- * ⚠️ It used to carry a progress bar measuring **time spent** against
- * `closesAt`, because a milestone had a window rather than a plan. Nothing
- * closes on a timer now, so there is no window to draw. The bar that belongs
- * here is work done against work attached, and it arrives with the progress
- * rollup (#1555) rather than being faked from a date in the meantime.
+ * The bar is work DONE against work attached. It used to measure **time
+ * spent** against `closesAt`, because a milestone had a window rather than a
+ * plan; a release has a denominator, which is the whole reason the recorder
+ * was worth deleting.
  */
 const ReleaseLedgerHero = (props: ReleaseLedgerHeroProps) => {
   const { release } = props;
   const { tr } = useI18n<I18n, "en">();
   const dt = useInject(DateTimeProvider);
+  const progress = release.progress;
+  const pct =
+    progress.total > 0
+      ? Math.round((progress.completed / progress.total) * 100)
+      : 0;
 
   return (
     <div className="bg-card border-border flex flex-col gap-6 border-b px-5 py-5 transition-colors lg:flex-row lg:items-center lg:gap-7 lg:px-7">
@@ -94,6 +98,30 @@ const ReleaseLedgerHero = (props: ReleaseLedgerHeroProps) => {
             <Badge variant="outline" className="font-mono text-[11px]">
               {release.tag}
             </Badge>
+          </div>
+        )}
+      </div>
+
+      {/* Work done against work attached. `total` excludes shelved quests,
+          so the bar never counts declined work as outstanding. */}
+      <div className="shrink-0 lg:w-52">
+        <div className="text-muted-foreground flex justify-between text-[10.5px] tracking-[0.1em] uppercase">
+          <span>{tr("release.hero.progress")}</span>
+          <span className="font-mono">
+            {progress.completed}/{progress.total}
+          </span>
+        </div>
+        <div className="bg-muted mt-1.5 h-1.5 overflow-hidden rounded-full">
+          <div
+            className="h-full rounded-full bg-green-600 transition-all"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        {progress.shelved > 0 && (
+          <div className="text-muted-foreground mt-1.5 text-[11.5px]">
+            {tr("release.hero.shelved", {
+              args: [String(progress.shelved)],
+            })}
           </div>
         )}
       </div>

@@ -27,6 +27,7 @@ import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
 import type { Release } from "@/api/entities/releases.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { ReleaseChangelogArea } from "@/api/schemas/releaseChangelogAreaSchema.ts";
+import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
@@ -76,8 +77,10 @@ const ProjectReleases = () => {
   const [startTag, setStartTag] = useState("");
   const [startTitle, setStartTitle] = useState("");
   const [startDescription, setStartDescription] = useState("");
-  const [closeModal, setCloseModal] = useState<Release | null>(null);
-  const [detailRelease, setDetailRelease] = useState<Release | null>(null);
+  const [closeModal, setCloseModal] = useState<ReleaseResource | null>(null);
+  const [detailRelease, setDetailRelease] = useState<ReleaseResource | null>(
+    null,
+  );
   const [folioOpen, setFolioOpen] = useState(false);
   const [folioSaving, setFolioSaving] = useState(false);
 
@@ -86,12 +89,10 @@ const ProjectReleases = () => {
   const [changelogError, setChangelogError] = useState(false);
   const [openQuests, setOpenQuests] = useState<QuestResource[]>([]);
 
-  const openRelease = releases?.find((c) => !c.releasedAt) as
-    | Release
-    | undefined;
+  const openRelease = releases?.find((c) => !c.releasedAt);
 
   const closedReleases = useMemo(
-    () => ((releases ?? []) as Release[]).filter((c) => c.releasedAt),
+    () => (releases ?? []).filter((c) => c.releasedAt),
     [releases],
   );
 
@@ -107,7 +108,7 @@ const ProjectReleases = () => {
     const updated = await releaseApi.getReleases({
       params: { projectId: project.id },
     });
-    setReleases(updated as Release[]);
+    setReleases(updated as ReleaseResource[]);
   }, [project?.id]);
 
   // Changelog for whichever release is on screen.
@@ -221,10 +222,14 @@ const ProjectReleases = () => {
     }
   };
 
+  // The detail sheet PATCHes the row and gets back a plain release, with no
+  // progress on it: `updateRelease` edits fields, it does not recount. Merged
+  // over the existing resource so the rollup already on screen survives an
+  // unrelated rename.
   const handleDetailUpdated = (updated: Release) => {
     setReleases(
-      ((releases ?? []) as Release[]).map((c) =>
-        c.id === updated.id ? ({ ...c, ...updated } as Release) : c,
+      (releases ?? []).map((c) =>
+        c.id === updated.id ? { ...c, ...updated } : c,
       ),
     );
     setDetailRelease((prev) =>

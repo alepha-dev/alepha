@@ -48,6 +48,75 @@ export class ReleaseContentService {
   epics = $repository(epics);
   quests = $repository(quests);
 
+  /**
+   * {@link contentsOf} for a whole list, in TWO queries rather than two per
+   * release.
+   *
+   * The releases page renders every release a project has, and the per-release
+   * form would make that 2N round-trips. Neither shape grows with the
+   * project's quest count, but N is the number a list page multiplies.
+   *
+   * Returns a map keyed by release id. A release absent from `releases` is
+   * absent from the map; every release present gets an entry, empty or not.
+   */
+  async contentsOfMany(
+    projectId: number,
+    releases: Release[],
+  ): Promise<Map<number, ReleaseContents>> {
+    const result = new Map<number, ReleaseContents>();
+    if (releases.length === 0) return result;
+
+    const releaseIds = releases.map((release) => release.id);
+    const allEpics = await this.epics.findMany({
+      where: { releaseId: { inArray: releaseIds } },
+      orderBy: [{ column: "number", direction: "asc" }],
+    });
+
+    const epicsByRelease = new Map<number, Epic[]>();
+    for (const epic of allEpics) {
+      if (epic.releaseId == null) continue;
+      const list = epicsByRelease.get(epic.releaseId) ?? [];
+      list.push(epic);
+      epicsByRelease.set(epic.releaseId, list);
+    }
+
+    const where: PgQueryWhere<typeof quests.schema> = {
+      projectId: { eq: projectId },
+    };
+    const epicIds = allEpics.map((epic) => epic.id);
+    // Same `inArray: []` trap as the single-release form, and one branch more
+    // to get wrong: `releaseIds` is never empty here (guarded above), but
+    // `epicIds` routinely is.
+    if (epicIds.length > 0) {
+      where.or = [
+        { releaseId: { inArray: releaseIds } },
+        { epicId: { inArray: epicIds }, releaseId: { isNull: true } },
+      ];
+    } else {
+      where.releaseId = { inArray: releaseIds };
+    }
+
+    const found = await this.quests.findMany({ where });
+
+    for (const release of releases) {
+      const releaseEpics = epicsByRelease.get(release.id) ?? [];
+      const epicIdSet = new Set(releaseEpics.map((epic) => epic.id));
+      // The same membership rule as the single query, applied in memory:
+      // named directly, or reached through one of THIS release's epics while
+      // naming no release of its own.
+      const mine = found.filter(
+        (quest) =>
+          quest.releaseId === release.id ||
+          (quest.releaseId == null &&
+            quest.epicId != null &&
+            epicIdSet.has(quest.epicId)),
+      );
+      result.set(release.id, this.partition(releaseEpics, epicIdSet, mine));
+    }
+
+    return result;
+  }
+
   async contentsOf(release: Release): Promise<ReleaseContents> {
     const attachedEpics = await this.epics.findMany({
       where: { releaseId: { eq: release.id } },
@@ -95,7 +164,19 @@ export class ReleaseContentService {
 
     const found = await this.quests.findMany({ where });
 
-    // Split rather than filtered in SQL: both halves are wanted, and one
+    return this.partition(attachedEpics, new Set(epicIds), found);
+  }
+
+  /**
+   * Shared by both forms above, so the single-release and batched paths can
+   * never sort the same rows differently.
+   */
+  protected partition(
+    attachedEpics: Epic[],
+    epicIdSet: Set<number>,
+    found: Quest[],
+  ): ReleaseContents {
+    // Split here rather than filtered in SQL: both halves are wanted, and one
     // query answering the whole membership question is the point of this
     // service. `quests` is what every denominator counts.
     const all = found.filter((quest) => quest.shelvedAt == null);
@@ -104,7 +185,6 @@ export class ReleaseContentService {
     // A quest reachable BOTH ways counts once, as an epic quest. The `or`
     // already returns it once; this partition is where it could be counted
     // twice, so the epic membership is tested first.
-    const epicIdSet = new Set(epicIds);
     const looseQuests = all.filter(
       (quest) => quest.epicId == null || !epicIdSet.has(quest.epicId),
     );

@@ -655,8 +655,11 @@ export default {
   "release.detail.editTitle": "Titre",
   "release.detail.editTargetDate": "Date visée",
   "release.detail.editDescription": "Notes",
+  "release.detail.epics": "Épopées",
   "release.detail.save": "Enregistrer",
   "release.detail.saved": "Version mise à jour",
+  "release.hero.progress": "Avancement",
+  "release.hero.shelved": "$1 écartée(s)",
   "release.history.empty":
     "Aucune version close. Une fois scellées, vos versions apparaîtront ici comme un témoignage permanent.",
   "release.empty.title": "Aucune version ouverte",
