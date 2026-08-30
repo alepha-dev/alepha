@@ -299,88 +299,39 @@ test.describe("Releases", () => {
   });
 
   /**
-   * New Release in the header's create menu, on the project shape that would
-   * have exposed the bug.
+   * The Releases chrome: where the entry sits in the sidebar, and that the
+   * header's create menu can reach it.
    *
-   * ⚠️ Releases-on with epics, folios and feedback all OFF is the whole
-   * point. `hasCreateAction` decides whether the chevron renders at all, so
-   * an entry added to the menu without being counted there is an entry
-   * inside a menu with no way to open it. Any other project shape has some
-   * other feature holding the chevron open and passes either way.
+   * Two quests' worth of assertions in one test on purpose. Both need only a
+   * project with feature toggles, and on CI (1-2 workers) the register +
+   * wizard setup costs more than everything either of them asserts.
+   *
+   * ⚠️ The feature shape in the second half is the whole point of it:
+   * releases ON with epics, folios and feedback OFF. `hasCreateAction`
+   * decides whether the create chevron renders at all, so an entry added to
+   * the menu without being counted there is an entry inside a menu with no
+   * way to open it. Any other shape has some other feature holding the
+   * chevron open and would pass either way.
+   *
+   * The sidebar half is asserted as ORDER among the project's own nav links
+   * rather than by group, because the groups are unlabelled by design and so
+   * have nothing in the DOM to name them. It is worth pinning because the
+   * entry has now moved twice: Record originally, Work after epic #14,
+   * Record again at the owner's request.
    */
-  test("the header create menu offers New Release, and can be opened to reach it", async ({
+  test("sits between Folios and Reports, and is reachable from the create menu", async ({
     page,
   }) => {
     test.setTimeout(120_000);
 
     const t = Date.now();
-    await registerAndVerify(page, `relmenu${t}@example.com`, "RelTest123!");
+    await registerAndVerify(page, `relchrome${t}@example.com`, "RelTest123!");
     const { id: projectId, slug } = await createProjectViaWizard(
       page,
-      `RM${t}`.slice(0, 20),
-    );
-
-    await setProjectFeature(page, projectId, "milestones", true);
-    await setProjectFeature(page, projectId, "epics", false);
-    await setProjectFeature(page, projectId, "folios", false);
-    await setProjectFeature(page, projectId, "feedback", false);
-
-    await page.goto(`/${slug}/`);
-
-    const chevron = page.getByRole("button", {
-      name: "More create actions",
-    });
-    await expect(chevron).toBeVisible({ timeout: 15_000 });
-    await chevron.click();
-
-    const item = page.getByRole("menuitem", { name: "New Release" });
-    await expect(item).toBeVisible({ timeout: 10_000 });
-    // The neighbours really are off, so the chevron is being held open by
-    // this entry and nothing else.
-    await expect(page.getByRole("menuitem", { name: "New Epic" })).toHaveCount(
-      0,
-    );
-    await expect(page.getByRole("menuitem", { name: "New Folio" })).toHaveCount(
-      0,
-    );
-
-    await item.click();
-
-    // It opens #1635's dialog rather than a second create surface, and
-    // creating from here lands on the release itself, the way New Epic
-    // opens the epic it just made.
-    await page.getByLabel("Tag").fill("2.0.0");
-    await page.getByRole("button", { name: "Create" }).click();
-
-    await expect(page).toHaveURL(/\/releases\/2\.0\.0$/, { timeout: 15_000 });
-  });
-
-  /**
-   * Where Releases sits in the sidebar.
-   *
-   * ⚠️ This entry has moved twice, so it is worth a test rather than a third
-   * round trip: Record originally, Work after epic #14, Record again at the
-   * owner's request. `ProjectView.tsx` carries both trips and the reason.
-   *
-   * Asserted as ORDER among the project's own nav links rather than by
-   * group, because the groups are unlabelled by design and so have nothing
-   * in the DOM to name them.
-   */
-  test("Releases sits between Folios and Reports in the sidebar", async ({
-    page,
-  }) => {
-    test.setTimeout(120_000);
-
-    const t = Date.now();
-    await registerAndVerify(page, `relnav${t}@example.com`, "RelTest123!");
-    const { id: projectId, slug } = await createProjectViaWizard(
-      page,
-      `RV${t}`.slice(0, 20),
+      `RC${t}`.slice(0, 20),
     );
     await setProjectFeature(page, projectId, "milestones", true);
     await setProjectFeature(page, projectId, "folios", true);
-
-    await page.goto(`/${slug}/`);
 
     const navOrder = async () =>
       await page
@@ -399,19 +350,55 @@ test.describe("Releases", () => {
           slug,
         );
 
-    await expect
-      .poll(navOrder, { timeout: 15_000 })
-      .toEqual([`/${slug}/folios`, `/${slug}/releases`, `/${slug}/reports`]);
+    await test.step("it sits between Folios and Reports", async () => {
+      await page.goto(`/${slug}/`);
+      await expect
+        .poll(navOrder, { timeout: 15_000 })
+        .toEqual([`/${slug}/folios`, `/${slug}/releases`, `/${slug}/reports`]);
+    });
 
     await test.step("and still reads sensibly with folios off", async () => {
       // The quest worried this could leave Record holding one item. It
       // cannot: Reports has no feature gate at all, so Record always carries
       // at least it, and the empty-group `.filter` never fires here.
       await setProjectFeature(page, projectId, "folios", false);
+      await setProjectFeature(page, projectId, "epics", false);
+      await setProjectFeature(page, projectId, "feedback", false);
       await page.goto(`/${slug}/`);
       await expect
         .poll(navOrder, { timeout: 15_000 })
         .toEqual([`/${slug}/releases`, `/${slug}/reports`]);
+    });
+
+    await test.step("the create menu opens on this entry alone", async () => {
+      const chevron = page.getByRole("button", {
+        name: "More create actions",
+      });
+      await expect(chevron).toBeVisible({ timeout: 15_000 });
+      await chevron.click();
+
+      const item = page.getByRole("menuitem", { name: "New Release" });
+      await expect(item).toBeVisible({ timeout: 10_000 });
+      // The neighbours really are off, so the chevron is being held open by
+      // this entry and nothing else.
+      await expect(
+        page.getByRole("menuitem", { name: "New Epic" }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByRole("menuitem", { name: "New Folio" }),
+      ).toHaveCount(0);
+
+      await item.click();
+
+      // It opens #1635's dialog rather than a second create surface, and
+      // creating from here lands on the release itself, the way New Epic
+      // opens the epic it just made.
+      await page.getByLabel("Tag").fill("2.0.0");
+      await page.getByRole("button", { name: "Create" }).click();
+
+      await expect(page).toHaveURL(/\/releases\/2\.0\.0$/, {
+        timeout: 15_000,
+      });
     });
   });
 

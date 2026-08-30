@@ -213,7 +213,10 @@ jobs:
     runs-on: ubuntu-latest
     # Same reasoning as `test` above: a hang detector, not a budget. Observed
     # around 11m20s, and this job also gates `deploy-lore-production`.
-    timeout-minutes: 20
+    #
+    # 25 rather than 20 since 2026-08-30, to keep the step cap below it with
+    # room to spare after the Playwright step was re-sized. See the step.
+    timeout-minutes: 25
     services:
       redis:
         image: redis
@@ -314,7 +317,26 @@ jobs:
       # step with the test output intact, and the CLI suite below still gets
       # its turn.
       - name: Run E2E Tests
-        timeout-minutes: 7
+        # 11 rather than 7 since 2026-08-30. The suite grew by seven lore
+        # specs in one batch of quests, and this is a HANG detector, not a
+        # budget, so a legitimately longer suite hitting it means the detector
+        # is mis-sized rather than that the suite is broken.
+        #
+        # ⚠️ Read the failure before raising it again. The run that forced
+        # this printed complete results for shop, playground, docs and ssr and
+        # was killed in the middle of LORE with no output, which is what a
+        # capacity failure looks like. A hang looks different: results printed
+        # for everything, then silence in teardown, which is the case the
+        # original 7 was chosen for.
+        #
+        # The number to watch is the local wall time of `apps/lore`'s suite,
+        # currently ~3.1m at 7 workers. CI gets one or two, and every test
+        # that calls `registerAndVerify` + `createProjectViaWizard` pays about
+        # 25s of setup before it asserts anything. That setup, not the
+        # assertions, is what moves this number: prefer folding new
+        # assertions into an existing spec's steps over adding a spec with
+        # its own registration.
+        timeout-minutes: 11
         run: yarn e2e
 
       - name: Run CLI E2E Tests
