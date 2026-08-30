@@ -1,6 +1,6 @@
 {
   "name": "@alepha/mqtt",
-  "version": "0.27.0",
+  "version": "0.27.1",
   "description": "MQTT client and topic provider for Alepha framework.",
   "keywords": [
     "alepha",
@@ -60,12 +60,12 @@
     "mqtt": "^5.15.2"
   },
   "devDependencies": {
-    "alepha": "0.27.0",
+    "alepha": "0.27.1",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   },
   "peerDependencies": {
-    "alepha": "^0.27.0"
+    "alepha": "^0.27.1"
   },
   "engines": {
     "node": ">=22.0.0"
