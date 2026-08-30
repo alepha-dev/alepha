@@ -203,16 +203,18 @@ const MarkdownSelectionToolbar = (props: MarkdownSelectionToolbarProps) => {
                       // `.lore-md-toolbar-button` — two properties, two
                       // easings, which `duration-*` cannot express.
                       //
-                      // `hover:bg-accent` twice, the second behind `dark:`,
-                      // to defeat the ghost variant's own
-                      // `dark:hover:bg-muted/50`. A half-opacity muted is
-                      // near-invisible on this bar specifically: the bar is
-                      // `bg-popover`, which in dark sits at L 0.22, and
-                      // muted at 50% over it lands within a couple of
-                      // percent of the surface. Accent is L 0.33 and reads
-                      // cleanly. Everywhere else the ghost variant sits on
-                      // `background`, where its default is fine - this is a
-                      // property of the surface, not a fault in the variant.
+                      // `hover:bg-accent`, deliberately stronger than the
+                      // ghost variant's `hover:bg-muted`. This bar floats
+                      // over the document on `bg-popover`, which in the dark
+                      // themes sits at L 0.21-0.23; muted lands 0.04-0.05
+                      // above it, accent 0.09-0.11. A toolbar that appears
+                      // on selection and disappears again wants the louder
+                      // of the two.
+                      //
+                      // The `dark:` repeat is what defeats a dark-only
+                      // override on the variant. There is none today (one
+                      // was removed for quest #1643), but the repeat costs
+                      // nothing and keeps this bar's choice explicit.
                       className="lore-md-toolbar-button hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent"
                       // `mousedown`, not `click`, and prevented: a click
                       // would blur the editor first, collapsing the very
