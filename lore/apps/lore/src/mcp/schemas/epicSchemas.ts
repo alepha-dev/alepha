@@ -144,3 +144,22 @@ export const epicSetStatusResultSchema = z.object({
   activatedAt: z.datetime().optional(),
   completedAt: z.datetime().optional(),
 });
+
+// -----------------------------------------------------------------------------
+// epic_delete
+// -----------------------------------------------------------------------------
+
+export const epicDeleteParamsSchema = epicRefSchema;
+
+/**
+ * Bare acknowledgement, like `quest_delete`. Nothing about the epic is worth
+ * echoing back once it is gone, and the counts that WOULD be interesting
+ * (how many quests and folios were detached) are deliberately not returned:
+ * `EpicController.deleteEpic` leaves the orphaning to the FK's
+ * `ON DELETE SET NULL`, so no application code ever sees those rows and any
+ * number here would have to be produced by a query written purely to
+ * populate it.
+ */
+export const epicDeleteResultSchema = z.object({
+  ok: z.boolean(),
+});

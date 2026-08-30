@@ -8,6 +8,8 @@ import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import {
   epicCreateParamsSchema,
   epicCreateResultSchema,
+  epicDeleteParamsSchema,
+  epicDeleteResultSchema,
   epicGetParamsSchema,
   epicGetResultSchema,
   epicListParamsSchema,
@@ -261,6 +263,42 @@ export class EpicTools {
         activatedAt: epic.activatedAt,
         completedAt: epic.completedAt,
       };
+    },
+  });
+
+  /**
+   * Delete an epic, orphaning its quests and folios.
+   *
+   * The description carries the child semantics in its first two sentences
+   * on purpose. An agent decides whether to call a tool from the tool list
+   * alone, and "delete the container" reads as "delete what is in it" unless
+   * something says otherwise. An epic_delete that stayed quiet about it
+   * would simply go unused, which is the same outcome as not having it.
+   */
+  epic_delete = $tool({
+    description:
+      "Permanently delete an epic. Its quests and folios are DETACHED, never deleted: every one of them survives with its epic link cleared, keeping its own status, objectives and history. Use this to remove a mis-created epic or to restructure a plan. Only the epic itself is lost, and it cannot be recovered. Note that quests parked under a `planned` epic rejoin the human-facing backlog, kanban and reports once the epic is gone, because the gate that was hiding them no longer exists. To release them deliberately use epic_set_status 'active'; to keep them out of the backlog use quest_shelve.",
+    title: "Delete epic",
+    annotations: {
+      destructiveHint: true,
+      idempotentHint: true,
+    },
+    schema: {
+      params: epicDeleteParamsSchema,
+      result: epicDeleteResultSchema,
+    },
+    handler: async ({ params }) => {
+      const projectId = await this.resolveProjectId(
+        params.project,
+        params.project_name,
+      );
+      const target = await this.epicController.getEpicByNumber({
+        params: { projectId, number: params.number },
+      });
+
+      return await this.epicController.deleteEpic({
+        params: { id: target.id },
+      });
     },
   });
 }
