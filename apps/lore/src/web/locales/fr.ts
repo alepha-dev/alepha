@@ -274,8 +274,6 @@ export default {
   "board.action.shelveQuest": "Mettre la quête de côté",
   "board.action.unshelveQuest": "Reprendre la quête",
   "board.action.deleteQuest": "Supprimer la quête",
-  "board.view.list": "Liste des quêtes",
-  "board.view.kanban": "Tableau kanban",
   "board.confirm-delete-title": "Supprimer cette quête ?",
   "board.confirm-delete-message": "Cette action est irréversible.",
   "quest.create.title": "Nom",

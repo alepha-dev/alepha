@@ -242,8 +242,6 @@ export default {
   "board.action.shelveQuest": "Shelve Quest",
   "board.action.unshelveQuest": "Unshelve Quest",
   "board.action.deleteQuest": "Delete Quest",
-  "board.view.list": "Quest list",
-  "board.view.kanban": "Kanban board",
   "board.confirm-delete-title": "Delete this quest?",
   "board.confirm-delete-message": "This cannot be undone.",
 

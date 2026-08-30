@@ -41,9 +41,6 @@ import HeaderActions from "../shared/header/HeaderActions.tsx";
 import HeaderSearchButton from "../shared/header/HeaderSearchButton.tsx";
 import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
 import ProjectQuestLogRail from "./ProjectQuestLogRail.tsx";
-import ProjectQuestsViewSwitcher, {
-  type QuestsView,
-} from "./ProjectQuestsViewSwitcher.tsx";
 import ProjectSwitcher from "./ProjectSwitcher.tsx";
 import ProjectViewNavPublisher from "./ProjectViewNavPublisher.tsx";
 import QuestLog from "./QuestLog.tsx";
@@ -172,19 +169,8 @@ const ProjectView = () => {
   const [questLogCollapsed, setQuestLogCollapsed] = useStore(
     questLogCollapsedAtom,
   );
-  // Kanban is its own route again, so "are we on the board" is just the
-  // route name. It used to be `name === "projectQuests" && stored view is
-  // kanban`, a special case that existed only because the 2026-08 rename
-  // turned the board into a mode of the Quests page.
-  const kanbanView = name === "projectKanban";
   const showQuestLog = ROUTES_WITH_QUEST_LOG.has(name);
   const fullWidth = ROUTES_FULL_WIDTH.has(name);
-  // The list route, the detail route AND the board. The detail route gets it
-  // for the same reason the quest log does: dropping the bar there would
-  // shift the log up by the bar's height the moment a quest opened. What it
-  // does on detail is not switch the page — the detail route has no two
-  // views — but go back up to the one that does; see `selectView`.
-  const showViewBar = ROUTES_WITH_QUEST_LOG.has(name) || kanbanView;
 
   const [project] = useStore(currentProjectAtom);
   const [questCount] = useStore(currentQuestCountAtom);
@@ -206,23 +192,6 @@ const ProjectView = () => {
   const features: ProjectFeatures = {
     ...defaultProjectFeatures,
     ...project.features,
-  };
-
-  // The view is state, not a destination, so picking one is a plain write —
-  // no navigation, no history entry, and nothing for a later render to undo.
-  //
-  // Except from the quest DETAIL route, which renders the bar (to keep the
-  // quest log from jumping) but has no list and no board of its own. The
-  // write alone left the pressed entry moving and the page not: a control
-  // that answers a click by doing nothing visible. So going up to the page
-  // the chosen view belongs to is the second half of picking one there.
-  // The bar navigates now rather than writing a preference. Both surfaces
-  // are routes, so picking one IS going there — which also makes the
-  // detail-route case fall out for free instead of needing its own branch.
-  const selectView = (view: QuestsView) => {
-    void router.push(view === "kanban" ? "projectKanban" : "projectQuests", {
-      params: { projectSlug },
-    });
   };
 
   // Four unlabelled groups (`NavGroup.label` omitted on purpose, see the great
@@ -530,30 +499,21 @@ const ProjectView = () => {
           </>
         }
       >
-        {/* The view bar is the FIRST child of the content area — outside the
-          three-way branch below, so it holds the same position whether the
-          branch renders the quest log, the full-width board, or the centered
-          column. Anything rendered from inside a branch necessarily sits to
-          the right of the quest log, which is what this replaces. It was a
-          vertical rail down the left edge until #163; as a top bar the same
-          invariant holds on the y-axis instead. */}
+        {/* The "Quest list | Kanban board" rail used to sit here, as the
+          first child of the content area. It is gone: the sidebar carries
+          Quests and Kanban as two entries and each page has its own route
+          and breadcrumb, so the rail was a second way to do the same
+          navigation, under a breadcrumb already saying where you were.
+
+          ⚠️ It existed for two real bugs, and neither may come back. The
+          board was once unreachable from the UI at all (#1135), and picking
+          it once trapped the project on the board (#1156). Both were fixed
+          by making Kanban a ROUTE with a sidebar entry, which is what makes
+          the rail redundant rather than merely noisy - so the sidebar entry
+          is now the only way in, and Quests must keep landing on the list.
+          `defaultSurface` is the only thing that may send a bare
+          `/:projectSlug` to the board. */}
         <div className="flex h-full flex-col">
-          {showViewBar && (
-            <ProjectQuestsViewSwitcher
-              // The route, not a stored preference. On the quest DETAIL route
-              // neither entry is the current surface, so nothing is pressed
-              // and both are live links back up to a list.
-              view={
-                kanbanView
-                  ? "kanban"
-                  : name === "projectQuests"
-                    ? "list"
-                    : undefined
-              }
-              kanbanEnabled={features.kanban === true}
-              onSelect={selectView}
-            />
-          )}
           <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col">
             <div
               className={`flex min-h-0 flex-1 flex-col ${showQuestLog || fullWidth ? "overflow-hidden" : "overflow-auto"}`}
