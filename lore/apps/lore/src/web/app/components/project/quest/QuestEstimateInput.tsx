@@ -118,6 +118,14 @@ const QuestEstimateInput = (props: QuestEstimateInputProps) => {
             />
             <Select
               value={unit}
+              // Base UI resolves the trigger label from `items`, not from
+              // the rendered `SelectItem`s, so without this the trigger
+              // printed the raw enum key: "hours" in every language,
+              // including French, where the dropdown row beside it read
+              // "heures".
+              items={(Object.keys(ESTIMATE_UNITS) as EstimateUnit[]).map(
+                (u) => ({ value: u, label: unitLabel(u, 2) }),
+              )}
               onValueChange={(next) => {
                 setUnit(next as EstimateUnit);
                 commit(count, next as EstimateUnit);

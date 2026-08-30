@@ -846,3 +846,122 @@ test.describe("Epics — a member, not just the owner", () => {
     }
   });
 });
+
+/**
+ * The Release control on the epic aside, driven through the UI.
+ *
+ * ⚠️ `releases.spec.ts` attaches over the API (`/api/attachQuest/...`), so
+ * every existing release test passes whatever this control does. That is how
+ * it shipped reading `11` where it should read `0.28.0`: the trigger was a
+ * bare `<SelectValue />`, and Base UI's `Select.Value` renders the VALUE, not
+ * the selected row's label, so it printed the database id it was given.
+ *
+ * Hence the central assertion below is not "the tag is visible" but "the id
+ * is NOT". A control showing the right label for the wrong reason would pass
+ * the first and fail the second.
+ */
+test.describe("Epics — the release control", () => {
+  test("shows the tag, not the id, through attach, detach and publish", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    page.on("response", async (res) => {
+      if (res.url().includes("/api/") && !res.ok()) {
+        const body = await res.text().catch(() => "<body unreadable>");
+        console.log(
+          `API ${res.status()} ${res.request().method()} ${res.url()}: ${body}`,
+        );
+      }
+    });
+    const t = Date.now();
+    await registerAndVerify(page, `epicrel${t}@example.com`, "GoodPassw0rd");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `Er${t}`.slice(0, 20),
+    );
+    await setProjectFeature(page, projectId, "epics", true);
+
+    // `apiPost` resolves a bare action name and does not substitute path
+    // params, so the param-carrying endpoints are posted directly, the way
+    // `releases.spec.ts` does.
+    const post = async <T>(path: string, body: unknown): Promise<T> =>
+      (await page.evaluate(
+        async ({ path, body }) => {
+          const r = await fetch(path, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(body),
+          });
+          if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+          return r.json();
+        },
+        { path, body },
+      )) as T;
+
+    const open = await post<{ id: number }>(`/api/createRelease/${projectId}`, {
+      tag: "0.28.0",
+    });
+    const later = await post<{ id: number }>(
+      `/api/createRelease/${projectId}`,
+      { tag: "0.29.0" },
+    );
+
+    const epic = await post<{ id: number; number: number }>(
+      `/api/createEpic/${projectId}`,
+      { title: `EpicRel${t}` },
+    );
+
+    await page.goto(`/${slug}/epics/${epic.number}`);
+    const control = page.locator("aside").getByRole("combobox");
+    await expect(control).toBeVisible({ timeout: 15_000 });
+
+    await test.step("attaching shows the tag and never the id", async () => {
+      await control.click();
+      await page.getByRole("option", { name: "0.28.0" }).click();
+
+      await expect(control).toContainText("0.28.0", { timeout: 15_000 });
+      // The regression itself. `open.id` is a small integer, so this is
+      // asserted as a whole word to keep it from matching inside a date or
+      // another number that happens to share the digits.
+      await expect(control).not.toContainText(new RegExp(`\\b${open.id}\\b`));
+    });
+
+    await test.step("and it survives a reload, from the server", async () => {
+      // Not decoration. A trigger that resolves its label from local state
+      // looks identical to one that resolves it from the server until the
+      // page is reloaded, so this is what separates "the label is right" from
+      // "the attachment is real".
+      await page.reload();
+      await expect(control).toContainText("0.28.0", { timeout: 15_000 });
+    });
+
+    await test.step("detaching goes back to the none label", async () => {
+      await control.click();
+      await page.getByRole("option", { name: /^No release$/ }).click();
+
+      await expect(control).toContainText("No release", { timeout: 15_000 });
+      await page.reload();
+      await expect(control).toContainText("No release", { timeout: 15_000 });
+    });
+
+    await test.step("a published release still names itself", async () => {
+      // The exception the control is built around: a published release is
+      // filtered out of the options, and stays visible only because it is
+      // this epic's current one. Falling back to "none" here would read as
+      // though the attachment had been lost.
+      await control.click();
+      await page.getByRole("option", { name: "0.29.0" }).click();
+      await expect(control).toContainText("0.29.0", { timeout: 15_000 });
+
+      await post(`/api/publishRelease/${later.id}`, {});
+      await page.reload();
+
+      await expect(control).toContainText("0.29.0", { timeout: 15_000 });
+      await expect(control).not.toContainText(new RegExp(`\\b${later.id}\\b`));
+      // Frozen counts: the control must not offer to move it either.
+      await expect(control).toBeDisabled();
+    });
+  });
+});
