@@ -212,9 +212,16 @@ const QuestViewRail = (props: QuestViewRailProps) => {
           label={tr("quest.rail.commits")}
         >
           {quest.commits?.length ? (
-            <span className="flex flex-col items-end gap-0.5">
+            // `w-full` on BOTH, and the leaf's is the load-bearing one.
+            // `truncate` sets `white-space: nowrap`, which makes the leaf's
+            // min-content equal its max-content, so `items-end` sizes it to
+            // the whole commit line however narrow the column gets — and a
+            // right-aligned overflow spills left, over the "Commits" label.
+            // A definite width is the only thing `text-overflow` can clip
+            // against.
+            <span className="flex w-full min-w-0 flex-col items-end gap-0.5">
               {quest.commits.map((commit) => (
-                <span key={commit.sha} className="min-w-0 truncate">
+                <span key={commit.sha} className="w-full min-w-0 truncate">
                   <code className="font-mono">{commit.sha.slice(0, 7)}</code>
                   {commit.message ? (
                     <span className="text-muted-foreground font-normal">
