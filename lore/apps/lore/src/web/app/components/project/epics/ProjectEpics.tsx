@@ -18,6 +18,7 @@ import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentEpicCountAtom } from "@/web/app/atoms/currentEpicCountAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
+import { compareReleaseTags } from "@/web/app/components/project/releases/releaseOrder.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
@@ -435,19 +436,23 @@ const sortEpics = (
       return (STATUS_ORDER[a.status] - STATUS_ORDER[b.status]) * dir;
     }
     if (field === "releaseId") {
-      const rankA = releaseRank(a, releases);
-      const rankB = releaseRank(b, releases);
+      const relA = releaseOf(a, releases);
+      const relB = releaseOf(b, releases);
       // Epics with no release sort LAST in both directions, so flipping the
       // arrow reorders the releases without dragging the (usually large)
       // unassigned pile through the middle of the list. A null that swaps
       // ends reads as the sort being broken rather than reversed.
-      if (rankA === undefined || rankB === undefined) {
-        if (rankA === rankB) return a.number - b.number;
-        return rankA === undefined ? 1 : -1;
+      if (!relA || !relB) {
+        if (!relA && !relB) return a.number - b.number;
+        return relA ? -1 : 1;
       }
       // Tie-break on `number` so epics sharing a release keep a stable,
       // meaningful order instead of whatever the filter happened to produce.
-      return (rankA - rankB) * dir || a.number - b.number;
+      return (
+        compareReleaseTags(relA.tag, relB.tag) * dir ||
+        (relA.number - relB.number) * dir ||
+        a.number - b.number
+      );
     }
     if (field === "number") {
       return (a.number - b.number) * dir;
@@ -458,23 +463,25 @@ const sortEpics = (
 };
 
 /**
- * An epic's position in the release order, or `undefined` when it has none.
+ * The release an epic ships in, or `undefined` when it has none.
  *
- * ⚠️ Sorts on the release's `number`, never on its `tag`. `ProjectReleases`
- * carries the same warning: semver does not sort as text, so `0.10.0` comes
- * before `0.9.0`. Writing a semver comparator over the tag here would be a
- * second answer to a question this codebase has already answered once, and
- * the two would drift.
+ * ⚠️ The ordering is `compareReleaseTags`, the same one the Releases table
+ * uses, and never the tag as text (`0.10.0` would come before `0.9.0`). It
+ * used to be the release's `number`, on the reasoning that a second answer
+ * would drift from the first. That was right about the risk and wrong about
+ * the fix: `number` is a `$sequence`, so it is creation order, and it only
+ * matches version order while releases are created in version order. The
+ * answer is now written once, in `releaseOrder.ts`, and imported here.
  *
  * `epic.releaseId` is not usable either: it is a row id, and nothing
- * guarantees it tracks `number`.
+ * guarantees it tracks anything.
  */
-const releaseRank = (
+const releaseOf = (
   epic: EpicResource,
   releases?: ReleaseResource[],
-): number | undefined => {
+): ReleaseResource | undefined => {
   if (!epic.releaseId) return undefined;
-  return releases?.find((release) => release.id === epic.releaseId)?.number;
+  return releases?.find((release) => release.id === epic.releaseId);
 };
 
 /**
