@@ -558,6 +558,62 @@ test.describe("Folio workspace", () => {
     await expect(page.locator(".cm-lineNumbers")).toHaveCount(0);
   });
 
+  /**
+   * Tab indents, and Escape-then-Tab is the way back out.
+   *
+   * `codeMirrorSetup.browser.spec.ts` can assert the keymap holds
+   * `indentWithTab` and that `EditorView.setTabFocusMode` still exists, but
+   * not that the pair actually works: tab-focus mode lives on `InputState`,
+   * which only exists on a live `EditorView`, and that spec builds a bare
+   * `EditorState` because jsdom supplies no `Range.getClientRects`.
+   *
+   * So the half that matters most is only checkable here. Mounting
+   * `indentWithTab` makes this field a keyboard trap unless Escape really
+   * does release the next Tab, and a trap is not something to take on
+   * faith from a dependency's source.
+   */
+  test("08e — Tab indents in the editor, and Escape then Tab leaves it", async () => {
+    await page.goto(folioUrl);
+    const toggle = page.getByTestId("markdown-mode-toggle");
+    await expect(toggle).toBeVisible({ timeout: 15_000 });
+
+    if ((await toggle.getAttribute("data-mode")) !== "edit") {
+      await toggle.click();
+    }
+    await expect(toggle).toHaveAttribute("data-mode", "edit");
+
+    const content = page.locator(".cm-content");
+    await expect(content).toBeVisible({ timeout: 15_000 });
+
+    // A line of our own at the end, so the assertion reads a string this
+    // test wrote rather than whatever the folio already held.
+    await content.click();
+    await page.keyboard.press("ControlOrMeta+End");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("indent-me");
+
+    // Read the LINE's raw `textContent`, not the pane's text. Both
+    // `toContainText` and `toHaveText` normalize whitespace, so they cannot
+    // tell "  indent-me" from "indent-me" — which is the entire assertion.
+    const lastLine = page.locator(".cm-line").last();
+    await expect.poll(() => lastLine.textContent()).toBe("indent-me");
+
+    await page.keyboard.press("Tab");
+    await expect.poll(() => lastLine.textContent()).toMatch(/^\s\s+indent-me$/);
+
+    // Shift-Tab takes it back — the half `indentWithTab` carries in `shift`.
+    await page.keyboard.press("Shift+Tab");
+    await expect.poll(() => lastLine.textContent()).toBe("indent-me");
+
+    // The escape hatch. Focus has to actually leave `.cm-content`, which is
+    // the whole claim: a Tab that merely stopped indenting would still be a
+    // trap.
+    await expect(content).toBeFocused();
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Tab");
+    await expect(content).not.toBeFocused();
+  });
+
   test("09b — the empty-state menubar keeps its shape, only its enablement changes", async () => {
     await page.goto(`/${projectSlug}/folios`);
     await expect(page.locator('[data-slot="folio-menubar"]')).toBeVisible({

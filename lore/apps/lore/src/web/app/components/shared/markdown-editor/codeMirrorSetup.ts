@@ -1,4 +1,5 @@
 import {
+  acceptCompletion,
   autocompletion,
   type CompletionSource,
   closeBrackets,
@@ -10,6 +11,7 @@ import {
   defaultKeymap,
   history,
   historyKeymap,
+  indentWithTab,
 } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
@@ -276,6 +278,34 @@ export const createMarkdownExtensions = (
       { key: "Mod-d", run: copyLineDown },
       ...searchKeymap,
       ...completionKeymap,
+      // Tab indents, which `defaultKeymap` deliberately does not do:
+      // upstream leaves the key to the browser so a keyboard-only user can
+      // tab back out of the field. Without it, Tab in a folio moved focus
+      // to the Preview button and a nested list could only be indented by
+      // typing spaces.
+      //
+      // Two bindings ahead of `indentWithTab`, in this order:
+      //
+      // `acceptCompletion` first, because `completionKeymap` puts accept on
+      // Enter and claims no Tab at all — so with the `[[` wiki-link picker
+      // open, Tab would otherwise indent the line under it. It returns
+      // false when no picker is open, falling through.
+      { key: "Tab", run: acceptCompletion },
+      indentWithTab,
+      // The escape hatch upstream's omission was protecting needs NO binding
+      // here, which is worth stating because the obvious reading of
+      // CodeMirror's own advice is to add one. `@codemirror/view`'s built-in
+      // `handlers.keydown` arms tab-focus mode for two seconds on any
+      // Escape and returns false, and `InputState.keydown` then lets the
+      // next Tab through untouched — so Escape-then-Tab leaves the editor,
+      // and Escape still reaches the drawer this surface is mounted inside.
+      // Binding `temporarilySetTabFocusMode` ourselves would return true,
+      // making the keymap `preventDefault()` and swallow Escape from
+      // everything around it, to arm a mode that was already armed.
+      //
+      // Without that hatch, `indentWithTab` would make this a keyboard trap
+      // (WCAG 2.1.2). `CodeMirrorEditor` advertises it; the spec pins
+      // `setTabFocusMode` so a CodeMirror upgrade cannot remove it quietly.
     ]),
   ];
 
