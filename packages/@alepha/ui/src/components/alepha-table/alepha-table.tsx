@@ -1539,7 +1539,7 @@ function RowActionsMenu<T>(props: {
               <DropdownMenuItem
                 disabled={disabled}
                 onClick={() => action.onClick(props.item, props.ctx)}
-                className={action.destructive ? "text-destructive" : undefined}
+                variant={action.destructive ? "destructive" : undefined}
               >
                 {Icon && <Icon className="mr-2 size-4" />}
                 {action.label}
