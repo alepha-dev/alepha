@@ -342,6 +342,7 @@ export class AppRouter {
       this.projectEpics,
       this.projectEpic,
       this.projectReleases,
+      this.projectRelease,
       this.projectSettings,
       this.projectReports,
       this.projectFolios,
@@ -993,6 +994,36 @@ export class AppRouter {
       title: `${previous?.title ?? ""} › Releases`,
     }),
     lazy: () => import("./components/project/releases/ProjectReleases.tsx"),
+  });
+
+  projectRelease = $page({
+    name: "projectRelease",
+    // `releaseTag`, NOT `tag` and NOT `number`: route params must be unique
+    // across the whole route table, or two routes with different param names
+    // at the same path position silently lose the inner value. Same trap
+    // `projectEpic`'s `epicNumber` documents.
+    //
+    // Addressed by the TAG rather than the number because
+    // `/alepha/releases/0.28.0` is what the URL is for, and the tag is
+    // already unique per project. `releaseTagSchema` makes it URL-safe by
+    // construction; `number` stays the stable internal reference and the
+    // sort key, it is simply not what addresses the page.
+    path: "/releases/:releaseTag",
+    schema: {
+      params: z.object({
+        releaseTag: z.string(),
+      }),
+    },
+    head: (props, previous) => {
+      const tag = (props as { releaseTag?: string } | undefined)?.releaseTag;
+      return {
+        title: `${previous?.title ?? ""} › ${tag ?? "Release"}`,
+      };
+    },
+    // No loader: the project route already holds every release with its
+    // rollup in `currentReleasesAtom`, so the page resolves the tag from
+    // there. A loader would fetch what is already in the store.
+    lazy: () => import("./components/project/releases/ProjectRelease.tsx"),
   });
 
   projectFeedback = $page({
