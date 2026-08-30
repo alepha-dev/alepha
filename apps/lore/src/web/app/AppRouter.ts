@@ -1014,12 +1014,12 @@ export class AppRouter {
         releaseTag: z.string(),
       }),
     },
-    head: (props, previous) => {
-      const tag = (props as { releaseTag?: string } | undefined)?.releaseTag;
-      return {
-        title: `${previous?.title ?? ""} › ${tag ?? "Release"}`,
-      };
-    },
+    head: (_props, previous) => ({
+      // The tag is not in `props`: with no loader there is nothing to hand
+      // the component, and `head` is fed the loader's result too. The page
+      // reads the param from the router state instead.
+      title: `${previous?.title ?? ""} › Release`,
+    }),
     // No loader: the project route already holds every release with its
     // rollup in `currentReleasesAtom`, so the page resolves the tag from
     // there. A loader would fetch what is already in the store.
