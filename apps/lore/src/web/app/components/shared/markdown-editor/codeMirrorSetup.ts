@@ -174,15 +174,117 @@ const loreTheme = EditorView.theme({
     color: "var(--color-popover-foreground)",
     border: "1px solid var(--color-border)",
   },
-  ".cm-tooltip": {
-    backgroundColor: "var(--color-popover)",
-    color: "var(--color-popover-foreground)",
-    border: "1px solid var(--color-border)",
-    borderRadius: "var(--radius-md)",
+  // The ⌘F panel, dressed as Lore chrome.
+  //
+  // `.cm-panels` above themed the FRAME and nothing inside it, so the strip
+  // was a dark Lore border around a white row of native `<input>`s, native
+  // grey buttons and three unlabelled native checkboxes. It could not just
+  // be dropped: `useFolioFind` walks the RENDERED pane's text nodes, and
+  // CodeMirror virtualizes its viewport, so the View-mode find silently
+  // misses every match scrolled out of sight. `@codemirror/search` is the
+  // only correct find for Edit mode; the panel was the problem, not the
+  // search.
+  //
+  // Themed here rather than replaced by `FolioFindBar` because
+  // `codeMirrorSetup.ts` backs EVERY markdown surface in Lore. Driving the
+  // extension from the find bar would give the folio workspace one bar for
+  // both modes and leave quest descriptions and comments with this same raw
+  // panel — the fix has to live where the editor does.
+  //
+  // Every value is a `var(--color-*)` token, so all of it follows light,
+  // dark and each Lore theme with nothing per-theme to maintain.
+  ".cm-panel.cm-search": {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: "0.375rem",
+    padding: "0.375rem 1.75rem 0.375rem 0.5rem",
+    fontFamily: "var(--font-sans)",
+    fontSize: "12px",
+    "& br": { display: "none" },
+    "& .cm-textfield": {
+      margin: "0",
+      height: "1.75rem",
+      fontSize: "12px",
+      color: "var(--color-foreground)",
+      backgroundColor: "var(--color-background)",
+      border: "1px solid var(--color-border)",
+      borderRadius: "var(--radius-md)",
+      padding: "0 0.5rem",
+      outline: "none",
+    },
+    "& .cm-textfield:focus-visible": {
+      borderColor: "var(--color-ring)",
+      boxShadow:
+        "0 0 0 3px color-mix(in oklch, var(--color-ring) 50%, transparent)",
+    },
+    "& .cm-button": {
+      margin: "0",
+      height: "1.75rem",
+      fontSize: "12px",
+      lineHeight: "1",
+      padding: "0 0.625rem",
+      color: "var(--color-foreground)",
+      backgroundColor: "transparent",
+      backgroundImage: "none",
+      border: "1px solid var(--color-border)",
+      borderRadius: "var(--radius-md)",
+      cursor: "pointer",
+    },
+    "& .cm-button:hover": {
+      backgroundColor: "var(--color-accent)",
+      color: "var(--color-accent-foreground)",
+    },
+    "& .cm-button:active": { backgroundImage: "none" },
+    "& label": {
+      margin: "0",
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "0.25rem",
+      fontSize: "11px",
+      color: "var(--color-muted-foreground)",
+      whiteSpace: "nowrap",
+      cursor: "pointer",
+    },
+    "& input[type=checkbox]": {
+      margin: "0",
+      accentColor: "var(--color-primary)",
+      cursor: "pointer",
+    },
+    "& [name=close]": {
+      top: "0.25rem",
+      right: "0.375rem",
+      fontSize: "16px",
+      lineHeight: "1",
+      color: "var(--color-muted-foreground)",
+      cursor: "pointer",
+    },
+    "& [name=close]:hover": { color: "var(--color-foreground)" },
   },
-  ".cm-tooltip-autocomplete > ul > li[aria-selected]": {
-    backgroundColor: "var(--color-accent)",
-    color: "var(--color-accent-foreground)",
+  // The match highlights, which the stock theme paints as raw yellow/orange
+  // in light and cyan/magenta in dark.
+  //
+  // These are the ONLY literals in this theme, and deliberately so: they are
+  // the same oklch values `::highlight(folio-find)` uses in `main.css`, so
+  // ⌘F paints the same colour whichever mode you are in. A token would
+  // decouple them and let the two finds drift apart, which is the thing
+  // worth preventing here.
+  // Outranked by specificity, not by mount order. The stock rules are
+  // `&light .cm-searchMatch`, which `EditorView.baseTheme` expands to a
+  // two-class selector — exactly what a plain `.cm-searchMatch` here would
+  // produce, leaving which one wins to stylesheet order. Qualifying with
+  // `.cm-content` adds the class that settles it.
+  //
+  // ⚠️ `&light` / `&dark` are `baseTheme` syntax and throw here:
+  // "Unsupported selector: &light", at module scope, which takes the whole
+  // lazy editor chunk down into the error boundary. Same colour on both
+  // sides anyway — find should not change colour when the theme does.
+  ".cm-content .cm-searchMatch": {
+    backgroundColor: "oklch(0.696 0.17 162.48 / 32%)",
+  },
+  ".cm-content .cm-searchMatch.cm-searchMatch-selected": {
+    backgroundColor: "oklch(0.696 0.17 162.48)",
+    color: "oklch(0.16 0 0)",
   },
   // The gutter is only ever mounted behind `options.lineNumbers`, but it is
   // themed unconditionally — a theme is a stylesheet, not an extension, and
