@@ -44,6 +44,20 @@ export class D1TimeoutProvider {
   protected readonly log = $logger();
 
   /**
+   * Each wrapper back to the statement it stands for.
+   *
+   * `batch` is the one call that takes statements back IN, and the binding
+   * accepts only the ones it made itself — so what `prepare` handed out has
+   * to be reversible. A `WeakMap` rather than a property on the wrapper: it
+   * keeps the wrapper's shape exactly the binding's interface, and a
+   * statement that is never batched is collectable as before.
+   */
+  protected readonly source = new WeakMap<
+    D1PreparedStatement,
+    D1PreparedStatement
+  >();
+
+  /**
    * Returns a binding that behaves exactly like the one given, except that
    * every statement it produces gives up after `budget`.
    */
@@ -105,20 +119,40 @@ export class D1TimeoutProvider {
         return this.wrapStatement(statement, query, budget);
       },
       batch: <T>(statements: D1PreparedStatement[]) => {
+        // Back to the binding's own statements before they reach it. Drizzle
+        // builds a batch out of `prepare(...).bind(...)`, so with the ceiling
+        // on, every element here is one of ours — and the binding raises on
+        // anything it did not make rather than running it.
+        const unwrapped = this.unwrap(statements);
+
         // `batch` is D1's atomic multi-statement API and carries no SQL we
         // could classify, so under `reads` it counts as a write and stays
         // unbounded. Guessing the other way would silently bound the one
         // call an app picked `reads` to protect.
         if (readsOnly) {
-          return source.batch<T>(statements);
+          return source.batch<T>(unwrapped);
         }
         return this.race<T[]>(
-          () => source.batch<T>(statements),
+          () => source.batch<T>(unwrapped),
           budget,
           `batch of ${statements.length} statement(s)`,
         );
       },
     };
+  }
+
+  /**
+   * Resolves each statement back to the one the binding produced.
+   *
+   * Leaves anything it does not recognise alone: under `reads` a write is
+   * handed out unwrapped in the first place, so a batch legitimately mixes
+   * the two, and a caller that built a statement straight off the binding is
+   * already holding the right object.
+   */
+  protected unwrap(statements: D1PreparedStatement[]): D1PreparedStatement[] {
+    return statements.map(
+      (statement) => this.source.get(statement) ?? statement,
+    );
   }
 
   protected wrapStatement(
@@ -138,6 +172,11 @@ export class D1TimeoutProvider {
         this.race<D1Result<T>>(() => statement.all<T>(), budget, query),
       raw: <T>() => this.race<T[]>(() => statement.raw<T>(), budget, query),
     };
+
+    // Registered per wrapper, and `bind` recurses through here, so the entry
+    // for a bound statement points at the bound original rather than the
+    // unbound one it was derived from.
+    this.source.set(wrapped, statement);
 
     return wrapped;
   }

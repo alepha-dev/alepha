@@ -7,8 +7,9 @@ import { $entity } from "../../../primitives/$entity.ts";
 import { $repository } from "../../../primitives/$repository.ts";
 import { db } from "../../DatabaseTypeProvider.ts";
 import { CloudflareD1Provider } from "../CloudflareD1Provider.ts";
+import { D1TimeoutProvider } from "../D1TimeoutProvider.ts";
 import { DatabaseProvider } from "../DatabaseProvider.ts";
-import { FakeD1 } from "./fakeD1.ts";
+import { FakeD1, FakeStatement } from "./fakeD1.ts";
 
 /**
  * The budget wired end to end: a query issued through the repository layer
@@ -138,5 +139,55 @@ describe("CloudflareD1Provider timeout", () => {
 
     await time.travel([6, "seconds"]);
     await settled;
+  });
+});
+
+/**
+ * `batch` is the one entry point that takes statements back IN, and so the
+ * one place the wrapper can hand the binding something the binding did not
+ * make. Drizzle reaches it by building every statement through
+ * `client.prepare(...).bind(...)` and passing the array straight to
+ * `client.batch(...)`, so with the ceiling on, every one of those is a
+ * wrapper.
+ */
+describe("D1TimeoutProvider batch", () => {
+  const wrap = async (options?: { applyTo: "all" | "reads" }) => {
+    const alepha = Alepha.create();
+    const timeouts = alepha.inject(D1TimeoutProvider);
+    await alepha.start();
+
+    const binding = new FakeD1();
+    return {
+      binding,
+      wrapped: timeouts.wrap(binding, [5, "seconds"], options),
+    };
+  };
+
+  it("hands the binding its own statements, carrying their bound values", async () => {
+    const { binding, wrapped } = await wrap();
+
+    await wrapped.batch([
+      wrapped.prepare("insert into t (id) values (?)").bind(1),
+      wrapped.prepare("insert into t (id) values (?)").bind(2),
+    ]);
+
+    expect(binding.batched).toHaveLength(1);
+    // The bound values, not just the count: a fix that unwrapped to the
+    // statement `prepare` returned would lose everything `bind` added.
+    expect(
+      binding.batched[0].map((statement) => (statement as FakeStatement).bound),
+    ).toEqual([[1], [2]]);
+  });
+
+  it("unwraps under 'reads' too, where the batch itself stays unbounded", async () => {
+    const { binding, wrapped } = await wrap({ applyTo: "reads" });
+
+    // A SELECT is wrapped even under `reads`, so the early return that leaves
+    // the batch unbounded still receives wrappers and still has to unwrap.
+    await wrapped.batch([wrapped.prepare("select id from t").bind(7)]);
+
+    expect(
+      binding.batched[0].map((statement) => (statement as FakeStatement).bound),
+    ).toEqual([[7]]);
   });
 });
