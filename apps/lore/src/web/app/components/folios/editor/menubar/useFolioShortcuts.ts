@@ -3,8 +3,8 @@ import { useEffect } from "react";
 import type { MarkdownEditorMode } from "../../../shared/markdown-editor/MarkdownEditorInner.tsx";
 import type { FolioActionHandlers } from "../useFolioActions.ts";
 import {
-  type FolioActionId,
   type FolioActionState,
+  editorOwnsBinding,
   folioShortcutBindings,
   isFolioActionEnabled,
 } from "./folioMenubarModel.ts";
@@ -23,32 +23,6 @@ const normalize = (event: KeyboardEvent): string => {
   parts.push(event.key.toLowerCase());
   return parts.join("+");
 };
-
-/**
- * Ids this hook must NOT claim, because the editor already owns the key.
- *
- * The set used to hold ⌘B/⌘I/⌘Z/⇧⌘Z/⌘K: Lexical translated those into
- * `beforeinput` natively, so binding them here double-handled them. Every
- * one of those ids is gone with the formatting commands.
- *
- * ⌘F replaced them, and for a sharper reason. Find-in-folio has two
- * implementations by design: `useFolioFind` walks the RENDERED pane's text
- * nodes and paints through the CSS Custom Highlight API, which is exactly
- * right for View mode and completely wrong for Edit mode — CodeMirror
- * virtualizes its viewport, so a text-node walk sees only the lines
- * currently painted and silently reports no match for anything scrolled out
- * of sight. `@codemirror/search` handles that correctly and is already
- * mounted, so in Edit mode this hook stands aside and lets the keydown
- * reach it.
- *
- * This listener is capture-phase, so standing aside is the ONLY way
- * CodeMirror ever sees the key: a `preventDefault()` here would beat it
- * every time.
- */
-const editorOwnsBinding = (
-  id: FolioActionId,
-  mode: MarkdownEditorMode,
-): boolean => id === "edit.find" && mode === "edit";
 
 /**
  * Binds every OTHER `folioMenubarModel` keyboard shortcut on `window`, in
