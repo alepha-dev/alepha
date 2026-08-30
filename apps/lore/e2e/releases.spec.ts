@@ -1,6 +1,11 @@
 import { expect, type Page, test } from "@playwright/test";
 
-import { apiPost, createProjectViaWizard, registerAndVerify } from "./_helpers";
+import {
+  apiPost,
+  createProjectViaWizard,
+  registerAndVerify,
+  setProjectFeature,
+} from "./_helpers";
 
 /**
  * The release model end to end, replacing the recorder spec deleted in #1550.
@@ -291,6 +296,63 @@ test.describe("Releases", () => {
       // And the list did not grow behind it.
       await expect(page.locator("tbody").getByText("0.1.0")).toHaveCount(1);
     });
+  });
+
+  /**
+   * New Release in the header's create menu, on the project shape that would
+   * have exposed the bug.
+   *
+   * ⚠️ Releases-on with epics, folios and feedback all OFF is the whole
+   * point. `hasCreateAction` decides whether the chevron renders at all, so
+   * an entry added to the menu without being counted there is an entry
+   * inside a menu with no way to open it. Any other project shape has some
+   * other feature holding the chevron open and passes either way.
+   */
+  test("the header create menu offers New Release, and can be opened to reach it", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `relmenu${t}@example.com`, "RelTest123!");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `RM${t}`.slice(0, 20),
+    );
+
+    await setProjectFeature(page, projectId, "milestones", true);
+    await setProjectFeature(page, projectId, "epics", false);
+    await setProjectFeature(page, projectId, "folios", false);
+    await setProjectFeature(page, projectId, "feedback", false);
+
+    await page.goto(`/${slug}/`);
+
+    const chevron = page.getByRole("button", {
+      name: "More create actions",
+    });
+    await expect(chevron).toBeVisible({ timeout: 15_000 });
+    await chevron.click();
+
+    const item = page.getByRole("menuitem", { name: "New Release" });
+    await expect(item).toBeVisible({ timeout: 10_000 });
+    // The neighbours really are off, so the chevron is being held open by
+    // this entry and nothing else.
+    await expect(page.getByRole("menuitem", { name: "New Epic" })).toHaveCount(
+      0,
+    );
+    await expect(page.getByRole("menuitem", { name: "New Folio" })).toHaveCount(
+      0,
+    );
+
+    await item.click();
+
+    // It opens #1635's dialog rather than a second create surface, and
+    // creating from here lands on the release itself, the way New Epic
+    // opens the epic it just made.
+    await page.getByLabel("Tag").fill("2.0.0");
+    await page.getByRole("button", { name: "Create" }).click();
+
+    await expect(page).toHaveURL(/\/releases\/2\.0\.0$/, { timeout: 15_000 });
   });
 
   test("the table filters by state and sorts tags by number", async ({

@@ -1206,6 +1206,7 @@ export default {
   "epic.toast.created": "Epic created.",
   "epic.toast.updated": "Epic saved.",
   "project.menu.create-epic": "New Epic",
+  "project.menu.create-release": "New Release",
   "epic.create.title.label": "Title",
   "epic.create.description.label": "Description",
   "epic.create.submit": "Create Epic",

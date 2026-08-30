@@ -21,12 +21,16 @@ export interface ReleaseCreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /**
-   * Carries no release on purpose. `createRelease` answers with the row it
-   * inserted, which has no `progress` rollup yet (nothing is attached to a
-   * release that did not exist a moment ago), so it is not a
-   * `ReleaseResource` and every caller has to refetch anyway.
+   * Carries the tag and nothing else. `createRelease` answers with the row
+   * it inserted, which has no `progress` rollup yet (nothing is attached to
+   * a release that did not exist a moment ago), so it is NOT a
+   * `ReleaseResource` and a caller wanting one has to refetch.
+   *
+   * The tag is enough for the only thing a caller does with it besides
+   * refetching: a release is addressed by tag, so this is what the header
+   * menu navigates to.
    */
-  onCreated: () => void;
+  onCreated: (created: { tag?: string }) => void;
 }
 
 /**
@@ -85,11 +89,11 @@ const ReleaseCreateDialog = (props: ReleaseCreateDialogProps) => {
     setSubmitting(true);
     setError(undefined);
     try {
-      await releaseApi.createRelease({
+      const created = await releaseApi.createRelease({
         params: { projectId: props.projectId },
         body: { tag: trimmed },
       });
-      props.onCreated();
+      props.onCreated(created);
       close();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
