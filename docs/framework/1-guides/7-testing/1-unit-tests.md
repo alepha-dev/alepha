@@ -25,13 +25,15 @@ alepha test test/user.spec.ts  # A single file
 `Alepha.create()` handles start and stop automatically in test environments. You do not need `beforeAll`/`afterAll` for lifecycle.
 
 ```typescript
-test("should inject a service", async () => {
-  const alepha = Alepha.create().with(MyService);
-  const svc = alepha.inject(MyService);
-  await alepha.start();
+describe("Lifecycle", () => {
+  it("should inject a service", async () => {
+    const alepha = Alepha.create().with(MyService);
+    const svc = alepha.inject(MyService);
+    await alepha.start();
 
-  const result = await svc.doSomething();
-  expect(result).toBe("done");
+    const result = await svc.doSomething();
+    expect(result).toBe("done");
+  });
 });
 ```
 
@@ -51,17 +53,19 @@ class UserController {
   });
 }
 
-test("should return user by id", async () => {
-  const alepha = Alepha.create().with(UserController);
-  const ctrl = alepha.inject(UserController);
+describe("UserController", () => {
+  it("should return user by id", async () => {
+    const alepha = Alepha.create().with(UserController);
+    const ctrl = alepha.inject(UserController);
 
-  // Local call - no HTTP overhead
-  const result = await ctrl.getUser.run({ params: { id: "abc-123" } });
-  expect(result.name).toBe("Alice");
+    // Local call - no HTTP overhead
+    const result = await ctrl.getUser.run({ params: { id: "abc-123" } });
+    expect(result.name).toBe("Alice");
 
-  // HTTP simulation - goes through the full request pipeline
-  const response = await ctrl.getUser.fetch({ params: { id: "abc-123" } });
-  expect(response.status).toBe(200);
+    // HTTP simulation - goes through the full request pipeline
+    const response = await ctrl.getUser.fetch({ params: { id: "abc-123" } });
+    expect(response.status).toBe(200);
+  });
 });
 ```
 

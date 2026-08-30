@@ -178,6 +178,7 @@ The argument is the **app name, not a port**, because it used to be the port —
 - **Automatic Lifecycle**: `Alepha.create()` automatically handles start/stop in test environments
 - **Service Substitution**: Use `Alepha.with()` for mocking dependencies (preferred over traditional mocking)
 - **Standard Structure**: Follow Arrange-Act-Assert pattern with descriptive test names
+- **`describe` + `it`, never a bare `test()` at the top level**: a case outside a `describe` has no subject in the reporter and no handle for `vitest run -t`. `check:conventions` refuses a `test(` or `it(` at column zero in any `*.spec.ts(x)`; inside a block both spellings are the same function and are left alone. `e2e/` is exempt, since Playwright's API is `test` and has no `it`.
 - **Error Testing**: Use `expect().toThrow()` for sync errors, `expect().rejects.toThrowError()` for async
 - **Shared Functions**: Create reusable test functions for testing multiple implementations
 
@@ -237,16 +238,18 @@ await cli.run(cmd.init, { argv: "--react", root: "/project" });
 
 ```typescript
 // Basic test structure
-test("description", async ({ expect }) => {
-  const alepha = Alepha.create();
-  class TestApp {
-    /* ... */
-  }
-  const app = alepha.inject(TestApp);
-  await alepha.start();
+describe("Subject", () => {
+  it("should do the thing", async ({ expect }) => {
+    const alepha = Alepha.create();
+    class TestApp {
+      /* ... */
+    }
+    const app = alepha.inject(TestApp);
+    await alepha.start();
 
-  const result = await app.method();
-  expect(result).toBe(expected);
+    const result = await app.method();
+    expect(result).toBe(expected);
+  });
 });
 
 // Service substitution (preferred over vi.mock)
@@ -266,10 +269,12 @@ await fs.writeFile("/test/file.txt", "content");
 expect(fs.wasWritten("/test/output.txt")).toBe(true);
 
 // Browser tests
-test("should work in browser", async ({ expect }) => {
-  // This test will run in jsdom environment
-  const element = document.createElement("div");
-  expect(element).toBeDefined();
+describe("MyComponent", () => {
+  it("should work in browser", async ({ expect }) => {
+    // This test will run in jsdom environment
+    const element = document.createElement("div");
+    expect(element).toBeDefined();
+  });
 });
 ```
 
