@@ -1,6 +1,7 @@
-import { undo } from "@codemirror/commands";
+import { copyLineDown, undo } from "@codemirror/commands";
 import { ensureSyntaxTree } from "@codemirror/language";
 import { EditorState, type Transaction } from "@codemirror/state";
+import { keymap } from "@codemirror/view";
 import { describe, expect, it } from "vitest";
 
 import { createMarkdownExtensions } from "./codeMirrorSetup.ts";
@@ -60,5 +61,40 @@ describe("createMarkdownExtensions", () => {
 
     expect(applied).toBe(true);
     expect(state.doc.toString()).toBe("hello");
+  });
+
+  it("binds Mod-d to duplicate-line, ahead of the search keymap", () => {
+    // `searchKeymap` also claims Mod-d, for `selectNextOccurrence`. A
+    // keymap runs its bindings in array order and stops at the first that
+    // returns true, so the ASSERTION IS THE ORDERING: the first Mod-d in
+    // the resolved list has to be ours. Checking only that some binding
+    // exists would pass with the line moved below the search keymap, which
+    // is the one way this can regress.
+    const state = stateWith("hello\n");
+    const bound = state
+      .facet(keymap)
+      .flat()
+      .filter((binding) => binding.key === "Mod-d");
+
+    expect(bound.length).toBeGreaterThan(1);
+    expect(bound[0]?.run).toBe(copyLineDown);
+  });
+
+  it("duplicates the caret's line when that binding runs", () => {
+    let state = EditorState.create({
+      doc: "hello",
+      selection: { anchor: 0 },
+      extensions: createMarkdownExtensions({}),
+    });
+
+    const applied = copyLineDown({
+      state,
+      dispatch: (transaction: Transaction) => {
+        state = transaction.state;
+      },
+    });
+
+    expect(applied).toBe(true);
+    expect(state.doc.toString()).toBe("hello\nhello");
   });
 });

@@ -24,6 +24,19 @@ const NO_FOLIO: FolioActionState = {
 };
 
 /**
+ * A saved, unlocked folio: the only state in which `folio.duplicate` is
+ * enabled at all (it is in `NEEDS_SAVED_FOLIO`, so create mode disables it).
+ */
+const OPEN_FOLIO: FolioActionState = {
+  locked: false,
+  isNew: false,
+  dirty: false,
+  isProtected: false,
+  isPinned: false,
+  editing: true,
+};
+
+/**
  * An exhaustive handler map that records which ids fired, built off
  * `folioMenuItems()` the same way `FolioWorkspace` builds the real one - so
  * an id added to the model cannot leave this spec with a hole in it.
@@ -113,6 +126,34 @@ describe("useFolioShortcuts", () => {
     pressKey("\\", { meta: true });
 
     expect(fired).toEqual([]);
+  });
+
+  it("duplicates the folio on \u2318D in View mode", () => {
+    const { handlers, fired } = recordingHandlers();
+    renderHook(() => useFolioShortcuts(handlers, OPEN_FOLIO, "view"));
+
+    const prevented = pressKey("d", { meta: true });
+
+    expect(fired).toEqual(["folio.duplicate"]);
+    expect(prevented).toBe(true);
+  });
+
+  it("stands aside on \u2318D in Edit mode so the editor duplicates the line", () => {
+    // The reflex this protects: \u2318D means duplicate-line to anyone who has
+    // used an editor, and `duplicate()` creates the row with no dialog to
+    // cancel, so a stray folio appeared in the tree mid-sentence.
+    //
+    // `prevented` is the load-bearing half. This listener is capture-phase,
+    // so a `preventDefault()` here would beat CodeMirror's keymap every
+    // time: not firing the handler is not enough, the event has to reach
+    // the editor untouched.
+    const { handlers, fired } = recordingHandlers();
+    renderHook(() => useFolioShortcuts(handlers, OPEN_FOLIO, "edit"));
+
+    const prevented = pressKey("d", { meta: true });
+
+    expect(fired).toEqual([]);
+    expect(prevented).toBe(false);
   });
 
   it("ignores an action the state disables", () => {

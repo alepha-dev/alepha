@@ -5,7 +5,12 @@ import {
   closeBracketsKeymap,
   completionKeymap,
 } from "@codemirror/autocomplete";
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import {
+  copyLineDown,
+  defaultKeymap,
+  history,
+  historyKeymap,
+} from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
@@ -256,6 +261,19 @@ export const createMarkdownExtensions = (
       ...closeBracketsKeymap,
       ...defaultKeymap,
       ...historyKeymap,
+      // ⚠️ MUST stay ahead of `searchKeymap`, which claims Mod-d for
+      // `selectNextOccurrence`. A keymap runs its bindings in array order
+      // and stops at the first that returns true, so moving this line down
+      // silently gives the key back to multi-cursor select.
+      //
+      // The stock home for `copyLineDown` is Shift-Alt-ArrowDown. It is
+      // bound here as well because ⌘D means duplicate-line to anyone who
+      // has used an editor, and this surface used to answer that reflex by
+      // creating a whole new folio — `folio.duplicate` held `mod+d` on a
+      // capture-phase window listener, with no dialog to cancel. That
+      // binding now stands aside in Edit mode (`EDITOR_OWNED_BINDINGS` in
+      // `folioMenubarModel.ts`), which is what frees the key to reach here.
+      { key: "Mod-d", run: copyLineDown },
       ...searchKeymap,
       ...completionKeymap,
     ]),
