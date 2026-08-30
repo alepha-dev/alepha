@@ -70,6 +70,20 @@ const EpicReleaseControl = (props: EpicReleaseControlProps) => {
   return (
     <Select
       value={props.epic.releaseId ? String(props.epic.releaseId) : NONE}
+      // ⚠️ Without `items` the trigger prints the release ID. Base UI's
+      // `Select.Value` renders the VALUE, not the selected row's label, and
+      // the rows live in a popup that is unmounted until first opened, so
+      // there is nothing for it to resolve a label from. The epic aside read
+      // `11` where it should have read `0.28.0`.
+      //
+      // Same fix, and the same reasoning, as `AreaMergeDialog`.
+      items={[
+        { value: NONE, label: String(tr("epic.aside.release.none")) },
+        ...options.map((release) => ({
+          value: String(release.id),
+          label: release.tag ?? release.title,
+        })),
+      ]}
       onValueChange={(value) => void change(String(value))}
       disabled={submitting || !!current?.releasedAt}
     >

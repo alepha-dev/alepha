@@ -68,6 +68,17 @@ const QuestReleaseControl = (props: QuestReleaseControlProps) => {
   return (
     <Select
       value={props.quest.releaseId ? String(props.quest.releaseId) : NONE}
+      // ⚠️ Without `items` the trigger prints the release ID rather than its
+      // tag. See `EpicReleaseControl` for the full account: this control had
+      // the identical defect, found by grepping for bare `<SelectValue />`
+      // whose value is an id, and nothing had reported it.
+      items={[
+        { value: NONE, label: String(tr("quest.rail.release.none")) },
+        ...options.map((release) => ({
+          value: String(release.id),
+          label: release.tag ?? release.title,
+        })),
+      ]}
       onValueChange={(value) => void change(String(value))}
       disabled={submitting || !!current?.releasedAt}
     >
