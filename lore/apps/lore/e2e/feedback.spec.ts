@@ -159,6 +159,137 @@ test.describe("Feedback", () => {
     });
   });
 
+  /**
+   * Feedback #2013: "I don't see my attachment on the Drawer of Edit
+   * Feedback."
+   *
+   * The drawer rendered title, description, tags and the discussion and
+   * stopped there, so a report submitted WITH a screenshot looked exactly
+   * like one submitted without. The data was already on the resource
+   * (`attachmentUrls`) and the owner's detail view already rendered it; only
+   * the reporter's own drawer never asked.
+   *
+   * It matters most here: feedback is editable only while pending, which is
+   * the same window in which a reporter would notice a wrong or missing
+   * screenshot, and this was the one place they could not look.
+   */
+  test("the edit drawer shows a reporter their own attachment", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    const withFile = `Attached ${t}`;
+    const withoutFile = `Bare ${t}`;
+
+    await registerAndVerify(page, `attach${t}@example.com`, "AttachPass123!");
+    const { id: projectId } = await createProjectViaWizard(
+      page,
+      `AT${t}`.slice(0, 20),
+    );
+    // The wizard defaults feedback OFF, and the upload endpoint refuses a
+    // project whose module is closed.
+    await page.evaluate(async (id) => {
+      const res = await fetch(`/api/updateProjectById/${id}`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ features: { feedback: true } }),
+      });
+      if (!res.ok)
+        throw new Error(`enable feedback: ${res.status} ${await res.text()}`);
+    }, projectId);
+
+    await page.evaluate(
+      async ({ id, withFile, withoutFile }) => {
+        // A real 1x1 PNG, so the upload passes the MIME *and* extension
+        // checks and the drawer takes the image branch.
+        const png =
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+        const bytes = Uint8Array.from(atob(png), (c) => c.charCodeAt(0));
+        const form = new FormData();
+        form.append(
+          "file",
+          new Blob([bytes], { type: "image/png" }),
+          "screenshot.png",
+        );
+        const upload = await fetch(`/api/projects/${id}/feedback/attachments`, {
+          method: "POST",
+          credentials: "include",
+          body: form,
+        });
+        if (!upload.ok)
+          throw new Error(`upload: ${upload.status} ${await upload.text()}`);
+        const file = (await upload.json()) as { id: string };
+
+        const submit = async (body: unknown) => {
+          const res = await fetch(`/api/projects/${id}/feedback`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(body),
+          });
+          if (!res.ok)
+            throw new Error(`submit: ${res.status} ${await res.text()}`);
+        };
+
+        await submit({
+          title: withoutFile,
+          description: "No screenshot on this one",
+          type: "bug",
+        });
+        await submit({
+          title: withFile,
+          description: "One screenshot",
+          type: "bug",
+          attachments: [file.id],
+        });
+      },
+      { id: projectId, withFile, withoutFile },
+    );
+
+    await page.goto("/account/feedback");
+    await page.waitForLoadState("networkidle");
+
+    await test.step("the attachment is visible, as a thumbnail", async () => {
+      await page.getByRole("row").filter({ hasText: withFile }).click();
+
+      const drawer = page.getByRole("dialog");
+      await expect(drawer.getByText(/attachments/i)).toBeVisible({
+        timeout: 10_000,
+      });
+
+      // An image is identified by what it looks like, not by
+      // "Screenshot 5.png" — a reporter checking they attached the right one
+      // cannot tell from the filename.
+      const thumb = drawer.locator('img[alt="screenshot.png"]');
+      await expect(thumb).toBeVisible();
+
+      // And it opens full size. `target="_blank"` because the drawer may hold
+      // unsaved edits.
+      const link = drawer.locator('a:has(img[alt="screenshot.png"])');
+      await expect(link).toHaveAttribute("target", "_blank");
+      await expect(link).toHaveAttribute("href", /\/api\/files\//);
+    });
+
+    await test.step("a feedback with no attachment shows no section", async () => {
+      // An empty "Attachments" heading is a question the reader then has to
+      // answer by remembering what they uploaded.
+      await page.goto("/account/feedback");
+      await page.waitForLoadState("networkidle");
+      await page.getByRole("row").filter({ hasText: withoutFile }).click();
+
+      // Waited on the title FIELD, not on text: the drawer edits the title in
+      // an input, so `getByText` finds nothing and the absence assertion
+      // below would pass against a drawer that had not opened yet.
+      const drawer = page.getByRole("dialog");
+      await expect(drawer.locator("#feedback-title")).toHaveValue(withoutFile, {
+        timeout: 10_000,
+      });
+      await expect(drawer.getByText(/attachments/i)).toHaveCount(0);
+    });
+  });
+
   test("the request form gives a non-member no route into the members-only project", async ({
     page,
     browser,

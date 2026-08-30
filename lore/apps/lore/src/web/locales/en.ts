@@ -126,6 +126,8 @@ export default {
   "folios.editor.action.divider": "Divider",
   "folios.editor.menu.insert": "Insert",
   "folios.editor.action.toggle-mode": "Toggle preview",
+  "markdown-editor.tab-hint":
+    "Tab indents. Press Escape, then Tab, to move focus out of the editor.",
   "folios.editor.action.new": "New folio",
   "folios.editor.action.new-directory": "New directory",
   "folios.editor.action.save": "Save",
@@ -343,7 +345,6 @@ export default {
   "quest.rail.due": "Due",
   "quest.rail.release": "Release",
   "quest.rail.release.none": "None",
-  "quest.rail.questline": "Questline",
 
   "project.create.name": "Name",
   "project.create.name.helper":

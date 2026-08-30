@@ -114,8 +114,21 @@ export class SigilIngestService {
     const now = new Date(this.dateTime.nowMillis()).toISOString();
     const gates = await this.gatesFor(sigil);
 
+    // The three sections write to disjoint tables and each depends on nothing
+    // but `gatesFor`, so nothing orders them against each other.
+    //
+    // Awaited in turn they cost their round trips to the D1 primary END TO
+    // END, which against D1 is the whole cost: a batch spends ~50ms of CPU
+    // across ~900ms of wall time. Issuing them together is also the headroom a
+    // stalled primary eats before `DATABASE_TIMEOUT` fires — the blights of
+    // 2026-08-29/30 all timed out on the FIRST statement of the request, with
+    // the primary's queue already deep when it arrived.
+    //
+    // The liveness stamp is deliberately NOT one of these; see below.
+    const sections: Array<Promise<void>> = [];
+
     if (envelope.errors?.length && gates.errors) {
-      await this.absorbErrors(sigil, envelope.errors, now);
+      sections.push(this.absorbErrors(sigil, envelope.errors, now));
     }
     // One call, both arrays. They land in the same bucket map so that a view
     // and its engagement arriving in one envelope produce ONE row rather than
@@ -126,21 +139,23 @@ export class SigilIngestService {
       (envelope.views?.length || envelope.engagements?.length) &&
       gates.views
     ) {
-      await this.absorbViews(
-        sigil,
-        envelope.views ?? [],
-        envelope.engagements ?? [],
-        envelope.country,
-        envelope.device,
-        envelope.traffic,
-        envelope.browser,
-        envelope.os,
-        envelope.visitor,
-        now,
+      sections.push(
+        this.absorbViews(
+          sigil,
+          envelope.views ?? [],
+          envelope.engagements ?? [],
+          envelope.country,
+          envelope.device,
+          envelope.traffic,
+          envelope.browser,
+          envelope.os,
+          envelope.visitor,
+          now,
+        ),
       );
     }
     if (envelope.vitals?.length && gates.vitals) {
-      await this.absorbVitals(sigil, envelope.vitals, now);
+      sections.push(this.absorbVitals(sigil, envelope.vitals, now));
     }
 
     // `lastSeenHost` rides along on the update `lastSeenAt` was already
@@ -169,6 +184,27 @@ export class SigilIngestService {
     // app's claim about itself, stored beside what the sink actually accepts so
     // the two can be shown disagreeing.
     const reportedConfig = sigilNormalizeReportedConfig(envelope.config);
+
+    // `allSettled`, not `all`. `all` rejects on the first failure and leaves
+    // the other promises to reject with nobody attached — an unhandled
+    // rejection, which on Workers can take the isolate down and so would cost
+    // the requests running beside this one. Every outcome is observed here and
+    // the first failure is rethrown below, so the caller still sees it.
+    const outcomes = await Promise.allSettled(sections);
+    const failed = outcomes.find((outcome) => outcome.status === "rejected");
+    if (failed) {
+      throw failed.reason;
+    }
+
+    // AFTER the sections, and only if they all succeeded — this one statement
+    // stays sequential on purpose. `lastSeenAt` answers "did this app report",
+    // so a batch that failed to write must not come out looking like one that
+    // reported successfully. Folding it into the group above costs one round
+    // trip less and makes a 500 stamp liveness anyway; `lore-analytics.spec.ts`
+    // pins that and is what caught it.
+    //
+    // A batch every gate rejected still stamps, which is not the same case: it
+    // reported, and there was simply nothing this sink would keep.
     await this.sigils.updateById(sigil.id, {
       lastSeenAt: now,
       ...(host ? { lastSeenHost: host } : {}),
