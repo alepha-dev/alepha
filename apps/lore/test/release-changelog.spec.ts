@@ -8,6 +8,7 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
+import { EpicController } from "../src/api/controllers/EpicController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
@@ -36,6 +37,7 @@ interface TestContext {
   projectController: ProjectController;
   releaseController: ReleaseController;
   questController: QuestController;
+  epicController: EpicController;
   dt: DateTimeProvider;
   fakeProvider: FakeProvider;
   probe: Probe;
@@ -70,6 +72,7 @@ const setup = async (): Promise<TestContext> => {
     projectController: alepha.inject(ProjectController),
     releaseController: alepha.inject(ReleaseController),
     questController: alepha.inject(QuestController),
+    epicController: alepha.inject(EpicController),
     dt: alepha.inject(DateTimeProvider),
     fakeProvider: alepha.inject(FakeProvider),
     probe,
@@ -159,74 +162,104 @@ describe("ReleaseController.getReleaseChangelog", () => {
     await ctx.alepha.stop();
   });
 
-  it("returns structured areas alongside the markdown", async ({ expect }) => {
+  const aRelease = async (user: TestUser, projectId: number, tag: string) =>
+    (
+      await ctx.releaseController.createRelease.fetch(
+        { params: { projectId }, body: { tag } },
+        { user },
+      )
+    ).data;
+
+  const anEpic = async (user: TestUser, projectId: number, title: string) =>
+    (
+      await ctx.epicController.createEpic.fetch(
+        { params: { projectId }, body: { title } },
+        { user },
+      )
+    ).data;
+
+  it("groups by epic first, then by area for the loose work", async ({
+    expect,
+  }) => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user);
-
-    const release = await ctx.releaseController.createRelease.fetch(
-      { params: { projectId: project.id }, body: { tag: "0.1.0" } },
+    const release = await aRelease(user, project.id, "0.28.0");
+    const epic = await anEpic(user, project.id, "The big feature");
+    await ctx.epicController.updateEpic.fetch(
+      { params: { id: epic.id }, body: { releaseId: release.id } },
       { user },
     );
 
-    const a = await completeQuest(ctx, user, project.id, {
-      title: "Lateral joins on Postgres",
+    const inEpic = await completeQuest(ctx, user, project.id, {
+      title: "Part of the feature",
       area: "orm",
       priority: "high",
     });
-    const b = await completeQuest(ctx, user, project.id, {
-      title: "Typed repository count",
-      area: "orm",
-      priority: "medium",
-    });
-    const c = await completeQuest(ctx, user, project.id, {
-      title: "Rate limiter for public actions",
-      area: "server",
-      priority: "low",
-    });
-    for (const quest of [a, b, c]) {
-      await attach(ctx, quest.id, release.data.id);
-    }
-
-    const result = await ctx.releaseController.getReleaseChangelog.fetch(
-      { params: { id: release.data.id } },
+    await ctx.epicController.attachQuest.fetch(
+      { params: { id: epic.id }, body: { questId: inEpic.id } },
       { user },
     );
 
-    expect(result.data.areas.map((z) => z.name)).toEqual(["orm", "server"]);
+    const loose = await completeQuest(ctx, user, project.id, {
+      title: "A doc pass",
+      area: "docs",
+      priority: "low",
+    });
+    await attach(ctx, loose.id, release.id);
 
-    const orm = result.data.areas[0];
-    expect(orm.questCount).toBe(2);
-    expect(orm.quests).toEqual([
-      {
-        shortId: a.shortId,
-        title: "Lateral joins on Postgres",
-        priority: "high",
-      },
-      {
-        shortId: b.shortId,
-        title: "Typed repository count",
-        priority: "medium",
-      },
-    ]);
+    const result = await ctx.releaseController.getReleaseChangelog.fetch(
+      { params: { id: release.id } },
+      { user },
+    );
 
-    const server = result.data.areas[1];
-    expect(server.quests).toEqual([
-      {
-        shortId: c.shortId,
-        title: "Rate limiter for public actions",
-        priority: "low",
-      },
+    // An epic is a headline, a loose quest is a line item.
+    expect(result.data.groups.map((g) => [g.kind, g.name])).toEqual([
+      ["epic", "The big feature"],
+      ["area", "docs"],
     ]);
+    expect(result.data.groups[0].ref).toBe(epic.number);
+    expect(result.data.groups[0].quests[0].shortId).toBe(inEpic.shortId);
+    expect(result.data.groups[1].quests[0].shortId).toBe(loose.shortId);
+  });
+
+  it("never lists a quest under both an epic and an area", async ({
+    expect,
+  }) => {
+    const user = await createTestUser(ctx);
+    const project = await createTestProject(ctx, user);
+    const release = await aRelease(user, project.id, "0.28.0");
+    const epic = await anEpic(user, project.id, "The big feature");
+    await ctx.epicController.updateEpic.fetch(
+      { params: { id: epic.id }, body: { releaseId: release.id } },
+      { user },
+    );
+
+    // Attached to the release directly AND a member of one of its epics.
+    const both = await completeQuest(ctx, user, project.id, {
+      title: "Reachable twice",
+      area: "orm",
+      priority: "high",
+    });
+    await attach(ctx, both.id, release.id);
+    await ctx.epicController.attachQuest.fetch(
+      { params: { id: epic.id }, body: { questId: both.id } },
+      { user },
+    );
+
+    const result = await ctx.releaseController.getReleaseChangelog.fetch(
+      { params: { id: release.id } },
+      { user },
+    );
+
+    expect(result.data.groups).toHaveLength(1);
+    expect(result.data.groups[0].kind).toBe("epic");
+    expect(result.data.stats.questCount).toBe(1);
   });
 
   it("agrees with the markdown on grouping and totals", async ({ expect }) => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user);
-
-    const release = await ctx.releaseController.createRelease.fetch(
-      { params: { projectId: project.id }, body: { tag: "0.1.0" } },
-      { user },
-    );
+    const release = await aRelease(user, project.id, "0.28.0");
 
     const a = await completeQuest(ctx, user, project.id, {
       title: "Streaming multipart uploads",
@@ -238,135 +271,102 @@ describe("ReleaseController.getReleaseChangelog", () => {
       area: "react",
       priority: "low",
     });
-    await attach(ctx, a.id, release.data.id);
-    await attach(ctx, b.id, release.data.id);
+    await attach(ctx, a.id, release.id);
+    await attach(ctx, b.id, release.id);
 
     const result = await ctx.releaseController.getReleaseChangelog.fetch(
-      { params: { id: release.data.id } },
+      { params: { id: release.id } },
       { user },
     );
 
-    // Every area heading in the markdown has a matching structured area,
-    // and each area's title list matches line for line.
-    for (const area of result.data.areas) {
-      expect(result.data.markdown).toContain(`## ${area.name}`);
-      for (const quest of area.quests) {
+    for (const group of result.data.groups) {
+      expect(result.data.markdown).toContain(`## ${group.name}`);
+      for (const quest of group.quests) {
         expect(result.data.markdown).toContain(`- ${quest.title}`);
       }
     }
 
-    const totalFromAreas = result.data.areas.reduce(
-      (sum, area) => sum + area.questCount,
+    const totalFromGroups = result.data.groups.reduce(
+      (sum, group) => sum + group.questCount,
       0,
     );
-    expect(totalFromAreas).toBe(result.data.stats.questCount);
-    expect(result.data.stats.areaCount).toBe(result.data.areas.length);
+    expect(totalFromGroups).toBe(result.data.stats.questCount);
   });
 
-  it("returns the frozen markdown snapshot for a published release", async ({
-    expect,
-  }) => {
+  it("freezes BOTH projections on a published release", async ({ expect }) => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user);
+    const release = await aRelease(user, project.id, "0.28.0");
 
-    const release = await ctx.releaseController.createRelease.fetch(
-      { params: { projectId: project.id }, body: { tag: "0.1.0" } },
-      { user },
-    );
-
-    const a = await completeQuest(ctx, user, project.id, {
-      title: "Sequence counter per project",
+    const quest = await completeQuest(ctx, user, project.id, {
+      title: "Original title",
       area: "orm",
       priority: "high",
     });
-    await attach(ctx, a.id, release.data.id);
+    await attach(ctx, quest.id, release.id);
 
     const published = await ctx.releaseController.publishRelease.fetch(
-      { params: { id: release.data.id }, body: {} },
+      { params: { id: release.id }, body: {} },
       { user },
     );
-    expect(published.data.changelog).toBeDefined();
+    expect(published.data.changelog).toContain("Original title");
+    expect(published.data.changelogGroups?.[0].quests[0].title).toBe(
+      "Original title",
+    );
+
+    // The recorder froze the markdown and RECOMPUTED the rows, so an edit
+    // after the close showed one title in the page and another in the `.md`.
+    // Both are frozen now.
+    await ctx.questController.updateQuestById.fetch(
+      { params: { id: quest.id }, body: { completionMessage: "touched" } },
+      { user },
+    );
 
     const result = await ctx.releaseController.getReleaseChangelog.fetch(
-      { params: { id: release.data.id } },
+      { params: { id: release.id } },
       { user },
     );
-
     expect(result.data.markdown).toBe(published.data.changelog);
-    // Areas are recomputed rather than frozen — they still describe the same
-    // attachments, so the published release is not returned bare.
-    expect(result.data.areas).toHaveLength(1);
-    expect(result.data.areas[0].quests[0].title).toBe(
-      "Sequence counter per project",
-    );
+    expect(result.data.groups[0].quests[0].title).toBe("Original title");
   });
 
-  it("returns no areas when nothing is attached", async ({ expect }) => {
+  it("goes back to live on a reopened release", async ({ expect }) => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user);
+    const release = await aRelease(user, project.id, "0.28.0");
 
-    const release = await ctx.releaseController.createRelease.fetch(
-      { params: { projectId: project.id }, body: { tag: "0.1.0" } },
+    await ctx.releaseController.publishRelease.fetch(
+      { params: { id: release.id }, body: {} },
       { user },
     );
+    await ctx.releaseController.reopenRelease.fetch(
+      { params: { id: release.id } },
+      { user },
+    );
+
+    const late = await completeQuest(ctx, user, project.id, {
+      title: "Added after reopening",
+      area: "orm",
+      priority: "high",
+    });
+    await attach(ctx, late.id, release.id);
 
     const result = await ctx.releaseController.getReleaseChangelog.fetch(
-      { params: { id: release.data.id } },
+      { params: { id: release.id } },
       { user },
     );
 
-    expect(result.data.areas).toEqual([]);
-    expect(result.data.stats.questCount).toBe(0);
-    expect(result.data.stats.areaCount).toBe(0);
+    // Reopening clears the snapshot, so the changelog is computed again -
+    // otherwise the release would keep a frozen copy nothing agrees with.
+    expect(result.data.groups[0].quests[0].title).toBe("Added after reopening");
   });
 
-  it("ignores a completed quest that was never attached", async ({
+  it("returns no groups when nothing attached has shipped", async ({
     expect,
   }) => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user);
-
-    const release = await ctx.releaseController.createRelease.fetch(
-      { params: { projectId: project.id }, body: { tag: "0.1.0" } },
-      { user },
-    );
-
-    const attached = await completeQuest(ctx, user, project.id, {
-      title: "Put in the release",
-      area: "orm",
-      priority: "high",
-    });
-    await attach(ctx, attached.id, release.data.id);
-
-    // Same project, completed at the same moment, attached to nothing. The
-    // old window would have swept this in; membership is an assignment now.
-    await completeQuest(ctx, user, project.id, {
-      title: "Left out of the release",
-      area: "orm",
-      priority: "high",
-    });
-
-    const result = await ctx.releaseController.getReleaseChangelog.fetch(
-      { params: { id: release.data.id } },
-      { user },
-    );
-
-    const titles = result.data.areas.flatMap((area) =>
-      area.quests.map((quest) => quest.title),
-    );
-    expect(titles).toEqual(["Put in the release"]);
-  });
-
-  it("ignores an attached quest that is not completed yet", async ({
-    expect,
-  }) => {
-    const user = await createTestUser(ctx);
-    const project = await createTestProject(ctx, user);
-
-    const release = await ctx.releaseController.createRelease.fetch(
-      { params: { projectId: project.id }, body: { tag: "0.1.0" } },
-      { user },
-    );
+    const release = await aRelease(user, project.id, "0.28.0");
 
     const open = await ctx.questController.createQuest.fetch(
       {
@@ -379,17 +379,49 @@ describe("ReleaseController.getReleaseChangelog", () => {
       },
       { user },
     );
-    await attach(ctx, open.data.id, release.data.id);
+    await attach(ctx, open.data.id, release.id);
 
     const result = await ctx.releaseController.getReleaseChangelog.fetch(
-      { params: { id: release.data.id } },
+      { params: { id: release.id } },
       { user },
     );
 
-    // A changelog reports what shipped, so planned work is in the release
-    // without being in its changelog. The progress rollup (#1555) is what
-    // counts both sides.
-    expect(result.data.areas).toEqual([]);
+    // A changelog reports what SHIPPED. Planned work is in the release
+    // without being in its changelog; the progress rollup counts both sides.
+    expect(result.data.groups).toEqual([]);
     expect(result.data.stats.questCount).toBe(0);
+  });
+
+  it("ignores a completed quest that was never attached", async ({
+    expect,
+  }) => {
+    const user = await createTestUser(ctx);
+    const project = await createTestProject(ctx, user);
+    const release = await aRelease(user, project.id, "0.28.0");
+
+    const attached = await completeQuest(ctx, user, project.id, {
+      title: "Put in the release",
+      area: "orm",
+      priority: "high",
+    });
+    await attach(ctx, attached.id, release.id);
+
+    // Same project, completed at the same moment, attached to nothing. The
+    // old window would have swept this in; membership is an assignment now.
+    await completeQuest(ctx, user, project.id, {
+      title: "Left out of the release",
+      area: "orm",
+      priority: "high",
+    });
+
+    const result = await ctx.releaseController.getReleaseChangelog.fetch(
+      { params: { id: release.id } },
+      { user },
+    );
+
+    const titles = result.data.groups.flatMap((group) =>
+      group.quests.map((quest) => quest.title),
+    );
+    expect(titles).toEqual(["Put in the release"]);
   });
 });

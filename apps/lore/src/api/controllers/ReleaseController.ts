@@ -13,9 +13,9 @@ import { $etag } from "alepha/server/etag";
 import { type Quest, quests } from "../entities/quests.ts";
 import { type Release, releases } from "../entities/releases.ts";
 import {
-  type ReleaseChangelogArea,
-  releaseChangelogAreaSchema,
-} from "../schemas/releaseChangelogAreaSchema.ts";
+  type ReleaseChangelogGroup,
+  releaseChangelogGroupSchema,
+} from "../schemas/releaseChangelogGroupSchema.ts";
 import { releaseResourceSchema } from "../schemas/releaseResourceSchema.ts";
 import {
   RELEASE_TAG_PATTERN,
@@ -216,13 +216,18 @@ export class ReleaseController {
       const withTitle = body.title
         ? { ...release, title: body.title }
         : release;
-      const completed = await this.queryCompleted(release);
-      const { markdown } = this.renderChangelog(withTitle, completed);
-      const progress = await this.computeProgress(release);
+      // ONE read of the contents for both the changelog and the counts, so
+      // the frozen record cannot disagree with itself across two queries.
+      const contents = await this.contents.contentsOf(release);
+      const { markdown, groups } = this.renderChangelog(withTitle, contents);
+      const progress = this.progressOf(release, contents);
 
       return await this.releases.updateById(release.id, {
         releasedAt: this.dt.nowISOString(),
         changelog: markdown,
+        // Frozen TOGETHER with the markdown. See `releaseChangelogGroupSchema`
+        // for the asymmetry this replaces.
+        changelogGroups: groups,
         ...progress,
         ...(body.title ? { title: body.title } : {}),
       });
@@ -258,6 +263,7 @@ export class ReleaseController {
       return await this.releases.updateById(params.id, {
         releasedAt: null,
         changelog: null,
+        changelogGroups: null,
         completed: null,
         inProgress: null,
         shelved: null,
@@ -395,8 +401,8 @@ export class ReleaseController {
       $secure({ permissions: ["quest:read"] }),
       this.ownsRelease(),
       // Same reasoning as `getReleases`: an open release's changelog is
-      // recomputed from its completed quests, so a freshness window hides
-      // work that just landed. ETag-only revalidation keeps it cheap.
+      // recomputed from its contents, so a freshness window hides work that
+      // just landed. ETag-only revalidation keeps it cheap.
       $etag({ control: { private: true, noCache: true } }),
     ],
     schema: {
@@ -409,9 +415,10 @@ export class ReleaseController {
         /**
          * The same entries the markdown lists, in structured form, so the
          * page can render `#ref · title · priority` rows. See
-         * `releaseChangelogAreaSchema` for why both projections ship.
+         * `releaseChangelogGroupSchema` for why both projections ship AND
+         * why they freeze together.
          */
-        areas: z.array(releaseChangelogAreaSchema),
+        groups: z.array(releaseChangelogGroupSchema),
         stats: z.object({
           questCount: z.integer(),
           areaCount: z.integer(),
@@ -422,17 +429,31 @@ export class ReleaseController {
     handler: async () => {
       const release = this.owned.get<Release>();
 
-      const completed = await this.queryCompleted(release);
-      const { areas, stats } = this.summarize(completed);
-
-      // A released release returns the frozen markdown snapshot; `areas` is
-      // recomputed either way.
-      if (release.releasedAt && release.changelog) {
-        return { markdown: release.changelog, release, areas, stats };
+      // A published release renders ENTIRELY from its own row: both
+      // projections and the counts, none of them recomputed. The recorder
+      // froze the markdown and recomputed the rows, so a quest edited after
+      // the close showed a different title in the page than in the `.md`
+      // beside it. That asymmetry is deleted rather than ported.
+      if (release.releasedAt) {
+        const groups = release.changelogGroups ?? [];
+        return {
+          markdown: release.changelog ?? "",
+          release,
+          groups,
+          stats: {
+            questCount: release.completed ?? 0,
+            areaCount: groups.length,
+            contributorCount: 0,
+          },
+        };
       }
 
-      const { markdown } = this.renderChangelog(release, completed);
-      return { markdown, release, areas, stats };
+      const contents = await this.contents.contentsOf(release);
+      const { markdown, groups, stats } = this.renderChangelog(
+        release,
+        contents,
+      );
+      return { markdown, release, groups, stats };
     },
   });
 
@@ -538,86 +559,68 @@ export class ReleaseController {
   }
 
   /**
-   * The completed quests attached to a release.
+   * The changelog, both projections at once.
    *
-   * This replaced `queryCompletedInWindow`, which asked
-   * `completedAt BETWEEN release.createdAt AND (closedAt ?? now)` — a time
-   * window, i.e. `git log --since --until` grouped by area. Membership is an
-   * assignment now, so the question is which quests were put in the release,
-   * not which happened to finish while it was open.
+   * Grouped by EPIC first, then by area for the quests belonging to no epic
+   * in this release: an epic is a headline, a loose quest is a line item.
+   * That is what "you open the release, you have the changelog of epics and
+   * quests" means.
    *
-   * Reads `ReleaseContentService` rather than the `releaseId` column, so the
-   * changelog and the progress counts are two projections of ONE membership
-   * answer and cannot drift apart.
+   * Only COMPLETED quests appear. A changelog reports what shipped; planned
+   * work is in the release without being in its changelog, and the progress
+   * rollup is what counts both sides.
    */
-  protected async queryCompleted(release: Release): Promise<Quest[]> {
-    const { quests } = await this.contents.contentsOf(release);
-    return quests.filter((quest) => quest.completedAt != null);
-  }
+  protected renderChangelog(
+    release: Release,
+    contents: ReleaseContents,
+  ): {
+    markdown: string;
+    groups: ReleaseChangelogGroup[];
+    stats: { questCount: number; areaCount: number; contributorCount: number };
+  } {
+    const shipped = contents.quests.filter(
+      (quest) => quest.completedAt != null,
+    );
+    const groups: ReleaseChangelogGroup[] = [];
 
-  /**
-   * Group completed quests by area, preserving insertion order so the
-   * structured areas and the rendered markdown list them identically.
-   */
-  protected groupByArea(completed: Quest[]): Map<string, Quest[]> {
+    // Epics first, in the order `ReleaseContentService` returns them, which
+    // is `number` ascending. An epic with nothing completed in it yet is
+    // omitted rather than rendered empty: the changelog is what shipped.
+    for (const epic of contents.epics) {
+      const own = shipped.filter((quest) => quest.epicId === epic.id);
+      if (own.length === 0) continue;
+      groups.push({
+        kind: "epic",
+        name: epic.title,
+        ref: epic.number,
+        questCount: own.length,
+        quests: own.map((quest) => this.changelogEntry(quest)),
+      });
+    }
+
+    // Then the loose work, by area. `looseQuests` is already the set that
+    // belongs to no epic of THIS release, so a quest cannot appear under both
+    // an epic heading and an area heading.
+    const looseShipped = contents.looseQuests.filter(
+      (quest) => quest.completedAt != null,
+    );
     const byArea = new Map<string, Quest[]>();
-    for (const quest of completed) {
+    for (const quest of looseShipped) {
       const area = quest.area || "Uncategorized";
       if (!byArea.has(area)) byArea.set(area, []);
       byArea.get(area)!.push(quest);
     }
-    return byArea;
-  }
-
-  /**
-   * The structured projection of a changelog: area groups plus the headline
-   * counters. Shares `groupByArea` with `renderChangelog`, so the rows the
-   * page draws and the markdown it can download never disagree on grouping.
-   */
-  protected summarize(completed: Quest[]): {
-    areas: ReleaseChangelogArea[];
-    stats: { questCount: number; areaCount: number; contributorCount: number };
-  } {
-    const byArea = this.groupByArea(completed);
-
-    const contributors = new Set<string>();
-    for (const quest of completed) {
-      if (quest.completedBy) contributors.add(quest.completedBy);
-    }
-
-    const areas: ReleaseChangelogArea[] = [...byArea].map(
-      ([name, areaQuests]) => ({
+    for (const [name, areaQuests] of byArea) {
+      groups.push({
+        kind: "area",
         name,
         questCount: areaQuests.length,
-        quests: areaQuests.map((quest) => ({
-          shortId: quest.shortId,
-          title: quest.title,
-          priority: quest.priority,
-        })),
-      }),
-    );
-
-    return {
-      areas,
-      stats: {
-        questCount: completed.length,
-        areaCount: byArea.size,
-        contributorCount: contributors.size,
-      },
-    };
-  }
-
-  protected renderChangelog(
-    release: Release,
-    completed: Quest[],
-  ): {
-    markdown: string;
-    stats: { questCount: number; areaCount: number; contributorCount: number };
-  } {
-    const byArea = this.groupByArea(completed);
+        quests: areaQuests.map((quest) => this.changelogEntry(quest)),
+      });
+    }
 
     const contributors = new Set<string>();
-    for (const quest of completed) {
+    for (const quest of shipped) {
       if (quest.completedBy) contributors.add(quest.completedBy);
     }
 
@@ -631,14 +634,18 @@ export class ReleaseController {
     }
 
     lines.push(
-      `> ${completed.length} quest(s) completed across ${byArea.size} area(s) by ${contributors.size} member(s)`,
+      `> ${shipped.length} quest(s) shipped across ${groups.length} section(s) by ${contributors.size} member(s)`,
     );
     lines.push("");
 
-    for (const [area, areaQuests] of byArea) {
-      lines.push(`## ${area}`);
+    for (const group of groups) {
+      lines.push(
+        group.kind === "epic"
+          ? `## #${group.ref} ${group.name}`
+          : `## ${group.name}`,
+      );
       lines.push("");
-      for (const quest of areaQuests) {
+      for (const quest of group.quests) {
         const priority =
           quest.priority !== "optional" ? ` [${quest.priority}]` : "";
         lines.push(`- ${quest.title}${priority}`);
@@ -648,11 +655,20 @@ export class ReleaseController {
 
     return {
       markdown: lines.join("\n"),
+      groups,
       stats: {
-        questCount: completed.length,
-        areaCount: byArea.size,
+        questCount: shipped.length,
+        areaCount: groups.length,
         contributorCount: contributors.size,
       },
+    };
+  }
+
+  protected changelogEntry(quest: Quest): ReleaseChangelogGroup["quests"][0] {
+    return {
+      shortId: quest.shortId,
+      title: quest.title,
+      priority: quest.priority,
     };
   }
 }

@@ -1,6 +1,7 @@
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
+import { releaseChangelogGroupSchema } from "../schemas/releaseChangelogGroupSchema.ts";
 import { projects } from "./projects.ts";
 
 /**
@@ -75,6 +76,19 @@ export const releases = $entity({
      * the changelog is computed live from its contents.
      */
     changelog: z.string().meta({ size: "rich" }).optional(),
+    /**
+     * The same changelog in structured form, frozen alongside the markdown.
+     *
+     * ⚠️ It exists so BOTH projections freeze together. The recorder froze
+     * the markdown and recomputed the rows on every read, so a quest edited
+     * after the close showed a different title in the page than in the
+     * downloadable `.md`. A released release is immutable and renders
+     * entirely from its own row, so the rows are stored rather than derived.
+     *
+     * Optional with NO `db.default`, so the migration is a plain additive
+     * `ALTER TABLE ADD COLUMN`.
+     */
+    changelogGroups: z.array(releaseChangelogGroupSchema).optional(),
     /**
      * The progress rollup, FROZEN at publish and never recomputed after.
      *
