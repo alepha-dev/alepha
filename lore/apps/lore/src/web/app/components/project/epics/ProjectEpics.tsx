@@ -8,7 +8,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { CircleDot, Plus, Search, Trash2 } from "lucide-react";
+import { CircleDot, Play, Plus, Search, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
@@ -42,10 +42,23 @@ const epicsFiltersSchema = z.object({
  * rather than round-tripping. Same shape as `ProjectBlights`, and the
  * reason neither needed a paginated endpoint.
  *
- * Status is a read-only chip here. Changing it is the Epic detail page's
- * job (`EpicStatusControl.tsx`); this list intentionally does not
- * duplicate that control or its transition-verb vocabulary, which is why
- * the row menu offers Delete and nothing else.
+ * Status is a read-only CHIP here, but the row menu carries one verb:
+ * **Begin**, on a `planned` epic only. That reverses an earlier decision
+ * (this comment used to say the menu offers Delete and nothing else), and
+ * it is a deliberate reversal rather than drift.
+ *
+ * Only Begin, out of `EpicStatusControl`'s four verbs, and the reason is
+ * what you are doing when you are looking at this page. Scanning a backlog
+ * and starting the next thing is a list-shaped action. Concluding an epic
+ * is a judgement about whether its quests are actually finished, and
+ * Reopen and Return to Planning are corrections: all three want the epic's
+ * own page, where its progress is in front of you. A row menu that carried
+ * all four would be the detail page's control, drawn worse.
+ *
+ * The label comes from `epic.status.actions.begin`, the same key the detail
+ * page's button uses, so the two surfaces cannot come to call it different
+ * things - which is the real content of the old comment's warning about
+ * duplicating the transition-verb vocabulary.
  *
  * ### Built to the Quests table's shape
  *
@@ -298,7 +311,51 @@ const ProjectEpics = () => {
             ),
           },
         }}
-        rowActions={(_epic) => [
+        rowActions={(epic) => [
+          // Gated on the row's own status, which is why this callback reads
+          // its argument now. Beginning an epic that has already begun is
+          // not a thing to offer.
+          ...(epic.status === "planned"
+            ? [
+                {
+                  icon: Play,
+                  label: tr("epic.status.actions.begin"),
+                  onClick: async (
+                    row: EpicResource,
+                    { refresh }: { refresh: () => void },
+                  ) => {
+                    // Same copy as the detail page's own Begin, from the
+                    // same keys. Beginning releases the epic's quests into
+                    // the backlog for everybody, which is what the
+                    // confirmation is for; it is not destructive, so no
+                    // `destructive: true`.
+                    const ok = await dialog.confirm({
+                      title: tr("epic.begin.title"),
+                      description: tr("epic.begin.confirm", {
+                        args: [row.title],
+                      }) as string,
+                      confirmLabel: tr("epic.status.actions.begin"),
+                      cancelLabel: tr("common.cancel"),
+                    });
+                    if (!ok) return;
+                    try {
+                      await epicApi.setEpicStatus({
+                        params: { id: row.id },
+                        body: { status: "active" },
+                      });
+                      // `refresh` is what repaints the status chip AND
+                      // recomputes the sidebar's planned-epic badge, since
+                      // `fetchEpics` pushes that count on every fetch.
+                      refresh();
+                    } catch (error) {
+                      toaster.error(
+                        error instanceof Error ? error.message : String(error),
+                      );
+                    }
+                  },
+                },
+              ]
+            : []),
           {
             icon: Trash2,
             label: tr("epic.action.delete"),

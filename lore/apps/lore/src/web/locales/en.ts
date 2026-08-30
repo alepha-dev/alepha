@@ -1210,6 +1210,12 @@ export default {
   "epic.create.title.label": "Title",
   "epic.create.description.label": "Description",
   "epic.create.submit": "Create Epic",
+  "epic.begin.title": "Begin this epic?",
+  "epic.begin.confirm":
+    "Beginning $1 releases its quests into the backlog, where the rest of the project can see and pick them up.",
+  "epic.returnToPlanning.title": "Return this epic to planning?",
+  "epic.returnToPlanning.confirm":
+    "Returning $1 to planning withdraws its quests from the backlog again. They keep their status; they stop being listed.",
   "epic.status.actions.begin": "Begin the Epic",
   "epic.status.actions.conclude": "Conclude the Epic",
   "epic.status.actions.returnToPlanning": "Return to Planning",

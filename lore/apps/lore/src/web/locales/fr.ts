@@ -1239,6 +1239,12 @@ export default {
   "epic.create.title.label": "Titre",
   "epic.create.description.label": "Description",
   "epic.create.submit": "Créer une épopée",
+  "epic.begin.title": "Démarrer cette épopée ?",
+  "epic.begin.confirm":
+    "Démarrer $1 libère ses quêtes dans le backlog, où le reste du projet peut les voir et les prendre.",
+  "epic.returnToPlanning.title": "Remettre cette épopée en préparation ?",
+  "epic.returnToPlanning.confirm":
+    "Remettre $1 en préparation retire à nouveau ses quêtes du backlog. Elles gardent leur statut ; elles cessent d'être listées.",
   "epic.status.actions.begin": "Commencer l'épopée",
   "epic.status.actions.conclude": "Conclure l'épopée",
   "epic.status.actions.returnToPlanning": "Revenir à la planification",
