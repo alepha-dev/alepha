@@ -6,7 +6,7 @@ import { type KeyboardEvent, useState } from "react";
 
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-export interface MilestoneTagInputProps {
+export interface ReleaseTagInputProps {
   value: string[];
   onChange: (next: string[]) => void;
   disabled?: boolean;
@@ -16,7 +16,7 @@ export interface MilestoneTagInputProps {
  * Chip-style tag input — type and press Enter to add, click X to remove.
  * Deduplicates on add. Empty input on Backspace removes the last chip.
  */
-const MilestoneTagInput = (props: MilestoneTagInputProps) => {
+const ReleaseTagInput = (props: ReleaseTagInputProps) => {
   const { tr } = useI18n<I18n, "en">();
   const [draft, setDraft] = useState("");
 
@@ -72,7 +72,7 @@ const MilestoneTagInput = (props: MilestoneTagInputProps) => {
         onChange={(e) => setDraft(e.currentTarget.value)}
         onKeyDown={onKey}
         onBlur={() => commit(draft)}
-        placeholder={tr("milestone.tags.placeholder")}
+        placeholder={tr("release.tags.placeholder")}
         disabled={props.disabled}
         className="h-7 min-w-32 flex-1 border-0 px-1 shadow-none focus-visible:ring-0"
       />
@@ -80,4 +80,4 @@ const MilestoneTagInput = (props: MilestoneTagInputProps) => {
   );
 };
 
-export default MilestoneTagInput;
+export default ReleaseTagInput;

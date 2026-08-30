@@ -109,7 +109,7 @@ export class AlephaLoreParser {
       // erased, but a CSV exported before that must still round-trip.
       // Same one-way ramp as the retired `zone` header above.
       kanbanColumn: at("kanbanColumn"),
-      milestone: at("milestone"),
+      release: at("release"),
       createdBy: at("createdBy"),
       acceptedBy: at("acceptedBy"),
       completedBy: at("completedBy"),

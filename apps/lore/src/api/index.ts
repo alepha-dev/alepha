@@ -18,12 +18,12 @@ import { FolioController } from "./controllers/FolioController.ts";
 import { InsightsController } from "./controllers/InsightsController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
 import { KanbanController } from "./controllers/KanbanController.ts";
-import { MilestoneController } from "./controllers/MilestoneController.ts";
 import { ProjectController } from "./controllers/ProjectController.ts";
 import { ProjectQuestPortabilityController } from "./controllers/ProjectQuestPortabilityController.ts";
 import { ProjectReportsController } from "./controllers/ProjectReportsController.ts";
 import { QuestCommentController } from "./controllers/QuestCommentController.ts";
 import { QuestController } from "./controllers/QuestController.ts";
+import { ReleaseController } from "./controllers/ReleaseController.ts";
 import { SearchController } from "./controllers/SearchController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
 import { SigilIngestController } from "./controllers/SigilIngestController.ts";
@@ -32,8 +32,8 @@ import { LoreDashboardCatalog } from "./dashboardCatalogModule.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
 import { InvitationJobs } from "./jobs/InvitationJobs.ts";
-import { MilestoneJobs } from "./jobs/MilestoneJobs.ts";
 import { QuestJobs } from "./jobs/QuestJobs.ts";
+import { ReleaseJobs } from "./jobs/ReleaseJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
 import { InvitationNotifications } from "./notifications/InvitationNotifications.ts";
 import { QuestNotifications } from "./notifications/QuestNotifications.ts";
@@ -108,7 +108,7 @@ export const LoreApi = $module({
     FolioLinkService,
     InvitationService,
     InvitationJobs,
-    MilestoneJobs,
+    ReleaseJobs,
     QuestJobs,
     BlightJobs,
     SigilJobs,
@@ -158,7 +158,7 @@ export const LoreApi = $module({
     QuestCommentController,
     FeedbackCommentController,
     ProjectController,
-    MilestoneController,
+    ReleaseController,
     EpicController,
     AreaController,
     ProjectReportsController,

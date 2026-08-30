@@ -5,7 +5,7 @@ Lore is an open-source project management app built on Alepha.
 Projects hold **quests** (the roadmap and the in-flight work), **folios** (project
 memory, wiki-linked and optionally end-to-end encrypted), **feedback** (inbound bug
 and feature triage), **blights** (deduplicated crash telemetry reported by
-enrolled apps), **milestones** (grouping quests into releases) and **reports**
+enrolled apps), **releases** (the named goals epics and quests ship in) and **reports**
 (analytics and insights over all of it).
 
 Every one of those surfaces is exposed over **MCP**, which is the primary consumer:

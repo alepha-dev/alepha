@@ -714,7 +714,7 @@ export class QuestController {
       query: pageQuerySchema.extend({
         status: questStatusSchema.optional(),
         search: z.string().optional(),
-        milestoneId: z.integer().optional(),
+        releaseId: z.integer().optional(),
         epic: z.integer().optional(),
         includePlanned: z.boolean().optional(),
         area: z.string().optional(),
@@ -752,8 +752,8 @@ export class QuestController {
         }
       }
 
-      if (query.milestoneId) {
-        where.milestoneId = { eq: query.milestoneId };
+      if (query.releaseId) {
+        where.releaseId = { eq: query.releaseId };
       }
 
       if (query.epic) {

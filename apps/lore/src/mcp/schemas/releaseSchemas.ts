@@ -3,13 +3,13 @@ import { z } from "alepha";
 import { projectParamsSchema } from "./projectParamsSchema.ts";
 
 // -----------------------------------------------------------------------------
-// milestone_list
+// release_list
 // -----------------------------------------------------------------------------
 
-export const milestoneListParamsSchema = projectParamsSchema;
+export const releaseListParamsSchema = projectParamsSchema;
 
-export const milestoneListResultSchema = z.object({
-  milestones: z.array(
+export const releaseListResultSchema = z.object({
+  releases: z.array(
     z.object({
       id: z.integer(),
       number: z.integer(),
@@ -23,20 +23,18 @@ export const milestoneListResultSchema = z.object({
 });
 
 // -----------------------------------------------------------------------------
-// milestone_start
+// release_start
 // -----------------------------------------------------------------------------
 
-export const milestoneStartParamsSchema = projectParamsSchema.extend({
+export const releaseStartParamsSchema = projectParamsSchema.extend({
   title: z
     .string()
-    .describe(
-      "Milestone title (optional, defaults to 'Milestone N' if omitted)",
-    )
+    .describe("Release title (optional, defaults to 'Release N' if omitted)")
     .optional(),
-  description: z.string().describe("Milestone description").optional(),
+  description: z.string().describe("Release description").optional(),
 });
 
-export const milestoneStartResultSchema = z.object({
+export const releaseStartResultSchema = z.object({
   id: z.integer(),
   number: z.integer(),
   title: z.string(),
@@ -44,18 +42,18 @@ export const milestoneStartResultSchema = z.object({
 });
 
 // -----------------------------------------------------------------------------
-// milestone_close
+// release_close
 // -----------------------------------------------------------------------------
 
-export const milestoneCloseParamsSchema = z.object({
+export const releaseCloseParamsSchema = z.object({
   id: z
     .integer()
-    .describe("Global milestone ID. Mutually exclusive with `number`.")
+    .describe("Global release ID. Mutually exclusive with `number`.")
     .optional(),
   number: z
     .integer()
     .describe(
-      "Per-project milestone number ('Milestone 3'). Requires `project` or `project_name`.",
+      "Per-project release number ('Release 3'). Requires `project` or `project_name`.",
     )
     .optional(),
   project: z
@@ -68,13 +66,11 @@ export const milestoneCloseParamsSchema = z.object({
     .optional(),
   title: z
     .string()
-    .describe(
-      "New title for the milestone (optional, keeps current if omitted)",
-    )
+    .describe("New title for the release (optional, keeps current if omitted)")
     .optional(),
 });
 
-export const milestoneCloseResultSchema = z.object({
+export const releaseCloseResultSchema = z.object({
   id: z.integer(),
   number: z.integer(),
   title: z.string(),
@@ -82,18 +78,18 @@ export const milestoneCloseResultSchema = z.object({
 });
 
 // -----------------------------------------------------------------------------
-// milestone_changelog
+// release_changelog
 // -----------------------------------------------------------------------------
 
-export const milestoneChangelogParamsSchema = z.object({
+export const releaseChangelogParamsSchema = z.object({
   id: z
     .integer()
-    .describe("Global milestone ID. Mutually exclusive with `number`.")
+    .describe("Global release ID. Mutually exclusive with `number`.")
     .optional(),
   number: z
     .integer()
     .describe(
-      "Per-project milestone number ('Milestone 3'). Requires `project` or `project_name`.",
+      "Per-project release number ('Release 3'). Requires `project` or `project_name`.",
     )
     .optional(),
   project: z
@@ -106,7 +102,7 @@ export const milestoneChangelogParamsSchema = z.object({
     .optional(),
 });
 
-export const milestoneChangelogResultSchema = z.object({
+export const releaseChangelogResultSchema = z.object({
   markdown: z.string(),
   stats: z.object({
     questCount: z.integer(),

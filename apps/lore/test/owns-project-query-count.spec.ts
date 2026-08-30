@@ -149,8 +149,8 @@ const PORTED = [
   "countOpenQuests",
   "getEpics",
   "countPlannedEpics",
-  "getMilestones",
-  "getMilestoneBacklog",
+  "getReleases",
+  "getReleaseBacklog",
   "listAllDirectories",
 ];
 

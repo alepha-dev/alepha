@@ -34,7 +34,7 @@ type RouteName =
   | "projectSettingsEpics"
   | "projectSettingsFeedback"
   | "projectSettingsSigils"
-  | "projectSettingsMilestones"
+  | "projectSettingsReleases"
   | "projectSettingsQuests";
 
 type NavLabelKey =
@@ -46,7 +46,7 @@ type NavLabelKey =
   | "project.settings.nav.epics"
   | "project.settings.nav.feedback"
   | "project.settings.nav.sigils"
-  | "project.settings.nav.milestones"
+  | "project.settings.nav.releases"
   | "project.settings.nav.quests";
 
 type NavGroupLabelKey = "project.settings.nav.group.features";
@@ -116,8 +116,8 @@ const NAV_GROUPS: NavGroup[] = [
         icon: Stamp,
       },
       {
-        route: "projectSettingsMilestones",
-        labelKey: "project.settings.nav.milestones",
+        route: "projectSettingsReleases",
+        labelKey: "project.settings.nav.releases",
         icon: BookMarked,
       },
     ],

@@ -10,7 +10,7 @@ export * from "./epicSchemas.ts";
 export * from "./feedbackSchemas.ts";
 export * from "./folioSchemas.ts";
 export * from "./insightsSchemas.ts";
-export * from "./milestoneSchemas.ts";
+export * from "./releaseSchemas.ts";
 export * from "./projectSchemas.ts";
 export * from "./questSchemas.ts";
 export * from "./sigilSchemas.ts";

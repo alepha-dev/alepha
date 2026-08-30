@@ -6,7 +6,7 @@ import { projectParamsSchema } from "./projectParamsSchema.ts";
 
 /**
  * Epic reference for MCP tools. Unlike quests (`id` / `shortId`) and
- * milestones (`id` / `number`), an epic has no dual reference — MCP
+ * releases (`id` / `number`), an epic has no dual reference — MCP
  * addresses it purely by its per-project `number` (mirrors the UI's
  * `/epics/:epicNumber` route and `EpicController.getEpicByNumber`).
  * `EpicController` exposes no id-only lookup, so `number` + project is the

@@ -5,17 +5,17 @@ import { Library, Play } from "lucide-react";
 
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-export interface MilestoneEmptyBannerProps {
+export interface ReleaseEmptyBannerProps {
   /**
-   * Quests completed since the last close — see `getMilestoneBacklog`.
+   * Quests completed since the last close — see `getReleaseBacklog`.
    */
   backlogCount: number;
   /**
-   * `#4 July release`, when a milestone has ever closed.
+   * `#4 July release`, when a release has ever closed.
    */
   lastLabel?: string;
   /**
-   * Localized close date of that milestone.
+   * Localized close date of that release.
    */
   lastClosedOn?: string;
   /**
@@ -27,7 +27,7 @@ export interface MilestoneEmptyBannerProps {
 }
 
 /**
- * Shown when no milestone is recording. The sentence is the point: completed
+ * Shown when no release is recording. The sentence is the point: completed
  * work is piling up outside every changelog, and it names how much. An empty
  * state that only says "empty" gives the reader no reason to act.
  *
@@ -35,24 +35,24 @@ export interface MilestoneEmptyBannerProps {
  * the header is gone, so it has to read as a band flush under the breadcrumb.
  * Its own horizontal padding matches what the page wrapper used to add, and a
  * plain bottom border separates it from the changelog row —
- * {@link MilestoneLedgerHero} carries the same treatment so the two states
+ * {@link ReleaseLedgerHero} carries the same treatment so the two states
  * occupy an identical band.
  */
-const MilestoneEmptyBanner = (props: MilestoneEmptyBannerProps) => {
+const ReleaseEmptyBanner = (props: ReleaseEmptyBannerProps) => {
   const { tr } = useI18n<I18n, "en">();
 
   const body =
     props.backlogCount === 0
-      ? tr("milestone.ledger.empty.bodyNone")
+      ? tr("release.ledger.empty.bodyNone")
       : props.lastLabel && props.lastClosedOn
-        ? tr("milestone.ledger.empty.body", {
+        ? tr("release.ledger.empty.body", {
             args: [
               String(props.backlogCount),
               props.lastLabel,
               props.lastClosedOn,
             ],
           })
-        : tr("milestone.ledger.empty.bodyNoHistory", {
+        : tr("release.ledger.empty.bodyNoHistory", {
             args: [String(props.backlogCount)],
           });
 
@@ -64,7 +64,7 @@ const MilestoneEmptyBanner = (props: MilestoneEmptyBannerProps) => {
 
       <div className="min-w-0 flex-1">
         <h2 className="text-[19px] font-semibold">
-          {tr("milestone.ledger.empty.title")}
+          {tr("release.ledger.empty.title")}
         </h2>
         <p className="text-muted-foreground mt-1.5 max-w-2xl text-[13px] text-pretty">
           {body}
@@ -77,15 +77,15 @@ const MilestoneEmptyBanner = (props: MilestoneEmptyBannerProps) => {
           className="bg-green-600 px-4 text-white hover:bg-green-700"
         >
           <Play className="size-4" />
-          {tr("milestone.start")}
+          {tr("release.start")}
         </Button>
         <div className="text-muted-foreground text-[11.5px]">
-          {tr("milestone.ledger.autoClose", { args: [props.autoCloseLabel] })}{" "}
+          {tr("release.ledger.autoClose", { args: [props.autoCloseLabel] })}{" "}
           <Link
             href={props.settingsHref}
             className="underline underline-offset-2"
           >
-            {tr("milestone.ledger.autoClose.change")}
+            {tr("release.ledger.autoClose.change")}
           </Link>
         </div>
       </div>
@@ -93,4 +93,4 @@ const MilestoneEmptyBanner = (props: MilestoneEmptyBannerProps) => {
   );
 };
 
-export default MilestoneEmptyBanner;
+export default ReleaseEmptyBanner;

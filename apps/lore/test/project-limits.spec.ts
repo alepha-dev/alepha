@@ -8,9 +8,9 @@ import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { InvitationController } from "../src/api/controllers/InvitationController.ts";
-import { MilestoneController } from "../src/api/controllers/MilestoneController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
+import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { InvitationService } from "../src/api/services/InvitationService.ts";
 import { ProjectLimits } from "../src/api/services/ProjectLimits.ts";
@@ -27,7 +27,7 @@ interface TestContext {
   adminUserController: AdminUserController;
   projectController: ProjectController;
   questController: QuestController;
-  milestoneController: MilestoneController;
+  releaseController: ReleaseController;
   invitationController: InvitationController;
   invitationService: InvitationService;
   limits: ProjectLimits;
@@ -58,7 +58,7 @@ const setup = async (): Promise<TestContext> => {
     adminUserController: alepha.inject(AdminUserController),
     projectController: alepha.inject(ProjectController),
     questController: alepha.inject(QuestController),
-    milestoneController: alepha.inject(MilestoneController),
+    releaseController: alepha.inject(ReleaseController),
     invitationController: alepha.inject(InvitationController),
     invitationService: alepha.inject(InvitationService),
     limits: alepha.inject(ProjectLimits),
@@ -104,13 +104,13 @@ describe("ProjectLimits enforcement", () => {
   const tighten = async (patch: {
     maxMembersPerProject?: number;
     maxQuestsPerProject?: number;
-    maxMilestonesPerProject?: number;
+    maxReleasesPerProject?: number;
   }) => {
     await ctx.limits.limits.set({
       maxProjectsPerUser: 10,
       maxMembersPerProject: 100,
       maxQuestsPerProject: 5_000,
-      maxMilestonesPerProject: 200,
+      maxReleasesPerProject: 200,
       ...patch,
     });
   };
@@ -176,30 +176,28 @@ describe("ProjectLimits enforcement", () => {
     expect(inB.data.title).toBe("In B");
   });
 
-  it("refuses the milestone past maxMilestonesPerProject", async ({
-    expect,
-  }) => {
+  it("refuses the release past maxReleasesPerProject", async ({ expect }) => {
     const owner = await createTestUser(ctx);
     const p = await project(owner);
-    await tighten({ maxMilestonesPerProject: 1 });
+    await tighten({ maxReleasesPerProject: 1 });
 
-    const first = await ctx.milestoneController.startMilestone.fetch(
+    const first = await ctx.releaseController.startRelease.fetch(
       { params: { projectId: p.id }, body: { title: "M1" } },
       { user: owner },
     );
     // Closed, so the "one active at a time" rule is not what refuses the
     // second one - the cap is.
-    await ctx.milestoneController.closeMilestone.fetch(
+    await ctx.releaseController.closeRelease.fetch(
       { params: { id: first.data.id }, body: {} },
       { user: owner },
     );
 
     await expect(
-      ctx.milestoneController.startMilestone.fetch(
+      ctx.releaseController.startRelease.fetch(
         { params: { projectId: p.id }, body: { title: "M2" } },
         { user: owner },
       ),
-    ).rejects.toThrowError(/maximum number of milestones allowed \(1\)/);
+    ).rejects.toThrowError(/maximum number of releases allowed \(1\)/);
   });
 
   it("refuses an invitation once the project is full", async ({ expect }) => {

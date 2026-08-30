@@ -9,15 +9,15 @@ import { registerAndVerify } from "./_helpers.ts";
  * empty deps). The fix reads `features` through a ref so submit sees
  * the live value.
  *
- * Drive the full wizard with Kanban + Milestones toggled OFF, then assert
+ * Drive the full wizard with Kanban + Releases toggled OFF, then assert
  * from the UI that the created project actually has those features
- * disabled: Milestones via its (still gated) sidebar link, Kanban via the
+ * disabled: Releases via its (still gated) sidebar link, Kanban via the
  * "Enable" switch on its settings sub-page — Kanban stopped being a
  * sidebar entry in the great rename (Task 8), so the sidebar can no
  * longer be the observation for it.
  */
 test.describe("Project wizard — feature toggles", () => {
-  test("toggling Kanban + Milestones off in StepModules persists to the created project", async ({
+  test("toggling Kanban + Releases off in StepModules persists to the created project", async ({
     page,
   }) => {
     const stamp = Date.now();
@@ -37,21 +37,21 @@ test.describe("Project wizard — feature toggles", () => {
     // Step 2 — icon (skip).
     await page.getByRole("button", { name: /^next$/i }).click();
 
-    // Step 3 — modules. Toggle Kanban + Milestones OFF.
+    // Step 3 — modules. Toggle Kanban + Releases OFF.
     // ModuleToggle renders as <button aria-pressed=…> with the label
-    // ("Kanban — Visual board" / "Milestones — Sprints") inside.
+    // ("Kanban — Visual board" / "Releases — Sprints") inside.
     const kanbanToggle = page
       .getByRole("button", { name: /kanban.*visual board|kanban.*tableau/i })
       .first();
-    const milestonesToggle = page
-      .getByRole("button", { name: /milestones.*sprints|chapitres.*cycles/i })
+    const releasesToggle = page
+      .getByRole("button", { name: /releases.*sprints|chapitres.*cycles/i })
       .first();
     await expect(kanbanToggle).toHaveAttribute("aria-pressed", "true");
-    await expect(milestonesToggle).toHaveAttribute("aria-pressed", "true");
+    await expect(releasesToggle).toHaveAttribute("aria-pressed", "true");
     await kanbanToggle.click();
-    await milestonesToggle.click();
+    await releasesToggle.click();
     await expect(kanbanToggle).toHaveAttribute("aria-pressed", "false");
-    await expect(milestonesToggle).toHaveAttribute("aria-pressed", "false");
+    await expect(releasesToggle).toHaveAttribute("aria-pressed", "false");
 
     // Submit.
     await page.getByRole("button", { name: /create project/i }).click();
@@ -66,7 +66,7 @@ test.describe("Project wizard — feature toggles", () => {
     const projectSlug = new URL(page.url()).pathname.split("/").find(Boolean);
     expect(projectSlug).toBeTruthy();
 
-    // ProjectView's sidebar gates the Milestones entry on the matching
+    // ProjectView's sidebar gates the Releases entry on the matching
     // feature flag. If the toggle persisted as `false`, the link should
     // not appear — that's the visible regression we're guarding against.
     // Scope to the actual sidebar container (`[data-slot="sidebar"]`,
@@ -81,7 +81,7 @@ test.describe("Project wizard — feature toggles", () => {
       sidebar.getByRole("link", { name: /^quests$|^quêtes$/i }),
     ).toBeVisible({ timeout: 10_000 });
     await expect(
-      sidebar.getByRole("link", { name: /^milestones$|^chapitres$/i }),
+      sidebar.getByRole("link", { name: /^releases$|^chapitres$/i }),
     ).toHaveCount(0);
 
     // Kanban is a view of the Quests page now, not a

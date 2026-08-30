@@ -7,7 +7,7 @@ import { useState } from "react";
 
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-export interface MilestoneSaveToFolioDialogProps {
+export interface ReleaseSaveToFolioDialogProps {
   defaultTitle: string;
   saving: boolean;
   onConfirm: (title: string) => void;
@@ -19,17 +19,17 @@ export interface MilestoneSaveToFolioDialogProps {
  * folios becomes readable over MCP, so the title is worth a prompt rather
  * than being generated silently.
  */
-const MilestoneSaveToFolioDialog = (props: MilestoneSaveToFolioDialogProps) => {
+const ReleaseSaveToFolioDialog = (props: ReleaseSaveToFolioDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
   const [title, setTitle] = useState(props.defaultTitle);
 
   return (
     <div className="flex flex-col gap-4">
       <p className="text-muted-foreground text-sm text-pretty">
-        {tr("milestone.folio.description")}
+        {tr("release.folio.description")}
       </p>
       <div className="flex flex-col gap-1.5">
-        <Label>{tr("milestone.folio.title")}</Label>
+        <Label>{tr("release.folio.title")}</Label>
         <Input
           value={title}
           onChange={(e) => setTitle(e.currentTarget.value)}
@@ -37,18 +37,18 @@ const MilestoneSaveToFolioDialog = (props: MilestoneSaveToFolioDialogProps) => {
       </div>
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={props.onCancel}>
-          {tr("milestone.start.cancel")}
+          {tr("release.start.cancel")}
         </Button>
         <Button
           disabled={props.saving || title.trim().length === 0}
           onClick={() => props.onConfirm(title.trim())}
         >
           <BookMarked className="size-4" />
-          {tr("milestone.folio.save")}
+          {tr("release.folio.save")}
         </Button>
       </div>
     </div>
   );
 };
 
-export default MilestoneSaveToFolioDialog;
+export default ReleaseSaveToFolioDialog;

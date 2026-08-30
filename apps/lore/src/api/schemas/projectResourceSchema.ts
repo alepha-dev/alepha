@@ -8,7 +8,7 @@ import { projects } from "../entities/projects.ts";
  * Identical to the entity except **`slug` is required**. The physical column
  * is nullable and must stay that way — SQLite refuses `ADD COLUMN … NOT NULL`
  * on a populated table, and a column DEFAULT on `projects` triggers the D1
- * rebuild that cascade-wipes members/quests/milestones/folios/feedback.
+ * rebuild that cascade-wipes members/quests/releases/folios/feedback.
  *
  * Every readable row nonetheless has one: the migration backfilled them,
  * `createProject` always sets one (falling back to `project-<id>`), and

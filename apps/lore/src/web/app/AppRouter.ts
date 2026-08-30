@@ -19,10 +19,10 @@ import type { EpicController } from "../../api/controllers/EpicController.ts";
 import type { FeedbackController } from "../../api/controllers/FeedbackController.ts";
 import type { FolioController } from "../../api/controllers/FolioController.ts";
 import type { InvitationController } from "../../api/controllers/InvitationController.ts";
-import type { MilestoneController } from "../../api/controllers/MilestoneController.ts";
 import type { ProjectController } from "../../api/controllers/ProjectController.ts";
 import type { ProjectReportsController } from "../../api/controllers/ProjectReportsController.ts";
 import type { QuestController } from "../../api/controllers/QuestController.ts";
+import type { ReleaseController } from "../../api/controllers/ReleaseController.ts";
 import type { SigilController } from "../../api/controllers/SigilController.ts";
 import { currentAreasAtom } from "./atoms/currentAreasAtom.ts";
 import { currentAssignedQuestsAtom } from "./atoms/currentAssignedQuestsAtom.ts";
@@ -32,11 +32,11 @@ import { currentEpicCountAtom } from "./atoms/currentEpicCountAtom.ts";
 import { currentFeedbackCountAtom } from "./atoms/currentFeedbackCountAtom.ts";
 import { currentFolioBlobsAtom } from "./atoms/currentFolioBlobsAtom.ts";
 import { currentFolioPathAtom } from "./atoms/currentFolioPathAtom.ts";
-import { currentMilestonesAtom } from "./atoms/currentMilestonesAtom.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { currentProjectMemberAtom } from "./atoms/currentProjectMemberAtom.ts";
 import { currentQuestAtom } from "./atoms/currentQuestAtom.ts";
 import { currentQuestCountAtom } from "./atoms/currentQuestCountAtom.ts";
+import { currentReleasesAtom } from "./atoms/currentReleasesAtom.ts";
 import { currentSigilAtom } from "./atoms/currentSigilAtom.ts";
 import { currentSigilsAtom } from "./atoms/currentSigilsAtom.ts";
 import { dashboardAtom } from "./atoms/dashboardAtom.ts";
@@ -79,7 +79,7 @@ export class AppRouter {
   epicApi = $client<EpicController>();
   areaApi = $client<AreaController>();
   blightApi = $client<BlightController>();
-  milestoneApi = $client<MilestoneController>();
+  releaseApi = $client<ReleaseController>();
   sigilApi = $client<SigilController>();
   folioApi = $client<FolioController>();
   directoryApi = $client<DirectoryController>();
@@ -341,7 +341,7 @@ export class AppRouter {
       this.projectQuestGraph,
       this.projectEpics,
       this.projectEpic,
-      this.projectMilestones,
+      this.projectReleases,
       this.projectSettings,
       this.projectReports,
       this.projectFolios,
@@ -419,11 +419,11 @@ export class AppRouter {
       // one `Promise.all` they are a single batched request, which is also
       // why adding the epic count below costs nothing.
       //
-      // Rejection behaviour is unchanged: `getMilestones` still has no
+      // Rejection behaviour is unchanged: `getReleases` still has no
       // `.catch`, so a failure there rejects the loader exactly as it did
       // when it was awaited first.
       const [
-        milestones,
+        releases,
         pendingFeedback,
         openQuests,
         plannedEpics,
@@ -431,7 +431,7 @@ export class AppRouter {
         openBlights,
         areas,
       ] = await Promise.all([
-        this.milestoneApi.getMilestones({
+        this.releaseApi.getReleases({
           params: { projectId: project.id },
         }),
 
@@ -518,7 +518,7 @@ export class AppRouter {
       this.alepha.store.set(currentProjectAtom, project);
       this.alepha.store.set(currentProjectMemberAtom, member);
       this.alepha.store.set(currentAssignedQuestsAtom, quests);
-      this.alepha.store.set(currentMilestonesAtom, milestones);
+      this.alepha.store.set(currentReleasesAtom, releases);
       this.alepha.store.set(currentFeedbackCountAtom, {
         count: pendingFeedback,
       });
@@ -536,7 +536,7 @@ export class AppRouter {
       this.alepha.store.set(currentProjectMemberAtom, undefined);
       this.alepha.store.set(currentProjectAtom, undefined);
       this.alepha.store.set(currentAssignedQuestsAtom, []);
-      this.alepha.store.set(currentMilestonesAtom, undefined);
+      this.alepha.store.set(currentReleasesAtom, undefined);
       this.alepha.store.set(currentFeedbackCountAtom, { count: 0 });
       this.alepha.store.set(currentBlightCountAtom, { count: 0 });
       this.alepha.store.set(currentQuestCountAtom, { count: 0 });
@@ -987,12 +987,12 @@ export class AppRouter {
     },
   });
 
-  projectMilestones = $page({
-    path: "/milestones",
+  projectReleases = $page({
+    path: "/releases",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Milestones`,
+      title: `${previous?.title ?? ""} › Releases`,
     }),
-    lazy: () => import("./components/project/milestones/ProjectMilestones.tsx"),
+    lazy: () => import("./components/project/releases/ProjectReleases.tsx"),
   });
 
   projectFeedback = $page({
@@ -1079,7 +1079,7 @@ export class AppRouter {
       this.projectSettingsEpics,
       this.projectSettingsFeedback,
       this.projectSettingsSigils,
-      this.projectSettingsMilestones,
+      this.projectSettingsReleases,
       this.projectSettingsQuests,
     ],
     head: (_props, previous) => ({
@@ -1250,14 +1250,14 @@ export class AppRouter {
       import("./components/project/settings/ProjectSettingsSigilsPage.tsx"),
   });
 
-  projectSettingsMilestones = $page({
-    name: "projectSettingsMilestones",
-    path: "/milestones",
+  projectSettingsReleases = $page({
+    name: "projectSettingsReleases",
+    path: "/releases",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Milestones`,
+      title: `${previous?.title ?? ""} › Releases`,
     }),
     lazy: () =>
-      import("./components/project/settings/ProjectSettingsMilestonesPage.tsx"),
+      import("./components/project/settings/ProjectSettingsReleasesPage.tsx"),
   });
 
   projectSettingsQuests = $page({

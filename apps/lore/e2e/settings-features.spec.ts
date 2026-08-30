@@ -50,32 +50,30 @@ test.describe("Project settings — feature toggles", () => {
 
     // Kanban is a view of the Quests page now, not a
     // sidebar entry (the great rename, Task 8), so it can no longer prove
-    // that a feature toggle updates the sidebar. Milestones is still a
+    // that a feature toggle updates the sidebar. Releases is still a
     // plain gated sidebar link (ProjectView.tsx), so it drives the same
     // regression check the test was written for.
-    const sidebarMilestones = page.locator(
-      `a[href="/${projectSlug}/milestones"]`,
-    );
+    const sidebarReleases = page.locator(`a[href="/${projectSlug}/releases"]`);
 
-    // Milestones is ON by default → sidebar link is visible
-    await expect(sidebarMilestones).toBeVisible();
+    // Releases is ON by default → sidebar link is visible
+    await expect(sidebarReleases).toBeVisible();
 
-    // Navigate directly to the Milestones settings sub-page
-    await page.goto(`/${projectSlug}/settings/milestones`);
+    // Navigate directly to the Releases settings sub-page
+    await page.goto(`/${projectSlug}/settings/releases`);
     await page.waitForLoadState("networkidle");
 
     // Switch should be checked
-    const milestonesSwitch = page.getByRole("switch", { name: /enable/i });
-    await expect(milestonesSwitch).toHaveAttribute("aria-checked", "true");
+    const releasesSwitch = page.getByRole("switch", { name: /enable/i });
+    await expect(releasesSwitch).toHaveAttribute("aria-checked", "true");
 
     // Toggle OFF
-    await milestonesSwitch.click();
-    await expect(milestonesSwitch).toHaveAttribute("aria-checked", "false", {
+    await releasesSwitch.click();
+    await expect(releasesSwitch).toHaveAttribute("aria-checked", "false", {
       timeout: 5_000,
     });
 
-    // Sidebar should drop the Milestones link
-    await expect(sidebarMilestones).toHaveCount(0);
+    // Sidebar should drop the Releases link
+    await expect(sidebarReleases).toHaveCount(0);
 
     // Reload, verify persistence: Switch still OFF and sidebar link still absent
     await page.reload();
@@ -85,7 +83,7 @@ test.describe("Project settings — feature toggles", () => {
       "false",
       { timeout: 5_000 },
     );
-    await expect(sidebarMilestones).toHaveCount(0);
+    await expect(sidebarReleases).toHaveCount(0);
 
     // Toggle back ON
     await page.getByRole("switch", { name: /enable/i }).click();
@@ -94,6 +92,6 @@ test.describe("Project settings — feature toggles", () => {
       "true",
       { timeout: 5_000 },
     );
-    await expect(sidebarMilestones).toBeVisible();
+    await expect(sidebarReleases).toBeVisible();
   });
 });

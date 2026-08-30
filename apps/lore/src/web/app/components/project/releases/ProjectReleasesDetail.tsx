@@ -10,24 +10,24 @@ import { useI18n } from "alepha/react/i18n";
 import { Copy, Download, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import type { MilestoneController } from "@/api/controllers/MilestoneController.ts";
-import type { Milestone } from "@/api/entities/milestones.ts";
+import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
+import type { Release } from "@/api/entities/releases.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import MilestoneTagInput from "./MilestoneTagInput.tsx";
+import ReleaseTagInput from "./ReleaseTagInput.tsx";
 
-export interface ProjectMilestonesDetailProps {
-  milestone: Milestone;
-  onUpdated: (milestone: Milestone) => void;
+export interface ProjectReleasesDetailProps {
+  release: Release;
+  onUpdated: (release: Release) => void;
 }
 
-const ProjectMilestonesDetail = (props: ProjectMilestonesDetailProps) => {
+const ProjectReleasesDetail = (props: ProjectReleasesDetailProps) => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
-  const api = useClient<MilestoneController>();
-  const [title, setTitle] = useState(props.milestone.title);
-  const [description, setDescription] = useState(props.milestone.description);
-  const [tags, setTags] = useState<string[]>(props.milestone.tags ?? []);
+  const api = useClient<ReleaseController>();
+  const [title, setTitle] = useState(props.release.title);
+  const [description, setDescription] = useState(props.release.description);
+  const [tags, setTags] = useState<string[]>(props.release.tags ?? []);
   const [markdown, setMarkdown] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
@@ -35,40 +35,40 @@ const ProjectMilestonesDetail = (props: ProjectMilestonesDetailProps) => {
     let cancelled = false;
     void (async () => {
       try {
-        const result = await api.getMilestoneChangelog({
-          params: { id: props.milestone.id },
+        const result = await api.getReleaseChangelog({
+          params: { id: props.release.id },
         });
         if (!cancelled) setMarkdown(result.markdown);
       } catch {
         // `markdown` stays empty, which is what the Copy and Download
         // controls key off — without this the rejection was unhandled and
         // both stayed live over nothing.
-        if (!cancelled) toaster.error(tr("milestone.changelog.error"));
+        if (!cancelled) toaster.error(tr("release.changelog.error"));
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [props.milestone.id]);
+  }, [props.release.id]);
 
   const dirty =
-    title !== props.milestone.title ||
-    description !== props.milestone.description ||
-    JSON.stringify(tags) !== JSON.stringify(props.milestone.tags ?? []);
+    title !== props.release.title ||
+    description !== props.release.description ||
+    JSON.stringify(tags) !== JSON.stringify(props.release.tags ?? []);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const updated = await api.updateMilestone({
-        params: { id: props.milestone.id },
+      const updated = await api.updateRelease({
+        params: { id: props.release.id },
         body: { title, description, tags },
       });
       props.onUpdated(updated);
-      toaster.success(tr("milestone.detail.saved"));
+      toaster.success(tr("release.detail.saved"));
     } catch {
       // The fields keep what was typed: the save failed, so the form is
       // still the unsaved truth and `dirty` must stay true.
-      toaster.error(tr("milestone.detail.error"));
+      toaster.error(tr("release.detail.error"));
     } finally {
       setSaving(false);
     }
@@ -77,11 +77,11 @@ const ProjectMilestonesDetail = (props: ProjectMilestonesDetailProps) => {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(markdown);
-      toaster.success(tr("milestone.changelog.copied"));
+      toaster.success(tr("release.changelog.copied"));
     } catch {
       // The clipboard rejects on a page without focus or permission, and the
       // "copied" toast was firing regardless.
-      toaster.error(tr("milestone.changelog.copyError"));
+      toaster.error(tr("release.changelog.copyError"));
     }
   };
 
@@ -90,7 +90,7 @@ const ProjectMilestonesDetail = (props: ProjectMilestonesDetailProps) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `milestone-${props.milestone.number}-changelog.md`;
+    a.download = `release-${props.release.number}-changelog.md`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -98,19 +98,19 @@ const ProjectMilestonesDetail = (props: ProjectMilestonesDetailProps) => {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
-        <Badge variant="secondary">#{props.milestone.number}</Badge>
-        {props.milestone.closedAt && (
-          <Badge variant="outline">{tr("milestone.status.closed")}</Badge>
+        <Badge variant="secondary">#{props.release.number}</Badge>
+        {props.release.closedAt && (
+          <Badge variant="outline">{tr("release.status.closed")}</Badge>
         )}
-        {!props.milestone.closedAt && (
+        {!props.release.closedAt && (
           <Badge className="bg-green-600 text-white">
-            {tr("milestone.status.active")}
+            {tr("release.status.active")}
           </Badge>
         )}
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label>{tr("milestone.detail.editTitle")}</Label>
+        <Label>{tr("release.detail.editTitle")}</Label>
         <Input
           value={title}
           onChange={(e) => setTitle(e.currentTarget.value)}
@@ -118,7 +118,7 @@ const ProjectMilestonesDetail = (props: ProjectMilestonesDetailProps) => {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label>{tr("milestone.detail.editDescription")}</Label>
+        <Label>{tr("release.detail.editDescription")}</Label>
         <Textarea
           rows={3}
           value={description}
@@ -127,26 +127,26 @@ const ProjectMilestonesDetail = (props: ProjectMilestonesDetailProps) => {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label>{tr("milestone.tags")}</Label>
-        <MilestoneTagInput value={tags} onChange={setTags} />
+        <Label>{tr("release.tags")}</Label>
+        <ReleaseTagInput value={tags} onChange={setTags} />
       </div>
 
       <Button onClick={handleSave} disabled={!dirty || saving}>
         <Save className="size-4" />
-        {tr("milestone.detail.save")}
+        {tr("release.detail.save")}
       </Button>
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <Label>{tr("milestone.changelog")}</Label>
+          <Label>{tr("release.changelog")}</Label>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleCopy}>
               <Copy className="size-3.5" />
-              {tr("milestone.changelog.copy")}
+              {tr("release.changelog.copy")}
             </Button>
             <Button variant="outline" size="sm" onClick={handleDownload}>
               <Download className="size-3.5" />
-              {tr("milestone.changelog.download")}
+              {tr("release.changelog.download")}
             </Button>
           </div>
         </div>
@@ -158,4 +158,4 @@ const ProjectMilestonesDetail = (props: ProjectMilestonesDetailProps) => {
   );
 };
 
-export default ProjectMilestonesDetail;
+export default ProjectReleasesDetail;

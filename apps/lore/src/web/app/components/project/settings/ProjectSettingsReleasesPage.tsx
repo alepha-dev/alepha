@@ -15,7 +15,7 @@ import { useProjectFeatureToggle } from "./useProjectFeatureToggle.ts";
 
 const DURATION_SENTINEL_MANUAL = "manual";
 
-const ProjectSettingsMilestonesPage = () => {
+const ProjectSettingsReleasesPage = () => {
   const { enabled, toggle } = useProjectFeatureToggle("milestones");
   const { tr } = useI18n<I18n, "en">();
   const [project] = useStore(currentProjectAtom);
@@ -72,7 +72,7 @@ const ProjectSettingsMilestonesPage = () => {
       {enabled && (
         <div className="flex flex-col gap-2">
           <span className="text-sm">
-            {tr("project.settings.milestones.release.title")}
+            {tr("project.settings.releases.cadence.title")}
           </span>
           <AutoForm
             form={form}
@@ -87,28 +87,24 @@ const ProjectSettingsMilestonesPage = () => {
                   {
                     value: DURATION_SENTINEL_MANUAL,
                     label: String(
-                      tr("project.settings.milestones.duration.manual"),
+                      tr("project.settings.releases.duration.manual"),
                     ),
                   },
                   {
                     value: "P7D",
-                    label: tr("project.settings.milestones.duration.1w"),
+                    label: tr("project.settings.releases.duration.1w"),
                   },
                   {
                     value: "P14D",
-                    label: tr("project.settings.milestones.duration.2w"),
+                    label: tr("project.settings.releases.duration.2w"),
                   },
                   {
                     value: "P1M",
-                    label: String(
-                      tr("project.settings.milestones.duration.1mo"),
-                    ),
+                    label: String(tr("project.settings.releases.duration.1mo")),
                   },
                   {
                     value: "P3M",
-                    label: String(
-                      tr("project.settings.milestones.duration.3mo"),
-                    ),
+                    label: String(tr("project.settings.releases.duration.3mo")),
                   },
                 ],
               },
@@ -120,4 +116,4 @@ const ProjectSettingsMilestonesPage = () => {
   );
 };
 
-export default ProjectSettingsMilestonesPage;
+export default ProjectSettingsReleasesPage;

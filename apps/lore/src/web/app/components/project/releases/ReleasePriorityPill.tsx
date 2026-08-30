@@ -1,16 +1,16 @@
 import { cn } from "@alepha/ui/lib/utils";
 
-export interface MilestonePriorityPillProps {
+export interface ReleasePriorityPillProps {
   priority: "optional" | "low" | "medium" | "high";
 }
 
 /**
- * The small monospace priority tag used across the milestones page — in the
+ * The small monospace priority tag used across the releases page — in the
  * changelog rows and in the "Still open" rail. `high` and `medium` carry
  * colour; `low` and `optional` stay quiet so a changelog full of small work
  * doesn't read as a wall of badges.
  */
-const MilestonePriorityPill = (props: MilestonePriorityPillProps) => (
+const ReleasePriorityPill = (props: ReleasePriorityPillProps) => (
   <span
     className={cn(
       "shrink-0 rounded-[5px] border px-1.5 py-px font-mono text-[10px] font-medium uppercase",
@@ -26,4 +26,4 @@ const MilestonePriorityPill = (props: MilestonePriorityPillProps) => (
   </span>
 );
 
-export default MilestonePriorityPill;
+export default ReleasePriorityPill;

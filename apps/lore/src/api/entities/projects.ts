@@ -18,6 +18,18 @@ export const projectFeaturesSchema = z.object({
    * `POST /projects/:id/feedback`.
    */
   feedback: z.boolean(),
+  /**
+   * Gates the Releases module (sidebar entry, settings page, routes).
+   *
+   * ⚠️ The KEY stays `milestones` forever, even though the module was
+   * renamed to Releases. This is a REQUIRED key inside the
+   * `projects.features` JSON column: renaming it leaves every existing row
+   * missing a required key, and a missing required key does not read as
+   * `undefined` and fall back — the whole row fails to decode and every
+   * query touching `projects` throws. That is verbatim the 2026-08-05
+   * incident (see CLAUDE.md, "Renaming a REQUIRED key inside a JSON column
+   * takes production down"). Only the UI label moved to "Releases".
+   */
   milestones: z.boolean(),
   /**
    * Per-quest feature toggles. All default OFF for new projects —
@@ -65,7 +77,7 @@ export const projectFeaturesSchema = z.object({
    * `defaultProjectFeatures` for the same reason as `sigils` and
    * `folioSummary`: adding a key there changes the column DEFAULT and
    * triggers a D1 `projects` table rebuild that cascade-wipes members,
-   * quests, milestones, folios and feedback. Defaults to `false` via the
+   * quests, releases, folios and feedback. Defaults to `false` via the
    * `useProjectFeatureToggle` hook.
    */
   epics: z.boolean().optional(),
@@ -94,7 +106,7 @@ export type ProjectFeatures = Infer<typeof projectFeaturesSchema>;
  * absent from this object. Including them here changes the column's
  * Drizzle DEFAULT — and on D1 that triggers a table rebuild
  * (`DROP TABLE projects`) which cascade-wipes members, quests,
- * milestones, folios, feedback. See CLAUDE.md "Migration safety on D1".
+ * releases, folios, feedback. See CLAUDE.md "Migration safety on D1".
  *
  * They're optional in the schema and default to `false` via the
  * `useProjectFeatureToggle` hook (`persisted[key] ?? false`).
@@ -103,6 +115,8 @@ export const defaultProjectFeatures: ProjectFeatures = {
   kanban: true,
   folios: true,
   feedback: true,
+  // Reads "Releases" in the UI. The persisted key keeps its old name — see
+  // `projectFeaturesSchema` above for why renaming it takes production down.
   milestones: true,
 };
 
@@ -121,7 +135,7 @@ export const projects = $entity({
      *
      * Declared `.optional()` with NO `db.default(...)` on purpose: a column
      * DEFAULT triggers the D1 `projects` table rebuild that cascade-wipes
-     * members, quests, milestones, folios and feedback. See CLAUDE.md
+     * members, quests, releases, folios and feedback. See CLAUDE.md
      * "Migration safety on D1". Optional is a physical-column fact only —
      * the backfill fills every live row and every write path sets it, so
      * readers may treat it as present.
@@ -156,8 +170,12 @@ export const projects = $entity({
     areas: db.default(z.array(z.string()), []),
     features: db.default(projectFeaturesSchema, defaultProjectFeatures),
     /**
-     * ISO 8601 duration (e.g. "P14D", "P1M") for auto-closing milestones.
-     * `null`/absent means milestones close manually only.
+     * ISO 8601 duration (e.g. "P14D", "P1M") for auto-closing releases.
+     * `null`/absent means releases close manually only.
+     *
+     * ⚠️ Keeps its pre-rename name. `projects` is the CASCADE parent that
+     * wiped production on 2026-05-13, so this column is never renamed and
+     * never dropped: a rename drizzle turns into a rebuild is the wipe bomb.
      */
     milestoneDuration: z.string().optional(),
     /**
@@ -259,7 +277,7 @@ export const projects = $entity({
      *
      * They are kept in the schema ON PURPOSE: dropping a column from
      * `projects` risks the Drizzle/D1 table-rebuild path, and `projects`
-     * is a CASCADE parent of members/quests/milestones/folios/feedback —
+     * is a CASCADE parent of members/quests/releases/folios/feedback —
      * exactly the shape that wiped production on 2026-05-13. Same
      * treatment as the `public` column above. A future PR can drop them
      * with a hand-written, verified `ALTER TABLE ... DROP COLUMN`.

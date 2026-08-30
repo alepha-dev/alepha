@@ -798,7 +798,7 @@ export class QuestTools {
         status: this.getQuestStatus(quest),
         objectives: quest.objectives,
         projectId: quest.projectId,
-        milestoneId: quest.milestoneId,
+        releaseId: quest.releaseId,
         discussion,
         discussionTruncated,
         createdAt: quest.createdAt,

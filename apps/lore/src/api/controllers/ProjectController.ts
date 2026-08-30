@@ -25,7 +25,6 @@ import { $etag } from "alepha/server/etag";
 // function, no imports of its own.
 import { displayName } from "../../web/app/services/displayName.ts";
 import { type Member, members } from "../entities/members.ts";
-import { milestones } from "../entities/milestones.ts";
 import {
   defaultProjectFeatures,
   type Project,
@@ -33,6 +32,7 @@ import {
   projects,
 } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
+import { releases } from "../entities/releases.ts";
 import type { User } from "../entities/users.ts";
 import { relations } from "../relations.ts";
 import { kanbanColumnConfigSchema } from "../schemas/kanbanColumnSchema.ts";
@@ -69,7 +69,7 @@ export class ProjectController {
   membersWith = $repository(relations, "members");
   usersWith = $repository(relations, "users");
   quests = $repository(quests);
-  milestones = $repository(milestones);
+  releases = $repository(releases);
   users = $repository(users);
   fileRepo = $repository(files);
   owned = $inject(OwnedResourceProvider);

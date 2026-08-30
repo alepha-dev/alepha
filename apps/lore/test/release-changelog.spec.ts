@@ -8,9 +8,9 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { MilestoneController } from "../src/api/controllers/MilestoneController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
+import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
 import { LoreApi } from "../src/api/index.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
@@ -24,7 +24,7 @@ interface TestContext {
   alepha: Alepha;
   adminUserController: AdminUserController;
   projectController: ProjectController;
-  milestoneController: MilestoneController;
+  releaseController: ReleaseController;
   questController: QuestController;
   dt: DateTimeProvider;
   fakeProvider: FakeProvider;
@@ -53,7 +53,7 @@ const setup = async (): Promise<TestContext> => {
     alepha,
     adminUserController: alepha.inject(AdminUserController),
     projectController: alepha.inject(ProjectController),
-    milestoneController: alepha.inject(MilestoneController),
+    releaseController: alepha.inject(ReleaseController),
     questController: alepha.inject(QuestController),
     dt: alepha.inject(DateTimeProvider),
     fakeProvider: alepha.inject(FakeProvider),
@@ -84,7 +84,7 @@ const createTestProject = async (
 
 /**
  * Create a quest, accept it and complete it — the only way a quest lands in
- * a milestone's window.
+ * a release's window.
  */
 const completeQuest = async (
   ctx: TestContext,
@@ -118,7 +118,7 @@ const completeQuest = async (
   return { id: created.data.id, shortId: created.data.shortId };
 };
 
-describe("MilestoneController.getMilestoneChangelog", () => {
+describe("ReleaseController.getReleaseChangelog", () => {
   let ctx: TestContext;
 
   beforeEach(async () => {
@@ -134,7 +134,7 @@ describe("MilestoneController.getMilestoneChangelog", () => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user);
 
-    const started = await ctx.milestoneController.startMilestone.fetch(
+    const started = await ctx.releaseController.startRelease.fetch(
       { params: { projectId: project.id }, body: {} },
       { user },
     );
@@ -156,7 +156,7 @@ describe("MilestoneController.getMilestoneChangelog", () => {
       priority: "low",
     });
 
-    const result = await ctx.milestoneController.getMilestoneChangelog.fetch(
+    const result = await ctx.releaseController.getReleaseChangelog.fetch(
       { params: { id: started.data.id } },
       { user },
     );
@@ -192,7 +192,7 @@ describe("MilestoneController.getMilestoneChangelog", () => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user);
 
-    const started = await ctx.milestoneController.startMilestone.fetch(
+    const started = await ctx.releaseController.startRelease.fetch(
       { params: { projectId: project.id }, body: {} },
       { user },
     );
@@ -209,7 +209,7 @@ describe("MilestoneController.getMilestoneChangelog", () => {
       priority: "low",
     });
 
-    const result = await ctx.milestoneController.getMilestoneChangelog.fetch(
+    const result = await ctx.releaseController.getReleaseChangelog.fetch(
       { params: { id: started.data.id } },
       { user },
     );
@@ -231,13 +231,13 @@ describe("MilestoneController.getMilestoneChangelog", () => {
     expect(result.data.stats.areaCount).toBe(result.data.areas.length);
   });
 
-  it("returns the frozen markdown snapshot for a closed milestone", async ({
+  it("returns the frozen markdown snapshot for a closed release", async ({
     expect,
   }) => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user);
 
-    const started = await ctx.milestoneController.startMilestone.fetch(
+    const started = await ctx.releaseController.startRelease.fetch(
       { params: { projectId: project.id }, body: {} },
       { user },
     );
@@ -249,20 +249,20 @@ describe("MilestoneController.getMilestoneChangelog", () => {
       priority: "high",
     });
 
-    const closed = await ctx.milestoneController.closeMilestone.fetch(
+    const closed = await ctx.releaseController.closeRelease.fetch(
       { params: { id: started.data.id }, body: {} },
       { user },
     );
     expect(closed.data.changelog).toBeDefined();
 
-    const result = await ctx.milestoneController.getMilestoneChangelog.fetch(
+    const result = await ctx.releaseController.getReleaseChangelog.fetch(
       { params: { id: started.data.id } },
       { user },
     );
 
     expect(result.data.markdown).toBe(closed.data.changelog);
     // Areas are recomputed rather than frozen — they still describe the
-    // same window, so the closed milestone is not returned bare.
+    // same window, so the closed release is not returned bare.
     expect(result.data.areas).toHaveLength(1);
     expect(result.data.areas[0].quests[0].title).toBe(
       "Sequence counter per project",
@@ -275,12 +275,12 @@ describe("MilestoneController.getMilestoneChangelog", () => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user);
 
-    const started = await ctx.milestoneController.startMilestone.fetch(
+    const started = await ctx.releaseController.startRelease.fetch(
       { params: { projectId: project.id }, body: {} },
       { user },
     );
 
-    const result = await ctx.milestoneController.getMilestoneChangelog.fetch(
+    const result = await ctx.releaseController.getReleaseChangelog.fetch(
       { params: { id: started.data.id } },
       { user },
     );
@@ -290,7 +290,7 @@ describe("MilestoneController.getMilestoneChangelog", () => {
     expect(result.data.stats.areaCount).toBe(0);
   });
 
-  it("excludes quests completed before the milestone opened", async ({
+  it("excludes quests completed before the release opened", async ({
     expect,
   }) => {
     const user = await createTestUser(ctx);
@@ -303,7 +303,7 @@ describe("MilestoneController.getMilestoneChangelog", () => {
     });
 
     await ctx.dt.travel([1, "hour"]);
-    const started = await ctx.milestoneController.startMilestone.fetch(
+    const started = await ctx.releaseController.startRelease.fetch(
       { params: { projectId: project.id }, body: {} },
       { user },
     );
@@ -315,7 +315,7 @@ describe("MilestoneController.getMilestoneChangelog", () => {
       priority: "high",
     });
 
-    const result = await ctx.milestoneController.getMilestoneChangelog.fetch(
+    const result = await ctx.releaseController.getReleaseChangelog.fetch(
       { params: { id: started.data.id } },
       { user },
     );

@@ -11,7 +11,7 @@ export interface ExportRow {
   size: number;
   area: string;
   kanbanColumn: string;
-  milestone: string;
+  release: string;
   createdBy: string;
   acceptedBy: string;
   completedBy: string;
@@ -43,7 +43,7 @@ export class QuestCsvFormatter {
     "size",
     "area",
     "kanbanColumn",
-    "milestone",
+    "release",
     "createdBy",
     "acceptedBy",
     "completedBy",

@@ -4,9 +4,9 @@ import { Link } from "alepha/react/router";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import MilestonePriorityPill from "./MilestonePriorityPill.tsx";
+import ReleasePriorityPill from "./ReleasePriorityPill.tsx";
 
-export interface MilestoneOpenQuestsRailProps {
+export interface ReleaseOpenQuestsRailProps {
   quests: QuestResource[];
   questsHref: string;
 }
@@ -16,14 +16,14 @@ export interface MilestoneOpenQuestsRailProps {
  * unless they land before the window closes — so the rail sits beside the
  * changelog rather than inside it, answering "what else is in flight".
  */
-const MilestoneOpenQuestsRail = (props: MilestoneOpenQuestsRailProps) => {
+const ReleaseOpenQuestsRail = (props: ReleaseOpenQuestsRailProps) => {
   const { tr } = useI18n<I18n, "en">();
 
   return (
     <div className="flex flex-col">
       <div className="border-border flex h-12 shrink-0 items-center gap-2 border-b px-5">
         <span className="text-[13.5px] font-semibold">
-          {tr("milestone.ledger.stillOpen")}
+          {tr("release.ledger.stillOpen")}
         </span>
         <span className="text-muted-foreground text-xs">
           {props.quests.length}
@@ -33,13 +33,13 @@ const MilestoneOpenQuestsRail = (props: MilestoneOpenQuestsRailProps) => {
           href={props.questsHref}
           className="text-muted-foreground hover:text-foreground text-[11.5px] transition-colors"
         >
-          {tr("milestone.ledger.viewInQuests")}
+          {tr("release.ledger.viewInQuests")}
         </Link>
       </div>
 
       {props.quests.length === 0 ? (
         <p className="text-muted-foreground px-5 py-6 text-center text-xs">
-          {tr("milestone.ledger.stillOpen.empty")}
+          {tr("release.ledger.stillOpen.empty")}
         </p>
       ) : (
         props.quests.map((quest) => (
@@ -56,7 +56,7 @@ const MilestoneOpenQuestsRail = (props: MilestoneOpenQuestsRailProps) => {
               </span>
               <div className="flex-1" />
               {(quest.priority === "high" || quest.priority === "medium") && (
-                <MilestonePriorityPill priority={quest.priority} />
+                <ReleasePriorityPill priority={quest.priority} />
               )}
             </div>
           </div>
@@ -66,4 +66,4 @@ const MilestoneOpenQuestsRail = (props: MilestoneOpenQuestsRailProps) => {
   );
 };
 
-export default MilestoneOpenQuestsRail;
+export default ReleaseOpenQuestsRail;

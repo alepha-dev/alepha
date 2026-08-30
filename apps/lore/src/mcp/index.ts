@@ -9,9 +9,9 @@ import { EpicTools } from "./tools/EpicTools.ts";
 import { FeedbackTools } from "./tools/FeedbackTools.ts";
 import { FolioTools } from "./tools/FolioTools.ts";
 import { InsightsTools } from "./tools/InsightsTools.ts";
-import { MilestoneTools } from "./tools/MilestoneTools.ts";
 import { ProjectTools } from "./tools/ProjectTools.ts";
 import { QuestTools } from "./tools/QuestTools.ts";
+import { ReleaseTools } from "./tools/ReleaseTools.ts";
 import { SigilTools } from "./tools/SigilTools.ts";
 
 export const LoreMcp = $module({
@@ -21,7 +21,7 @@ export const LoreMcp = $module({
     QuestTools,
     BlightTools,
     ProjectTools,
-    MilestoneTools,
+    ReleaseTools,
     EpicTools,
     FolioTools,
     FeedbackTools,

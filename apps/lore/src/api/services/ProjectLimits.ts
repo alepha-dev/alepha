@@ -26,13 +26,13 @@ export class ProjectLimits {
       maxProjectsPerUser: z.integer().min(1).max(10_000),
       maxMembersPerProject: z.integer().min(1).max(10_000),
       maxQuestsPerProject: z.integer().min(1).max(100_000),
-      maxMilestonesPerProject: z.integer().min(1).max(1_000),
+      maxReleasesPerProject: z.integer().min(1).max(1_000),
     }),
     default: {
       maxProjectsPerUser: 10,
       maxMembersPerProject: 100,
       maxQuestsPerProject: 5_000,
-      maxMilestonesPerProject: 200,
+      maxReleasesPerProject: 200,
     },
   });
 
@@ -59,9 +59,9 @@ export class ProjectLimits {
   }
 
   /**
-   * Maximum number of milestones under a single project.
+   * Maximum number of releases under a single project.
    */
-  public async maxMilestonesPerProject(): Promise<number> {
-    return (await this.limits.get()).maxMilestonesPerProject;
+  public async maxReleasesPerProject(): Promise<number> {
+    return (await this.limits.get()).maxReleasesPerProject;
   }
 }

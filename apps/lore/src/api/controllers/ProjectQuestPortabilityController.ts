@@ -5,9 +5,9 @@ import { $secure } from "alepha/security";
 import { $action, BadRequestError } from "alepha/server";
 import { FileSystemProvider } from "alepha/system";
 
-import { milestones } from "../entities/milestones.ts";
 import { projects } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
+import { releases } from "../entities/releases.ts";
 import { relations } from "../relations.ts";
 import { importResultSchema } from "../schemas/questImportRow.ts";
 import { AreaService } from "../services/AreaService.ts";
@@ -22,7 +22,7 @@ export class ProjectQuestPortabilityController {
 
   protected readonly quests = $repository(quests);
   /**
-   * ...with milestone and the three users a quest names, for the CSV export.
+   * ...with release and the three users a quest names, for the CSV export.
    */
   protected readonly questsWith = $repository(relations, "quests");
   protected readonly projects = $repository(projects);
@@ -31,7 +31,7 @@ export class ProjectQuestPortabilityController {
    * resolve an assignee email without reading the realm.
    */
   protected readonly membersWith = $repository(relations, "members");
-  protected readonly milestones = $repository(milestones);
+  protected readonly releases = $repository(releases);
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly dt = $inject(DateTimeProvider);
@@ -58,14 +58,14 @@ export class ProjectQuestPortabilityController {
         where: { id: { eq: params.id } },
       });
 
-      // Milestone title and the three people a quest names come back with the
+      // Release title and the three people a quest names come back with the
       // quest itself, so the export is one statement instead of three.
       const projectQuests = await this.questsWith.findMany({
         where: { projectId: { eq: params.id } },
         orderBy: "shortId",
         limit: this.EXPORT_LIMIT,
         include: {
-          milestone: { select: ["id", "title"] },
+          release: { select: ["id", "title"] },
           author: true,
           acceptedByUser: true,
           completedByUser: true,
@@ -89,7 +89,7 @@ export class ProjectQuestPortabilityController {
           size: q.size,
           area: q.area ?? "",
           kanbanColumn: q.kanbanColumn ?? "",
-          milestone: q.milestoneId != null ? (q.milestone?.title ?? "") : "",
+          release: q.releaseId != null ? (q.release?.title ?? "") : "",
           createdBy: emailOf(q.author),
           acceptedBy: emailOf(q.acceptedByUser),
           completedBy: emailOf(q.completedByUser),
@@ -147,13 +147,12 @@ export class ProjectQuestPortabilityController {
       const existingByShortId = new Map<number, (typeof existing)[number]>();
       for (const q of existing) existingByShortId.set(q.shortId, q);
 
-      // Milestones in this project, indexed by title.
-      const milestonesInProject = await this.milestones.findMany({
+      // Releases in this project, indexed by title.
+      const releasesInProject = await this.releases.findMany({
         where: { projectId: { eq: params.id } },
       });
-      const milestoneIdByTitle = new Map<string, number>();
-      for (const c of milestonesInProject)
-        milestoneIdByTitle.set(c.title, c.id);
+      const releaseIdByTitle = new Map<string, number>();
+      for (const c of releasesInProject) releaseIdByTitle.set(c.title, c.id);
 
       // The people this import may attribute a quest to: the project's own
       // members, and nobody else. Resolving against the whole realm made a
@@ -227,14 +226,14 @@ export class ProjectQuestPortabilityController {
         // request and discarding the created/updated counts (and the
         // already-committed writes) for every row processed so far.
         try {
-          // Resolve milestone title → id within this project.
-          let milestoneId: number | undefined;
-          if (row.milestone) {
-            milestoneId = milestoneIdByTitle.get(row.milestone);
-            if (milestoneId === undefined) {
+          // Resolve release title → id within this project.
+          let releaseId: number | undefined;
+          if (row.release) {
+            releaseId = releaseIdByTitle.get(row.release);
+            if (releaseId === undefined) {
               warnings.push({
                 row: row.rowIndex,
-                message: `Milestone '${row.milestone}' not found in project; left empty`,
+                message: `Release '${row.release}' not found in project; left empty`,
               });
             }
           }
@@ -279,7 +278,7 @@ export class ProjectQuestPortabilityController {
               priority: row.priority,
               size: row.size,
               kanbanColumn: row.kanbanColumn || undefined,
-              milestoneId,
+              releaseId,
               acceptedBy,
               completedBy,
               acceptedAt: parseDate(row.acceptedAt),
@@ -312,7 +311,7 @@ export class ProjectQuestPortabilityController {
           const acceptedAt = parseDate(row.acceptedAt);
           const completedAt = parseDate(row.completedAt);
           const needsBackfill =
-            milestoneId !== undefined ||
+            releaseId !== undefined ||
             acceptedBy ||
             completedBy ||
             acceptedAt ||
@@ -320,7 +319,7 @@ export class ProjectQuestPortabilityController {
             row.kanbanColumn;
           if (needsBackfill) {
             await this.quests.updateById(newQuest.id, {
-              milestoneId,
+              releaseId,
               acceptedBy,
               completedBy,
               acceptedAt,

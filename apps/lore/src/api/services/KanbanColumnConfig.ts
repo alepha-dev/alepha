@@ -24,7 +24,7 @@ export interface ResolvedKanbanColumn {
  * **The lifecycle triple remains the source of truth** (quest #1227,
  * decided by the owner). A column does not carry a status of its own; it
  * declares which of `new` / `accepted` / `completed` a card dropped in it
- * collapses to. Everything downstream — the quest log, milestones,
+ * collapses to. Everything downstream — the quest log, releases,
  * reports, MCP, the Discussion feed, `QuestlineLayout.stateOf` — keeps
  * reading the three timestamps and never learns that columns exist.
  *

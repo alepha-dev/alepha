@@ -58,14 +58,14 @@ export class DashboardScopeService {
       ["projectIds", !!scope.projectIds?.length],
       ["sigilIds", !!scope.sigilIds?.length],
       ["epicId", scope.epicId !== undefined],
-      ["milestoneId", scope.milestoneId !== undefined],
+      ["releaseId", scope.releaseId !== undefined],
     ];
     const expected: Record<DashboardScope["kind"], string | undefined> = {
       all: undefined,
       projects: "projectIds",
       apps: "sigilIds",
       epic: "epicId",
-      milestone: "milestoneId",
+      release: "releaseId",
     };
     const wanted = expected[scope.kind];
 
@@ -167,7 +167,7 @@ export class DashboardScopeService {
       };
     }
 
-    // `epic` and `milestone` are in the union for the deferred tiles. No v1
+    // `epic` and `release` are in the union for the deferred tiles. No v1
     // metric accepts either, so reaching here means a card was written past
     // the catalogue's `accepts()` gate.
     throw new BadRequestError(`Unsupported scope kind: ${scope.kind}`);

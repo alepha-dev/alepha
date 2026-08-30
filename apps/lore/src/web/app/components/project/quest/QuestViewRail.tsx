@@ -24,8 +24,8 @@ import { useEffect, useState } from "react";
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
-import { currentMilestonesAtom } from "@/web/app/atoms/currentMilestonesAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import QuestAssigneePicker from "./QuestAssigneePicker.tsx";
@@ -66,7 +66,7 @@ const QuestViewRail = (props: QuestViewRailProps) => {
   const router = useRouter<AppRouter>();
   const epicApi = useClient<EpicController>();
   const [project] = useStore(currentProjectAtom);
-  const [milestones] = useStore(currentMilestonesAtom);
+  const [releases] = useStore(currentReleasesAtom);
   const [epic, setEpic] = useState<EpicSummary | undefined>(undefined);
 
   const features = project?.features;
@@ -74,7 +74,7 @@ const QuestViewRail = (props: QuestViewRailProps) => {
   const questReminderEnabled = features?.questReminder === true;
   const questEstimateEnabled = features?.questEstimate === true;
   const epicsEnabled = features?.epics === true;
-  const milestonesEnabled = features?.milestones === true;
+  const releasesEnabled = features?.milestones === true;
 
   // Same rule for the epic: `quests.epicId` is a global id and the row wants
   // the per-project number and title, which only the epic list carries.
@@ -97,8 +97,8 @@ const QuestViewRail = (props: QuestViewRailProps) => {
     };
   }, [project?.id, quest.epicId, epicsEnabled]);
 
-  const milestone = quest.milestoneId
-    ? milestones?.find((m) => m.id === quest.milestoneId)
+  const release = quest.releaseId
+    ? releases?.find((m) => m.id === quest.releaseId)
     : undefined;
 
   const statusLabel = {
@@ -194,9 +194,9 @@ const QuestViewRail = (props: QuestViewRailProps) => {
           </QuestViewRailRow>
         )}
 
-        {milestonesEnabled && (
-          <QuestViewRailRow icon={Flag} label={tr("quest.rail.milestone")}>
-            {milestone?.title}
+        {releasesEnabled && (
+          <QuestViewRailRow icon={Flag} label={tr("quest.rail.release")}>
+            {release?.title}
           </QuestViewRailRow>
         )}
 

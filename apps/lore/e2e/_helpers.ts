@@ -349,7 +349,7 @@ export const signInAsAdmin = async (page: Page): Promise<void> => {
 
 /**
  * Drive the 3-step project-create wizard: name → logo (skip) → modules →
- * submit. Keeps the module defaults (folios + kanban + milestones on,
+ * submit. Keeps the module defaults (folios + kanban + releases on,
  * feedback off). Returns the new project id parsed from the URL.
  */
 export const createProjectViaWizard = async (

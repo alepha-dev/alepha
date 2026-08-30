@@ -7,24 +7,24 @@ import {
 } from "./_helpers.ts";
 
 /**
- * Milestones feature e2e: the ledger page. Quests are seeded and driven
+ * Releases feature e2e: the ledger page. Quests are seeded and driven
  * through the API — their own lifecycle is covered by `quest.spec.ts` — so
- * this spec can focus on what the Milestones page itself claims:
+ * this spec can focus on what the Releases page itself claims:
  *
  *   empty banner → start → hero + LIVE changelog → close → FROZEN.
  *
  * The page's whole point is the recording/frozen distinction, so that is
  * what gets asserted rather than the mere presence of a heading.
  */
-test.describe("Milestones", () => {
+test.describe("Releases", () => {
   test("start → record a quest → close → frozen changelog", async ({
     page,
   }) => {
     test.setTimeout(90_000);
 
     const t = Date.now();
-    const email = `milestone${t}@example.com`;
-    const password = "MilestoneTest123!";
+    const email = `release${t}@example.com`;
+    const password = "ReleaseTest123!";
     const projectTitle = `MC${t}`.slice(0, 20);
 
     await registerAndVerify(page, email, password);
@@ -34,21 +34,21 @@ test.describe("Milestones", () => {
     );
 
     await test.step("empty state names what is not being recorded", async () => {
-      await page.goto(`/${projectSlug}/milestones`);
+      await page.goto(`/${projectSlug}/releases`);
       await page.waitForLoadState("networkidle");
 
       await expect(
         page.getByRole("heading", { name: /nothing is recording/i }),
       ).toBeVisible({ timeout: 15_000 });
-      // No milestone has ever closed, so the auto-close hint is the manual
+      // No release has ever closed, so the auto-close hint is the manual
       // default and the "Still open" rail is empty.
       await expect(page.getByText(/auto-close:/i)).toBeVisible();
     });
 
     const startedTitle = `Release${t}`;
 
-    await test.step("start a milestone", async () => {
-      await page.getByRole("button", { name: /start milestone/i }).click();
+    await test.step("start a release", async () => {
+      await page.getByRole("button", { name: /start release/i }).click();
 
       const dialog = page.getByRole("dialog");
       const titleInput = dialog.getByRole("textbox").first();
@@ -58,7 +58,7 @@ test.describe("Milestones", () => {
       // The dialog's own submit, not the banner button behind it.
       await page
         .getByRole("dialog")
-        .getByRole("button", { name: /start milestone/i })
+        .getByRole("button", { name: /start release/i })
         .click();
 
       await expect(
@@ -72,7 +72,7 @@ test.describe("Milestones", () => {
       // It is an explicit, named control now, so this asserts the affordance
       // exists and is reachable by its accessible name — the thing a whole-card
       // click target could never offer.
-      await page.getByRole("button", { name: /edit milestone/i }).click();
+      await page.getByRole("button", { name: /edit release/i }).click();
 
       const dialog = page.getByRole("dialog");
       await expect(dialog).toBeVisible();
@@ -90,7 +90,7 @@ test.describe("Milestones", () => {
         {
           projectId,
           title: questTitle,
-          description: "Seeded for the milestone changelog",
+          description: "Seeded for the release changelog",
           area: "orm",
           priority: "high",
           objectives: [],
@@ -131,12 +131,12 @@ test.describe("Milestones", () => {
       await expect(page.getByText("orm").first()).toBeVisible();
     });
 
-    await test.step("close the milestone and freeze the changelog", async () => {
-      await page.getByRole("button", { name: /close milestone/i }).click();
+    await test.step("close the release and freeze the changelog", async () => {
+      await page.getByRole("button", { name: /close release/i }).click();
 
       await page
         .getByRole("dialog")
-        .getByRole("button", { name: /close milestone|confirm|seal/i })
+        .getByRole("button", { name: /close release|confirm|seal/i })
         .first()
         .click();
 
@@ -147,7 +147,7 @@ test.describe("Milestones", () => {
       });
       await expect(page.getByText(questTitle).first()).toBeVisible();
 
-      // The closed milestone now appears in the Released rail.
+      // The closed release now appears in the Released rail.
       await expect(page.getByText(startedTitle).first()).toBeVisible();
     });
 
@@ -167,10 +167,10 @@ test.describe("Milestones", () => {
       await save.click();
       await expect(dialog).toBeHidden({ timeout: 15_000 });
 
-      // The folio lands in the project root, titled after the milestone.
+      // The folio lands in the project root, titled after the release.
       await page.goto(`/${projectSlug}/folios`);
       await page.waitForLoadState("networkidle");
-      await expect(page.getByText(/Milestone #1:/).first()).toBeVisible({
+      await expect(page.getByText(/Release #1:/).first()).toBeVisible({
         timeout: 15_000,
       });
     });

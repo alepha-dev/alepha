@@ -11,10 +11,10 @@ import { LoreDashboardCatalog } from "@/api/dashboardCatalogModule.ts";
 
 import { AppRouter } from "./AppRouter.ts";
 import { currentAssignedQuestsAtom } from "./atoms/currentAssignedQuestsAtom.ts";
-import { currentMilestonesAtom } from "./atoms/currentMilestonesAtom.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { currentProjectMemberAtom } from "./atoms/currentProjectMemberAtom.ts";
 import { currentQuestAtom } from "./atoms/currentQuestAtom.ts";
+import { currentReleasesAtom } from "./atoms/currentReleasesAtom.ts";
 import { dashboardAtom } from "./atoms/dashboardAtom.ts";
 import { kanbanFiltersAtom } from "./atoms/kanbanFiltersAtom.ts";
 import { kanbanReloadAtom } from "./atoms/kanbanReloadAtom.ts";
@@ -40,7 +40,7 @@ export const LoreWebApp = $module({
   atoms: [
     projectDirectoriesAtom,
     currentAssignedQuestsAtom,
-    currentMilestonesAtom,
+    currentReleasesAtom,
     currentProjectAtom,
     currentProjectMemberAtom,
     currentQuestAtom,
