@@ -8,8 +8,16 @@ export const linkOptionsAtom = $atom({
       .boolean()
       .describe("Enable batch collection for browser-side calls.")
       .default(true),
+
+    remoteRegistryTtl: z
+      .number()
+      .describe(
+        "Seconds a remote app's action registry is held before it is revalidated. The endpoint emits an ETag, so an expired entry costs a 304 rather than a payload.",
+      )
+      .default(300),
   }),
   default: {
     batch: true,
+    remoteRegistryTtl: 300,
   },
 });

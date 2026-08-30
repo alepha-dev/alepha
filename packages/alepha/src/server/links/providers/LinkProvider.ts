@@ -1,4 +1,5 @@
 import { $inject, $store, Alepha, AlephaError, type Async, z } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import type { SecureOptions } from "alepha/security";
 import {
@@ -40,12 +41,28 @@ export class LinkProvider {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly httpClient = $inject(HttpClient);
+  protected readonly dateTime = $inject(DateTimeProvider);
 
   // Server-side: all registered links (local + remote), keyed by name
   protected serverLinkMap = new Map<string, HttpClientLink>();
 
   // Browser/SSR: parsed from the registry response
   protected actionMap = new Map<string, HttpClientLink>();
+
+  /**
+   * One parsed registry per remote, keyed by {@link registryKey}.
+   *
+   * ⚠️ A remote registry cannot share the two stores above, and that is the
+   * whole reason this exists. Writing it into `alepha.server.request.apiLinks`
+   * resolves to nothing outside a browser: the non-browser branch of
+   * {@link links} maps registry names back onto `serverLinkMap` and keeps only
+   * what it finds there, and in a CLI `serverLinkMap` is empty. Everything
+   * would look wired up and nothing would resolve.
+   *
+   * Keyed rather than a single slot so a process talking to two Alepha apps
+   * does not have one evict the other.
+   */
+  protected remoteLinks = new Map<string, RemoteRegistry>();
   protected permissions = new Set<string>();
   /**
    * Action names the server reported as existing but not callable by this
@@ -171,9 +188,26 @@ export class LinkProvider {
   }
 
   /**
-   * Force browser to refresh links from the server.
+   * Force a refresh of the registry.
+   *
+   * With a `hostname` on the scope this targets that remote and parses into
+   * {@link remoteLinks}. Without one it is what it has always been: the
+   * browser's own registry, written to the store slot SSR hydrates from.
+   *
+   * The two must not converge. The local path owns the store slot, the ETag
+   * cache, `permissions` and `restricted`; a remote fetch that touched any of
+   * them would overwrite the caller's own registry with someone else's.
    */
-  public async fetchLinks(): Promise<HttpClientLink[]> {
+  public async fetchLinks(scope: ClientScope = {}): Promise<HttpClientLink[]> {
+    if (scope.hostname) {
+      const host = this.normalizeHost(scope.hostname);
+      const registry = await this.fetchRemoteRegistry(
+        host,
+        this.registryKey(host, scope),
+      );
+      return [...registry.links.values()];
+    }
+
     const { data } = await this.httpClient.fetch(
       `${LinkProvider.path.apiLinks}`,
       {
@@ -188,6 +222,124 @@ export class LinkProvider {
     this.loadRegistry(data);
 
     return [...this.actionMap.values()];
+  }
+
+  /**
+   * The remote's registry, fetched on first use and held until it goes stale.
+   *
+   * Staleness is a TTL rather than a refetch per call because `/api/_links`
+   * emits an ETag and {@link HttpClient} revalidates with `if-none-match`, so
+   * an expired entry costs a 304 rather than a payload.
+   */
+  protected async remoteRegistry(scope: ClientScope): Promise<RemoteRegistry> {
+    const host = this.normalizeHost(scope.hostname as string);
+    const key = this.registryKey(host, scope);
+    const cached = this.remoteLinks.get(key);
+
+    if (
+      cached &&
+      this.dateTime.nowMillis() - cached.fetchedAt <
+        this.options.remoteRegistryTtl * 1000
+    ) {
+      return cached;
+    }
+
+    return await this.fetchRemoteRegistry(host, key);
+  }
+
+  /**
+   * What identifies one cached registry.
+   *
+   * The host alone today, because nothing yet authenticates the fetch. It has
+   * to stay a seam: `/api/_links` filters its answer by caller, so once a
+   * credential is on the scope a host-only key would serve one caller's action
+   * set to another.
+   */
+  protected registryKey(host: string, _scope: ClientScope): string {
+    return host;
+  }
+
+  /**
+   * An origin, or a refusal.
+   *
+   * A hostname carrying a path is rejected rather than quietly trimmed: a
+   * caller who wrote `https://api.example.com/v1` means those requests to go
+   * under `/v1`, and the registry's own `prefix` is what actually decides that.
+   * Trimming would silently send them somewhere else.
+   */
+  protected normalizeHost(hostname: string): string {
+    let url: URL;
+    try {
+      url = new URL(hostname);
+    } catch {
+      throw new AlephaError(
+        `Invalid hostname "${hostname}" - an absolute URL is required, e.g. "https://api.example.com".`,
+      );
+    }
+
+    if (url.pathname !== "/" || url.search || url.hash) {
+      throw new AlephaError(
+        `Invalid hostname "${hostname}" - expected an origin with no path, query or fragment. The remote's own api prefix comes from its registry.`,
+      );
+    }
+
+    return url.origin;
+  }
+
+  protected async fetchRemoteRegistry(
+    host: string,
+    key: string,
+  ): Promise<RemoteRegistry> {
+    let data: ApiRegistryResponse;
+
+    try {
+      ({ data } = await this.httpClient.fetch(
+        `${host}${LinkProvider.path.apiLinks}`,
+        {
+          method: "GET",
+          schema: {
+            response: apiRegistryResponseSchema,
+          },
+        },
+      ));
+    } catch (cause) {
+      // Named, and not swallowed. A process may hold several remotes, so a
+      // bare fetch failure says nothing about which one is down — and falling
+      // back to an empty registry would turn a reachability problem into
+      // `Action not found` on every call, which reads as a permission or
+      // routing bug and sends the reader looking in the wrong place.
+      throw new AlephaError(
+        `Could not fetch the action registry of ${host}${LinkProvider.path.apiLinks}.`,
+        { cause },
+      );
+    }
+
+    const registry: RemoteRegistry = {
+      links: new Map(),
+      restricted: new Set(data.restricted ?? []),
+      fetchedAt: this.dateTime.nowMillis(),
+    };
+
+    for (const [name, action] of Object.entries(data.actions)) {
+      registry.links.set(name, {
+        name,
+        // Composed once, here, rather than at every call. `followRemote` only
+        // prepends the service for a hostless link (the browser's case), so a
+        // remote's proxied action would otherwise lose the segment that
+        // addresses it on that remote.
+        path: action.service ? `/${action.service}${action.path}` : action.path,
+        kind: action.kind,
+        method: action.method,
+        contentType: action.contentType,
+        service: action.service,
+        prefix: data.prefix,
+        host,
+      });
+    }
+
+    this.remoteLinks.set(key, registry);
+
+    return registry;
   }
 
   /**
@@ -398,6 +550,15 @@ export class LinkProvider {
     name: string,
     options: ClientScope = {},
   ): Promise<HttpClientLink> {
+    // First, and self-contained: a named host resolves against that host's own
+    // registry and nothing else. Everything below is the local/browser/SSR
+    // path, unchanged. The `isBrowser()` gate on the auto-fetch is dropped for
+    // this branch alone, which is what lets a CLI, a worker or a script
+    // resolve at all.
+    if (options.hostname) {
+      return await this.getRemoteLinkByName(name, options);
+    }
+
     if (
       this.alepha.isBrowser() &&
       !this.alepha.store.get("alepha.server.request.apiLinks")
@@ -439,11 +600,33 @@ export class LinkProvider {
       throw error;
     }
 
-    if (options.hostname) {
-      return {
-        ...link,
-        host: options.hostname,
-      };
+    // A `hostname` never reaches here any more: it is answered by the remote
+    // branch above, against the remote's own registry. Stamping the host onto
+    // a LOCAL link was the weaker mechanism this replaces — it borrowed this
+    // container's paths, prefix and permission view and pointed them at
+    // someone else's server.
+    return link;
+  }
+
+  protected async getRemoteLinkByName(
+    name: string,
+    scope: ClientScope,
+  ): Promise<HttpClientLink> {
+    const registry = await this.remoteRegistry(scope);
+    const link = registry.links.get(name);
+
+    if (!link) {
+      // The same distinction the local path draws, drawn from the remote's own
+      // answer: `restricted` is what that server said exists but is not yours
+      // to call, and it is only populated for authenticated callers.
+      const error = registry.restricted.has(name)
+        ? new ForbiddenError(`Action ${name} is not allowed for this user.`)
+        : new UnauthorizedError(`Action ${name} not found.`);
+      await this.alepha.events.emit("client:onError", {
+        route: link,
+        error,
+      });
+      throw error;
     }
 
     return link;
@@ -474,6 +657,26 @@ export interface HttpClientLink {
 export interface ClientScope {
   service?: string;
   hostname?: string;
+}
+
+/**
+ * One remote Alepha app's action registry, as this client holds it.
+ */
+export interface RemoteRegistry {
+  /**
+   * The remote's callable actions, with its host and prefix already stamped
+   * so nothing has to be recomposed at call time.
+   */
+  links: Map<string, HttpClientLink>;
+
+  /**
+   * What the remote said exists but is not callable by this caller. Empty for
+   * an anonymous fetch, by design: see `restricted` in
+   * `apiRegistryResponseSchema`.
+   */
+  restricted: Set<string>;
+
+  fetchedAt: number;
 }
 
 export type HttpVirtualClient<T> = {
