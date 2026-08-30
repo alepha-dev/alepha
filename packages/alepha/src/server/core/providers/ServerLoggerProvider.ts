@@ -3,62 +3,29 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 
 import { HttpError } from "../errors/HttpError.ts";
+import { LogRedaction } from "../services/LogRedaction.ts";
 
 export class ServerLoggerProvider {
   protected readonly log = $logger();
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly alepha = $inject(Alepha);
-
-  /**
-   * Query parameters whose VALUE never reaches a log line.
-   *
-   * The request path is logged at info level, so an OAuth callback wrote its
-   * `code` and `state` straight into production logs - a live authorization
-   * code, sitting in whatever the log ships to. The key is kept, because
-   * knowing which parameters a request carried is most of what the line is
-   * for; only the value goes.
-   */
-  protected readonly redactedQueryKeys = new Set([
-    "code",
-    "state",
-    "token",
-    "access_token",
-    "refresh_token",
-    "key",
-  ]);
+  protected readonly redaction = $inject(LogRedaction);
 
   /**
    * The request path as it should appear in a log line: unchanged when it
-   * carries nothing sensitive, and with the values of {@link
-   * redactedQueryKeys} replaced otherwise.
+   * carries nothing sensitive, and with credential values replaced
+   * otherwise.
+   *
+   * The request path is logged at info level, so an OAuth callback wrote its
+   * `code` and `state` straight into production logs - a live authorization
+   * code, sitting in whatever the log ships to.
+   *
+   * The key list used to live here. It moved to {@link LogRedaction} when
+   * `HttpClient` turned out to need the same one for its own URLs and
+   * bodies, and two copies of a security vocabulary drift.
    */
   protected loggedPath(url: URL): string {
-    const { pathname, search, searchParams } = url;
-    if (!search) {
-      return pathname;
-    }
-    // The common case rebuilds nothing, so a request with an ordinary query
-    // is logged byte for byte as it arrived.
-    let sensitive = false;
-    for (const key of searchParams.keys()) {
-      if (this.redactedQueryKeys.has(key.toLowerCase())) {
-        sensitive = true;
-        break;
-      }
-    }
-    if (!sensitive) {
-      return `${pathname}${search}`;
-    }
-
-    const parts: string[] = [];
-    for (const [key, value] of searchParams) {
-      parts.push(
-        this.redactedQueryKeys.has(key.toLowerCase())
-          ? `${encodeURIComponent(key)}=[redacted]`
-          : `${encodeURIComponent(key)}=${encodeURIComponent(value)}`,
-      );
-    }
-    return `${pathname}?${parts.join("&")}`;
+    return this.redaction.path(url);
   }
 
   public readonly onRequest = $hook({

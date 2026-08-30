@@ -264,4 +264,49 @@ describe("HttpClient trace redaction", () => {
   it("leaves an absent header list alone", ({ expect }) => {
     expect(client().testRedactHeaders(undefined)).toBeUndefined();
   });
+
+  /**
+   * The redaction must not be paid for when nothing is listening.
+   *
+   * The trace's argument object is built before `log.trace` is ever called,
+   * so `redactHeaders` ran on every single `fetch()` whatever the level was,
+   * allocating a `Headers` and copying every entry into a fresh object for a
+   * line that is off in production. `HttpClient` is on the hot path: SSR,
+   * forwarded remote actions, `/api/_batch`.
+   */
+  it("does not build the redaction when TRACE is off", async ({ expect }) => {
+    class CountingHttpClient extends HttpClient {
+      public redactions = 0;
+      protected redactHeaders(headers: HeadersInit | undefined): unknown {
+        this.redactions++;
+        return super.redactHeaders(headers);
+      }
+    }
+
+    const alepha = Alepha.create();
+    const counting = alepha.inject(CountingHttpClient);
+    await alepha.start();
+    // The suite itself runs at TRACE, which is what makes the other specs in
+    // this repo able to assert on log output. Set the level this test is
+    // actually about, rather than muting the logger globally.
+    alepha.store.set("alepha.logger.level", "info");
+
+    // Nothing is listening on port 1, so this fails before any response is
+    // parsed. The trace happens first, which is exactly what is being
+    // measured: the counter would already be 1 if the guard were missing.
+    await counting
+      .fetch("http://127.0.0.1:1/never", { headers: { cookie: "a=b" } })
+      .catch(() => undefined);
+
+    expect(counting.redactions).toBe(0);
+
+    // And it is genuinely the level doing it, not a call path that stopped
+    // reaching the trace at all.
+    alepha.store.set("alepha.logger.level", "trace");
+    await counting
+      .fetch("http://127.0.0.1:1/never", { headers: { cookie: "a=b" } })
+      .catch(() => undefined);
+
+    expect(counting.redactions).toBe(1);
+  });
 });

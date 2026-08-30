@@ -37,6 +37,7 @@ import type {
   ResolvedFetchOptions,
 } from "./services/HttpClient.ts";
 import { HttpClient } from "./services/HttpClient.ts";
+import { LogRedaction } from "./services/LogRedaction.ts";
 import { ServerRequestParser } from "./services/ServerRequestParser.ts";
 import { UserAgentParser } from "./services/UserAgentParser.ts";
 
@@ -165,7 +166,12 @@ export * from "./services/UserAgentParser.ts";
  */
 export const AlephaHttpClient = $module({
   name: "alepha.http",
-  services: [HttpClient],
+  // `LogRedaction` is registered beside `HttpClient` rather than in
+  // `AlephaServer`, because both of its consumers need it and only one of
+  // them serves: `HttpClient` traces outbound requests in the browser too,
+  // and `AlephaServer` imports this module, so `ServerLoggerProvider`
+  // reaches it from here.
+  services: [HttpClient, LogRedaction],
 });
 
 export const AlephaServer = $module({

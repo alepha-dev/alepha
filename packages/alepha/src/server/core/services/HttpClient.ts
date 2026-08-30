@@ -22,10 +22,12 @@ import type {
 } from "../interfaces/ServerRequest.ts";
 import type { ClientRequestOptions } from "../primitives/$action.ts";
 import { errorSchema } from "../schemas/errorSchema.ts";
+import { LogRedaction } from "./LogRedaction.ts";
 
 export class HttpClient {
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
+  protected readonly redaction = $inject(LogRedaction);
 
   public readonly cache = $cache<HttpClientCache>({
     provider: "memory",
@@ -85,13 +87,23 @@ export class HttpClient {
 
     request.method ??= "GET";
 
-    this.log.trace("Request", {
-      url,
-      method: request.method,
-      body: request.body,
-      headers: this.redactHeaders(request.headers),
-      options,
-    });
+    // Guarded, not just redacted. The argument object is built before
+    // `trace` is ever called, so every one of these helpers used to run on
+    // every `fetch()` whatever the level was: `redactHeaders` allocates a
+    // `Headers` and copies every entry, and `HttpClient` is on the hot path
+    // (SSR, forwarded remote actions, `/api/_batch`). It also took
+    // `new Headers(headers)`, which throws on a malformed name, off the
+    // default path, so a bad header fails at `fetch` again instead of
+    // earlier inside a logging expression that does not point at the cause.
+    if (this.log.isLevelEnabled("TRACE")) {
+      this.log.trace("Request", {
+        url: this.redaction.url(url),
+        method: request.method,
+        body: this.redaction.body(request.body),
+        headers: this.redactHeaders(request.headers),
+        options,
+      });
+    }
 
     // Namespace the shared cache + in-flight dedup by the caller's identity.
     // On the server one singleton HttpClient serves many users concurrently
