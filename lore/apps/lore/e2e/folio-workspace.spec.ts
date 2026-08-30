@@ -822,8 +822,10 @@ test.describe("Folio workspace", () => {
     await expect(tree).toBeVisible({ timeout: 15_000 });
 
     // Rename the OPEN folio from the tree, the way the report does: its row
-    // is the one the workspace is already showing. Right-click, then
-    // Rename — there is no double-click shortcut.
+    // is the one the workspace is already showing. Deliberately the
+    // right-click path even though a double click now opens the same
+    // rename (09f): this test is about the SAVE that follows, so it should
+    // keep exercising the entry point the original report used.
     const row = tree.getByText(original, { exact: true });
     await expect(row).toBeVisible({ timeout: 15_000 });
     await row.click({ button: "right" });
@@ -866,6 +868,103 @@ test.describe("Folio workspace", () => {
       timeout: 15_000,
     });
     await expect(tree.getByText(original, { exact: true })).toHaveCount(0);
+  });
+
+  /**
+   * Double click on a tree row opens the same inline rename the context
+   * menu does.
+   *
+   * The directory half is the reason this is an e2e rather than a component
+   * spec. `onDoubleClick` fires only AFTER both clicks, and a directory
+   * row's single click toggles its disclosure, so the naive wiring expands
+   * and collapses the directory on the way to the rename. What is asserted
+   * here is the ABSENCE of that: the child folio must never become visible.
+   * Only a real browser produces the click / click / dblclick sequence with
+   * the `detail` counter the fix reads.
+   */
+  test("09f - double click on a tree row renames it", async () => {
+    const stampf = `${stamp}f`;
+    const folioTitle = `Dbl-${stampf}`.slice(0, 24);
+    const dirTitle = `DblDir-${stampf}`.slice(0, 24);
+    const insideTitle = `DblIn-${stampf}`.slice(0, 24);
+
+    const dir = await page.evaluate(
+      async ({ pid, name }) => {
+        const res = await fetch(`/api/projects/${pid}/folio/directories`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ name }),
+        });
+        return (await res.json()) as { id: string; shortId: number };
+      },
+      { pid: projectId, name: dirTitle },
+    );
+    await apiPost(page, "create", {
+      title: insideTitle,
+      content: "",
+      projectId,
+      directoryId: dir.id,
+    });
+    await apiPost(page, "create", {
+      title: folioTitle,
+      content: "",
+      projectId,
+    });
+
+    const tree = page.locator('[data-slot="folio-tree"]');
+    const row = (name: string) =>
+      page
+        .locator('[data-slot="folio-tree-row"]', {
+          hasText: new RegExp(`^${name}$`),
+        })
+        .first();
+
+    await page.goto(`/${projectSlug}/folios`);
+    await expect(tree).toBeVisible({ timeout: 15_000 });
+    await expect(row(folioTitle)).toBeVisible({ timeout: 15_000 });
+
+    // ── A folio row ───────────────────────────────────────────────────
+    await row(folioTitle).dblclick();
+
+    const box = tree.getByRole("textbox");
+    await expect(box).toBeVisible({ timeout: 10_000 });
+    // Opens on the CURRENT name, fully selected, so typing replaces it.
+    await expect(box).toHaveValue(folioTitle);
+    expect(
+      await box.evaluate((el: HTMLInputElement) => [
+        el.selectionStart,
+        el.selectionEnd,
+      ]),
+    ).toEqual([0, folioTitle.length]);
+
+    // Escape cancels, exactly as it does from the context-menu path.
+    await box.press("Escape");
+    await expect(tree.getByRole("textbox")).toHaveCount(0);
+    await expect(row(folioTitle)).toBeVisible();
+
+    // ── A directory row ───────────────────────────────────────────────
+    // Closed by default, so the child is the witness for the disclosure.
+    await expect(row(dirTitle)).toBeVisible({ timeout: 15_000 });
+    await expect(row(insideTitle)).toHaveCount(0);
+
+    await row(dirTitle).dblclick();
+    await expect(tree.getByRole("textbox")).toBeVisible({ timeout: 10_000 });
+    await expect(tree.getByRole("textbox")).toHaveValue(dirTitle);
+
+    // The whole point: the deferred toggle was cancelled, so the directory
+    // never opened. Past the 250ms window, so a late timer would have run.
+    await page.waitForTimeout(600);
+    await expect(row(insideTitle)).toHaveCount(0);
+
+    await tree.getByRole("textbox").press("Escape");
+    await expect(tree.getByRole("textbox")).toHaveCount(0);
+
+    // ── Single click still means what it meant ────────────────────────
+    // One click on the same directory row toggles it open (after the
+    // double-click window it now waits out).
+    await row(dirTitle).click();
+    await expect(row(insideTitle)).toBeVisible({ timeout: 10_000 });
   });
 
   test("09c — New directory works from the empty-state menubar", async () => {
