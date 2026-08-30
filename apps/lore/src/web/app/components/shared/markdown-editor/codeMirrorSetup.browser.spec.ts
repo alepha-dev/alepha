@@ -1,7 +1,13 @@
-import { copyLineDown, undo } from "@codemirror/commands";
+import { acceptCompletion } from "@codemirror/autocomplete";
+import {
+  copyLineDown,
+  indentLess,
+  indentMore,
+  undo,
+} from "@codemirror/commands";
 import { ensureSyntaxTree } from "@codemirror/language";
 import { EditorState, type Transaction } from "@codemirror/state";
-import { keymap } from "@codemirror/view";
+import { EditorView, keymap } from "@codemirror/view";
 import { describe, expect, it } from "vitest";
 
 import { createMarkdownExtensions } from "./codeMirrorSetup.ts";
@@ -96,5 +102,64 @@ describe("createMarkdownExtensions", () => {
 
     expect(applied).toBe(true);
     expect(state.doc.toString()).toBe("hello\nhello");
+  });
+
+  it("gives Tab to the completion picker first, then to indent", () => {
+    // `completionKeymap` puts accept on ENTER and claims no Tab at all, so
+    // mounting `indentWithTab` alone would indent the line under an open
+    // `[[` wiki-link picker. `acceptCompletion` returns false when nothing
+    // is open, which is what lets the two share the key — but only in this
+    // order.
+    const state = stateWith("hello");
+    const bound = state
+      .facet(keymap)
+      .flat()
+      .filter((binding) => binding.key === "Tab");
+
+    expect(bound[0]?.run).toBe(acceptCompletion);
+    expect(bound[1]?.run).toBe(indentMore);
+  });
+
+  it("dedents on Shift-Tab", () => {
+    // `indentWithTab` carries its own `shift`, so this is not a second
+    // binding to add — it is the half that would be lost by writing
+    // `{ key: "Tab", run: indentMore }` by hand instead.
+    const state = stateWith("hello");
+    const tab = state
+      .facet(keymap)
+      .flat()
+      .find((binding) => binding.key === "Tab" && binding.shift);
+
+    expect(tab?.shift).toBe(indentLess);
+  });
+
+  it("indents and dedents the selected line", () => {
+    let state = EditorState.create({
+      doc: "hello",
+      selection: { anchor: 0 },
+      extensions: createMarkdownExtensions({}),
+    });
+    const dispatch = (transaction: Transaction) => {
+      state = transaction.state;
+    };
+
+    expect(indentMore({ state, dispatch })).toBe(true);
+    expect(state.doc.toString()).toBe("  hello");
+
+    expect(indentLess({ state, dispatch })).toBe(true);
+    expect(state.doc.toString()).toBe("hello");
+  });
+
+  it("keeps the tab-focus escape hatch reachable", () => {
+    // Nothing in the extension list binds Escape to arm tab-focus mode:
+    // `@codemirror/view`'s own keydown handler already does it, and a
+    // binding of ours would return true and swallow Escape from the drawer
+    // this editor is mounted inside.
+    //
+    // So what has to be pinned is the API that hatch rides on. Without it,
+    // `indentWithTab` makes this surface a keyboard trap, and a CodeMirror
+    // upgrade that renamed or dropped `setTabFocusMode` would take the way
+    // out with it in complete silence — no type error, no failing render.
+    expect(typeof EditorView.prototype.setTabFocusMode).toBe("function");
   });
 });
