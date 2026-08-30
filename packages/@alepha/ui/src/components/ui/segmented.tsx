@@ -6,6 +6,17 @@ import * as React from "react";
 export interface SegmentedOption {
   value: string;
   label: React.ReactNode;
+  /**
+   * A trailing count, rendered after the label.
+   *
+   * A field rather than something the caller folds into `label`, because the
+   * colour has to follow the segment's state and only this component knows
+   * it. A count written into the label carries its own class — usually
+   * `text-muted-foreground`, which is right on the three inactive segments
+   * and nearly invisible on the active one, where the thumb paints
+   * `bg-primary` underneath it.
+   */
+  count?: React.ReactNode;
   disabled?: boolean;
 }
 
@@ -246,6 +257,23 @@ export function Segmented(props: SegmentedProps) {
             )}
           >
             {opt.label}
+            {opt.count !== undefined && opt.count !== null && (
+              <span
+                data-slot="segmented-count"
+                className={cn(
+                  "ml-1.5 tabular-nums",
+                  // Derived from the segment's own foreground rather than
+                  // from the resting muted token. `/70` keeps the count
+                  // secondary to the label on both sides instead of dropping
+                  // it to a colour chosen for a different background.
+                  active
+                    ? "text-primary-foreground/70"
+                    : "text-muted-foreground",
+                )}
+              >
+                {opt.count}
+              </span>
+            )}
           </button>
         );
       })}

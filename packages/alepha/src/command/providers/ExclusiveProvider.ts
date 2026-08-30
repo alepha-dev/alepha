@@ -217,7 +217,37 @@ export class ExclusiveProvider {
         ticket.holding = true;
         ticket.heartbeatAt = this.dateTime.nowMillis();
         await this.writeTicket(file, ticket);
-        return;
+
+        // Then verify, because the claim above is a read-then-write and the
+        // read can miss a ticket that had not landed yet. Two arrivals can
+        // therefore both see an unclaimed queue and both claim it — the
+        // `holding` flag fixes a later arrival meeting an ALREADY claimed
+        // slot, and says nothing about the window before the claim lands.
+        //
+        // Re-reading AFTER our own write closes it rather than narrowing it.
+        // For both sides to still miss each other you would need
+        // `A.write < A.read < B.write` and `B.write < B.read < A.write` at
+        // once, which chains into a cycle. That holds because `rename` on a
+        // local filesystem is atomic and immediately visible, which is what
+        // `tmpdir()` gives on every platform the CLI runs on.
+        //
+        // Sort order settles the winner, and both sides compute the same
+        // answer from the same data, so exactly one survives.
+        const claimed = await this.readTickets(dir);
+        const rival = claimed.find(
+          (it) => it.ticket.holding && it.file !== name && it.file < name,
+        );
+        if (!rival) {
+          return;
+        }
+
+        // Lost it. Clear our own claim and go back to waiting rather than
+        // returning, so we land in the normal wait path and are picked up on
+        // the next poll.
+        ticket.holding = false;
+        ticket.heartbeatAt = this.dateTime.nowMillis();
+        await this.writeTicket(file, ticket);
+        continue;
       }
 
       const ahead = holder ?? tickets[0];

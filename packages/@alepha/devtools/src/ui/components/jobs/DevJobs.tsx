@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import type { DevJobMetadata } from "../../../schemas/DevJobMetadata.ts";
 import { type JobRuntime, useJobs } from "../../hooks/useJobs.ts";
 import { useMetadata } from "../../hooks/useMetadata.ts";
+import { useRelativeTime } from "../../hooks/useRelativeTime.ts";
 import { describeCron } from "../declared/describeCron.ts";
 import { DevEmpty } from "../shared/DevEmpty.tsx";
 import { DevError } from "../shared/DevError.tsx";
@@ -20,17 +21,6 @@ const MODE_COLOR: Record<string, string> = {
   cron: "var(--dt-patch)",
   queue: "var(--dt-info)",
   direct: "var(--dt-get)",
-};
-
-const relative = (value?: string): string => {
-  if (!value) return "never";
-  const ts = Date.parse(value);
-  if (Number.isNaN(ts)) return "never";
-  const diff = Date.now() - ts;
-  if (diff < 60_000) return "just now";
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
-  return `${Math.floor(diff / 86_400_000)}d ago`;
 };
 
 interface StatProps {
@@ -79,6 +69,7 @@ const Stat = (props: StatProps) => (
  */
 export const DevJobs = () => {
   const meta = useMetadata();
+  const relative = useRelativeTime({ fallback: "never" });
   const runtime = useJobs();
   const http = useInject(HttpClient);
   const [params, setParams] = useQueryParams(querySchema, {

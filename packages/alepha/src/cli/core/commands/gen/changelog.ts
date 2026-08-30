@@ -49,6 +49,12 @@ export interface Commit {
   scope: string | null;
   description: string;
   breaking: boolean;
+  /**
+   * What the commit body said it breaks, one entry per declared item.
+   * Empty when the break was flagged by a `!` or by the word in the
+   * subject, which say THAT something broke and never what.
+   */
+  breakingNotes: string[];
 }
 
 interface ChangelogSection {
@@ -110,6 +116,30 @@ export class ChangelogCommand {
   protected formatEntry(entry: ChangelogSection[]): string {
     const lines: string[] = [];
 
+    // Breaking changes first, and as their own section rather than a
+    // suffix. A `[BREAKING]` tag on one line among forty is not something a
+    // reader of a release announcement finds, which is the whole point of
+    // flagging it — the suffix stays on the commit line too, so the section
+    // says what broke and the line says where.
+    const breaking = entry
+      .flatMap((section) => section.commits)
+      .filter((commit) => commit.breaking);
+
+    if (breaking.length > 0) {
+      lines.push("### Breaking Changes\n");
+      for (const commit of breaking) {
+        // A commit flagged by `!` alone declared no prose, so name it by
+        // its subject rather than printing an empty bullet.
+        const notes = commit.breakingNotes.length
+          ? commit.breakingNotes
+          : [commit.description];
+        for (const note of notes) {
+          lines.push(`- **${commit.scope}**: ${note} (\`${commit.hash}\`)`);
+        }
+      }
+      lines.push("");
+    }
+
     for (const section of entry) {
       if (section.commits.length === 0) continue;
 
@@ -142,12 +172,15 @@ export class ChangelogCommand {
       commits: [],
     }));
 
-    for (const line of commitsOutput.trim().split("\n")) {
-      if (!line.trim()) continue;
+    for (const record of commitsOutput.split("\x1e")) {
+      if (!record.trim()) continue;
 
-      const commit = this.parser.parseCommit(line, this.config);
+      const commit = this.parser.parseCommit(
+        record.replace(/^\n/, ""),
+        this.config,
+      );
       if (!commit) {
-        this.log.trace("Skipping commit", { line });
+        this.log.trace("Skipping commit", { record });
         continue;
       }
 
@@ -239,10 +272,19 @@ export class ChangelogCommand {
       this.log.debug("Using to ref", { to: toRef });
 
       // Get commits in range
+      // NOT `--oneline`, which is subject-only. Breaking changes are
+      // declared in the BODY — by the conventional-commits footer, and in
+      // this repository by a bare "Breaking changes" heading — so a
+      // subject-only log cannot see any of them. Over 0.27.0..HEAD that
+      // meant a release with five declared breaks generated an entry with
+      // no [BREAKING] flag at all.
+      //
+      // \x1e (ASCII record separator) rather than a newline, because a body
+      // is multi-line and the parse loop splits records apart.
       const commitsOutput = await git([
         "log",
         `${fromRef}..${toRef}`,
-        "--oneline",
+        "--pretty=format:%h %s%n%b%x1e",
       ]);
 
       if (!commitsOutput.trim()) {
