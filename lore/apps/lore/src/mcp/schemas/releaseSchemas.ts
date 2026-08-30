@@ -13,9 +13,10 @@ export const releaseListResultSchema = z.object({
     z.object({
       id: z.integer(),
       number: z.integer(),
+      tag: z.string().optional(),
       title: z.string(),
       description: z.string(),
-      closedAt: z.datetime().optional(),
+      releasedAt: z.datetime().optional(),
       createdAt: z.datetime(),
     }),
   ),
@@ -26,11 +27,15 @@ export const releaseListResultSchema = z.object({
 // -----------------------------------------------------------------------------
 
 export const releaseStartParamsSchema = projectParamsSchema.extend({
-  title: z
+  tag: z
     .string()
     .describe(
-      "Release title. Required: the fantasy-name generator that used to fill this in is gone, because a release is called `0.28.0`.",
+      "The release tag, e.g. `0.28.0` or `demo-1`. Unique per project, and the release's identity everywhere: it is the URL segment and the join key to the artifacts CI publishes. Letters, digits and interior dots, underscores or hyphens; case is preserved.",
     ),
+  title: z
+    .string()
+    .describe("Display title. Defaults to the tag when omitted.")
+    .optional(),
   description: z.string().describe("Release description").optional(),
 });
 
@@ -42,10 +47,10 @@ export const releaseStartResultSchema = z.object({
 });
 
 // -----------------------------------------------------------------------------
-// release_close
+// release_publish
 // -----------------------------------------------------------------------------
 
-export const releaseCloseParamsSchema = z.object({
+export const releasePublishParamsSchema = z.object({
   id: z
     .integer()
     .describe("Global release ID. Mutually exclusive with `number`.")
@@ -70,11 +75,11 @@ export const releaseCloseParamsSchema = z.object({
     .optional(),
 });
 
-export const releaseCloseResultSchema = z.object({
+export const releasePublishResultSchema = z.object({
   id: z.integer(),
   number: z.integer(),
   title: z.string(),
-  closedAt: z.datetime(),
+  releasedAt: z.datetime(),
 });
 
 // -----------------------------------------------------------------------------

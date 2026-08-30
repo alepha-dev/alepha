@@ -39,7 +39,6 @@ import ReleaseClosedRail from "./ReleaseClosedRail.tsx";
 import ReleaseLedgerHero from "./ReleaseLedgerHero.tsx";
 import ReleaseOpenQuestsRail from "./ReleaseOpenQuestsRail.tsx";
 import ReleaseSaveToFolioDialog from "./ReleaseSaveToFolioDialog.tsx";
-import ReleaseTagInput from "./ReleaseTagInput.tsx";
 
 interface ChangelogState {
   markdown: string;
@@ -74,9 +73,9 @@ const ProjectReleases = () => {
   const folioApi = useClient<FolioController>();
 
   const [startOpen, setStartOpen] = useState(false);
+  const [startTag, setStartTag] = useState("");
   const [startTitle, setStartTitle] = useState("");
   const [startDescription, setStartDescription] = useState("");
-  const [startTags, setStartTags] = useState<string[]>([]);
   const [closeModal, setCloseModal] = useState<Release | null>(null);
   const [detailRelease, setDetailRelease] = useState<Release | null>(null);
   const [folioOpen, setFolioOpen] = useState(false);
@@ -87,12 +86,12 @@ const ProjectReleases = () => {
   const [changelogError, setChangelogError] = useState(false);
   const [openQuests, setOpenQuests] = useState<QuestResource[]>([]);
 
-  const activeRelease = releases?.find((c) => !c.closedAt) as
+  const openRelease = releases?.find((c) => !c.releasedAt) as
     | Release
     | undefined;
 
   const closedReleases = useMemo(
-    () => ((releases ?? []) as Release[]).filter((c) => c.closedAt),
+    () => ((releases ?? []) as Release[]).filter((c) => c.releasedAt),
     [releases],
   );
 
@@ -101,7 +100,7 @@ const ProjectReleases = () => {
    * or the last closed one as a fallback so the panel is never empty for a
    * project that has shipped before.
    */
-  const shownRelease = activeRelease ?? closedReleases[0];
+  const shownRelease = openRelease ?? closedReleases[0];
 
   const reload = useCallback(async () => {
     if (!project) return;
@@ -142,7 +141,7 @@ const ProjectReleases = () => {
     return () => {
       cancelled = true;
     };
-  }, [shownRelease?.id, shownRelease?.closedAt]);
+  }, [shownRelease?.id, shownRelease?.releasedAt]);
 
   // "Still open" rail: accepted but not yet completed.
   useEffect(() => {
@@ -172,22 +171,24 @@ const ProjectReleases = () => {
    */
   const openStart = () => {
     setStartDescription("");
-    setStartTags([]);
+    setStartTag("");
     setStartTitle("");
     setStartOpen(true);
   };
 
   const handleStart = async () => {
     if (!project) return;
-    const title = startTitle.trim();
-    if (!title) return;
+    const tag = startTag.trim();
+    if (!tag) return;
     try {
       await releaseApi.createRelease({
         params: { projectId: project.id },
         body: {
-          title,
+          tag,
+          // Omitted rather than sent empty: the server defaults the title to
+          // the tag, which is what `0.28.0` should read as.
+          title: startTitle.trim() || undefined,
           description: startDescription.trim() || undefined,
-          tags: startTags,
         },
       });
       setStartOpen(false);
@@ -201,7 +202,7 @@ const ProjectReleases = () => {
 
   const handleClose = async (id: number, title: string) => {
     try {
-      await releaseApi.closeRelease({ params: { id }, body: { title } });
+      await releaseApi.publishRelease({ params: { id }, body: { title } });
       setCloseModal(null);
       await reload();
     } catch {
@@ -288,11 +289,11 @@ const ProjectReleases = () => {
 
   const statusLabel = !shownRelease
     ? tr("release.changelog.none")
-    : shownRelease.closedAt
+    : shownRelease.releasedAt
       ? tr("release.changelog.frozen", {
           args: [
-            String(shownRelease.number),
-            String(i18n.l(shownRelease.closedAt, { date: "ll" })),
+            shownRelease.tag ?? String(shownRelease.number),
+            String(i18n.l(shownRelease.releasedAt, { date: "ll" })),
           ],
         })
       : tr("release.changelog.live", {
@@ -305,14 +306,14 @@ const ProjectReleases = () => {
           Close Release sits on the hero, opposite where New Release sits on
           the empty band. Both states are full-bleed so they occupy the same
           band under the breadcrumb. */}
-      {activeRelease ? (
+      {openRelease ? (
         <ReleaseLedgerHero
-          release={activeRelease}
+          release={openRelease}
           questCount={changelog?.stats.questCount ?? 0}
           areaCount={changelog?.stats.areaCount ?? 0}
           contributorCount={changelog?.stats.contributorCount ?? 0}
-          onOpenDetail={() => setDetailRelease(activeRelease)}
-          onClose={() => setCloseModal(activeRelease)}
+          onOpenDetail={() => setDetailRelease(openRelease)}
+          onClose={() => setCloseModal(openRelease)}
         />
       ) : (
         // Deliberately plain. The band it replaced counted the quests that
@@ -346,7 +347,7 @@ const ProjectReleases = () => {
         <ReleaseChangelogPanel
           areas={changelog?.areas ?? []}
           statusLabel={String(statusLabel)}
-          live={!!activeRelease}
+          live={!!openRelease}
           loading={changelogLoading}
           error={changelogError}
           onCopy={handleCopy}
@@ -371,16 +372,26 @@ const ProjectReleases = () => {
           </DialogHeader>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <Label>{tr("release.start.title")}</Label>
-              {/* The reroll button that sat beside this field is gone with
-                  the fantasy-name generator behind it. */}
+              <Label>{tr("release.start.tag")}</Label>
+              {/* The tag, not the title, is what the dialog exists to fill:
+                  it is the release's identity and its URL. The title is
+                  optional and defaults to it. */}
               <Input
-                value={startTitle}
-                onChange={(e) => setStartTitle(e.currentTarget.value)}
-                placeholder={tr("release.start.placeholder")}
+                value={startTag}
+                className="font-mono"
+                onChange={(e) => setStartTag(e.currentTarget.value)}
+                placeholder={tr("release.start.tag.placeholder")}
                 // Autofocus on the field the dialog exists to fill, on open only.
                 // oxlint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label>{tr("release.start.title")}</Label>
+              <Input
+                value={startTitle}
+                onChange={(e) => setStartTitle(e.currentTarget.value)}
+                placeholder={startTag || tr("release.start.placeholder")}
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -390,10 +401,6 @@ const ProjectReleases = () => {
                 value={startDescription}
                 onChange={(e) => setStartDescription(e.currentTarget.value)}
               />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>{tr("release.tags")}</Label>
-              <ReleaseTagInput value={startTags} onChange={setStartTags} />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setStartOpen(false)}>

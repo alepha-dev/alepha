@@ -14,8 +14,6 @@ import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
 import type { Release } from "@/api/entities/releases.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import ReleaseTagInput from "./ReleaseTagInput.tsx";
-
 export interface ProjectReleasesDetailProps {
   release: Release;
   onUpdated: (release: Release) => void;
@@ -25,9 +23,12 @@ const ProjectReleasesDetail = (props: ProjectReleasesDetailProps) => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
   const api = useClient<ReleaseController>();
+  const [tag, setTag] = useState(props.release.tag ?? "");
   const [title, setTitle] = useState(props.release.title);
   const [description, setDescription] = useState(props.release.description);
-  const [tags, setTags] = useState<string[]>(props.release.tags ?? []);
+  const [targetDate, setTargetDate] = useState(
+    props.release.targetDate?.slice(0, 10) ?? "",
+  );
   const [markdown, setMarkdown] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
@@ -51,17 +52,27 @@ const ProjectReleasesDetail = (props: ProjectReleasesDetailProps) => {
     };
   }, [props.release.id]);
 
+  const published = !!props.release.releasedAt;
+
   const dirty =
+    tag !== (props.release.tag ?? "") ||
     title !== props.release.title ||
     description !== props.release.description ||
-    JSON.stringify(tags) !== JSON.stringify(props.release.tags ?? []);
+    targetDate !== (props.release.targetDate?.slice(0, 10) ?? "");
 
   const handleSave = async () => {
     setSaving(true);
     try {
       const updated = await api.updateRelease({
         params: { id: props.release.id },
-        body: { title, description, tags },
+        body: {
+          ...(tag ? { tag } : {}),
+          title,
+          description,
+          // `null` clears the estimate; the server distinguishes it from an
+          // omitted key, which means "leave alone".
+          targetDate: targetDate ? `${targetDate}T00:00:00.000Z` : null,
+        },
       });
       props.onUpdated(updated);
       toaster.success(tr("release.detail.saved"));
@@ -98,11 +109,12 @@ const ProjectReleasesDetail = (props: ProjectReleasesDetailProps) => {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
-        <Badge variant="secondary">#{props.release.number}</Badge>
-        {props.release.closedAt && (
+        <Badge variant="secondary" className="font-mono">
+          {props.release.tag ?? `#${props.release.number}`}
+        </Badge>
+        {published ? (
           <Badge variant="outline">{tr("release.status.closed")}</Badge>
-        )}
-        {!props.release.closedAt && (
+        ) : (
           <Badge className="bg-green-600 text-white">
             {tr("release.status.active")}
           </Badge>
@@ -110,9 +122,20 @@ const ProjectReleasesDetail = (props: ProjectReleasesDetailProps) => {
       </div>
 
       <div className="flex flex-col gap-1.5">
+        <Label>{tr("release.detail.editTag")}</Label>
+        <Input
+          value={tag}
+          disabled={published}
+          className="font-mono"
+          onChange={(e) => setTag(e.currentTarget.value)}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
         <Label>{tr("release.detail.editTitle")}</Label>
         <Input
           value={title}
+          disabled={published}
           onChange={(e) => setTitle(e.currentTarget.value)}
         />
       </div>
@@ -122,16 +145,25 @@ const ProjectReleasesDetail = (props: ProjectReleasesDetailProps) => {
         <Textarea
           rows={3}
           value={description}
+          disabled={published}
           onChange={(e) => setDescription(e.currentTarget.value)}
         />
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label>{tr("release.tags")}</Label>
-        <ReleaseTagInput value={tags} onChange={setTags} />
+        <Label>{tr("release.detail.editTargetDate")}</Label>
+        <Input
+          type="date"
+          value={targetDate}
+          disabled={published}
+          onChange={(e) => setTargetDate(e.currentTarget.value)}
+        />
       </div>
 
-      <Button onClick={handleSave} disabled={!dirty || saving}>
+      {/* Disabled rather than hidden: a published release is meant to read
+          as frozen, and an absent form says nothing about why. The server
+          refuses too - this is the affordance, not the guard. */}
+      <Button onClick={handleSave} disabled={published || !dirty || saving}>
         <Save className="size-4" />
         {tr("release.detail.save")}
       </Button>

@@ -7,8 +7,8 @@ import { ReleaseController } from "../../api/controllers/ReleaseController.ts";
 import {
   releaseChangelogParamsSchema,
   releaseChangelogResultSchema,
-  releaseCloseParamsSchema,
-  releaseCloseResultSchema,
+  releasePublishParamsSchema,
+  releasePublishResultSchema,
   releaseListParamsSchema,
   releaseListResultSchema,
   releaseStartParamsSchema,
@@ -91,7 +91,7 @@ export class ReleaseTools {
    */
   milestone_list = $tool({
     description:
-      "List all releases for a project, open and closed. A release HOLDS the quests assigned to it - it is not a time window, and nothing is attached to it by having been completed while it was open. Several releases are open at once, and that is the normal state. Sorted by release number, newest first. Each entry includes id, number, title, description, createdAt, and closedAt (undefined while the release is open).",
+      "List all releases for a project, open and closed. A release HOLDS the quests assigned to it - it is not a time window, and nothing is attached to it by having been completed while it was open. Several releases are open at once, and that is the normal state. Sorted by release number, newest first. Each entry includes id, number, title, description, createdAt, and releasedAt (undefined while the release is open).",
     title: "List releases",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -113,8 +113,9 @@ export class ReleaseTools {
           id: ch.id,
           number: ch.number,
           title: ch.title,
+          tag: ch.tag,
           description: ch.description,
-          closedAt: ch.closedAt,
+          releasedAt: ch.releasedAt,
           createdAt: ch.createdAt,
         })),
       };
@@ -142,6 +143,7 @@ export class ReleaseTools {
       const release = await this.releaseController.createRelease({
         params: { projectId },
         body: {
+          tag: params.tag,
           title: params.title,
           description: params.description,
         },
@@ -157,20 +159,20 @@ export class ReleaseTools {
   });
 
   /**
-   * Close an open release.
+   * Publish an open release.
    */
   milestone_close = $tool({
     description:
-      "Close an open release, freezing its changelog. Nothing closes on a timer, so this is the only way a release closes.",
-    title: "Close release",
+      "Publish a release: stamps its release date and FREEZES its changelog and its four progress counts. One-way - `release_reopen` is the only way back, and a hotfix is a new release beside this one rather than a reopening of it.",
+    title: "Publish release",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
-      params: releaseCloseParamsSchema,
-      result: releaseCloseResultSchema,
+      params: releasePublishParamsSchema,
+      result: releasePublishResultSchema,
     },
     handler: async ({ params }) => {
       const id = await this.resolveReleaseId(params);
-      const release = await this.releaseController.closeRelease({
+      const release = await this.releaseController.publishRelease({
         params: { id },
         body: { title: params.title },
       });
@@ -179,7 +181,7 @@ export class ReleaseTools {
         id: release.id,
         number: release.number,
         title: release.title,
-        closedAt: release.closedAt!,
+        releasedAt: release.releasedAt!,
       };
     },
   });

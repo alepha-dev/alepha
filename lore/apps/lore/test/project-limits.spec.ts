@@ -185,13 +185,13 @@ describe("ProjectLimits enforcement", () => {
     // the cap is the only thing that can refuse the second one - which is
     // exactly what makes it worth a test.
     await ctx.releaseController.createRelease.fetch(
-      { params: { projectId: p.id }, body: { title: "0.1.0" } },
+      { params: { projectId: p.id }, body: { tag: "0.1.0" } },
       { user: owner },
     );
 
     await expect(
       ctx.releaseController.createRelease.fetch(
-        { params: { projectId: p.id }, body: { title: "0.2.0" } },
+        { params: { projectId: p.id }, body: { tag: "0.2.0" } },
         { user: owner },
       ),
     ).rejects.toThrowError(/maximum number of releases allowed \(1\)/);

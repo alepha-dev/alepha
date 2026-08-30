@@ -16,6 +16,10 @@ import {
   type ReleaseChangelogArea,
   releaseChangelogAreaSchema,
 } from "../schemas/releaseChangelogAreaSchema.ts";
+import {
+  RELEASE_TAG_PATTERN,
+  releaseTagSchema,
+} from "../schemas/releaseTagSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
 
@@ -111,17 +115,25 @@ export class ReleaseController {
       }),
       body: z.object({
         /**
-         * Required, unlike the release it replaced. The fantasy-name
-         * generator that filled this in is gone: a release is called
-         * `0.28.0`, and no generator can guess that.
+         * The release's identity. Required: the fantasy-name generator that
+         * used to fill a title in is gone, and a release is called `0.28.0`.
          */
-        title: z.string().min(1).max(100),
+        tag: releaseTagSchema,
+        /**
+         * Optional, and defaults to the tag server-side. Kept `NOT NULL` on
+         * the column: dropping a `NOT NULL` is not something SQLite's
+         * `ALTER TABLE` can do, so making it nullable would force a table
+         * rebuild. The rendered result is identical.
+         */
+        title: z.string().min(1).max(100).optional(),
         description: z.string().meta({ size: "rich" }).optional(),
-        tags: z.array(z.string()).optional(),
+        targetDate: z.datetime().optional(),
       }),
       response: releases.schema,
     },
     handler: async ({ params, body }) => {
+      const tag = this.assertTag(body.tag);
+
       // There is deliberately no "one open at a time" guard: `0.28.0`,
       // `1.0.0` and `1.1.0` are meant to coexist, and a hotfix is a new
       // release beside the one it patches rather than a state on it.
@@ -144,14 +156,26 @@ export class ReleaseController {
       return await this.releases.create({
         projectId: params.projectId,
         number,
-        title: body.title,
+        tag,
+        title: body.title ?? tag,
         description: body.description ?? "",
-        tags: body.tags ?? [],
+        ...(body.targetDate ? { targetDate: body.targetDate } : {}),
       });
     },
   });
 
-  closeRelease = $action({
+  /**
+   * Publish a release. A ONE-WAY door.
+   *
+   * It does not merely stamp `releasedAt`: it freezes the changelog AND the
+   * four progress counts onto the row, and `updateRelease` / attach / detach
+   * all refuse afterwards. A released release then renders entirely from its
+   * own row with no live query at all. Without that, completing a quest a
+   * month after `0.28.0` shipped would silently rewrite what `0.28.0`
+   * shipped, which is exactly the dishonesty the frozen changelog exists to
+   * prevent.
+   */
+  publishRelease = $action({
     use: [
       $secure({ permissions: ["quest:create"] }),
       this.ownsReleaseAsOwner(),
@@ -162,20 +186,62 @@ export class ReleaseController {
       }),
       body: z.object({
         title: z.string().min(1).max(100).optional(),
-        tags: z.array(z.string()).optional(),
       }),
       response: releases.schema,
     },
     handler: async ({ body }) => {
       const release = this.owned.get<Release>();
+      this.assertOpen(release);
 
-      if (release.closedAt) {
-        throw new BadRequestError("Release is already closed.");
+      const withTitle = body.title
+        ? { ...release, title: body.title }
+        : release;
+      const completed = await this.queryCompleted(release);
+      const { markdown } = this.renderChangelog(withTitle, completed);
+      const progress = await this.computeProgress(release);
+
+      return await this.releases.updateById(release.id, {
+        releasedAt: this.dt.nowISOString(),
+        changelog: markdown,
+        ...progress,
+        ...(body.title ? { title: body.title } : {}),
+      });
+    },
+  });
+
+  /**
+   * The only way back from published, and the reason publishing can be a
+   * one-way door without being a trap: "published by mistake" is real, and
+   * delete-and-recreate would burn the number and lose the tag.
+   *
+   * Clears everything publishing froze, so the release goes back to being
+   * computed live rather than keeping a snapshot nothing agrees with.
+   */
+  reopenRelease = $action({
+    use: [
+      $secure({ permissions: ["quest:create"] }),
+      this.ownsReleaseAsOwner(),
+    ],
+    schema: {
+      params: z.object({
+        id: z.integer(),
+      }),
+      response: releases.schema,
+    },
+    handler: async ({ params }) => {
+      const release = this.owned.get<Release>();
+
+      if (!release.releasedAt) {
+        throw new BadRequestError("Release is already open.");
       }
 
-      return await this.finalizeRelease(release, {
-        title: body.title,
-        tags: body.tags,
+      return await this.releases.updateById(params.id, {
+        releasedAt: null,
+        changelog: null,
+        completed: null,
+        inProgress: null,
+        shelved: null,
+        total: null,
       });
     },
   });
@@ -190,19 +256,25 @@ export class ReleaseController {
         id: z.integer(),
       }),
       body: z.object({
+        tag: releaseTagSchema.optional(),
         title: z.string().min(1).max(100).optional(),
         description: z.string().meta({ size: "rich" }).optional(),
-        tags: z.array(z.string()).optional(),
+        targetDate: z.datetime().nullable().optional(),
       }),
       response: releases.schema,
     },
     handler: async ({ params, body }) => {
+      this.assertOpen(this.owned.get<Release>());
+
       return await this.releases.updateById(params.id, {
+        ...(body.tag !== undefined ? { tag: this.assertTag(body.tag) } : {}),
         ...(body.title !== undefined ? { title: body.title } : {}),
         ...(body.description !== undefined
           ? { description: body.description }
           : {}),
-        ...(body.tags !== undefined ? { tags: body.tags } : {}),
+        ...(body.targetDate !== undefined
+          ? { targetDate: body.targetDate ?? null }
+          : {}),
       });
     },
   });
@@ -265,9 +337,9 @@ export class ReleaseController {
       const completed = await this.queryCompleted(release);
       const { areas, stats } = this.summarize(completed);
 
-      // Closed releases return the frozen markdown snapshot when there is
-      // one; `areas` is recomputed either way.
-      if (release.closedAt && release.changelog) {
+      // A released release returns the frozen markdown snapshot; `areas` is
+      // recomputed either way.
+      if (release.releasedAt && release.changelog) {
         return { markdown: release.changelog, release, areas, stats };
       }
 
@@ -277,29 +349,70 @@ export class ReleaseController {
   });
 
   /**
-   * Render the changelog markdown and persist it on the release row, along
-   * with `closedAt` and any caller-supplied metadata.
+   * Trim, then test the tag's shape.
+   *
+   * The pattern is checked HERE rather than folded into `releaseTagSchema`,
+   * for the reason `appNameSchema` writes down: a schema rejection fires
+   * before the handler runs, so the handler could not trim first. Unlike an
+   * app name the tag is NOT lowercased — see `releaseTagSchema.ts`.
    */
-  async finalizeRelease(
-    release: Release,
-    overrides: { title?: string; tags?: string[] } = {},
-  ): Promise<Release> {
-    const completed = await this.queryCompleted(release);
-    const { markdown } = this.renderChangelog(
-      {
-        ...release,
-        title: overrides.title ?? release.title,
-        tags: overrides.tags ?? release.tags,
-      },
-      completed,
-    );
+  protected assertTag(raw: string): string {
+    const tag = raw.trim();
+    if (!RELEASE_TAG_PATTERN.test(tag)) {
+      throw new BadRequestError(
+        "A release tag may contain letters, digits and interior dots, underscores or hyphens - for example `0.28.0`, `v1.0.0-rc.1` or `demo-1`.",
+      );
+    }
+    return tag;
+  }
 
-    return await this.releases.updateById(release.id, {
-      closedAt: this.dt.nowISOString(),
-      changelog: markdown,
-      ...(overrides.title ? { title: overrides.title } : {}),
-      ...(overrides.tags !== undefined ? { tags: overrides.tags } : {}),
-    });
+  /**
+   * Refuse anything that would rewrite what a published release shipped.
+   *
+   * `reopenRelease` is the single deliberate way past this.
+   */
+  protected assertOpen(release: Release): void {
+    if (release.releasedAt) {
+      throw new BadRequestError(
+        "This release has been published. Reopen it before changing what it contains.",
+      );
+    }
+  }
+
+  /**
+   * The four progress buckets over a release's quests.
+   *
+   * Disjoint by construction, so a reader derives the untouched remainder as
+   * `total - completed - inProgress - shelved` without a fifth count:
+   * `shelvedAt` is only ever set on a quest still in `new` status, so it never
+   * coexists with `acceptedAt` or `completedAt`, and `inProgress` excludes
+   * both of the others. Same shape as `EpicController.computeProgress`.
+   *
+   * Called at publish and stamped onto the row. #1555 is what serves it live
+   * for an open release.
+   */
+  protected async computeProgress(release: Release): Promise<{
+    completed: number;
+    inProgress: number;
+    shelved: number;
+    total: number;
+  }> {
+    const scope = {
+      projectId: { eq: release.projectId },
+      releaseId: { eq: release.id },
+    };
+    const [total, completed, inProgress, shelved] = await Promise.all([
+      this.quests.count(scope),
+      this.quests.count({ ...scope, completedAt: { isNotNull: true } }),
+      this.quests.count({
+        ...scope,
+        acceptedAt: { isNotNull: true },
+        completedAt: { isNull: true },
+      }),
+      this.quests.count({ ...scope, shelvedAt: { isNotNull: true } }),
+    ]);
+
+    return { completed, inProgress, shelved, total };
   }
 
   /**
@@ -388,13 +501,8 @@ export class ReleaseController {
     }
 
     const lines: string[] = [];
-    lines.push(`# Release ${release.number}: ${release.title}`);
+    lines.push(`# Release ${release.tag ?? release.number}: ${release.title}`);
     lines.push("");
-
-    if (release.tags?.length) {
-      lines.push(`_Tags:_ ${release.tags.map((t) => `\`${t}\``).join(" ")}`);
-      lines.push("");
-    }
 
     if (release.description) {
       lines.push(release.description);

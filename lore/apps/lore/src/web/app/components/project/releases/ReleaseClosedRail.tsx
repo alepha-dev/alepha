@@ -63,8 +63,8 @@ const ReleaseClosedRail = (props: ReleaseClosedRailProps) => {
                   {tr("release.ledger.closed.meta", {
                     args: [
                       String(
-                        release.closedAt
-                          ? i18n.l(release.closedAt, { date: "ll" })
+                        release.releasedAt
+                          ? i18n.l(release.releasedAt, { date: "ll" })
                           : "",
                       ),
                     ],
