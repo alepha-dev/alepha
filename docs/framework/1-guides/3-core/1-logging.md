@@ -212,22 +212,24 @@ class App {
   log = $logger();
 }
 
-test("should log info message", ({ expect }) => {
-  const alepha = Alepha.create({
-    env: { LOG_LEVEL: "trace" },
-  }).with({
-    provide: LogDestinationProvider,
-    use: MemoryDestinationProvider,
+describe("$logger", () => {
+  it("should log info message", ({ expect }) => {
+    const alepha = Alepha.create({
+      env: { LOG_LEVEL: "trace" },
+    }).with({
+      provide: LogDestinationProvider,
+      use: MemoryDestinationProvider,
+    });
+
+    const output = alepha.inject(MemoryDestinationProvider);
+    const app = alepha.inject(App);
+
+    app.log.info("Test log message");
+
+    expect(output.logs[0].message).toBe("Test log message");
+    expect(output.logs[0].level).toBe("INFO");
+    expect(output.logs[0].service).toBe("App");
   });
-
-  const output = alepha.inject(MemoryDestinationProvider);
-  const app = alepha.inject(App);
-
-  app.log.info("Test log message");
-
-  expect(output.logs[0].message).toBe("Test log message");
-  expect(output.logs[0].level).toBe("INFO");
-  expect(output.logs[0].service).toBe("App");
 });
 ```
 

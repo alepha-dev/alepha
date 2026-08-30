@@ -324,3 +324,91 @@ describe("useFolioDraft — revisionsAt tracks the revision list, not the save",
     expect(read()?.revisionsAt).toBe("2026-01-01T03:00:00.000Z");
   });
 });
+
+describe("useFolioDraft — adoptTitle", () => {
+  const mount = (alepha: Alepha, ui: React.ReactNode) =>
+    render(
+      <AlephaContext.Provider value={alepha}>{ui}</AlephaContext.Provider>,
+    );
+
+  /**
+   * The tree's inline rename cannot reach this buffer: it PATCHes the row
+   * and writes `userFoliosAtom`, while the draft was seeded once from the
+   * route loader's snapshot. Every save path then sent the stale title, so
+   * a rename made before the editor's first save was reverted by it.
+   *
+   * `adoptTitle` is the narrow way in. The two claims below are what make
+   * it narrow, and both were available to get wrong: `markSaved` would have
+   * taken the unsaved body with it, `touchSavedAt` would have left the
+   * adopted title reading as an unsaved edit of the user's own.
+   */
+  it("takes the new title and treats it as persisted", async ({ expect }) => {
+    const alepha = Alepha.create().with(AlephaLogger);
+    let draft: FolioDraft | undefined;
+
+    const Widget = () => {
+      draft = useFolioDraft(baseFolio());
+      return (
+        <div>
+          <span data-testid="title">{draft.values.title}</span>
+          <span data-testid="dirty">{draft.dirty ? "dirty" : "clean"}</span>
+        </div>
+      );
+    };
+
+    const { getByTestId } = mount(alepha, <Widget />);
+    expect(getByTestId("title").textContent).toBe("Original title");
+
+    act(() => {
+      draft?.adoptTitle("Renamed in the tree", "2026-01-01T00:05:00.000Z");
+    });
+
+    await waitFor(() =>
+      expect(getByTestId("title").textContent).toBe("Renamed in the tree"),
+    );
+    // Not an unsaved edit: the server is where this title came from.
+    expect(getByTestId("dirty").textContent).toBe("clean");
+    expect(draft?.savedAt).toBe("2026-01-01T00:05:00.000Z");
+  });
+
+  it("leaves an unsaved body edit dirty, and intact", async ({ expect }) => {
+    const alepha = Alepha.create().with(AlephaLogger);
+    let draft: FolioDraft | undefined;
+
+    const Widget = () => {
+      draft = useFolioDraft(baseFolio());
+      return (
+        <div>
+          <input
+            data-testid="content"
+            value={draft.values.content}
+            onChange={(e) => draft?.form.input.content.set(e.target.value)}
+          />
+          <span data-testid="title">{draft.values.title}</span>
+          <span data-testid="dirty">{draft.dirty ? "dirty" : "clean"}</span>
+        </div>
+      );
+    };
+
+    const { getByTestId } = mount(alepha, <Widget />);
+
+    fireEvent.change(getByTestId("content"), {
+      target: { value: "a paragraph the server has never seen" },
+    });
+    await waitFor(() => expect(getByTestId("dirty").textContent).toBe("dirty"));
+
+    act(() => {
+      draft?.adoptTitle("Renamed in the tree", "2026-01-01T00:05:00.000Z");
+    });
+
+    await waitFor(() =>
+      expect(getByTestId("title").textContent).toBe("Renamed in the tree"),
+    );
+    // The half `markSaved` would have got wrong: adopting the whole buffer
+    // as the baseline would report "Saved" over a body nothing persisted.
+    expect(getByTestId("dirty").textContent).toBe("dirty");
+    expect((getByTestId("content") as HTMLInputElement).value).toBe(
+      "a paragraph the server has never seen",
+    );
+  });
+});

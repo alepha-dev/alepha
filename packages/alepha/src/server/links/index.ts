@@ -40,6 +40,7 @@ declare module "alepha" {
      */
     "alepha.server.links.options": {
       batch: boolean;
+      remoteRegistryTtl: number;
     };
   }
 }

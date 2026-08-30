@@ -1,11 +1,18 @@
 import {
+  acceptCompletion,
   autocompletion,
   type CompletionSource,
   closeBrackets,
   closeBracketsKeymap,
   completionKeymap,
 } from "@codemirror/autocomplete";
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import {
+  copyLineDown,
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentWithTab,
+} from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
@@ -167,15 +174,117 @@ const loreTheme = EditorView.theme({
     color: "var(--color-popover-foreground)",
     border: "1px solid var(--color-border)",
   },
-  ".cm-tooltip": {
-    backgroundColor: "var(--color-popover)",
-    color: "var(--color-popover-foreground)",
-    border: "1px solid var(--color-border)",
-    borderRadius: "var(--radius-md)",
+  // The ⌘F panel, dressed as Lore chrome.
+  //
+  // `.cm-panels` above themed the FRAME and nothing inside it, so the strip
+  // was a dark Lore border around a white row of native `<input>`s, native
+  // grey buttons and three unlabelled native checkboxes. It could not just
+  // be dropped: `useFolioFind` walks the RENDERED pane's text nodes, and
+  // CodeMirror virtualizes its viewport, so the View-mode find silently
+  // misses every match scrolled out of sight. `@codemirror/search` is the
+  // only correct find for Edit mode; the panel was the problem, not the
+  // search.
+  //
+  // Themed here rather than replaced by `FolioFindBar` because
+  // `codeMirrorSetup.ts` backs EVERY markdown surface in Lore. Driving the
+  // extension from the find bar would give the folio workspace one bar for
+  // both modes and leave quest descriptions and comments with this same raw
+  // panel — the fix has to live where the editor does.
+  //
+  // Every value is a `var(--color-*)` token, so all of it follows light,
+  // dark and each Lore theme with nothing per-theme to maintain.
+  ".cm-panel.cm-search": {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: "0.375rem",
+    padding: "0.375rem 1.75rem 0.375rem 0.5rem",
+    fontFamily: "var(--font-sans)",
+    fontSize: "12px",
+    "& br": { display: "none" },
+    "& .cm-textfield": {
+      margin: "0",
+      height: "1.75rem",
+      fontSize: "12px",
+      color: "var(--color-foreground)",
+      backgroundColor: "var(--color-background)",
+      border: "1px solid var(--color-border)",
+      borderRadius: "var(--radius-md)",
+      padding: "0 0.5rem",
+      outline: "none",
+    },
+    "& .cm-textfield:focus-visible": {
+      borderColor: "var(--color-ring)",
+      boxShadow:
+        "0 0 0 3px color-mix(in oklch, var(--color-ring) 50%, transparent)",
+    },
+    "& .cm-button": {
+      margin: "0",
+      height: "1.75rem",
+      fontSize: "12px",
+      lineHeight: "1",
+      padding: "0 0.625rem",
+      color: "var(--color-foreground)",
+      backgroundColor: "transparent",
+      backgroundImage: "none",
+      border: "1px solid var(--color-border)",
+      borderRadius: "var(--radius-md)",
+      cursor: "pointer",
+    },
+    "& .cm-button:hover": {
+      backgroundColor: "var(--color-accent)",
+      color: "var(--color-accent-foreground)",
+    },
+    "& .cm-button:active": { backgroundImage: "none" },
+    "& label": {
+      margin: "0",
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "0.25rem",
+      fontSize: "11px",
+      color: "var(--color-muted-foreground)",
+      whiteSpace: "nowrap",
+      cursor: "pointer",
+    },
+    "& input[type=checkbox]": {
+      margin: "0",
+      accentColor: "var(--color-primary)",
+      cursor: "pointer",
+    },
+    "& [name=close]": {
+      top: "0.25rem",
+      right: "0.375rem",
+      fontSize: "16px",
+      lineHeight: "1",
+      color: "var(--color-muted-foreground)",
+      cursor: "pointer",
+    },
+    "& [name=close]:hover": { color: "var(--color-foreground)" },
   },
-  ".cm-tooltip-autocomplete > ul > li[aria-selected]": {
-    backgroundColor: "var(--color-accent)",
-    color: "var(--color-accent-foreground)",
+  // The match highlights, which the stock theme paints as raw yellow/orange
+  // in light and cyan/magenta in dark.
+  //
+  // These are the ONLY literals in this theme, and deliberately so: they are
+  // the same oklch values `::highlight(folio-find)` uses in `main.css`, so
+  // ⌘F paints the same colour whichever mode you are in. A token would
+  // decouple them and let the two finds drift apart, which is the thing
+  // worth preventing here.
+  // Outranked by specificity, not by mount order. The stock rules are
+  // `&light .cm-searchMatch`, which `EditorView.baseTheme` expands to a
+  // two-class selector — exactly what a plain `.cm-searchMatch` here would
+  // produce, leaving which one wins to stylesheet order. Qualifying with
+  // `.cm-content` adds the class that settles it.
+  //
+  // ⚠️ `&light` / `&dark` are `baseTheme` syntax and throw here:
+  // "Unsupported selector: &light", at module scope, which takes the whole
+  // lazy editor chunk down into the error boundary. Same colour on both
+  // sides anyway — find should not change colour when the theme does.
+  ".cm-content .cm-searchMatch": {
+    backgroundColor: "oklch(0.696 0.17 162.48 / 32%)",
+  },
+  ".cm-content .cm-searchMatch.cm-searchMatch-selected": {
+    backgroundColor: "oklch(0.696 0.17 162.48)",
+    color: "oklch(0.16 0 0)",
   },
   // The gutter is only ever mounted behind `options.lineNumbers`, but it is
   // themed unconditionally — a theme is a stylesheet, not an extension, and
@@ -256,8 +365,49 @@ export const createMarkdownExtensions = (
       ...closeBracketsKeymap,
       ...defaultKeymap,
       ...historyKeymap,
+      // ⚠️ MUST stay ahead of `searchKeymap`, which claims Mod-d for
+      // `selectNextOccurrence`. A keymap runs its bindings in array order
+      // and stops at the first that returns true, so moving this line down
+      // silently gives the key back to multi-cursor select.
+      //
+      // The stock home for `copyLineDown` is Shift-Alt-ArrowDown. It is
+      // bound here as well because ⌘D means duplicate-line to anyone who
+      // has used an editor, and this surface used to answer that reflex by
+      // creating a whole new folio — `folio.duplicate` held `mod+d` on a
+      // capture-phase window listener, with no dialog to cancel. That
+      // binding now stands aside in Edit mode (`EDITOR_OWNED_BINDINGS` in
+      // `folioMenubarModel.ts`), which is what frees the key to reach here.
+      { key: "Mod-d", run: copyLineDown },
       ...searchKeymap,
       ...completionKeymap,
+      // Tab indents, which `defaultKeymap` deliberately does not do:
+      // upstream leaves the key to the browser so a keyboard-only user can
+      // tab back out of the field. Without it, Tab in a folio moved focus
+      // to the Preview button and a nested list could only be indented by
+      // typing spaces.
+      //
+      // Two bindings ahead of `indentWithTab`, in this order:
+      //
+      // `acceptCompletion` first, because `completionKeymap` puts accept on
+      // Enter and claims no Tab at all — so with the `[[` wiki-link picker
+      // open, Tab would otherwise indent the line under it. It returns
+      // false when no picker is open, falling through.
+      { key: "Tab", run: acceptCompletion },
+      indentWithTab,
+      // The escape hatch upstream's omission was protecting needs NO binding
+      // here, which is worth stating because the obvious reading of
+      // CodeMirror's own advice is to add one. `@codemirror/view`'s built-in
+      // `handlers.keydown` arms tab-focus mode for two seconds on any
+      // Escape and returns false, and `InputState.keydown` then lets the
+      // next Tab through untouched — so Escape-then-Tab leaves the editor,
+      // and Escape still reaches the drawer this surface is mounted inside.
+      // Binding `temporarilySetTabFocusMode` ourselves would return true,
+      // making the keymap `preventDefault()` and swallow Escape from
+      // everything around it, to arm a mode that was already armed.
+      //
+      // Without that hatch, `indentWithTab` would make this a keyboard trap
+      // (WCAG 2.1.2). `CodeMirrorEditor` advertises it; the spec pins
+      // `setTabFocusMode` so a CodeMirror upgrade cannot remove it quietly.
     ]),
   ];
 

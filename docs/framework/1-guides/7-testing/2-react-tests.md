@@ -48,12 +48,14 @@ import { renderWithAlepha, setupJsdomMocks } from "alepha/react/testing";
 
 beforeAll(() => setupJsdomMocks());
 
-test("should render greeting", async () => {
-  const { getByText, alepha } = await renderWithAlepha(
-    <Greeting name="Alice" />,
-  );
+describe("Greeting", () => {
+  it("should render greeting", async () => {
+    const { getByText, alepha } = await renderWithAlepha(
+      <Greeting name="Alice" />,
+    );
 
-  expect(getByText("Hello, Alice")).toBeDefined();
+    expect(getByText("Hello, Alice")).toBeDefined();
+  });
 });
 ```
 
@@ -66,15 +68,17 @@ Pass a pre-configured Alepha instance to swap services or providers:
 ```tsx
 import { renderWithAlepha } from "alepha/react/testing";
 
-test("should render with mocked service", async () => {
-  const alepha = Alepha.create().with({
-    provide: UserService,
-    use: FakeUserService,
+describe("UserProfile", () => {
+  it("should render with mocked service", async () => {
+    const alepha = Alepha.create().with({
+      provide: UserService,
+      use: FakeUserService,
+    });
+
+    const { getByText } = await renderWithAlepha(<UserProfile />, { alepha });
+
+    expect(getByText("Fake User")).toBeDefined();
   });
-
-  const { getByText } = await renderWithAlepha(<UserProfile />, { alepha });
-
-  expect(getByText("Fake User")).toBeDefined();
 });
 ```
 
@@ -86,12 +90,14 @@ Use the `wrapper` option to add UI framework providers (theme, i18n):
 import { renderWithAlepha } from "alepha/react/testing";
 import { ThemeProvider } from "my-ui-library";
 
-test("should render themed component", async () => {
-  const { getByRole } = await renderWithAlepha(<Button>Click me</Button>, {
-    wrapper: ThemeProvider,
-  });
+describe("Button", () => {
+  it("should render themed component", async () => {
+    const { getByRole } = await renderWithAlepha(<Button>Click me</Button>, {
+      wrapper: ThemeProvider,
+    });
 
-  expect(getByRole("button")).toBeDefined();
+    expect(getByRole("button")).toBeDefined();
+  });
 });
 ```
 
@@ -111,18 +117,20 @@ import { screen } from "@testing-library/react";
 
 beforeAll(() => setupJsdomMocks());
 
-test("should submit login form", async () => {
-  const { alepha } = await renderWithAlepha(<LoginForm />);
+describe("LoginForm", () => {
+  it("should submit login form", async () => {
+    const { alepha } = await renderWithAlepha(<LoginForm />);
 
-  await fillForm(screen, "login-form", {
-    email: "alice@example.com",
-    password: "secret123",
+    await fillForm(screen, "login-form", {
+      email: "alice@example.com",
+      password: "secret123",
+    });
+
+    await submitForm(screen, { submitButtonText: "Login" });
+
+    // Optionally wait for submission to complete
+    await waitForFormSubmit(alepha, "login-form");
   });
-
-  await submitForm(screen, { submitButtonText: "Login" });
-
-  // Optionally wait for submission to complete
-  await waitForFormSubmit(alepha, "login-form");
 });
 ```
 

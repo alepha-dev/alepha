@@ -75,9 +75,16 @@ const QuestCompletionDialog = (props: QuestCompletionDialogProps) => {
         #171 — the fix that matters is `min-w-0` on the editor wrapper plus a
         scrollable toolbar, without which a wider dialog only moves the
         breakpoint to a narrower viewport.
+
+        The height half is `max-h-[85vh]` plus `flex flex-col`, replacing
+        `DialogContent`'s own `grid`. The dialog is `fixed top-1/2
+        -translate-y-1/2`, so an unbounded one grows past the viewport in
+        BOTH directions at once: with ~15 unticked objectives the waiver
+        list pushed the summary editor and the confirm button off screen and
+        the quest could not be closed at all.
       */}
-      <DialogContent className="sm:max-w-3xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-3xl">
+        <DialogHeader className="shrink-0">
           <DialogTitle>{tr("quest.view.complete.title")}</DialogTitle>
           <DialogDescription>
             {tr("quest.view.complete.description")}
@@ -88,44 +95,58 @@ const QuestCompletionDialog = (props: QuestCompletionDialogProps) => {
             this quest asks first, and answering it is also what unlocks the
             button. */}
         {props.unticked.length > 0 && (
-          <div className="border-border flex flex-col gap-3 rounded-md border px-3 py-3">
-            <p className="text-muted-foreground flex items-start gap-2 text-xs">
+          <div className="border-border flex min-h-0 flex-1 flex-col gap-3 rounded-md border px-3 py-3">
+            <p className="text-muted-foreground flex shrink-0 items-start gap-2 text-xs">
               <SquareSlash className="mt-0.5 size-3.5 shrink-0" />
               <span>{tr("quest.view.complete.waive.hint")}</span>
             </p>
-            {props.unticked.map((objective) => (
-              <label key={objective.id} className="flex flex-col gap-1">
-                <span className="text-sm">{objective.title}</span>
-                <Input
-                  value={reasons[objective.id] ?? ""}
-                  onChange={(event) =>
-                    setReasons((current) => ({
-                      ...current,
-                      [objective.id]: event.target.value,
-                    }))
-                  }
-                  placeholder={String(
-                    tr("quest.view.complete.waive.placeholder"),
-                  )}
-                  disabled={props.submitting}
-                />
-              </label>
-            ))}
+            {/* The one unbounded region, so the one that scrolls. The hint
+                above stays put — it explains the fields, and a hint that
+                scrolls away is a hint nobody reads. `min-h-0` on both this
+                and its parent, because a flex item defaults to
+                `min-height: auto` and would refuse to shrink below its
+                content however small the cap. */}
+            <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
+              {props.unticked.map((objective) => (
+                <label key={objective.id} className="flex flex-col gap-1">
+                  <span className="text-sm">{objective.title}</span>
+                  <Input
+                    value={reasons[objective.id] ?? ""}
+                    onChange={(event) =>
+                      setReasons((current) => ({
+                        ...current,
+                        [objective.id]: event.target.value,
+                      }))
+                    }
+                    placeholder={String(
+                      tr("quest.view.complete.waive.placeholder"),
+                    )}
+                    disabled={props.submitting}
+                  />
+                </label>
+              ))}
+            </div>
           </div>
         )}
 
-        <LoreEditor
-          element={{
-            kind: "quest",
-            projectId: project?.id ?? 0,
-            projectSlug: project?.slug ?? "",
-          }}
-          value={message}
-          onChange={setMessage}
-          placeholder={tr("quest.view.complete.placeholder")}
-          minHeight={200}
-        />
-        <DialogFooter className="gap-2">
+        {/* `shrink-0` so the waiver list above is what gives way. The
+            editor's own `minHeight` would hold it at 200px regardless, but
+            saying so here keeps the intent next to the layout that depends
+            on it. */}
+        <div className="shrink-0">
+          <LoreEditor
+            element={{
+              kind: "quest",
+              projectId: project?.id ?? 0,
+              projectSlug: project?.slug ?? "",
+            }}
+            value={message}
+            onChange={setMessage}
+            placeholder={tr("quest.view.complete.placeholder")}
+            minHeight={200}
+          />
+        </div>
+        <DialogFooter className="shrink-0 gap-2">
           <Button
             type="button"
             variant="ghost"

@@ -1,4 +1,4 @@
-import { test } from "vitest";
+import { describe, it } from "vitest";
 
 // Simple mock for testing template functionality without full Alepha setup
 class MockReactServerProvider {
@@ -86,230 +86,220 @@ const setup = (env?: any) => {
   return { provider };
 };
 
-test("ReactServerProvider - preprocessTemplate with existing root div", async ({
-  expect,
-}) => {
-  const { provider } = setup();
+describe("ReactServerProvider", () => {
+  it("preprocessTemplate with existing root div", async ({ expect }) => {
+    const { provider } = setup();
 
-  const template = `<!DOCTYPE html>
-<html>
-<head><title>Test</title></head>
-<body>
-  <div id="root">existing content</div>
-</body>
-</html>`;
+    const template = `<!DOCTYPE html>
+  <html>
+  <head><title>Test</title></head>
+  <body>
+    <div id="root">existing content</div>
+  </body>
+  </html>`;
 
-  const preprocessed = provider.preprocessTemplate(template);
+    const preprocessed = provider.preprocessTemplate(template);
 
-  expect(preprocessed.beforeApp).toBe(
-    `<!DOCTYPE html>
-<html>
-<head><title>Test</title></head>
-<body>
-  <div id="root">`,
-  );
-  expect(preprocessed.afterApp).toBe(`</div>
-`);
-  expect(preprocessed.beforeScript).toBe("");
-  expect(preprocessed.afterScript).toBe(`</body>
-</html>`);
-});
+    expect(preprocessed.beforeApp).toBe(
+      `<!DOCTYPE html>
+  <html>
+  <head><title>Test</title></head>
+  <body>
+    <div id="root">`,
+    );
+    expect(preprocessed.afterApp).toBe(`</div>
+  `);
+    expect(preprocessed.beforeScript).toBe("");
+    expect(preprocessed.afterScript).toBe(`</body>
+  </html>`);
+  });
 
-test("ReactServerProvider - preprocessTemplate without root div", async ({
-  expect,
-}) => {
-  const { provider } = setup();
+  it("preprocessTemplate without root div", async ({ expect }) => {
+    const { provider } = setup();
 
-  const template = `<!DOCTYPE html>
-<html>
-<head><title>Test</title></head>
-<body>
-  <h1>Welcome</h1>
-</body>
-</html>`;
+    const template = `<!DOCTYPE html>
+  <html>
+  <head><title>Test</title></head>
+  <body>
+    <h1>Welcome</h1>
+  </body>
+  </html>`;
 
-  const preprocessed = provider.preprocessTemplate(template);
+    const preprocessed = provider.preprocessTemplate(template);
 
-  expect(preprocessed.beforeApp).toBe(
-    `<!DOCTYPE html>
-<html>
-<head><title>Test</title></head>
-<body><div id="root">`,
-  );
-  expect(preprocessed.afterApp).toBe(`</div>
-  <h1>Welcome</h1>
-`);
-  expect(preprocessed.beforeScript).toBe("");
-  expect(preprocessed.afterScript).toBe(`</body>
-</html>`);
-});
+    expect(preprocessed.beforeApp).toBe(
+      `<!DOCTYPE html>
+  <html>
+  <head><title>Test</title></head>
+  <body><div id="root">`,
+    );
+    expect(preprocessed.afterApp).toBe(`</div>
+    <h1>Welcome</h1>
+  `);
+    expect(preprocessed.beforeScript).toBe("");
+    expect(preprocessed.afterScript).toBe(`</body>
+  </html>`);
+  });
 
-test("ReactServerProvider - preprocessTemplate with custom root ID", async ({
-  expect,
-}) => {
-  const { provider } = setup({ REACT_ROOT_ID: "app" });
+  it("preprocessTemplate with custom root ID", async ({ expect }) => {
+    const { provider } = setup({ REACT_ROOT_ID: "app" });
 
-  const template = `<!DOCTYPE html>
-<html>
-<head><title>Test</title></head>
-<body>
-  <div id="app">existing content</div>
-</body>
-</html>`;
+    const template = `<!DOCTYPE html>
+  <html>
+  <head><title>Test</title></head>
+  <body>
+    <div id="app">existing content</div>
+  </body>
+  </html>`;
 
-  const preprocessed = provider.preprocessTemplate(template);
+    const preprocessed = provider.preprocessTemplate(template);
 
-  expect(preprocessed.beforeApp).toBe(
-    `<!DOCTYPE html>
-<html>
-<head><title>Test</title></head>
-<body>
-  <div id="app">`,
-  );
-  expect(preprocessed.afterApp).toBe(`</div>
-`);
-});
+    expect(preprocessed.beforeApp).toBe(
+      `<!DOCTYPE html>
+  <html>
+  <head><title>Test</title></head>
+  <body>
+    <div id="app">`,
+    );
+    expect(preprocessed.afterApp).toBe(`</div>
+  `);
+  });
 
-test("ReactServerProvider - preprocessTemplate with root div with attributes", async ({
-  expect,
-}) => {
-  const { provider } = setup();
+  it("preprocessTemplate with root div with attributes", async ({ expect }) => {
+    const { provider } = setup();
 
-  const template = `<!DOCTYPE html>
-<html>
-<body>
-  <div class="container" id="root" data-test="true">existing content</div>
-</body>
-</html>`;
+    const template = `<!DOCTYPE html>
+  <html>
+  <body>
+    <div class="container" id="root" data-test="true">existing content</div>
+  </body>
+  </html>`;
 
-  const preprocessed = provider.preprocessTemplate(template);
+    const preprocessed = provider.preprocessTemplate(template);
 
-  expect(preprocessed.beforeApp).toBe(
-    `<!DOCTYPE html>
-<html>
-<body>
-  <div class="container" id="root" data-test="true">`,
-  );
-  expect(preprocessed.afterApp).toBe(`</div>
-`);
-});
+    expect(preprocessed.beforeApp).toBe(
+      `<!DOCTYPE html>
+  <html>
+  <body>
+    <div class="container" id="root" data-test="true">`,
+    );
+    expect(preprocessed.afterApp).toBe(`</div>
+  `);
+  });
 
-test("ReactServerProvider - preprocessTemplate fallback (no body tag)", async ({
-  expect,
-}) => {
-  const { provider } = setup();
+  it("preprocessTemplate fallback (no body tag)", async ({ expect }) => {
+    const { provider } = setup();
 
-  const template = `<html><div>content</div></html>`;
+    const template = `<html><div>content</div></html>`;
 
-  const preprocessed = provider.preprocessTemplate(template);
+    const preprocessed = provider.preprocessTemplate(template);
 
-  expect(preprocessed.beforeApp).toBe(`<div id="root">`);
-  expect(preprocessed.afterApp).toBe(`</div>`);
-  expect(preprocessed.beforeScript).toBe(`<html><div>content</div></html>`);
-  expect(preprocessed.afterScript).toBe(``);
-});
+    expect(preprocessed.beforeApp).toBe(`<div id="root">`);
+    expect(preprocessed.afterApp).toBe(`</div>`);
+    expect(preprocessed.beforeScript).toBe(`<html><div>content</div></html>`);
+    expect(preprocessed.afterScript).toBe(``);
+  });
 
-test("ReactServerProvider - fillTemplate concatenation", async ({ expect }) => {
-  const { provider } = setup();
+  it("fillTemplate concatenation", async ({ expect }) => {
+    const { provider } = setup();
 
-  const template = `<!DOCTYPE html>
-<html>
-<head><title>Test</title></head>
-<body>
-  <div id="root">existing</div>
-</body>
-</html>`;
+    const template = `<!DOCTYPE html>
+  <html>
+  <head><title>Test</title></head>
+  <body>
+    <div id="root">existing</div>
+  </body>
+  </html>`;
 
-  // Preprocess the template
-  const preprocessed = provider.preprocessTemplate(template);
-  (provider as any).preprocessedTemplate = preprocessed;
+    // Preprocess the template
+    const preprocessed = provider.preprocessTemplate(template);
+    (provider as any).preprocessedTemplate = preprocessed;
 
-  const response = { html: "" };
-  const app = "<h1>Hello World</h1>";
-  const script =
-    '<script id="__ssr" type="application/json">{"test":true}</script>';
+    const response = { html: "" };
+    const app = "<h1>Hello World</h1>";
+    const script =
+      '<script id="__ssr" type="application/json">{"test":true}</script>';
 
-  provider.fillTemplate(response, app, script);
+    provider.fillTemplate(response, app, script);
 
-  const expected = `<!DOCTYPE html>
-<html>
-<head><title>Test</title></head>
-<body>
-  <div id="root"><h1>Hello World</h1></div>
-<script id="__ssr" type="application/json">{"test":true}</script></body>
-</html>`;
+    const expected = `<!DOCTYPE html>
+  <html>
+  <head><title>Test</title></head>
+  <body>
+    <div id="root"><h1>Hello World</h1></div>
+  <script id="__ssr" type="application/json">{"test":true}</script></body>
+  </html>`;
 
-  expect(response.html).toBe(expected);
-});
+    expect(response.html).toBe(expected);
+  });
 
-test("ReactServerProvider - fillTemplate without preprocessed template (fallback)", async ({
-  expect,
-}) => {
-  const { provider } = setup();
+  it("fillTemplate without preprocessed template (fallback)", async ({
+    expect,
+  }) => {
+    const { provider } = setup();
 
-  const template = `<!DOCTYPE html>
-<html>
-<body>
-  <div id="root">existing</div>
-</body>
-</html>`;
+    const template = `<!DOCTYPE html>
+  <html>
+  <body>
+    <div id="root">existing</div>
+  </body>
+  </html>`;
 
-  const response = { html: template };
-  const app = "<h1>Hello World</h1>";
-  const script =
-    '<script id="__ssr" type="application/json">{"test":true}</script>';
+    const response = { html: template };
+    const app = "<h1>Hello World</h1>";
+    const script =
+      '<script id="__ssr" type="application/json">{"test":true}</script>';
 
-  // Don't set preprocessedTemplate to test fallback
-  (provider as any).preprocessedTemplate = null;
+    // Don't set preprocessedTemplate to test fallback
+    (provider as any).preprocessedTemplate = null;
 
-  provider.fillTemplate(response, app, script);
+    provider.fillTemplate(response, app, script);
 
-  const expected = `<!DOCTYPE html>
-<html>
-<body>
-  <div id="root"><h1>Hello World</h1></div>
-<script id="__ssr" type="application/json">{"test":true}</script></body>
-</html>`;
+    const expected = `<!DOCTYPE html>
+  <html>
+  <body>
+    <div id="root"><h1>Hello World</h1></div>
+  <script id="__ssr" type="application/json">{"test":true}</script></body>
+  </html>`;
 
-  expect(response.html).toBe(expected);
-});
+    expect(response.html).toBe(expected);
+  });
 
-test("ReactServerProvider - fillTemplate performance comparison", async ({
-  expect,
-}) => {
-  const { provider } = setup();
+  it("fillTemplate performance comparison", async ({ expect }) => {
+    const { provider } = setup();
 
-  const template = `<!DOCTYPE html>
-<html>
-<head><title>Performance Test</title></head>
-<body>
-  <div id="root">existing content</div>
-  <script>console.log('existing');</script>
-</body>
-</html>`;
+    const template = `<!DOCTYPE html>
+  <html>
+  <head><title>Performance Test</title></head>
+  <body>
+    <div id="root">existing content</div>
+    <script>console.log('existing');</script>
+  </body>
+  </html>`;
 
-  const app = "<div><h1>Hello World</h1><p>This is a test</p></div>";
-  const script =
-    '<script id="__ssr" type="application/json">{"data":"value","count":42}</script>';
+    const app = "<div><h1>Hello World</h1><p>This is a test</p></div>";
+    const script =
+      '<script id="__ssr" type="application/json">{"data":"value","count":42}</script>';
 
-  // Test with preprocessing (should be faster)
-  const preprocessed = provider.preprocessTemplate(template);
-  (provider as any).preprocessedTemplate = preprocessed;
+    // Test with preprocessing (should be faster)
+    const preprocessed = provider.preprocessTemplate(template);
+    (provider as any).preprocessedTemplate = preprocessed;
 
-  const response1 = { html: "" };
-  provider.fillTemplate(response1, app, script);
+    const response1 = { html: "" };
+    provider.fillTemplate(response1, app, script);
 
-  // Test fallback without preprocessing (should work but potentially slower)
-  (provider as any).preprocessedTemplate = null;
-  const response2 = { html: template };
-  provider.fillTemplate(response2, app, script);
+    // Test fallback without preprocessing (should work but potentially slower)
+    (provider as any).preprocessedTemplate = null;
+    const response2 = { html: template };
+    provider.fillTemplate(response2, app, script);
 
-  // Both should produce the same result
-  expect(response1.html).toBe(response2.html);
+    // Both should produce the same result
+    expect(response1.html).toBe(response2.html);
 
-  // The result should contain the app content
-  expect(response1.html).toContain("<h1>Hello World</h1>");
-  expect(response1.html).toContain(
-    '<script id="__ssr" type="application/json">{"data":"value","count":42}</script>',
-  );
+    // The result should contain the app content
+    expect(response1.html).toContain("<h1>Hello World</h1>");
+    expect(response1.html).toContain(
+      '<script id="__ssr" type="application/json">{"data":"value","count":42}</script>',
+    );
+  });
 });

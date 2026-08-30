@@ -1,6 +1,6 @@
 import { Alepha, z } from "alepha";
 import { renderToString } from "react-dom/server";
-import { test } from "vitest";
+import { describe, it } from "vitest";
 
 import { NestedView } from "../../router/index.ts";
 import { ReactBrowserRouterProvider } from "../../router/providers/ReactBrowserRouterProvider.ts";
@@ -28,143 +28,145 @@ const setup = () => {
   };
 };
 
-test("Router - Basic", async ({ expect }) => {
-  const { router, render, alepha } = setup();
+describe("Router", () => {
+  it("Basic", async ({ expect }) => {
+    const { router, render, alepha } = setup();
 
-  router.add({
-    name: "Test",
-    path: "/",
-    component: () => "Hey",
+    router.add({
+      name: "Test",
+      path: "/",
+      component: () => "Hey",
+    });
+
+    router.add({
+      name: "NotFound",
+      path: "/*",
+      component: () => "Not Found",
+    });
+
+    await alepha.start();
+
+    expect(await render("/")).toEqual("Hey");
+    expect(await render("/zz")).toEqual("Not Found");
   });
 
-  router.add({
-    name: "NotFound",
-    path: "/*",
-    component: () => "Not Found",
-  });
+  it("NestedView", async ({ expect }) => {
+    const { router, render, alepha } = setup();
 
-  await alepha.start();
-
-  expect(await render("/")).toEqual("Hey");
-  expect(await render("/zz")).toEqual("Not Found");
-});
-
-test("Router - NestedView", async ({ expect }) => {
-  const { router, render, alepha } = setup();
-
-  router.add({
-    name: "Test",
-    component: () => (
-      <>
-        ((
-        <NestedView />
-        ))
-      </>
-    ),
-    children: [
-      {
-        name: "Home",
-        path: "/",
-        component: () => "Home",
-      },
-      {
-        name: "Hello",
-        path: "/hello/:name",
-        schema: {
-          params: z.object({
-            name: z.text(),
-          }),
+    router.add({
+      name: "Test",
+      component: () => (
+        <>
+          ((
+          <NestedView />
+          ))
+        </>
+      ),
+      children: [
+        {
+          name: "Home",
+          path: "/",
+          component: () => "Home",
         },
-        loader: ({ params }) => params,
-        component: (props) => `Hello, ${props.name}!`,
-      },
-    ],
+        {
+          name: "Hello",
+          path: "/hello/:name",
+          schema: {
+            params: z.object({
+              name: z.text(),
+            }),
+          },
+          loader: ({ params }) => params,
+          component: (props) => `Hello, ${props.name}!`,
+        },
+      ],
+    });
+
+    await alepha.start();
+
+    expect(await render("/")).toEqual("((Home))");
+    expect(await render("/hello/jack")).toEqual("((Hello, jack!))");
   });
 
-  await alepha.start();
+  it("All routes", async ({ expect }) => {
+    const { router, render, alepha } = setup();
 
-  expect(await render("/")).toEqual("((Home))");
-  expect(await render("/hello/jack")).toEqual("((Hello, jack!))");
-});
-
-test("Router - All routes", async ({ expect }) => {
-  const { router, render, alepha } = setup();
-
-  router.add({
-    children: [
-      {
-        path: "/*",
-        component: () => "404",
-      },
-      {
-        component: () => "home",
-      },
-      {
-        path: "about",
-        component: () => "about",
-      },
-      {
-        path: "sub",
-        children: [
-          {
-            component: () => "a",
-          },
-          {
-            path: "b",
-            component: () => "b",
-          },
-        ],
-      },
-      {
-        path: "users",
-        component: () => <NestedView>yo</NestedView>,
-        children: [
-          {
-            path: "new",
-            component: () => "users/new",
-          },
-          {
-            path: ":id",
-            schema: { params: z.object({ id: z.text() }) },
-            loader: ({ params }) => {
-              if (params.id === "boom") throw new Error("boom");
-              return params;
+    router.add({
+      children: [
+        {
+          path: "/*",
+          component: () => "404",
+        },
+        {
+          component: () => "home",
+        },
+        {
+          path: "about",
+          component: () => "about",
+        },
+        {
+          path: "sub",
+          children: [
+            {
+              component: () => "a",
             },
-            children: [
-              {
-                loader: ({ params }) => params,
-                component: ({ id }) => `hey ${id}`,
-              },
-              {
-                path: "profile",
-                loader: ({ params }) => params,
-                component: ({ id }) => `profile of ${id}`,
-              },
-            ],
-          },
-        ],
-        errorHandler: (error) => {
-          return `Error: ${error.message}`;
+            {
+              path: "b",
+              component: () => "b",
+            },
+          ],
         },
-      },
-    ],
+        {
+          path: "users",
+          component: () => <NestedView>yo</NestedView>,
+          children: [
+            {
+              path: "new",
+              component: () => "users/new",
+            },
+            {
+              path: ":id",
+              schema: { params: z.object({ id: z.text() }) },
+              loader: ({ params }) => {
+                if (params.id === "boom") throw new Error("boom");
+                return params;
+              },
+              children: [
+                {
+                  loader: ({ params }) => params,
+                  component: ({ id }) => `hey ${id}`,
+                },
+                {
+                  path: "profile",
+                  loader: ({ params }) => params,
+                  component: ({ id }) => `profile of ${id}`,
+                },
+              ],
+            },
+          ],
+          errorHandler: (error) => {
+            return `Error: ${error.message}`;
+          },
+        },
+      ],
+    });
+
+    await alepha.start();
+
+    expect(await render("/")).toEqual("home");
+    expect(await render("/about")).toEqual("about");
+    expect(await render("/noop")).toEqual("404");
+    expect(await render("/noop/noop")).toEqual("404");
+    expect(await render("/sub")).toEqual("a");
+    expect(await render("/sub/")).toEqual("a");
+    expect(await render("/sub/b")).toEqual("b");
+    expect(await render("/sub/noop")).toEqual("404");
+    expect(await render("/users")).toEqual("yo");
+    expect(await render("/users/")).toEqual("yo");
+    expect(await render("/users/a")).toEqual("hey a");
+    expect(await render("/users/boom")).toEqual("Error: boom");
+    expect(await render("/users/new")).toEqual("users/new");
+    expect(await render("/users/hey/ho")).toEqual("404");
+    expect(await render("/users/a/profile")).toEqual("profile of a");
   });
-
-  await alepha.start();
-
-  expect(await render("/")).toEqual("home");
-  expect(await render("/about")).toEqual("about");
-  expect(await render("/noop")).toEqual("404");
-  expect(await render("/noop/noop")).toEqual("404");
-  expect(await render("/sub")).toEqual("a");
-  expect(await render("/sub/")).toEqual("a");
-  expect(await render("/sub/b")).toEqual("b");
-  expect(await render("/sub/noop")).toEqual("404");
-  expect(await render("/users")).toEqual("yo");
-  expect(await render("/users/")).toEqual("yo");
-  expect(await render("/users/a")).toEqual("hey a");
-  expect(await render("/users/boom")).toEqual("Error: boom");
-  expect(await render("/users/new")).toEqual("users/new");
-  expect(await render("/users/hey/ho")).toEqual("404");
-  expect(await render("/users/a/profile")).toEqual("profile of a");
 });

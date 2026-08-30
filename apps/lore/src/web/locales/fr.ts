@@ -128,6 +128,8 @@ export default {
   "folios.editor.action.divider": "Séparateur",
   "folios.editor.menu.insert": "Insérer",
   "folios.editor.action.toggle-mode": "Basculer l'aperçu",
+  "markdown-editor.tab-hint":
+    "Tab indente. Appuyez sur Échap, puis Tab, pour sortir de l'éditeur.",
   "folios.editor.action.new": "Nouveau folio",
   "folios.editor.action.new-directory": "Nouveau dossier",
   "folios.editor.action.save": "Enregistrer",
@@ -345,7 +347,6 @@ export default {
   "quest.rail.commits": "Commits",
   "quest.rail.due": "Échéance",
   "quest.rail.milestone": "Jalon",
-  "quest.rail.questline": "Chaîne de quêtes",
 
   "project.create.name": "Nom",
   "project.create.name.helper": "Un nom marquant pour votre épopée.",
