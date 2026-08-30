@@ -28,6 +28,7 @@ import { useRouter, useRouterState } from "alepha/react/router";
 import {
   BookOpen,
   ChevronDown,
+  Flag,
   Layers,
   Mail,
   MessageSquarePlus,
@@ -45,10 +46,12 @@ import type { I18n } from "../../services/I18n.ts";
 import { useInviteMember } from "../shared/useInviteMember.ts";
 import EpicCreateSheet from "./epics/EpicCreateSheet.tsx";
 import QuestCreate from "./quest/QuestCreate.tsx";
+import ReleaseCreateDialog from "./releases/ReleaseCreateDialog.tsx";
 
 const ProjectActionsCreateButton = () => {
   const [showDialog, setShowDialog] = useState(false);
   const [showEpic, setShowEpic] = useState(false);
+  const [showRelease, setShowRelease] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const inviteMember = useInviteMember();
@@ -73,8 +76,17 @@ const ProjectActionsCreateButton = () => {
   const folioEnabled = features.folios;
   const feedbackEnabled = features.feedback;
   const epicsEnabled = features.epics;
+  // Still `milestones` after the rename: it is a REQUIRED key inside a JSON
+  // column, and renaming one of those is the 2026-08-05 incident that failed
+  // every project read.
+  const releasesEnabled = features.milestones;
   const isOwner = project.createdBy === auth.user?.id;
-  const hasCreateAction = epicsEnabled || folioEnabled || feedbackEnabled;
+  // ⚠️ Releases has to be counted here, not just rendered below. These two
+  // booleans decide whether the chevron and the separator exist at all, so a
+  // project with releases on and epics, folios and feedback all off would
+  // otherwise have a New Release entry inside a menu with no way to open it.
+  const hasCreateAction =
+    epicsEnabled || releasesEnabled || folioEnabled || feedbackEnabled;
   const hasSecondaryAction = hasCreateAction || isOwner;
 
   const handleInvite = async () => {
@@ -124,6 +136,14 @@ const ProjectActionsCreateButton = () => {
                 <DropdownMenuItem onClick={() => setShowEpic(true)}>
                   <Layers className="size-4" />
                   {tr("project.menu.create-epic")}
+                </DropdownMenuItem>
+              )}
+              {/* Directly after New Epic, matching the sidebar's Epics then
+                  Releases: a release is when the epic ships. */}
+              {releasesEnabled && (
+                <DropdownMenuItem onClick={() => setShowRelease(true)}>
+                  <Flag className="size-4" />
+                  {tr("project.menu.create-release")}
                 </DropdownMenuItem>
               )}
               {folioEnabled && (
@@ -195,6 +215,29 @@ const ProjectActionsCreateButton = () => {
               epicNumber: String(epic.number),
             },
           });
+        }}
+      />
+      {/* #1635's surface, reused rather than a second one built here. */}
+      <ReleaseCreateDialog
+        projectId={project.id}
+        open={showRelease}
+        onOpenChange={setShowRelease}
+        onCreated={(created) => {
+          setShowRelease(false);
+          // Onto the release itself, the way New Epic opens the epic it just
+          // made. A release is addressed by its TAG, and the row is
+          // unreachable without one, so a tagless answer falls back to the
+          // list rather than routing to a broken URL.
+          void (created.tag
+            ? router.push("projectRelease", {
+                params: {
+                  projectSlug: project.slug,
+                  releaseTag: created.tag,
+                },
+              })
+            : router.push("projectReleases", {
+                params: { projectSlug: project.slug },
+              }));
         }}
       />
       <Dialog open={showInvite} onOpenChange={setShowInvite}>

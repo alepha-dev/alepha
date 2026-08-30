@@ -1235,6 +1235,7 @@ export default {
   "epic.toast.created": "Épopée créée.",
   "epic.toast.updated": "Épopée enregistrée.",
   "project.menu.create-epic": "Nouvelle épopée",
+  "project.menu.create-release": "Nouvelle version",
   "epic.create.title.label": "Titre",
   "epic.create.description.label": "Description",
   "epic.create.submit": "Créer une épopée",
